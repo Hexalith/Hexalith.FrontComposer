@@ -5,7 +5,7 @@ created: '2026-08-25'
 status: 'done'
 baseline_commit: 'ceae00a4f9788222ed19153acfc05d68d0bc85d1'
 story_id: '9.7'
-review_loop_iteration: 5
+review_loop_iteration: 9
 context:
   - '{project-root}/_bmad-output/project-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-9-context.md'
@@ -41,11 +41,11 @@ context:
 
 ## Code Map
 
-- `eng/validate-story-artifacts.py:310-414,530-852,888-1383,1398-1517,1625-1690` -- fail-closed CLI overrides and duplicate frontmatter scalars, source-numbered Markdown scanning outside frontmatter/fences, prose-tolerant disposition grammar, explicit legacy bare-diff fallback, exact story-ID and canonical range evidence, hard-bound authorization, matching-first classification, stable workspace snapshots, delimiter/control-safe report values, listed-path reconciliation, classification-aware labels, and bounded task extraction.
-- `eng/tests/test_validate_story_artifacts.py:104-1358,1359-2426,2427-2923,2924-3385` -- workflow/documentation contracts, fallback and frontmatter guards, real-heading and exact-source-line metadata extraction, bounded task parsing and fence closure, disposition/matching classification, every report-value surface, candidate/workspace mutation detection, strict invocation, bootstrap inventories/history, canonical artifacts, bounded unrelated paths, and report-label regressions.
+- `eng/validate-story-artifacts.py:236-260,328-470,583-1085,1194-1450,1708-1950,2045-2140` -- the immutable bootstrap inventory, fail-closed CLI and base overrides, one shared frontmatter/body split feeding source-numbered scanning outside frontmatter/fences/indented examples, exact and normalized story identity, prose-tolerant disposition grammar at its exact heading level, one substitutable git process boundary, canonical range evidence with hard-bound authorization, matching-first classification, stable workspace snapshots, exclusion-bounded listed-path reconciliation, classification-aware labels, one delimiter/control-safe report boundary, and nested-aware task extraction.
+- `eng/tests/test_validate_story_artifacts.py:111-1490,1495-2915,2918-3695,3697-4379` -- workflow/documentation contracts, fallback and frontmatter guards, real-heading and exact-source-line metadata extraction, bounded task parsing and fence closure, disposition/matching classification, every report-value surface, candidate/workspace mutation detection, strict identity/exclusion/non-owning-extra regressions, bootstrap inventories/history and canonical artifacts, and the document-parsing boundaries that decide what text becomes structure.
 - `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:141-169` and `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json:98-103` -- isolated blocking CI-pin fact and exact CA1707 identifier-inventory reseal.
 - `.agents/skills/bmad-build/step-04-review.md:19-52` and `.claude/skills/bmad-build/step-04-review.md:19-52` -- synchronized reviewer-facing strict gate and one-time exception contract.
-- `.agents/skills/bmad-build/spec-template.md:6,74-79` and `docs/reference/story-artifact-validation.md:13-73` -- fail-closed `story_id` authoring, reusable disposition scaffold, and the operator-facing story-match, classification, and path-label grammar.
+- `.agents/skills/bmad-build/spec-template.md:6,74-79` and `docs/reference/story-artifact-validation.md:13-171` -- fail-closed `story_id` authoring, reusable disposition scaffold, and the operator-facing identity, document-structure, story-match, classification, path-label, and disposition grammar.
 - `_bmad-output/implementation-artifacts/story-review-reconciliation-checklist.md:22-30` -- operator contract for commit dispositions and anti-bypass behavior.
 
 ## Tasks & Acceptance
@@ -142,6 +142,71 @@ context:
 - [x] [Review][Defer] Resolved from D4 -- decide whether an unresolved merge-conflict path should be a hard validation failure rather than merely reported [eng/validate-story-artifacts.py:1214] — deferred, a policy change that deserves its own decision rather than a review patch
 - [x] [Review][Defer] The deferred-work retirement entry still describes a "twelve-entry `_PATHS` frozenset" although loop 5 expanded it to thirteen [_bmad-output/implementation-artifacts/deferred-work.md:2616] — deferred, pre-existing
 - [x] [Review][Defer] The report has no machine-readable emission, so the calling skill must parse classifications out of English prose; `json` is imported solely for escaping [eng/validate-story-artifacts.py:1275] — deferred, pre-existing
+- [x] [Review][Patch] Resolved from D1 -- directory-prefix `Documented Unrelated Changes` coverage exempted committed story code in legacy mode (regression vs `ceae00a4`); parent coverage is now bounded to workspace state via `path_is_classified_covered`/`workspace_classified_scope`, committed paths require an exact classification entry, and `test_classified_directory_cannot_cover_committed_paths` pins both halves [eng/validate-story-artifacts.py:1552]
+- [x] [Review][Patch] Resolved from D2 -- the canonical live-CLI report asserted exit 0 for `--candidate HEAD` with no expiry inside the blocking quality lane, so the first later commit touching 9.7's shared bookkeeping paths would have turned `main` red; pinned to `STORY_9_7_DELIVERY_COMMIT` and added to `BOOTSTRAP_HISTORY_REFS` [eng/tests/test_validate_story_artifacts.py:2668]
+- [x] [Review][Defer] Resolved from D3 -- merge commits are recorded but never path-reconciled, so conflict-resolution content escapes File List evidence [eng/validate-story-artifacts.py:1158] — deferred, new scope at loop 8 and nothing is currently mis-attributed (both merges in 9.7's range carry no combined-diff content); the follow-up must use `git diff-tree --cc`, not `-m`, which would flood classification with whole-branch paths
+- [x] [Review][Patch] A 4-space-indented example is parsed as document structure, injecting fake `## File List` entries, headings, and checked tasks past the fence guard [eng/validate-story-artifacts.py:831]
+- [x] [Review][Patch] An empty `## Tasks` heading anywhere demotes every real checked task from a hard failure to a stdout notice [eng/validate-story-artifacts.py:2026]
+- [x] [Review][Patch] Checked items in `1.`/`*` lists yield no task, no notice, and no failure [eng/validate-story-artifacts.py:58]
+- [x] [Review][Patch] Indented/nested frontmatter keys are promoted to top level, so a nested `story_id` becomes the document identity [eng/validate-story-artifacts.py:915] -- also clears two false `duplicate frontmatter key` failures on existing planning artifacts
+- [x] [Review][Patch] An explicit `story_id` is never cross-checked against filename/H1, so a stale value silently misclassifies the whole range [eng/validate-story-artifacts.py:704] -- only a well-formed contradiction fails; the explicit field stays authoritative over malformed legacy spellings
+- [x] [Review][Patch] An empty or whitespace-only explicit `story_id` silently falls back to inference instead of failing closed [eng/validate-story-artifacts.py:686]
+- [x] [Review][Patch] A leading-zero `story_id` (`09.7`) is left unnormalized and matches no commit subject [eng/validate-story-artifacts.py:624] -- the identity now normalizes and the matcher accepts either spelling, replacing the previous zero-preserving assertion
+- [x] [Review][Patch] `--exclude` and default exclusions apply to workspace paths but not commit-derived paths in candidate mode [eng/validate-story-artifacts.py:1661] -- an excluded path stays visible in the report and is evidence in neither half
+- [x] [Review][Patch] A File List entry with a trailing slash never matches its changed path, producing simultaneous false missing and false extra failures [eng/validate-story-artifacts.py:1931]
+- [x] [Review][Patch] Two report surfaces added by this change still emit author-controlled text raw, contradicting the completed "every value surface" patch [eng/validate-story-artifacts.py:878] -- the malformed-declaration echo, the stray-item notice, and both checked-task failures now quote through the same boundary
+- [x] [Review][Patch] Disposition rows written with `*`/`+` or without a bullet are silently dropped rather than reported malformed [eng/validate-story-artifacts.py:874]
+- [x] [Review][Patch] A thematic break or prose bullet inside the dispositions section raises a false malformed-declaration failure [eng/validate-story-artifacts.py:874] -- carrying the `|` delimiter or a full SHA is what makes a line a declaration attempt, so no separate thematic-break rule was added: one was written first and removed because deleting it left the suite green
+- [x] [Review][Patch] Unterminated frontmatter silently blanks the whole document and misattributes the cause to an empty File List [eng/validate-story-artifacts.py:904]
+- [x] [Review][Patch] `extract_frontmatter` and the line scanner disagree on frontmatter boundaries (`---` in a scalar, BOM, leading blank line) with no failure [eng/validate-story-artifacts.py:753] -- both now read one shared split
+- [x] [Review][Patch] Double-quoted frontmatter scalar escapes are never unescaped, unlike single-quoted ones [eng/validate-story-artifacts.py:991]
+- [x] [Review][Patch] An unresolvable `--base` fails open to a workspace-only bare diff instead of failing closed [eng/validate-story-artifacts.py:377] -- an unusable baseline from story frontmatter keeps its reported bare-diff fallback
+- [x] [Review][Patch] A `shared`/`process` commit's listed paths are reported as unexplained File List extras, telling the author both to list and not to list them [eng/validate-story-artifacts.py:1880] -- the declaration explains the path; it still contributes no ownership and stays labelled `listed-unowned`
+- [x] [Review][Patch] A non-UTF-8 commit subject raises an uncaught `UnicodeDecodeError` traceback instead of a validation failure [eng/validate-story-artifacts.py:1389]
+- [x] [Review][Patch] A nested or suffixed recognized task heading closes the outer Tasks section early and demotes its checked tasks to notices [eng/validate-story-artifacts.py:1970]
+- [x] [Review][Patch] `format_git_path` escapes the same path two different ways depending on which branch handles it [eng/validate-story-artifacts.py:1761]
+- [x] [Review][Patch] `Commit Scope Dispositions` is honored at any heading level, widening the grammar the reference doc and template pin [eng/validate-story-artifacts.py:591] -- a wrong level is reported rather than silently ignored, so real declarations cannot disappear
+- [x] [Review][Patch] Tests monkeypatch the stdlib `subprocess` module process-wide, breaking under any parallel runner [eng/tests/test_validate_story_artifacts.py:2171] -- every git invocation routes through one module attribute, and a regression test pins the indirection
+- [x] [Review][Patch] Missing tests: a committed excluded path in range, a malformed frontmatter `title` identity, and strict mode with no derivable identity [eng/tests/test_validate_story_artifacts.py:2557]
+- [x] [Review][Patch] Story artifact hygiene: duplicate `## Suggested Review Order` sections, stale Review Findings line anchors, Test Evidence citing `23b0b556` rather than delivered `743618d5`, and frontmatter `status: done` against sprint `review` [_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md:5]
+- [x] [Review][Defer] Section parsing walks the document four times and pads section bodies, inflating a two-heading section to 607 lines [eng/validate-story-artifacts.py:809] — deferred, pre-existing
+- [x] [Review][Defer] `markdown_h1_headings` builds every H1 for a caller that breaks after the first [eng/validate-story-artifacts.py:646] — deferred, pre-existing
+- [x] [Review][Defer] `BOOTSTRAP_OWNED_STORY_PATH` is spelled out a second time as a raw string inside `BOOTSTRAP_OWNED_PATHS` and can drift [eng/validate-story-artifacts.py:237] — deferred, pre-existing
+- [x] [Review][Defer] Dead `excluded_subsection_level is None` condition reads as a guard but cannot be false [eng/validate-story-artifacts.py:1677] — deferred, pre-existing
+- [x] [Review][Defer] `contains_terminal_control` also returns true for the `|` delimiter, which its name and docstring do not cover [eng/validate-story-artifacts.py:1508] — deferred, pre-existing
+- [x] [Review][Defer] Notices on stdout and failures on stderr can interleave out of order under CI block buffering [eng/validate-story-artifacts.py:405] — deferred, pre-existing
+- [x] [Review][Defer] `classified_path_reason` returns an arbitrary dict-order reason when two classified entries overlap [eng/validate-story-artifacts.py:1518] — deferred, pre-existing
+- [x] [Review][Defer] Candidate movement is detected but a baseline ref that moves during collection is not [eng/validate-story-artifacts.py:1281] — deferred, pre-existing
+- [x] [Review][Defer] Fenced content is now dropped from `evidence_text`, losing the `blocker` exemption for a story whose only mention is fenced [eng/validate-story-artifacts.py:1747] — deferred, pre-existing
+- [x] [Review][Defer] `--end-of-options` is passed unconditionally and surfaces as an opaque git failure on git < 2.24 [eng/validate-story-artifacts.py:958] — deferred, pre-existing
+- [x] [Review][Patch] Legacy and no-VCS mode crash: `main` collected the workspace scope unconditionally, so `collect_workspace_evidence` raised an uncaught `RuntimeError` on the documented freeform/`NO_VCS` invocation [eng/validate-story-artifacts.py:421] -- the scope is now collected only when a classification could consume it, and reported as a validation failure when it cannot be collected
+- [x] [Review][Patch] A `---` inside an indented YAML block scalar terminated frontmatter early, silently dropping a later `story_id` and falling back to inference with no failure [eng/validate-story-artifacts.py:813]
+- [x] [Review][Patch] Exclusions bounded reconciliation but not classification, so a `fix(9.7)` commit touching a default-excluded path was falsely `interleaved` [eng/validate-story-artifacts.py:1547] -- excluded paths stay visible under a new `excluded` label and carry no ownership
+- [x] [Review][Patch] An unterminated fenced code block silently dropped the rest of the document -- File List, tasks, and declarations -- with no cause reported [eng/validate-story-artifacts.py:901]
+- [x] [Review][Patch] An unreadable or non-UTF-8 story artifact raised a traceback instead of returning a validation failure [eng/validate-story-artifacts.py:603]
+- [x] [Review][Patch] A double-quoted `\U` escape above U+10FFFF raised `ValueError` from `chr()` [eng/validate-story-artifacts.py:1077]
+- [x] [Review][Patch] A level-1 `# Tasks` heading never closed its section, so every later checked item became an execution task demanding path evidence [eng/validate-story-artifacts.py:2066] -- a task heading is a section heading, levels 2 to 6
+- [x] [Review][Patch] A recognized task section holding only unchecked items raised a false "no recognized task heading matched" failure [eng/validate-story-artifacts.py:2124] -- both states still fail closed, because an empty `## Tasks` heading must not demote real checked work to a notice, but each now says which state it is
+- [x] [Review][Patch] `--candidate HEAD --base ""` reported the invocation error and then a page of derived File List failures [eng/validate-story-artifacts.py:348] -- an invalid invocation now validates nothing
+- [x] [Review][Patch] Deleting `process` from the non-owning classifications left the suite green; the regression declared only `shared` [eng/tests/test_validate_story_artifacts.py:2702]
+- [x] [Review][Patch] Both checked-task failure sites emitted author-controlled text unescaped without a test [eng/tests/test_validate_story_artifacts.py:4134]
+- [x] [Review][Patch] The `outside_review_level` exclusion survived deletion, although losing it turns 7 repository artifacts into hard failures [eng/tests/test_validate_story_artifacts.py:4114]
+- [x] [Review][Patch] Renames were never exercised, so removing `-c status.renames=false` stayed green while a real staged rename collapses the workspace block [eng/tests/test_validate_story_artifacts.py:2578]
+- [x] [Review][Patch] Tab expansion in `leading_indent_columns` survived deletion because every indented-example fixture used spaces [eng/tests/test_validate_story_artifacts.py:4097]
+- [x] [Review][Patch] `test_bootstrap_history_is_available_in_the_ci_checkout` hard-failed in a shallow clone while every sibling skipped [eng/tests/test_validate_story_artifacts.py:2963] -- it stays an assertion under `CI` and skips on a partial clone
+- [x] [Review][Patch] The canonical historical report pinned the candidate but copied the live mutable spec into the clone, so any later File List edit would redden the blocking lane [eng/tests/test_validate_story_artifacts.py:3163] -- both sides are pinned now, and only the validator comes from the working tree
+- [x] [Review][Patch] The process-boundary test counted `subprocess.run(` occurrences in raw source, so a comment could break it [eng/tests/test_validate_story_artifacts.py:3993] -- the invariant is now structural: no caller outside `run_subprocess` calls it
+- [x] [Review][Patch] The runtime-mirror test hardcoded four filenames and compared newline-normalized text, hiding both a fifth diverging file and the on-disk EOL drift [eng/tests/test_validate_story_artifacts.py:112] -- it enumerates the tree and compares bytes with a diagnostic that separates content drift from line-ending drift, and the four files whose on-disk endings had drifted from the repository's `eol=crlf` policy were normalized (content unchanged: `git diff` reports no edit for them)
+- [x] [Review][Patch] `step-oneshot.md` created a spec from the template but never resolved the fail-closed `story_id` placeholder [.agents/skills/bmad-build/step-oneshot.md:46]
+- [x] [Review][Patch] The loop-8 deferred-work entries were bare bullets, although `bmad-loop-sweep` consumes the ledger as `source_spec`/`summary`/`evidence` records [_bmad-output/implementation-artifacts/deferred-work.md:2719]
+- [x] [Review][Patch] Spec bookkeeping: no loop-7 change-log or evidence entry, and `review_loop_iteration` read 5 against eight recorded loops [_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md:8]
+- [x] [Review][Patch] The reference documented only strict `--candidate` mode [docs/reference/story-artifact-validation.md:23] -- invocation modes, every option, default exclusions, exit codes, and the documented-unrelated sections are now covered
+- [x] [Review][Patch] The reference introduced its classification table two paragraphs before the table and used vocabulary the table had not yet defined [docs/reference/story-artifact-validation.md:88]
+- [x] [Review][Patch] Story identity is now parsed in legacy mode too, so a malformed `title`, H1, or filename fails a run that never consults the ID [docs/reference/story-artifact-validation.md:63] -- documented in the reference and the reconciliation checklist
+- [x] [Review][Patch] Dead code introduced by this change: `extract_section_heading_lines` had no callers, and `path_is_classified_covered` re-normalized keys both producers already strip [eng/validate-story-artifacts.py:2304]
+- [x] [Review][Defer] A disposition declared on a merge SHA is accepted and rendered but has no effect [eng/validate-story-artifacts.py:1506] -- deferred, coupled to merge reconciliation
+- [x] [Review][Defer] Ledger hygiene: loop-4 entries resolved by later loops remain filed open [_bmad-output/implementation-artifacts/deferred-work.md:2589] -- deferred, owned by the sweep
+
 ## Spec Change Log
 
 - 2026-08-25, review loop 1 -- The strict gate exposed a self-bootstrap contradiction: the commit introducing exact Story 9.7 attribution could not satisfy a rule that did not yet exist, and published history cannot be rewritten. With explicit human approval, the frozen contract now permits one exact full-SHA `bootstrap-owned` tuple and the later release-compatibility commit is declared `shared`. This avoids the known-bad alternatives of history rewriting, generic exemptions, hidden interleaving, or whole-commit ownership. KEEP: canonical SHA/ancestry checks, exact ID boundaries, per-path visibility, separate workspace evidence, ordinary disposition semantics, existing CI enforcement, and the delivered validator behavior outside this exception.
@@ -153,6 +218,9 @@ context:
 - 2026-08-25, review loop 5 patch follow-up -- Review found that the first heading-boundary fix excluded legitimate nested execution tasks, that matching listed-only commits could still be downgraded by non-owning dispositions, and that control-bearing Git/report values were emitted raw. The patch now keeps task collection active across nested execution subsections while excluding Review Findings, gives all matching listed-only commits `owned` precedence over `shared`/`process`, and deterministically quotes control-bearing subjects, disposition reasons, and Git paths. KEEP: interleaved precedence, non-matching shared/process behavior, ordinary report text, repeated recognized task sections, checked Review Findings exclusion, and the complete exact bootstrap authorization contract.
 - 2026-08-25, review loop 6 patch -- Review found escaping gaps in author-controlled reasons and paths, unpinned fail-closed and ref-stability seams, legacy-parser false positives, incomplete task-heading boundaries, silent degraded discovery, and duplicate conflict-state reporting. The patch extends deterministic escaping through C0/C1 and Unicode format controls, adds end-to-end and mutation-sensitive regressions for every named seam, parses legacy H1s only outside frontmatter/fences, recognizes supported task-heading text at any Markdown level, reports stray checked items and degraded fallback visibly, rejects malformed dispositions in both modes with source lines, and reports unmerged paths once. Documentation now states the workflow-versus-CI enforcement boundary and the bare-story-ID subject trap. KEEP: the frozen bootstrap tuple and thirteen-path intersection, exact matching/interleaving precedence, classification-aware ownership labels, all-path visibility, and ordinary human-readable report output.
 - 2026-08-25, review loop 6 patch follow-up -- Consolidated review found that metadata and task parsers still treated frontmatter/fenced examples as executable Markdown, report quoting omitted pipe and Unicode line/paragraph separators, and the strict collector protected the candidate ref but not its workspace snapshot. The patch centralizes source-numbered semantic-line scanning with valid fence closure, excludes examples from section/disposition/File List/task evidence, preserves exact disposition and task source lines, quotes every affected value surface, and compares a final staged/unstaged/untracked/unresolved snapshot. `review_loop_iteration` remains unchanged because this is a patch-only pass. KEEP: the frozen authorization block, any-level and nested task semantics, Review Findings exclusions, ordinary report text, candidate re-resolution, classification behavior, and reconciliation rules.
+- 2026-08-25, review loop 7 patch -- Review found that directory-prefix `Documented Unrelated Changes` coverage exempted committed story code in legacy mode, a regression against `ceae00a4`, and that the canonical live-CLI report asserted exit 0 for `--candidate HEAD` with no expiry inside the blocking quality lane, so the first later commit touching Story 9.7's shared bookkeeping paths would have turned `main` red. The patch bounds parent coverage to workspace state, requires an exact classification entry for a committed path, and pins the canonical report to the delivered commit; merge path reconciliation was filed as new scope rather than patched. KEEP: exact classification entries for committed paths, directory coverage for uncommitted state, the immutable bootstrap tuple, and the blocking CI command.
+- 2026-08-25, review loop 8 patch -- Consolidated review found that author-controlled text could still become document structure, that story identity was accepted without cross-checking or normalization, and that several boundaries were enforced on one half of the gate only. The patch gives both parsers one shared frontmatter/body split with BOM handling and an unterminated-frontmatter failure, drops indented examples from semantic scanning, reads checked items from every list marker, keeps nested and suffixed recognized task sections open while requiring some section to collect them, rejects empty and contradicted explicit `story_id` values and normalizes padded ones on both sides of subject matching, pins `Commit Scope Dispositions` to its exact heading level while tolerating prose and reporting non-conforming declaration attempts, resolves double-quoted scalar escapes, fails closed on an unresolvable `--base`, bounds committed paths by the same exclusions as workspace paths, stops reporting a declared non-owning commit's listed paths as unexplained extras, reports a non-UTF-8 commit subject instead of raising, and routes every git invocation and every report value through one boundary each. KEEP: the frozen bootstrap tuple and thirteen-path intersection, listed-only reconciliation, all-path visibility, classification-aware labels, interleaved precedence, ordinary human-readable report output, and the blocking CI command.
+- 2026-08-25, review loop 9 patch -- Adversarial review found nine behavior defects, five guards no test could fail, four test-quality defects, and documentation and bookkeeping gaps. The patch stops the documented no-VCS invocation from raising, keeps an indented block-scalar `---` from ending frontmatter, bounds classification by the same exclusions as reconciliation under a new visible `excluded` path label, reports an unterminated fence and an unreadable story artifact, guards the codepoint escape range, treats a task heading as a section heading, distinguishes "no heading matched" from "checked work outside every section", and validates nothing after an invalid invocation. Regressions now pin the `process` kind, both task-escaping sites, the review-findings exclusion, rename handling, and tab indentation; the mirror test enumerates the tree and compares bytes; the canonical historical report is pinned on the artifact side as well as the range; and the process-boundary invariant is structural. `review_loop_iteration` is reconciled to 9. KEEP: the frozen bootstrap tuple and thirteen-path intersection, listed-only reconciliation, all-path visibility, classification-aware labels, interleaved precedence, fail-closed identity, and the blocking CI command.
 
 ## Commit Scope Dispositions
 
@@ -189,6 +257,14 @@ The bootstrap commit's one touched path outside the immutable authorized set is 
 
 Path labels describe ownership, not mere File List membership. For `owned`, `interleaved`, and `bootstrap-owned` commits, listed paths are `owned` and other paths are `unowned`. For `shared`, `process`, `unmapped`, and `unrelated` commits, listed paths are `listed-unowned` and other paths are `unowned`. Reconciliation still admits only listed paths from ownership-contributing classifications.
 
+Two boundaries decide what the gate can see, and both are now enforced in one place each. Document structure is only real Markdown outside frontmatter, fenced blocks, and indented examples, read through a single frontmatter/body split that `extract_frontmatter` and the semantic-line scanner share; an author's example can therefore show a File List row, a declaration, or a checked task without becoming one. Story identity is the frontmatter `story_id` when present, rejected when blank and when a well-formed filename, `title`, or H1 identity contradicts it, and normalized so a padded spelling is the same identity on both sides of subject matching.
+
+Exclusions and non-owning declarations bound reconciliation symmetrically. A default or `--exclude` pattern now filters committed and workspace paths alike, and a listed path that only a declared `shared` or `process` commit touched is explained by that declaration rather than reported as an unexplained File List extra. Neither rule suppresses a path from the report and neither grants ownership.
+
+Exclusion patterns bound classification as well as reconciliation, and an excluded path is reported under its own `excluded` label. Nothing is hidden: the path is printed, it simply carries no ownership and cannot make a listed commit `interleaved`. The bootstrap authorization deliberately reads the unfiltered path set, so no CLI flag can reshape the immutable intersection.
+
+Story identity is parsed on every run, including legacy mode, which never consumes the resulting ID. A malformed or self-contradicting `title`, H1, or filename therefore fails a legacy run too. That is intentional -- an artifact that disagrees with itself about which story it is cannot be reconciled by any mode -- and it is documented in both the reference and the reconciliation checklist so the failure is not mistaken for a mode bug.
+
 The strict commit-scope gate is enforced by the review workflow in `.agents/skills/bmad-build/step-04-review.md` and its synchronized runtime mirror. The blocking `quality.yml` Gate 2b command runs the validator's regression suite; it proves the validator has not been broken, but it does not discover a story artifact from the branch and run that artifact's strict report. CI-level story-completion enforcement remains deferred until a branch-to-spec resolution convention exists.
 
 ## Verification
@@ -216,6 +292,9 @@ The strict commit-scope gate is enforced by the review workflow in `.agents/skil
 - Iteration-5 review-patch follow-up evidence: the seven focused review regressions passed 7/7, covering nested execution-task validation, checked Review Findings exclusion, interleaved precedence, both matching-commit disposition kinds, and subject/reason/path control escaping. `python3 -m py_compile eng/validate-story-artifacts.py eng/tests/test_validate_story_artifacts.py && python3 -m unittest eng.tests.test_validate_story_artifacts` passed 108 tests with the same 2 optional `ReviewVerifierTests` skips; the 16-test `BootstrapOwnedAuthorizationTests` matrix again passed with no skips. The strict gate passed against canonical candidate `88bae03fb6daac6b6433c8c38e7e87d6ff882fb2` with the exact bootstrap/shared/owned labels and no unresolved workspace state. The Shell.Tests Release project built with 0 warnings / 0 errors, and the two focused Governance facts each passed 1/1. The complete `CiGovernanceTests` class remained 66/67 solely because the pre-existing `ReleaseWorkflow_DelegatesToReusableDomainReleaseAfterCiGate` assertion compares the unchanged `4eb33928...` release coordinates with the different approved Builds gitlink. `pwsh ./eng/validate-docs.ps1` and `git diff --check` both passed. The story remains `in-review`.
 - Iteration-6 review-patch evidence: `python3 -m py_compile eng/validate-story-artifacts.py eng/tests/test_validate_story_artifacts.py && python3 -m unittest eng.tests.test_validate_story_artifacts` passed 127 tests with the same 2 optional `ReviewVerifierTests` skips. `python3 -m unittest -v eng.tests.test_validate_story_artifacts.BootstrapOwnedAuthorizationTests` passed all 20 tests with no skips, covering every frozen matrix row plus the previously unpinned NUL, canonical-SHA, status-row, filename, immutable-inventory, and current-history seams. The strict gate passed against canonical candidate `23b0b5564404bf025b2faa19d7d1a0737f8b5c85`, preserving the exact thirteen-path bootstrap ownership, visible unowned bootstrap path, five non-owning declarations, and later matching submodule commits; current workspace paths all reconcile through the File List. The Shell.Tests Release project built with 0 warnings / 0 errors, and `StoryArtifactValidatorGate_IsBlockingAndExact` plus `AnalyzerPolicy_IdentifierInventory_MatchesSeal` each passed 1/1. The complete `CiGovernanceTests` class remained 66/67 solely on the same pre-existing `ReleaseWorkflow_DelegatesToReusableDomainReleaseAfterCiGate` Builds-coordinate mismatch at `CiGovernanceTests.cs:804`; Story 9.7 changes neither coordinate. `pwsh ./eng/validate-docs.ps1` passed, and `git diff --check` reported no whitespace errors.
 - Iteration-6 consolidated review-patch evidence: the 8 focused parser/report/workspace regressions passed 8/8. `python3 -m py_compile eng/validate-story-artifacts.py eng/tests/test_validate_story_artifacts.py && python3 -m unittest eng.tests.test_validate_story_artifacts` passed 134 tests with the same 2 optional `ReviewVerifierTests` skips, and the 20-test `BootstrapOwnedAuthorizationTests` matrix passed with no skips. The strict gate passed against canonical candidate `23b0b5564404bf025b2faa19d7d1a0737f8b5c85` with stable workspace snapshots and the exact bootstrap/shared/owned labels. The Shell.Tests Release project built with 0 warnings / 0 errors; `StoryArtifactValidatorGate_IsBlockingAndExact` and `AnalyzerPolicy_IdentifierInventory_MatchesSeal` each passed 1/1. The complete `CiGovernanceTests` class remained 66/67 solely on the unchanged `ReleaseWorkflow_DelegatesToReusableDomainReleaseAfterCiGate` mismatch between release coordinate `4eb33928a1d8c7775f97221cf9edc171db0cb5f8` and approved Builds gitlink `22a578b576a515d2af214fe81859447fffc97981`; Story 9.7 changes neither coordinate. `pwsh ./eng/validate-docs.ps1` and `git diff --check` passed.
+- Iteration-7 evidence (recorded during loop 9 from the delivered loop-7 working tree, which loop 7 did not record): `python3 -m unittest eng.tests.test_validate_story_artifacts` passed 135 tests with the same 2 optional `ReviewVerifierTests` skips, and the strict gate passed against candidate `743618d5e933f18c0d22cab78d675e96ffc251b1` with the exact thirteen-path bootstrap ownership and the five non-owning declarations. The loop-7 patch itself is pinned by `test_classified_directory_cannot_cover_committed_paths` and by the canonical historical report's pin to `STORY_9_7_DELIVERY_COMMIT`.
+- Iteration-8 review-patch evidence: `python3 -m py_compile eng/validate-story-artifacts.py eng/tests/test_validate_story_artifacts.py && python3 -m unittest eng.tests.test_validate_story_artifacts` passed 164 tests with the same 2 optional `ReviewVerifierTests` skips. A mutation pass reverted each of the 22 guards added by this patch one at a time and re-ran the suite; all 22 were caught. An earlier round of that pass showed a separate thematic-break rule in the disposition parser surviving, because the declaration-attempt gate already subsumed it, so that unfalsifiable rule was deleted rather than shipped. A differential parse of all 373 repository `_bmad-output` Markdown artifacts against the `743618d5` validator showed only intended differences: File List entries with a trailing slash now normalize, one notice containing the `|` delimiter is now quoted, and two planning artifacts lose false `duplicate frontmatter key` failures that came from nested mapping keys. The strict gate passed against canonical candidate `743618d5e933f18c0d22cab78d675e96ffc251b1`, the delivered HEAD -- earlier iteration entries cite the candidate that was HEAD when they ran -- preserving the exact thirteen-path bootstrap ownership, the visible `unowned` bootstrap path, all five non-owning declarations with `listed-unowned` labels, and the later matching submodule commits. No C# source, workflow, or contract file changed in this pass, so the existing Release `Hexalith.FrontComposer.Shell.Tests` assembly was reused: `StoryArtifactValidatorGate_IsBlockingAndExact` and `AnalyzerPolicy_IdentifierInventory_MatchesSeal` each passed 1/1, and the complete `CiGovernanceTests` class remained 66/67 solely on the unchanged pre-existing `ReleaseWorkflow_DelegatesToReusableDomainReleaseAfterCiGate` mismatch between release coordinate `4eb33928a1d8c7775f97221cf9edc171db0cb5f8` and the approved Builds gitlink. `pwsh ./eng/validate-docs.ps1` passed after the reference-grammar update, and `git diff --check` reported no whitespace errors.
+- Iteration-9 review-patch evidence: `python3 -m py_compile eng/validate-story-artifacts.py eng/tests/test_validate_story_artifacts.py && python3 -m unittest eng.tests.test_validate_story_artifacts` passed 175 tests with the same 2 optional `ReviewVerifierTests` skips. A mutation pass reverted each of the 16 code guards added this round one at a time -- no-VCS coverage reporting, the column-zero frontmatter delimiter, classification exclusions, the unterminated-fence report, the unreadable-artifact report, the codepoint range guard, the task heading level, the outside-section message, the invocation abort, the `process` non-owning kind, both task-escaping sites, the review-findings exclusion, rename detection, tab expansion, and the process boundary -- and all 16 were caught. The two test-side guards were verified by hand: introducing content drift and then line-ending-only drift into a `.claude` mirror each failed the enumerating byte comparison with the matching diagnostic, and editing the live spec's File List left the canonical historical report green, proving it is no longer coupled to a mutable artifact. The strict gate passed against canonical candidate `743618d5e933f18c0d22cab78d675e96ffc251b1`. No C# source, workflow, or contract file changed in this round either, so the existing Release `Hexalith.FrontComposer.Shell.Tests` assembly was reused: `StoryArtifactValidatorGate_IsBlockingAndExact` and `AnalyzerPolicy_IdentifierInventory_MatchesSeal` each passed 1/1, and the complete `CiGovernanceTests` class remained 66/67 on the unchanged pre-existing `ReleaseWorkflow_DelegatesToReusableDomainReleaseAfterCiGate` Builds-coordinate mismatch. `pwsh ./eng/validate-docs.ps1` and `git diff --check` both passed.
 
 ## File List
 
@@ -229,11 +308,13 @@ The strict commit-scope gate is enforced by the review workflow in `.agents/skil
 - `.agents/skills/bmad-build/step-02-plan.md`
 - `.agents/skills/bmad-build/step-04-review.md`
 - `.agents/skills/bmad-build/step-05-present.md`
+- `.agents/skills/bmad-build/step-oneshot.md`
 - `.github/workflows/quality.yml`
 - `.claude/skills/bmad-build/spec-template.md`
 - `.claude/skills/bmad-build/step-02-plan.md`
 - `.claude/skills/bmad-build/step-04-review.md`
 - `.claude/skills/bmad-build/step-05-present.md`
+- `.claude/skills/bmad-build/step-oneshot.md`
 - `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json`
 - `docs/reference/index.md`
 - `docs/reference/story-artifact-validation.md`
@@ -246,122 +327,61 @@ The strict commit-scope gate is enforced by the review workflow in `.agents/skil
 **Exact bootstrap boundary**
 
 - Start with the immutable authorization surface defining exactly what historical recovery may own.
-  [`validate-story-artifacts.py:221`](../../eng/validate-story-artifacts.py#L221)
+  [`validate-story-artifacts.py:236`](../../eng/validate-story-artifacts.py#L236)
 
 - Verify every declared and resolved tuple dimension fails closed.
-  [`validate-story-artifacts.py:983`](../../eng/validate-story-artifacts.py#L983)
+  [`validate-story-artifacts.py:1301`](../../eng/validate-story-artifacts.py#L1301)
 
-- Confirm canonical range evidence authorizes before classifying every non-merge commit.
-  [`validate-story-artifacts.py:1067`](../../eng/validate-story-artifacts.py#L1067)
+- Confirm canonical range evidence authorizes, then classifies, every non-merge commit.
+  [`validate-story-artifacts.py:1385`](../../eng/validate-story-artifacts.py#L1385)
 
-**Parser and fallback hardening**
+**Document parsing**
 
-- Reject empty base overrides before they can silently select story frontmatter.
-  [`validate-story-artifacts.py:310`](../../eng/validate-story-artifacts.py#L310)
+- Read the one shared frontmatter/body split, whose delimiters are column-zero lines.
+  [`validate-story-artifacts.py:796`](../../eng/validate-story-artifacts.py#L796)
 
-- Reject every duplicate frontmatter scalar and prevent downstream use.
-  [`validate-story-artifacts.py:745`](../../eng/validate-story-artifacts.py#L745)
+- Follow the semantic-line scan that drops frontmatter, fences, and indented examples, and reports an unterminated fence.
+  [`validate-story-artifacts.py:836`](../../eng/validate-story-artifacts.py#L836)
 
-- Ignore frontmatter and fenced examples while keeping exact metadata/task source lines.
-  [`validate-story-artifacts.py:656`](../../eng/validate-story-artifacts.py#L656)
+- Check story identity: empty, padded, contradicted, and unreadable artifacts.
+  [`validate-story-artifacts.py:723`](../../eng/validate-story-artifacts.py#L723)
 
-- Recover legacy discovery through explicit bare-diff fallback for unusable baselines.
-  [`validate-story-artifacts.py:888`](../../eng/validate-story-artifacts.py#L888)
+- Check the disposition grammar, its exact heading level, and prose tolerance.
+  [`validate-story-artifacts.py:911`](../../eng/validate-story-artifacts.py#L911)
 
-- Preserve exact story-token boundaries across dotted versions and embedded identifiers.
-  [`validate-story-artifacts.py:970`](../../eng/validate-story-artifacts.py#L970)
+- Confirm task extraction keeps nested sections open and says which failure state it is in.
+  [`validate-story-artifacts.py:2045`](../../eng/validate-story-artifacts.py#L2045)
 
-**Ownership and reporting semantics**
+**Ownership, reporting, and process boundaries**
 
-- Preserve matching story commits as owned before consulting non-owning dispositions.
-  [`validate-story-artifacts.py:1239`](../../eng/validate-story-artifacts.py#L1239)
+- Confirm one exclusion set bounds classification and both halves of reconciliation.
+  [`validate-story-artifacts.py:1708`](../../eng/validate-story-artifacts.py#L1708)
 
-- Re-snapshot staged, unstaged, untracked, and unresolved state before returning strict evidence.
-  [`validate-story-artifacts.py:1291`](../../eng/validate-story-artifacts.py#L1291)
+- Confirm a declared non-owning commit explains a listed path without owning it.
+  [`validate-story-artifacts.py:1934`](../../eng/validate-story-artifacts.py#L1934)
 
-- Reconciliation admits only ownership-contributing commit classifications.
-  [`validate-story-artifacts.py:1372`](../../eng/validate-story-artifacts.py#L1372)
+- Trace one deterministic quoting boundary and the `excluded` path label.
+  [`validate-story-artifacts.py:1737`](../../eng/validate-story-artifacts.py#L1737)
 
-- Report labels distinguish ownership from mere File List membership.
-  [`validate-story-artifacts.py:1398`](../../eng/validate-story-artifacts.py#L1398)
+- Confirm every git invocation routes through one substitutable process boundary.
+  [`validate-story-artifacts.py:1194`](../../eng/validate-story-artifacts.py#L1194)
 
-- Escape delimiter/control-bearing report values without changing ordinary human-readable output.
-  [`validate-story-artifacts.py:1493`](../../eng/validate-story-artifacts.py#L1493)
+- Confirm an invalid invocation validates nothing, and that a missing workspace is reported rather than raised.
+  [`validate-story-artifacts.py:328`](../../eng/validate-story-artifacts.py#L328)
 
-- Validate nested execution tasks while excluding reviewer bookkeeping subsections.
-  [`validate-story-artifacts.py:1625`](../../eng/validate-story-artifacts.py#L1625)
-
-**Workflow enforcement**
-
-- Keep runtime Claude review behavior synchronized with the blocking strict gate.
-  [`step-04-review.md:19`](../../.claude/skills/bmad-build/step-04-review.md#L19)
-
-- Make unresolved story-ID template placeholders explicitly fail closed.
-  [`spec-template.md:6`](../../.agents/skills/bmad-build/spec-template.md#L6)
-
-- Document classifications, path labels, and disposition grammar for contributors.
-  [`story-artifact-validation.md:13`](../../docs/reference/story-artifact-validation.md#L13)
-
-- Pin the exact blocking CI command independently from release-policy assertions.
-  [`CiGovernanceTests.cs:141`](../../tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs#L141)
-
-**Regression proof**
-
-- Prove all unusable baseline forms still discover unstaged tracked work.
-  [`test_validate_story_artifacts.py:232`](../../eng/tests/test_validate_story_artifacts.py#L232)
-
-- Prove all duplicate scalar keys, inline comments, and empty base overrides behave fail-closed.
-  [`test_validate_story_artifacts.py:341`](../../eng/tests/test_validate_story_artifacts.py#L341)
-
-- Prove nested tasks cannot hide behind review-only subsections.
-  [`test_validate_story_artifacts.py:736`](../../eng/tests/test_validate_story_artifacts.py#L736)
-
-- Prove frontmatter/fenced examples cannot inject metadata or tasks and preserve source coordinates.
-  [`test_validate_story_artifacts.py:449`](../../eng/tests/test_validate_story_artifacts.py#L449)
-
-- Pin matching-commit ownership and terminal-safe report rendering.
-  [`test_validate_story_artifacts.py:1666`](../../eng/tests/test_validate_story_artifacts.py#L1666)
-
-- Pin every report-value surface and stable-versus-mutated workspace snapshots.
-  [`test_validate_story_artifacts.py:1824`](../../eng/tests/test_validate_story_artifacts.py#L1824)
-
-- Exercise the exact historical report with truthful owned and unowned labels.
-  [`test_validate_story_artifacts.py:2668`](../../eng/tests/test_validate_story_artifacts.py#L2668)
-
-- Prove mutable canonical metadata cannot broaden historical bootstrap ownership.
-  [`test_validate_story_artifacts.py:2838`](../../eng/tests/test_validate_story_artifacts.py#L2838)
-
-## Suggested Review Order
-
-**Authorization and scope collection**
-
-- Start at the immutable tuple defining the only historical ownership recovery.
-  [`validate-story-artifacts.py:221`](../../eng/validate-story-artifacts.py#L221)
-
-- Follow ancestry, classification, and final workspace-stability enforcement.
-  [`validate-story-artifacts.py:1067`](../../eng/validate-story-artifacts.py#L1067)
-
-**Markdown and report hardening**
-
-- Inspect metadata parsing that excludes frontmatter and fenced examples.
-  [`validate-story-artifacts.py:804`](../../eng/validate-story-artifacts.py#L804)
-
-- Confirm task extraction preserves nested execution sections without parsing examples.
-  [`validate-story-artifacts.py:1625`](../../eng/validate-story-artifacts.py#L1625)
-
-- Trace deterministic quoting for subjects, reasons, paths, and Unicode separators.
-  [`validate-story-artifacts.py:1398`](../../eng/validate-story-artifacts.py#L1398)
-
-- Read contributor semantics separating workflow enforcement from CI regression coverage.
+- Read contributor semantics for invocation, identity, structure, grammar, and the workflow-versus-CI enforcement boundary.
   [`story-artifact-validation.md:13`](../../docs/reference/story-artifact-validation.md#L13)
 
 **Regression proof**
 
-- Verify fenced metadata and exact source-coordinate coverage.
-  [`test_validate_story_artifacts.py:449`](../../eng/tests/test_validate_story_artifacts.py#L449)
+- Review the parser boundaries that decide what text becomes document structure.
+  [`test_validate_story_artifacts.py:3697`](../../eng/tests/test_validate_story_artifacts.py#L3697)
 
-- Verify every report-value surface and workspace mutation boundary.
-  [`test_validate_story_artifacts.py:1824`](../../eng/tests/test_validate_story_artifacts.py#L1824)
+- Review the strict-mode identity, exclusion, rename, invocation, and non-owning-extra regressions.
+  [`test_validate_story_artifacts.py:2578`](../../eng/tests/test_validate_story_artifacts.py#L2578)
+
+- Exercise the exact historical report, pinned on both the range and every artifact in it.
+  [`test_validate_story_artifacts.py:3163`](../../eng/tests/test_validate_story_artifacts.py#L3163)
 
 - End with the exact historical bootstrap authorization matrix.
-  [`test_validate_story_artifacts.py:2427`](../../eng/tests/test_validate_story_artifacts.py#L2427)
+  [`test_validate_story_artifacts.py:2918`](../../eng/tests/test_validate_story_artifacts.py#L2918)

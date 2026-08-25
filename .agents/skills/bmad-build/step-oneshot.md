@@ -44,7 +44,7 @@ Set `title` = a concise title derived from the clarified intent.
 
 Write `{spec_file}` using `[[bmad-snapshot:spec-template.md]]`. Fill only these sections — delete all others:
 
-1. **Frontmatter** — set `title: '{title}'`, `type`, `created`, `status: 'done'`. Add `route: 'one-shot'`.
+1. **Frontmatter** — set `title: '{title}'`, `type`, `created`, `status: 'done'`. Add `route: 'one-shot'`. Resolve `story_id`: when the work maps to a numbered epic story, set its canonical dotted identity (for example `9.7`); otherwise delete the template's `story_id` line entirely. Never leave the `{story_id}` placeholder or an empty value — story-artifact validation fails closed on both.
 2. **Title and Intent** — `# {title}` heading and `## Intent` with **Problem** and **Approach** lines. Reuse the summary you already generated for the terminal.
 3. **Suggested Review Order** — append after Intent. Build using the same convention as `[[bmad-snapshot:step-05-present.md]]` § "Generate Suggested Review Order" (spec-file-relative links, concern-based ordering, ultra-concise framing).
 

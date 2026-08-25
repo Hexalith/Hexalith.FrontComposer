@@ -52,10 +52,21 @@ FRONTMATTER_LINE = re.compile(r"^([A-Za-z_][A-Za-z0-9_-]*):\s*(.*?)\s*$")
 CRITICAL_FRONTMATTER_SCALAR_KEYS = frozenset(
     {"title", "story_id", "baseline_commit"}
 )
-CHECKED_TASK = re.compile(r"^\s*-\s*\[x\]\s*(.+)$", re.IGNORECASE)
+# A checked item is a checked item whatever list marker carries it. Restricting this to
+# `-` let a `*`, `+`, or `1.` list hold checked work that produced no task, no notice,
+# and no failure.
+CHECKED_TASK = re.compile(r"^\s*(?:[-*+]|\d{1,9}[.)])\s*\[x\]\s*(.+)$", re.IGNORECASE)
+LIST_ITEM = re.compile(r"^ {0,3}(?:[-*+]|\d{1,9}[.)])(?:\s|$)")
 CHECKED_TASK_HEADINGS = frozenset({"tasks", "tasks / subtasks", "tasks & acceptance"})
+# A recognized task heading may carry a suffix (`## Tasks & Acceptance -- round 2`);
+# the separator keeps `## Tasksomething` from matching.
+TASK_HEADING_SEPARATORS = (" ", "-", "–", "—", ":", "(", "[")
 EXCLUDED_TASK_SUBSECTION_HEADINGS = frozenset({"review findings"})
+COMMIT_SCOPE_DISPOSITIONS_HEADING = "commit scope dispositions"
+COMMIT_SCOPE_DISPOSITIONS_LEVEL = 2
 MARKDOWN_HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
+MARKDOWN_FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
+INDENTED_CODE_COLUMNS = 4
 DOCUMENTED_UNRELATED_HEADINGS = {
     "documented unrelated changes",
     "documented unrelated workspace state",
@@ -218,6 +229,10 @@ PATH_COORDINATE = re.compile(r":\d+(?:[-,:]\d+)*$")
 OWNERSHIP_CONTRIBUTING_CLASSIFICATIONS = frozenset(
     {"owned", "interleaved", "bootstrap-owned"}
 )
+# Declared non-owning classifications. A listed path touched only by one of these is
+# accounted for — the story explained the commit — so it must not also be reported as a
+# File List entry with no matching change. It still contributes no ownership.
+NON_OWNING_DECLARED_CLASSIFICATIONS = frozenset({"shared", "process"})
 BOOTSTRAP_OWNED_STORY_ID = "9.7"
 BOOTSTRAP_OWNED_BASELINE = "ceae00a4f9788222ed19153acfc05d68d0bc85d1"
 BOOTSTRAP_OWNED_COMMIT = "fd04bdd97fbdd4976a0f213e46a316be199fd8a9"
@@ -279,6 +294,9 @@ class CommitEvidence:
     story_id_matches: bool
     classification: str
     disposition_reason: str
+    # Touched paths an exclusion pattern covers. They stay in `paths` -- the report
+    # never hides a path -- but they carry no ownership and no interleaving.
+    excluded_paths: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -317,16 +335,23 @@ def main() -> int:
     candidate_ref = args.candidate.strip() if candidate_mode else ""
     candidate_has_value = bool(candidate_ref)
     base_override_valid = args.base is None or bool(args.base.strip())
-    candidate_valid = candidate_has_value and not args.changed_file and base_override_valid
 
+    invocation_failures: list[str] = []
     if candidate_mode and not args.story:
-        failures.append("--candidate requires --story")
+        invocation_failures.append("--candidate requires --story")
     if candidate_mode and not candidate_has_value:
-        failures.append("--candidate requires a non-empty ref")
+        invocation_failures.append("--candidate requires a non-empty ref")
     if candidate_mode and args.changed_file:
-        failures.append("--changed-file cannot be combined with --candidate")
+        invocation_failures.append("--changed-file cannot be combined with --candidate")
     if not base_override_valid:
-        failures.append("--base requires a non-empty ref")
+        invocation_failures.append("--base requires a non-empty ref")
+    if invocation_failures:
+        # Reconciling against an invocation that was already rejected produced a page of
+        # derived failures -- every File List entry reported unmatched -- around the one
+        # real error. Nothing downstream can be true, so nothing downstream runs.
+        for failure in invocation_failures:
+            print(failure, file=sys.stderr)
+        return 1
 
     if not args.skip_sentinel:
         failures.extend(scan_sentinels(root, args.sentinel_root, args.exclude))
@@ -340,13 +365,14 @@ def main() -> int:
         cli_unrelated = parse_cli_unrelated(root, args.unrelated, args.reason)
         unrelated = {**metadata.unrelated, **cli_unrelated}
         commit_evidence: CommitScopeEvidence | None = None
-        if candidate_valid:
+        if candidate_mode:
             commit_evidence, commit_failures = collect_commit_scope_evidence(
                 root,
                 base,
                 candidate_ref,
                 metadata,
                 story,
+                args.exclude,
             )
             failures.extend(
                 failure for failure in commit_failures if failure not in failures
@@ -359,14 +385,20 @@ def main() -> int:
             )
 
         if not candidate_mode:
+            if args.base is not None and base and base != "NO_VCS":
+                # An operator naming a base asked for that range. Falling back to a
+                # workspace-only bare diff would report a narrower change set as if it
+                # were the requested one.
+                try:
+                    canonical_commit(root, base, "base override")
+                except RuntimeError as exc:
+                    failures.append(f"--base ref cannot be used: {exc}")
             changed_files = collect_changed_files(root, base, args.changed_file, args.exclude)
             if changed_files.source.startswith("git workspace fallback"):
                 notices.append(
                     "degraded changed-file discovery: "
                     f"{changed_files.source}; the declared baseline was not used"
                 )
-        elif not candidate_valid:
-            changed_files = ChangedFiles([], "invalid candidate invocation", base or "")
         else:
             try:
                 changed_files = collect_reconciled_changed_files(
@@ -381,7 +413,28 @@ def main() -> int:
                 changed_files = ChangedFiles([], "commit scope unavailable", base or "")
         usable_unrelated = usable_classified_paths(root, unrelated, set(changed_files.files))
         bounded_unrelated = {path: unrelated[path] for path in usable_unrelated}
-        failures.extend(check_file_list(root, story, changed_files, metadata.file_list, bounded_unrelated))
+        # The workspace scope bounds classified-directory coverage, and nothing else
+        # consults it. Collecting it unconditionally called git even when no
+        # classification existed, so the documented no-VCS legacy run died on an
+        # uncaught RuntimeError from `git status`.
+        workspace_scope: frozenset[str] = frozenset()
+        if bounded_unrelated:
+            workspace_scope, workspace_scope_failure = workspace_classified_scope(
+                root, commit_evidence
+            )
+            if workspace_scope_failure:
+                failures.append(workspace_scope_failure)
+        failures.extend(
+            check_file_list(
+                root,
+                story,
+                changed_files,
+                metadata.file_list,
+                bounded_unrelated,
+                workspace_scope,
+                declared_non_owning_paths(commit_evidence, metadata.file_list),
+            )
+        )
         failures.extend(check_checked_tasks(root, story, changed_files.files, metadata, bounded_unrelated))
         unrelated_changed = [
             path
@@ -527,27 +580,61 @@ def scan_sentinels(root: Path, roots: list[str], excludes: list[str]) -> list[st
     return failures
 
 
+def empty_story_metadata(failures: list[str]) -> StoryMetadata:
+    """Metadata that carries only failures, for a story artifact that cannot be read."""
+    return StoryMetadata(
+        baseline_commit="",
+        story_id="",
+        metadata_failures=failures,
+        file_list={},
+        unrelated={},
+        blockers={},
+        commit_scope_dispositions={},
+        commit_scope_disposition_failures=[],
+        checked_tasks=[],
+        notices=[],
+        evidence_text="",
+    )
+
+
 def parse_story_metadata(story: Path) -> StoryMetadata:
-    text = story.read_text(encoding="utf-8")
+    try:
+        text = story.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        # A story artifact this tool cannot read is a validation result, not a crash:
+        # the same boundary already applied to commit subjects and NUL-delimited paths.
+        return empty_story_metadata([f"story artifact cannot be read as UTF-8 text: {exc}"])
     frontmatter, frontmatter_failures, invalid_frontmatter_keys = extract_frontmatter(text)
     story_id, story_id_failures = extract_story_id(frontmatter, text, story.name)
     if "story_id" in invalid_frontmatter_keys:
         story_id = ""
     checked_tasks, checked_task_failures, checked_task_notices = extract_checked_tasks(text)
     metadata_failures = [
+        *scan_semantic_lines(text)[1],
         *frontmatter_failures,
         *story_id_failures,
         *checked_task_failures,
     ]
     sections = extract_sections(text)
-    section_heading_lines = extract_section_heading_lines(text)
+    section_headings = extract_section_headings(text)
     file_list = extract_story_file_list(sections.get("file list", ""))
     unrelated = extract_classified_paths(sections, DOCUMENTED_UNRELATED_HEADINGS)
     blockers = extract_classified_paths(sections, DOCUMENTED_BLOCKER_HEADINGS)
+    disposition_heading = section_headings.get(COMMIT_SCOPE_DISPOSITIONS_HEADING)
     dispositions, disposition_failures = extract_commit_scope_dispositions(
-        sections.get("commit scope dispositions", ""),
-        line_offset=section_heading_lines.get("commit scope dispositions", 0),
+        sections.get(COMMIT_SCOPE_DISPOSITIONS_HEADING, ""),
+        line_offset=disposition_heading[0] if disposition_heading else 0,
     )
+    if disposition_heading and disposition_heading[1] != COMMIT_SCOPE_DISPOSITIONS_LEVEL:
+        # The reference and the template both pin the exact `## Commit Scope
+        # Dispositions` heading. Honouring it at any level widened the authorization
+        # grammar; refusing it silently would instead drop real declarations, so the
+        # level is reported rather than either.
+        disposition_failures.append(
+            "Commit Scope Dispositions must be a level-"
+            f"{COMMIT_SCOPE_DISPOSITIONS_LEVEL} heading; found level "
+            f"{disposition_heading[1]} at line {disposition_heading[0]}"
+        )
     evidence_text = "\n".join(
         sections.get(name, "")
         for name in (
@@ -577,21 +664,22 @@ def parse_story_metadata(story: Path) -> StoryMetadata:
     )
 
 
-def extract_story_id(
+def normalize_story_identity(epic: str, story: str) -> str:
+    """Canonical `epic.story` identity with zero padding removed.
+
+    A padded `09.7` matched no commit subject at all: subjects are written `fix(9.7)`.
+    Both forms now normalize to one identity, and the subject matcher accepts either
+    spelling, so padding is a formatting choice rather than a silent no-match.
+    """
+    return f"{int(epic)}.{int(story)}"
+
+
+def legacy_story_identities(
     frontmatter: dict[str, str],
     text: str,
     filename: str,
-) -> tuple[str, list[str]]:
-    explicit = frontmatter.get("story_id", "").strip()
-    if explicit:
-        match = re.fullmatch(r"(\d+)[.-](\d+)", explicit)
-        if not match:
-            return "", [
-                "invalid explicit story_id: expected exactly two numeric segments separated by '.' or '-': "
-                f"{explicit!r}"
-            ]
-        return f"{match.group(1)}.{match.group(2)}", []
-
+) -> tuple[list[tuple[str, str]], list[str]]:
+    """Story identities derivable from the title, the first H1, and the filename."""
     failures: list[str] = []
     detected: list[tuple[str, str]] = []
     malformed_story = re.compile(r"\bStory\s+\d+[.-]\d+[.-]\d+", re.IGNORECASE)
@@ -605,13 +693,13 @@ def extract_story_id(
         if malformed_story.search(title):
             failures.append(f"invalid legacy story identity in title: {title!r}")
         elif match := text_story.search(title):
-            detected.append(("title", f"{match.group(1)}.{match.group(2)}"))
+            detected.append(("title", normalize_story_identity(*match.groups())))
 
     for heading in markdown_h1_headings(text):
         if malformed_story.search(heading):
             failures.append(f"invalid legacy story identity in H1: {heading!r}")
         elif match := text_story.search(heading):
-            detected.append(("H1", f"{match.group(1)}.{match.group(2)}"))
+            detected.append(("H1", normalize_story_identity(*match.groups())))
         break
 
     malformed_filename = re.match(
@@ -627,12 +715,47 @@ def extract_story_id(
     )
     if dotted_filename_identity:
         detected.append(
-            (
-                "filename",
-                f"{dotted_filename_identity.group(1)}.{dotted_filename_identity.group(2)}",
-            )
+            ("filename", normalize_story_identity(*dotted_filename_identity.groups()))
         )
+    return detected, failures
 
+
+def extract_story_id(
+    frontmatter: dict[str, str],
+    text: str,
+    filename: str,
+) -> tuple[str, list[str]]:
+    explicit = frontmatter.get("story_id", "").strip()
+    if "story_id" in frontmatter and not explicit:
+        # Falling back to inference here would let a blank canonical field select a
+        # different identity than the one the author declared they were pinning.
+        return "", [
+            "empty explicit story_id: expected exactly two numeric segments separated by '.' or '-'"
+        ]
+    if explicit:
+        match = re.fullmatch(r"(\d+)[.-](\d+)", explicit)
+        if not match:
+            return "", [
+                "invalid explicit story_id: expected exactly two numeric segments separated by '.' or '-': "
+                f"{explicit!r}"
+            ]
+        story_id = normalize_story_identity(*match.groups())
+        # A stale explicit value silently reclassifies every commit in the range, so it
+        # is checked against the identities the document itself carries. Malformed
+        # legacy spellings are not raised here: the explicit field is authoritative,
+        # and only a well-formed contradiction is evidence that it is stale.
+        detected, _ = legacy_story_identities(frontmatter, text, filename)
+        conflicting = [
+            f"{source}={identity}" for source, identity in detected if identity != story_id
+        ]
+        if conflicting:
+            return "", [
+                f"explicit story_id {story_id} conflicts with the story's own identity: "
+                + ", ".join(conflicting)
+            ]
+        return story_id, []
+
+    detected, failures = legacy_story_identities(frontmatter, text, filename)
     identities = {identity for _, identity in detected}
     if len(identities) > 1:
         evidence = ", ".join(f"{source}={identity}" for source, identity in detected)
@@ -653,33 +776,89 @@ def markdown_h1_headings(text: str) -> list[str]:
     ]
 
 
-def markdown_lines_outside_frontmatter_and_fences(
-    text: str,
-) -> list[tuple[int, str]]:
-    """Return source-numbered Markdown lines that can carry document semantics.
+@dataclass(frozen=True)
+class DocumentLines:
+    """One agreed reading of a story artifact's frontmatter and body boundaries.
 
-    YAML frontmatter and fenced examples are author-controlled data, not document
-    structure. A fence closes only with the same marker, at least the opening
-    length, and whitespace after it; an info-like suffix inside a fence is content.
+    `extract_frontmatter` and the semantic-line scanner once split the document
+    independently: one on the first three `-` characters anywhere in the text, the
+    other on whole `---` lines. A `---` inside a scalar, or a byte-order mark, made
+    them disagree with no failure. Both now read the same split.
     """
+
+    lines: list[str]
+    frontmatter: list[str]
+    body_start: int
+    has_frontmatter: bool
+    terminated: bool
+
+
+def split_document_lines(text: str) -> DocumentLines:
+    """Split a story artifact into frontmatter lines and body lines."""
+    # A byte-order mark is an encoding artifact, not document content: strip it so the
+    # opening `---` is recognized exactly as it is in a BOM-free file.
+    if text.startswith("\ufeff"):
+        text = text[1:]
     # Markdown line endings are CR/LF sequences. Unicode line and paragraph
     # separators remain author-controlled scalar content and must reach the
     # report-quoting boundary intact.
     lines = [line.rstrip("\r") for line in text.split("\n")]
-    index = 0
-    if lines and lines[0].strip() == "---":
-        index = 1
-        while index < len(lines):
-            if lines[index].strip() == "---":
-                index += 1
-                break
-            index += 1
+    # A YAML document delimiter sits in column zero. Accepting an indented `---` ended
+    # the frontmatter inside a block scalar (`description: |`), silently dropping every
+    # key after it -- including `story_id`, whose loss falls back to inference with no
+    # failure at all.
+    if not lines or lines[0].rstrip() != "---":
+        return DocumentLines(lines, [], 0, False, True)
+    for index in range(1, len(lines)):
+        if lines[index].rstrip() == "---":
+            return DocumentLines(lines, lines[1:index], index + 1, True, True)
+    return DocumentLines(lines, lines[1:], len(lines), True, False)
 
+
+def leading_indent_columns(line: str) -> int:
+    """Indentation width in columns, expanding tabs to the next four-column stop."""
+    columns = 0
+    for character in line:
+        if character == " ":
+            columns += 1
+        elif character == "\t":
+            columns += INDENTED_CODE_COLUMNS - (columns % INDENTED_CODE_COLUMNS)
+        else:
+            break
+    return columns
+
+
+def markdown_lines_outside_frontmatter_and_fences(text: str) -> list[tuple[int, str]]:
+    """Semantic lines only. `scan_semantic_lines` also reports structural failures."""
+    return scan_semantic_lines(text)[0]
+
+
+def scan_semantic_lines(
+    text: str,
+) -> tuple[list[tuple[int, str]], list[str]]:
+    """Return source-numbered Markdown lines that can carry document semantics.
+
+    YAML frontmatter, fenced examples, and indented code blocks are author-controlled
+    data, not document structure. A fence closes only with the same marker, at least
+    the opening length, and whitespace after it; an info-like suffix inside a fence is
+    content. An indented example opens only where Markdown opens one — four columns of
+    indentation after a blank line, outside an open list item — so ordinary nested
+    bullets and wrapped list continuations keep their meaning.
+    """
+    document = split_document_lines(text)
     semantic_lines: list[tuple[int, str]] = []
+    failures: list[str] = []
     fence_character = ""
     fence_length = 0
-    for line_number, line in enumerate(lines[index:], start=index + 1):
-        fence = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", line)
+    fence_opened_at = 0
+    in_indented_code = False
+    previous_blank = True
+    list_open = False
+    for line_number, line in enumerate(
+        document.lines[document.body_start :], start=document.body_start + 1
+    ):
+        blank = not line.strip()
+        fence = MARKDOWN_FENCE.match(line)
         if fence_character:
             if fence:
                 marker = fence.group(1)
@@ -691,14 +870,42 @@ def markdown_lines_outside_frontmatter_and_fences(
                 ):
                     fence_character = ""
                     fence_length = 0
+            previous_blank = blank
             continue
+        if blank:
+            previous_blank = True
+            semantic_lines.append((line_number, line))
+            continue
+        indent = leading_indent_columns(line)
+        if in_indented_code:
+            if indent >= INDENTED_CODE_COLUMNS:
+                previous_blank = False
+                continue
+            in_indented_code = False
+        elif indent >= INDENTED_CODE_COLUMNS and previous_blank and not list_open:
+            in_indented_code = True
+            previous_blank = False
+            continue
+        previous_blank = False
         if fence:
             marker = fence.group(1)
             fence_character = marker[0]
             fence_length = len(marker)
+            fence_opened_at = line_number
             continue
+        if LIST_ITEM.match(line):
+            list_open = True
+        elif indent == 0:
+            list_open = False
         semantic_lines.append((line_number, line))
-    return semantic_lines
+    if fence_character:
+        # Everything after an unclosed fence is read as example content, so the File
+        # List, tasks, and declarations below it disappear. Name the cause.
+        failures.append(
+            f"unterminated fenced code block opened at line {fence_opened_at}; "
+            "every line after it is read as example content"
+        )
+    return semantic_lines, failures
 
 
 def extract_commit_scope_dispositions(
@@ -711,19 +918,25 @@ def extract_commit_scope_dispositions(
     declaration = re.compile(
         r"^-\s*`([0-9A-Fa-f]{40})`\s*\|\s*`(shared|process|bootstrap-owned)`\s*\|\s*(\S.*)$"
     )
+    # A line is a declaration *attempt* when it carries the row delimiter or a full SHA.
+    # An attempt must satisfy the grammar exactly, including its bullet marker, rather
+    # than being silently dropped. Explanatory prose and thematic breaks carry neither
+    # marker, so both stay silent without a rule of their own -- one was written first
+    # and removed, because deleting it left the suite green.
+    attempt = re.compile(r"`[0-9A-Fa-f]{40}`|\|")
     bootstrap_owned_declarations = 0
     for line_number, line in enumerate(body.split("\n"), start=1):
         line = line.rstrip("\r")
         stripped = line.strip()
         if not stripped:
             continue
-        if not stripped.startswith("-"):
-            continue
         match = declaration.fullmatch(stripped)
         if not match:
+            if not attempt.search(stripped):
+                continue
             failures.append(
                 "malformed Commit Scope Dispositions declaration "
-                f"at line {line_offset + line_number}: {stripped}"
+                f"at line {line_offset + line_number}: {format_report_value(stripped)}"
             )
             continue
         sha = match.group(1).lower()
@@ -743,15 +956,25 @@ def extract_commit_scope_dispositions(
 
 
 def extract_frontmatter(text: str) -> tuple[dict[str, str], list[str], set[str]]:
-    if not text.startswith("---"):
-        return {}, [], set()
-    parts = text.split("---", 2)
-    if len(parts) < 3:
+    document = split_document_lines(text)
+    if not document.has_frontmatter:
         return {}, [], set()
     values: dict[str, str] = {}
     failures: list[str] = []
     invalid_keys: set[str] = set()
-    for line in parts[1].splitlines():
+    if not document.terminated:
+        # Without a closing delimiter the whole document reads as frontmatter, so every
+        # section disappears and the first visible symptom is an empty File List. Say
+        # what actually happened instead.
+        failures.append(
+            "unterminated YAML frontmatter: the opening '---' has no closing '---' line"
+        )
+    for line in document.frontmatter:
+        # Only a column-zero key is a top-level scalar. An indented key belongs to a
+        # nested mapping or a block scalar, and promoting it let a nested `story_id`
+        # become the document identity.
+        if line[:1].isspace():
+            continue
         match = FRONTMATTER_LINE.match(line.strip())
         if match:
             key = match.group(1).strip()
@@ -797,8 +1020,67 @@ def parse_frontmatter_scalar(raw: str) -> str:
     value = value.strip()
     if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
         unquoted = value[1:-1]
-        return unquoted.replace("''", "'") if value[0] == "'" else unquoted
+        if value[0] == "'":
+            return unquoted.replace("''", "'")
+        return unescape_double_quoted(unquoted)
     return value
+
+
+_DOUBLE_QUOTED_ESCAPES = {
+    "0": "\0",
+    "a": "\a",
+    "b": "\b",
+    "t": "\t",
+    "\t": "\t",
+    "n": "\n",
+    "v": "\v",
+    "f": "\f",
+    "r": "\r",
+    "e": "\x1b",
+    " ": " ",
+    '"': '"',
+    "/": "/",
+    "\\": "\\",
+    "N": "\x85",
+    "_": "\xa0",
+    "L": "\u2028",
+    "P": "\u2029",
+}
+_DOUBLE_QUOTED_CODEPOINT_WIDTHS = {"x": 2, "u": 4, "U": 8}
+
+
+def unescape_double_quoted(value: str) -> str:
+    """Resolve YAML double-quoted escapes.
+
+    Single-quoted scalars already resolved `''`; a double-quoted scalar kept its
+    backslashes verbatim, so `"9\\.7"` and `"a\\"b"` reached identity and report code
+    with escape syntax still in them. Unknown escapes resolve to the escaped character,
+    which is what YAML does for the ones this map does not name.
+    """
+    resolved: list[str] = []
+    index = 0
+    while index < len(value):
+        character = value[index]
+        if character != "\\" or index + 1 >= len(value):
+            resolved.append(character)
+            index += 1
+            continue
+        marker = value[index + 1]
+        width = _DOUBLE_QUOTED_CODEPOINT_WIDTHS.get(marker)
+        if width is not None:
+            digits = value[index + 2 : index + 2 + width]
+            codepoint = int(digits, 16) if len(digits) == width and all(
+                digit in "0123456789abcdefABCDEF" for digit in digits
+            ) else -1
+            # `\\U0011FFFF` is syntactically well-formed and outside Unicode; `chr` raises
+            # on it, so the range is checked before the character is built.
+            if 0 <= codepoint <= 0x10FFFF:
+                resolved.append(chr(codepoint))
+                index += 2 + width
+                continue
+        resolved.append(_DOUBLE_QUOTED_ESCAPES.get(marker, marker))
+        index += 2
+    return "".join(resolved)
 
 
 def extract_sections(text: str) -> dict[str, str]:
@@ -821,13 +1103,15 @@ def extract_sections(text: str) -> dict[str, str]:
     return {key: "\n".join(value) for key, value in sections.items()}
 
 
-def extract_section_heading_lines(text: str) -> dict[str, int]:
-    """Return the first source line for each Markdown section heading."""
-    headings: dict[str, int] = {}
+def extract_section_headings(text: str) -> dict[str, tuple[int, int]]:
+    """Return the first source line and heading level for each Markdown section."""
+    headings: dict[str, tuple[int, int]] = {}
     for line_number, line in markdown_lines_outside_frontmatter_and_fences(text):
         heading = MARKDOWN_HEADING.match(line.strip())
         if heading and 2 <= len(heading.group(1)) <= 6:
-            headings.setdefault(heading.group(2).strip().lower(), line_number)
+            headings.setdefault(
+                heading.group(2).strip().lower(), (line_number, len(heading.group(1)))
+            )
     return headings
 
 
@@ -907,9 +1191,40 @@ def normalize_changed_path(root: Path, value: str) -> str:
         return ""
 
 
+def run_subprocess(
+    args: list[str],
+    cwd: Path | None = None,
+    *,
+    text: bool = True,
+) -> subprocess.CompletedProcess:
+    """The single process boundary every git invocation goes through.
+
+    Two reasons it exists. Tests substitute this module attribute instead of patching
+    the stdlib `subprocess` module process-wide, which is unsafe under a parallel
+    runner. And text mode decodes with `surrogateescape`, so a non-UTF-8 commit
+    subject becomes a reported validation failure instead of an uncaught traceback.
+    """
+    if text:
+        return subprocess.run(
+            args,
+            cwd=cwd,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="surrogateescape",
+        )
+    return subprocess.run(args, cwd=cwd, check=False, capture_output=True)
+
+
+def contains_undecodable_bytes(value: str) -> bool:
+    """True when `surrogateescape` preserved bytes that are not valid UTF-8."""
+    return any(0xD800 <= ord(character) <= 0xDFFF for character in value)
+
+
 def run_git_lines(root: Path, args: list[str]) -> list[str]:
     try:
-        result = subprocess.run(args, cwd=root, check=False, capture_output=True, text=True)
+        result = run_subprocess(args, root)
     except FileNotFoundError:
         return []
     if result.returncode != 0:
@@ -919,7 +1234,7 @@ def run_git_lines(root: Path, args: list[str]) -> list[str]:
 
 def run_git_checked(root: Path, args: list[str], operation: str) -> subprocess.CompletedProcess[str]:
     try:
-        result = subprocess.run(args, cwd=root, check=False, capture_output=True, text=True)
+        result = run_subprocess(args, root)
     except (FileNotFoundError, OSError) as exc:
         raise RuntimeError(f"git failure while {operation}: {exc}") from exc
     if result.returncode != 0:
@@ -930,7 +1245,7 @@ def run_git_checked(root: Path, args: list[str], operation: str) -> subprocess.C
 
 def run_git_checked_bytes(root: Path, args: list[str], operation: str) -> subprocess.CompletedProcess[bytes]:
     try:
-        result = subprocess.run(args, cwd=root, check=False, capture_output=True)
+        result = run_subprocess(args, root, text=False)
     except (FileNotFoundError, OSError) as exc:
         raise RuntimeError(f"git failure while {operation}: {exc}") from exc
     if result.returncode != 0:
@@ -973,9 +1288,12 @@ def story_id_pattern(story_id: str) -> re.Pattern[str]:
         raise ValueError(
             f"story_id must contain exactly two numeric segments separated by '.' or '-': {story_id!r}"
         )
-    epic, story = match.groups()
+    epic, story = (segment.lstrip("0") or "0" for segment in match.groups())
+    # `0*` accepts the padded spelling of the same identity (`fix(09.07)`), which the
+    # canonical form drops. The surrounding guards still reject a different identity
+    # that merely contains these digits (`19.7`, `1.09.07`, `9.70`).
     return re.compile(
-        rf"(?<![A-Za-z0-9])(?<!\d[.-]){re.escape(epic)}[.-]{re.escape(story)}"
+        rf"(?<![A-Za-z0-9])(?<!\d[.-])0*{re.escape(epic)}[.-]0*{re.escape(story)}"
         r"(?![A-Za-z0-9]|[.-]\d)"
     )
 
@@ -1070,8 +1388,10 @@ def collect_commit_scope_evidence(
     candidate_ref: str,
     metadata: StoryMetadata,
     story: Path,
+    excludes: list[str] | None = None,
 ) -> tuple[CommitScopeEvidence | None, list[str]]:
     failures = list(metadata.commit_scope_disposition_failures)
+    patterns = merged_excludes(excludes or [])
     if not base_ref.strip():
         failures.append(
             "commit scope evidence requires a non-empty baseline_commit or --base ref"
@@ -1091,12 +1411,8 @@ def collect_commit_scope_evidence(
     try:
         baseline = canonical_commit(root, base_ref, "baseline")
         candidate = canonical_commit(root, candidate_ref, "candidate")
-        ancestry = subprocess.run(
-            ["git", "merge-base", "--is-ancestor", baseline, candidate],
-            cwd=root,
-            check=False,
-            capture_output=True,
-            text=True,
+        ancestry = run_subprocess(
+            ["git", "merge-base", "--is-ancestor", baseline, candidate], root
         )
         if ancestry.returncode == 1:
             failures.append(
@@ -1121,6 +1437,7 @@ def collect_commit_scope_evidence(
             "listing baseline-to-candidate commits",
         )
         commit_rows: list[tuple[str, list[str], str]] = []
+        undecodable_subjects: list[str] = []
         # Git records are LF-delimited. Unicode line/paragraph separators are valid
         # subject content and must survive until deterministic report quoting.
         for line in log.stdout.split("\n"):
@@ -1132,11 +1449,22 @@ def collect_commit_scope_evidence(
                 raise RuntimeError(f"git failure while parsing commit evidence: malformed log row {line!r}")
             sha, parents, subject = parts
             parent_list = [parent for parent in parents.split() if parent]
+            if contains_undecodable_bytes(subject):
+                # Git subjects are bytes; a non-UTF-8 one used to surface as an
+                # UnicodeDecodeError traceback. Report it, and carry the deterministic
+                # escaped rendering so the report itself stays printable.
+                subject = format_report_value(subject)
+                undecodable_subjects.append(sha.lower())
             commit_rows.append((sha.lower(), parent_list, subject))
     except (FileNotFoundError, OSError, RuntimeError) as exc:
         failures.append(str(exc))
         return None, failures
 
+    failures.extend(
+        f"non-UTF-8 commit subject for commit {sha}; the subject is not valid UTF-8 "
+        "and cannot be matched against the story ID"
+        for sha in undecodable_subjects
+    )
     range_shas = {sha for sha, _, _ in commit_rows}
     for sha in metadata.commit_scope_dispositions:
         if sha not in range_shas:
@@ -1212,8 +1540,13 @@ def collect_commit_scope_evidence(
             failures.append(f"{exc} for commit {sha}")
             continue
         matches = matcher.search(subject) is not None
-        owned_paths = [path for path in paths if path in listed]
-        unowned_paths = [path for path in paths if path not in listed]
+        # Exclusions bound classification too. A `docs/_site` or `obj` path swept into a
+        # story commit is not story evidence, and treating it as an unlisted path made a
+        # correctly-listed commit fail as `interleaved`.
+        excluded_paths = tuple(path for path in paths if is_excluded(path, patterns))
+        classifiable = [path for path in paths if path not in set(excluded_paths)]
+        owned_paths = [path for path in classifiable if path in listed]
+        unowned_paths = [path for path in classifiable if path not in listed]
 
         if disposition and disposition[0] == "bootstrap-owned":
             authorization_failures = bootstrap_owned_authorization_failures(
@@ -1224,6 +1557,8 @@ def collect_commit_scope_evidence(
                 sha=sha,
                 parents=parents,
                 subject_matches=matches,
+                # Unfiltered on purpose: a CLI flag must not be able to reshape the
+                # immutable bootstrap intersection.
                 paths=set(paths),
                 file_list=listed,
                 disposition_failures=metadata.commit_scope_disposition_failures,
@@ -1268,6 +1603,7 @@ def collect_commit_scope_evidence(
                 story_id_matches=matches,
                 classification=classification,
                 disposition_reason=reason,
+                excluded_paths=excluded_paths,
             )
         )
 
@@ -1390,7 +1726,10 @@ def collect_reconciled_changed_files(
             for commit in evidence.commits
             if commit.classification in OWNERSHIP_CONTRIBUTING_CLASSIFICATIONS
             for path in commit.paths
-            if path in listed
+            # Exclusions bound the whole gate, not only its workspace half: a default
+            # or `--exclude` pattern that filtered a dirty path but kept the same path
+            # once committed made the two halves disagree.
+            if path in listed and not is_excluded(path, patterns)
         )
     return ChangedFiles(sorted(changed), "story commits plus workspace", base or "")
 
@@ -1425,8 +1764,11 @@ def format_commit_scope_evidence(
         )
         if not commit.paths:
             lines.append("      - (no paths)")
+        excluded = set(commit.excluded_paths)
         for path in commit.paths:
-            if path not in file_list:
+            if path in excluded:
+                path_kind = "excluded"
+            elif path not in file_list:
                 path_kind = "unowned"
             elif commit.classification in OWNERSHIP_CONTRIBUTING_CLASSIFICATIONS:
                 path_kind = "owned"
@@ -1491,11 +1833,18 @@ def format_commit_scope_evidence(
 
 
 def format_git_path(path: str) -> str:
-    if contains_terminal_control(path):
-        return format_report_value(path)
-    if path != path.strip() or any(character in path for character in ('"', "\\", "\n", "\r", "\t")):
-        return json.dumps(path, ensure_ascii=False)
-    return path
+    """Render a Git path through exactly one escaping boundary.
+
+    Two branches once rendered the same path two different ways: one escaped
+    non-ASCII, the other did not. A single quoting rule keeps a path's report
+    rendering independent of which property triggered the quoting.
+    """
+    needs_quoting = (
+        contains_terminal_control(path)
+        or path != path.strip()
+        or any(character in path for character in ('"', "\\", "\n", "\r", "\t"))
+    )
+    return json.dumps(path, ensure_ascii=True) if needs_quoting else path
 
 
 def format_report_value(value: str) -> str:
@@ -1506,11 +1855,13 @@ def format_report_value(value: str) -> str:
 
 
 def contains_terminal_control(value: str) -> bool:
+    # `Cs` covers surrogates left by `surrogateescape` on undecodable git output:
+    # printing one raw raises, so it must reach the ASCII-escaping branch.
     return any(
         character == "|"
         or ord(character) < 0x20
         or 0x7F <= ord(character) <= 0x9F
-        or unicodedata.category(character) in {"Cf", "Zl", "Zp"}
+        or unicodedata.category(character) in {"Cf", "Cs", "Zl", "Zp"}
         for character in value
     )
 
@@ -1523,12 +1874,71 @@ def classified_path_reason(path: str, classified: dict[str, str]) -> str:
     return ""
 
 
+def declared_non_owning_paths(
+    evidence: "CommitScopeEvidence | None", file_list: dict[str, str]
+) -> frozenset[str]:
+    """Listed paths a declared `shared`/`process` commit touched.
+
+    These are explained, not owned: they are exempt from the unexplained-extra
+    failure and still contribute nothing to reconciliation.
+    """
+    if evidence is None:
+        return frozenset()
+    listed = set(file_list)
+    return frozenset(
+        path
+        for commit in evidence.commits
+        if commit.classification in NON_OWNING_DECLARED_CLASSIFICATIONS
+        for path in commit.paths
+        if path in listed
+    )
+
+
+def workspace_classified_scope(
+    root: Path, evidence: "CommitScopeEvidence | None"
+) -> tuple[frozenset[str], str]:
+    """Paths whose state is uncommitted, and the reason when that cannot be known.
+
+    A `Documented Unrelated Changes` bullet naming a directory accounts for the paths
+    beneath it, which is what keeps a dirty submodule or a bounded scratch tree from
+    forcing one bullet per nested file. That coverage is safe only for workspace state:
+    a committed path is story history, and letting a directory bullet exempt it would
+    hide delivered code from the File List gate. Committed paths therefore require an
+    exact classification entry, never a covering parent.
+
+    Without a workspace snapshot -- no repository, or no git at all, which the legacy
+    best-effort mode explicitly supports -- no path can be shown to be uncommitted, so
+    parent coverage is withheld and the reason is returned rather than raised.
+    """
+    if evidence is not None:
+        workspace = evidence.workspace
+    else:
+        try:
+            workspace = collect_workspace_evidence(root)
+        except RuntimeError as exc:
+            return frozenset(), (
+                "classified-path coverage cannot be bounded to workspace state: "
+                f"{exc}; declare each covered path exactly, or run where the workspace "
+                "can be inspected"
+            )
+    return (
+        frozenset(
+            path
+            for path in (*workspace.staged, *workspace.unstaged, *workspace.untracked, *workspace.unresolved)
+            if path
+        ),
+        "",
+    )
+
+
 def check_file_list(
     root: Path,
     story: Path,
     changed_files: ChangedFiles,
     listed: dict[str, str],
     unrelated: dict[str, str],
+    workspace_scope: frozenset[str] = frozenset(),
+    declared_non_owning: frozenset[str] = frozenset(),
 ) -> list[str]:
     classified_paths = set(unrelated)
     if not listed:
@@ -1539,7 +1949,7 @@ def check_file_list(
                 f"  - {format_git_path(path)} "
                 f"(reason: story-owned change from {changed_files.source} cannot be reconciled)"
                 for path in changed_files.files
-                if not path_is_classified_unrelated(path, classified_paths)
+                if not path_is_classified_covered(path, classified_paths, workspace_scope)
             )
         return [
             "story File List not found or empty; changed files missing from story File List in "
@@ -1549,12 +1959,19 @@ def check_file_list(
     missing = [
         path
         for path in changed_files.files
-        if path not in listed and not path_is_classified_unrelated(path, classified_paths)
+        if path not in listed
+        and not path_is_classified_covered(path, classified_paths, workspace_scope)
     ]
     extra = [
         path
         for path, reason in listed.items()
-        if path not in changed_set and not is_accepted_extra_reason(reason)
+        if path not in changed_set
+        # A listed path touched only by a declared `shared`/`process` commit is
+        # accounted for: the story explained that commit. Reporting it as an
+        # unexplained extra told the author both to list it and not to list it. The
+        # declaration still contributes no ownership.
+        and path not in declared_non_owning
+        and not is_accepted_extra_reason(reason)
     ]
     failures: list[str] = []
     if missing:
@@ -1601,7 +2018,10 @@ def extract_file_list_entry(line: str) -> str:
     else:
         candidate = line.lstrip("-").strip().split(" ", 1)[0]
     # rstrip only: leading dots are significant for dotfile/dotdir paths (.agents, .github, …).
-    candidate = candidate.strip().rstrip(".,;:")
+    # A trailing separator is a directory spelling, not part of the name: without this
+    # an entry written `references/Hexalith.Tenants/` matched nothing, so the same path
+    # was reported both missing from the File List and listed without a change.
+    candidate = candidate.strip().rstrip(".,;:").rstrip("/")
     if not candidate or "..." in candidate or "{" in candidate:
         return ""
     return candidate.replace("\\", "/")
@@ -1638,15 +2058,29 @@ def extract_checked_tasks(
         checked = CHECKED_TASK.match(line)
         heading = MARKDOWN_HEADING.match(stripped)
         heading_text = heading.group(2).strip().lower() if heading else ""
-        if heading and heading_text in CHECKED_TASK_HEADINGS:
+        heading_level = len(heading.group(1)) if heading else 0
+        # A recognized task heading is a section heading, so it spans levels 2-6 like
+        # every other section. A level-1 `# Tasks` is the document title: opening a task
+        # section there closed on nothing, so every later checked item in the document
+        # became an execution task demanding path evidence.
+        if heading and is_task_heading(heading_text) and 2 <= heading_level <= 6:
+            if in_tasks and heading_level > task_heading_level:
+                # A nested recognized heading is a subsection of the open task
+                # section. Adopting its level closed the outer section at the next
+                # sibling heading and demoted real checked work to a notice.
+                if (
+                    excluded_subsection_level is not None
+                    and heading_level <= excluded_subsection_level
+                ):
+                    excluded_subsection_level = None
+                continue
             in_tasks = True
-            task_heading_level = len(heading.group(1))
+            task_heading_level = heading_level
             excluded_subsection_level = None
             outside_review_level = None
             recognized_heading_count += 1
             continue
         if heading:
-            heading_level = len(heading.group(1))
             if in_tasks and heading_level <= task_heading_level:
                 in_tasks = False
                 excluded_subsection_level = None
@@ -1679,15 +2113,37 @@ def extract_checked_tasks(
         else:
             notices.append(
                 "checked item outside recognized task section at line "
-                f"{line_number}: {checked.group(1).strip()}"
+                f"{line_number}: {format_report_value(checked.group(1).strip())}"
             )
     failures: list[str] = []
-    if checked_task_count and not recognized_heading_count:
-        failures.append(
-            "checked tasks found but no recognized task heading matched; expected "
-            "a Markdown heading named 'Tasks', 'Tasks / Subtasks', or 'Tasks & Acceptance'"
-        )
+    # Checked work must land inside a recognized task section. An empty `## Tasks`
+    # heading anywhere once satisfied this guard by merely existing, demoting every real
+    # checked task in the document to a stdout notice. Both states still fail, but each
+    # says which one it is: claiming no heading matched when one did was itself false.
+    if checked_task_count and not tasks:
+        if recognized_heading_count:
+            failures.append(
+                "checked items were found outside every recognized task section:\n"
+                + "\n".join(f"  - {notice}" for notice in notices)
+            )
+        else:
+            failures.append(
+                "checked tasks found but no recognized task heading matched; expected "
+                "a Markdown heading named 'Tasks', 'Tasks / Subtasks', or 'Tasks & Acceptance'"
+            )
     return tasks, failures, notices
+
+
+def is_task_heading(heading_text: str) -> bool:
+    """True for a recognized task heading, with or without a trailing suffix."""
+    for name in CHECKED_TASK_HEADINGS:
+        if heading_text == name:
+            return True
+        if heading_text.startswith(name) and heading_text[len(name) :].startswith(
+            TASK_HEADING_SEPARATORS
+        ):
+            return True
+    return False
 
 
 def check_checked_tasks(
@@ -1729,8 +2185,10 @@ def check_checked_tasks(
             if nonexistent_paths:
                 failures.append(
                     "deferred review task cites nonexistent path in "
-                    f"{story.relative_to(root).as_posix()}:{line_number}: {task}"
-                    f"\n  - deferred path does not exist: {', '.join(nonexistent_paths)}"
+                    f"{story.relative_to(root).as_posix()}:{line_number}: "
+                    f"{format_report_value(task)}"
+                    "\n  - deferred path does not exist: "
+                    + ", ".join(format_git_path(path) for path in nonexistent_paths)
                 )
             continue
         missing_paths = sorted(
@@ -1749,8 +2207,14 @@ def check_checked_tasks(
         if missing_paths or not (has_path_evidence or has_general_evidence or has_blocker):
             failures.append(
                 "checked task lacks evidence in "
-                f"{story.relative_to(root).as_posix()}:{line_number}: {task}"
-                + (f"\n  - missing evidence path: {', '.join(missing_paths)}" if missing_paths else "")
+                f"{story.relative_to(root).as_posix()}:{line_number}: "
+                f"{format_report_value(task)}"
+                + (
+                    "\n  - missing evidence path: "
+                    + ", ".join(format_git_path(path) for path in missing_paths)
+                    if missing_paths
+                    else ""
+                )
             )
     return failures
 
@@ -1835,6 +2299,21 @@ def usable_classified_paths(root: Path, classified: dict[str, str], changed: set
         ):
             usable.add(path)
     return usable
+
+
+def path_is_classified_covered(
+    path: str, classified: set[str], workspace_scope: frozenset[str]
+) -> bool:
+    """Exact classification always accounts for a path; parent coverage only for workspace state.
+
+    Both producers of `classified` -- `usable_classified_paths` and `parse_cli_unrelated` --
+    already strip a trailing separator, so no second normalization happens here.
+    `path_is_classified_unrelated` keeps its own because it is also called with raw
+    classification keys.
+    """
+    if path in classified:
+        return True
+    return path in workspace_scope and path_is_classified_unrelated(path, classified)
 
 
 def path_is_classified_unrelated(path: str, classified: set[str]) -> bool:
@@ -1922,12 +2401,7 @@ def tracked_files(root: Path) -> frozenset[str] | None:
     absence as grounds to relax. Callers fail closed on None instead.
     """
     try:
-        result = subprocess.run(
-            ["git", "-C", str(root), "ls-files"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        result = run_subprocess(["git", "-C", str(root), "ls-files"])
     except (FileNotFoundError, OSError):
         return None
     if result.returncode != 0:

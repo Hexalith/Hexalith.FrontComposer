@@ -6,6 +6,8 @@ Before moving a story from review to done:
    - Numbered story + usable Git baseline: `python3 eng/validate-story-artifacts.py --story <story-file> --candidate HEAD`.
    - Freeform spec, missing/`NO_VCS`/unresolvable baseline, or no VCS: `python3 eng/validate-story-artifacts.py --story <story-file>` as the documented legacy/best-effort path.
    - Add `--base <commit>` only when intentionally overriding the story's `baseline_commit`.
+   - An unresolvable `--base` fails; an unresolvable `baseline_commit` degrades to a reported bare-diff fallback.
+   - Story identity is parsed in both modes. A malformed or self-contradicting `story_id`, `title`, H1, or filename fails a legacy run too, even though legacy mode never uses the ID.
    - Require canonical full baseline/candidate SHAs, every non-merge commit and path,
      exact story-ID/File List disposition, a separate merge list, and separate
      staged/unstaged/untracked/unresolved and documented-unrelated workspace evidence

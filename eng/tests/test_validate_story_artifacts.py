@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import json
 import os
 import shutil
@@ -31,10 +32,16 @@ def git(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
     return run(["git", *args], cwd)
 
 
+# Story 9.7's delivered candidate. The canonical live-CLI report is pinned to this SHA
+# rather than HEAD: 9.7's File List includes shared bookkeeping paths (sprint-status.yaml,
+# deferred-work.md) that every later story touches, so a HEAD-relative range turns the
+# blocking quality lane red on the first unrelated commit after 9.7.
+STORY_9_7_DELIVERY_COMMIT = "743618d5e933f18c0d22cab78d675e96ffc251b1"
 BOOTSTRAP_HISTORY_REFS = (
     "ceae00a4f9788222ed19153acfc05d68d0bc85d1",
     "fd04bdd97fbdd4976a0f213e46a316be199fd8a9",
     "2dcc43fea9aa39c42d15b1028fa5ef774b5d8b06",
+    STORY_9_7_DELIVERY_COMMIT,
 )
 BOOTSTRAP_HISTORY_AVAILABLE = all(
     git(REPO_ROOT, "cat-file", "-e", f"{ref}^{{commit}}").returncode == 0
@@ -89,7 +96,7 @@ def story_text(
         f"baseline_commit: {baseline}\n"
         f"story_id: '{story_id}'\n"
         f"---\n\n"
-        "# Story 1.1: Validator fixture\n\n"
+        f"# Story {story_id}: Validator fixture\n\n"
         "Status: review\n\n"
         "## Tasks / Subtasks\n\n"
         f"{tasks}\n\n"
@@ -103,20 +110,44 @@ def story_text(
 
 class StoryArtifactValidatorTests(unittest.TestCase):
     def test_bmad_build_runtime_mirrors_match_agent_sources(self) -> None:
-        for filename in (
-            "spec-template.md",
-            "step-02-plan.md",
-            "step-04-review.md",
-            "step-05-present.md",
-        ):
+        """Only the `.claude` copy executes, so a divergence there ships an inert change.
+
+        The whole tree is enumerated rather than a hand-kept filename list: a fifth
+        diverging file was invisible to the list. Bytes are compared because the
+        repository pins `eol=crlf` for text, so a mirror written with the wrong line
+        endings is itself a divergence -- reported as such rather than normalized away.
+        """
+        agent_root = REPO_ROOT / ".agents" / "skills" / "bmad-build"
+        runtime_root = REPO_ROOT / ".claude" / "skills" / "bmad-build"
+        agent_files = {
+            path.relative_to(agent_root).as_posix()
+            for path in agent_root.rglob("*")
+            if path.is_file()
+        }
+        runtime_files = {
+            path.relative_to(runtime_root).as_posix()
+            for path in runtime_root.rglob("*")
+            if path.is_file()
+        }
+
+        self.assertEqual(agent_files, runtime_files)
+        self.assertIn("step-oneshot.md", agent_files)
+        for filename in sorted(agent_files):
             with self.subTest(filename=filename):
-                agent_text = (
-                    REPO_ROOT / ".agents" / "skills" / "bmad-build" / filename
-                ).read_text(encoding="utf-8")
-                runtime_text = (
-                    REPO_ROOT / ".claude" / "skills" / "bmad-build" / filename
-                ).read_text(encoding="utf-8")
-                self.assertEqual(runtime_text, agent_text)
+                agent_bytes = (agent_root / filename).read_bytes()
+                runtime_bytes = (runtime_root / filename).read_bytes()
+                if agent_bytes != runtime_bytes:
+                    same_text = agent_bytes.replace(b"\r\n", b"\n") == runtime_bytes.replace(
+                        b"\r\n", b"\n"
+                    )
+                    self.fail(
+                        f"{filename} differs between .agents and .claude "
+                        + (
+                            "only in line endings; the repository pins eol=crlf"
+                            if same_text
+                            else "in content; the runtime mirror is inert until synchronized"
+                        )
+                    )
 
     def test_story_scope_reference_and_template_define_the_report_contract(self) -> None:
         reference = (
@@ -274,6 +305,53 @@ class StoryArtifactValidatorTests(unittest.TestCase):
                 self.assertIn("README.md", result.stderr)
                 self.assertIn(f"git workspace fallback ({expected_source})", result.stderr)
                 self.assertNotIn("Traceback", result.stderr)
+
+    def test_legacy_mode_without_a_repository_reports_instead_of_raising(self) -> None:
+        """The documented no-VCS path must not die on `git status`.
+
+        `step-04-review.md`, `step-05-present.md`, and the reconciliation checklist all
+        send freeform and `NO_VCS` specs down this invocation.
+        """
+        story_path = "_bmad-output/implementation-artifacts/1-1-validator-fixture.md"
+        cases = (
+            ("no classification", "", ("changed files missing from story File List",)),
+            (
+                "classified directory",
+                "\n### Documented Unrelated Changes\n\n- `notes/scratch` - pre-existing tree.\n",
+                ("classified-path coverage cannot be bounded to workspace state",),
+            ),
+        )
+        for name, classification, expected in cases:
+            with self.subTest(case=name), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                # Deliberately not a git repository.
+                content = story_text(
+                    baseline="NO_VCS", file_list=f"- `{story_path}`"
+                ) + classification
+                write(root / story_path, content)
+
+                result = run(
+                    [
+                        sys.executable,
+                        str(VALIDATOR),
+                        "--project-root",
+                        str(root),
+                        "--story",
+                        story_path,
+                        "--changed-file",
+                        "notes/scratch/dirty.txt",
+                        "--changed-file",
+                        story_path,
+                        "--skip-sentinel",
+                    ],
+                    root,
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertNotIn("Traceback", result.stderr)
+                for fragment in expected:
+                    self.assertIn(fragment, result.stderr)
+
 
     def test_passing_legacy_fallback_is_visible_in_stdout(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -504,7 +582,7 @@ class StoryArtifactValidatorTests(unittest.TestCase):
             metadata.commit_scope_disposition_failures,
             [
                 "malformed Commit Scope Dispositions declaration "
-                f"at line {lines.index(malformed) + 1}: {malformed}"
+                f"at line {lines.index(malformed) + 1}: {json.dumps(malformed)}"
             ],
         )
 
@@ -634,6 +712,53 @@ class StoryArtifactValidatorTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("src/unlisted.txt", result.stderr)
             self.assertIn("missing from story File List", result.stderr)
+
+    def test_classified_directory_cannot_cover_committed_paths(self) -> None:
+        """A directory bullet covers uncommitted state only; committed code stays gated.
+
+        Regression guard: prefix coverage in the File List gate once exempted an entire
+        committed subtree, so a story could deliver code under a declared directory and
+        still pass. Committed paths require an exact classification entry.
+        """
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            init_repo(root)
+            write(root / "README.md", "seed\n")
+            git(root, "add", "README.md")
+            git(root, "commit", "-m", "seed fixture")
+            baseline = git(root, "rev-parse", "HEAD").stdout.strip()
+            story_path = "_bmad-output/implementation-artifacts/1-1-validator-fixture.md"
+            write(
+                root / story_path,
+                story_text(baseline=baseline, file_list=f"- `{story_path}`")
+                + "\n### Documented Unrelated Workspace State\n\n"
+                "- `src/feature` - pre-existing unrelated tree.\n",
+            )
+            write(root / "src/feature/committed.txt", "delivered\n")
+            git(root, "add", "-A")
+            git(root, "commit", "-m", "fix(1.1): deliver under a classified directory")
+            write(root / "src/feature/dirty.txt", "workspace\n")
+
+            result = run(
+                [
+                    sys.executable,
+                    str(VALIDATOR),
+                    "--project-root",
+                    str(root),
+                    "--story",
+                    story_path,
+                    "--base",
+                    baseline,
+                    "--skip-sentinel",
+                ],
+                root,
+            )
+
+            self.assertNotEqual(result.returncode, 0, result.stdout)
+            self.assertIn("missing from story File List", result.stderr)
+            self.assertIn("src/feature/committed.txt", result.stderr)
+            # The uncommitted sibling is still covered by the same directory bullet.
+            self.assertNotIn("src/feature/dirty.txt", result.stderr)
 
     def test_checked_task_without_evidence_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -1490,7 +1615,7 @@ class CommitScopeEvidenceTests(unittest.TestCase):
                 file_list=f"- `{self.story_path}`\n- `src/owned.txt`",
                 story_id="9.7",
             ).replace("story_id: '9.7'\n", "").replace(
-                "# Story 1.1: Validator fixture",
+                "# Story 9.7: Validator fixture",
                 "# Validator fixture",
             )
             write(root / self.story_path, content)
@@ -2115,7 +2240,7 @@ class CommitScopeEvidenceTests(unittest.TestCase):
                     "canonical_commit",
                     side_effect=(baseline, candidate, moved_candidate),
                 ),
-                mock.patch.object(VALIDATOR_MODULE.subprocess, "run", return_value=completed),
+                mock.patch.object(VALIDATOR_MODULE, "run_subprocess", return_value=completed),
                 mock.patch.object(VALIDATOR_MODULE, "run_git_checked", return_value=completed),
                 mock.patch.object(
                     VALIDATOR_MODULE,
@@ -2166,7 +2291,7 @@ class CommitScopeEvidenceTests(unittest.TestCase):
                     "canonical_commit",
                     side_effect=(baseline, candidate, candidate),
                 ),
-                mock.patch.object(VALIDATOR_MODULE.subprocess, "run", return_value=completed),
+                mock.patch.object(VALIDATOR_MODULE, "run_subprocess", return_value=completed),
                 mock.patch.object(VALIDATOR_MODULE, "run_git_checked", return_value=completed),
                 mock.patch.object(
                     VALIDATOR_MODULE,
@@ -2217,7 +2342,7 @@ class CommitScopeEvidenceTests(unittest.TestCase):
                     "canonical_commit",
                     side_effect=(baseline, candidate, candidate),
                 ),
-                mock.patch.object(VALIDATOR_MODULE.subprocess, "run", return_value=completed),
+                mock.patch.object(VALIDATOR_MODULE, "run_subprocess", return_value=completed),
                 mock.patch.object(VALIDATOR_MODULE, "run_git_checked", return_value=completed),
                 mock.patch.object(
                     VALIDATOR_MODULE,
@@ -2258,7 +2383,7 @@ class CommitScopeEvidenceTests(unittest.TestCase):
             self.assertIn(f"{candidate} | story-id=match | disposition=owned", result.stdout)
             self.assertIn("owned | README.md", result.stdout)
 
-    def test_story_metadata_is_authoritative_conflict_safe_and_zero_preserving(self) -> None:
+    def test_story_metadata_is_authoritative_conflict_safe_and_zero_normalizing(self) -> None:
         with self.subTest(case="invalid-explicit-id"), tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             baseline = init_repo(root)
@@ -2295,10 +2420,27 @@ class CommitScopeEvidenceTests(unittest.TestCase):
             self.assertIn("conflicting legacy story identities", result.stderr)
             self.assertNotIn("Traceback", result.stderr)
 
-        with self.subTest(case="zero-preserving-id"), tempfile.TemporaryDirectory() as temp:
+        with self.subTest(case="zero-normalizing-id"), tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             baseline = init_repo(root)
-            padded = commit_files(root, "fix(09.07): preserve padded ID", {"src/owned.txt": "owned\n"})
+            padded = commit_files(root, "fix(09.07): padded subject spelling", {"src/owned.txt": "owned\n"})
+            self.write_story(root, baseline, ["src/owned.txt"])
+            story = (root / self.story_path).read_text(encoding="utf-8").replace("story_id: '9.7'", "story_id: '09-07'")
+            write(root / self.story_path, story)
+
+            result = self.validate(root)
+
+            # A padded declaration is the same identity, not a different one: it
+            # normalizes for the report and still matches the padded subject spelling.
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("story-id: 9.7", result.stdout)
+            self.assertNotIn("story-id: 09.07", result.stdout)
+            self.assertIn(f"{padded} | story-id=match | disposition=owned", result.stdout)
+
+        with self.subTest(case="padded-id-matches-canonical-subject"), tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            canonical = commit_files(root, "fix(9.7): canonical subject spelling", {"src/owned.txt": "owned\n"})
             self.write_story(root, baseline, ["src/owned.txt"])
             story = (root / self.story_path).read_text(encoding="utf-8").replace("story_id: '9.7'", "story_id: '09-07'")
             write(root / self.story_path, story)
@@ -2306,8 +2448,7 @@ class CommitScopeEvidenceTests(unittest.TestCase):
             result = self.validate(root)
 
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertIn("story-id: 09.07", result.stdout)
-            self.assertIn(f"{padded} | story-id=match | disposition=owned", result.stdout)
+            self.assertIn(f"{canonical} | story-id=match | disposition=owned", result.stdout)
 
     def test_legacy_three_segment_identity_is_not_truncated(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -2423,6 +2564,345 @@ class CommitScopeEvidenceTests(unittest.TestCase):
                 result.stdout,
             )
 
+    def test_renamed_paths_are_reported_from_one_status_record(self) -> None:
+        """Rename detection would fold two paths into one porcelain record.
+
+        `git status --porcelain -z` renders a detected rename as `R  new\\0old\\0`, so the
+        old path arrives as a record of its own and the strict parser rejects it as a
+        malformed status row -- collapsing the whole workspace block.
+        """
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            init_repo(root)
+            commit_files(
+                root,
+                "docs: seed rename fixtures",
+                {"notes/original.txt": "content\n", "notes/staged.txt": "content\n"},
+            )
+            baseline = git(root, "rev-parse", "HEAD").stdout.strip()
+            moved = git(root, "mv", "notes/original.txt", "notes/renamed.txt")
+            self.assertEqual(moved.returncode, 0, moved.stdout + moved.stderr)
+            committed = git(root, "commit", "-m", "fix(9.7): rename a delivered path")
+            self.assertEqual(committed.returncode, 0, committed.stdout + committed.stderr)
+            candidate = git(root, "rev-parse", "HEAD").stdout.strip()
+            staged = git(root, "mv", "notes/staged.txt", "notes/staged-renamed.txt")
+            self.assertEqual(staged.returncode, 0, staged.stdout + staged.stderr)
+            self.write_story(
+                root,
+                baseline,
+                [
+                    "notes/original.txt",
+                    "notes/renamed.txt",
+                    "notes/staged.txt",
+                    "notes/staged-renamed.txt",
+                ],
+            )
+
+            result = self.validate(root)
+
+            self.assertNotIn("malformed status row", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn(f"{candidate} | story-id=match | disposition=owned", result.stdout)
+            self.assertIn("owned | notes/original.txt", result.stdout)
+            self.assertIn("owned | notes/renamed.txt", result.stdout)
+            staged_block = result.stdout[
+                result.stdout.index("    staged:") : result.stdout.index("    unstaged:")
+            ]
+            self.assertIn("notes/staged.txt", staged_block)
+            self.assertIn("notes/staged-renamed.txt", staged_block)
+
+    def test_invalid_invocation_reports_only_the_invocation_error(self) -> None:
+        """Nothing downstream of a rejected invocation can be true, so nothing runs."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            self.write_story(root, baseline, ["src/owned.txt"])
+
+            result = self.validate(root, base="")
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("--base requires a non-empty ref", result.stderr)
+            self.assertNotIn("File List", result.stderr)
+            self.assertNotIn("Commit scope evidence", result.stdout)
+
+    def test_file_list_entry_with_a_trailing_slash_reconciles_its_path(self) -> None:
+        """A directory spelling is the same entry, not a phantom plus a missing path."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            owned = commit_files(root, "fix(9.7): add owned tree", {"notes/owned.txt": "owned\n"})
+            file_list = f"- `{self.story_path}`\n- `notes/owned.txt/`"
+            write(
+                root / self.story_path,
+                story_text(baseline=baseline, file_list=file_list, story_id="9.7"),
+            )
+
+            result = self.validate(root)
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn(f"{owned} | story-id=match | disposition=owned", result.stdout)
+            self.assertIn("owned | notes/owned.txt", result.stdout)
+            self.assertNotIn("missing from story File List", result.stderr)
+            self.assertNotIn("no matching story-owned change", result.stderr)
+
+    def test_exclusions_bound_committed_paths_as_they_bound_workspace_paths(self) -> None:
+        """One exclusion set for classification and both halves of reconciliation.
+
+        An excluded path is still printed -- the report never hides a path -- but it
+        carries no ownership, and an unlisted one must not make a correctly-listed
+        story commit fail as interleaved.
+        """
+        with self.subTest(case="listed"), tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            committed = commit_files(
+                root, "fix(9.7): commit excluded scratch", {"notes/excluded.txt": "scratch\n"}
+            )
+            self.write_story(root, baseline, ["notes/excluded.txt"])
+
+            result = self.validate(root, excludes=("notes/**",))
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(f"{committed} | story-id=match | disposition=owned", result.stdout)
+            self.assertIn("excluded | notes/excluded.txt", result.stdout)
+            self.assertIn("File List entries with no matching story-owned change", result.stderr)
+            self.assertIn("notes/excluded.txt", result.stderr)
+
+        with self.subTest(case="unlisted-default-exclusion"), tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            committed = commit_files(
+                root,
+                "fix(9.7): deliver with generated site output",
+                {"src/owned.txt": "owned\n", "docs/_site/index.html": "generated\n"},
+            )
+            self.write_story(root, baseline, ["src/owned.txt"])
+
+            result = self.validate(root)
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn(f"{committed} | story-id=match | disposition=owned", result.stdout)
+            self.assertIn("owned | src/owned.txt", result.stdout)
+            self.assertIn("excluded | docs/_site/index.html", result.stdout)
+            self.assertNotIn("interleaved", result.stdout)
+            self.assertNotIn("interleaved story commit", result.stderr)
+
+    def test_declared_non_owning_listed_paths_are_not_unexplained_extras(self) -> None:
+        """A declared non-owning commit explains its listed paths without owning them."""
+        for kind in ("shared", "process"):
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                baseline = init_repo(root)
+                declared = commit_files(
+                    root, f"build: {kind} fixture", {"src/declared.txt": "declared\n"}
+                )
+                commit_files(root, "fix(9.7): story delivery", {"src/owned.txt": "owned\n"})
+                self.write_story(
+                    root,
+                    baseline,
+                    ["src/owned.txt", "src/declared.txt"],
+                    dispositions=f"- `{declared}` | `{kind}` | declared non-owning work",
+                )
+
+                result = self.validate(root)
+
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn("listed-unowned | src/declared.txt", result.stdout)
+                self.assertNotIn(
+                    "owned | src/declared.txt",
+                    result.stdout.replace("listed-unowned | src/declared.txt", ""),
+                )
+                self.assertNotIn("no matching story-owned change", result.stderr)
+
+    def test_strict_mode_without_a_derivable_story_identity_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            anonymous = "_bmad-output/implementation-artifacts/validator-fixture.md"
+            content = (
+                story_text(baseline=baseline, file_list=f"- `{anonymous}`", story_id="9.7")
+                .replace("story_id: '9.7'\n", "")
+                .replace("# Story 9.7: Validator fixture", "# Validator fixture")
+            )
+            write(root / anonymous, content)
+
+            result = run(
+                [
+                    sys.executable,
+                    str(VALIDATOR),
+                    "--project-root",
+                    str(root),
+                    "--story",
+                    anonymous,
+                    "--candidate",
+                    "HEAD",
+                    "--skip-sentinel",
+                ],
+                root,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("commit scope evidence cannot run", result.stderr)
+            self.assertIn("story_id must contain exactly two numeric segments", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+
+    def test_malformed_frontmatter_title_identity_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            content = (
+                story_text(
+                    baseline=baseline,
+                    file_list=f"- `{self.story_path}`",
+                    story_id="9.7",
+                )
+                .replace("story_id: '9.7'\n", "title: 'Story 9.7.1: Malformed identity'\n")
+                .replace("# Story 9.7: Validator fixture", "# Validator fixture")
+            )
+            write(root / self.story_path, content)
+
+            result = self.validate(root)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("invalid legacy story identity in title", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+
+    def test_explicit_story_id_conflicting_with_the_document_identity_fails_closed(self) -> None:
+        cases = (
+            ("filename", "_bmad-output/implementation-artifacts/9-8-validator-fixture.md", "filename=9.8"),
+            ("h1", self.story_path, "H1=9.9"),
+        )
+        for name, path, expected in cases:
+            with self.subTest(case=name), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                baseline = init_repo(root)
+                content = story_text(
+                    baseline=baseline, file_list=f"- `{path}`", story_id="9.7"
+                )
+                if name == "h1":
+                    content = content.replace(
+                        "# Story 9.7: Validator fixture", "# Story 9.9: Validator fixture"
+                    )
+                write(root / path, content)
+
+                result = run(
+                    [
+                        sys.executable,
+                        str(VALIDATOR),
+                        "--project-root",
+                        str(root),
+                        "--story",
+                        path,
+                        "--candidate",
+                        "HEAD",
+                        "--skip-sentinel",
+                    ],
+                    root,
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("explicit story_id 9.7 conflicts with the story's own identity", result.stderr)
+                self.assertIn(expected, result.stderr)
+                self.assertNotIn("Traceback", result.stderr)
+
+    def test_empty_explicit_story_id_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            content = story_text(
+                baseline=baseline, file_list=f"- `{self.story_path}`", story_id="9.7"
+            ).replace("story_id: '9.7'", "story_id: '   '")
+            write(root / self.story_path, content)
+
+            result = self.validate(root)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("empty explicit story_id", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+
+    def test_unterminated_frontmatter_is_reported_by_the_cli(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            content = story_text(
+                baseline=baseline, file_list=f"- `{self.story_path}`", story_id="9.7"
+            ).replace("---\n\n# Story 9.7", "\n# Story 9.7")
+            write(root / self.story_path, content)
+
+            result = self.validate(root)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("unterminated YAML frontmatter", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+
+    def test_non_utf8_commit_subject_is_reported_instead_of_raising(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            story = root / self.story_path
+            write(story, "# Fixture\n")
+            baseline = "0" * 40
+            candidate = "1" * 40
+            metadata = VALIDATOR_MODULE.StoryMetadata(
+                baseline_commit=baseline,
+                story_id="9.7",
+                metadata_failures=[],
+                file_list={self.story_path: ""},
+                unrelated={},
+                blockers={},
+                commit_scope_dispositions={},
+                commit_scope_disposition_failures=[],
+                checked_tasks=[],
+                notices=[],
+                evidence_text="",
+            )
+            completed = subprocess.CompletedProcess([], 0, stdout="", stderr="")
+            # `surrogateescape` is how an undecodable git byte reaches this code.
+            log = subprocess.CompletedProcess(
+                [],
+                0,
+                stdout=f"{candidate}\x1f{baseline}\x1ffix: caf\udce9 subject\n",
+                stderr="",
+            )
+            paths = subprocess.CompletedProcess([], 0, stdout=b"", stderr=b"")
+            workspace = VALIDATOR_MODULE.WorkspaceEvidence([], [], [], [])
+
+            with (
+                mock.patch.object(
+                    VALIDATOR_MODULE,
+                    "canonical_commit",
+                    side_effect=(baseline, candidate, candidate),
+                ),
+                mock.patch.object(VALIDATOR_MODULE, "run_subprocess", return_value=completed),
+                mock.patch.object(VALIDATOR_MODULE, "run_git_checked", return_value=log),
+                mock.patch.object(
+                    VALIDATOR_MODULE, "run_git_checked_bytes", return_value=paths
+                ),
+                mock.patch.object(
+                    VALIDATOR_MODULE,
+                    "collect_workspace_evidence",
+                    side_effect=(workspace, workspace),
+                ),
+            ):
+                evidence, failures = VALIDATOR_MODULE.collect_commit_scope_evidence(
+                    root,
+                    baseline,
+                    "candidate-ref",
+                    metadata,
+                    story,
+                )
+
+            self.assertIsNotNone(evidence)
+            self.assertIn(
+                f"non-UTF-8 commit subject for commit {candidate}; the subject is not "
+                "valid UTF-8 and cannot be matched against the story ID",
+                failures,
+            )
+            report = VALIDATOR_MODULE.format_commit_scope_evidence(evidence, {}, {})
+            self.assertIn("\\udce9", report)
+            # The escaped rendering is what makes the report printable at all.
+            report.encode("utf-8")
+
 
 class BootstrapOwnedAuthorizationTests(unittest.TestCase):
     validator = VALIDATOR_MODULE
@@ -2465,6 +2945,10 @@ class BootstrapOwnedAuthorizationTests(unittest.TestCase):
             frozenset({"owned", "interleaved", "bootstrap-owned"}),
         )
 
+    @unittest.skipIf(
+        not BOOTSTRAP_HISTORY_AVAILABLE and not os.environ.get("CI"),
+        "partial clone: Story 9.7 bootstrap history is unavailable outside CI",
+    )
     def test_bootstrap_history_is_available_in_the_ci_checkout(self) -> None:
         self.assertTrue(
             BOOTSTRAP_HISTORY_AVAILABLE,
@@ -2673,19 +3157,17 @@ class BootstrapOwnedAuthorizationTests(unittest.TestCase):
                 Path(temp),
             )
             self.assertEqual(cloned.returncode, 0, cloned.stdout + cloned.stderr)
-            current_worktree_paths = (
-                ".claude/skills/bmad-build/spec-template.md",
-                ".claude/skills/bmad-build/step-02-plan.md",
-                ".claude/skills/bmad-build/step-05-present.md",
-                "docs/reference/index.md",
-                "docs/reference/story-artifact-validation.md",
-                "eng/validate-story-artifacts.py",
-                self.validator.BOOTSTRAP_OWNED_STORY_PATH,
+            # Both sides of this report are pinned to the delivered commit: the range,
+            # and every artifact in it. Copying the live story artifact in coupled the
+            # blocking quality lane to a mutable File List, so any later edit to it
+            # turned `main` red. Only the validator itself comes from the working tree,
+            # because the validator is what is under test.
+            checked_out = run(
+                ["git", "checkout", "--quiet", "--detach", STORY_9_7_DELIVERY_COMMIT],
+                root,
             )
-            for path in current_worktree_paths:
-                destination = root / path
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(REPO_ROOT / path, destination)
+            self.assertEqual(checked_out.returncode, 0, checked_out.stdout + checked_out.stderr)
+            shutil.copy2(REPO_ROOT / "eng/validate-story-artifacts.py", root / "eng/validate-story-artifacts.py")
             story = root / self.validator.BOOTSTRAP_OWNED_STORY_PATH
             result = run(
                 [
@@ -2696,7 +3178,7 @@ class BootstrapOwnedAuthorizationTests(unittest.TestCase):
                     "--story",
                     self.validator.BOOTSTRAP_OWNED_STORY_PATH,
                     "--candidate",
-                    "HEAD",
+                    STORY_9_7_DELIVERY_COMMIT,
                     "--skip-sentinel",
                 ],
                 root,
@@ -3199,6 +3681,507 @@ class PathMentionRejectionTests(unittest.TestCase):
             root = Path(temp)
             self.assertTrue(self.validator.basename_exists_in_tree("Anything.cs", root))
             self.assertFalse(self.validator.path_is_tracked("references/Thing", root))
+
+
+class DocumentParsingHardeningTests(unittest.TestCase):
+    """What a story artifact's text is allowed to mean.
+
+    Every case here decides whether author-controlled content becomes document
+    structure. A regression in any of them silently changes which paths, tasks, and
+    declarations the strict gate sees.
+    """
+
+    def test_indented_example_is_not_parsed_as_document_structure(self) -> None:
+        text = (
+            "---\n"
+            "story_id: '9.7'\n"
+            "---\n\n"
+            "# Story 9.7: Indented example fixture\n\n"
+            "## Examples\n\n"
+            "    ## File List\n"
+            "    - `indented-fake.md`\n"
+            "    ## Tasks\n"
+            "    - [x] Update `src/indented-fake.txt`.\n\n"
+            "## File List\n\n"
+            "- `real.md`\n\n"
+            "## Tasks\n\n"
+            "- [x] Update `real.md`.\n"
+        )
+
+        with tempfile.TemporaryDirectory() as temp:
+            story = Path(temp) / "spec-9-7-indented-fixture.md"
+            write(story, text)
+            metadata = VALIDATOR_MODULE.parse_story_metadata(story)
+
+        self.assertEqual(metadata.file_list, {"real.md": ""})
+        self.assertEqual([task for _, task in metadata.checked_tasks], ["Update `real.md`."])
+        self.assertEqual(metadata.notices, [])
+        self.assertEqual(metadata.metadata_failures, [])
+
+    def test_indented_continuation_of_a_list_item_keeps_its_meaning(self) -> None:
+        """Only a real indented code block is dropped, not list continuation text."""
+        text = (
+            "## File List\n\n"
+            "- `real.md`\n\n"
+            "    Continuation prose for the entry above.\n\n"
+            "- `second.md`\n"
+        )
+
+        self.assertEqual(
+            VALIDATOR_MODULE.extract_story_file_list(
+                VALIDATOR_MODULE.extract_sections(text).get("file list", "")
+            ),
+            {"real.md": "", "second.md": ""},
+        )
+
+    def test_empty_task_section_does_not_demote_checked_tasks_to_notices(self) -> None:
+        """A present-but-empty task section must not turn checked work into a notice.
+
+        The failure also has to say which state it is: an empty recognized section is
+        not "no recognized task heading matched", and claiming so was itself false.
+        """
+        for case, text in (
+            ("empty section", "## Tasks\n\n## Completion Notes\n\n- [x] Update `src/owned.txt`.\n"),
+            (
+                "unchecked-only section",
+                "## Tasks\n\n- [ ] Pending work.\n\n## Completion Notes\n\n"
+                "- [x] Update `src/owned.txt`.\n",
+            ),
+        ):
+            with self.subTest(case=case):
+                tasks, failures, notices = VALIDATOR_MODULE.extract_checked_tasks(text)
+
+                self.assertEqual(tasks, [])
+                self.assertEqual(len(failures), 1)
+                self.assertIn(
+                    "checked items were found outside every recognized task section",
+                    failures[0],
+                )
+                self.assertIn("src/owned.txt", failures[0])
+                self.assertNotIn("no recognized task heading matched", failures[0])
+                self.assertEqual(len(notices), 1)
+
+    def test_level_one_task_heading_does_not_open_a_task_section(self) -> None:
+        """`# Tasks` is a document title; opening a section there closed on nothing."""
+        text = "# Tasks\n\n## Verification\n\n- [x] Update `src/owned.txt`.\n"
+
+        tasks, failures, notices = VALIDATOR_MODULE.extract_checked_tasks(text)
+
+        self.assertEqual(tasks, [])
+        self.assertEqual(len(failures), 1)
+        self.assertIn("no recognized task heading matched", failures[0])
+
+    def test_checked_items_are_collected_from_every_list_marker(self) -> None:
+        for marker in ("-", "*", "+", "1.", "2)"):
+            with self.subTest(marker=marker):
+                tasks, failures, notices = VALIDATOR_MODULE.extract_checked_tasks(
+                    f"## Tasks\n\n{marker} [x] Update `src/owned.txt`.\n"
+                )
+
+                self.assertEqual(tasks, [(3, "Update `src/owned.txt`.")])
+                self.assertEqual(failures, [])
+                self.assertEqual(notices, [])
+
+    def test_nested_recognized_task_heading_keeps_the_outer_section_open(self) -> None:
+        text = (
+            "## Tasks & Acceptance\n\n"
+            "### Tasks\n\n"
+            "- [x] Update `src/nested.txt`.\n\n"
+            "### Acceptance Criteria\n\n"
+            "- [x] Update `src/sibling.txt`.\n\n"
+            "## Verification\n\n"
+            "- [x] Update `src/outside.txt`.\n"
+        )
+
+        tasks, failures, notices = VALIDATOR_MODULE.extract_checked_tasks(text)
+
+        self.assertEqual(
+            [task for _, task in tasks],
+            ["Update `src/nested.txt`.", "Update `src/sibling.txt`."],
+        )
+        self.assertEqual(failures, [])
+        self.assertEqual(len(notices), 1)
+        self.assertIn("src/outside.txt", notices[0])
+
+    def test_suffixed_task_headings_are_recognized(self) -> None:
+        for heading in (
+            "## Tasks & Acceptance -- loop 2",
+            "### Tasks / Subtasks (revised)",
+            "## Tasks: execution",
+        ):
+            with self.subTest(heading=heading):
+                tasks, failures, notices = VALIDATOR_MODULE.extract_checked_tasks(
+                    f"{heading}\n\n- [x] Update `src/owned.txt`.\n"
+                )
+
+                self.assertEqual(tasks, [(3, "Update `src/owned.txt`.")])
+                self.assertEqual(failures, [])
+                self.assertEqual(notices, [])
+
+    def test_unrelated_heading_sharing_a_task_prefix_is_not_a_task_section(self) -> None:
+        self.assertFalse(VALIDATOR_MODULE.is_task_heading("taskset overview"))
+        self.assertTrue(VALIDATOR_MODULE.is_task_heading("tasks"))
+
+    def test_nested_frontmatter_keys_are_not_promoted_to_the_document(self) -> None:
+        values, failures, invalid = VALIDATOR_MODULE.extract_frontmatter(
+            "---\n"
+            "story_id: '9.7'\n"
+            "context:\n"
+            "  story_id: '1.1'\n"
+            "  nested: 'value'\n"
+            "---\n\n"
+            "# Story 9.7: Nested frontmatter fixture\n"
+        )
+
+        self.assertEqual(values["story_id"], "9.7")
+        self.assertNotIn("nested", values)
+        self.assertEqual(failures, [])
+        self.assertEqual(invalid, set())
+
+    def test_unterminated_frontmatter_is_reported(self) -> None:
+        values, failures, _ = VALIDATOR_MODULE.extract_frontmatter(
+            "---\nstory_id: '9.7'\n\n## File List\n\n- `real.md`\n"
+        )
+
+        self.assertEqual(
+            failures,
+            ["unterminated YAML frontmatter: the opening '---' has no closing '---' line"],
+        )
+        self.assertEqual(values.get("story_id"), "9.7")
+
+    def test_frontmatter_boundaries_agree_across_parsers(self) -> None:
+        text = (
+            "\ufeff---\n"
+            "title: 'Story 9.7: a --- b'\n"
+            "story_id: '9.7'\n"
+            "---\n\n"
+            "## File List\n\n"
+            "- `real.md`\n"
+        )
+
+        values, failures, _ = VALIDATOR_MODULE.extract_frontmatter(text)
+        sections = VALIDATOR_MODULE.extract_sections(text)
+
+        self.assertEqual(values["title"], "Story 9.7: a --- b")
+        self.assertEqual(values["story_id"], "9.7")
+        self.assertEqual(failures, [])
+        self.assertEqual(sections.get("file list", "").strip(), "- `real.md`")
+
+    def test_double_quoted_scalar_escapes_are_resolved(self) -> None:
+        cases = (
+            ('"a\\"b"', 'a"b'),
+            ('"line\\nbreak"', "line\nbreak"),
+            ('"c:\\\\path"', "c:\\path"),
+            ('"\\u00e9"', "\u00e9"),
+        )
+        for raw, expected in cases:
+            with self.subTest(raw=raw):
+                self.assertEqual(VALIDATOR_MODULE.parse_frontmatter_scalar(raw), expected)
+
+    def test_empty_and_conflicting_explicit_story_ids_fail_closed(self) -> None:
+        empty_id, empty_failures = VALIDATOR_MODULE.extract_story_id(
+            {"story_id": "  "}, "# Story 1.1: Fixture\n", "1-1-fixture.md"
+        )
+        conflicting_id, conflicting_failures = VALIDATOR_MODULE.extract_story_id(
+            {"story_id": "9.7"}, "# Story 9.9: Fixture\n", "9-8-fixture.md"
+        )
+
+        self.assertEqual(empty_id, "")
+        self.assertIn("empty explicit story_id", empty_failures[0])
+        self.assertEqual(conflicting_id, "")
+        self.assertIn("H1=9.9", conflicting_failures[0])
+        self.assertIn("filename=9.8", conflicting_failures[0])
+
+    def test_padded_story_identities_normalize_and_still_match(self) -> None:
+        story_id, failures = VALIDATOR_MODULE.extract_story_id(
+            {"story_id": "09-07"}, "# Story 9.7: Fixture\n", "9-7-fixture.md"
+        )
+        matcher = VALIDATOR_MODULE.story_id_pattern("09.07")
+
+        self.assertEqual(story_id, "9.7")
+        self.assertEqual(failures, [])
+        self.assertIsNotNone(matcher.search("fix(9.7): canonical"))
+        self.assertIsNotNone(matcher.search("fix(09.07): padded"))
+        self.assertIsNone(matcher.search("chore: bump to 19.7"))
+        self.assertIsNone(matcher.search("chore: release 1.09.07"))
+
+    def test_disposition_prose_and_thematic_breaks_are_not_malformed(self) -> None:
+        sha = "a" * 40
+        body = (
+            "Explanatory prose about the declarations.\n"
+            "- A prose bullet naming `eng/validate-story-artifacts.py` for context.\n"
+            "---\n"
+            "* * *\n"
+            f"- `{sha}` | `shared` | shared infrastructure update\n"
+        )
+
+        dispositions, failures = VALIDATOR_MODULE.extract_commit_scope_dispositions(body)
+
+        self.assertEqual(dispositions, {sha: ("shared", "shared infrastructure update")})
+        self.assertEqual(failures, [])
+
+    def test_declaration_attempts_with_other_markers_are_reported_malformed(self) -> None:
+        sha = "b" * 40
+        for row in (
+            f"* `{sha}` | `shared` | reason",
+            f"+ `{sha}` | `shared` | reason",
+            f"`{sha}` | `shared` | reason",
+            f"- `{sha}` `shared` reason",
+        ):
+            with self.subTest(row=row):
+                dispositions, failures = VALIDATOR_MODULE.extract_commit_scope_dispositions(
+                    row + "\n"
+                )
+
+                self.assertEqual(dispositions, {})
+                self.assertEqual(len(failures), 1)
+                self.assertIn(
+                    "malformed Commit Scope Dispositions declaration", failures[0]
+                )
+
+    def test_malformed_declaration_echo_is_escaped(self) -> None:
+        row = "- `1234` | `shared` | reason\x1b[31m"
+
+        _, failures = VALIDATOR_MODULE.extract_commit_scope_dispositions(row + "\n")
+
+        self.assertEqual(len(failures), 1)
+        self.assertIn(json.dumps(row), failures[0])
+
+    def test_commit_scope_dispositions_heading_level_is_exact(self) -> None:
+        sha = "c" * 40
+        text = (
+            "---\n"
+            "story_id: '9.7'\n"
+            "---\n\n"
+            "# Story 9.7: Heading level fixture\n\n"
+            "### Commit Scope Dispositions\n\n"
+            f"- `{sha}` | `shared` | shared infrastructure update\n"
+        )
+
+        with tempfile.TemporaryDirectory() as temp:
+            story = Path(temp) / "spec-9-7-heading-fixture.md"
+            write(story, text)
+            metadata = VALIDATOR_MODULE.parse_story_metadata(story)
+
+        self.assertIn(
+            "Commit Scope Dispositions must be a level-2 heading",
+            "\n".join(metadata.commit_scope_disposition_failures),
+        )
+
+    def test_format_git_path_uses_one_escaping_boundary(self) -> None:
+        for path in ('notes/\u00e9"quote.txt', "notes/\u00e9\x1b.txt", "notes/ \u00e9 "):
+            with self.subTest(path=path):
+                self.assertEqual(
+                    VALIDATOR_MODULE.format_git_path(path),
+                    json.dumps(path, ensure_ascii=True),
+                )
+        self.assertEqual(
+            VALIDATOR_MODULE.format_git_path("notes/\u00e9.txt"), "notes/\u00e9.txt"
+        )
+
+    def test_every_git_invocation_routes_through_the_module_boundary(self) -> None:
+        """Tests substitute one module attribute; no caller may bypass it.
+
+        Patching the stdlib `subprocess` module instead is process-wide and unsafe
+        under a parallel runner, so the indirection itself is pinned here. The check is
+        structural rather than textual: counting occurrences in the source broke on any
+        comment or docstring that named the call.
+        """
+        tree = ast.parse(VALIDATOR.read_text(encoding="utf-8"))
+        enclosing: dict[int, str] = {}
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                for child in ast.walk(node):
+                    enclosing.setdefault(id(child), node.name)
+        callers = {
+            enclosing.get(id(node), "<module>")
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "run"
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "subprocess"
+        }
+
+        self.assertEqual(callers, {"run_subprocess"})
+
+    def test_indented_block_scalar_delimiter_does_not_end_frontmatter(self) -> None:
+        """A `---` inside a block scalar is content; only a column-zero one delimits.
+
+        Accepting an indented delimiter dropped every key after it -- including
+        `story_id`, whose loss falls back to inference with no failure at all.
+        """
+        text = (
+            "---\n"
+            "description: |\n"
+            "  Example spec body:\n"
+            "  ---\n"
+            "  title: 'Story 1.1: not this document'\n"
+            "story_id: '9.7'\n"
+            "---\n\n"
+            "# Story 9.7: Block scalar fixture\n\n"
+            "## File List\n\n"
+            "- `real.md`\n"
+        )
+
+        values, failures, _ = VALIDATOR_MODULE.extract_frontmatter(text)
+        sections = VALIDATOR_MODULE.extract_sections(text)
+
+        self.assertEqual(values["story_id"], "9.7")
+        self.assertEqual(failures, [])
+        self.assertEqual(sections.get("file list", "").strip(), "- `real.md`")
+        self.assertEqual(
+            VALIDATOR_MODULE.extract_story_id(values, text, "spec-9-7-fixture.md"),
+            ("9.7", []),
+        )
+
+    def test_unterminated_fence_is_reported_rather_than_truncating(self) -> None:
+        text = (
+            "---\n"
+            "story_id: '9.7'\n"
+            "---\n\n"
+            "# Story 9.7: Unterminated fence fixture\n\n"
+            "```markdown\n"
+            "## File List\n"
+            "- `swallowed.md`\n"
+        )
+
+        with tempfile.TemporaryDirectory() as temp:
+            story = Path(temp) / "spec-9-7-fence-fixture.md"
+            write(story, text)
+            metadata = VALIDATOR_MODULE.parse_story_metadata(story)
+
+        self.assertEqual(metadata.file_list, {})
+        self.assertIn(
+            "unterminated fenced code block opened at line 7",
+            "\n".join(metadata.metadata_failures),
+        )
+
+    def test_unreadable_story_artifact_is_reported_rather_than_raising(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            undecodable = Path(temp) / "spec-9-7-binary-fixture.md"
+            undecodable.write_bytes(b"---\nstory_id: '9.7'\n---\n\n# Story 9.7: caf\xe9\n")
+            missing = Path(temp) / "spec-9-7-absent-fixture.md"
+
+            for case, story in (("undecodable", undecodable), ("missing", missing)):
+                with self.subTest(case=case):
+                    metadata = VALIDATOR_MODULE.parse_story_metadata(story)
+
+                    self.assertEqual(metadata.file_list, {})
+                    self.assertEqual(metadata.story_id, "")
+                    self.assertIn(
+                        "story artifact cannot be read as UTF-8 text",
+                        "\n".join(metadata.metadata_failures),
+                    )
+
+    def test_out_of_range_codepoint_escape_does_not_raise(self) -> None:
+        for raw, expected in (
+            ('"\\U0011FFFF"', "U0011FFFF"),
+            ('"\\Uffffffff"', "Uffffffff"),
+            ('"\\U0001F600"', "\U0001f600"),
+        ):
+            with self.subTest(raw=raw):
+                self.assertEqual(VALIDATOR_MODULE.parse_frontmatter_scalar(raw), expected)
+
+    def test_tab_indented_example_is_not_parsed_as_document_structure(self) -> None:
+        """A tab is four columns of indentation, so a tab-indented example is an example."""
+        text = (
+            "## Examples\n\n"
+            "\t## File List\n"
+            "\t- `tab-injected.md`\n\n"
+            "## File List\n\n"
+            "- `real.md`\n"
+        )
+
+        self.assertEqual(
+            VALIDATOR_MODULE.extract_story_file_list(
+                VALIDATOR_MODULE.extract_sections(text).get("file list", "")
+            ),
+            {"real.md": ""},
+        )
+
+    def test_top_level_review_findings_without_a_task_section_is_silent(self) -> None:
+        """Reviewer bookkeeping is excluded whether or not a task section is open.
+
+        Seven repository artifacts carry a top-level `## Review Findings` with no task
+        section before it; losing this exclusion turns each of them into a hard failure.
+        """
+        text = (
+            "# Story 11.13: Fixture\n\n"
+            "## Review Findings\n\n"
+            "- [x] [Review][Patch] Update `src/review-only.txt`.\n\n"
+            "### Follow-up\n\n"
+            "- [x] [Review][Defer] Update `src/deferred-only.txt`.\n"
+        )
+
+        tasks, failures, notices = VALIDATOR_MODULE.extract_checked_tasks(text)
+
+        self.assertEqual(tasks, [])
+        self.assertEqual(failures, [])
+        self.assertEqual(notices, [])
+
+    def test_checked_task_failures_escape_author_controlled_text(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            story = root / "spec-9-7-escaping-fixture.md"
+            write(story, "# Story 9.7: Escaping fixture\n")
+            lacks_evidence = "Update the report\x1b[2J | pipe"
+            deferred = (
+                "[Review][Defer] Update `src/does-not-exist.txt` -- deferred, "
+                "pre-existing\x1b[2J | pipe"
+            )
+            metadata = VALIDATOR_MODULE.StoryMetadata(
+                baseline_commit="0" * 40,
+                story_id="9.7",
+                metadata_failures=[],
+                file_list={},
+                unrelated={},
+                blockers={},
+                commit_scope_dispositions={},
+                commit_scope_disposition_failures=[],
+                checked_tasks=[(3, lacks_evidence), (4, deferred)],
+                notices=[],
+                evidence_text="",
+            )
+
+            failures = VALIDATOR_MODULE.check_checked_tasks(root, story, [], metadata)
+
+            rendered = "\n".join(failures)
+            self.assertIn("checked task lacks evidence", rendered)
+            self.assertIn("deferred review task cites nonexistent path", rendered)
+            self.assertIn(json.dumps(lacks_evidence), rendered)
+            self.assertIn(json.dumps(deferred), rendered)
+            self.assertNotIn("\x1b", rendered)
+
+    def test_unresolvable_base_override_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            story_path = "_bmad-output/implementation-artifacts/1-1-validator-fixture.md"
+            write(
+                root / story_path,
+                story_text(baseline=baseline, file_list=f"- `{story_path}`"),
+            )
+            write(root / "README.md", "unstaged\n")
+
+            result = run(
+                [
+                    sys.executable,
+                    str(VALIDATOR),
+                    "--project-root",
+                    str(root),
+                    "--story",
+                    story_path,
+                    "--base",
+                    "missing-baseline",
+                    "--skip-sentinel",
+                ],
+                root,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("--base ref cannot be used", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
 
 
 class ClassifiedUnrelatedTests(unittest.TestCase):
