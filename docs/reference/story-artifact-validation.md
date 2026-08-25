@@ -22,6 +22,17 @@ python3 eng/validate-story-artifacts.py --story <story-file> --candidate HEAD
 
 The strict report keeps commit classification separate from path ownership:
 
+For compatibility, each non-merge row renders its classification through the stable
+`disposition=<classification>` text field. A merge row uses `disposition` only when the
+story contains an actual declaration for that merge.
+
+A bare canonical story ID anywhere in a commit subject counts as a story match. This
+includes prose and generated subjects: `Revert "fix(9.7): ..."` and
+`see 9.7 for context` both match Story 9.7. If such a commit touches an unlisted path,
+it is `interleaved` and a `shared` or `process` declaration cannot suppress the failure.
+Authors should therefore keep unrelated subjects free of another story's bare ID and
+inspect generated revert subjects before publishing them.
+
 | Commit classification | Meaning | Contributes listed paths to reconciliation |
 | --- | --- | --- |
 | `owned` | Subject matches the story and every touched path is listed. | Yes |

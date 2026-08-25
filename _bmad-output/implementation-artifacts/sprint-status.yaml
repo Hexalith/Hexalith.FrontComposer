@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 08-25-2026 11:28
+last_updated: 08-25-2026 15:23
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system

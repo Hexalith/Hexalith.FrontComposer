@@ -2681,3 +2681,37 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
   summary: Validate symbol-package metadata rather than checking only expected filenames.
   evidence: The release-prepublish path verifies binary metadata in `.nupkg` files but treats the expected `.snupkg` filename as sufficient. It does not inspect the symbol package nuspec or its expected symbol/source entry shape, so stale or mismatched symbol bytes can reach later sealing. Owned by the release-compatibility work declared `shared`, not by Story 9.7.
+
+
+## Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 6)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Refresh the bootstrap-retirement entry to describe the thirteen-entry authorized path set.
+  evidence: The loop-4 retirement entry in this ledger still reads "the twelve-entry `_PATHS` frozenset", but review loop 5 expanded `BOOTSTRAP_OWNED_PATHS` to thirteen after claiming `references/Hexalith.Tenants`. The stale count understates the surface a future retirement story must remove.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Emit the commit-scope report in a machine-readable form for the calling skill.
+  evidence: `format_commit_scope_evidence` produces free-form English that `step-04-review.md` must pattern-match to assert classifications, and `json` is imported solely for control escaping. A `--json` or `--report <path>` emission of `CommitScopeEvidence` would let the review workflow assert on `classification` and path labels directly, and would remove the current stdout-notice / stderr-failure interleaving as a parsing concern.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Gate story completion on the mechanical commit-scope report by CI machinery, not workflow convention.
+  evidence: `grep -rn "validate-story-artifacts" .github/workflows/` returns nothing. `quality.yml` Gate 2b runs `python3 -m unittest eng.tests.test_validate_story_artifacts`, and `CiGovernanceTests.StoryArtifactValidatorGate_IsBlockingAndExact` pins exactly that command, so CI proves only that the validator is unbroken. The strict gate itself runs only when an agent follows `step-04-review.md`. Epic 9 retro action F9-06/E9-AI-5 asked to gate story completion on the report. A CI job needs a branch-to-spec resolution convention that does not exist (`fix/9-7-story-scope-evidence` maps to `spec-9-7-...` only by coincidence) plus a skip path for non-story branches that would reintroduce skippability. Human decision 2026-08-25: accept workflow enforcement for 9.7, state the boundary in Design Notes, and design CI enforcement in a successor story.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Consider a `misattributed` disposition kind for subject-only false story matches.
+  evidence: `story_id_pattern("9.7")` matches any bare occurrence of the canonical ID, so `Revert "fix(9.7): ..."`, `backport of 9.7`, or `see 9.7 for context` makes an unrelated commit story-matching. Because `if matches and unowned_paths` precedes `elif disposition` and the frozen Boundaries forbid a disposition from suppressing `interleaved`, such a commit hard-fails the gate with no escape short of rewriting a published subject. The trigger is often outside the author control (`git revert` and the GitHub revert button generate the subject). Human decision 2026-08-25: document the trap rather than reopen the frozen block, since it has not yet fired and loop-3 anti-broadening work depends on `interleaved` staying unsuppressable.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Decide whether an unresolved merge-conflict path should be a hard validation failure.
+  evidence: `collect_workspace_evidence` collects unmerged paths into `unresolved` and `collect_reconciled_changed_files` folds them into the changed set, but nothing fails on them, so a run performed mid-merge-conflict exits 0 whenever the conflicted paths happen to be listed in the File List. The evidence then describes a tree that is not in a reviewable state. Human decision 2026-08-25: fix the duplicate reporting now and treat failing closed on conflict as a separate policy decision rather than a review patch, because it is a behavior change with no failing test today and would red-flag anyone running the report mid-rebase.
+
+
+## Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 7)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Reject duplicate JSON keys in the release compatibility suppression ledger.
+  evidence: `eng/release_compatibility.py` loads the policy with the default JSON decoder, so a duplicate top-level or row key silently keeps the last value and can replace a reviewed compatibility-policy field without a validation error. This belongs to the release-compatibility work declared `shared`, not Story 9.7.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Restore exact package-and-symbol inventory validation after shared CI packing.
+  evidence: The removed `eng/pack_release_packages.py` validation asserted the complete expected `.nupkg` and required `.snupkg` inventory, while `scripts/pack-release-packages.py` now returns after `dotnet pack` without an equivalent postcondition. A successful pack can therefore omit a required symbol package without failing that shared CI path. This belongs to the release-compatibility work declared `shared`, not Story 9.7.

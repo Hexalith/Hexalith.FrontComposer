@@ -9,6 +9,7 @@ import json
 import re
 import subprocess
 import sys
+import unicodedata
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -52,9 +53,7 @@ CRITICAL_FRONTMATTER_SCALAR_KEYS = frozenset(
     {"title", "story_id", "baseline_commit"}
 )
 CHECKED_TASK = re.compile(r"^\s*-\s*\[x\]\s*(.+)$", re.IGNORECASE)
-CHECKED_TASK_HEADINGS = frozenset(
-    {"## tasks / subtasks", "## tasks & acceptance"}
-)
+CHECKED_TASK_HEADINGS = frozenset({"tasks", "tasks / subtasks", "tasks & acceptance"})
 EXCLUDED_TASK_SUBSECTION_HEADINGS = frozenset({"review findings"})
 MARKDOWN_HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 DOCUMENTED_UNRELATED_HEADINGS = {
@@ -226,12 +225,8 @@ BOOTSTRAP_OWNED_STORY_PATH = (
     "_bmad-output/implementation-artifacts/"
     "spec-9-7-add-story-id-and-commit-scope-evidence.md"
 )
-BOOTSTRAP_OWNED_GUARD_PATHS = frozenset(
-    {
-        "eng/validate-story-artifacts.py",
-        "eng/tests/test_validate_story_artifacts.py",
-    }
-)
+BOOTSTRAP_OWNED_VALIDATOR_PATH = "eng/validate-story-artifacts.py"
+BOOTSTRAP_OWNED_VALIDATOR_TEST_PATH = "eng/tests/test_validate_story_artifacts.py"
 BOOTSTRAP_OWNED_PATHS = frozenset(
     {
         ".agents/skills/bmad-build/spec-template.md",
@@ -243,11 +238,14 @@ BOOTSTRAP_OWNED_PATHS = frozenset(
         "_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md",
         "_bmad-output/implementation-artifacts/sprint-status.yaml",
         "_bmad-output/implementation-artifacts/story-review-reconciliation-checklist.md",
-        "eng/tests/test_validate_story_artifacts.py",
-        "eng/validate-story-artifacts.py",
+        BOOTSTRAP_OWNED_VALIDATOR_TEST_PATH,
+        BOOTSTRAP_OWNED_VALIDATOR_PATH,
         "references/Hexalith.Tenants",
         "tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs",
     }
+)
+BOOTSTRAP_OWNED_GUARD_PATHS = frozenset(
+    {BOOTSTRAP_OWNED_VALIDATOR_PATH, BOOTSTRAP_OWNED_VALIDATOR_TEST_PATH}
 )
 
 
@@ -262,6 +260,7 @@ class StoryMetadata:
     commit_scope_dispositions: dict[str, tuple[str, str]]
     commit_scope_disposition_failures: list[str]
     checked_tasks: list[tuple[int, str]]
+    notices: list[str]
     evidence_text: str
 
 
@@ -286,7 +285,7 @@ class CommitEvidence:
 class MergeEvidence:
     sha: str
     subject: str
-    disposition: str
+    declared_disposition: str
     disposition_reason: str
 
 
@@ -315,7 +314,8 @@ def main() -> int:
     notices: list[str] = []
 
     candidate_mode = args.candidate is not None
-    candidate_has_value = candidate_mode and bool(args.candidate.strip())
+    candidate_ref = args.candidate.strip() if candidate_mode else ""
+    candidate_has_value = bool(candidate_ref)
     base_override_valid = args.base is None or bool(args.base.strip())
     candidate_valid = candidate_has_value and not args.changed_file and base_override_valid
 
@@ -335,6 +335,7 @@ def main() -> int:
         story = resolve_under_root(root, args.story)
         metadata = parse_story_metadata(story)
         failures.extend(metadata.metadata_failures)
+        notices.extend(metadata.notices)
         base = metadata.baseline_commit if args.base is None else args.base.strip()
         cli_unrelated = parse_cli_unrelated(root, args.unrelated, args.reason)
         unrelated = {**metadata.unrelated, **cli_unrelated}
@@ -343,14 +344,27 @@ def main() -> int:
             commit_evidence, commit_failures = collect_commit_scope_evidence(
                 root,
                 base,
-                args.candidate,
+                candidate_ref,
                 metadata,
                 story,
             )
-            failures.extend(commit_failures)
+            failures.extend(
+                failure for failure in commit_failures if failure not in failures
+            )
+        else:
+            failures.extend(
+                failure
+                for failure in metadata.commit_scope_disposition_failures
+                if failure not in failures
+            )
 
         if not candidate_mode:
             changed_files = collect_changed_files(root, base, args.changed_file, args.exclude)
+            if changed_files.source.startswith("git workspace fallback"):
+                notices.append(
+                    "degraded changed-file discovery: "
+                    f"{changed_files.source}; the declared baseline was not used"
+                )
         elif not candidate_valid:
             changed_files = ChangedFiles([], "invalid candidate invocation", base or "")
         else:
@@ -379,7 +393,8 @@ def main() -> int:
                 "unrelated dirty files documented for "
                 f"{story.relative_to(root).as_posix()}:\n"
                 + "\n".join(
-                    f"  - {format_git_path(path)}: {classified_path_reason(path, bounded_unrelated)}"
+                    f"  - {format_git_path(path)}: "
+                    f"{format_report_value(classified_path_reason(path, bounded_unrelated))}"
                     for path in unrelated_changed
                 )
             )
@@ -518,18 +533,20 @@ def parse_story_metadata(story: Path) -> StoryMetadata:
     story_id, story_id_failures = extract_story_id(frontmatter, text, story.name)
     if "story_id" in invalid_frontmatter_keys:
         story_id = ""
-    checked_tasks, checked_task_failures = extract_checked_tasks(text)
+    checked_tasks, checked_task_failures, checked_task_notices = extract_checked_tasks(text)
     metadata_failures = [
         *frontmatter_failures,
         *story_id_failures,
         *checked_task_failures,
     ]
     sections = extract_sections(text)
+    section_heading_lines = extract_section_heading_lines(text)
     file_list = extract_story_file_list(sections.get("file list", ""))
     unrelated = extract_classified_paths(sections, DOCUMENTED_UNRELATED_HEADINGS)
     blockers = extract_classified_paths(sections, DOCUMENTED_BLOCKER_HEADINGS)
     dispositions, disposition_failures = extract_commit_scope_dispositions(
-        sections.get("commit scope dispositions", "")
+        sections.get("commit scope dispositions", ""),
+        line_offset=section_heading_lines.get("commit scope dispositions", 0),
     )
     evidence_text = "\n".join(
         sections.get(name, "")
@@ -555,6 +572,7 @@ def parse_story_metadata(story: Path) -> StoryMetadata:
         commit_scope_dispositions=dispositions,
         commit_scope_disposition_failures=disposition_failures,
         checked_tasks=checked_tasks,
+        notices=checked_task_notices,
         evidence_text=evidence_text,
     )
 
@@ -589,10 +607,7 @@ def extract_story_id(
         elif match := text_story.search(title):
             detected.append(("title", f"{match.group(1)}.{match.group(2)}"))
 
-    for line in text.splitlines():
-        if not line.startswith("# "):
-            continue
-        heading = line[2:].strip()
+    for heading in markdown_h1_headings(text):
         if malformed_story.search(heading):
             failures.append(f"invalid legacy story identity in H1: {heading!r}")
         elif match := text_story.search(heading):
@@ -628,14 +643,77 @@ def extract_story_id(
     return next(iter(identities), ""), []
 
 
-def extract_commit_scope_dispositions(body: str) -> tuple[dict[str, tuple[str, str]], list[str]]:
+def markdown_h1_headings(text: str) -> list[str]:
+    """Return H1 headings outside YAML frontmatter and fenced code blocks."""
+    return [
+        heading.group(2).strip()
+        for _, line in markdown_lines_outside_frontmatter_and_fences(text)
+        if (heading := MARKDOWN_HEADING.match(line.strip()))
+        and len(heading.group(1)) == 1
+    ]
+
+
+def markdown_lines_outside_frontmatter_and_fences(
+    text: str,
+) -> list[tuple[int, str]]:
+    """Return source-numbered Markdown lines that can carry document semantics.
+
+    YAML frontmatter and fenced examples are author-controlled data, not document
+    structure. A fence closes only with the same marker, at least the opening
+    length, and whitespace after it; an info-like suffix inside a fence is content.
+    """
+    # Markdown line endings are CR/LF sequences. Unicode line and paragraph
+    # separators remain author-controlled scalar content and must reach the
+    # report-quoting boundary intact.
+    lines = [line.rstrip("\r") for line in text.split("\n")]
+    index = 0
+    if lines and lines[0].strip() == "---":
+        index = 1
+        while index < len(lines):
+            if lines[index].strip() == "---":
+                index += 1
+                break
+            index += 1
+
+    semantic_lines: list[tuple[int, str]] = []
+    fence_character = ""
+    fence_length = 0
+    for line_number, line in enumerate(lines[index:], start=index + 1):
+        fence = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", line)
+        if fence_character:
+            if fence:
+                marker = fence.group(1)
+                suffix = fence.group(2)
+                if (
+                    marker[0] == fence_character
+                    and len(marker) >= fence_length
+                    and not suffix.strip()
+                ):
+                    fence_character = ""
+                    fence_length = 0
+            continue
+        if fence:
+            marker = fence.group(1)
+            fence_character = marker[0]
+            fence_length = len(marker)
+            continue
+        semantic_lines.append((line_number, line))
+    return semantic_lines
+
+
+def extract_commit_scope_dispositions(
+    body: str,
+    *,
+    line_offset: int = 0,
+) -> tuple[dict[str, tuple[str, str]], list[str]]:
     dispositions: dict[str, tuple[str, str]] = {}
     failures: list[str] = []
     declaration = re.compile(
         r"^-\s*`([0-9A-Fa-f]{40})`\s*\|\s*`(shared|process|bootstrap-owned)`\s*\|\s*(\S.*)$"
     )
     bootstrap_owned_declarations = 0
-    for line_number, line in enumerate(body.splitlines(), start=1):
+    for line_number, line in enumerate(body.split("\n"), start=1):
+        line = line.rstrip("\r")
         stripped = line.strip()
         if not stripped:
             continue
@@ -645,7 +723,7 @@ def extract_commit_scope_dispositions(body: str) -> tuple[dict[str, tuple[str, s
         if not match:
             failures.append(
                 "malformed Commit Scope Dispositions declaration "
-                f"at section line {line_number}: {stripped}"
+                f"at line {line_offset + line_number}: {stripped}"
             )
             continue
         sha = match.group(1).lower()
@@ -691,48 +769,74 @@ def extract_frontmatter(text: str) -> tuple[dict[str, str], list[str], set[str]]
 
 def parse_frontmatter_scalar(raw: str) -> str:
     """Return a simple YAML scalar without a trailing, unquoted comment."""
-    quote = ""
+    stripped = raw.lstrip()
+    quote = stripped[0] if stripped.startswith(("'", '"')) else ""
+    opening_index = len(raw) - len(stripped) if quote else -1
     escaped = False
     comment_start: int | None = None
     for index, character in enumerate(raw):
+        if index == opening_index:
+            continue
         if escaped:
             escaped = False
             continue
         if quote == '"' and character == "\\":
             escaped = True
             continue
-        if character in {"'", '"'}:
-            if not quote:
-                quote = character
-            elif quote == character:
+        if quote and character == quote:
+            if quote == "'" and index + 1 < len(raw) and raw[index + 1] == "'":
+                escaped = True
+                continue
+            if quote == character:
                 quote = ""
             continue
         if character == "#" and not quote and (index == 0 or raw[index - 1].isspace()):
             comment_start = index
             break
     value = raw[:comment_start] if comment_start is not None else raw
-    return value.strip().strip("'\"")
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        unquoted = value[1:-1]
+        return unquoted.replace("''", "'") if value[0] == "'" else unquoted
+    return value
 
 
 def extract_sections(text: str) -> dict[str, str]:
     sections: dict[str, list[str]] = {}
+    heading_lines: dict[str, int] = {}
     current = ""
-    for line in text.splitlines():
-        heading = re.match(r"^(#{2,6})\s+(.+?)\s*$", line)
-        if heading:
+    for line_number, line in markdown_lines_outside_frontmatter_and_fences(text):
+        heading = MARKDOWN_HEADING.match(line.strip())
+        if heading and 2 <= len(heading.group(1)) <= 6:
             current = heading.group(2).strip().lower()
             sections.setdefault(current, [])
+            heading_lines.setdefault(current, line_number)
             continue
         if current:
-            sections.setdefault(current, []).append(line)
+            body = sections.setdefault(current, [])
+            body_index = line_number - heading_lines[current] - 1
+            if body_index >= len(body):
+                body.extend("" for _ in range(body_index - len(body) + 1))
+            body[body_index] = line
     return {key: "\n".join(value) for key, value in sections.items()}
+
+
+def extract_section_heading_lines(text: str) -> dict[str, int]:
+    """Return the first source line for each Markdown section heading."""
+    headings: dict[str, int] = {}
+    for line_number, line in markdown_lines_outside_frontmatter_and_fences(text):
+        heading = MARKDOWN_HEADING.match(line.strip())
+        if heading and 2 <= len(heading.group(1)) <= 6:
+            headings.setdefault(heading.group(2).strip().lower(), line_number)
+    return headings
 
 
 def extract_classified_paths(sections: dict[str, str], headings: set[str]) -> dict[str, str]:
     classified: dict[str, str] = {}
     for heading in headings:
         body = sections.get(heading, "")
-        for line in body.splitlines():
+        for line in body.split("\n"):
+            line = line.rstrip("\r")
             stripped = line.strip()
             if not stripped.startswith("-"):
                 continue
@@ -751,7 +855,7 @@ def extract_classified_paths(sections: dict[str, str], headings: set[str]) -> di
 def parse_cli_unrelated(root: Path, paths: list[str], reasons: list[str]) -> dict[str, str]:
     unrelated: dict[str, str] = {}
     for index, path in enumerate(paths):
-        normalized = normalize_changed_path(root, path)
+        normalized = normalize_changed_path(root, path).rstrip("/")
         if not normalized:
             continue
         reason = reasons[index].strip() if index < len(reasons) and reasons[index].strip() else "documented unrelated"
@@ -885,7 +989,7 @@ def bootstrap_owned_authorization_failures(
     sha: str,
     parents: list[str],
     subject_matches: bool,
-    paths: set[str],
+    paths: set[str] | None,
     file_list: set[str],
     disposition_failures: list[str],
     bootstrap_declaration_count: int,
@@ -929,12 +1033,6 @@ def bootstrap_owned_authorization_failures(
     if subject_matches:
         failures.append("the historical bootstrap commit subject must not match story 9.7")
 
-    missing_touched_guards = sorted(BOOTSTRAP_OWNED_GUARD_PATHS - paths)
-    if missing_touched_guards:
-        failures.append(
-            "the bootstrap commit must touch both guard paths; missing: "
-            + ", ".join(missing_touched_guards)
-        )
     missing_listed_guards = sorted(BOOTSTRAP_OWNED_GUARD_PATHS - file_list)
     if missing_listed_guards:
         failures.append(
@@ -942,19 +1040,27 @@ def bootstrap_owned_authorization_failures(
             + ", ".join(missing_listed_guards)
         )
 
-    listed_touched_paths = paths & file_list
-    if listed_touched_paths != BOOTSTRAP_OWNED_PATHS:
-        missing_paths = sorted(BOOTSTRAP_OWNED_PATHS - listed_touched_paths)
-        unexpected_paths = sorted(listed_touched_paths - BOOTSTRAP_OWNED_PATHS)
-        details: list[str] = []
-        if missing_paths:
-            details.append("missing " + ", ".join(missing_paths))
-        if unexpected_paths:
-            details.append("unexpected " + ", ".join(unexpected_paths))
-        failures.append(
-            "the bootstrap commit/File List intersection must equal the immutable authorized path set: "
-            + "; ".join(details)
-        )
+    if paths is not None:
+        missing_touched_guards = sorted(BOOTSTRAP_OWNED_GUARD_PATHS - paths)
+        if missing_touched_guards:
+            failures.append(
+                "the bootstrap commit must touch both guard paths; missing: "
+                + ", ".join(missing_touched_guards)
+            )
+
+        listed_touched_paths = paths & file_list
+        if listed_touched_paths != BOOTSTRAP_OWNED_PATHS:
+            missing_paths = sorted(BOOTSTRAP_OWNED_PATHS - listed_touched_paths)
+            unexpected_paths = sorted(listed_touched_paths - BOOTSTRAP_OWNED_PATHS)
+            details: list[str] = []
+            if missing_paths:
+                details.append("missing " + ", ".join(missing_paths))
+            if unexpected_paths:
+                details.append("unexpected " + ", ".join(unexpected_paths))
+            failures.append(
+                "the bootstrap commit/File List intersection must equal the immutable authorized path set: "
+                + "; ".join(details)
+            )
     return failures
 
 
@@ -1015,7 +1121,10 @@ def collect_commit_scope_evidence(
             "listing baseline-to-candidate commits",
         )
         commit_rows: list[tuple[str, list[str], str]] = []
-        for line in log.stdout.splitlines():
+        # Git records are LF-delimited. Unicode line/paragraph separators are valid
+        # subject content and must survive until deterministic report quoting.
+        for line in log.stdout.split("\n"):
+            line = line.rstrip("\r")
             if not line.strip():
                 continue
             parts = line.split("\x1f", 2)
@@ -1056,7 +1165,7 @@ def collect_commit_scope_evidence(
                     sha=sha,
                     parents=parents,
                     subject_matches=matcher.search(subject) is not None,
-                    paths=set(),
+                    paths=None,
                     file_list=listed,
                     disposition_failures=metadata.commit_scope_disposition_failures,
                     bootstrap_declaration_count=bootstrap_declaration_count,
@@ -1070,7 +1179,7 @@ def collect_commit_scope_evidence(
                 MergeEvidence(
                     sha=sha,
                     subject=subject,
-                    disposition=disposition[0] if disposition else "",
+                    declared_disposition=disposition[0] if disposition else "",
                     disposition_reason=disposition[1] if disposition else "",
                 )
             )
@@ -1164,15 +1273,27 @@ def collect_commit_scope_evidence(
 
     try:
         workspace = collect_workspace_evidence(root)
+        workspace_snapshot_collected = True
     except RuntimeError as exc:
         failures.append(str(exc))
         workspace = WorkspaceEvidence([], [], [], [])
+        workspace_snapshot_collected = False
 
     try:
         candidate_after_collection = canonical_commit(root, candidate_ref, "candidate after evidence collection")
         if candidate_after_collection != candidate:
             failures.append(
                 f"candidate ref moved during validation: {candidate} -> {candidate_after_collection}"
+            )
+    except RuntimeError as exc:
+        failures.append(str(exc))
+
+    try:
+        workspace_after_collection = collect_workspace_evidence(root)
+        if workspace_snapshot_collected and workspace_after_collection != workspace:
+            failures.append(
+                "workspace state changed during validation: "
+                + format_workspace_snapshot_change(workspace, workspace_after_collection)
             )
     except RuntimeError as exc:
         failures.append(str(exc))
@@ -1219,6 +1340,7 @@ def collect_workspace_evidence(root: Path) -> WorkspaceEvidence:
             continue
         if state in unmerged_states or "U" in state:
             unresolved.add(path)
+            continue
         if state[0] not in {" ", "?"}:
             staged.add(path)
         if state[1] not in {" ", "?"}:
@@ -1229,6 +1351,22 @@ def collect_workspace_evidence(root: Path) -> WorkspaceEvidence:
         sorted(untracked),
         sorted(unresolved),
     )
+
+
+def format_workspace_snapshot_change(
+    before: WorkspaceEvidence,
+    after: WorkspaceEvidence,
+) -> str:
+    changes: list[str] = []
+    for label in ("staged", "unstaged", "untracked", "unresolved"):
+        before_paths = getattr(before, label)
+        after_paths = getattr(after, label)
+        if before_paths == after_paths:
+            continue
+        before_text = ", ".join(format_git_path(path) for path in before_paths) or "(none)"
+        after_text = ", ".join(format_git_path(path) for path in after_paths) or "(none)"
+        changes.append(f"{label} [{before_text}] -> [{after_text}]")
+    return "; ".join(changes)
 
 
 def collect_reconciled_changed_files(
@@ -1273,6 +1411,9 @@ def format_commit_scope_evidence(
         lines.append("    - (none)")
     for commit in evidence.commits:
         match = "match" if commit.story_id_matches else "no-match"
+        # `disposition=` is the frozen human-readable report key for a non-merge
+        # classification. MergeEvidence uses `declared_disposition` internally so an
+        # actual story declaration is not confused with this compatibility label.
         disposition = (
             f" | reason={format_report_value(commit.disposition_reason)}"
             if commit.disposition_reason
@@ -1298,9 +1439,9 @@ def format_commit_scope_evidence(
         lines.append("    - (none)")
     for merge in evidence.merges:
         disposition = ""
-        if merge.disposition:
+        if merge.declared_disposition:
             disposition = (
-                f" | disposition={merge.disposition} | "
+                f" | disposition={merge.declared_disposition} | "
                 f"reason={format_report_value(merge.disposition_reason)}"
             )
         lines.append(
@@ -1319,7 +1460,11 @@ def format_commit_scope_evidence(
             lines.append("      - (none)")
         for path in paths:
             reason = classified_path_reason(path, unrelated)
-            suffix = f" | documented-unrelated={reason}" if reason else ""
+            suffix = (
+                f" | documented-unrelated={format_report_value(reason)}"
+                if reason
+                else ""
+            )
             lines.append(f"      - {format_git_path(path)}{suffix}")
 
     lines.append("    documented-unrelated:")
@@ -1338,7 +1483,10 @@ def format_commit_scope_evidence(
             if any(path == entry.rstrip("/") or path.startswith(entry.rstrip("/") + "/") for path in paths)
         ]
         state = ",".join(states) if states else "declared"
-        lines.append(f"      - {format_git_path(entry)} | state={state} | reason={reason}")
+        lines.append(
+            f"      - {format_git_path(entry)} | state={state} | "
+            f"reason={format_report_value(reason)}"
+        )
     return "\n".join(lines)
 
 
@@ -1351,14 +1499,20 @@ def format_git_path(path: str) -> str:
 
 
 def format_report_value(value: str) -> str:
-    """Quote values containing terminal controls while preserving ordinary output."""
+    """Quote values containing terminal or format controls while preserving ordinary output."""
     if contains_terminal_control(value):
         return json.dumps(value, ensure_ascii=True)
     return value
 
 
 def contains_terminal_control(value: str) -> bool:
-    return any(ord(character) < 0x20 or 0x7F <= ord(character) <= 0x9F for character in value)
+    return any(
+        character == "|"
+        or ord(character) < 0x20
+        or 0x7F <= ord(character) <= 0x9F
+        or unicodedata.category(character) in {"Cf", "Zl", "Zp"}
+        for character in value
+    )
 
 
 def classified_path_reason(path: str, classified: dict[str, str]) -> str:
@@ -1382,7 +1536,8 @@ def check_file_list(
         changed_note = ""
         if changed_files.files:
             changed_note = "\n" + "\n".join(
-                f"  - {path} (reason: story-owned change from {changed_files.source} cannot be reconciled)"
+                f"  - {format_git_path(path)} "
+                f"(reason: story-owned change from {changed_files.source} cannot be reconciled)"
                 for path in changed_files.files
                 if not path_is_classified_unrelated(path, classified_paths)
             )
@@ -1408,7 +1563,8 @@ def check_file_list(
             "changed files missing from story File List in "
             f"{story.relative_to(root).as_posix()}{base_note}:\n"
             + "\n".join(
-                f"  - {path} (reason: story-owned change from {changed_files.source} is not documented)"
+                f"  - {format_git_path(path)} "
+                f"(reason: story-owned change from {changed_files.source} is not documented)"
                 for path in missing
             )
         )
@@ -1417,7 +1573,8 @@ def check_file_list(
             "File List entries with no matching story-owned change in "
             f"{story.relative_to(root).as_posix()}:\n"
             + "\n".join(
-                f"  - {path} (reason: no matching story-owned change and no accepted classification)"
+                f"  - {format_git_path(path)} "
+                "(reason: no matching story-owned change and no accepted classification)"
                 for path in extra
             )
         )
@@ -1426,7 +1583,8 @@ def check_file_list(
 
 def extract_story_file_list(body: str) -> dict[str, str]:
     entries: dict[str, str] = {}
-    for line in body.splitlines():
+    for line in body.split("\n"):
+        line = line.rstrip("\r")
         stripped = line.strip()
         if not stripped.startswith("-"):
             continue
@@ -1464,51 +1622,72 @@ def is_accepted_extra_reason(reason: str) -> bool:
     return any(keyword in lowered for keyword in ACCEPTED_EXTRA_REASONS)
 
 
-def extract_checked_tasks(text: str) -> tuple[list[tuple[int, str]], list[str]]:
-    lines = text.splitlines()
+def extract_checked_tasks(
+    text: str,
+) -> tuple[list[tuple[int, str]], list[str], list[str]]:
     in_tasks = False
     task_heading_level = 0
     excluded_subsection_level: int | None = None
+    outside_review_level: int | None = None
     recognized_heading_count = 0
     checked_task_count = 0
     tasks: list[tuple[int, str]] = []
-    for line_number, line in enumerate(lines, start=1):
+    notices: list[str] = []
+    for line_number, line in markdown_lines_outside_frontmatter_and_fences(text):
         stripped = line.strip()
         checked = CHECKED_TASK.match(line)
         heading = MARKDOWN_HEADING.match(stripped)
-        if checked:
-            checked_task_count += 1
-        if stripped.lower() in CHECKED_TASK_HEADINGS:
+        heading_text = heading.group(2).strip().lower() if heading else ""
+        if heading and heading_text in CHECKED_TASK_HEADINGS:
             in_tasks = True
-            task_heading_level = len(heading.group(1)) if heading else 2
+            task_heading_level = len(heading.group(1))
             excluded_subsection_level = None
+            outside_review_level = None
             recognized_heading_count += 1
-            continue
-        if not in_tasks:
             continue
         if heading:
             heading_level = len(heading.group(1))
-            if heading_level <= task_heading_level:
+            if in_tasks and heading_level <= task_heading_level:
                 in_tasks = False
                 excluded_subsection_level = None
-                continue
-            if (
+            if in_tasks and (
                 excluded_subsection_level is not None
                 and heading_level <= excluded_subsection_level
             ):
                 excluded_subsection_level = None
-            if heading.group(2).strip().lower() in EXCLUDED_TASK_SUBSECTION_HEADINGS:
+            if in_tasks and any(
+                heading_text.startswith(excluded)
+                for excluded in EXCLUDED_TASK_SUBSECTION_HEADINGS
+            ):
                 excluded_subsection_level = heading_level
+            if not in_tasks:
+                if outside_review_level is not None and heading_level <= outside_review_level:
+                    outside_review_level = None
+                if any(
+                    heading_text.startswith(excluded)
+                    for excluded in EXCLUDED_TASK_SUBSECTION_HEADINGS
+                ):
+                    outside_review_level = heading_level
             continue
-        if checked and excluded_subsection_level is None:
+        if not checked:
+            continue
+        if excluded_subsection_level is not None or outside_review_level is not None:
+            continue
+        checked_task_count += 1
+        if in_tasks and excluded_subsection_level is None:
             tasks.append((line_number, checked.group(1).strip()))
+        else:
+            notices.append(
+                "checked item outside recognized task section at line "
+                f"{line_number}: {checked.group(1).strip()}"
+            )
     failures: list[str] = []
     if checked_task_count and not recognized_heading_count:
         failures.append(
             "checked tasks found but no recognized task heading matched; expected "
-            "'## Tasks / Subtasks' or '## Tasks & Acceptance'"
+            "a Markdown heading named 'Tasks', 'Tasks / Subtasks', or 'Tasks & Acceptance'"
         )
-    return tasks, failures
+    return tasks, failures, notices
 
 
 def check_checked_tasks(
