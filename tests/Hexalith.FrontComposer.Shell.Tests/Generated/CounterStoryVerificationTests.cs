@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using Bunit;
 
 using Counter.Domain;
+using Counter.Web;
 using Counter.Web.Components.Pages;
 using Counter.Web.Components.Replacements;
 using Counter.Web.Components.Slots;
@@ -14,6 +15,7 @@ using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Extensions;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
 using Hexalith.FrontComposer.Shell.Services.ProjectionTemplates;
 using Hexalith.FrontComposer.Shell.Services.ProjectionViewOverrides;
@@ -45,14 +47,18 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
     }
 
     [Fact]
-    public async Task CounterPage_EmptyState_RendersStoryMessage() {
+    public async Task CounterPage_SeedState_RendersUnrelatedRow() {
+        Services.AddSingleton<CounterCommandProjectionCatchUpChannel>();
+        Services.AddSingleton(Substitute.For<IEmptyStateCtaResolver>());
         await InitializeStoreAsync();
 
         IRenderedComponent<CounterPage> cut = Render<CounterPage>();
 
         await cut.WaitForAssertionAsync(() => {
-            cut.Markup.ShouldContain("No counter data yet. Send your first Increment Counter command.");
-            cut.Markup.ShouldContain("Increment Counter");
+            Services.GetRequiredService<IState<CounterProjectionState>>()
+                .Value.Items.ShouldNotBeNull().Single().Id.ShouldBe("counter-1");
+            cut.Find("[data-fc-datagrid=\"Counter:Counter.Domain.CounterProjection\"]");
+            cut.Markup.ShouldNotContain("No counter data yet.");
         });
     }
 

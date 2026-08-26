@@ -139,7 +139,7 @@ test.describe('Story 9.3: FC-NIP explicit command target identity', () => {
       'Lifecycle text is never parsed to determine materiality',
     ]);
 
-    // The seven behavioural rules routed to Story 9.4, and the new preallocation owner.
+    // The seven behavioural rules routed to Story 9.4, plus the non-blocking preallocation deferral.
     assertContainsAll(contract, [
       'a bounded provider-resolution deadline',
       'empty or non-ULID `MessageId`',
@@ -148,7 +148,10 @@ test.describe('Story 9.3: FC-NIP explicit command target identity', () => {
       'maximum `CapturedAt`-to-`ObservedAt` age and a clock-skew rule',
       'capacity, eviction policy, and overflow disposition',
       'invalidation events that discard a captured snapshot before terminal observation',
-      'Story 9.9 (new, blocks Story 9.8)',
+      'Deferred framework preallocation (does not block Story 9.8)',
+      'provider-reported exact',
+      'already carried by the typed command before dispatch is sufficient',
+      'key first allocated after dispatch remains indicator-ineligible',
     ]);
 
     // Opt-in migration: the live row-cascade regression and its explicit handling.

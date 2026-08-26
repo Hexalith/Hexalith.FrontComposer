@@ -270,10 +270,12 @@ established that the regression is live rather than theoretical.
      word "bounded" a concrete value; and
   7. the invalidation events that discard a captured snapshot before terminal observation, such as
      circuit disposal, navigation away, or scope transition.
-- **Story 9.9 (new, blocks Story 9.8):** own the framework-owned `EntityKey` preallocation mechanism
-  that standalone-create eligibility depends on. No such mechanism exists in `src/` today, so without
-  it every standalone create with a server-allocated key suppresses its indicator and the create-path
-  live browser evidence Epic 9 closure requires has no route to existing.
+- **Deferred framework preallocation (does not block Story 9.8):** a provider-reported exact
+  `EntityKey` already carried by the typed command before dispatch is sufficient for standalone-create
+  eligibility and for Story 9.8 acceptance. A future story may own a framework preallocation mechanism
+  for commands whose server would otherwise allocate the key after dispatch. Until then, a key first
+  allocated after dispatch remains indicator-ineligible, and post-dispatch identity remains outside
+  this contract.
 - **Story 9.5:** make indicator mutations observable and enforce tenant/user scope before reads and
   renders.
 - **Story 9.6:** enforce atomic per-row first-wins behavior without replacing provenance or extending

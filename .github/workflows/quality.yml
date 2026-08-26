@@ -518,3 +518,66 @@ jobs:
           path: |
             tests/e2e/playwright-report/**
             tests/e2e/test-results/**
+
+  epic9-live-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          # Root-declared references only; never initialize nested submodules recursively.
+          submodules: false
+
+      - name: Initialize build submodules
+        uses: Hexalith/Hexalith.Builds/Github/initialize-build@main
+
+      - uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
+        with:
+          dotnet-version: '10.0.302'
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+          cache-dependency-path: tests/e2e/package-lock.json
+
+      - name: Install Playwright workspace dependencies
+        working-directory: tests/e2e
+        run: npm ci
+
+      - name: Install Chromium browser
+        working-directory: tests/e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Aspire CLI
+        run: dotnet tool install --global Aspire.Cli --version 13.4.6
+
+      - name: Install Dapr CLI
+        uses: dapr/setup-dapr@8d980918fd43a2765c143ce7f687665b2d46a6b9 # v2
+        with:
+          version: '1.18.0'
+
+      - name: Initialize Dapr runtime
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          dapr init --runtime-version 1.18.1
+          dapr --version
+
+      - name: Typecheck Epic 9 browser proof
+        working-directory: tests/e2e
+        run: npm run typecheck
+
+      - name: Run AppHost-discovered Epic 9 live proof
+        run: ./eng/run-epic9-live-proof.sh
+
+      - name: Upload Epic 9 acceptance artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: epic-9-live-acceptance-artifacts
+          retention-days: 14
+          if-no-files-found: error
+          path: artifacts/epic-9/**
