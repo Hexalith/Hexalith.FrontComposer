@@ -1,0 +1,129 @@
+@using Counter.Domain
+@using Fluxor
+@implements IDisposable
+@inject IDispatcher Dispatcher
+@inject IState<CounterProjectionState> CounterState
+@inject CounterCommandProjectionCatchUpChannel CatchUpChannel
+@inject Hexalith.FrontComposer.Contracts.Rendering.IUserContextAccessor UserContext
+
+<span hidden
+      data-testid="epic-9-catch-up"
+      data-captured="@CatchUpChannel.CapturedCount"
+      data-published="@CatchUpChannel.PublishedCount"
+      data-received="@_receivedCount"></span>
+
+@code {
+    private static readonly TimeSpan ProjectionDelay = TimeSpan.FromMilliseconds(900);
+    private readonly CancellationTokenSource _dispose = new();
+    private long _receivedCount;
+
+    protected override void OnInitialized()
+    {
+        CatchUpChannel.CreateConfirmed += OnCreateConfirmed;
+        CatchUpChannel.UpdateConfirmed += OnUpdateConfirmed;
+    }
+
+    private void OnCreateConfirmed(
+        string tenantId,
+        string userId,
+        string correlationId,
+        CreateCounterCommand command)
+    {
+        _ = Interlocked.Increment(ref _receivedCount);
+        _ = InvokeAsync(StateHasChanged);
+        if (IsCurrentScope(tenantId, userId))
+        {
+            _ = InvokeAsync(() => MaterializeCreateAsync(correlationId, command, _dispose.Token));
+        }
+    }
+
+    private async Task MaterializeCreateAsync(
+        string correlationId,
+        CreateCounterCommand command,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(ProjectionDelay, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+
+        CounterProjection created = new()
+        {
+            Id = command.CounterId,
+            Count = command.InitialValue,
+            LastUpdated = DateTimeOffset.UtcNow,
+        };
+        CounterProjection[] rows =
+        [
+            .. CurrentRows().Where(row => !string.Equals(row.Id, command.CounterId, StringComparison.Ordinal)),
+            created,
+        ];
+        DispatchProjection(correlationId, rows);
+    }
+
+    private void OnUpdateConfirmed(
+        string tenantId,
+        string userId,
+        string correlationId,
+        UpdateCounterCommand command)
+    {
+        _ = Interlocked.Increment(ref _receivedCount);
+        _ = InvokeAsync(StateHasChanged);
+        if (IsCurrentScope(tenantId, userId))
+        {
+            _ = InvokeAsync(() => MaterializeUpdateAsync(correlationId, command, _dispose.Token));
+        }
+    }
+
+    private async Task MaterializeUpdateAsync(
+        string correlationId,
+        UpdateCounterCommand command,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(ProjectionDelay, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+
+        CounterProjection[] rows = [.. CurrentRows().Select(row =>
+            string.Equals(row.Id, command.CounterId, StringComparison.Ordinal)
+                ? new CounterProjection
+                {
+                    Id = row.Id,
+                    Count = row.Count + command.Amount,
+                    LastUpdated = DateTimeOffset.UtcNow,
+                    Metadata = row.Metadata,
+                }
+                : row)];
+        DispatchProjection(correlationId, rows);
+    }
+
+    private IReadOnlyList<CounterProjection> CurrentRows() => CounterState.Value.Items ?? [];
+
+    private bool IsCurrentScope(string tenantId, string userId)
+        => string.Equals(tenantId, UserContext.TenantId, StringComparison.Ordinal)
+            && string.Equals(userId, UserContext.UserId, StringComparison.Ordinal);
+
+    private void DispatchProjection(string correlationId, IReadOnlyList<CounterProjection> rows)
+    {
+        // This bridge already owns the simulated catch-up result. Dispatching a new load request
+        // here would also trigger the demo seed effect and race the exact accepted-key snapshot.
+        Dispatcher.Dispatch(new CounterProjectionLoadedAction(correlationId, rows));
+    }
+
+    public void Dispose()
+    {
+        CatchUpChannel.CreateConfirmed -= OnCreateConfirmed;
+        CatchUpChannel.UpdateConfirmed -= OnUpdateConfirmed;
+        _dispose.Cancel();
+        _dispose.Dispose();
+    }
+}

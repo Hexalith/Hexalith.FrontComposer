@@ -3,6 +3,9 @@ import { defineConfig, devices } from '@playwright/test';
 const BASE_URL = process.env.BASE_URL ?? 'http://127.0.0.1:5070';
 const IS_CI = !!process.env.CI;
 const STORY_3_6_CONFIRM_DELAY_MS = process.env.FC_E2E_STORY_3_6_CONFIRM_DELAY_MS ?? '6500';
+const OUTPUT_DIR = process.env.FC_E2E_OUTPUT_DIR ?? 'test-results';
+const HTML_REPORT_DIR = process.env.FC_E2E_HTML_REPORT_DIR ?? 'playwright-report';
+const JUNIT_PATH = process.env.FC_E2E_JUNIT_PATH ?? `${OUTPUT_DIR}/junit.xml`;
 
 export default defineConfig({
   testDir: './specs',
@@ -16,14 +19,14 @@ export default defineConfig({
   },
   reporter: [
     ['list'],
-    ['html', { outputFolder: 'playwright-report', open: 'never' }],
-    ['junit', { outputFile: 'test-results/junit.xml' }],
+    ['html', { outputFolder: HTML_REPORT_DIR, open: 'never' }],
+    ['junit', { outputFile: JUNIT_PATH }],
   ],
   use: {
     baseURL: BASE_URL,
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
-    trace: 'retain-on-failure',
+    trace: process.env.FC_E2E_TRACE === 'on' ? 'on' : 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     ignoreHTTPSErrors: true,
@@ -43,7 +46,7 @@ export default defineConfig({
       use: { ...devices['Desktop Safari'] },
     },
   ],
-  outputDir: 'test-results',
+  outputDir: OUTPUT_DIR,
   webServer: process.env.PLAYWRIGHT_SKIP_WEBSERVER
     ? undefined
     : {

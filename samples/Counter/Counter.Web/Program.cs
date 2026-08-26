@@ -69,7 +69,17 @@ builder.Services.AddHexalithFrontComposerQuickstart(
         }
     });
 builder.Services.AddFrontComposerDevMode(builder.Environment);
+builder.Services.TryAddScoped<
+    ICommandTargetIdentityProvider<CreateCounterCommand>,
+    CreateCounterTargetIdentityProvider>();
+builder.Services.TryAddScoped<
+    ICommandTargetIdentityProvider<UpdateCounterCommand>,
+    UpdateCounterTargetIdentityProvider>();
 builder.Services.AddHexalithDomain<CounterDomain>();
+builder.Services.AddSingleton<CounterCommandProjectionCatchUpChannel>();
+builder.Services.AddScoped<CounterSampleCommandService>();
+builder.Services.Replace(ServiceDescriptor.Scoped<ICommandService>(sp =>
+    sp.GetRequiredService<CounterSampleCommandService>()));
 if (specimensEnabled) {
     _ = builder.Services.AddHexalithDomain<CounterSpecimensDomain>();
     _ = builder.Services.AddAuthorizationCore(o => {

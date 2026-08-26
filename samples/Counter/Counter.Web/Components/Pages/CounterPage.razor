@@ -6,10 +6,12 @@
 
 <PageTitle>Counter sample</PageTitle>
 @inject IState<Counter.Domain.CounterProjectionState> CounterState
+@inject IDispatcher Dispatcher
 
 <h1>Counter</h1>
 
 <CascadingValue Value="_demoContext">
+    <CounterCommandProjectionCatchUp />
     <div class="page-container" style="display: flex; flex-direction: column; gap: 24px;">
         @* §4.2 — the three titled command-density specimen sections are grouped in one
            FluentAccordion. ExpandMode=Multi with every item Expanded keeps all three densities
@@ -18,6 +20,12 @@
            prior <h2> heading order under the page <h1>. The .command-section/.inline-section/
            .fullpage-section classes are kept on the items for the e2e selectors. *@
         <FluentAccordion ExpandMode="AccordionExpandMode.Multi" HeadingLevel="2">
+            <FluentAccordionItem Class="create-section" Header="Create with an exact target" Expanded="true">
+                <CreateCounterCommandRenderer />
+            </FluentAccordionItem>
+            <FluentAccordionItem Class="update-section" Header="Update with an exact target" Expanded="true">
+                <UpdateCounterCommandRenderer />
+            </FluentAccordionItem>
             <FluentAccordionItem Class="command-section" Header="Compact inline (3 fields)" Expanded="true">
                 <BatchIncrementCommandRenderer />
             </FluentAccordionItem>
@@ -65,6 +73,19 @@
     protected override void OnInitialized()
     {
         CounterState.StateChanged += OnStateChanged;
+        if (CounterState.Value.Items?.Count is not > 0)
+        {
+            Dispatcher.Dispatch(new CounterProjectionLoadedAction(
+                "counter-page-initial",
+                [
+                    new CounterProjection
+                    {
+                        Id = "counter-1",
+                        Count = 0,
+                        LastUpdated = DateTimeOffset.UtcNow,
+                    },
+                ]));
+        }
     }
 
     private void OnStateChanged(object? sender, EventArgs e)

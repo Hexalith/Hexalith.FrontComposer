@@ -213,3 +213,16 @@ public class StatusMoveProviderTargetCommand {
 
     public string Name { get; set; } = string.Empty;
 }
+
+[Command]
+[BoundedContext("TestCommands")]
+[CommandTarget(
+    typeof(Counter.Domain.CounterProjection),
+    CommandTargetResolutionMode.Provider,
+    CommandTargetChangeKind.Update,
+    ViewKey = "Counter:Counter.Domain.CounterProjection")]
+public class CrossRowProviderTargetCommand {
+    public string MessageId { get; set; } = string.Empty;
+
+    public string DestinationId { get; set; } = string.Empty;
+}
