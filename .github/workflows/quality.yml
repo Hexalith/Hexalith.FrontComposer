@@ -5,7 +5,11 @@ name: Quality
 # Tier 1 unit tests + coverage. It does NOT run the FrontComposer-only gates required by
 # PRD NFR-11: the Contracts netstandard2.0 isolation build (Gate 1), the CLI tool smoke
 # (Gate 2a), Governance tests (Gate 2b), Contract pacts + artifact validation + the
-# stale-pact-diff guard (Gate 2c), docs validation (Gate 2d), the trait-filtered default
+# stale-pact-diff guard (Gate 2c), the story artifact validator suite (Gate 2b, invoked
+# in module form as `eng.tests.test_validate_story_artifacts` because that suite imports
+# the validator by path from its own package directory; the sibling `tests/eng/` suites
+# use the path form and the exact module string is pinned by
+# CiGovernanceTests.StoryArtifactValidatorGate_IsBlockingAndExact), docs validation (Gate 2d), the trait-filtered default
 # unit/bUnit lane plus advisory palette/perf/quarantine lanes (Gate 3), quarantine +
 # CI-duration telemetry, and the Playwright a11y/visual lane. Those gates live here and
 # THIS WORKFLOW IS CI-AUTHORITATIVE for them. Every `dotnet test` step keeps

@@ -42,9 +42,19 @@ bare workspace diff, saying so on stdout. It reports no commit evidence.
 | `--sentinel-root <path>` / `--skip-sentinel` | Scope or skip the raw authoring-sentinel scan. |
 
 Excluded by default: `.git/**`, `**/bin/**`, `**/obj/**`, `**/node_modules/**`,
-`docs/_site/**`, and `_bmad-output/story-automator/**`. Exclusions bound classification
-and both halves of reconciliation. An excluded path is still printed, labelled
-`excluded`, and carries no ownership; it also cannot make a story commit `interleaved`.
+`docs/_site/**`, and `_bmad-output/story-automator/**`. Each pattern matches the named
+directory wherever it sits, including at the repository root, and covers the directory
+entry itself as well as the tree beneath it. Exclusions bound classification and both
+halves of reconciliation. An excluded path is still printed, labelled `excluded`, and
+carries no ownership; it also cannot make a story commit `interleaved`.
+
+One carve-out: paths supplied with `--changed-file` bypass git discovery *and*
+exclusion filtering, because naming a path explicitly is a stronger signal than a
+default pattern. Everything else the validator discovers is filtered.
+
+A File List entry that an exclusion pattern covers still fails: the change to it
+contributes no ownership, so it has no matching story-owned change. Resolve it by
+removing the entry or narrowing the exclusion — the failure names both edits.
 
 Exit code `0` means validation passed and `1` means it failed. Failures print to stderr,
 the evidence report and notices print to stdout. An invalid invocation prints only the

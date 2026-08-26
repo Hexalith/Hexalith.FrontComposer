@@ -2,6 +2,10 @@
 
 Before moving a story from review to done:
 
+The full report grammar — invocation modes, classification kinds, path labels
+(`owned`, `listed-unowned`, `excluded`, `unowned`), and the disposition grammar —
+is documented in `docs/reference/story-artifact-validation.md`.
+
 1. Run the mechanical validator from the repository root:
    - Numbered story + usable Git baseline: `python3 eng/validate-story-artifacts.py --story <story-file> --candidate HEAD`.
    - Freeform spec, missing/`NO_VCS`/unresolvable baseline, or no VCS: `python3 eng/validate-story-artifacts.py --story <story-file>` as the documented legacy/best-effort path.

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import functools
 import json
 import re
 import subprocess
@@ -67,17 +68,21 @@ COMMIT_SCOPE_DISPOSITIONS_LEVEL = 2
 MARKDOWN_HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 MARKDOWN_FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 INDENTED_CODE_COLUMNS = 4
-DOCUMENTED_UNRELATED_HEADINGS = {
+# Ordered, not `set` literals: `extract_classified_paths` iterates these to build the
+# reason map, so a path declared under two accepted spellings used to take a
+# `PYTHONHASHSEED`-dependent reason and the report's line order varied run to run. A
+# gate whose product is a reviewable report must render the same bytes every time.
+DOCUMENTED_UNRELATED_HEADINGS = (
     "documented unrelated changes",
     "documented unrelated workspace state",
     "unrelated changes",
     "unrelated workspace state",
-}
-DOCUMENTED_BLOCKER_HEADINGS = {
+)
+DOCUMENTED_BLOCKER_HEADINGS = (
     "documented blockers",
     "blockers",
     "known blockers",
-}
+)
 ACCEPTED_EXTRA_REASONS = (
     "unrelated",
     "pre-existing",
@@ -297,6 +302,9 @@ class CommitEvidence:
     # Touched paths an exclusion pattern covers. They stay in `paths` -- the report
     # never hides a path -- but they carry no ownership and no interleaving.
     excluded_paths: tuple[str, ...] = ()
+    # A declared non-owning kind that this commit's matching subject overrode. Recorded
+    # so an ignored declaration is visible rather than silently inert.
+    inert_declaration: str = ""
 
 
 @dataclass(frozen=True)
@@ -362,6 +370,7 @@ def main() -> int:
         failures.extend(metadata.metadata_failures)
         notices.extend(metadata.notices)
         base = metadata.baseline_commit if args.base is None else args.base.strip()
+        failures.extend(cli_unrelated_failures(args.unrelated, args.reason))
         cli_unrelated = parse_cli_unrelated(root, args.unrelated, args.reason)
         unrelated = {**metadata.unrelated, **cli_unrelated}
         commit_evidence: CommitScopeEvidence | None = None
@@ -382,6 +391,16 @@ def main() -> int:
                 failure
                 for failure in metadata.commit_scope_disposition_failures
                 if failure not in failures
+            )
+            # Authorization runs only against canonical range evidence, which legacy
+            # mode never collects. A `bootstrap-owned` row therefore passed here
+            # entirely unexamined; it grants nothing without commit evidence, but
+            # accepting it silently made an unauthorized declaration look validated.
+            failures.extend(
+                f"bootstrap-owned declaration {sha} cannot be authorized without "
+                "--candidate; run the strict gate to validate it"
+                for sha, (kind, _) in metadata.commit_scope_dispositions.items()
+                if kind == "bootstrap-owned"
             )
 
         if not candidate_mode:
@@ -433,6 +452,8 @@ def main() -> int:
                 bounded_unrelated,
                 workspace_scope,
                 declared_non_owning_paths(commit_evidence, metadata.file_list),
+                args.exclude,
+                unmapped_touched_paths(commit_evidence, metadata.file_list),
             )
         )
         failures.extend(check_checked_tasks(root, story, changed_files.files, metadata, bounded_unrelated))
@@ -531,9 +552,32 @@ def merged_excludes(extra: list[str]) -> tuple[str, ...]:
     return (*DEFAULT_EXCLUDE_PATTERNS, *extra)
 
 
+def exclusion_pattern_forms(pattern: str) -> tuple[str, ...]:
+    """Every spelling one exclusion pattern must cover.
+
+    `fnmatch` has no path semantics: `*` matches separators, but it cannot match an
+    absent leading segment. `**/bin/**` therefore required a literal `/bin/` and let
+    a repository-root `bin/` through, and `docs/_site/**` never matched the tree's
+    own directory entry. Both spellings are generated here so one pattern keeps
+    meaning the same thing wherever the path sits.
+    """
+    forms = {pattern}
+    for form in (pattern, pattern[3:] if pattern.startswith("**/") else ""):
+        if not form:
+            continue
+        forms.add(form)
+        if form.endswith("/**"):
+            forms.add(form[: -len("/**")])
+    return tuple(sorted(forms))
+
+
 def is_excluded(path: str, patterns: list[str] | tuple[str, ...]) -> bool:
     normalized = path.replace("\\", "/")
-    return any(fnmatch.fnmatch(normalized, pattern) for pattern in patterns)
+    return any(
+        fnmatch.fnmatch(normalized, form)
+        for pattern in patterns
+        for form in exclusion_pattern_forms(pattern)
+    )
 
 
 def markdown_files(root: Path, roots: list[str], excludes: list[str]) -> list[Path]:
@@ -625,15 +669,21 @@ def parse_story_metadata(story: Path) -> StoryMetadata:
         sections.get(COMMIT_SCOPE_DISPOSITIONS_HEADING, ""),
         line_offset=disposition_heading[0] if disposition_heading else 0,
     )
-    if disposition_heading and disposition_heading[1] != COMMIT_SCOPE_DISPOSITIONS_LEVEL:
+    for occurrence_line, occurrence_level in all_section_heading_occurrences(
+        text, COMMIT_SCOPE_DISPOSITIONS_HEADING
+    ):
+        if occurrence_level == COMMIT_SCOPE_DISPOSITIONS_LEVEL:
+            continue
         # The reference and the template both pin the exact `## Commit Scope
         # Dispositions` heading. Honouring it at any level widened the authorization
         # grammar; refusing it silently would instead drop real declarations, so the
-        # level is reported rather than either.
+        # level is reported rather than either. Every occurrence is checked: the
+        # section body merges them all, so validating only the first let a later
+        # `### Commit Scope Dispositions` smuggle declarations past this guard.
         disposition_failures.append(
             "Commit Scope Dispositions must be a level-"
             f"{COMMIT_SCOPE_DISPOSITIONS_LEVEL} heading; found level "
-            f"{disposition_heading[1]} at line {disposition_heading[0]}"
+            f"{occurrence_level} at line {occurrence_line}"
         )
     evidence_text = "\n".join(
         sections.get(name, "")
@@ -771,7 +821,7 @@ def markdown_h1_headings(text: str) -> list[str]:
     return [
         heading.group(2).strip()
         for _, line in markdown_lines_outside_frontmatter_and_fences(text)
-        if (heading := MARKDOWN_HEADING.match(line.strip()))
+        if (heading := match_structural_heading(line))
         and len(heading.group(1)) == 1
     ]
 
@@ -828,12 +878,42 @@ def leading_indent_columns(line: str) -> int:
     return columns
 
 
+def match_structural_heading(line: str) -> re.Match[str] | None:
+    """Match an ATX heading only where it can carry document structure.
+
+    `MARKDOWN_HEADING` used to be applied to `line.strip()`, which discarded
+    indentation entirely: any heading-looking line became a real section. An
+    authoring example indented under an open list item therefore opened a live
+    `## File List` and merged its entries into the canonical one, so a path that
+    only ever appeared in prose could silently account for a real changed file. A
+    canonical section heading is a column-zero line -- the same rule the
+    frontmatter delimiters already follow.
+    """
+    if leading_indent_columns(line) != 0:
+        return None
+    return MARKDOWN_HEADING.match(line.strip())
+
+
+@functools.lru_cache(maxsize=8)
+def _scan_semantic_lines_cached(text: str) -> tuple[tuple[tuple[int, str], ...], tuple[str, ...]]:
+    lines, failures = _scan_semantic_lines_uncached(text)
+    return tuple(lines), tuple(failures)
+
+
+def scan_semantic_lines(text: str) -> tuple[list[tuple[int, str]], list[str]]:
+    """Cached wrapper. One `parse_story_metadata` drove the scan five times over the
+    same document -- directly, and once each via the task, section, heading, and H1
+    extractors -- on the blocking gate's hot path."""
+    lines, failures = _scan_semantic_lines_cached(text)
+    return list(lines), list(failures)
+
+
 def markdown_lines_outside_frontmatter_and_fences(text: str) -> list[tuple[int, str]]:
     """Semantic lines only. `scan_semantic_lines` also reports structural failures."""
     return scan_semantic_lines(text)[0]
 
 
-def scan_semantic_lines(
+def _scan_semantic_lines_uncached(
     text: str,
 ) -> tuple[list[tuple[int, str]], list[str]]:
     """Return source-numbered Markdown lines that can carry document semantics.
@@ -853,7 +933,7 @@ def scan_semantic_lines(
     fence_opened_at = 0
     in_indented_code = False
     previous_blank = True
-    list_open = False
+    list_content_indent = 0
     for line_number, line in enumerate(
         document.lines[document.body_start :], start=document.body_start + 1
     ):
@@ -878,11 +958,13 @@ def scan_semantic_lines(
             continue
         indent = leading_indent_columns(line)
         if in_indented_code:
-            if indent >= INDENTED_CODE_COLUMNS:
+            if indent >= list_content_indent + INDENTED_CODE_COLUMNS:
                 previous_blank = False
                 continue
             in_indented_code = False
-        elif indent >= INDENTED_CODE_COLUMNS and previous_blank and not list_open:
+        elif (
+            indent >= list_content_indent + INDENTED_CODE_COLUMNS and previous_blank
+        ):
             in_indented_code = True
             previous_blank = False
             continue
@@ -893,10 +975,16 @@ def scan_semantic_lines(
             fence_length = len(marker)
             fence_opened_at = line_number
             continue
-        if LIST_ITEM.match(line):
-            list_open = True
+        if list_marker := LIST_ITEM.match(line):
+            # CommonMark measures an indented example from the open list item's
+            # content column, not from column zero. Tracking only "a list is open"
+            # meant no indent, however deep, ever opened an example inside a list.
+            remainder = line[list_marker.end() :]
+            list_content_indent = list_marker.end() + (
+                len(remainder) - len(remainder.lstrip(" "))
+            )
         elif indent == 0:
-            list_open = False
+            list_content_indent = 0
         semantic_lines.append((line_number, line))
     if fence_character:
         # Everything after an unclosed fence is read as example content, so the File
@@ -925,11 +1013,32 @@ def extract_commit_scope_dispositions(
     # and removed, because deleting it left the suite green.
     attempt = re.compile(r"`[0-9A-Fa-f]{40}`|\|")
     bootstrap_owned_declarations = 0
+    in_html_comment = False
     for line_number, line in enumerate(body.split("\n"), start=1):
         line = line.rstrip("\r")
         stripped = line.strip()
         if not stripped:
             continue
+        # An HTML comment is authoring guidance, not a declaration. The shipped
+        # scaffold explains the grammar using the row delimiter itself, so scanning
+        # comment lines made the template fail the parser the same change added.
+        if in_html_comment:
+            if "-->" in stripped:
+                in_html_comment = False
+                stripped = stripped.split("-->", 1)[1].strip()
+                if not stripped:
+                    continue
+            else:
+                continue
+        elif stripped.startswith("<!--"):
+            remainder = stripped[len("<!--") :]
+            if "-->" in remainder:
+                stripped = remainder.split("-->", 1)[1].strip()
+                if not stripped:
+                    continue
+            else:
+                in_html_comment = True
+                continue
         match = declaration.fullmatch(stripped)
         if not match:
             if not attempt.search(stripped):
@@ -1073,8 +1182,11 @@ def unescape_double_quoted(value: str) -> str:
                 digit in "0123456789abcdefABCDEF" for digit in digits
             ) else -1
             # `\\U0011FFFF` is syntactically well-formed and outside Unicode; `chr` raises
-            # on it, so the range is checked before the character is built.
-            if 0 <= codepoint <= 0x10FFFF:
+            # on it, so the range is checked before the character is built. A lone
+            # surrogate passes `chr` but cannot be encoded, so it used to reach
+            # subprocess arguments and raise `UnicodeEncodeError` instead of a
+            # validation failure -- in a gate whose product is actionable diagnostics.
+            if 0 <= codepoint <= 0x10FFFF and not 0xD800 <= codepoint <= 0xDFFF:
                 resolved.append(chr(codepoint))
                 index += 2 + width
                 continue
@@ -1088,7 +1200,7 @@ def extract_sections(text: str) -> dict[str, str]:
     heading_lines: dict[str, int] = {}
     current = ""
     for line_number, line in markdown_lines_outside_frontmatter_and_fences(text):
-        heading = MARKDOWN_HEADING.match(line.strip())
+        heading = match_structural_heading(line)
         if heading and 2 <= len(heading.group(1)) <= 6:
             current = heading.group(2).strip().lower()
             sections.setdefault(current, [])
@@ -1107,7 +1219,7 @@ def extract_section_headings(text: str) -> dict[str, tuple[int, int]]:
     """Return the first source line and heading level for each Markdown section."""
     headings: dict[str, tuple[int, int]] = {}
     for line_number, line in markdown_lines_outside_frontmatter_and_fences(text):
-        heading = MARKDOWN_HEADING.match(line.strip())
+        heading = match_structural_heading(line)
         if heading and 2 <= len(heading.group(1)) <= 6:
             headings.setdefault(
                 heading.group(2).strip().lower(), (line_number, len(heading.group(1)))
@@ -1115,7 +1227,29 @@ def extract_section_headings(text: str) -> dict[str, tuple[int, int]]:
     return headings
 
 
-def extract_classified_paths(sections: dict[str, str], headings: set[str]) -> dict[str, str]:
+def all_section_heading_occurrences(text: str, name: str) -> list[tuple[int, int]]:
+    """Every source line and level at which `name` appears as a section heading.
+
+    `extract_section_headings` keeps only the first occurrence, while
+    `extract_sections` merges every occurrence of the same heading text into one
+    section regardless of level. A second `### Commit Scope Dispositions` therefore
+    contributed live declarations that the pinned-level guard never inspected.
+    """
+    occurrences: list[tuple[int, int]] = []
+    for line_number, line in markdown_lines_outside_frontmatter_and_fences(text):
+        heading = match_structural_heading(line)
+        if (
+            heading
+            and 2 <= len(heading.group(1)) <= 6
+            and heading.group(2).strip().lower() == name
+        ):
+            occurrences.append((line_number, len(heading.group(1))))
+    return occurrences
+
+
+def extract_classified_paths(
+    sections: dict[str, str], headings: tuple[str, ...]
+) -> dict[str, str]:
     classified: dict[str, str] = {}
     for heading in headings:
         body = sections.get(heading, "")
@@ -1134,6 +1268,30 @@ def extract_classified_paths(sections: dict[str, str], headings: set[str]) -> di
                     default="documented exception",
                 )
     return classified
+
+
+def cli_unrelated_failures(paths: list[str], reasons: list[str]) -> list[str]:
+    """Reject an `--unrelated`/`--reason` pairing that cannot mean what it looks like.
+
+    A surplus `--reason` used to be dropped and an unpaired `--unrelated` used to take
+    a generic default, so a mistyped invocation of the documented escape hatch
+    silently classified the wrong path with the wrong reason.
+    """
+    if len(reasons) > len(paths):
+        return [
+            f"--reason was given {len(reasons)} times but --unrelated only "
+            f"{len(paths)}; each reason must pair with one path"
+        ]
+    if reasons and len(reasons) < len(paths):
+        return [
+            f"--unrelated was given {len(paths)} times but --reason only "
+            f"{len(reasons)}; give a reason for every path or none at all"
+        ]
+    return [
+        f"--reason {index + 1} is empty; a documented reason must be non-empty"
+        for index, reason in enumerate(reasons)
+        if not reason.strip()
+    ]
 
 
 def parse_cli_unrelated(root: Path, paths: list[str], reasons: list[str]) -> dict[str, str]:
@@ -1351,13 +1509,11 @@ def bootstrap_owned_authorization_failures(
     if subject_matches:
         failures.append("the historical bootstrap commit subject must not match story 9.7")
 
-    missing_listed_guards = sorted(BOOTSTRAP_OWNED_GUARD_PATHS - file_list)
-    if missing_listed_guards:
-        failures.append(
-            "the story File List must contain both guard paths; missing: "
-            + ", ".join(missing_listed_guards)
-        )
-
+    # The File-List guard-path dimension is deliberately absent: both guard paths are
+    # members of `BOOTSTRAP_OWNED_PATHS`, so the intersection check below already fails
+    # whenever either is missing from the File List. Reverting the separate rule left
+    # the suite green, which is the same reason loop 8 deleted a rule rather than
+    # shipping one nothing could falsify.
     if paths is not None:
         missing_touched_guards = sorted(BOOTSTRAP_OWNED_GUARD_PATHS - paths)
         if missing_touched_guards:
@@ -1451,9 +1607,9 @@ def collect_commit_scope_evidence(
             parent_list = [parent for parent in parents.split() if parent]
             if contains_undecodable_bytes(subject):
                 # Git subjects are bytes; a non-UTF-8 one used to surface as an
-                # UnicodeDecodeError traceback. Report it, and carry the deterministic
-                # escaped rendering so the report itself stays printable.
-                subject = format_report_value(subject)
+                # UnicodeDecodeError traceback. Report it, and let the render boundary
+                # escape it exactly once like every other subject -- escaping here as
+                # well produced a doubly-quoted rendering no other subject received.
                 undecodable_subjects.append(sha.lower())
             commit_rows.append((sha.lower(), parent_list, subject))
     except (FileNotFoundError, OSError, RuntimeError) as exc:
@@ -1540,11 +1696,13 @@ def collect_commit_scope_evidence(
             failures.append(f"{exc} for commit {sha}")
             continue
         matches = matcher.search(subject) is not None
+        inert_declaration = ""
         # Exclusions bound classification too. A `docs/_site` or `obj` path swept into a
         # story commit is not story evidence, and treating it as an unlisted path made a
         # correctly-listed commit fail as `interleaved`.
         excluded_paths = tuple(path for path in paths if is_excluded(path, patterns))
-        classifiable = [path for path in paths if path not in set(excluded_paths)]
+        excluded_lookup = set(excluded_paths)
+        classifiable = [path for path in paths if path not in excluded_lookup]
         owned_paths = [path for path in classifiable if path in listed]
         unowned_paths = [path for path in classifiable if path not in listed]
 
@@ -1581,6 +1739,13 @@ def collect_commit_scope_evidence(
         elif matches:
             classification = "owned"
             reason = ""
+            if disposition and disposition[0] in NON_OWNING_DECLARED_CLASSIFICATIONS:
+                # Interleaved precedence means a matching subject always wins, so this
+                # declaration changes nothing. It is not an error -- loop 5 decided a
+                # matching commit stays owned -- but staying entirely silent let the
+                # author believe the commit had been dispositioned, so the report says
+                # the declaration was ignored.
+                inert_declaration = disposition[0]
         elif disposition:
             classification = disposition[0]
             reason = disposition[1]
@@ -1604,6 +1769,7 @@ def collect_commit_scope_evidence(
                 classification=classification,
                 disposition_reason=reason,
                 excluded_paths=excluded_paths,
+                inert_declaration=inert_declaration,
             )
         )
 
@@ -1758,8 +1924,13 @@ def format_commit_scope_evidence(
             if commit.disposition_reason
             else ""
         )
+        inert = (
+            f" | ignored-declaration={commit.inert_declaration}"
+            if commit.inert_declaration
+            else ""
+        )
         lines.append(
-            f"    - {commit.sha} | story-id={match} | disposition={commit.classification}{disposition} | "
+            f"    - {commit.sha} | story-id={match} | disposition={commit.classification}{disposition}{inert} | "
             f"{format_report_value(commit.subject)}"
         )
         if not commit.paths:
@@ -1874,6 +2045,22 @@ def classified_path_reason(path: str, classified: dict[str, str]) -> str:
     return ""
 
 
+def unmapped_touched_paths(
+    evidence: "CommitScopeEvidence | None", file_list: dict[str, str]
+) -> frozenset[str]:
+    """Listed paths an `unmapped` commit touched, which its own failure already names."""
+    if evidence is None:
+        return frozenset()
+    listed = set(file_list)
+    return frozenset(
+        path
+        for commit in evidence.commits
+        if commit.classification == "unmapped"
+        for path in commit.paths
+        if path in listed
+    )
+
+
 def declared_non_owning_paths(
     evidence: "CommitScopeEvidence | None", file_list: dict[str, str]
 ) -> frozenset[str]:
@@ -1939,6 +2126,8 @@ def check_file_list(
     unrelated: dict[str, str],
     workspace_scope: frozenset[str] = frozenset(),
     declared_non_owning: frozenset[str] = frozenset(),
+    excludes: list[str] | tuple[str, ...] = (),
+    unmapped_paths: frozenset[str] = frozenset(),
 ) -> list[str]:
     classified_paths = set(unrelated)
     if not listed:
@@ -1966,6 +2155,10 @@ def check_file_list(
         path
         for path, reason in listed.items()
         if path not in changed_set
+        # An unmapped commit already names this path in its own failure. Repeating it
+        # as an unexplained File List extra reported one cause twice and pointed the
+        # author at the wrong edit.
+        and path not in unmapped_paths
         # A listed path touched only by a declared `shared`/`process` commit is
         # accounted for: the story explained that commit. Reporting it as an
         # unexplained extra told the author both to list it and not to list it. The
@@ -1986,12 +2179,23 @@ def check_file_list(
             )
         )
     if extra:
+        # An excluded entry fails for a different reason than an unchanged one, and
+        # saying "no matching story-owned change" about a path that *was* changed but
+        # filtered read as unsatisfiable. Both edits that resolve it are named.
+        exclude_patterns = merged_excludes(list(excludes))
         failures.append(
             "File List entries with no matching story-owned change in "
             f"{story.relative_to(root).as_posix()}:\n"
             + "\n".join(
                 f"  - {format_git_path(path)} "
-                "(reason: no matching story-owned change and no accepted classification)"
+                + (
+                    "(reason: the change to this path is filtered by an exclusion "
+                    "pattern, so it contributes no ownership; remove the entry or "
+                    "narrow the exclusion)"
+                    if is_excluded(path, exclude_patterns)
+                    else "(reason: no matching story-owned change and no accepted "
+                    "classification)"
+                )
                 for path in extra
             )
         )
@@ -2056,7 +2260,7 @@ def extract_checked_tasks(
     for line_number, line in markdown_lines_outside_frontmatter_and_fences(text):
         stripped = line.strip()
         checked = CHECKED_TASK.match(line)
-        heading = MARKDOWN_HEADING.match(stripped)
+        heading = match_structural_heading(line)
         heading_text = heading.group(2).strip().lower() if heading else ""
         heading_level = len(heading.group(1)) if heading else 0
         # A recognized task heading is a section heading, so it spans levels 2-6 like
@@ -2325,10 +2529,17 @@ def path_is_classified_unrelated(path: str, classified: set[str]) -> bool:
     Matching is on full path segments, so `references/Hexalith.BuildsExtra` is not
     covered by a `references/Hexalith.Builds` classification.
     """
-    entries = {entry.rstrip("/") for entry in classified}
+    entries = _normalized_classified_entries(frozenset(classified))
     if path in entries:
         return True
     return any(path.startswith(entry + "/") for entry in entries)
+
+
+@functools.lru_cache(maxsize=32)
+def _normalized_classified_entries(classified: frozenset[str]) -> frozenset[str]:
+    """Trailing-slash-normalized entries. Rebuilding this set on every call put one
+    set comprehension per classified entry inside each per-path loop."""
+    return frozenset(entry.rstrip("/") for entry in classified)
 
 
 def mention_is_not_an_output_path(

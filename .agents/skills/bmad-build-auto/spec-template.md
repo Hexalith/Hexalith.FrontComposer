@@ -3,6 +3,7 @@ title: '{title}'
 type: 'feature' # feature | bugfix | refactor | chore
 created: '{date}'
 status: 'draft' # draft | ready-for-dev | in-progress | in-review | done | blocked
+story_id: '{story_id}' # Replace with the canonical epic.story ID; delete this line for freeform work. Never leave the placeholder because validation fails closed on it.
 review_loop_iteration: 0 # incremented by step-04 before each review loopback
 followup_review_recommended: false # set by step-04 on status: done — true if the LLM decided another review pass is worthwhile
 context: [] # optional: `{project-root}/`-prefixed paths to project-wide standards/docs the implementation agent should load. Keep short — only what isn't already distilled into the spec body.
@@ -79,6 +80,14 @@ deferred: [] # append-only machine-readable deferred review findings; each item 
      Each entry records triage decision counts for intent_gap, bad_spec, patch, defer, and reject,
      with per-category severity breakdowns using low/medium/high, plus the findings addressed in
      that pass. Empty until the first review pass. -->
+
+## Commit Scope Dispositions
+
+<!-- Optional; DELETE THIS ENTIRE SECTION when unused. Each declaration must contain a
+     backtick-wrapped full 40-character commit SHA, a `shared` or `process` kind, and
+     a non-empty reason, separated by the row delimiter. `bootstrap-owned` is reserved
+     for an explicit code-authorized recovery and must never be copied as a routine
+     bypass. -->
 
 ## Design Notes
 

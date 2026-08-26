@@ -163,6 +163,19 @@ public sealed class CiGovernanceTests {
         blockingStep.ShouldNotContain("set +e");
         Regex.Count(quality, "Gate 2b: Story artifact validator tests", RegexOptions.CultureInvariant)
             .ShouldBe(1, "the authoritative validator test step must not be shadowed by an advisory duplicate.");
+
+        // "Blocking" was never actually pinned: every assertion above constrains the job
+        // and the step, but none required the workflow to run on a pull request at all.
+        // Dropping the trigger would leave this fact green while the gate stopped gating.
+        int triggerStart = quality.IndexOf("\non:", StringComparison.Ordinal);
+        triggerStart.ShouldBeGreaterThanOrEqualTo(0, "quality.yml must declare workflow triggers.");
+        int triggerEnd = quality.IndexOf("\nconcurrency:", triggerStart, StringComparison.Ordinal);
+        triggerEnd.ShouldBeGreaterThan(triggerStart, "quality.yml must keep its concurrency block after the triggers.");
+        string triggers = quality[triggerStart..triggerEnd];
+        // Without `pull_request` Gate 2b never blocks a merge; without `push` it never
+        // covers the merged head.
+        triggers.ShouldContain("pull_request:");
+        triggers.ShouldContain("push:");
     }
 
     [Fact]

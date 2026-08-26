@@ -16,6 +16,49 @@ Read `{baseline_revision}` from `{spec_file}` frontmatter. If `{baseline_revisio
 
 Do NOT `git add` anything — this is read-only inspection.
 
+### Validate Commit Scope
+
+Resolve the story identity using the validator's documented precedence: a non-empty
+explicit `story_id` is authoritative; otherwise an unambiguous numbered title, H1, or
+filename may supply the canonical dotted ID. Then select exactly one gate:
+
+- When a canonical story ID is available, version control is available, and
+  `{baseline_revision}` is neither missing nor `NO_VCS` and resolves to a commit, run
+  the strict mechanical gate from `{project-root}`:
+
+```bash
+python3 eng/validate-story-artifacts.py --story {spec_file} --candidate HEAD
+```
+
+- For a freeform spec, a missing/`NO_VCS`/unresolvable baseline, or no-VCS execution,
+  retain the legacy best-effort artifact/File List gate:
+
+```bash
+python3 eng/validate-story-artifacts.py --story {spec_file}
+```
+
+The full report grammar — invocation modes, every option, classification kinds, path
+labels, and the disposition grammar — is documented in
+`docs/reference/story-artifact-validation.md`.
+
+The strict report must resolve both refs to full SHAs, reconcile every non-merge commit
+and path against the story ID and File List, list merges separately, and show staged,
+unstaged, untracked, unresolved, and documented-unrelated workspace state outside
+committed ownership. Either gate's non-zero exit is a hard review blocker. Fix the
+commit scope or add a valid full-SHA `shared`/`process` declaration in
+`## Commit Scope Dispositions`; never substitute a path-level unrelated declaration,
+fabricate a story ID, or bypass the gate.
+
+The validator contains one human-authorized historical recovery for the canonical
+Story 9.7 artifact: its exact code-bound baseline, delivery SHA, parent topology, and
+immutable listed-path intersection may use `bootstrap-owned`. This exception exists
+only because the delivery commit predates the gate it introduced. Never copy, extend,
+or use `bootstrap-owned` as a routine substitute for correct story-ID attribution.
+
+Because this workflow runs unattended, a blocked gate is an escalation, not a prompt:
+record the exact failing command and its output in the spec and stop rather than
+weakening the declaration to make the gate pass.
+
 ### Review
 
 Runtime placeholders: `{diff_output}` is the diff constructed above. `{verbatim_intent}` is the invocation intent exactly as this run received it at step-01; if the run started from an existing spec file rather than a fresh intent, it is the spec's `<intent-contract>` block instead. Before launching a layer, expand its skill-root placeholder to this skill's absolute installed directory; never leave that placeholder unresolved in a child prompt.

@@ -116,9 +116,18 @@ class StoryArtifactValidatorTests(unittest.TestCase):
         diverging file was invisible to the list. Bytes are compared because the
         repository pins `eol=crlf` for text, so a mirror written with the wrong line
         endings is itself a divergence -- reported as such rather than normalized away.
+
+        Both build skills are enumerated: naming only `bmad-build` left the unattended
+        `bmad-build-auto` mirrors unguarded, which is exactly where a divergence is
+        least likely to be noticed by a human.
         """
-        agent_root = REPO_ROOT / ".agents" / "skills" / "bmad-build"
-        runtime_root = REPO_ROOT / ".claude" / "skills" / "bmad-build"
+        for skill in ("bmad-build", "bmad-build-auto"):
+            with self.subTest(skill=skill):
+                self._assert_mirrors_match(skill)
+
+    def _assert_mirrors_match(self, skill: str) -> None:
+        agent_root = REPO_ROOT / ".agents" / "skills" / skill
+        runtime_root = REPO_ROOT / ".claude" / "skills" / skill
         agent_files = {
             path.relative_to(agent_root).as_posix()
             for path in agent_root.rglob("*")
@@ -131,7 +140,7 @@ class StoryArtifactValidatorTests(unittest.TestCase):
         }
 
         self.assertEqual(agent_files, runtime_files)
-        self.assertIn("step-oneshot.md", agent_files)
+        self.assertIn("step-04-review.md", agent_files)
         for filename in sorted(agent_files):
             with self.subTest(filename=filename):
                 agent_bytes = (agent_root / filename).read_bytes()
@@ -141,7 +150,7 @@ class StoryArtifactValidatorTests(unittest.TestCase):
                         b"\r\n", b"\n"
                     )
                     self.fail(
-                        f"{filename} differs between .agents and .claude "
+                        f"{skill}/{filename} differs between .agents and .claude "
                         + (
                             "only in line endings; the repository pins eol=crlf"
                             if same_text
@@ -4362,6 +4371,171 @@ class ClassifiedUnrelatedTests(unittest.TestCase):
                 "- [x] [Review][Patch] Fix: update `Directory.Packages.props` for the pin.",
             )
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+
+class ReviewLoop10HardeningTests(unittest.TestCase):
+    """Regressions for the review-loop-10 parser, exclusion and report fixes.
+
+    Every guard here was reverted one at a time and re-run; each is caught.
+    """
+
+    story_path = "_bmad-output/implementation-artifacts/story-loop10.md"
+
+    def setUp(self) -> None:
+        self.validator = VALIDATOR_MODULE
+
+    # --- document structure -------------------------------------------------
+
+    def test_indented_example_under_a_list_item_does_not_open_a_real_section(self) -> None:
+        """An authoring example must never inject File List entries.
+
+        The heading matcher used to run on `line.strip()`, so a four-space example
+        nested under a numbered instruction opened a live `## File List` whose entries
+        merged into the canonical one -- letting a path that only ever appeared in
+        prose account for a real changed file.
+        """
+        text = (
+            "---\nstory_id: '1.1'\nbaseline_commit: 'abc'\n---\n\n"
+            "## Design Notes\n\n"
+            "1. An authoring example follows:\n\n"
+            "    ## File List\n\n"
+            "    - `injected/path.md`\n\n"
+            "## File List\n\n"
+            "- `real/path.md`\n"
+        )
+        sections = self.validator.extract_sections(text)
+        entries = self.validator.extract_story_file_list(sections.get("file list", ""))
+        self.assertEqual(list(entries), ["real/path.md"])
+
+    def test_top_level_indented_example_stays_ignored(self) -> None:
+        """The list-indent fix must not reopen the plain indented-code case."""
+        text = (
+            "---\nstory_id: '1.1'\nbaseline_commit: 'abc'\n---\n\n"
+            "## Design Notes\n\nAn authoring example follows:\n\n"
+            "    ## File List\n\n    - `injected/path.md`\n\n"
+            "## File List\n\n- `real/path.md`\n"
+        )
+        sections = self.validator.extract_sections(text)
+        entries = self.validator.extract_story_file_list(sections.get("file list", ""))
+        self.assertEqual(list(entries), ["real/path.md"])
+
+    def test_deeply_indented_example_inside_a_list_is_example_content(self) -> None:
+        """An example at the list's content column plus four is an indented code block."""
+        text = (
+            "---\nstory_id: '1.1'\nbaseline_commit: 'abc'\n---\n\n"
+            "## Design Notes\n\n"
+            "1. Example:\n\n"
+            "       - `deep/example.md`\n\n"
+            "## File List\n\n- `real/path.md`\n"
+        )
+        sections = self.validator.extract_sections(text)
+        self.assertNotIn("deep/example.md", sections.get("design notes", ""))
+
+    def test_nested_bullets_inside_a_list_keep_their_meaning(self) -> None:
+        """The example threshold is measured from the list's content column.
+
+        Measuring it from column zero instead would swallow every ordinary nested
+        bullet and wrapped list continuation as example content.
+        """
+        text = (
+            "---\nstory_id: '1.1'\nbaseline_commit: 'abc'\n---\n\n"
+            "## Tasks / Subtasks\n\n"
+            "- [x] Outer task\n\n"
+            "    - [x] Nested task that must stay visible\n"
+        )
+        tasks, _, _ = self.validator.extract_checked_tasks(text)
+        self.assertTrue(
+            any("Nested task that must stay visible" in line for _, line in tasks),
+            tasks,
+        )
+
+    def test_a_second_dispositions_heading_at_another_level_fails_closed(self) -> None:
+        """`extract_sections` merges every occurrence, so every one must be levelled.
+
+        Validating only the first occurrence let a later `### Commit Scope
+        Dispositions` contribute live declarations the pinned-heading guard never saw.
+        """
+        with tempfile.TemporaryDirectory() as temp:
+            story = Path(temp) / "story.md"
+            write(
+                story,
+                "---\nstory_id: '1.1'\nbaseline_commit: 'abc'\n---\n\n"
+                "## Commit Scope Dispositions\n\n"
+                "- `" + "a" * 40 + "` | `shared` | legitimate row\n\n"
+                "### Commit Scope Dispositions\n\n"
+                "- `" + "b" * 40 + "` | `shared` | smuggled row\n\n"
+                "## File List\n\n- `a.md`\n",
+            )
+            metadata = self.validator.parse_story_metadata(story)
+            self.assertTrue(
+                any(
+                    "must be a level-2 heading" in failure
+                    for failure in metadata.commit_scope_disposition_failures
+                ),
+                metadata.commit_scope_disposition_failures,
+            )
+
+    def test_html_comment_in_the_dispositions_section_is_not_a_declaration(self) -> None:
+        """The shipped scaffold explains the grammar using the row delimiter itself."""
+        dispositions, failures = self.validator.extract_commit_scope_dispositions(
+            "<!-- Each declaration must contain a SHA, a kind, and\n"
+            "     a non-empty reason, separated by ` | `. -->\n"
+        )
+        self.assertEqual(dispositions, {})
+        self.assertEqual(failures, [])
+
+    def test_shipped_spec_template_dispositions_scaffold_parses(self) -> None:
+        """Both mirrors of the template must satisfy the parser they document."""
+        for skill_root in (".agents", ".claude"):
+            template = REPO_ROOT / skill_root / "skills" / "bmad-build" / "spec-template.md"
+            with self.subTest(mirror=skill_root):
+                sections = self.validator.extract_sections(
+                    template.read_text(encoding="utf-8")
+                )
+                _, failures = self.validator.extract_commit_scope_dispositions(
+                    sections.get("commit scope dispositions", "")
+                )
+                self.assertEqual(failures, [], failures)
+
+    # --- exclusions ---------------------------------------------------------
+
+    def test_default_exclusions_cover_repository_root_directories(self) -> None:
+        """`fnmatch` cannot match an absent leading segment, so `**/bin/**` missed root."""
+        patterns = self.validator.DEFAULT_EXCLUDE_PATTERNS
+        for path in ("bin/Debug/x.dll", "obj/x.g.cs", "node_modules/y", "docs/_site"):
+            with self.subTest(path=path):
+                self.assertTrue(self.validator.is_excluded(path, patterns))
+
+    def test_exclusions_do_not_over_match_similarly_named_paths(self) -> None:
+        for path in ("binary/keep.cs", "obj.txt", "src/real.cs"):
+            with self.subTest(path=path):
+                self.assertFalse(
+                    self.validator.is_excluded(path, self.validator.DEFAULT_EXCLUDE_PATTERNS)
+                )
+
+    # --- CLI ----------------------------------------------------------------
+
+    def test_unrelated_and_reason_must_pair(self) -> None:
+        """A mistyped escape hatch classified the wrong path with the wrong reason."""
+        self.assertTrue(self.validator.cli_unrelated_failures(["a"], ["r1", "r2"]))
+        self.assertTrue(self.validator.cli_unrelated_failures(["a", "b"], ["r1"]))
+        self.assertTrue(self.validator.cli_unrelated_failures(["a"], ["  "]))
+        self.assertEqual(self.validator.cli_unrelated_failures(["a"], ["r1"]), [])
+        self.assertEqual(self.validator.cli_unrelated_failures(["a"], []), [])
+
+    # --- identity -----------------------------------------------------------
+
+    def test_lone_surrogate_escape_is_rejected_rather_than_built(self) -> None:
+        """A surrogate passes `chr` but cannot be encoded for a subprocess argument."""
+        resolved = self.validator.unescape_double_quoted("\\uD800")
+        self.assertNotIn("\ud800", resolved)
+
+    # --- determinism --------------------------------------------------------
+
+    def test_classified_heading_order_is_stable(self) -> None:
+        """A reviewable report must render the same bytes on every run."""
+        self.assertIsInstance(self.validator.DOCUMENTED_UNRELATED_HEADINGS, tuple)
+        self.assertIsInstance(self.validator.DOCUMENTED_BLOCKER_HEADINGS, tuple)
 
 
 if __name__ == "__main__":

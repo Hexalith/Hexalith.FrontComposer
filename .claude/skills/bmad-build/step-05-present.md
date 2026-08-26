@@ -87,6 +87,13 @@ title/H1/filename resolution when frontmatter lacks `story_id` — in the commit
 so implementation, review, and final transition remain attributable. A freeform spec
 does not invent or require a story ID.
 
+Before making that commit, confirm the spec's own File List already lists every path
+the final-transition commit will touch — at minimum `{spec_file}` and the sprint
+tracking file. A transition commit whose subject claims the story while touching a path
+the File List does not carry is classified `interleaved`, so the mandated re-run below
+hard-fails *after* the spec has already been flipped to `done`, leaving the story in a
+state no further commit can reconcile without a follow-up File List edit.
+
 After the commit (or immediately when the tree was already clean), repeat the same
 strict-or-legacy gate selected above. In strict mode this checks the new `HEAD`:
 

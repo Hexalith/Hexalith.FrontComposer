@@ -37,6 +37,10 @@ python3 eng/validate-story-artifacts.py --story {spec_file} --candidate HEAD
 python3 eng/validate-story-artifacts.py --story {spec_file}
 ```
 
+The full report grammar — invocation modes, every option, classification kinds, path
+labels, and the disposition grammar — is documented in
+`docs/reference/story-artifact-validation.md`.
+
 The strict report must resolve both refs to full SHAs, reconcile every non-merge commit
 and path against the story ID and File List, list merges separately, and show staged,
 unstaged, untracked, unresolved, and documented-unrelated workspace state outside
