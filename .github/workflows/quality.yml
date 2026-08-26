@@ -570,7 +570,14 @@ jobs:
         working-directory: tests/e2e
         run: npm run typecheck
 
+      - name: Test Epic 9 evidence tooling
+        working-directory: tests/e2e
+        run: npm run test:epic-9-evidence
+
       - name: Run AppHost-discovered Epic 9 live proof
+        env:
+          FC_EPIC9_EXPECTED_COMMIT: ${{ github.sha }}
+          FC_EPIC9_REQUIRE_CLEAN: true
         run: ./eng/run-epic9-live-proof.sh
 
       - name: Upload Epic 9 acceptance artifacts

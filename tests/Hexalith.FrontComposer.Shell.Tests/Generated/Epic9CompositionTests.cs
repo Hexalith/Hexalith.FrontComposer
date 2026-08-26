@@ -13,11 +13,14 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
+using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Time.Testing;
+
+using NSubstitute;
 
 using Shouldly;
 
@@ -82,8 +85,11 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
             PendingCommandEntry entry = pending.GetByMessageId("01ARZ3NDEKTSV4RRFFQ69G5FAV").ShouldNotBeNull();
             entry.Status.ShouldBe(PendingCommandStatus.Confirmed);
             entry.TargetSnapshot.ShouldNotBeNull().EntityKey.ShouldBe(CreatedKey);
-            grid.Find(IndicatorSelector).GetAttribute("role").ShouldBe("status");
-            grid.Find(IndicatorSelector).GetAttribute("aria-live").ShouldBe("polite");
+            AngleSharp.Dom.IElement indicator = grid.Find(IndicatorSelector);
+            indicator.GetAttribute("role").ShouldBe("status");
+            indicator.GetAttribute("aria-live").ShouldBe("polite");
+            indicator.GetAttribute("aria-label").ShouldBe("New item added outside current filters");
+            indicator.TextContent.Trim().ShouldBe("New item. It may not match current filters yet.");
         });
         CreateCounterCommand dispatchedCreate = commands.DispatchedCommands
             .OfType<CreateCounterCommand>()
@@ -137,8 +143,13 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
             grid.FindAll(IndicatorSelector).Count.ShouldBe(1);
         });
 
-        ApplyFilterChange(time, "counter-source");
-        await grid.WaitForAssertionAsync(() => grid.FindAll(IndicatorSelector).ShouldBeEmpty());
+        ApplyFilterRequery(time, "counter-source");
+        await grid.WaitForAssertionAsync(() =>
+        {
+            Services.GetRequiredService<IState<DataGridNavigationState>>()
+                .Value.ViewStates[ViewKey].Filters["Id"].ShouldBe("counter-source");
+            grid.FindAll(IndicatorSelector).ShouldBeEmpty();
+        });
 
         Render<CrossRowProviderTargetCommandForm>(parameters => parameters
                 .Add(component => component.InitialValue, new CrossRowProviderTargetCommand
@@ -188,6 +199,7 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
     {
         FakeTimeProvider time = ConfigureFakeTime();
         Epic9ScriptedCommandService commands = ConfigureCommandService(time);
+        IProjectionFallbackRefreshScheduler refreshScheduler = ConfigureRefreshScheduler();
         ConfigureProviders();
         foreach (string messageId in new[]
         {
@@ -197,6 +209,7 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
             "01JRZ3NDEKTSV4RRFFQ69G5FAV",
             "01KRZ3NDEKTSV4RRFFQ69G5FAV",
             "01MRZ3NDEKTSV4RRFFQ69G5FAV",
+            "01NRZ3NDEKTSV4RRFFQ69G5FAV",
         })
         {
             commands.Enqueue<CrossRowProviderTargetCommand>(messageId);
@@ -226,21 +239,38 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
 
         SubmitCrossRow("counter-filter");
         await grid.WaitForAssertionAsync(() => grid.FindAll(IndicatorSelector).Count.ShouldBe(1));
-        ApplyFilterChange(time, "counter-filter");
-        await grid.WaitForAssertionAsync(() => grid.FindAll(IndicatorSelector).ShouldBeEmpty());
+        ApplyFilterRequery(time, "counter-filter");
+        await grid.WaitForAssertionAsync(() =>
+        {
+            Services.GetRequiredService<IState<DataGridNavigationState>>()
+                .Value.ViewStates[ViewKey].Filters["Id"].ShouldBe("counter-filter");
+            _ = refreshScheduler.Received().RegisterLane(Arg.Is<ProjectionFallbackLane>(lane =>
+                lane.Filters.ContainsKey("Id") && lane.Filters["Id"] == "counter-filter"));
+            indicators.Snapshot(ViewKey).ShouldBeEmpty();
+            grid.FindAll(IndicatorSelector).ShouldBeEmpty();
+        });
 
         SubmitCrossRow("counter-clear");
         await grid.WaitForAssertionAsync(() => grid.FindAll(IndicatorSelector).Count.ShouldBe(1));
         indicators.Clear("epic-9-explicit-clear");
         await grid.WaitForAssertionAsync(() => grid.FindAll(IndicatorSelector).ShouldBeEmpty());
 
-        SubmitCrossRow("counter-scope");
+        SubmitCrossRow("counter-tenant-scope");
+        await grid.WaitForAssertionAsync(() => grid.FindAll(IndicatorSelector).Count.ShouldBe(1));
+        _userContext.TenantId = "other-tenant";
+        indicators.Snapshot(ViewKey).ShouldBeEmpty();
+        await grid.WaitForAssertionAsync(() => grid.FindAll(IndicatorSelector).ShouldBeEmpty());
+        _userContext.TenantId = "test-tenant";
+        indicators.Snapshot(ViewKey).ShouldBeEmpty();
+
+        SubmitCrossRow("counter-user-scope");
         await grid.WaitForAssertionAsync(() => grid.FindAll(IndicatorSelector).Count.ShouldBe(1));
         _userContext.UserId = "other-user";
         indicators.Snapshot(ViewKey).ShouldBeEmpty();
         await grid.WaitForAssertionAsync(() => grid.FindAll(IndicatorSelector).ShouldBeEmpty());
-
         _userContext.UserId = "test-user";
+        indicators.Snapshot(ViewKey).ShouldBeEmpty();
+
         SubmitCrossRow("counter-materialized");
         await grid.WaitForAssertionAsync(() => grid.FindAll(IndicatorSelector).Count.ShouldBe(1));
         await grid.InvokeAsync(() => dispatcher.Dispatch(new CounterProjectionLoadedAction(
@@ -266,6 +296,14 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
         Epic9ScriptedCommandService commands = new(time);
         Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => commands));
         return commands;
+    }
+
+    private IProjectionFallbackRefreshScheduler ConfigureRefreshScheduler()
+    {
+        IProjectionFallbackRefreshScheduler scheduler = Substitute.For<IProjectionFallbackRefreshScheduler>();
+        scheduler.RegisterLane(Arg.Any<ProjectionFallbackLane>()).Returns(_ => Substitute.For<IDisposable>());
+        Services.Replace(ServiceDescriptor.Scoped(_ => scheduler));
+        return scheduler;
     }
 
     private void ConfigureProviders()
@@ -309,7 +347,7 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
         return host.FindComponent<CounterProjectionView>();
     }
 
-    private void ApplyFilterChange(TimeProvider time, string filterValue)
+    private void ApplyFilterRequery(TimeProvider time, string filterValue)
     {
         DataGridNavigationState current = Services.GetRequiredService<IState<DataGridNavigationState>>().Value;
         CaptureGridStateAction action = new(

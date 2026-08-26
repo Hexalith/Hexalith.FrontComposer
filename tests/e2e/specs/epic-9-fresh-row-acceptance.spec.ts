@@ -3,6 +3,8 @@ import { writeFile } from 'node:fs/promises';
 import { expect, test } from '../fixtures/index.js';
 
 const VIEW_KEY = 'Counter:Counter.Domain.CounterProjection';
+const INDICATOR_COPY = 'New item. It may not match current filters yet.';
+const INDICATOR_ARIA_LABEL = 'New item added outside current filters';
 
 test.describe('Epic 9 composed and live acceptance', () => {
   test('generated create and update converge through the indicator into an already-rendered grid', async ({
@@ -19,8 +21,10 @@ test.describe('Epic 9 composed and live acceptance', () => {
     const evidencePath = testInfo.outputPath('epic-9-command-evidence.json');
 
     expect(tenant.tenantId).toBeTruthy();
+    expect(tenant.userId).toBeTruthy();
     await page.goto('/counter');
     await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
     await expect(grid).toBeVisible();
     await expect(catchUp).toHaveCount(1);
     await expect(grid.getByText(exactKey, { exact: true })).toHaveCount(0);
@@ -32,13 +36,19 @@ test.describe('Epic 9 composed and live acceptance', () => {
     await expect(indicator).toHaveCount(1);
     await expect(indicator).toHaveAttribute('role', 'status');
     await expect(indicator).toHaveAttribute('aria-live', 'polite');
+    await expect(indicator).toHaveAttribute('aria-label', INDICATOR_ARIA_LABEL);
+    await expect(indicator).toHaveText(INDICATOR_COPY);
     const createAnnouncement = (await indicator.textContent())?.trim() ?? '';
+    const createAriaLabel = (await indicator.getAttribute('aria-label'))?.trim() ?? '';
+    expect(createAnnouncement).toBe(INDICATOR_COPY);
+    expect(createAriaLabel).toBe(INDICATOR_ARIA_LABEL);
     await expect(catchUp).toHaveAttribute('data-captured', '1');
     await expect(catchUp).toHaveAttribute('data-published', '1');
     await expect(catchUp).toHaveAttribute('data-received', '1');
     const createdRow = grid.getByRole('group').filter({ hasText: exactKey });
+    const createdCount = createdRow.locator('strong');
     await expect(createdRow).toBeVisible();
-    await expect(createdRow).toContainText('41');
+    await expect(createdCount).toHaveText('41');
     await expect(indicator).toHaveCount(0);
 
     // Two provider-resolved updates reach the same target before the first projection refresh.
@@ -49,11 +59,12 @@ test.describe('Epic 9 composed and live acceptance', () => {
     await updateForm.getByRole('button', { name: 'Update Counter', exact: true }).click();
     await expect(indicator).toHaveCount(1);
     const firstUpdateAnnouncement = (await indicator.textContent())?.trim() ?? '';
+    expect(firstUpdateAnnouncement).toBe(INDICATOR_COPY);
     await updateForm.getByLabel('Amount').fill('2');
     await updateForm.getByRole('button', { name: 'Update Counter', exact: true }).click();
     await expect(indicator).toHaveCount(1);
     await expect(indicator).toHaveText(firstUpdateAnnouncement);
-    await expect(createdRow).toContainText('44');
+    await expect(createdCount).toHaveText('44');
     await expect(indicator).toHaveCount(0);
 
     // A later update proves the provider path against a row that was absent before dispatch and
@@ -62,7 +73,7 @@ test.describe('Epic 9 composed and live acceptance', () => {
     await updateForm.getByLabel('Amount').fill('8');
     await updateForm.getByRole('button', { name: 'Update Counter', exact: true }).click();
     await expect(indicator).toHaveCount(1);
-    await expect(createdRow).toContainText('52');
+    await expect(createdCount).toHaveText('52');
     await expect(indicator).toHaveCount(0);
 
     await page.screenshot({ path: screenshotPath, fullPage: true });
@@ -73,23 +84,35 @@ test.describe('Epic 9 composed and live acceptance', () => {
       baseUrl: process.env.BASE_URL ?? 'unknown',
       tenantScope: tenant.tenantId,
       userScope: tenant.userId,
+      uiLanguage: 'en',
       viewKey: VIEW_KEY,
       exactTargetKey: exactKey,
       dispatchedCommands: [
         { commandType: 'Counter.Domain.CreateCounterCommand', counterId: exactKey, initialValue: '[REDACTED]' },
         { commandType: 'Counter.Domain.UpdateCounterCommand', counterId: exactKey, amount: '[REDACTED]' },
+        { commandType: 'Counter.Domain.UpdateCounterCommand', counterId: exactKey, amount: '[REDACTED]' },
+        { commandType: 'Counter.Domain.UpdateCounterCommand', counterId: exactKey, amount: '[REDACTED]' },
       ],
       observed: {
         gridWasRenderedBeforeDispatch: true,
         exactKeyWasAbsentBeforeDispatch: true,
+        exactKeyMatchedAllDispatches: true,
+        tenantScopePresent: true,
+        userScopePresent: true,
         firstWinsVisibleIndicatorCount: 1,
+        firstWinsIndicatorCopyRetained: true,
         indicatorRole: 'status',
         indicatorAriaLive: 'polite',
+        indicatorAriaLabel: createAriaLabel,
         createIndicatorCopy: createAnnouncement,
         firstWinsIndicatorCopy: firstUpdateAnnouncement,
+        localizedAnnouncementsNonEmpty: true,
         materializedCountAfterCreate: 41,
         materializedCountAfterOverlappingUpdates: 44,
         materializedCountAfterLaterUpdate: 52,
+        createIndicatorDismissedByMaterialization: true,
+        overlappingUpdateIndicatorDismissedByMaterialization: true,
+        laterUpdateIndicatorDismissedByMaterialization: true,
         indicatorDismissedByMaterialization: true,
       },
     };
