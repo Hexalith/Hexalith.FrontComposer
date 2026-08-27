@@ -61,6 +61,16 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
         private set;
     }
 
+    public ProjectionHubConnectionPhase Phase {
+        get {
+            lock (_gate) {
+                return field;
+            }
+        }
+
+        private set;
+    } = ProjectionHubConnectionPhase.Disconnected;
+
     /// <summary>Bounded list of subscriber failure category names captured during nudge dispatch.</summary>
     public IReadOnlyList<string> CapturedHandlerFailureCategories {
         get {
@@ -97,6 +107,7 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
         lock (_gate) {
             ThrowIfDisposedLocked();
             IsConnected = true;
+            Phase = ProjectionHubConnectionPhase.Connected;
         }
 
         await PublishStateAsync(HarnessConnectionStates.Connected()).ConfigureAwait(false);
@@ -174,6 +185,7 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
         lock (_gate) {
             ThrowIfDisposedLocked();
             IsConnected = false;
+            Phase = ProjectionHubConnectionPhase.Disconnected;
         }
     }
 
@@ -185,6 +197,7 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
 
             _disposed = true;
             IsConnected = false;
+            Phase = ProjectionHubConnectionPhase.Disconnected;
             _projectionHandlers.Clear();
             _projectionDetailHandlers.Clear();
             _stateHandlers.Clear();
@@ -417,6 +430,12 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
             }
 
             IsConnected = change.State is ProjectionHubConnectionState.Connected or ProjectionHubConnectionState.Reconnected;
+            Phase = change.State switch {
+                ProjectionHubConnectionState.Connected or ProjectionHubConnectionState.Reconnected => ProjectionHubConnectionPhase.Connected,
+                ProjectionHubConnectionState.Reconnecting => ProjectionHubConnectionPhase.Reconnecting,
+                ProjectionHubConnectionState.Closed => ProjectionHubConnectionPhase.Disconnected,
+                _ => throw new ArgumentOutOfRangeException(nameof(change)),
+            };
         }
 
         await PublishStateAsync(change).ConfigureAwait(false);

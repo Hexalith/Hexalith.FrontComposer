@@ -63,7 +63,11 @@ public sealed class RelocatedInfrastructureRegistrationTests {
         ServiceCollection services = CreateProductionComposition();
         FakeTimeProvider timeProvider = new(new DateTimeOffset(2026, 7, 12, 12, 0, 0, TimeSpan.Zero));
         IPendingCommandPollingCoordinator pendingCoordinator = Substitute.For<IPendingCommandPollingCoordinator>();
-        _ = pendingCoordinator.PollOnceAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(0));
+        TaskCompletionSource pollObserved = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _ = pendingCoordinator.PollOnceAsync(Arg.Any<CancellationToken>()).Returns(call => {
+            pollObserved.TrySetResult();
+            return Task.FromResult(0);
+        });
 
         var connected = new ProjectionConnectionSnapshot(
             ProjectionConnectionStatus.Connected,
@@ -121,6 +125,7 @@ public sealed class RelocatedInfrastructureRegistrationTests {
             Arg.Any<bool>());
 
         timeProvider.Advance(TimeSpan.FromSeconds(1));
+        await pollObserved.Task.WaitAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
         _ = pendingCoordinator.Received(1).PollOnceAsync(Arg.Any<CancellationToken>());
 
         await scope.DisposeAsync().ConfigureAwait(true);

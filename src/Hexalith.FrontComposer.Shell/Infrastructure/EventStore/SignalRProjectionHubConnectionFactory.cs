@@ -8,20 +8,53 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 
-internal sealed class SignalRProjectionHubConnectionFactory(
-    ILogger<SignalRProjectionHubConnectionFactory>? logger = null) : IProjectionHubConnectionFactory {
-    private readonly ILogger _logger = (ILogger?)logger ?? NullLogger.Instance;
+internal sealed class SignalRProjectionHubConnectionFactory : IProjectionHubConnectionFactory {
+    private readonly Action<HubConnectionBuilder, Func<Task<string?>>?>? _configurationObserver;
+    private readonly ILogger _logger;
+
+    public SignalRProjectionHubConnectionFactory(
+        ILogger<SignalRProjectionHubConnectionFactory>? logger = null)
+        : this(logger, configurationObserver: null) {
+    }
+
+    internal SignalRProjectionHubConnectionFactory(
+        ILogger<SignalRProjectionHubConnectionFactory>? logger,
+        Action<HubConnectionBuilder, Func<Task<string?>>?>? configurationObserver) {
+        _logger = (ILogger?)logger ?? NullLogger.Instance;
+        _configurationObserver = configurationObserver;
+    }
 
     public IProjectionHubConnection Create(Uri hubUri, Func<CancellationToken, ValueTask<string?>>? accessTokenProvider) {
         HubConnectionBuilder builder = new();
+        Func<Task<string?>>? signalRAccessTokenProvider = accessTokenProvider is null
+            ? null
+            : async () => await accessTokenProvider(CancellationToken.None).ConfigureAwait(false);
         _ = builder.WithUrl(hubUri, options => {
-            if (accessTokenProvider is not null) {
-                options.AccessTokenProvider = async () => await accessTokenProvider(CancellationToken.None).ConfigureAwait(false);
+            if (signalRAccessTokenProvider is not null) {
+                options.AccessTokenProvider = signalRAccessTokenProvider;
             }
         });
         _ = builder.WithAutomaticReconnect(new ProjectionHubRetryPolicy());
+        _configurationObserver?.Invoke(builder, signalRAccessTokenProvider);
         return new SignalRProjectionHubConnection(builder.Build(), _logger);
     }
+
+    internal static ProjectionHubConnectionPhase MapConnectionPhase(HubConnectionState state)
+        => state switch {
+            HubConnectionState.Disconnected => ProjectionHubConnectionPhase.Disconnected,
+            HubConnectionState.Connecting => ProjectionHubConnectionPhase.Connecting,
+            HubConnectionState.Connected => ProjectionHubConnectionPhase.Connected,
+            HubConnectionState.Reconnecting => ProjectionHubConnectionPhase.Reconnecting,
+            _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unsupported SignalR connection state."),
+        };
+
+    internal static string SelectGroupMethod(bool join, string? scope)
+        => (join, string.IsNullOrWhiteSpace(scope)) switch {
+            (true, true) => ProjectionHubWireContract.JoinGroup,
+            (true, false) => ProjectionHubWireContract.JoinGroupScoped,
+            (false, true) => ProjectionHubWireContract.LeaveGroup,
+            (false, false) => ProjectionHubWireContract.LeaveGroupScoped,
+        };
 
     private sealed class SignalRProjectionHubConnection : IProjectionHubConnection {
         private readonly HubConnection _connection;
@@ -44,6 +77,8 @@ internal sealed class SignalRProjectionHubConnectionFactory(
         }
 
         public bool IsConnected => _connection.State == HubConnectionState.Connected;
+
+        public ProjectionHubConnectionPhase Phase => MapConnectionPhase(_connection.State);
 
         public IDisposable OnProjectionChanged(Func<string, string, Task> handler)
             => _connection.On(ProjectionHubWireContract.ProjectionChanged, handler);
@@ -83,20 +118,20 @@ internal sealed class SignalRProjectionHubConnectionFactory(
         }
 
         public Task JoinGroupAsync(string projectionType, string tenantId, CancellationToken cancellationToken)
-            => _connection.InvokeAsync(ProjectionHubWireContract.JoinGroup, projectionType, tenantId, cancellationToken);
+            => _connection.InvokeAsync(SelectGroupMethod(join: true, scope: null), projectionType, tenantId, cancellationToken);
 
         public Task JoinGroupAsync(string projectionType, string tenantId, string? scope, CancellationToken cancellationToken)
             => string.IsNullOrWhiteSpace(scope)
-                ? _connection.InvokeAsync(ProjectionHubWireContract.JoinGroup, projectionType, tenantId, cancellationToken)
-                : _connection.InvokeAsync(ProjectionHubWireContract.JoinGroupScoped, projectionType, tenantId, scope, cancellationToken);
+                ? _connection.InvokeAsync(SelectGroupMethod(join: true, scope), projectionType, tenantId, cancellationToken)
+                : _connection.InvokeAsync(SelectGroupMethod(join: true, scope), projectionType, tenantId, scope, cancellationToken);
 
         public Task LeaveGroupAsync(string projectionType, string tenantId, CancellationToken cancellationToken)
-            => _connection.InvokeAsync(ProjectionHubWireContract.LeaveGroup, projectionType, tenantId, cancellationToken);
+            => _connection.InvokeAsync(SelectGroupMethod(join: false, scope: null), projectionType, tenantId, cancellationToken);
 
         public Task LeaveGroupAsync(string projectionType, string tenantId, string? scope, CancellationToken cancellationToken)
             => string.IsNullOrWhiteSpace(scope)
-                ? _connection.InvokeAsync(ProjectionHubWireContract.LeaveGroup, projectionType, tenantId, cancellationToken)
-                : _connection.InvokeAsync(ProjectionHubWireContract.LeaveGroupScoped, projectionType, tenantId, scope, cancellationToken);
+                ? _connection.InvokeAsync(SelectGroupMethod(join: false, scope), projectionType, tenantId, cancellationToken)
+                : _connection.InvokeAsync(SelectGroupMethod(join: false, scope), projectionType, tenantId, scope, cancellationToken);
 
         public Task StopAsync(CancellationToken cancellationToken)
             => _connection.StopAsync(cancellationToken);

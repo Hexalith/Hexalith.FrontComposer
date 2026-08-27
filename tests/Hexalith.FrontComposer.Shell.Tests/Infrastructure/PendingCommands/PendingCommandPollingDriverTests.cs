@@ -90,12 +90,45 @@ public sealed class PendingCommandPollingDriverTests {
         await pending.WaitForStartAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
 
         Task dispose = sut.DisposeAsync().AsTask();
-        Task completed = await Task.WhenAny(
-            dispose,
-            Task.Delay(TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken)).ConfigureAwait(true);
-
-        completed.ShouldBe(dispose);
+        time.Advance(TimeSpan.FromSeconds(2));
         await dispose.ConfigureAwait(true);
+    }
+
+    [Fact]
+    public async Task Tick_SynchronousCoordinatorBlock_DoesNotHoldDriverLockDuringBoundedDispose() {
+        FakeTimeProvider time = new();
+        using SynchronouslyBlockingPendingPolling pending = new();
+        PendingCommandPollingDriver sut = new(
+            pending,
+            new StaticOptionsMonitor(new FcShellOptions { PendingCommandPollingIntervalMs = 1_000 }),
+            time,
+            NullLogger<PendingCommandPollingDriver>.Instance);
+        sut.Start();
+        time.Advance(TimeSpan.FromSeconds(1));
+        await pending.Started.WaitAsync(TestContext.Current.CancellationToken);
+
+        Task dispose = sut.DisposeAsync().AsTask();
+        time.Advance(TimeSpan.FromSeconds(2));
+        await dispose.WaitAsync(TestContext.Current.CancellationToken);
+
+        pending.Release();
+    }
+
+    [Fact]
+    public async Task Tick_FatalCoordinatorFault_RemainsObservableThroughPublishedPollTask() {
+        FakeTimeProvider time = new();
+        FatalPendingPolling pending = new();
+        PendingCommandPollingDriver sut = new(
+            pending,
+            new StaticOptionsMonitor(new FcShellOptions { PendingCommandPollingIntervalMs = 1_000 }),
+            time,
+            NullLogger<PendingCommandPollingDriver>.Instance);
+        sut.Start();
+        time.Advance(TimeSpan.FromSeconds(1));
+        await pending.Called.WaitAsync(TestContext.Current.CancellationToken);
+        await Task.Yield();
+
+        _ = await Should.ThrowAsync<AccessViolationException>(() => sut.DisposeAsync().AsTask());
     }
 
     private sealed class TestPendingPolling : IPendingCommandPollingCoordinator {
@@ -134,6 +167,32 @@ public sealed class PendingCommandPollingDriverTests {
 
         public Task WaitForStartAsync(CancellationToken cancellationToken)
             => _started.Task.WaitAsync(cancellationToken);
+    }
+
+    private sealed class SynchronouslyBlockingPendingPolling : IPendingCommandPollingCoordinator, IDisposable {
+        private readonly ManualResetEventSlim _release = new(initialState: false);
+        private readonly TaskCompletionSource _started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task Started => _started.Task;
+
+        public Task<int> PollOnceAsync(CancellationToken cancellationToken = default) {
+            _ = _started.TrySetResult();
+            _release.Wait(CancellationToken.None);
+            return Task.FromResult(0);
+        }
+
+        public void Release() => _release.Set();
+        public void Dispose() => _release.Dispose();
+    }
+
+    private sealed class FatalPendingPolling : IPendingCommandPollingCoordinator {
+        private readonly TaskCompletionSource _called = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public Task Called => _called.Task;
+
+        public Task<int> PollOnceAsync(CancellationToken cancellationToken = default) {
+            _ = _called.TrySetResult();
+            return Task.FromException<int>(Activator.CreateInstance<AccessViolationException>());
+        }
     }
 
     private sealed class StaticOptionsMonitor(FcShellOptions value) : IOptionsMonitor<FcShellOptions> {

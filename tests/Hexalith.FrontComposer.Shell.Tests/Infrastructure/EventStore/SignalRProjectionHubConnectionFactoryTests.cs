@@ -1,6 +1,7 @@
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.DependencyInjection;
 
 using Shouldly;
 
@@ -8,6 +9,55 @@ namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 
 public sealed class SignalRProjectionHubConnectionFactoryTests
 {
+    [Fact]
+    public async Task Create_ConfiguresProductionRetryTokenAndInitialPhase()
+    {
+        HubConnectionBuilder? observedBuilder = null;
+        Func<Task<string?>>? observedTokenProvider = null;
+        SignalRProjectionHubConnectionFactory sut = new(
+            logger: null,
+            (builder, tokenProvider) =>
+            {
+                observedBuilder = builder;
+                observedTokenProvider = tokenProvider;
+            });
+
+        IProjectionHubConnection connection = sut.Create(
+            new Uri("https://eventstore.test/hubs/projection-changes"),
+            _ => ValueTask.FromResult<string?>("captured-token"));
+        await using (connection.ConfigureAwait(false))
+        {
+            observedBuilder.ShouldNotBeNull();
+            observedBuilder.Services.ShouldContain(descriptor =>
+                descriptor.ServiceType == typeof(IRetryPolicy)
+                && descriptor.ImplementationInstance is ProjectionHubRetryPolicy);
+            observedTokenProvider.ShouldNotBeNull();
+            (await observedTokenProvider()).ShouldBe("captured-token");
+            connection.Phase.ShouldBe(ProjectionHubConnectionPhase.Disconnected);
+        }
+    }
+
+    [Theory]
+    [InlineData(HubConnectionState.Disconnected, (int)ProjectionHubConnectionPhase.Disconnected)]
+    [InlineData(HubConnectionState.Connecting, (int)ProjectionHubConnectionPhase.Connecting)]
+    [InlineData(HubConnectionState.Connected, (int)ProjectionHubConnectionPhase.Connected)]
+    [InlineData(HubConnectionState.Reconnecting, (int)ProjectionHubConnectionPhase.Reconnecting)]
+    public void MapConnectionPhase_MapsEverySignalRPhase(
+        HubConnectionState source,
+        int expected)
+        => ((int)SignalRProjectionHubConnectionFactory.MapConnectionPhase(source)).ShouldBe(expected);
+
+    [Theory]
+    [InlineData(true, null, "JoinGroup")]
+    [InlineData(true, "conversation", "JoinGroupScoped")]
+    [InlineData(false, null, "LeaveGroup")]
+    [InlineData(false, "conversation", "LeaveGroupScoped")]
+    public void SelectGroupMethod_MapsScopedAndUnscopedAdapterCalls(
+        bool join,
+        string? scope,
+        string expected)
+        => SignalRProjectionHubConnectionFactory.SelectGroupMethod(join, scope).ShouldBe(expected);
+
     [Fact]
     public void ProjectionHubWireContract_UsesEventStoreHubMethodNames()
     {

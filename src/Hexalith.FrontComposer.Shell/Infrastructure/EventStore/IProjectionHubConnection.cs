@@ -5,6 +5,8 @@ namespace Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 internal interface IProjectionHubConnection : IAsyncDisposable {
     bool IsConnected { get; }
 
+    ProjectionHubConnectionPhase Phase { get; }
+
     IDisposable OnProjectionChanged(Func<string, string, Task> handler);
 
     IDisposable OnProjectionChangedDetail(Func<ProjectionChangedDetail, Task> handler);

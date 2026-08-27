@@ -85,16 +85,21 @@ public sealed class PendingCommandPollingDriver : IAsyncDisposable {
         optionsRegistration?.Dispose();
         timer?.Dispose();
 
-        bool pollCompleted = await WaitForInFlightPollAsync(pollTask).ConfigureAwait(false);
-        if (pollCompleted) {
-            _disposalCts.Dispose();
+        bool pollCompleted = false;
+        try {
+            pollCompleted = await WaitForInFlightPollAsync(pollTask).ConfigureAwait(false);
         }
-        else {
-            _ = pollTask!.ContinueWith(
-                _ => _disposalCts.Dispose(),
-                CancellationToken.None,
-                TaskContinuationOptions.ExecuteSynchronously,
-                TaskScheduler.Default);
+        finally {
+            if (pollCompleted || pollTask is null || pollTask.IsCompleted) {
+                _disposalCts.Dispose();
+            }
+            else {
+                _ = pollTask.ContinueWith(
+                    _ => _disposalCts.Dispose(),
+                    CancellationToken.None,
+                    TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default);
+            }
         }
     }
 
@@ -131,18 +136,22 @@ public sealed class PendingCommandPollingDriver : IAsyncDisposable {
             return;
         }
 
+        TaskCompletionSource start = new(TaskCreationOptions.RunContinuationsAsynchronously);
         lock (_sync) {
             if (_disposed != 0) {
                 _ = Interlocked.Exchange(ref _pollInFlight, 0);
                 return;
             }
 
-            Task pollTask = PollOnceSafelyAsync();
+            Task pollTask = PollOnceSafelyAsync(start.Task);
             _pollTask = pollTask;
         }
+
+        _ = start.TrySetResult();
     }
 
-    private async Task PollOnceSafelyAsync() {
+    private async Task PollOnceSafelyAsync(Task start) {
+        await start.ConfigureAwait(false);
         try {
             _ = await _coordinator.PollOnceAsync(_disposalCts.Token).ConfigureAwait(false);
         }
@@ -164,7 +173,7 @@ public sealed class PendingCommandPollingDriver : IAsyncDisposable {
         }
 
         try {
-            await pollTask.WaitAsync(DisposeWaitTimeout).ConfigureAwait(false);
+            await pollTask.WaitAsync(DisposeWaitTimeout, _timeProvider).ConfigureAwait(false);
             return true;
         }
         catch (TimeoutException) {

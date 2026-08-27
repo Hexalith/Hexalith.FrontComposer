@@ -284,6 +284,31 @@ public class ETagCacheServiceTests {
         liveStorage.GetKeysCalls.ShouldBe(1);
     }
 
+    [Fact]
+    public async Task Dispose_DuringSeedOwnerAndQueuedWaiter_AllCallersSettle() {
+        ContendedSeedStorage storage = new();
+        ETagCacheService cache = new(
+            storage,
+            new TestOptionsMonitor(new FcShellOptions { MaxETagCacheEntries = 200 }),
+            TimeProvider.System,
+            NullLogger<ETagCacheService>.Instance);
+        Task owner = cache.SetAsync(
+            "acme:alice:etag:projection-page:Foo:s0-t25",
+            NewEntry(eTag: "\"a\""),
+            CancellationToken.None);
+        await storage.SeedStarted.WaitAsync(TestContext.Current.CancellationToken);
+        Task waiter = cache.SetAsync(
+            "acme:alice:etag:projection-page:Foo:s25-t25",
+            NewEntry(eTag: "\"b\""),
+            CancellationToken.None);
+
+        cache.Dispose();
+        storage.ReleaseSeed();
+
+        await Task.WhenAll(owner, waiter).WaitAsync(TestContext.Current.CancellationToken);
+        cache.TrackedKeyCount.ShouldBe(2);
+    }
+
     private static ETagCacheService NewCache(out InMemoryStorageService storage, int maxEntries = 200) {
         storage = new InMemoryStorageService();
         TestOptionsMonitor monitor = new(new FcShellOptions { MaxETagCacheEntries = maxEntries });
@@ -395,5 +420,41 @@ public class ETagCacheServiceTests {
         }
 
         public Task FlushAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    private sealed class ContendedSeedStorage : IStorageService {
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, object> _store = new(System.StringComparer.Ordinal);
+        private readonly TaskCompletionSource _seedRelease = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _seedStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task SeedStarted => _seedStarted.Task;
+
+        public Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
+            => _store.TryGetValue(key, out object? value)
+                ? Task.FromResult((T?)value)
+                : Task.FromResult<T?>(default);
+
+        public Task SetAsync<T>(string key, T value, CancellationToken cancellationToken = default) {
+            _store[key] = value!;
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveAsync(string key, CancellationToken cancellationToken = default) {
+            _ = _store.TryRemove(key, out _);
+            return Task.CompletedTask;
+        }
+
+        public async Task<System.Collections.Generic.IReadOnlyList<string>> GetKeysAsync(
+            string prefix,
+            CancellationToken cancellationToken = default) {
+            _ = _seedStarted.TrySetResult();
+            await _seedRelease.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+            return _store.Keys
+                .Where(key => key.StartsWith(prefix, System.StringComparison.Ordinal))
+                .ToArray();
+        }
+
+        public Task FlushAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public void ReleaseSeed() => _ = _seedRelease.TrySetResult();
     }
 }

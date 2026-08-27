@@ -66,16 +66,14 @@ public sealed class ETagCacheService : IETagCache, IDisposable {
     internal int TrackedKeyCount => _lru.Count;
 
     /// <summary>
-    /// Releases the single-flight gate that guards persisted-LRU seeding. The scoped container owns
-    /// the lifetime of this instance; no cached entry is removed, and the persisted storage view is
-    /// untouched.
+    /// Stops new persisted-LRU seed work. The managed single-flight semaphore intentionally remains
+    /// undisposed so an owner and queued waiters can finish safely during concurrent scope teardown.
     /// </summary>
     public void Dispose() {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) {
             return;
         }
 
-        _lruSeedGate.Dispose();
     }
 
     /// <inheritdoc />

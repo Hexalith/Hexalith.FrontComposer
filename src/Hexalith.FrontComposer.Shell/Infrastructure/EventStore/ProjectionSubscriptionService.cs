@@ -32,6 +32,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
     private readonly IProjectionFallbackRefreshScheduler _refreshScheduler;
     private readonly IProjectionChangeNotifier _notifier;
     private readonly ILogger<ProjectionSubscriptionService> _logger;
+    private readonly TimeProvider _timeProvider;
     private readonly Func<CancellationToken, ValueTask<string?>>? _configuredAccessTokenProvider;
     private readonly FrontComposerAccessTokenProvider? _frontComposerAccessTokenProvider;
     private readonly bool _requireAccessToken;
@@ -67,7 +68,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         IOptions<FcShellOptions>? shellOptions = null,
         PendingCommandPollingDriver? commandPollingDriver = null,
         FrontComposerAccessTokenProvider? frontComposerAccessTokenProvider = null,
-        IOptionsMonitor<FcShellOptions>? shellOptionsMonitor = null) {
+        IOptionsMonitor<FcShellOptions>? shellOptionsMonitor = null,
+        TimeProvider? timeProvider = null) {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(connectionFactory);
         ArgumentNullException.ThrowIfNull(connectionState);
@@ -78,6 +80,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         _refreshScheduler = refreshScheduler;
         _notifier = notifier;
         _logger = logger;
+        _timeProvider = timeProvider ?? TimeProvider.System;
         _fallbackDriver = fallbackDriver;
         _commandPollingDriver = commandPollingDriver;
         _reconciliationCoordinator = reconciliationCoordinator;
@@ -114,13 +117,27 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         TenantContextSnapshot? context = ResolveTenantContext(tenantId, "projection-subscribe");
         GroupKey key = ValidateGroup(projectionType, context?.TenantId ?? tenantId, scope);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        bool added = false;
         try {
             ThrowIfDisposed();
             if (_activeGroups.ContainsKey(key)) {
                 return;
             }
 
-            if (!_connection.IsConnected) {
+            added = _activeGroups.TryAdd(key, new GroupState(GroupHealth.Pending, context));
+            if (!added) {
+                return;
+            }
+
+            ProjectionHubConnectionPhase phase = _connection.Phase;
+            if (phase is ProjectionHubConnectionPhase.Reconnecting
+                or ProjectionHubConnectionPhase.Connecting) {
+                // SignalR owns this transition. Retain the pending group so the next reconnect
+                // epoch joins it, but never issue an illegal second StartAsync.
+                return;
+            }
+
+            if (phase is ProjectionHubConnectionPhase.Disconnected) {
                 try {
                     await EnsureRequiredAccessTokenAvailableAsync(cancellationToken).ConfigureAwait(false);
                     await _connection.StartAsync(cancellationToken).ConfigureAwait(false);
@@ -136,7 +153,19 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
             ThrowIfDisposed();
             await _connection.JoinGroupAsync(key.ProjectionType, key.TenantId, key.Scope, cancellationToken).ConfigureAwait(false);
             ThrowIfDisposed();
-            _ = _activeGroups.TryAdd(key, new GroupState(GroupHealth.Active, context));
+            if (_activeGroups.TryGetValue(key, out GroupState pending)) {
+                GroupHealth health = _connection.Phase is ProjectionHubConnectionPhase.Connected
+                    ? GroupHealth.Active
+                    : GroupHealth.Pending;
+                _ = _activeGroups.TryUpdate(key, pending with { Health = health }, pending);
+            }
+        }
+        catch {
+            if (added) {
+                _ = _activeGroups.TryRemove(key, out _);
+            }
+
+            throw;
         }
         finally {
             _ = _gate.Release();
@@ -472,8 +501,10 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
 
         try {
             while (CanRestartClosedConnection()) {
-                using CancellationTokenSource restartCts = CancellationTokenSource.CreateLinkedTokenSource(_disposalCts.Token);
-                restartCts.CancelAfter(ClosedRestartTimeout);
+                using CancellationTokenSource timeoutCts = new(ClosedRestartTimeout, _timeProvider);
+                using CancellationTokenSource restartCts = CancellationTokenSource.CreateLinkedTokenSource(
+                    _disposalCts.Token,
+                    timeoutCts.Token);
                 CancellationToken token = restartCts.Token;
 
                 bool gateAcquired = await _gate.WaitAsync(GateWaitTimeout, token).ConfigureAwait(false);
@@ -804,7 +835,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
 
     private async Task DelayClosedRestartRetryAsync(CancellationToken cancellationToken) {
         try {
-            await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
+            await Task.Delay(TimeSpan.FromSeconds(1), _timeProvider, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (!_disposalCts.IsCancellationRequested) {
             // H-F5 — the per-attempt restart timeout (ClosedRestartTimeout, not disposal) fired
@@ -878,6 +909,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
     private readonly record struct GroupState(GroupHealth Health, TenantContextSnapshot? TenantContext);
 
     private enum GroupHealth : byte {
+        Pending,
         Active,
         Degraded,
         Blocked,
