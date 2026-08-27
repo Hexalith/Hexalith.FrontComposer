@@ -3452,6 +3452,7 @@ location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 severity: low
 reason: **[LOW] `FrontComposerStorageKey.TryParse` returns URL-encoded segments — naming footgun** — `Tenant`/`User` fields on parse result are canonicalized, not original. **Defer target:** API-clarity polish pass. Reconciliation: Row: DW-0413; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group D (Shell services + Fluxor state + JS module) chunk.
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1144, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1145: [LOW] `LastUsedSubscriberRegistry` partial-init leak
 
