@@ -3516,6 +3516,7 @@ origin: migrated from legacy ledger ("Deferred from: story 3-1-shell-layout-them
 location: src/Hexalith.FrontComposer.Contracts/FcShellOptions.cs
 reason: **FcShellOptions split into per-concern option classes** — `FcShellOptions` grew to 14 properties crossing both the ≥12-property and 3-cross-concern thresholds (lifecycle + forms + theming/locale). Split into `FcLifecycleOptions` / `FcFormOptions` / `FcThemingOptions` deferred to **Story 9-2** (L10 discipline). Story 2-5 precedent: add, don't split mid-epic. `src/Hexalith.FrontComposer.Contracts/FcShellOptions.cs` Reconciliation: Row: DW-0421; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: story 3-1-shell-layout-theme-and-typography (2026-04-18).
 status: open
+decision: 2026-08-27 Keep open
 
 ### DW-1153: `[SuppressHFC2105]` analyzer escape hatch
 

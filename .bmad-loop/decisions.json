@@ -44,6 +44,15 @@
     "label": "Implement change",
     "resolution": ""
   },
+  "DW-1152": {
+    "answered_at": "2026-08-27",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "3",
+    "label": "Keep open",
+    "resolution": ""
+  },
   "DW-679": {
     "answered_at": "2026-08-27",
     "bundle_name": "",
