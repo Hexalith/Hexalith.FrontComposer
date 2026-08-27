@@ -7604,6 +7604,7 @@ location: src/Hexalith.FrontComposer.Shell
 source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
 reason: summary: Support a partial type legally split across two files in the Shell organization guard, or record the one-file contract as deliberate. evidence: The all-`partial` same-identity collapse added in `48862e9a` lives inside the per-file parse (`ShellTypeOrganizationGovernanceTests.ParseDirectDeclarations`, via `IsCollapsiblePartialGroup`), while `SplitDeclarations_SourceShapes_MatchExactPinnedManifest` flattens declarations across every source file before matching and asserts exactly one match per pinned identity; `ShellTypeOrganizationGovernanceTests.FindOrganizationViolations` additionally requires filename==typename. The idiomatic two-file partial split therefore still false-fails. Citations are symbol-based: line coordinates in this ledger have repeatedly gone stale within days. Deferred because AC4 scopes the guard to one direct declaration per file with a matching filename, so this is a design tension rather than a defect. Reopen trigger: a two-file partial type is introduced under `src/Hexalith.FrontComposer.Shell`, or AC4 is extended to cross-file partial identities.
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1702, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1703: Bind the analyzer-policy identifier inventory to a committed revision and assert the delta, instead of hashing working-tree line numbers.
 
