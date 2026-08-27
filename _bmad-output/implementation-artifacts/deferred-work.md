@@ -3300,6 +3300,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 2-2-ac
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`GridViewSnapshot.FiltersEqual` ignores right-dict key-comparer** — if left and right filter dicts use different `IEqualityComparer<string>` instances, `left.Keys → right.TryGetValue(k)` can false-positive/negative. Requires a canonicalization decision (normalize at construction vs. at compare); revisit when Epic 4 DataGrid filtering lands and real producers exist. Reconciliation: Row: DW-0394; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group A (Contracts) second pass.
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1125, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1126: `ProjectionContext` lacks a structural-equality override for `Fields`
 
