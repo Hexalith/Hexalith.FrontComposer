@@ -5137,6 +5137,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 8-6a-schema-
 location: src/Hexalith.FrontComposer.Mcp/Schema/SchemaNegotiationRuntimeGate.cs:41-43
 reason: **`HasCompatibleAdditiveDrift` `[Obsolete]` parameter still passed via `#pragma warning disable CS0618`**: pragma hides obsolete; once deprecation cycle expires, drop the parameter from `McpSchemaNegotiationInput` entirely. **Owner:** v1.x deprecation cleanup. [`src/Hexalith.FrontComposer.Mcp/Schema/SchemaNegotiationRuntimeGate.cs:41-43,68-70`] Reconciliation: Row: DW-0639; Final classification 2026-05-14: resolved; Decision owner: Story 12.2 release certification; Evidence: Story 11.5 source/tests and Story 12.2 MCP validation (`dotnet test tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj --configuration Release`, 291 passed); Negative cases covered: negotiation rejection, hidden/unknown precedence, tenant-gated admission, schema/fingerprint mismatch, descriptor stripping, redaction, culture-invariant public categories, memoized deterministic retry, and zero side effects before admission; Downstream impact: MCP v1 contract evidence closed; Release-note requirement: none unless public machine keys change; Regression guard: focused MCP tests named in Story 11.5 Dev Agent Record; Previous owner was Story 11.5.
 status: open
+decision: 2026-08-27 Keep open
 
 ### DW-1371: `MapSchemaFailureStrict` reachable via internal `ToStructuredFailure`/`BuildStructuredFailure`
 
