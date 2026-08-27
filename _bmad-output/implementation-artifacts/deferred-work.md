@@ -5552,6 +5552,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 12-1-ledger-
 location: sprint-status.yaml:147
 reason: **W3 — `epic-11-retrospective: done` while `epic-11: in-progress` is a pre-existing internal inconsistency:** `sprint-status.yaml:147` holds `epic-11: in-progress` (correctly, per `DW-0666` release gate); `sprint-status.yaml:155` holds `epic-11-retrospective: done`. A retrospective marked done while the epic remains open implies either the retrospective predated the `DW-0666` gate or the epic should already be closed. Story 12.1 did not modify the retrospective status. Owner: sprint-status / Epic 11 retrospective owner.
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1433, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1434: Bucket vocabulary aliases are undocumented in `deferred-work.md`: Strict-vocabulary counts (`resolved=70`, `accepted-constraint=50`, `fixed-in-11.6=11`, `fixed-in-11.7=10`, `accepted-with-risk=62`) reconcile to the summary buckets (`resolved-preserved=91`, `accepted-constraint=112`) only via undocumented aliases (`resolved-preserved = resolved + fixed-in-11.6 + fixed-in-11.7`; `accepted-constraint = strict-accepted + accepted-with-risk`). The Reconciliation Status frontmatter enumerates only the strict tokens. Externally replayable verification requires the alias spec. Owner: deferred-work ledger maintainer (add a vocabulary mapping subsection on next ledger touch).
 
