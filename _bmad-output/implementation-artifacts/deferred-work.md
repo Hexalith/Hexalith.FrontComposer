@@ -2495,6 +2495,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 3-5-home-dir
 location: 3-5-home-directory-badge-counts-and-new-capability-discovery.md
 reason: **External native-French sign-off remains required but cannot be completed in-tool** — AC13 / D19 / Task 6.2 still require native-French review for `HomeWelcomeTemplate`, `HomeAllCaughtUpText`, `HomeWelcomeAnonymous`, and `HomeFirstVisitText`. Deferred because this review session cannot supply the external native-language reviewer sign-off; keep it as a merge gate. Reconciliation: Row: DW-0278; Split to external native-French review gate 2026-05-13; Disposition: split-to-named-story; Reason: requires human language review outside the tool; Residual release-gate risk: blocks localization sign-off only.; Evidence: section: code review of 3-5-home-directory-badge-counts-and-new-capability-discovery.md (2026-04-22).
 status: open
+decision: 2026-08-27 Keep open
 
 ### DW-1010: `_unresolvedTypes` concurrent dict grows unbounded in `BadgeCountService`
 

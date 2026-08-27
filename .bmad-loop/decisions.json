@@ -1,4 +1,13 @@
 {
+  "DW-1009": {
+    "answered_at": "2026-08-27",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "3",
+    "label": "Keep open",
+    "resolution": ""
+  },
   "DW-1084": {
     "answered_at": "2026-08-27",
     "bundle_name": "",
