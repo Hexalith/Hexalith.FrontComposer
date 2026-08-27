@@ -8162,6 +8162,7 @@ location: analyzer-policy-exception-ledger-v1.json
 source_spec: `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
 reason: summary: Ledger `diagnosticIds` is overloaded to carry MSBuild property values, so the root-CA guard runs over a field with two incompatible meanings. evidence: `analyzer-policy-exception-ledger-v1.json` encodes `"property": "TreatWarningsAsErrors", "diagnosticIds": ["true"]`. Splitting into `diagnosticIds` and `propertyValue` is a schema change requiring a coordinated reseal.
 status: open
+decision: 2026-08-27 Implement requested change — Implement the behavior requested by DW-1758, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1759: Approved census counts 4,070 / 2,958 / 2,959 are hardcoded in the governance test, duplicating the ledger the test is meant to treat as authoritative.
 
