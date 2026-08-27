@@ -8127,6 +8127,7 @@ location: GlobalSuppressions.cs
 source_spec: `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
 reason: summary: `HasSuppressMessage` inspects only the property symbol, so type-level and assembly-level `[SuppressMessage]` for HFC1002 — including the `GlobalSuppressions.cs` form the IDE's "Suppress in Suppression File" action generates — is silently ignored. evidence: `src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs:1073` reads attributes from the property symbol only. Load-bearing now that project-wide HFC1002 `NoWarn` was removed from both Counter samples. Changing it alters shipped generator behavior, so it needs a product decision rather than a review patch.
 status: open
+decision: 2026-08-27 Implement requested change — Implement the behavior requested by DW-1754, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1755: HFC1002 property-level suppression accepts any category and an empty `Justification`, although `docs/diagnostics/diagnostic-registry.json` declares the rule `suppressionPolicy: allowed-with-rationale`.
 
