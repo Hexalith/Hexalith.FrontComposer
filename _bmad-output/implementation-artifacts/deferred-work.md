@@ -5988,6 +5988,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted
 location: eng/release_evidence.py:858-871
 reason: **CR-12-4-Def19 — `partial_publish_state="recovered"` collapses to `rerun-review` with no path back to `ready`:** Edge Case Hunter E17 — after an operator legitimately recovers a partial publish (sets `recovered`), the classifier still returns `next_owner_action="create a fresh dispatch or new tag"` rather than allowing a publish-resume with re-affirmed approval. The state transition `partial → recovered → ready` is unsupported. Deferred: UX gap, not a correctness defect; revisit when the first real partial-publish recovery is exercised in production. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:858-871` `classify_context` rerun-review branch.
 status: open
+decision: 2026-08-27 Implement the change — Implement the behavior requested by DW-1477, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1478: `--started-at`/`--ended-at` malformed ISO crashes via raw `ValueError`: `release-budget` argparse handlers call `dt.datetime.fromisoformat(...)` directly on operator-supplied strings; an invalid/whitespace value crashes the helper with exit-2 "helper crashed" instead of a typed CLI diagnostic. Pre-existing pattern; fail-closed via outer `__main__` catch is correct, but operators lose the typed-diagnostic UX. Pick up when typed CLI-input diagnostic layer is added. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1808-1810`.
 
