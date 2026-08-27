@@ -9128,6 +9128,7 @@ location: eng/validate-story-artifacts.py:1506
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Decide what a disposition declared on a merge SHA should mean. evidence: A `shared` or `process` declaration whose SHA is a merge is accepted by the parser, passes the in-range staleness check, and is rendered on the merge row as `disposition=...`, but merges are never path-reconciled, so the declaration changes nothing. It reads as an effective exception while being inert. Either reject a disposition on a merge, or give it meaning once merge reconciliation exists -- the two decisions are coupled, so this waits on the merge-reconciliation entry above. `eng/validate-story-artifacts.py:1506`
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1889, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1890: Retire ledger entries that later loops resolved.
 
