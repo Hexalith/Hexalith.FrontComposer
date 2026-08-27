@@ -6639,6 +6639,7 @@ location: n/a
 source_spec: `_bmad-output/implementation-artifacts/spec-actions-29110799882-enable-dependency-graph.md`
 reason: summary: Enforce required pull-request checks on `main` so changes cannot merge while dependency review or CI is pending or failing. evidence: GitHub reports no branch protection and zero repository rulesets; PR #52 merged before its checks completed, and its CI run 29110798810 later failed.
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1582, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1583: Diagnose and fix the failed build-and-test and accessibility-visual jobs in CI run 29110798810.
 
