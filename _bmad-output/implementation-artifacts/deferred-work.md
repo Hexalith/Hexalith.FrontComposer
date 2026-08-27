@@ -8772,6 +8772,7 @@ location: n/a
 source_spec: `_bmad-output/implementation-artifacts/spec-fix-current-release-compatibility-gates.md`
 reason: summary: Make the compatibility baseline lifecycle protect patch releases after the first publication on a minor line. evidence: The release policy intentionally compares candidates by major/minor line, so a later `4.2.1` can still validate against `4.1.1` and would not detect removal of API first added in `4.2.0`.
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1846, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1847: Reconcile the checked-in Fluent UI rc.5 catalog with stale Shell/UI expectations and generated rendering tests.
 
