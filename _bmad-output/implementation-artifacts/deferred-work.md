@@ -9002,7 +9002,9 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add
 location: story_id_pattern("9.7")
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Consider a `misattributed` disposition kind for subject-only false story matches. evidence: `story_id_pattern("9.7")` matches any bare occurrence of the canonical ID, so `Revert "fix(9.7): ..."`, `backport of 9.7`, or `see 9.7 for context` makes an unrelated commit story-matching. Because `if matches and unowned_paths` precedes `elif disposition` and the frozen Boundaries forbid a disposition from suppressing `interleaved`, such a commit hard-fails the gate with no escape short of rewriting a published subject. The trigger is often outside the author control (`git revert` and the GitHub revert button generate the subject). Human decision 2026-08-25: document the trap rather than reopen the frozen block, since it has not yet fired and loop-3 anti-broadening work depends on `interleaved` staying unsuppressable.
-status: open
+status: done 2026-08-27
+resolution: closed by human decision: Record the current behavior as intentional and close the deferred row with its verified rationale.
+decision: 2026-08-27 Accept current behavior — Record the current behavior as intentional and close the deferred row with its verified rationale.
 
 ### DW-1875: Decide whether an unresolved merge-conflict path should be a hard validation failure.
 
