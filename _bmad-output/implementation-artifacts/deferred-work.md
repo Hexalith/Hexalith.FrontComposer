@@ -8316,6 +8316,7 @@ location: n/a
 source_spec: none
 reason: summary: Disable automatic Flaky Test Governance until CI produces validated mixed pass/fail evidence. evidence: Split from the CI/CD control audit because the no-op workflow consumes runner time but does not cause the dependency-governance false-reds addressed first.
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1790, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1791: Repair permanently red or timing-out nightly benchmark, mutation, and CI-duration telemetry workflows.
 
