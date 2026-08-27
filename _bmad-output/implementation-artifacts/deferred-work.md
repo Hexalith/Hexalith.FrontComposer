@@ -5254,6 +5254,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story-11-2-d
 location: sprint-status.yaml
 reason: `storyOwner` controlled vocabulary not cross-checked against `sprint-status.yaml`; same for suppression `ownerStory`. Already flagged in story Completion Notes as Product/Architecture decision beyond Story 11.2 budget. (edge)
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1392, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1393: `baselinePolicy` long-prose field in `compatibility-suppressions.json` is unvalidated (length, forbidden tokens, abs paths). Pre-existing, not in Story 11.2 schema scope. (edge)
 
