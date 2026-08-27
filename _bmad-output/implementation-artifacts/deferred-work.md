@@ -5522,7 +5522,9 @@ resolution: already resolved: tests/Hexalith.FrontComposer.Mcp.Tests/Schema/Stor
 origin: migrated from legacy ledger ("D11 missing-claimed-fingerprint / corpus runtime aggregate — v1 release constraint (revised 2026-05-12 to address DN14)"), 2026-08-27
 location: Fingerprint
 reason: **Constraint:** Manifests whose `Fingerprint` is null are accepted (the per-manifest integrity loop in `FrontComposerMcpDescriptorRegistry.ValidateAggregateIntegrity` continues to the next manifest rather than failing closed). The runtime corpus aggregate (`FrontComposerMcpRuntimeManifestAggregator.Compute(manifests, corpusFingerprints)`) is computed but the result is not yet plumbed into a production agent-facing fingerprint header. This is a deliberate v1 choice — the build-time emitter only sees per-manifest content, and hosts that ship no skill corpus must not fail-closed at registration.
-status: open
+status: done 2026-08-27
+resolution: closed by human decision: Record the current behavior as intentional and close the deferred row with its verified rationale.
+decision: 2026-08-27 Accept current behavior — Record the current behavior as intentional and close the deferred row with its verified rationale.
 
 ### DW-1416: Owner: Story 11.7 (EventStore/realtime reliability) or its successor architecture-decision row when build-time corpus signing / generated baseline materialization lands.
 
