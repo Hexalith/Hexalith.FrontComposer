@@ -5283,6 +5283,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story-11-2-d
 location: n/a
 reason: Suppression `expiresAfter` exactly equal to `targetRelease` yields `suppression-expired`; the equal-version semantics could be documented either way. Add a Theory inline if the behavior is confirmed. (edge)
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1396, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1397: `introducedIn: "0.2.0"` semantic correctness — six HFCM rows in `docs/diagnostics/migration-findings.json` use the literal `"0.2.0"`; resolve as a documentation decision whether this represents tool version (Story 9-2 CLI) or FrontComposer release. Reconciliation: Row: DW-0660; Resolved 2026-05-12; Evidence: docs/diagnostics/README.md; User-visible behavior: `introducedIn` records the FrontComposer CLI/tooling release that introduced the CLI-emitted finding, not the first product release containing the migrated API. (blind)
 
