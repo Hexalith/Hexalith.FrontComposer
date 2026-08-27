@@ -8136,6 +8136,7 @@ location: docs/diagnostics/diagnostic-registry.json
 source_spec: `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
 reason: summary: HFC1002 property-level suppression accepts any category and an empty `Justification`, although `docs/diagnostics/diagnostic-registry.json` declares the rule `suppressionPolicy: allowed-with-rationale`. evidence: `AttributeParser.cs:1073-1088` matches on `ConstructorArguments[1]` only; `[SuppressMessage("Anything", "HFC1002")]` with no rationale is accepted. Enforcing the declared policy is a behavior change.
 status: open
+decision: 2026-08-27 Implement requested change — Implement the behavior requested by DW-1755, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1756: `docs/diagnostics/HFC1002.md` still tells readers to prefer `.editorconfig` or a pragma and does not document the property-level `[SuppressMessage]` mechanism the samples now depend on.
 
