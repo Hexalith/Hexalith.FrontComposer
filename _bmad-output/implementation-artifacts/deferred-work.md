@@ -7517,7 +7517,9 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-actions
 location: n/a
 source_spec: `_bmad-output/implementation-artifacts/spec-actions-29681767891-fix-cicd.md`
 reason: summary: Reconcile the published Hexalith.Builds catalog-format commit with mandatory Conventional Commit history. evidence: An external process published Builds commit `deb76e983434335c990b0a1f676b8887d643a274` with subject `Refactor code structure for improved readability and maintainability`; commitlint reports `type-empty` and `subject-empty`. The no-push workflow cannot rewrite published history, and a force push requires separate human authorization.
-status: open
+status: done 2026-08-27
+resolution: closed by human decision: Record the current verified behavior as intentional and close the deferred row.
+decision: 2026-08-27 Accept current behavior — Record the current verified behavior as intentional and close the deferred row.
 
 ### DW-1685: Bind shared-catalog governance bytes to the same Builds commit recorded by the FrontComposer gitlink.
 
