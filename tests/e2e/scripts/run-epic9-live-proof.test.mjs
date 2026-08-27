@@ -14,6 +14,16 @@ const APPHOST = join(
   'Hexalith.FrontComposer.AppHost',
   'Hexalith.FrontComposer.AppHost.csproj',
 );
+const EVENTSTORE_ASPIRE = join(
+  REPOSITORY_ROOT,
+  'references',
+  'Hexalith.EventStore',
+  'src',
+  'Hexalith.EventStore.Aspire',
+  'Hexalith.EventStore.Aspire.csproj',
+);
+const EXPECTED_DEPENDENCY_BUILD = `build ${EVENTSTORE_ASPIRE} --configuration Debug -m:1 -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false`;
+const EXPECTED_APPHOST_BUILD = `build ${APPHOST} --configuration Debug -m:1 -p:BuildProjectReferences=false -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false`;
 const CANDIDATE = '1234567890abcdef1234567890abcdef12345678';
 const OTHER_CANDIDATE = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
@@ -140,10 +150,23 @@ esac
 
   await writeExecutable(join(bin, 'dotnet'), `#!/usr/bin/env bash
 set -euo pipefail
+next_count() {
+  local count_file="$1"
+  local count=0
+  if [[ -f "$count_file" ]]; then read -r count < "$count_file"; fi
+  count=$((count + 1))
+  printf '%s\\n' "$count" > "$count_file"
+  printf '%s' "$count"
+}
 printf '%s\\n' "$*" >> "$FC_EPIC9_FAKE_DOTNET_LOG"
 if [[ "$1" == "--version" ]]; then
   printf '10.0.302\\n'
 elif [[ "$1" == "build" ]]; then
+  count="$(next_count "$FC_EPIC9_FAKE_DOTNET_BUILD_COUNT")"
+  if [[ "\${FC_EPIC9_FAKE_DOTNET_FAIL_BUILD_CALL:-0}" == "$count" ]]; then
+    printf 'Serialized build failed on call %s.\\n' "$count" >&2
+    exit 92
+  fi
   printf 'Serialized build succeeded.\\n'
 else
   exit 99
@@ -193,6 +216,8 @@ fi
     FC_EPIC9_FAKE_STOP_FAILURES: String(options.stopFailures ?? 0),
     FC_EPIC9_FAKE_STOP_LEAVES_RUNNING_CALLS: String(options.stopLeavesRunningCalls ?? 0),
     FC_EPIC9_FAKE_DOTNET_LOG: dotnetLog,
+    FC_EPIC9_FAKE_DOTNET_BUILD_COUNT: join(root, 'dotnet-build-count'),
+    FC_EPIC9_FAKE_DOTNET_FAIL_BUILD_CALL: String(options.dotnetFailBuildCall ?? 0),
     FC_EPIC9_FAKE_NPM_LOG: npmLog,
   };
   return { artifactRoot, aspireLog, dotnetLog, environment, npmLog };
@@ -319,10 +344,51 @@ test('Epic 9 proof uses the serialized-build fallback only after failed-start po
   assert.equal(invocations.filter((name) => name === 'start').length, 2);
   const fallbackBuilds = (await readInvocations(harness.dotnetLog))
     .filter((invocation) => invocation.startsWith('build '));
-  assert.equal(fallbackBuilds.length, 2);
-  assert.match(fallbackBuilds[0], /^build .*Hexalith\.EventStore\.Aspire\.csproj /u);
-  assert.match(fallbackBuilds[1], /^build .*Hexalith\.FrontComposer\.AppHost\.csproj .*BuildProjectReferences=false/u);
+  assert.deepEqual(fallbackBuilds, [EXPECTED_DEPENDENCY_BUILD, EXPECTED_APPHOST_BUILD]);
   assert.match(invocations.join(' '), /stop/u);
+});
+
+test('Epic 9 proof stops before the AppHost build and fallback start when the dependency build fails', async (t) => {
+  const harness = await createHarness(t, { firstStartFails: true, dotnetFailBuildCall: 1 });
+  const result = await runProof(harness.environment);
+
+  assert.equal(result.exitCode, 2);
+  assert.match(result.stderr, /Serialized AppHost fallback build failed/u);
+  assert.deepEqual(lifecycleNames(await readInvocations(harness.aspireLog)), ['ps', 'start', 'ps']);
+  assert.deepEqual(await readInvocations(harness.dotnetLog), [EXPECTED_DEPENDENCY_BUILD]);
+  assert.deepEqual(await readInvocations(harness.npmLog), []);
+  await access(join(harness.artifactRoot, 'apphost-start.failed.json'));
+  assert.match(
+    await readFile(join(harness.artifactRoot, 'apphost-serialized-build.log'), 'utf8'),
+    /Serialized build failed on call 1\./u,
+  );
+  await assert.rejects(
+    access(join(harness.artifactRoot, 'apphost-start.json')),
+    (error) => error?.code === 'ENOENT',
+  );
+});
+
+test('Epic 9 proof stops before the fallback start when the AppHost build fails', async (t) => {
+  const harness = await createHarness(t, { firstStartFails: true, dotnetFailBuildCall: 2 });
+  const result = await runProof(harness.environment);
+
+  assert.equal(result.exitCode, 2);
+  assert.match(result.stderr, /Serialized AppHost fallback build failed/u);
+  assert.deepEqual(lifecycleNames(await readInvocations(harness.aspireLog)), ['ps', 'start', 'ps']);
+  assert.deepEqual(await readInvocations(harness.dotnetLog), [
+    EXPECTED_DEPENDENCY_BUILD,
+    EXPECTED_APPHOST_BUILD,
+  ]);
+  assert.deepEqual(await readInvocations(harness.npmLog), []);
+  await access(join(harness.artifactRoot, 'apphost-start.failed.json'));
+  assert.match(
+    await readFile(join(harness.artifactRoot, 'apphost-serialized-build.log'), 'utf8'),
+    /Serialized build failed on call 2\./u,
+  );
+  await assert.rejects(
+    access(join(harness.artifactRoot, 'apphost-start.json')),
+    (error) => error?.code === 'ENOENT',
+  );
 });
 
 test('Epic 9 proof retries Aspire stop from EXIT when normal cleanup fails', async (t) => {
