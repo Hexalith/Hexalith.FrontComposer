@@ -5347,7 +5347,9 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of story-11-2-diagnostic-registry-and-documentation-governance-follow-ups (2026-05-11)"), 2026-08-27
 location: allowedExceptions.crossPackageRange
 reason: HFC1601 `lifecycleNote` no longer references the specific Shell runtime emit class; if those classes are renamed, the structured `allowedExceptions.crossPackageRange` row still passes but traceability anchor is lost. Prose judgment call. (blind+edge)
-status: open
+status: done 2026-08-27
+resolution: closed by human decision: Record the current behavior as intentional and close the deferred row with its verified rationale.
+decision: 2026-08-27 Accept current behavior — Record the current behavior as intentional and close the deferred row with its verified rationale.
 
 ### DW-1395: HFC1601 `helpLinkUri` is fingerprinted in `docs/validation/producer-fingerprints.json`; a future help-link rebase will silently drift the sha256 unless the producer-fingerprint test re-runs. Acceptable tight coupling for now. (blind)
 
