@@ -2949,6 +2949,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 1-7-ci-pipel
 location: Hexalith.FrontComposer.Sh
 reason: **Stable release packing fails while Shell depends on prerelease Fluent UI** — `dotnet pack Hexalith.FrontComposer.sln --no-build --configuration Release --output ./nupkgs -p:Version=1.2.3` currently fails with `NU5104` because `Hexalith.FrontComposer.Shell` depends on `Microsoft.FluentUI.AspNetCore.Components` `5.0.0-rc.2-26098.1`. Pre-existing dependency choice surfaced by Story 1.7 release automation. Reconciliation: Row: DW-0341; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.6 Shell/sample/accessibility follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.6 Shell/sample/accessibility follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 status: open
+decision: 2026-08-27 Keep open
 
 ### DW-1073: Shallow clone + 3-level submodule nesting may cause CI failures
 
