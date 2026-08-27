@@ -3846,6 +3846,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 5-5-command-
 location: FcDesaturatedBadge.razor.cs
 reason: **D6 — Long-running Confirming has no escalation** [`FcDesaturatedBadge.razor.cs`] — UX-DR concern (StillSyncing escalation) needs broader UX alignment; Story 5-5 budget exhausted. Reconciliation: Row: DW-0466; Split to Product/UX long-running confirmation escalation 2026-05-13; Disposition: split-to-named-story; Reason: UX escalation copy/timing needs product decision; Residual release-gate risk: low.; Evidence: FcDesaturatedBadge.razor.cs.
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1197, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1198: Adopter Singleton override of `NewItemIndicatorStateService` leaks timers [`Shell/Extensions/ServiceCollectionExtensions.cs:308-340`] — DI lifetime guard is broader than Story 5-5; track as Story 9-4 governance. Reconciliation: Row: DW-0467; Split to Story 9.4 DI lifetime governance 2026-05-13; Disposition: split-to-named-story; Reason: singleton override guard is cross-cutting DI policy; Residual release-gate risk: low.; Evidence: Shell/Extensions/ServiceCollectionExtensions.cs:308-340.
 
