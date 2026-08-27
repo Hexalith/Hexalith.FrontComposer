@@ -8659,6 +8659,7 @@ location: references/*
 source_spec: `_bmad-output/implementation-artifacts/spec-9-5-make-indicator-state-observable-and-scope-safe.md`
 reason: summary: Reconcile submodule pointer updates in `references/*` with repository release policy. evidence: Submodule pointers were updated in main during Story 9.4 governance sync before Story 9.5; pre-existing commits on main.
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1832, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1833: Isolate Story 9.4 implementation file edits from future story baseline diffs.
 
