@@ -7778,6 +7778,7 @@ location: eng/dependency-graph-policy.json
 source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
 reason: summary: Dead policy surfaces (`module_build_registry`, `evaluator_authorizations`, contract-tree `resource_limits`) are unused while comments advertise broader Task/AD scope. evidence: `eng/dependency-graph-policy.json` scaffolding fields. Reopen trigger: GOV-1 activates those surfaces or the comments are narrowed to the implemented scope.
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1723, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1724: Shallow CI `fetch-depth: 1` plus multi-pin Builds blob resolution through one FrontComposer Builds object store can under-validate non-HEAD pins when objects are missing.
 
