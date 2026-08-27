@@ -8295,7 +8295,9 @@ origin: migrated from legacy ledger ("Deferred from: REL-4 supersession token sp
 location: rel-4-enforce-temporary-release-freeze.md
 source_spec: `_bmad-output/implementation-artifacts/rel-4-enforce-temporary-release-freeze.md`
 reason: summary: Rename artifact file away from caller-enforcement title if desired (`rel-4-enforce-temporary-release-freeze.md` vs Builds-pin supersession). evidence: Review blind-hunter 2026-08-09; cosmetic path naming, not an acceptance failure.
-status: open
+status: done 2026-08-27
+resolution: closed by human decision: Record the current verified behavior as intentional and close the deferred row.
+decision: 2026-08-27 Accept current behavior — Record the current verified behavior as intentional and close the deferred row.
 
 ### DW-1781: Maintain the full historical REL-3 epic body (amended ACs, Implementation Record, 2026-07-18 review findings) as an active implementer surface.
 
