@@ -8588,7 +8588,9 @@ origin: migrated from legacy ledger ("Deferred from: Story 11.24 owner decision 
 location: spec-bump-latest-hexalith-nuget-packages-2.md
 source_spec: `_bmad-output/implementation-artifacts/spec-split-builds-catalog-gitlink-from-ci-cd-execution-sha.md`
 reason: summary: Close or rewrite leftover `spec-bump-latest-hexalith-nuget-packages-2.md`, which still requires moving every execution pin onto the catalog gitlink. evidence: That in-progress spec's frozen boundaries still bind catalog gitlink and execution SHA; this correction forbids completing that lockstep rewrite, but the leftover spec can restore it if resumed.
-status: open
+status: done 2026-08-27
+resolution: closed by human decision: Record the current behavior as intentional and close the deferred row with its verified rationale.
+decision: 2026-08-27 Accept current behavior — Record the current behavior as intentional and close the deferred row with its verified rationale.
 
 ### DW-1811: Reconcile the production Release handoff/evaluator path with the v3 source-provenance manifest schema and its living documentation.
 
