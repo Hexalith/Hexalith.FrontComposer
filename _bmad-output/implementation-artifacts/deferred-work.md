@@ -1261,7 +1261,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 8-5-skill-corpus-and-build-time-agent-support (2026-05-04)"), 2026-08-27
 location: n/a
 reason: **DEF-8 — T1 "owning story/follow-up" per-file metadata** — Rolled into P-43 aggregate manifest (DN-8 resolved → derived aggregate at runtime). **Owner:** Story 8-5 P-43. Sources: auditor. Reconciliation: Row: DW-0106; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusAggregateManifestBuilder.cs:10 derives the aggregate manifest and lines 19-21 carry each resource's OwningStory.
 
 ### DW-838: Real `TreatWarningsAsErrors=true` compile in generated-code validator (DN-7) [`src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:721-726`] — Current `Compile` check fires only on substring `"COMPILE_ERROR"`. Live `dotnet build` invocation deferred to Story 10-6 benchmark harness which owns live multi-agent provider gates. Owner: Story 10-6. Sources: auditor. Reconciliation: Row: DW-0107; Final classification 2026-05-14: split-to-named-story; Target owner: Story 10.6 benchmark/release guard follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 10.6 benchmark/release guard follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 
@@ -3130,14 +3131,16 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: Story 2-2 (Action Density Rules & Rendering Modes) — 2026-04-15"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **IExpandInRowJSModule scoped cache** — Decision D25's scoped-Lazy cache was not wired into the generated renderer (the renderer imports the module inline per instance). The Shell-side `IExpandInRowJSModule` + `ExpandInRowJSModule` class remain registered for adopters that want to preload via hand-written code; migrating generated renderers to consume this service requires moving the interface into Contracts (adds ASP.NET ElementReference dependency) — deferred. Reconciliation: Row: DW-0366; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC12, AC23, AC29, AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: Story 2-2 (Action Density Rules & Rendering Modes) — 2026-04-15.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcExpandInRowDetail.razor.cs:35 injects IExpandInRowJSModule and line 81 initializes it; generated snapshots contain FcExpandInRowDetail.
 
 ### DW-1098: Story 2-1 CommandFormEmitter .verified.txt snapshots
 
 origin: migrated from legacy ledger ("Deferred from: Story 2-2 (Action Density Rules & Rendering Modes) — 2026-04-15"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **Story 2-1 CommandFormEmitter .verified.txt snapshots** — Task 5.2 and Task 5.3 called for "12 existing .verified.txt snapshots" to be re-approved; those files don't exist in the repo. Regression coverage runs through existing `CommandFormTransformTests` (3 tests updated for D23 label) and generator integration tests. True byte-snapshot coverage for CommandFormEmitter is deferred to whenever `.verified.txt` snapshots are introduced for the Form pipeline. Reconciliation: Row: DW-0367; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC12, AC23, AC29, AC34; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: Story 2-2 (Action Density Rules & Rendering Modes) — 2026-04-15.
-status: open
+status: done 2026-08-27
+resolution: already resolved: tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_ShowFieldsOnly_RendersOnlyNamedFields.verified.txt:1 and CommandFormEmitterTests.CommandForm_DerivableFieldsHidden_OmitsHiddenFieldsOnly.verified.txt:1 are byte snapshots for the form pipeline.
 
 ### DW-1099: HFC1015 renumber — Story spec used HFC1008 for "RenderMode incompatible with density". Story 2-1 already owns HFC1008 for `[Flags]`-enum properties; density-mismatch renumbered to HFC1015. Story file updated globally. Reconciliation: Row: DW-0368; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2; Evidence: section: Story 2-2 (Action Density Rules & Rendering Modes) — 2026-04-15.
 
@@ -3327,7 +3330,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of story 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group A (Contracts) second pass"), 2026-08-27
 location: Hexalith.FrontComposer.Contracts.cs
 reason: **`netstandard2.0` compile-path depends on an `IsExternalInit` polyfill for `init` setters** — build is green, but the `Hexalith.FrontComposer.Contracts.csproj:6-8` only declares `System.Collections.Immutable` + `System.ComponentModel.Annotations`. Confirm the shim source (inherited from `Directory.Build.props`? `PolySharp`?) and pin explicitly before publishing the Contracts package externally; consumers that disable Central Package Management otherwise break. Reconciliation: Row: DW-0392; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC5-AC13, AC26-AC29, AC33-AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group A (Contracts) second pass.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Contracts/Internals/IsExternalInit.cs:10
 
 ### DW-1124: `IInlinePopover.ClosePopoverAsync()` takes no `CancellationToken`
 
@@ -3365,7 +3369,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 2-2-action-d
 location: src/Hexalith.FrontComposer.SourceTools/Emitters/LastUsedSubscriberEmitter.cs:93
 severity: high
 reason: **[HIGH] `LastUsedSubscriberEmitter` does not pass `CancellationToken` to `RecordAsync`** — `src/Hexalith.FrontComposer.SourceTools/Emitters/LastUsedSubscriberEmitter.cs:93` emits `await _recorder.RecordAsync<TCommand>(command).ConfigureAwait(false);` with no token argument, binding to the Group B–added optional parameter as `CancellationToken.None`. CT plumbing from Group B is inert in production until the emitter passes a meaningful token (e.g. from the subscriber's scoped `CancellationToken` / circuit-teardown linked source). **Defer target:** SourceTools group code review for story 2-2. **Scope:** update the emitter to thread a `CancellationToken` into `RecordAsync`, re-approve any affected emitter snapshot tests. Reconciliation: Row: DW-0397; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC17-AC20, AC35; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group B (Shell + Tests + Counter sample) chunk.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.SourceTools/Emitters/LastUsedSubscriberEmitter.cs:98
 
 ### DW-1129: [MED] Icon resolution uses reflection + assembly probing
 
@@ -3413,7 +3418,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 2-2-action-d
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 severity: low
 reason: **[LOW] `EscapeString` helper diverges between `CommandPageEmitter` and `CommandFormEmitter`** — consistency refactor. **Defer target:** next emitter cleanup pass. Reconciliation: Row: DW-0403; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.4; AC coverage: AC12, AC23, AC29, AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.4.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group C (SourceTools layer) chunk.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.SourceTools/Emitters/CommandPageEmitter.cs:115
 
 ### DW-1135: [LOW] HFC1016 diagnostic added outside the spec-declared "4 new diagnostics" set
 
@@ -3511,7 +3517,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 2-2-action-d
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 severity: low
 reason: **[LOW] `DevDiagnosticEvent.Message` verbatim forward to `ILogger`** — structured logging mitigates; raw-text sinks could be tricked by CRLF injection. Parallels Group C DEF9 `NavigateToReturnPath`. **Defer target:** Epic 9 log-audit pass. Reconciliation: Row: DW-0415; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group D (Shell services + Fluxor state + JS module) chunk.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerWarningLog.cs:459
 
 ### DW-1147: [LOW] Document `focusTriggerElementById` in D11's module contract (from P60)
 
@@ -3596,7 +3603,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: story 3-1-shell-layout-theme-and-typography (2026-04-18)"), 2026-08-27
 location: ShellThemeToggleE2ETests.cs
 reason: **Playwright E2E smoke (Task 10.9)** — Spec called for `ShellThemeToggleE2ETests.cs` Playwright theme-toggle + localStorage persistence + `prefers-color-scheme` emulation + `--fc-color-success` computed-style check. Conditional on Aspire MCP availability per `feedback_no_manual_validation.md`; the granular bUnit + options-validation + scope tests cover the AC matrix, but browser-level scoped-CSS resolution is only exercised manually in dev. **Defer target:** Story 10-2 (accessibility CI gates); add to Aspire MCP browser harness when the Counter.Web Aspire AppHost adds a Playwright step. Reconciliation: Row: DW-0426; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.5; AC coverage: AC17-AC20, AC35; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.5.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.5, Story 11.7; Evidence: section: story 3-1-shell-layout-theme-and-typography (2026-04-18).
-status: open
+status: done 2026-08-27
+resolution: already resolved: tests/e2e/specs/settings-persistence.spec.ts:159
 
 ### DW-1158: `PersistencePrecedenceTests` deterministic channel-level hook (Task 10.13)
 
@@ -3890,7 +3898,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 5-5-command-idempotency-and-optimistic-updates (2026-04-26)"), 2026-08-27
 location: FcDesaturatedBadge.razor.cs
 reason: **D6 — Long-running Confirming has no escalation** [`FcDesaturatedBadge.razor.cs`] — UX-DR concern (StillSyncing escalation) needs broader UX alignment; Story 5-5 budget exhausted. Reconciliation: Row: DW-0466; Split to Product/UX long-running confirmation escalation 2026-05-13; Disposition: split-to-named-story; Reason: UX escalation copy/timing needs product decision; Residual release-gate risk: low.; Evidence: FcDesaturatedBadge.razor.cs.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Components/Lifecycle/FcLifecycleWrapper.razor:22
 decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1197, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1198: Adopter Singleton override of `NewItemIndicatorStateService` leaks timers [`Shell/Extensions/ServiceCollectionExtensions.cs:308-340`] — DI lifetime guard is broader than Story 5-5; track as Story 9-4 governance. Reconciliation: Row: DW-0467; Split to Story 9.4 DI lifetime governance 2026-05-13; Disposition: split-to-named-story; Reason: singleton override guard is cross-cutting DI policy; Residual release-gate risk: low.; Evidence: Shell/Extensions/ServiceCollectionExtensions.cs:308-340.
@@ -4694,7 +4703,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 8-1-mcp-server-and-typed-tool-exposure (2026-05-02)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReader.cs
 reason: Markdown rich rendering features (role-specific tables, status cards, timelines, empty-state suggestions). **Owner:** Story 8-4. [`src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReader.cs`] Reconciliation: Row: DW-0578; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs:145
 
 ### DW-1310: Schema fingerprints / version negotiation — `McpManifest.SchemaVersion` is a static constant string. Owner: Story 8-6. [`src/Hexalith.FrontComposer.Contracts/Mcp/McpManifest.cs`] Reconciliation: Row: DW-0579; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 
@@ -4734,7 +4744,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 8-1-mcp-server-and-typed-tool-exposure (2026-05-02)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Mcp/
 reason: Skill corpus and build-time agent support resources. **Owner:** Story 8-5. [`src/Hexalith.FrontComposer.Mcp/`] Reconciliation: Row: DW-0583; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Mcp/Skills/FrontComposerSkillResourceProvider.cs:29
 
 ### DW-1315: `BuildServiceProvider` probe pattern in `AddFrontComposerMcp` — pre-existing pattern from Story 8-1; the diff expands its use but does not introduce it. Owner: Story 8-1 follow-up / Epic 9 host hardening. [`src/Hexalith.FrontComposer.Mcp/Extensions/FrontComposerMcpServiceCollectionExtensions.cs:37`] Reconciliation: Row: DW-0584; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 
@@ -4927,7 +4938,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 8-6a-schema-negotiation-runtime-gate Group B re-review (2026-05-05)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Schema/Diagnostics/SchemaMigrationDeltaAnalyzer.cs:138
 reason: Lost invariant comment on truncation marker — `// marker reflects FULL aggregate, not the bounded subset` removed at `src/Hexalith.FrontComposer.Schema/Diagnostics/SchemaMigrationDeltaAnalyzer.cs:138`; restore in a doc-only follow-up so future refactorers don't recompute aggregate post-truncation. **Owner:** Doc-only follow-up. Reconciliation: Row: DW-0610; Final classification 2026-05-14: accepted-constraint; Decision owner: Story 11.2 diagnostic/docs governance owner; Likelihood: low; Impact: low to medium; Release risk: non-blocking for v1 with documented trigger; Downstream impact: agent/adopter behavior remains stable for v1; Evidence: Story 11.5 D11/DN9/DN14/DN15 notes, row-scoped matrix, and Story 12.2 release-owner summary; Expiry/revalidation trigger: public MCP category/key changes, descriptor-registry mutability, build-time corpus signing/baseline materialization, or a consumer parsing diagnostic polish strings as contract input; Release-note requirement: required only if public machine keys/categories or corpus/fingerprint publication semantics change; Regression guard: Story11_5ResolutionTests, AggregateManifestIntegrityTests, SchemaNegotiationPrecedenceMatrixTests, AuthContextAccessorTests, and diagnostic docs governance tests as applicable; Previous owner was Story 11.5.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Schema/Diagnostics/SchemaMigrationDeltaAnalyzer.cs:192
 
 ### DW-1342: `.All(...)` perf scan over un-truncated input — `SchemaMigrationDeltaAnalyzer.cs:121-127` now does a 3-pass scan over the unbounded `deltas` list. Fine at `MaxDeltaCount=25`; perf trap if budget raised. Owner: v1.x perf hygiene. Reconciliation: Row: DW-0611; Final classification 2026-05-14: accepted-constraint; Decision owner: Story 11.2 diagnostic/docs governance owner; Likelihood: low; Impact: low to medium; Release risk: non-blocking for v1 with documented trigger; Downstream impact: agent/adopter behavior remains stable for v1; Evidence: Story 11.5 D11/DN9/DN14/DN15 notes, row-scoped matrix, and Story 12.2 release-owner summary; Expiry/revalidation trigger: public MCP category/key changes, descriptor-registry mutability, build-time corpus signing/baseline materialization, or a consumer parsing diagnostic polish strings as contract input; Release-note requirement: required only if public machine keys/categories or corpus/fingerprint publication semantics change; Regression guard: Story11_5ResolutionTests, AggregateManifestIntegrityTests, SchemaNegotiationPrecedenceMatrixTests, AuthContextAccessorTests, and diagnostic docs governance tests as applicable; Previous owner was Story 11.5.
 
@@ -5061,7 +5073,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 8-6a-schema-negotiation-runtime-gate Chunk 1 re-review (2026-05-06)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj
 reason: Low-budget edge cases — `maxDeltaCount=2` with marker drops all real Breaking deltas (only marker + Truncated survive); `maxDeltaCount=N+1` (1 over budget) drops 1 real delta to make room for `Truncated`. Both documented behaviors but not pinned by tests. Linked to `MaxDeltaCount` magic-number defer above. **Owner:** parameterized truncation tests at boundary budgets. Reconciliation: Row: DW-0629; Final classification 2026-05-14: resolved; Decision owner: Story 12.2 release certification; Evidence: Story 11.5 source/tests and Story 12.2 MCP validation (`dotnet test tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj --configuration Release`, 291 passed); Negative cases covered: negotiation rejection, hidden/unknown precedence, tenant-gated admission, schema/fingerprint mismatch, descriptor stripping, redaction, culture-invariant public categories, memoized deterministic retry, and zero side effects before admission; Downstream impact: MCP v1 contract evidence closed; Release-note requirement: none unless public machine keys change; Regression guard: focused MCP tests named in Story 11.5 Dev Agent Record; Previous owner was Story 11.5.
-status: open
+status: done 2026-08-27
+resolution: already resolved: tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/SchemaMigrationDeltaTruncationTests.cs:44
 
 ### DW-1361: `Hexalith.FrontComposer.Schema.csproj` does NOT declare the netstandard2.0 polyfill packages that `Hexalith.FrontComposer.Contracts.csproj` declares — D9 spec line 240 cites Contracts as the reference pattern, but Contracts declares `System.Collections.Immutable`, `System.ComponentModel.Annotations`, `System.Text.Json`, `System.Threading.Tasks.Extensions` for the netstandard2.0 facet (Contracts.csproj:7-14); Schema declares none. Currently fine — analyzer source uses only BCL-resident types — but a future `System.Text.Json` use would silently break the netstandard2.0 facet. Owner: align with Contracts pattern when first JSON dependency lands, or document the divergence explicitly. Reconciliation: Row: DW-0630; Final classification 2026-05-14: resolved; Decision owner: Story 12.2 release certification; Evidence: Story 11.5 source/tests and Story 12.2 MCP validation (`dotnet test tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj --configuration Release`, 291 passed); Negative cases covered: negotiation rejection, hidden/unknown precedence, tenant-gated admission, schema/fingerprint mismatch, descriptor stripping, redaction, culture-invariant public categories, memoized deterministic retry, and zero side effects before admission; Downstream impact: MCP v1 contract evidence closed; Release-note requirement: none unless public machine keys change; Regression guard: focused MCP tests named in Story 11.5 Dev Agent Record; Previous owner was Story 11.5.
 
@@ -5711,7 +5724,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 12-3-eventstore-pending-command-provider-release-gate (2026-05-15)"), 2026-08-27
 location: n/a
 reason: **W3 — `epic-11-retrospective: done` while `epic-11: in-progress` remains unresolved:** Pre-existing sprint-status inconsistency acknowledged in Story 12.1's W3 review note. Story 12.3 did not touch the retrospective status. Owner: sprint-status / Epic 11 retrospective owner.
-status: open
+status: done 2026-08-27
+resolution: already resolved: _bmad-output/implementation-artifacts/sprint-status.yaml:143 and :168 record epic-11 in-progress and retrospective optional, removing the reported contradiction.
 
 ### DW-1448: Inventory script silently skips bullets lacking `DW-####` markers: Pre-existing inventory-script gap from Story 12.1's W5 review note. Story 12.3's "Row inventory/hash | Passed" claim inherits the gap. Owner: deferred-work inventory-script maintainer.
 
@@ -5753,42 +5767,48 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 12-3-1-pending-status-reopen-governance-test (2026-05-16)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.Shell.Tests/Governance/PendingStatusReopenGovernanceTests.cs:24-28
 reason: **CR-12-3-1-D1 — Smart-quote / NBSP-hyphen / en-dash variants evade trigger scanner:** Trigger phrases like `provider‑backed pending‑command` (NBSP hyphen U+2011) or `provider–backed` (en-dash) are visually identical to a human reviewer but use non-ASCII codepoints, so `Contains(trigger, OrdinalIgnoreCase)` does not match. Deferred: low real-world likelihood for release-note authoring; add Unicode normalisation only when an actual evasion appears. Owner: pending-status governance test maintainer. Evidence: `tests/Hexalith.FrontComposer.Shell.Tests/Governance/PendingStatusReopenGovernanceTests.cs:24-28`.
-status: open
+status: done 2026-08-27
+resolution: already resolved: commit 537cbd4c replaced the trigger-scanning governance implementation with the provider-backed EventStore status endpoint.
 
 ### DW-1454: `EventStoreOptions` reflection misses fields and explicit interface implementations: `GetProperties(BindingFlags.Instance | BindingFlags.Public)` does not see public fields, indexers, or interface members implemented explicitly (non-public on the type). Deferred: broader reflection design (fields/non-public/indexers); today the type uses plain auto-properties. Owner: pending-status governance test maintainer. Evidence: `tests/Hexalith.FrontComposer.Shell.Tests/Governance/PendingStatusReopenGovernanceTests.cs:65-68`.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 12-3-1-pending-status-reopen-governance-test (2026-05-16)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.Shell.Tests/Governance/PendingStatusReopenGovernanceTests.cs:65-68
 reason: **CR-12-3-1-D2 — `EventStoreOptions` reflection misses fields and explicit interface implementations:** `GetProperties(BindingFlags.Instance | BindingFlags.Public)` does not see public fields, indexers, or interface members implemented explicitly (non-public on the type). Deferred: broader reflection design (fields/non-public/indexers); today the type uses plain auto-properties. Owner: pending-status governance test maintainer. Evidence: `tests/Hexalith.FrontComposer.Shell.Tests/Governance/PendingStatusReopenGovernanceTests.cs:65-68`.
-status: open
+status: done 2026-08-27
+resolution: already resolved: commit 537cbd4c replaced the reflection-based provider governance implementation.
 
 ### DW-1455: Per-file and global `MaxDiagnostics` caps stack into one opaque suppression line: Each file scan caps at `MaxDiagnostics`, then `FormatDiagnostics` caps again across files, so multi-file violations collapse to a single `additional diagnostics suppressed: N` with no file paths for the suppressed entries. Deferred: per-file bounded-diagnostics intent is satisfied; the multi-file UX is a nice-to-have. Owner: pending-status governance test maintainer. Evidence: `tests/Hexalith.FrontComposer.Shell.Tests/Governance/PendingStatusReopenGovernanceTests.cs:341-371,538-546`.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 12-3-1-pending-status-reopen-governance-test (2026-05-16)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.Shell.Tests/Governance/PendingStatusReopenGovernanceTests.cs:341-371
 reason: **CR-12-3-1-D3 — Per-file and global `MaxDiagnostics` caps stack into one opaque suppression line:** Each file scan caps at `MaxDiagnostics`, then `FormatDiagnostics` caps again across files, so multi-file violations collapse to a single `additional diagnostics suppressed: N` with no file paths for the suppressed entries. Deferred: per-file bounded-diagnostics intent is satisfied; the multi-file UX is a nice-to-have. Owner: pending-status governance test maintainer. Evidence: `tests/Hexalith.FrontComposer.Shell.Tests/Governance/PendingStatusReopenGovernanceTests.cs:341-371,538-546`.
-status: open
+status: done 2026-08-27
+resolution: already resolved: commit 537cbd4c removed the obsolete MaxDiagnostics trigger scanner.
 
 ### DW-1456: Suppression count mixes allowed (Constraint Metadata) hits with real violations: When `violations.Count == MaxDiagnostics`, `CountReleaseNoteTriggerHits` re-scans without applying the metadata allowance, so the suppression delta includes hits that were explicitly allowed. Deferred: only misleads when a giant allowed metadata block coexists with exactly `MaxDiagnostics` real violations in the same file. Owner: pending-status governance test maintainer. Evidence: `tests/Hexalith.FrontComposer.Shell.Tests/Governance/PendingStatusReopenGovernanceTests.cs:363-368,373-374`.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 12-3-1-pending-status-reopen-governance-test (2026-05-16)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.Shell.Tests/Governance/PendingStatusReopenGovernanceTests.cs:363-368
 reason: **CR-12-3-1-D4 — Suppression count mixes allowed (Constraint Metadata) hits with real violations:** When `violations.Count == MaxDiagnostics`, `CountReleaseNoteTriggerHits` re-scans without applying the metadata allowance, so the suppression delta includes hits that were explicitly allowed. Deferred: only misleads when a giant allowed metadata block coexists with exactly `MaxDiagnostics` real violations in the same file. Owner: pending-status governance test maintainer. Evidence: `tests/Hexalith.FrontComposer.Shell.Tests/Governance/PendingStatusReopenGovernanceTests.cs:363-368,373-374`.
-status: open
+status: done 2026-08-27
+resolution: already resolved: commit 537cbd4c removed the obsolete release-note trigger counting path.
 
 ### DW-1457: Singleton-instance Null provider diagnostic does not name the descriptor shape as the root cause: A `Singleton(new NullPendingCommandStatusQuery())` registration emits `must use ImplementationType NullPendingCommandStatusQuery` even though the runtime type is correct; the real root cause is "descriptor uses an instance, implementation cannot be inferred from the descriptor". Deferred: diagnostic clarity nit; the underlying detection (two violations: lifetime + impl-type) is correct. Owner: pending-status governance test maintainer. Evidence: `tests/Hexalith.FrontComposer.Shell.Tests/Governance/PendingStatusReopenGovernanceTests.cs:511-521`.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 12-3-1-pending-status-reopen-governance-test (2026-05-16)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.Shell.Tests/Governance/PendingStatusReopenGovernanceTests.cs:511-521
 reason: **CR-12-3-1-D5 — Singleton-instance Null provider diagnostic does not name the descriptor shape as the root cause:** A `Singleton(new NullPendingCommandStatusQuery())` registration emits `must use ImplementationType NullPendingCommandStatusQuery` even though the runtime type is correct; the real root cause is "descriptor uses an instance, implementation cannot be inferred from the descriptor". Deferred: diagnostic clarity nit; the underlying detection (two violations: lifetime + impl-type) is correct. Owner: pending-status governance test maintainer. Evidence: `tests/Hexalith.FrontComposer.Shell.Tests/Governance/PendingStatusReopenGovernanceTests.cs:511-521`.
-status: open
+status: done 2026-08-27
+resolution: already resolved: commit 537cbd4c replaced the descriptor-shape governance check with the real provider integration.
 
 ### DW-1458: Spec AC3 "12 non-blank lines" vs implementation "12 data rows" Constraint Metadata budget conflict: The story AC3 caps the Constraint Metadata allowance at 12 non-blank lines, but the approved `_bmad-output/implementation-artifacts/12-3-pending-command-provider-release-note.md` has a 14-data-row metadata table (header + separator + 14 data = ~16 non-blank lines). The implementation deliberately relaxed the cap to "12 data rows; header/separator/prose excluded" so the existing approved release note passes; switching to the spec-literal counter would push the `Agent impact` trigger line outside the window and break the running guard. Reopen trigger: spec AC3 wording is revised to match the implementation, OR the approved release note is restructured to fit a 12-non-blank-line cap. Owner: pending-status governance test maintainer + spec author. Evidence: `tests/Hexalith.FrontComposer.Shell.Tests/Governance/PendingStatusReopenGovernanceTests.cs` `BuildConstraintMetadataWindow` `tableMode` branch; `_bmad-output/implementation-artifacts/12-3-pending-command-provider-release-note.md:11-28`.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 12-3-1-pending-status-reopen-governance-test (2026-05-16)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/12-3-pending-command-provider-release-note.md
 reason: **CR-12-3-1-D6 — Spec AC3 "12 non-blank lines" vs implementation "12 data rows" Constraint Metadata budget conflict:** The story AC3 caps the Constraint Metadata allowance at 12 non-blank lines, but the approved `_bmad-output/implementation-artifacts/12-3-pending-command-provider-release-note.md` has a 14-data-row metadata table (header + separator + 14 data = ~16 non-blank lines). The implementation deliberately relaxed the cap to "12 data rows; header/separator/prose excluded" so the existing approved release note passes; switching to the spec-literal counter would push the `Agent impact` trigger line outside the window and break the running guard. Reopen trigger: spec AC3 wording is revised to match the implementation, OR the approved release note is restructured to fit a 12-non-blank-line cap. Owner: pending-status governance test maintainer + spec author. Evidence: `tests/Hexalith.FrontComposer.Shell.Tests/Governance/PendingStatusReopenGovernanceTests.cs` `BuildConstraintMetadataWindow` `tableMode` branch; `_bmad-output/implementation-artifacts/12-3-pending-command-provider-release-note.md:11-28`.
-status: open
+status: done 2026-08-27
+resolution: already resolved: commit 537cbd4c removed the obsolete Constraint Metadata window and release-note artifact.
 decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1458, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1459: `deep_merge` cannot remove keys or override-to-empty-dict: `override == {}` short-circuits back to base in the override branch, and there is no sentinel for key deletion in fixtures. Empty-dict override and missing-field cases cannot be expressed in `release-readiness-cases.json`. Deferred: fixture-design limitation, not a release-evidence correctness defect; pick up when a future fixture needs missing-field coverage. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:550-556, 157-177`.
@@ -6084,7 +6104,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 8 verification (2026-05-19)"), 2026-08-27
 location: attestation-unavailable.md
 reason: **CR-12-4-Def56 — AC10 `Record attestation fallback evidence` step runs in dry-run mode:** Always writes `attestation-unavailable.md` for both dry-run and live; cosmetic only because dry-run cannot publish. Pick up if dry-run is exercised against an attested-supported repo. Owner: release-evidence/workflow maintainer. Evidence: `.github/workflows/release.yml:411-417`.
-status: open
+status: done 2026-08-27
+resolution: already resolved: commit ef2823ba removed the old attestation-unavailable dry-run step; .github/workflows/release.yml:406 now uses the AD-15 verification handoff.
 
 ### DW-1500: `_INVENTORY_FIRST_COMPONENT_DENYLIST` exempts hypothetical `eng/*.csproj` with `IsPackable=true`: No `eng/*.csproj` exists; P181 added the exemption for build-task projects. Pick up if a real build-task project lands in `eng/`. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:593, 799-803`.
 
@@ -7855,7 +7876,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-
 location: n/a
 source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
 reason: summary: `baseline_commit` remains `0a84e818` despite repeated foreign-absorption and ~40–122 commit staleness warnings across review chunks. evidence: Frontmatter still pins `0a84e818` while review text and validator File List class repeatedly note that diffs absorb concurrent Story 11.18 and other foreign work. Re-baselining is a process action, not a docs-only patch. Reopen trigger: a dated Administrator decision to move `baseline_commit` past the contaminating range, or the next promotion measurement that requires a clean identity census. resolution: Closed 2026-08-02 chunk C — Administrator Decision 1 updated frontmatter `baseline_commit` to `32db5c3460a4aa0ae6382ae9db36fa42e512ffd3` (post-11.18 tip / latest 111-target touch).
-status: open
+status: done 2026-08-27
+resolution: already resolved: _bmad-output/implementation-artifacts/11-17-shell-bundle-split.md:2 pins baseline_commit 32db5c3460a4aa0ae6382ae9db36fa42e512ffd3, replacing stale 0a84e818.
 
 ### DW-1726: Committed catalog pins are mutation-blind to Governance/synthetic suites — emptying `selected_catalog_required_*` still passes shape checks and profile-visit diagnostics.
 
