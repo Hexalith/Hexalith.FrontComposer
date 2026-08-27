@@ -3815,7 +3815,9 @@ resolution: already resolved: src/Hexalith.FrontComposer.Shell/State/PendingComm
 origin: migrated from legacy ledger ("Deferred from: code review of 5-5-command-idempotency-and-optimistic-updates (2026-04-26)"), 2026-08-27
 location: OptimisticBadgeState/PendingCommandStatus/PendingCommandTerminalOutcome
 reason: **D2 — Three overlapping status enums** [`OptimisticBadgeState/PendingCommandStatus/PendingCommandTerminalOutcome`] — Refactor opportunity, not a defect. Track as Story 9-4 (governance) follow-up. Reconciliation: Row: DW-0462; Split to Story 9.4 enum/status governance 2026-05-13; Disposition: split-to-named-story; Reason: enum consolidation is governance/refactor work; Residual release-gate risk: low.; Evidence: OptimisticBadgeState/PendingCommandStatus/PendingCommandTerminalOutcome.
-status: open
+status: done 2026-08-27
+resolution: closed by human decision: Record the current behavior as intentional and close the deferred row with its verified rationale.
+decision: 2026-08-27 Accept current behavior — Record the current behavior as intentional and close the deferred row with its verified rationale.
 
 ### DW-1194: `ProjectionFallbackPollingDriver` positional parameter ordering hazard [`ProjectionFallbackPollingDriver.cs:1147-1162`] — Optional trailing parameter is conventional; existing tests pass. Document in adopter migration notes. Reconciliation: Row: DW-0463; Accepted constraint 2026-05-13; Disposition: accepted-with-risk; Risk: likelihood low, impact low; Release risk: optional trailing parameter remains conventional; Downstream impact: internal constructor readability only; Owner: Shell runtime owner; Review by: 2026-06-30; Reopen trigger: constructor parameter bug recurs; Validation: ProjectionFallbackPollingDriver tests.; Evidence: ProjectionFallbackPollingDriver.cs:1147-1162.
 
