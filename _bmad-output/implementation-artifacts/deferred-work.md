@@ -8975,6 +8975,7 @@ location: quality.yml
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Constrain `shared` and `process` disposition authorization the way review loop 3 constrained `bootstrap-owned`. evidence: `extract_commit_scope_dispositions` accepts any in-range 40-character SHA with a non-empty reason and checks nothing else, and the resulting classification suppresses what would otherwise be a hard `unmapped` failure. Story 9.7 exercises this on itself: `2dcc43fe | shared` neutralizes a 22-path release-compatibility commit that edited three Story 9.7-owned files (`quality.yml`, `deferred-work.md`, `CiGovernanceTests.cs`). Human decision 2026-08-25 accepted the asymmetry for 9.7 because these two kinds only withhold ownership and never grant it, so mutable story text cannot broaden attribution; candidate constraints for a follow-up story are requiring the reason to name the owning spec, or requiring the commit to touch no listed path.
 status: open
+decision: 2026-08-27 Implement requested change — Implement the behavior requested by DW-1857, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1858: Detect concurrent workspace changes while strict story evidence is being collected.
 
