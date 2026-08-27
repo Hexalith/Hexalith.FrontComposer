@@ -5331,6 +5331,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story-11-2-d
 location: DiagnosticDescriptors.DocsLinkPrefix
 reason: Public surface drift — `DiagnosticDescriptors.DocsLinkPrefix` was renamed to public `CanonicalHelpLinkFormat`; revisit when `EnableFrontComposerPackageValidation` ships against the 0.1.0 baseline. (blind)
 status: open
+decision: 2026-08-27 Keep open
 
 ### DW-1392: `storyOwner` controlled vocabulary not cross-checked against `sprint-status.yaml`; same for suppression `ownerStory`. Already flagged in story Completion Notes as Product/Architecture decision beyond Story 11.2 budget. (edge)
 
