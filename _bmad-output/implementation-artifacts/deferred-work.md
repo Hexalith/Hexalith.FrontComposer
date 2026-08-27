@@ -3427,6 +3427,7 @@ location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 severity: medium
 reason: **[MED] Email canonicalization edge cases — Turkish-I, NFKC vs NFC, RFC 5321 local-part case sensitivity** — different IDNA forms produce different storage keys across devices for the same logical user. **Defer target:** Epic 7 (Authentication, Authorization & Multi-Tenancy) I18N email policy. Reconciliation: Row: DW-0410; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group D (Shell services + Fluxor state + JS module) chunk.
 status: open
+decision: 2026-08-27 Keep open
 
 ### DW-1142: [LOW] `FrontComposerStorageKey.Build` has no key-length cap
 
