@@ -7753,6 +7753,7 @@ location: Hexalith.FrontComposer.slnx
 source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
 reason: summary: Restore a lane that exercises CI's own `dotnet test` invocation path, or record the reduction in guarantee. evidence: The story's documented commands replaced two solution-level `dotnet test Hexalith.FrontComposer.slnx` lanes with eight direct xUnit v3 runner invocations. The direct runners bypass VSTest discovery, RunSettings, and MSBuild-supplied properties, which is the path the reusable `domain-ci` workflow drives. A discovery-only regression — a project missing from the `.slnx` Release configuration, an `IsTestProject` break — is therefore unobservable locally and first surfaces in CI. The swap is repository-compliant (VSTest/Playwright sockets are blocked in this environment), so this is a disclosed-reduction item rather than a defect. Reopen trigger: a CI-only test-discovery failure, or the socket restriction being lifted.
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1720, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1721: Deferred tasks can self-exempt with bare fabricated basenames — existence check only runs when `"/"` is in the path.
 
