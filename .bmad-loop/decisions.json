@@ -449,6 +449,15 @@
     "label": "Implement change",
     "resolution": ""
   },
+  "DW-913": {
+    "answered_at": "2026-08-27",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "3",
+    "label": "Keep open",
+    "resolution": ""
+  },
   "DW-914": {
     "answered_at": "2026-08-27",
     "bundle_name": "",
