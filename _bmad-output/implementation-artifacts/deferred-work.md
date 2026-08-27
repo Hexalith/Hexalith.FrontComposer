@@ -9013,6 +9013,7 @@ location: n/a
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Decide whether an unresolved merge-conflict path should be a hard validation failure. evidence: `collect_workspace_evidence` collects unmerged paths into `unresolved` and `collect_reconciled_changed_files` folds them into the changed set, but nothing fails on them, so a run performed mid-merge-conflict exits 0 whenever the conflicted paths happen to be listed in the File List. The evidence then describes a tree that is not in a reviewable state. Human decision 2026-08-25: fix the duplicate reporting now and treat failing closed on conflict as a separate policy decision rather than a review patch, because it is a behavior change with no failing test today and would red-flag anyone running the report mid-rebase.
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1875, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1876: Reject duplicate JSON keys in the release compatibility suppression ledger.
 
