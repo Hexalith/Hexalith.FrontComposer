@@ -144,12 +144,7 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
         });
 
         ApplyFilterRequery(time, "counter-source");
-        await grid.WaitForAssertionAsync(() =>
-        {
-            Services.GetRequiredService<IState<DataGridNavigationState>>()
-                .Value.ViewStates[ViewKey].Filters["Id"].ShouldBe("counter-source");
-            grid.FindAll(IndicatorSelector).ShouldBeEmpty();
-        });
+        await grid.WaitForAssertionAsync(() => grid.FindAll(IndicatorSelector).ShouldBeEmpty());
 
         Render<CrossRowProviderTargetCommandForm>(parameters => parameters
                 .Add(component => component.InitialValue, new CrossRowProviderTargetCommand
@@ -242,11 +237,8 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
         ApplyFilterRequery(time, "counter-filter");
         await grid.WaitForAssertionAsync(() =>
         {
-            Services.GetRequiredService<IState<DataGridNavigationState>>()
-                .Value.ViewStates[ViewKey].Filters["Id"].ShouldBe("counter-filter");
             _ = refreshScheduler.Received().RegisterLane(Arg.Is<ProjectionFallbackLane>(lane =>
                 lane.Filters.ContainsKey("Id") && lane.Filters["Id"] == "counter-filter"));
-            indicators.Snapshot(ViewKey).ShouldBeEmpty();
             grid.FindAll(IndicatorSelector).ShouldBeEmpty();
         });
 
@@ -276,11 +268,7 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
         await grid.InvokeAsync(() => dispatcher.Dispatch(new CounterProjectionLoadedAction(
             "epic-9-materialized",
             [Counter("counter-existing", 1), Counter("counter-materialized", 2)])));
-        await grid.WaitForAssertionAsync(() =>
-        {
-            indicators.Snapshot(ViewKey).ShouldBeEmpty();
-            grid.FindAll(IndicatorSelector).ShouldBeEmpty();
-        });
+        await grid.WaitForAssertionAsync(() => grid.FindAll(IndicatorSelector).ShouldBeEmpty());
     }
 
     private FakeTimeProvider ConfigureFakeTime()

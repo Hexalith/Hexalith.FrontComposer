@@ -2,7 +2,7 @@
 title: 'Story 9.8: Prove composed and live Epic 9 acceptance'
 type: 'feature'
 created: '2026-08-27'
-status: 'in-progress'
+status: 'in-review'
 baseline_commit: '1cc9c2774ca6368322b7aa7b2e89cee4a5f5fbf3'
 baseline_revision: '1cc9c2774ca6368322b7aa7b2e89cee4a5f5fbf3'
 story_id: '9.8'
@@ -65,8 +65,8 @@ deferred: []
 - [x] `tests/e2e/specs/epic-9-fresh-row-acceptance.spec.ts` -- assert non-empty localized announcements and emit explicit exact-key, count, accessibility, first-wins, scope, and dismissal claims.
 - [x] `tests/e2e/scripts/validate-epic9-artifacts.mjs`, `tests/e2e/scripts/validate-epic9-artifacts.test.mjs`, `tests/e2e/scripts/run-epic9-live-proof.test.mjs`, `tests/e2e/package.json`, and `.github/workflows/quality.yml` -- validate every required claim, redaction boundary, strict preflight, and unrelated-AppHost refusal with positive/negative fixtures, and run those checks in the blocking live job.
 - [x] `eng/run-epic9-live-proof.sh` -- keep safe isolated lifecycle behavior and add a strict final-evidence mode that rejects a dirty or mismatched candidate while preserving an explicit development-mode diagnostic run.
-- [ ] `_bmad-output/implementation-artifacts/tests/9-8-live-acceptance.md` and `artifacts/epic-9/` -- run the composed and live gates, retain checksummed artifacts against a committed candidate, and refresh exact commands, versions, endpoint, result counts, artifact name, and blockers.
-- [ ] `_bmad-output/implementation-artifacts/spec-9-8-prove-composed-and-live-epic-9-acceptance.md` -- reconcile verification, File List, review findings, commit scope, and final status without touching sprint tracking.
+- [x] `_bmad-output/implementation-artifacts/tests/9-8-live-acceptance.md` and `artifacts/epic-9-final-f4f43fdc/` -- run the composed and live gates, retain checksummed artifacts against a committed candidate, and refresh exact commands, versions, endpoint, result counts, artifact name, and blockers.
+- [x] `_bmad-output/implementation-artifacts/spec-9-8-prove-composed-and-live-epic-9-acceptance.md` -- reconcile verification, File List, review findings, and commit scope without touching sprint tracking.
 
 **Acceptance Criteria:**
 - Given Stories 9.3-9.7 are independently complete, when the automated composition lane runs, then standalone create, row-context update, cross-row/status move, callback confirmation, and polling cross the generated-command-to-grid chain with the intended indicator disposition.
@@ -77,6 +77,7 @@ deferred: []
 ## Spec Change Log
 
 - 2026-08-27: Hardened composed scope/filter proofs, browser claims, artifact validation, CI wiring, and final/development proof modes. A complete isolated development proof passed and is recorded without claiming final acceptance; the clean committed-candidate proof remains open.
+- 2026-08-27: Committed the hardened candidate as `f4f43fdc3053e45ffb939b718c670afb4cfcecd0`; strict isolated Aspire/Playwright acceptance, final artifact validation, checksums, and AppHost cleanup all passed against that clean SHA.
 
 ## Review Triage Log
 
@@ -93,7 +94,7 @@ The implementation merged in `f1b16a25d2a0a32ee437f5d8dfa786577402b416`; its spe
 - `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` -- expected: broad gate passes, or any pre-existing dependency blocker is recorded separately with its exact output.
 - `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-9-8-prove-composed-and-live-epic-9-acceptance.md --candidate HEAD` -- expected: Story 9.8 commits and changed paths reconcile with no sprint-status write.
 
-**Development results (2026-08-27):** TypeScript typecheck passed; artifact-validator and proof-runner fixtures passed 40/40; the Release Shell.Tests build passed with 0 warnings and 0 errors; `Epic9CompositionTests` passed 2/2; the seeded Counter page and identifier-seal facts each passed 1/1. The latest isolated development proof passed Playwright 1/1, live artifact validation, full checksums, and exact cleanup in `artifacts/epic-9-verification/`. The exact solution default lane remains blocked at restore by pre-existing `NU1109` (`FsCheck.Xunit.v3 3.3.4` requires `FsCheck 3.3.4`; the central catalog selects `FsCheck 3.3.3`). Strict final preflight and unrelated-AppHost refusal are fixture-covered; commit-bound final evidence is still required.
+**Results (2026-08-27):** TypeScript typecheck passed; artifact-validator and proof-runner fixtures passed 40/40; the Release Shell.Tests build passed with 0 warnings and 0 errors; `Epic9CompositionTests` passed 2/2; the seeded Counter page and identifier-seal facts each passed 1/1. Strict final proof passed Playwright 1/1, live artifact validation, full checksums, and exact cleanup against clean candidate `f4f43fdc3053e45ffb939b718c670afb4cfcecd0` in `artifacts/epic-9-final-f4f43fdc/`. The exact solution default lane remains blocked at restore by pre-existing `NU1109` (`FsCheck.Xunit.v3 3.3.4` requires `FsCheck 3.3.4`; the central catalog selects `FsCheck 3.3.3`).
 
 ## File List
 
