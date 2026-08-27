@@ -2,7 +2,7 @@
 title: 'Story 9.8: Prove composed and live Epic 9 acceptance'
 type: 'feature'
 created: '2026-08-27'
-status: 'in-review'
+status: 'blocked'
 baseline_commit: '1cc9c2774ca6368322b7aa7b2e89cee4a5f5fbf3'
 baseline_revision: '1cc9c2774ca6368322b7aa7b2e89cee4a5f5fbf3'
 story_id: '9.8'
@@ -109,3 +109,25 @@ The implementation merged in `f1b16a25d2a0a32ee437f5d8dfa786577402b416`; its spe
 - `tests/e2e/scripts/validate-epic9-artifacts.test.mjs`
 - `tests/e2e/scripts/run-epic9-live-proof.test.mjs`
 - `tests/e2e/specs/epic-9-fresh-row-acceptance.spec.ts`
+
+## Auto Run Result
+
+Status: blocked
+
+Blocking condition: commit-scope validation failed before adversarial review.
+
+Exact failing command:
+
+```text
+python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-9-8-prove-composed-and-live-epic-9-acceptance.md --candidate HEAD
+```
+
+Exact failure output:
+
+```text
+unmapped story delivery commit a7de1113e50b1e98bb1f5d7d9dcacb1ac9b78c32 does not match story 9.8 but touches listed paths: _bmad-output/contracts/analyzer-policy-exception-ledger-v1.json, _bmad-output/implementation-artifacts/spec-9-8-prove-composed-and-live-epic-9-acceptance.md, _bmad-output/implementation-artifacts/tests/9-8-live-acceptance.md, eng/run-epic9-live-proof.sh, tests/Hexalith.FrontComposer.Shell.Tests/Generated/Epic9CompositionTests.cs, tests/e2e/scripts/run-epic9-live-proof.test.mjs, tests/e2e/scripts/validate-epic9-artifacts.mjs, tests/e2e/scripts/validate-epic9-artifacts.test.mjs, tests/e2e/specs/epic-9-fresh-row-acceptance.spec.ts
+unmapped story delivery commit d928f5f7149feaadf0e384e6e7c90c1472bc0e4d does not match story 9.8 but touches listed paths: tests/e2e/package.json
+unmapped story delivery commit 9ad4312fb93fe0fef389d40e5abbeed241a2d73d does not match story 9.8 but touches listed paths: _bmad-output/contracts/analyzer-policy-exception-ledger-v1.json
+```
+
+The validator resolved baseline `1cc9c2774ca6368322b7aa7b2e89cee4a5f5fbf3` and candidate `9ad4312fb93fe0fef389d40e5abbeed241a2d73d`. The working tree was clean before this result write-back. No reviewer subagents were launched because commit-scope validation is a prerequisite hard gate. `_bmad-output/implementation-artifacts/sprint-status.yaml` was not written or reverted.
