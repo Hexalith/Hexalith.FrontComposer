@@ -596,6 +596,14 @@ public static class CommandFormEmitter {
                 "Command target resolution failed closed. Category={Category}",
                 hasException: false,
                 ("string", "category"));
+            GeneratedLogMethodEmitter.Emit(
+                sb,
+                "LogCommandTargetResolutionSucceeded",
+                5913,
+                "CommandFormTargetResolutionSucceeded",
+                "Information",
+                "Command target resolution succeeded.",
+                hasException: false);
         }
     }
 
@@ -667,13 +675,18 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        try");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            return await ResolveCommandTargetCoreAsync(command, cancellationToken).ConfigureAwait(false);");
+        _ = sb.AppendLine("            var resolution = await ResolveCommandTargetCoreAsync(command, cancellationToken).ConfigureAwait(false);");
+        _ = sb.AppendLine("            if (resolution.Target is not null)");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                TryLogCommandTargetResolutionSucceeded();");
+        _ = sb.AppendLine("            }");
+        _ = sb.AppendLine("            return resolution;");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            throw;");
         _ = sb.AppendLine("        }");
-        _ = sb.AppendLine("        catch (Exception)");
+        _ = sb.AppendLine("        catch (Exception ex) when (!IsFatalCommandTargetResolutionException(ex))");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            return (command, FailCommandTargetResolution(\"target-failed\"));");
         _ = sb.AppendLine("        }");
@@ -804,7 +817,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("                {");
             _ = sb.AppendLine("                    return (System.Threading.Volatile.Read(ref frozenCommand) ?? command, FailCommandTargetResolution(\"provider-timeout\"));");
             _ = sb.AppendLine("                }");
-            _ = sb.AppendLine("                catch (Exception ex) when (ex is not OperationCanceledException)");
+            _ = sb.AppendLine("                catch (Exception ex) when (ex is not OperationCanceledException && !IsFatalCommandTargetResolutionException(ex))");
             _ = sb.AppendLine("                {");
             _ = sb.AppendLine("                    return (System.Threading.Volatile.Read(ref frozenCommand) ?? command, FailCommandTargetResolution(\"provider-failed\"));");
             _ = sb.AppendLine("                }");
@@ -877,7 +890,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("        {");
             _ = sb.AppendLine("            throw;");
             _ = sb.AppendLine("        }");
-            _ = sb.AppendLine("        catch (Exception)");
+            _ = sb.AppendLine("        catch (Exception ex) when (!IsFatalCommandTargetResolutionException(ex))");
             _ = sb.AppendLine("        {");
             _ = sb.AppendLine("            return (frozenCommand ?? command, FailCommandTargetResolution(\"target-failed\"));");
             _ = sb.AppendLine("        }");
@@ -904,9 +917,23 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    private " + snapshotType + "? FailCommandTargetResolution(string category)");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        try { if (Logger is not null) { LogCommandTargetResolutionFailed(Logger, category); } }");
-        _ = sb.AppendLine("        catch (Exception) { }");
+        _ = sb.AppendLine("        catch (Exception ex) when (!IsFatalCommandTargetResolutionException(ex)) { }");
         _ = sb.AppendLine("        return null;");
         _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private void TryLogCommandTargetResolutionSucceeded()");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        try { if (Logger is not null) { LogCommandTargetResolutionSucceeded(Logger); } }");
+        _ = sb.AppendLine("        catch (Exception ex) when (!IsFatalCommandTargetResolutionException(ex)) { }");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private static bool IsFatalCommandTargetResolutionException(Exception exception) =>");
+        _ = sb.AppendLine("        exception is global::System.AggregateException aggregate");
+        _ = sb.AppendLine("            ? global::System.Linq.Enumerable.Any(aggregate.Flatten().InnerExceptions, IsFatalCommandTargetResolutionException)");
+        _ = sb.AppendLine("            : exception is global::System.OutOfMemoryException");
+        _ = sb.AppendLine("                or global::System.StackOverflowException");
+        _ = sb.AppendLine("                or global::System.Threading.ThreadAbortException");
+        _ = sb.AppendLine("                or global::System.AccessViolationException;");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private static string? NormalizeCommandTargetValue(string? value) =>");
         _ = sb.AppendLine("        string.IsNullOrWhiteSpace(value) ? null : value.Trim();");

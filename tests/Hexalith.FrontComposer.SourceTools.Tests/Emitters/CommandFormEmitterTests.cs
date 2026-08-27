@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text.RegularExpressions;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.SourceTools.Emitters;
@@ -382,6 +383,85 @@ public class CommandFormEmitterTests {
     }
 
     [Fact]
+    public void Emit_CommandTargetTelemetryUsesClosedRedactedCompletionContract() {
+        CommandFormModel form = BuildForm(
+            [new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null)],
+            commandTarget: new CommandTargetModel(
+                "global::Counter.Domain.CounterProjection",
+                CommandTargetResolutionMode.Provider,
+                CommandTargetChangeKind.Create,
+                "counter-counts",
+                null));
+
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+        string statusMoveSource = CommandFormEmitter.Emit(
+            BuildForm(
+                [],
+                commandTarget: new CommandTargetModel(
+                    "global::Counter.Domain.CounterProjection",
+                    CommandTargetResolutionMode.Provider,
+                    CommandTargetChangeKind.StatusMove,
+                    "counter-counts",
+                    "active")),
+            BuildFluxor());
+        string sameSource = CommandFormEmitter.Emit(
+            BuildForm(
+                [],
+                commandTarget: new CommandTargetModel(
+                    "global::Counter.Domain.CounterProjection",
+                    CommandTargetResolutionMode.SameAsSource,
+                    CommandTargetChangeKind.Update,
+                    "counter-counts",
+                    null)),
+            BuildFluxor());
+
+        source.ShouldContain("[Inject] private ILogger<IncrementCommandForm>? Logger { get; set; }");
+        source.ShouldContain("new global::Microsoft.Extensions.Logging.EventId(5912, \"CommandFormTargetResolutionFailed\")");
+        source.ShouldContain("global::Microsoft.Extensions.Logging.LogLevel.Warning");
+        source.ShouldContain("\"Command target resolution failed closed. Category={Category}\"");
+        source.ShouldContain("new global::Microsoft.Extensions.Logging.EventId(5913, \"CommandFormTargetResolutionSucceeded\")");
+        source.ShouldContain("global::Microsoft.Extensions.Logging.LogLevel.Information");
+        source.ShouldContain("\"Command target resolution succeeded.\"");
+        source.ShouldContain("LogCommandTargetResolutionFailed(Logger, category)");
+        source.ShouldContain("LogCommandTargetResolutionSucceeded(Logger)");
+        source.ShouldContain("catch (Exception ex) when (!IsFatalCommandTargetResolutionException(ex)) { }");
+        source.ShouldContain("aggregate.Flatten().InnerExceptions, IsFatalCommandTargetResolutionException");
+        source.ShouldNotContain("Command target resolution succeeded. {", Case.Sensitive);
+        source.ShouldNotContain("Command target resolution failed closed. Category={Category} {", Case.Sensitive);
+
+        string[] actualCategories = Regex.Matches(
+                source + statusMoveSource + sameSource,
+                "\\\"(?<category>(?:projection-view|provider|same-source|status|target|view)-[a-z-]+)\\\"",
+                RegexOptions.CultureInvariant)
+            .Select(static match => match.Groups["category"].Value)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        string[] expectedCategories = [
+            "projection-view-mismatch",
+            "provider-busy",
+            "provider-duplicate",
+            "provider-failed",
+            "provider-invalid",
+            "provider-missing",
+            "provider-timeout",
+            "same-source-unavailable",
+            "status-mismatch",
+            "status-move-incomplete",
+            "target-failed",
+            "view-mismatch",
+        ];
+        actualCategories.ShouldBe(expectedCategories, ignoreOrder: false);
+
+        int resolved = source.IndexOf("var resolution = await ResolveCommandTargetCoreAsync", StringComparison.Ordinal);
+        int success = source.IndexOf("TryLogCommandTargetResolutionSucceeded();", StringComparison.Ordinal);
+        int returned = source.IndexOf("return resolution;", success, StringComparison.Ordinal);
+        resolved.ShouldBeGreaterThan(0);
+        success.ShouldBeGreaterThan(resolved);
+        returned.ShouldBeGreaterThan(success);
+    }
+
+    [Fact]
     public void Emit_FixedExpectedStatusRequiresExactNonNullSourceAndProviderValues() {
         CommandTargetModel sameSourceTarget = new(
             "global::Counter.Domain.CounterProjection",
@@ -457,10 +537,10 @@ public class CommandFormEmitterTests {
 
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
-        source.ShouldContain("return await ResolveCommandTargetCoreAsync(command, cancellationToken).ConfigureAwait(false);");
+        source.ShouldContain("var resolution = await ResolveCommandTargetCoreAsync(command, cancellationToken).ConfigureAwait(false);");
         source.ShouldContain("catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)");
         source.ShouldContain("throw;");
-        source.ShouldContain("catch (Exception)");
+        source.ShouldContain("catch (Exception ex) when (!IsFatalCommandTargetResolutionException(ex))");
         source.ShouldContain("return (command, FailCommandTargetResolution(\"target-failed\"))");
         source.ShouldContain("[Inject] private global::System.IServiceProvider CommandTargetServiceProvider");
         source.ShouldNotContain("CommandTargetIdentityProviders { get; set; }");

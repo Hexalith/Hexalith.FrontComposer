@@ -94,6 +94,18 @@ single pending-outcome resolver boundary; projection nudges and ambient row plac
 or materiality evidence. The resolver makes the indicator publication or non-publication decision at
 most once per accepted `MessageId`.
 
+Target resolution emits one redacted completion event per non-cancelled attempt in the generated
+`<Command>Form` logger category: Warning 5912 (`CommandFormTargetResolutionFailed`) carries only a
+closed framework-owned failure category, while Information 5913
+(`CommandFormTargetResolutionSucceeded`) is payload-free. Neither event includes command values,
+target/view/entity/status/scope values, exception text, or other adopter data, and logging-provider
+failures do not alter command dispatch or lifecycle.
+
+For one generated form category and observation window, operators calculate the suppression rate as
+`count(5912) / (count(5912) + count(5913))`. Both Information 5913 and Warning 5912 must be retained
+for that category and window; if either level is filtered, or if there are zero completions, no rate
+is available.
+
 If lifecycle delivery fails after the first terminal outcome is committed, FrontComposer preserves
 that immutable terminal truth and queues bounded circuit-local convergence work. A duplicate terminal
 observation or the polling coordinator can retry the lifecycle state from the stored terminal entry;

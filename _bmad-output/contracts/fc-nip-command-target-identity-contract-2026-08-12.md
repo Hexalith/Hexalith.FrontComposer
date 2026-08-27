@@ -5,13 +5,15 @@ Status: approved successor decision
 Owner: FrontComposer Product + Architecture
 Story: 9.3 - Define explicit command target identity
 Base authority: `fc-nip-row-identity-producer-contract-2026-07-04.md`
+Base chronology: record created 2026-07-04; decision approved and record updated 2026-07-05
 Approval provenance: approved at the human Story 9.3 `bmad-build` plan checkpoint on 2026-08-12 for
 the Product + Architecture-owned decision. This records approved semantics, not Story 9.3 completion.
 
 ## Decision
 
-The 2026-07-05 FC-NIP row-context decision remains authoritative for its historical scope. This
-successor decision closes the target-identity gap for standalone create, same-row, cross-row,
+The FC-NIP row-context base record was created on 2026-07-04, and its decision was approved and the
+record updated on 2026-07-05. That one base decision remains authoritative for its historical scope.
+This successor decision closes the target-identity gap for standalone create, same-row, cross-row,
 status-move, and delete commands without treating the UI row that launched a command as its target.
 
 SourceTools will generate one command-target descriptor from an explicit command-to-projection
@@ -79,7 +81,7 @@ The pre-dispatch snapshot contains no `MessageId` and has these fields:
 | `ExpectedStatus` | Typed-provider destination value, or a declaration-fixed destination validated for the target view. | Required for `StatusMove` and whenever lane eligibility depends on destination status; otherwise optional. |
 | `TenantId` | Framework-owned tenant accessor at target resolution. | Required and non-empty. It is never read from command fields or tool input. |
 | `UserId` | Framework-owned user accessor at target resolution. | Required and non-empty. It is never read from command fields or tool input. |
-| `CapturedAt` | FrontComposer `TimeProvider` at successful target resolution. | Required. It is never supplied by command fields or overwritten by a terminal timestamp. |
+| `CapturedAt` | FrontComposer Shell `TimeProvider` at successful target resolution. | Required. It is never supplied by command fields or overwritten by a terminal timestamp. |
 
 `TenantId` and `UserId` are captured with the rest of the snapshot and are immutable thereafter.
 Publication requires that the active tenant and user at eligible terminal observation equal the
@@ -122,6 +124,29 @@ acceptance, and command lifecycle continue under their existing semantics. Missi
 does not reinterpret an accepted command as rejected, a confirmed command as failed, or any other
 transport/lifecycle outcome.
 
+## Target-Resolution Completion Telemetry
+
+Every non-cancelled target-resolution attempt emits exactly one completion event through the generated
+`<Command>Form` logger category. A valid non-null immutable snapshot emits Information event 5913,
+`CommandFormTargetResolutionSucceeded`, with the payload-free template `Command target resolution
+succeeded.` A fail-closed completion emits Warning event 5912,
+`CommandFormTargetResolutionFailed`, with only the framework-owned `Category` placeholder.
+
+The 5912 category is a closed framework-owned value from this set: `provider-busy`,
+`provider-missing`, `provider-duplicate`, `provider-timeout`, `provider-failed`, `provider-invalid`,
+`projection-view-mismatch`, `view-mismatch`, `status-mismatch`, `status-move-incomplete`,
+`same-source-unavailable`, or `target-failed`. Neither completion event carries command values,
+`ProjectionTypeName`, `ViewKey`, `EntityKey`, `ChangeKind`, `PriorStatus`, `ExpectedStatus`,
+`TenantId`, `UserId`, `CapturedAt`, scope identifiers, provider exception text, or any other adopter
+data. Non-fatal logging-provider failures are contained and do not change target eligibility,
+dispatch, or lifecycle; fatal process exceptions still propagate. Caller cancellation emits neither
+completion because it is not a success or fail-closed completion.
+
+For one generated form category and one observation window, the exact target-resolution suppression
+rate is `count(5912) / (count(5912) + count(5913))`. Operators must retain both Information 5913 and
+Warning 5912 events for the same category and window before calculating the rate. Filtering either
+level makes the rate unavailable; zero completions also yields no rate rather than a fabricated zero.
+
 ## Historical Carrier Compatibility
 
 The successor concepts use the existing internal carrier without silently changing historical field
@@ -155,8 +180,9 @@ The required order is:
    `IPendingCommandOutcomeResolver`. The adapter supplies typed materiality and a distinct
    `ObservedAt`; it never changes the captured target.
 
-`ObservedAt` is the trusted terminal timestamp when the adapter has one, otherwise the Shell
-`TimeProvider` at observation. It remains distinct from `CapturedAt`. The existing indicator TTL and
+`ObservedAt` is the trusted terminal timestamp when the adapter has one, otherwise the FrontComposer
+Shell `TimeProvider` at observation. `CapturedAt` and the fallback `ObservedAt` therefore name the
+same Shell clock seam while remaining semantically distinct timestamps. The existing indicator TTL and
 creation disposition use the eligible terminal observation, not the earlier target-capture instant.
 
 After acceptance, the validated `MessageId` and immutable snapshot association participates in the

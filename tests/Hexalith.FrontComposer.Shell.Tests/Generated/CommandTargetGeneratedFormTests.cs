@@ -10,10 +10,12 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
@@ -198,6 +200,138 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
             entry.ExpectedStatusSlot.ShouldBe(target.ExpectedStatus);
             entry.PriorStatusSlot.ShouldBe(target.PriorStatus);
             indicators.Snapshot("Counter:Counter.Domain.CounterProjection").Single().EntityKey.ShouldBe("counter-42");
+        });
+    }
+
+    [Fact]
+    public async Task SameAsSourceTarget_SuccessLogsOnePayloadFreeRedactedCompletion() {
+        const string entitySentinel = "entity-sensitive-sentinel";
+        const string priorStatusSentinel = "prior-status-sensitive-sentinel";
+        const string tenantSentinel = "tenant-sensitive-sentinel";
+        const string userSentinel = "user-sensitive-sentinel";
+        CapturingLogger<SameSourceTargetCommandForm> logger = new();
+        EarlyTerminalCommandService service = new(AcceptedMessageId);
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        Services.Replace(ServiceDescriptor.Scoped<ILogger<SameSourceTargetCommandForm>>(_ => logger));
+        UserContext.TenantId = tenantSentinel;
+        UserContext.UserId = userSentinel;
+        await InitializeStoreAsync();
+        IPendingCommandStateService pending = Services.GetRequiredService<IPendingCommandStateService>();
+        PendingCommandRowIdentity row = new(
+            typeof(Counter.Domain.CounterProjection).FullName!,
+            "Counter:Counter.Domain.CounterProjection",
+            entitySentinel,
+            expectedStatusSlot: "Approved",
+            priorStatusSlot: priorStatusSentinel);
+        IRenderedComponent<CascadingValue<PendingCommandRowIdentity?>> host =
+            Render<CascadingValue<PendingCommandRowIdentity?>>(parameters => parameters
+                .Add(component => component.Value, row)
+                .Add(component => component.IsFixed, true)
+                .AddChildContent<SameSourceTargetCommandForm>());
+
+        host.Find("form").Submit();
+
+        host.WaitForAssertion(() => {
+            service.DispatchCount.ShouldBe(1);
+            pending.GetByMessageId(AcceptedMessageId).ShouldNotBeNull().Status
+                .ShouldBe(PendingCommandStatus.Confirmed);
+            CapturedLogEntry entry = logger.Entries
+                .Where(static candidate => candidate.EventId.Id is 5912 or 5913)
+                .ShouldHaveSingleItem();
+            entry.EventId.ShouldBe(new EventId(5913, "CommandFormTargetResolutionSucceeded"));
+            entry.Level.ShouldBe(LogLevel.Information);
+            entry.Message.ShouldBe("Command target resolution succeeded.");
+            entry.Exception.ShouldBeNull();
+            entry.State.Keys.ShouldBe(["{OriginalFormat}"], ignoreOrder: false);
+            AssertTargetLogIsRedacted(
+                entry,
+                entitySentinel,
+                priorStatusSentinel,
+                tenantSentinel,
+                userSentinel);
+        });
+    }
+
+    [Fact]
+    public async Task SameAsSourceTarget_FailureLogsOneClosedRedactedCompletionAndKeepsLifecycle() {
+        const string projectionSentinel = "projection-sensitive-sentinel";
+        const string viewSentinel = "view-sensitive-sentinel";
+        const string entitySentinel = "entity-sensitive-sentinel";
+        const string statusSentinel = "status-sensitive-sentinel";
+        CapturingLogger<SameSourceTargetCommandForm> logger = new();
+        EarlyTerminalCommandService service = new(AcceptedMessageId);
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        Services.Replace(ServiceDescriptor.Scoped<ILogger<SameSourceTargetCommandForm>>(_ => logger));
+        await InitializeStoreAsync();
+        IPendingCommandStateService pending = Services.GetRequiredService<IPendingCommandStateService>();
+        PendingCommandRowIdentity row = new(
+            projectionSentinel,
+            viewSentinel,
+            entitySentinel,
+            expectedStatusSlot: statusSentinel,
+            priorStatusSlot: statusSentinel);
+        IRenderedComponent<CascadingValue<PendingCommandRowIdentity?>> host =
+            Render<CascadingValue<PendingCommandRowIdentity?>>(parameters => parameters
+                .Add(component => component.Value, row)
+                .Add(component => component.IsFixed, true)
+                .AddChildContent<SameSourceTargetCommandForm>());
+
+        host.Find("form").Submit();
+
+        host.WaitForAssertion(() => {
+            service.DispatchCount.ShouldBe(1);
+            PendingCommandEntry pendingEntry = pending.GetByMessageId(AcceptedMessageId).ShouldNotBeNull();
+            pendingEntry.Status.ShouldBe(PendingCommandStatus.Confirmed);
+            pendingEntry.TargetSnapshot.ShouldBeNull();
+            CapturedLogEntry entry = logger.Entries
+                .Where(static candidate => candidate.EventId.Id is 5912 or 5913)
+                .ShouldHaveSingleItem();
+            entry.EventId.ShouldBe(new EventId(5912, "CommandFormTargetResolutionFailed"));
+            entry.Level.ShouldBe(LogLevel.Warning);
+            entry.Message.ShouldBe("Command target resolution failed closed. Category=same-source-unavailable");
+            entry.State["Category"].ShouldBe("same-source-unavailable");
+            entry.State.Keys.ShouldBe(["Category", "{OriginalFormat}"], ignoreOrder: true);
+            entry.Exception.ShouldBeNull();
+            AssertTargetLogIsRedacted(
+                entry,
+                projectionSentinel,
+                viewSentinel,
+                entitySentinel,
+                statusSentinel);
+        });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CommandTargetCompletion_NonFatalLoggerFaultDoesNotChangeDispatchOrLifecycle(
+        bool successfulResolution) {
+        TargetEventThrowingLogger<SameSourceTargetCommandForm> logger = new();
+        EarlyTerminalCommandService service = new(AcceptedMessageId);
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        Services.Replace(ServiceDescriptor.Scoped<ILogger<SameSourceTargetCommandForm>>(_ => logger));
+        await InitializeStoreAsync();
+        IPendingCommandStateService pending = Services.GetRequiredService<IPendingCommandStateService>();
+        IRenderedComponent<CascadingValue<PendingCommandRowIdentity?>> host =
+            Render<CascadingValue<PendingCommandRowIdentity?>>(parameters => parameters
+                .Add(component => component.Value, successfulResolution
+                    ? new PendingCommandRowIdentity(
+                        typeof(Counter.Domain.CounterProjection).FullName!,
+                        "Counter:Counter.Domain.CounterProjection",
+                        "counter-logger-fault",
+                        expectedStatusSlot: "Approved")
+                    : null)
+                .Add(component => component.IsFixed, true)
+                .AddChildContent<SameSourceTargetCommandForm>());
+
+        host.Find("form").Submit();
+
+        host.WaitForAssertion(() => {
+            service.DispatchCount.ShouldBe(1);
+            PendingCommandEntry entry = pending.GetByMessageId(AcceptedMessageId).ShouldNotBeNull();
+            entry.Status.ShouldBe(PendingCommandStatus.Confirmed);
+            (entry.TargetSnapshot is not null).ShouldBe(successfulResolution);
+            logger.TargetEventAttempts.ShouldBe(1);
         });
     }
 
@@ -707,7 +841,9 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
     public async Task CallerCancellationDuringProviderResolution_NeverInvokesCancellationIgnoringService() {
         EarlyTerminalCommandService service = new(AcceptedMessageId, emitTerminal: false);
         BlockingProvider provider = new();
+        CapturingLogger<ProviderTargetCommandForm> logger = new();
         Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        Services.Replace(ServiceDescriptor.Scoped<ILogger<ProviderTargetCommandForm>>(_ => logger));
         Services.AddScoped<ICommandTargetIdentityProvider<ProviderTargetCommand>>(_ => provider);
         Services.Configure<FcShellOptions>(options => options.CommandTargetResolutionTimeoutMs = 10_000);
         await InitializeStoreAsync();
@@ -727,6 +863,8 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
         finally {
             provider.Release();
         }
+
+        logger.Entries.ShouldNotContain(static entry => entry.EventId.Id == 5912 || entry.EventId.Id == 5913);
     }
 
     [Fact]
@@ -1111,6 +1249,13 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
         indicators.Snapshot("counter-counts").ShouldBeEmpty();
     }
 
+    private static void AssertTargetLogIsRedacted(CapturedLogEntry entry, params string[] sentinels) {
+        foreach (string sentinel in sentinels) {
+            entry.Message.ShouldNotContain(sentinel, Case.Sensitive);
+            string.Join('|', entry.State.Values).ShouldNotContain(sentinel, Case.Sensitive);
+        }
+    }
+
     private static PendingCommandRegistration Registration(string correlationId, string messageId) =>
         new(correlationId, messageId, "Test.Command");
 
@@ -1193,6 +1338,27 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
         ExpectedStatusMissing,
         InvalidIdentity,
         IncompleteStatusMove,
+    }
+
+    private sealed class TargetEventThrowingLogger<T> : ILogger<T> {
+        public int TargetEventAttempts { get; private set; }
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter) {
+            if (eventId.Id is 5912 or 5913) {
+                TargetEventAttempts++;
+                throw new InvalidOperationException("logger-provider-sensitive-exception");
+            }
+        }
     }
 
     private sealed class SuccessfulProvider : ICommandTargetIdentityProvider<ProviderTargetCommand> {

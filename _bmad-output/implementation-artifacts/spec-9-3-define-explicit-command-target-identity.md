@@ -43,12 +43,12 @@ context:
 
 ## Code Map
 
-- `_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md` -- historical base contract; retain its decision and link the approved successor.
+- `_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md` -- historical base record created 2026-07-04 and approved/updated 2026-07-05; retain its decision and link the approved successor.
 - `_bmad-output/contracts/fc-nip-command-target-identity-contract-2026-08-12.md` -- new authoritative Story 9.3 decision and disposition matrix.
 - `_bmad-output/planning-artifacts/prd.md` and `_bmad-output/planning-artifacts/architecture.md` -- resolve D-4 and name the target-provider/materiality invariants.
 - `_bmad-output/project-docs/architecture.md` and `docs/reference/components/datagrid.md` -- synchronize developer/adopter truth without claiming composed completion.
-- `tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/FcNipRowIdentityProducerContractTests.cs` -- governance guard; replace stale pre-remediation wording with base-plus-successor assertions.
-- `tests/e2e/specs/fc-nip-row-identity-contract.spec.ts` -- browserless contract guard mirroring the successor fields, forbidden sources, and eight dispositions.
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/FcNipCommandTargetIdentityContractTests.cs` -- governance guard; replace stale pre-remediation wording with base-plus-successor assertions.
+- `tests/e2e/specs/fc-nip-command-target-identity-contract.spec.ts` -- browserless contract guard mirroring the successor fields, forbidden sources, and eight dispositions.
 - `_bmad-output/contracts/fc-tbl-table-api-contract-2026-06-04.md` and `_bmad-output/contracts/fc-cmd-pending-identity-correlation-contract-2026-06-04.md` -- sibling contracts; replace the superseded "Story 9.1 confirms / Story 9.2 wires" ownership wording and restore their guard coverage.
 - `_bmad-output/implementation-artifacts/epic-9-context.md` -- epic context; restore the FC-NIP/FC-TBL/FC-CMD ownership split and the bounded-typed-payload requirement, and keep UX obligations to what the PRD and `ux-design.md` already back.
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` -- story status tracking for `9-3-define-explicit-command-target-identity`.
@@ -209,8 +209,8 @@ The provider is the trust boundary: SourceTools may generate its registration fr
 - `_bmad-output/planning-artifacts/prd.md`
 - `_bmad-output/project-docs/architecture.md`
 - `docs/reference/components/datagrid.md`
-- `tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/FcNipRowIdentityProducerContractTests.cs`
-- `tests/e2e/specs/fc-nip-row-identity-contract.spec.ts`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/FcNipCommandTargetIdentityContractTests.cs`
+- `tests/e2e/specs/fc-nip-command-target-identity-contract.spec.ts`
 
 ## Suggested Review Order
 
@@ -254,10 +254,10 @@ The provider is the trust boundary: SourceTools may generate its registration fr
 **Governance and evidence**
 
 - Inspect structural C# guards for snapshot, matrix, and no-smuggling invariants.
-  [`FcNipRowIdentityProducerContractTests.cs:56`](../../tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/FcNipRowIdentityProducerContractTests.cs#L56)
+  [`FcNipCommandTargetIdentityContractTests.cs`](../../tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/FcNipCommandTargetIdentityContractTests.cs)
 
 - Cross-check browserless parity and source-level forbidden-mapping evidence.
-  [`fc-nip-row-identity-contract.spec.ts:50`](../../tests/e2e/specs/fc-nip-row-identity-contract.spec.ts#L50)
+  [`fc-nip-command-target-identity-contract.spec.ts`](../../tests/e2e/specs/fc-nip-command-target-identity-contract.spec.ts)
 
 - Confirm the intentional governance identifier inventory reseal.
   [`analyzer-policy-exception-ledger-v1.json:98`](../contracts/analyzer-policy-exception-ledger-v1.json#L98)

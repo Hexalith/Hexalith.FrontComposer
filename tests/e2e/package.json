@@ -28,7 +28,7 @@
     "test:mcp-resources": "playwright test specs/mcp-resources.spec.ts --project=chromium",
     "test:mcp-security": "playwright test specs/mcp-fail-closed-security.spec.ts --project=chromium",
     "test:mcp-schema": "playwright test specs/mcp-schema-fingerprint-negotiation.spec.ts --project=chromium",
-    "test:fc-nip": "PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test specs/fc-nip-row-identity-contract.spec.ts --project=chromium",
+    "test:fc-nip": "PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test specs/fc-nip-command-target-identity-contract.spec.ts --project=chromium",
     "test:epic-9": "PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test specs/epic-9-fresh-row-acceptance.spec.ts --project=chromium",
     "test:epic-9-evidence": "node --test scripts/validate-epic9-artifacts.test.mjs scripts/run-epic9-live-proof.test.mjs",
     "test:story-10-2": "PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test specs/adopter-historical-label-cleanup.spec.ts --project=chromium",

@@ -1,15 +1,17 @@
 # FC-NIP Row Identity Producer Contract
 
-Date: 2026-07-04
+Record created: 2026-07-04
 Status: approved base decision; delivery completion rejected 2026-08-11
 Approved successor: `fc-nip-command-target-identity-contract-2026-08-12.md`
 Owner: FrontComposer maintainers
-Story: 9.1 - Confirm the FC-NIP row-identity producer contract
-Decision update: 2026-07-05
+Originating ownership: Story 9.1 - Confirm the FC-NIP row-identity producer contract
+Decision approved and record updated: 2026-07-05
 
 ## Decision
 
-FC-NIP owns automatic row-level fresh-item marking for generated DataGrid views. Story 9.2 may call
+This base record was created on 2026-07-04. Its decision was approved and the record was updated on
+2026-07-05; those dates are distinct chronology, not references to two contracts. FC-NIP owns
+automatic row-level fresh-item marking for generated DataGrid views. Story 9.2 may call
 `INewItemIndicatorStateService.Add(...)` only when the producer has framework-controlled row identity:
 a lane/view key, the exact projection row `EntityKey`, the accepted command `MessageId`, the projection
 type name, and any status-slot metadata needed to avoid ambiguity.
@@ -25,8 +27,8 @@ lane, or treating a projection nudge as row identity.
 
 ## 2026-08-12 Remediation Amendment
 
-The 2026-07-05 decision remains the approved base source for commands launched from an existing
-generated projection row. The 2026-08-11 Epic 9 retrospective rejected Story 9.2 evidence as proof of
+The base record created on 2026-07-04 and approved/updated on 2026-07-05 remains the approved source
+for commands launched from an existing generated projection row. The 2026-08-11 Epic 9 retrospective rejected Story 9.2 evidence as proof of
 composed delivery and established these successor requirements:
 
 - Ambient generated-row context covers only commands launched from an existing row. It cannot define
@@ -62,7 +64,7 @@ Story 9.2 must use this source of truth for the FC-NIP producer:
 | `ProjectionTypeName` | The generated projection type name for the lane that owns the row identity. |
 | `ExpectedStatusSlot` | The generated/runtime status lane when the command outcome targets a status-filtered lane or the same entity can appear in multiple status lanes. |
 | `PriorStatusSlot` | Optional producer diagnostic metadata for status moves; not required by `NewItemIndicatorEntry`. |
-| `CreatedAt` | The trusted terminal observation timestamp when supplied; otherwise the local `TimeProvider` at indicator creation. |
+| `CreatedAt` | The trusted terminal observation timestamp when supplied; otherwise the FrontComposer Shell `TimeProvider` at indicator creation. |
 
 The approved carrier is `PendingCommandRegistration` -> `PendingCommandEntry` ->
 `PendingCommandOutcomeObservation` -> Story 9.2 producer. `PendingCommandRegistration` already has the
@@ -135,8 +137,9 @@ producer payload that explicitly names the projection row key for the target gen
 
 ## Historical Resolved Follow-Up
 
-This section records the 2026-07-05 Story 9.2 decision closure. The remediation amendment above adds
-the active Story 9.3 successor gate without erasing this historical decision.
+This section records the Story 9.2 decision closure approved on 2026-07-05 for the base record created
+on 2026-07-04. The remediation amendment above adds the active Story 9.3 successor gate without
+erasing this historical decision.
 
 Story 9.2 is unblocked for implementation of the approved FrontComposer-owned pending-command row
 metadata source. This resolves the previous blocking follow-up at the contract level; implementation
@@ -155,6 +158,6 @@ future bounded typed EventStore payload is explicitly introduced and pinned.
 - FC-CMD owns command identity, lifecycle, pending state, and message/correlation semantics.
 - FC-NIP owns automatic row-level `FcNewItemIndicator` producer wiring and row-identity payloads.
 
-Story 9.1 confirmed this contract and recorded the original gap. The 2026-07-05 update approved the
-base payload source used by Story 9.2. The 2026-08-12 remediation amendment preserves that decision
+Story 9.1 originated this contract and recorded the original gap on 2026-07-04. The 2026-07-05
+approval/update approved the base payload source used by Story 9.2. The 2026-08-12 remediation amendment preserves that decision
 while routing explicit target identity and composed acceptance through Stories 9.3-9.8.

@@ -47,7 +47,7 @@ context:
 - `src/Hexalith.FrontComposer.Shell/State/PendingCommands/` -- exception-safe association/replay, first-wins state, at-most-once indicator decisions, and bounded lifecycle convergence before transport polling.
 - `src/Hexalith.FrontComposer.Shell/{Infrastructure/EventStore/EventStorePendingCommandStatusQuery.cs,Services/StubCommandService.cs,Extensions/ServiceCollectionExtensions.cs,Options/FcShellOptions.cs}` -- typed materiality, DI, and `CommandTargetResolutionTimeoutMs` (500ms).
 - `samples/Counter/**/*Command.cs` -- explicit `SameAsSource` + `Update` migration without invalidating the manually collected IDE-parity fixture.
-- `tests/Hexalith.FrontComposer.{SourceTools,Shell}.Tests/`, `tests/e2e/specs/fc-nip-row-identity-contract.spec.ts` -- declarations, snapshots, replay, matrix, composition, and governance.
+- `tests/Hexalith.FrontComposer.{SourceTools,Shell}.Tests/`, `tests/e2e/specs/fc-nip-command-target-identity-contract.spec.ts` -- declarations, snapshots, replay, matrix, composition, and governance.
 - `docs/reference/components/datagrid.md`, `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json` -- adopter truth and final identifier-inventory reseal.
 
 ## Tasks & Acceptance
@@ -195,7 +195,7 @@ Keys trim once and compare Ordinal; snapshot equality excludes `CapturedAt`. Mis
   [`CommandTargetGeneratedFormTests.cs:380`](../../tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandTargetGeneratedFormTests.cs#L380)
 
 - Browser contract pins reservation, convergence, polling, and transport ordering.
-  [`fc-nip-row-identity-contract.spec.ts:268`](../../tests/e2e/specs/fc-nip-row-identity-contract.spec.ts#L268)
+  [`fc-nip-command-target-identity-contract.spec.ts`](../../tests/e2e/specs/fc-nip-command-target-identity-contract.spec.ts)
 
 ## Suggested Review Order
 
@@ -238,4 +238,4 @@ Keys trim once and compare Ordinal; snapshot equality excludes `CapturedAt`. Mis
   [`PendingCommandOutcomeResolverTests.cs:554`](../../tests/Hexalith.FrontComposer.Shell.Tests/State/PendingCommands/PendingCommandOutcomeResolverTests.cs#L554)
 
 - Browser contract forbids `_indicatorDecisions.Remove` and pins `RecordIndicatorDecision`.
-  [`fc-nip-row-identity-contract.spec.ts:322`](../../tests/e2e/specs/fc-nip-row-identity-contract.spec.ts#L322)
+  [`fc-nip-command-target-identity-contract.spec.ts`](../../tests/e2e/specs/fc-nip-command-target-identity-contract.spec.ts)
