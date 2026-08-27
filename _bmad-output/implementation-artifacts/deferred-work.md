@@ -3292,6 +3292,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 2-2-ac
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`IInlinePopover.ClosePopoverAsync()` takes no `CancellationToken`** — circuit teardown cannot abort a stuck close; fold into Shell-layer wrapper when it gains `ILogger`. Low priority. Reconciliation: Row: DW-0393; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group A (Contracts) second pass.
 status: open
+decision: 2026-08-27 Keep open
 
 ### DW-1125: `GridViewSnapshot.FiltersEqual` ignores right-dict key-comparer
 
