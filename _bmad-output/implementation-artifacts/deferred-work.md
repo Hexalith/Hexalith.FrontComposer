@@ -7362,6 +7362,7 @@ location: n/a
 source_spec: `_bmad-output/implementation-artifacts/rel-3-enforce-fr24-pre-publish-and-reconcile-releases.md`
 reason: summary: Deleted-tag blind spot residual in independent verification when both the tag and the GitHub release are removed after a partial publish. evidence: The verifier's `gh release list` orphan probe (added by REL-3 review) only covers surviving releases; with the tag and release both deleted there is no recoverable version to probe nuget.org for, so a partially published version could evade post-publication verification entirely.
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1672, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1673: Pre-existing `*.yml`-only glob in `Workflows_UseRootLevelSubmodulesOnly` misses `.yaml` workflow files.
 
