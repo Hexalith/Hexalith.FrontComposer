@@ -498,6 +498,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 9-4-diagnost
 location: hexalith.github.io
 reason: **DEF-9-4-C4 — `docsSlug` relative vs canonical help-link absolute (`hexalith.github.io`)** [all 106 stubs] — host migration would require 106-file edit. Architectural choice: derive body link from registry top-level `canonicalHelpLinkFormat` or document hardcoded host. Story 9-5 / docs-host strategy. Sources: blind. Reconciliation: Row: DW-0004; Resolved 2026-05-11; Evidence: DiagnosticDescriptors.CanonicalHelpLinkFormat plus registry canonicalHelpLinkFormat validation.
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-735, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-736: Mass-applied `introducedIn: 0.1.0` for all stubs even where registry post-dates 0.1.0 [all 106 stubs] — Story 9-2 migration tooling and Story 9-1 drift may rely on accurate `introducedIn` for "what's new since v X" semantics. Re-derive per-entry from registry. Authoring + data accuracy task. Sources: blind. Reconciliation: Row: DW-0005; Resolved 2026-05-11; Evidence: registry/stub introducedIn parity remains enforced by DiagnosticRegistryTests and docs validation.
 
