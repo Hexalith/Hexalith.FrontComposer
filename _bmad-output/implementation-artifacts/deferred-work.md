@@ -3601,6 +3601,7 @@ origin: migrated from legacy ledger ("Deferred from: story 3-1-shell-layout-them
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`Typography` enum Fluent UI v5 spec divergence** — Story 3-1 D2 / AC5 referenced `Microsoft.FluentUI.AspNetCore.Components.Typography` enum with values (Title1, Subtitle1, Title3, Subtitle2, Body1Strong, Body1, Body2, Caption1). That enum exists in Fluent UI's **React** library but NOT in the Blazor SDK at `5.0.0-rc.2-26098.1`. Delivered shape: `Typography` static class with 9 `FcTypoToken(TextSize, TextWeight, TextTag, TextFont?)` record-struct constants (preserves AC5 intent + living-table version pin); consumers bind primitives directly on `FluentText`. Retrofit the Fluent UI React-aligned enum when / if it lands in the Blazor SDK. **Defer target:** monitor Fluent UI Blazor releases; no blocking story. Reconciliation: Row: DW-0424; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: story 3-1-shell-layout-theme-and-typography (2026-04-18).
 status: open
+decision: 2026-08-27 Keep open
 
 ### DW-1156: Decorative theme toggle icons
 

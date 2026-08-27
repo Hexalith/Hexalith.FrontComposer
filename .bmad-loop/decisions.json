@@ -80,6 +80,15 @@
     "label": "Keep open",
     "resolution": ""
   },
+  "DW-1155": {
+    "answered_at": "2026-08-27",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "3",
+    "label": "Keep open",
+    "resolution": ""
+  },
   "DW-1197": {
     "answered_at": "2026-08-27",
     "bundle_name": "",
