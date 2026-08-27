@@ -93,6 +93,7 @@ location: EntityKey
 source_spec: `_bmad-output/implementation-artifacts/spec-9-3-define-explicit-command-target-identity.md`
 reason: summary: Decide whether a typed post-dispatch identity proof may make server-allocated keys indicator-eligible. evidence: The successor contract suppresses the indicator whenever the server allocates the exact `EntityKey` only after dispatch, and states that a typed post-dispatch identity proof "is outside this pre-dispatch contract and requires a separately approved successor or amendment". A future framework preallocation mechanism remains one route for commands with server-allocated keys, but it does not block creates whose typed provider reports the same exact key already carried by the dispatched command. Reconciled by the Story 9.8 human resolution on 2026-08-26.
 status: open
+decision: 2026-08-27 Keep open
 
 ### DW-680: Approve the public API shape for the command target-identity surface before Story 9.4 publishes it.
 
