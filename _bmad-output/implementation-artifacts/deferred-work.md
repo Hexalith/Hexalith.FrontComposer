@@ -2991,6 +2991,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 2-1 (2
 location: CommandRegistration.g.cs
 reason: **Dual command registration path (ADR-012 intent)** — Reflection-based `AddHexalithDomain` command aggregation runs alongside the new generator-emitted `{Command}CommandRegistration.g.cs`; registry dedupes. ADR-012 intended the generator to be the single source. Remove the reflection path once all adopters have regenerated. Reconciliation: Row: DW-0353; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-1 (2026-04-15).
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1084, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1085: Task 7.2 `_Imports.razor`
 
