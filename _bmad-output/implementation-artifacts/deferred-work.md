@@ -6672,6 +6672,7 @@ location: n/a
 source_spec: `_bmad-output/implementation-artifacts/spec-actions-29110799882-enable-dependency-graph.md`
 reason: summary: Triage the repository's open low-severity undici Dependabot alert. evidence: The alert pre-existed this repair and remains below the dependency-review workflow's configured high-severity failure threshold.
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1586, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1587: The reflection-fallback manifest's fail-closed `FullPageCommands = []` (ServiceCollectionExtensions.AddHexalithDomain) has no regression test — every AddHexalithDomain test uses CounterDomain, whose commands all get generated registrations and are filtered out, so the fallback branch never executes under assertion.
 
