@@ -5675,6 +5675,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 12-2-mcp-led
 location: n/a
 reason: **W7 — AC18 / D13: 8 accepted-constraint rows have team-level `Decision owner: MCP v1.x contract-hardening owner`:** L10 forbids generic / team-only owners. Each of the 8 rows needs a named release artifact / story decision. Owner: Story 12.2.1 follow-up.
 status: open
+decision: 2026-08-27 Implement the change — Implement the behavior requested by DW-1442, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1443: AC28 / T7.5: adversarial MCP redaction fixtures referenced but not produced: Dev Agent Record claims a textual scan over evidence; AC28/T7.5 read "fixtures". No fixture artifact added in the diff. Documented scan remains as interim evidence. Owner: Story 12.4 (`12-4-trusted-release-evidence-dry-run`), the natural home for release-evidence fixture work.
 
