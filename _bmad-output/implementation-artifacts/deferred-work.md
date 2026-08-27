@@ -6551,6 +6551,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story-9.2 (2
 location: src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs:194
 reason: **CR-9-2-Def03 — Spurious indicator lingers ≤10s for an already-visible row / `IdempotentConfirmed` replay:** the producer adds on any `Resolved`+`Confirmed`/`IdempotentConfirmed` outcome while dismissal is edge-triggered, so a badge can show for a row already on-screen until the 10s TTL. Self-heals; accepted (first-review Decision #2). Owner: Shell state maintainer. Evidence: `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs:194`.
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1571, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1572: New-outside-filter indicator may not render promptly: `NewItemIndicatorStateService.Add` raises no change notification, so a new badge only appears on the next grid render; usually masked because the confirming lifecycle transition dispatches a Fluxor action that re-renders. Latent. Owner: Shell state maintainer. Evidence: `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs:182`.
 
