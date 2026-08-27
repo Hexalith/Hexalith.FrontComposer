@@ -8227,6 +8227,7 @@ location: tests/**.cs
 source_spec: `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
 reason: summary: The `[tests/**.cs]` CA1707 scope silences the rule for every identifier in every test file, which is broader than the three-part-test-method-naming rationale recorded for it. evidence: Spec-mandated, so not a deviation — but narrower options such as `dotnet_code_quality.CA1707.api_surface` were never evaluated or recorded as rejected, and the scope covers fields, parameters, types and any public surface in test-support libraries.
 status: open
+decision: 2026-08-27 Implement requested change — Implement the behavior requested by DW-1766, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1767: HFC1002 checkId matching recognizes only the `HFC1002` and `HFC1002:` forms, and property-level suppression is honored for HFC1002 alone among the HFC diagnostics.
 
