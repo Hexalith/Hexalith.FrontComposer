@@ -2,12 +2,12 @@
 title: 'Story 9.8: Prove composed and live Epic 9 acceptance'
 type: 'feature'
 created: '2026-08-27'
-status: in-review
+status: done
 baseline_commit: '1cc9c2774ca6368322b7aa7b2e89cee4a5f5fbf3'
 baseline_revision: '9d410d223f214f85695b13ede98dc8b63fbfc1c7'
 story_id: '9.8'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/project-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-9-context.md'
@@ -75,8 +75,8 @@ deferred:
 - `tests/e2e/scripts/validate-epic9-artifacts.mjs:1-436` -- retained-bundle/redaction validator; checks candidate and endpoint correlation plus every required typed/value browser claim, checksum path, and sensitive-data boundary.
 - `eng/run-epic9-live-proof.sh:1-598` -- safe isolated Aspire start/wait/describe, bounded serialized dependency/AppHost fallback, browser execution, redacted logs, validation, checksums, and exact cleanup.
 - `.github/workflows/quality.yml:522-583` -- blocking live lane and 14-day artifact upload; artifact name is the source of truth for refreshed evidence wording.
-- `_bmad-output/implementation-artifacts/tests/9-8-live-acceptance.md:1-78` -- accepted strict proof record for clean committed candidate `cd67e933b7e381f8da170c7fa6843ff3aae75802` and its correlated final bundle.
-- `artifacts/epic-9-final-cd67e933/` -- accepted checksummed final proof root; historical and development bundles remain preserved separately.
+- `_bmad-output/implementation-artifacts/tests/9-8-live-acceptance.md:1-78` -- accepted strict proof record for clean reviewed candidate `7a5737630611b4d54b0180a3fa4c9c4ccd23a28c` and its correlated final bundle.
+- `artifacts/epic-9-final-7a573763/` -- accepted checksummed final proof root; historical and development bundles remain preserved separately.
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` -- orchestrator-owned and strictly read-only.
 
 ## Tasks & Acceptance
@@ -86,7 +86,7 @@ deferred:
 - [x] `tests/e2e/specs/epic-9-fresh-row-acceptance.spec.ts` -- assert non-empty localized announcements and emit explicit exact-key, count, accessibility, first-wins, scope, and dismissal claims.
 - [x] `tests/e2e/scripts/validate-epic9-artifacts.mjs`, `tests/e2e/scripts/validate-epic9-artifacts.test.mjs`, `tests/e2e/scripts/run-epic9-live-proof.test.mjs`, `tests/e2e/package.json`, and `.github/workflows/quality.yml` -- validate every required claim, redaction boundary, strict preflight, and unrelated-AppHost refusal with positive/negative fixtures, and run those checks in the blocking live job.
 - [x] `eng/run-epic9-live-proof.sh` -- keep safe isolated lifecycle behavior and add a strict final-evidence mode that rejects a dirty or mismatched candidate while preserving an explicit development-mode diagnostic run.
-- [x] `_bmad-output/implementation-artifacts/tests/9-8-live-acceptance.md` and `artifacts/epic-9-final-cd67e933/` -- strict live acceptance passed against clean committed candidate `cd67e933b7e381f8da170c7fa6843ff3aae75802`; the record retains the exact command, versions, endpoint, result counts, artifact name, checksums, and remaining solution-lane blocker.
+- [x] `_bmad-output/implementation-artifacts/tests/9-8-live-acceptance.md` and `artifacts/epic-9-final-7a573763/` -- strict live acceptance passed against clean reviewed candidate `7a5737630611b4d54b0180a3fa4c9c4ccd23a28c`; the record retains the exact command, versions, endpoint, result counts, artifact name, checksums, and remaining solution-lane blocker.
 - [x] `_bmad-output/implementation-artifacts/spec-9-8-prove-composed-and-live-epic-9-acceptance.md` -- reconcile verification, File List, review findings, and commit scope without touching sprint tracking.
 
 **Acceptance Criteria:**
@@ -97,6 +97,7 @@ deferred:
 
 ## Spec Change Log
 
+- 2026-08-28: Committed review repairs as `7a5737630611b4d54b0180a3fa4c9c4ccd23a28c`; strict acceptance reran with the supported explicit expected-commit pin and passed at `https://localhost:39831`, producing the accepted `artifacts/epic-9-final-7a573763/` bundle.
 - 2026-08-28: Committed the serialized-fallback hardening as `cd67e933b7e381f8da170c7fa6843ff3aae75802`; strict isolated Aspire/Playwright acceptance, final artifact validation, full checksums, and exact AppHost cleanup passed against that clean candidate at `https://localhost:41819`.
 - 2026-08-28: Reopened final acceptance because the hardened validator rejects the historical `f4f43fdc` checksum paths and a clean checkout exposed a missing EventStore Aspire dependency in the serialized fallback. Added the bounded dependency prebuild and exact-command fixtures; 85/85 evidence tests and a complete isolated development proof passed before the subsequent strict committed-candidate proof succeeded.
 - 2026-08-27: Hardened composed scope/filter proofs, browser claims, artifact validation, CI wiring, and final/development proof modes. A complete isolated development proof passed and is recorded without claiming final acceptance; the clean committed-candidate proof remains open.
@@ -123,18 +124,18 @@ deferred:
 
 ## Design Notes
 
-The implementation merged in `f1b16a25d2a0a32ee437f5d8dfa786577402b416`; its spec was later deleted by `25cd54bd502b933900fceeb439ee7f6238c44553`. Frontmatter `baseline_commit` (`1cc9c2774ca6368322b7aa7b2e89cee4a5f5fbf3`) is the original restored Story 9.8 delivery-scope base used for commit-range reconciliation. Frontmatter `baseline_revision` (`9d410d223f214f85695b13ede98dc8b63fbfc1c7`) is the HEAD at which this resumed review began; it bounds the resume-review context without resetting ownership or absorbing later submodule pointer movement. Historical and development proof bundles remain preserved, while `artifacts/epic-9-final-cd67e933/` is the accepted strict committed-candidate evidence.
+The implementation merged in `f1b16a25d2a0a32ee437f5d8dfa786577402b416`; its spec was later deleted by `25cd54bd502b933900fceeb439ee7f6238c44553`. Frontmatter `baseline_commit` (`1cc9c2774ca6368322b7aa7b2e89cee4a5f5fbf3`) is the original restored Story 9.8 delivery-scope base used for commit-range reconciliation. Frontmatter `baseline_revision` (`9d410d223f214f85695b13ede98dc8b63fbfc1c7`) is the HEAD at which this resumed review began; it bounds the resume-review context without resetting ownership or absorbing later submodule pointer movement. Historical and development proof bundles remain preserved, while `artifacts/epic-9-final-7a573763/` is the accepted strict reviewed-candidate evidence.
 
 ## Verification
 
 **Commands:**
 - `npm --prefix tests/e2e run typecheck && npm --prefix tests/e2e run test:epic-9-evidence` -- expected: browser sources compile and artifact-validator plus proof-runner positive/negative cases pass.
 - `DiffEngine_Disabled=true dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release -m:1 /nr:false -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false` followed by the built xUnit assembly filtered to `Epic9CompositionTests`, the seeded Counter page contract, and the identifier seal -- expected: all focused acceptance checks pass.
-- `FC_EPIC9_ARTIFACT_ROOT=/home/administrator/projects/hexalith/frontcomposer/artifacts/epic-9-final-cd67e933 FC_EPIC9_REQUIRE_CLEAN=true FC_EPIC9_EXPECTED_COMMIT=cd67e933b7e381f8da170c7fa6843ff3aae75802 ./eng/run-epic9-live-proof.sh` followed by `npm --prefix tests/e2e run validate:epic-9-artifacts -- artifacts/epic-9-final-cd67e933 --candidate cd67e933b7e381f8da170c7fa6843ff3aae75802` and `(cd artifacts/epic-9-final-cd67e933 && sha256sum -c checksums.sha256)` -- passed: isolated live proof retained the redacted, internally correlated final bundle for the exact clean committed candidate and stopped only its owned AppHost.
+- `FC_EPIC9_ARTIFACT_ROOT=/home/administrator/projects/hexalith/frontcomposer/artifacts/epic-9-final-7a573763 FC_EPIC9_REQUIRE_CLEAN=true FC_EPIC9_EXPECTED_COMMIT=7a5737630611b4d54b0180a3fa4c9c4ccd23a28c ./eng/run-epic9-live-proof.sh` followed by `npm --prefix tests/e2e run validate:epic-9-artifacts -- artifacts/epic-9-final-7a573763 --candidate 7a5737630611b4d54b0180a3fa4c9c4ccd23a28c` and `(cd artifacts/epic-9-final-7a573763 && sha256sum -c checksums.sha256)` -- passed: isolated live proof retained the redacted, internally correlated final bundle for the exact clean reviewed candidate and stopped only its owned AppHost.
 - `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` -- expected: broad gate passes, or any pre-existing dependency blocker is recorded separately with its exact output.
 - `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-9-8-prove-composed-and-live-epic-9-acceptance.md --candidate HEAD` -- expected: Story 9.8 commits and changed paths reconcile with no sprint-status write.
 
-**Results (2026-08-28):** TypeScript typecheck passed; artifact-validator and proof-runner fixtures passed 87/87; the Release Shell.Tests build passed with 0 warnings and 0 errors; `Epic9CompositionTests` passed 2/2; the seeded Counter page and identifier-seal facts each passed 1/1. The historical `f4f43fdc` bundle now fails the current validator because its checksum paths begin with `./`. A clean detached run reproduced the serialized fallback's missing `Hexalith.EventStore.Aspire.dll`; the bounded dependency prebuild fixes that failure. Strict final proof passed Playwright 1/1, artifact validation, full checksums, and exact AppHost cleanup against clean candidate `cd67e933b7e381f8da170c7fa6843ff3aae75802` at endpoint `https://localhost:41819` in `artifacts/epic-9-final-cd67e933/`; `aspire ps --format json` returned `[]` after the run. `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-9-8-prove-composed-and-live-epic-9-acceptance.md --candidate HEAD` passed for candidate `cd67e933b7e381f8da170c7fa6843ff3aae75802`, reconciling the story commits and changed paths without a sprint-status write. The exact solution default lane remains blocked at restore by pre-existing `NU1109` (`FsCheck.Xunit.v3 3.3.4` requires `FsCheck 3.3.4`; the central catalog selects `FsCheck 3.3.3`).
+**Results (2026-08-28):** TypeScript typecheck passed; artifact-validator and proof-runner fixtures passed 87/87; the Release Shell.Tests build passed with 0 warnings and 0 errors; `Epic9CompositionTests` passed 2/2; the seeded Counter page and identifier-seal facts each passed 1/1. The historical `f4f43fdc` bundle now fails the current validator because its checksum paths begin with `./`. A clean detached run reproduced the serialized fallback's missing `Hexalith.EventStore.Aspire.dll`; the bounded dependency prebuild fixes that failure. Strict final proof passed Playwright 1/1, artifact validation, full checksums, and exact AppHost cleanup against clean reviewed candidate `7a5737630611b4d54b0180a3fa4c9c4ccd23a28c` at endpoint `https://localhost:39831` in `artifacts/epic-9-final-7a573763/`; `aspire ps --format json` returned `[]` after the run. `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-9-8-prove-composed-and-live-epic-9-acceptance.md --candidate HEAD` passed before the review commit for candidate `cd67e933b7e381f8da170c7fa6843ff3aae75802`; the final scope gate below reconciles the complete story range through the reviewed candidate without a sprint-status write. The exact solution default lane remains blocked at restore by pre-existing `NU1109` (`FsCheck.Xunit.v3 3.3.4` requires `FsCheck 3.3.4`; the central catalog selects `FsCheck 3.3.3`).
 
 ## Commit Scope Dispositions
 
@@ -156,3 +157,30 @@ The implementation merged in `f1b16a25d2a0a32ee437f5d8dfa786577402b416`; its spe
 - `tests/e2e/scripts/validate-epic9-artifacts.test.mjs`
 - `tests/e2e/scripts/run-epic9-live-proof.test.mjs`
 - `tests/e2e/specs/epic-9-fresh-row-acceptance.spec.ts`
+
+## Auto Run Result
+
+Status: done
+
+Summary: Hardened the serialized Aspire fallback by building the missing EventStore Aspire dependency before the no-project-reference AppHost build, aligned the retained command contract, added exact-argv and build-failure regression coverage, and produced strict live evidence against the clean reviewed candidate.
+
+Files changed:
+
+- `eng/run-epic9-live-proof.sh` -- prebuilds the bounded EventStore Aspire dependency and records both fallback build commands.
+- `tests/e2e/scripts/run-epic9-live-proof.test.mjs` -- verifies exact fallback argv and both build-failure short-circuit paths.
+- `tests/e2e/scripts/validate-epic9-artifacts.mjs` -- expects the two-command serialized fallback evidence sequence.
+- `tests/e2e/scripts/validate-epic9-artifacts.test.mjs` -- updates positive and negative artifact fixtures for that sequence.
+- `_bmad-output/implementation-artifacts/tests/9-8-live-acceptance.md` -- records the final reviewed candidate, endpoint, observed claims, and selected checksums.
+- `_bmad-output/implementation-artifacts/spec-9-8-prove-composed-and-live-epic-9-acceptance.md` -- records scope dispositions, review triage, verification, deferred risks, and final state.
+
+Review findings: 9 patches applied, 3 items deferred, and 9 items rejected. Patched severity counts were high 0, medium 5, and low 4; follow-up score is `3 × 5 + 1 × 4 = 19`, so `followup_review_recommended` is `true`.
+
+Verification performed:
+
+- TypeScript typecheck passed and Epic 9 evidence/proof-runner tests passed 87/87.
+- Release Shell.Tests build passed with 0 warnings and 0 errors; focused composition tests passed 2/2, and the seeded Counter page and identifier seal passed 1/1 each.
+- Strict isolated Aspire/Playwright proof passed 1/1 against `7a5737630611b4d54b0180a3fa4c9c4ccd23a28c`; artifact validation and every checksum passed, and `aspire ps --format json` returned `[]`.
+- Strict story-artifact validation passed with full-SHA commit dispositions and no sprint-status write.
+- The broad solution lane reproduced the pre-existing restore-only `NU1109` mismatch between `FsCheck.Xunit.v3 3.3.4` and centrally pinned `FsCheck 3.3.3`.
+
+Residual risks: the three frontmatter `deferred` items cover complete dependency-graph rebuilding, structured executed-command evidence, and serialized-build-log redaction. The broad solution lane remains unavailable until the unrelated central FsCheck pin is corrected.
