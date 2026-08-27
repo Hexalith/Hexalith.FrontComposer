@@ -89,6 +89,15 @@
     "label": "Implement change",
     "resolution": ""
   },
+  "DW-1328": {
+    "answered_at": "2026-08-27",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Implement the behavior requested by DW-1328, update affected contracts and consumers, and add focused regression evidence.",
+    "key": "1",
+    "label": "Implement change",
+    "resolution": ""
+  },
   "DW-679": {
     "answered_at": "2026-08-27",
     "bundle_name": "",
