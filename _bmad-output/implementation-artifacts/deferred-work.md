@@ -3131,7 +3131,9 @@ resolution: already resolved: _bmad-output/implementation-artifacts/deferred-wor
 origin: migrated from legacy ledger ("Deferred from: Story 2-2 (Action Density Rules & Rendering Modes) — 2026-04-15"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **Full-featured FluentUI v5 chrome (FluentButton appearance literals, FluentPopover, FluentBreadcrumb, leading icons)** — Story 2-2 MVP emits plain HTML for the renderer chrome to keep the generator vocabulary domain-pure (Counter.Domain does not carry FluentUI primitives beyond what Story 2-1 already needed). Adopter overrides via partial classes + Story 3.1 (shell layout) will re-enable Fluent primitives end-to-end. Reconciliation: Row: DW-0365; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC17-AC20, AC35; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: Story 2-2 (Action Density Rules & Rendering Modes) — 2026-04-15.
-status: open
+status: done 2026-08-27
+resolution: closed by human decision: Record the current behavior as intentional and close the deferred row with its verified rationale.
+decision: 2026-08-27 Accept current behavior — Record the current behavior as intentional and close the deferred row with its verified rationale.
 
 ### DW-1097: IExpandInRowJSModule scoped cache
 
