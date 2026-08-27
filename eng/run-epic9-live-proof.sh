@@ -8,6 +8,7 @@ if ! repo_root="$(git rev-parse --show-toplevel)" || [[ -z "$repo_root" ]]; then
 fi
 
 apphost="$repo_root/src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj"
+eventstore_aspire="$repo_root/references/Hexalith.EventStore/src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj"
 e2e_root="$repo_root/tests/e2e"
 artifact_root="${FC_EPIC9_ARTIFACT_ROOT:-$repo_root/artifacts/epic-9}"
 require_clean="${FC_EPIC9_REQUIRE_CLEAN:-false}"
@@ -344,13 +345,19 @@ if ! aspire start \
   fi
   rm -f -- "$raw_start"
   raw_start=""
-  if ! dotnet build "$apphost" \
-    --configuration Debug \
-    -m:1 \
-    -p:BuildProjectReferences=false \
-    -p:NuGetAudit=false \
-    -p:CentralPackageTransitivePinningEnabled=false \
-    > "$artifact_root/apphost-serialized-build.log" 2>&1; then
+  if ! {
+    dotnet build "$eventstore_aspire" \
+      --configuration Debug \
+      -m:1 \
+      -p:NuGetAudit=false \
+      -p:CentralPackageTransitivePinningEnabled=false \
+      && dotnet build "$apphost" \
+        --configuration Debug \
+        -m:1 \
+        -p:BuildProjectReferences=false \
+        -p:NuGetAudit=false \
+        -p:CentralPackageTransitivePinningEnabled=false
+  } > "$artifact_root/apphost-serialized-build.log" 2>&1; then
     echo "Serialized AppHost fallback build failed." >&2
     exit 2
   fi
@@ -418,6 +425,7 @@ commands=(
 )
 if [[ "$start_mode" == "isolated-no-build-after-serialized-build" ]]; then
   commands+=(
+    "dotnet build references/Hexalith.EventStore/src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj --configuration Debug -m:1 -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false"
     "dotnet build src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --configuration Debug -m:1 -p:BuildProjectReferences=false -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false"
     "aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --isolated --no-build --non-interactive --format Json --nologo"
   )

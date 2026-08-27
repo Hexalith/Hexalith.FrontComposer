@@ -2,9 +2,9 @@
 title: 'Story 9.8: Prove composed and live Epic 9 acceptance'
 type: 'feature'
 created: '2026-08-27'
-status: 'blocked'
+status: in-progress
 baseline_commit: '1cc9c2774ca6368322b7aa7b2e89cee4a5f5fbf3'
-baseline_revision: '1cc9c2774ca6368322b7aa7b2e89cee4a5f5fbf3'
+baseline_revision: '9d410d223f214f85695b13ede98dc8b63fbfc1c7'
 story_id: '9.8'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -65,7 +65,7 @@ deferred: []
 - [x] `tests/e2e/specs/epic-9-fresh-row-acceptance.spec.ts` -- assert non-empty localized announcements and emit explicit exact-key, count, accessibility, first-wins, scope, and dismissal claims.
 - [x] `tests/e2e/scripts/validate-epic9-artifacts.mjs`, `tests/e2e/scripts/validate-epic9-artifacts.test.mjs`, `tests/e2e/scripts/run-epic9-live-proof.test.mjs`, `tests/e2e/package.json`, and `.github/workflows/quality.yml` -- validate every required claim, redaction boundary, strict preflight, and unrelated-AppHost refusal with positive/negative fixtures, and run those checks in the blocking live job.
 - [x] `eng/run-epic9-live-proof.sh` -- keep safe isolated lifecycle behavior and add a strict final-evidence mode that rejects a dirty or mismatched candidate while preserving an explicit development-mode diagnostic run.
-- [x] `_bmad-output/implementation-artifacts/tests/9-8-live-acceptance.md` and `artifacts/epic-9-final-f4f43fdc/` -- run the composed and live gates, retain checksummed artifacts against a committed candidate, and refresh exact commands, versions, endpoint, result counts, artifact name, and blockers.
+- [ ] `_bmad-output/implementation-artifacts/tests/9-8-live-acceptance.md` and a new empty final proof root -- after committing the hardened fallback, run the strict live gate, retain checksummed artifacts against that committed candidate, and refresh exact commands, versions, endpoint, result counts, artifact name, and blockers. The development diagnostic is complete but cannot substitute for this gate.
 - [x] `_bmad-output/implementation-artifacts/spec-9-8-prove-composed-and-live-epic-9-acceptance.md` -- reconcile verification, File List, review findings, and commit scope without touching sprint tracking.
 
 **Acceptance Criteria:**
@@ -76,6 +76,7 @@ deferred: []
 
 ## Spec Change Log
 
+- 2026-08-28: Reopened final acceptance because the hardened validator rejects the historical `f4f43fdc` checksum paths and a clean checkout exposed a missing EventStore Aspire dependency in the serialized fallback. Added the bounded dependency prebuild and exact-command fixtures; 85/85 evidence tests and a complete isolated development proof pass, while the strict committed-candidate rerun remains open.
 - 2026-08-27: Hardened composed scope/filter proofs, browser claims, artifact validation, CI wiring, and final/development proof modes. A complete isolated development proof passed and is recorded without claiming final acceptance; the clean committed-candidate proof remains open.
 - 2026-08-27: Committed the hardened candidate as `f4f43fdc3053e45ffb939b718c670afb4cfcecd0`; strict isolated Aspire/Playwright acceptance, final artifact validation, checksums, and AppHost cleanup all passed against that clean SHA.
 
@@ -94,7 +95,14 @@ The implementation merged in `f1b16a25d2a0a32ee437f5d8dfa786577402b416`; its spe
 - `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` -- expected: broad gate passes, or any pre-existing dependency blocker is recorded separately with its exact output.
 - `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-9-8-prove-composed-and-live-epic-9-acceptance.md --candidate HEAD` -- expected: Story 9.8 commits and changed paths reconcile with no sprint-status write.
 
-**Results (2026-08-27):** TypeScript typecheck passed; artifact-validator and proof-runner fixtures passed 40/40; the Release Shell.Tests build passed with 0 warnings and 0 errors; `Epic9CompositionTests` passed 2/2; the seeded Counter page and identifier-seal facts each passed 1/1. Strict final proof passed Playwright 1/1, live artifact validation, full checksums, and exact cleanup against clean candidate `f4f43fdc3053e45ffb939b718c670afb4cfcecd0` in `artifacts/epic-9-final-f4f43fdc/`. The exact solution default lane remains blocked at restore by pre-existing `NU1109` (`FsCheck.Xunit.v3 3.3.4` requires `FsCheck 3.3.4`; the central catalog selects `FsCheck 3.3.3`).
+**Results (2026-08-28):** TypeScript typecheck passed; artifact-validator and proof-runner fixtures passed 85/85; the Release Shell.Tests build passed with 0 warnings and 0 errors; `Epic9CompositionTests` passed 2/2; the seeded Counter page and identifier-seal facts each passed 1/1. The historical `f4f43fdc` bundle now fails the current validator because its checksum paths begin with `./`. A clean detached run reproduced the serialized fallback's missing `Hexalith.EventStore.Aspire.dll`; the bounded dependency prebuild fixes that failure. The resulting development proof passed Playwright 1/1, artifact validation, full checksums, and exact AppHost cleanup at endpoint `https://localhost:33145` in `artifacts/epic-9-development-fallback-fix/`, but it is intentionally dirty evidence and not final acceptance. The strict proof must run after these changes are committed. The exact solution default lane remains blocked at restore by pre-existing `NU1109` (`FsCheck.Xunit.v3 3.3.4` requires `FsCheck 3.3.4`; the central catalog selects `FsCheck 3.3.3`).
+
+## Commit Scope Dispositions
+
+- `a7de1113e50b1e98bb1f5d7d9dcacb1ac9b78c32` | `process` | Historical Epic 9 evidence hardening was committed without a Story 9.8 identifier; the earlier identified delivery commit and the current revalidation diff provide owned path evidence.
+- `d928f5f7149feaadf0e384e6e7c90c1472bc0e4d` | `shared` | Story 9.3 command-target contract migration changed the shared e2e package manifest independently of Story 9.8.
+- `9ad4312fb93fe0fef389d40e5abbeed241a2d73d` | `shared` | Projection-resilience follow-up work resealed the shared analyzer-policy ledger independently of Story 9.8.
+- `9d410d223f214f85695b13ede98dc8b63fbfc1c7` | `process` | Automated blocked-status write-back recorded the prior commit-scope gate result while also carrying unrelated submodule pointer synchronization.
 
 ## File List
 
@@ -109,25 +117,3 @@ The implementation merged in `f1b16a25d2a0a32ee437f5d8dfa786577402b416`; its spe
 - `tests/e2e/scripts/validate-epic9-artifacts.test.mjs`
 - `tests/e2e/scripts/run-epic9-live-proof.test.mjs`
 - `tests/e2e/specs/epic-9-fresh-row-acceptance.spec.ts`
-
-## Auto Run Result
-
-Status: blocked
-
-Blocking condition: commit-scope validation failed before adversarial review.
-
-Exact failing command:
-
-```text
-python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-9-8-prove-composed-and-live-epic-9-acceptance.md --candidate HEAD
-```
-
-Exact failure output:
-
-```text
-unmapped story delivery commit a7de1113e50b1e98bb1f5d7d9dcacb1ac9b78c32 does not match story 9.8 but touches listed paths: _bmad-output/contracts/analyzer-policy-exception-ledger-v1.json, _bmad-output/implementation-artifacts/spec-9-8-prove-composed-and-live-epic-9-acceptance.md, _bmad-output/implementation-artifacts/tests/9-8-live-acceptance.md, eng/run-epic9-live-proof.sh, tests/Hexalith.FrontComposer.Shell.Tests/Generated/Epic9CompositionTests.cs, tests/e2e/scripts/run-epic9-live-proof.test.mjs, tests/e2e/scripts/validate-epic9-artifacts.mjs, tests/e2e/scripts/validate-epic9-artifacts.test.mjs, tests/e2e/specs/epic-9-fresh-row-acceptance.spec.ts
-unmapped story delivery commit d928f5f7149feaadf0e384e6e7c90c1472bc0e4d does not match story 9.8 but touches listed paths: tests/e2e/package.json
-unmapped story delivery commit 9ad4312fb93fe0fef389d40e5abbeed241a2d73d does not match story 9.8 but touches listed paths: _bmad-output/contracts/analyzer-policy-exception-ledger-v1.json
-```
-
-The validator resolved baseline `1cc9c2774ca6368322b7aa7b2e89cee4a5f5fbf3` and candidate `9ad4312fb93fe0fef389d40e5abbeed241a2d73d`. The working tree was clean before this result write-back. No reviewer subagents were launched because commit-scope validation is a prerequisite hard gate. `_bmad-output/implementation-artifacts/sprint-status.yaml` was not written or reverted.

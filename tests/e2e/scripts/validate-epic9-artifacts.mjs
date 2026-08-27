@@ -16,8 +16,10 @@ const SENSITIVE_KEY_PATTERN = /authorization|cookie|password|secret|token|header
 const REDACTED = '[REDACTED]';
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const APPHOST_RELATIVE = 'src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj';
+const EVENTSTORE_ASPIRE_RELATIVE = 'references/Hexalith.EventStore/src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj';
 const INITIAL_START_COMMAND = `aspire start --apphost ${APPHOST_RELATIVE} --isolated --non-interactive --format Json --nologo`;
-const FALLBACK_BUILD_COMMAND = `dotnet build ${APPHOST_RELATIVE} --configuration Debug -m:1 -p:BuildProjectReferences=false -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false`;
+const FALLBACK_DEPENDENCY_BUILD_COMMAND = `dotnet build ${EVENTSTORE_ASPIRE_RELATIVE} --configuration Debug -m:1 -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false`;
+const FALLBACK_APPHOST_BUILD_COMMAND = `dotnet build ${APPHOST_RELATIVE} --configuration Debug -m:1 -p:BuildProjectReferences=false -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false`;
 const FALLBACK_START_COMMAND = `aspire start --apphost ${APPHOST_RELATIVE} --isolated --no-build --non-interactive --format Json --nologo`;
 const COMMON_COMMANDS = [
   `aspire wait counter-web --status up --timeout 180 --apphost ${APPHOST_RELATIVE} --non-interactive --nologo`,
@@ -112,7 +114,8 @@ const expectedCommands = (startMode, evidenceMode) => {
     : VALIDATE_FINAL_COMMAND;
   return startMode === 'isolated-build'
     ? [INITIAL_START_COMMAND, ...COMMON_COMMANDS, validationCommand]
-    : [INITIAL_START_COMMAND, FALLBACK_BUILD_COMMAND, FALLBACK_START_COMMAND, ...COMMON_COMMANDS, validationCommand];
+    : [INITIAL_START_COMMAND, FALLBACK_DEPENDENCY_BUILD_COMMAND, FALLBACK_APPHOST_BUILD_COMMAND,
+        FALLBACK_START_COMMAND, ...COMMON_COMMANDS, validationCommand];
 };
 
 const assertExactArray = (actual, expected, claim) => {

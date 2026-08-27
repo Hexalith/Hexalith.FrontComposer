@@ -317,7 +317,11 @@ test('Epic 9 proof uses the serialized-build fallback only after failed-start po
   assert.equal(result.exitCode, 0, result.stderr);
   assert.deepEqual(invocations.slice(0, 5), ['ps', 'start', 'ps', 'start', 'ps']);
   assert.equal(invocations.filter((name) => name === 'start').length, 2);
-  assert.match((await readInvocations(harness.dotnetLog))[0], /^build /u);
+  const fallbackBuilds = (await readInvocations(harness.dotnetLog))
+    .filter((invocation) => invocation.startsWith('build '));
+  assert.equal(fallbackBuilds.length, 2);
+  assert.match(fallbackBuilds[0], /^build .*Hexalith\.EventStore\.Aspire\.csproj /u);
+  assert.match(fallbackBuilds[1], /^build .*Hexalith\.FrontComposer\.AppHost\.csproj .*BuildProjectReferences=false/u);
   assert.match(invocations.join(' '), /stop/u);
 });
 
