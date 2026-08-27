@@ -24,7 +24,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-3-def
 location: AssertTableRows
 source_spec: `_bmad-output/implementation-artifacts/spec-9-3-define-explicit-command-target-identity.md`
 reason: summary: FC-NIP contract guards duplicate roughly forty literal fragments and two full markdown tables across the C# and Playwright suites with no shared source of truth. evidence: `AssertTableRows` / `parseTableRows` demand cell-by-cell equality of the Immutable Target Snapshot and Complete Outcome Disposition Matrix, transcribed by hand into both languages; a single contract typo breaks both suites and the copies will drift. Pre-existing duplication pattern that Story 9.3 extended rather than introduced.
-status: open
+status: done 2026-08-27
+resolution: already resolved: commit d928f5f7 implements the shared FC-NIP manifest and its C# and TypeScript contract guards
 
 ### DW-672: FC-NIP guard file and class names still say "row identity" although both now primarily guard command target identity.
 
@@ -32,7 +33,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-3-def
 location: tests/e2e/specs/fc-nip-row-identity-contract.spec.ts
 source_spec: `_bmad-output/implementation-artifacts/spec-9-3-define-explicit-command-target-identity.md`
 reason: summary: FC-NIP guard file and class names still say "row identity" although both now primarily guard command target identity. evidence: `tests/e2e/specs/fc-nip-row-identity-contract.spec.ts` and `FcNipRowIdentityProducerContractTests` were retargeted in place, and the base contract header still reads "Story 9.1 - Confirm the FC-NIP row-identity producer contract". Renaming touches governance identifiers and the analyzer identifier inventory, so it belongs in an owned story.
-status: open
+status: done 2026-08-27
+resolution: already resolved: commit d928f5f7 renames the C# class and Playwright spec around command-target identity
 
 ### DW-673: Reconcile the dual dating of the FC-NIP base decision across the contract set.
 
@@ -40,7 +42,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-3-def
 location: prd.md
 source_spec: `_bmad-output/implementation-artifacts/spec-9-3-define-explicit-command-target-identity.md`
 reason: summary: Reconcile the dual dating of the FC-NIP base decision across the contract set. evidence: The base file is named and dated `2026-07-04`, but the successor contract, `prd.md`, and the Story 9.3 spec all cite "the 2026-07-05 row-context decision" — the `Decision update:` date inside the 07-04 file. No document explains the relationship, so the set appears to reference a contract that does not exist. Second-pass code review, 2026-08-12.
-status: open
+status: done 2026-08-27
+resolution: already resolved: commit d928f5f7 reconciles the 2026-07-04 record and 2026-07-05 approval/update chronology
 
 ### DW-674: Unify the clock-abstraction naming in the successor contract.
 
@@ -48,7 +51,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-3-def
 location: CapturedAt
 source_spec: `_bmad-output/implementation-artifacts/spec-9-3-define-explicit-command-target-identity.md`
 reason: summary: Unify the clock-abstraction naming in the successor contract. evidence: `CapturedAt` is sourced from "FrontComposer `TimeProvider`" while the `ObservedAt` fallback is "the Shell `TimeProvider`", with no statement that these name the same seam. Cosmetic but load-bearing for a contract whose whole point is that the two timestamps stay distinct. Second-pass code review, 2026-08-12.
-status: open
+status: done 2026-08-27
+resolution: already resolved: commit d928f5f7 names the common FrontComposer Shell TimeProvider seam
 
 ### DW-675: Specify redaction, log category/level, and a suppression-rate signal for the FC-NIP target-failure diagnostic.
 
@@ -56,7 +60,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-3-def
 location: EntityKey
 source_spec: `_bmad-output/implementation-artifacts/spec-9-3-define-explicit-command-target-identity.md`
 reason: summary: Specify redaction, log category/level, and a suppression-rate signal for the FC-NIP target-failure diagnostic. evidence: The contract emits a bounded diagnostic carrying `EntityKey`, `PriorStatus`, and `ExpectedStatus` — business data — with no redaction rule, and requires no suppression-rate observability. A fail-closed implementation suppressing 100% of indicators in production would be indistinguishable from a working one. Belongs with the Story 9.4 implementation. Second-pass code review, 2026-08-12.
-status: open
+status: done 2026-08-27
+resolution: already resolved: commit d928f5f7 adds redacted events 5912/5913 and the suppression-rate contract
 
 ### DW-676: Record the retirement path for the gap-evidence prohibitions pinned on `EventStorePendingCommandStatusQuery.cs`.
 
@@ -1525,7 +1530,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 7-3-command-authorization-policies (2026-05-01)"), 2026-08-27
 location: Hexalith.EventStore
 reason: **DF1 — Out-of-scope submodule pointer changes in `Hexalith.EventStore` and `Hexalith.Tenants`** — Working-tree carries unrelated submodule pointer drifts (release tags, doc updates) not declared in the Story 7-3 File List. Should be reverted or committed under a separate change. **Owner:** Pre-merge cleanup. Sources: A. Reconciliation: Row: DW-0143; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.4 SourceTools/schema-fingerprint follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.4 SourceTools/schema-fingerprint follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
-status: open
+status: done 2026-08-27
+resolution: already resolved: commit 1cc9c277 records both Hexalith.EventStore and Hexalith.Tenants gitlink updates; the current tracked paths are clean
 
 ### DW-875: Reserve runtime HFC21xx/HFC22xx diagnostic IDs for authorization-blocked logs [`src/Hexalith.FrontComposer.Shell/Services/Authorization/CommandAuthorizationEvaluator.cs:96-103`] — `LogBlocked` emits `LogWarning` without a structured diagnostic id. SIEM rules cannot filter security-domain entries by HFC family. Owner: Story 9-4 (Diagnostic ID System). Sources: A+E50. Reconciliation: Row: DW-0144; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.2 diagnostic/docs governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.2 diagnostic/docs governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 
