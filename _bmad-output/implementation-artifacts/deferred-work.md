@@ -8360,7 +8360,9 @@ origin: migrated from legacy ledger ("Deferred from: REL-3 residual token split 
 location: rel-3-enforce-fr24-pre-publish-and-reconcile-releases.history.md
 source_spec: `_bmad-output/implementation-artifacts/rel-3-enforce-fr24-pre-publish-and-reconcile-releases.md`
 reason: summary: Maintain the full historical REL-3 epic body (amended ACs, Implementation Record, 2026-07-18 review findings) as an active implementer surface. evidence: Split under token gate [S]; archived to `rel-3-enforce-fr24-pre-publish-and-reconcile-releases.history.md` so the active plan stays T8-only.
-status: open
+status: done 2026-08-27
+resolution: closed by human decision: Record the current behavior as intentional and close the deferred row with its verified rationale.
+decision: 2026-08-27 Accept current behavior — Record the current behavior as intentional and close the deferred row with its verified rationale.
 
 ### DW-1782: REL-5 real governed release, NuGet.org unsigned-upload policy confirmation, and REL-AI-1 closure.
 
