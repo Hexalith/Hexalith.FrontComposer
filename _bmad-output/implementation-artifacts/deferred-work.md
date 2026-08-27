@@ -9103,6 +9103,7 @@ location: eng/validate-story-artifacts.py:638
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Decide whether documented-blocker prose inside an example should still exempt a task. evidence: `extract_sections` builds bodies from the semantic-line scanner, so fenced and indented example content is dropped from `evidence_text`; a story whose only `blocker` mention sits inside such a block loses that exemption, and no test observes the old or new behavior. `eng/validate-story-artifacts.py:638`
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1886, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1887: Report an unsupported git version as a tooling prerequisite.
 
