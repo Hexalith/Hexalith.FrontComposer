@@ -8421,6 +8421,7 @@ location: n/a
 source_spec: `_bmad-output/implementation-artifacts/spec-actions-31783283241-fix-cicd.md`
 reason: summary: Amend FC-DEP-1 / architecture spine so sibling catalogs are presence-only instead of exact required-package version fail-closed. evidence: Planning architecture still says a changed required package version fails closed for every selected catalog; only project-context was updated.
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1803, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1804: Restore or replace REL-5 `baseline_commit` `874fe13ba4d2a979898fc9b10451827bab94988c` so later reviews can diff against the declared baseline.
 
