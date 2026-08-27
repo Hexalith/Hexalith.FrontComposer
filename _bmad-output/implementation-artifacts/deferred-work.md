@@ -3524,6 +3524,7 @@ origin: migrated from legacy ledger ("Deferred from: story 3-1-shell-layout-them
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`[SuppressHFC2105]` analyzer escape hatch** — `HFC2105` is logged at `Information` to tolerate samples that legitimately run without a real `IUserContextAccessor`. Escalation to `Warning` (for production audits) requires an adopter-facing suppression attribute. **Defer target:** Story 9-4 (diagnostic ID governance). Reconciliation: Row: DW-0422; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC17-AC20, AC35; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2; Evidence: section: story 3-1-shell-layout-theme-and-typography (2026-04-18).
 status: open
+decision: 2026-08-27 Keep open
 
 ### DW-1154: Type specimen view + Playwright screenshot diffing + `axe-core` CI
 
