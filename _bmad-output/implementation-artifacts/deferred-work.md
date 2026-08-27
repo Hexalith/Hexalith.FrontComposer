@@ -2857,7 +2857,9 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of tasks-subtasks.md (story 2-5) (2026-04-17)"), 2026-08-27
 location: _bmad-output/planning-artifacts/prd.md
 reason: **Planning monolith paths and external bookmarks** — Replacing single-file `_bmad-output/planning-artifacts/prd.md`, `epics.md`, `ux-design-specification.md`, and research monoliths with sharded folders can break external deep links and old citations until referrers are updated. Tracked as deferral from review; no runtime code change required. Reconciliation: Row: DW-0330; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of tasks-subtasks.md (story 2-5) (2026-04-17).
-status: open
+status: done 2026-08-27
+resolution: closed by human decision: Record the current verified behavior as intentional and close the deferred row.
+decision: 2026-08-27 Accept current behavior — Record the current verified behavior as intentional and close the deferred row.
 
 ### DW-1062: HFC2103 diagnostic ID naming vs wrapper bypass log branch
 
