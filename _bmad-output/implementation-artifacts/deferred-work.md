@@ -7305,6 +7305,7 @@ location: src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusReleaseGuard.cs:41-49
 source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
 reason: summary: Reconcile the documented no-op baseline mode with `SkillCorpusValidationResult.IsValid`. evidence: `ValidateAgainstBaseline` describes a missing baseline as a benign no-op but returns a `BaselineMismatch` diagnostic (`src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusReleaseGuard.cs:41-49`), while `SkillCorpusValidationResult.IsValid` treats every diagnostic as invalid. There is no production caller today, and both declarations predate the split.
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1665, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1666: Carry current corpus diagnostics through baseline release validation.
 
