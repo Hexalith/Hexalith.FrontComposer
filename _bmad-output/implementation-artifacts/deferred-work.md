@@ -7637,6 +7637,7 @@ location: n/a
 source_spec: `_bmad-output/implementation-artifacts/sprint-status.yaml`
 reason: summary: The Story 11.17d-only GOV-1 promotion waiver exists only as prose inside a `waiver:` string, so any consumer reading the action item's structured fields still sees an unmet gate blocking the promotion that already happened. evidence: **Reconciled 2026-08-02 by approved GOV-1 course correction.** Story 11.17d completed on 2026-08-02 and is not reopened. The action's structured `due` field now contains only the unwaived condition, `before the next accepted governed release manifest`; the dated waiver is retained as history instead of competing current state. No schema extension was necessary. Reopen trigger: a future action requires a simultaneous partial waiver that cannot be represented by correcting its remaining due condition.
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1706, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1707: Execute the story-artifact validator's own test suite in CI, so a regression to the repository-wide evidence gate cannot ship unnoticed.
 
