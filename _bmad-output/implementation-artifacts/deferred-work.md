@@ -8509,6 +8509,7 @@ location: quality.yml
 source_spec: `_bmad-output/implementation-artifacts/spec-actions-31723965027-fix-cicd.md`
 reason: summary: Document NightlyProperty as an advisory/ungoverned trait and add a quality.yml lane if it should stay excluded from blocking CI and release. evidence: Gate 3a and now release `phase_tests()` exclude `NightlyProperty`, but project-context lists only palette/perf/quarantine as advisory and quality.yml has no NightlyProperty lane.
 status: open
+decision: 2026-08-27 Implement the change — Implement the behavior requested by DW-1799, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1800: Quality Gate 2b on current main fails CentralPackageVersions catalog inheritance and ReleaseWorkflow Builds gitlink SHA checks.
 
