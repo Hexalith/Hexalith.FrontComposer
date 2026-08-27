@@ -82,7 +82,9 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-3-def
 location: n/a
 source_spec: `_bmad-output/implementation-artifacts/spec-9-3-define-explicit-command-target-identity.md`
 reason: summary: Decide whether one command may resolve more than one FC-NIP target. evidence: The successor contract states "One command resolves at most one target; multi-target commands require a separate decision", and the spec's frozen Ask First repeats it. No story owns that decision, so a command that materially changes several rows has no defined indicator disposition. Contract-declared deferral filed by the second-pass code review, 2026-08-12.
-status: open
+status: done 2026-08-27
+resolution: closed by human decision: Record the current behavior as intentional and close the deferred row with its verified rationale.
+decision: 2026-08-27 Accept current behavior — Record the current behavior as intentional and close the deferred row with its verified rationale.
 
 ### DW-679: Decide whether a typed post-dispatch identity proof may make server-allocated keys indicator-eligible.
 
