@@ -2801,7 +2801,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of story 2-5 full adversarial pass (2026-04-17)"), 2026-08-27
 location: tests/.../CommandRendererEmitterTests.cs
 reason: **Destructive renderer emitter snapshot coverage** — `CommandRendererEmitterTests` never passes `isDestructive: true`; `DestructiveBeforeSubmitAsync`, `_dialogOpen`, and `IDialogService` injection have no snapshot. Authoring the snapshots requires a destructive command test model + 8+ rendering permutations. Significant scoping work; track as a dedicated snapshot-hardening pass. `tests/.../CommandRendererEmitterTests.cs` Reconciliation: Row: DW-0321; Split 2026-05-12; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.4; AC coverage: AC18, AC21-AC22, AC37; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.4.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4; Evidence: Story 11.4 added destructive metadata drift coverage (`DriftClassifierMetadataTests.CommandContractMetadataChange_EmitsSingleMetadataDiagnostic`) but did not broaden renderer snapshot approval corpus; Release risk: low for drift release-readiness, medium for renderer visual regression; Reopen trigger: Story 11.6 snapshot/accessibility coverage pass.
-status: open
+status: done 2026-08-27
+resolution: already resolved: tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandRendererEmitterTests.cs:167 exercises isDestructive:true and lines 175-191 assert the destructive dialog/emitter paths.
 
 ### DW-1053: `OnFormEditContextReady` double render cycle
 
@@ -2857,7 +2858,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of story 2-5 full adversarial pass (2026-04-17)"), 2026-08-27
 location: FcFormAbandonmentGuard.razor.cs
 reason: **`OnFirstEdit` re-mount arm gap** — guard unsubscribes `OnFieldChanged` after first fire; if the same `EditContext` reference is reused across mounts the guard never re-arms. Emitter creates a fresh `EditContext` in `OnInitialized` making exact reuse unlikely in practice. `FcFormAbandonmentGuard.razor.cs` Reconciliation: Row: DW-0329; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC18, AC21-AC22, AC37; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-5 full adversarial pass (2026-04-17).
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Components/Forms/FcFormAbandonmentGuard.razor.cs:78 re-subscribes whenever the prior subscription was cleared; a remount also creates a fresh component instance.
 
 ### DW-1061: Planning monolith paths and external bookmarks
 
@@ -3664,14 +3666,16 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 3-4-fccommandpalette-and-keyboard-shortcuts (2026-04-21 pass 3)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **Chord fallthrough re-evaluation test gap** — `ShortcutService` has a branch where the second key of a broken chord falls through to `IsChordPrefix` fresh-start path; no test proves the behaviour. **Defer target:** Task 10.1 follow-up coverage pass with FocusManagement tests. Reconciliation: Row: DW-0433; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 3-4-fccommandpalette-and-keyboard-shortcuts (2026-04-21 pass 3).
-status: open
+status: done 2026-08-27
+resolution: already resolved: tests/Hexalith.FrontComposer.Shell.Tests/Shortcuts/ShortcutServiceTests.cs:283-297 pins repeated-prefix chord reevaluation; commit 6fbe67bcc7cd79ebac15691c92ab3d0026b59530.
 
 ### DW-1165: Modifier-bearing chord second-key test gap
 
 origin: migrated from legacy ledger ("Deferred from: code review of 3-4-fccommandpalette-and-keyboard-shortcuts (2026-04-21 pass 3)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **Modifier-bearing chord second-key test gap** — pressing `g` then `Ctrl+Z` (not-registered) clears pending; no test asserts the sequence. Same follow-up bucket. Reconciliation: Row: DW-0434; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 3-4-fccommandpalette-and-keyboard-shortcuts (2026-04-21 pass 3).
-status: open
+status: done 2026-08-27
+resolution: already resolved: tests/Hexalith.FrontComposer.Shell.Tests/Shortcuts/ShortcutServiceTests.cs:299-317 pins modifier-bearing second-key fallthrough; commit 6fbe67bcc7cd79ebac15691c92ab3d0026b59530.
 
 ### DW-1166: Missing `descriptionKey` resource fallback
 
@@ -5619,14 +5623,16 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 12-1-ledger-marker-parity-and-epic-status-decision (2026-05-14)"), 2026-08-27
 location: n/a
 reason: **W1 — Pre-image Reconciliation Summary bucket totals did not reconcile:** Old bucket counts `unresolved-owned 637 + unresolved-ambiguous 0 + duplicate-alias 6 + resolved-preserved 13 + superseded-preserved 0 + non-action 2 + rejected-with-rationale 4 + split-parent 0 = 662`, but the pre-image total line claimed `659`. Story 12.1 rewrote the summary; the table-authoritative totals reconcile as `unresolved-owned 0 + unresolved-ambiguous 0 + duplicate-alias 6 + resolved-preserved 119 + accepted-constraint 149 + split-to-named-story 377 + superseded-preserved 3 + non-action 7 + rejected-with-rationale 4 + release-gate 1 = 666`. (Earlier 12.1 hand-rolled `91+112+442` figures were superseded by the live bucket table after Story 12.2/12.3/12.5 reclassifications; treat the bucket table as the source of truth.) The 3-row historical drift versus the 659 pre-image total was inherited, not introduced. Owner: deferred-work ledger maintainer (one-time audit on next ledger touch).
-status: open
+status: done 2026-08-27
+resolution: already resolved: commit dd74efc4 replaced the legacy reconciliation summary and its inconsistent pre-image totals with canonical DW blocks.
 
 ### DW-1432: Pre-image per-owner table claimed Story 11.5 = 204 but detailed-row count was 205: Story 12.1's deterministic starting inventory consumed the correct count of 205 (matching the frozen `sha256:d0df4a8…780e83` fingerprint). The old per-owner summary table was stale by one row. Now corrected to 0 (after splits). Owner: deferred-work ledger maintainer.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 12-1-ledger-marker-parity-and-epic-status-decision (2026-05-14)"), 2026-08-27
 location: n/a
 reason: **W2 — Pre-image per-owner table claimed Story 11.5 = 204 but detailed-row count was 205:** Story 12.1's deterministic starting inventory consumed the correct count of 205 (matching the frozen `sha256:d0df4a8…780e83` fingerprint). The old per-owner summary table was stale by one row. Now corrected to 0 (after splits). Owner: deferred-work ledger maintainer.
-status: open
+status: done 2026-08-27
+resolution: already resolved: commit dd74efc4 removed the stale legacy per-owner summary while migrating the ledger to canonical DW blocks.
 
 ### DW-1433: `epic-11-retrospective: done` while `epic-11: in-progress` is a pre-existing internal inconsistency: `sprint-status.yaml:147` holds `epic-11: in-progress` (correctly, per `DW-0666` release gate); `sprint-status.yaml:155` holds `epic-11-retrospective: done`. A retrospective marked done while the epic remains open implies either the retrospective predated the `DW-0666` gate or the epic should already be closed. Story 12.1 did not modify the retrospective status. Owner: sprint-status / Epic 11 retrospective owner.
 
@@ -5642,7 +5648,8 @@ decision: 2026-08-27 Implement change — Implement the behavior requested by DW
 origin: migrated from legacy ledger ("Deferred from: code review of 12-1-ledger-marker-parity-and-epic-status-decision (2026-05-14)"), 2026-08-27
 location: deferred-work.md
 reason: **W4 — Bucket vocabulary aliases are undocumented in `deferred-work.md`:** Strict-vocabulary counts (`resolved=70`, `accepted-constraint=50`, `fixed-in-11.6=11`, `fixed-in-11.7=10`, `accepted-with-risk=62`) reconcile to the summary buckets (`resolved-preserved=91`, `accepted-constraint=112`) only via undocumented aliases (`resolved-preserved = resolved + fixed-in-11.6 + fixed-in-11.7`; `accepted-constraint = strict-accepted + accepted-with-risk`). The Reconciliation Status frontmatter enumerates only the strict tokens. Externally replayable verification requires the alias spec. Owner: deferred-work ledger maintainer (add a vocabulary mapping subsection on next ledger touch).
-status: open
+status: done 2026-08-27
+resolution: already resolved: commit dd74efc4 removed the legacy bucket-alias summary vocabulary; the current ledger is status-driven DW blocks.
 
 ### DW-1435: `W1`–`W9` review-finding bullets in `## Deferred from: code review …` sections lack `DW-####` Reconciliation markers: Bullets at `deferred-work.md:1118-1126` (11-6 review) and `:1130` (11-7 review) carry `Owner: …` lines but no `Reconciliation: Row: DW-####` marker. T1's "Fail before mutation if any detailed current marker has a missing, malformed, or duplicate `DW-####` row ID" was satisfied by Story 12.1 only because the inventory script scans rows that already carry `DW-####` and skips bullets that don't — i.e., the script does not fail-close on missing IDs as T1 specified. Pre-existing inventory-script gap, not introduced by this commit. Owner: deferred-work inventory-script maintainer.
 
@@ -5723,7 +5730,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 12-3-eventstore-pending-command-provider-release-gate (2026-05-15)"), 2026-08-27
 location: deferred-work.md
 reason: **W1 — Ledger total drifted 659→666 in this commit without per-row reconciliation:** The bucket-table total in `deferred-work.md` moved from 659 to 666 across Story 12.1/12.2 fan-out; Story 12.3 inherits but does not own the drift. Pre-existing Story 12.1/12.2 ledger churn, not introduced by the pending-command release-gate work. Owner: Story 12.1 / Story 12.2 follow-up audit.
-status: open
+status: done 2026-08-27
+resolution: already resolved: commit dd74efc4 removed the legacy 659/666 bucket-total summary whose drift this row reported.
 
 ### DW-1446: Row-id fingerprint `sha256:0dab7c…46702` is tautological for a 4-row ordered list: The fingerprint for `DW-0232, DW-0461, DW-0465, DW-0469` will always hash identically while IDs and order are unchanged, so "starting = final fingerprint" is satisfied by definition rather than by computation. T1's intent ("Recompute the ordered row-id hash before ledger mutation") is preserved in form but not in substance. Methodology inherited from Story 12.1. Owner: deferred-work inventory-script maintainer.
 
@@ -5745,7 +5753,8 @@ resolution: already resolved: _bmad-output/implementation-artifacts/sprint-statu
 origin: migrated from legacy ledger ("Deferred from: code review of 12-3-eventstore-pending-command-provider-release-gate (2026-05-15)"), 2026-08-27
 location: DW-####
 reason: **W4 — Inventory script silently skips bullets lacking `DW-####` markers:** Pre-existing inventory-script gap from Story 12.1's W5 review note. Story 12.3's "Row inventory/hash | Passed" claim inherits the gap. Owner: deferred-work inventory-script maintainer.
-status: open
+status: done 2026-08-27
+resolution: already resolved: commit dd74efc4 migrated legacy bullets into explicit DW blocks, resolving the missing-marker inventory gap.
 
 ### DW-1449: `Owner` → `Original owner` downgrade across Category A–E rows in this diff: Across mass-reclassified rows the active "Owner: Story 11.X" field is silently downgraded to "Original owner" with no replacement owner named. Story 12.2 reclassification scope; not Story 12.3 work. Owner: Story 12.2.1 follow-up.
 
@@ -9248,7 +9257,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add
 location: _bmad-output/implementation-artifacts/deferred-work.md
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Retire ledger entries that later loops resolved. evidence: Entries filed from loop-4 review remain `status: open` although later loops implemented them, so `bmad-loop-sweep` re-triages resolved work every run. Retiring them requires verifying each entry against current source, which is the sweep's own job rather than a review patch inside this story. `_bmad-output/implementation-artifacts/deferred-work.md`
-status: open
+status: done 2026-08-27
+resolution: already resolved: commit 38af1160 verified current source and closed stale open ledger entries with concrete file/commit resolutions, implementing the retirement requested by this meta-row.
 
 ### DW-1891: `step-03-implement.md` in both `bmad-build` mirrors was never updated for the new gate, so the first implementation commit of any story hard-fails the strict validator this story introduces. The story-ID subject rule is stated only in `step-05-present.md` and only for the final transition commit; every commit made during implementation that touches a File List path is classified `unmapped` and blocks step 04. Pre-existing and already filed in this ledger.
 
