@@ -170,6 +170,15 @@
     "label": "Implement change",
     "resolution": ""
   },
+  "DW-1440": {
+    "answered_at": "2026-08-27",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Implement the behavior requested by DW-1440, update affected contracts and consumers, and add focused regression evidence.",
+    "key": "1",
+    "label": "Implement the change",
+    "resolution": ""
+  },
   "DW-1458": {
     "answered_at": "2026-08-27",
     "bundle_name": "",

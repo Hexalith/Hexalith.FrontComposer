@@ -5660,6 +5660,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 12-2-mcp-led
 location: n/a
 reason: **W5 — 142 split rows share identical Rationale and the non-decision `none or contract-adjacent` downstream impact:** T3.4 demanded a per-set decision. Tied to W3. Owner: Story 12.2.1 follow-up.
 status: open
+decision: 2026-08-27 Implement the change — Implement the behavior requested by DW-1440, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1441: Spec-required matrix sub-fields missing on every accepted-constraint row: T5.5 names four sub-fields (`Watcher`, `Artifact to update`, `Release-note impact`, `Package-promotion impact`) that need row-specific values across 35 rows. Plus `target story or gate` is absent on every row (T5.5 row-level requirement). Owner: Story 12.2.1 follow-up.
 
