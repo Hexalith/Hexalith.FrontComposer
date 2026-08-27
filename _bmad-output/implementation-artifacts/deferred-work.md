@@ -8153,6 +8153,7 @@ location: ValidateSafePath
 source_spec: `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
 reason: summary: Ledger `exactScope` accepts free prose, which makes the path-safety and wildcard-production-scope checks vacuous for those rows. evidence: Values such as `"three unsupported sample fixture properties"`, `"listed packable project files"` and `"repository"` contain no `*`, `..`, `\` or rooted prefix, so `ValidateSafePath` passes while conveying no verifiable scope. Fixing it is a ledger schema change.
 status: open
+decision: 2026-08-27 Implement requested change — Implement the behavior requested by DW-1757, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1758: Ledger `diagnosticIds` is overloaded to carry MSBuild property values, so the root-CA guard runs over a field with two incompatible meanings.
 
