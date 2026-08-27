@@ -8794,6 +8794,7 @@ location: _bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-0
 source_spec: `_bmad-output/implementation-artifacts/spec-9-6-enforce-atomic-per-row-first-wins.md`
 reason: summary: Reconcile the stale last-wins prose in the FC-NIP row-identity producer contract with shipped first-wins behavior. evidence: `_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md:99,108-110` still states in the present tense that "a repeat `Add(...)` for the same row ... resets the 10s auto-dismiss timer", which is false as of Story 9.6, while its successor-requirements section already states the first-wins rule. The doc guard at `tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/FcNipRowIdentityProducerContractTests.cs:69` only checks that the string `first-wins` appears, so the contradiction survives. Left untouched because that section is a dated point-in-time seam verification inside a historical Story 9.1 decision record; a human should decide whether to annotate or supersede it rather than rewrite history.
 status: open
+decision: 2026-08-27 Implement requested change — Implement the behavior requested by DW-1835, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1836: Document per-row first-wins, indicator suppression, and the re-open conditions on the published DataGrid reference page.
 
