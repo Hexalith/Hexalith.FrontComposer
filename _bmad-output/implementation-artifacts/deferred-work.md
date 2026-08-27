@@ -497,7 +497,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 9-4-diagnostic-id-system-and-deprecation-policy — chunk C (2026-05-10)"), 2026-08-27
 location: hexalith.github.io
 reason: **DEF-9-4-C4 — `docsSlug` relative vs canonical help-link absolute (`hexalith.github.io`)** [all 106 stubs] — host migration would require 106-file edit. Architectural choice: derive body link from registry top-level `canonicalHelpLinkFormat` or document hardcoded host. Story 9-5 / docs-host strategy. Sources: blind. Reconciliation: Row: DW-0004; Resolved 2026-05-11; Evidence: DiagnosticDescriptors.CanonicalHelpLinkFormat plus registry canonicalHelpLinkFormat validation.
-status: open
+status: done 2026-08-27
+resolution: already resolved: hexalith.github.io: DiagnosticDescriptors.CanonicalHelpLinkFormat plus registry canonicalHelpLinkFormat validation.
 decision: 2026-08-27 Implement change — Implement the behavior requested by DW-735, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-736: Mass-applied `introducedIn: 0.1.0` for all stubs even where registry post-dates 0.1.0 [all 106 stubs] — Story 9-2 migration tooling and Story 9-1 drift may rely on accurate `introducedIn` for "what's new since v X" semantics. Re-derive per-entry from registry. Authoring + data accuracy task. Sources: blind. Reconciliation: Row: DW-0005; Resolved 2026-05-11; Evidence: registry/stub introducedIn parity remains enforced by DiagnosticRegistryTests and docs validation.
@@ -505,14 +506,16 @@ decision: 2026-08-27 Implement change — Implement the behavior requested by DW
 origin: migrated from legacy ledger ("Deferred from: code review of 9-4-diagnostic-id-system-and-deprecation-policy — chunk C (2026-05-10)"), 2026-08-27
 location: n/a
 reason: **DEF-9-4-C5 — Mass-applied `introducedIn: 0.1.0` for all stubs even where registry post-dates 0.1.0** [all 106 stubs] — Story 9-2 migration tooling and Story 9-1 drift may rely on accurate `introducedIn` for "what's new since v X" semantics. Re-derive per-entry from registry. Authoring + data accuracy task. Sources: blind. Reconciliation: Row: DW-0005; Resolved 2026-05-11; Evidence: registry/stub introducedIn parity remains enforced by DiagnosticRegistryTests and docs validation.
-status: open
+status: done 2026-08-27
+resolution: already resolved: n/a: registry/stub introducedIn parity remains enforced by DiagnosticRegistryTests and docs validation.
 
 ### DW-737: HFC1601 sub-allocation (1500-id gap) and Shell range non-contiguous sub-bands [registry + README] — HFC1601 lives in a 530-id gap inside 1000–1999; Shell stubs occupy two clusters HFC2004–2019 and HFC2100–2121. Sub-band convention not documented. Governance work. Sources: blind. Reconciliation: Row: DW-0006; Resolved 2026-05-11; Evidence: structured externalBoundaries and allowedExceptions.crossPackageRange for HFC1601 in diagnostic-registry.json.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 9-4-diagnostic-id-system-and-deprecation-policy — chunk C (2026-05-10)"), 2026-08-27
 location: diagnostic-registry.json
 reason: **DEF-9-4-C6 — HFC1601 sub-allocation (1500-id gap) and Shell range non-contiguous sub-bands** [registry + README] — HFC1601 lives in a 530-id gap inside 1000–1999; Shell stubs occupy two clusters HFC2004–2019 and HFC2100–2121. Sub-band convention not documented. Governance work. Sources: blind. Reconciliation: Row: DW-0006; Resolved 2026-05-11; Evidence: structured externalBoundaries and allowedExceptions.crossPackageRange for HFC1601 in diagnostic-registry.json.
-status: open
+status: done 2026-08-27
+resolution: already resolved: diagnostic-registry.json: structured externalBoundaries and allowedExceptions.crossPackageRange for HFC1601 in diagnostic-registry.json.
 
 ### DW-738: README `schemaVersion: 1.0` lock claim but stub front-matter has no schema-version field [`docs/diagnostics/README.md`, all 106 stubs] — fail-closed schema discipline cannot be enforced at the stub layer as currently shaped. Adding stub-side `schemaVersion` is a registry-format change. Sources: blind. Reconciliation: Row: DW-0007; Rejected with rationale 2026-05-11; Evidence: README keeps stub front matter bounded and registry schemaVersion remains the single fail-closed schema contract; adding a per-stub schemaVersion field is a registry-format change beyond Story 11.2 budget.
 
@@ -533,14 +536,16 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 9-4-diagnostic-id-system-and-deprecation-policy — chunk C (2026-05-10)"), 2026-08-27
 location: samples/*.json
 reason: **DEF-9-4-C9 — `samples/*.json` not deeply audited for forbidden tokens** [`docs/diagnostics/samples/*.json`] — README requires samples avoid timestamps, absolute paths, machine names, SDK banners, live feed URLs. Add a separate scan / fixture-schema test. Chunk B/C fixture-schema work; partly addressed in chunk-A patch P10 (registry-drift-report path redaction). Sources: edge. Reconciliation: Row: DW-0009; Resolved 2026-05-11; Evidence: DriftSampleReports_AreNormalizedAndCommitted validates findings shape and forbidden evidence tokens.
-status: open
+status: done 2026-08-27
+resolution: already resolved: samples/*.json: DriftSampleReports_AreNormalizedAndCommitted validates findings shape and forbidden evidence tokens.
 
 ### DW-741: HFCM* migration analyzer rows are unregistered and unstubbed [`src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md` + missing registry/stubs] — 6 IDs (`HFCM0000`, `HFCM0001`, `HFCM0002`, `HFCM0004`, `HFCM9001`, `HFCM9002`) live in the SourceTools unshipped file with no registry row or docs stub. Owner: Story 9-2 (migration tooling). Story 9-2 to add a registry-exempt declaration and tighten the orphan check to `^HFC[0-9]` when it registers the first concrete HFCM* migration entry. Related: DEF-9-4-A14 (RS2002 retained for HFCM* CLI-emitted migration ids). Sources: edge. Reconciliation: Row: DW-0010; Resolved 2026-05-11; Evidence: docs/diagnostics/migration-findings.json owns HFCM rows and SourceTools RS2002 suppression was removed.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 9-4-diagnostic-id-system-and-deprecation-policy — chunk C (2026-05-10)"), 2026-08-27
 location: src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md
 reason: **DEF-9-4-C10 — HFCM* migration analyzer rows are unregistered and unstubbed** [`src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md` + missing registry/stubs] — 6 IDs (`HFCM0000`, `HFCM0001`, `HFCM0002`, `HFCM0004`, `HFCM9001`, `HFCM9002`) live in the SourceTools unshipped file with no registry row or docs stub. **Owner: Story 9-2** (migration tooling). Story 9-2 to add a registry-exempt declaration and tighten the orphan check to `^HFC[0-9]` when it registers the first concrete HFCM* migration entry. Related: DEF-9-4-A14 (RS2002 retained for HFCM* CLI-emitted migration ids). Sources: edge. Reconciliation: Row: DW-0010; Resolved 2026-05-11; Evidence: docs/diagnostics/migration-findings.json owns HFCM rows and SourceTools RS2002 suppression was removed.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md: docs/diagnostics/migration-findings.json owns HFCM rows and SourceTools RS2002 suppression was removed.
 
 ### DW-742: Sanitizer ESC → literal `` [`tests/Hexalith.FrontComposer.SourceTools.Tests/IdeParity/IdeParityConformanceHelpers.cs` (`Sanitize`)] — `Replace("", "\\u001B")` keeps the literal six-char string in output. Acceptable for visibility; revisit only if output is consumed by a JSON-decoder downstream. Sources: blind. Reconciliation: Row: DW-0011; Accepted constraint 2026-05-12; Evidence: docs/reference/ide-parity.md, IdeParity strict JSON tests passed; User-visible behavior: ESC is emitted as literal `\u001B` text for report safety; Risk: likelihood low, impact low because reports are release evidence, not decoded JSON payloads; Follow-up story: Story 11.4 only if a downstream decoder begins consuming sanitized text.
 
@@ -554,42 +559,48 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 9-3-ide-parity-and-developer-experience (2026-05-09)"), 2026-08-27
 location: CONTRIBUTING.md
 reason: **DEF-9-3-2 — `CONTRIBUTING.md` `Debugger.Launch()` guidance has no enforcement** [`CONTRIBUTING.md:12-14`] — Documentation-only safeguard against generator-host `Debugger.Launch()` leaks; no analyzer, pre-commit hook, or CI grep gates removal. Add a CI grep gate later if a leak ships. Sources: blind. Reconciliation: Row: DW-0012; Resolved 2026-05-12; Evidence: CONTRIBUTING.md and ProductionSource_ForbidsUnconditionalDebuggerLaunch; User-visible behavior: production source forbids `Debugger.Launch()` prompts.
-status: open
+status: done 2026-08-27
+resolution: already resolved: CONTRIBUTING.md: CONTRIBUTING.md and ProductionSource_ForbidsUnconditionalDebuggerLaunch
 
 ### DW-744: PowerShell file-write race for `$OutPath` [`jobs/ide-parity-version-revalidation.ps1`] — Not an issue under serial release-gate execution; revisit if the script is invoked in parallel. Sources: edge. Reconciliation: Row: DW-0013; Resolved 2026-05-12; Evidence: jobs/ide-parity-version-revalidation.ps1 and docs/reference/ide-parity.md; User-visible behavior: dry-run artifacts are repository-bounded and written through same-directory temp files.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 9-3-ide-parity-and-developer-experience (2026-05-09)"), 2026-08-27
 location: ide-parity-version-revalidation.ps1
 reason: **DEF-9-3-3 — PowerShell file-write race for `$OutPath`** [`jobs/ide-parity-version-revalidation.ps1`] — Not an issue under serial release-gate execution; revisit if the script is invoked in parallel. Sources: edge. Reconciliation: Row: DW-0013; Resolved 2026-05-12; Evidence: jobs/ide-parity-version-revalidation.ps1 and docs/reference/ide-parity.md; User-visible behavior: dry-run artifacts are repository-bounded and written through same-directory temp files.
-status: open
+status: done 2026-08-27
+resolution: already resolved: ide-parity-version-revalidation.ps1: jobs/ide-parity-version-revalidation.ps1 and docs/reference/ide-parity.md
 
 ### DW-745: `RepositoryRoot` walk via symlinked `AppContext.BaseDirectory` [`tests/Hexalith.FrontComposer.SourceTools.Tests/IdeParity/IdeParityMatrixContractTests.cs:2048-2059`] — Walks ancestors looking for `.sln`; if `AppContext.BaseDirectory` is symlinked or extracted from an artifact bundle, walk may overshoot or follow a wrong link. Not a realistic CI path today. Sources: edge. Reconciliation: Row: DW-0014; Resolved 2026-05-12; Evidence: IdeParityRepositoryRoot now resolves link targets before ancestor walk; User-visible behavior: IDE parity tests anchor to the real checkout when the test base directory is symlinked.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 9-3-ide-parity-and-developer-experience (2026-05-09)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.SourceTools.Tests/IdeParity/IdeParityMatrixContractTests.cs:2048-2059
 reason: **DEF-9-3-4 — `RepositoryRoot` walk via symlinked `AppContext.BaseDirectory`** [`tests/Hexalith.FrontComposer.SourceTools.Tests/IdeParity/IdeParityMatrixContractTests.cs:2048-2059`] — Walks ancestors looking for `.sln`; if `AppContext.BaseDirectory` is symlinked or extracted from an artifact bundle, walk may overshoot or follow a wrong link. Not a realistic CI path today. Sources: edge. Reconciliation: Row: DW-0014; Resolved 2026-05-12; Evidence: IdeParityRepositoryRoot now resolves link targets before ancestor walk; User-visible behavior: IDE parity tests anchor to the real checkout when the test base directory is symlinked.
-status: open
+status: done 2026-08-27
+resolution: already resolved: tests/Hexalith.FrontComposer.SourceTools.Tests/IdeParity/IdeParityMatrixContractTests.cs:2048-2059: IdeParityRepositoryRoot now resolves link targets before ancestor walk
 
 ### DW-746: Manifest extra-field tolerance / duplicate JSON keys [`tests/Hexalith.FrontComposer.SourceTools.Tests/IdeParity/IdeParityMatrixContractTests.cs`] — `System.Text.Json` silently keeps the last value for duplicate keys and ignores unknown fields; tampered manifests with duplicate keys would pass schema tests. Would require explicit allowlist or strict-schema parser. Low practical risk. Sources: edge. Reconciliation: Row: DW-0015; Resolved 2026-05-12; Evidence: StrictJsonValidation_RejectsDuplicateKeysUnknownFieldsAndTrailingCommas; User-visible behavior: matrix and evidence manifests reject duplicate keys and unknown fields.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 9-3-ide-parity-and-developer-experience (2026-05-09)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.SourceTools.Tests/IdeParity/IdeParityMatrixContractTests.cs
 reason: **DEF-9-3-5 — Manifest extra-field tolerance / duplicate JSON keys** [`tests/Hexalith.FrontComposer.SourceTools.Tests/IdeParity/IdeParityMatrixContractTests.cs`] — `System.Text.Json` silently keeps the last value for duplicate keys and ignores unknown fields; tampered manifests with duplicate keys would pass schema tests. Would require explicit allowlist or strict-schema parser. Low practical risk. Sources: edge. Reconciliation: Row: DW-0015; Resolved 2026-05-12; Evidence: StrictJsonValidation_RejectsDuplicateKeysUnknownFieldsAndTrailingCommas; User-visible behavior: matrix and evidence manifests reject duplicate keys and unknown fields.
-status: open
+status: done 2026-08-27
+resolution: already resolved: tests/Hexalith.FrontComposer.SourceTools.Tests/IdeParity/IdeParityMatrixContractTests.cs: StrictJsonValidation_RejectsDuplicateKeysUnknownFieldsAndTrailingCommas
 
 ### DW-747: UTF-8 BOM / trailing-comma read tolerance for manifest JSON [`tests/Hexalith.FrontComposer.SourceTools.Tests/IdeParity/IdeParityMatrixContractTests.cs`] — A manifest with a trailing comma raises `JsonException` without a friendly hint; current strict behavior is the correct fail-closed default for tamper detection. Sources: edge. Reconciliation: Row: DW-0016; Resolved 2026-05-12; Evidence: StrictJsonValidation_RejectsDuplicateKeysUnknownFieldsAndTrailingCommas and docs/reference/ide-parity.md; User-visible behavior: trailing commas stay fail-closed through strict parsing.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 9-3-ide-parity-and-developer-experience (2026-05-09)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.SourceTools.Tests/IdeParity/IdeParityMatrixContractTests.cs
 reason: **DEF-9-3-6 — UTF-8 BOM / trailing-comma read tolerance for manifest JSON** [`tests/Hexalith.FrontComposer.SourceTools.Tests/IdeParity/IdeParityMatrixContractTests.cs`] — A manifest with a trailing comma raises `JsonException` without a friendly hint; current strict behavior is the correct fail-closed default for tamper detection. Sources: edge. Reconciliation: Row: DW-0016; Resolved 2026-05-12; Evidence: StrictJsonValidation_RejectsDuplicateKeysUnknownFieldsAndTrailingCommas and docs/reference/ide-parity.md; User-visible behavior: trailing commas stay fail-closed through strict parsing.
-status: open
+status: done 2026-08-27
+resolution: already resolved: tests/Hexalith.FrontComposer.SourceTools.Tests/IdeParity/IdeParityMatrixContractTests.cs: StrictJsonValidation_RejectsDuplicateKeysUnknownFieldsAndTrailingCommas and docs/reference/ide-parity.md
 
 ### DW-748: README "JSON path schema" framing in change-log overstated [`src/Hexalith.FrontComposer.Cli/README.md`] — README adds path-relativity + glob notes (P-16/P-22) but no actual schema, exit-code table, or field listing. Story 9-5 owns final docs; Story 9-2 wording in change-log inflates scope. Sources: auditor. Reconciliation: Row: DW-0017; Resolved 2026-05-12; Evidence: src/Hexalith.FrontComposer.Cli/README.md and docs/reference/cli.md; User-visible behavior: README/reference list exit codes, JSON fields, path relativity, and diff limits.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 9-2-cli-inspection-and-migration-tools — third pass (2026-05-09)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Cli/README.md
 reason: **DEF-9-2-18 — README "JSON path schema" framing in change-log overstated** [`src/Hexalith.FrontComposer.Cli/README.md`] — README adds path-relativity + glob notes (P-16/P-22) but no actual schema, exit-code table, or field listing. Story 9-5 owns final docs; Story 9-2 wording in change-log inflates scope. Sources: auditor. Reconciliation: Row: DW-0017; Resolved 2026-05-12; Evidence: src/Hexalith.FrontComposer.Cli/README.md and docs/reference/cli.md; User-visible behavior: README/reference list exit codes, JSON fields, path relativity, and diff limits.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Cli/README.md: src/Hexalith.FrontComposer.Cli/README.md and docs/reference/cli.md
 
 ### DW-749: `OutputSanitizer.SanitizeMultiLine` breaks `git apply`/`patch` applicability when control chars are escaped inline [`src/Hexalith.FrontComposer.Cli/OutputSanitizer.cs`] — Inline `\\uXXXX` replacement of control bytes inside a hunk turns a legitimate diff line into something `patch` cannot apply. T6 specifies "render unified diff", not "applicable diff"; trade-off favors AC27 safety. Sources: auditor. Reconciliation: Row: DW-0018; Accepted constraint 2026-05-12; Evidence: src/Hexalith.FrontComposer.Cli/README.md and docs/reference/cli.md; User-visible behavior: diffs are terminal-safe informational output, not a patch contract; Risk: likelihood medium, impact low because docs forbid patch applicability; Follow-up story: none unless product requires patch output.
 
@@ -617,7 +628,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 9-2-cli-inspection-and-migration-tools — third pass (2026-05-09)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Cli/MigrationCommand.cs
 reason: **DEF-9-2-22 — `SourceFile.DetectEncoding` strict UTF-8 fallback breaks legitimate Latin-1 files** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs`] — Intentional fail-closed per second-pass P-encoding; flagged for completeness. Sources: blind. Reconciliation: Row: DW-0021; Resolved 2026-05-12; Evidence: SourceFile_ReadAsyncRejectsInvalidUtf8 and CLI docs; User-visible behavior: unsupported encodings fail closed with sanitized guidance.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Cli/MigrationCommand.cs: SourceFile_ReadAsyncRejectsInvalidUtf8 and CLI docs
 
 ### DW-753: `DetectEncoding` UTF-32 LE BOM `FF FE 00 00` collides with a 4-byte UTF-16 LE file containing one U+0000 [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs`] — Extreme edge case; no realistic .cs source matches. Sources: blind+edge. Reconciliation: Row: DW-0022; Accepted constraint 2026-05-12; Evidence: CLI encoding docs; User-visible behavior: BOM variants are interpreted by standard BOM precedence; Risk: likelihood extremely low, impact low because valid C# source with that exact four-byte shape is not realistic; Follow-up story: none.
 
@@ -631,7 +643,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 9-2-cli-inspection-and-migration-tools — third pass (2026-05-09)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:87-108
 reason: **DEF-9-2-24 — `MigrationCatalog.BuildEdges` throws from a static field initializer** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:87-108`] — Defensive guard; only one edge currently and a duplicate would also fail tests at first instantiation. Sources: blind+edge. Reconciliation: Row: DW-0023; Resolved 2026-05-12; Evidence: MigrationCatalog.BuildEdges explicit duplicate-edge validation; User-visible behavior: duplicate migration edges fail with named edge rather than latent `SingleOrDefault`.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:87-108: MigrationCatalog.BuildEdges explicit duplicate-edge validation
 
 ### DW-755: ✅ DEF-9-2-25 — Resolved 2026-05-10 — Apply IOException during write leaves partial file [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs`] — `SourceFile.WriteAsync` now writes through a same-directory temp file and replaces the target only after the temp write completes; README documents the apply-write behavior. Sources: edge. Reconciliation: Row: DW-0024; Resolved 2026-05-10; Evidence: src/Hexalith.FrontComposer.Cli/MigrationCommand.cs; Original review source/date preserved.
 
@@ -646,49 +659,56 @@ resolution: already resolved: src/Hexalith.FrontComposer.Cli/MigrationCommand.cs
 origin: migrated from legacy ledger ("Deferred from: code review of 9-2-cli-inspection-and-migration-tools — third pass (2026-05-09)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Cli/PathUtilities.cs
 reason: **DEF-9-2-26 — `PathUtilities.Canonical` drive-root edge case (empty `Path.GetFileName`)** [`src/Hexalith.FrontComposer.Cli/PathUtilities.cs`] — Drive roots are not valid Compile Include targets. Sources: edge. Reconciliation: Row: DW-0025; Resolved 2026-05-12; Evidence: PathUtilities.Canonical catches invalid path shapes and selection rejects non-project roots; User-visible behavior: drive roots are refused as unsupported project/source paths.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Cli/PathUtilities.cs: PathUtilities.Canonical catches invalid path shapes and selection rejects non-project roots
 
 ### DW-757: `SourceFile.ReadAsync` OOM on a multi-GB `.cs` file [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs`] — No realistic adopter `.cs` source approaches OOM thresholds. Sources: edge. Reconciliation: Row: DW-0026; Resolved 2026-05-12; Evidence: SourceFile.MaxSupportedBytes and SourceFile_ReadAsyncRejectsExcessiveFileSizeBeforeDecoding; User-visible behavior: files over 16 MiB fail closed before decoding.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 9-2-cli-inspection-and-migration-tools — third pass (2026-05-09)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Cli/MigrationCommand.cs
 reason: **DEF-9-2-27 — `SourceFile.ReadAsync` OOM on a multi-GB `.cs` file** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs`] — No realistic adopter `.cs` source approaches OOM thresholds. Sources: edge. Reconciliation: Row: DW-0026; Resolved 2026-05-12; Evidence: SourceFile.MaxSupportedBytes and SourceFile_ReadAsyncRejectsExcessiveFileSizeBeforeDecoding; User-visible behavior: files over 16 MiB fail closed before decoding.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Cli/MigrationCommand.cs: SourceFile.MaxSupportedBytes and SourceFile_ReadAsyncRejectsExcessiveFileSizeBeforeDecoding
 
 ### DW-758: `ToolPackagingSmokeTests.FindOnPath` PATHEXT casing (`extension.ToLowerInvariant()`) [`tests/Hexalith.FrontComposer.Cli.Tests/ToolPackagingSmokeTests.cs:118`] — Works on Windows due to case-insensitive filesystem; minor. Sources: blind+edge. Reconciliation: Row: DW-0027; Resolved 2026-05-12; Evidence: ToolPackagingSmokeTests preserves PATHEXT casing and focused CLI tests passed; User-visible behavior: packaging smoke lookup respects platform path extension casing.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 9-2-cli-inspection-and-migration-tools — third pass (2026-05-09)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.Cli.Tests/ToolPackagingSmokeTests.cs:118
 reason: **DEF-9-2-28 — `ToolPackagingSmokeTests.FindOnPath` PATHEXT casing (`extension.ToLowerInvariant()`)** [`tests/Hexalith.FrontComposer.Cli.Tests/ToolPackagingSmokeTests.cs:118`] — Works on Windows due to case-insensitive filesystem; minor. Sources: blind+edge. Reconciliation: Row: DW-0027; Resolved 2026-05-12; Evidence: ToolPackagingSmokeTests preserves PATHEXT casing and focused CLI tests passed; User-visible behavior: packaging smoke lookup respects platform path extension casing.
-status: open
+status: done 2026-08-27
+resolution: already resolved: tests/Hexalith.FrontComposer.Cli.Tests/ToolPackagingSmokeTests.cs:118: ToolPackagingSmokeTests preserves PATHEXT casing and focused CLI tests passed
 
 ### DW-759: `MigrationDiagnosticSidecarReader.NormalizePath` does not handle drive-relative paths like `C:foo.cs` [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs`] — Degrades to `RedactedPathSentinel` and silently drops; lookup misses. Sources: edge. Reconciliation: Row: DW-0028; Resolved 2026-05-12; Evidence: Migrate_SidecarHostilePathsSurfaceManualOnlySentinel; User-visible behavior: drive-relative, traversal, and URI sidecar paths surface sentinel manual-only entries.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 9-2-cli-inspection-and-migration-tools — third pass (2026-05-09)"), 2026-08-27
 location: foo.cs
 reason: **DEF-9-2-29 — `MigrationDiagnosticSidecarReader.NormalizePath` does not handle drive-relative paths like `C:foo.cs`** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs`] — Degrades to `RedactedPathSentinel` and silently drops; lookup misses. Sources: edge. Reconciliation: Row: DW-0028; Resolved 2026-05-12; Evidence: Migrate_SidecarHostilePathsSurfaceManualOnlySentinel; User-visible behavior: drive-relative, traversal, and URI sidecar paths surface sentinel manual-only entries.
-status: open
+status: done 2026-08-27
+resolution: already resolved: foo.cs: Migrate_SidecarHostilePathsSurfaceManualOnlySentinel
 
 ### DW-760: `--project` / `ProjectSelection` does not canonicalize through symlinks/junctions before downstream use [`src/Hexalith.FrontComposer.Cli/ProjectSelection.cs:14-19`] — Minor; downstream `WriteSafetyPolicy` re-canonicalizes. Sources: edge. Reconciliation: Row: DW-0029; Resolved 2026-05-12; Evidence: ProjectSelection canonicalizes explicit project and solution paths; User-visible behavior: selected project path is canonical before downstream trust decisions.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 9-2-cli-inspection-and-migration-tools — second pass (2026-05-09)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Cli/ProjectSelection.cs:14-19
 reason: **DEF-9-2-7 — `--project` / `ProjectSelection` does not canonicalize through symlinks/junctions before downstream use** [`src/Hexalith.FrontComposer.Cli/ProjectSelection.cs:14-19`] — Minor; downstream `WriteSafetyPolicy` re-canonicalizes. Sources: edge. Reconciliation: Row: DW-0029; Resolved 2026-05-12; Evidence: ProjectSelection canonicalizes explicit project and solution paths; User-visible behavior: selected project path is canonical before downstream trust decisions.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Cli/ProjectSelection.cs:14-19: ProjectSelection canonicalizes explicit project and solution paths
 
 ### DW-761: `.sln` parser does not robustly parse VS-format quoted paths with escaped quotes [`src/Hexalith.FrontComposer.Cli/ProjectSelection.cs:1382-1390`] — Works on every test fixture; defer until a real adopter `.sln` breaks. Sources: edge. Reconciliation: Row: DW-0030; Resolved 2026-05-12; Evidence: ProjectSelection_ReadsQuotedSolutionProjectPathsDeterministically; User-visible behavior: quoted `.sln` project paths are parsed deterministically.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 9-2-cli-inspection-and-migration-tools — second pass (2026-05-09)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Cli/ProjectSelection.cs:1382-1390
 reason: **DEF-9-2-8 — `.sln` parser does not robustly parse VS-format quoted paths with escaped quotes** [`src/Hexalith.FrontComposer.Cli/ProjectSelection.cs:1382-1390`] — Works on every test fixture; defer until a real adopter `.sln` breaks. Sources: edge. Reconciliation: Row: DW-0030; Resolved 2026-05-12; Evidence: ProjectSelection_ReadsQuotedSolutionProjectPathsDeterministically; User-visible behavior: quoted `.sln` project paths are parsed deterministically.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Cli/ProjectSelection.cs:1382-1390: ProjectSelection_ReadsQuotedSolutionProjectPathsDeterministically
 
 ### DW-762: `.slnx` and `.fsproj` not supported [`src/Hexalith.FrontComposer.Cli/ProjectSelection.cs`] — First-pass patch claim was partial; only the CSV-split brittleness was fixed. Owner: Story 9-3 IDE parity. Sources: auditor. Reconciliation: Row: DW-0031; Resolved 2026-05-12; Evidence: ProjectSelection_RejectsUnsupportedExplicitProjectFormats, ProjectSelection_RejectsUnsupportedSolutionFormats, ProjectSelection_RejectsUnsupportedSolutionProjectTypes; User-visible behavior: `.slnx` and `.fsproj` fail closed with sanitized guidance.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 9-2-cli-inspection-and-migration-tools — second pass (2026-05-09)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Cli/ProjectSelection.cs
 reason: **DEF-9-2-9 — `.slnx` and `.fsproj` not supported** [`src/Hexalith.FrontComposer.Cli/ProjectSelection.cs`] — First-pass patch claim was partial; only the CSV-split brittleness was fixed. **Owner:** Story 9-3 IDE parity. Sources: auditor. Reconciliation: Row: DW-0031; Resolved 2026-05-12; Evidence: ProjectSelection_RejectsUnsupportedExplicitProjectFormats, ProjectSelection_RejectsUnsupportedSolutionFormats, ProjectSelection_RejectsUnsupportedSolutionProjectTypes; User-visible behavior: `.slnx` and `.fsproj` fail closed with sanitized guidance.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Cli/ProjectSelection.cs: ProjectSelection_RejectsUnsupportedExplicitProjectFormats, ProjectSelection_RejectsUnsupportedSolutionFormats, ProjectSelection_RejectsUnsupportedSolutionProjectTypes
 
 ### DW-763: `formattingApplied` field is always `false` [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:721`] — No `Formatter.FormatAsync` is called. Field is technically truthful but constant. Revisit when a real formatting-required fix is added to the catalog. Sources: auditor. Reconciliation: Row: DW-0032; Accepted constraint 2026-05-12; Evidence: src/Hexalith.FrontComposer.Cli/README.md and docs/reference/cli.md; User-visible behavior: `formattingApplied` is reserved and currently always false; Risk: likelihood medium, impact low because the field is truthful and documented; Follow-up story: future migration edge that invokes formatter.
 
@@ -717,7 +737,8 @@ resolution: already resolved: src/Hexalith.FrontComposer.Cli/MigrationCommand.cs
 origin: migrated from legacy ledger ("Deferred from: code review of 9-2-cli-inspection-and-migration-tools — second pass (2026-05-09)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:566-568
 reason: **DEF-9-2-13 — `MefHostServices` composition exception not surfaced cleanly** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:566-568`] — Only triggers on a misconfigured deploy. Catch `CompositionException` and surface a clear "Workspaces assemblies failed to load" error. Sources: edge. Reconciliation: Row: DW-0035; Resolved 2026-05-12; Evidence: MigrationPlanner catches workspace composition/load failures; User-visible behavior: workspace assembly failures report bounded sanitized guidance.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:566-568: MigrationPlanner catches workspace composition/load failures
 
 ### DW-767: ✅ DEF-9-2-14 — Resolved 2026-05-10 — `ProjectDocumentLoader.Load` does not evaluate `<Import>` items via MSBuild [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs`, `src/Hexalith.FrontComposer.Cli/README.md`] — The limitation is now documented and `frontcomposer migrate` emits a warning when the selected `.csproj` has top-level `<Import>` elements. Full MSBuild evaluation remains out of scope. Sources: edge. Reconciliation: Row: DW-0036; Resolved 2026-05-10; Evidence: src/Hexalith.FrontComposer.Cli/MigrationCommand.cs; Original review source/date preserved.
 
@@ -732,28 +753,32 @@ resolution: already resolved: src/Hexalith.FrontComposer.Cli/MigrationCommand.cs
 origin: migrated from legacy ledger ("Deferred from: code review of 9-2-cli-inspection-and-migration-tools — second pass (2026-05-09)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:1198
 reason: **DEF-9-2-15 — `.gitmodules` parser does not unescape `\"`, `\\`, or single-quoted paths** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:1198`] — Git itself only emits double-quoted output; edge case for hand-written files. Sources: edge. Reconciliation: Row: DW-0037; Resolved 2026-05-12; Evidence: Migrate_ParsesSingleQuotedGitmodulesSubmodulePaths and SubmoduleBoundaryReader.UnquoteGitConfigValue; User-visible behavior: hand-written single/double quoted submodule paths remain excluded from writes.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:1198: Migrate_ParsesSingleQuotedGitmodulesSubmodulePaths and SubmoduleBoundaryReader.UnquoteGitConfigValue
 
 ### DW-769: `PathUtilities.Canonical` `catch` is too narrow [`src/Hexalith.FrontComposer.Cli/PathUtilities.cs:45-48`] — Does not catch `PathTooLongException`, `ArgumentException`, `NotSupportedException`. Hardening; rare on Windows long-path scenarios. Sources: edge. Reconciliation: Row: DW-0038; Resolved 2026-05-12; Evidence: PathUtilities.Canonical catches ArgumentException, PathTooLongException, NotSupportedException, IOException, and UnauthorizedAccessException; User-visible behavior: odd path shapes fail closed instead of crashing.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 9-2-cli-inspection-and-migration-tools — second pass (2026-05-09)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Cli/PathUtilities.cs:45-48
 reason: **DEF-9-2-16 — `PathUtilities.Canonical` `catch` is too narrow** [`src/Hexalith.FrontComposer.Cli/PathUtilities.cs:45-48`] — Does not catch `PathTooLongException`, `ArgumentException`, `NotSupportedException`. Hardening; rare on Windows long-path scenarios. Sources: edge. Reconciliation: Row: DW-0038; Resolved 2026-05-12; Evidence: PathUtilities.Canonical catches ArgumentException, PathTooLongException, NotSupportedException, IOException, and UnauthorizedAccessException; User-visible behavior: odd path shapes fail closed instead of crashing.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Cli/PathUtilities.cs:45-48: PathUtilities.Canonical catches ArgumentException, PathTooLongException, NotSupportedException, IOException, and UnauthorizedAccessException
 
 ### DW-770: Ctrl+C double-press does not force-exit [`src/Hexalith.FrontComposer.Cli/Program.cs`] — Second press should restore the default handler. UX polish. Sources: blind+edge. Reconciliation: Row: DW-0039; Resolved 2026-05-12; Evidence: Program.cs cancelPresses handler and docs/reference/cli.md; User-visible behavior: first Ctrl+C cancels, second Ctrl+C returns control to the OS default.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 9-2-cli-inspection-and-migration-tools — second pass (2026-05-09)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Cli/Program.cs
 reason: **DEF-9-2-17 — Ctrl+C double-press does not force-exit** [`src/Hexalith.FrontComposer.Cli/Program.cs`] — Second press should restore the default handler. UX polish. Sources: blind+edge. Reconciliation: Row: DW-0039; Resolved 2026-05-12; Evidence: Program.cs cancelPresses handler and docs/reference/cli.md; User-visible behavior: first Ctrl+C cancels, second Ctrl+C returns control to the OS default.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Cli/Program.cs: Program.cs cancelPresses handler and docs/reference/cli.md
 
 ### DW-771: `fail-on-warning` vs `fail-on-error` precedence undocumented [`src/Hexalith.FrontComposer.Cli/InspectCommand.cs:678-685`] — Both flags are honored but the help text and JSON contract do not document precedence. Add to README and JSON `applied` payload. Sources: blind. Reconciliation: Row: DW-0040; Resolved 2026-05-12; Evidence: CliApplication help, src/Hexalith.FrontComposer.Cli/README.md, docs/reference/cli.md; User-visible behavior: `--fail-on-warning` is documented as stricter than `--fail-on-error`.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 9-2-cli-inspection-and-migration-tools (2026-05-09)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Cli/InspectCommand.cs:678-685
 reason: **DEF-9-2-1 — `fail-on-warning` vs `fail-on-error` precedence undocumented** [`src/Hexalith.FrontComposer.Cli/InspectCommand.cs:678-685`] — Both flags are honored but the help text and JSON contract do not document precedence. Add to README and JSON `applied` payload. Sources: blind. Reconciliation: Row: DW-0040; Resolved 2026-05-12; Evidence: CliApplication help, src/Hexalith.FrontComposer.Cli/README.md, docs/reference/cli.md; User-visible behavior: `--fail-on-warning` is documented as stricter than `--fail-on-error`.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Cli/InspectCommand.cs:678-685: CliApplication help, src/Hexalith.FrontComposer.Cli/README.md, docs/reference/cli.md
 
 ### DW-772: ✅ DEF-9-2-2 — Resolved 2026-05-10 — Apply does not write to temp + atomic rename [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs`] — `SourceFile.WriteAsync` now writes to a same-directory `*.tmp` file, then replaces the target with `File.Move(..., overwrite: true)` and best-effort temp cleanup. Sources: edge. Reconciliation: Row: DW-0041; Resolved 2026-05-10; Evidence: src/Hexalith.FrontComposer.Cli/MigrationCommand.cs; Original review source/date preserved.
 
@@ -784,7 +809,8 @@ resolution: already resolved: src/Hexalith.FrontComposer.Cli/InspectCommand.cs:1
 origin: migrated from legacy ledger ("Deferred from: code review of 9-2-cli-inspection-and-migration-tools (2026-05-09)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:88
 reason: **DEF-9-2-5 — `MigrationCatalog.Resolve` uses `SingleOrDefault`** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:88`] — Throws `InvalidOperationException` if a future contributor adds a duplicate `(from,to)` edge. Switch to `FirstOrDefault` plus a startup uniqueness assertion. Sources: edge. Reconciliation: Row: DW-0044; Resolved 2026-05-12; Evidence: MigrationCatalog.BuildEdges duplicate-edge validation; User-visible behavior: duplicate catalog edges fail with named edge during catalog initialization.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:88: MigrationCatalog.BuildEdges duplicate-edge validation
 
 ### DW-776: ✅ DEF-9-2-6 — Resolved 2026-05-10 — `--build` hint not always emitted in inspect error messages [`src/Hexalith.FrontComposer.Cli/InspectCommand.cs`] — both annotated and no-obvious-annotation generated-output-missing branches now suggest `dotnet build` / `--build`; covered by CLI tests. Sources: blind. Reconciliation: Row: DW-0045; Resolved 2026-05-10; Evidence: src/Hexalith.FrontComposer.Cli/InspectCommand.cs; Original review source/date preserved.
 
@@ -799,28 +825,32 @@ resolution: already resolved: src/Hexalith.FrontComposer.Cli/InspectCommand.cs:1
 origin: migrated from legacy ledger ("Deferred from: code review of 9-1-build-time-drift-detection chunk C (2026-05-07)"), 2026-08-27
 location: src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs:116
 reason: **DEF-9-1C-2 — AC14 PublishAot=true alone does not fire HFC1070** [`src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs:116`] — Production gates the HFC1070 emit on `optionsResult.Options.PublishTrimmed` only. AC14 reads "trim-enabled OR native-AOT host", so a project with `PublishAot=true` and `PublishTrimmed=false` (uncommon but valid for some AOT scenarios) silently skips the advisory. The chunk-C test theory was reduced to the `PublishTrimmed`-only matrix; restore the `(false, true)` case once production also gates on `PublishAot`. **Owner:** Story 9-1 follow-up production patch. Sources: edge. Reconciliation: Row: DW-0046; Resolved 2026-05-12; Evidence: `DriftOptions.TrimOrAotAdvisoryEnabled`, `FrontComposerGenerator`, `TrimAotReflectionCatalogDiagnosticTests.TrimOrAotEnabled_AndNoOverrideEvidence_EmitsHfc1070`; User-visible behavior: HFC1070 now fires for `PublishAot=true && PublishTrimmed=false` when contracts are present and no adopter catalog override is observable.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs:116: DriftOptions.TrimOrAotAdvisoryEnabled, FrontComposerGenerator, TrimAotReflectionCatalogDiagnosticTests.TrimOrAotEnabled_AndNoOverrideEvidence_EmitsHfc1070
 
 ### DW-778: AC11 perf coverage out of chunk C scope [`tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Benchmarks/IncrementalRebuildBenchmarkTests.cs` or sibling] — AC11 mandates median/p95 < 500 ms with warmup excluded across cache-hit and cache-miss paths. None of the six chunk-C files (Regression, Incremental, TrimAot, Seam, Diagnostics/DriftDiagnosticCatalogTests) carry perf assertions. Per spec T7, perf tests live in `Drift/Benchmarks/` (chunk A or pre-existing). Owner: Confirm AC11 coverage exists in `Drift/Benchmarks/IncrementalRebuildBenchmarkTests.cs` or schedule a follow-up perf-test pass. Sources: auditor. Reconciliation: Row: DW-0047; Resolved 2026-05-12; Evidence: `tests/Hexalith.FrontComposer.SourceTools.Tests/Benchmarks/DriftBenchmarkTests.cs`, command `dotnet test ... --filter "Category=Performance|FullyQualifiedName~DriftBenchmark"` passed; User-visible behavior: cache-hit and cache-miss drift benchmark tests now run under `Category=Performance` with drift detection enabled and median/p95 assertions.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 9-1-build-time-drift-detection chunk C (2026-05-07)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Benchmarks/IncrementalRebuildBenchmarkTests.cs
 reason: **DEF-9-1C-1 — AC11 perf coverage out of chunk C scope** [`tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Benchmarks/IncrementalRebuildBenchmarkTests.cs` or sibling] — AC11 mandates median/p95 < 500 ms with warmup excluded across cache-hit and cache-miss paths. None of the six chunk-C files (Regression, Incremental, TrimAot, Seam, Diagnostics/DriftDiagnosticCatalogTests) carry perf assertions. Per spec T7, perf tests live in `Drift/Benchmarks/` (chunk A or pre-existing). **Owner:** Confirm AC11 coverage exists in `Drift/Benchmarks/IncrementalRebuildBenchmarkTests.cs` or schedule a follow-up perf-test pass. Sources: auditor. Reconciliation: Row: DW-0047; Resolved 2026-05-12; Evidence: `tests/Hexalith.FrontComposer.SourceTools.Tests/Benchmarks/DriftBenchmarkTests.cs`, command `dotnet test ... --filter "Category=Performance|FullyQualifiedName~DriftBenchmark"` passed; User-visible behavior: cache-hit and cache-miss drift benchmark tests now run under `Category=Performance` with drift detection enabled and median/p95 assertions.
-status: open
+status: done 2026-08-27
+resolution: already resolved: tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Benchmarks/IncrementalRebuildBenchmarkTests.cs: tests/Hexalith.FrontComposer.SourceTools.Tests/Benchmarks/DriftBenchmarkTests.cs, command dotnet test ... --filter "Category=Performance|FullyQualifiedName~DriftBenchmark" passed
 
 ### DW-779: Order-dependence test concatenation `Id+"|"+Message` could mask non-Id/Message diff [`tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Baseline/DriftBaselineTrustFailureTests.cs:136-138`] — Pre-existing pattern reinforced (not introduced) by chunk-B fixture renames. Order-comparison tests concatenate diagnostic Id+Message with `|` and ordinal-sort; tests cannot detect a regression where two diagnostics share Id+Message but differ on severity, location, or properties bag. Switch to structural comparison on the full diagnostic shape. Owner: v1.x test-rigor pass. Sources: blind. Reconciliation: Row: DW-0048; Resolved 2026-05-12; Evidence: `DriftBaselineTrustFailureTests.DiagnosticShape` compares ID, severity, message, location path, and full property bag.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 9-1-build-time-drift-detection chunk B (2026-05-07)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Baseline/DriftBaselineTrustFailureTests.cs:136-138
 reason: **DEF-9-1B-1 — Order-dependence test concatenation `Id+"|"+Message` could mask non-Id/Message diff** [`tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Baseline/DriftBaselineTrustFailureTests.cs:136-138`] — Pre-existing pattern reinforced (not introduced) by chunk-B fixture renames. Order-comparison tests concatenate diagnostic Id+Message with `|` and ordinal-sort; tests cannot detect a regression where two diagnostics share Id+Message but differ on severity, location, or properties bag. Switch to structural comparison on the full diagnostic shape. **Owner:** v1.x test-rigor pass. Sources: blind. Reconciliation: Row: DW-0048; Resolved 2026-05-12; Evidence: `DriftBaselineTrustFailureTests.DiagnosticShape` compares ID, severity, message, location path, and full property bag.
-status: open
+status: done 2026-08-27
+resolution: already resolved: tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Baseline/DriftBaselineTrustFailureTests.cs:136-138: DriftBaselineTrustFailureTests.DiagnosticShape compares ID, severity, message, location path, and full property bag.
 
 ### DW-780: `baselinePath.ShouldNotContain(":")` over-eager [`tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Diagnostics/DriftDiagnosticContractTests.cs:93`] — A repo-relative path containing a legitimate colon (e.g. URL-fragment-style baseline names) would fail the assertion. Intent is "no Windows drive letter", but match is colon-anywhere. Replace with a more specific check (`!Regex.IsMatch(path, @"^[A-Za-z]:[\\/]")`). Owner: v1.x test-rigor pass. Sources: edge. Reconciliation: Row: DW-0049; Resolved 2026-05-12; Evidence: `DriftDiagnosticContractTests.WindowsDriveRootedPathCheck_AllowsBenignColonOnly` and updated `BaselinePathProperty_IsRepoRelativeForwardSlash_OrOutsideProjectSentinel`.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 9-1-build-time-drift-detection chunk B (2026-05-07)"), 2026-08-27
 location: baselinePath.Sh
 reason: **DEF-9-1B-2 — `baselinePath.ShouldNotContain(":")` over-eager** [`tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Diagnostics/DriftDiagnosticContractTests.cs:93`] — A repo-relative path containing a legitimate colon (e.g. URL-fragment-style baseline names) would fail the assertion. Intent is "no Windows drive letter", but match is colon-anywhere. Replace with a more specific check (`!Regex.IsMatch(path, @"^[A-Za-z]:[\\/]")`). **Owner:** v1.x test-rigor pass. Sources: edge. Reconciliation: Row: DW-0049; Resolved 2026-05-12; Evidence: `DriftDiagnosticContractTests.WindowsDriveRootedPathCheck_AllowsBenignColonOnly` and updated `BaselinePathProperty_IsRepoRelativeForwardSlash_OrOutsideProjectSentinel`.
-status: open
+status: done 2026-08-27
+resolution: already resolved: baselinePath.Sh: DriftDiagnosticContractTests.WindowsDriveRootedPathCheck_AllowsBenignColonOnly and updated BaselinePathProperty_IsRepoRelativeForwardSlash_OrOutsideProjectSentinel.
 
 ### DW-781: `StripUtf8Bom` boundary at text length 1-2 [`src/Hexalith.FrontComposer.SourceTools/Drift/DriftDetection.cs:482-496`] — Defensive byte check requires length ≥3; a 1-byte string equal to `'﻿'` hits the char path and falls through correctly. Boundary "BOM-only baseline of length exactly 1 char" is unreachable via the trust-failure surface today. Owner: Add a fixture if a future codepath ever produces 1-2 byte baselines. Sources: edge. Reconciliation: Row: DW-0050; Accepted constraint 2026-05-12; Evidence: existing `Utf8Bom_OnValidBaseline_ParsesAsValid_NoTrustFailure` and `GeneratedOutput_BomVsNoBom_IsByteIdentical`; Risk: likelihood low, impact low because AdditionalText yields a .NET string where the one-character BOM path is already stripped; Decision owner: Story 11.4; Reopen trigger: a future byte-array baseline loader or non-AdditionalText baseline source is introduced.
 
@@ -841,21 +871,24 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 9-1-build-time-drift-detection chunk B (2026-05-07)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Comparison/DriftClassifierMetadataTests.cs
 reason: **DEF-9-1B-5 — AC7 ProjectionBadge metadata-drift test** [`tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Comparison/DriftClassifierMetadataTests.cs`] — Attempted during chunk-B patch application; the test source needs `[ProjectionBadge(BadgeSlot.<Slot>)]` (enum-arg syntax — string literal does not compile) and an enum projection property of a type whose members are fully annotated (otherwise HFC1025 partial-coverage warning fires and the diagnostic surface is mixed). Production `BuildBadgeSignature` runs over annotated enum fields and writes `Slot=Member` pairs ordinally; baseline-side `badgeSignature` field is a comma-joined string. Test scenario needs to: (a) declare `[ProjectionBadge(BadgeSlot.Danger)] New, [ProjectionBadge(BadgeSlot.Success)] Done`; (b) set baseline `badgeSignature` to a different mapping; (c) assert one HFC1066 with `kind="ProjectionBadge"`. **Owner:** Add when next AC7 coverage pass lands. Sources: auditor. Reconciliation: Row: DW-0052; Resolved 2026-05-12; Evidence: `DriftClassifierMetadataTests.ProjectionBadgeMappingChange_EmitsSingleMetadataDiagnostic`.
-status: open
+status: done 2026-08-27
+resolution: already resolved: tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Comparison/DriftClassifierMetadataTests.cs: DriftClassifierMetadataTests.ProjectionBadgeMappingChange_EmitsSingleMetadataDiagnostic.
 
 ### DW-784: AC7 Destructive metadata-drift test [`tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Comparison/DriftClassifierMetadataTests.cs`] — Attempted during chunk-B patch application with `[Destructive]` source attribute and `"destructive": false` baseline. Production `CompareContractMetadata` does emit `if (baseline.Destructive != current.Destructive)` for both projections and commands, but the synthetic test fixture did not surface the diagnostic — investigation needed into whether the command snapshot path correctly flows `model.IsDestructive` (bool) into `DriftCurrentContract.Destructive` (bool?) for synthetic test compilations, or whether the `[Destructive]` attribute requires additional surface area (e.g., a `[Description]` attribute alongside) to be picked up by CommandParser in the test compilation context. Owner: Reproduce by adding a Destructive integration test against a real (non-synthetic) command compilation, then port the working pattern back to the chunk-B test. Sources: auditor. Reconciliation: Row: DW-0053; Resolved 2026-05-12; Evidence: `DriftClassifierMetadataTests.CommandContractMetadataChange_EmitsSingleMetadataDiagnostic` (`Destructive` row).
 
 origin: migrated from legacy ledger ("Deferred from: code review of 9-1-build-time-drift-detection chunk B (2026-05-07)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Comparison/DriftClassifierMetadataTests.cs
 reason: **DEF-9-1B-6 — AC7 Destructive metadata-drift test** [`tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Comparison/DriftClassifierMetadataTests.cs`] — Attempted during chunk-B patch application with `[Destructive]` source attribute and `"destructive": false` baseline. Production `CompareContractMetadata` does emit `if (baseline.Destructive != current.Destructive)` for both projections and commands, but the synthetic test fixture did not surface the diagnostic — investigation needed into whether the command snapshot path correctly flows `model.IsDestructive` (bool) into `DriftCurrentContract.Destructive` (bool?) for synthetic test compilations, or whether the `[Destructive]` attribute requires additional surface area (e.g., a `[Description]` attribute alongside) to be picked up by CommandParser in the test compilation context. **Owner:** Reproduce by adding a Destructive integration test against a real (non-synthetic) command compilation, then port the working pattern back to the chunk-B test. Sources: auditor. Reconciliation: Row: DW-0053; Resolved 2026-05-12; Evidence: `DriftClassifierMetadataTests.CommandContractMetadataChange_EmitsSingleMetadataDiagnostic` (`Destructive` row).
-status: open
+status: done 2026-08-27
+resolution: already resolved: tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Comparison/DriftClassifierMetadataTests.cs: DriftClassifierMetadataTests.CommandContractMetadataChange_EmitsSingleMetadataDiagnostic (Destructive row).
 
 ### DW-785: AC7 ProjectionRole/Currency/ProjectionEmptyStateCta/Icon metadata-drift coverage [`tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Comparison/DriftClassifierMetadataTests.cs`] — Four AC7 metadata categories patched in Chunk A (P6) remain without dedicated chunk-B fact tests. Production code paths exist (`AddIfChanged("ProjectionRole", ...)`, `AddIfChanged("Icon", ...)`, `AddIfChanged("ProjectionEmptyStateCta", ...)`, `AddMetadataIfChanged("DisplayFormat", ...)` for currency-driven displayFormat). Each needs: (a) source-side attribute on a representative property/contract; (b) baseline JSON value differing from source; (c) assertion that exactly one HFC1066 fires with the matching `kind` token. Owner: Add alongside DEF-9-1B-5/-6 in the next AC7 coverage pass. Sources: auditor. Reconciliation: Row: DW-0054; Resolved 2026-05-12; Evidence: `DriftClassifierMetadataTests.ProjectionContractMetadataChange_EmitsSingleMetadataDiagnostic`, `CurrencyDisplayFormatChange_EmitsSingleMetadataDiagnostic`, and `CommandContractMetadataChange_EmitsSingleMetadataDiagnostic`.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 9-1-build-time-drift-detection chunk B (2026-05-07)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Comparison/DriftClassifierMetadataTests.cs
 reason: **DEF-9-1B-7 — AC7 ProjectionRole/Currency/ProjectionEmptyStateCta/Icon metadata-drift coverage** [`tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Comparison/DriftClassifierMetadataTests.cs`] — Four AC7 metadata categories patched in Chunk A (P6) remain without dedicated chunk-B fact tests. Production code paths exist (`AddIfChanged("ProjectionRole", ...)`, `AddIfChanged("Icon", ...)`, `AddIfChanged("ProjectionEmptyStateCta", ...)`, `AddMetadataIfChanged("DisplayFormat", ...)` for currency-driven displayFormat). Each needs: (a) source-side attribute on a representative property/contract; (b) baseline JSON value differing from source; (c) assertion that exactly one HFC1066 fires with the matching `kind` token. **Owner:** Add alongside DEF-9-1B-5/-6 in the next AC7 coverage pass. Sources: auditor. Reconciliation: Row: DW-0054; Resolved 2026-05-12; Evidence: `DriftClassifierMetadataTests.ProjectionContractMetadataChange_EmitsSingleMetadataDiagnostic`, `CurrencyDisplayFormatChange_EmitsSingleMetadataDiagnostic`, and `CommandContractMetadataChange_EmitsSingleMetadataDiagnostic`.
-status: open
+status: done 2026-08-27
+resolution: already resolved: tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Comparison/DriftClassifierMetadataTests.cs: DriftClassifierMetadataTests.ProjectionContractMetadataChange_EmitsSingleMetadataDiagnostic, CurrencyDisplayFormatChange_EmitsSingleMetadataDiagnostic, and CommandContractMetadataChange_EmitsSingleMetadataDiagnostic.
 
 ### DW-786: SourceText-based incremental cache equality for `DriftBaselineInput` [`src/Hexalith.FrontComposer.SourceTools/Drift/DriftDetection.cs`] — Current equality compares full string content; storing `SourceText` and using built-in equality (or precomputed checksum) would reduce per-keystroke allocations in the incremental pipeline. Source: blind. Reconciliation: Row: DW-0055; Accepted constraint 2026-05-12; Evidence: `DriftBenchmarkTests` performance lane passed with the current string equality and deterministic hash hardening in DW-0063; Risk: likelihood low, impact low for bounded 256 KiB baselines; Decision owner: Story 11.4; Reopen trigger: benchmark median exceeds 500 ms or baselines grow beyond the current cap.
 
@@ -904,7 +937,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 9-1-build-time-drift-detection chunk A (2026-05-07)"), 2026-08-27
 location: src/Hexalith.FrontComposer.SourceTools/Drift/DriftDetection.cs:566-682
 reason: **DEF-9-1A-7 — Load-phase diagnostic count is unbounded** [`src/Hexalith.FrontComposer.SourceTools/Drift/DriftDetection.cs:566-682`] — `MaxDiagnostics` only caps the comparison phase; hostile/buggy baselines can flood the build with HFC1059–HFC1064. Cap load-phase separately. Source: blind. Reconciliation: Row: DW-0061; Resolved 2026-05-12; Evidence: `DriftBaselineLoader.CapLoadDiagnostics` and `DriftBaselineTrustFailureTests.LoadPhaseDiagnostics_AreCappedAndTruncated`.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.SourceTools/Drift/DriftDetection.cs:566-682: DriftBaselineLoader.CapLoadDiagnostics and DriftBaselineTrustFailureTests.LoadPhaseDiagnostics_AreCappedAndTruncated.
 
 ### DW-793: Dictionary allocation cost in `CompareContract` [`src/Hexalith.FrontComposer.SourceTools/Drift/DriftDetection.cs:1055-1058`] — Builds two dictionaries plus enumerates both lists per contract; sorted-merge walk would avoid four allocations per contract. Source: blind. Reconciliation: Row: DW-0062; Accepted constraint 2026-05-12; Evidence: performance lane passed after enabling real drift options; Risk: likelihood low, impact low for bounded fixture sizes; Decision owner: Story 11.4; Reopen trigger: perf benchmark median/p95 exceeds the NFR budget or baseline max sizes are raised.
 
@@ -918,7 +952,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 9-1-build-time-drift-detection chunk A (2026-05-07)"), 2026-08-27
 location: src/Hexalith.FrontComposer.SourceTools/Drift/DriftDetection.cs:470-474
 reason: **DEF-9-1A-9 — `DriftBaselineInput.GetHashCode` uses randomized `string.GetHashCode`** [`src/Hexalith.FrontComposer.SourceTools/Drift/DriftDetection.cs:470-474`] — Hash is not stable across processes; Roslyn's incremental pipeline uses `Equals` so impact is minor, but `StringComparer.Ordinal.GetHashCode` would be deterministic. Source: auditor. Reconciliation: Row: DW-0063; Resolved 2026-05-12; Evidence: `DriftBaselineInput.GetHashCode` now uses `StringComparer.Ordinal.GetHashCode`.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.SourceTools/Drift/DriftDetection.cs:470-474: DriftBaselineInput.GetHashCode now uses StringComparer.Ordinal.GetHashCode.
 
 ### DW-795: HFC1069 redaction precedence position not documented in spec precedence table [`_bmad-output/implementation-artifacts/9-1-build-time-drift-detection.md`] — Spec precedence table (1-10) does not assign a number for redaction failure; Story 9-4 owns final governance. Source: auditor. Reconciliation: Row: DW-0064; Accepted constraint 2026-05-14; Decision owner: FrontComposer diagnostic governance maintainers; Evidence: `DriftDiagnosticRedactionTests.RedactionFailure_EmitsRedactionFallbackDiagnostic_AndSuppressesOriginal`, HFC1069 redaction tests, and `_bmad-output/implementation-artifacts/11-2-diagnostic-registry-and-documentation-governance-follow-ups.md`; Likelihood: low; Impact: low; Release risk: low because executable tests pin redaction precedence; Downstream impact: narrative/spec precedence documentation can lag without changing fail-closed behavior; Expiry/review trigger: next diagnostic docs regeneration or HFC1069 precedence-text edit; Previous owner was Story 11.2.
 
@@ -3967,7 +4002,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 5-5-command-idempotency-and-optimistic-updates Pass 2 (2026-04-26)"), 2026-08-27
 location: ReconnectionReconciliationCoordinator.cs
 reason: **P2-D15 — Catch filter `ex is not OutOfMemoryException` does not mention `StackOverflowException`/`AccessViolationException`** [`State/ReconnectionReconciliation/ReconnectionReconciliationCoordinator.cs`, `Infrastructure/EventStore/ProjectionSubscriptionService.cs`] — Superseded by Story 11.16's explicit project-wide classifier decision. Reconciliation: Row: DW-0483; Accepted constraint 2026-05-13; Disposition: resolved-superseded 2026-07-13; Resolution: `Services/ExceptionGuard.IsFatal` is the single four-type taxonomy and all 35 catch filters delegate to it with zero local classifiers or ad-hoc fatal lists; Cancellation policy remains call-site-specific; Validation: focused Shell classifier, governance, authorization, and owner lane 182/182 passed; Evidence: `src/Hexalith.FrontComposer.Shell/Services/ExceptionGuard.cs`, `tests/Hexalith.FrontComposer.Shell.Tests/Architecture/FatalExceptionGuardGovernanceTests.cs`.
-status: open
+status: done 2026-08-27
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Services/ExceptionGuard.cs:12 and src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ReconnectionReconciliationCoordinator.cs:81 now use the centralized four-type fatal-exception classifier.
 
 ### DW-1215: `ProjectionSlotSelector` `parameter != lambda.Parameters[0]` reference equality rejects rewritten lambdas. Defer; D13 limits v1 to direct property selectors authored at the call site. Reconciliation: Row: DW-0484; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 6-3-level-3-slot-level-field-replacement, Group A — Contracts (2026-04-30).
 
@@ -4952,7 +4988,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 8-6a-schema-negotiation-runtime-gate Group A re-review (2026-05-05)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Mcp/Invocation/McpLifecycleModels.cs:454-458
 reason: `McpLifecycleResult` model added but unused within Group A — used by SourceTools T6 reflection elsewhere in the story; not actually dead. **Owner:** None — verified non-dead. [`src/Hexalith.FrontComposer.Mcp/Invocation/McpLifecycleModels.cs:454-458`] Reconciliation: Row: DW-0621; Non-action decision 2026-05-11; Decision owner: Story 11.1 reconciliation; Rationale: existing row records no active fix required; Evidence: src/Hexalith.FrontComposer.Mcp/Invocation/McpLifecycleModels.cs:454-458.
-status: open
+status: done 2026-08-27
+resolution: already resolved: tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaFingerprintCrossPackageTests.cs:23 reflects over McpLifecycleResult, proving the model is consumed and not dead.
 
 ### DW-1353: `EnumChanged` / `ValidationConstraintChanged` deltas opaque (no which-value info) — current sort-and-`SequenceEqual` comparator detects change but emits a single delta per field with no information about which enum value or constraint key changed. Owner: diagnostic UX follow-up. [`src/Hexalith.FrontComposer.Schema/Diagnostics/SchemaMigrationDeltaAnalyzer.cs:135-141`] Reconciliation: Row: DW-0622; Final classification 2026-05-14: resolved; Decision owner: Story 12.2 release certification; Evidence: Story 11.5 source/tests and Story 12.2 MCP validation (`dotnet test tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj --configuration Release`, 291 passed); Negative cases covered: negotiation rejection, hidden/unknown precedence, tenant-gated admission, schema/fingerprint mismatch, descriptor stripping, redaction, culture-invariant public categories, memoized deterministic retry, and zero side effects before admission; Downstream impact: MCP v1 contract evidence closed; Release-note requirement: none unless public machine keys change; Regression guard: focused MCP tests named in Story 11.5 Dev Agent Record; Previous owner was Story 11.5.
 
@@ -5059,7 +5096,8 @@ resolution: already resolved: src/Hexalith.FrontComposer.Mcp/McpToolResolutionRe
 origin: migrated from legacy ledger ("Deferred from: code review of 8-6a-schema-negotiation-runtime-gate Chunk 2 re-review (2026-05-07)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Mcp/FrontComposerMcpDescriptorRegistry.cs:23-29
 reason: **Two public constructors on DI-resolved `FrontComposerMcpDescriptorRegistry`**: `: this(options, corpusProviders: null)` legacy ctor + new corpus-aware ctor. DI containers may pick the legacy one and silently drop corpus support. Once AC8 corpus runtime aggregate ships, consolidate to the corpus-aware ctor only. **Owner:** linked to C2 follow-up. [`src/Hexalith.FrontComposer.Mcp/FrontComposerMcpDescriptorRegistry.cs:23-29`] Reconciliation: Row: DW-0636; Final classification 2026-05-14: resolved; Decision owner: Story 12.2 release certification; Evidence: Story 11.5 source/tests and Story 12.2 MCP validation (`dotnet test tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj --configuration Release`, 291 passed); Negative cases covered: negotiation rejection, hidden/unknown precedence, tenant-gated admission, schema/fingerprint mismatch, descriptor stripping, redaction, culture-invariant public categories, memoized deterministic retry, and zero side effects before admission; Downstream impact: MCP v1 contract evidence closed; Release-note requirement: none unless public machine keys change; Regression guard: focused MCP tests named in Story 11.5 Dev Agent Record; Previous owner was Story 11.5.
-status: open
+status: done 2026-08-27
+resolution: already resolved: tests/Hexalith.FrontComposer.Mcp.Tests/Schema/AggregateManifestIntegrityTests.cs:136 pins DI selection of the corpus-aware constructor and verifies the provider is invoked.
 
 ### DW-1368: `hashesMatch = string.Equals(client.Value, server.Value)` ignores `AlgorithmId`
 
@@ -5416,7 +5454,8 @@ status: open
 origin: migrated from legacy ledger ("Accepted or Split by Story 11.5 — row-scoped closure matrix (revised 2026-05-12 to address DN16/DN22)"), 2026-08-27
 location: MessageKey
 reason: **Category E — Schema negotiator design rows fixed or pinned by Story 11.5**     - Rows: DW-0634, DW-0635, DW-0636, DW-0637, DW-0638, DW-0639, DW-0640, DW-0641.     - Disposition/date/rationale: resolved 2026-05-12 in Story 11.5 source/tests. These rows cover cross-algorithm aggregation, descriptor stripping on rejection, DI constructor risk, algorithm-aware fingerprint equality, compatible-additive/warning bypass, obsolete bool cleanup, strict schema failure mapping, and agent-category wire-format pins.     - Original owner: Story 11.5. Revalidation trigger: any public `MessageKey`, `AgentCategory`, `decisionKind`, URI category, lifecycle category, or fingerprint equality behavior changes. Downstream impact: v1 agents keep current machine keys/categories. Regression guard/evidence: `SchemaNegotiationTests.Negotiate_SameValueDifferentSupportedAlgorithm_IsNotExact`, `AggregateManifestIntegrityTests.Aggregator_MixedFingerprintAlgorithms_FailsClosed`, `ToolAdmissionSchemaGateTests`, `CommandInvokerSchemaGateTests`, `Story11_5ResolutionTests`.
-status: open
+status: done 2026-08-27
+resolution: already resolved: tests/Hexalith.FrontComposer.Mcp.Tests/Schema/Story11_5ResolutionTests.cs:208 plus AggregateManifestIntegrityTests and ToolAdmissionSchemaGateTests pin the Category-E behavior summarized by this row.
 
 ### DW-1415: Constraint: Manifests whose `Fingerprint` is null are accepted (the per-manifest integrity loop in `FrontComposerMcpDescriptorRegistry.ValidateAggregateIntegrity` continues to the next manifest rather than failing closed). The runtime corpus aggregate (`FrontComposerMcpRuntimeManifestAggregator.Compute(manifests, corpusFingerprints)`) is computed but the result is not yet plumbed into a production agent-facing fingerprint header. This is a deliberate v1 choice — the build-time emitter only sees per-manifest content, and hosts that ship no skill corpus must not fail-closed at registration.
 
@@ -5551,7 +5590,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 12-1-ledger-marker-parity-and-epic-status-decision (2026-05-14)"), 2026-08-27
 location: sprint-status.yaml:147
 reason: **W3 — `epic-11-retrospective: done` while `epic-11: in-progress` is a pre-existing internal inconsistency:** `sprint-status.yaml:147` holds `epic-11: in-progress` (correctly, per `DW-0666` release gate); `sprint-status.yaml:155` holds `epic-11-retrospective: done`. A retrospective marked done while the epic remains open implies either the retrospective predated the `DW-0666` gate or the epic should already be closed. Story 12.1 did not modify the retrospective status. Owner: sprint-status / Epic 11 retrospective owner.
-status: open
+status: done 2026-08-27
+resolution: already resolved: _bmad-output/implementation-artifacts/sprint-status.yaml:143 keeps epic-11 in-progress and line 168 marks epic-11-retrospective optional, removing the reported contradiction.
 decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1433, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1434: Bucket vocabulary aliases are undocumented in `deferred-work.md`: Strict-vocabulary counts (`resolved=70`, `accepted-constraint=50`, `fixed-in-11.6=11`, `fixed-in-11.7=10`, `accepted-with-risk=62`) reconcile to the summary buckets (`resolved-preserved=91`, `accepted-constraint=112`) only via undocumented aliases (`resolved-preserved = resolved + fixed-in-11.6 + fixed-in-11.7`; `accepted-constraint = strict-accepted + accepted-with-risk`). The Reconciliation Status frontmatter enumerates only the strict tokens. Externally replayable verification requires the alias spec. Owner: deferred-work ledger maintainer (add a vocabulary mapping subsection on next ledger touch).
