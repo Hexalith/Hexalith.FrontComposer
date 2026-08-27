@@ -7677,6 +7677,7 @@ location: src/Hexalith.FrontComposer.Shell/Services/Customization/CustomizationC
 source_spec: `_bmad-output/implementation-artifacts/11-18-warning-and-above-log-sites.md`
 reason: summary: Prevent generic-host startup exception logging from exposing raw customization identifiers. evidence: `CustomizationContractValidationGate.StartAsync` emits a digested generated event and then throws `InvalidOperationException(final)` with raw projection, field, role, and component values (`src/Hexalith.FrontComposer.Shell/Services/Customization/CustomizationContractValidationGate.cs:101-107`). The raw exception behavior predates this logging-only migration and needs an owning startup-contract decision because changing it affects adopter-facing fail-closed diagnostics.
 status: open
+decision: 2026-08-27 Implement requested change — Implement the behavior requested by DW-1699, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1700: Make the unwrapped-identifier governance guard follow data flow rather than argument syntax or reserved parameter names.
 
