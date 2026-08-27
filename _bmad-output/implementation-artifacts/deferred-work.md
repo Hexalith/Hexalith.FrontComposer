@@ -7595,6 +7595,7 @@ location: _bmad-output/implementation-artifacts/sprint-status.yaml:381
 source_spec: `_bmad-output/implementation-artifacts/sprint-status.yaml`
 reason: summary: Reconcile contradictory SDK, REL-1, and REL-4 truth-state records introduced after Story 11.18b. evidence: The current baseline-to-HEAD status file says the expected and reported SDK are both `10.0.302` while calling that a blocker, reopens REL-1 as backlog after recording it closed as superseded, and still says REL-4 enforcement is pending after later entries record implementation and review (`_bmad-output/implementation-artifacts/sprint-status.yaml:381,524-525,621-623`). Git blame places these edits in later non-11.18b commits, so their owning status/release work must reconcile them separately.
 status: open
+decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1701, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1702: Support a partial type legally split across two files in the Shell organization guard, or record the one-file contract as deliberate.
 
