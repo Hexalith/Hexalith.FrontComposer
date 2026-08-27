@@ -8785,6 +8785,7 @@ location: Add
 source_spec: `_bmad-output/implementation-artifacts/spec-9-6-enforce-atomic-per-row-first-wins.md`
 reason: summary: Create the new-item indicator TTL timer only after the per-row occupancy test instead of speculatively before it. evidence: Every suppressed `Add` on an active row allocates an `ITimer` plus `TimerState`, burns a generation, and disposes the timer again under `_gate`. Lazy creation would remove the allocation, the `installed` flag, and the whole speculative try/finally, and would also make the armed-stale-timer path unreachable by construction. Not fixed in Story 9.6 because the approved spec's frozen I/O matrix explicitly expects a speculative timer to be created and disposed, so changing it requires renegotiating frozen intent.
 status: open
+decision: 2026-08-27 Implement requested change — Implement the behavior requested by DW-1834, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1835: Reconcile the stale last-wins prose in the FC-NIP row-identity producer contract with shipped first-wins behavior.
 
