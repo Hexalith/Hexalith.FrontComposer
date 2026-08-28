@@ -5050,6 +5050,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 8-6a-schema-
 location: src/Hexalith.FrontComposer.Mcp/Schema/SchemaNegotiation.cs:204-222
 reason: `CompatibleAdditive` and `CompatibleWarning` collapse to same `agentCategory: "schema-compatible-warning"` — agents cannot branch on them. Pre-existing in deferred ("CompatibleWarning vs AdditiveCompatible semantic distinction"). **Owner:** Negotiator semantic refinement follow-up. [`src/Hexalith.FrontComposer.Mcp/Schema/SchemaNegotiation.cs:204-222`] Reconciliation: Row: DW-0617; Duplicate of DEF-4 (DW-0094); Evidence: src/Hexalith.FrontComposer.Mcp/Schema/SchemaNegotiation.cs:204-222; Alias preserves original source row.
 status: open
+decision: 2026-08-28 Implement requested change — Implement the behavior described by DW-1348 across affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1349: Aggregator dedup hides cardinality + `corpusFingerprintCount` pre-dedup mismatch — pre-existing in deferred ("Manifest aggregator dedup/null-handling"). Owner: Aggregator semantic refinement. [`src/Hexalith.FrontComposer.Mcp/Schema/FrontComposerMcpRuntimeManifestAggregator.cs:21-30,42-45`] Reconciliation: Row: DW-0618; Duplicate of DEF-5 (DW-0095); Evidence: src/Hexalith.FrontComposer.Mcp/Schema/FrontComposerMcpRuntimeManifestAggregator.cs:21-30,42-45; Alias preserves original source row.
 
