@@ -4064,7 +4064,9 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 5-5-command-idempotency-and-optimistic-updates Pass 2 (2026-04-26)"), 2026-08-27
 location: FcPendingCommandSummary.razor.cs:106-109
 reason: **P2-D11 — `DisplayName` empty `CommandTypeName` from direct `PendingCommandEntry` instantiation** [`Components/EventStore/FcPendingCommandSummary.razor.cs:106-109`] — `Register` validates; only direct record construction bypasses. Reconciliation: Row: DW-0479; Accepted constraint 2026-05-13; Disposition: accepted-with-risk; Risk: likelihood low, impact low; Release risk: Register validates command type names; Downstream impact: direct record construction only; Owner: pending-command owner; Review by: 2026-06-30; Reopen trigger: public API starts accepting direct entries; Validation: PendingCommandRegistration validation review.; Evidence: Components/EventStore/FcPendingCommandSummary.razor.cs:106-109.
-status: open
+status: done 2026-08-28
+resolution: closed by human decision: Accept the current verified behavior and close the deferred row without implementation.
+decision: 2026-08-28 Close as accepted — Accept the current verified behavior and close the deferred row without implementation.
 
 ### DW-1211: Generated `nameof(commandFqn)` fallback returns simple name when `typeof(...).FullName` is null [`SourceTools/Emitters/CommandFormEmitter.cs:353`] — Open-generic edge case; current adopters do not hit this. Reconciliation: Row: DW-0480; Split to Story 11.4 SourceTools command-name fallback 2026-05-13; Disposition: split-to-named-story; Reason: open-generic generated fallback is source-generator scope; Residual release-gate risk: low.; Related: Story 11.4; Evidence: SourceTools/Emitters/CommandFormEmitter.cs:353.
 
