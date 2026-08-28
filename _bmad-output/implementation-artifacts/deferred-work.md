@@ -5837,6 +5837,7 @@ location: Owner
 reason: **W5 — `Owner` → `Original owner` downgrade across Category A–E rows in this diff:** Across mass-reclassified rows the active "Owner: Story 11.X" field is silently downgraded to "Original owner" with no replacement owner named. Story 12.2 reclassification scope; not Story 12.3 work. Owner: Story 12.2.1 follow-up.
 status: open
 decision: 2026-08-28 Implement approved behavior — Implement the narrowest compatible behavior described by DW-1449 across affected contracts and consumers, then add focused regression evidence.
+decision: 2026-08-28 Implement approved behavior — Implement the narrowest compatible behavior described by DW-1449 across affected contracts and consumers, then add focused regression evidence.
 
 ### DW-1450: Identical boilerplate rationale across dozens of `split-to-named-story` rows: Identical word-for-word `Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence` text on substantively different rows (DW-0058, 0067-0072, …) is a documentation smell suggesting bulk reclassification rather than per-row analysis. Story 12.2 reclassification scope. Owner: Story 12.2.1 follow-up.
 
