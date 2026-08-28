@@ -9390,3 +9390,10 @@ reason: `ReleaseWorkflow_DelegatesToReusableDomainReleaseAfterCiGate` (`tests/He
 status: open
 decision: 2026-08-27 Implement the change — Implement the behavior requested by DW-1896, update affected contracts and consumers, and add focused regression evidence.
 
+- source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-package-to-3-98-0.md`
+  summary: Bind package-audit revision provenance to the exact committed catalog identity.
+  evidence: The generated audit records parent Builds revision `8f255570b2df14603a943e8d7ee0c5d3f0b025fc` while its catalog hash binds candidate bytes first committed in `c8837217e6c07f7e12ccf3e3b5e86c5bc83ceade`; validators accept this convention, but the revision alone cannot reproduce the audited catalog.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-package-to-3-98-0.md`
+  summary: Prevent catalog-wide audit-history growth for a single-family selector change.
+  evidence: Refreshing EventStore from `3.97.0` to `3.98.0` caused the generated audit to append preserved history across 140 families and 285 packages, producing 13,241 insertions and 1,447 deletions because preservation is coupled to the complete catalog hash.
