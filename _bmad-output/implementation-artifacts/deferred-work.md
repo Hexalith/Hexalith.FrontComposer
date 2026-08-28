@@ -7948,7 +7948,9 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-
 location: release.yml
 source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
 reason: summary: Restore the REL-6 three-way lockstep between the `release.yml` reusable-workflow pin and the root `references/Hexalith.Builds` gitlink. evidence: `.github/workflows/release.yml:92,95` pin `domain-release.yml@79f82acc` and pass the matching `builds-execution-sha`, while the root Builds gitlink advanced to `e69891f6` in commit `62841406`. `CiGovernanceTests` (`tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:497-507`) asserts only `uses:@sha == builds-execution-sha`, so the Governance lane's green result does not cover the gitlink leg. The reusable job's own `job.workflow_sha == builds-execution-sha` check still passes, so this is latent drift rather than a startup failure. Arises from the committed range, not the reviewed worktree delta. Reopen trigger: the next Builds gitlink bump, or any release attempt.
-status: open
+status: done 2026-08-28
+resolution: closed by human decision: Accept the current verified behavior and close the deferred row without implementation.
+decision: 2026-08-28 Close as accepted — Accept the current verified behavior and close the deferred row without implementation.
 
 ### DW-1715: Bind the policy's blessed `HexalithTenantsVersion` to the Tenants gitlink or to an actual FrontComposer consumer.
 
