@@ -46,6 +46,52 @@ test.describe('Story 8.6: reusable page toolbar @p1 @smoke', () => {
     await expect(specimen.activeTabState).toContainText('Active tab: summary');
     await specimen.activityTab.click();
     await expect(specimen.activeTabState).toContainText('Active tab: activity');
+    await expect(specimen.activityContent).toBeVisible();
+  });
+
+  test('page tabs keep focus, selection, state, and owned panels synchronized', async ({ page, tenant }) => {
+    expect(tenant.tenantId).toBeTruthy();
+
+    const specimen = new PageToolbarSpecimenPage(page);
+    await specimen.goto();
+
+    await expect(specimen.summaryTab).toHaveAttribute('aria-controls', 'summary-panel');
+    await expect(specimen.summaryPanel).toHaveAttribute('role', 'tabpanel');
+    await expect(specimen.summaryContent).toBeVisible();
+    await expect(specimen.activityContent).toHaveCount(0);
+
+    await specimen.summaryTab.focus();
+    await specimen.summaryTab.press('ArrowRight');
+    await expect(specimen.activityTab).toBeFocused();
+    await expect(specimen.activityTab).toHaveAttribute('aria-selected', 'true');
+    await expect(specimen.activeTabState).toContainText('Active tab: activity');
+    await expect(specimen.activityPanel).toBeVisible();
+    await expect(specimen.activityContent).toBeVisible();
+
+    await specimen.activityTab.press('ArrowRight');
+    await expect(specimen.historyTab).toBeFocused();
+    await expect(specimen.archivedTab).toHaveAttribute('aria-disabled', 'true');
+    await expect(specimen.historyTab).toHaveAttribute('aria-selected', 'true');
+    await expect(specimen.activeTabState).toContainText('Active tab: history');
+    await expect(specimen.historyPanel).toBeVisible();
+    await expect(specimen.historyContent).toBeVisible();
+
+    await specimen.historyTab.press('Home');
+    await expect(specimen.summaryTab).toBeFocused();
+    await expect(specimen.summaryTab).toHaveAttribute('aria-selected', 'true');
+    await expect(specimen.summaryPanel).toBeVisible();
+
+    await specimen.summaryTab.press('End');
+    await expect(specimen.historyTab).toBeFocused();
+    await expect(specimen.historyTab).toHaveAttribute('aria-selected', 'true');
+
+    await specimen.historyTab.press('ArrowRight');
+    await expect(specimen.summaryTab).toBeFocused();
+    await expect(specimen.summaryTab).toHaveAttribute('aria-selected', 'true');
+
+    await specimen.summaryTab.press('ArrowLeft');
+    await expect(specimen.historyTab).toBeFocused();
+    await expect(specimen.historyTab).toHaveAttribute('aria-selected', 'true');
   });
 
   test('toolbar wraps without overlap on narrow viewports', async ({ page, tenant }) => {

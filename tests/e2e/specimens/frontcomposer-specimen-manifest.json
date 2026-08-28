@@ -71,6 +71,8 @@
         "[data-testid='fc-page-toolbar-view-trigger']",
         "[data-testid='fc-page-toolbar-actions']",
         "[data-testid='fc-page-toolbar-tabs']",
+        "[data-testid='fc-page-tabs-section']",
+        "[data-testid='fc-page-tabs-summary-content']",
         "[data-testid='fc-page-toolbar-state']"
       ],
       "expectedArtifacts": [

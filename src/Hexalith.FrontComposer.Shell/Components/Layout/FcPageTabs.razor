@@ -1,0 +1,34 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<CascadingValue Value="@this" IsFixed="true">
+    @ChildContent
+</CascadingValue>
+
+@if (Tabs.Count > 0)
+{
+    <FluentTabs ActiveTabId="@ActiveTabId"
+                ActiveTabIdChanged="@OnActiveTabIdChangedAsync"
+                Appearance="@Appearance"
+                Disabled="@Disabled"
+                Orientation="@Orientation"
+                Width="@Width"
+                aria-label="@AriaLabel"
+                data-testid="@TestId">
+        @foreach (FcPageTab tab in Tabs)
+        {
+            <FluentTab @key="tab"
+                       Id="@tab.Id"
+                       Header="@tab.Header"
+                       Disabled="@tab.Disabled"
+                       IconStart="@tab.IconStart"
+                       DeferredLoading="false"
+                       Tooltip="@tab.Tooltip">
+                @if (tab.ShouldRenderContent(ActiveTabId))
+                {
+                    @tab.ChildContent
+                }
+            </FluentTab>
+        }
+    </FluentTabs>
+}
