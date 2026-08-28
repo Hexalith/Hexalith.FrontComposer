@@ -5860,6 +5860,7 @@ location: n/a
 reason: **W8 — `accepted-with-risk` vocabulary collision (62 rows) not surfaced in the reconciliation summary:** Strict-vocabulary count `accepted-with-risk=62` folds into the `accepted-constraint=147` bucket without a documented mapping in the bucket table; AC10's mutually-exclusive outcome requirement is blurred by the vocabulary collision. Pre-existing ledger vocabulary issue inherited by Story 12.3. Owner: disposition-vocabulary cleanup follow-up (separate story).
 status: open
 decision: 2026-08-28 Implement approved behavior — Implement the narrowest compatible behavior described by DW-1452 across affected contracts and consumers, then add focused regression evidence.
+decision: 2026-08-28 Implement approved behavior — Implement the narrowest compatible behavior described by DW-1452 across affected contracts and consumers, then add focused regression evidence.
 
 ### DW-1453: Smart-quote / NBSP-hyphen / en-dash variants evade trigger scanner: Trigger phrases like `provider‑backed pending‑command` (NBSP hyphen U+2011) or `provider–backed` (en-dash) are visually identical to a human reviewer but use non-ASCII codepoints, so `Contains(trigger, OrdinalIgnoreCase)` does not match. Deferred: low real-world likelihood for release-note authoring; add Unicode normalisation only when an actual evasion appears. Owner: pending-status governance test maintainer. Evidence: `tests/Hexalith.FrontComposer.Shell.Tests/Governance/PendingStatusReopenGovernanceTests.cs:24-28`.
 
