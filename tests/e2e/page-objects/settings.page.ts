@@ -129,7 +129,21 @@ export class SettingsPage {
 
   private static userSegment(value: string): string {
     const normalized = SettingsPage.dotnetTrim(value).normalize('NFC');
-    return SettingsPage.escapeDataString(normalized.includes('@') ? normalized.toLowerCase() : normalized);
+    const canonical = normalized.includes('@')
+      ? SettingsPage.toLowerInvariantSimple(normalized)
+      : normalized;
+    return SettingsPage.escapeDataString(canonical);
+  }
+
+  /**
+   * Mirrors .NET invariant simple lowercase. JavaScript's full/contextual conversion expands
+   * U+0130 and maps a terminal Greek sigma differently, so lowercase one code point at a time
+   * and preserve the sole unconditional multi-code-point lowercase mapping.
+   */
+  private static toLowerInvariantSimple(value: string): string {
+    return Array.from(value, (codePoint) =>
+      codePoint === '\u0130' ? codePoint : codePoint.toLowerCase(),
+    ).join('');
   }
 
   /**

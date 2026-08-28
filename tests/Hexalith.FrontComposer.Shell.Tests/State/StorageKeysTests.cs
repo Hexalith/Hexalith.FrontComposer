@@ -27,6 +27,16 @@ public sealed class StorageKeysTests {
     }
 
     [Fact]
+    public void BuildKey_UnicodeEmailIdentity_MatchesInvariantRuntimeGoldenVector() {
+        string key = StorageKeys.BuildKey(
+            "tenant",
+            " \u0130\u03A3@Example.COM ",
+            "theme");
+
+        key.ShouldBe("tenant:%C4%B0%CF%83%40example.com:theme");
+    }
+
+    [Fact]
     public void BuildKey_DiscriminatorWithColons_PreservesDocumentedShape() {
         string key = StorageKeys.BuildKey(
             "tenant-a",

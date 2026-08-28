@@ -28,6 +28,10 @@ internal static class FrontComposerReturnUrl {
             candidate = "/" + candidate;
         }
 
+        if (candidate.Length > MaxReturnUrlLength) {
+            return "/";
+        }
+
         // P3 — fixpoint unescape (bounded to prevent pathological loops). Prior implementation
         // capped at 2 iterations, which let `/%2525%252fevil` and similar multi-encoded payloads
         // skate past the `//` check. On net10 `Uri.UnescapeDataString` never throws for malformed
@@ -73,12 +77,25 @@ internal static class FrontComposerReturnUrl {
                 return true;
             }
 
-            if (c > (char)127 && CharUnicodeInfo.GetUnicodeCategory(value, i) == UnicodeCategory.Format) {
+            if (char.IsHighSurrogate(c)) {
+                if (i + 1 >= value.Length || !char.IsLowSurrogate(value[i + 1])) {
+                    return true;
+                }
+
+                if (CharUnicodeInfo.GetUnicodeCategory(value, i) == UnicodeCategory.Format) {
+                    return true;
+                }
+
+                i++;
+                continue;
+            }
+
+            if (char.IsLowSurrogate(c)) {
                 return true;
             }
 
-            if (char.IsHighSurrogate(c) && i + 1 < value.Length && char.IsLowSurrogate(value[i + 1])) {
-                i++;
+            if (c > (char)127 && CharUnicodeInfo.GetUnicodeCategory(value, i) == UnicodeCategory.Format) {
+                return true;
             }
         }
 

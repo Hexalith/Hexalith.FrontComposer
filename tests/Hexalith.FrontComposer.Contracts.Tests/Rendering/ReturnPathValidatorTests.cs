@@ -17,6 +17,7 @@ public sealed class ReturnPathValidatorTests {
     [InlineData("/orders/caf%C3%A9")]
     [InlineData("/schedule/12:30")]
     [InlineData("/orders?filter=a%2Bb")]
+    [InlineData("/orders/\U0001F680")]
     public void IsSafeRelativePath_LocalRootRelativePath_ReturnsTrue(string returnPath)
         => ReturnPathValidator.IsSafeRelativePath(returnPath).ShouldBeTrue();
 
@@ -75,6 +76,21 @@ public sealed class ReturnPathValidatorTests {
     [InlineData("/orders/%E2%81%A1hidden")]
     public void IsSafeRelativePath_RedirectAttackClass_ReturnsFalse(string? returnPath)
         => ReturnPathValidator.IsSafeRelativePath(returnPath).ShouldBeFalse();
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void IsSafeRelativePath_IllFormedUtf16_ReturnsFalse(int malformedCase) {
+        string returnPath = malformedCase switch {
+            0 => "/orders/" + (char)0xD800,
+            1 => "/orders/" + (char)0xDC00,
+            2 => "/orders/" + (char)0xD800 + "x" + (char)0xDC00,
+            _ => throw new ArgumentOutOfRangeException(nameof(malformedCase)),
+        };
+
+        ReturnPathValidator.IsSafeRelativePath(returnPath).ShouldBeFalse();
+    }
 
     [Theory]
     [InlineData("/../admin")]

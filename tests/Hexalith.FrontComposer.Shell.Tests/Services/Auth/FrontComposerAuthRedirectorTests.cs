@@ -16,6 +16,7 @@ public sealed class FrontComposerAuthRedirectorTests {
     [InlineData("~/orders/1", "/orders/1")]
     [InlineData("?tab=summary", "/?tab=summary")]
     [InlineData("/orders/1#details", "/orders/1#details")]
+    [InlineData("/orders/\U0001F680", "/orders/\U0001F680")]
     [InlineData("", "/")]
     [InlineData(null, "/")]
     public void SanitizeReturnUrl_PreservesLocalReturnPaths(string? input, string expected)
@@ -39,6 +40,21 @@ public sealed class FrontComposerAuthRedirectorTests {
     [InlineData("/orders/%zz")]
     public void SanitizeReturnUrl_DropsUnsafeReturnPaths(string input)
         => FrontComposerReturnUrl.Sanitize(input).ShouldBe("/");
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void SanitizeReturnUrl_IllFormedUtf16_DropsReturnPath(int malformedCase) {
+        string returnPath = malformedCase switch {
+            0 => "/orders/" + (char)0xD800,
+            1 => "/orders/" + (char)0xDC00,
+            2 => "/orders/" + (char)0xD800 + "x" + (char)0xDC00,
+            _ => throw new ArgumentOutOfRangeException(nameof(malformedCase)),
+        };
+
+        FrontComposerReturnUrl.Sanitize(returnPath).ShouldBe("/");
+    }
 
     /// <summary>P3/P4 — Unicode format characters. Codepoints passed as int and materialized
     /// inside the test body so the test source itself never embeds raw control characters.</summary>
@@ -65,6 +81,22 @@ public sealed class FrontComposerAuthRedirectorTests {
         string oversize = "/" + new string('a', FrontComposerReturnUrl.MaxReturnUrlLength + 1);
 
         FrontComposerReturnUrl.Sanitize(oversize).ShouldBe("/");
+    }
+
+    [Fact]
+    public void SanitizeReturnUrl_QueryOnlyAtLengthCap_DropsNormalizedOversizePath() {
+        string queryOnly = "?" + new string('a', FrontComposerReturnUrl.MaxReturnUrlLength - 1);
+
+        FrontComposerReturnUrl.Sanitize(queryOnly).ShouldBe("/");
+    }
+
+    [Fact]
+    public void SanitizeReturnUrl_QueryOnlyNormalizesToLengthCap_PreservesReturnPath() {
+        string queryOnly = "?" + new string('a', FrontComposerReturnUrl.MaxReturnUrlLength - 2);
+        string expected = "/" + queryOnly;
+
+        expected.Length.ShouldBe(FrontComposerReturnUrl.MaxReturnUrlLength);
+        FrontComposerReturnUrl.Sanitize(queryOnly).ShouldBe(expected);
     }
 
     [Fact]

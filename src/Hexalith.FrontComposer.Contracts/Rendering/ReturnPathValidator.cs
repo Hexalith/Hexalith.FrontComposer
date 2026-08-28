@@ -184,6 +184,8 @@ public static class ReturnPathValidator {
     //   * every Unicode "format" (Cf) code point — BiDi overrides, directional isolates, zero-width
     //     joiners/spaces, word joiner, soft hyphen, Arabic letter mark, BOM, AND astral format
     //     code points such as U+E0001 — which render invisibly while altering the resolved target.
+    //   * unpaired or mispaired UTF-16 surrogate code units, which otherwise normalize through URI
+    //     handling to a replacement-character target that differs from the validated input.
     // Rejecting the whole Cf category (rather than an enumerated denylist) closes the invisible-char
     // class in one predicate. The scan is code-point aware (not per-UTF-16-char) so astral format
     // code points, which are surrogate pairs, are classified correctly; the netstandard2.0 target
@@ -196,14 +198,27 @@ public static class ReturnPathValidator {
                 return true;
             }
 
+            if (char.IsHighSurrogate(c)) {
+                if (i + 1 >= path.Length || !char.IsLowSurrogate(path[i + 1])) {
+                    return true;
+                }
+
+                if (CharUnicodeInfo.GetUnicodeCategory(path, i) == UnicodeCategory.Format) {
+                    return true;
+                }
+
+                i++;
+                continue;
+            }
+
+            if (char.IsLowSurrogate(c)) {
+                return true;
+            }
+
             // Only non-ASCII code points can be in the Unicode "format" category, so skip the
             // category lookup on the ASCII fast path.
             if (c > (char)127 && CharUnicodeInfo.GetUnicodeCategory(path, i) == UnicodeCategory.Format) {
                 return true;
-            }
-
-            if (char.IsHighSurrogate(c) && i + 1 < path.Length && char.IsLowSurrogate(path[i + 1])) {
-                i++;
             }
         }
 

@@ -22,6 +22,15 @@ import { ShellPage, ViewportBreakpoints } from '../page-objects/shell.page.js';
 
 const DESKTOP_WIDTH = 1920; // >= desktopMin (1366): user density preference applies, no viewport forcing.
 
+test('storage key helper matches .NET invariant casing for Unicode email identities', () => {
+  const key = SettingsPage.storageKey(
+    { tenantId: 'tenant', userId: ' \u0130\u03A3@Example.COM ' },
+    'theme',
+  );
+
+  expect(key).toBe('tenant:%C4%B0%CF%83%40example.com:theme');
+});
+
 test.describe('Story 1.6: theme, density, and settings persistence @p1 @smoke', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
