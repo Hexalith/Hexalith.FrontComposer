@@ -5749,6 +5749,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 12-2-mcp-led
 location: sprint-status.yaml
 reason: **W3 — 142 split rows route to target stories that are already `done`, so close triggers cannot fire:** Targets are Story 11.2, 11.4, 11.6, 11.7, 10.6 — all `done` per `sprint-status.yaml`. Receiving story files do not contain the routed DW-* IDs (grep-verified for routed ID ranges). Rephrasing 142 close triggers to standalone backlog actions or creating named follow-up artifacts is the work. Owner: Story 12.2.1 follow-up.
 status: open
+decision: 2026-08-28 Implement approved behavior — Implement the narrowest compatible behavior described by DW-1438 across affected contracts and consumers, then add focused regression evidence.
 
 ### DW-1439: Scope mismatch: 11+ MCP-domain rows routed to Story 11.7 (EventStore reliability / CI governance): DW-0067, 0068, 0070, 0075, 0077-0081, 0103, 0105, 0587 are MCP work (schema, render-contract adapter, tool admission, skill corpus, precedence matrix); Story 11.7's scope is EventStore + telemetry + CI governance. Owner: Story 12.2.1 follow-up (re-route to a named MCP successor or Story 11.4 for schema-fingerprint-adjacent work).
 
@@ -5756,6 +5757,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 12-2-mcp-led
 location: n/a
 reason: **W4 — Scope mismatch: 11+ MCP-domain rows routed to Story 11.7 (EventStore reliability / CI governance):** DW-0067, 0068, 0070, 0075, 0077-0081, 0103, 0105, 0587 are MCP work (schema, render-contract adapter, tool admission, skill corpus, precedence matrix); Story 11.7's scope is EventStore + telemetry + CI governance. Owner: Story 12.2.1 follow-up (re-route to a named MCP successor or Story 11.4 for schema-fingerprint-adjacent work).
 status: open
+decision: 2026-08-28 Implement approved behavior — Implement the narrowest compatible behavior described by DW-1439 across affected contracts and consumers, then add focused regression evidence.
 
 ### DW-1440: 142 split rows share identical Rationale and the non-decision `none or contract-adjacent` downstream impact: T3.4 demanded a per-set decision. Tied to W3. Owner: Story 12.2.1 follow-up.
 
@@ -5832,6 +5834,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 12-3-eventst
 location: Owner
 reason: **W5 — `Owner` → `Original owner` downgrade across Category A–E rows in this diff:** Across mass-reclassified rows the active "Owner: Story 11.X" field is silently downgraded to "Original owner" with no replacement owner named. Story 12.2 reclassification scope; not Story 12.3 work. Owner: Story 12.2.1 follow-up.
 status: open
+decision: 2026-08-28 Implement approved behavior — Implement the narrowest compatible behavior described by DW-1449 across affected contracts and consumers, then add focused regression evidence.
 
 ### DW-1450: Identical boilerplate rationale across dozens of `split-to-named-story` rows: Identical word-for-word `Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence` text on substantively different rows (DW-0058, 0067-0072, …) is a documentation smell suggesting bulk reclassification rather than per-row analysis. Story 12.2 reclassification scope. Owner: Story 12.2.1 follow-up.
 
@@ -5853,6 +5856,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 12-3-eventst
 location: n/a
 reason: **W8 — `accepted-with-risk` vocabulary collision (62 rows) not surfaced in the reconciliation summary:** Strict-vocabulary count `accepted-with-risk=62` folds into the `accepted-constraint=147` bucket without a documented mapping in the bucket table; AC10's mutually-exclusive outcome requirement is blurred by the vocabulary collision. Pre-existing ledger vocabulary issue inherited by Story 12.3. Owner: disposition-vocabulary cleanup follow-up (separate story).
 status: open
+decision: 2026-08-28 Implement approved behavior — Implement the narrowest compatible behavior described by DW-1452 across affected contracts and consumers, then add focused regression evidence.
 
 ### DW-1453: Smart-quote / NBSP-hyphen / en-dash variants evade trigger scanner: Trigger phrases like `provider‑backed pending‑command` (NBSP hyphen U+2011) or `provider–backed` (en-dash) are visually identical to a human reviewer but use non-ASCII codepoints, so `Contains(trigger, OrdinalIgnoreCase)` does not match. Deferred: low real-world likelihood for release-note authoring; add Unicode normalisation only when an actual evasion appears. Owner: pending-status governance test maintainer. Evidence: `tests/Hexalith.FrontComposer.Shell.Tests/Governance/PendingStatusReopenGovernanceTests.cs:24-28`.
 
@@ -7667,6 +7671,7 @@ location: Directory.Packages.props
 source_spec: `_bmad-output/implementation-artifacts/gov-1-validate-shared-catalog-compatibility-and-seal-dependency-provenance.md`
 reason: summary: BUILD-CAT-1 - Hexalith.Builds should introduce a semantic catalog-contract version marker and canonicalization rules for Props/Directory.Packages.props. evidence: GOV-1's AD-6 validates every selected Builds catalog directly by semantic content because `catalog_contract_version` does not yet exist upstream; FrontComposer records the marker as nullable provenance only and does not make it mandatory without a separate Architecture/Product/Release Owner decision and migration plan. Owner: Hexalith.Builds maintainer. Reopen trigger: Hexalith.Builds publishes a supported marker/contract-version scheme.
 status: open
+decision: 2026-08-28 Approve marker contract — Define the marker and canonical bytes in Hexalith.Builds, add migration and versioning rules, then update FrontComposer policy and focused tests.
 
 ### DW-1688: BUILD-REL-1 - reopen Hexalith.Builds issue 17 with the GOV-1 amendment or file a successor, then obtain the owner-accepted immutable reusable-workflow revision and exact evaluator closure.
 
