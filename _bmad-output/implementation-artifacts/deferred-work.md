@@ -6252,14 +6252,16 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 8 verification (2026-05-19)"), 2026-08-27
 location: eng/release_evidence.py:1382
 reason: **CR-12-4-Def58 — `next_owner_action` for `local-candidate` returns generic message:** Companion to Def16 (developer-local case). Dry-run dispatch is the primary supported usage and gets misleading guidance ("resolve blocking release gates" instead of "dry-run dispatches are never publish-authorized; toggle dry_run=false and approve"). Pick up alongside dry-run UX hardening. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1382`.
-status: open
+status: done 2026-08-28
+resolution: already resolved: eng/release_evidence.py:2858-2861 now emits dry-run-specific next_owner_action guidance; introduced by commit 471c7fcc.
 
 ### DW-1502: Hexalith.EventStore submodule pointer change in commit 3f707c2 falls outside Story 12.5 documentation scope: Acceptance Auditor A-01 noted the commit modifies a submodule pointer not named in the story's File List or Implementation Plan (`docs/...` only). The change is already on `main` and subsequent commits (e.g., aa9ad94 `feat: Update submodule references and enhance release evidence handling`) also touched submodules. Defer: pre-existing scope-bundling pattern; pick up as a process improvement for split-commits/scope-aware staging in future story implementations. Owner: story-creation/dev-agent maintainer. Evidence: commit `3f707c2`, story File List at `_bmad-output/implementation-artifacts/12-5-accessibility-and-stakeholder-acceptance-evidence-pack.md:348-354`.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 12-5-accessibility-and-stakeholder-acceptance-evidence-pack (2026-05-19)"), 2026-08-27
 location: docs/
 reason: **CR-12-5-Def01 — Hexalith.EventStore submodule pointer change in commit 3f707c2 falls outside Story 12.5 documentation scope:** Acceptance Auditor A-01 noted the commit modifies a submodule pointer not named in the story's File List or Implementation Plan (`docs/...` only). The change is already on `main` and subsequent commits (e.g., aa9ad94 `feat: Update submodule references and enhance release evidence handling`) also touched submodules. Defer: pre-existing scope-bundling pattern; pick up as a process improvement for split-commits/scope-aware staging in future story implementations. Owner: story-creation/dev-agent maintainer. Evidence: commit `3f707c2`, story File List at `_bmad-output/implementation-artifacts/12-5-accessibility-and-stakeholder-acceptance-evidence-pack.md:348-354`.
-status: open
+status: done 2026-08-28
+resolution: already resolved: Commit fd04bdd9 added strict story-ID and commit-scope validation; eng/validate-story-artifacts.py:1733-1757 now fails interleaved and unmapped commits.
 
 ### DW-1503: Per-artifact `sanitization_status` (vs single bundled string) in pack YAML: Edge Case Hunter EC-23 — the YAML `sanitization_status:` is a single string for the whole pack while the Evidence Manifest tracks per-artifact sanitization. AC26 records redaction per artifact. Pick up when the first external evidence artifact (screenshot/recording) is added. Owner: accessibility-evidence-pack maintainer. Evidence: `docs/accessibility-verification/release-candidate-2026-05-15-evidence-pack.md:43,136-143`.
 
@@ -6399,7 +6401,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run.md (2026-05-19, round 9)"), 2026-08-27
 location: .github/workflows/release.yml:616-621
 reason: **CR-12-4-Def63 — `find ... | sed 's#^#- #'` in summary step would mishandle filenames containing `#`:** Blind Hunter BH-019 — operationally extremely rare. Pick up alongside step-summary hardening. Owner: workflow maintainer. Evidence: `.github/workflows/release.yml:616-621`.
-status: open
+status: done 2026-08-28
+resolution: already resolved: Commit ef2823ba removed the find-to-sed release summary path; current .github/workflows/release.yml contains no such pipeline.
 
 ### DW-1523: `RELEASE_DRY_RUN` shell-level vocabulary (`false|0|no`) wider than Python `parse_strict_bool` ({true,false} only): Blind Hunter BH-023/BH-041 — maintenance hazard if the vocabulary in three workflow steps drifts. Pick up alongside boolean-domain consolidation. Owner: workflow/helper maintainer. Evidence: `.github/workflows/release.yml:445-448, 469-472, 484-487` + `.releaserc.json:12`.
 
@@ -6495,7 +6498,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run.md (2026-05-19, round 9)"), 2026-08-27
 location: .github/workflows/release.yml:194
 reason: **CR-12-4-Def76 — `CURRENT_BRANCH` fallback to `github.event.repository.default_branch` could be empty for some event payloads:** Edge Case Hunter EC-18 — `workflow_dispatch` always carries repository. Pick up if trigger surface expands. Owner: workflow maintainer. Evidence: `.github/workflows/release.yml:194`.
-status: open
+status: done 2026-08-28
+resolution: already resolved: Commit ef2823ba removed CURRENT_BRANCH/default_branch fallback; .github/workflows/release.yml:7-8 now has only workflow_dispatch.
 
 ### DW-1536: Manifest `test_count` vs `test_payload.test_count` not cross-checked: Edge Case Hunter EC-19 — defense-in-depth. Pick up alongside evidence cross-validation pass. Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:1108-1117`.
 
@@ -7663,7 +7667,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-move-pa
 location: InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsMigrated_AreOwnedBySharedCatalog
 source_spec: `_bmad-output/implementation-artifacts/spec-move-parties-package-versions-to-hexalith-builds.md`
 reason: summary: Normalize the authoritative Builds package catalog to the repository's required UTF-8 BOM and CRLF format. evidence: `InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsMigrated_AreOwnedBySharedCatalog` encounters 18 bare-LF line endings in the pre-existing `c177c66` catalog before reaching its package-ownership assertions; this story does not modify that catalog.
-status: open
+status: done 2026-08-28
+resolution: already resolved: references/Hexalith.Builds/Props/Directory.Packages.props:1 is currently UTF-8 with BOM and CRLF line endings; the repaired catalog is present at the pinned Builds revision.
 
 ### DW-1683: Match per-file token-literal exemptions by exact relative path rather than filename suffix.
 
@@ -9460,7 +9465,8 @@ location: references/Hexalith.Builds/Props/Directory.Packages.props:318
 source_spec: `spec-dw-668-followup-review-11-4-security-validation-hardening.md`
 severity: medium
 reason: Exact focused-test and solution-build commands fail NU1107 because xunit.v3 4.0.0 resolves xunit.v3.common 4.0.0 while xunit.v3.extensibility.core remains pinned to 3.2.2. Validation-only overlays proved this change, but the unchanged blocking workflow cannot reach those assertions.
-status: open
+status: done 2026-08-28
+resolution: already resolved: Parent commit 45967719 advances Builds to 569a6e9; references/Hexalith.Builds/Props/Directory.Packages.props:318-320 now aligns xunit.v3, xunit.v3.assert, and xunit.v3.extensibility.core at 3.2.2.
 
 ### DW-1900: The blocking Playwright workflow does not execute the settings-persistence Unicode storage-key regression.
 origin: spec-deferred fbe23dae8228

@@ -2,7 +2,7 @@
 title: 'Bump EventStore Package Family to 3.99.0'
 type: 'refactor'
 created: '2026-08-28'
-status: 'in-progress'
+status: 'in-review'
 baseline_commit: '08c2ddb5cd914b23fef88794cb7f9a1ff908fca7'
 review_loop_iteration: 0
 context:
@@ -49,9 +49,8 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `references/Hexalith.Builds/Props/Directory.Packages.props` -- change only `HexalithEventStoreVersion` from `3.98.0` to `3.99.0`, preserving the aligned rows and byte policy.
-- [ ] `references/Hexalith.Builds/Tools/package-version-audit.json` -- regenerate governed package evidence and inspect the diff so EventStore moves to listed latest stable `3.99.0` while unrelated selections/dispositions remain unchanged.
-- [ ] FrontComposer dependency evaluation -- validate isolated Release package consumption and unchanged Debug source consumption without modifying dependency wiring.
+- [x] `references/Hexalith.Builds` -- change only `Props/Directory.Packages.props`'s `HexalithEventStoreVersion` from `3.98.0` to `3.99.0`, regenerate `Tools/package-version-audit.json`, and inspect both so the aligned rows and byte policy are preserved while unrelated selections/dispositions remain unchanged.
+- [x] FrontComposer dependency evaluation -- validate isolated Release package consumption and unchanged Debug source consumption without modifying dependency wiring.
 
 **Acceptance Criteria:**
 - Given the Builds catalog, when it is evaluated and validated, then exactly 13 EventStore rows resolve through `HexalithEventStoreVersion=3.99.0` and all catalog/audit gates pass.
@@ -69,3 +68,15 @@ context:
 - `pwsh -NoProfile -File ./Tools/test-package-version-audit-generator.ps1; pwsh -NoProfile -File ./Tools/test-package-version-audit-validator.ps1; dotnet build Hexalith.Builds.slnx --configuration Release` from Builds -- expected: generator/validator scenarios and Release build pass.
 - Isolated `dotnet restore`, `dotnet msbuild -getProperty/-getItem`, and focused AppHost Release build with package mode -- expected: only Aspire `3.99.0`, zero EventStore project edges, zero warnings/errors.
 - Debug `dotnet msbuild -getProperty/-getItem` plus exact EventStore tag checks -- expected: four EventStore project edges, zero package edges, checkout `v3.99.0`.
+
+**Observed results (2026-08-28):**
+- The live audit generated 285 package records from one source. Exactly the 13 EventStore selections moved to `3.99.0`; all remain `retained`, and zero unrelated selected-version or disposition changes occurred. Audit provenance is Builds `569a6e9554b69a5c5e042affb837649e205b5ef8` with catalog SHA-256 `1a1535739095c27ad45ade0c595c68a6a1077b6500d38f5122172fc0f19c411e`.
+- Central catalog validation passed 285 entries; authoritative-catalog tests passed 49 identities and three shared selectors; production audit validation passed 285 packages, 140 families, and one source; generator tests passed 55 scenarios; validator tests passed 60 scenarios. `dotnet build Hexalith.Builds.slnx --configuration Release` passed with zero warnings and errors.
+- Isolated Release restore/evaluation resolved only `Hexalith.EventStore.Aspire/3.99.0`, no EventStore project edge, and the focused AppHost build passed with zero warnings and errors. Isolated Debug evaluation resolved four EventStore project edges, no EventStore package edge, exact source tag `v3.99.0`, and its serialized AppHost build passed with zero warnings and errors.
+- `python3 eng/dependency_graph.py --root . validate --commit 45967719c59d5adbcd8360167d591c71b66b36cd` remains blocked by `FsCheck.Xunit.v3 expected version '3.3.4', found '3.4.0'`. The same command against baseline `08c2ddb5cd914b23fef88794cb7f9a1ff908fca7` returns the identical pre-existing mismatch; it is unrelated to EventStore and was not widened into this change.
+- While implementation was running, external commits advanced Builds first to selector commit `569a6e9554b69a5c5e042affb837649e205b5ef8`, then to audit commit `9aca670aa9d4605bb147f641ef23d30d37813e92`; FrontComposer advanced to `45967719c59d5adbcd8360167d591c71b66b36cd`, which commits the spec and selector gitlink. This session performed no commit or push. Builds is clean; FrontComposer's unstaged Builds gitlink now reflects the later audit commit.
+
+## File List
+
+- `references/Hexalith.Builds` -- gitlink advances from `59d6992c6fbe8355f96f3ef5ff50a003ac0a3a94` to `9aca670aa9d4605bb147f641ef23d30d37813e92`; its two commits update `Props/Directory.Packages.props` and `Tools/package-version-audit.json` for EventStore `3.99.0`.
+- `_bmad-output/implementation-artifacts/spec-bump-eventstore-package-to-3-99-0.md` -- approved scope, completed tasks, and validation evidence.
