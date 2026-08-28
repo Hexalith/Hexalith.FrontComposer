@@ -27,10 +27,7 @@
                        SearchPlaceholder="Search orders"
                        SearchAriaLabel="Search orders"
                        FilterLabel="Order filters"
-                       ViewMenuLabel="View options"
-                       Tabs="@Tabs"
-                       ActiveTabId="@ActiveTabId"
-                       ActiveTabIdChanged="@OnActiveTabChangedAsync">
+                       ViewMenuLabel="View options">
             <FilterContent>
                 <FluentStack Orientation="Orientation.Vertical" VerticalGap="8px" data-testid="fc-page-toolbar-filter-content">
                     <FluentText Size="TextSize.Size300">Status: Active</FluentText>
@@ -51,6 +48,35 @@
         </FcPageToolbar>
     </section>
 
+    <section aria-labelledby="fc-page-tabs-section-title" data-testid="fc-page-tabs-section">
+        <h2 id="fc-page-tabs-section-title">Page tabs</h2>
+        <FcPageTabs ActiveTabId="@ActiveTabId"
+                    ActiveTabIdChanged="@OnActiveTabChangedAsync"
+                    AriaLabel="Order sections"
+                    TestId="fc-page-toolbar-tabs">
+            <FcPageTab Id="summary" Header="Summary" DeferredLoading="true">
+                <FluentText As="TextTag.Paragraph" data-testid="fc-page-tabs-summary-content">
+                    Summary panel content
+                </FluentText>
+            </FcPageTab>
+            <FcPageTab Id="activity" Header="Activity" DeferredLoading="true">
+                <FluentText As="TextTag.Paragraph" data-testid="fc-page-tabs-activity-content">
+                    Activity panel content
+                </FluentText>
+            </FcPageTab>
+            <FcPageTab Id="archived" Header="Archived" Disabled="true" DeferredLoading="true">
+                <FluentText As="TextTag.Paragraph" data-testid="fc-page-tabs-archived-content">
+                    Archived panel content
+                </FluentText>
+            </FcPageTab>
+            <FcPageTab Id="history" Header="History" DeferredLoading="true">
+                <FluentText As="TextTag.Paragraph" data-testid="fc-page-tabs-history-content">
+                    History panel content
+                </FluentText>
+            </FcPageTab>
+        </FcPageTabs>
+    </section>
+
     <section aria-labelledby="fc-page-toolbar-state-title" data-testid="fc-page-toolbar-state">
         <h2 id="fc-page-toolbar-state-title">Toolbar state</h2>
         <FluentStack Orientation="Orientation.Vertical" VerticalGap="4px">
@@ -68,12 +94,6 @@
 </main>
 
 @code {
-    private static readonly FcPageToolbarTab[] Tabs = [
-        new("summary", "Summary"),
-        new("activity", "Activity"),
-        new("history", "History"),
-    ];
-
     private string SearchValue { get; set; } = "open";
 
     private string ActiveTabId { get; set; } = "summary";

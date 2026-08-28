@@ -21,13 +21,14 @@ Layout, Accessibility, Localization, Related) so you can adopt a component witho
 - [FrontComposerShell](front-composer-shell.md) — the root application shell (Header / Navigation / Content / Footer).
 - [Navigation](navigation.md) — the registry-driven navigation rail (`FrontComposerNavigation`).
 - [DataGrid Surface](datagrid.md) — the confirmed FC-TBL table surface for generated projection grids.
+- [Page Tabs](page-tabs.md) — body-level Fluent tabs whose children own their real panel content.
 - [Page Toolbar](page-toolbar.md) — reusable page search/filter/view/action/tab toolbar (`FcPageToolbar`).
 - [Settings](settings.md) — settings dialog, theme toggle, density selector, preview, and persistence behavior.
 
 ## Coverage and tracked gaps
 
 The read-only-MVP component set is **layout, navigation, DataGrid surface, page toolbar, and settings**.
-Layout, navigation, the FC-TBL DataGrid surface, the page toolbar, and settings are documented
+Layout, navigation, the FC-TBL DataGrid surface, page tabs, the page toolbar, and settings are documented
 above. No read-only-MVP component-doc gap remains open in this index.
 
 ## Related

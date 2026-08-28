@@ -91,7 +91,9 @@ Render the toolbar through the aggregate-list toolbar slot:
 | `ActiveTabId` / `ActiveTabIdChanged` | `string?` / `EventCallback<string?>` | Caller-owned active-tab state. |
 
 `FcPageToolbarTab` contains `Id`, `Header`, `Disabled`, and optional `IconStart`. Use it for local
-page tabs only; routing and persistence remain caller-owned.
+page-tab headers only; routing and persistence remain caller-owned. This compatibility surface does
+not render panel content. For tabbed page bodies, use [Page Tabs](page-tabs.md) and put each surface
+inside its owning `FcPageTab`. Do not pair toolbar tabs with external sibling panels.
 
 ## Layout (FC-LYT)
 
@@ -99,6 +101,10 @@ The toolbar renders a vertical `FluentStack` containing a horizontal `FluentStac
 `role="toolbar"`. The search input flexes first, filter and view controls follow, and the `Actions`
 slot aligns to the far edge when space is available. The row wraps at narrow widths so controls do
 not overlap. Optional tabs render below the row as `FluentTabs` with the subtle Fluent appearance.
+
+Toolbar tabs are header chrome only. Grids, states, filters, pagers, and command flows belong in the
+page body, never in `FcPageHeader.Actions`. Use `FcPageTabs` after the page header when those regions
+switch together.
 
 The component does not change `FcPageHeader` landmarks. In aggregate-list pages it composes through
 the existing `Toolbar` slot, which is forwarded to `FcPageHeader.Actions`.
@@ -126,5 +132,6 @@ menu items, and tab headers from their page or domain resource owner.
 ## Related
 
 - [FrontComposerShell](front-composer-shell.md) — the root application shell around page content.
+- [Page Tabs](page-tabs.md) — body-level tab and panel composition.
 - [DataGrid Surface](datagrid.md) — generated projection grids and search/filter components.
 - [Components](index.md) — component reference index.
