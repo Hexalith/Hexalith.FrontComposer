@@ -3505,7 +3505,9 @@ origin: migrated from legacy ledger ("Deferred from: code review of 2-2-action-d
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 severity: medium
 reason: **[MED → deferred] `RefreshDerivedValuesBeforeSubmitAsync` writes `_prefilledModel` not form `_model` (P30)** — pre-submit refresh mutates the renderer prefill while the form has already copied to its own `_model`. Correct fix requires the renderer to pass a model-mutation delegate into the form's `BeforeSubmit`, which is an architectural change best made alongside Story 2-3's lifecycle-state work. Interim workaround: `InitialValue` on `OnInitialized` carries derived values into the form's initial `_model`, so steady-state values are correct on first submit. Reconciliation: Row: DW-0407; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC12, AC23, AC29, AC34; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group C (SourceTools layer) chunk.
-status: open
+status: done 2026-08-28
+resolution: closed by human decision: Record the current behavior as intentional and close DW-1138 with its verified rationale.
+decision: 2026-08-28 Accept current behavior — Record the current behavior as intentional and close DW-1138 with its verified rationale.
 
 ### DW-1139: [LOW → deferred] `Array.IndexOf(ShowFieldsOnly, ...)` per-field lookup (P39)
 
