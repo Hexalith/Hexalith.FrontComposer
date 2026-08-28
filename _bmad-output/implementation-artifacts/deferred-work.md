@@ -13,7 +13,9 @@ origin: review-budget-followup
 source_spec: `spec-11-4-security-validation-hardening.md`
 severity: low
 reason: Review budget (3 cycles) was exhausted with the story finalized (status: done, verify green) while the review pass kept recommending an independent follow-up. The work was committed by bmad-loop run 20260706-191144-ea78; this entry preserves the lingering follow-up recommendation for a deliberate later review.
-status: open
+status: done 2026-08-28
+resolution: resolved by sweep bundle dw-dw-668-followup
+resolution-undo: a384ba36c0f4d3e4f1a6ac701a4f87e221fd0b122814a65da769de121260277e 2026-08-28 7374617475733a206f70656e
 
 ### DW-669: `ExceptionGuard.IsFatal` does not unwrap wrapped process-fatal exceptions
 
@@ -9450,4 +9452,20 @@ origin: migrated from legacy ledger ("spec-bump-eventstore-package-to-3-98-0.md"
 location: references/Hexalith.Builds/Tools/audit-central-package-versions.ps1:917
 source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-package-to-3-98-0.md`
 reason: Refreshing EventStore from `3.97.0` to `3.98.0` caused the generated audit to append preserved history across 140 families and 285 packages, producing 13,241 insertions and 1,447 deletions because preservation is coupled to the complete catalog hash.
+status: open
+
+### DW-1899: The checked-in central package graph blocks the repository's normal .NET test and solution-build lanes before tests execute.
+origin: spec-deferred 0a702c5a81ac
+location: references/Hexalith.Builds/Props/Directory.Packages.props:318
+source_spec: `spec-dw-668-followup-review-11-4-security-validation-hardening.md`
+severity: medium
+reason: Exact focused-test and solution-build commands fail NU1107 because xunit.v3 4.0.0 resolves xunit.v3.common 4.0.0 while xunit.v3.extensibility.core remains pinned to 3.2.2. Validation-only overlays proved this change, but the unchanged blocking workflow cannot reach those assertions.
+status: open
+
+### DW-1900: The blocking Playwright workflow does not execute the settings-persistence Unicode storage-key regression.
+origin: spec-deferred fbe23dae8228
+location: .github/workflows/quality.yml:481
+source_spec: `spec-dw-668-followup-review-11-4-security-validation-hardening.md`
+severity: low
+reason: The focused serverless Playwright regression passes 1/1, but the blocking workflow typechecks and selects other specs; reverting the helper casing could therefore escape that CI lane.
 status: open
