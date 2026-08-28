@@ -7959,6 +7959,7 @@ location: eng/dependency-graph-policy.json:33
 source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
 reason: summary: Bind the policy's blessed `HexalithTenantsVersion` to the Tenants gitlink or to an actual FrontComposer consumer. evidence: `grep -rn "HexalithTenantsVersion" src/ tests/ eng/ scripts/ .github/` returns exactly one hit — the policy row at `eng/dependency-graph-policy.json:33`. The `hexalith.tenants` edge maps to `shared-catalog-baseline-v1`, whose required properties and packages are both empty, so the Tenants edge is provenance-only. Source mode resolves Tenants through the `references/Hexalith.Tenants` gitlink and package mode through the catalog property; nothing asserts the two denote the same release, so a source/package skew that still compiles is invisible. Reopen trigger: a Tenants gitlink move that is not accompanied by a catalog bump, or the first source/package behavioural divergence.
 status: open
+decision: 2026-08-28 Implement change — Implement the requested change at eng/dependency-graph-policy.json:33, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1716: Give the C# Governance facts a signal for what a profile enforced, not only that its edge was visited.
 
