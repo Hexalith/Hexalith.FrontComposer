@@ -188,6 +188,15 @@
     "label": "Implement requested change",
     "resolution": ""
   },
+  "DW-1339": {
+    "answered_at": "2026-08-28",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Implement the behavior described by DW-1339 across affected contracts and consumers, and add focused regression evidence.",
+    "key": "1",
+    "label": "Implement requested change",
+    "resolution": ""
+  },
   "DW-1344": {
     "answered_at": "2026-08-27",
     "bundle_name": "",
