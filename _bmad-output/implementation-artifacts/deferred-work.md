@@ -5759,6 +5759,7 @@ location: n/a
 reason: **W4 — Scope mismatch: 11+ MCP-domain rows routed to Story 11.7 (EventStore reliability / CI governance):** DW-0067, 0068, 0070, 0075, 0077-0081, 0103, 0105, 0587 are MCP work (schema, render-contract adapter, tool admission, skill corpus, precedence matrix); Story 11.7's scope is EventStore + telemetry + CI governance. Owner: Story 12.2.1 follow-up (re-route to a named MCP successor or Story 11.4 for schema-fingerprint-adjacent work).
 status: open
 decision: 2026-08-28 Implement approved behavior — Implement the narrowest compatible behavior described by DW-1439 across affected contracts and consumers, then add focused regression evidence.
+decision: 2026-08-28 Implement approved behavior — Implement the narrowest compatible behavior described by DW-1439 across affected contracts and consumers, then add focused regression evidence.
 
 ### DW-1440: 142 split rows share identical Rationale and the non-decision `none or contract-adjacent` downstream impact: T3.4 demanded a per-set decision. Tied to W3. Owner: Story 12.2.1 follow-up.
 
