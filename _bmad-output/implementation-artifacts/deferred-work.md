@@ -8334,6 +8334,7 @@ location: FrontComposerHotPathLog.cs:588
 source_spec: `_bmad-output/implementation-artifacts/11-21-recommended-analyzer-product-and-generator-burndown.md`
 reason: summary: `FrontComposerDiagnosticLog.Digest` and `FrontComposerHotPathLog.DigestIdentifier` are two independent digest implementations with different token formats. evidence: HotPath emits `sha256:<16 hex>` (`FrontComposerHotPathLog.cs:588`); the new family emits `sha256:<16 hex>:len:<n>` with different null/empty handling and a 4096-character pre-hash truncation (`FrontComposerDiagnosticLog.cs:1711-1712`). The same value therefore hashes to different tokens across the two families.
 status: open
+decision: 2026-08-28 Implement requested change — Implement the behavior described by DW-1770 across affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1771: `SemaphoreSlim.Dispose()` in `ETagCacheService` can strand a caller already awaiting `WaitAsync` rather than faulting it.
 
