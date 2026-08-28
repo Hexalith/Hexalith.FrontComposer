@@ -497,7 +497,9 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 9-4-diagnostic-id-system-and-deprecation-policy — chunk C (2026-05-10)"), 2026-08-27
 location: What/Expected/Got/Fix/DocsLink
 reason: **DEF-9-4-C3 — Example block payload duplicates the title rather than showing a real emitted message** [all 106 stubs] — chunk-C synthesizer limitation. Real `What/Expected/Got/Fix/DocsLink` example authoring belongs in the Story 9-5 prose pass per `messageTemplatePolicy`. Sources: blind. Reconciliation: Row: DW-0003; Rejected with rationale 2026-05-11; Evidence: Story 11.2 prioritized HFC0001 and HFC1601 example authoring per AC26; full-corpus example rewrite is beyond Story 11.2 budget and requires a Product/Architecture decision on per-diagnostic example sourcing (Story 9-5 prose pass).
-status: open
+status: done 2026-08-28
+resolution: closed by human decision: Retain the current behavior as an explicit accepted constraint with the ledger evidence preserved.
+decision: 2026-08-28 Close as accepted — Retain the current behavior as an explicit accepted constraint with the ledger evidence preserved.
 
 ### DW-735: `docsSlug` relative vs canonical help-link absolute (`hexalith.github.io`) [all 106 stubs] — host migration would require 106-file edit. Architectural choice: derive body link from registry top-level `canonicalHelpLinkFormat` or document hardcoded host. Story 9-5 / docs-host strategy. Sources: blind. Reconciliation: Row: DW-0004; Resolved 2026-05-11; Evidence: DiagnosticDescriptors.CanonicalHelpLinkFormat plus registry canonicalHelpLinkFormat validation.
 
