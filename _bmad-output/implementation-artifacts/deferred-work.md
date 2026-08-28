@@ -531,7 +531,9 @@ resolution: already resolved: diagnostic-registry.json: structured externalBound
 origin: migrated from legacy ledger ("Deferred from: code review of 9-4-diagnostic-id-system-and-deprecation-policy — chunk C (2026-05-10)"), 2026-08-27
 location: docs/diagnostics/README.md
 reason: **DEF-9-4-C7 — README `schemaVersion: 1.0` lock claim but stub front-matter has no schema-version field** [`docs/diagnostics/README.md`, all 106 stubs] — fail-closed schema discipline cannot be enforced at the stub layer as currently shaped. Adding stub-side `schemaVersion` is a registry-format change. Sources: blind. Reconciliation: Row: DW-0007; Rejected with rationale 2026-05-11; Evidence: README keeps stub front matter bounded and registry schemaVersion remains the single fail-closed schema contract; adding a per-stub schemaVersion field is a registry-format change beyond Story 11.2 budget.
-status: open
+status: done 2026-08-28
+resolution: closed by human decision: Retain the current behavior as an explicit accepted constraint with the ledger evidence preserved.
+decision: 2026-08-28 Close as accepted — Retain the current behavior as an explicit accepted constraint with the ledger evidence preserved.
 
 ### DW-739: `storyOwner` is a free-form slug with no controlled vocabulary [all stubs] — after chunk-C P1 normalises `storyOwner` against registry, a follow-up enforcement could compare values against `sprint-status.yaml` story keys. Sources: blind. Reconciliation: Row: DW-0008; Rejected with rationale 2026-05-11; Evidence: storyOwner parity remains registry-backed; controlled-vocabulary expansion is beyond Story 11.2 budget and requires a Product/Architecture decision on cross-file vocabulary enforcement.
 
