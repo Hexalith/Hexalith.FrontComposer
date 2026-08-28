@@ -5436,7 +5436,9 @@ resolution: already resolved: docs/diagnostics/migration-findings.json:1
 origin: migrated from legacy ledger ("Deferred from: code review of story-11-2-diagnostic-registry-and-documentation-governance-follow-ups — pass 2 (2026-05-11)"), 2026-08-27
 location: docs/diagnostics/migration-findings.json
 reason: All `approvedOn` rows stamped with the same `2026-05-11` date — audit-trail design choice (single batch approval vs per-row sign-off). Validator doesn't enforce per-row distinct dates. Reconciliation: Row: DW-0661; Non-action decision 2026-05-11; Decision owner: Story 11.2 review pass 2; Rationale: batch approval is acceptable for the initial HFCM CLI migration cohort; Evidence: `docs/diagnostics/migration-findings.json`. (blind)
-status: open
+status: done 2026-08-28
+resolution: closed by human decision: Retain the current behavior as an explicit accepted constraint with the ledger evidence preserved.
+decision: 2026-08-28 Close as accepted — Retain the current behavior as an explicit accepted constraint with the ledger evidence preserved.
 
 ### DW-1399: `Random rng = new(20260511)` literal seed pattern in `RegistryValidator_DeterministicUnderShuffledInput` — cosmetic; conventional dated seed. Re-evaluate after fixing the shuffle algorithm (Pass-2 patch on `tests/.../DiagnosticRegistryTests.cs:629-650`). Reconciliation: Row: DW-0662; Non-action decision 2026-05-11; Decision owner: Story 11.2 review pass 2; Rationale: deterministic seed pattern recognised; no correctness impact once Fisher-Yates lands; Evidence: `tests/.../DiagnosticRegistryTests.cs:637`. (blind)
 
