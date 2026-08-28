@@ -5,7 +5,8 @@ origin: review-budget-followup
 source_spec: `spec-11-2-projection-realtime-resilience.md`
 severity: low
 reason: Review budget (3 cycles) was exhausted with the story finalized (status: done, verify green) while the review pass kept recommending an independent follow-up. The work was committed by bmad-loop run 20260706-075033-1582; this entry preserves the lingering follow-up recommendation for a deliberate later review.
-status: open
+status: done 2026-08-28
+resolution: already resolved: commit 9ad4312f performed the requested independent follow-up review and implemented its realtime, fallback, pending-driver, factory, and teardown findings; spec-dw-667-followup-review-projection-realtime-resilience.md records followup_review_recommended: false.
 
 ### DW-668: Follow-up review still recommended for 11-4-security-validation-hardening after the review budget was exhausted
 origin: review-budget-followup
@@ -145,7 +146,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-11-22-recommended-analyzer-test-and-sample-burn-down.md chunk 2 (2026-08-08)"), 2026-08-27
 location: ETagCacheService.EnsurePersistedLruSeededAsync
 reason: `ETagCacheService.EnsurePersistedLruSeededAsync` re-checks `_disposed` after acquiring `_lruSeedGate` but Dispose can still land after that re-check and before/during `TrySeedPersistedLruAsync` / `_lruSeeded` write; residual race beyond the wait-gate fix from the 11.21 review closeout.
-status: open
+status: done 2026-08-28
+resolution: already resolved: commit 9ad4312f resolved the ETag seed/dispose race; src/Hexalith.FrontComposer.Shell/State/ETagCache/ETagCacheService.cs:68 leaves the managed semaphore undisposed and ETagCacheServiceTests.cs:288 proves owner and waiter both settle.
 
 ### DW-686: `FrontComposerMcpLog` applies the CA1873 local-binding pattern on some paths only; sibling helpers can still pass category formatting straight into `Log*` — complete when the next MCP logging burn-down touches those sites.
 
@@ -2325,7 +2327,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 3-7-command-palette-e2e-and-scorer-bench (2026-04-25 bmad-code-review)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs
 reason: **`catch when ex is not OutOfMemoryException && ex is not StackOverflowException` SOE filter is cargo-cult** [`src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs` multiple sites: 909, 960, 979, 1049, 1118, 1157, 1208] — `StackOverflowException` is uncatchable in managed code since .NET 2.0; adding it to the filter signals misunderstanding of CSEs. Pre-existing pattern from Story 3-4 Pass-3; tracked for Epic 9-4 governance analyzer cleanup. Reconciliation: Row: DW-0253; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.6 Shell/sample/accessibility follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.6 Shell/sample/accessibility follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
-status: open
+status: done 2026-08-28
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:194 and sibling catches use !ExceptionGuard.IsFatal(ex); commit db9ba9ee4 replaced the cargo-cult exception filter.
 
 ### DW-985: `DetachLocationTracking` ceremonial concurrency lock
 
@@ -2444,7 +2447,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 4-6-empty-states-field-descriptions-and-unsupported-types — Pass 3 (2026-04-25 bmad-code-review)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs:13
 reason: **`RegisterDomain` not thread-safe with resolver's `_registry.GetManifests()` enumeration** [`src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs:13, 93-107`] — Raw `List<T>` returned by `GetManifests`; concurrent `RegisterDomain` (e.g., add-on registering from a hosted service) could throw `InvalidOperationException("Collection was modified")` during resolver enumeration. Pre-existing risk amplified by frequent registry walks under Story 4-6. Reconciliation: Row: DW-0270; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC14-AC16, AC30; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs:13, 93-107.
-status: open
+status: done 2026-08-28
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs:130 snapshots manifests under the registry lock before enumeration.
 
 ### DW-1002: Empty-state secondary-text resource key uses raw FQN with `+` (nested) / backtick (generics)
 
@@ -2602,7 +2606,8 @@ resolution: **RESOLVED in the same review session.** Extracted `FcHomeCard` chil
 origin: migrated from legacy ledger ("Deferred from: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 1 review (2026-04-21 pass 5)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Shell/Components/Layout/FcPaletteResultList.razor:25-64
 reason: **Invalid ARIA listbox structure** — `<ul role="listbox">` contains `<li role="none">` wrapping `<h4>` + nested `<ul role="group">`. WAI-ARIA 1.2 prefers direct `<li role="option">` or direct `<li role="group">` children. Deferred to Story 10-2 a11y pipeline alongside forced-colors / RTL verification. `src/Hexalith.FrontComposer.Shell/Components/Layout/FcPaletteResultList.razor:25-64` Reconciliation: Row: DW-0292; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC18, AC21-AC22, AC37; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 1 review (2026-04-21 pass 5).
-status: open
+status: done 2026-08-28
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Components/Layout/FcPaletteResultList.razor:26-35 nests role=option elements under a labelled role=group within the listbox.
 
 ### DW-1024: Task 10.7 bUnit test matrix still at 5 of 9+ shipped
 
@@ -2631,14 +2636,16 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 1 review (2026-04-21 pass 5)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcPaletteResultListTests.cs
 reason: **`StubBadgeService` test stub comparer semantics diverge from production `IBadgeCountService` contract** — production implementation lands with Story 3-5; test stub can be aligned then. `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcPaletteResultListTests.cs:~1293` Reconciliation: Row: DW-0296; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 1 review (2026-04-21 pass 5).
-status: open
+status: done 2026-08-28
+resolution: already resolved: tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcPaletteResultListTests.cs:246-249 builds the stub dictionary with EqualityComparer<Type>.Default, matching production semantics.
 
 ### DW-1028: Badge `Counts` dictionary concurrent-mutation read race during `OnNext` re-render
 
 origin: migrated from legacy ledger ("Deferred from: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 1 review (2026-04-21 pass 5)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Shell/Components/Layout/FcPaletteResultList.razor:51
 reason: **Badge `Counts` dictionary concurrent-mutation read race during `OnNext` re-render** — `IBadgeCountService` contract in Contracts does not mandate immutable-snapshot semantics; Story 3-5 picks the concrete implementation and can guarantee either (a) immutable snapshot on `CountChanged` push, or (b) `ConcurrentDictionary` read safety. `src/Hexalith.FrontComposer.Shell/Components/Layout/FcPaletteResultList.razor:51` Reconciliation: Row: DW-0297; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 1 review (2026-04-21 pass 5).
-status: open
+status: done 2026-08-28
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Badges/BadgeCountService.cs:68,104 exposes an atomically replaced ImmutableDictionary snapshot.
 
 ### DW-1029: `IsChordPrefix` linear O(N) scan per bare-letter keystroke
 
@@ -2722,7 +2729,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`_disposed` race in `RegistrationDisposable.Dispose` when owner already disposed** — `TryGetValue` on cleared `ConcurrentDictionary` is benign (returns `false`); no functional impact. The race exists but has no adverse consequence. Revisit only if lifecycle diagnostics need stricter contracts. Reconciliation: Row: DW-0309; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4).
-status: open
+status: done 2026-08-28
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Shortcuts/ShortcutService.cs:289-295 makes RegistrationDisposable.Dispose idempotent with Interlocked.Exchange.
 
 ### DW-1041: `FrontComposerRegistry` constructor throw on `HFC1601` — latent, tied to Story 9-4
 
@@ -2758,7 +2766,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts (2026-04-21)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Shell/State/Navigation/BoundedContextRouteParser.cs
 reason: **`BoundedContextRouteParser` returns null for bare `/domain/{bc}` landing** — 2-segment domain path resolves to `null`, meaning the contextual-bonus cannot fire on a bare BC landing page. By design until bounded-context landing pages exist; projection/command resolution requires the 3rd segment. Revisit if Epic 3 adds `/domain/{bc}` landing routes. `src/Hexalith.FrontComposer.Shell/State/Navigation/BoundedContextRouteParser.cs:~44-49` Reconciliation: Row: DW-0314; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts (2026-04-21).
-status: open
+status: done 2026-08-28
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/State/Navigation/BoundedContextRouteParser.cs:38-42 explicitly accepts two-segment /domain/{bc} landing routes.
 
 ### DW-1046: `IsChordPrefix` linear `O(N)` per keystroke
 
@@ -3395,7 +3404,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 2-2-action-d
 location: CommandRendererEmitter.cs:833-864
 severity: medium
 reason: **[MED] Icon resolution uses reflection + assembly probing** — `CommandRendererEmitter.cs:833-864` builds an assembly-qualified name via string concatenation and resolves with `Type.GetType` + `Activator.CreateInstance`. AOT-hostile under trimmed WASM; documented FluentUI v5 RC2 workaround but no Known Gaps entry exists. **Defer target:** Epic 9 AOT pass; add Known Gaps entry. Reconciliation: Row: DW-0398; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.4; AC coverage: AC12, AC23, AC29, AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.4.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group C (SourceTools layer) chunk.
-status: open
+status: done 2026-08-28
+resolution: already resolved: src/Hexalith.FrontComposer.SourceTools/Emitters/CommandRendererEmitter.cs:411-420 resolves icons through the static FcFluentIcons catalog without reflection or assembly probing.
 
 ### DW-1130: [MED] Hardcoded English `Cancel` popover label + mixed-language `aria-label`
 
@@ -4094,14 +4104,16 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 6-3-level-3-slot-level-field-replacement, Group A — Contracts (2026-04-30)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: B2 — Group B carry-forward: `ProjectionSlotRegistry.IsCompatibleComponent` `GetProperty("Context", ...)` throws `AmbiguousMatchException` (uncaught) on shadowed inherited `Context` properties. Reconciliation: Row: DW-0490; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 6-3-level-3-slot-level-field-replacement, Group A — Contracts (2026-04-30).
-status: open
+status: done 2026-08-28
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Services/ProjectionSlots/ProjectionSlotRegistry.cs:208-220 catches AmbiguousMatchException from shadowed Context properties and rejects fail-soft.
 
 ### DW-1222: Group B carry-forward: contract-version check accepts negative `ContractVersion` integers and surfaces them as version mismatch instead of a more specific "invalid version" diagnostic. Reconciliation: Row: DW-0491; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 6-3-level-3-slot-level-field-replacement, Group A — Contracts (2026-04-30).
 
 origin: migrated from legacy ledger ("Deferred from: code review of 6-3-level-3-slot-level-field-replacement, Group A — Contracts (2026-04-30)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: B3 — Group B carry-forward: contract-version check accepts negative `ContractVersion` integers and surfaces them as version mismatch instead of a more specific "invalid version" diagnostic. Reconciliation: Row: DW-0491; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 6-3-level-3-slot-level-field-replacement, Group A — Contracts (2026-04-30).
-status: open
+status: done 2026-08-28
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Services/ProjectionSlots/ProjectionSlotRegistry.cs:85-93 rejects non-positive contract versions with a dedicated invalid-version diagnostic.
 
 ### DW-1223: Group B carry-forward: `Resolve` does not validate `projectionType` (open generic, interface, abstract) and silently returns null. Reconciliation: Row: DW-0492; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC17-AC20, AC35; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 6-3-level-3-slot-level-field-replacement, Group A — Contracts (2026-04-30).
 
@@ -4115,7 +4127,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 6-3-level-3-slot-level-field-replacement, Group A — Contracts (2026-04-30)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: B5 — Group B carry-forward: `Descriptors` materializes a list per access and lacks documented immutable-snapshot semantics under concurrent registration. Reconciliation: Row: DW-0493; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 6-3-level-3-slot-level-field-replacement, Group A — Contracts (2026-04-30).
-status: open
+status: done 2026-08-28
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Services/ProjectionSlots/ProjectionSlotRegistry.cs:45-59 materializes one ReadOnlyCollection descriptor snapshot after construction.
 
 ### DW-1225: Group B carry-forward: once a registry entry is flagged ambiguous (HFC1040), the flag is permanent — removing one duplicate source does not restore the slot. Reconciliation: Row: DW-0494; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2; Evidence: section: code review of 6-3-level-3-slot-level-field-replacement, Group A — Contracts (2026-04-30).
 
@@ -4129,21 +4142,24 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 6-3-level-3-slot-level-field-replacement, Group A — Contracts (2026-04-30)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: B7 — Group B carry-forward: identical descriptors emitted by two sources still trigger HFC1040 because dedupe runs only on key equality, not full descriptor equality. Reconciliation: Row: DW-0495; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2; Evidence: section: code review of 6-3-level-3-slot-level-field-replacement, Group A — Contracts (2026-04-30).
-status: open
+status: done 2026-08-28
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Services/ProjectionSlots/ProjectionSlotRegistry.cs:154-160 deduplicates fully equal descriptors before marking a key ambiguous.
 
 ### DW-1227: Group B carry-forward: descriptor `FieldType` is trusted at registration; nothing checks it against the actual `ProjectionType.GetProperty(FieldName).PropertyType`, so a hand-built descriptor can register with a wrong type and crash at render. Reconciliation: Row: DW-0496; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 6-3-level-3-slot-level-field-replacement, Group A — Contracts (2026-04-30).
 
 origin: migrated from legacy ledger ("Deferred from: code review of 6-3-level-3-slot-level-field-replacement, Group A — Contracts (2026-04-30)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: B8 — Group B carry-forward: descriptor `FieldType` is trusted at registration; nothing checks it against the actual `ProjectionType.GetProperty(FieldName).PropertyType`, so a hand-built descriptor can register with a wrong type and crash at render. Reconciliation: Row: DW-0496; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 6-3-level-3-slot-level-field-replacement, Group A — Contracts (2026-04-30).
-status: open
+status: done 2026-08-28
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Components/Rendering/FcFieldSlotHost.cs:106-118 validates descriptor FieldType against TField and falls back safely.
 
 ### DW-1228: Group B carry-forward: HFC1040 log path uses `enum.ToString()` per duplicate hit, allocating in a hot diagnostic path. Reconciliation: Row: DW-0497; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC17-AC20, AC35; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2; Evidence: section: code review of 6-3-level-3-slot-level-field-replacement, Group A — Contracts (2026-04-30).
 
 origin: migrated from legacy ledger ("Deferred from: code review of 6-3-level-3-slot-level-field-replacement, Group A — Contracts (2026-04-30)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: B9 — Group B carry-forward: HFC1040 log path uses `enum.ToString()` per duplicate hit, allocating in a hot diagnostic path. Reconciliation: Row: DW-0497; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC17-AC20, AC35; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2; Evidence: section: code review of 6-3-level-3-slot-level-field-replacement, Group A — Contracts (2026-04-30).
-status: open
+status: done 2026-08-28
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Services/ProjectionSlots/ProjectionSlotRegistry.cs:163-169 passes ProjectionRole directly to the generated logger; the explicit enum.ToString allocation is gone.
 
 ### DW-1229: `RenderDefault?.Invoke(context)(builder)` does not null-check the inner `RenderFragment<T>` return [`FcFieldSlotHost.cs:79`] — spec-compliant authors do not return null fragments; low real-world risk. Reconciliation: Row: DW-0498; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC17-AC20, AC35; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: FcFieldSlotHost.cs:79.
 
@@ -4192,7 +4208,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 6-3-level-3-slot-level-field-replacement, Group B — Shell Runtime (2026-04-30)"), 2026-08-27
 location: ProjectionSlotRegistry.cs:303-305
 reason: GB-D7 — Reflection-based `Context` property lookup with virtual/override base properties [`ProjectionSlotRegistry.cs:303-305`] — Blazor convention is `[Parameter]` on the most-derived property; corner case. Reconciliation: Row: DW-0504; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: ProjectionSlotRegistry.cs:303-305.
-status: open
+status: done 2026-08-28
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Services/ProjectionSlots/ProjectionSlotRegistry.cs:208-243 handles inherited or shadowed Context lookup and validates the resulting public Parameter property.
 
 ### DW-1236: Strict `propertyType != expectedContextType` rejects covariant/wrapper context types and produces cosmetic mismatch message for closed-generic slots [`ProjectionSlotRegistry.cs:311-314`] — spec D12 requires exact typed Context, intentional. Reconciliation: Row: DW-0505; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC14-AC16, AC30; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: ProjectionSlotRegistry.cs:311-314.
 
@@ -4290,7 +4307,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 6-3-level-3-slot-level-field-replacement, Group B — Shell Runtime (2026-04-30)"), 2026-08-27
 location: ProjectionSlotRegistry.cs:240-246
 reason: GB-D21 — Stale `Major` rollback diagnostic does not include the descriptor's effective major in HFC1041 message [`ProjectionSlotRegistry.cs:240-246`] — cosmetic; HFC1041 reports `Expected major` and the descriptor's full version is in `{ContractVersion}`. Reconciliation: Row: DW-0518; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC14-AC16, AC30; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2; Evidence: ProjectionSlotRegistry.cs:240-246.
-status: open
+status: done 2026-08-28
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Services/ProjectionSlots/ProjectionSlotRegistry.cs:99-110 logs both expected and actual effective major, minor, and build values.
 
 ### DW-1250: Once `Ambiguous` flag is set, removing one duplicate source does not restore the slot (Group A B6 carry-forward) [`ProjectionSlotRegistry.cs:262-278`] — constructor-only registration model; recovery requires process restart with corrected DI. Reconciliation: Row: DW-0519; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC14-AC16, AC30; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: ProjectionSlotRegistry.cs:262-278.
 
@@ -4382,7 +4400,8 @@ decision: 2026-08-27 Implement change — Implement the behavior requested by DW
 origin: migrated from legacy ledger ("Deferred from: code review of 6-3-level-3-slot-level-field-replacement, Group B — Shell Runtime (2026-04-30)"), 2026-08-27
 location: ProjectionSlotRegistry.cs:273
 reason: GB-D34 — HFC1040 log path uses `enum.ToString()` per duplicate hit (Group A B9 carry-forward) [`ProjectionSlotRegistry.cs:273`] — duplicate-registration path fires once per process at startup; allocation is not a hot path. Reconciliation: Row: DW-0531; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2; Evidence: ProjectionSlotRegistry.cs:273.
-status: open
+status: done 2026-08-28
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Services/ProjectionSlots/ProjectionSlotRegistry.cs:163-169 no longer calls ToString on the role at the duplicate-log callsite.
 
 ### DW-1263: Role-specific Ambiguous entry does not fall through to role-agnostic on Resolve [`ProjectionSlotRegistry.cs:202-216`] — current behavior is spec-compliant per D6/D11 ("duplicate exact slots are deterministic diagnostics/errors"); duplicate must be visible to adopter, not silently papered over by role-agnostic. Reconciliation: Row: DW-0532; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC14-AC16, AC30; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2, Story 11.4; Evidence: ProjectionSlotRegistry.cs:202-216.
 
@@ -4417,7 +4436,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 6-3-level-3-slot-level-field-replacement, Group C — Counter Sample (2026-04-30)"), 2026-08-27
 location: Program.cs
 reason: GC-D4 — `__FrontComposerProjectionTemplatesRegistration.Descriptors` compile dependency on at least one `[ProjectionTemplate]` marker; removing all markers breaks `Program.cs` compile [`samples/Counter/Counter.Web/Program.cs:34`] — Story 6-2 carry-forward; generator should emit empty descriptor array when no markers exist for graceful empty-manifest fallback. Reconciliation: Row: DW-0536; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: samples/Counter/Counter.Web/Program.cs:34.
-status: open
+status: done 2026-08-28
+resolution: already resolved: src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionTemplateManifestEmitter.cs:113-137 always emits the registration type and an empty descriptor array when no markers exist.
 
 ### DW-1268: `markup.ShouldContain("04/14/2026")` couples to InvariantCulture date format string; brittle to FluentDataGrid markup changes [`tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs:257`] — once GC-P5 lands FakeTimeProvider this becomes deterministic; format-specific assertion remains brittle but acceptable Story 6-3 scope. Reconciliation: Row: DW-0537; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC17-AC20, AC35; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4; Evidence: tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs:257.
 
@@ -4633,7 +4653,8 @@ status: open
 origin: migrated from legacy ledger ("Patches deferred from Story 6-5 review (2026-05-01)"), 2026-08-27
 location: FcFieldPlaceholder.razor.cs
 reason: P8 — Reuse Story 4-6 `.fc-field-placeholder-dev` hook from `FcFieldPlaceholder.razor.css` instead of duplicating the red-dashed outline rule in `FcDevModeAnnotation.razor.css`. Cosmetic CSS cleanup. [`src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeAnnotation.razor.css`] Reconciliation: Row: DW-0566; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC5-AC13, AC26-AC29, AC33-AC34; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeAnnotation.razor.css.
-status: open
+status: done 2026-08-28
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeAnnotation.razor.css:12-19 and FcFieldPlaceholder.razor.css:7-9 contain distinct rules; the duplicated red-dashed outline is gone.
 
 ### DW-1298: Wrap `DevModeOverlayController.SelectedAnnotationKey` / `SelectedNode` mutations in a single private lock. Theoretical race (Blazor scoped service is single-threaded); harden when JS-interop continuations introduce a second SynchronizationContext. [`src/Hexalith.FrontComposer.Shell/Services/DevMode/DevModeOverlayController.cs`] Reconciliation: Row: DW-0567; Final classification 2026-05-13: fixed-in-11.6; Decision owner: Story 11.6; AC coverage: AC9, AC13; Score: impact=high; risk=medium; cost=low/medium; adjacency=direct; Rationale: Overlay selection state is serialized behind a private lock and same-key re-registration refreshes the selected node.; Validation/evidence: src/Hexalith.FrontComposer.Shell/Services/DevMode/DevModeOverlayController.cs; tests/Hexalith.FrontComposer.Shell.Tests/Services/DevMode/DevModeOverlayControllerTests.cs; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: src/Hexalith.FrontComposer.Shell/Services/DevMode/DevModeOverlayController.cs.
 
@@ -4853,7 +4874,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 8-4-projection-rendering-for-agents re-review (2026-05-04)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs
 reason: `MaxProjectionStatusGroups`/`MaxFieldsPerResource`/`MaxRowsPerResource` rendering paths use `Math.Max(1, …)` to guard `0`, masking a missing validator floor. **Owner:** options-pattern hardening. [`src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs`] Reconciliation: Row: DW-0595; Final classification 2026-05-14: accepted-constraint; Decision owner: Story 11.2 diagnostic/docs governance owner; Likelihood: low; Impact: low to medium; Release risk: non-blocking for v1 with documented trigger; Downstream impact: agent/adopter behavior remains stable for v1; Evidence: Story 11.5 D11/DN9/DN14/DN15 notes, row-scoped matrix, and Story 12.2 release-owner summary; Expiry/revalidation trigger: public MCP category/key changes, descriptor-registry mutability, build-time corpus signing/baseline materialization, or a consumer parsing diagnostic polish strings as contract input; Release-note requirement: required only if public machine keys/categories or corpus/fingerprint publication semantics change; Regression guard: Story11_5ResolutionTests, AggregateManifestIntegrityTests, SchemaNegotiationPrecedenceMatrixTests, AuthContextAccessorTests, and diagnostic docs governance tests as applicable; Previous owner was Story 11.5.
-status: open
+status: done 2026-08-28
+resolution: already resolved: src/Hexalith.FrontComposer.Mcp/Extensions/FrontComposerMcpServiceCollectionExtensions.cs:219-231 rejects non-positive MaxRowsPerResource, MaxFieldsPerResource, and MaxProjectionStatusGroups; commits e2a81d177 and 7a69cdf92 introduced the guards.
 
 ### DW-1327: Empty-state suggestions emit human (possibly localized) `Title` rather than an invocable command identifier or pair (`Title` + `ProtocolName`); agents cannot resolve back to a command without a separate manifest lookup. Owner: MCP UX follow-up. [`src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReader.cs` `BuildSafeSuggestionsAsync`] Reconciliation: Row: DW-0596; Final classification 2026-05-14: accepted-constraint; Decision owner: Story 11.2 diagnostic/docs governance owner; Likelihood: low; Impact: low to medium; Release risk: non-blocking for v1 with documented trigger; Downstream impact: agent/adopter behavior remains stable for v1; Evidence: Story 11.5 D11/DN9/DN14/DN15 notes, row-scoped matrix, and Story 12.2 release-owner summary; Expiry/revalidation trigger: public MCP category/key changes, descriptor-registry mutability, build-time corpus signing/baseline materialization, or a consumer parsing diagnostic polish strings as contract input; Release-note requirement: required only if public machine keys/categories or corpus/fingerprint publication semantics change; Regression guard: Story11_5ResolutionTests, AggregateManifestIntegrityTests, SchemaNegotiationPrecedenceMatrixTests, AuthContextAccessorTests, and diagnostic docs governance tests as applicable; Previous owner was Story 11.5.
 
@@ -7767,7 +7789,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-
 location: n/a
 source_spec: `_bmad-output/implementation-artifacts/sprint-status.yaml`
 reason: summary: The Story 11.17d-only GOV-1 promotion waiver exists only as prose inside a `waiver:` string, so any consumer reading the action item's structured fields still sees an unmet gate blocking the promotion that already happened. evidence: **Reconciled 2026-08-02 by approved GOV-1 course correction.** Story 11.17d completed on 2026-08-02 and is not reopened. The action's structured `due` field now contains only the unwaived condition, `before the next accepted governed release manifest`; the dated waiver is retained as history instead of competing current state. No schema extension was necessary. Reopen trigger: a future action requires a simultaneous partial waiver that cannot be represented by correcting its remaining due condition.
-status: open
+status: done 2026-08-28
+resolution: already resolved: _bmad-output/implementation-artifacts/sprint-status.yaml:260 limits the live GOV-1 due condition to before the next accepted governed release manifest, while line 273 retains the Story 11.17d waiver as historical context.
 decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1706, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1707: Execute the story-artifact validator's own test suite in CI, so a regression to the repository-wide evidence gate cannot ship unnoticed.
@@ -8299,7 +8322,8 @@ origin: migrated from legacy ledger ("Deferred from: build review of 11-20-recom
 location: ETagCacheService.cs:73-79
 source_spec: `_bmad-output/implementation-artifacts/11-21-recommended-analyzer-product-and-generator-burndown.md`
 reason: summary: `SemaphoreSlim.Dispose()` in `ETagCacheService` can strand a caller already awaiting `WaitAsync` rather than faulting it. evidence: `ETagCacheService.cs:73-79,324-356`. The added `catch (ObjectDisposedException)` covers only an already-disposed gate at call time; `SemaphoreSlim.Dispose` is documented as unsafe with pending waiters, so a seed in flight at circuit teardown is not guaranteed to observe the exception. A `CancellationTokenSource` cancelled in `Dispose()` and linked into `WaitAsync` would fault queued waiters deterministically. Story 11.21 added dispose tests but did not change the synchronisation primitive.
-status: open
+status: done 2026-08-28
+resolution: already resolved: commit 9ad4312f; src/Hexalith.FrontComposer.Shell/State/ETagCache/ETagCacheService.cs:68-77 intentionally leaves the managed semaphore undisposed so queued waiters settle safely.
 
 ### DW-1772: `SecurityLoggingGovernanceTests` lost its per-site, per-line inventory of the low-severity log calls when the remainder went from 73 to 0, so silently deleting a migrated diagnostic call now leaves the Governance lane green.
 
