@@ -3096,7 +3096,9 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of story 2-1 (2026-04-15)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **Parent-driven `OnParametersSet` on generated form** — When a parent passes a changing `InitialValue`, the emitted form does not re-initialize `_model`. v0.1 has no documented parent-driven reinit requirement; revisit if adopters need it. Reconciliation: Row: DW-0355; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC12, AC23, AC29, AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-1 (2026-04-15).
-status: open
+status: done 2026-08-28
+resolution: closed by human decision: Record the current behavior as intentional and close DW-1086 with its verified rationale.
+decision: 2026-08-28 Accept current behavior — Record the current behavior as intentional and close DW-1086 with its verified rationale.
 
 ### DW-1087: `AddHexalithFrontComposer` duplicate `Configure` no-op
 
