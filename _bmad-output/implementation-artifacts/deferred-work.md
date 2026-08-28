@@ -2510,7 +2510,9 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 4-6-empty-states-field-descriptions-and-unsupported-types (2026-04-25)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/
 reason: **Snapshot files lost UTF-8 BOM after regeneration** [multiple `.verified.txt` under `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/`] — environment/tooling regression (text-editor or `dotnet test` regeneration encoding); not a Story 4-6 logic defect. Investigate the regeneration toolchain or accept the new BOM-less convention for verified.txt files. Reconciliation: Row: DW-0276; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.4; AC coverage: AC12, AC23, AC29, AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.4.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4; Evidence: section: code review of 4-6-empty-states-field-descriptions-and-unsupported-types (2026-04-25).
-status: open
+status: done 2026-08-28
+resolution: closed by human decision: Record the current behavior as intentional and close DW-1007 with its verified rationale.
+decision: 2026-08-28 Accept current behavior — Record the current behavior as intentional and close DW-1007 with its verified rationale.
 
 ### DW-1008: `BoundedContextAttribute.AttributeTargets` is `Class` only — struct projections silent fallback hole
 
