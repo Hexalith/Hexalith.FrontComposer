@@ -7575,7 +7575,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-ru
 location: test/consumer
 source_spec: `_bmad-output/implementation-artifacts/rel-3-enforce-fr24-pre-publish-and-reconcile-releases.md`
 reason: summary: Unpublished `Hexalith.Tenants.Client 3.15.1` (NU1102) blocks the non-publishing chain's SBOM phase; the catalog-pin facet was resolved by owner directive. evidence: 2026-07-18 (updated same day): the Release Owner directed the governance expectation to `System.Reactive 7.0.0` and the nested-gitlink pins were realigned (EventStore 08b57086, Memories/Parties 041897f0) — all 99 governance tests and the chain's build/pack/test/consumer phases are green. The remaining blocker is `dotnet CycloneDX` over the slnx: it restores every solution project individually (including the Debug-only UI/AppHost/Parties graph), which fails NU1102 on `Hexalith.Tenants.Client >= 3.15.1` (nuget.org nearest 3.2.17) — the same in-flight gitlink-bump regression tracked by the Release Owner's parallel session. When 3.15.1 publishes (or the pin is corrected), re-run `prepare --non-publishing` for the fully green chain; consider whether the FR24 SBOM should be scoped to the packable Release graph instead of the whole slnx.
-status: open
+status: done 2026-08-28
+resolution: already resolved: references/Hexalith.Builds/Props/Directory.Packages.props:11 selects published Hexalith.Tenants.Client 5.4.1 and the unavailable 3.15.1 pin is absent; the root Builds gitlink is c8837217.
 
 ### DW-1677: Serialize `ExpandInRowJSModule` initialization and disposal so teardown cannot race a new import or invoke a module after it has been disposed.
 
