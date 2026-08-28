@@ -3481,6 +3481,7 @@ location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 severity: low
 reason: **[LOW] HFC1016 diagnostic added outside the spec-declared "4 new diagnostics" set** — defensible defense-in-depth against init-only derivable records but a spec-surface scope expansion. **Defer target:** spec patch to enumerate HFC1016; no code change required. Reconciliation: Row: DW-0404; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC12, AC23, AC29, AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2, Story 11.4; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group C (SourceTools layer) chunk.
 status: open
+decision: 2026-08-28 Implement requested change — Implement DW-1135 at its recorded touchpoint, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1136: [LOW] `NavigateToReturnPath` log template includes user-controlled `{ReturnPath}`
 

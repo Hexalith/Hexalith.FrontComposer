@@ -62,6 +62,15 @@
     "label": "Implement change",
     "resolution": ""
   },
+  "DW-1135": {
+    "answered_at": "2026-08-28",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Implement DW-1135 at its recorded touchpoint, update affected contracts and consumers, and add focused regression evidence.",
+    "key": "1",
+    "label": "Implement requested change",
+    "resolution": ""
+  },
   "DW-1141": {
     "answered_at": "2026-08-27",
     "bundle_name": "",
