@@ -7676,6 +7676,7 @@ source_spec: `_bmad-output/implementation-artifacts/gov-1-validate-shared-catalo
 reason: summary: BUILD-CAT-1 - Hexalith.Builds should introduce a semantic catalog-contract version marker and canonicalization rules for Props/Directory.Packages.props. evidence: GOV-1's AD-6 validates every selected Builds catalog directly by semantic content because `catalog_contract_version` does not yet exist upstream; FrontComposer records the marker as nullable provenance only and does not make it mandatory without a separate Architecture/Product/Release Owner decision and migration plan. Owner: Hexalith.Builds maintainer. Reopen trigger: Hexalith.Builds publishes a supported marker/contract-version scheme.
 status: open
 decision: 2026-08-28 Approve marker contract — Define the marker and canonical bytes in Hexalith.Builds, add migration and versioning rules, then update FrontComposer policy and focused tests.
+decision: 2026-08-28 Approve marker contract — Define the marker and canonical bytes in Hexalith.Builds, add migration and versioning rules, then update FrontComposer policy and focused tests.
 
 ### DW-1688: BUILD-REL-1 - reopen Hexalith.Builds issue 17 with the GOV-1 amendment or file a successor, then obtain the owner-accepted immutable reusable-workflow revision and exact evaluator closure.
 
