@@ -7728,7 +7728,9 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-
 location: ShellTypeOrganizationGovernanceTests.DeclarationPin
 source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
 reason: summary: The declaration guard pins type-level identity only (Path|Identity|Kind|Accessibility|Modifiers) and not member-level identity, so a future move that reordered a record's parameters, renumbered an enum member, dropped a base type/interface, changed an attribute, generic constraint, or nullability would pass the guard green. evidence: `ShellTypeOrganizationGovernanceTests.DeclarationPin` and `ShellTypeOrganizationGovernanceTests.RuntimeKind` assert kind/accessibility/modifiers/top-level/assembly only. This meets AC4 as written (AC4 scopes the pins to type identities/kinds/modifiers/accessibility/top-level assembly ownership) and member-level preservation of the current 111 targets was manually verified during this review. Reopen trigger: AC4 is extended to member-level identity, or a member-level drift regression is observed.
-status: open
+status: done 2026-08-28
+resolution: closed by human decision: Record the current behavior as intentional and close DW-1691 with its verified rationale.
+decision: 2026-08-28 Accept current behavior — Record the current behavior as intentional and close DW-1691 with its verified rationale.
 
 ### DW-1692: Sibling reusable-workflow callers still float on `@main` (`ci.yml` → `domain-ci.yml@main`, plus `commitlint.yml`, `codeql.yml`, `dependency-review.yml`), so the same "Hexalith.Builds adds a new required input" change that just broke `release.yml` with a startup_failure would silently break those workflows too — and because `release.yml` triggers on `workflow_run: [CI] completed / conclusion == 'success'`, a CI startup_failure would also halt all releases.
 
