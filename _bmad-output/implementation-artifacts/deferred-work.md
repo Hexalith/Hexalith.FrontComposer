@@ -540,7 +540,9 @@ decision: 2026-08-28 Close as accepted — Retain the current behavior as an exp
 origin: migrated from legacy ledger ("Deferred from: code review of 9-4-diagnostic-id-system-and-deprecation-policy — chunk C (2026-05-10)"), 2026-08-27
 location: sprint-status.yaml
 reason: **DEF-9-4-C8 — `storyOwner` is a free-form slug with no controlled vocabulary** [all stubs] — after chunk-C P1 normalises `storyOwner` against registry, a follow-up enforcement could compare values against `sprint-status.yaml` story keys. Sources: blind. Reconciliation: Row: DW-0008; Rejected with rationale 2026-05-11; Evidence: storyOwner parity remains registry-backed; controlled-vocabulary expansion is beyond Story 11.2 budget and requires a Product/Architecture decision on cross-file vocabulary enforcement.
-status: open
+status: done 2026-08-28
+resolution: closed by human decision: Retain the current behavior as an explicit accepted constraint with the ledger evidence preserved.
+decision: 2026-08-28 Close as accepted — Retain the current behavior as an explicit accepted constraint with the ledger evidence preserved.
 
 ### DW-740: `samples/*.json` not deeply audited for forbidden tokens [`docs/diagnostics/samples/*.json`] — README requires samples avoid timestamps, absolute paths, machine names, SDK banners, live feed URLs. Add a separate scan / fixture-schema test. Chunk B/C fixture-schema work; partly addressed in chunk-A patch P10 (registry-drift-report path redaction). Sources: edge. Reconciliation: Row: DW-0009; Resolved 2026-05-11; Evidence: DriftSampleReports_AreNormalizedAndCommitted validates findings shape and forbidden evidence tokens.
 
