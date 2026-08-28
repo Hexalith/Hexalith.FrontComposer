@@ -72,6 +72,8 @@ public sealed class DriftBenchmarkTests {
             additionalTexts: [baseline],
             optionsProvider: CompilationHelper.DriftEnabledOptions());
         for (int i = 0; i < WarmupIterations; i++) {
+            CSharpCompilation warmupMutated = MutateOneDeclaration(baseCompilation, iteration: i);
+            primed = primed.RunGenerators(warmupMutated, TestContext.Current.CancellationToken);
             primed = primed.RunGenerators(baseCompilation, TestContext.Current.CancellationToken);
         }
 

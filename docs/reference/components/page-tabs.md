@@ -105,6 +105,8 @@ attributes. The pinned Fluent component applies additional attributes to both it
 so overrides can create duplicate or contradictory associations. Keep content inside `FcPageTab` and
 use the derived `${Id}-panel` contract.
 
+Because tabs expose caller-owned panel content, custom surfaces placed inside tabs must preserve accessible names and keyboard reachability. The closest published checks are [HFC1050](../../diagnostics/HFC1050.md) for missing accessible names and [HFC1051](../../diagnostics/HFC1051.md) for blocked keyboard access.
+
 ## Localization (FC-L10N)
 
 The components do not inject a localizer. Adopters pass localized `AriaLabel`, `Header`, and
