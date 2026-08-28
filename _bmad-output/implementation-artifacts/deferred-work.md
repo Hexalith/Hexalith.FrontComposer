@@ -8325,6 +8325,7 @@ location: FrontComposerDiagnosticLog.cs:1181-1190
 source_spec: `_bmad-output/implementation-artifacts/11-21-recommended-analyzer-product-and-generator-burndown.md`
 reason: summary: The new 6000-band `ScopeReadinessStorageReadyDispatched` event logs a correlation id verbatim while the Story 11.18 hot-path family always digests correlation ids, so the two cannot be joined and the raw identifier reaches logs. evidence: `FrontComposerDiagnosticLog.cs:1181-1190` passes `correlationId` through `Bounded()`, which returns any value under 512 chars without line-forging characters verbatim — a 26-char ULID is unchanged. `LifecycleStateService.cs:282` documents "Join key with HotPath lifecycle events: same opaque sha256 digest (Decision 2)" and uses `FrontComposerHotPathLog.DigestIdentifier`, which always returns `sha256:<16 hex>`. Not a regression (the pre-migration direct call also logged it raw), but it leaves the 11.18 digest posture unapplied. Fixing it changes operator-visible output, which trades against Story 11.21's migration-fidelity property that values stay unchanged — a Framework Maintainer decision.
 status: open
+decision: 2026-08-28 Implement requested change — Implement the behavior described by DW-1769 across affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1770: `FrontComposerDiagnosticLog.Digest` and `FrontComposerHotPathLog.DigestIdentifier` are two independent digest implementations with different token formats.
 
