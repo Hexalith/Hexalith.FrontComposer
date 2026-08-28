@@ -2450,7 +2450,9 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 4-6-empty-states-field-descriptions-and-unsupported-types — Pass 3 (2026-04-25 bmad-code-review)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionEmptyPlaceholder.razor.cs:107-117
 reason: **`OnParametersSet` sync-only override on `FcProjectionEmptyPlaceholder`** [`src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionEmptyPlaceholder.razor.cs:107-117`] — Future async-friendly resolver becomes a breaking interface change. Architectural concern, not a current bug. Reconciliation: Row: DW-0268; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionEmptyPlaceholder.razor.cs:107-117.
-status: open
+status: done 2026-08-28
+resolution: closed by human decision: Record the current behavior as intentional and close DW-999 with its verified rationale.
+decision: 2026-08-28 Accept current behavior — Record the current behavior as intentional and close DW-999 with its verified rationale.
 
 ### DW-1000: `_expandedItemKey.Equals(key)` StatusOverview key fragility
 
