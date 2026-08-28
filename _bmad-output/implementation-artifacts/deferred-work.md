@@ -1256,7 +1256,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 8-5-skill-corpus-and-build-time-agent-support (2026-05-04)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1051-1052
 reason: **DEF-5 — LowerIdPattern accepts numeric-only IDs and has no length cap** [`src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1051-1052`] — `^[a-z0-9]+(?:-[a-z0-9]+)*$` permits `1234` or 1000-char IDs; no observed abuse path today. **Owner:** v1.x identifier policy. Sources: edge. Reconciliation: Row: DW-0103; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
-status: open
+status: done 2026-08-28
+resolution: already resolved: commit a7e94471; src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusParser.cs:12,157-161,507-509 caps IDs at 128 characters and requires a lowercase-letter prefix.
 
 ### DW-835: Diagnostic message `Source` field carries raw paths; latent leakage if logged unsanitized [`src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:737-741`] — No current consumer logs `snapshot.Diagnostics` to a tenant-facing channel; document the contract. Owner: v1.x telemetry contract. Sources: edge. Reconciliation: Row: DW-0104; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.2 diagnostic/docs governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.2 diagnostic/docs governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 
@@ -1392,7 +1393,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 8-4-projection-rendering-for-agents (2026-05-03)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Mcp/FrontComposerMcpOptions.cs
 reason: **DF8.4-4 — `MaxFieldsPerResource = 0` and `MaxRowsPerResource = 0` silently fall back to 1 via `Math.Max(1, ...)` clamp** [`src/Hexalith.FrontComposer.Mcp/FrontComposerMcpOptions.cs` validator] — Validator covers new projection bounds (cell, doc, suggestions, status groups, timeline entries) but not pre-existing per-resource bounds; operator setting 0 expects a hard fail. **Owner:** Options-pattern hardening (paired with F25 cell-min validator patch). Sources: auditor. Reconciliation: Row: DW-0122; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
-status: open
+status: done 2026-08-28
+resolution: already resolved: src/Hexalith.FrontComposer.Mcp/Extensions/FrontComposerMcpServiceCollectionExtensions.cs:219-221 rejects non-positive MaxRowsPerResource and MaxFieldsPerResource.
 
 ### DW-854: `AppendEmptyState` lowercases plural label fallback via `ToLowerInvariant()` [`src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs:234-237`] — "GDPR exports" → "gdpr exports"; an LLM may quote the lowered form back. Currently the only fallback is `descriptor.Title.ToLowerInvariant()`; correct fix is to either preserve case or require non-empty `EntityPluralLabel` upstream. Owner: Locale/proper-noun handling, paired with localization follow-up. Sources: edge. Reconciliation: Row: DW-0123; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 
@@ -1909,7 +1911,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 7-3-command-authorization-policies (Pass 3, 2026-05-02)"), 2026-08-27
 location: EventStoreIdentity.cs:13-18
 reason: **D13 — `EventStoreIdentity.RequireUserContext(snapshot)` re-runs `RequireValidSegment` on already-validated fields** [`EventStoreIdentity.cs:13-18`] — Dead defensive code; remove with D3. Sources: B26. Reconciliation: Row: DW-0193; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
-status: open
+status: done 2026-08-28
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreIdentity.cs:13-18 returns the already-validated snapshot fields and documents removal of redundant validation.
 
 ### DW-925: `Resolve` does not catch exceptions from `IUserContextAccessor` property getters [`FrontComposerTenantContextAccessor.cs:66-67`] — Disposed claims principal or unintialized HTTP context could throw; non-tenant exception leaks implementation detail. `IUserContextAccessor` adopters are expected to be safe. Sources: B35. Reconciliation: Row: DW-0194; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 
@@ -3349,7 +3352,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 2-2-ac
 location: Hexalith.FrontComposer.Contracts.cs
 severity: low
 reason: **W6 [LOW] `System.Collections.Immutable` `<PackageReference>` lacks explicit `Version`** — `Hexalith.FrontComposer.Contracts.csproj:6-8` adds the package only for netstandard2.0 with no version pin, relying on Central Package Management in `Directory.Packages.props`. Already in effect per other commits, so deterministic now; revisit if CPM is ever disabled or the package is added in a project without CPM. Reconciliation: Row: DW-0389; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.4; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.4.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4; Evidence: section: code review of story 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group A (Contracts) chunk.
-status: open
+status: done 2026-08-28
+resolution: already resolved: Directory.Packages.props:11 imports the centralized catalog, and references/Hexalith.Builds/Props/Directory.Packages.props:299 pins System.Collections.Immutable 10.0.11.
 
 ### DW-1121: `IconAttribute` target is `AttributeTargets.Class` (unrestricted)
 
@@ -6081,7 +6085,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 8 verification (2026-05-19)"), 2026-08-27
 location: partial-publish-incident.json
 reason: **CR-12-4-Def38 — Empty/truncated existing `partial-publish-incident.json` evades P155 overwrite protection:** P155 prevents overwriting a real incident with the placeholder, but a 0-byte or corrupted file passes the `failed_phase != "none"` check trivially. Threat model: operator/attacker truncating the file mid-investigation; low likelihood. Pick up when forensic-integrity hardening is prioritized. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1917-1930`.
-status: open
+status: done 2026-08-28
+resolution: already resolved: eng/release_evidence.py:3543-3555 refuses to overwrite an unreadable existing partial-publish incident.
 
 ### DW-1482: `args.output` directory path crashes with cryptic OSError: Operator misuse (passing a dir instead of file) crashes `write_json`'s `os.replace`; helper exits 2 instead of typed error. Pick up alongside Def35. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1917`.
 
@@ -6480,7 +6485,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run.md (2026-05-19, round 9)"), 2026-08-27
 location: eng/release_evidence.py:2058-2126
 reason: **CR-12-4-Def78 — `safe_run_attempt` loses sub-integer provenance on float-string input `'1.0'`:** Edge Case Hunter EC-22 — niche. Pick up alongside typed-CLI hardening. Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:2058-2126`.
-status: open
+status: done 2026-08-28
+resolution: already resolved: eng/release_evidence.py:2085-2089 rejects every floating-point run_attempt, including 1.0.
 
 ### DW-1538: publishCmd `jq --arg run_id` `tonumber` parse-error fail-closed but diagnostic is opaque: Edge Case Hunter EC-23 — pick up alongside CI diagnostic prose review. Owner: workflow maintainer. Evidence: `.releaserc.json:642`.
 
@@ -7029,7 +7035,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of rel-2-align-
 location: eng/release_evidence.py:642
 source_spec: `_bmad-output/implementation-artifacts/rel-2-align-frontcomposer-cicd-with-tenants.md`
 reason: summary: A genuinely-timestamped package can be scored `timestamp_status="missing"` when a verbose cert chain pushes the `Timestamp:` line outside the 80-line scan window. evidence: `_timestamp_verified_in_region` truncates each package's `dotnet nuget verify -v normal` region to the last `_TIMESTAMP_BLOCK_MAX_LINES = 80` lines before scanning for the timestamp confirmation (`eng/release_evidence.py:642,663-676`). If cert-chain output pushes the `Timestamp:` line more than 80 lines above the package's `Successfully verified` line, the real timestamp falls outside the window → `timestamp_status="missing"` → `prepare-manifest` fails closed on a genuinely-timestamped package. Deferred: unlikely with normal `-v normal` output (per-package blocks are typically well under 80 lines), but a fragility to harden. Evidence: `eng/release_evidence.py:642,669`.
-status: open
+status: done 2026-08-28
+resolution: already resolved: commit 936913b0 removed parse_signing_verification and its bounded Timestamp scan when author-signing parsing was retired.
 
 ### DW-1608: `validate-consumer-package-references.py` uses a fixed `/tmp` work dir with no cleanup-on-failure, so concurrent local runs corrupt each other.
 
@@ -7764,7 +7771,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of run-current-
 location: release_package_contract.py
 source_spec: `_bmad-output/implementation-artifacts/spec-run-all-tests-fix-failures-2.md`
 reason: summary: Add invalid-manifest fixtures for EventStore release-manifest normalization and containment guards. evidence: The concurrently advanced EventStore checkout's `tools/release_package_contract.py` rejects malformed, duplicate, foreign, traversal, non-normalized, and out-of-root entries, while current tests exercise the checked-in valid manifest only. This submodule work was unrelated to and preserved by the FrontComposer repair.
-status: open
+status: done 2026-08-28
+resolution: already resolved: references/Hexalith.EventStore/tests/Hexalith.EventStore.Contracts.Tests/Packaging/ReleasePackageManifestTests.cs:172-183 exercises malformed, duplicate, foreign, traversal, non-normalized, out-of-root, and missing manifest entries.
 
 ### DW-1699: Prevent generic-host startup exception logging from exposing raw customization identifiers.
 
