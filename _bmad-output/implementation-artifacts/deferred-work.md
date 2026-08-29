@@ -9513,6 +9513,7 @@ source_spec: `spec-11-24-adopt-the-owner-approved-eventstore-runtime-identity.md
 severity: high
 reason: The complete 19-interaction provider report truthfully records 16 contract failures and a runtime identity mismatch, while the AppHost smoke records failed runtime observations. The frozen intent explicitly makes these outcomes non-authorizing and routes reconciliation to separate work.
 status: open
+decision: 2026-08-29 Approve reconciliation — Reconcile consumers, pacts, adapters, and loopback/AppHost evidence against the approved provider contract.
 
 ### DW-1902: Repair the pre-existing AppHost Release source/package selection gap for the Parties and Tenants UI modules.
 origin: spec-deferred 89c278b3540e
