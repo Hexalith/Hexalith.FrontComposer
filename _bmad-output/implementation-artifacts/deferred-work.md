@@ -4692,6 +4692,7 @@ origin: migrated from legacy ledger ("Patches deferred from Story 6-5 review (20
 location: src/Hexalith.FrontComposer.Shell/Services/DevMode/
 reason: P6 — Make `DevModeOverlayController`, `RazorEmitter`, `ClipboardJSModule`, `DevModeAnnotationSnapshotVisitor`, `DevModeRegistrationLogger` `internal sealed class` (interfaces stay public). Mass refactor across Shell tests; defer to a focused PR. [`src/Hexalith.FrontComposer.Shell/Services/DevMode/`] Reconciliation: Row: DW-0565; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC5-AC13, AC26-AC29, AC33-AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: src/Hexalith.FrontComposer.Shell/Services/DevMode/.
 status: done 2026-08-29
+decision: 2026-08-29 Preserve public surface — Treat concrete classes as supported API.
 resolution: closed by human decision: Treat concrete classes as supported API.
 decision: 2026-08-29 Preserve public surface — Treat concrete classes as supported API.
 
@@ -7015,6 +7016,7 @@ source_spec: `_bmad-output/implementation-artifacts/spec-11-9-shell-layering-dec
 reason: summary: Harden projection-route construction against protocol-relative or non-internal routes in a dedicated behavior-changing security story. evidence: The pre-existing `FrontComposerNavigation.BuildRoute` contract accepts arbitrary bounded-context text; Story 11.9 deliberately preserves its byte-for-byte 2.x behavior while moving ownership, so introducing `IsInternalRoute` rejection here would exceed the relocation intent.
 status: open
 decision: 2026-08-29 Harden internal routes — Reject non-internal routes while preserving valid routes and adding compatibility tests.
+decision: 2026-08-29 Harden internal routes — Reject non-internal routes while preserving valid routes and adding compatibility tests.
 
 ### DW-1600: Complete the one-type-per-file split for the retained projection fallback contracts and scheduler helper types under Story 11.17.
 
@@ -8580,6 +8582,7 @@ source_spec: `_bmad-output/implementation-artifacts/spec-11-24-adopt-the-owner-a
 reason: summary: EventStore supplies a real-loopback Pact provider verifier and separately reconciles the 19 FrontComposer consumer interactions with the provider wire contract. evidence: Neither approved nor current EventStore source contains the required provider-test project, while committed pacts conflict with real query envelopes, ETags, headers, and provider-state inputs.
 status: open
 decision: 2026-08-29 Approve reconciliation — Reconcile consumers, pacts, adapters, and loopback/AppHost evidence against the approved provider contract.
+decision: 2026-08-29 Approve reconciliation — Reconcile consumers, pacts, adapters, and loopback/AppHost evidence against the approved provider contract.
 
 ### DW-1789: Remove duplicate Governance execution from the Quality workflow while preserving its authoritative blocking lane.
 
@@ -9513,6 +9516,7 @@ source_spec: `spec-11-24-adopt-the-owner-approved-eventstore-runtime-identity.md
 severity: high
 reason: The complete 19-interaction provider report truthfully records 16 contract failures and a runtime identity mismatch, while the AppHost smoke records failed runtime observations. The frozen intent explicitly makes these outcomes non-authorizing and routes reconciliation to separate work.
 status: open
+decision: 2026-08-29 Approve reconciliation — Reconcile consumers, pacts, adapters, and loopback/AppHost evidence against the approved provider contract.
 decision: 2026-08-29 Approve reconciliation — Reconcile consumers, pacts, adapters, and loopback/AppHost evidence against the approved provider contract.
 
 ### DW-1902: Repair the pre-existing AppHost Release source/package selection gap for the Parties and Tenants UI modules.
