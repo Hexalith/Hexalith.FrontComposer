@@ -238,7 +238,7 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
         await grid.WaitForAssertionAsync(() =>
         {
             _ = refreshScheduler.Received().RegisterLane(Arg.Is<ProjectionFallbackLane>(lane =>
-                lane.Filters.ContainsKey("Id") && lane.Filters["Id"] == "counter-filter"));
+                HasCounterFilter(lane)));
             grid.FindAll(IndicatorSelector).ShouldBeEmpty();
         });
 
@@ -358,4 +358,15 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
         Count = count,
         LastUpdated = s_now,
     };
+
+    private static bool HasCounterFilter(ProjectionFallbackLane? lane)
+    {
+        if (lane?.Filters is not { } filters)
+        {
+            return false;
+        }
+
+        return filters.TryGetValue("Id", out string? filterValue)
+            && filterValue == "counter-filter";
+    }
 }

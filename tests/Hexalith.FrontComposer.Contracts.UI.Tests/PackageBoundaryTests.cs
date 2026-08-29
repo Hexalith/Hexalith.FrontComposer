@@ -12,7 +12,7 @@ using Xunit;
 namespace Hexalith.FrontComposer.Contracts.UI.Tests;
 
 public sealed class PackageBoundaryTests {
-    private const string FluentV5Version = "5.0.0-rc.5-26219.1";
+    private const string FluentV5Version = "5.0.0-rc.4-26180.1";
 
     [Fact]
     public void PublicApi_ExportedMembers_MatchIntentionalBaseline() {

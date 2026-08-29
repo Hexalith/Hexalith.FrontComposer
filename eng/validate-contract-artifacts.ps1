@@ -177,7 +177,14 @@ function Find-RedactionLeaks([string] $Text) {
     $leaks.Add("environment-shaped secret")
   }
 
-  if ([regex]::IsMatch($normalized, '[A-Za-z0-9+/]{64,}={0,2}', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
+  # A 64-hex value is safe only where the document identifies it as a checksum/hash.
+  # Never allowlist the value globally: the same bytes in a token/secret field must fail.
+  $encodedTokenScan = [regex]::Replace(
+    $normalized,
+    '"[^"\r\n]*(?:sha|hash|checksum|digest|fingerprint)[^"\r\n]*"\s*:\s*"[0-9a-f]{64}"',
+    '"ALLOWLISTED_HASH_FIELD":"ALLOWLISTED_SHA256"',
+    [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+  if ([regex]::IsMatch($encodedTokenScan, '[A-Za-z0-9+/]{64,}={0,2}', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
     $leaks.Add("encoded token-like payload")
   }
 
@@ -202,34 +209,46 @@ foreach ($file in $requiredFiles) {
 
 $redactionLines | Set-Content -LiteralPath (Join-Path $ArtifactDir "redaction-scan.txt") -Encoding utf8
 
-if ([string]::IsNullOrWhiteSpace($ProviderVerificationReport)) {
-  $ProviderVerificationReport = Join-Path $ArtifactDir "provider-verification.json"
-}
-
-$providerStatus = "BLOCKED_HANDOFF"
+$repositoryRoot = Split-Path -Parent $PSScriptRoot
+$frontComposerEvidenceRoot = Join-Path $repositoryRoot "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24"
+$expectedProviderVerificationReport = Join-Path $frontComposerEvidenceRoot "provider-verification/provider-verification.json"
+$providerStatus = "NOT_REQUIRED"
 if ($RequireProviderVerification) {
-  if (!(Test-Path -LiteralPath $ProviderVerificationReport)) {
+  if ([string]::IsNullOrWhiteSpace($ProviderVerificationReport)) {
+    $ProviderVerificationReport = $expectedProviderVerificationReport
+  }
+
+  $resolvedProviderVerificationReport = [System.IO.Path]::GetFullPath($ProviderVerificationReport)
+  $resolvedExpectedProviderVerificationReport = [System.IO.Path]::GetFullPath($expectedProviderVerificationReport)
+  if (![string]::Equals(
+      $resolvedProviderVerificationReport,
+      $resolvedExpectedProviderVerificationReport,
+      [System.StringComparison]::Ordinal)) {
+    $errors.Add("Provider verification must use the FrontComposer-owned report: $expectedProviderVerificationReport")
+  } elseif (!(Test-Path -LiteralPath $ProviderVerificationReport)) {
     $errors.Add("Provider verification is required for this lane but '$ProviderVerificationReport' was not found.")
   } elseif ((Get-Item -LiteralPath $ProviderVerificationReport).Length -eq 0) {
     $errors.Add("Provider verification report is empty: $ProviderVerificationReport")
   } else {
-    $providerStatus = "VERIFICATION_REPORT_PRESENT"
     $providerText = Get-Content -LiteralPath $ProviderVerificationReport -Raw
     $providerLeaks = Find-RedactionLeaks $providerText
     if ($providerLeaks.Count -gt 0) {
       $errors.Add("Redaction scan failed for provider verification report: $($providerLeaks -join ', ')")
     }
-  }
-}
 
-if (!$RequireProviderVerification) {
-  $providerReport = @"
-Provider verification result: BLOCKED_HANDOFF
-Provider: Hexalith.EventStore
-Reason: deterministic provider-state setup, teardown, TCP startup, health probe, port isolation, and stale-process detection must run beside the EventStore provider host.
-Handoff: tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-verification-handoff.md
-"@
-  $providerReport | Set-Content -LiteralPath (Join-Path $ArtifactDir "provider-verification-blocked.txt") -Encoding utf8
+    $validator = Join-Path $repositoryRoot "eng/eventstore_runtime_evidence.py"
+    $resolvedPactDir = [System.IO.Path]::GetFullPath($PactDir)
+    $validationOutput = @(& python3 $validator `
+      --evidence-root $frontComposerEvidenceRoot `
+      --pact-dir $resolvedPactDir 2>&1)
+    if ($LASTEXITCODE -ne 0) {
+      foreach ($line in $validationOutput) {
+        $errors.Add([string] $line)
+      }
+    } else {
+      $providerStatus = "COMPLETE_HASH_BOUND_REPORT"
+    }
+  }
 }
 
 $summary = @"
@@ -245,7 +264,7 @@ $summary = @"
 - Redaction scan: $(if ($errors.Count -eq 0) { "clean" } else { "failed" })
 - Submodules: root-level checkout only; no recursive nested submodule command is used by this lane
 - Provider verification required in this lane: $RequireProviderVerification
-- Release status: blocked unless pacts verify against the pinned EventStore provider version
+- Compatibility verdict: preserved as evidence and does not authorize or revoke the owner-approved runtime identity
 "@
 $summary | Set-Content -LiteralPath (Join-Path $ArtifactDir "job-summary.md") -Encoding utf8
 

@@ -669,10 +669,10 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         // emits a different `b-...` token and breaks the snapshot. Scrub the scope token so the
         // snapshot stays stable across SDK upgrades.
         normalized = Regex.Replace(normalized, @" b-[0-9a-z]{10}\b", " b-{scope}");
-        // Fluent UI rc5 can expose its transient provider-refresh state on either render adjacent
-        // to the completed viewport callback. The loading marker is timing state, not grid output.
-        normalized = normalized.Replace(" loading=\"true\"", string.Empty, StringComparison.Ordinal);
-        return normalized.Replace("\r\n", "\n");
+        // Cataloged Fluent UI v5 builds expose transient provider-refresh state either as an
+        // attribute (rc5) or as a CSS class (rc4). The loading marker is timing state, not grid output.
+        normalized = normalized.Replace(" loading=\"true\"", string.Empty, StringComparison.Ordinal).Replace("fluent-data-grid loading ", "fluent-data-grid ", StringComparison.Ordinal);
+        return normalized.Replace("\r\n", "\n").TrimEnd('\r', '\n') + "\n";
     }
 
     private sealed class CultureScope : IDisposable {

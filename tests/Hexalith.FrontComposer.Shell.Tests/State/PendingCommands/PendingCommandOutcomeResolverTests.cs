@@ -649,7 +649,7 @@ public sealed class PendingCommandOutcomeResolverTests {
 
         sut.IndicatorDecisionCount.ShouldBe(3);
         indicators.Received(3).Add(Arg.Any<NewItemIndicatorEntry>());
-        indicators.Received(1).Add(Arg.Is<NewItemIndicatorEntry>(entry => entry.MessageId == MessageId));
+        indicators.Received(1).Add(Arg.Is<NewItemIndicatorEntry>(entry => entry != null && entry.MessageId == MessageId));
     }
 
     [Fact]
@@ -659,7 +659,7 @@ public sealed class PendingCommandOutcomeResolverTests {
         IPendingCommandOutcomeResolver legacy = Substitute.For<IPendingCommandOutcomeResolver>();
         const string secondMessageId = "01BRZ3NDEKTSV4RRFFQ69G5FAV";
         legacy.Resolve(Arg.Any<PendingCommandOutcomeObservation>()).Returns(call => {
-            PendingCommandOutcomeObservation observation = call.Arg<PendingCommandOutcomeObservation>();
+            PendingCommandOutcomeObservation observation = call.Arg<PendingCommandOutcomeObservation>()!;
             string entityKey = observation.MessageId == MessageId ? "counter-1" : "counter-2";
             return new PendingCommandOutcomeResolutionResult(
                 PendingCommandOutcomeResolutionStatus.Resolved,
@@ -697,8 +697,8 @@ public sealed class PendingCommandOutcomeResolverTests {
             .ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
 
         sut.IndicatorDecisionCount.ShouldBe(2);
-        indicators.Received(1).Add(Arg.Is<NewItemIndicatorEntry>(entry => entry.MessageId == MessageId));
-        indicators.Received(1).Add(Arg.Is<NewItemIndicatorEntry>(entry => entry.MessageId == secondMessageId));
+        indicators.Received(1).Add(Arg.Is<NewItemIndicatorEntry>(entry => entry != null && entry.MessageId == MessageId));
+        indicators.Received(1).Add(Arg.Is<NewItemIndicatorEntry>(entry => entry != null && entry.MessageId == secondMessageId));
     }
 
     [Fact]
@@ -912,7 +912,7 @@ public sealed class PendingCommandOutcomeResolverTests {
         INewItemIndicatorStateService indicators = Substitute.For<INewItemIndicatorStateService>();
         IPendingCommandOutcomeResolver legacy = Substitute.For<IPendingCommandOutcomeResolver>();
         legacy.Resolve(Arg.Any<PendingCommandOutcomeObservation>()).Returns(call =>
-            DelegatedResolved(call.Arg<PendingCommandOutcomeObservation>().MessageId!));
+            DelegatedResolved(call.Arg<PendingCommandOutcomeObservation>()!.MessageId!));
         string? tenant = "tenant-1";
         string? user = "user-1";
         IUserContextAccessor userContext = Substitute.For<IUserContextAccessor>();
@@ -939,7 +939,7 @@ public sealed class PendingCommandOutcomeResolverTests {
             .ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
 
         sut.IndicatorDecisionCount.ShouldBe(1);
-        indicators.Received(1).Add(Arg.Is<NewItemIndicatorEntry>(entry => entry.MessageId == MessageId));
+        indicators.Received(1).Add(Arg.Is<NewItemIndicatorEntry>(entry => entry != null && entry.MessageId == MessageId));
     }
 
     [Fact]
@@ -948,7 +948,7 @@ public sealed class PendingCommandOutcomeResolverTests {
         INewItemIndicatorStateService indicators = Substitute.For<INewItemIndicatorStateService>();
         IPendingCommandOutcomeResolver legacy = Substitute.For<IPendingCommandOutcomeResolver>();
         legacy.Resolve(Arg.Any<PendingCommandOutcomeObservation>()).Returns(call =>
-            DelegatedResolved(call.Arg<PendingCommandOutcomeObservation>().MessageId!));
+            DelegatedResolved(call.Arg<PendingCommandOutcomeObservation>()!.MessageId!));
         string tenant = "tenant-1";
         string user = "user-1";
         IUserContextAccessor userContext = Substitute.For<IUserContextAccessor>();

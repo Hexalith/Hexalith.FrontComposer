@@ -1,0 +1,63 @@
+{
+  "schema": "hexalith.frontcomposer.story-11-24-evidence-manifest.v1",
+  "hashAlgorithm": "SHA-256",
+  "capturedFromEventStoreCommit": "29de2507767dc061b923e4e6e40fbe1ea69f932e",
+  "files": [
+    {
+      "path": "frontcomposer-11-24-runtime-identity-successor.md",
+      "sha256": "b3d1d554d0b228d67287fa6c18b9ad8831ca3a9ed7af1357e72a424e0611b44d"
+    },
+    {
+      "path": "bb94d93e9b84132cff83a38fba84f25455820d31/nuget-sha256.txt",
+      "sha256": "08449d50bf9d57c791c87e9768241442a92ec1db69b0f80fc2886529e70abfb0"
+    },
+    {
+      "path": "bb94d93e9b84132cff83a38fba84f25455820d31/owner-actions.md",
+      "sha256": "c03ab1d8f7fc4e167f0536f8f9b77cd01980bbeee1b9c44704b4d5d99aefbcb6"
+    },
+    {
+      "path": "bb94d93e9b84132cff83a38fba84f25455820d31/package-manifest.json",
+      "sha256": "b85b9926482b42fda508b68e26162f256892d2f49c2eab31adbae49cefdd0d12"
+    },
+    {
+      "path": "bb94d93e9b84132cff83a38fba84f25455820d31/release-catalog-provenance.json",
+      "sha256": "a5821b1002daaf1284387486d14776648f490849717d25b5f3d1cbbe3ca40cef"
+    },
+    {
+      "path": "bb94d93e9b84132cff83a38fba84f25455820d31/restore-receipt.json",
+      "sha256": "362761dd0f82c5bb2442f4a8514ee3d15eea2ca155f67fe600fe55dcf6cdb03d"
+    },
+    {
+      "path": "bb94d93e9b84132cff83a38fba84f25455820d31/review-subject.json",
+      "sha256": "9d074dfd0758a8934f122aab18659627dff1cf5d4c3e548b222cc0d79a881065"
+    },
+    {
+      "path": "bb94d93e9b84132cff83a38fba84f25455820d31/reviewer-roster.json",
+      "sha256": "a1e55d095f7919dc94a5722e356751ad35b5e86cb4e20da5db7545a6659fa346"
+    },
+    {
+      "path": "bb94d93e9b84132cff83a38fba84f25455820d31/acceptances/9d074dfd0758a8934f122aab18659627dff1cf5d4c3e548b222cc0d79a881065/eventstore-owner.json",
+      "sha256": "a20686e60d21e1448c4dee5e1b9a2a21a7be5f92b76e30e673a0e2ba848b354d"
+    },
+    {
+      "path": "bb94d93e9b84132cff83a38fba84f25455820d31/acceptances/9d074dfd0758a8934f122aab18659627dff1cf5d4c3e548b222cc0d79a881065/release-owner.json",
+      "sha256": "1435d4a4ea160c125fa26cf7b2bca8da3630ddddc7af02c36121bcc65b6e3eee"
+    },
+    {
+      "path": "provider-verification/provider-verification.json",
+      "sha256": "7ad9d7199272680a26770f5ea980bce880736a4bd92b3d6b27fb7aed546304c7"
+    },
+    {
+      "path": "provider-verification/run-evidence.json",
+      "sha256": "3338dc3060875789603ee83fc4b8fc930133f8cb2f07e9cf694f7e7447b16dfb"
+    },
+    {
+      "path": "apphost-smoke/apphost-smoke.json",
+      "sha256": "2474f1ec7663a34cae597a06c4bcceffc0bb1493caf975213c470869603295bc"
+    },
+    {
+      "path": "release-restore/release-restore.json",
+      "sha256": "dbdd01f248fc00c3fdd7049643c2d4a1f51659880e441c20eb3be5ecb8131619"
+    }
+  ]
+}

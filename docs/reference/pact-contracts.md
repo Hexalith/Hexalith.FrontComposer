@@ -3,9 +3,9 @@ title: "EventStore Pact Contracts"
 description: "File-based Pact evidence for the FrontComposer and Hexalith.EventStore REST contract."
 genre: reference
 audience: adopter
-ownerStory: 10-3-consumer-driven-contract-tests-pact
+ownerStory: 11-24-adopt-the-owner-approved-eventstore-runtime-identity
 status: published
-reviewed: 2026-05-10
+reviewed: 2026-08-29
 uid: frontcomposer.reference.pact-contracts
 slug: reference/pact-contracts/
 ---
@@ -30,7 +30,7 @@ Run:
 
 ```powershell
 dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --filter "Category=Contract"
-pwsh ./eng/validate-contract-artifacts.ps1
+pwsh ./eng/validate-contract-artifacts.ps1 -RequireProviderVerification
 git diff -- tests/Hexalith.FrontComposer.Shell.Tests/Pact
 ```
 
@@ -42,11 +42,11 @@ The validator checks that `interaction-manifest.json` exactly matches the commit
 
 Provider verification belongs beside the `Hexalith.EventStore` provider host because PactNet's native verifier must call a real loopback TCP endpoint. Do not use ASP.NET Core `TestServer` or `WebApplicationFactory` for Pact verifier playback.
 
-The handoff command shape is recorded in `provider-verification-handoff.md`. It must produce a bounded report artifact and use the committed pacts plus `provider-state-catalog.json`.
+The EventStore-owned command shape and the preserved run are recorded in `provider-verification-handoff.md`. The run uses the committed pacts plus `provider-state-catalog.json` and produces a bounded report artifact.
 
-CI is split deliberately: FrontComposer runs consumer pact generation, stale-pact detection, manifest validation, redaction scanning, and artifact upload. Provider verification remains an EventStore-owned release prerequisite because the report must come from the provider host over a real loopback TCP endpoint; FrontComposer uploads the blocked handoff artifact when that report is absent.
+CI is split deliberately: EventStore owns provider execution over real loopback TCP. FrontComposer owns the byte-identical evidence snapshot, verifies its SHA-256 manifest, validates all 19 interactions and cleanup events, scans it for redaction leaks, and uploads it with the consumer artifacts. A missing, incomplete, unbounded, unbound, or unsafe report fails closed.
 
-NFR55 release rule: a release is blocked unless the checked-in pacts verify against the pinned EventStore provider version, or a named contract-drift issue explicitly blocks the release.
+Story 11.24 treats the preserved compatibility verdict as non-authorizing evidence: its failures do not revoke the separately approved runtime identity. Contract/API reconciliation and any broader release disposition remain separately approved work.
 
 ## Troubleshooting
 

@@ -152,11 +152,13 @@ jobs:
       - name: 'Gate 2c: Validate contract artifacts'
         shell: pwsh
         run: |
-          # Provider verification is owned by Hexalith.EventStore, where PactNet can verify
-          # against the real provider host over loopback TCP. FrontComposer validates and
-          # uploads the consumer pacts plus the handoff instead of requiring a report it cannot
-          # produce in this repository.
-          ./eng/validate-contract-artifacts.ps1
+          # EventStore owns provider execution. FrontComposer preserves and validates its
+          # complete loopback report without converting compatibility failures into runtime-
+          # identity migration authority.
+          python3 -m unittest tests/eng/test_eventstore_runtime_evidence.py
+          ./eng/validate-contract-artifacts.ps1 `
+            -RequireProviderVerification `
+            -ProviderVerificationReport "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/provider-verification/provider-verification.json"
 
       - name: 'Gate 2c: Fail on stale pact diff'
         shell: bash
@@ -178,7 +180,8 @@ jobs:
           fi
 
       - name: Upload contract artifacts
-        if: always()
+        # Never upload a rejected evidence tree after redaction/integrity validation fails.
+        if: success()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: contract-artifacts
@@ -186,6 +189,7 @@ jobs:
           if-no-files-found: error
           path: |
             artifacts/contracts/**
+            _bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/**
             tests/Hexalith.FrontComposer.Shell.Tests/Pact/*.json
             tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-verification-handoff.md
 
