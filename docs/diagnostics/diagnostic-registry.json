@@ -429,7 +429,7 @@
     {
       "id": "HFC1016",
       "ownerPackage": "SourceTools",
-      "title": "Command non-derivable property is read-only or init-only",
+      "title": "Command property requires a public non-init setter",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
       "deprecatedIn": null,
@@ -439,7 +439,7 @@
       "panelSeverity": null,
       "cliExitBehavior": "diagnostic",
       "mcpCategory": null,
-      "messageTemplate": "What: Command non-derivable property is read-only or init-only. Expected: Follow the FrontComposer diagnostic contract for HFC1016. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1016",
+      "messageTemplate": "What: A command property has an absent, non-public, or init-only setter. Expected: Every command property exposes a public non-init setter. Got: See the emitted diagnostic payload. Fix: Change the property to { get; set; }. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1016",
       "docsSlug": "diagnostics/HFC1016",
       "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1016",
       "redactionClass": "source-metadata-only",

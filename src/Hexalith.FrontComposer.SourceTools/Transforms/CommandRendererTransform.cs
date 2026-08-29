@@ -30,11 +30,6 @@ public static class CommandRendererTransform {
             nonDerivable.Add(p.Name);
         }
 
-        ImmutableArray<string>.Builder derivable = ImmutableArray.CreateBuilder<string>();
-        foreach (PropertyModel p in model.DerivableProperties) {
-            derivable.Add(p.Name);
-        }
-
         return new CommandRendererModel(
             typeName: model.TypeName,
             @namespace: model.Namespace,
@@ -45,7 +40,7 @@ public static class CommandRendererTransform {
             fullPageRoute: route,
             commandFullyQualifiedName: string.IsNullOrEmpty(model.Namespace) ? model.TypeName : model.Namespace + "." + model.TypeName,
             nonDerivablePropertyNames: new EquatableArray<string>(nonDerivable.ToImmutable()),
-            derivablePropertyNames: new EquatableArray<string>(derivable.ToImmutable()),
+            derivableProperties: model.DerivableProperties,
             formComponentName: model.TypeName + "Form",
             actionsWrapperName: fluxor.ActionsWrapperName,
             stateName: fluxor.StateName,

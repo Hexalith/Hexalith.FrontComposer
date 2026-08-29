@@ -431,7 +431,8 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
             description,
             displayFormat,
             relativeTimeWindowDays,
-            isWritable: true) {
+            isWritable: true,
+            sourceTypeFullyQualifiedName: typeName) {
     }
 
     internal PropertyModel(
@@ -449,7 +450,8 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
         string? description,
         FieldDisplayFormat displayFormat,
         int? relativeTimeWindowDays,
-        bool isWritable) {
+        bool isWritable,
+        string? sourceTypeFullyQualifiedName = null) {
         Name = name;
         TypeName = typeName;
         IsNullable = isNullable;
@@ -465,11 +467,18 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
         DisplayFormat = displayFormat;
         RelativeTimeWindowDays = displayFormat == FieldDisplayFormat.RelativeTime ? relativeTimeWindowDays ?? 7 : null;
         IsWritable = isWritable;
+        SourceTypeFullyQualifiedName = sourceTypeFullyQualifiedName ?? typeName;
     }
 
     public string Name { get; }
 
     public string TypeName { get; }
+
+    /// <summary>
+    /// Gets the fully qualified source type after unwrapping <c>Nullable&lt;T&gt;</c>.
+    /// This symbol-free value lets generated command renderers perform typed assignments.
+    /// </summary>
+    internal string SourceTypeFullyQualifiedName { get; }
 
     public bool IsNullable { get; }
 
@@ -551,6 +560,7 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
 
         return Name == other.Name
             && TypeName == other.TypeName
+            && SourceTypeFullyQualifiedName == other.SourceTypeFullyQualifiedName
             && IsNullable == other.IsNullable
             && IsUnsupported == other.IsUnsupported
             && DisplayName == other.DisplayName
@@ -573,6 +583,7 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
             int hash = 17;
             hash = (hash * 31) + (Name?.GetHashCode() ?? 0);
             hash = (hash * 31) + (TypeName?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (SourceTypeFullyQualifiedName?.GetHashCode() ?? 0);
             hash = (hash * 31) + IsNullable.GetHashCode();
             hash = (hash * 31) + IsUnsupported.GetHashCode();
             hash = (hash * 31) + (DisplayName?.GetHashCode() ?? 0);

@@ -26,12 +26,15 @@ public class CommandRendererEmitterTests {
         string? authorizationPolicyName = null,
         bool isDestructive = false,
         string? destructiveConfirmTitle = null,
-        string? destructiveConfirmBody = null) {
+        string? destructiveConfirmBody = null,
+        IReadOnlyList<PropertyModel>? derivableProperties = null) {
         var nonDerivable = Enumerable
             .Range(0, nonDerivableCount)
             .Select(i => "Field" + i)
             .ToImmutableArray();
-        ImmutableArray<string> derivable = ["MessageId", "TenantId"];
+        ImmutableArray<PropertyModel> derivable = derivableProperties is null
+            ? [BuildDerivableProperty("MessageId", "global::System.String"), BuildDerivableProperty("TenantId", "global::System.String")]
+            : [.. derivableProperties];
 
         CommandDensity density = densityOverride ?? nonDerivableCount switch {
             <= 1 => CommandDensity.Inline,
@@ -49,7 +52,7 @@ public class CommandRendererEmitterTests {
             fullPageRoute: "/commands/" + boundedContext + "/" + typeName,
             commandFullyQualifiedName: @namespace + "." + typeName,
             nonDerivablePropertyNames: new EquatableArray<string>(nonDerivable),
-            derivablePropertyNames: new EquatableArray<string>(derivable),
+            derivableProperties: new EquatableArray<PropertyModel>(derivable),
             formComponentName: typeName + "Form",
             actionsWrapperName: typeName + "Actions",
             stateName: typeName + "LifecycleState",
@@ -59,6 +62,27 @@ public class CommandRendererEmitterTests {
             destructiveConfirmBody: destructiveConfirmBody,
             authorizationPolicyName: authorizationPolicyName);
     }
+
+    private static PropertyModel BuildDerivableProperty(
+        string name,
+        string sourceTypeFullyQualifiedName,
+        bool isNullable = false) => new(
+            name,
+            sourceTypeFullyQualifiedName,
+            isNullable,
+            isUnsupported: false,
+            displayName: null,
+            badgeMappings: new EquatableArray<BadgeMappingEntry>(ImmutableArray<BadgeMappingEntry>.Empty),
+            enumFullyQualifiedName: null,
+            unsupportedTypeFullyQualifiedName: null,
+            enumMemberNames: default,
+            columnPriority: null,
+            fieldGroup: null,
+            description: null,
+            displayFormat: FieldDisplayFormat.Default,
+            relativeTimeWindowDays: null,
+            isWritable: true,
+            sourceTypeFullyQualifiedName: sourceTypeFullyQualifiedName);
 
     [Fact]
     public Task Renderer_ZeroFields_InlineSnapshot()
@@ -106,6 +130,50 @@ public class CommandRendererEmitterTests {
         string pageSource = CommandPageEmitter.Emit(BuildModel(5));
         Microsoft.CodeAnalysis.SyntaxTree pageTree = CSharpSyntaxTree.ParseText(pageSource, cancellationToken: ct);
         pageTree.GetDiagnostics(ct).ShouldBeEmpty("FullPage page should parse cleanly");
+    }
+
+    [Fact]
+    public void Renderer_DerivablePrefill_EmitsTypedDirectAssignmentSwitchWithoutMemberReflection() {
+        PropertyModel[] derivableProperties = [
+            BuildDerivableProperty("MessageId", "global::System.String"),
+            BuildDerivableProperty("AttemptCount", "global::System.Int32"),
+            BuildDerivableProperty("OptionalCount", "global::System.Int32", isNullable: true),
+            BuildDerivableProperty("Status", "global::Demo.Domain.DemoStatus"),
+            BuildDerivableProperty("ExternalId", "global::System.Guid"),
+            BuildDerivableProperty("SubmittedAt", "global::System.DateTimeOffset"),
+        ];
+
+        string source = CommandRendererEmitter.Emit(BuildModel(1, derivableProperties: derivableProperties));
+
+        source.ShouldNotContain("System.Reflection");
+        source.ShouldNotContain("PropertyInfo");
+        source.ShouldNotContain("GetProperty");
+        source.ShouldContain("switch (propertyName)");
+        source.ShouldContain("case \"MessageId\":");
+        source.ShouldContain("TryConvertPropertyValue<global::System.String>(value, out global::System.String converted)");
+        source.ShouldContain("_prefilledModel.@MessageId = converted;");
+        source.ShouldContain("_prefilledModel.@OptionalCount = default!;");
+        source.ShouldContain("case \"Status\":");
+        source.ShouldContain("default:\n                return false;");
+
+        source.IndexOf("case \"MessageId\":", StringComparison.Ordinal)
+            .ShouldBeLessThan(source.IndexOf("case \"AttemptCount\":", StringComparison.Ordinal));
+        source.IndexOf("case \"AttemptCount\":", StringComparison.Ordinal)
+            .ShouldBeLessThan(source.IndexOf("case \"OptionalCount\":", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Renderer_DerivablePrefill_PreservesConversionAndFailureContract() {
+        string source = CommandRendererEmitter.Emit(BuildModel(1));
+
+        source.ShouldContain("if (!targetType.IsInstanceOfType(value))");
+        source.ShouldContain("Enum.Parse(targetType, s, ignoreCase: true)");
+        source.ShouldContain("Enum.ToObject(targetType, value)");
+        source.ShouldContain("Guid.Parse(Convert.ToString(value, CultureInfo.InvariantCulture)!)");
+        source.ShouldContain("DateTimeOffset.Parse(Convert.ToString(value, CultureInfo.CurrentCulture)!, CultureInfo.CurrentCulture)");
+        source.ShouldContain("Convert.ChangeType(value, targetType, CultureInfo.CurrentCulture)");
+        source.ShouldContain("ex is InvalidCastException or FormatException or OverflowException or ArgumentException");
+        source.ShouldContain("converted = default!;\n            return false;");
     }
 
     [Fact]
@@ -215,8 +283,7 @@ public class CommandRendererEmitterTests {
         source.ShouldNotContain("CommandService.DispatchAsync");
         source.ShouldNotContain(".SubmittedAction");
         source.ShouldNotContain("Guid.NewGuid");
-        source.ShouldNotContain("MessageId =");
-        source.ShouldNotContain("CorrelationId =");
+        source.ShouldNotContain("new Demo.Domain.DeleteWidgetCommand {");
     }
 
     [Fact]

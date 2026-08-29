@@ -2,7 +2,8 @@
 title: 'Replace derivable command prefill reflection with typed emission'
 type: 'refactor'
 created: '2026-08-28'
-status: ready-for-dev
+status: in-progress
+baseline_commit: '0d2fdc8ae633f503d8be90da254d4ae7e19ea5a5'
 baseline_revision: '0bb1d4b5117666bced0383e9a647c4e21bd8937d'
 review_loop_iteration: 0
 followup_review_recommended: false

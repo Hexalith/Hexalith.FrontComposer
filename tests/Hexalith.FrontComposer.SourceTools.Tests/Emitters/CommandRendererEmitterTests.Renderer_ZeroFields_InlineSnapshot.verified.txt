@@ -103,53 +103,83 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
 
     private bool TrySetPropertyValue(string propertyName, object? value)
     {
-        System.Reflection.PropertyInfo? property = typeof(Demo.Domain.DemoCommand).GetProperty(propertyName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-        if (property is null || !property.CanWrite)
+        switch (propertyName)
         {
-            return false;
-        }
+            case "MessageId":
+            {
+                if (value is null)
+                {
+                    _prefilledModel.@MessageId = default!;
+                    return true;
+                }
 
-        if (value is null)
-        {
-            property.SetValue(_prefilledModel, null);
-            return true;
-        }
+                if (!TryConvertPropertyValue<global::System.String>(value, out global::System.String converted))
+                {
+                    return false;
+                }
 
-        Type targetType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
-        object? converted = value;
-        if (!targetType.IsInstanceOfType(value))
+                _prefilledModel.@MessageId = converted;
+                return true;
+            }
+            case "TenantId":
+            {
+                if (value is null)
+                {
+                    _prefilledModel.@TenantId = default!;
+                    return true;
+                }
+
+                if (!TryConvertPropertyValue<global::System.String>(value, out global::System.String converted))
+                {
+                    return false;
+                }
+
+                _prefilledModel.@TenantId = converted;
+                return true;
+            }
+            default:
+                return false;
+        }
+    }
+
+    private static bool TryConvertPropertyValue<T>(object value, out T converted)
+    {
+        Type targetType = typeof(T);
+        object? convertedValue = value;
+        try
         {
-            try
+            if (!targetType.IsInstanceOfType(value))
             {
                 if (targetType.IsEnum)
                 {
-                    converted = value is string s
+                    convertedValue = value is string s
                         ? Enum.Parse(targetType, s, ignoreCase: true)
                         : Enum.ToObject(targetType, value);
                 }
                 else if (targetType == typeof(Guid))
                 {
-                    converted = value is Guid guid ? guid : Guid.Parse(Convert.ToString(value, CultureInfo.InvariantCulture)!);
+                    convertedValue = value is Guid guid ? guid : Guid.Parse(Convert.ToString(value, CultureInfo.InvariantCulture)!);
                 }
                 else if (targetType == typeof(DateTimeOffset))
                 {
-                    converted = value is DateTimeOffset dto
+                    convertedValue = value is DateTimeOffset dto
                         ? dto
                         : DateTimeOffset.Parse(Convert.ToString(value, CultureInfo.CurrentCulture)!, CultureInfo.CurrentCulture);
                 }
                 else
                 {
-                    converted = Convert.ChangeType(value, targetType, CultureInfo.CurrentCulture);
+                    convertedValue = Convert.ChangeType(value, targetType, CultureInfo.CurrentCulture);
                 }
             }
-            catch (Exception ex) when (ex is InvalidCastException or FormatException or OverflowException or ArgumentException)
-            {
-                return false;
-            }
-        }
 
-        property.SetValue(_prefilledModel, converted);
-        return true;
+            converted = (T)convertedValue!;
+            return true;
+        }
+        catch (Exception ex) when (ex is InvalidCastException or FormatException or OverflowException or ArgumentException)
+        {
+            converted = default!;
+            return false;
+        }
     }
 
     private static Icon? ResolveIcon()

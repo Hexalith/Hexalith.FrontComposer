@@ -456,6 +456,12 @@ public static class AttributeParser {
 
         bool isEnumType = propertyType.TypeKind == TypeKind.Enum;
         bool isEnum = IsSupportedEnumType(propertyType);
+        string sourceTypeFullyQualifiedName = propertyType.ToDisplayString(
+            new SymbolDisplayFormat(
+                globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Included,
+                typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+                genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+                miscellaneousOptions: SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers));
 
         // Get fully qualified type name for mapping
         if (propertyType is INamedTypeSymbol namedPropertyType && namedPropertyType.IsGenericType) {
@@ -563,7 +569,8 @@ public static class AttributeParser {
             description,
             displayFormat,
             relativeTimeWindowDays,
-            propertySymbol.SetMethod is { DeclaredAccessibility: Accessibility.Public });
+            propertySymbol.SetMethod is { DeclaredAccessibility: Accessibility.Public },
+            sourceTypeFullyQualifiedName);
     }
 
     /// <summary>

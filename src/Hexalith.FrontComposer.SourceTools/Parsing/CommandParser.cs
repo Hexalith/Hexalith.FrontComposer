@@ -188,7 +188,7 @@ public static class CommandParser {
         // Case-insensitive dedup + MessageId lookup (patch 2026-04-16 P-02): a property named
         // `messageId` satisfies the runtime MessageId contract, so HFC1006 must not fire on casing alone.
         HashSet<string> seenNames = new(StringComparer.Ordinal);
-        List<IPropertySymbol> nonDerivableSymbols = [];
+        List<IPropertySymbol> assignmentTargetSymbols = [];
         INamedTypeSymbol? currentType = typeSymbol;
         while (currentType is not null && currentType.SpecialType != SpecialType.System_Object) {
             foreach (ISymbol member in currentType.GetMembers()) {
@@ -216,6 +216,7 @@ public static class CommandParser {
                 PropertyModel property = AttributeParser.ParsePropertyForCommand(propertySymbol, typeName, diagnostics, filePath);
                 ValidateDefaultValueType(propertySymbol, diagnostics, filePath);
                 allBuilder.Add(property);
+                assignmentTargetSymbols.Add(propertySymbol);
 
                 bool isDerivable = IsDerivableProperty(propertySymbol);
                 if (isDerivable) {
@@ -223,7 +224,6 @@ public static class CommandParser {
                 }
                 else {
                     nonDerivableBuilder.Add(property);
-                    nonDerivableSymbols.Add(propertySymbol);
                 }
             }
 
@@ -258,31 +258,40 @@ public static class CommandParser {
                 linePos.Character));
         }
 
-        // HFC1016: non-derivable property must be writable via `_model.X = v`. Read-only or
-        // init-only setters fail to compile at adopter side even when HFC1009 passes (init-only
-        // records still have an implicit parameterless ctor). Patch 2026-04-16 P-01.
-        foreach (IPropertySymbol prop in nonDerivableSymbols) {
+        // HFC1016: every generated assignment target must expose a public non-init setter.
+        // Non-derivable fields are assigned by form bindings, while derivable fields are assigned
+        // by the typed renderer prefill switch. Reject invalid shapes before either emitter runs.
+        bool hasInvalidAssignmentTarget = false;
+        foreach (IPropertySymbol prop in assignmentTargetSymbols) {
             IMethodSymbol? setter = prop.SetMethod;
             bool isWritable = setter is { DeclaredAccessibility: Accessibility.Public, IsInitOnly: false };
             if (!isWritable) {
+                hasInvalidAssignmentTarget = true;
                 string kind = setter is null
-                    ? "has no public setter"
+                    ? "has no setter"
                     : setter.IsInitOnly
                         ? "is declared with an 'init' accessor"
                         : "has a non-public setter";
+                Location propertyLocation = prop.Locations.FirstOrDefault() ?? Location.None;
+                Microsoft.CodeAnalysis.Text.LinePosition propertyLinePosition = propertyLocation.GetLineSpan().StartLinePosition;
+                string propertyFilePath = propertyLocation.SourceTree?.FilePath ?? filePath;
 
                 diagnostics.Add(new DiagnosticInfo(
                     "HFC1016",
                     string.Format(
-                        "[Command] type '{0}' property '{1}' {2}. The generated form binds input controls via '_model.{1} = value', which requires a public writable setter. Change the property to '{{ get; set; }}' or mark it with [DerivedFrom].",
+                        "[Command] type '{0}' property '{1}' {2}. Generated command assignment requires a public non-init setter. Change the property to '{{ get; set; }}'.",
                         typeName,
                         prop.Name,
                         kind),
                     "Error",
-                    filePath,
-                    linePos.Line,
-                    linePos.Character));
+                    propertyFilePath,
+                    propertyLinePosition.Line,
+                    propertyLinePosition.Character));
             }
+        }
+
+        if (hasInvalidAssignmentTarget) {
+            return new CommandParseResult(null, new EquatableArray<DiagnosticInfo>([.. diagnostics]));
         }
 
         // HFC1011: hard error when total (derivable + non-derivable) public property count exceeds 200 — Story 2-2 Task 1.3a, Red-team RT-5.

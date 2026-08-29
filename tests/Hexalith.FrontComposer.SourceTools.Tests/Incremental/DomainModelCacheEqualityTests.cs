@@ -106,6 +106,15 @@ public class DomainModelCacheEqualityTests {
         a.GetHashCode().ShouldBe(b.GetHashCode());
     }
 
+    [Fact]
+    public void PropertyModel_SourceTypeChange_InvalidatesEquality() {
+        PropertyModel a = BuildProperty("Value", "Enum", sourceTypeFullyQualifiedName: "global::Test.StatusA");
+        PropertyModel b = BuildProperty("Value", "Enum", sourceTypeFullyQualifiedName: "global::Test.StatusB");
+
+        a.Equals(b).ShouldBeFalse();
+        a.GetHashCode().ShouldNotBe(b.GetHashCode());
+    }
+
     private static DomainModel BuildModel(
         string typeName = "Test",
         string? role = "ActionQueue",
@@ -122,13 +131,22 @@ public class DomainModelCacheEqualityTests {
         string name,
         string typeName,
         FieldDisplayFormat displayFormat = FieldDisplayFormat.Default,
-        int? relativeTimeWindowDays = null) => new(
+        int? relativeTimeWindowDays = null,
+        string? sourceTypeFullyQualifiedName = null) => new(
             name,
             typeName,
             isNullable: false,
             isUnsupported: false,
             displayName: null,
             badgeMappings: new EquatableArray<BadgeMappingEntry>(ImmutableArray<BadgeMappingEntry>.Empty),
+            enumFullyQualifiedName: null,
+            unsupportedTypeFullyQualifiedName: null,
+            enumMemberNames: default,
+            columnPriority: null,
+            fieldGroup: null,
+            description: null,
             displayFormat: displayFormat,
-            relativeTimeWindowDays: relativeTimeWindowDays);
+            relativeTimeWindowDays: relativeTimeWindowDays,
+            isWritable: true,
+            sourceTypeFullyQualifiedName: sourceTypeFullyQualifiedName);
 }

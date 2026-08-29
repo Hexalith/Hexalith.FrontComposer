@@ -3,6 +3,10 @@ using System.Collections.Immutable;
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.SourceTools.Parsing;
 using Hexalith.FrontComposer.SourceTools.Tests.Parsing.TestFixtures;
+using Hexalith.FrontComposer.SourceTools.Transforms;
+
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 
 using Shouldly;
 
@@ -153,6 +157,33 @@ public class CommandParserTests {
         result.Model.Properties.Count.ShouldBe(2);
         result.Model.DerivableProperties.Select(p => p.Name).ShouldBe(ExpectedMessageIdProperty);
         result.Model.NonDerivableProperties.Select(p => p.Name).ShouldBe(ExpectedNameProperty);
+        result.Model.DerivableProperties.Single().SourceTypeFullyQualifiedName.ShouldBe("global::System.String");
+    }
+
+    [Fact]
+    public void Parse_NullableProperty_PreservesUnwrappedFullyQualifiedSourceType() {
+        CommandParseResult result = CompilationHelper.ParseCommand(
+            CommandTestSources.NullableNumericCommand,
+            "TestDomain.AdjustOrderCommand");
+
+        PropertyModel quantity = result.Model.ShouldNotBeNull().Properties.Single(property => property.Name == "Quantity");
+        quantity.IsNullable.ShouldBeTrue();
+        quantity.SourceTypeFullyQualifiedName.ShouldBe("global::System.Int32");
+    }
+
+    [Fact]
+    public void Transform_DerivableProperties_PreservesTypedEquatableIr() {
+        CommandModel command = CompilationHelper.ParseCommand(
+            CommandTestSources.MultiFieldCommand,
+            "TestDomain.PlaceOrderCommand").Model.ShouldNotBeNull();
+
+        CommandRendererModel renderer = CommandRendererTransform.Transform(
+            command,
+            CommandFluxorTransform.Transform(command));
+
+        renderer.DerivableProperties.ShouldBe(command.DerivableProperties);
+        renderer.DerivableProperties.Select(property => (property.Name, property.SourceTypeFullyQualifiedName))
+            .ShouldContain(("MessageId", "global::System.String"));
     }
 
     [Fact]
@@ -166,22 +197,19 @@ public class CommandParserTests {
     }
 
     [Fact]
-    public void Parse_RecordPositionalCommand_CapturesPositionalParams() {
+    public void Parse_RecordPositionalCommand_RejectsInitOnlyProperties() {
         CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.RecordPositionalCommand, "TestDomain.IncrementCounterCommand");
 
-        _ = result.Model.ShouldNotBeNull();
-        result.Model.Properties.Select(p => p.Name).ShouldContain("MessageId");
-        result.Model.Properties.Select(p => p.Name).ShouldContain("Amount");
-        result.Model.NonDerivableProperties.Select(p => p.Name).ShouldContain("Amount");
-        result.Model.DerivableProperties.Select(p => p.Name).ShouldContain("MessageId");
+        result.Model.ShouldBeNull();
+        result.Diagnostics.Count(diagnostic => diagnostic.Id == "HFC1016").ShouldBe(2);
     }
 
     [Fact]
-    public void Parse_RecordPropertyCommand_CapturesInitProperties() {
+    public void Parse_RecordPropertyCommand_RejectsInitOnlyProperties() {
         CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.RecordPropertyCommand, "TestDomain.DecrementCounterCommand");
 
-        _ = result.Model.ShouldNotBeNull();
-        result.Model.Properties.Count.ShouldBe(2);
+        result.Model.ShouldBeNull();
+        result.Diagnostics.Count(diagnostic => diagnostic.Id == "HFC1016").ShouldBe(2);
     }
 
     [Fact]
@@ -262,6 +290,102 @@ public class CommandParserTests {
         _ = result.Model.ShouldNotBeNull();
         result.Model.Properties.Select(p => p.Name).ShouldContain("MessageId");
         result.Diagnostics.Select(d => d.Id).ShouldNotContain("HFC1006");
+    }
+
+    [Fact]
+    public void Parse_AttributedConventionAndInheritedDerivableProperties_WithPublicSetters_AreValid() {
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            public class CommandBase
+            {
+                public string MessageId { get; set; } = string.Empty;
+            }
+            [Command]
+            public sealed class AttributedCommand
+            {
+                [DerivedFrom(DerivedFromSource.Context)]
+                public string RequestIp { get; set; } = string.Empty;
+            }
+            [Command]
+            public sealed class ConventionCommand
+            {
+                public string MessageId { get; set; } = string.Empty;
+            }
+            [Command]
+            public sealed class InheritedCommand : CommandBase
+            {
+            }
+            """;
+
+        CommandParseResult attributed = CompilationHelper.ParseCommand(source, "TestDomain.AttributedCommand");
+        CommandParseResult convention = CompilationHelper.ParseCommand(source, "TestDomain.ConventionCommand");
+        CommandParseResult inherited = CompilationHelper.ParseCommand(source, "TestDomain.InheritedCommand");
+
+        attributed.Model.ShouldNotBeNull().DerivableProperties.Single().Name.ShouldBe("RequestIp");
+        convention.Model.ShouldNotBeNull().DerivableProperties.Single().Name.ShouldBe("MessageId");
+        inherited.Model.ShouldNotBeNull().DerivableProperties.Single().Name.ShouldBe("MessageId");
+        attributed.Diagnostics.ShouldNotContain(diagnostic => diagnostic.Id == "HFC1016");
+        convention.Diagnostics.ShouldNotContain(diagnostic => diagnostic.Id == "HFC1016");
+        inherited.Diagnostics.ShouldNotContain(diagnostic => diagnostic.Id == "HFC1016");
+    }
+
+    [Theory]
+    [InlineData("{ get; init; } = string.Empty;")]
+    [InlineData("{ get; private set; } = string.Empty;")]
+    [InlineData("{ get; } = string.Empty;")]
+    public void Parse_AttributedDerivableProperty_WithInvalidSetter_ReportsHfc1016AndSuppressesRenderer(string accessor) {
+        string source = $$"""
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            [Command]
+            public sealed class InvalidAttributedCommand
+            {
+                [DerivedFrom(DerivedFromSource.Context)]
+                public string RequestIp {{accessor}}
+            }
+            """;
+
+        AssertHfc1016SuppressesRenderer(source, "TestDomain.InvalidAttributedCommand", "RequestIp");
+    }
+
+    [Theory]
+    [InlineData("{ get; init; } = string.Empty;")]
+    [InlineData("{ get; private set; } = string.Empty;")]
+    [InlineData("{ get; } = string.Empty;")]
+    public void Parse_ConventionDerivableProperty_WithInvalidSetter_ReportsHfc1016AndSuppressesRenderer(string accessor) {
+        string source = $$"""
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            [Command]
+            public sealed class InvalidConventionCommand
+            {
+                public string MessageId {{accessor}}
+            }
+            """;
+
+        AssertHfc1016SuppressesRenderer(source, "TestDomain.InvalidConventionCommand", "MessageId");
+    }
+
+    [Theory]
+    [InlineData("{ get; init; } = string.Empty;")]
+    [InlineData("{ get; private set; } = string.Empty;")]
+    [InlineData("{ get; } = string.Empty;")]
+    public void Parse_InheritedDerivableProperty_WithInvalidSetter_ReportsHfc1016AndSuppressesRenderer(string accessor) {
+        string source = $$"""
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            public class InvalidCommandBase
+            {
+                public string MessageId {{accessor}}
+            }
+            [Command]
+            public sealed class InvalidInheritedCommand : InvalidCommandBase
+            {
+            }
+            """;
+
+        AssertHfc1016SuppressesRenderer(source, "TestDomain.InvalidInheritedCommand", "MessageId");
     }
 
     [Fact]
@@ -461,5 +585,27 @@ public class CommandParserTests {
             derivable,
             nonDerivable,
             authorizationPolicyName: authorizationPolicyName);
+    }
+
+    private static void AssertHfc1016SuppressesRenderer(string source, string metadataName, string propertyName) {
+        CommandParseResult parseResult = CompilationHelper.ParseCommand(source, metadataName);
+
+        parseResult.Model.ShouldBeNull();
+        DiagnosticInfo diagnostic = parseResult.Diagnostics.Single(item => item.Id == "HFC1016");
+        diagnostic.Severity.ShouldBe("Error");
+        diagnostic.Message.ShouldContain(propertyName);
+        diagnostic.Message.ShouldContain("public non-init setter");
+        diagnostic.Message.ShouldNotContain("[DerivedFrom]");
+        diagnostic.Line.ShouldBeGreaterThan(0);
+
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new FrontComposerGenerator());
+        driver = driver.RunGenerators(compilation, TestContext.Current.CancellationToken);
+        GeneratorDriverRunResult generationResult = driver.GetRunResult();
+
+        generationResult.Diagnostics.Single(item => item.Id == "HFC1016").Severity.ShouldBe(DiagnosticSeverity.Error);
+        generationResult.GeneratedTrees
+            .Select(tree => Path.GetFileName(tree.FilePath))
+            .ShouldNotContain(fileName => fileName.Contains("CommandRenderer", StringComparison.Ordinal));
     }
 }

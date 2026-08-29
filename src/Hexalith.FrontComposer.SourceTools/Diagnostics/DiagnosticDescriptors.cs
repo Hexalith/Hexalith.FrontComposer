@@ -197,15 +197,15 @@ public static class DiagnosticDescriptors {
         isEnabledByDefault: true);
 
     /// <summary>
-    /// HFC1016: A non-derivable property on a <c>[Command]</c> type is read-only or init-only.
-    /// The generated form binds input controls via <c>_model.Property = value</c>, which requires
-    /// a writable instance setter. Records with positional parameters (which become init-only)
-    /// or hand-authored <c>{ get; init; }</c> / <c>{ get; }</c> properties fail to compile.
-    /// Change to <c>{ get; set; }</c> or mark the property with <c>[DerivedFrom]</c>.
+    /// HFC1016: A property on a <c>[Command]</c> type does not expose a public non-init setter.
+    /// Generated form bindings and typed derivable-value prefill both assign command members
+    /// directly. Records with positional parameters (which become init-only), non-public setters,
+    /// and hand-authored <c>{ get; init; }</c> / <c>{ get; }</c> properties are rejected.
+    /// Change the property to <c>{ get; set; }</c>.
     /// </summary>
     public static readonly DiagnosticDescriptor CommandPropertyNotWritable = Create(
         id: "HFC1016",
-        title: "Command non-derivable property is read-only or init-only",
+        title: "Command property requires a public non-init setter",
         messageFormat: "{0}",
         category: "HexalithFrontComposer",
         defaultSeverity: DiagnosticSeverity.Error,

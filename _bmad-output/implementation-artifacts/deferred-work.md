@@ -6945,7 +6945,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-14-update
 location: tests/Hexalith.FrontComposer.Contracts.UI.Tests/PackageBoundaryTests.cs:79-90
 source_spec: `_bmad-output/implementation-artifacts/11-14-update-architecture-context-ux-and-package-compat-docs.md`
 reason: summary: Strengthen the pre-existing Contracts.UI package dependency proof so broken dependency metadata cannot false-pass. evidence: `tests/Hexalith.FrontComposer.Contracts.UI.Tests/PackageBoundaryTests.cs:79-90` searches the raw nuspec for a package-ID substring and directly references Fluent in the consumer; parse exact dependency IDs/versions and let the package supply Fluent transitively.
-status: open
+status: done 2026-08-29
+resolution: already resolved: tests/Hexalith.FrontComposer.Contracts.UI.Tests/PackageBoundaryTests.cs:84-99,114-138 parses exact nuspec dependencies and proves a transitive clean consumer
 
 ### DW-1592: Replace the pre-existing solution-level test commands in generated project guidance with the repository-required per-project lanes.
 
@@ -7018,7 +7019,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-11-create
 location: src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionFallbackRefreshContracts.cs
 source_spec: `_bmad-output/implementation-artifacts/spec-11-9-shell-layering-declaration-and-route-label-relocation.md`
 reason: summary: Complete the one-type-per-file split for the retained projection fallback contracts and scheduler helper types under Story 11.17. evidence: `src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionFallbackRefreshContracts.cs` retains the pre-existing public contract bundle and the Infrastructure scheduler retains nested helper types; Story 11.9 explicitly excludes the separately planned mechanical split.
-status: open
+status: done 2026-08-29
+resolution: already resolved: commit 5092b041 deleted ProjectionFallbackRefreshContracts.cs and split its declarations into same-named one-type files
 
 ### DW-1601: M19 full-closure follow-up — converge `BadgeCountService` off `System.Reactive`, drop the Shell `System.Reactive` package reference, and decide the fate of the remaining hot / keyed change-notification idioms.
 
@@ -7613,7 +7615,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-ru
 location: eng/pack_release_packages.py
 source_spec: `_bmad-output/implementation-artifacts/rel-3-enforce-fr24-pre-publish-and-reconcile-releases.md`
 reason: summary: Remove the release-path-dead `eng/pack_release_packages.py` and port its unit coverage to the live `scripts/pack-release-packages.py` packer. evidence: REL-3 replaced the `.releaserc.json` prepareCmd with `eng/release_prepublish.py` (which packs via `scripts/pack-release-packages.py`), leaving `eng/pack_release_packages.py` outside every release path while `quality.yml` still runs its green unit lane (`tests/eng/test_pack_release_packages.py`) and the live scripts packer has no unit tests of its own.
-status: open
+status: done 2026-08-29
+resolution: already resolved: commit 2dcc43fe deleted eng/pack_release_packages.py and ported its tests to scripts/pack-release-packages.py
 
 ### DW-1675: Publisher-side partial-publish incidents are durable only in the domain-release job log.
 
@@ -7705,7 +7708,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-actions
 location: InfrastructureGovernanceTests
 source_spec: `_bmad-output/implementation-artifacts/spec-actions-29681767891-fix-cicd.md`
 reason: summary: Bind shared-catalog governance bytes to the same Builds commit recorded by the FrontComposer gitlink. evidence: `InfrastructureGovernanceTests` reads the catalog bytes from the Builds working tree but reads the expected root Builds SHA from the FrontComposer index. A dirty Builds checkout can therefore validate one commit's bytes while asserting another commit's gitlink; fresh CI checkouts are unaffected, but local fail-closed governance is not identity-bound.
-status: open
+status: done 2026-08-29
+resolution: already resolved: commit e3e3dcf5 introduced the committed-object graph engine; eng/dependency_graph.py:207 reads the selected catalog blob with git cat-file
 
 ### DW-1686: Reconcile FrontComposer's root and EventStore nested Builds gitlinks with their approved governance expectations, then rerun the complete Shell Governance lane before completing Story 11.17d.
 
@@ -7713,7 +7717,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-
 location: references/Hexalith.Builds
 source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
 reason: summary: Reconcile FrontComposer's root and EventStore nested Builds gitlinks with their approved governance expectations, then rerun the complete Shell Governance lane before completing Story 11.17d. evidence: On clean commit `6a4350ec`, the Release Shell.Tests build completed with zero warnings/errors, but the direct Governance lane passed 186/188. `InfrastructureGovernanceTests.PartiesPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds` expects root `references/Hexalith.Builds` commit `deb76e98` while the root gitlink is `4bbe7c04`; `CentralPackageVersions_WhenCatalogIsMigrated_AreOwnedBySharedCatalog` expects EventStore's nested Builds gitlink `c177c66a` while it is `4bbe7c04`. Both mismatches are FrontComposer-tracked and were introduced outside Story 11.17d by concurrent commit `6a4350ec`. Administrator selected keeping the story in progress until the mismatches are reconciled and the complete lane passes on the exact promotion revision.
-status: open
+status: done 2026-08-29
+resolution: already resolved: _bmad-output/implementation-artifacts/11-17-shell-bundle-split.md:89 records the root/EventStore Builds-gitlink mismatch as resolved with governance evidence
 
 ### DW-1687: BUILD-CAT-1 - Hexalith.Builds should introduce a semantic catalog-contract version marker and canonicalization rules for Props/Directory.Packages.props.
 
@@ -8561,7 +8566,8 @@ origin: migrated from legacy ledger ("Deferred from: Story 11.24 owner decision 
 location: 999.1.20-proof.fa2d1c9910f8
 source_spec: `_bmad-output/implementation-artifacts/spec-11-24-adopt-the-owner-approved-eventstore-runtime-identity.md`
 reason: summary: EventStore and Release owners publish a retrievable replacement source/package identity with exact hashes and a matching Builds catalog commit. evidence: Story 1.20's approved `999.1.20-proof.fa2d1c9910f8` archives are unrecoverable, current source/package identities differ, and no FrontComposer-scoped replacement authority exists.
-status: open
+status: done 2026-08-29
+resolution: already resolved: commit 16996eb5 added the retrievable owner-approved EventStore bb94d93e / 3.91.1 tuple, exact hashes, and Builds a8a50859 identity
 
 ### DW-1788: EventStore supplies a real-loopback Pact provider verifier and separately reconciles the 19 FrontComposer consumer interactions with the provider wire contract.
 
@@ -8618,7 +8624,8 @@ origin: migrated from legacy ledger ("Deferred from: Story 11.24 owner decision 
 location: Hexalith.EventStore.Aspire/3.93.0
 source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-package-to-3-93-0.md`
 reason: summary: Add a durable Release-mode assertion for the exact EventStore Aspire package identity and absence of its source-project edge. evidence: This bump proved `Hexalith.EventStore.Aspire/3.93.0` through an isolated restore and asset inspection, but the existing CI governance tests do not assert the resolved package version.
-status: open
+status: done 2026-08-29
+resolution: already resolved: commit 16996eb5 added exact Release EventStore package-identity and no-source-project-edge governance evidence
 
 ### DW-1795: Fail closed when AD-13 create-ci soft-defers (exit 2) so push CI cannot stay green without an AD-13 handoff artifact.
 
@@ -8710,7 +8717,8 @@ origin: migrated from legacy ledger ("Deferred from: Story 11.24 owner decision 
 location: CiGovernanceTests.ReleaseWorkflow_DelegatesToReusableDomainReleaseAfterCiGate
 source_spec: `_bmad-output/implementation-artifacts/spec-actions-29643539939-fix-cicd.md`
 reason: summary: Align reusable Release workflow pins with current Builds HEAD `606d9f1` (tests still expect `99d5a46`). evidence: `CiGovernanceTests.ReleaseWorkflow_DelegatesToReusableDomainReleaseAfterCiGate` fails on later main; this restore-close did not change workflows or gitlinks.
-status: open
+status: done 2026-08-29
+resolution: already resolved: commit 16996eb5 separated the catalog gitlink from the immutable Builds execution coordinate while retaining execution-coordinate lockstep
 
 ### DW-1806: Reseal the analyzer-policy identifier inventory for later-main drift (`6824` / `af8a8d24…` vs sealed `6820` / `6c099739…`).
 
@@ -8795,7 +8803,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 9-4-converge
 location: commitlint.config.mjs
 source_spec: `_bmad-output/implementation-artifacts/spec-9-4-converge-terminal-outcomes-on-one-producer-boundary.md`
 reason: summary: Add executable commitlint boundary coverage proving 200-character header, body, and footer lines pass while 201-character lines fail. evidence: `commitlint.config.mjs` sets all three limits to 200, but no repository test invokes the pinned CLI at both boundary values.
-status: open
+status: done 2026-08-29
+resolution: already resolved: commit b8c8f01a added executable pinned-commitlint 200/201 boundary cases for header, body, and footer lines
 
 ### DW-1816: Make the nightly LLM benchmark gate reject missing, failed, zero-run, or otherwise invalid benchmark results before accepting candidate evidence.
 
@@ -9456,7 +9465,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-26)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:812
 reason: `ReleaseWorkflow_DelegatesToReusableDomainReleaseAfterCiGate` (`tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:812`) has been red in every Story 9.7 iteration's Test Evidence, holding the blocking Governance lane at 66/67. It asserts every release Builds coordinate equals the `references/Hexalith.Builds` gitlink resolved by `git ls-tree HEAD`, currently `4eb33928a1d8c7775f97221cf9edc171db0cb5f8` against `22a578b576a515d2af214fe81859447fffc97981`. Under the REL-6 lockstep decision the required lockstep is two-way only (`uses:@<sha>` == `builds-execution-sha`) and the gitlink is deliberately independent because it selects catalog content rather than the release tool, so the assertion may encode the wrong invariant. Owner: Release Owner. Deferred 2026-08-26 (review loop 10): filed for ownership; Story 9.7 changes neither coordinate.
-status: open
+status: done 2026-08-29
+resolution: already resolved: commit 16996eb5 removed the erroneous release-execution-equals-catalog-gitlink assertion and pins only the approved execution-coordinate lockstep
 decision: 2026-08-27 Implement the change — Implement the behavior requested by DW-1896, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1897: Bind package-audit revision provenance to the exact committed catalog identity.
