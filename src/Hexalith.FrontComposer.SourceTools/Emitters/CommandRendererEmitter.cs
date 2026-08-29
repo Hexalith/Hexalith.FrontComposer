@@ -370,7 +370,7 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private static bool TryConvertPropertyValue<T>(object value, out T converted)");
         _ = sb.AppendLine("    {");
-        _ = sb.AppendLine("        Type targetType = typeof(T);");
+        _ = sb.AppendLine("        Type targetType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);");
         _ = sb.AppendLine("        object? convertedValue = value;");
         _ = sb.AppendLine("        try");
         _ = sb.AppendLine("        {");

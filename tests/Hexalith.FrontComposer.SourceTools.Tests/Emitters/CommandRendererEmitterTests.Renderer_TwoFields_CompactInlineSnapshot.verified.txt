@@ -145,7 +145,7 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
 
     private static bool TryConvertPropertyValue<T>(object value, out T converted)
     {
-        Type targetType = typeof(T);
+        Type targetType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
         object? convertedValue = value;
         try
         {

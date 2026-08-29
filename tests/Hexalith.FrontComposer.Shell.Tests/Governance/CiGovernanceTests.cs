@@ -271,6 +271,17 @@ public sealed class CiGovernanceTests {
         a11yStep.ShouldContain("npm run test:a11y");
         a11yStep.ShouldNotContain("continue-on-error: true");
 
+        int checkoutStart = a11yJob.IndexOf("      - uses: actions/checkout@", StringComparison.Ordinal);
+        checkoutStart.ShouldBeGreaterThanOrEqualTo(0);
+        int checkoutEnd = a11yJob.IndexOf("\n      - ", checkoutStart + 1, StringComparison.Ordinal);
+        checkoutEnd.ShouldBeGreaterThan(checkoutStart);
+        string checkoutStep = a11yJob[checkoutStart..checkoutEnd];
+        checkoutStep.ShouldContain("GIT_CONFIG_COUNT: 1");
+        checkoutStep.ShouldContain("GIT_CONFIG_KEY_0: core.longpaths");
+        checkoutStep.ShouldContain("GIT_CONFIG_VALUE_0: 'true'");
+        checkoutStep.ShouldNotContain("git config --global");
+        a11yJob.Replace(checkoutStep, string.Empty, StringComparison.Ordinal).ShouldNotContain("core.longpaths");
+
         string initializeBuildSubmodules = ExtractNamedStep(a11yJob, "Initialize build submodules");
         a11yJob.ShouldContain("fetch-depth: 0");
         initializeBuildSubmodules.ShouldContain("shell: bash");
@@ -285,6 +296,15 @@ public sealed class CiGovernanceTests {
         initializeBuildSubmodules.ShouldContain("GIT_CONFIG_KEY_0: core.symlinks");
         initializeBuildSubmodules.ShouldContain("GIT_CONFIG_VALUE_0: 'false'");
         initializeBuildSubmodules.ShouldNotContain("git config --global");
+
+        foreach (string stepName in new[] {
+            "Typecheck Playwright accessibility lane",
+            "Run FC-NIP contract guards (browserless)",
+            "Validate visual baseline governance",
+            "Validate accessibility artifacts",
+        }) {
+            ExtractNamedStep(a11yJob, stepName).ShouldNotContain("continue-on-error: true");
+        }
     }
 
     [Fact]

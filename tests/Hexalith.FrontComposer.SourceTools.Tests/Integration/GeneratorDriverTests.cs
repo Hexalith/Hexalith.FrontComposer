@@ -580,6 +580,109 @@ public partial class AllUnsupportedProjection
     }
 
     [Fact]
+    public void TypedPrefillRuntimePreservesConversionMatrix() {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        const string source = """
+            using System;
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace TestDomain;
+
+            public enum PrefillStatus { Pending, Completed }
+
+            [Command]
+            public class TypedPrefillCommand {
+                public string MessageId { get; set; } = string.Empty;
+
+                [DerivedFrom(DerivedFromSource.Context)]
+                public int? OptionalCount { get; set; }
+
+                [DerivedFrom(DerivedFromSource.Context)]
+                public int AttemptCount { get; set; }
+
+                [DerivedFrom(DerivedFromSource.Context)]
+                public decimal Amount { get; set; }
+
+                [DerivedFrom(DerivedFromSource.Context)]
+                public PrefillStatus Status { get; set; }
+
+                [DerivedFrom(DerivedFromSource.Context)]
+                public Guid ExternalId { get; set; }
+            }
+            """;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new FrontComposerGenerator());
+
+        driver = driver.RunGenerators(compilation, ct);
+        GeneratorDriverRunResult result = driver.GetRunResult();
+        result.Diagnostics.Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+
+        CSharpCompilation outputCompilation = compilation.AddSyntaxTrees(result.GeneratedTrees.ToArray());
+        outputCompilation.GetDiagnostics(ct)
+            .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ShouldBeEmpty("Typed prefill output should compile before its runtime conversion matrix is exercised.");
+
+        using MemoryStream assemblyStream = new();
+        outputCompilation.Emit(assemblyStream, cancellationToken: ct).Success.ShouldBeTrue();
+        assemblyStream.Position = 0;
+        var loadContext = new System.Runtime.Loader.AssemblyLoadContext(
+            $"typed-prefill-{Guid.NewGuid():N}",
+            isCollectible: true);
+        loadContext.Resolving += static (_, name) => AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(assembly => assembly.GetName().Name == name.Name);
+        try {
+            System.Reflection.Assembly assembly = loadContext.LoadFromStream(assemblyStream);
+            Type rendererType = assembly.GetType("TestDomain.TypedPrefillCommandRenderer", throwOnError: true).ShouldNotBeNull();
+            object renderer = Activator.CreateInstance(rendererType).ShouldNotBeNull();
+            System.Reflection.MethodInfo trySet = rendererType
+                .GetMethod("TrySetPropertyValue", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                .ShouldNotBeNull();
+            object command = rendererType
+                .GetField("_prefilledModel", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                .ShouldNotBeNull()
+                .GetValue(renderer)
+                .ShouldNotBeNull();
+            Type commandType = command.GetType();
+
+            bool Set(string propertyName, object? value)
+                => (bool)trySet.Invoke(renderer, [propertyName, value]).ShouldNotBeNull();
+
+            Guid exactGuid = Guid.NewGuid();
+            Set("ExternalId", exactGuid).ShouldBeTrue();
+            commandType.GetProperty("ExternalId").ShouldNotBeNull().GetValue(command).ShouldBe(exactGuid);
+
+            Set("OptionalCount", "42").ShouldBeTrue();
+            commandType.GetProperty("OptionalCount").ShouldNotBeNull().GetValue(command).ShouldBe(42);
+            Set("Status", "completed").ShouldBeTrue();
+            commandType.GetProperty("Status").ShouldNotBeNull().GetValue(command).ShouldNotBeNull().ToString().ShouldBe("Completed");
+
+            System.Globalization.CultureInfo originalCulture = System.Globalization.CultureInfo.CurrentCulture;
+            try {
+                System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("fr-FR");
+                Set("Amount", "42,5").ShouldBeTrue();
+                commandType.GetProperty("Amount").ShouldNotBeNull().GetValue(command).ShouldBe(42.5m);
+            }
+            finally {
+                System.Globalization.CultureInfo.CurrentCulture = originalCulture;
+            }
+
+            Set("OptionalCount", null).ShouldBeTrue();
+            commandType.GetProperty("OptionalCount").ShouldNotBeNull().GetValue(command).ShouldBeNull();
+            Set("AttemptCount", null).ShouldBeTrue();
+            commandType.GetProperty("AttemptCount").ShouldNotBeNull().GetValue(command).ShouldBe(0);
+
+            Set("AttemptCount", 7).ShouldBeTrue();
+            Set("Unknown", 9).ShouldBeFalse();
+            commandType.GetProperty("AttemptCount").ShouldNotBeNull().GetValue(command).ShouldBe(7);
+            Set("AttemptCount", "not-an-int").ShouldBeFalse();
+            commandType.GetProperty("AttemptCount").ShouldNotBeNull().GetValue(command).ShouldBe(7);
+        }
+        finally {
+            loadContext.Unload();
+        }
+    }
+
+    [Fact]
     public void RunGenerators_DerivableFields_PreserveFullPageDensityWhenFiveEditableFieldsRemain() {
         GeneratorDriverRunResult result = RunGenerator(BuildCommandSource(
             "FullPageWithDerivableFieldsCommand",

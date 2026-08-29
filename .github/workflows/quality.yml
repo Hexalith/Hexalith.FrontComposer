@@ -458,6 +458,11 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        env:
+          # Step-scoped Git config lets checkout create the preserved evidence paths on Windows.
+          GIT_CONFIG_COUNT: 1
+          GIT_CONFIG_KEY_0: core.longpaths
+          GIT_CONFIG_VALUE_0: 'true'
         with:
           fetch-depth: 0
           persist-credentials: false

@@ -166,6 +166,7 @@ public class CommandRendererEmitterTests {
     public void Renderer_DerivablePrefill_PreservesConversionAndFailureContract() {
         string source = CommandRendererEmitter.Emit(BuildModel(1));
 
+        source.ShouldContain("Type targetType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);");
         source.ShouldContain("if (!targetType.IsInstanceOfType(value))");
         source.ShouldContain("Enum.Parse(targetType, s, ignoreCase: true)");
         source.ShouldContain("Enum.ToObject(targetType, value)");

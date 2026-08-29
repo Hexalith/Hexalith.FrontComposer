@@ -10,7 +10,8 @@ Tenants' hardcoded ``PACKAGE_PROJECTS`` constant, this reads the single source o
 ``eng/release-package-inventory.json`` (filtering ``packable == true``) so the CI-time
 package set can never drift from the release inventory the governance tests pin. The
 solution is expected to already be built ``-warnaserror`` (the reusable builds before
-calling this), so packing runs ``--no-build``.
+calling this), so packing runs ``--no-build``. A validation-aware solution restore runs
+first so package baselines are available even when the NuGet cache starts cold.
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ SCRIPT_PATH = Path(__file__).resolve()
 REPO_ROOT = SCRIPT_PATH.parents[1]
 INVENTORY_PATH = REPO_ROOT / "eng" / "release-package-inventory.json"
 EXPECTED_PACKAGE_COUNT = 8
+SOLUTION_PATH = REPO_ROOT / "Hexalith.FrontComposer.slnx"
 sys.path.insert(0, str(REPO_ROOT / "eng"))
 
 from release_compatibility import release_properties, validate_release_policy  # noqa: E402
@@ -119,6 +121,19 @@ def pack_commands(output_directory: Path, version: str) -> list[list[str]]:
     ]
 
 
+def restore_command(version: str) -> list[str]:
+    """Build the validation-aware solution restore required before no-build packing."""
+    return [
+        "dotnet",
+        "restore",
+        str(SOLUTION_PATH),
+        "-p:Configuration=Release",
+        *release_properties(version),
+        "/m:1",
+        "/nr:false",
+    ]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Pack FrontComposer release packages.")
     parser.add_argument("output_directory", type=Path, help="Directory where .nupkg files are written.")
@@ -138,8 +153,9 @@ def main() -> int:
     )
 
     # Resolve against the caller's current directory before switching dotnet to REPO_ROOT.
-    # Cleanup and every pack command therefore target one identical absolute directory.
+    # Cleanup and every command therefore target one identical absolute directory.
     output_directory = args.output_directory.resolve()
+    restore = restore_command(args.version)
     commands = pack_commands(output_directory, args.version)
     if args.plan:
         json.dump(
@@ -148,6 +164,7 @@ def main() -> int:
                 "version": args.version,
                 "releasePolicy": args.release_policy,
                 "releaseLine": release_line,
+                "restoreCommand": restore,
                 "commands": commands,
             },
             sys.stdout,
@@ -156,8 +173,10 @@ def main() -> int:
         sys.stdout.write("\n")
         return 0
 
-    # Policy, candidate SemVer, and inventory validation above must all complete before
-    # the first package-output mutation. Shared CI skips only release-line matching.
+    # Policy, candidate SemVer, inventory validation, and validation-aware restore above
+    # must all complete before the first package-output mutation. Shared CI skips only
+    # release-line matching; it never relies on a warm package-baseline cache.
+    subprocess.run(restore, check=True, cwd=REPO_ROOT)
     output_directory.mkdir(parents=True, exist_ok=True)
     for package in output_directory.glob("*.nupkg"):
         package.unlink()

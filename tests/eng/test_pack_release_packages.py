@@ -47,6 +47,10 @@ class PackReleasePackagesTests(unittest.TestCase):
         payload = json.loads(result.stdout)
         self.assertTrue(payload["releasePolicy"])
         self.assertEqual("v4.2", payload["releaseLine"])
+        restore = payload["restoreCommand"]
+        self.assertEqual(["dotnet", "restore"], restore[:2])
+        self.assertEqual(str(ROOT / "Hexalith.FrontComposer.slnx"), restore[2])
+        self.assertIn("-p:Configuration=Release", restore)
         self.assertEqual(8, len(payload["commands"]))
         for command in payload["commands"]:
             self.assertEqual(["dotnet", "pack"], command[:2])
@@ -57,6 +61,8 @@ class PackReleasePackagesTests(unittest.TestCase):
             self.assertIn(VALIDATION_PROPERTY, command)
             self.assertIn(BASELINE_PROPERTY, command)
             self.assertIn(SKIP_BASELINE_PROPERTY, command)
+            for property_value in restore[4:-2]:
+                self.assertIn(property_value, command)
 
     def test_synthetic_ci_positional_contract_skips_only_release_line_matching(self) -> None:
         result = self.run_plan("0.0.0-ci-test", release_policy=False)
@@ -377,6 +383,51 @@ class PackReleasePackagesTests(unittest.TestCase):
                     mock.patch.object(module, "REPO_ROOT", root):
                 with self.assertRaisesRegex(ValueError, "escapes the repository root"):
                     module.packable_projects()
+
+    def test_restore_precedes_output_cleanup_and_every_pack(self) -> None:
+        module = self.load_packer()
+        with tempfile.TemporaryDirectory() as directory:
+            output = pathlib.Path(directory)
+            sentinel = output / "existing.nupkg"
+            sentinel.write_bytes(b"replace after restore")
+            argv = [str(SCRIPT), str(output), "0.0.0-ci-test"]
+            observed_commands: list[list[str]] = []
+
+            def observe_run(command: list[str], **_kwargs: object) -> mock.Mock:
+                if not observed_commands:
+                    self.assertEqual(b"replace after restore", sentinel.read_bytes())
+                else:
+                    self.assertFalse(sentinel.exists())
+                observed_commands.append(command)
+                return mock.Mock(returncode=0)
+
+            with mock.patch.object(module.subprocess, "run", side_effect=observe_run), \
+                    mock.patch.object(sys, "argv", argv):
+                self.assertEqual(0, module.main())
+
+            self.assertEqual(["dotnet", "restore"], observed_commands[0][:2])
+            self.assertEqual(9, len(observed_commands))
+            for command in observed_commands[1:]:
+                self.assertEqual(["dotnet", "pack"], command[:2])
+            self.assertFalse(sentinel.exists())
+
+    def test_restore_failure_precedes_package_output_cleanup(self) -> None:
+        module = self.load_packer()
+        with tempfile.TemporaryDirectory() as directory:
+            output = pathlib.Path(directory)
+            sentinel = output / "existing.nupkg"
+            sentinel.write_bytes(b"do not delete")
+            argv = [str(SCRIPT), str(output), "0.0.0-ci-test"]
+
+            with mock.patch.object(
+                module.subprocess,
+                "run",
+                side_effect=subprocess.CalledProcessError(31, ["dotnet", "restore"]),
+            ), mock.patch.object(sys, "argv", argv):
+                with self.assertRaises(subprocess.CalledProcessError):
+                    module.main()
+
+            self.assertEqual(b"do not delete", sentinel.read_bytes())
 
     def test_relative_output_is_resolved_from_caller_for_cleanup_and_pack_commands(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
