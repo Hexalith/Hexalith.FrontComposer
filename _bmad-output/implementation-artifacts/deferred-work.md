@@ -9491,3 +9491,35 @@ source_spec: `spec-dw-668-followup-review-11-4-security-validation-hardening.md`
 severity: low
 reason: The focused serverless Playwright regression passes 1/1, but the blocking workflow typechecks and selects other specs; reverting the helper casing could therefore escape that CI lane.
 status: open
+
+### DW-1901: Reconcile the preserved EventStore provider and live AppHost compatibility failures in separately approved pact/API work.
+origin: spec-deferred dbc4b5f12f66
+location: _bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/
+source_spec: `spec-11-24-adopt-the-owner-approved-eventstore-runtime-identity.md`
+severity: high
+reason: The complete 19-interaction provider report truthfully records 16 contract failures and a runtime identity mismatch, while the AppHost smoke records failed runtime observations. The frozen intent explicitly makes these outcomes non-authorizing and routes reconciliation to separate work.
+status: open
+
+### DW-1902: Repair the pre-existing AppHost Release source/package selection gap for the Parties and Tenants UI modules.
+origin: spec-deferred 89c278b3540e
+location: src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj
+source_spec: `spec-11-24-adopt-the-owner-approved-eventstore-runtime-identity.md`
+severity: high
+reason: A Release AppHost build probe completed restore but failed compilation with 23 missing Parties/Tenants UI symbols because FrontComposerUiUsePublishedModulePackages defaults to false while Release source references are disabled. The isolated Story 11.24 EventStore restore remained valid and resolved only Hexalith.EventStore.Aspire 3.91.1.
+status: open
+
+### DW-1903: Regain the newer Builds catalog once a newer EventStore runtime identity is owner-approved, and re-assess the package pins this story had to move backwards.
+origin: spec-deferred b2312b2406e4
+location: eng/dependency-graph-policy.json
+source_spec: `spec-11-24-adopt-the-owner-approved-eventstore-runtime-identity.md`
+severity: high
+reason: Selecting the owner-approved Builds catalog `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a` is required by the frozen intent, but it moves `eng/dependency-graph-policy.json` backwards from the previously selected `449d3643`: ModelContextProtocol.AspNetCore 2.2.0 -> 1.4.1 (major), Verify and Verify.XunitV3 32.0.0 -> 31.27.0, FsCheck.Xunit.v3 3.4.0 -> 3.3.4, Microsoft.Extensions.Localization and System.Collections.Immutable 10.0.11 -> 10.0.10, Microsoft.NET.Test.Sdk 18.9.0 -> 18.8.1, and Fluent UI v5 rc.5 -> rc.4. The Fluent step also regenerated two verified DataGrid snapshots that lost the `display-mode` and `cell-type` attributes and moved `col-justify` onto a class, which is an accessibility-observable DOM change. Nothing in this repository records a forward path back to the newer catalog.
+status: open
+
+### DW-1904: Follow-up review still recommended for 11-24-adopt-the-owner-approved-eventstore-runtime-identity after the damping cap was spent
+origin: review-budget-followup
+location: n/a
+source_spec: `spec-11-24-adopt-the-owner-approved-eventstore-runtime-identity.md`
+severity: low
+reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260829-002159-feb7; this entry preserves the lingering recommendation for a deliberate later review.
+status: open
