@@ -158,7 +158,9 @@ jobs:
           python3 -m unittest tests/eng/test_eventstore_runtime_evidence.py
           # pwsh does not fail a step on a native non-zero exit, and the validator below resets
           # $LASTEXITCODE, so the evidence suite must propagate its own failure explicitly.
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # $LASTEXITCODE is $null until a native command sets it, and `exit $null` exits 0,
+          # so never re-use it as the exit code: a suite that could not launch must fail closed.
+          if (-not $? -or $LASTEXITCODE -ne 0) { exit 1 }
           ./eng/validate-contract-artifacts.ps1 `
             -RequireProviderVerification `
             -ProviderVerificationReport "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/provider-verification/provider-verification.json"

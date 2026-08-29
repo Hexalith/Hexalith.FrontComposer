@@ -1,4 +1,4 @@
-﻿param(
+param(
   [string] $PactDir = "tests/Hexalith.FrontComposer.Shell.Tests/Pact",
   [string] $ArtifactDir = "artifacts/contracts",
   [string] $ProviderVerificationReport = "",
@@ -6,6 +6,11 @@
 )
 
 $ErrorActionPreference = "Stop"
+
+# Every repository-relative input resolves against the repository root, not the caller's
+# working directory, so the documented command works from anywhere.
+$repositoryRoot = Split-Path -Parent $PSScriptRoot
+$PactDir = [System.IO.Path]::GetFullPath($PactDir, $repositoryRoot)
 
 New-Item -ItemType Directory -Force -Path $ArtifactDir | Out-Null
 
@@ -209,7 +214,6 @@ foreach ($file in $requiredFiles) {
 
 $redactionLines | Set-Content -LiteralPath (Join-Path $ArtifactDir "redaction-scan.txt") -Encoding utf8
 
-$repositoryRoot = Split-Path -Parent $PSScriptRoot
 $frontComposerEvidenceRoot = Join-Path $repositoryRoot "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24"
 $expectedProviderVerificationReport = Join-Path $frontComposerEvidenceRoot "provider-verification/provider-verification.json"
 $providerStatus = "NOT_REQUIRED"
@@ -241,15 +245,15 @@ if ($RequireProviderVerification) {
     }
 
     $validator = Join-Path $repositoryRoot "eng/eventstore_runtime_evidence.py"
-    $resolvedPactDir = [System.IO.Path]::GetFullPath($PactDir)
     $validationOutput = @(& python3 $validator `
       --evidence-root $frontComposerEvidenceRoot `
-      --pact-dir $resolvedPactDir 2>&1)
+      --pact-dir $PactDir 2>&1)
     if ($LASTEXITCODE -ne 0) {
       foreach ($line in $validationOutput) {
         $errors.Add([string] $line)
       }
-    } else {
+    } elseif ($providerLeaks.Count -eq 0) {
+      # A leaking report is a rejected lane; the summary must never call it complete.
       $providerStatus = "COMPLETE_HASH_BOUND_REPORT"
     }
   }

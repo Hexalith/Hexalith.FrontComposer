@@ -219,52 +219,70 @@ Selection and contract lanes:
   - `medium` `patch` Reconciled catalog-induced Fluent, localization, test SDK, analyzer-ledger, and verified-snapshot drift.
   - `high` `patch` Strengthened the invalid/retired evidence matrix to prove dependency bytes and checkouts remain unchanged.
 
+
+### 2026-08-29 — Review pass (follow-up 2)
+
+- intent_gap: 0
+- bad_spec: 0
+- patch: 9: (high 2, medium 6, low 1)
+- defer: 0
+- reject: 23: (high 2, medium 11, low 10)
+- addressed_findings:
+  - `high` `patch` Pinned every EventStore-captured evidence file by exact digest. Only 2 of the 12 captured files were pinned, so `sha256-manifest.json` was the sole authority for the other 10 — including the provider report. Two existing tests demonstrated the hole: they rewrote the report to an all-passing, `runtimeMatches: true` verdict, re-sealed the manifest, and validated with zero errors, which is exactly the "relabel a failed report as passing" the frozen Never forbids. `CAPTURED_EVIDENCE_SHA256` now pins all twelve; the two structural tests re-pin explicitly so outcome-parametric coverage survives, and a new test proves the un-repinned forgery is rejected.
+  - `high` `patch` Covered the `-RequireProviderVerification` branch of `validate-contract-artifacts.ps1`, which executed in no test at all — its owned-report path check, its validator exit-code propagation, and its status reporting could all have been inverted or deleted with every lane green. Added three pwsh-subprocess tests: canonical acceptance from an unrelated working directory, rejection of a report outside the owned evidence tree, and propagation of an evidence-validator failure.
+  - `medium` `patch` Stopped the job summary reporting `COMPLETE_HASH_BOUND_REPORT` when the provider report failed its redaction scan; the lane failed but the summary called the report complete, the same mis-summarization the previous pass added `REQUIRED_REJECTED` to prevent.
+  - `medium` `patch` Completed the previous pass's repository-root path fix. `-PactDir` and every pact read still resolved against the caller's working directory, so the documented command only worked from the repository root; the script is now genuinely directory-independent, and a test asserts it.
+  - `medium` `patch` Made the fail-closed propagation in Gate 2c actually fail closed. `$LASTEXITCODE` is `$null` until a native command sets it, and `exit $null` exits 0, so a suite that never launched would have exited the step green; the guard now exits 1 and `CiGovernanceTests` pins the safe form instead of the unsafe literal.
+  - `medium` `patch` Brought the evidence-tree redaction scanner to parity with the sibling `Find-RedactionLeaks`, which only ever sees the pacts and the provider report. Connection strings, cookies, authorization payloads, raw `Authorization` headers, and environment-shaped secrets were rejected in a pact but accepted in the other 13 preserved evidence files.
+  - `medium` `patch` Made `sha256-manifest.json` truthful about provenance. A single `capturedFromEventStoreCommit` covered all 14 files, but the AppHost smoke and Release restore evidence were produced by this repository after that commit; each entry now declares `eventstore-capture` or `frontcomposer-run` and the validator enforces it.
+  - `medium` `patch` Required an AppHost observation recorded as `not-observed` to carry no response code, so a real observation cannot be relabelled as one the run never reached.
+  - `low` `patch` Removed three UTF-8 BOMs this change had introduced into `eng/validate-contract-artifacts.ps1`, `CiGovernanceTests.cs`, and `EventStorePactContractTests.cs`; `.editorconfig` declares `charset = utf-8` and 309 of 311 sibling test files carry none.
+
 ## Auto Run Result
 
 ### Summary
 
-Follow-up review pass over the committed Story 11.24 change. The owner-approved runtime identity adoption itself was left intact: Debug points to EventStore source `bb94d93e9b84132cff83a38fba84f25455820d31`, Release selects `3.91.1` through Builds catalog `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a`, and the compatibility verdict remains preserved and non-authorizing. Ten findings were patched — three of them high: the CI lane could not fail on its own fail-closed evidence suite, failure diagnostics were no longer published, and the "byte-identical" preservation constraint was not actually met.
+Second follow-up review pass over the committed Story 11.24 change. The owner-approved runtime identity adoption is untouched: the EventStore gitlink and checkout are both `bb94d93e9b84132cff83a38fba84f25455820d31`, Release resolves `3.91.1` through Builds catalog `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a`, and the provider report's `failed` verdict and runtime mismatch remain preserved and non-authorizing. Nine findings were patched; the two high ones both concern the gate rather than the identity — the preserved provider report was forgeable in-repo, and the required-provider branch of the contract validator was executed by no test.
 
 ### Files changed
 
-- `.github/workflows/quality.yml` — propagates the evidence suite's exit code under `pwsh`, and splits an always-run diagnostics-only upload from the success-gated evidence upload.
-- `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json` — re-seals the CA1707 test identifier inventory for this pass's own line-shift drift (count unchanged at 7126).
-- `_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/frontcomposer-11-24-runtime-identity-successor.md` — restored to the exact EventStore-owned capture bytes.
-- `_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/sha256-manifest.json` — rebinds the restored capture bytes.
-- `docs/reference/pact-contracts.md` — restores the NFR55 release rule and documents the evidence hash domains and re-capture procedure.
-- `eng/eventstore_runtime_evidence.py` — asserts byte-identity of the preserved successor and owner-actions records, checks identity input kinds, and tolerates sub-millisecond duration rounding.
-- `eng/validate-contract-artifacts.ps1` — reports `REQUIRED_REJECTED` for a required-and-rejected lane and resolves the report path against the repository root.
-- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs` — pins the exit-code propagation and the diagnostics/evidence upload split.
-- `tests/Hexalith.FrontComposer.Shell.Tests/Pact/EventStorePactContractTests.cs`, `.../Pact/provider-verification-handoff.md` — the handoff generator and its regenerated output now record the preserved run instead of a blocked release.
-- `tests/eng/test_eventstore_runtime_evidence.py` — four new cases: successor byte-identity, owner-actions byte-identity, identity-kind relabeling, and the duration rounding boundary.
-- `_bmad-output/implementation-artifacts/spec-11-24-adopt-the-owner-approved-eventstore-runtime-identity.md` — records this pass's triage, deferral, file list, and result.
+- `.github/workflows/quality.yml` — the evidence-suite propagation exits 1 rather than re-using a possibly-`$null` `$LASTEXITCODE`.
+- `_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/sha256-manifest.json` — each entry now declares per-file `provenance`.
+- `docs/reference/pact-contracts.md` — documents the per-file provenance, the capture pins, and that changing a pin is the deliberate act of replacing owner-captured bytes.
+- `eng/eventstore_runtime_evidence.py` — pins all twelve captured files by digest, enforces manifest provenance, scans evidence at parity with the PowerShell leak rules, and constrains `not-observed` AppHost outcomes.
+- `eng/validate-contract-artifacts.ps1` — resolves `-PactDir` against the repository root, refuses to call a leaking report complete, and drops its BOM.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs` — pins the safe propagation form and rejects the unsafe one; BOM dropped.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Pact/EventStorePactContractTests.cs` — BOM dropped.
+- `tests/eng/test_eventstore_runtime_evidence.py` — nine new cases covering the capture pin, the pin inventory, manifest provenance, the widened redaction classes, the raw `Authorization` header, unobserved-with-a-status-code, and the three `-RequireProviderVerification` script paths.
+- `_bmad-output/implementation-artifacts/spec-11-24-adopt-the-owner-approved-eventstore-runtime-identity.md` — records this pass's triage and result.
 
 ### Review findings breakdown
 
-- Applied 10 patches: 3 high and 7 medium.
-- Deferred 1 high: a forward path back to the newer Builds catalog, since the intent-mandated `a8a50859…` catalog moves seven package pins backwards (including a ModelContextProtocol.AspNetCore major) and regressed two verified Fluent DataGrid snapshots.
-- Rejected 12: findings that misread preserved evidence (the AppHost 503 is consistent with its recorded `failed` health result), that would produce false rejections (word-level encoded-token scanning would flag every SHA-256 line in `nuget-sha256.txt`), that contradict confirmed project rules (re-coupling `builds-execution-sha` to the deliberately independent Builds gitlink; treating this story's own analyzer-ledger drift as GOV-1-owned), that cannot be changed without breaking preserved bytes, or that restate pre-existing repository conventions.
+- Applied 9 patches: 2 high, 6 medium, 1 low.
+- Deferred 0. The two open compatibility items and the backwards catalog pins were already recorded in this spec's `deferred` list in earlier passes and are unchanged.
+- Rejected 23: findings that target upstream-owned frozen bytes this story must preserve verbatim (the report's `evidenceManifestSha256` field name, the two receipts' identical timestamps, the deliberately broken relative links, the absent upstream post-receipt test run); findings that contradict confirmed project rules (re-coupling `builds-execution-sha` to the deliberately independent Builds gitlink; treating this story's own analyzer-ledger drift as GOV-1-owned); documentation opinions already settled by the 2026-08-26 human decision (NFR55 naming); findings resting on a misreading (the Run block is not self-defeating because pact regeneration is deterministic and the stale-pact gate exists for that; the duplicate upload is the deliberate diagnostics/evidence split); requests to rewrite two other stories' completed `done` records that mention `BLOCKED_HANDOFF` as historical evidence; and scope creep (a cross-language pin file, an outcome-parametric AppHost resource gate, real restore/build/provider execution this story routes to EventStore).
 
 ### Follow-up review recommendation
 
-`true` — patched findings: high 3, medium 7, low 0; weighted medium/low score `3 × 7 + 0 = 21`, and high-severity patches were applied.
+`true` — patched findings: high 2, medium 6, low 1; a high-severity patch was applied, and the weighted medium/low score is `3 × 6 + 1 × 1 = 19`.
 
 ### Verification performed
 
-- `python3 -m unittest tests/eng/test_eventstore_runtime_evidence.py` — 31 passed (27 pre-existing plus 4 new).
+- `python3 -m unittest tests/eng/test_eventstore_runtime_evidence.py` — 40 passed (31 pre-existing plus 9 new).
 - `python3 -m unittest tests/eng/test_dependency_graph.py` — 99 passed.
 - `python3 eng/eventstore_runtime_evidence.py --evidence-root _bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24 --pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact` — passed.
-- `pwsh ./eng/validate-contract-artifacts.ps1 -RequireProviderVerification` — passed; re-run from an unrelated working directory with a repository-relative report argument, also passed; a non-canonical report argument fails and now reports `Provider verification: REQUIRED_REJECTED` in the job summary.
+- `pwsh ./eng/validate-contract-artifacts.ps1 -RequireProviderVerification` — passed, job summary `COMPLETE_HASH_BOUND_REPORT`; re-run from `/tmp` with a repository-relative report argument, also passed.
+- `git ls-tree HEAD -- references/Hexalith.EventStore references/Hexalith.Builds` and `git -C … rev-parse HEAD` — gitlink equals checkout for both: `bb94d93e…` and `a8a50859…`.
 - Shell governance lane (`Category=Governance`, direct xUnit v3 runner) — 227/227 passed.
-- Full Shell suite (`-notrait Category=Performance -notrait Category=e2e-palette -notrait Category=NightlyProperty -notrait Category=Quarantined`) — 2,688/2,688 passed after the identifier-inventory re-seal.
-- Contract lane (`Category=Contract`) — 3/3 passed; regenerated pact artifacts show no drift beyond the intended handoff document.
-- `runtime_packages="$(mktemp -d)" && dotnet restore src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj -p:Configuration=Release --packages "$runtime_packages"` — restored; the sole EventStore asset is `hexalith.eventstore.aspire/3.91.1`.
+- Full Shell default lane (`-notrait Category=Performance -notrait Category=e2e-palette -notrait Category=NightlyProperty -notrait Category=Quarantined`) — 2,688/2,688 passed; no pact drift after the run.
+- `runtime_packages="$(mktemp -d)" && dotnet restore src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj -p:Configuration=Release --packages "$runtime_packages"` — restored; the sole EventStore asset is `hexalith.eventstore.aspire`.
+- `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/… --configuration Release -m:1` — clean, 0 warnings under `TreatWarningsAsErrors`.
 - `pwsh ./eng/validate-docs.ps1` — passed.
-- `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/spec-11-24-adopt-the-owner-approved-eventstore-runtime-identity.md --candidate HEAD` — passed.
+- `python3 eng/validate-story-artifacts.py --story … --candidate HEAD` — passed.
 
 ### Residual risks
 
-- The preserved provider and AppHost observations still record real compatibility drift; this pass did not resolve it, and the deferred pact/API reconciliation remains necessary.
-- Gate 2c stays deliberately bound to live pact and AppHost bytes, so any ordinary edit to those files fails the lane until the evidence is re-captured upstream. That coupling is now documented rather than removed.
-- The intent-mandated Builds catalog leaves seven package pins on older versions, including a ModelContextProtocol.AspNetCore major downgrade and Fluent DataGrid snapshot attribute loss; the forward path is deferred, not resolved.
+- The preserved provider and AppHost observations still record real compatibility drift; this pass hardened how that evidence is protected, not the drift itself, and the deferred pact/API reconciliation remains necessary.
+- Gate 2c stays deliberately bound to live pact and AppHost bytes, and the captured files are now also pinned by constant. Any ordinary edit to those files fails the lane until the evidence is re-captured upstream and the pin is deliberately moved. That is the intended cost of the byte-identity constraint, and it is documented.
+- The intent-mandated Builds catalog still leaves seven package pins on older versions and the two Fluent DataGrid snapshots without their `display-mode` / `cell-type` attributes; the forward path stays deferred.
 - The pre-existing AppHost Release UI source/package configuration still prevents a full Release AppHost compilation.

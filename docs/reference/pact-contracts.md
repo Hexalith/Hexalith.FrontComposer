@@ -52,7 +52,7 @@ NFR55 release rule: a release is blocked unless the checked-in pacts verify agai
 
 The preserved evidence is bound by two different hash domains, and reproducing a hash requires knowing which one applies:
 
-- `sha256-manifest.json` hashes each preserved evidence file's exact bytes. `.gitattributes` marks the evidence tree `-text` so checkout never rewrites them, and every preserved file is byte-identical to the EventStore-owned capture.
+- `sha256-manifest.json` hashes each preserved evidence file's exact bytes and records per-file `provenance`: `eventstore-capture` for the twelve files taken from the EventStore-owned capture named by `capturedFromEventStoreCommit`, and `frontcomposer-run` for the AppHost smoke and Release restore evidence this repository produced afterwards. `.gitattributes` marks the evidence tree `-text` so checkout never rewrites the bytes. The manifest alone is not the authority for the captured files: `CAPTURED_EVIDENCE_SHA256` in `eng/eventstore_runtime_evidence.py` pins each of their digests, so a rewritten report re-sealed into the manifest is rejected rather than accepted.
 - The provider report's `inputHashes` entries of `kind: pact`, `interaction-manifest`, and `provider-state-catalog` hash the CRLF-normalized text of the live committed files under `tests/Hexalith.FrontComposer.Shell.Tests/Pact/`, not their on-disk bytes and not their Git blob ids. This keeps the binding stable across Windows and Linux checkouts of files that are not marked `-text`.
 
 ### Re-capturing the evidence
@@ -61,7 +61,7 @@ The gate binds the preserved report to live repository bytes on purpose: the pro
 
 1. Pact, manifest, or provider-state changes require a fresh EventStore-owned provider run over real loopback TCP against the new pacts, and a new preserved report plus run receipt.
 2. AppHost topology changes require a fresh AppHost smoke capture against the edited topology.
-3. Update `sha256-manifest.json` and the pinned constants in `eng/eventstore_runtime_evidence.py` to the re-captured bytes, and re-run `pwsh ./eng/validate-contract-artifacts.ps1 -RequireProviderVerification`.
+3. Update `sha256-manifest.json` and, for a re-captured file, its `CAPTURED_EVIDENCE_SHA256` pin in `eng/eventstore_runtime_evidence.py`, then re-run `pwsh ./eng/validate-contract-artifacts.ps1 -RequireProviderVerification`. Changing a pin is the deliberate, reviewable act of replacing owner-captured bytes.
 
 ## Troubleshooting
 

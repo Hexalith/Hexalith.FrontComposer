@@ -56,19 +56,56 @@ REQUIRED_SNAPSHOT_FILES = frozenset(
         "release-restore/release-restore.json",
     }
 )
+# Every file the EventStore owner captured, pinned by exact digest. The approved historical
+# commit no longer carries these bytes, so the manifest alone cannot be the authority: a
+# rewritten report plus a re-sealed manifest would otherwise validate and could relabel the
+# preserved failed verdict as passing.
+CAPTURED_EVIDENCE_SHA256 = {
+    "frontcomposer-11-24-runtime-identity-successor.md": CAPTURED_SUCCESSOR_SHA256,
+    f"{SUBJECT_DIR}/nuget-sha256.txt": "08449d50bf9d57c791c87e9768241442a92ec1db69b0f80fc2886529e70abfb0",
+    f"{SUBJECT_DIR}/owner-actions.md": OWNER_ACTIONS_SHA256,
+    f"{SUBJECT_DIR}/package-manifest.json": PACKAGE_MANIFEST_SHA256,
+    f"{SUBJECT_DIR}/release-catalog-provenance.json": "a5821b1002daaf1284387486d14776648f490849717d25b5f3d1cbbe3ca40cef",
+    f"{SUBJECT_DIR}/restore-receipt.json": "362761dd0f82c5bb2442f4a8514ee3d15eea2ca155f67fe600fe55dcf6cdb03d",
+    f"{SUBJECT_DIR}/review-subject.json": SUBJECT_SHA256,
+    f"{SUBJECT_DIR}/reviewer-roster.json": "a1e55d095f7919dc94a5722e356751ad35b5e86cb4e20da5db7545a6659fa346",
+    f"{RECEIPT_DIR}/eventstore-owner.json": "a20686e60d21e1448c4dee5e1b9a2a21a7be5f92b76e30e673a0e2ba848b354d",
+    f"{RECEIPT_DIR}/release-owner.json": "1435d4a4ea160c125fa26cf7b2bca8da3630ddddc7af02c36121bcc65b6e3eee",
+    "provider-verification/provider-verification.json": "7ad9d7199272680a26770f5ea980bce880736a4bd92b3d6b27fb7aed546304c7",
+    "provider-verification/run-evidence.json": "3338dc3060875789603ee83fc4b8fc930133f8cb2f07e9cf694f7e7447b16dfb",
+}
+# Produced by this repository after the capture commit, so they carry FrontComposer provenance.
+FRONTCOMPOSER_EVIDENCE_FILES = frozenset(
+    {
+        "apphost-smoke/apphost-smoke.json",
+        "release-restore/release-restore.json",
+    }
+)
+EVIDENCE_PROVENANCE = {
+    **{path: "eventstore-capture" for path in CAPTURED_EVIDENCE_SHA256},
+    **{path: "frontcomposer-run" for path in FRONTCOMPOSER_EVIDENCE_FILES},
+}
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 SOURCE_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 LOCAL_PATH_PATTERNS = (
     re.compile(r"[A-Za-z]:\\Users\\", re.IGNORECASE),
     re.compile(r"/(?:home|Users)/[^/\s]+/"),
 )
+# Kept at parity with Find-RedactionLeaks in eng/validate-contract-artifacts.ps1. That
+# scanner only ever sees the pacts and the provider report, so without these rules the
+# other preserved evidence files would be held to a weaker standard than their siblings.
 SECRET_PATTERNS = (
     re.compile(r"access_token\s*[=:]", re.IGNORECASE),
     re.compile(r"api_key\s*[=:]", re.IGNORECASE),
     re.compile(r"password\s*[=:]", re.IGNORECASE),
     re.compile(r"set-cookie\s*:", re.IGNORECASE),
+    re.compile(r"cookie", re.IGNORECASE),
+    re.compile(r"connectionstring", re.IGNORECASE),
+    re.compile(r"authorization_payload", re.IGNORECASE),
     re.compile(r"Bearer\s+[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+"),
+    re.compile(r"[A-Z0-9_]{8,}=.{6,}"),
 )
+RAW_AUTHORIZATION_RE = re.compile(r"\bauthorization\s*:", re.IGNORECASE)
 HASH_FIELD_RE = re.compile(r"(?:sha|hash|checksum|digest|fingerprint)", re.IGNORECASE)
 ENCODED_TOKEN_RE = re.compile(r"^[A-Za-z0-9+/]{64,}={0,2}$")
 APPHOST_OBSERVATIONS = (
@@ -260,6 +297,8 @@ def _scan_redaction(path: Path, errors: list[str]) -> None:
     for pattern in (*LOCAL_PATH_PATTERNS, *SECRET_PATTERNS):
         if pattern.search(normalized):
             errors.append(f"Redaction scan failed for {path.name}: {pattern.pattern}")
+    if RAW_AUTHORIZATION_RE.search(normalized) and "Bearer FC_CONTRACT_TOKEN" not in text:
+        errors.append(f"Redaction scan failed for {path.name}: raw Authorization header")
     if path.suffix.lower() == ".json":
         try:
             document = json.loads(normalized, object_pairs_hook=_reject_duplicate_keys)
@@ -348,6 +387,10 @@ def _validate_manifest(evidence_root: Path, errors: list[str]) -> dict[str, str]
         if not SHA256_RE.fullmatch(expected_hash):
             errors.append(f"Evidence manifest has an invalid SHA-256 for {relative}.")
             continue
+        # capturedFromEventStoreCommit names one commit, but two files were produced here
+        # afterwards. Per-file provenance keeps the manifest truthful about which is which.
+        if entry.get("provenance") != EVIDENCE_PROVENANCE.get(relative):
+            errors.append(f"Evidence manifest provenance is not truthful for {relative}.")
         hashes[relative] = expected_hash
         path = evidence_root / relative
         if relative not in actual_files:
@@ -379,14 +422,11 @@ def _validate_manifest(evidence_root: Path, errors: list[str]) -> dict[str, str]
 
 
 def _validate_authorization(evidence_root: Path, hashes: dict[str, str], errors: list[str]) -> None:
-    if hashes.get("frontcomposer-11-24-runtime-identity-successor.md") != CAPTURED_SUCCESSOR_SHA256:
-        errors.append(
-            "Preserved successor decision is not byte-identical to the EventStore-owned capture."
-        )
-    if hashes.get(f"{SUBJECT_DIR}/owner-actions.md") != OWNER_ACTIONS_SHA256:
-        errors.append(
-            "Preserved owner-actions record is not byte-identical to the EventStore-owned capture."
-        )
+    for relative, pinned_hash in sorted(CAPTURED_EVIDENCE_SHA256.items()):
+        if hashes.get(relative) != pinned_hash:
+            errors.append(
+                f"Preserved evidence is not byte-identical to the EventStore-owned capture: {relative}"
+            )
     decision_path = evidence_root / "frontcomposer-11-24-runtime-identity-successor.md"
     decision_bytes = _bounded_read(decision_path, errors, "frontcomposer-11-24-runtime-identity-successor.md")
     decision: dict[str, str] = {}
@@ -1285,6 +1325,11 @@ def _validate_apphost_smoke(evidence_root: Path, repository_root: Path, errors: 
                 errors.append(f"AppHost smoke observation is incomplete: {name}")
                 continue
             result = observation["result"]
+            status_key = "readinessStatusCode" if name == "health" else "statusCode"
+            # An outcome the run never reached must not carry a response it did reach:
+            # otherwise a real observation can be relabelled away as unobserved.
+            if result == "not-observed" and observation.get(status_key) is not None:
+                errors.append(f"AppHost {name} is recorded as unobserved but carries a response code.")
             if name == "health":
                 readiness = observation.get("readinessStatusCode")
                 if result == "passed" and readiness != 200:

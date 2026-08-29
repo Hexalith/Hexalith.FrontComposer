@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -3022,7 +3022,10 @@ public sealed class CiGovernanceTests {
         artifactLane.ShouldContain("python3 -m unittest tests/eng/test_eventstore_runtime_evidence.py");
         // pwsh does not fail the step on a native non-zero exit, and the validator below resets
         // $LASTEXITCODE, so a red evidence suite is only fail-closed with explicit propagation.
-        artifactLane.ShouldContain("if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }");
+        // The propagation must not exit with $LASTEXITCODE itself: it is $null until a native
+        // command sets it, and `exit $null` exits 0, so a suite that never launched would pass.
+        artifactLane.ShouldContain("if (-not $? -or $LASTEXITCODE -ne 0) { exit 1 }");
+        artifactLane.ShouldNotContain("exit $LASTEXITCODE");
         artifactLane.ShouldContain("-RequireProviderVerification");
         artifactLane.ShouldContain("_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/provider-verification/provider-verification.json");
         artifactLane.ShouldNotContain("BLOCKED_HANDOFF");

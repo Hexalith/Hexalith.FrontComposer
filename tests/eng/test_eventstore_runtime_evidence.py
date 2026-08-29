@@ -131,6 +131,24 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
     def validate(self) -> list[str]:
         return evidence.validate(self.evidence_root, self.pact_root)
 
+    def repin_captured(self, *relatives: str) -> None:
+        """Re-pin captured bytes so a test can exercise structure, not the capture pin."""
+        original = dict(evidence.CAPTURED_EVIDENCE_SHA256)
+        self.addCleanup(
+            lambda: (
+                evidence.CAPTURED_EVIDENCE_SHA256.clear(),
+                evidence.CAPTURED_EVIDENCE_SHA256.update(original),
+            )
+        )
+        for relative in relatives:
+            evidence.CAPTURED_EVIDENCE_SHA256[relative] = _sha256(self.evidence_root / relative)
+
+    def repin_report(self) -> None:
+        self.repin_captured(
+            "provider-verification/provider-verification.json",
+            "provider-verification/run-evidence.json",
+        )
+
     def test_authorized_identity_with_truthful_provider_drift_is_accepted(self) -> None:
         report = _read_json(self.evidence_root / "provider-verification/provider-verification.json")
 
@@ -404,6 +422,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             report["timing"]["run"]["resultCode"] = "run.succeeded"
 
         _rewrite_report(self.evidence_root, mutate)
+        self.repin_report()
 
         self.assertEqual(self.validate(), [])
 
@@ -414,6 +433,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             report["reasonCodes"] = list(report["identity"]["reasonCodes"])
 
         _rewrite_report(self.evidence_root, mutate)
+        self.repin_report()
 
         self.assertEqual(self.validate(), [])
 
@@ -528,8 +548,8 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         errors = self.validate()
 
-        self.assertTrue(
-            any("owner-actions record is not byte-identical" in error for error in errors),
+        self.assertIn(
+            f"Preserved evidence is not byte-identical to the EventStore-owned capture: {relative}",
             errors,
         )
 
@@ -580,6 +600,171 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         self.assertTrue(any("encoded token-like value" in error for error in errors), errors)
         self.assertTrue(any("snapshot exceeds" in error for error in errors), errors)
+
+    def test_preserved_provider_report_cannot_be_relabelled_as_passing_in_repository(self) -> None:
+        # The approved historical commit no longer carries these bytes, so a rewritten report
+        # plus a re-sealed manifest is the exact forgery the capture pin has to stop.
+        def mutate(report: dict[str, Any]) -> None:
+            for interaction in report["interactions"]:
+                interaction["resultCode"] = "interaction.passed"
+            identity = report["identity"]
+            identity["observedSourceSha"] = evidence.SOURCE_SHA
+            identity["observedVersion"] = evidence.VERSION
+            identity["observedBuildsSha"] = evidence.BUILDS_SHA
+            identity["runtimeMatches"] = True
+            identity["reasonCodes"] = []
+            report["reasonCodes"] = []
+            report["finalVerdict"] = "passed"
+            report["timing"]["run"]["resultCode"] = "run.succeeded"
+
+        _rewrite_report(self.evidence_root, mutate)
+
+        errors = self.validate()
+
+        self.assertIn(
+            "Preserved evidence is not byte-identical to the EventStore-owned capture: "
+            "provider-verification/provider-verification.json",
+            errors,
+        )
+
+    def test_every_captured_evidence_file_is_pinned_to_the_capture(self) -> None:
+        self.assertEqual(
+            set(evidence.CAPTURED_EVIDENCE_SHA256) | evidence.FRONTCOMPOSER_EVIDENCE_FILES,
+            set(evidence.REQUIRED_SNAPSHOT_FILES),
+        )
+        for relative, pinned in evidence.CAPTURED_EVIDENCE_SHA256.items():
+            self.assertEqual(_sha256(self.evidence_root / relative), pinned, relative)
+
+    def test_manifest_provenance_cannot_claim_a_frontcomposer_run_was_captured(self) -> None:
+        relative = "apphost-smoke/apphost-smoke.json"
+        manifest_path = self.evidence_root / "sha256-manifest.json"
+        manifest = _read_json(manifest_path)
+        entry = next(item for item in manifest["files"] if item["path"] == relative)
+        entry["provenance"] = "eventstore-capture"
+        _write_json(manifest_path, manifest)
+
+        errors = self.validate()
+
+        self.assertIn(f"Evidence manifest provenance is not truthful for {relative}.", errors)
+
+    def test_evidence_redaction_rejects_the_sibling_scanner_leak_classes(self) -> None:
+        relative = "apphost-smoke/apphost-smoke.json"
+        for value, expected in (
+            ("Server=db;User Id=sa", "connectionstring"),
+            ("session cookie replayed", "cookie"),
+            ("EVENTSTORE_SECRET=hunter2tokenvalue", "[A-Z0-9_]{8,}=.{6,}"),
+        ):
+            with self.subTest(expected=expected):
+                def mutate(smoke: dict[str, Any], value: str = value, expected: str = expected) -> None:
+                    smoke["diagnosticDetail"] = (
+                        f"ConnectionString={value}" if expected == "connectionstring" else value
+                    )
+
+                _rewrite_evidence_json(self.evidence_root, relative, mutate)
+
+                errors = self.validate()
+
+                self.assertTrue(
+                    any(f"Redaction scan failed for apphost-smoke.json: {expected}" in error for error in errors),
+                    errors,
+                )
+
+    def test_evidence_redaction_rejects_a_raw_authorization_header(self) -> None:
+        relative = "apphost-smoke/apphost-smoke.json"
+
+        def mutate(smoke: dict[str, Any]) -> None:
+            smoke["requestHeaders"] = "Authorization: Basic bearerless"
+
+        _rewrite_evidence_json(self.evidence_root, relative, mutate)
+
+        errors = self.validate()
+
+        self.assertTrue(
+            any("raw Authorization header" in error for error in errors),
+            errors,
+        )
+
+    def test_unobserved_apphost_outcome_cannot_carry_a_response_code(self) -> None:
+        relative = "apphost-smoke/apphost-smoke.json"
+
+        def mutate(smoke: dict[str, Any]) -> None:
+            observation = smoke["observations"]["commandSubmit"]
+            observation["result"] = "not-observed"
+            observation["reasonCode"] = "runtime.not-reached"
+
+        _rewrite_evidence_json(self.evidence_root, relative, mutate)
+
+        errors = self.validate()
+
+        self.assertIn(
+            "AppHost commandSubmit is recorded as unobserved but carries a response code.",
+            errors,
+        )
+
+    def _run_contract_validator(self, *arguments: str) -> tuple[subprocess.CompletedProcess[str], Path]:
+        artifact_root = Path(self._temporary.name) / "contract-artifacts"
+        result = subprocess.run(
+            [
+                "pwsh",
+                "-NoProfile",
+                "-File",
+                str(ROOT / "eng/validate-contract-artifacts.ps1"),
+                "-ArtifactDir",
+                str(artifact_root),
+                *arguments,
+            ],
+            cwd=self._temporary.name,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        return result, artifact_root / "job-summary.md"
+
+    def test_required_provider_lane_accepts_the_canonical_report_from_any_directory(self) -> None:
+        result, summary = self._run_contract_validator(
+            "-RequireProviderVerification",
+            "-ProviderVerificationReport",
+            "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/"
+            "provider-verification/provider-verification.json",
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Provider verification: COMPLETE_HASH_BOUND_REPORT", summary.read_text(encoding="utf-8"))
+
+    def test_required_provider_lane_rejects_a_report_outside_the_owned_evidence_tree(self) -> None:
+        foreign = Path(self._temporary.name) / "foreign-provider-verification.json"
+        shutil.copyfile(
+            CANONICAL_EVIDENCE / "provider-verification/provider-verification.json",
+            foreign,
+        )
+
+        result, summary = self._run_contract_validator(
+            "-RequireProviderVerification",
+            "-ProviderVerificationReport",
+            str(foreign),
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("must use the FrontComposer-owned report", result.stdout + result.stderr)
+        self.assertIn("Provider verification: REQUIRED_REJECTED", summary.read_text(encoding="utf-8"))
+
+    def test_required_provider_lane_propagates_an_evidence_validator_failure(self) -> None:
+        # Semantics-preserving reformatting: the pacts still satisfy the manifest cross-checks,
+        # but the preserved report no longer binds their text, so the lane must fail closed.
+        manifest_path = self.pact_root / "interaction-manifest.json"
+        manifest = _read_json(manifest_path)
+        manifest_path.write_text(json.dumps(manifest, indent=4) + "\n", encoding="utf-8")
+
+        result, summary = self._run_contract_validator(
+            "-RequireProviderVerification",
+            "-PactDir",
+            str(self.pact_root),
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        output = result.stdout + result.stderr
+        self.assertIn("Provider report contract-input hash", output)
+        self.assertIn("Provider verification: REQUIRED_REJECTED", summary.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
