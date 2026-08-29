@@ -8579,6 +8579,7 @@ location: n/a
 source_spec: `_bmad-output/implementation-artifacts/spec-11-24-adopt-the-owner-approved-eventstore-runtime-identity.md`
 reason: summary: EventStore supplies a real-loopback Pact provider verifier and separately reconciles the 19 FrontComposer consumer interactions with the provider wire contract. evidence: Neither approved nor current EventStore source contains the required provider-test project, while committed pacts conflict with real query envelopes, ETags, headers, and provider-state inputs.
 status: open
+decision: 2026-08-29 Approve reconciliation — Reconcile consumers, pacts, adapters, and loopback/AppHost evidence against the approved provider contract.
 
 ### DW-1789: Remove duplicate Governance execution from the Quality workflow while preserving its authoritative blocking lane.
 

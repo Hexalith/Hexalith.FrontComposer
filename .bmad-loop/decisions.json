@@ -710,6 +710,15 @@
     "label": "Implement requested change",
     "resolution": ""
   },
+  "DW-1788": {
+    "answered_at": "2026-08-29",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Reconcile consumers, pacts, adapters, and loopback/AppHost evidence against the approved provider contract.",
+    "key": "1",
+    "label": "Approve reconciliation",
+    "resolution": ""
+  },
   "DW-1790": {
     "answered_at": "2026-08-27",
     "bundle_name": "",
