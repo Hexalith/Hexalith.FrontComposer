@@ -30,19 +30,19 @@ to the bound EventStore `3.91.1` package identity and grants no authority beyond
 
 ## Reproduced Evidence
 
-- [Package manifest](bb94d93e9b84132cff83a38fba84f25455820d31/package-manifest.json)
+- [Package manifest](evidence/frontcomposer-story-11-24/bb94d93e9b84132cff83a38fba84f25455820d31/package-manifest.json)
   binds all 14 signed archives to the exact embedded repository commit and SHA-256 values.
-- [SHA-256 manifest](bb94d93e9b84132cff83a38fba84f25455820d31/nuget-sha256.txt)
+- [SHA-256 manifest](evidence/frontcomposer-story-11-24/bb94d93e9b84132cff83a38fba84f25455820d31/nuget-sha256.txt)
   records every independently retrieved archive.
-- [Restore receipt](bb94d93e9b84132cff83a38fba84f25455820d31/restore-receipt.json)
+- [Restore receipt](evidence/frontcomposer-story-11-24/bb94d93e9b84132cff83a38fba84f25455820d31/restore-receipt.json)
   records 13 isolated library consumers and one isolated tool install, all passing with fresh
   per-consumer package caches and no project edges.
-- [Release and catalog provenance](bb94d93e9b84132cff83a38fba84f25455820d31/release-catalog-provenance.json)
+- [Release and catalog provenance](evidence/frontcomposer-story-11-24/bb94d93e9b84132cff83a38fba84f25455820d31/release-catalog-provenance.json)
   keeps the Builds catalog exposure `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a`, release execution
   `f75daebd4c522c081a6f62e274cf25e07971de69`, and historical source gitlink
   `824d7ef100455423aabbcd399c8364074000b2e0` distinct. It also records the separate, non-authorizing
   Builds runner/schema `3.88.0` candidate.
-- [Frozen review subject](bb94d93e9b84132cff83a38fba84f25455820d31/review-subject.json)
+- [Frozen review subject](evidence/frontcomposer-story-11-24/bb94d93e9b84132cff83a38fba84f25455820d31/review-subject.json)
   SHA-256: `9d074dfd0758a8934f122aab18659627dff1cf5d4c3e548b222cc0d79a881065`.
 
 ## Approval Checkpoint
@@ -50,10 +50,10 @@ to the bound EventStore `3.91.1` package identity and grants no authority beyond
 Required receipts: `eventstore-owner` and `release-owner`, each separately issued by roster-authorized
 `github:jpiquot`, each accepted after the subject freeze, each citing the exact subject SHA-256,
 candidate tuple, scope, and durable GitHub source. The exact actions and receipt shapes are in
-[owner-actions.md](bb94d93e9b84132cff83a38fba84f25455820d31/owner-actions.md).
+[owner-actions.md](evidence/frontcomposer-story-11-24/bb94d93e9b84132cff83a38fba84f25455820d31/owner-actions.md).
 
 The separately issued receipts are captured under
-`bb94d93e9b84132cff83a38fba84f25455820d31/acceptances/9d074dfd0758a8934f122aab18659627dff1cf5d4c3e548b222cc0d79a881065/`.
+`evidence/frontcomposer-story-11-24/bb94d93e9b84132cff83a38fba84f25455820d31/acceptances/9d074dfd0758a8934f122aab18659627dff1cf5d4c3e548b222cc0d79a881065/`.
 No receipt is inferred from the release actor, workflow success, tag, current `main`, ancestry, or
 catalog exposure. Both captured receipts validate, so the literal frontmatter values are
 `final_decision: available` and `authorize_consumer_migration: true` for the bound scope only.

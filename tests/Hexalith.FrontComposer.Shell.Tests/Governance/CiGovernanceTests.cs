@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -3020,6 +3020,9 @@ public sealed class CiGovernanceTests {
         string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
         string artifactLane = ExtractNamedStep(quality, "Gate 2c: Validate contract artifacts");
         artifactLane.ShouldContain("python3 -m unittest tests/eng/test_eventstore_runtime_evidence.py");
+        // pwsh does not fail the step on a native non-zero exit, and the validator below resets
+        // $LASTEXITCODE, so a red evidence suite is only fail-closed with explicit propagation.
+        artifactLane.ShouldContain("if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }");
         artifactLane.ShouldContain("-RequireProviderVerification");
         artifactLane.ShouldContain("_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/provider-verification/provider-verification.json");
         artifactLane.ShouldNotContain("BLOCKED_HANDOFF");
@@ -3027,6 +3030,11 @@ public sealed class CiGovernanceTests {
         string uploadLane = ExtractNamedStep(quality, "Upload contract artifacts");
         uploadLane.ShouldContain("if: success()");
         uploadLane.ShouldNotContain("if: always()");
+        // A rejected evidence tree is never published, but its validator diagnostics must be.
+        string diagnosticsLane = ExtractNamedStep(quality, "Upload contract diagnostics");
+        diagnosticsLane.ShouldContain("if: always()");
+        diagnosticsLane.ShouldContain("artifacts/contracts/**");
+        diagnosticsLane.ShouldNotContain("_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24");
         string evidenceRoot = Path.Combine(
             root,
             "_bmad-output",

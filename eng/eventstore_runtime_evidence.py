@@ -9,7 +9,7 @@ import json
 import os
 import re
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -22,6 +22,7 @@ VERSION = "3.91.1"
 SUBJECT_SHA256 = "9d074dfd0758a8934f122aab18659627dff1cf5d4c3e548b222cc0d79a881065"
 INVENTORY_SHA256 = "6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae"
 CAPTURED_SUCCESSOR_SHA256 = "69b08aba7758de770888aea53b9b51dc7e479220c9d539ed670db479fdb0164a"
+OWNER_ACTIONS_SHA256 = "c03ab1d8f7fc4e167f0536f8f9b77cd01980bbeee1b9c44704b4d5d99aefbcb6"
 PACKAGE_MANIFEST_SHA256 = "b85b9926482b42fda508b68e26162f256892d2f49c2eab31adbae49cefdd0d12"
 SUBJECT_FROZEN_AT = "2026-08-10T07:06:11Z"
 CONSUMER_SCOPE = "Hexalith.FrontComposer Story 11.24"
@@ -378,6 +379,14 @@ def _validate_manifest(evidence_root: Path, errors: list[str]) -> dict[str, str]
 
 
 def _validate_authorization(evidence_root: Path, hashes: dict[str, str], errors: list[str]) -> None:
+    if hashes.get("frontcomposer-11-24-runtime-identity-successor.md") != CAPTURED_SUCCESSOR_SHA256:
+        errors.append(
+            "Preserved successor decision is not byte-identical to the EventStore-owned capture."
+        )
+    if hashes.get(f"{SUBJECT_DIR}/owner-actions.md") != OWNER_ACTIONS_SHA256:
+        errors.append(
+            "Preserved owner-actions record is not byte-identical to the EventStore-owned capture."
+        )
     decision_path = evidence_root / "frontcomposer-11-24-runtime-identity-successor.md"
     decision_bytes = _bounded_read(decision_path, errors, "frontcomposer-11-24-runtime-identity-successor.md")
     decision: dict[str, str] = {}
@@ -911,7 +920,9 @@ def _validate_timing(
             or completed < started
         ):
             errors.append(f"Provider report {name} timing is incomplete or unbounded.")
-        elif duration != int((completed - started).total_seconds() * 1000):
+        elif abs(duration * 1000 - (completed - started) // timedelta(microseconds=1)) > 1000:
+            # The producer may truncate or round a sub-millisecond remainder, so a truthful
+            # duration is the interval to within one millisecond. Anything wider contradicts it.
             errors.append(f"Provider report {name} duration contradicts its timestamps.")
         else:
             parsed_intervals[name] = (started, completed)
@@ -1120,10 +1131,11 @@ def _validate_provider_report(
     expected_identity_inputs = {
         "eventstore-owner.json": snapshot_hashes.get(f"{RECEIPT_DIR}/eventstore-owner.json", ""),
         "release-owner.json": snapshot_hashes.get(f"{RECEIPT_DIR}/release-owner.json", ""),
-        # The report remains byte-preserved. Its decision input is the original EventStore-owned
-        # capture; the relocated FrontComposer copy has link targets fixed and is independently
-        # bound by sha256-manifest.json.
-        "frontcomposer-11-24-runtime-identity-successor.md": CAPTURED_SUCCESSOR_SHA256,
+        # The preserved copy is byte-identical to the EventStore-owned capture, so the report's
+        # decision input, sha256-manifest.json, and CAPTURED_SUCCESSOR_SHA256 are one hash.
+        "frontcomposer-11-24-runtime-identity-successor.md": snapshot_hashes.get(
+            "frontcomposer-11-24-runtime-identity-successor.md", ""
+        ),
         "nuget-sha256.txt": snapshot_hashes.get(f"{SUBJECT_DIR}/nuget-sha256.txt", ""),
         "package-manifest.json": snapshot_hashes.get(f"{SUBJECT_DIR}/package-manifest.json", ""),
         "release-catalog-provenance.json": snapshot_hashes.get(
@@ -1138,16 +1150,26 @@ def _validate_provider_report(
     for name, expected_hash in expected_identity_inputs.items():
         if report_inputs.get(name) != expected_hash:
             errors.append(f"Provider report input hash does not bind preserved identity evidence: {name}")
-    expected_contract_kinds = {
+    expected_input_kinds = {
         **{filename: "pact" for filename in PACT_FILES},
         "interaction-manifest.json": "interaction-manifest",
         "provider-state-catalog.json": "provider-state-catalog",
+        # Identity inputs are kind-checked too, so approval evidence cannot be relabeled.
+        "eventstore-owner.json": "identity-approval",
+        "release-owner.json": "identity-approval",
+        "frontcomposer-11-24-runtime-identity-successor.md": "identity-decision",
+        "nuget-sha256.txt": "identity-evidence",
+        "package-manifest.json": "identity-evidence",
+        "release-catalog-provenance.json": "identity-evidence",
+        "restore-receipt.json": "identity-evidence",
+        "reviewer-roster.json": "identity-evidence",
     }
     for name, expected_hash in contract_hashes.items():
         if report_inputs.get(name) != expected_hash:
             errors.append(f"Provider report contract-input hash differs from current checkout-policy bytes: {name}")
-        if report_kinds.get(name) != expected_contract_kinds[name]:
-            errors.append(f"Provider report contract-input kind is incorrect: {name}")
+    for name, expected_kind in expected_input_kinds.items():
+        if report_kinds.get(name) != expected_kind:
+            errors.append(f"Provider report input kind is incorrect: {name}")
 
     receipt_path = evidence_root / "provider-verification" / "run-evidence.json"
     receipt = _read_json(receipt_path, errors, "provider-verification/run-evidence.json")

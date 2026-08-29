@@ -1,4 +1,4 @@
-param(
+﻿param(
   [string] $PactDir = "tests/Hexalith.FrontComposer.Shell.Tests/Pact",
   [string] $ArtifactDir = "artifacts/contracts",
   [string] $ProviderVerificationReport = "",
@@ -214,23 +214,27 @@ $frontComposerEvidenceRoot = Join-Path $repositoryRoot "_bmad-output/implementat
 $expectedProviderVerificationReport = Join-Path $frontComposerEvidenceRoot "provider-verification/provider-verification.json"
 $providerStatus = "NOT_REQUIRED"
 if ($RequireProviderVerification) {
+  # Required-and-rejected must never be summarized as required-and-absent.
+  $providerStatus = "REQUIRED_REJECTED"
   if ([string]::IsNullOrWhiteSpace($ProviderVerificationReport)) {
     $ProviderVerificationReport = $expectedProviderVerificationReport
   }
 
-  $resolvedProviderVerificationReport = [System.IO.Path]::GetFullPath($ProviderVerificationReport)
+  # Resolve a relative argument against the repository root, not the caller's working directory,
+  # so a correct relative path is accepted from anywhere.
+  $resolvedProviderVerificationReport = [System.IO.Path]::GetFullPath($ProviderVerificationReport, $repositoryRoot)
   $resolvedExpectedProviderVerificationReport = [System.IO.Path]::GetFullPath($expectedProviderVerificationReport)
   if (![string]::Equals(
       $resolvedProviderVerificationReport,
       $resolvedExpectedProviderVerificationReport,
       [System.StringComparison]::Ordinal)) {
     $errors.Add("Provider verification must use the FrontComposer-owned report: $expectedProviderVerificationReport")
-  } elseif (!(Test-Path -LiteralPath $ProviderVerificationReport)) {
-    $errors.Add("Provider verification is required for this lane but '$ProviderVerificationReport' was not found.")
-  } elseif ((Get-Item -LiteralPath $ProviderVerificationReport).Length -eq 0) {
-    $errors.Add("Provider verification report is empty: $ProviderVerificationReport")
+  } elseif (!(Test-Path -LiteralPath $resolvedProviderVerificationReport)) {
+    $errors.Add("Provider verification is required for this lane but '$resolvedProviderVerificationReport' was not found.")
+  } elseif ((Get-Item -LiteralPath $resolvedProviderVerificationReport).Length -eq 0) {
+    $errors.Add("Provider verification report is empty: $resolvedProviderVerificationReport")
   } else {
-    $providerText = Get-Content -LiteralPath $ProviderVerificationReport -Raw
+    $providerText = Get-Content -LiteralPath $resolvedProviderVerificationReport -Raw
     $providerLeaks = Find-RedactionLeaks $providerText
     if ($providerLeaks.Count -gt 0) {
       $errors.Add("Redaction scan failed for provider verification report: $($providerLeaks -join ', ')")

@@ -501,6 +501,72 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         self.assertIn("encoded token-like", output)
         self.assertIn("payload", output)
 
+    def test_preserved_successor_record_must_be_byte_identical_to_the_capture(self) -> None:
+        relative = "frontcomposer-11-24-runtime-identity-successor.md"
+        path = self.evidence_root / relative
+        # A relocation-friendly link rewrite is still not a byte-identical preservation.
+        path.write_bytes(
+            path.read_bytes().replace(
+                b"(evidence/frontcomposer-story-11-24/",
+                b"(",
+            )
+        )
+        _set_manifest_hash(self.evidence_root, relative)
+
+        errors = self.validate()
+
+        self.assertTrue(
+            any("not byte-identical to the EventStore-owned capture" in error for error in errors),
+            errors,
+        )
+
+    def test_preserved_owner_actions_record_must_be_byte_identical_to_the_capture(self) -> None:
+        relative = f"{evidence.SUBJECT_DIR}/owner-actions.md"
+        path = self.evidence_root / relative
+        path.write_bytes(path.read_bytes() + b"\nAppended after capture.\n")
+        _set_manifest_hash(self.evidence_root, relative)
+
+        errors = self.validate()
+
+        self.assertTrue(
+            any("owner-actions record is not byte-identical" in error for error in errors),
+            errors,
+        )
+
+    def test_identity_input_kind_cannot_be_relabelled(self) -> None:
+        def mutate(report: dict[str, Any]) -> None:
+            for entry in report["inputHashes"]:
+                if entry["name"] == "eventstore-owner.json":
+                    entry["kind"] = "pact"
+
+        _rewrite_report(self.evidence_root, mutate)
+
+        errors = self.validate()
+
+        self.assertTrue(
+            any("input kind is incorrect: eventstore-owner.json" in error for error in errors),
+            errors,
+        )
+
+    def test_duration_tolerates_sub_millisecond_rounding_but_not_wider_drift(self) -> None:
+        def round_up(report: dict[str, Any]) -> None:
+            # 2499.5927 ms: a producer that rounds rather than truncates is still truthful.
+            report["timing"]["run"]["durationMilliseconds"] = 2500
+
+        _rewrite_report(self.evidence_root, round_up)
+        self.assertEqual(
+            [error for error in self.validate() if "duration contradicts" in error],
+            [],
+        )
+
+        def drift(report: dict[str, Any]) -> None:
+            report["timing"]["run"]["durationMilliseconds"] = 2502
+
+        _rewrite_report(self.evidence_root, drift)
+        self.assertTrue(
+            any("run duration contradicts its timestamps" in error for error in self.validate()),
+        )
+
     def test_manifest_is_redaction_scanned_and_all_files_count_toward_total_bound(self) -> None:
         manifest_path = self.evidence_root / "sha256-manifest.json"
         manifest = _read_json(manifest_path)
