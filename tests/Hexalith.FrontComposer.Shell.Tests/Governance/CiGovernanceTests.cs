@@ -530,7 +530,6 @@ public sealed class CiGovernanceTests {
 
         File.Exists(Path.Combine(root, "deps.local.props")).ShouldBeTrue();
         File.Exists(Path.Combine(root, "deps.nuget.props")).ShouldBeTrue();
-
         appHostProject.ShouldContain("ProjectReference Include=\"$(EventStorePath)/src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj\"");
         appHostProject.ShouldContain("Condition=\"'$(HexalithEventStoreFromSource)' == 'true'\"");
         appHostProject.ShouldContain("PackageReference Include=\"Hexalith.EventStore.Aspire\"");
@@ -561,6 +560,130 @@ public sealed class CiGovernanceTests {
         transitivePinning.ShouldNotBeNull(
             "OpenIdConnect restores IdentityModel packages transitively; imported PackageVersion pins must apply to prevent split Microsoft.IdentityModel assemblies.");
         transitivePinning.Value.ShouldBe("true");
+    }
+
+    [Fact]
+    public void ToolchainPins_MatchApprovedDotnetAndAspireVersions() {
+        const string expectedDotnetSdk = "10.0.400";
+        const string sourceResourceCompatibilitySdk = "10.0.302";
+        const string expectedAspire = "13.5.3";
+        string root = RepositoryRoot();
+
+        using (JsonDocument globalJson = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "global.json")))) {
+            globalJson.RootElement.GetProperty("sdk").GetProperty("version").GetString().ShouldBe(expectedDotnetSdk);
+        }
+
+        Regex dotnetVersionPin = new(
+            @"(?m)^[ \t]*dotnet-version[ \t]*:[ \t]*(?<quote>['""]?)(?<version>[^'""#\s]+)\k<quote>[ \t]*(?:#.*)?\r?$",
+            RegexOptions.CultureInvariant);
+        foreach (string quotingVariant in new[] {
+            "dotnet-version: '10.0.400'",
+            "dotnet-version: \"10.0.400\"",
+            "dotnet-version: 10.0.400",
+        }) {
+            Match sample = dotnetVersionPin.Match(quotingVariant);
+            sample.Success.ShouldBeTrue($"active dotnet-version parser must support valid YAML quoting: {quotingVariant}");
+            sample.Groups["version"].Value.ShouldBe(expectedDotnetSdk);
+        }
+
+        string workflowsRoot = Path.Combine(root, ".github", "workflows");
+        string[] workflowPaths = Directory.EnumerateFiles(workflowsRoot, "*.yml", SearchOption.TopDirectoryOnly)
+            .Concat(Directory.EnumerateFiles(workflowsRoot, "*.yaml", SearchOption.TopDirectoryOnly))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        var dotnetPins = workflowPaths
+            .SelectMany(path => dotnetVersionPin.Matches(File.ReadAllText(path)).Cast<Match>()
+                .Select(match => (
+                    Workflow: Path.GetFileName(path),
+                    Version: match.Groups["version"].Value)))
+            .ToArray();
+        dotnetPins.ShouldNotBeEmpty("active dotnet-version pins must be discovered across every workflow file");
+        dotnetPins.Count(pin => string.Equals(pin.Version, sourceResourceCompatibilitySdk, StringComparison.Ordinal))
+            .ShouldBe(1, "only the full source-resource topology may install the 10.0.302 compatibility SDK");
+        dotnetPins
+            .Where(pin => !string.Equals(pin.Version, sourceResourceCompatibilitySdk, StringComparison.Ordinal))
+            .ShouldAllBe(pin => string.Equals(pin.Version, expectedDotnetSdk, StringComparison.Ordinal));
+
+        string quality = File.ReadAllText(Path.Combine(workflowsRoot, "quality.yml"));
+        quality.ShouldMatch(
+            @"(?ms)^[ \t]*- name:[ \t]*Install source-resource compatibility SDK[ \t]*\r?\n[ \t]*uses:[ \t]*actions/setup-dotnet@[^\r\n]+\r?\n[ \t]*with:[ \t]*\r?\n[ \t]*dotnet-version[ \t]*:[ \t]*(?:'10\.0\.302'|""10\.0\.302""|10\.0\.302)[ \t]*\r?$",
+            customMessage: "the sole 10.0.302 pin must stay attached to the explicitly named source-resource compatibility step");
+
+        Regex aspireCliInstall = new(
+            @"(?m)^[^#\r\n]*\bdotnet\s+tool\s+install\s+--global\s+Aspire\.Cli\s+--version\s+(?<quote>['""]?)(?<version>[^'""#\s]+)\k<quote>(?:\s|$)",
+            RegexOptions.CultureInvariant);
+        Match[] aspireInstalls = workflowPaths
+            .SelectMany(path => aspireCliInstall.Matches(File.ReadAllText(path)).Cast<Match>())
+            .ToArray();
+        aspireInstalls.Length.ShouldBe(1, "active workflows must contain exactly one Aspire CLI installation command");
+        aspireInstalls[0].Groups["version"].Value.ShouldBe(expectedAspire);
+
+        string ideWorkflow = File.ReadAllText(
+            Path.Combine(root, ".github", "workflows", "ide-parity-revalidation.yml"));
+        ideWorkflow.ShouldContain($"Detected .NET SDK version (e.g. {expectedDotnetSdk})");
+        string ideJob = File.ReadAllText(Path.Combine(root, "jobs", "ide-parity-version-revalidation.ps1"));
+        ideJob.ShouldContain($"Minimum = \"{expectedDotnetSdk}\"");
+        ideJob.ShouldContain("Maximum = \"10.0.500\"");
+
+        XDocument appHost = XDocument.Load(
+            Path.Combine(root, "src", "Hexalith.FrontComposer.AppHost", "Hexalith.FrontComposer.AppHost.csproj"));
+        appHost.Root.ShouldNotBeNull().Attribute("Sdk").ShouldNotBeNull().Value
+            .ShouldBe($"Aspire.AppHost.Sdk/{expectedAspire}");
+        appHost.Descendants("AspireUseCliBundle").Single().Value.ShouldBe("true");
+
+        XDocument catalog = XDocument.Load(
+            Path.Combine(root, "references", "Hexalith.Builds", "Props", "Directory.Packages.props"));
+        string selectedAspire = catalog
+            .Descendants("PackageVersion")
+            .Single(element => string.Equals(
+                (string?)element.Attribute("Include"),
+                "Aspire.Hosting",
+                StringComparison.Ordinal))
+            .Attribute("Version")
+            .ShouldNotBeNull()
+            .Value;
+        selectedAspire.ShouldBe(expectedAspire);
+    }
+
+    [Theory]
+    [InlineData("10.0.302", 1)]
+    [InlineData("10.0.400", 0)]
+    [InlineData("10.0.499", 0)]
+    [InlineData("10.0.500", 1)]
+    [InlineData("10.0.400-preview.1", 1)]
+    [InlineData("10.0", 1)]
+    [InlineData("10.0.400.1", 1)]
+    public void IdeParityVersionRevalidation_DotnetSdkFeatureBand_FailsClosed(
+        string detectedSdk,
+        int expectedExitCode) {
+        string root = RepositoryRoot();
+        string artifactRelative = $"artifacts/ide-parity/.sdk-threshold-{Guid.NewGuid():N}.md";
+        string artifactPath = Path.Combine(root, artifactRelative.Replace('/', Path.DirectorySeparatorChar));
+        try {
+            ProcessResult result = RunPwsh(
+                root,
+                [
+                    "jobs/ide-parity-version-revalidation.ps1",
+                    "-NoGithub",
+                    "-OutPath",
+                    artifactRelative,
+                ],
+                new Dictionary<string, string> {
+                    ["FRONTCOMPOSER_DOTNET_SDK_VERSION"] = detectedSdk,
+                    ["FRONTCOMPOSER_IDE_VERSION_VISUALSTUDIO"] = "17.13",
+                    ["FRONTCOMPOSER_IDE_VERSION_RIDER"] = "2026.1",
+                });
+
+            result.ExitCode.ShouldBe(
+                expectedExitCode,
+                $"SDK {detectedSdk} threshold result was unexpected. stdout={result.Output} stderr={result.Error}");
+            File.Exists(artifactPath).ShouldBe(
+                expectedExitCode != 0,
+                "fail-closed SDK values must produce a deterministic dry-run revalidation artifact");
+        }
+        finally {
+            File.Delete(artifactPath);
+        }
     }
 
     [Fact]
@@ -931,7 +1054,7 @@ public sealed class CiGovernanceTests {
                 .GetProperty("devDependencies")
                 .GetProperty("conventional-changelog-conventionalcommits")
                 .GetString()
-                .ShouldBe("^9.3.1");
+                .ShouldBe("^10.4.0");
         }
 
         using (JsonDocument packageLock = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "package-lock.json")))) {
@@ -941,7 +1064,7 @@ public sealed class CiGovernanceTests {
                 .GetProperty("devDependencies")
                 .GetProperty("conventional-changelog-conventionalcommits")
                 .GetString()
-                .ShouldBe("^9.3.1");
+                .ShouldBe("^10.4.0");
         }
 
         const string analyzerHarness = """
@@ -1002,6 +1125,8 @@ public sealed class CiGovernanceTests {
                 commits: [
                   { message: cases.find(testCase => testCase.name === 'fixBreakingHeader').message, hash: '1111111111111111' },
                   { message: cases.find(testCase => testCase.name === 'breakingFooter').message, hash: '2222222222222222' },
+                  { message: cases.find(testCase => testCase.name === 'ordinaryFix').message, hash: '3333333333333333' },
+                  { message: cases.find(testCase => testCase.name === 'ordinaryFeat').message, hash: '4444444444444444' },
                 ],
                 lastRelease: { gitTag: 'v2.0.4', gitHead: 'old' },
                 nextRelease: { version: '3.0.0', gitTag: 'v3.0.0', gitHead: 'new' },
@@ -1043,6 +1168,10 @@ public sealed class CiGovernanceTests {
         releaseNotes.ShouldContain("BREAKING CHANGES");
         releaseNotes.ShouldContain("break the public API");
         releaseNotes.ShouldContain("replace the public contract");
+        releaseNotes.ShouldContain("### Bug Fixes");
+        releaseNotes.ShouldContain("adjust the public API");
+        releaseNotes.ShouldContain("### Features");
+        releaseNotes.ShouldContain("add a public API");
     }
 
     [Fact]

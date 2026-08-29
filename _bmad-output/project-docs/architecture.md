@@ -289,7 +289,7 @@ correct-course proposal that introduced this section.
 
 **RC attribute-splatting caveat.** When a converted `<div>` carried `data-testid`/`role`/`aria-*`/event
 handlers, `FluentStack` must splat them onto its root element for the unit/e2e selector and a11y
-contracts to survive. This holds on the pinned `5.0.0-rc.4-26180.1` (`FluentStack` captures unmatched
+contracts to survive. This holds on the pinned `5.0.0-rc.5-26219.1` (`FluentStack` captures unmatched
 attributes); confirm via the component's own bUnit lane after each conversion. (Mirrors §4.2's
 RC-surface caveat.)
 
@@ -353,7 +353,7 @@ This is the "MCP boundary" described in `docs/concepts/source-generation-and-mcp
 
 ## 7. Architecturally significant decisions (observed)
 
-- **ADR-003:** Build on FluentUI **v5 RC**, pin the exact version (`5.0.0-rc.4-26180.1`).
+- **ADR-003:** Build on FluentUI **v5 RC**, pin the exact version (`5.0.0-rc.5-26219.1`).
 - **ADR-007:** Fluxor single-writer discipline per state slice.
 - **ADR-030:** Scoped lifetime discipline for storage/effects/auth/tenant accessors.
 - **Drift pipeline must not depend on `CompilationProvider`** (decision "P12") — only the trim/AOT advisory legitimately combines it, isolated in its own output.

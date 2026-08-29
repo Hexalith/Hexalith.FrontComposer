@@ -49,10 +49,13 @@ From [CONTRIBUTING.md](CONTRIBUTING.md) and the generator design:
 - Density thresholds (≤1 Inline / 2–4 CompactInline / ≥5 FullPage) and baseline identity formation are **spec-locked** — change only with a story/ADR.
 - New diagnostics: declare a `public const string` in `FcDiagnosticIds` (Contracts) + a `DiagnosticDescriptor` (SourceTools) with full XML docs; follow the `HFC1xxx` (build) / `HFC2xxx` (runtime) bands. See the full catalog in [api-contracts.md](./api-contracts.md) §1.4.
 - `Debugger.Launch()` is contributor-local only — never in `src/**/*.cs` (source-scanned by the IDE-parity suite). Remove before review.
-- Don't broaden the Roslyn package pin (`Microsoft.CodeAnalysis.CSharp` 5.6.0) outside a story that owns that compatibility work.
+- Don't broaden the Roslyn package pin (`Microsoft.CodeAnalysis.CSharp` 5.9.0) outside a story that owns that compatibility work.
 
 ## Testing requirements
 
+- Use Node `>=24.10.0` (the repository's Node 24 policy) for release tooling and both e2e workspaces.
+  Keep .NET SDK `10.0.400` as the root/default. The full source-mode Aspire topology alone also needs
+  SDK `10.0.302` installed side-by-side for remote-equal source resources that still pin that SDK.
 - All configured tests must pass before a change is done.
 - xUnit **v3** + Shouldly (no raw `Assert.*`) + NSubstitute; bUnit for components; Verify for snapshots (`Verify.XunitV3`); FsCheck for properties; PactNet for the EventStore boundary.
 - Three-part test names `Subject_Scenario_Expectation`.

@@ -8,7 +8,9 @@ Visual Studio is the calibration IDE used to baseline the suite. It is not the r
 
 | Surface | Pin |
 | --- | --- |
-| .NET SDK | 10.0.302 |
+| Active repository .NET SDK | 10.0.400 |
+| Captured evidence baseline .NET SDK | 10.0.302 |
+| Evidence revalidation status | `revalidation-pending` — the active SDK changed after the 2026-05-09 capture; existing manifests remain historical evidence and do not certify 10.0.400 manual IDE behavior |
 | SourceTools package | Hexalith.FrontComposer.SourceTools local v0.1 story-9-3 |
 | Generated output path contract | obj/{Config}/{TFM}/generated/HexalithFrontComposer/{TypeName}.g.razor.cs (canonical: `Hexalith.FrontComposer.Contracts.Conformance.GeneratedOutputPathContract.Template`) |
 | Generated output path contract version | v1 |
@@ -17,6 +19,11 @@ Visual Studio is the calibration IDE used to baseline the suite. It is not the r
 | VS Code | VS Code stable with C# Dev Kit pinned minor |
 
 C# Dev Kit is required for VS Code parity. Microsoft account and proprietary license implications are adopter prerequisites. OmniSharp-only VS Code is unsupported in v1.
+
+The `lastValidated` date and evidence manifests intentionally remain bound to the 10.0.302 capture.
+Changing the active repository pin does not advance that evidence. Release validation fails closed while
+the status is `revalidation-pending`; a release owner must recapture the manual IDE evidence before the
+baseline SDK, manifests, date, and status can move together.
 
 ## Gate Semantics
 

@@ -6,8 +6,8 @@
 
 | Tool | Version / note |
 |---|---|
-| .NET SDK | **`10.0.302`** (pinned in [global.json](global.json), `rollForward: latestPatch`) |
-| Node.js | **`>=24.0.0`** for the Playwright e2e workspace; `tests/e2e/.nvmrc` pins Node `24` |
+| .NET SDK | **`10.0.400`** (pinned in [global.json](global.json), `rollForward: latestPatch`); full source/Aspire topology additionally needs `10.0.302` installed side-by-side for remote-equal source resources that still pin it |
+| Node.js | **`>=24.10.0`** for release tooling and both Playwright workspaces; `tests/e2e/.nvmrc` pins the Node `24` line |
 | npm | **`>=10`** for the e2e workspace dependencies |
 | PowerShell (`pwsh`) | for the `eng/*.ps1` validation scripts and the docs gate |
 | dotnet local tools | `dotnet tool restore` (provides DocFX for the docs gate) |
@@ -27,6 +27,11 @@ git submodule update --init   # root-declared references/ submodules only
 > **Submodule rule:** initialize/update only the **root-declared** submodules under `references/` declared in [.gitmodules](.gitmodules). **Do not** recurse into nested submodules; deinit any that get pulled in accidentally. Never modify submodule files without explicit approval.
 
 Debug builds reference the submodules as **local `ProjectReference`s** ([deps.local.props](deps.local.props)). Release/package builds reference the published NuGet packages instead ([deps.nuget.props](deps.nuget.props)); direct `references/Hexalith.*` solution entries are disabled for `Release|*`. Use `-p:UseHexalithProjectReferences=true` only for an intentional source-debug Release session. `-p:UseNuGetDeps=true|false` remains the legacy inverse switch.
+
+The repository root/default SDK is always `10.0.400`. A full source-mode AppHost additionally loads
+Commons, Memories, Parties, and PolymorphicSerializations roots that still pin `10.0.302`, so clean
+contributors and CI must install `10.0.302` side-by-side before that topology. Do not change the root
+pin or general workflow setup to `10.0.302`; the compatibility install is scoped to the source-resource lane.
 
 ## Solution & build
 
@@ -63,7 +68,7 @@ DiffEngine_Disabled=true dotnet test tests/Hexalith.FrontComposer.SourceTools.Te
 
 **Trait categories** used as filters: `Governance`, `Contract`, `Performance`, `e2e-palette`, `NightlyProperty`, `Quarantined`. CI runs Governance and the default lane as **blocking**; palette/perf/quarantine lanes are advisory/warning-only.
 
-**Test stack:** xUnit **v3** (`xunit.v3` 3.2.2), Shouldly 4.3.0 (assertions — never raw `Assert.*`), NSubstitute 6.0.0-rc.1 (mocks), bUnit 2.8.4-preview (Blazor components), Verify 31.22.0 (snapshots; `Verify.XunitV3`, not `Verify.Xunit`), FsCheck.Xunit.v3 3.3.3 (property tests), PactNet 5.0.1 (consumer contracts), BenchmarkDotNet 0.15.8 (in a **separate** `Shell.Tests.Bench` exe), coverlet 10.0.1.
+**Test stack:** xUnit **v3** (`xunit.v3` 4.0.0), Shouldly 4.3.0 (assertions — never raw `Assert.*`), NSubstitute 6.2.0 (mocks), bUnit 2.9.0 (Blazor components), Verify 32.0.0 (snapshots; `Verify.XunitV3`, not `Verify.Xunit`), FsCheck.Xunit.v3 3.4.0 (property tests), PactNet 5.0.1 (consumer contracts), BenchmarkDotNet 0.15.8 (in a **separate** `Shell.Tests.Bench` exe), coverlet 10.0.1.
 
 **Test conventions:** three-part names `Subject_Scenario_Expectation`; `.verified.txt` snapshots are committed and updated intentionally; generator tests go through `CompilationHelper.CreateCompilation()`; Blazor component tests use `GeneratedComponentTestBase`/`AddFrontComposerTestHost` with `JSInterop.Mode = Loose`; public API baselines are enforced intentionally (`PublicAPI.Shipped.txt` in the Testing library via `PackageBoundaryTests`, and the focused Shell FC-TBL surface in `PublicAPI.FcTbl.Shipped.txt` via `FcTblPackageBoundaryTests`); the **NFR17 tripwire** must be updated alongside any new `IStorageService.SetAsync` call site; CI fails on a **stale pact diff**.
 
@@ -110,7 +115,7 @@ From [CONTRIBUTING.md](CONTRIBUTING.md):
   dotnet build Hexalith.FrontComposer.slnx -p:UseSharedCompilation=false
   ```
 - Validate generated-output layout in **both Debug and Release** — `obj/{Config}/{TFM}/generated/HexalithFrontComposer/` is a public path contract (`GeneratedOutputPathContract.Template`).
-- Don't broaden Roslyn package pins (`Microsoft.CodeAnalysis.CSharp` 5.6.0) as part of generator debugging — IDE loading is sensitive to it.
+- Don't broaden Roslyn package pins (`Microsoft.CodeAnalysis.CSharp` 5.9.0) as part of generator debugging — IDE loading is sensitive to it.
 - Inspect generated output without an IDE via `frontcomposer inspect`.
 
 ## Documentation site (DocFX)

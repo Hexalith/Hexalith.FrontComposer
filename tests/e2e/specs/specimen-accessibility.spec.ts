@@ -520,6 +520,11 @@ const gotoSpecimen = async (page: import('@playwright/test').Page, route: Specim
 };
 
 const prepareSpecimenVisualBaseline = async (page: import('@playwright/test').Page): Promise<void> => {
+  await page.waitForFunction(() => [...document.querySelectorAll('*')]
+    .filter((element) => element.localName.includes('-'))
+    .every((element) => customElements.get(element.localName) !== undefined));
+  await page.evaluate(() => document.fonts.ready);
+
   await page.addStyleTag({
     content: `
       .pa-3.fluent-layout-item {
@@ -545,6 +550,19 @@ const prepareSpecimenVisualBaseline = async (page: import('@playwright/test').Pa
     }
   });
   await expect(page.getByTestId('fc-type-specimen')).toBeInViewport();
+
+  let previousHeight = -1;
+  let stableSamples = 0;
+  await expect.poll(async () => {
+    const height = await page.evaluate(() => document.documentElement.scrollHeight);
+    stableSamples = height === previousHeight ? stableSamples + 1 : 0;
+    previousHeight = height;
+    return stableSamples;
+  }, {
+    message: 'the upgraded Fluent/Chromium specimen layout must settle before visual capture',
+    timeout: 10_000,
+    intervals: [100, 100, 250, 250],
+  }).toBeGreaterThanOrEqual(2);
 };
 
 const scrollTestIdIntoView = async (page: import('@playwright/test').Page, testId: string): Promise<void> => {

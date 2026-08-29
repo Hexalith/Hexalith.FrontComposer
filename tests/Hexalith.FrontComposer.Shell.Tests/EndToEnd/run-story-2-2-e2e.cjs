@@ -77,6 +77,14 @@ function unique(items) {
   return [...new Set(items.filter(Boolean))];
 }
 
+function resultExitCode(results) {
+  if (!Array.isArray(results)) {
+    throw new TypeError('Scenario results must be an array.');
+  }
+
+  return results.some(result => result?.status === 'fail') ? 1 : 0;
+}
+
 async function main() {
   fs.mkdirSync(evidenceDir, { recursive: true });
 
@@ -249,6 +257,7 @@ async function main() {
     pushBlocked('S10 D38 interleaved submit', 'blocked: sample page does not expose a clean multi-submit harness for correlation race automation yet');
 
     fs.writeFileSync(artifactPath, JSON.stringify(results, null, 2));
+    return resultExitCode(results);
   }
   catch (error) {
     const fallback = [{
@@ -275,7 +284,34 @@ async function main() {
   }
 }
 
-main().catch(error => {
-  console.error(error);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  if (process.argv[2] === '--verify-results') {
+    const fixturePath = process.argv[3];
+    if (!fixturePath) {
+      console.error('--verify-results requires a JSON fixture path.');
+      process.exitCode = 1;
+    }
+    else {
+      try {
+        const results = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
+        process.exitCode = resultExitCode(results);
+      }
+      catch (error) {
+        console.error(error);
+        process.exitCode = 1;
+      }
+    }
+  }
+  else {
+    main()
+      .then(exitCode => {
+        process.exitCode = exitCode;
+      })
+      .catch(error => {
+        console.error(error);
+        process.exitCode = 1;
+      });
+  }
+}
+
+module.exports = { resultExitCode };

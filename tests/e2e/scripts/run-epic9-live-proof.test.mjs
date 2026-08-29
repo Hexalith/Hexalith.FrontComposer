@@ -81,6 +81,10 @@ fi
 
   await writeExecutable(join(bin, 'aspire'), `#!/usr/bin/env bash
 set -euo pipefail
+if [[ "\${HexalithFrontComposerFromSource:-}" != "true" ]]; then
+  printf 'Epic 9 Aspire lifecycle requires FrontComposer source routing.\n' >&2
+  exit 91
+fi
 next_count() {
   local count_file="$1"
   local count=0

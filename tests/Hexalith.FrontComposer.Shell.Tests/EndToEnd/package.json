@@ -4,14 +4,18 @@
   "description": "",
   "main": "run-story-2-2-e2e.cjs",
   "scripts": {
-    "story2.2:e2e": "node ./run-story-2-2-e2e.cjs"
+    "story2.2:e2e": "node ./run-story-2-2-e2e.cjs",
+    "test:runner": "node --test ./run-story-2-2-e2e.test.cjs"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
+  "engines": {
+    "node": ">=24.10.0"
+  },
   "devDependencies": {
-    "@axe-core/playwright": "^4.12.1",
-    "playwright": "^1.61.1"
+    "@axe-core/playwright": "^4.13.0",
+    "playwright": "^1.62.1"
   }
 }

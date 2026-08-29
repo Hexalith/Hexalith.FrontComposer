@@ -67,19 +67,19 @@
       "selected_catalog_required_properties": {},
       "selected_catalog_required_packages": {
         "BenchmarkDotNet": "0.15.8",
-        "FsCheck.Xunit.v3": "3.3.4",
-        "Microsoft.CodeAnalysis.Workspaces.Common": "5.6.0",
-        "Microsoft.Extensions.Localization": "10.0.10",
-        "Microsoft.Extensions.TimeProvider.Testing": "10.8.0",
-        "ModelContextProtocol.AspNetCore": "1.4.1",
+        "FsCheck.Xunit.v3": "3.4.0",
+        "Microsoft.CodeAnalysis.Workspaces.Common": "5.9.0",
+        "Microsoft.Extensions.Localization": "10.0.11",
+        "Microsoft.Extensions.TimeProvider.Testing": "10.9.0",
+        "ModelContextProtocol.AspNetCore": "2.2.0",
         "NUlid": "1.7.3",
         "PactNet": "5.0.1",
-        "System.Collections.Immutable": "10.0.10",
+        "System.Collections.Immutable": "10.0.11",
         "System.ComponentModel.Annotations": "5.0.0",
         "System.Reactive": "7.0.0",
         "System.Threading.Tasks.Extensions": "4.6.3",
-        "Verify": "31.27.0",
-        "Verify.XunitV3": "31.27.0"
+        "Verify": "32.0.0",
+        "Verify.XunitV3": "32.0.0"
       }
     },
     "eventstore-catalog-v1": {

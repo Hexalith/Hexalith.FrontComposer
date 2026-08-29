@@ -9,7 +9,7 @@
 
 - **Name:** Hexalith.FrontComposer — *"the Hexalith Blazor Front Shell."*
 - **Type:** Monolith (one `.slnx` solution); primary `library`/framework + developer tooling, with **source-generator**, **Blazor-UI**, **MCP-server**, and **CLI** facets.
-- **Primary language / runtime:** C# on **.NET 10** (SDK `10.0.302`).
+- **Primary language / runtime:** C# on **.NET 10** (SDK `10.0.400`).
 - **Architecture:** Source-generation-driven & layered — a contracts kernel → a Roslyn incremental generator → runtime consumers (Blazor shell, MCP server, CLI), bound by schema fingerprints. See [architecture.md](./architecture.md).
 - **In one line:** annotate domain types with `[Projection]`/`[Command]` → the generator emits Blazor views, command forms, Fluxor state, DI registration, and an MCP manifest → the shell composes the UI and the MCP server exposes it to AI agents.
 
@@ -18,7 +18,7 @@
 | | |
 |---|---|
 | **Solution** | [Hexalith.FrontComposer.slnx](Hexalith.FrontComposer.slnx) (XML `.slnx`; never `.sln`) |
-| **Tech stack** | .NET 10 · Blazor + FluentUI v5 (`5.0.0-rc.4-26180.1`) · Fluxor 6.9.0 · Roslyn 5.6.0 generator · MCP SDK 1.4.0 · NUlid · SignalR · OIDC |
+| **Tech stack** | .NET 10 · Blazor + FluentUI v5 (`5.0.0-rc.5-26219.1`) · Fluxor 6.11.0 · Roslyn 5.9.0 generator · MCP SDK 2.2.0 · NUlid · SignalR · OIDC |
 | **Packages** | Centralized in [Directory.Packages.props](Directory.Packages.props) (`TreatWarningsAsErrors=true`) |
 | **Source projects** | Contracts · Contracts.UI · Schema · SourceTools · Shell · Mcp · Cli · Testing packages + AppHost/UI hosts (10) |
 | **Tests** | xUnit **v3**, Shouldly, NSubstitute, bUnit, Verify, FsCheck, PactNet, BenchmarkDotNet + Playwright e2e |

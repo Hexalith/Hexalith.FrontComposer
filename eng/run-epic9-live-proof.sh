@@ -25,6 +25,11 @@ proof_lock_held=0
 preflight_apphost_absent=0
 unknown_pid_cleanup_allowed=0
 
+# The AppHost composes the current FrontComposer source with source module UIs. Export the narrow
+# routing input so NuGet restore, referenced-project builds, and Aspire child processes all select
+# the same FrontComposer graph without enabling every shared repository's source dependencies.
+export HexalithFrontComposerFromSource=true
+
 redact_json() {
   local source_file="$1"
   local destination_file="$2"
@@ -421,6 +426,7 @@ if [[ -z "$resource_name" || -z "$base_url" ]]; then
 fi
 
 commands=(
+  "export HexalithFrontComposerFromSource=true"
   "aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --isolated --non-interactive --format Json --nologo"
 )
 if [[ "$start_mode" == "isolated-no-build-after-serialized-build" ]]; then

@@ -21,9 +21,21 @@ public sealed class IdeParityMatrixContractTests {
         using JsonDocument matrix = LoadMatrix();
         JsonElement root = matrix.RootElement;
         ValidateMatrixDocument(root).ShouldBeEmpty("IDE parity matrix JSON must reject unknown fields with a named category.");
+        ValidateEvidenceBaselineContract(root).ShouldBeEmpty(
+            "the active SDK and historical evidence SDK must remain an explicit fail-closed revalidation contract");
 
         JsonElement metadata = root.GetProperty("metadata");
-        RequiredString(metadata, "dotnetSdk").ShouldBe("10.0.302");
+        string activeDotnetSdk = RequiredString(metadata, "dotnetSdk");
+        string evidenceBaselineDotnetSdk = RequiredString(metadata, "evidenceBaselineDotnetSdk");
+        activeDotnetSdk.ShouldBe("10.0.400");
+        evidenceBaselineDotnetSdk.ShouldBe("10.0.302");
+        RequiredString(metadata, "evidenceRevalidationStatus").ShouldBe("revalidation-pending");
+        RequiredString(metadata, "evidenceRevalidationReason").ShouldContain(activeDotnetSdk);
+        RequiredString(metadata, "evidenceRevalidationReason").ShouldContain(evidenceBaselineDotnetSdk);
+        activeDotnetSdk.ShouldNotBe(
+            evidenceBaselineDotnetSdk,
+            "a revalidation-pending matrix must not represent the historical evidence baseline as the active SDK");
+        ShouldBeIsoDate(RequiredString(metadata, "lastValidated"), "lastValidated", "metadata");
         RequiredString(metadata, "visualStudio").ShouldContain("Visual Studio 2022 17.13");
         RequiredString(metadata, "rider").ShouldContain("Rider 2026.1");
         RequiredString(metadata, "vsCode").ShouldContain("C# Dev Kit");
@@ -90,6 +102,10 @@ public sealed class IdeParityMatrixContractTests {
         markdown.ShouldContain("OmniSharp-only VS Code is unsupported in v1");
         markdown.ShouldContain("direct generated-file rename is unsupported");
         markdown.ShouldContain("Generated files remain read-only by design");
+        markdown.ShouldContain("10.0.400");
+        markdown.ShouldContain("Captured evidence baseline .NET SDK | 10.0.302");
+        markdown.ShouldContain("`revalidation-pending`");
+        markdown.ShouldContain("do not certify 10.0.400 manual IDE behavior");
         markdown.ShouldContain(GeneratedOutputPathContract.Template);
         markdown.ShouldContain("Evidence Manifest Schema");
         markdown.ShouldContain("samples/IdeParityCounter");
@@ -101,6 +117,10 @@ public sealed class IdeParityMatrixContractTests {
     public void EvidenceManifests_AreBoundToRowsCommitFixtureHashAndSafePaths() {
         using JsonDocument matrix = LoadMatrix();
         string fixtureHash = IdeParityConformanceUtilityTests.ComputeIdeParityCounterFixtureHash();
+        JsonElement metadata = matrix.RootElement.GetProperty("metadata");
+        string evidenceBaselineDotnetSdk = RequiredString(metadata, "evidenceBaselineDotnetSdk");
+        string matrixLastValidated = RequiredString(metadata, "lastValidated");
+        RequiredString(metadata, "evidenceRevalidationStatus").ShouldBe("revalidation-pending");
 
         var evidenceByRow = matrix.RootElement
             .GetProperty("rows")
@@ -126,17 +146,25 @@ public sealed class IdeParityMatrixContractTests {
             using JsonDocument manifest = LoadStrictJsonDocument(fullPath);
             JsonElement root = manifest.RootElement;
             ValidateEvidenceManifest(root).ShouldBeEmpty($"Evidence manifest '{artifactPath}' must reject unknown fields with a named category.");
+            ValidateEvidenceManifestBaseline(root, evidenceBaselineDotnetSdk, matrixLastValidated).ShouldBeEmpty(
+                $"Evidence manifest '{artifactPath}' must remain bound to the historical SDK/date baseline while revalidation is pending.");
             root.GetProperty("rowId").GetString().ShouldBe(rowId);
             RequiredString(root, "fixtureName").ShouldBe("samples/IdeParityCounter");
             string commitSha = RequiredString(root, "repositoryCommitSha");
             _commitShaPattern.IsMatch(commitSha).ShouldBeTrue($"repositoryCommitSha '{commitSha}' for '{rowId}' must be a 40-char lowercase hex SHA-1.");
             RequiredString(root, "generatedOutputPathContractVersion").ShouldBe(GeneratedOutputPathContract.Version);
+            RequiredString(root.GetProperty("ideVersions"), "dotnetSdk").ShouldBe(
+                evidenceBaselineDotnetSdk,
+                $"Evidence manifest '{artifactPath}' must stay bound to the historical evidence SDK until revalidation is completed.");
 
             string artifactHash = RequiredString(root, "artifactHash");
             _artifactHashPattern.IsMatch(artifactHash).ShouldBeTrue($"artifactHash '{artifactHash}' for '{rowId}' must match ^sha256:[0-9a-f]{{64}}$.");
 
             RequiredString(root, "fixtureContentHash").ShouldBe(fixtureHash);
             RequiredString(root, "owner").ShouldNotBeNullOrWhiteSpace();
+            RequiredString(root, "lastVerified").ShouldBe(
+                matrixLastValidated,
+                $"Evidence manifest '{artifactPath}' must remain bound to the matrix evidence date while revalidation is pending.");
             ShouldBeIsoDate(RequiredString(root, "lastVerified"), "lastVerified", rowId);
             ShouldBeIsoDate(RequiredString(root, "expiresOn"), "expiresOn", rowId);
             DateOnly lastVerified = ParseIsoDate(RequiredString(root, "lastVerified"));
@@ -165,6 +193,17 @@ public sealed class IdeParityMatrixContractTests {
         manifest["unexpected"] = "tampered";
         using var tamperedManifest = JsonDocument.Parse(manifest.ToJsonString());
         ValidateEvidenceManifest(tamperedManifest.RootElement).ShouldContain("evidence-unknown-property:unexpected");
+
+        matrix["metadata"]!["evidenceRevalidationStatus"] = "validated";
+        using var falselyValidatedMatrix = JsonDocument.Parse(matrix.ToJsonString());
+        ValidateEvidenceBaselineContract(falselyValidatedMatrix.RootElement)
+            .ShouldContain("matrix-evidence-revalidation-status:validated");
+        matrix["metadata"]!["evidenceRevalidationStatus"] = "revalidation-pending";
+
+        manifest["ideVersions"]!["dotnetSdk"] = "10.0.400";
+        using var falselyRebasedManifest = JsonDocument.Parse(manifest.ToJsonString());
+        ValidateEvidenceManifestBaseline(falselyRebasedManifest.RootElement, "10.0.302", "2026-05-09")
+            .ShouldContain("evidence-dotnet-sdk-baseline:10.0.400");
 
         JsonArray rows = matrix["rows"]!.AsArray();
         rows[0]!["evidenceArtifact"] = "artifacts/ide-parity/../diagnostic-registry.json";
@@ -235,6 +274,9 @@ public sealed class IdeParityMatrixContractTests {
                 "matrixName",
                 "lastValidated",
                 "dotnetSdk",
+                "evidenceBaselineDotnetSdk",
+                "evidenceRevalidationStatus",
+                "evidenceRevalidationReason",
                 "sourceToolsPackage",
                 "generatedOutputPathContractVersion",
                 "generatedOutputPathContract",
@@ -319,6 +361,57 @@ public sealed class IdeParityMatrixContractTests {
         }
     }
 
+    private static IEnumerable<string> ValidateEvidenceBaselineContract(JsonElement root) {
+        if (!root.TryGetProperty("metadata", out JsonElement metadata)
+            || metadata.ValueKind != JsonValueKind.Object) {
+            yield return "matrix-evidence-missing-metadata";
+            yield break;
+        }
+
+        string activeSdk = ReadString(metadata, "dotnetSdk");
+        string baselineSdk = ReadString(metadata, "evidenceBaselineDotnetSdk");
+        string status = ReadString(metadata, "evidenceRevalidationStatus");
+        string reason = ReadString(metadata, "evidenceRevalidationReason");
+        if (string.IsNullOrWhiteSpace(activeSdk)) {
+            yield return "matrix-evidence-missing-active-sdk";
+        }
+
+        if (string.IsNullOrWhiteSpace(baselineSdk)) {
+            yield return "matrix-evidence-missing-baseline-sdk";
+        }
+
+        if (!string.Equals(status, "revalidation-pending", StringComparison.Ordinal)) {
+            yield return "matrix-evidence-revalidation-status:" + status;
+        }
+
+        if (string.Equals(activeSdk, baselineSdk, StringComparison.Ordinal)) {
+            yield return "matrix-evidence-pending-without-sdk-drift";
+        }
+
+        if (string.IsNullOrWhiteSpace(reason)
+            || !reason.Contains(activeSdk, StringComparison.Ordinal)
+            || !reason.Contains(baselineSdk, StringComparison.Ordinal)) {
+            yield return "matrix-evidence-revalidation-reason";
+        }
+    }
+
+    private static IEnumerable<string> ValidateEvidenceManifestBaseline(
+        JsonElement root,
+        string expectedSdk,
+        string expectedLastVerified) {
+        string actualSdk = root.TryGetProperty("ideVersions", out JsonElement ideVersions)
+            ? ReadString(ideVersions, "dotnetSdk")
+            : string.Empty;
+        if (!string.Equals(actualSdk, expectedSdk, StringComparison.Ordinal)) {
+            yield return "evidence-dotnet-sdk-baseline:" + actualSdk;
+        }
+
+        string actualLastVerified = ReadString(root, "lastVerified");
+        if (!string.Equals(actualLastVerified, expectedLastVerified, StringComparison.Ordinal)) {
+            yield return "evidence-last-verified-baseline:" + actualLastVerified;
+        }
+    }
+
     private static IEnumerable<string> ValidateEvidenceManifest(JsonElement root) {
         HashSet<string> allowed = [
             "rowId",
@@ -362,6 +455,12 @@ public sealed class IdeParityMatrixContractTests {
         property.ValueKind.ShouldBe(JsonValueKind.String);
         return property.GetString()!;
     }
+
+    private static string ReadString(JsonElement element, string propertyName)
+        => element.TryGetProperty(propertyName, out JsonElement property)
+            && property.ValueKind == JsonValueKind.String
+                ? property.GetString() ?? string.Empty
+                : string.Empty;
 
     private static void ShouldBeIsoDate(string value, string field, string rowId)
         => DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _)
