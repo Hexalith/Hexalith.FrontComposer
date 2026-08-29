@@ -521,6 +521,15 @@
     "label": "Implement requested change",
     "resolution": ""
   },
+  "DW-1599": {
+    "answered_at": "2026-08-29",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Reject non-internal routes while preserving valid routes and adding compatibility tests.",
+    "key": "1",
+    "label": "Harden internal routes",
+    "resolution": ""
+  },
   "DW-1601": {
     "answered_at": "2026-08-27",
     "bundle_name": "",

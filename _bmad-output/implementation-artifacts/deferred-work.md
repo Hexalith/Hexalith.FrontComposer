@@ -7014,6 +7014,7 @@ location: FrontComposerNavigation.BuildRoute
 source_spec: `_bmad-output/implementation-artifacts/spec-11-9-shell-layering-declaration-and-route-label-relocation.md`
 reason: summary: Harden projection-route construction against protocol-relative or non-internal routes in a dedicated behavior-changing security story. evidence: The pre-existing `FrontComposerNavigation.BuildRoute` contract accepts arbitrary bounded-context text; Story 11.9 deliberately preserves its byte-for-byte 2.x behavior while moving ownership, so introducing `IsInternalRoute` rejection here would exceed the relocation intent.
 status: open
+decision: 2026-08-29 Harden internal routes — Reject non-internal routes while preserving valid routes and adding compatibility tests.
 
 ### DW-1600: Complete the one-type-per-file split for the retained projection fallback contracts and scheduler helper types under Story 11.17.
 
