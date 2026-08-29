@@ -800,19 +800,14 @@ public sealed class CiGovernanceTests {
             @"builds-execution-sha: (?<sha>[0-9a-f]{40})\b");
         buildsExecutionShas.Count.ShouldBeGreaterThanOrEqualTo(1);
 
-        ProcessResult buildsGitlink = RunProcess(root, "git", [
-            "ls-tree",
-            "HEAD",
-            "references/Hexalith.Builds",
-        ]);
-        buildsGitlink.ExitCode.ShouldBe(0, buildsGitlink.Error);
-        Match gitlinkSha = Regex.Match(
-            buildsGitlink.Output,
-            @"^160000 commit (?<sha>[0-9a-f]{40})\treferences/Hexalith\.Builds\s*$",
-            RegexOptions.Multiline);
-        gitlinkSha.Success.ShouldBeTrue(
-            $"git ls-tree HEAD references/Hexalith.Builds must report a 160000 gitlink, got: {buildsGitlink.Output}");
-        string approvedBuildsSha = gitlinkSha.Groups["sha"].Value;
+        // The selected package catalog and the immutable reusable-workflow execution
+        // coordinate are separate contracts. A catalog-only gitlink move must not silently
+        // retarget CI or Release execution; BUILDS_EXECUTION_SHA owns that coordinate.
+        string approvedBuildsSha = buildsExecutionEnvs
+            .Cast<Match>()
+            .Select(match => match.Groups["sha"].Value)
+            .Distinct(StringComparer.Ordinal)
+            .Single();
 
         string[] releaseBuildsCoordinates =
         [
@@ -3015,4 +3010,99 @@ public sealed class CiGovernanceTests {
     }
 
     internal sealed record ProcessResult(int ExitCode, string Output, string Error);
+
+    [Fact]
+    public void EventStoreRuntimeIdentityPinsOwnerApprovedTupleAndTruthfulDriftEvidence() {
+        const string sourceSha = "bb94d93e9b84132cff83a38fba84f25455820d31";
+        const string buildsSha = "a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a";
+        const string version = "3.91.1";
+        string root = RepositoryRoot();
+        string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
+        string artifactLane = ExtractNamedStep(quality, "Gate 2c: Validate contract artifacts");
+        artifactLane.ShouldContain("python3 -m unittest tests/eng/test_eventstore_runtime_evidence.py");
+        // pwsh does not fail the step on a native non-zero exit, and the validator below resets
+        // $LASTEXITCODE, so a red evidence suite is only fail-closed with explicit propagation.
+        // The propagation must not exit with $LASTEXITCODE itself: it is $null until a native
+        // command sets it, and `exit $null` exits 0, so a suite that never launched would pass.
+        artifactLane.ShouldContain("if (-not $? -or $LASTEXITCODE -ne 0) { exit 1 }");
+        artifactLane.ShouldNotContain("exit $LASTEXITCODE");
+        artifactLane.ShouldContain("-RequireProviderVerification");
+        artifactLane.ShouldContain("_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/provider-verification/provider-verification.json");
+        artifactLane.ShouldNotContain("BLOCKED_HANDOFF");
+        artifactLane.ShouldNotContain("continue-on-error: true");
+        string uploadLane = ExtractNamedStep(quality, "Upload contract artifacts");
+        uploadLane.ShouldContain("if: success()");
+        uploadLane.ShouldNotContain("if: always()");
+        // A rejected evidence tree is never published, but its validator diagnostics must be.
+        string diagnosticsLane = ExtractNamedStep(quality, "Upload contract diagnostics");
+        diagnosticsLane.ShouldContain("if: always()");
+        diagnosticsLane.ShouldContain("artifacts/contracts/**");
+        diagnosticsLane.ShouldNotContain("_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24");
+        string evidenceRoot = Path.Combine(
+            root,
+            "_bmad-output",
+            "implementation-artifacts",
+            "evidence",
+            "frontcomposer-story-11-24");
+
+        ProcessResult validation = RunPython(root, [
+            "eng/eventstore_runtime_evidence.py",
+            "--evidence-root", evidenceRoot,
+            "--pact-dir", "tests/Hexalith.FrontComposer.Shell.Tests/Pact",
+        ]);
+        validation.ExitCode.ShouldBe(0, validation.Output + validation.Error);
+
+        ProcessResult eventStoreGitlink = RunProcess(
+            root,
+            "git",
+            ["ls-tree", "HEAD", "--", "references/Hexalith.EventStore"]);
+        eventStoreGitlink.ExitCode.ShouldBe(0, eventStoreGitlink.Error);
+        eventStoreGitlink.Output.Trim().ShouldBe($"160000 commit {sourceSha}\treferences/Hexalith.EventStore");
+
+        ProcessResult eventStoreHead = RunProcess(
+            root,
+            "git",
+            ["-C", "references/Hexalith.EventStore", "rev-parse", "HEAD"]);
+        eventStoreHead.ExitCode.ShouldBe(0, eventStoreHead.Error);
+        eventStoreHead.Output.Trim().ShouldBe(sourceSha);
+
+        ProcessResult buildsGitlink = RunProcess(
+            root,
+            "git",
+            ["ls-tree", "HEAD", "--", "references/Hexalith.Builds"]);
+        buildsGitlink.ExitCode.ShouldBe(0, buildsGitlink.Error);
+        buildsGitlink.Output.Trim().ShouldBe($"160000 commit {buildsSha}\treferences/Hexalith.Builds");
+
+        ProcessResult buildsHead = RunProcess(
+            root,
+            "git",
+            ["-C", "references/Hexalith.Builds", "rev-parse", "HEAD"]);
+        buildsHead.ExitCode.ShouldBe(0, buildsHead.Error);
+        buildsHead.Output.Trim().ShouldBe(buildsSha);
+
+        XDocument catalog = XDocument.Load(Path.Combine(root, "references/Hexalith.Builds/Props/Directory.Packages.props"));
+        catalog.Descendants("HexalithEventStoreVersion").Single().Value.ShouldBe(version);
+
+        using JsonDocument report = JsonDocument.Parse(File.ReadAllText(Path.Combine(
+            evidenceRoot,
+            "provider-verification",
+            "provider-verification.json")));
+        JsonElement reportRoot = report.RootElement;
+        reportRoot.GetProperty("complete").GetBoolean().ShouldBeTrue();
+        reportRoot.GetProperty("requestedInteractionCount").GetInt32().ShouldBe(19);
+        reportRoot.GetProperty("reportedInteractionCount").GetInt32().ShouldBe(19);
+        reportRoot.GetProperty("setupEventCount").GetInt32().ShouldBe(19);
+        reportRoot.GetProperty("teardownEventCount").GetInt32().ShouldBe(19);
+        reportRoot.GetProperty("finalVerdict").GetString().ShouldBe("failed");
+        reportRoot.GetProperty("identity").GetProperty("runtimeMatches").GetBoolean().ShouldBeFalse(
+            "the complete provider report is compatibility evidence, not migration authority");
+
+        using JsonDocument packageManifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(
+            evidenceRoot,
+            sourceSha,
+            "package-manifest.json")));
+        packageManifest.RootElement.GetProperty("source_sha").GetString().ShouldBe(sourceSha);
+        packageManifest.RootElement.GetProperty("version").GetString().ShouldBe(version);
+        packageManifest.RootElement.GetProperty("packages").GetArrayLength().ShouldBe(14);
+    }
 }

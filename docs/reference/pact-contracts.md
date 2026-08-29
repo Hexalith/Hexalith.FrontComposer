@@ -3,9 +3,9 @@ title: "EventStore Pact Contracts"
 description: "File-based Pact evidence for the FrontComposer and Hexalith.EventStore REST contract."
 genre: reference
 audience: adopter
-ownerStory: 10-3-consumer-driven-contract-tests-pact
+ownerStory: 11-24-adopt-the-owner-approved-eventstore-runtime-identity
 status: published
-reviewed: 2026-05-10
+reviewed: 2026-08-29
 uid: frontcomposer.reference.pact-contracts
 slug: reference/pact-contracts/
 ---
@@ -30,7 +30,7 @@ Run:
 
 ```powershell
 dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --filter "Category=Contract"
-pwsh ./eng/validate-contract-artifacts.ps1
+pwsh ./eng/validate-contract-artifacts.ps1 -RequireProviderVerification
 git diff -- tests/Hexalith.FrontComposer.Shell.Tests/Pact
 ```
 
@@ -42,11 +42,26 @@ The validator checks that `interaction-manifest.json` exactly matches the commit
 
 Provider verification belongs beside the `Hexalith.EventStore` provider host because PactNet's native verifier must call a real loopback TCP endpoint. Do not use ASP.NET Core `TestServer` or `WebApplicationFactory` for Pact verifier playback.
 
-The handoff command shape is recorded in `provider-verification-handoff.md`. It must produce a bounded report artifact and use the committed pacts plus `provider-state-catalog.json`.
+The EventStore-owned command shape and the preserved run are recorded in `provider-verification-handoff.md`. The run uses the committed pacts plus `provider-state-catalog.json` and produces a bounded report artifact.
 
-CI is split deliberately: FrontComposer runs consumer pact generation, stale-pact detection, manifest validation, redaction scanning, and artifact upload. Provider verification remains an EventStore-owned release prerequisite because the report must come from the provider host over a real loopback TCP endpoint; FrontComposer uploads the blocked handoff artifact when that report is absent.
+CI is split deliberately: EventStore owns provider execution over real loopback TCP. FrontComposer owns the byte-identical evidence snapshot, verifies its SHA-256 manifest, validates all 19 interactions and cleanup events, scans it for redaction leaks, and uploads it with the consumer artifacts. A missing, incomplete, unbounded, unbound, or unsafe report fails closed.
 
-NFR55 release rule: a release is blocked unless the checked-in pacts verify against the pinned EventStore provider version, or a named contract-drift issue explicitly blocks the release.
+NFR55 release rule: a release is blocked unless the checked-in pacts verify against the pinned EventStore provider version, or a named contract-drift issue explicitly blocks the release. Story 11.24 does not change that rule; the preserved compatibility verdict is the named, recorded drift, and it is non-authorizing in the other direction as well - its failures do not revoke the separately approved runtime identity. Contract/API reconciliation and any broader release disposition remain separately approved work.
+
+### Evidence hash domains
+
+The preserved evidence is bound by two different hash domains, and reproducing a hash requires knowing which one applies:
+
+- `sha256-manifest.json` hashes each preserved evidence file's exact bytes and records per-file `provenance`: `eventstore-capture` for the twelve files taken from the EventStore-owned capture named by `capturedFromEventStoreCommit`, and `frontcomposer-run` for the AppHost smoke and Release restore evidence this repository produced afterwards. `.gitattributes` marks the evidence tree `-text` so checkout never rewrites the bytes. The manifest alone is not the authority for the captured files: `CAPTURED_EVIDENCE_SHA256` in `eng/eventstore_runtime_evidence.py` pins each of their digests, so a rewritten report re-sealed into the manifest is rejected rather than accepted.
+- The provider report's `inputHashes` entries of `kind: pact`, `interaction-manifest`, and `provider-state-catalog` hash the CRLF-normalized text of the live committed files under `tests/Hexalith.FrontComposer.Shell.Tests/Pact/`, not their on-disk bytes and not their Git blob ids. This keeps the binding stable across Windows and Linux checkouts of files that are not marked `-text`.
+
+### Re-capturing the evidence
+
+The gate binds the preserved report to live repository bytes on purpose: the provider report's contract inputs must equal the committed pacts, the interaction manifest, and the provider-state catalog, and `apphost-smoke.json` must equal the current `src/Hexalith.FrontComposer.AppHost/Program.cs` and `.csproj`. An ordinary edit to any of those therefore fails Gate 2c, because the preserved evidence no longer describes what is in the tree. There is no in-repo way to weaken that binding; the remedy is to re-capture:
+
+1. Pact, manifest, or provider-state changes require a fresh EventStore-owned provider run over real loopback TCP against the new pacts, and a new preserved report plus run receipt.
+2. AppHost topology changes require a fresh AppHost smoke capture against the edited topology.
+3. Update `sha256-manifest.json` and, for a re-captured file, its `CAPTURED_EVIDENCE_SHA256` pin in `eng/eventstore_runtime_evidence.py`, then re-run `pwsh ./eng/validate-contract-artifacts.ps1 -RequireProviderVerification`. Changing a pin is the deliberate, reviewable act of replacing owner-captured bytes.
 
 ## Troubleshooting
 

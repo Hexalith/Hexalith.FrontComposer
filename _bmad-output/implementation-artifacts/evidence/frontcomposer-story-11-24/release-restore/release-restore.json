@@ -1,0 +1,33 @@
+{
+  "schema": "hexalith.frontcomposer.story-11-24-release-restore.v1",
+  "capturedAt": "2026-08-28T22:42:34Z",
+  "project": "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+  "configuration": "Release",
+  "packageCache": "isolated-temporary-directory",
+  "requestedCommand": {
+    "command": "dotnet restore src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --configuration Release --packages <isolated-cache>",
+    "result": "rejected",
+    "reasonCode": "dotnet-restore.unknown-configuration-switch"
+  },
+  "executedCommand": {
+    "command": "dotnet restore src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj -p:Configuration=Release --packages <isolated-cache>",
+    "result": "passed"
+  },
+  "identity": {
+    "eventStoreSourceSha": "bb94d93e9b84132cff83a38fba84f25455820d31",
+    "eventStorePackageVersion": "3.91.1",
+    "buildsCatalogSha": "a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a"
+  },
+  "eventStoreAssets": [
+    {
+      "name": "Hexalith.EventStore.Aspire",
+      "version": "3.91.1",
+      "type": "package",
+      "archive": "Hexalith.EventStore.Aspire.3.91.1.nupkg",
+      "sha256": "e8e8894002ae1e9388f59a33c6f061599d0acb47f7ac658be0d3917e1ba3f387"
+    }
+  ],
+  "eventStoreProjectEdgeCount": 0,
+  "everyRestoredEventStoreArchiveMatchedApprovedInventory": true,
+  "result": "passed"
+}

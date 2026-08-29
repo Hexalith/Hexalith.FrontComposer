@@ -152,11 +152,18 @@ jobs:
       - name: 'Gate 2c: Validate contract artifacts'
         shell: pwsh
         run: |
-          # Provider verification is owned by Hexalith.EventStore, where PactNet can verify
-          # against the real provider host over loopback TCP. FrontComposer validates and
-          # uploads the consumer pacts plus the handoff instead of requiring a report it cannot
-          # produce in this repository.
-          ./eng/validate-contract-artifacts.ps1
+          # EventStore owns provider execution. FrontComposer preserves and validates its
+          # complete loopback report without converting compatibility failures into runtime-
+          # identity migration authority.
+          python3 -m unittest tests/eng/test_eventstore_runtime_evidence.py
+          # pwsh does not fail a step on a native non-zero exit, and the validator below resets
+          # $LASTEXITCODE, so the evidence suite must propagate its own failure explicitly.
+          # $LASTEXITCODE is $null until a native command sets it, and `exit $null` exits 0,
+          # so never re-use it as the exit code: a suite that could not launch must fail closed.
+          if (-not $? -or $LASTEXITCODE -ne 0) { exit 1 }
+          ./eng/validate-contract-artifacts.ps1 `
+            -RequireProviderVerification `
+            -ProviderVerificationReport "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/provider-verification/provider-verification.json"
 
       - name: 'Gate 2c: Fail on stale pact diff'
         shell: bash
@@ -177,8 +184,21 @@ jobs:
             cat artifacts/contracts/job-summary.md >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Upload contract artifacts
+      # Validator diagnostics only. This never carries the evidence tree, so it is safe to
+      # publish on failure - and it is exactly when a rejected tree has to be triaged.
+      - name: Upload contract diagnostics
         if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: contract-diagnostics
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            artifacts/contracts/**
+
+      - name: Upload contract artifacts
+        # Never upload a rejected evidence tree after redaction/integrity validation fails.
+        if: success()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: contract-artifacts
@@ -186,6 +206,7 @@ jobs:
           if-no-files-found: error
           path: |
             artifacts/contracts/**
+            _bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/**
             tests/Hexalith.FrontComposer.Shell.Tests/Pact/*.json
             tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-verification-handoff.md
 

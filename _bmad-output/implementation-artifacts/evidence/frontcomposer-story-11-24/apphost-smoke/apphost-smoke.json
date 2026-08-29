@@ -1,0 +1,88 @@
+{
+  "schema": "hexalith.frontcomposer.story-11-24-apphost-smoke.v1",
+  "capturedAt": "2026-08-28T22:50:02Z",
+  "identity": {
+    "eventStoreSourceSha": "bb94d93e9b84132cff83a38fba84f25455820d31",
+    "eventStorePackageVersion": "3.91.1",
+    "buildsCatalogSha": "a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a"
+  },
+  "topology": {
+    "programPath": "src/Hexalith.FrontComposer.AppHost/Program.cs",
+    "programSha256": "474e7aabc58fd0a44b15e2598ee832a7286432779360614180931ef0024f7290",
+    "projectPath": "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+    "projectSha256": "ed58cceb34df2572426512053b836abdb1e580dd52140c1dec75d5267e34e4f8",
+    "modifiedForSmoke": false
+  },
+  "startup": {
+    "restoreCommand": "dotnet restore src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj -p:Configuration=Debug -p:UseHexalithProjectReferences=true",
+    "buildCommand": "dotnet build src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --configuration Debug --no-restore -p:UseHexalithProjectReferences=true -p:IsPackable=false -m:1",
+    "command": "aspire run --no-build --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive",
+    "result": "passed",
+    "resourceWaits": {
+      "security": "healthy",
+      "eventstore": "healthy",
+      "tenants": "healthy",
+      "parties": "healthy",
+      "frontcomposer-ui": "healthy"
+    },
+    "diagnostic": "The existing source-composition topology built and started after an explicit Debug source-graph restore. IsPackable=false bypassed an unrelated packaging README check without changing runtime topology. Aspire described eventstore and frontcomposer-ui as Running and Healthy."
+  },
+  "observations": {
+    "health": {
+      "result": "failed",
+      "reasonCode": "projection-delivery-writer-protocol.v2-not-active",
+      "aspireResourceStatus": "Healthy",
+      "aliveStatusCode": 200,
+      "readinessStatusCode": 503,
+      "readinessDetail": "Every Dapr dependency was healthy, but projection-delivery-writer-protocol reported that protocol v2 was not active."
+    },
+    "commandSubmit": {
+      "result": "failed",
+      "reasonCode": "authentication.missing-token",
+      "method": "POST",
+      "path": "/api/v1/commands",
+      "statusCode": 401,
+      "traceTitle": "POST api/v1/commands",
+      "traceObserved": true
+    },
+    "commandStatus": {
+      "result": "failed",
+      "reasonCode": "authentication.missing-token",
+      "method": "GET",
+      "path": "/api/v1/commands/status/{messageId}",
+      "statusCode": 401,
+      "traceTitle": "GET api/v1/commands/status/{messageId}",
+      "traceObserved": true
+    },
+    "queryProvenance": {
+      "result": "failed",
+      "reasonCode": "authentication.missing-token-before-provenance",
+      "method": "POST",
+      "path": "/api/v1/queries",
+      "statusCode": 401,
+      "traceTitle": "POST api/v1/queries",
+      "traceObserved": true,
+      "provenanceResponseObserved": false
+    },
+    "projectionSignalR": {
+      "result": "failed",
+      "reasonCode": "authentication.missing-token",
+      "method": "POST",
+      "path": "/hubs/projection-changes/negotiate",
+      "statusCode": 401,
+      "traceTitle": "POST /hubs/projection-changes/negotiate",
+      "traceObserved": true,
+      "connectionEstablished": false
+    }
+  },
+  "cleanup": {
+    "command": "aspire stop --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --nologo",
+    "runningAppHostsAfterAttempt": 0,
+    "result": "clean"
+  },
+  "authorization": {
+    "compatibilityEvidenceIsMigrationAuthority": false,
+    "identityAdoptionRevoked": false,
+    "disposition": "The approved identity remains adopted. Route the inactive projection writer protocol and authenticated end-to-end command, query-provenance, and SignalR proof to separately approved compatibility work; do not redesign adapters, rollback, topology, or EventStore container ownership in Story 11.24."
+  }
+}

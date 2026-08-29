@@ -1,5 +1,5 @@
 # generated: 07-05-2026 17:13
-# last_updated: 2026-08-26
+# last_updated: 2026-08-29
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 2026-08-26
+last_updated: 2026-08-29
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -164,7 +164,7 @@ development_status:
   11-21-recommended-analyzer-product-and-generator-burn-down: done
   11-22-recommended-analyzer-test-and-sample-burn-down: done
   11-23-recommended-analyzer-repository-activation: done
-  11-24-adopt-the-owner-approved-eventstore-runtime-identity: backlog
+  11-24-adopt-the-owner-approved-eventstore-runtime-identity: done
   epic-11-retrospective: optional
 action_items:
   - epic: 2

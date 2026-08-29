@@ -3,3 +3,5 @@
 # Shell scripts and husky hooks require LF on Unix runners (CRLF breaks /bin/sh shebangs).
 *.sh text eol=lf
 .husky/* text eol=lf
+# Story 11.24 preserves externally captured evidence bytes; checkout must never rewrite them.
+_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/** -text
