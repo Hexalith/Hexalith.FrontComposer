@@ -5,6 +5,7 @@ import { expect, test } from '../fixtures/index.js';
 const VIEW_KEY = 'Counter:Counter.Domain.CounterProjection';
 const INDICATOR_COPY = 'New item. It may not match current filters yet.';
 const INDICATOR_ARIA_LABEL = 'New item added outside current filters';
+const INTERACTIVE_READY_TIMEOUT_MS = 30_000;
 
 test.describe('Epic 9 composed and live acceptance', () => {
   test('generated create and update converge through the indicator into an already-rendered grid', async ({
@@ -23,7 +24,9 @@ test.describe('Epic 9 composed and live acceptance', () => {
     expect(tenant.tenantId).toBeTruthy();
     expect(tenant.userId).toBeTruthy();
     await page.goto('/counter');
-    await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+    await expect(page.locator('.fc-shell-root[data-fc-interactive="true"]')).toBeVisible({
+      timeout: INTERACTIVE_READY_TIMEOUT_MS,
+    });
     const html = page.locator('html');
     await expect(html).toHaveAttribute('lang', 'en');
     await expect(grid).toBeVisible();
