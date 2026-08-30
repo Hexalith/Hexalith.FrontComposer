@@ -30,7 +30,9 @@ from typing import Any
 # 4.1.0: unsupported-attestation fallback binds the live definition digest at classify time
 # so operators are not forced to re-paste RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256
 # after every release-definition edit; protected production approval remains the gate.
-__version__ = "4.1.0"
+# 4.1.1: authenticated CI handoffs are projected into the current v3 exact-source
+# provenance shape before sealing instead of reusing the historical v2 evaluator shape.
+__version__ = "4.1.1"
 
 # CR-12-4-P257 (round-11, blind): assert at module load that `__version__` is a
 # non-empty semver string. Without this guard, an operator typo (`__version__ = ""`)
@@ -882,6 +884,28 @@ def _source_workflow_provenance(
         "builds_execution_sha": builds_execution_sha,
     }
     return {"ci": ci, "release": release, "definition_digest": canonical_sha256({"ci": ci, "release": release})}
+
+
+def _current_workflow_provenance(
+    handoff: dict[str, Any],
+    handoff_sha256: str,
+    release_evaluator: dict[str, Any],
+    graph_root: pathlib.Path,
+    builds_execution_sha: str,
+) -> dict[str, Any]:
+    """Project authenticated evaluator evidence into the current exact-source schema."""
+    provenance = _source_workflow_provenance(
+        handoff,
+        handoff_sha256,
+        graph_root,
+        builds_execution_sha,
+    )
+    release = provenance["release"]
+    if release_evaluator.get("caller") != release["caller"]:
+        raise ValueError("Release evaluator caller differs from the exact release workflow source")
+    if release_evaluator.get("reusable") != release["reusable"]:
+        raise ValueError("Release evaluator reusable differs from the exact Builds execution source")
+    return provenance
 
 
 def _validate_source_workflow_provenance(value: Any, diagnostics: list[str]) -> dict[str, Any] | None:
@@ -3270,6 +3294,8 @@ def prepare_manifest(args: argparse.Namespace) -> int:
                 release_evaluator = None
             if handoff is not None and handoff.get("run", {}).get("candidate") != commit_sha:
                 provenance_diagnostics.append("prepare-manifest commit_sha does not match the authenticated CI candidate")
+            if not args.builds_execution_sha:
+                provenance_diagnostics.append("builds-execution-sha is required with authenticated CI handoff evidence")
             if not provenance_diagnostics and handoff is not None and ci_evaluator is not None and release_evaluator is not None:
                 projection = handoff["dependency_policy"]
                 _, policy = _load_active_policy(graph_root, projection)
@@ -3285,10 +3311,12 @@ def prepare_manifest(args: argparse.Namespace) -> int:
                 if not provenance_diagnostics:
                     dependency_graph = recomputed_graph
                     dependency_policy = dict(projection)
-                    workflow_provenance = _workflow_provenance(
+                    workflow_provenance = _current_workflow_provenance(
                         handoff,
                         hashlib.sha256(handoff_raw).hexdigest(),
                         release_evaluator,
+                        graph_root,
+                        args.builds_execution_sha,
                     )
             diagnostics.extend(provenance_diagnostics)
         except (KeyError, TypeError, ValueError, OSError, subprocess.SubprocessError) as exc:
