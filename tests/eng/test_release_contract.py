@@ -547,6 +547,11 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertIn(".github/release-evidence-recovery.json", workflow)
         self.assertIn("hexalith.release-evidence-recovery.v1", workflow)
         self.assertIn("Resolve authenticated Release run coordinate", workflow)
+        self.assertIn("Preserve authenticated forensic evidence across exact checkout", workflow)
+        self.assertIn("Restore authenticated forensic evidence after exact checkout", workflow)
+        self.assertEqual(workflow.count("mv verification-evidence \"$EVIDENCE_STAGING_DIR\""), 1)
+        self.assertEqual(workflow.count("mv \"$EVIDENCE_STAGING_DIR\" verification-evidence"), 1)
+        self.assertNotIn("clean: false", workflow)
         self.assertIn(
             'gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/attempts/${run_attempt}"',
             workflow,

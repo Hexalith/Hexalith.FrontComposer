@@ -281,6 +281,18 @@ jobs:
           print(f"tag=v{descriptor['version']}")
           PY
 
+      - name: Preserve authenticated forensic evidence across exact checkout
+        id: preserve
+        if: steps.disposition.outputs.governed-attempt == 'true'
+        shell: bash
+        env:
+          EVIDENCE_STAGING_DIR: ${{ runner.temp }}/release-verification-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          test -d verification-evidence
+          test ! -e "$EVIDENCE_STAGING_DIR"
+          mv verification-evidence "$EVIDENCE_STAGING_DIR"
+
       - name: Checkout exact released source
         if: steps.disposition.outputs.governed-attempt == 'true'
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -289,6 +301,17 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
           submodules: false
+
+      - name: Restore authenticated forensic evidence after exact checkout
+        if: always() && steps.disposition.outputs.governed-attempt == 'true' && steps.preserve.outcome == 'success'
+        shell: bash
+        env:
+          EVIDENCE_STAGING_DIR: ${{ runner.temp }}/release-verification-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          test -d "$EVIDENCE_STAGING_DIR"
+          test ! -e verification-evidence
+          mv "$EVIDENCE_STAGING_DIR" verification-evidence
 
       - name: Checkout approved Builds actions
         if: steps.disposition.outputs.governed-attempt == 'true'
