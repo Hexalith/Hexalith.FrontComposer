@@ -61,6 +61,7 @@ context:
 - `_bmad-output/project-context.md`
 - `eng/dependency-graph-policy.json`
 - `eng/eventstore_runtime_evidence.py`
+- `eng/run-epic9-live-proof.sh`
 - `eng/release_prepublish.py`
 - `eng/run-lifecycle-property-suite.ps1`
 - `global.json`
@@ -81,6 +82,7 @@ context:
 - `tests/e2e/package.json`
 - `tests/e2e/scripts/validate-epic9-artifacts.mjs`
 - `tests/e2e/scripts/validate-epic9-artifacts.test.mjs`
+- `tests/e2e/scripts/run-epic9-live-proof.test.mjs`
 - `tests/eng/test_ci_governance.py`
 - `tests/eng/test_eventstore_runtime_evidence.py`
 - `tests/eng/test_release_prepublish.py`
@@ -113,6 +115,7 @@ context:
 - 2026-08-30: With explicit human approval after an Ask First halt, authorized FrontComposer-owned EventStore evidence/tests to reflect the existing root gitlink `38967215e6c1b13e77f2b0006efd95d88d7ad7b8`; the submodule pointer and contents remain unchanged.
 - 2026-08-30: Review patch made MTP artifacts fail closed, hardened subscriber/timing regressions and runner documentation, and preserved the immutable Story 11.24 capture while recording the separately approved current root runtime tuple.
 - 2026-08-30: Remote Epic 9 proof passed its browser scenario but exposed stale command-evidence validation; aligned the exact validator/test sequence with the producer's source-routing export.
+- 2026-08-30: A subsequent remote run exposed Aspire reporting `counter-web` healthy before its missing no-build executable failed; added a deterministic Counter Web prebuild and sealed it into command evidence.
 
 ## Design Notes
 
