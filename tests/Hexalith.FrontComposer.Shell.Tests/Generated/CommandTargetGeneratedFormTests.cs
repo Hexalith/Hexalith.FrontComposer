@@ -609,6 +609,9 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
         forms[1].Find("form").Submit();
         forms[1].WaitForAssertion(() => service.DispatchCount.ShouldBe(2), timeout: TimeSpan.FromSeconds(2));
 
+        SpinWait.SpinUntil(
+            () => Volatile.Read(ref constructions) >= 2,
+            TimeSpan.FromSeconds(2)).ShouldBeTrue();
         Volatile.Read(ref constructions).ShouldBe(2);
     }
 
