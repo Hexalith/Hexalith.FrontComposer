@@ -83,6 +83,7 @@ context:
 - `tests/e2e/scripts/validate-epic9-artifacts.mjs`
 - `tests/e2e/scripts/validate-epic9-artifacts.test.mjs`
 - `tests/e2e/scripts/run-epic9-live-proof.test.mjs`
+- `tests/e2e/specs/epic-9-fresh-row-acceptance.spec.ts`
 - `tests/eng/test_ci_governance.py`
 - `tests/eng/test_eventstore_runtime_evidence.py`
 - `tests/eng/test_release_prepublish.py`
@@ -101,8 +102,8 @@ context:
 - [x] Add the smallest maintained cross-platform environment helper, regenerate the lockfile, and cover the Windows script contract.
 - [x] Scope the catch-up channel to a circuit and add tests proving scope isolation and non-interference.
 - [x] Generate/validate policy authorization for the changed CI caller bytes while preserving release identities.
-- [ ] Run focused and full verification, commit with pinned commitlint validation, open a PR, and merge only after checks pass.
-- [ ] Because evaluator authorization is active-base policy, land a second unchanged-workflow follow-up if needed so a later push CI can emit authenticated AD-13 evidence.
+- [x] Run focused and full verification, commit with pinned commitlint validation, open a PR, and merge only after checks pass.
+- [x] Because evaluator authorization is active-base policy, land a second unchanged-workflow follow-up so a later push CI can emit authenticated AD-13 evidence.
 - [ ] Verify all applicable exact-source workflows and flaky-governance succeed; dispatch Release, approve both `production` deployments normally, and verify Release Evidence, tag, immutable assets, and all eight NuGet packages at `4.2.0`.
 
 **Acceptance Criteria:**
@@ -116,6 +117,8 @@ context:
 - 2026-08-30: Review patch made MTP artifacts fail closed, hardened subscriber/timing regressions and runner documentation, and preserved the immutable Story 11.24 capture while recording the separately approved current root runtime tuple.
 - 2026-08-30: Remote Epic 9 proof passed its browser scenario but exposed stale command-evidence validation; aligned the exact validator/test sequence with the producer's source-routing export.
 - 2026-08-30: A subsequent remote run exposed Aspire reporting `counter-web` healthy before its missing no-build executable failed; added a deterministic Counter Web prebuild and sealed it into command evidence.
+- 2026-08-30: PR #102 passed all checks and merged as `d08d1dec3243a30e2541d914c3d2474910eabe1d`; main CI run `33304497208` and downstream Flaky Test Governance run `33304646557` succeeded, while the release handoff correctly deferred because the event's active base policy was the pre-authorization commit `f84b68b4e147238f28ca70219f19233d4b4b64d1`. This documentation-only follow-up is the required unchanged-workflow second landing.
+- 2026-08-30: PR #103 run `33304752690` exposed a loaded-runner hydration flake: the server-rendered Counter page was present after 15 seconds, but its interactive marker was late; the retry completed the full scenario and the fail-closed evidence validator rejected the retry artifact set. Added an explicit 30-second interactive-readiness assertion without weakening retry evidence validation.
 
 ## Design Notes
 
