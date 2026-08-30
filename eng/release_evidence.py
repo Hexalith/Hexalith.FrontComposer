@@ -1548,7 +1548,12 @@ def _live_manifest_v2_diagnostics(
             if hashlib.sha256(proof_raw).hexdigest() != ci["evidence_sha256"]:
                 diagnostics.append("exact-source CI proof bytes differ from sealed provenance")
             handoff_engine = _load_dependency_handoff_engine()
-            proof = handoff_engine.validate_source_proof(proof_value, root=graph_root)
+            if proof_value.get("schema") == handoff_engine.SOURCE_PROOF_SCHEMA:
+                proof = handoff_engine.validate_source_proof(proof_value, root=graph_root)
+            elif proof_value.get("schema") == handoff_engine.CI_HANDOFF_SCHEMA:
+                proof = handoff_engine.validate_ci_handoff(proof_value, root=graph_root)
+            else:
+                raise ValueError("dependency release source evidence has an unsupported schema")
             if proof["run"]["candidate"] != manifest["commit_sha"] or proof["dependency_graph"] != graph or proof["dependency_policy"] != projection:
                 diagnostics.append("exact-source CI proof projection differs from the sealed manifest")
             caller_bytes = _exact_workflow_bytes(

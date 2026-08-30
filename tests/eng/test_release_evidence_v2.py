@@ -691,6 +691,22 @@ class ReleaseEvidenceV2Tests(unittest.TestCase):
             {"caller", "reusable", "builds_execution_sha"},
             set(provenance["release"]),
         )
+        evidence = self.root / "release-evidence/dependency-release-source.json"
+        _write_json(evidence, self.handoff)
+        manifest = {
+            "manifest_schema": HELPER.CURRENT_MANIFEST_SCHEMA,
+            "commit_sha": self.commit,
+            "dependency_graph": self.graph,
+            "dependency_policy": self.policy_projection,
+            "workflow_provenance": HELPER._current_workflow_provenance(
+                self.handoff,
+                hashlib.sha256(evidence.read_bytes()).hexdigest(),
+                evaluator,
+                self.root,
+                self.builds_commit,
+            ),
+        }
+        self.assertEqual([], HELPER._live_manifest_v2_diagnostics(manifest, self.root))
 
         mismatched = copy.deepcopy(evaluator)
         mismatched["caller"]["blob_sha256"] = "f" * 64
