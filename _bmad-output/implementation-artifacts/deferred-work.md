@@ -2786,7 +2786,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts (2026-04-21)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs
 reason: **Prerender-only scope resolution retry** — if `IUserContextAccessor` returns no tenant/user on the prerender pass (server-side circuit pre-sign-in), `CommandPaletteEffects.HandleAppInitialized` silently skips hydrate. A later `PaletteScopeChangedAction` only re-runs hydrate if the reducer has cleared the ring buffer — fail-closed is the correct floor today. Story 3-6 (session-persistence / context-restoration) will introduce a proper `StorageReady` event that re-fires hydrate on late scope resolution. `src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:~112-155` Reconciliation: Row: DW-0313; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts (2026-04-21).
-status: open
+status: done 2026-08-31
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:161-168 retries hydration on StorageReadyAction, and lines 720-735 rehydrate after a scope change.
 
 ### DW-1045: `BoundedContextRouteParser` returns null for bare `/domain/{bc}` landing
 
@@ -3487,7 +3488,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 2-2-action-d
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 severity: low
 reason: **[LOW] HFC1016 diagnostic added outside the spec-declared "4 new diagnostics" set** — defensible defense-in-depth against init-only derivable records but a spec-surface scope expansion. **Defer target:** spec patch to enumerate HFC1016; no code change required. Reconciliation: Row: DW-0404; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC12, AC23, AC29, AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2, Story 11.4; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group C (SourceTools layer) chunk.
-status: open
+status: done 2026-08-31
+resolution: already resolved: _bmad-output/implementation-artifacts/3-1-generate-a-command-form-from-a-command-type.md:190-192 now explicitly enumerates HFC1016 in the parser contract.
 decision: 2026-08-28 Implement requested change — Implement DW-1135 at its recorded touchpoint, update affected contracts and consumers, and add focused regression evidence.
 decision: 2026-08-28 Implement requested change — Implement DW-1135 at its recorded touchpoint, update affected contracts and consumers, and add focused regression evidence.
 
@@ -3505,7 +3507,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 2-2-action-d
 location: CommandRendererEmitter.cs:138-182
 severity: high
 reason: **[HIGH → deferred] `TrySetPropertyValue` compile-time switch refactor (D9)** — `CommandRendererEmitter.cs:138-182` uses runtime `PropertyInfo.GetProperty` + `Convert.ChangeType` per derivable-field pre-fill. Spec Task 4.3 L712 mandates a compile-time per-property switch for AOT/trim safety. Interim patches applied: narrowed `catch` to `InvalidCastException | FormatException | OverflowException | ArgumentException` + `CurrentCulture` alignment with form-numeric binding. **Defer target:** dedicated SourceTools refactor task — augment `CommandRendererModel` with `EquatableArray<PropertyModel>` DerivableProperties (name + fully-qualified type), update `CommandRendererTransform`, rewrite `TrySetPropertyValue` as typed switch, regenerate all 8 renderer verified snapshots. Reconciliation: Row: DW-0406; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.4; AC coverage: AC18, AC21-AC22, AC37; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.4.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group C (SourceTools layer) chunk.
-status: open
+status: done 2026-08-31
+resolution: already resolved: src/Hexalith.FrontComposer.SourceTools/Emitters/CommandRendererEmitter.cs:343-349 emits a typed property-name switch; CommandRendererEmitterTests.cs:148-154 reject reflection.
 
 ### DW-1138: [MED → deferred] `RefreshDerivedValuesBeforeSubmitAsync` writes `_prefilledModel` not form `_model` (P30)
 
@@ -4908,7 +4911,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 8-2-hallucination-rejection-and-tenant-scoped-tools (2026-05-02)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Mcp/FrontComposerMcpProtocolMapper.cs
 reason: Package-boundary / SDK-adapter-boundary tests for AC14 — assert `Contracts` and `SourceTools` public surfaces are SDK-DTO-free; pin `FrontComposerMcpProtocolMapper` output via snapshot. **Owner:** Story 8-6 schema-versioning surface discipline. [`src/Hexalith.FrontComposer.Mcp/FrontComposerMcpProtocolMapper.cs`] Reconciliation: Row: DW-0593; Final classification 2026-05-14: accepted-constraint; Decision owner: Story 11.2 diagnostic/docs governance owner; Likelihood: low; Impact: low to medium; Release risk: non-blocking for v1 with documented trigger; Downstream impact: agent/adopter behavior remains stable for v1; Evidence: Story 11.5 D11/DN9/DN14/DN15 notes, row-scoped matrix, and Story 12.2 release-owner summary; Expiry/revalidation trigger: public MCP category/key changes, descriptor-registry mutability, build-time corpus signing/baseline materialization, or a consumer parsing diagnostic polish strings as contract input; Release-note requirement: required only if public machine keys/categories or corpus/fingerprint publication semantics change; Regression guard: Story11_5ResolutionTests, AggregateManifestIntegrityTests, SchemaNegotiationPrecedenceMatrixTests, AuthContextAccessorTests, and diagnostic docs governance tests as applicable; Previous owner was Story 11.5.
-status: open
+status: done 2026-08-31
+resolution: already resolved: tests/Hexalith.FrontComposer.Mcp.Tests/BoundaryTests.cs:7 and :29 assert Contracts and SourceTools are MCP-SDK-free, while ToolAdmissionTests.cs:356 pins the protocol-mapper output shape.
 decision: 2026-08-28 Implement change — Implement the requested change at src/Hexalith.FrontComposer.Mcp/FrontComposerMcpProtocolMapper.cs, update affected contracts and consumers, and add focused regression evidence.
 decision: 2026-08-28 Implement change — Implement the requested change at src/Hexalith.FrontComposer.Mcp/FrontComposerMcpProtocolMapper.cs, update affected contracts and consumers, and add focused regression evidence.
 
@@ -4985,7 +4989,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 8-4-projection-rendering-for-agents re-review (2026-05-04)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Contracts/Mcp/McpResourceDescriptor.cs
 reason: Adding positional record parameters with defaults to `McpResourceDescriptor` / `McpParameterDescriptor` is source-compatible but binary-breaking if `Contracts` is ever published as a stable NuGet package (`IsPackable` not currently set). **Owner:** revisit before Contracts ships as stable NuGet. [`src/Hexalith.FrontComposer.Contracts/Mcp/McpResourceDescriptor.cs`, `src/Hexalith.FrontComposer.Contracts/Mcp/McpParameterDescriptor.cs`] Reconciliation: Row: DW-0603; Final classification 2026-05-14: accepted-constraint; Decision owner: Story 11.2 diagnostic/docs governance owner; Likelihood: low; Impact: low to medium; Release risk: non-blocking for v1 with documented trigger; Downstream impact: agent/adopter behavior remains stable for v1; Evidence: Story 11.5 D11/DN9/DN14/DN15 notes, row-scoped matrix, and Story 12.2 release-owner summary; Expiry/revalidation trigger: public MCP category/key changes, descriptor-registry mutability, build-time corpus signing/baseline materialization, or a consumer parsing diagnostic polish strings as contract input; Release-note requirement: required only if public machine keys/categories or corpus/fingerprint publication semantics change; Regression guard: Story11_5ResolutionTests, AggregateManifestIntegrityTests, SchemaNegotiationPrecedenceMatrixTests, AuthContextAccessorTests, and diagnostic docs governance tests as applicable; Previous owner was Story 11.5.
-status: open
+status: done 2026-08-31
+resolution: already resolved: src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj:4 is packable and Directory.Build.targets:8 enables package validation for packable projects.
 decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1334, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1335: `EscapeMarkdownText` escapes `(` and `)` unconditionally, producing noisier-than-necessary output. Owner: escaping policy review. [`src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs` `EscapeMarkdownText`] Reconciliation: Row: DW-0604; Final classification 2026-05-14: accepted-constraint; Decision owner: Story 11.2 diagnostic/docs governance owner; Likelihood: low; Impact: low to medium; Release risk: non-blocking for v1 with documented trigger; Downstream impact: agent/adopter behavior remains stable for v1; Evidence: Story 11.5 D11/DN9/DN14/DN15 notes, row-scoped matrix, and Story 12.2 release-owner summary; Expiry/revalidation trigger: public MCP category/key changes, descriptor-registry mutability, build-time corpus signing/baseline materialization, or a consumer parsing diagnostic polish strings as contract input; Release-note requirement: required only if public machine keys/categories or corpus/fingerprint publication semantics change; Regression guard: Story11_5ResolutionTests, AggregateManifestIntegrityTests, SchemaNegotiationPrecedenceMatrixTests, AuthContextAccessorTests, and diagnostic docs governance tests as applicable; Previous owner was Story 11.5.
@@ -5429,7 +5434,8 @@ resolution: already resolved: src/Hexalith.FrontComposer.SourceTools/AnalyzerRel
 origin: migrated from legacy ledger ("Deferred from: code review of story-11-2-diagnostic-registry-and-documentation-governance-follow-ups (2026-05-11)"), 2026-08-27
 location: DiagnosticDescriptors.DocsLinkPrefix
 reason: Public surface drift — `DiagnosticDescriptors.DocsLinkPrefix` was renamed to public `CanonicalHelpLinkFormat`; revisit when `EnableFrontComposerPackageValidation` ships against the 0.1.0 baseline. (blind)
-status: open
+status: done 2026-08-31
+resolution: already resolved: docs/diagnostics/README.md:7 and DiagnosticRegistryTests.cs:945-963 show package validation against baseline 4.1.1 and reject the former baseline values.
 decision: 2026-08-27 Keep open
 decision: 2026-08-27 Keep open
 
@@ -6905,7 +6911,8 @@ origin: migrated from legacy ledger ("Deferred from: actions-29110799882-enable-
 location: n/a
 source_spec: `_bmad-output/implementation-artifacts/spec-actions-29110799882-enable-dependency-graph.md`
 reason: summary: Triage the repository's open low-severity undici Dependabot alert. evidence: The alert pre-existed this repair and remains below the dependency-review workflow's configured high-severity failure threshold.
-status: open
+status: done 2026-08-31
+resolution: already resolved: commit 79d74ba1 updates package-lock.json:6561 to undici 7.29.0.
 decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1586, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1587: The reflection-fallback manifest's fail-closed `FullPageCommands = []` (ServiceCollectionExtensions.AddHexalithDomain) has no regression test — every AddHexalithDomain test uses CounterDomain, whose commands all get generated registrations and are filtered out, so the fallback branch never executes under assertion.
@@ -9549,7 +9556,8 @@ origin: migrated from legacy ledger ("spec-bump-eventstore-to-3-100-0.md"), 2026
 location: references/Hexalith.EventStore; references/Hexalith.Builds
 source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-to-3-100-0.md`
 reason: FrontComposer HEAD remained `f84b68b4e147238f28ca70219f19233d4b4b64d1` on `fix/cicd-mtp-release` with many documented-unrelated CI/MTP paths dirty, so committing the EventStore and Builds gitlink updates there would mix scopes.
-status: open
+status: done 2026-08-31
+resolution: already resolved: commit 14e2e0d7 integrated the EventStore and Builds 3.100.0 gitlink updates on main, eliminating the mixed fix/cicd-mtp-release branch state.
 
 ### DW-1906: Builds `test-package-version-audit-validator.ps1` Git-shim PID check can fail then pass.
 
