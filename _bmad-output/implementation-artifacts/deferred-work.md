@@ -9543,10 +9543,18 @@ severity: low
 reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260829-002159-feb7; this entry preserves the lingering recommendation for a deliberate later review.
 status: open
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-to-3-100-0.md`
-  summary: EventStore and Builds gitlink updates currently sit on `fix/cicd-mtp-release` mixed with concurrent CI/MTP files.
-  evidence: FrontComposer HEAD is still `f84b68b4e147238f28ca70219f19233d4b4b64d1`, but the working branch is `fix/cicd-mtp-release` with many documented-unrelated CI paths dirty; a story commit on that branch would mix scopes.
+### DW-1905: EventStore and Builds gitlink updates currently sit on `fix/cicd-mtp-release` mixed with concurrent CI/MTP files.
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-to-3-100-0.md`
-  summary: Builds `test-package-version-audit-validator.ps1` Git-shim PID check can fail then pass.
-  evidence: The validator failed twice with `The non-terminating Git shim did not record both owned process IDs.` then passed 66 scenarios on isolated retry; the scripts were not edited by this bump.
+origin: migrated from legacy ledger ("spec-bump-eventstore-to-3-100-0.md"), 2026-08-30
+location: references/Hexalith.EventStore; references/Hexalith.Builds
+source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-to-3-100-0.md`
+reason: FrontComposer HEAD remained `f84b68b4e147238f28ca70219f19233d4b4b64d1` on `fix/cicd-mtp-release` with many documented-unrelated CI/MTP paths dirty, so committing the EventStore and Builds gitlink updates there would mix scopes.
+status: open
+
+### DW-1906: Builds `test-package-version-audit-validator.ps1` Git-shim PID check can fail then pass.
+
+origin: migrated from legacy ledger ("spec-bump-eventstore-to-3-100-0.md"), 2026-08-30
+location: references/Hexalith.Builds/Tools/test-package-version-audit-validator.ps1
+source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-to-3-100-0.md`
+reason: The validator failed twice with `The non-terminating Git shim did not record both owned process IDs.` before passing all 66 scenarios on isolated retry; the scripts were not edited by this EventStore bump, so the intermittent Git-shim PID capture remains deferred.
+status: open
