@@ -697,7 +697,7 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
             long secondStartedAt = Stopwatch.GetTimestamp();
             second.Find("form").Submit();
             long secondDispatchedAt = await service.SecondDispatchObserved.Task.WaitAsync(
-                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(30),
                 Xunit.TestContext.Current.CancellationToken);
             Stopwatch.GetElapsedTime(secondStartedAt, secondDispatchedAt)
                 .ShouldBeLessThan(TimeSpan.FromSeconds(1));

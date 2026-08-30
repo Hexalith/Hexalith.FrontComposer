@@ -1,5 +1,7 @@
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 
+using NUlid.Rng;
+
 namespace Hexalith.FrontComposer.Shell.Services.Lifecycle;
 
 /// <summary>
@@ -8,6 +10,8 @@ namespace Hexalith.FrontComposer.Shell.Services.Lifecycle;
 /// entropy (Decision D3 / ADR-018).
 /// </summary>
 public sealed class UlidFactory : IUlidFactory {
+    internal static IUlidRng EntropySource { get; } = new CSUlidRng();
+
     /// <inheritdoc/>
-    public string NewUlid() => NUlid.Ulid.NewUlid().ToString();
+    public string NewUlid() => NUlid.Ulid.NewUlid(EntropySource).ToString();
 }
