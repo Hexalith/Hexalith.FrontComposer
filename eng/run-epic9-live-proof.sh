@@ -102,6 +102,28 @@ remove_temporary_files() {
   done
 }
 
+canonicalize_successful_playwright_result() {
+  local canonical_evidence_path=""
+  local result_directory=""
+  local -a evidence_paths=()
+
+  while IFS= read -r -d '' canonical_evidence_path; do
+    evidence_paths+=("$canonical_evidence_path")
+  done < <(find "$playwright_results" -type f -name 'epic-9-command-evidence.json' -print0)
+
+  if [[ ${#evidence_paths[@]} -ne 1 ]]; then
+    echo "Successful Epic 9 proof must produce exactly one canonical command-evidence file; found ${#evidence_paths[@]}." >&2
+    return 1
+  fi
+
+  canonical_evidence_path="${evidence_paths[0]}"
+  while IFS= read -r -d '' result_directory; do
+    if [[ "$canonical_evidence_path" != "$result_directory/"* ]]; then
+      rm -rf -- "$result_directory"
+    fi
+  done < <(find "$playwright_results" -mindepth 1 -maxdepth 1 -type d -print0)
+}
+
 cleanup() {
   local exit_code=$?
   local cleanup_process_list=""
@@ -513,6 +535,8 @@ if [[ $playwright_exit -ne 0 ]]; then
   echo "Epic 9 Playwright proof failed; diagnostic artifacts were retained in $artifact_root" >&2
   exit "$playwright_exit"
 fi
+
+canonicalize_successful_playwright_result
 
 if ! final_candidate_commit="$(read_git_head)" || ! final_git_status="$(read_git_status)"; then
   exit 2

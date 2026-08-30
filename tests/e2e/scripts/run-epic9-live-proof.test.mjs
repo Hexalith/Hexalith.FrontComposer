@@ -189,6 +189,15 @@ fi
 set -euo pipefail
 printf '%s\\n' "$*" >> "$FC_EPIC9_FAKE_NPM_LOG"
 if [[ "$1" != "run" ]]; then exit 99; fi
+if [[ "$2" == "test:epic-9" ]]; then
+  mkdir -p "$FC_E2E_OUTPUT_DIR/canonical-success"
+  printf '{}\\n' > "$FC_E2E_OUTPUT_DIR/canonical-success/epic-9-command-evidence.json"
+  printf 'PK\\003\\004canonical-trace\\n' > "$FC_E2E_OUTPUT_DIR/canonical-success/trace.zip"
+  if [[ "\${FC_EPIC9_FAKE_RETRY_ARTIFACTS:-false}" == "true" ]]; then
+    mkdir -p "$FC_E2E_OUTPUT_DIR/failed-attempt"
+    printf 'PK\\003\\004failed-attempt-trace\\n' > "$FC_E2E_OUTPUT_DIR/failed-attempt/trace.zip"
+  fi
+fi
 if [[ "$2" == "validate:epic-9-artifacts" && ! -s "$FC_EPIC9_ARTIFACT_ROOT/checksums.sha256" ]]; then
   printf 'validator was invoked before checksums.sha256 existed\\n' >&2
   exit 93
@@ -231,6 +240,7 @@ fi
     FC_EPIC9_FAKE_DOTNET_BUILD_COUNT: join(root, 'dotnet-build-count'),
     FC_EPIC9_FAKE_DOTNET_FAIL_BUILD_CALL: String(options.dotnetFailBuildCall ?? 0),
     FC_EPIC9_FAKE_NPM_LOG: npmLog,
+    FC_EPIC9_FAKE_RETRY_ARTIFACTS: String(options.retryArtifacts ?? false),
   };
   return { artifactRoot, aspireLog, dotnetLog, environment, npmLog };
 };
@@ -319,6 +329,18 @@ test('Epic 9 proof completes a correlated lifecycle and validates only after che
     [EXPECTED_COUNTER_WEB_BUILD],
   );
   await access(join(harness.artifactRoot, 'checksums.sha256'));
+});
+
+test('Epic 9 proof removes failed retry artifacts after a successful attempt', async (t) => {
+  const harness = await createHarness(t, { retryArtifacts: true });
+  const result = await runProof(harness.environment);
+
+  assert.equal(result.exitCode, 0, result.stderr);
+  await access(join(harness.artifactRoot, 'playwright-results', 'canonical-success', 'trace.zip'));
+  await assert.rejects(
+    access(join(harness.artifactRoot, 'playwright-results', 'failed-attempt')),
+    (error) => error?.code === 'ENOENT',
+  );
 });
 
 for (const [name, mutation] of [
