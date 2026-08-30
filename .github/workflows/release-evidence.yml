@@ -8,20 +8,13 @@ on:
     workflows: [Release]
     types: [completed]
     branches: [main]
-  workflow_dispatch:
-    inputs:
-      upstream_run_id:
-        description: Completed Release workflow run ID to reconcile
-        required: true
-        type: string
-      upstream_run_attempt:
-        description: Release workflow run attempt to reconcile
-        required: true
-        default: "1"
-        type: string
+  push:
+    branches: [main]
+    paths:
+      - .github/release-evidence-recovery.json
 
 concurrency:
-  group: release-evidence-${{ github.event.workflow_run.id || inputs.upstream_run_id }}-${{ github.event.workflow_run.run_attempt || inputs.upstream_run_attempt }}
+  group: release-evidence-${{ github.event.workflow_run.id || github.run_id }}-${{ github.event.workflow_run.run_attempt || github.run_attempt }}
   cancel-in-progress: false
 
 permissions:
@@ -48,19 +41,30 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           EVENT_NAME: ${{ github.event_name }}
+          EVENT_REF: ${{ github.ref }}
           EVENT_RUN_ID: ${{ github.event.workflow_run.id }}
           EVENT_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
-          INPUT_RUN_ID: ${{ inputs.upstream_run_id }}
-          INPUT_RUN_ATTEMPT: ${{ inputs.upstream_run_attempt }}
+          RECOVERY_RECORD: .github/release-evidence-recovery.json
         run: |
           set -euo pipefail
           mkdir -p verification-evidence/ad15
+          expected_head_sha=""
           if [ "$EVENT_NAME" = "workflow_run" ]; then
             run_id="$EVENT_RUN_ID"
             run_attempt="$EVENT_RUN_ATTEMPT"
-          elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            run_id="$INPUT_RUN_ID"
-            run_attempt="$INPUT_RUN_ATTEMPT"
+          elif [ "$EVENT_NAME" = "push" ] && [ "$EVENT_REF" = "refs/heads/main" ]; then
+            jq -e '
+              type == "object" and
+              keys == ["expected_head_sha", "reason", "schema", "upstream_run_attempt", "upstream_run_id"] and
+              .schema == "hexalith.release-evidence-recovery.v1" and
+              (.upstream_run_id | type == "number" and . > 0 and floor == .) and
+              (.upstream_run_attempt | type == "number" and . > 0 and floor == .) and
+              (.expected_head_sha | type == "string" and test("^[0-9a-f]{40}$")) and
+              (.reason | type == "string" and length > 0)
+            ' "$RECOVERY_RECORD" > /dev/null
+            run_id="$(jq -er '.upstream_run_id' "$RECOVERY_RECORD")"
+            run_attempt="$(jq -er '.upstream_run_attempt' "$RECOVERY_RECORD")"
+            expected_head_sha="$(jq -er '.expected_head_sha' "$RECOVERY_RECORD")"
           else
             echo "Unsupported Release Evidence event: $EVENT_NAME" >&2
             exit 1
@@ -73,7 +77,8 @@ jobs:
             > verification-evidence/upstream-coordinate.json
           jq -e \
             --argjson run_id "$run_id" \
-            --argjson run_attempt "$run_attempt" '
+            --argjson run_attempt "$run_attempt" \
+            --arg expected_head_sha "$expected_head_sha" '
             type == "object" and
             .id == $run_id and
             .run_attempt == $run_attempt and
@@ -82,7 +87,8 @@ jobs:
             .head_branch == "main" and
             .path == ".github/workflows/release.yml" and
             (.conclusion | type == "string") and
-            (.head_sha | type == "string" and test("^[0-9a-f]{40}$"))
+            (.head_sha | type == "string" and test("^[0-9a-f]{40}$")) and
+            ($expected_head_sha == "" or .head_sha == $expected_head_sha)
           ' verification-evidence/upstream-coordinate.json > /dev/null
           echo "run-id=$run_id" >> "$GITHUB_OUTPUT"
           echo "run-attempt=$run_attempt" >> "$GITHUB_OUTPUT"

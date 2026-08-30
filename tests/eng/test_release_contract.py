@@ -540,11 +540,12 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertIn("manifest_seal_json=\"$(jq -er '.seal.hash' \"$manifest\")\"", workflow)
         self.assertNotIn("manifest_seal_json=\"$(jq -er '.seal' \"$manifest\")\"", workflow)
 
-    def test_release_evidence_supports_authenticated_read_only_recovery(self) -> None:
+    def test_release_evidence_supports_reviewed_read_only_recovery(self) -> None:
         workflow = EVIDENCE_WORKFLOW.read_text(encoding="utf-8")
-        self.assertIn("workflow_dispatch:", workflow)
-        self.assertIn("upstream_run_id:", workflow)
-        self.assertIn("upstream_run_attempt:", workflow)
+        self.assertNotIn("workflow_dispatch:", workflow)
+        self.assertIn("push:", workflow)
+        self.assertIn(".github/release-evidence-recovery.json", workflow)
+        self.assertIn("hexalith.release-evidence-recovery.v1", workflow)
         self.assertIn("Resolve authenticated Release run coordinate", workflow)
         self.assertIn(
             'gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/attempts/${run_attempt}"',
