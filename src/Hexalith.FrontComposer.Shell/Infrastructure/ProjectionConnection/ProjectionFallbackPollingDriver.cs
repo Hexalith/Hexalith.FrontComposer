@@ -211,7 +211,10 @@ public sealed class ProjectionFallbackPollingDriver : IAsyncDisposable {
 
     private void EnsureLoopRunning() {
         lock (_sync) {
-            if (_disposed != 0 || !_started || _fatalLoopFault || _loopTask is { IsCompleted: false }) {
+            // Completion owns clearing _loopTask and classifying fatal faults. A completed task
+            // can become observable just before its continuation acquires this lock; starting a
+            // replacement in that window would hot-restart a fatal loop.
+            if (_disposed != 0 || !_started || _fatalLoopFault || _loopTask is not null) {
                 return;
             }
 
