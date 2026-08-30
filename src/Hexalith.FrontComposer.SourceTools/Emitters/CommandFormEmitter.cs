@@ -757,6 +757,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("            {");
             _ = sb.AppendLine("                int timeoutMs = ShellOptions.Value.CommandTargetResolutionTimeoutMs;");
             _ = sb.AppendLine("                deadline.CancelAfter(timeoutMs);");
+            _ = sb.AppendLine("                var deadlineToken = deadline.Token;");
             _ = sb.AppendLine("                try");
             _ = sb.AppendLine("                {");
             _ = sb.AppendLine("                // Clone and invoke adopter code inside one bounded worker so blocking getters or a");
@@ -781,7 +782,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("                                return (Command: transportCommand, Identity: (global::Hexalith.FrontComposer.Contracts.Rendering.CommandTargetIdentity?)null,");
             _ = sb.AppendLine("                                    FailureCategory: providers.Length == 0 ? \"provider-missing\" : \"provider-duplicate\");");
             _ = sb.AppendLine("                            }");
-            _ = sb.AppendLine("                            var providerIdentity = await providers[0].ResolveAsync(providerCommand, deadline.Token).ConfigureAwait(false);");
+            _ = sb.AppendLine("                            var providerIdentity = await providers[0].ResolveAsync(providerCommand, deadlineToken).ConfigureAwait(false);");
             _ = sb.AppendLine("                            return (Command: transportCommand, Identity: providerIdentity, FailureCategory: (string?)null);");
             _ = sb.AppendLine("                        }");
             _ = sb.AppendLine("                        finally");

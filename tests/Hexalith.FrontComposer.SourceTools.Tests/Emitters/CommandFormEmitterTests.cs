@@ -554,8 +554,10 @@ public class CommandFormEmitterTests {
         source.ShouldContain("Amount = command.Amount,");
         source.ShouldNotContain("JsonSerializer");
         source.ShouldNotContain("System.Reflection");
+        source.ShouldContain("var deadlineToken = deadline.Token;");
         source.ShouldContain("resolution = Task.Run(");
-        source.ShouldContain("providers[0].ResolveAsync(providerCommand, deadline.Token)");
+        source.ShouldContain("providers[0].ResolveAsync(providerCommand, deadlineToken)");
+        source.ShouldNotContain("providers[0].ResolveAsync(providerCommand, deadline.Token)");
         source.ShouldContain("CancellationToken.None);");
         source.ShouldContain("_ = resolution.ContinueWith(");
         source.ShouldContain("_ = task.Exception;");
@@ -571,8 +573,10 @@ public class CommandFormEmitterTests {
         source.ShouldContain("return (frozenCommand ?? command, FailCommandTargetResolution(\"target-failed\"));");
 
         int workerIndex = source.IndexOf("resolution = Task.Run(", StringComparison.Ordinal);
+        int deadlineTokenIndex = source.IndexOf("var deadlineToken = deadline.Token;", StringComparison.Ordinal);
         int providerResolutionIndex = source.IndexOf("CommandTargetServiceProvider.GetService(typeof(", StringComparison.Ordinal);
         int cloneIndex = source.IndexOf("var transportCommand = CloneCommandForTargetProvider(command);", StringComparison.Ordinal);
+        deadlineTokenIndex.ShouldBeLessThan(workerIndex);
         providerResolutionIndex.ShouldBeGreaterThan(workerIndex);
         cloneIndex.ShouldBeGreaterThan(workerIndex);
         source.ShouldContain("var commandForDispatch = targetResolution.Command;");
