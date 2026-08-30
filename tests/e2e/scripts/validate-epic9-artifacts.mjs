@@ -17,6 +17,9 @@ const REDACTED = '[REDACTED]';
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const APPHOST_RELATIVE = 'src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj';
 const EVENTSTORE_ASPIRE_RELATIVE = 'references/Hexalith.EventStore/src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj';
+const COUNTER_WEB_RELATIVE = 'samples/Counter/Counter.Web/Counter.Web.csproj';
+const SOURCE_ROUTING_COMMAND = 'export HexalithFrontComposerFromSource=true';
+const COUNTER_WEB_BUILD_COMMAND = `dotnet build ${COUNTER_WEB_RELATIVE} --configuration Debug -m:1 -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false`;
 const INITIAL_START_COMMAND = `aspire start --apphost ${APPHOST_RELATIVE} --isolated --non-interactive --format Json --nologo`;
 const FALLBACK_DEPENDENCY_BUILD_COMMAND = `dotnet build ${EVENTSTORE_ASPIRE_RELATIVE} --configuration Debug -m:1 -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false`;
 const FALLBACK_APPHOST_BUILD_COMMAND = `dotnet build ${APPHOST_RELATIVE} --configuration Debug -m:1 -p:BuildProjectReferences=false -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false`;
@@ -113,8 +116,8 @@ const expectedCommands = (startMode, evidenceMode) => {
     ? VALIDATE_DEVELOPMENT_COMMAND
     : VALIDATE_FINAL_COMMAND;
   return startMode === 'isolated-build'
-    ? [INITIAL_START_COMMAND, ...COMMON_COMMANDS, validationCommand]
-    : [INITIAL_START_COMMAND, FALLBACK_DEPENDENCY_BUILD_COMMAND, FALLBACK_APPHOST_BUILD_COMMAND,
+    ? [SOURCE_ROUTING_COMMAND, COUNTER_WEB_BUILD_COMMAND, INITIAL_START_COMMAND, ...COMMON_COMMANDS, validationCommand]
+    : [SOURCE_ROUTING_COMMAND, COUNTER_WEB_BUILD_COMMAND, INITIAL_START_COMMAND, FALLBACK_DEPENDENCY_BUILD_COMMAND, FALLBACK_APPHOST_BUILD_COMMAND,
         FALLBACK_START_COMMAND, ...COMMON_COMMANDS, validationCommand];
 };
 

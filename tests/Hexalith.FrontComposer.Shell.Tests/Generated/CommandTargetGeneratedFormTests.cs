@@ -694,11 +694,13 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
             SpinWait.SpinUntil(() => Volatile.Read(ref getterReads) == 1, TimeSpan.FromSeconds(2)).ShouldBeTrue();
             first.WaitForAssertion(() => service.DispatchCount.ShouldBe(1), timeout: TimeSpan.FromSeconds(2));
 
-            Stopwatch secondElapsed = Stopwatch.StartNew();
+            long secondStartedAt = Stopwatch.GetTimestamp();
             second.Find("form").Submit();
-            second.WaitForAssertion(() => service.DispatchCount.ShouldBe(2), timeout: TimeSpan.FromSeconds(2));
-
-            secondElapsed.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(1));
+            long secondDispatchedAt = await service.SecondDispatchObserved.Task.WaitAsync(
+                TimeSpan.FromSeconds(2),
+                Xunit.TestContext.Current.CancellationToken);
+            Stopwatch.GetElapsedTime(secondStartedAt, secondDispatchedAt)
+                .ShouldBeLessThan(TimeSpan.FromSeconds(1));
             Volatile.Read(ref getterReads).ShouldBe(1);
             provider.DispatchCount.ShouldBe(0);
         }
@@ -1584,7 +1586,12 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
     }
 
     private sealed class RejectedRecordingCommandService : ICommandServiceWithLifecycleObservations {
-        public int DispatchCount { get; private set; }
+        private int _dispatchCount;
+
+        public int DispatchCount => Volatile.Read(ref _dispatchCount);
+
+        public TaskCompletionSource<long> SecondDispatchObserved { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public Task<CommandResult> DispatchAsync<TCommand>(
             TCommand command,
@@ -1596,7 +1603,9 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
             Action<CommandLifecycleObservation>? onLifecycleObservation,
             CancellationToken cancellationToken = default)
             where TCommand : class {
-            DispatchCount++;
+            if (Interlocked.Increment(ref _dispatchCount) >= 2) {
+                SecondDispatchObserved.TrySetResult(Stopwatch.GetTimestamp());
+            }
             return Task.FromResult(new CommandResult(AcceptedMessageId, "Rejected"));
         }
     }

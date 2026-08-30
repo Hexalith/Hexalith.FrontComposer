@@ -212,14 +212,15 @@ class ReleasePrepublishTests(unittest.TestCase):
         tests_end = source.index("\ndef ", tests_start + 1)
         tests_section = source[tests_start:tests_end]
         self.assertIn('run("tests"', tests_section)
-        self.assertIn(
-            '"--filter", "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined",',
-            tests_section,
-        )
-        self.assertNotIn(
-            '"--filter", "Category!=Quarantined",',
-            tests_section,
-        )
+        for trait in ("Performance", "e2e-palette", "NightlyProperty", "Quarantined"):
+            self.assertIn(
+                f'"--filter-not-trait", "Category={trait}",',
+                tests_section,
+            )
+        self.assertIn('"--report-xunit-trx",', tests_section)
+        self.assertIn('"--report-xunit-trx-filename", f"{name}.trx",', tests_section)
+        self.assertNotIn('"--filter",', tests_section)
+        self.assertNotIn('"--logger",', tests_section)
         self.assertNotIn("tolerate_failure=True", tests_section)
         run_start = source.index("def run(")
         run_end = source.index("\ndef ", run_start + 1)

@@ -461,7 +461,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         errors = self.validate()
 
-        self.assertTrue(any("does not match the current file bytes" in error for error in errors), errors)
+        self.assertTrue(any("does not match the sealed historical capture" in error for error in errors), errors)
         self.assertTrue(any("commandSubmit passes without a successful" in error for error in errors), errors)
 
     def test_release_restore_requires_exact_command_edge_and_asset_inventory(self) -> None:
@@ -629,10 +629,11 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
     def test_every_captured_evidence_file_is_pinned_to_the_capture(self) -> None:
         self.assertEqual(
-            set(evidence.CAPTURED_EVIDENCE_SHA256) | evidence.FRONTCOMPOSER_EVIDENCE_FILES,
+            set(evidence.CAPTURED_EVIDENCE_SHA256) | set(evidence.FRONTCOMPOSER_CAPTURED_EVIDENCE_SHA256),
             set(evidence.REQUIRED_SNAPSHOT_FILES),
         )
-        for relative, pinned in evidence.CAPTURED_EVIDENCE_SHA256.items():
+        pinned_evidence = evidence.CAPTURED_EVIDENCE_SHA256 | evidence.FRONTCOMPOSER_CAPTURED_EVIDENCE_SHA256
+        for relative, pinned in pinned_evidence.items():
             self.assertEqual(_sha256(self.evidence_root / relative), pinned, relative)
 
     def test_manifest_provenance_cannot_claim_a_frontcomposer_run_was_captured(self) -> None:

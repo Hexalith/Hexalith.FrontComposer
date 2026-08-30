@@ -9,6 +9,7 @@ fi
 
 apphost="$repo_root/src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj"
 eventstore_aspire="$repo_root/references/Hexalith.EventStore/src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj"
+counter_web="$repo_root/samples/Counter/Counter.Web/Counter.Web.csproj"
 e2e_root="$repo_root/tests/e2e"
 artifact_root="${FC_EPIC9_ARTIFACT_ROOT:-$repo_root/artifacts/epic-9}"
 require_clean="${FC_EPIC9_REQUIRE_CLEAN:-false}"
@@ -336,6 +337,20 @@ preflight_apphost_absent=1
 rm -f -- "$raw_process_list"
 raw_process_list=""
 
+if ! dotnet build "$counter_web" \
+  --configuration Debug \
+  -m:1 \
+  -p:NuGetAudit=false \
+  -p:CentralPackageTransitivePinningEnabled=false \
+  > "$artifact_root/counter-web-prebuild.log" 2>&1; then
+  echo "Counter Web prebuild failed; refusing an Aspire no-build child launch." >&2
+  exit 2
+fi
+if [[ ! -s "$artifact_root/counter-web-prebuild.log" ]]; then
+  printf '%s\n' 'Counter Web prebuild completed without console output.' \
+    > "$artifact_root/counter-web-prebuild.log"
+fi
+
 start_mode="isolated-build"
 raw_start="$(mktemp)"
 if ! aspire start \
@@ -427,6 +442,7 @@ fi
 
 commands=(
   "export HexalithFrontComposerFromSource=true"
+  "dotnet build samples/Counter/Counter.Web/Counter.Web.csproj --configuration Debug -m:1 -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false"
   "aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --isolated --non-interactive --format Json --nologo"
 )
 if [[ "$start_mode" == "isolated-no-build-after-serialized-build" ]]; then

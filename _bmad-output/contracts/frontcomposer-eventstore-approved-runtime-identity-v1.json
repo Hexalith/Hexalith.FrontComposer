@@ -1,0 +1,14 @@
+{
+  "schema": "hexalith.frontcomposer.eventstore-approved-runtime-identity.v1",
+  "approvalRecord": "_bmad-output/implementation-artifacts/spec-actions-33264036185-33264035739-fix-cicd-release.md",
+  "eventStoreSourceGitlink": "38967215e6c1b13e77f2b0006efd95d88d7ad7b8",
+  "eventStorePackageVersion": "3.99.0",
+  "buildsCatalogGitlink": "2b0faab931ec581c7503270e7dd73074654e2eee",
+  "submodulePointerChangedByApproval": false,
+  "historicalCapture": {
+    "path": "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24",
+    "eventStoreSourceSha": "bb94d93e9b84132cff83a38fba84f25455820d31",
+    "eventStorePackageVersion": "3.91.1",
+    "immutable": true
+  }
+}

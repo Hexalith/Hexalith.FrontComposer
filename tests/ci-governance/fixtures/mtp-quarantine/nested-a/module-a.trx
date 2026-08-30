@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <TestDefinitions>
+    <UnitTest id="a-pass" name="Passes" storage="module-a.dll">
+      <TestMethod className="Fixtures.ModuleA" name="Passes" />
+    </UnitTest>
+    <UnitTest id="a-fail" name="Fails" storage="module-a.dll">
+      <TestMethod className="Fixtures.ModuleA" name="Fails" />
+    </UnitTest>
+  </TestDefinitions>
+  <Results>
+    <UnitTestResult testId="a-pass" testName="Passes" outcome="Passed" />
+    <UnitTestResult testId="a-fail" testName="Fails" outcome="Failed">
+      <Output><ErrorInfo><Message>fixture failure</Message></ErrorInfo></Output>
+    </UnitTestResult>
+  </Results>
+  <ResultSummary outcome="Failed"><Counters total="2" passed="1" failed="1" /></ResultSummary>
+</TestRun>

@@ -215,15 +215,21 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **Stack:** xUnit **v3** (`xunit.v3`) + **Shouldly** (`ShouldBe`/`ShouldThrow` — never raw
   `Assert.*`) + **NSubstitute** mocks; **bUnit** for Blazor components; **Verify** snapshots;
   **FsCheck** property tests; **PactNet** for the EventStore REST boundary
-- **Run SOLUTION-level `dotnet test` + trait filters** —
-  `dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"`.
+- **Run SOLUTION-level Microsoft.Testing.Platform `dotnet test` + native trait filters** —
+  `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter-not-trait "Category=Performance" --filter-not-trait "Category=e2e-palette" --filter-not-trait "Category=NightlyProperty" --filter-not-trait "Category=Quarantined" --results-directory ./TestResults/default --report-xunit-trx --coverage --coverage-output-format cobertura`.
   **This is the OPPOSITE of the EventStore submodule's per-project rule** — follow FrontComposer's model here
+- **MTP is repository-native:** `global.json` selects `Microsoft.Testing.Platform`, and
+  `tests/Directory.Build.props` supplies the MTP code-coverage extension. Do not reintroduce VSTest
+  `--filter`, `--logger`, or `--collect` syntax. The default lane retains one uniquely named TRX and
+  Cobertura report per expected test module and fails unless the aggregate TRX total is nonzero and
+  every coverage report contains measured lines. Governance uses its isolated results directory and
+  likewise requires present, parseable, nonzero aggregate TRX evidence.
 - **`DiffEngine_Disabled=true` is REQUIRED** when running tests — otherwise a Verify snapshot
   mismatch launches a diff tool and hangs CI/local runs
 - **Trait categories:** `Governance`, `Contract`, `Performance`, `e2e-palette`, `NightlyProperty`,
   `Quarantined`. CI runs Governance + the default lane as **blocking**; palette/perf/quarantine are
-  advisory/warning-only. Release prepare-candidate `phase_tests()` uses the same Gate 3a filter
-  (`Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined`)
+  advisory/warning-only. Release prepare-candidate `phase_tests()` uses the same four native Gate 3a
+  `--filter-not-trait` exclusions (Performance, e2e-palette, NightlyProperty, and Quarantined)
 - **Naming:** test files are **plural `{Class}Tests.cs`** (matches Tenants, not Commons' singular);
   methods are three-part **`Subject_Scenario_Expectation`**
 - **Generator tests** go through `CompilationHelper.CreateCompilation()`; **Blazor component tests**

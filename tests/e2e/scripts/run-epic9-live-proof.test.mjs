@@ -22,6 +22,14 @@ const EVENTSTORE_ASPIRE = join(
   'Hexalith.EventStore.Aspire',
   'Hexalith.EventStore.Aspire.csproj',
 );
+const COUNTER_WEB = join(
+  REPOSITORY_ROOT,
+  'samples',
+  'Counter',
+  'Counter.Web',
+  'Counter.Web.csproj',
+);
+const EXPECTED_COUNTER_WEB_BUILD = `build ${COUNTER_WEB} --configuration Debug -m:1 -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false`;
 const EXPECTED_DEPENDENCY_BUILD = `build ${EVENTSTORE_ASPIRE} --configuration Debug -m:1 -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false`;
 const EXPECTED_APPHOST_BUILD = `build ${APPHOST} --configuration Debug -m:1 -p:BuildProjectReferences=false -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false`;
 const CANDIDATE = '1234567890abcdef1234567890abcdef12345678';
@@ -306,6 +314,10 @@ test('Epic 9 proof completes a correlated lifecycle and validates only after che
     'run test:epic-9',
     `run validate:epic-9-artifacts -- ${harness.artifactRoot} --candidate ${CANDIDATE}`,
   ]);
+  assert.deepEqual(
+    (await readInvocations(harness.dotnetLog)).filter((invocation) => invocation.startsWith('build ')),
+    [EXPECTED_COUNTER_WEB_BUILD],
+  );
   await access(join(harness.artifactRoot, 'checksums.sha256'));
 });
 
@@ -335,7 +347,19 @@ test('Epic 9 proof cleans and refuses a partial AppHost left by a failed first s
   assert.deepEqual(lifecycleNames(await readInvocations(harness.aspireLog)), [
     'ps', 'start', 'ps', 'stop', 'ps',
   ]);
-  assert.deepEqual(await readInvocations(harness.dotnetLog), []);
+  assert.deepEqual(await readInvocations(harness.dotnetLog), [EXPECTED_COUNTER_WEB_BUILD]);
+});
+
+test('Epic 9 proof stops before Aspire when the Counter Web prebuild fails', async (t) => {
+  const harness = await createHarness(t, { dotnetFailBuildCall: 1 });
+  const result = await runProof(harness.environment);
+
+  assert.equal(result.exitCode, 2);
+  assert.match(result.stderr, /Counter Web prebuild failed/u);
+  assert.deepEqual(lifecycleNames(await readInvocations(harness.aspireLog)), ['ps']);
+  assert.deepEqual(await readInvocations(harness.dotnetLog), [EXPECTED_COUNTER_WEB_BUILD]);
+  assert.deepEqual(await readInvocations(harness.npmLog), []);
+  await access(join(harness.artifactRoot, 'counter-web-prebuild.log'));
 });
 
 test('Epic 9 proof uses the serialized-build fallback only after failed-start postflight is absent', async (t) => {
@@ -348,23 +372,30 @@ test('Epic 9 proof uses the serialized-build fallback only after failed-start po
   assert.equal(invocations.filter((name) => name === 'start').length, 2);
   const fallbackBuilds = (await readInvocations(harness.dotnetLog))
     .filter((invocation) => invocation.startsWith('build '));
-  assert.deepEqual(fallbackBuilds, [EXPECTED_DEPENDENCY_BUILD, EXPECTED_APPHOST_BUILD]);
+  assert.deepEqual(fallbackBuilds, [
+    EXPECTED_COUNTER_WEB_BUILD,
+    EXPECTED_DEPENDENCY_BUILD,
+    EXPECTED_APPHOST_BUILD,
+  ]);
   assert.match(invocations.join(' '), /stop/u);
 });
 
 test('Epic 9 proof stops before the AppHost build and fallback start when the dependency build fails', async (t) => {
-  const harness = await createHarness(t, { firstStartFails: true, dotnetFailBuildCall: 1 });
+  const harness = await createHarness(t, { firstStartFails: true, dotnetFailBuildCall: 2 });
   const result = await runProof(harness.environment);
 
   assert.equal(result.exitCode, 2);
   assert.match(result.stderr, /Serialized AppHost fallback build failed/u);
   assert.deepEqual(lifecycleNames(await readInvocations(harness.aspireLog)), ['ps', 'start', 'ps']);
-  assert.deepEqual(await readInvocations(harness.dotnetLog), [EXPECTED_DEPENDENCY_BUILD]);
+  assert.deepEqual(await readInvocations(harness.dotnetLog), [
+    EXPECTED_COUNTER_WEB_BUILD,
+    EXPECTED_DEPENDENCY_BUILD,
+  ]);
   assert.deepEqual(await readInvocations(harness.npmLog), []);
   await access(join(harness.artifactRoot, 'apphost-start.failed.json'));
   assert.match(
     await readFile(join(harness.artifactRoot, 'apphost-serialized-build.log'), 'utf8'),
-    /Serialized build failed on call 1\./u,
+    /Serialized build failed on call 2\./u,
   );
   await assert.rejects(
     access(join(harness.artifactRoot, 'apphost-start.json')),
@@ -373,13 +404,14 @@ test('Epic 9 proof stops before the AppHost build and fallback start when the de
 });
 
 test('Epic 9 proof stops before the fallback start when the AppHost build fails', async (t) => {
-  const harness = await createHarness(t, { firstStartFails: true, dotnetFailBuildCall: 2 });
+  const harness = await createHarness(t, { firstStartFails: true, dotnetFailBuildCall: 3 });
   const result = await runProof(harness.environment);
 
   assert.equal(result.exitCode, 2);
   assert.match(result.stderr, /Serialized AppHost fallback build failed/u);
   assert.deepEqual(lifecycleNames(await readInvocations(harness.aspireLog)), ['ps', 'start', 'ps']);
   assert.deepEqual(await readInvocations(harness.dotnetLog), [
+    EXPECTED_COUNTER_WEB_BUILD,
     EXPECTED_DEPENDENCY_BUILD,
     EXPECTED_APPHOST_BUILD,
   ]);
@@ -387,7 +419,7 @@ test('Epic 9 proof stops before the fallback start when the AppHost build fails'
   await access(join(harness.artifactRoot, 'apphost-start.failed.json'));
   assert.match(
     await readFile(join(harness.artifactRoot, 'apphost-serialized-build.log'), 'utf8'),
-    /Serialized build failed on call 2\./u,
+    /Serialized build failed on call 3\./u,
   );
   await assert.rejects(
     access(join(harness.artifactRoot, 'apphost-start.json')),

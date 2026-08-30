@@ -11,10 +11,10 @@ internal sealed class CounterCommandProjectionCatchUpChannel
     private long _capturedCount;
     private long _publishedCount;
 
-    /// <summary>Gets the number of exact-key command snapshots captured by this sample process.</summary>
+    /// <summary>Gets the number of exact-key command snapshots captured by this circuit scope.</summary>
     public long CapturedCount => Interlocked.Read(ref _capturedCount);
 
-    /// <summary>Gets the number of confirmed exact-key snapshots published by this sample process.</summary>
+    /// <summary>Gets the number of confirmed exact-key snapshots published by this circuit scope.</summary>
     public long PublishedCount => Interlocked.Read(ref _publishedCount);
 
     /// <summary>Occurs after an exact-key create reaches the confirmed lifecycle state.</summary>
@@ -52,7 +52,7 @@ internal sealed class CounterCommandProjectionCatchUpChannel
             }
 
             _ = Interlocked.Increment(ref _publishedCount);
-            CreateConfirmed?.Invoke(tenantId, userId, messageId ?? snapshot.MessageId, snapshot);
+            Publish(CreateConfirmed, tenantId, userId, messageId ?? snapshot.MessageId, snapshot);
         };
     }
 
@@ -75,7 +75,36 @@ internal sealed class CounterCommandProjectionCatchUpChannel
             }
 
             _ = Interlocked.Increment(ref _publishedCount);
-            UpdateConfirmed?.Invoke(tenantId, userId, messageId ?? snapshot.MessageId, snapshot);
+            Publish(UpdateConfirmed, tenantId, userId, messageId ?? snapshot.MessageId, snapshot);
         };
+    }
+
+    private static void Publish<TCommand>(
+        Action<string, string, string, TCommand>? subscribers,
+        string tenantId,
+        string userId,
+        string messageId,
+        TCommand snapshot)
+        where TCommand : class
+    {
+        if (subscribers is null)
+        {
+            return;
+        }
+
+        // Circuit components can disappear between command confirmation and catch-up delivery.
+        // Invoke every captured subscriber independently so a stale handler cannot suppress a
+        // later live subscriber in the same circuit scope.
+        foreach (Delegate subscriber in subscribers.GetInvocationList())
+        {
+            try
+            {
+                ((Action<string, string, string, TCommand>)subscriber)(tenantId, userId, messageId, snapshot);
+            }
+            catch (Exception)
+            {
+                // A stale sample subscriber has no authority to abort delivery to live subscribers.
+            }
+        }
     }
 }
