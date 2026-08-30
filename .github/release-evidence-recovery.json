@@ -1,6 +1,6 @@
 {
   "expected_head_sha": "df68993535e9bd4401532b02d0934eb7b704a613",
-  "reason": "Reconcile immutable v4.2.0 after its post-publication AD-15 handoff serialization failed.",
+  "reason": "Reconcile immutable v4.2.0 after preserving authenticated evidence across its exact-source checkout.",
   "schema": "hexalith.release-evidence-recovery.v1",
   "upstream_run_attempt": 1,
   "upstream_run_id": 33323474231
