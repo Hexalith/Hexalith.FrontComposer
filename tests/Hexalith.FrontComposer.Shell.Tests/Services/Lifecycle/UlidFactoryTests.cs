@@ -5,6 +5,8 @@ using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using NUlid.Rng;
+
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Services.Lifecycle;
@@ -91,29 +93,7 @@ public class UlidFactoryTests {
 
     [Fact]
     public void NewUlid_EntropyIsCryptographic_NotPredictableFromPriorOutputs() {
-        UlidFactory factory = new();
-        const int sampleSize = 1000;
-        int[] highNibbleCounts = new int[32];
-
-        for (int i = 0; i < sampleSize; i++) {
-            string ulid = factory.NewUlid();
-            char entropyHead = ulid[10];
-            int bucket = DecodeCrockford(entropyHead);
-            highNibbleCounts[bucket]++;
-        }
-
-        double expected = sampleSize / 32.0;
-        double chiSquare = highNibbleCounts.Sum(c => (c - expected) * (c - expected) / expected);
-
-        chiSquare.ShouldBeLessThan(
-            60.0,
-            $"chi-square statistic {chiSquare:F2} suggests non-uniform entropy; NUlid should use RandomNumberGenerator");
-    }
-
-    private static int DecodeCrockford(char c) {
-        const string alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-        int i = alphabet.IndexOf(char.ToUpperInvariant(c));
-        return i >= 0 ? i : throw new ArgumentException($"invalid Crockford char '{c}'");
+        UlidFactory.EntropySource.ShouldBeOfType<CSUlidRng>();
     }
 
     private static string ProjectRoot() {
