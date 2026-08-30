@@ -532,6 +532,21 @@ def phase_classify(non_publishing: bool) -> None:
     run("classify", cmd)
 
 
+def _stage_dependency_source_evidence() -> None:
+    ci_handoff = os.environ.get("DEPENDENCY_RELEASE_HANDOFF", "")
+    source_proof = os.environ.get("DEPENDENCY_RELEASE_SOURCE_PROOF", "")
+    source = ci_handoff or source_proof
+    if not source:
+        return
+    source_path = pathlib.Path(source)
+    if not source_path.is_absolute():
+        source_path = REPO_ROOT / source_path
+    if not source_path.is_file():
+        evidence_kind = "CI handoff" if ci_handoff else "source proof"
+        raise PhaseFailure("source-proof", f"authenticated dependency release {evidence_kind} is missing")
+    shutil.copyfile(source_path, REPO_ROOT / EVIDENCE_DIR / "dependency-release-source.json")
+
+
 def cmd_prepare(args: argparse.Namespace) -> int:
     phase_release_policy(args.version)
     run("manifest-contract", [
@@ -549,14 +564,7 @@ def cmd_prepare(args: argparse.Namespace) -> int:
         if target.exists():
             shutil.rmtree(target)
     (REPO_ROOT / EVIDENCE_DIR).mkdir(parents=True, exist_ok=True)
-    source_proof = os.environ.get("DEPENDENCY_RELEASE_SOURCE_PROOF", "")
-    if source_proof:
-        proof_path = pathlib.Path(source_proof)
-        if not proof_path.is_absolute():
-            proof_path = REPO_ROOT / proof_path
-        if not proof_path.is_file():
-            raise PhaseFailure("source-proof", "authenticated dependency release source proof is missing")
-        shutil.copyfile(proof_path, REPO_ROOT / EVIDENCE_DIR / "dependency-release-source.json")
+    _stage_dependency_source_evidence()
     if os.environ.get("RELEASE_ATTESTATION_STATUS", "approved-unsupported") == "approved-unsupported":
         (REPO_ROOT / EVIDENCE_DIR / "attestation-unavailable.md").write_text(
             "# Attestation unavailable\n\n"

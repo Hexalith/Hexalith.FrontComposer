@@ -649,6 +649,76 @@ class ReleaseEvidenceV2Tests(unittest.TestCase):
             provenance["release"]["reusable"]["blob_sha256"],
         )
 
+    def test_current_provenance_projects_authenticated_handoff_into_v3_shape(self) -> None:
+        caller_bytes = self._git("show", f"{self.commit}:.github/workflows/release.yml").stdout.encode("utf-8")
+        reusable_bytes = _run(
+            "git",
+            "show",
+            f"{self.builds_commit}:.github/workflows/domain-release.yml",
+            cwd=self.builds_root,
+        ).stdout.encode("utf-8")
+        evaluator = _evaluator(
+            {
+                "repository": ROOT_IDENTITY,
+                "workflow_path": ".github/workflows/release.yml",
+                "commit": self.commit,
+                "blob_sha256": hashlib.sha256(caller_bytes).hexdigest(),
+            },
+            {
+                "repository": "github.com/hexalith/hexalith.builds",
+                "workflow_path": ".github/workflows/domain-release.yml",
+                "commit": self.builds_commit,
+                "blob_sha256": hashlib.sha256(reusable_bytes).hexdigest(),
+            },
+        )
+
+        provenance = HELPER._current_workflow_provenance(
+            self.handoff,
+            "e" * 64,
+            evaluator,
+            self.root,
+            self.builds_commit,
+        )
+
+        diagnostics: list[str] = []
+        HELPER._validate_source_workflow_provenance(provenance, diagnostics)
+        self.assertEqual([], diagnostics)
+        self.assertEqual(
+            {"run", "evidence_sha256"},
+            set(provenance["ci"]),
+        )
+        self.assertEqual(
+            {"caller", "reusable", "builds_execution_sha"},
+            set(provenance["release"]),
+        )
+        evidence = self.root / "release-evidence/dependency-release-source.json"
+        _write_json(evidence, self.handoff)
+        manifest = {
+            "manifest_schema": HELPER.CURRENT_MANIFEST_SCHEMA,
+            "commit_sha": self.commit,
+            "dependency_graph": self.graph,
+            "dependency_policy": self.policy_projection,
+            "workflow_provenance": HELPER._current_workflow_provenance(
+                self.handoff,
+                hashlib.sha256(evidence.read_bytes()).hexdigest(),
+                evaluator,
+                self.root,
+                self.builds_commit,
+            ),
+        }
+        self.assertEqual([], HELPER._live_manifest_v2_diagnostics(manifest, self.root))
+
+        mismatched = copy.deepcopy(evaluator)
+        mismatched["caller"]["blob_sha256"] = "f" * 64
+        with self.assertRaisesRegex(ValueError, "caller differs"):
+            HELPER._current_workflow_provenance(
+                self.handoff,
+                "e" * 64,
+                mismatched,
+                self.root,
+                self.builds_commit,
+            )
+
     def test_source_provenance_rejects_unresolvable_execution_commit(self) -> None:
         proof = {"run": self.handoff["run"]}
         with self.assertRaisesRegex(ValueError, "cannot resolve exact Builds execution commit"):

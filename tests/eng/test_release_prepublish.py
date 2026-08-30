@@ -142,6 +142,26 @@ class ReleasePrepublishTests(unittest.TestCase):
         run.assert_not_called()
         self.assertEqual(b"preserve", sentinel.read_bytes())
 
+    def test_ci_handoff_bytes_are_staged_for_v3_live_verification(self) -> None:
+        handoff = self.root / "artifacts/release-source/dependency-release-handoff.json"
+        source_proof = self.root / "artifacts/release-source/dependency-release-source.json"
+        handoff.parent.mkdir(parents=True, exist_ok=True)
+        handoff.write_bytes(b'{"schema":"hexalith.dependency-release-handoff.v1"}\n')
+        source_proof.write_bytes(b'{"schema":"legacy-source-proof"}\n')
+
+        with mock.patch.dict(
+            prepublish.os.environ,
+            {
+                "DEPENDENCY_RELEASE_HANDOFF": str(handoff.relative_to(self.root)),
+                "DEPENDENCY_RELEASE_SOURCE_PROOF": str(source_proof.relative_to(self.root)),
+            },
+            clear=False,
+        ):
+            prepublish._stage_dependency_source_evidence()
+
+        staged = self.root / "release-evidence/dependency-release-source.json"
+        self.assertEqual(handoff.read_bytes(), staged.read_bytes())
+
     def test_phase_pack_rechecks_policy_in_live_packer_before_output_mutation(self) -> None:
         sentinel = self.root / "nupkgs" / "existing-output.nupkg"
         sentinel.write_bytes(b"preserve")
