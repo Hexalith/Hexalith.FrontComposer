@@ -13,6 +13,9 @@ public sealed class PackageBoundaryTests {
     private const string FluentV5Version = "5.0.0-rc.5-26219.1";
     private const string LocalizationAbstractionsVersion = "10.0.11";
     private const string MicrosoftNetTestSdkVersion = "18.9.0";
+    private const string XunitRunnerVisualStudioVersion = "4.0.0";
+    private const string XunitV3AssertVersion = "4.0.0";
+    private const string XunitV3Version = "4.0.0";
 
     [Fact]
     public void PublicApi_ExportedTypes_MatchIntentionalBaseline() {
@@ -86,6 +89,9 @@ public sealed class PackageBoundaryTests {
         AssertCentralPackageVersion(root, "Microsoft.FluentUI.AspNetCore.Components.Icons", FluentV5Version);
         AssertCentralPackageVersion(root, "Microsoft.Extensions.Localization.Abstractions", LocalizationAbstractionsVersion);
         AssertCentralPackageVersion(root, "Microsoft.NET.Test.Sdk", MicrosoftNetTestSdkVersion);
+        AssertCentralPackageVersion(root, "xunit.runner.visualstudio", XunitRunnerVisualStudioVersion);
+        AssertCentralPackageVersion(root, "xunit.v3", XunitV3Version);
+        AssertCentralPackageVersion(root, "xunit.v3.assert", XunitV3AssertVersion);
         string packageOutput = Path.Combine(Path.GetTempPath(), "fc-testing-clean-pack-" + Guid.NewGuid().ToString("N"));
         string consumer = Path.Combine(Path.GetTempPath(), "fc-testing-consumer-" + Guid.NewGuid().ToString("N"));
         string packageVersion = "2.0.0-review." + Guid.NewGuid().ToString("N")[..8];
@@ -119,9 +125,9 @@ public sealed class PackageBoundaryTests {
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" Version="{{FluentV5Version}}" />
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="{{FluentV5Version}}" />
     <PackageReference Include="Microsoft.Extensions.Localization.Abstractions" Version="{{LocalizationAbstractionsVersion}}" />
-    <PackageReference Include="xunit.v3" Version="3.2.2" />
-    <PackageReference Include="xunit.v3.assert" Version="3.2.2" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <PackageReference Include="xunit.v3" Version="{{XunitV3Version}}" />
+    <PackageReference Include="xunit.v3.assert" Version="{{XunitV3AssertVersion}}" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="{{XunitRunnerVisualStudioVersion}}" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="{{MicrosoftNetTestSdkVersion}}" />
   </ItemGroup>
 </Project>
@@ -187,6 +193,9 @@ public sealed class ConsumerSmokeTests
         assets.ShouldContain("\"Microsoft.FluentUI.AspNetCore.Components.Icons/" + FluentV5Version + "\"");
         assets.ShouldContain("\"Microsoft.Extensions.Localization.Abstractions/" + LocalizationAbstractionsVersion + "\"");
         assets.ShouldContain("\"Microsoft.NET.Test.Sdk/" + MicrosoftNetTestSdkVersion + "\"");
+        assets.ShouldContain("\"xunit.runner.visualstudio/" + XunitRunnerVisualStudioVersion + "\"");
+        assets.ShouldContain("\"xunit.v3/" + XunitV3Version + "\"");
+        assets.ShouldContain("\"xunit.v3.assert/" + XunitV3AssertVersion + "\"");
         assets.ShouldNotContain("\"Microsoft.FluentUI.AspNetCore.Components/4.");
         assets.ShouldNotContain("\"Microsoft.FluentUI.AspNetCore.Components.Icons/4.");
         assets.ShouldNotContain("\"type\": \"project\"");
