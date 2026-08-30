@@ -31,6 +31,7 @@ public sealed class ProjectionFallbackPollingDriver : IAsyncDisposable {
     private IDisposable? _optionsChangeRegistration;
     private Task? _loopTask;
     private CancellationTokenSource? _loopCts;
+    private Exception? _fatalLoopFailure;
     private bool _started;
     private bool _fatalLoopFault;
     private int _disposed;
@@ -134,6 +135,7 @@ public sealed class ProjectionFallbackPollingDriver : IAsyncDisposable {
         IDisposable? sub;
         IDisposable? optionsRegistration;
         Task? loop;
+        Exception? fatalLoopFailure;
         lock (_sync) {
             _started = false;
             sub = _subscription;
@@ -141,6 +143,7 @@ public sealed class ProjectionFallbackPollingDriver : IAsyncDisposable {
             optionsRegistration = _optionsChangeRegistration;
             _optionsChangeRegistration = null;
             loop = _loopTask;
+            fatalLoopFailure = _fatalLoopFailure;
         }
 
         Exception? optionsDisposalFailure = DisposeRegistration(optionsRegistration);
@@ -159,10 +162,14 @@ public sealed class ProjectionFallbackPollingDriver : IAsyncDisposable {
                     nameof(TimeoutException));
             }
             catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-                // Loop already logs failures; swallow to keep disposal safe.
+                // Loop already logs non-fatal failures; swallow to keep disposal safe.
                 FrontComposerHotPathLog.ProjectionFallbackPollingDisposeFailed(
                     _logger,
                     ex.GetType().Name);
+            }
+            catch (Exception ex) {
+                // The preceding centralized guard leaves only process-fatal failures here.
+                fatalLoopFailure ??= ex;
             }
         }
 
@@ -182,6 +189,14 @@ public sealed class ProjectionFallbackPollingDriver : IAsyncDisposable {
         Exception? fatalDisposalFailure = optionsDisposalFailure ?? subscriptionDisposalFailure;
         if (fatalDisposalFailure is not null) {
             System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(fatalDisposalFailure).Throw();
+        }
+
+        lock (_sync) {
+            fatalLoopFailure ??= _fatalLoopFailure;
+        }
+
+        if (fatalLoopFailure is not null) {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(fatalLoopFailure).Throw();
         }
     }
 
@@ -285,14 +300,16 @@ public sealed class ProjectionFallbackPollingDriver : IAsyncDisposable {
     }
 
     private void OnLoopCompleted(Task completed, CancellationTokenSource loopCts) {
-        bool fatal = completed.IsFaulted
-            && completed.Exception.Flatten().InnerExceptions.Any(ExceptionGuard.IsFatal);
+        Exception? fatalFailure = completed.IsFaulted
+            ? completed.Exception.Flatten().InnerExceptions.FirstOrDefault(ExceptionGuard.IsFatal)
+            : null;
         bool reconcile = false;
         lock (_sync) {
             if (ReferenceEquals(_loopTask, completed)) {
                 _loopTask = null;
                 _loopCts = null;
-                _fatalLoopFault |= fatal;
+                _fatalLoopFailure ??= fatalFailure;
+                _fatalLoopFault |= fatalFailure is not null;
                 reconcile = _disposed == 0 && _started && !_fatalLoopFault;
             }
         }
