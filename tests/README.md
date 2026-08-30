@@ -20,25 +20,30 @@ Submodule test suites (`references/Hexalith.Tenants/**`, `references/Hexalith.Ev
 ### .NET (unit + bUnit + FsCheck)
 
 ```bash
-# From repo root
-dotnet test
-# or a single project
-dotnet test tests/Hexalith.FrontComposer.Shell.Tests
-# with coverage
-dotnet test --collect:"XPlat Code Coverage"
+# From repo root: the blocking MTP default lane, with per-module TRX and Cobertura evidence.
+DiffEngine_Disabled=true dotnet test --solution Hexalith.FrontComposer.slnx --filter-not-trait "Category=Performance" --filter-not-trait "Category=e2e-palette" --filter-not-trait "Category=NightlyProperty" --filter-not-trait "Category=Quarantined" --results-directory ./TestResults/default --report-xunit-trx --coverage --coverage-output-format cobertura
+
+# Focused Shell fallback. Preserve the default-lane exclusions when using it as fallback evidence.
+DiffEngine_Disabled=true dotnet test --project tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --filter-not-trait "Category=Performance" --filter-not-trait "Category=e2e-palette" --filter-not-trait "Category=NightlyProperty" --filter-not-trait "Category=Quarantined"
 ```
+
+`global.json` selects Microsoft.Testing.Platform, while `tests/Directory.Build.props` supplies its
+coverage extension. Use native `--filter-trait` / `--filter-not-trait`, `--report-xunit-trx`, and
+`--coverage` arguments; VSTest `--filter`, `--logger`, and `--collect` forms are not this repository's
+runner contract. Quality expects eight distinct module TRX files and eight non-empty Cobertura files
+from the solution default lane, with a nonzero aggregate test total.
 
 ### CI Quarantine Governance
 
 ```bash
 # Main blocking lane: excludes advisory and quarantined tests.
-dotnet test Hexalith.FrontComposer.slnx --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"
+DiffEngine_Disabled=true dotnet test --solution Hexalith.FrontComposer.slnx --configuration Release --filter-not-trait "Category=Performance" --filter-not-trait "Category=e2e-palette" --filter-not-trait "Category=NightlyProperty" --filter-not-trait "Category=Quarantined" --results-directory ./TestResults/default --report-xunit-trx --coverage --coverage-output-format cobertura
 
 # Quarantine lane: runs only quarantined tests and writes TRX evidence.
-dotnet test Hexalith.FrontComposer.slnx --configuration Release --filter "Category=Quarantined" --results-directory ./TestResults --logger "trx;LogFilePrefix=test-results-quarantine"
+DiffEngine_Disabled=true dotnet test --solution Hexalith.FrontComposer.slnx --configuration Release --filter-trait "Category=Quarantined" --ignore-exit-code 8 --results-directory ./TestResults/quarantine --report-xunit-trx
 
 # Summarize quarantine evidence without publishing raw logs.
-python .github/scripts/ci_governance.py summarize-quarantine --results-dir ./TestResults --markdown artifacts/quarantine/quarantine-summary.md --json artifacts/quarantine/quarantine-summary.json
+python .github/scripts/ci_governance.py summarize-quarantine --results-dir ./TestResults/quarantine --markdown artifacts/quarantine/quarantine-summary.md --json artifacts/quarantine/quarantine-summary.json
 
 # Validate that every manually quarantined test has issue, owner, reason, and reintroduction metadata.
 python .github/scripts/ci_governance.py validate-quarantine-metadata --root .
@@ -76,7 +81,7 @@ Use a lane table whenever an exact lane cannot run locally:
 
 | Lane | Required command | Local result | Blocker timing | Fallback evidence | CI authority |
 | --- | --- | --- | --- | --- | --- |
-| Solution default | `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` | Passed / Failed / Blocked with exact blocker | Before test execution / before browser assertions / inside test body / N/A | Direct xUnit v3 in-process, focused lane, typecheck, bUnit, or N/A | Required / Advisory / Not applicable |
+| Solution default | `DiffEngine_Disabled=true dotnet test --solution Hexalith.FrontComposer.slnx --filter-not-trait "Category=Performance" --filter-not-trait "Category=e2e-palette" --filter-not-trait "Category=NightlyProperty" --filter-not-trait "Category=Quarantined"` | Passed / Failed / Blocked with exact blocker | Before test execution / before browser assertions / inside test body / N/A | Focused MTP project lane, typecheck, bUnit, or N/A | Required / Advisory / Not applicable |
 
 Use these terms consistently:
 
@@ -86,9 +91,9 @@ Use these terms consistently:
 - **CI authority Advisory** means CI is useful confirmation, but local evidence already covers the story acceptance boundary.
 - **CI authority Not applicable** means the lane does not apply to the story surface.
 
-VSTest/MSBuild socket or named-pipe failures must record the exact `System.Net.Sockets.SocketException`
-or `MSB1025` text and whether failure occurred before test execution. Direct xUnit v3 in-process runs are
-the local fallback, not proof that the blocked VSTest lane passed. NuGet/package/network failures must
+Microsoft.Testing.Platform or MSBuild launch failures must record the exact process/transport error
+and whether failure occurred before test execution. A focused MTP project run is local fallback
+evidence, not proof that a blocked solution lane passed. NuGet/package/network failures must
 name the blocked service or URI and any cached, `--no-restore`, or focused fallback. Playwright,
 Kestrel, and browser-launch blockers must state whether browser assertions ran; if browser evidence is
 still required, name the CI lane, owner, and expected artifact path.
@@ -104,7 +109,7 @@ python eng/llm_benchmark.py validate-prompt-set --root . --output artifacts/benc
 python eng/llm_benchmark.py budget-status --budget .github/benchmark-budget.json --output artifacts/benchmark/budget.json
 
 # Run the repository-maintainer benchmark contract tests from the non-packable Bench executable.
-dotnet test tests/Hexalith.FrontComposer.Shell.Tests.Bench/Hexalith.FrontComposer.Shell.Tests.Bench.csproj --filter "Category=Performance&FullyQualifiedName~BenchmarkHarnessTests"
+DiffEngine_Disabled=true dotnet test --project tests/Hexalith.FrontComposer.Shell.Tests.Bench/Hexalith.FrontComposer.Shell.Tests.Bench.csproj --filter-trait "Category=Performance" --filter-method "*BenchmarkHarnessTests*"
 
 # Dry-run package inventory and release evidence gates.
 python eng/release_evidence.py inventory --root . --expected eng/release-package-inventory.json --output artifacts/release/package-inventory.json
@@ -162,7 +167,7 @@ python3 eng/dependency_graph.py --root . diff --event push \
   --event-base "$(git rev-parse HEAD^)" --candidate "$(git rev-parse HEAD)"
 
 # The C# Governance lane that consumes the above.
-DiffEngine_Disabled=true dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "Category=Governance"
+DiffEngine_Disabled=true dotnet test --project tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter-trait "Category=Governance"
 ```
 
 `eng/dependency-graph-policy.json` (schema `hexalith.dependency-graph-policy.v1`) is the single

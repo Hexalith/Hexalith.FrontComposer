@@ -54,7 +54,7 @@ jobs:
         if: always()
         env:
           DiffEngine_Disabled: true
-        run: dotnet test tests/Hexalith.FrontComposer.Shell.Tests.Bench/Hexalith.FrontComposer.Shell.Tests.Bench.csproj --configuration Release --filter "Category=Performance&FullyQualifiedName~BenchmarkHarnessTests" --results-directory ./TestResults --logger "trx;LogFileName=benchmark-results.trx"
+        run: dotnet test tests/Hexalith.FrontComposer.Shell.Tests.Bench/Hexalith.FrontComposer.Shell.Tests.Bench.csproj --configuration Release --filter-trait "Category=Performance" --filter-method "*BenchmarkHarnessTests*" --results-directory ./TestResults --report-xunit-trx --report-xunit-trx-filename benchmark-results.trx
 
       - name: Publish bounded benchmark summary
         if: always()

@@ -95,6 +95,16 @@ def parse_trx(path: str, sha: str = "", run_url: str = "") -> list[TestResult]:
     except Exception as exc:
         raise ValueError(f"malformed TRX {path}: {exc}") from exc
 
+    if root.tag.rsplit("}", 1)[-1] != "TestRun":
+        raise ValueError(f"malformed TRX {path}: root element must be TestRun")
+    counters = root.find(".//{*}ResultSummary/{*}Counters")
+    if counters is None:
+        raise ValueError(f"malformed TRX {path}: ResultSummary/Counters is missing")
+    try:
+        recorded_total = int(counters.attrib["total"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError(f"malformed TRX {path}: Counters.total must be an integer") from exc
+
     tests_by_id: dict[str, dict[str, str]] = {}
     for unit in root.findall(".//{*}UnitTest"):
         test_id = unit.attrib.get("id", "")
@@ -131,11 +141,103 @@ def parse_trx(path: str, sha: str = "", run_url: str = "") -> list[TestResult]:
                 failure=sanitize(failure),
             )
         )
+    if recorded_total != len(parsed):
+        raise ValueError(
+            f"malformed TRX {path}: Counters.total={recorded_total} but parsed {len(parsed)} results"
+        )
     return parsed
 
 
+def trx_module_identity(path: str) -> str:
+    """Return the sole test assembly represented by one MTP TRX report."""
+
+    try:
+        root = ET.parse(path).getroot()
+    except Exception as exc:
+        raise ValueError(f"malformed TRX {path}: {exc}") from exc
+    identities: set[str] = set()
+    for unit in root.findall(".//{*}UnitTest"):
+        storage = unit.attrib.get("storage", "")
+        method = unit.find(".//{*}TestMethod")
+        code_base = method.attrib.get("codeBase", "") if method is not None else ""
+        module_path = storage or code_base
+        if module_path:
+            identities.add(pathlib.PurePosixPath(module_path.replace("\\", "/")).name.casefold())
+    if len(identities) != 1:
+        raise ValueError(
+            f"TRX {path} must identify exactly one test module; found {sorted(identities)}"
+        )
+    return next(iter(identities))
+
+
+def validate_mtp_evidence(args: argparse.Namespace) -> int:
+    """Fail closed when an MTP lane did not retain complete per-module evidence."""
+
+    trx_files = latest_files([os.path.join(args.results_dir, "**", "*.trx")])
+    diagnostics: list[str] = []
+    if args.expected_trx_files is not None and len(trx_files) != args.expected_trx_files:
+        diagnostics.append(
+            f"expected {args.expected_trx_files} distinct TRX files, found {len(trx_files)}"
+        )
+    elif len(trx_files) < args.minimum_trx_files:
+        diagnostics.append(
+            f"expected at least {args.minimum_trx_files} distinct TRX files, found {len(trx_files)}"
+        )
+
+    results: list[TestResult] = []
+    module_identities: list[str] = []
+    for trx in trx_files:
+        try:
+            results.extend(parse_trx(trx))
+            if args.require_distinct_modules:
+                module_identities.append(trx_module_identity(trx))
+        except ValueError as exc:
+            diagnostics.append(str(exc))
+    if args.require_distinct_modules and len(set(module_identities)) != len(trx_files):
+        diagnostics.append(
+            "every TRX file must represent one distinct test module; "
+            f"found {len(set(module_identities))} modules in {len(trx_files)} reports"
+        )
+    if args.require_tests and not results:
+        diagnostics.append("aggregate TRX total must be greater than zero")
+
+    coverage_files: list[str] = []
+    if args.coverage_dir:
+        coverage_files = latest_files([os.path.join(args.coverage_dir, "**", "*.cobertura.xml")])
+        if args.expected_coverage_files is not None and len(coverage_files) != args.expected_coverage_files:
+            diagnostics.append(
+                f"expected {args.expected_coverage_files} distinct Cobertura files, found {len(coverage_files)}"
+            )
+        elif not coverage_files:
+            diagnostics.append("at least one Cobertura file is required")
+        for coverage in coverage_files:
+            try:
+                root = ET.parse(coverage).getroot()
+                if root.tag.rsplit("}", 1)[-1] != "coverage":
+                    raise ValueError("root element must be coverage")
+                lines_valid = int(root.attrib.get("lines-valid", "0"))
+                if lines_valid <= 0 or not root.findall(".//{*}line"):
+                    raise ValueError("report contains no measured lines")
+            except (ET.ParseError, TypeError, ValueError) as exc:
+                diagnostics.append(f"malformed or empty Cobertura {coverage}: {exc}")
+
+    payload = {
+        "ok": not diagnostics,
+        "trx_files": len(trx_files),
+        "total": len(results),
+        "modules": sorted(set(module_identities)),
+        "coverage_files": len(coverage_files),
+        "diagnostics": diagnostics,
+    }
+    print(json.dumps(payload, sort_keys=True))
+    return 1 if diagnostics else 0
+
+
 def summarize_quarantine(args: argparse.Namespace) -> int:
-    trx_files = latest_files([os.path.join(args.results_dir, "**", "*quarantine*.trx")])
+    # The MTP xUnit reporter assigns a unique filename per test module when no explicit filename
+    # is supplied. The workflows isolate this lane in its own results directory, so every TRX in
+    # that directory is quarantine evidence without risking cross-module overwrites.
+    trx_files = latest_files([os.path.join(args.results_dir, "**", "*.trx")])
     diagnostics: list[str] = []
     results: list[TestResult] = []
     for trx in trx_files:
@@ -147,9 +249,13 @@ def summarize_quarantine(args: argparse.Namespace) -> int:
     total = len(results)
     failed = sum(1 for r in results if r.outcome.lower() == "failed")
     passed = sum(1 for r in results if r.outcome.lower() == "passed")
+    missing = not trx_files
     invalid = len(diagnostics) > 0
     classification = "zero-quarantined"
-    if invalid:
+    if missing:
+        classification = "missing evidence"
+        diagnostics.append("No quarantine TRX files were found.")
+    elif invalid:
         classification = "invalid evidence"
     elif failed:
         classification = "advisory quarantine failure"
@@ -175,8 +281,8 @@ def summarize_quarantine(args: argparse.Namespace) -> int:
         f"Passed: {passed}",
         f"Failed: {failed}",
     ]
-    if not trx_files:
-        md.append("No quarantine TRX files were found; this is reported as zero quarantined tests.")
+    if missing:
+        md.append("No quarantine TRX files were found; the lane has no valid execution evidence.")
     for diagnostic in diagnostics:
         md.append(f"- Invalid evidence: {diagnostic}")
     for result in results[:25]:
@@ -187,7 +293,7 @@ def summarize_quarantine(args: argparse.Namespace) -> int:
     if args.github_step_summary:
         with open(args.github_step_summary, "a", encoding="utf-8") as f:
             f.write("\n" + "\n".join(md) + "\n")
-    return 0
+    return 1 if missing or invalid else 0
 
 
 def require_trusted_context(args: argparse.Namespace) -> None:
@@ -703,6 +809,17 @@ def main() -> int:
     q.add_argument("--run-url", default="")
     q.add_argument("--github-step-summary", default=os.environ.get("GITHUB_STEP_SUMMARY", ""))
     q.set_defaults(func=summarize_quarantine)
+
+    v = sub.add_parser("validate-mtp-evidence")
+    v.add_argument("--results-dir", required=True)
+    trx_count = v.add_mutually_exclusive_group()
+    trx_count.add_argument("--expected-trx-files", type=int)
+    trx_count.add_argument("--minimum-trx-files", type=int, default=1)
+    v.add_argument("--require-tests", action="store_true")
+    v.add_argument("--require-distinct-modules", action="store_true")
+    v.add_argument("--coverage-dir", default="")
+    v.add_argument("--expected-coverage-files", type=int)
+    v.set_defaults(func=validate_mtp_evidence)
 
     f = sub.add_parser("classify-flake")
     f.add_argument("--evidence", required=True)

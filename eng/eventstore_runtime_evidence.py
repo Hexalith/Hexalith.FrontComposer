@@ -81,6 +81,14 @@ FRONTCOMPOSER_EVIDENCE_FILES = frozenset(
         "release-restore/release-restore.json",
     }
 )
+FRONTCOMPOSER_CAPTURED_EVIDENCE_SHA256 = {
+    "apphost-smoke/apphost-smoke.json": "2474f1ec7663a34cae597a06c4bcceffc0bb1493caf975213c470869603295bc",
+    "release-restore/release-restore.json": "dbdd01f248fc00c3fdd7049643c2d4a1f51659880e441c20eb3be5ecb8131619",
+}
+APPHOST_CAPTURED_TOPOLOGY_SHA256 = {
+    "programSha256": "474e7aabc58fd0a44b15e2598ee832a7286432779360614180931ef0024f7290",
+    "projectSha256": "ed58cceb34df2572426512053b836abdb1e580dd52140c1dec75d5267e34e4f8",
+}
 EVIDENCE_PROVENANCE = {
     **{path: "eventstore-capture" for path in CAPTURED_EVIDENCE_SHA256},
     **{path: "frontcomposer-run" for path in FRONTCOMPOSER_EVIDENCE_FILES},
@@ -115,7 +123,6 @@ APPHOST_OBSERVATIONS = (
     "queryProvenance",
     "projectionSignalR",
 )
-REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_RECEIPTS = {
     "eventstore-owner.json": {
         "role": "eventstore-owner",
@@ -426,6 +433,11 @@ def _validate_authorization(evidence_root: Path, hashes: dict[str, str], errors:
         if hashes.get(relative) != pinned_hash:
             errors.append(
                 f"Preserved evidence is not byte-identical to the EventStore-owned capture: {relative}"
+            )
+    for relative, pinned_hash in sorted(FRONTCOMPOSER_CAPTURED_EVIDENCE_SHA256.items()):
+        if hashes.get(relative) != pinned_hash:
+            errors.append(
+                f"Preserved FrontComposer run evidence is not byte-identical to its historical capture: {relative}"
             )
     decision_path = evidence_root / "frontcomposer-11-24-runtime-identity-successor.md"
     decision_bytes = _bounded_read(decision_path, errors, "frontcomposer-11-24-runtime-identity-successor.md")
@@ -1249,7 +1261,7 @@ def _validate_provider_report(
             errors.append(f"Provider run receipt {key} is not truthful for the compatibility outcome.")
 
 
-def _validate_apphost_smoke(evidence_root: Path, repository_root: Path, errors: list[str]) -> None:
+def _validate_apphost_smoke(evidence_root: Path, errors: list[str]) -> None:
     smoke_path = evidence_root / "apphost-smoke" / "apphost-smoke.json"
     smoke = _read_json(smoke_path, errors, "apphost-smoke/apphost-smoke.json")
     if smoke.get("schema") != "hexalith.frontcomposer.story-11-24-apphost-smoke.v1":
@@ -1280,13 +1292,9 @@ def _validate_apphost_smoke(evidence_root: Path, repository_root: Path, errors: 
         for key, value in expected_topology_paths.items():
             if not _exact(topology.get(key), value):
                 errors.append(f"AppHost smoke topology {key} is not the current topology.")
-    expected_topology_hashes = {
-        "programSha256": _sha256(repository_root / expected_topology_paths["programPath"], errors, "AppHost Program.cs"),
-        "projectSha256": _sha256(repository_root / expected_topology_paths["projectPath"], errors, "AppHost project"),
-    }
-    for key, value in expected_topology_hashes.items():
+    for key, value in APPHOST_CAPTURED_TOPOLOGY_SHA256.items():
         if topology.get(key) != value:
-            errors.append(f"AppHost smoke topology {key} does not match the current file bytes.")
+            errors.append(f"AppHost smoke topology {key} does not match the sealed historical capture.")
 
     startup = smoke.get("startup", {})
     expected_startup = {
@@ -1446,7 +1454,7 @@ def validate(evidence_root: Path, pact_dir: Path) -> list[str]:
     _validate_authorization(evidence_root, snapshot_hashes, errors)
     _validate_packages(evidence_root, errors)
     _validate_provider_report(evidence_root, pact_dir, snapshot_hashes, errors)
-    _validate_apphost_smoke(evidence_root, REPOSITORY_ROOT, errors)
+    _validate_apphost_smoke(evidence_root, errors)
     _validate_release_restore(evidence_root, errors)
     return errors
 

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <TestDefinitions>
+    <UnitTest id="b-pass" name="AlsoPasses" storage="module-b.dll">
+      <TestMethod className="Fixtures.ModuleB" name="AlsoPasses" />
+    </UnitTest>
+  </TestDefinitions>
+  <Results>
+    <UnitTestResult testId="b-pass" testName="AlsoPasses" outcome="Passed" />
+  </Results>
+  <ResultSummary outcome="Passed"><Counters total="1" passed="1" failed="0" /></ResultSummary>
+</TestRun>

@@ -76,8 +76,8 @@ EXPECTED_PACKAGE_COUNT = 8
 SOLUTION = "Hexalith.FrontComposer.slnx"
 
 # Mirrors the release test lane previously hosted by release-evidence.yml (G1):
-# the seven CI-authoritative test projects, Gate 3a filter
-# (Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined).
+# the seven CI-authoritative test projects, using Gate 3a's four native MTP
+# Category exclusions (Performance, e2e-palette, NightlyProperty, and Quarantined).
 TEST_PROJECTS = [
     "tests/Hexalith.FrontComposer.Cli.Tests/Hexalith.FrontComposer.Cli.Tests.csproj",
     "tests/Hexalith.FrontComposer.Contracts.Tests/Hexalith.FrontComposer.Contracts.Tests.csproj",
@@ -283,9 +283,13 @@ def phase_tests() -> None:
         run("tests", [
             "dotnet", "test", project,
             "--configuration", "Release", "--no-build",
-            "--filter", "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined",
+            "--filter-not-trait", "Category=Performance",
+            "--filter-not-trait", "Category=e2e-palette",
+            "--filter-not-trait", "Category=NightlyProperty",
+            "--filter-not-trait", "Category=Quarantined",
             "--results-directory", str(TEST_RESULTS_DIR / name),
-            "--logger", f"trx;LogFileName={name}.trx",
+            "--report-xunit-trx",
+            "--report-xunit-trx-filename", f"{name}.trx",
         ], env=test_env)
     run("tests", [
         "python3", "eng/release_evidence.py", "test-results",

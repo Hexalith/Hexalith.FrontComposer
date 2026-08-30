@@ -12,7 +12,8 @@ name: Quality
 # CiGovernanceTests.StoryArtifactValidatorGate_IsBlockingAndExact), docs validation (Gate 2d), the trait-filtered default
 # unit/bUnit lane plus advisory palette/perf/quarantine lanes (Gate 3), quarantine +
 # CI-duration telemetry, and the Playwright a11y/visual lane. Those gates live here and
-# THIS WORKFLOW IS CI-AUTHORITATIVE for them. Every `dotnet test` step keeps
+# THIS WORKFLOW IS CI-AUTHORITATIVE for them. Every `dotnet test` step uses
+# Microsoft.Testing.Platform's native xUnit filters and reporter and keeps
 # `DiffEngine_Disabled: true` (belt-and-suspenders alongside the repo-level
 # DiffEngine ModuleInitializer) so a Verify snapshot mismatch cannot hang the runner.
 on:
@@ -121,7 +122,14 @@ jobs:
       - name: 'Gate 2b: Infrastructure governance and telemetry contracts'
         env:
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter "Category=Governance" --results-directory ./TestResults --logger "trx;LogFileName=test-results-governance.trx"
+        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter-trait "Category=Governance" --ignore-exit-code 8 --results-directory ./TestResults/governance --report-xunit-trx
+
+      - name: 'Gate 2b: Verify Governance MTP evidence'
+        run: >-
+          python3 .github/scripts/ci_governance.py validate-mtp-evidence
+          --results-dir ./TestResults/governance
+          --minimum-trx-files 1
+          --require-tests
 
       - name: 'Gate 2b: Release suppression lifecycle tests'
         run: python3 -m unittest tests/eng/test_pack_release_packages.py tests/eng/test_release_prepublish.py
@@ -147,7 +155,7 @@ jobs:
       - name: 'Gate 2c: Contract pacts'
         env:
           DiffEngine_Disabled: true
-        run: dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --no-build --filter "Category=Contract" --results-directory ./TestResults --logger "trx;LogFileName=test-results-contract.trx"
+        run: dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --no-build --filter-trait "Category=Contract" --results-directory ./TestResults/contract --report-xunit-trx --report-xunit-trx-filename test-results-contract.trx
 
       - name: 'Gate 2c: Validate contract artifacts'
         shell: pwsh
@@ -226,9 +234,9 @@ jobs:
       #
       # Story 3-7 D6: Gate 3 is split into three lanes so Story 3-4 closure can gate on
       # `e2e-palette` independently of latency/perf variance:
-      #   - Gate 3a (default):   excludes Performance, e2e-palette, NightlyProperty, and Quarantined traits.
-      #   - Gate 3b (palette):   `Category=e2e-palette` (Story 3-7 T1 — bUnit-level flow gate).
-      #   - Gate 3c (perf bench): `Category=Performance` (Story 1-8 + Story 3-7 T2 BDN bench).
+      #   - Gate 3a (default): excludes Performance, e2e-palette, NightlyProperty, and Quarantined traits.
+      #   - Gate 3b (palette): selects the Category=e2e-palette trait (Story 3-7 T1 — bUnit-level flow gate).
+      #   - Gate 3c (perf bench): selects the Category=Performance trait (Story 1-8 + Story 3-7 T2 BDN bench).
       # Palette/performance lanes remain advisory while Story 3-7 stabilizes browser and latency
       # variance; governance and default unit/bUnit lanes above are blocking.
       # Repair pass for an open runner-side defect: since 2026-08-11 the Gate 2 output has
@@ -247,31 +255,41 @@ jobs:
           # DIVERGENCE 2: FrontComposer has 16+ Verify .verified.txt snapshot files.
           # Without this env var, a snapshot mismatch launches a diff tool and hangs the CI runner.
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" --results-directory ./TestResults --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter-not-trait "Category=Performance" --filter-not-trait "Category=e2e-palette" --filter-not-trait "Category=NightlyProperty" --filter-not-trait "Category=Quarantined" --results-directory ./TestResults/default --report-xunit-trx --coverage --coverage-output-format cobertura
+
+      - name: 'Gate 3a: Verify default MTP evidence'
+        run: >-
+          python3 .github/scripts/ci_governance.py validate-mtp-evidence
+          --results-dir ./TestResults/default
+          --expected-trx-files 8
+          --require-tests
+          --require-distinct-modules
+          --coverage-dir ./TestResults/default
+          --expected-coverage-files 8
 
       - name: 'Gate 3b: Palette E2E (e2e-palette lane)'
         continue-on-error: true
         env:
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter "Category=e2e-palette" --results-directory ./TestResults --logger "trx;LogFileName=test-results-e2e-palette.trx"
+        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter-trait "Category=e2e-palette" --ignore-exit-code 8 --results-directory ./TestResults/e2e-palette --report-xunit-trx
 
       - name: 'Gate 3c: Performance bench (Performance lane)'
         continue-on-error: true
         env:
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter "Category=Performance" --results-directory ./TestResults --logger "trx;LogFileName=test-results-performance.trx"
+        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter-trait "Category=Performance" --ignore-exit-code 8 --results-directory ./TestResults/performance --report-xunit-trx
 
       - name: 'Gate 3d: Quarantined tests (warning-only)'
         continue-on-error: true
         env:
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter "Category=Quarantined" --results-directory ./TestResults --logger "trx;LogFilePrefix=test-results-quarantine"
+        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter-trait "Category=Quarantined" --ignore-exit-code 8 --results-directory ./TestResults/quarantine --report-xunit-trx
 
       - name: Quarantine Summary
         if: always()
         run: |
           python3 .github/scripts/ci_governance.py summarize-quarantine \
-            --results-dir ./TestResults \
+            --results-dir ./TestResults/quarantine \
             --markdown artifacts/quarantine/quarantine-summary.md \
             --json artifacts/quarantine/quarantine-summary.json \
             --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
@@ -285,12 +303,7 @@ jobs:
           if-no-files-found: error
           path: |
             artifacts/quarantine/**
-            TestResults/**/test-results-quarantine*.trx
-
-      # Guard: fail fast if no tests ran (--no-build silently exits 0 with 0 tests).
-      # Uses find + grep to handle both flat and per-project-GUID subdirectory layouts.
-      - name: Verify tests actually ran
-        run: find ./TestResults -name 'test-results.trx' -type f | grep -q .
+            TestResults/quarantine/**/*.trx
 
       - name: Test Summary
         if: always()
@@ -301,12 +314,6 @@ jobs:
           import xml.etree.ElementTree as ET
 
           summary_path = os.environ['GITHUB_STEP_SUMMARY']
-
-          def pick_latest(glob_pattern):
-            matches = glob.glob(glob_pattern, recursive=True)
-            if not matches:
-              return None
-            return max(matches, key=os.path.getmtime)
 
           def parse_trx(path):
             root = ET.parse(path).getroot()
@@ -325,28 +332,33 @@ jobs:
           with open(summary_path, 'a', encoding='utf-8') as summary:
             summary.write('## Quality Test Results\n')
 
-            trx = pick_latest('./TestResults/**/test-results.trx')
-            if trx is None:
+            trx_files = glob.glob('./TestResults/default/**/*.trx', recursive=True)
+            if not trx_files:
               summary.write('No TRX file found.\n')
             else:
               try:
-                passed, failed, total = parse_trx(trx)
+                counters = [parse_trx(trx) for trx in trx_files]
+                passed = sum(item[0] for item in counters)
+                failed = sum(item[1] for item in counters)
+                total = sum(item[2] for item in counters)
                 summary.write(f'**All Tests:** {passed} passed, {failed} failed (total: {total})\n\n')
               except ET.ParseError as e:
-                summary.write(f'**Warning:** Could not parse TRX file `{trx}` (likely truncated): {e}\n\n')
+                summary.write(f'**Warning:** Could not parse a TRX file (likely truncated): {e}\n\n')
               except Exception as e:
-                summary.write(f'**Warning:** Unexpected error reading TRX file `{trx}`: {e}\n\n')
+                summary.write(f'**Warning:** Unexpected error reading default TRX files: {e}\n\n')
 
             summary.write('### Job Status\n')
             summary.write('${{ job.status }}\n')
           PY
 
       - name: Upload test results
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: test-results
-          path: '**/test-results.trx'
+          retention-days: 14
+          if-no-files-found: warn
+          path: 'TestResults/**/*.trx'
 
       - name: Coverage Summary
         if: always()
@@ -357,40 +369,40 @@ jobs:
           import xml.etree.ElementTree as ET
 
           summary_path = os.environ['GITHUB_STEP_SUMMARY']
-          coverage_files = glob.glob('**/coverage.cobertura.xml', recursive=True)
+          coverage_files = glob.glob('TestResults/default/**/*.cobertura.xml', recursive=True)
 
           if not coverage_files:
-            with open(summary_path, 'a', encoding='utf-8') as f:
-              f.write('\n### Code Coverage\nNo coverage files found.\n')
-            exit(0)
+            raise SystemExit('No coverage files found.')
 
           total_lines = 0
           covered_lines = 0
           total_branches = 0
           covered_branches = 0
-          per_project = []
+          per_report = []
 
-          for cov_file in coverage_files:
+          for report_number, cov_file in enumerate(sorted(coverage_files), start=1):
             try:
               tree = ET.parse(cov_file)
               root = tree.getroot()
+              if root.tag.rsplit('}', 1)[-1] != 'coverage':
+                raise ValueError('root element must be coverage')
               line_rate = float(root.attrib.get('line-rate', '0'))
               branch_rate = float(root.attrib.get('branch-rate', '0'))
               lines_valid = int(root.attrib.get('lines-valid', '0'))
               lines_covered = int(root.attrib.get('lines-covered', '0'))
               branches_valid = int(root.attrib.get('branches-valid', '0'))
               branches_covered = int(root.attrib.get('branches-covered', '0'))
+              if lines_valid <= 0 or not root.findall('.//{*}line'):
+                raise ValueError('report contains no measured lines')
 
               total_lines += lines_valid
               covered_lines += lines_covered
               total_branches += branches_valid
               covered_branches += branches_covered
 
-              parts = cov_file.replace('\\', '/').split('/')
-              project_name = next((p for p in parts if p.endswith('.Tests')), os.path.basename(os.path.dirname(cov_file)))
-              per_project.append((project_name, line_rate * 100, branch_rate * 100, lines_valid))
+              per_report.append((f'Report {report_number}', line_rate * 100, branch_rate * 100, lines_valid))
             except Exception as e:
-              print(f'Warning: could not parse {cov_file}: {e}')
+              raise SystemExit(f'Could not parse coverage report {cov_file}: {e}') from e
 
           overall_line = (covered_lines / total_lines * 100) if total_lines > 0 else 0
           overall_branch = (covered_branches / total_branches * 100) if total_branches > 0 else 0
@@ -398,9 +410,9 @@ jobs:
           with open(summary_path, 'a', encoding='utf-8') as f:
             f.write(f'\n### Code Coverage\n')
             f.write(f'**Overall:** {overall_line:.1f}% line · {overall_branch:.1f}% branch ({covered_lines}/{total_lines} lines)\n\n')
-            f.write('| Project | Line % | Branch % | Lines |\n')
+            f.write('| Report | Line % | Branch % | Lines |\n')
             f.write('|---------|--------|----------|-------|\n')
-            for name, line_pct, branch_pct, lines in sorted(per_project):
+            for name, line_pct, branch_pct, lines in per_report:
               f.write(f'| {name} | {line_pct:.1f}% | {branch_pct:.1f}% | {lines} |\n')
           PY
           # TODO(Epic 2): Add coverage thresholds and enforcement
@@ -410,7 +422,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-reports
-          path: '**/coverage.cobertura.xml'
+          path: 'TestResults/default/**/*.cobertura.xml'
 
       - name: Record CI duration summary
         if: always()

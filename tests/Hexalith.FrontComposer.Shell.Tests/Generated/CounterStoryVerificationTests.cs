@@ -48,7 +48,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
 
     [Fact]
     public async Task CounterPage_SeedState_RendersUnrelatedRow() {
-        Services.AddSingleton<CounterCommandProjectionCatchUpChannel>();
+        Services.AddScoped<CounterCommandProjectionCatchUpChannel>();
         Services.AddSingleton(Substitute.For<IEmptyStateCtaResolver>());
         await InitializeStoreAsync();
 
@@ -60,6 +60,101 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
             cut.Find("[data-fc-datagrid=\"Counter:Counter.Domain.CounterProjection\"]");
             cut.Markup.ShouldNotContain("No counter data yet.");
         });
+    }
+
+    [Fact]
+    public void CounterCatchUpChannel_SeparateCircuitScopesAndThrowingSubscriber_LiveDeliveriesContinue() {
+        string program = File.ReadAllText(Path.Combine(
+            Governance.CiGovernanceTests.RepositoryRoot(),
+            "samples/Counter/Counter.Web/Program.cs"));
+        program.ShouldContain("AddScoped<CounterCommandProjectionCatchUpChannel>()");
+        program.ShouldNotContain("AddSingleton<CounterCommandProjectionCatchUpChannel>()");
+
+        ServiceCollection services = [];
+        _ = services.AddScoped<CounterCommandProjectionCatchUpChannel>();
+        using ServiceProvider provider = services.BuildServiceProvider(new ServiceProviderOptions {
+            ValidateScopes = true,
+        });
+        using IServiceScope staleCircuit = provider.CreateScope();
+        using IServiceScope currentCircuit = provider.CreateScope();
+        CounterCommandProjectionCatchUpChannel staleChannel =
+            staleCircuit.ServiceProvider.GetRequiredService<CounterCommandProjectionCatchUpChannel>();
+        CounterCommandProjectionCatchUpChannel currentChannel =
+            currentCircuit.ServiceProvider.GetRequiredService<CounterCommandProjectionCatchUpChannel>();
+
+        staleChannel.ShouldNotBeSameAs(currentChannel);
+        staleChannel.CreateConfirmed += static (_, _, _, _) =>
+            throw new InvalidOperationException("The stale circuit is no longer available.");
+        int laterSameScopeNotifications = 0;
+        staleChannel.CreateConfirmed += (_, _, _, _) => laterSameScopeNotifications++;
+        int currentCircuitNotifications = 0;
+        currentChannel.CreateConfirmed += (_, _, _, _) => currentCircuitNotifications++;
+
+        Action<string?> publishToStaleCircuit = staleChannel.Capture(
+            new CreateCounterCommand {
+                MessageId = "stale-message",
+                TenantId = "test-tenant",
+                CounterId = "stale-counter",
+                InitialValue = 1,
+            },
+            "test-tenant",
+            "test-user").ShouldNotBeNull();
+        Action<string?> publishToCurrentCircuit = currentChannel.Capture(
+            new CreateCounterCommand {
+                MessageId = "current-message",
+                TenantId = "tenant-1",
+                CounterId = "current-counter",
+                InitialValue = 1,
+            },
+            "tenant-1",
+            "user-1").ShouldNotBeNull();
+
+        Should.NotThrow(() => publishToStaleCircuit("stale-correlation"));
+        Should.NotThrow(() => publishToCurrentCircuit("current-correlation"));
+        laterSameScopeNotifications.ShouldBe(1);
+        currentCircuitNotifications.ShouldBe(1);
+        staleChannel.PublishedCount.ShouldBe(1);
+        currentChannel.PublishedCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task CounterCommandProjectionCatchUp_CurrentCircuitCreate_MaterializesCreatedRow() {
+        Services.AddScoped<CounterCommandProjectionCatchUpChannel>();
+        await InitializeStoreAsync();
+        IRenderedComponent<CounterCommandProjectionCatchUp> cut = Render<CounterCommandProjectionCatchUp>();
+        CounterCommandProjectionCatchUpChannel channel =
+            Services.GetRequiredService<CounterCommandProjectionCatchUpChannel>();
+        IState<CounterProjectionState> state = Services.GetRequiredService<IState<CounterProjectionState>>();
+        TaskCompletionSource created = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        void ObserveCreatedRow(object? _, EventArgs __) {
+            if (state.Value.Items?.Any(row => row.Id == "counter-created" && row.Count == 42) is true) {
+                created.TrySetResult();
+            }
+        }
+        state.StateChanged += ObserveCreatedRow;
+        Action<string?> publishConfirmed = channel.Capture(
+            new CreateCounterCommand {
+                MessageId = "create-message",
+                TenantId = "test-tenant",
+                CounterId = "counter-created",
+                InitialValue = 42,
+            },
+            "test-tenant",
+            "test-user").ShouldNotBeNull();
+
+        try {
+            await cut.InvokeAsync(() => publishConfirmed("create-correlation"));
+            ObserveCreatedRow(null, EventArgs.Empty);
+            await created.Task.WaitAsync(
+                TimeSpan.FromSeconds(2),
+                Xunit.TestContext.Current.CancellationToken);
+            state.Value.Items.ShouldNotBeNull()
+                .Single(row => row.Id == "counter-created")
+                .Count.ShouldBe(42);
+        }
+        finally {
+            state.StateChanged -= ObserveCreatedRow;
+        }
     }
 
     [Fact]

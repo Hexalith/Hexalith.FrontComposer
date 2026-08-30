@@ -22,11 +22,15 @@ if ([string]::IsNullOrWhiteSpace($Replay)) {
 $env:FC_PROPERTY_MAX_TEST = [string] $MaxTest
 $env:FC_PROPERTY_REPLAY = $Replay
 $env:DiffEngine_Disabled = "true"
-$filter = if ($MaxTest -ge 10000) {
-  "Category=NightlyProperty"
+$filterArguments = if ($MaxTest -ge 10000) {
+  @("--filter-trait", "Category=NightlyProperty")
 } else {
-  "Category=LifecycleIdempotency&Category!=NightlyProperty"
+  @(
+    "--filter-trait", "Category=LifecycleIdempotency",
+    "--filter-not-trait", "Category=NightlyProperty"
+  )
 }
+$filter = $filterArguments -join " "
 $endSize = if ($MaxTest -ge 10000) { 96 } else { 64 }
 $replayCommand = "pwsh ./eng/run-lifecycle-property-suite.ps1 -MaxTest $MaxTest -Replay `"$Replay`" -ResultsDirectory `"$ResultsDirectory`""
 $operationDistribution = [ordered]@{
@@ -73,6 +77,7 @@ New-Item -ItemType Directory -Force -Path $summaryDir | Out-Null
 
 dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj `
   --configuration Release `
-  --filter $filter `
+  @filterArguments `
   --results-directory $ResultsDirectory `
-  --logger "trx;LogFileName=lifecycle-property.trx"
+  --report-xunit-trx `
+  --report-xunit-trx-filename lifecycle-property.trx

@@ -76,7 +76,7 @@ builder.Services.TryAddScoped<
     ICommandTargetIdentityProvider<UpdateCounterCommand>,
     UpdateCounterTargetIdentityProvider>();
 builder.Services.AddHexalithDomain<CounterDomain>();
-builder.Services.AddSingleton<CounterCommandProjectionCatchUpChannel>();
+builder.Services.AddScoped<CounterCommandProjectionCatchUpChannel>();
 builder.Services.AddScoped<CounterSampleCommandService>();
 builder.Services.Replace(ServiceDescriptor.Scoped<ICommandService>(sp =>
     sp.GetRequiredService<CounterSampleCommandService>()));

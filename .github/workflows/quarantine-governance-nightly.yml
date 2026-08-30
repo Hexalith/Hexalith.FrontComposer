@@ -52,13 +52,13 @@ jobs:
         continue-on-error: true
         env:
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter "Category=Quarantined" --results-directory ./TestResults --logger "trx;LogFilePrefix=test-results-quarantine"
+        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter-trait "Category=Quarantined" --ignore-exit-code 8 --results-directory ./TestResults/quarantine --report-xunit-trx
 
       - name: Summarize quarantine evidence
         if: always()
         run: |
           python3 .github/scripts/ci_governance.py summarize-quarantine \
-            --results-dir ./TestResults \
+            --results-dir ./TestResults/quarantine \
             --markdown artifacts/quarantine/quarantine-summary.md \
             --json artifacts/quarantine/quarantine-summary.json \
             --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
@@ -205,4 +205,4 @@ jobs:
           path: |
             artifacts/quarantine/**
             artifacts/ci-duration/**
-            TestResults/**/test-results-quarantine*.trx
+            TestResults/quarantine/**/*.trx

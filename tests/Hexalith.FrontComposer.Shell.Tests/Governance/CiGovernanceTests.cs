@@ -96,7 +96,7 @@ public sealed class CiGovernanceTests {
         buildJobHeader.ShouldNotContain("continue-on-error: true");
         workflow.ShouldContain("Gate 2b: Infrastructure governance and telemetry contracts");
         workflow.ShouldContain("Category=Governance");
-        workflow.ShouldContain("test-results-governance.trx");
+        workflow.ShouldContain("--results-directory ./TestResults/governance --report-xunit-trx");
     }
 
     [Fact]
@@ -191,23 +191,45 @@ public sealed class CiGovernanceTests {
         string orchestrator = File.ReadAllText(Path.Combine(root, "eng/release_prepublish.py"));
 
         string defaultLane = ExtractNamedStep(quality, "Gate 3a: Unit + bUnit (default lane)");
-        defaultLane.ShouldContain("Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined");
+        foreach (string trait in new[] { "Performance", "e2e-palette", "NightlyProperty", "Quarantined" }) {
+            defaultLane.ShouldContain($"--filter-not-trait \"Category={trait}\"");
+        }
+        defaultLane.ShouldContain("--report-xunit-trx");
+        defaultLane.ShouldContain("--coverage --coverage-output-format cobertura");
+        defaultLane.ShouldContain("--results-directory ./TestResults/default");
+        defaultLane.ShouldNotContain("--report-xunit-trx-filename");
+        defaultLane.ShouldNotContain("--coverage-output ");
         defaultLane.ShouldNotContain("continue-on-error: true");
 
         string governanceLane = ExtractNamedStep(quality, "Gate 2b: Infrastructure governance and telemetry contracts");
-        governanceLane.ShouldContain("Category=Governance");
-        governanceLane.ShouldNotContain("Category!=Quarantined");
+        governanceLane.ShouldContain("--filter-trait \"Category=Governance\"");
+        governanceLane.ShouldContain("--ignore-exit-code 8");
+        governanceLane.ShouldContain("--results-directory ./TestResults/governance --report-xunit-trx");
+        governanceLane.ShouldNotContain("--report-xunit-trx-filename");
+        governanceLane.ShouldNotContain("--filter-not-trait \"Category=Quarantined\"");
         governanceLane.ShouldNotContain("continue-on-error: true");
 
-        // Review VG (2026-07-18): pin the executable `--filter` argument pair in the
-        // orchestrator's dotnet-test invocation, not the bare trait string — a comment
-        // containing the Gate 3a filter must not satisfy this contract.
-        orchestrator.ShouldContain("\"--filter\", \"Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined\",");
-        orchestrator.ShouldNotContain("\"--filter\", \"Category!=Quarantined\",");
+        // Pin the executable MTP argument pairs in the orchestrator's dotnet-test
+        // invocation, not bare trait strings that comments could satisfy.
+        foreach (string trait in new[] { "Performance", "e2e-palette", "NightlyProperty", "Quarantined" }) {
+            orchestrator.ShouldContain($"\"--filter-not-trait\", \"Category={trait}\",");
+        }
+        orchestrator.ShouldContain("\"--report-xunit-trx\",");
+        orchestrator.ShouldNotContain("\"--filter\",");
+        orchestrator.ShouldNotContain("\"--logger\",");
 
         string performanceLane = ExtractNamedStep(quality, "Gate 3c: Performance bench (Performance lane)");
         performanceLane.ShouldContain("continue-on-error: true");
-        performanceLane.ShouldContain("Category=Performance");
+        performanceLane.ShouldContain("--filter-trait \"Category=Performance\"");
+        performanceLane.ShouldContain("--ignore-exit-code 8");
+        performanceLane.ShouldContain("--results-directory ./TestResults/performance --report-xunit-trx");
+        performanceLane.ShouldNotContain("--report-xunit-trx-filename");
+
+        string paletteLane = ExtractNamedStep(quality, "Gate 3b: Palette E2E (e2e-palette lane)");
+        paletteLane.ShouldContain("--filter-trait \"Category=e2e-palette\"");
+        paletteLane.ShouldContain("--ignore-exit-code 8");
+        paletteLane.ShouldContain("--results-directory ./TestResults/e2e-palette --report-xunit-trx");
+        paletteLane.ShouldNotContain("--report-xunit-trx-filename");
     }
 
     [Fact]
@@ -218,8 +240,10 @@ public sealed class CiGovernanceTests {
 
         string quarantineLane = ExtractNamedStep(ci, "Gate 3d: Quarantined tests (warning-only)");
         quarantineLane.ShouldContain("continue-on-error: true");
-        quarantineLane.ShouldContain("--filter \"Category=Quarantined\"");
-        quarantineLane.ShouldContain("LogFilePrefix=test-results-quarantine");
+        quarantineLane.ShouldContain("--filter-trait \"Category=Quarantined\"");
+        quarantineLane.ShouldContain("--ignore-exit-code 8");
+        quarantineLane.ShouldContain("--results-directory ./TestResults/quarantine --report-xunit-trx");
+        quarantineLane.ShouldNotContain("--report-xunit-trx-filename");
 
         ci.ShouldContain("ci_governance.py summarize-quarantine");
         ci.ShouldContain("artifacts/quarantine/quarantine-summary.md");
@@ -237,7 +261,8 @@ public sealed class CiGovernanceTests {
         string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
 
         string pactLane = ExtractNamedStep(quality, "Gate 2c: Contract pacts");
-        pactLane.ShouldContain("--filter \"Category=Contract\"");
+        pactLane.ShouldContain("--filter-trait \"Category=Contract\"");
+        pactLane.ShouldContain("--report-xunit-trx-filename test-results-contract.trx");
         pactLane.ShouldNotContain("continue-on-error: true");
 
         quality.ShouldContain("Gate 2c: Validate contract artifacts");
@@ -308,6 +333,104 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
+    public void PlaywrightBrowserlessScripts_UseCrossPlatformEnvironmentAssignment() {
+        string root = RepositoryRoot();
+        using JsonDocument package = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "tests/e2e/package.json")));
+        using JsonDocument packageLock = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "tests/e2e/package-lock.json")));
+        JsonElement scripts = package.RootElement.GetProperty("scripts");
+        string[] expectedBrowserlessScriptNames = [
+            "test:fc-level3",
+            "test:fc-level4",
+            "test:fc-a11y-diagnostics",
+            "test:fc-diagnostics",
+            "test:fc-nip",
+            "test:epic-9",
+            "test:story-10-2",
+            "test:story-10-3",
+            "test:story-10-4",
+        ];
+        string[] actualBrowserlessScriptNames = scripts.EnumerateObject()
+            .Where(property => property.Value.GetString()?.Contains("PLAYWRIGHT_SKIP_WEBSERVER=1", StringComparison.Ordinal) is true)
+            .Select(property => property.Name)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        actualBrowserlessScriptNames.ShouldBe(expectedBrowserlessScriptNames.Order(StringComparer.Ordinal));
+        foreach (string scriptName in expectedBrowserlessScriptNames) {
+            scripts.GetProperty(scriptName).GetString().ShouldStartWith(
+                "cross-env PLAYWRIGHT_SKIP_WEBSERVER=1 ");
+        }
+        package.RootElement.GetProperty("devDependencies").GetProperty("cross-env").GetString()
+            .ShouldBe("^10.1.0");
+        packageLock.RootElement.GetProperty("packages").GetProperty(string.Empty)
+            .GetProperty("devDependencies").GetProperty("cross-env").GetString()
+            .ShouldBe("^10.1.0");
+        packageLock.RootElement.GetProperty("packages").TryGetProperty("node_modules/cross-env", out _)
+            .ShouldBeTrue("the regenerated lockfile must pin the cross-platform helper.");
+    }
+
+    [Fact]
+    public void MicrosoftTestingPlatformEntrypoints_UseNativeFiltersReportsAndCoverage() {
+        string root = RepositoryRoot();
+        string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
+        string quarantineNightly = File.ReadAllText(Path.Combine(
+            root,
+            ".github/workflows/quarantine-governance-nightly.yml"));
+        string lifecycle = File.ReadAllText(Path.Combine(root, "eng/run-lifecycle-property-suite.ps1"));
+        string prepublish = File.ReadAllText(Path.Combine(root, "eng/release_prepublish.py"));
+
+        quality.ShouldContain("--filter-trait");
+        quality.ShouldContain("--filter-not-trait");
+        quality.ShouldContain("--report-xunit-trx");
+        quality.ShouldContain("--coverage --coverage-output-format cobertura");
+        quality.ShouldNotContain("--collect:\"XPlat Code Coverage\"");
+        quality.ShouldNotContain("--logger \"trx;");
+
+        quarantineNightly.ShouldContain("--filter-trait \"Category=Quarantined\"");
+        quarantineNightly.ShouldContain("--ignore-exit-code 8");
+        quarantineNightly.ShouldContain("--results-directory ./TestResults/quarantine --report-xunit-trx");
+        quarantineNightly.ShouldNotContain("--report-xunit-trx-filename");
+        quarantineNightly.ShouldNotContain("--logger \"trx;");
+
+        lifecycle.ShouldContain("--filter-trait");
+        lifecycle.ShouldContain("--filter-not-trait");
+        lifecycle.ShouldContain("--report-xunit-trx-filename lifecycle-property.trx");
+        lifecycle.ShouldNotContain("--logger \"trx;");
+
+        prepublish.ShouldContain("\"--filter-not-trait\"");
+        prepublish.ShouldContain("\"--report-xunit-trx\"");
+        prepublish.ShouldNotContain("\"--logger\"");
+
+        string governanceEvidence = ExtractNamedStep(quality, "Gate 2b: Verify Governance MTP evidence");
+        governanceEvidence.ShouldContain("ci_governance.py validate-mtp-evidence");
+        governanceEvidence.ShouldContain("--results-dir ./TestResults/governance");
+        governanceEvidence.ShouldContain("--minimum-trx-files 1");
+        governanceEvidence.ShouldContain("--require-tests");
+        governanceEvidence.ShouldNotContain("continue-on-error: true");
+
+        string defaultEvidence = ExtractNamedStep(quality, "Gate 3a: Verify default MTP evidence");
+        defaultEvidence.ShouldContain("--results-dir ./TestResults/default");
+        defaultEvidence.ShouldContain("--expected-trx-files 8");
+        defaultEvidence.ShouldContain("--require-tests");
+        defaultEvidence.ShouldContain("--require-distinct-modules");
+        defaultEvidence.ShouldContain("--coverage-dir ./TestResults/default");
+        defaultEvidence.ShouldContain("--expected-coverage-files 8");
+        defaultEvidence.ShouldNotContain("continue-on-error: true");
+
+        string trxUpload = ExtractNamedStep(quality, "Upload test results");
+        trxUpload.ShouldContain("if: always()");
+        trxUpload.ShouldContain("TestResults/**/*.trx");
+        trxUpload.ShouldContain("retention-days: 14");
+
+        string coverageSummary = ExtractNamedStep(quality, "Coverage Summary");
+        coverageSummary.ShouldContain("raise SystemExit('No coverage files found.')");
+        coverageSummary.ShouldContain("report contains no measured lines");
+        coverageSummary.ShouldContain("Could not parse coverage report");
+        coverageSummary.ShouldContain("f'Report {report_number}'");
+        coverageSummary.ShouldNotContain("Project_{project_guid}");
+    }
+
+    [Fact]
     public void QualityWorkflow_PinsCliSmokeAndDocsGates() {
         // REL-2 code-review P3 (2026-07-13): Gate 2a (CLI tool package smoke) and Gate 2d (DocFX docs
         // validation) relocated from ci.yml into quality.yml. Pin both so neither is silently dropped
@@ -338,10 +461,17 @@ public sealed class CiGovernanceTests {
             "ci.yml must pin domain-ci.yml to an exact 40-hex lowercase Builds commit SHA (never @main).");
         ci.ShouldNotContain("domain-ci.yml@main");
         ci.ShouldContain("solution: Hexalith.FrontComposer.slnx");
+        ci.ShouldContain("test-platform: microsoft-testing-platform");
         ci.ShouldContain("run-consumer-validation: true");
         ci.ShouldContain("unit-test-projects:");
         ci.ShouldContain("tests/Hexalith.FrontComposer.Cli.Tests");
         ci.ShouldContain("tests/Hexalith.FrontComposer.Testing.Tests");
+
+        using JsonDocument globalJson = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "global.json")));
+        globalJson.RootElement.GetProperty("test").GetProperty("runner").GetString()
+            .ShouldBe("Microsoft.Testing.Platform");
+        string testProps = File.ReadAllText(Path.Combine(root, "tests/Directory.Build.props"));
+        testProps.ShouldContain("Microsoft.Testing.Extensions.CodeCoverage");
     }
 
     [Fact]
@@ -785,7 +915,9 @@ public sealed class CiGovernanceTests {
         workflow.ShouldContain("budget-status");
         workflow.ShouldContain("BenchmarkHarnessTests");
         workflow.ShouldContain("tests/Hexalith.FrontComposer.Shell.Tests.Bench/Hexalith.FrontComposer.Shell.Tests.Bench.csproj");
-        workflow.ShouldContain("Category=Performance&FullyQualifiedName~BenchmarkHarnessTests");
+        workflow.ShouldContain("--filter-trait \"Category=Performance\"");
+        workflow.ShouldContain("--filter-method \"*BenchmarkHarnessTests*\"");
+        workflow.ShouldContain("--report-xunit-trx-filename benchmark-results.trx");
         workflow.ShouldNotContain("tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj --configuration Release --filter FullyQualifiedName~BenchmarkHarnessTests");
         workflow.ShouldContain("candidate evidence only");
         workflow.ShouldContain("28-day ratchet");
@@ -2493,6 +2625,10 @@ public sealed class CiGovernanceTests {
         script.ShouldContain("reintroduction");
         script.ShouldContain("duration-monitor");
         script.ShouldContain("validate-quarantine-metadata");
+        script.ShouldContain("validate-mtp-evidence");
+        script.ShouldContain("aggregate TRX total must be greater than zero");
+        script.ShouldContain("No quarantine TRX files were found.");
+        script.ShouldContain("malformed or empty Cobertura");
         script.ShouldContain("mixed pass/fail evidence");
         script.ShouldContain("Category=Quarantined");
         script.ShouldContain("Category!=Quarantined");
@@ -2524,6 +2660,10 @@ public sealed class CiGovernanceTests {
             "missing-labels.json",
             "repeat-flake.json",
             "zero-quarantined-summary.json",
+            "mtp-quarantine/nested-a/module-a.trx",
+            "mtp-quarantine/nested-b/deeper/module-b.trx",
+            "mtp-quarantine/zero/zero.trx",
+            "mtp-quarantine/malformed/malformed.trx",
         ];
 
         foreach (string fixture in requiredFixtures) {
@@ -2611,7 +2751,7 @@ public sealed class CiGovernanceTests {
                 Dictionary<string, object?> strykerConfig = original.RootElement.GetProperty("stryker-config")
                     .EnumerateObject()
                     .Where(property => property.Name != "configuration")
-                    .ToDictionary(property => property.Name, property => (object?) JsonSerializer.Deserialize<JsonElement>(property.Value.GetRawText()));
+                    .ToDictionary(property => property.Name, property => (object?)JsonSerializer.Deserialize<JsonElement>(property.Value.GetRawText()));
                 strykerConfig["solution"] = "Hexalith.FrontComposer.slnx";
                 File.WriteAllText(mutatedConfigPath, JsonSerializer.Serialize(new Dictionary<string, object?> {
                     ["stryker-config"] = strykerConfig,
@@ -3162,10 +3302,35 @@ public sealed class CiGovernanceTests {
 
     [Fact]
     public void EventStoreRuntimeIdentityPinsOwnerApprovedTupleAndTruthfulDriftEvidence() {
-        const string sourceSha = "bb94d93e9b84132cff83a38fba84f25455820d31";
-        const string buildsSha = "a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a";
-        const string version = "3.91.1";
+        const string sourceSha = "38967215e6c1b13e77f2b0006efd95d88d7ad7b8";
+        const string buildsSha = "2b0faab931ec581c7503270e7dd73074654e2eee";
+        const string version = "3.99.0";
+        // The immutable Story 11.24 owner capture remains historical evidence. The current root
+        // identity is separately approved in the active implementation spec.
+        const string evidenceSourceSha = "bb94d93e9b84132cff83a38fba84f25455820d31";
+        const string evidenceVersion = "3.91.1";
         string root = RepositoryRoot();
+        string approvalContractPath = Path.Combine(
+            root,
+            "_bmad-output",
+            "contracts",
+            "frontcomposer-eventstore-approved-runtime-identity-v1.json");
+        using JsonDocument approvalContract = JsonDocument.Parse(File.ReadAllText(approvalContractPath));
+        JsonElement approval = approvalContract.RootElement;
+        approval.GetProperty("schema").GetString()
+            .ShouldBe("hexalith.frontcomposer.eventstore-approved-runtime-identity.v1");
+        approval.GetProperty("approvalRecord").GetString().ShouldBe(
+            "_bmad-output/implementation-artifacts/spec-actions-33264036185-33264035739-fix-cicd-release.md");
+        approval.GetProperty("eventStoreSourceGitlink").GetString().ShouldBe(sourceSha);
+        approval.GetProperty("eventStorePackageVersion").GetString().ShouldBe(version);
+        approval.GetProperty("buildsCatalogGitlink").GetString().ShouldBe(buildsSha);
+        approval.GetProperty("submodulePointerChangedByApproval").GetBoolean().ShouldBeFalse();
+        JsonElement historicalCapture = approval.GetProperty("historicalCapture");
+        historicalCapture.GetProperty("path").GetString().ShouldBe(
+            "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24");
+        historicalCapture.GetProperty("eventStoreSourceSha").GetString().ShouldBe(evidenceSourceSha);
+        historicalCapture.GetProperty("eventStorePackageVersion").GetString().ShouldBe(evidenceVersion);
+        historicalCapture.GetProperty("immutable").GetBoolean().ShouldBeTrue();
         string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
         string artifactLane = ExtractNamedStep(quality, "Gate 2c: Validate contract artifacts");
         artifactLane.ShouldContain("python3 -m unittest tests/eng/test_eventstore_runtime_evidence.py");
@@ -3248,10 +3413,10 @@ public sealed class CiGovernanceTests {
 
         using JsonDocument packageManifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(
             evidenceRoot,
-            sourceSha,
+            evidenceSourceSha,
             "package-manifest.json")));
-        packageManifest.RootElement.GetProperty("source_sha").GetString().ShouldBe(sourceSha);
-        packageManifest.RootElement.GetProperty("version").GetString().ShouldBe(version);
+        packageManifest.RootElement.GetProperty("source_sha").GetString().ShouldBe(evidenceSourceSha);
+        packageManifest.RootElement.GetProperty("version").GetString().ShouldBe(evidenceVersion);
         packageManifest.RootElement.GetProperty("packages").GetArrayLength().ShouldBe(14);
     }
 }
