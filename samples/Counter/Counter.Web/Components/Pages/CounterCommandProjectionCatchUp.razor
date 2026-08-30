@@ -13,7 +13,10 @@
       data-received="@_receivedCount"></span>
 
 @code {
-    private static readonly TimeSpan ProjectionDelay = TimeSpan.FromMilliseconds(900);
+    // Keep the sample catch-up window long enough for a second browser dispatch to overlap the
+    // first under a loaded CI runner. The Epic 9 proof deliberately verifies that the keyed
+    // indicator is retained while both confirmations are pending.
+    private static readonly TimeSpan ProjectionDelay = TimeSpan.FromSeconds(5);
     private readonly CancellationTokenSource _dispose = new();
     private long _receivedCount;
 

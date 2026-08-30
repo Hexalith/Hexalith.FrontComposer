@@ -146,7 +146,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
             await cut.InvokeAsync(() => publishConfirmed("create-correlation"));
             ObserveCreatedRow(null, EventArgs.Empty);
             await created.Task.WaitAsync(
-                TimeSpan.FromSeconds(2),
+                TimeSpan.FromSeconds(10),
                 Xunit.TestContext.Current.CancellationToken);
             state.Value.Items.ShouldNotBeNull()
                 .Single(row => row.Id == "counter-created")

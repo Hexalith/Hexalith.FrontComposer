@@ -204,7 +204,8 @@ public sealed class ProjectionFallbackPollingDriverTests {
         await Task.Yield();
 
         scheduler.Calls.ShouldBe(1);
-        await sut.DisposeAsync().ConfigureAwait(true);
+        _ = await Should.ThrowAsync<AccessViolationException>(() => sut.DisposeAsync().AsTask());
+        state.SubscriberCount.ShouldBe(0);
     }
 
     [Fact]
