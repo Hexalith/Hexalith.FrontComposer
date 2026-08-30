@@ -519,7 +519,7 @@ jobs:
             fi
             manifest_path_json="$(jq -n --arg p "release-evidence/sealed-manifest.json" '$p')"
             manifest_sha_json="$(jq -n --arg h "$(sha256sum "$manifest" | awk '{print $1}')" '$h')"
-            manifest_seal_json="$(jq -er '.seal' "$manifest")"
+            manifest_seal_json="$(jq -er '.seal.hash' "$manifest")"
             manifest_seal_json="$(jq -n --arg h "$manifest_seal_json" '$h')"
             python3 eng/dependency_handoff.py materialize-release-assets \
               --release artifacts/release-verification-handoff/github-release.json \

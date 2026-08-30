@@ -21,6 +21,7 @@ KNOWN_JOB_NAMES = frozenset({
     "prepare-candidate",
     "release",
     "release / release",
+    "release / governed-release",
     "verify-publication",
     "emit-verification-handoff",
 })

@@ -8,9 +8,20 @@ on:
     workflows: [Release]
     types: [completed]
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      upstream_run_id:
+        description: Completed Release workflow run ID to reconcile
+        required: true
+        type: string
+      upstream_run_attempt:
+        description: Release workflow run attempt to reconcile
+        required: true
+        default: "1"
+        type: string
 
 concurrency:
-  group: release-evidence-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
+  group: release-evidence-${{ github.event.workflow_run.id || inputs.upstream_run_id }}-${{ github.event.workflow_run.run_attempt || inputs.upstream_run_attempt }}
   cancel-in-progress: false
 
 permissions:
@@ -30,13 +41,61 @@ jobs:
           persist-credentials: false
           submodules: false
 
-      - name: Seed forensic evidence
+      - name: Resolve authenticated Release run coordinate
+        id: upstream
         if: always()
+        shell: bash
         env:
-          UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
-          UPSTREAM_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
-          UPSTREAM_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
-          UPSTREAM_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_RUN_ID: ${{ github.event.workflow_run.id }}
+          EVENT_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          INPUT_RUN_ID: ${{ inputs.upstream_run_id }}
+          INPUT_RUN_ATTEMPT: ${{ inputs.upstream_run_attempt }}
+        run: |
+          set -euo pipefail
+          mkdir -p verification-evidence/ad15
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            run_id="$EVENT_RUN_ID"
+            run_attempt="$EVENT_RUN_ATTEMPT"
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            run_id="$INPUT_RUN_ID"
+            run_attempt="$INPUT_RUN_ATTEMPT"
+          else
+            echo "Unsupported Release Evidence event: $EVENT_NAME" >&2
+            exit 1
+          fi
+          if [[ ! "$run_id" =~ ^[1-9][0-9]*$ ]] || [[ ! "$run_attempt" =~ ^[1-9][0-9]*$ ]]; then
+            echo "Release recovery coordinates must be positive integers." >&2
+            exit 1
+          fi
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/attempts/${run_attempt}" \
+            > verification-evidence/upstream-coordinate.json
+          jq -e \
+            --argjson run_id "$run_id" \
+            --argjson run_attempt "$run_attempt" '
+            type == "object" and
+            .id == $run_id and
+            .run_attempt == $run_attempt and
+            .event == "workflow_dispatch" and
+            .status == "completed" and
+            .head_branch == "main" and
+            .path == ".github/workflows/release.yml" and
+            (.conclusion | type == "string") and
+            (.head_sha | type == "string" and test("^[0-9a-f]{40}$"))
+          ' verification-evidence/upstream-coordinate.json > /dev/null
+          echo "run-id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "run-attempt=$run_attempt" >> "$GITHUB_OUTPUT"
+          echo "conclusion=$(jq -er '.conclusion' verification-evidence/upstream-coordinate.json)" >> "$GITHUB_OUTPUT"
+          echo "head-sha=$(jq -er '.head_sha' verification-evidence/upstream-coordinate.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Seed forensic evidence
+        if: always() && steps.upstream.outcome == 'success'
+        env:
+          UPSTREAM_RUN_ID: ${{ steps.upstream.outputs.run-id }}
+          UPSTREAM_RUN_ATTEMPT: ${{ steps.upstream.outputs.run-attempt }}
+          UPSTREAM_CONCLUSION: ${{ steps.upstream.outputs.conclusion }}
+          UPSTREAM_HEAD_SHA: ${{ steps.upstream.outputs.head-sha }}
         run: |
           mkdir -p verification-evidence/ad15
           jq -n \
@@ -49,12 +108,12 @@ jobs:
 
       - name: Authenticate AD-15 release-verification-handoff
         id: ad15
-        if: always()
+        if: always() && steps.upstream.outcome == 'success'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
-          UPSTREAM_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          UPSTREAM_RUN_ID: ${{ steps.upstream.outputs.run-id }}
+          UPSTREAM_RUN_ATTEMPT: ${{ steps.upstream.outputs.run-attempt }}
         run: |
           set -euo pipefail
           artifact_name="release-verification-handoff-${UPSTREAM_RUN_ID}-${UPSTREAM_RUN_ATTEMPT}"
@@ -120,13 +179,13 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
-          UPSTREAM_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
-          UPSTREAM_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
-          UPSTREAM_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          UPSTREAM_RUN_ID: ${{ steps.upstream.outputs.run-id }}
+          UPSTREAM_RUN_ATTEMPT: ${{ steps.upstream.outputs.run-attempt }}
+          UPSTREAM_CONCLUSION: ${{ steps.upstream.outputs.conclusion }}
+          UPSTREAM_HEAD_SHA: ${{ steps.upstream.outputs.head-sha }}
         run: |
           set -euo pipefail
-          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${UPSTREAM_RUN_ID}" \
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${UPSTREAM_RUN_ID}/attempts/${UPSTREAM_RUN_ATTEMPT}" \
             > verification-evidence/upstream-run.json
           gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${UPSTREAM_RUN_ID}/attempts/${UPSTREAM_RUN_ATTEMPT}/jobs?per_page=100" \
             > verification-evidence/upstream-jobs.json
@@ -158,8 +217,8 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
-          UPSTREAM_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          UPSTREAM_RUN_ID: ${{ steps.upstream.outputs.run-id }}
+          UPSTREAM_RUN_ATTEMPT: ${{ steps.upstream.outputs.run-attempt }}
           EXPECTED_SHA: ${{ steps.disposition.outputs.candidate }}
         run: |
           set -euo pipefail
@@ -498,8 +557,8 @@ jobs:
         if: always() && steps.disposition.outputs.governed-attempt == 'true'
         env:
           RELEASE_TAG: ${{ steps.candidate.outputs.tag }}
-          UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
-          UPSTREAM_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          UPSTREAM_RUN_ID: ${{ steps.upstream.outputs.run-id }}
+          UPSTREAM_CONCLUSION: ${{ steps.upstream.outputs.conclusion }}
         run: |
           jq -n \
             --arg tag "$RELEASE_TAG" \

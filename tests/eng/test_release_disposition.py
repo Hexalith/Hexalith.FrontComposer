@@ -57,6 +57,27 @@ class ReleaseDispositionTests(unittest.TestCase):
         self.assertEqual(result["status"], "governed-publication-attempt")
         self.assertEqual(result["candidate"], SHA)
 
+    def test_failed_handoff_after_successful_reusable_release_is_governed_attempt(self) -> None:
+        jobs = [
+            _job("verify-source", "success"),
+            _job("plan-release", "success"),
+            _job("prepare-candidate", "success"),
+            _job("release / release", "success"),
+            _job("release / governed-release", "skipped"),
+            _job("verify-publication", "success"),
+            _job("emit-verification-handoff", "failure"),
+        ]
+        result = rd.classify_release_run(
+            run=self._run("failure"),
+            jobs=jobs,
+            expected_run_id=42,
+            expected_run_attempt=1,
+            expected_conclusion="failure",
+            expected_head_sha=SHA,
+        )
+        self.assertTrue(result["governed_attempt"])
+        self.assertEqual(result["status"], "governed-publication-attempt")
+
     def test_misclassified_no_release_topology_fails_closed(self) -> None:
         jobs = [
             _job("verify-source", "success"),

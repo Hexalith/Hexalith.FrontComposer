@@ -24,6 +24,7 @@ import release_contract as rc  # noqa: E402
 
 PLANNER = ROOT / "eng" / "semantic-release-plan.mjs"
 WORKFLOW = ROOT / ".github" / "workflows" / "release.yml"
+EVIDENCE_WORKFLOW = ROOT / ".github" / "workflows" / "release-evidence.yml"
 
 
 class ReleaseContractTests(unittest.TestCase):
@@ -532,6 +533,26 @@ class ReleaseContractTests(unittest.TestCase):
                 "@semantic-release/release-notes-generator",
             },
             set(re.findall(r'"(@semantic-release/[^"]+)"', planner)),
+        )
+
+    def test_release_handoff_uses_manifest_seal_hash_scalar(self) -> None:
+        workflow = WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("manifest_seal_json=\"$(jq -er '.seal.hash' \"$manifest\")\"", workflow)
+        self.assertNotIn("manifest_seal_json=\"$(jq -er '.seal' \"$manifest\")\"", workflow)
+
+    def test_release_evidence_supports_authenticated_read_only_recovery(self) -> None:
+        workflow = EVIDENCE_WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("workflow_dispatch:", workflow)
+        self.assertIn("upstream_run_id:", workflow)
+        self.assertIn("upstream_run_attempt:", workflow)
+        self.assertIn("Resolve authenticated Release run coordinate", workflow)
+        self.assertIn(
+            'gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/attempts/${run_attempt}"',
+            workflow,
+        )
+        self.assertGreaterEqual(
+            workflow.count("UPSTREAM_RUN_ID: ${{ steps.upstream.outputs.run-id }}"),
+            4,
         )
 
     def _run_planner_fixture(
