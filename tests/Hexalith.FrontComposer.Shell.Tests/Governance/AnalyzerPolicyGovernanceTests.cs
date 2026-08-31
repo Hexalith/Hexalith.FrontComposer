@@ -45,6 +45,14 @@ public sealed class AnalyzerPolicyGovernanceTests
         "evidence",
     ];
 
+    private static readonly Lazy<Task<(int ExitCode, string Output)>> _canonicalReleaseBuild = new(
+        () => RunSolutionBuildAsync(forceRecommended: false),
+        LazyThreadSafetyMode.ExecutionAndPublication);
+
+    private static readonly Lazy<Task<(int ExitCode, string Output)>> _forcedRecommendedReleaseBuild = new(
+        () => RunSolutionBuildAsync(forceRecommended: true),
+        LazyThreadSafetyMode.ExecutionAndPublication);
+
     private static readonly string[] Story1122StrictProjects =
     [
         "tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj",
@@ -154,6 +162,46 @@ public sealed class AnalyzerPolicyGovernanceTests
         });
         ValidateDocument(emptyDiagnosticIds)
             .ShouldContain(static error => error.Contains("missing or empty diagnosticIds", StringComparison.Ordinal));
+
+        JsonObject blankDiagnosticId = Clone(ledger);
+        FindWarningControl(blankDiagnosticId, "msbuild-source-doc-nowarn")["diagnosticIds"]
+            = new JsonArray(string.Empty);
+        ValidateDocument(blankDiagnosticId)
+            .ShouldContain(static error => error.Contains("missing or empty diagnosticIds", StringComparison.Ordinal));
+
+        JsonObject legacyScalarShape = Clone(ledger);
+        JsonObject legacyScalarControl = FindWarningControl(legacyScalarShape, "msbuild-root-twae");
+        _ = legacyScalarControl.Remove("propertyValue");
+        legacyScalarControl["diagnosticIds"] = new JsonArray("true");
+        ValidateDocument(legacyScalarShape)
+            .ShouldContain(static error => error.Contains("scalar MSBuild shape", StringComparison.Ordinal));
+
+        JsonObject ambiguousScalarShape = Clone(ledger);
+        FindWarningControl(ambiguousScalarShape, "msbuild-root-analysis-mode")["diagnosticIds"]
+            = new JsonArray("Recommended");
+        ValidateDocument(ambiguousScalarShape)
+            .ShouldContain(static error => error.Contains("scalar MSBuild shape", StringComparison.Ordinal));
+
+        JsonObject unexpectedScalarField = Clone(ledger);
+        FindWarningControl(unexpectedScalarField, "msbuild-root-twae")["section"] = "[*.cs]";
+        ValidateDocument(unexpectedScalarField)
+            .ShouldContain(static error => error.Contains("unexpected warning-control field", StringComparison.Ordinal));
+
+        JsonObject emptyScalarValue = Clone(ledger);
+        FindWarningControl(emptyScalarValue, "msbuild-root-analysis-mode")["propertyValue"] = string.Empty;
+        ValidateDocument(emptyScalarValue)
+            .ShouldContain(static error => error.Contains("missing or empty propertyValue", StringComparison.Ordinal));
+
+        JsonObject propertyIncompatibleList = Clone(ledger);
+        FindWarningControl(propertyIncompatibleList, "msbuild-source-doc-nowarn")["propertyValue"] = "0419";
+        ValidateDocument(propertyIncompatibleList)
+            .ShouldContain(static error => error.Contains("list MSBuild shape", StringComparison.Ordinal));
+
+        JsonObject contradictoryEditorConfigDiagnostic = Clone(ledger);
+        FindWarningControl(contradictoryEditorConfigDiagnostic, "editorconfig-ca1062")["diagnosticIds"]
+            = new JsonArray("CA1822");
+        ValidateDocument(contradictoryEditorConfigDiagnostic)
+            .ShouldContain(static error => error.Contains("diagnosticIds/property mismatch", StringComparison.Ordinal));
 
         string[] configuredKeys = ConfiguredControlKeys(root);
         ValidateParity(configuredKeys.Skip(1), configuredKeys)
@@ -266,6 +314,36 @@ public sealed class AnalyzerPolicyGovernanceTests
         ValidateStory1122Evidence(missingStrictProject)
             .ShouldContain(static error => error.Contains("strict project matrix drift", StringComparison.Ordinal));
 
+        XDocument solution = XDocument.Load(Path.Combine(root, "Hexalith.FrontComposer.slnx"));
+        ValidateStory1122SolutionMembership(solution).ShouldBeEmpty();
+
+        XDocument missingSolutionProject = XDocument.Parse(solution.ToString(SaveOptions.DisableFormatting));
+        missingSolutionProject.Descendants("Project")
+            .Single(project => (string?)project.Attribute("Path") == Story1122StrictProjects[0])
+            .Remove();
+        ValidateStory1122SolutionMembership(missingSolutionProject)
+            .ShouldContain(static error => error.Contains("missing Release solution member", StringComparison.Ordinal));
+
+        XDocument disabledSolutionProject = XDocument.Parse(solution.ToString(SaveOptions.DisableFormatting));
+        disabledSolutionProject.Descendants("Project")
+            .Single(project => (string?)project.Attribute("Path") == Story1122StrictProjects[0])
+            .Add(new XElement(
+                "Build",
+                new XAttribute("Solution", "Release|*"),
+                new XAttribute("Project", "false")));
+        ValidateStory1122SolutionMembership(disabledSolutionProject)
+            .ShouldContain(static error => error.Contains("disabled for Release", StringComparison.Ordinal));
+
+        XDocument wildcardDisabledSolutionProject = XDocument.Parse(solution.ToString(SaveOptions.DisableFormatting));
+        wildcardDisabledSolutionProject.Descendants("Project")
+            .Single(project => (string?)project.Attribute("Path") == Story1122StrictProjects[0])
+            .Add(new XElement(
+                "Build",
+                new XAttribute("Solution", "*|*"),
+                new XAttribute("Project", "false")));
+        ValidateStory1122SolutionMembership(wildcardDisabledSolutionProject)
+            .ShouldContain(static error => error.Contains("disabled for Release", StringComparison.Ordinal));
+
         JsonObject wrongTestAssembly = Clone(ledger);
         RequiredArray(RequiredObject(wrongTestAssembly, "story1122Completion"), "executedTestAssemblies")[5]
             = "tests/Hexalith.FrontComposer.Contracts.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Contracts.Tests";
@@ -326,15 +404,73 @@ public sealed class AnalyzerPolicyGovernanceTests
     }
 
     /// <summary>
-    /// The sealed identifier inventory drifts whenever ordinary repository evolution adds an
-    /// underscore-named test identifier, so it is asserted on its own. Keeping it out of the
-    /// contract fact stops a routine reseal from skipping the executable proofs below.
+    /// Seals only underscore-bearing public or protected declarations within the two approved
+    /// CA1707 scopes. Local tokens and source line numbers deliberately do not affect the seal.
     /// </summary>
     [Fact]
     public void AnalyzerPolicy_IdentifierInventory_MatchesSeal()
     {
         string root = RepositoryRoot();
         ValidateIdentifierInventory(root, LoadLedger(root)).ShouldBeEmpty();
+
+        const string stableSource = """
+            namespace Synthetic.Tests;
+
+            public sealed class Public_Test_Surface
+            {
+                private string _private_field = string.Empty;
+
+                public void Subject_Scenario_Expectation(string public_parameter)
+                {
+                    int local_token = 0;
+                    _ = local_token;
+                }
+
+                protected string Protected_Name { get; set; } = string.Empty;
+            }
+            """;
+        (int stableCount, string stableHash) = DeclarationIdentifierInventory(
+            [("tests/Synthetic/PublicTestSurface.cs", stableSource)]);
+        (int localEditCount, string localEditHash) = DeclarationIdentifierInventory(
+            [("tests/Synthetic/PublicTestSurface.cs", stableSource
+                .Replace("int local_token = 0;", "// routine line-only churn\n\nint renamed_local = 0;", StringComparison.Ordinal)
+                .Replace("_ = local_token;", "_ = renamed_local;", StringComparison.Ordinal)
+                .Replace("_private_field", "_renamed_private", StringComparison.Ordinal))]);
+        localEditCount.ShouldBe(stableCount);
+        localEditHash.ShouldBe(stableHash);
+
+        (int publicDriftCount, string publicDriftHash) = DeclarationIdentifierInventory(
+            [("tests/Synthetic/PublicTestSurface.cs", stableSource.Replace(
+                "Subject_Scenario_Expectation",
+                "Subject_Scenario_Drifted",
+                StringComparison.Ordinal))]);
+        publicDriftCount.ShouldBe(stableCount);
+        publicDriftHash.ShouldNotBe(stableHash);
+
+        (int protectedDriftCount, string protectedDriftHash) = DeclarationIdentifierInventory(
+            [("tests/Synthetic/PublicTestSurface.cs", stableSource.Replace(
+                "Protected_Name",
+                "Protected_Drifted",
+                StringComparison.Ordinal))]);
+        protectedDriftCount.ShouldBe(stableCount);
+        protectedDriftHash.ShouldNotBe(stableHash);
+
+        const string dottedNamespaceSource = "namespace Synthetic_With_Underscore.Valid; public sealed class Surface { }";
+        (int dottedNamespaceCount, string dottedNamespaceHash) = DeclarationIdentifierInventory(
+            [("tests/Synthetic/DottedNamespace.cs", dottedNamespaceSource)]);
+        (int renamedNamespaceCount, string renamedNamespaceHash) = DeclarationIdentifierInventory(
+            [("tests/Synthetic/DottedNamespace.cs", dottedNamespaceSource.Replace(
+                "Synthetic_With_Underscore",
+                "SyntheticWithoutUnderscore",
+                StringComparison.Ordinal))]);
+        dottedNamespaceCount.ShouldBe(1);
+        renamedNamespaceCount.ShouldBe(0);
+        renamedNamespaceHash.ShouldNotBe(dottedNamespaceHash);
+
+        (int locationDriftCount, string locationDriftHash) = DeclarationIdentifierInventory(
+            [("tests/Synthetic/MovedPublicTestSurface.cs", stableSource)]);
+        locationDriftCount.ShouldBe(stableCount);
+        locationDriftHash.ShouldNotBe(stableHash);
     }
 
     [Fact]
@@ -346,24 +482,19 @@ public sealed class AnalyzerPolicyGovernanceTests
         => await ValidateCompileSpecimensAsync(RepositoryRoot()).ConfigureAwait(true);
 
     [Fact]
+    [Trait("Category", "GovernanceBuild")]
     public async Task AnalyzerPolicy_Story1122RecordedProjects_RemainRecommendedClean()
     {
         string root = RepositoryRoot();
         Story1122StrictProjects.Length.ShouldBe(13);
+        ValidateStory1122SolutionMembership(XDocument.Load(Path.Combine(root, "Hexalith.FrontComposer.slnx")))
+            .ShouldBeEmpty();
 
-        foreach (string project in Story1122StrictProjects)
-        {
-            string[] arguments = Story1122StrictBuildArguments(project);
-            arguments.ShouldContain("-p:AnalysisMode=Recommended");
-            arguments.ShouldNotContain(static argument => argument.StartsWith("-p:TreatWarningsAsErrors=", StringComparison.Ordinal));
-
-            (int exitCode, string output) = await RunDotnetResultAsync(root, arguments).ConfigureAwait(true);
-            exitCode.ShouldBe(0, $"Strict Recommended regression gate failed for {project}:{Environment.NewLine}{output}");
-            Regex.IsMatch(output, @"^\s*0 Warning\(s\)\s*$", RegexOptions.Multiline | RegexOptions.CultureInvariant)
-                .ShouldBeTrue($"Strict Recommended regression gate did not prove zero warnings for {project}:{Environment.NewLine}{output}");
-            Regex.IsMatch(output, @"^\s*0 Error\(s\)\s*$", RegexOptions.Multiline | RegexOptions.CultureInvariant)
-                .ShouldBeTrue($"Strict Recommended regression gate did not prove zero errors for {project}:{Environment.NewLine}{output}");
-        }
+        (int exitCode, string output) = await _forcedRecommendedReleaseBuild.Value.ConfigureAwait(true);
+        AssertZeroWarningZeroErrorBuild(
+            exitCode,
+            output,
+            "forced-Recommended Release solution build");
     }
 
     [Fact]
@@ -385,27 +516,19 @@ public sealed class AnalyzerPolicyGovernanceTests
     }
 
     [Fact]
+    [Trait("Category", "GovernanceBuild")]
     public async Task AnalyzerPolicy_ActivatedReleaseBuild_MatchesForcedRecommendedCandidate()
     {
-        string root = RepositoryRoot();
-        string[] canonicalArguments =
-        [
-            "build",
-            "Hexalith.FrontComposer.slnx",
-            "-c",
-            "Release",
-            "--no-restore",
-            "--no-incremental",
-            "-m:1",
-            "-p:NuGetAudit=false",
-            "-p:MinVerVersionOverride=4.0.0",
-        ];
-        string[] forcedCandidateArguments = [.. canonicalArguments, "-p:AnalysisMode=Recommended"];
-
-        (string canonicalWarnings, string canonicalErrors) =
-            await AssertZeroWarningZeroErrorBuildAsync(root, canonicalArguments).ConfigureAwait(true);
-        (string forcedWarnings, string forcedErrors) =
-            await AssertZeroWarningZeroErrorBuildAsync(root, forcedCandidateArguments).ConfigureAwait(true);
+        (int canonicalExitCode, string canonicalOutput) = await _canonicalReleaseBuild.Value.ConfigureAwait(true);
+        (int forcedExitCode, string forcedOutput) = await _forcedRecommendedReleaseBuild.Value.ConfigureAwait(true);
+        (string canonicalWarnings, string canonicalErrors) = AssertZeroWarningZeroErrorBuild(
+            canonicalExitCode,
+            canonicalOutput,
+            "canonical Release solution build");
+        (string forcedWarnings, string forcedErrors) = AssertZeroWarningZeroErrorBuild(
+            forcedExitCode,
+            forcedOutput,
+            "forced-Recommended Release solution build");
 
         // After central activation the forced candidate is redundant for severity, but the summaries
         // must still match so a latent CLI-only gate cannot diverge from the activated Release gate.
@@ -449,7 +572,7 @@ public sealed class AnalyzerPolicyGovernanceTests
 
         ValidateCommit(StringValue(postPolicy, "sourceCommit"), "postPolicyCensus sourceCommit", errors);
 
-        if (!string.Equals(StringValue(ledger, "schemaVersion"), "1.0", StringComparison.Ordinal))
+        if (!string.Equals(StringValue(ledger, "schemaVersion"), "1.1", StringComparison.Ordinal))
         {
             errors.Add("unsupported schemaVersion");
         }
@@ -580,7 +703,7 @@ public sealed class AnalyzerPolicyGovernanceTests
             JsonObject control = RequiredObject(item, "control");
             foreach (string field in new[]
             {
-                "key", "sourceKind", "exactScope", "mechanism", "diagnosticIds", "dispositionKey",
+                "key", "sourceKind", "exactScope", "mechanism", "dispositionKey",
             })
             {
                 RequireValue(control, field, errors);
@@ -602,6 +725,89 @@ public sealed class AnalyzerPolicyGovernanceTests
             string property = StringValue(control, "property");
             string value = StringValue(control, "value");
             string[] diagnosticIds = StringArray(control, "diagnosticIds");
+            if (sourceKind == "msbuild")
+            {
+                RequireValue(control, "path", errors);
+                RequireValue(control, "property", errors);
+                if (IsScalarMsBuildWarningProperty(property))
+                {
+                    RequireValue(control, "propertyValue", errors);
+                    if (control.ContainsKey("diagnosticIds")
+                        || control.ContainsKey("value")
+                        || control.ContainsKey("section")
+                        || control.ContainsKey("paths"))
+                    {
+                        errors.Add($"invalid scalar MSBuild shape for {key}");
+                    }
+                }
+                else if (IsListMsBuildWarningProperty(property))
+                {
+                    if (diagnosticIds.Length == 0
+                        || diagnosticIds.Any(static id => string.IsNullOrWhiteSpace(id)))
+                    {
+                        errors.Add($"missing or empty diagnosticIds for {key}");
+                    }
+
+                    if (control.ContainsKey("propertyValue")
+                        || control.ContainsKey("value")
+                        || control.ContainsKey("section")
+                        || control.ContainsKey("paths"))
+                    {
+                        errors.Add($"invalid list MSBuild shape for {key}");
+                    }
+                }
+                else
+                {
+                    errors.Add($"unsupported MSBuild warning-control property for {key}: {property}");
+                }
+            }
+            else if (sourceKind == "editorconfig")
+            {
+                foreach (string field in new[] { "path", "section", "property", "value", "diagnosticIds" })
+                {
+                    RequireValue(control, field, errors);
+                }
+
+                if (diagnosticIds.Length == 0
+                    || diagnosticIds.Any(static id => string.IsNullOrWhiteSpace(id))
+                    || control.ContainsKey("propertyValue"))
+                {
+                    errors.Add($"invalid diagnostic control shape for {key}");
+                }
+
+                Match diagnosticProperty = Regex.Match(
+                    property,
+                    @"^dotnet_diagnostic\.(?<id>[^.]+)\.severity$",
+                    RegexOptions.CultureInvariant);
+                if (diagnosticProperty.Success
+                    && !diagnosticIds.SequenceEqual(
+                        [diagnosticProperty.Groups["id"].Value],
+                        StringComparer.OrdinalIgnoreCase))
+                {
+                    errors.Add($"diagnosticIds/property mismatch for {key}");
+                }
+            }
+            else if (sourceKind is "pragma" or "suppression-attribute" or "emitter-pragma")
+            {
+                foreach (string field in new[] { "paths", "entryCount", "diagnosticIds" })
+                {
+                    RequireValue(control, field, errors);
+                }
+
+                if (diagnosticIds.Any(static id => string.IsNullOrWhiteSpace(id))
+                    || control.ContainsKey("propertyValue")
+                    || control.ContainsKey("value"))
+                {
+                    errors.Add($"invalid source control shape for {key}");
+                }
+            }
+            else
+            {
+                errors.Add($"unsupported warning-control sourceKind for {key}: {sourceKind}");
+            }
+
+            RejectUnexpectedWarningControlFields(control, key, sourceKind, property, errors);
+
             // NoWarn silences a CA rule; WarningsNotAsErrors demotes it back to a warning and so
             // neutralises the canonical TreatWarningsAsErrors=true; WarningsAsErrors re-manages
             // severity per rule at root scope. All three belong in EditorConfig at an exact scope,
@@ -612,13 +818,6 @@ public sealed class AnalyzerPolicyGovernanceTests
                 && diagnosticIds.Any(static id => id.StartsWith("CA", StringComparison.OrdinalIgnoreCase)))
             {
                 errors.Add($"root {property} contains a CA entry in {key}");
-            }
-
-            if (sourceKind == "msbuild"
-                && property is "NoWarn" or "WarningsNotAsErrors" or "WarningsAsErrors"
-                && diagnosticIds.Length == 0)
-            {
-                errors.Add($"missing or empty diagnosticIds for {key}");
             }
 
             // Catch every shape of bulk/category disable in any EditorConfig section. Path-scoped
@@ -1278,13 +1477,12 @@ public sealed class AnalyzerPolicyGovernanceTests
             .ShouldBeTrue($"Story 11.22 negative-control probe did not prove zero errors for {project}:{Environment.NewLine}{output}");
     }
 
-    private static async Task<(string WarningSummary, string ErrorSummary)> AssertZeroWarningZeroErrorBuildAsync(
-        string root,
-        params string[] arguments)
+    private static (string WarningSummary, string ErrorSummary) AssertZeroWarningZeroErrorBuild(
+        int exitCode,
+        string output,
+        string description)
     {
-        (int exitCode, string output) = await RunDotnetResultAsync(root, arguments).ConfigureAwait(true);
-        string command = "dotnet " + string.Join(' ', arguments);
-        exitCode.ShouldBe(0, $"{command} failed:{Environment.NewLine}{output}");
+        exitCode.ShouldBe(0, $"{description} failed:{Environment.NewLine}{output}");
         Match warning = Regex.Match(
             output,
             @"^\s*0 Warning\(s\)\s*$",
@@ -1293,9 +1491,45 @@ public sealed class AnalyzerPolicyGovernanceTests
             output,
             @"^\s*0 Error\(s\)\s*$",
             RegexOptions.Multiline | RegexOptions.CultureInvariant);
-        warning.Success.ShouldBeTrue($"{command} did not prove zero warnings:{Environment.NewLine}{output}");
-        error.Success.ShouldBeTrue($"{command} did not prove zero errors:{Environment.NewLine}{output}");
+        warning.Success.ShouldBeTrue($"{description} did not prove zero warnings:{Environment.NewLine}{output}");
+        error.Success.ShouldBeTrue($"{description} did not prove zero errors:{Environment.NewLine}{output}");
         return (warning.Value.Trim(), error.Value.Trim());
+    }
+
+    private static string[] ValidateStory1122SolutionMembership(XDocument solution)
+    {
+        List<string> errors = [];
+        foreach (string expectedPath in Story1122StrictProjects)
+        {
+            XElement[] matches = solution.Descendants("Project")
+                .Where(project => string.Equals(
+                    Normalize((string?)project.Attribute("Path") ?? string.Empty),
+                    expectedPath,
+                    StringComparison.Ordinal))
+                .ToArray();
+            if (matches.Length != 1)
+            {
+                errors.Add($"Story 11.22 missing Release solution member or duplicate path: {expectedPath}");
+                continue;
+            }
+
+            bool disabledForRelease = matches[0].Elements("Build").Any(static build =>
+            {
+                string solutionConfiguration = (string?)build.Attribute("Solution") ?? string.Empty;
+                string projectEnabled = (string?)build.Attribute("Project") ?? string.Empty;
+                return string.Equals(projectEnabled, "false", StringComparison.OrdinalIgnoreCase)
+                    && (string.IsNullOrWhiteSpace(solutionConfiguration)
+                        || solutionConfiguration.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                            .Any(static configuration => string.Equals(configuration, "*|*", StringComparison.OrdinalIgnoreCase)
+                                || configuration.StartsWith("Release|", StringComparison.OrdinalIgnoreCase)));
+            });
+            if (disabledForRelease)
+            {
+                errors.Add($"Story 11.22 solution member is disabled for Release: {expectedPath}");
+            }
+        }
+
+        return [.. errors];
     }
 
     private static string[] ValidateParity(IEnumerable<string> ledgerKeys, IEnumerable<string> configuredKeys)
@@ -1364,10 +1598,13 @@ public sealed class AnalyzerPolicyGovernanceTests
         string sourceKind = StringValue(control, "sourceKind");
         if (sourceKind == "msbuild")
         {
+            string property = StringValue(control, "property");
             return CanonicalMsBuild(
                 StringValue(control, "path"),
-                StringValue(control, "property"),
-                StringArray(control, "diagnosticIds"));
+                property,
+                IsScalarMsBuildWarningProperty(property)
+                    ? [StringValue(control, "propertyValue")]
+                    : StringArray(control, "diagnosticIds"));
         }
 
         if (sourceKind == "editorconfig")
@@ -1643,13 +1880,13 @@ public sealed class AnalyzerPolicyGovernanceTests
             root,
             ["src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs"]);
         List<string> errors = [];
-        if (testCount != IntValue(inventory, "testUnderscoreIdentifierTokens")
+        if (testCount != IntValue(inventory, "testPublicDeclarationIdentifiers")
             || !string.Equals(testHash, StringValue(inventory, "testInventorySha256"), StringComparison.Ordinal))
         {
             errors.Add($"test CA1707 scope identifier inventory drift: count={testCount}, sha256={testHash}");
         }
 
-        if (contractsCount != IntValue(inventory, "contractsUnderscoreIdentifierTokens")
+        if (contractsCount != IntValue(inventory, "contractsPublicDeclarationIdentifiers")
             || !string.Equals(contractsHash, StringValue(inventory, "contractsInventorySha256"), StringComparison.Ordinal))
         {
             errors.Add($"FcDiagnosticIds CA1707 scope identifier inventory drift: count={contractsCount}, sha256={contractsHash}");
@@ -1659,22 +1896,96 @@ public sealed class AnalyzerPolicyGovernanceTests
     }
 
     private static (int Count, string Hash) IdentifierInventory(string root, IEnumerable<string> relativePaths)
+        => DeclarationIdentifierInventory(relativePaths.Select(relativePath =>
+            (Normalize(relativePath), File.ReadAllText(Path.Combine(root, relativePath)))));
+
+    private static (int Count, string Hash) DeclarationIdentifierInventory(
+        IEnumerable<(string RelativePath, string Source)> sources)
     {
+        SyntaxTree[] trees = sources
+            .Select(static source => CSharpSyntaxTree.ParseText(source.Source, path: Normalize(source.RelativePath)))
+            .ToArray();
+        CSharpCompilation compilation = CSharpCompilation.Create("AnalyzerPolicyIdentifierInventory", trees);
         List<string> inventory = [];
-        foreach (string relativePath in relativePaths)
+        foreach (SyntaxTree tree in trees)
         {
-            SyntaxTree tree = CSharpSyntaxTree.ParseText(File.ReadAllText(Path.Combine(root, relativePath)), path: relativePath);
-            foreach (SyntaxToken token in tree.GetRoot().DescendantTokens().Where(static token =>
-                token.IsKind(SyntaxKind.IdentifierToken) && token.ValueText.Contains('_', StringComparison.Ordinal)))
+            SemanticModel semanticModel = compilation.GetSemanticModel(tree);
+            foreach (SyntaxNode node in tree.GetRoot().DescendantNodesAndSelf().Where(IsDeclarationSyntax))
             {
-                FileLinePositionSpan lineSpan = token.GetLocation().GetLineSpan();
-                inventory.Add($"{Normalize(relativePath)}:{lineSpan.StartLinePosition.Line + 1}:{token.ValueText}");
+                if (node is BaseNamespaceDeclarationSyntax namespaceDeclaration)
+                {
+                    foreach (IdentifierNameSyntax segment in namespaceDeclaration.Name
+                        .DescendantNodesAndSelf()
+                        .OfType<IdentifierNameSyntax>()
+                        .Where(static name => name.Identifier.ValueText.Contains('_', StringComparison.Ordinal)))
+                    {
+                        inventory.Add(
+                            $"{Normalize(tree.FilePath)}|{SymbolKind.Namespace}|{segment.Identifier.ValueText}");
+                    }
+
+                    continue;
+                }
+
+                ISymbol? symbol = semanticModel.GetDeclaredSymbol(node);
+                if (symbol is null
+                    || !symbol.Name.Contains('_', StringComparison.Ordinal)
+                    || !IsCa1707PublicDeclaration(symbol))
+                {
+                    continue;
+                }
+
+                inventory.Add($"{Normalize(tree.FilePath)}|{symbol.Kind}|{symbol.Name}");
             }
         }
 
         string material = string.Join('\n', inventory.Order(StringComparer.Ordinal));
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(material))).ToLowerInvariant();
         return (inventory.Count, hash);
+    }
+
+    private static bool IsDeclarationSyntax(SyntaxNode node)
+        => node is BaseNamespaceDeclarationSyntax
+            or BaseTypeDeclarationSyntax
+            or DelegateDeclarationSyntax
+            or MethodDeclarationSyntax
+            or PropertyDeclarationSyntax
+            or EventDeclarationSyntax
+            or VariableDeclaratorSyntax
+            or ParameterSyntax
+            or TypeParameterSyntax
+            or EnumMemberDeclarationSyntax;
+
+    private static bool IsCa1707PublicDeclaration(ISymbol symbol)
+    {
+        if (symbol.Kind == SymbolKind.Namespace)
+        {
+            return true;
+        }
+
+        if (symbol.Kind is SymbolKind.Parameter or SymbolKind.TypeParameter)
+        {
+            return symbol.ContainingSymbol is not null && IsCa1707PublicDeclaration(symbol.ContainingSymbol);
+        }
+
+        if (symbol.Kind is not (
+            SymbolKind.NamedType
+            or SymbolKind.Method
+            or SymbolKind.Property
+            or SymbolKind.Event
+            or SymbolKind.Field))
+        {
+            return false;
+        }
+
+        if (symbol.DeclaredAccessibility is not (
+            Accessibility.Public
+            or Accessibility.Protected
+            or Accessibility.ProtectedOrInternal))
+        {
+            return false;
+        }
+
+        return symbol.ContainingType is null || IsCa1707PublicDeclaration(symbol.ContainingType);
     }
 
     private static async Task ValidateEffectiveBuildGraphsAsync(string root)
@@ -1873,6 +2184,11 @@ public sealed class AnalyzerPolicyGovernanceTests
     private static JsonObject Clone(JsonObject value)
         => RequiredObject(JsonNode.Parse(value.ToJsonString()), "clone");
 
+    private static JsonObject FindWarningControl(JsonObject ledger, string key)
+        => RequiredArray(ledger, "warningControls")
+            .Select(static item => RequiredObject(item, "control"))
+            .Single(control => string.Equals(StringValue(control, "key"), key, StringComparison.Ordinal));
+
     private static JsonObject RequiredObject(JsonNode? node, string name)
         => node as JsonObject ?? throw new InvalidDataException($"Expected object {name}.");
 
@@ -1914,6 +2230,36 @@ public sealed class AnalyzerPolicyGovernanceTests
         => value[name] is JsonArray array
             ? array.Select(static item => item?.GetValue<string>() ?? string.Empty).ToArray()
             : [];
+
+    private static void RejectUnexpectedWarningControlFields(
+        JsonObject control,
+        string key,
+        string sourceKind,
+        string property,
+        List<string> errors)
+    {
+        string[] shapeFields = sourceKind switch
+        {
+            "msbuild" when IsScalarMsBuildWarningProperty(property) => ["path", "property", "propertyValue"],
+            "msbuild" when IsListMsBuildWarningProperty(property) => ["path", "property", "diagnosticIds"],
+            "editorconfig" => ["path", "section", "property", "value", "diagnosticIds"],
+            "pragma" or "suppression-attribute" or "emitter-pragma" => ["paths", "entryCount", "diagnosticIds"],
+            _ => [],
+        };
+        HashSet<string> allowed = new(StringComparer.Ordinal)
+        {
+            "key",
+            "sourceKind",
+            "exactScope",
+            "mechanism",
+            "dispositionKey",
+        };
+        allowed.UnionWith(shapeFields);
+        foreach (string field in control.Select(static pair => pair.Key).Where(field => !allowed.Contains(field)))
+        {
+            errors.Add($"unexpected warning-control field {field} for {key}");
+        }
+    }
 
     private static void RequireValue(JsonObject value, string name, List<string> errors)
     {
@@ -2000,6 +2346,12 @@ public sealed class AnalyzerPolicyGovernanceTests
         => name is "NoWarn" or "WarningsAsErrors" or "WarningsNotAsErrors" or "TreatWarningsAsErrors"
             || name.StartsWith("AnalysisMode", StringComparison.Ordinal);
 
+    private static bool IsScalarMsBuildWarningProperty(string name)
+        => name == "TreatWarningsAsErrors" || name.StartsWith("AnalysisMode", StringComparison.Ordinal);
+
+    private static bool IsListMsBuildWarningProperty(string name)
+        => name is "NoWarn" or "WarningsAsErrors" or "WarningsNotAsErrors";
+
     private static bool IsMsBuildFile(string path)
         => path.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase)
             || path.EndsWith(".props", StringComparison.OrdinalIgnoreCase)
@@ -2037,11 +2389,12 @@ public sealed class AnalyzerPolicyGovernanceTests
     private static string Normalize(string path)
         => path.Replace('\\', '/');
 
-    private static string[] Story1122StrictBuildArguments(string project)
-        =>
+    private static Task<(int ExitCode, string Output)> RunSolutionBuildAsync(bool forceRecommended)
+    {
+        List<string> arguments =
         [
             "build",
-            project,
+            "Hexalith.FrontComposer.slnx",
             "-c",
             "Release",
             "--no-restore",
@@ -2050,8 +2403,14 @@ public sealed class AnalyzerPolicyGovernanceTests
             "/nr:false",
             "-p:NuGetAudit=false",
             "-p:MinVerVersionOverride=4.0.0",
-            "-p:AnalysisMode=Recommended",
         ];
+        if (forceRecommended)
+        {
+            arguments.Add("-p:AnalysisMode=Recommended");
+        }
+
+        return RunDotnetResultAsync(RepositoryRoot(), [.. arguments]);
+    }
 
     private static string RepositoryRoot()
     {
@@ -2075,41 +2434,20 @@ public sealed class AnalyzerPolicyGovernanceTests
         string workingDirectory,
         params string[] arguments)
     {
-        using Process process = new()
+        ProcessStartInfo startInfo = new()
         {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = "dotnet",
-                WorkingDirectory = workingDirectory,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-            },
+            FileName = "dotnet",
+            WorkingDirectory = workingDirectory,
         };
-        process.StartInfo.Environment["DOTNET_CLI_UI_LANGUAGE"] = "en-US";
+        startInfo.Environment["DOTNET_CLI_UI_LANGUAGE"] = "en-US";
         foreach (string argument in arguments)
         {
-            process.StartInfo.ArgumentList.Add(argument);
+            startInfo.ArgumentList.Add(argument);
         }
 
-        using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        timeout.CancelAfter(DotnetTimeoutMilliseconds);
-        process.Start().ShouldBeTrue();
-        Task<string> standardOutput = process.StandardOutput.ReadToEndAsync(timeout.Token);
-        Task<string> standardError = process.StandardError.ReadToEndAsync(timeout.Token);
-        try
-        {
-            await process.WaitForExitAsync(timeout.Token).ConfigureAwait(true);
-        }
-        catch (OperationCanceledException) when (!TestContext.Current.CancellationToken.IsCancellationRequested)
-        {
-            process.Kill(entireProcessTree: true);
-            throw new TimeoutException(
-                $"dotnet {string.Join(' ', arguments)} exceeded the {DotnetTimeoutMilliseconds / 1000}-second governance bound.");
-        }
-
-        return (
-            process.ExitCode,
-            await standardOutput.ConfigureAwait(true) + await standardError.ConfigureAwait(true));
+        return await GovernanceProcessRunner.RunAsync(
+            startInfo,
+            TimeSpan.FromMilliseconds(DotnetTimeoutMilliseconds),
+            TestContext.Current.CancellationToken).ConfigureAwait(true);
     }
 }

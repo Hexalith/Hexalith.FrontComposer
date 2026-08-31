@@ -216,20 +216,23 @@ _This file contains critical rules and patterns that AI agents must follow when 
   `Assert.*`) + **NSubstitute** mocks; **bUnit** for Blazor components; **Verify** snapshots;
   **FsCheck** property tests; **PactNet** for the EventStore REST boundary
 - **Run SOLUTION-level Microsoft.Testing.Platform `dotnet test` + native trait filters** —
-  `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter-not-trait "Category=Performance" --filter-not-trait "Category=e2e-palette" --filter-not-trait "Category=NightlyProperty" --filter-not-trait "Category=Quarantined" --results-directory ./TestResults/default --report-xunit-trx --coverage --coverage-output-format cobertura`.
+  `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter-not-trait "Category=GovernanceBuild" --filter-not-trait "Category=Performance" --filter-not-trait "Category=e2e-palette" --filter-not-trait "Category=NightlyProperty" --filter-not-trait "Category=Quarantined" --results-directory ./TestResults/default --report-xunit-trx --coverage --coverage-output-format cobertura`.
   **This is the OPPOSITE of the EventStore submodule's per-project rule** — follow FrontComposer's model here
 - **MTP is repository-native:** `global.json` selects `Microsoft.Testing.Platform`, and
   `tests/Directory.Build.props` supplies the MTP code-coverage extension. Do not reintroduce VSTest
   `--filter`, `--logger`, or `--collect` syntax. The default lane retains one uniquely named TRX and
   Cobertura report per expected test module and fails unless the aggregate TRX total is nonzero and
   every coverage report contains measured lines. Governance uses its isolated results directory and
-  likewise requires present, parseable, nonzero aggregate TRX evidence.
+  likewise requires present, parseable, nonzero aggregate TRX evidence. The two live solution-build
+  proofs use `GovernanceBuild`, run once in a blocking Shell-only lane, and authenticate their exact
+  fully-qualified identities from the lane's sole TRX.
 - **`DiffEngine_Disabled=true` is REQUIRED** when running tests — otherwise a Verify snapshot
   mismatch launches a diff tool and hangs CI/local runs
-- **Trait categories:** `Governance`, `Contract`, `Performance`, `e2e-palette`, `NightlyProperty`,
-  `Quarantined`. CI runs Governance + the default lane as **blocking**; palette/perf/quarantine are
-  advisory/warning-only. Release prepare-candidate `phase_tests()` uses the same four native Gate 3a
-  `--filter-not-trait` exclusions (Performance, e2e-palette, NightlyProperty, and Quarantined)
+- **Trait categories:** `Governance`, `GovernanceBuild`, `Contract`, `Performance`, `e2e-palette`,
+  `NightlyProperty`, `Quarantined`. CI runs Governance, GovernanceBuild, and the default lane as
+  **blocking**; palette/perf/quarantine are advisory/warning-only. Release prepare-candidate
+  `phase_tests()` uses the same five native Gate 3a `--filter-not-trait` exclusions
+  (GovernanceBuild, Performance, e2e-palette, NightlyProperty, and Quarantined)
 - **Naming:** test files are **plural `{Class}Tests.cs`** (matches Tenants, not Commons' singular);
   methods are three-part **`Subject_Scenario_Expectation`**
 - **Generator tests** go through `CompilationHelper.CreateCompilation()`; **Blazor component tests**

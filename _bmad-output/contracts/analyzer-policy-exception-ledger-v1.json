@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "contractId": "frontcomposer-analyzer-policy-exception-ledger-v1",
   "decision": "Activate Recommended analyzers centrally after the staged category burn-down; classify every warning control and preserve only narrow, owner-bound exceptions.",
   "owner": "Architect + Framework Maintainer",
@@ -96,11 +96,11 @@
     "rollback": "A separately approved emergency rollback may remove only the root AnalysisMode declaration; it may not lower TreatWarningsAsErrors or add broad suppressions."
   },
   "identifierInventory": {
-    "algorithm": "SHA-256 over sorted repo-relative path, one-based line, and C# identifier token containing an underscore",
-    "testUnderscoreIdentifierTokens": 7160,
-    "testInventorySha256": "595c664f5152bfe6964f7b4e2a5b1b11966bf89573637d9d2f43d54b403a836d",
-    "contractsUnderscoreIdentifierTokens": 90,
-    "contractsInventorySha256": "a06a2c10b7bcc9e2abd18b585af55e93d70bd3ad85a20519791590313ffcb3b7"
+    "algorithm": "SHA-256 over sorted repo-relative path, declaration kind, and underscore-containing identifier for CA1707-relevant public/protected declarations; source line numbers are excluded",
+    "testPublicDeclarationIdentifiers": 3274,
+    "testInventorySha256": "45a91360dadfaae47984ff873d27fed8810d3c9ad97cadfade10b11156cf5e7c",
+    "contractsPublicDeclarationIdentifiers": 89,
+    "contractsInventorySha256": "9b81beacad8c65e481b2239b6054ba483dd8e9b6e6af2a0e51ca7065deb3210a"
   },
   "findings": [
     {
@@ -456,9 +456,7 @@
       "sourceKind": "msbuild",
       "path": "Directory.Build.props",
       "property": "TreatWarningsAsErrors",
-      "diagnosticIds": [
-        "true"
-      ],
+      "propertyValue": "true",
       "exactScope": "repository",
       "mechanism": "TreatWarningsAsErrors",
       "dispositionKey": "policy-root-twae"
@@ -468,9 +466,7 @@
       "sourceKind": "msbuild",
       "path": "Directory.Build.props",
       "property": "AnalysisMode",
-      "diagnosticIds": [
-        "Recommended"
-      ],
+      "propertyValue": "Recommended",
       "exactScope": "repository",
       "mechanism": "AnalysisMode",
       "dispositionKey": "policy-root-analysis-mode"

@@ -97,6 +97,9 @@ public sealed class CiGovernanceTests {
         workflow.ShouldContain("Gate 2b: Infrastructure governance and telemetry contracts");
         workflow.ShouldContain("Category=Governance");
         workflow.ShouldContain("--results-directory ./TestResults/governance --report-xunit-trx");
+        workflow.ShouldContain("Gate 2b: Analyzer governance build proofs");
+        workflow.ShouldContain("Category=GovernanceBuild");
+        workflow.ShouldContain("--results-directory ./TestResults/governance-build --report-xunit-trx");
     }
 
     [Fact]
@@ -191,7 +194,7 @@ public sealed class CiGovernanceTests {
         string orchestrator = File.ReadAllText(Path.Combine(root, "eng/release_prepublish.py"));
 
         string defaultLane = ExtractNamedStep(quality, "Gate 3a: Unit + bUnit (default lane)");
-        foreach (string trait in new[] { "Performance", "e2e-palette", "NightlyProperty", "Quarantined" }) {
+        foreach (string trait in new[] { "GovernanceBuild", "Performance", "e2e-palette", "NightlyProperty", "Quarantined" }) {
             defaultLane.ShouldContain($"--filter-not-trait \"Category={trait}\"");
         }
         defaultLane.ShouldContain("--report-xunit-trx");
@@ -203,15 +206,47 @@ public sealed class CiGovernanceTests {
 
         string governanceLane = ExtractNamedStep(quality, "Gate 2b: Infrastructure governance and telemetry contracts");
         governanceLane.ShouldContain("--filter-trait \"Category=Governance\"");
+        governanceLane.ShouldContain("--filter-not-trait \"Category=GovernanceBuild\"");
         governanceLane.ShouldContain("--ignore-exit-code 8");
         governanceLane.ShouldContain("--results-directory ./TestResults/governance --report-xunit-trx");
         governanceLane.ShouldNotContain("--report-xunit-trx-filename");
         governanceLane.ShouldNotContain("--filter-not-trait \"Category=Quarantined\"");
         governanceLane.ShouldNotContain("continue-on-error: true");
 
+        string analyzerBuildLane = ExtractNamedStep(quality, "Gate 2b: Analyzer governance build proofs");
+        Regex.Count(
+            quality,
+            Regex.Escape("- name: 'Gate 2b: Analyzer governance build proofs'"))
+            .ShouldBe(1);
+        analyzerBuildLane.ShouldContain("dotnet test --project tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj");
+        analyzerBuildLane.ShouldContain("--configuration Release --no-build");
+        analyzerBuildLane.ShouldContain("--filter-trait \"Category=GovernanceBuild\"");
+        analyzerBuildLane.ShouldContain("--results-directory ./TestResults/governance-build --report-xunit-trx");
+        analyzerBuildLane.ShouldNotContain("--ignore-exit-code");
+        analyzerBuildLane.ShouldNotContain("continue-on-error: true");
+        analyzerBuildLane.ShouldNotContain("\n        if:");
+
+        string analyzerBuildEvidence = ExtractNamedStep(
+            quality,
+            "Gate 2b: Verify analyzer governance build MTP evidence");
+        Regex.Count(
+            quality,
+            Regex.Escape("- name: 'Gate 2b: Verify analyzer governance build MTP evidence'"))
+            .ShouldBe(1);
+        analyzerBuildEvidence.ShouldContain("ci_governance.py validate-mtp-evidence");
+        analyzerBuildEvidence.ShouldContain("--results-dir ./TestResults/governance-build");
+        analyzerBuildEvidence.ShouldContain("--expected-trx-files 1");
+        analyzerBuildEvidence.ShouldContain("--require-tests");
+        analyzerBuildEvidence.ShouldContain(
+            "--expected-test Hexalith.FrontComposer.Shell.Tests.Governance.AnalyzerPolicyGovernanceTests.AnalyzerPolicy_ActivatedReleaseBuild_MatchesForcedRecommendedCandidate");
+        analyzerBuildEvidence.ShouldContain(
+            "--expected-test Hexalith.FrontComposer.Shell.Tests.Governance.AnalyzerPolicyGovernanceTests.AnalyzerPolicy_Story1122RecordedProjects_RemainRecommendedClean");
+        analyzerBuildEvidence.ShouldNotContain("continue-on-error: true");
+        analyzerBuildEvidence.ShouldNotContain("\n        if:");
+
         // Pin the executable MTP argument pairs in the orchestrator's dotnet-test
         // invocation, not bare trait strings that comments could satisfy.
-        foreach (string trait in new[] { "Performance", "e2e-palette", "NightlyProperty", "Quarantined" }) {
+        foreach (string trait in new[] { "GovernanceBuild", "Performance", "e2e-palette", "NightlyProperty", "Quarantined" }) {
             orchestrator.ShouldContain($"\"--filter-not-trait\", \"Category={trait}\",");
         }
         orchestrator.ShouldContain("\"--report-xunit-trx\",");
@@ -407,6 +442,19 @@ public sealed class CiGovernanceTests {
         governanceEvidence.ShouldContain("--minimum-trx-files 1");
         governanceEvidence.ShouldContain("--require-tests");
         governanceEvidence.ShouldNotContain("continue-on-error: true");
+
+        string analyzerBuildEvidence = ExtractNamedStep(
+            quality,
+            "Gate 2b: Verify analyzer governance build MTP evidence");
+        analyzerBuildEvidence.ShouldContain("ci_governance.py validate-mtp-evidence");
+        analyzerBuildEvidence.ShouldContain("--results-dir ./TestResults/governance-build");
+        analyzerBuildEvidence.ShouldContain("--expected-trx-files 1");
+        analyzerBuildEvidence.ShouldContain("--require-tests");
+        analyzerBuildEvidence.ShouldContain(
+            "--expected-test Hexalith.FrontComposer.Shell.Tests.Governance.AnalyzerPolicyGovernanceTests.AnalyzerPolicy_ActivatedReleaseBuild_MatchesForcedRecommendedCandidate");
+        analyzerBuildEvidence.ShouldContain(
+            "--expected-test Hexalith.FrontComposer.Shell.Tests.Governance.AnalyzerPolicyGovernanceTests.AnalyzerPolicy_Story1122RecordedProjects_RemainRecommendedClean");
+        analyzerBuildEvidence.ShouldNotContain("continue-on-error: true");
 
         string defaultEvidence = ExtractNamedStep(quality, "Gate 3a: Verify default MTP evidence");
         defaultEvidence.ShouldContain("--results-dir ./TestResults/default");

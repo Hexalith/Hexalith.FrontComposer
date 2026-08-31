@@ -178,6 +178,38 @@ class MtpLaneEvidenceTests(unittest.TestCase):
                 self.assertEqual(1, completed.returncode)
                 self.assertTrue(any(diagnostic in item for item in payload["diagnostics"]), payload)
 
+    def test_exact_test_identity_allowlist_fails_closed(self) -> None:
+        expected = (
+            "Fixtures.ModuleA.Fails",
+            "Fixtures.ModuleA.Passes",
+        )
+        completed, payload = self._validate(
+            ("nested-a",),
+            "--expected-test",
+            expected[0],
+            "--expected-test",
+            expected[1],
+        )
+        self.assertEqual(0, completed.returncode, payload)
+        self.assertEqual(list(expected), payload["tests"])
+
+        for supplied in (
+            (expected[0],),
+            (*expected, "Fixtures.ModuleA.Unexpected"),
+        ):
+            with self.subTest(supplied=supplied):
+                arguments = tuple(
+                    argument
+                    for identity in supplied
+                    for argument in ("--expected-test", identity)
+                )
+                completed, payload = self._validate(("nested-a",), *arguments)
+                self.assertEqual(1, completed.returncode)
+                self.assertTrue(
+                    any("exact test identity mismatch" in item for item in payload["diagnostics"]),
+                    payload,
+                )
+
     def test_coverage_requires_parseable_report_with_measured_lines(self) -> None:
         valid = """<?xml version="1.0"?><coverage lines-valid="1"><packages><package><classes><class><lines><line number="1" hits="1" /></lines></class></classes></package></packages></coverage>"""
         completed, payload = self._validate(("nested-a",), "--require-tests", coverage=valid)

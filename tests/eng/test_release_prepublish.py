@@ -232,7 +232,7 @@ class ReleasePrepublishTests(unittest.TestCase):
         tests_end = source.index("\ndef ", tests_start + 1)
         tests_section = source[tests_start:tests_end]
         self.assertIn('run("tests"', tests_section)
-        for trait in ("Performance", "e2e-palette", "NightlyProperty", "Quarantined"):
+        for trait in ("GovernanceBuild", "Performance", "e2e-palette", "NightlyProperty", "Quarantined"):
             self.assertIn(
                 f'"--filter-not-trait", "Category={trait}",',
                 tests_section,

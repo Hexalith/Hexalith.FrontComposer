@@ -200,6 +200,14 @@ def validate_mtp_evidence(args: argparse.Namespace) -> int:
         )
     if args.require_tests and not results:
         diagnostics.append("aggregate TRX total must be greater than zero")
+    if args.expected_test:
+        actual_tests = sorted(result.identity for result in results)
+        expected_tests = sorted(sanitize(identity) for identity in args.expected_test)
+        if actual_tests != expected_tests:
+            diagnostics.append(
+                "exact test identity mismatch: "
+                f"expected {expected_tests}, found {actual_tests}"
+            )
 
     coverage_files: list[str] = []
     if args.coverage_dir:
@@ -225,6 +233,7 @@ def validate_mtp_evidence(args: argparse.Namespace) -> int:
         "ok": not diagnostics,
         "trx_files": len(trx_files),
         "total": len(results),
+        "tests": sorted(result.identity for result in results),
         "modules": sorted(set(module_identities)),
         "coverage_files": len(coverage_files),
         "diagnostics": diagnostics,
@@ -816,6 +825,12 @@ def main() -> int:
     trx_count.add_argument("--expected-trx-files", type=int)
     trx_count.add_argument("--minimum-trx-files", type=int, default=1)
     v.add_argument("--require-tests", action="store_true")
+    v.add_argument(
+        "--expected-test",
+        action="append",
+        default=[],
+        help="require this exact fully-qualified test identity; may be repeated",
+    )
     v.add_argument("--require-distinct-modules", action="store_true")
     v.add_argument("--coverage-dir", default="")
     v.add_argument("--expected-coverage-files", type=int)

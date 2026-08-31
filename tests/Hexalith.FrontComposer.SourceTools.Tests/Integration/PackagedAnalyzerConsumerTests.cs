@@ -73,7 +73,7 @@ public sealed partial class PackagedAnalyzerConsumerTests {
     <NuGetAudit>false</NuGetAudit>
     <RestorePackagesPath>$(MSBuildProjectDirectory)/packages</RestorePackagesPath>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-    <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)generated</CompilerGeneratedFilesOutputPath>
+    <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)$(Configuration)/$(TargetFramework)/generated</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
@@ -129,23 +129,53 @@ public sealed partial class CreateOrderCommand
 }
 """, TestContext.Current.CancellationToken).ConfigureAwait(true);
 
-        // Story 11.21 AC3/AC7 — the consumer template enables AnalysisMode=Recommended with
-        // TreatWarningsAsErrors intact and no ASP0006 control, so this build is the independent
-        // proof that generated output is clean under the elevated policy.
-        string buildLog = await RunDotnetAsync(consumer, TestContext.Current.CancellationToken, "build", "-c", "Release", "-m:1", "/nr:false").ConfigureAwait(true);
-        CollectCaAspDiagnostics(buildLog).ShouldBeEmpty();
+        // Keep the shipped inputs Release-packed, but prove the package consumer in both compiler
+        // configurations. Each configuration owns a distinct generated-source directory so one
+        // successful leg cannot satisfy the other with stale output.
+        foreach (string configuration in new[] { "Debug", "Release" }) {
+            await VerifyConsumerConfigurationAsync(consumer, configuration).ConfigureAwait(true);
+        }
 
         string assets = await File.ReadAllTextAsync(Path.Combine(consumer, "obj", "project.assets.json"), TestContext.Current.CancellationToken).ConfigureAwait(true);
         assets.ShouldContain("\"Microsoft.FluentUI.AspNetCore.Components/" + FluentV5Version + "\"");
         assets.ShouldContain("\"Microsoft.FluentUI.AspNetCore.Components.Icons/" + FluentV5Version + "\"");
         assets.ShouldNotContain("\"Microsoft.FluentUI.AspNetCore.Components/4.");
         assets.ShouldNotContain("\"Microsoft.FluentUI.AspNetCore.Components.Icons/4.");
+    }
 
+    private static async Task VerifyConsumerConfigurationAsync(string consumer, string configuration) {
+        await RunDotnetAsync(
+            consumer,
+            TestContext.Current.CancellationToken,
+            "clean",
+            "-c",
+            configuration,
+            "-m:1",
+            "/nr:false").ConfigureAwait(true);
+
+        // Story 11.21 AC3/AC7 — the consumer template enables AnalysisMode=Recommended with
+        // TreatWarningsAsErrors intact and no ASP0006 control, so each clean build independently
+        // proves that packaged generated output is clean under the elevated policy.
+        string buildLog = await RunDotnetAsync(
+            consumer,
+            TestContext.Current.CancellationToken,
+            "build",
+            "-c",
+            configuration,
+            "--no-incremental",
+            "-m:1",
+            "/nr:false").ConfigureAwait(true);
+        CollectCaAspDiagnostics(buildLog).ShouldBeEmpty();
+
+        string generatedRoot = Path.Combine(consumer, "obj", configuration, "net10.0", "generated");
         string[] generatedFiles = Directory.GetFiles(
-            Path.Combine(consumer, "obj", "generated"),
+            generatedRoot,
             "*.cs",
             SearchOption.AllDirectories);
-        generatedFiles.ShouldNotBeEmpty("the packaged analyzer must run and emit source in the clean consumer");
+        generatedFiles.ShouldNotBeEmpty($"the packaged analyzer must emit {configuration} source in its isolated output");
+        generatedFiles.ShouldAllBe(path => Path.GetFullPath(path).StartsWith(
+            Path.GetFullPath(generatedRoot) + Path.DirectorySeparatorChar,
+            StringComparison.Ordinal));
         string projectionSourcePath = generatedFiles.Single(path => path.EndsWith("OrdersProjection.g.razor.cs", StringComparison.Ordinal));
         string projectionSource = await File.ReadAllTextAsync(projectionSourcePath, TestContext.Current.CancellationToken).ConfigureAwait(true);
         projectionSource.ShouldContain("global::Hexalith.FrontComposer.Shell.Options.FcShellOptions");
@@ -169,7 +199,8 @@ public sealed partial class CreateOrderCommand
         // stay silent under Default. An empty CA/ASP log alone cannot prove elevation is active —
         // NoWarn / Default would also produce an empty log.
         string probePath = Path.Combine(consumer, "Ca1822Probe.cs");
-        await File.WriteAllTextAsync(probePath, """
+        try {
+            await File.WriteAllTextAsync(probePath, """
 namespace PackageConsumer;
 
 public sealed class Ca1822Probe
@@ -178,30 +209,34 @@ public sealed class Ca1822Probe
 }
 """, TestContext.Current.CancellationToken).ConfigureAwait(true);
 
-        (int recommendedExit, string recommendedProbeLog) = await RunDotnetAllowingFailureAsync(
-            consumer,
-            TestContext.Current.CancellationToken,
-            "build",
-            "-c",
-            "Release",
-            "-m:1",
-            "/nr:false").ConfigureAwait(true);
-        recommendedExit.ShouldNotBe(0, "injected CA1822 must fail the Recommended + TWAE consumer build");
-        CollectCaAspDiagnostics(recommendedProbeLog)
-            .ShouldContain(static line => line.Contains("CA1822", StringComparison.Ordinal));
+            (int recommendedExit, string recommendedProbeLog) = await RunDotnetAllowingFailureAsync(
+                consumer,
+                TestContext.Current.CancellationToken,
+                "build",
+                "-c",
+                configuration,
+                "-m:1",
+                "/nr:false").ConfigureAwait(true);
+            recommendedExit.ShouldNotBe(0, $"injected CA1822 must fail the {configuration} Recommended + TWAE consumer build");
+            CollectCaAspDiagnostics(recommendedProbeLog)
+                .ShouldContain(static line => line.Contains("CA1822", StringComparison.Ordinal));
 
-        (int defaultExit, string defaultProbeLog) = await RunDotnetAllowingFailureAsync(
-            consumer,
-            TestContext.Current.CancellationToken,
-            "build",
-            "-c",
-            "Release",
-            "-m:1",
-            "/nr:false",
-            "-p:AnalysisMode=Default").ConfigureAwait(true);
-        defaultExit.ShouldBe(0, "the same CA1822 probe must stay silent under AnalysisMode=Default");
-        CollectCaAspDiagnostics(defaultProbeLog)
-            .ShouldNotContain(static line => line.Contains("CA1822", StringComparison.Ordinal));
+            (int defaultExit, string defaultProbeLog) = await RunDotnetAllowingFailureAsync(
+                consumer,
+                TestContext.Current.CancellationToken,
+                "build",
+                "-c",
+                configuration,
+                "-m:1",
+                "/nr:false",
+                "-p:AnalysisMode=Default").ConfigureAwait(true);
+            defaultExit.ShouldBe(0, $"the same {configuration} CA1822 probe must stay silent under AnalysisMode=Default");
+            CollectCaAspDiagnostics(defaultProbeLog)
+                .ShouldNotContain(static line => line.Contains("CA1822", StringComparison.Ordinal));
+        }
+        finally {
+            File.Delete(probePath);
+        }
     }
 
     /// <summary>

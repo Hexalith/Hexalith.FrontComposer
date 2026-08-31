@@ -21,10 +21,14 @@ Submodule test suites (`references/Hexalith.Tenants/**`, `references/Hexalith.Ev
 
 ```bash
 # From repo root: the blocking MTP default lane, with per-module TRX and Cobertura evidence.
-DiffEngine_Disabled=true dotnet test --solution Hexalith.FrontComposer.slnx --filter-not-trait "Category=Performance" --filter-not-trait "Category=e2e-palette" --filter-not-trait "Category=NightlyProperty" --filter-not-trait "Category=Quarantined" --results-directory ./TestResults/default --report-xunit-trx --coverage --coverage-output-format cobertura
+DiffEngine_Disabled=true dotnet test --solution Hexalith.FrontComposer.slnx --filter-not-trait "Category=GovernanceBuild" --filter-not-trait "Category=Performance" --filter-not-trait "Category=e2e-palette" --filter-not-trait "Category=NightlyProperty" --filter-not-trait "Category=Quarantined" --results-directory ./TestResults/default --report-xunit-trx --coverage --coverage-output-format cobertura
 
 # Focused Shell fallback. Preserve the default-lane exclusions when using it as fallback evidence.
-DiffEngine_Disabled=true dotnet test --project tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --filter-not-trait "Category=Performance" --filter-not-trait "Category=e2e-palette" --filter-not-trait "Category=NightlyProperty" --filter-not-trait "Category=Quarantined"
+DiffEngine_Disabled=true dotnet test --project tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --filter-not-trait "Category=GovernanceBuild" --filter-not-trait "Category=Performance" --filter-not-trait "Category=e2e-palette" --filter-not-trait "Category=NightlyProperty" --filter-not-trait "Category=Quarantined"
+
+# Isolated blocking analyzer-build proof. Run only against Shell.Tests so its live solution builds
+# never overlap other test modules; CI authenticates the resulting nonzero TRX separately.
+DiffEngine_Disabled=true dotnet test --project tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --no-build --filter-trait "Category=GovernanceBuild" --results-directory ./TestResults/governance-build --report-xunit-trx
 ```
 
 `global.json` selects Microsoft.Testing.Platform, while `tests/Directory.Build.props` supplies its
@@ -37,7 +41,7 @@ from the solution default lane, with a nonzero aggregate test total.
 
 ```bash
 # Main blocking lane: excludes advisory and quarantined tests.
-DiffEngine_Disabled=true dotnet test --solution Hexalith.FrontComposer.slnx --configuration Release --filter-not-trait "Category=Performance" --filter-not-trait "Category=e2e-palette" --filter-not-trait "Category=NightlyProperty" --filter-not-trait "Category=Quarantined" --results-directory ./TestResults/default --report-xunit-trx --coverage --coverage-output-format cobertura
+DiffEngine_Disabled=true dotnet test --solution Hexalith.FrontComposer.slnx --configuration Release --filter-not-trait "Category=GovernanceBuild" --filter-not-trait "Category=Performance" --filter-not-trait "Category=e2e-palette" --filter-not-trait "Category=NightlyProperty" --filter-not-trait "Category=Quarantined" --results-directory ./TestResults/default --report-xunit-trx --coverage --coverage-output-format cobertura
 
 # Quarantine lane: runs only quarantined tests and writes TRX evidence.
 DiffEngine_Disabled=true dotnet test --solution Hexalith.FrontComposer.slnx --configuration Release --filter-trait "Category=Quarantined" --ignore-exit-code 8 --results-directory ./TestResults/quarantine --report-xunit-trx
@@ -81,7 +85,7 @@ Use a lane table whenever an exact lane cannot run locally:
 
 | Lane | Required command | Local result | Blocker timing | Fallback evidence | CI authority |
 | --- | --- | --- | --- | --- | --- |
-| Solution default | `DiffEngine_Disabled=true dotnet test --solution Hexalith.FrontComposer.slnx --filter-not-trait "Category=Performance" --filter-not-trait "Category=e2e-palette" --filter-not-trait "Category=NightlyProperty" --filter-not-trait "Category=Quarantined"` | Passed / Failed / Blocked with exact blocker | Before test execution / before browser assertions / inside test body / N/A | Focused MTP project lane, typecheck, bUnit, or N/A | Required / Advisory / Not applicable |
+| Solution default | `DiffEngine_Disabled=true dotnet test --solution Hexalith.FrontComposer.slnx --filter-not-trait "Category=GovernanceBuild" --filter-not-trait "Category=Performance" --filter-not-trait "Category=e2e-palette" --filter-not-trait "Category=NightlyProperty" --filter-not-trait "Category=Quarantined"` | Passed / Failed / Blocked with exact blocker | Before test execution / before browser assertions / inside test body / N/A | Focused MTP project lane, typecheck, bUnit, or N/A | Required / Advisory / Not applicable |
 
 Use these terms consistently:
 
@@ -167,7 +171,7 @@ python3 eng/dependency_graph.py --root . diff --event push \
   --event-base "$(git rev-parse HEAD^)" --candidate "$(git rev-parse HEAD)"
 
 # The C# Governance lane that consumes the above.
-DiffEngine_Disabled=true dotnet test --project tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter-trait "Category=Governance"
+DiffEngine_Disabled=true dotnet test --project tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter-trait "Category=Governance" --filter-not-trait "Category=GovernanceBuild"
 ```
 
 `eng/dependency-graph-policy.json` (schema `hexalith.dependency-graph-policy.v1`) is the single

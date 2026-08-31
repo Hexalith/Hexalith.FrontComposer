@@ -122,7 +122,7 @@ jobs:
       - name: 'Gate 2b: Infrastructure governance and telemetry contracts'
         env:
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter-trait "Category=Governance" --ignore-exit-code 8 --results-directory ./TestResults/governance --report-xunit-trx
+        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter-trait "Category=Governance" --filter-not-trait "Category=GovernanceBuild" --ignore-exit-code 8 --results-directory ./TestResults/governance --report-xunit-trx
 
       - name: 'Gate 2b: Verify Governance MTP evidence'
         run: >-
@@ -130,6 +130,23 @@ jobs:
           --results-dir ./TestResults/governance
           --minimum-trx-files 1
           --require-tests
+
+      # Live no-incremental solution builds must never overlap solution-wide test modules. This
+      # Shell-only lane runs the two cached analyzer-policy builds once and authenticates nonzero
+      # MTP evidence independently of the ordinary Governance/default result trees.
+      - name: 'Gate 2b: Analyzer governance build proofs'
+        env:
+          DiffEngine_Disabled: true
+        run: dotnet test --project tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --no-build --filter-trait "Category=GovernanceBuild" --results-directory ./TestResults/governance-build --report-xunit-trx
+
+      - name: 'Gate 2b: Verify analyzer governance build MTP evidence'
+        run: >-
+          python3 .github/scripts/ci_governance.py validate-mtp-evidence
+          --results-dir ./TestResults/governance-build
+          --expected-trx-files 1
+          --require-tests
+          --expected-test Hexalith.FrontComposer.Shell.Tests.Governance.AnalyzerPolicyGovernanceTests.AnalyzerPolicy_ActivatedReleaseBuild_MatchesForcedRecommendedCandidate
+          --expected-test Hexalith.FrontComposer.Shell.Tests.Governance.AnalyzerPolicyGovernanceTests.AnalyzerPolicy_Story1122RecordedProjects_RemainRecommendedClean
 
       - name: 'Gate 2b: Release suppression lifecycle tests'
         run: python3 -m unittest tests/eng/test_pack_release_packages.py tests/eng/test_release_prepublish.py
@@ -234,7 +251,8 @@ jobs:
       #
       # Story 3-7 D6: Gate 3 is split into three lanes so Story 3-4 closure can gate on
       # `e2e-palette` independently of latency/perf variance:
-      #   - Gate 3a (default): excludes Performance, e2e-palette, NightlyProperty, and Quarantined traits.
+      #   - Gate 3a (default): excludes GovernanceBuild, Performance, e2e-palette,
+      #     NightlyProperty, and Quarantined traits.
       #   - Gate 3b (palette): selects the Category=e2e-palette trait (Story 3-7 T1 — bUnit-level flow gate).
       #   - Gate 3c (perf bench): selects the Category=Performance trait (Story 1-8 + Story 3-7 T2 BDN bench).
       # Palette/performance lanes remain advisory while Story 3-7 stabilizes browser and latency
@@ -255,7 +273,7 @@ jobs:
           # DIVERGENCE 2: FrontComposer has 16+ Verify .verified.txt snapshot files.
           # Without this env var, a snapshot mismatch launches a diff tool and hangs the CI runner.
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter-not-trait "Category=Performance" --filter-not-trait "Category=e2e-palette" --filter-not-trait "Category=NightlyProperty" --filter-not-trait "Category=Quarantined" --results-directory ./TestResults/default --report-xunit-trx --coverage --coverage-output-format cobertura
+        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter-not-trait "Category=GovernanceBuild" --filter-not-trait "Category=Performance" --filter-not-trait "Category=e2e-palette" --filter-not-trait "Category=NightlyProperty" --filter-not-trait "Category=Quarantined" --results-directory ./TestResults/default --report-xunit-trx --coverage --coverage-output-format cobertura
 
       - name: 'Gate 3a: Verify default MTP evidence'
         run: >-
