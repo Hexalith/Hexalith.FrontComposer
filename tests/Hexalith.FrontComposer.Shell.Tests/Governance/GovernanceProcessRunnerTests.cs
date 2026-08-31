@@ -58,14 +58,14 @@ public sealed class GovernanceProcessRunnerTests
             exception.Message.ShouldContain("exceeded");
             exception.Message.ShouldContain("stdout-before-wait");
             exception.Message.ShouldContain("stderr-before-wait");
-            int childPid = await ReadChildPidAsync(childPidPath).ConfigureAwait(true);
+            int childPid = await WaitForChildPidAsync(childPidPath).ConfigureAwait(true);
             (await ProcessExitedAsync(childPid).ConfigureAwait(true))
                 .ShouldBeTrue($"deadline cleanup left child process {childPid} running");
         }
         finally
         {
             CleanupChild(childPidPath);
-            Directory.Delete(temporaryRoot, recursive: true);
+            DeleteTemporaryRoot(temporaryRoot);
         }
     }
 
@@ -98,7 +98,7 @@ public sealed class GovernanceProcessRunnerTests
         finally
         {
             CleanupChild(childPidPath);
-            Directory.Delete(temporaryRoot, recursive: true);
+            DeleteTemporaryRoot(temporaryRoot);
         }
     }
 
@@ -131,12 +131,15 @@ public sealed class GovernanceProcessRunnerTests
 
             stopwatch.Stop();
             exception.Message.ShouldContain("redirected pipe drainage exceeded");
-            stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(8));
+            // The bound this proves is "terminates" against a 60-second detached sleep, not a tight
+            // latency budget. 500 ms deadline plus the 5-second cleanup grace left barely 2.5
+            // seconds of slack on a loaded runner, which is a flake, not a stronger assertion.
+            stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(20));
         }
         finally
         {
             CleanupChild(childPidPath);
-            Directory.Delete(temporaryRoot, recursive: true);
+            DeleteTemporaryRoot(temporaryRoot);
         }
     }
 
@@ -173,7 +176,7 @@ public sealed class GovernanceProcessRunnerTests
             windows.ArgumentList.Add(
                 "Write-Output 'stdout-before-wait'; "
                 + "[Console]::Error.WriteLine('stderr-before-wait'); "
-                + "$child = Start-Process -FilePath $env:ComSpec -ArgumentList '/d /c ping -t 127.0.0.1 ^>nul' -PassThru; "
+                + "$child = Start-Process -FilePath $env:ComSpec -ArgumentList '/d /c ping -t 127.0.0.1 >nul' -PassThru; "
                 + "Set-Content -NoNewline -Path $env:FC_GOVERNANCE_CHILD_PID_PATH -Value $child.Id; "
                 + "Wait-Process -Id $child.Id");
             windows.Environment["FC_GOVERNANCE_CHILD_PID_PATH"] = childPidPath;
@@ -243,6 +246,23 @@ public sealed class GovernanceProcessRunnerTests
         }
 
         return false;
+    }
+
+    private static void DeleteTemporaryRoot(string temporaryRoot)
+    {
+        try
+        {
+            Directory.Delete(temporaryRoot, recursive: true);
+        }
+        catch (IOException)
+        {
+            // A surviving child can still hold a handle under the directory. That is the condition
+            // the assertions above report; cleanup must not overwrite it with its own exception.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Same rationale: best-effort cleanup of a per-test temporary directory.
+        }
     }
 
     private static void CleanupChild(string childPidPath)

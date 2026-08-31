@@ -141,6 +141,29 @@ deferred:
   - `low` `patch` Made the EditorConfig diagnosticIds/property comparison `Ordinal`, matching the canonical parity key it feeds.
   - `low` `patch` Replaced the tautological packaged-consumer isolation assertion with a real per-leg freshness proof, asserted the generated root exists before enumerating it, and bound the consumer TFM to one constant.
 
+### 2026-08-31 — Review pass
+- intent_gap: 0
+- bad_spec: 0
+- patch: 15: (high 1, medium 4, low 10)
+- defer: 0
+- reject: 23: (high 0, medium 3, low 20)
+- addressed_findings:
+  - `high` `patch` Bound each cached solution build to the argument vector that produced it: the two adjacent `Lazy` initializers differ by one token, and nothing stopped a slip from making `MatchesForcedRecommendedCandidate` compare a build against itself and pass.
+  - `medium` `patch` Sized the heavy-build deadline to the CI job it runs in: 900s per build across two builds could never fire inside `build-and-test`'s `timeout-minutes: 20`, so the fail-closed timeout was unreachable and an undiagnosable job kill would win.
+  - `medium` `patch` Took the shared build cache off `TestContext.Current.CancellationToken`, which donated whichever heavy fact touched the `Lazy` first its token to the other and would cache a cancelled task permanently.
+  - `medium` `patch` Closed the editorconfig warning-control fail-open: a property that is not `dotnet_diagnostic.<id>.severity` skipped the diagnosticIds agreement check entirely and accepted any payload.
+  - `medium` `patch` Pinned `GovernanceBuild` to the one project the heavy lane runs; the trait is excluded solution-wide but selected only in Shell.Tests, and the reflection pin sees only that assembly, so the trait elsewhere would execute in no lane at all.
+  - `low` `patch` Scoped the identity-allowlist regex to the evidence step and normalized reflection's nested-type `+` to the `.` spelling MTP and the workflow use.
+  - `low` `patch` Removed the unreachable `SymbolKind.Namespace` branch from the CA1707 predicate; namespaces are inventoried by their own syntax branch, which returns before any symbol is resolved.
+  - `low` `patch` Stopped the unexpected-field sweep from firing on an unresolved shape, where it reported every legitimately required field as unexpected and buried the real diagnostic.
+  - `low` `patch` Gave the deadline runner test the same tolerant PID poll its sibling cancellation test uses, instead of a strict existence assertion that races a slow child.
+  - `low` `patch` Guarded the temporary-root deletion so a surviving child's handle cannot replace the assertion message that reports it.
+  - `low` `patch` Widened the detached pipe-holder bound from 8s to 20s: 500ms plus the 5s cleanup grace left 2.5s of slack, which is a flake rather than a stronger claim about a 60s sleep.
+  - `low` `patch` Fixed the Windows long-running child, where cmd reads `^>` as a literal `>` and turned the redirection into a bad ping argument.
+  - `low` `patch` Removed a stray double blank line in the packaged-consumer matrix that `git diff --check` does not catch.
+  - `low` `patch` Added the modified `CiGovernanceTests` class to the Verification commands; it was changed by this story but no listed lane ran it.
+  - `low` `patch` Corrected the stale identifier-seal figures recorded in the Verification results, which named a candidate-index run rather than the committed seal.
+
 ## Design Notes
 
 The heavy trait is additive to class-level `Governance`: existing lanes explicitly exclude it, while a Shell-project-only blocking step selects it. Cache failures as evidence rather than retrying. Canonicalize scalar rows back to their existing `msbuild|path|property|value` keys so schema clarity does not alter policy parity.
@@ -173,16 +196,19 @@ The heavy trait is additive to class-level `Governance`: existing lanes explicit
 - `DiffEngine_Disabled=true tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Release/net10.0/Hexalith.FrontComposer.SourceTools.Tests -noLogo -noColor -parallel none -method Hexalith.FrontComposer.SourceTools.Tests.Integration.PackagedAnalyzerConsumerTests.PackagedAnalyzer_ContractsOnlyPayload_GeneratedShellConsumerCompiles` -- expected: Debug and Release package-consumer matrix passes.
 - `git diff --check` -- expected: no whitespace errors; no `.bmad-loop` ledger changes.
 - `python3 -m unittest tests/eng/test_ci_governance.py tests/eng/test_release_prepublish.py` -- expected: exact-identity evidence and release filter tests pass.
+- `DiffEngine_Disabled=true tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests -noLogo -noColor -parallel none -class Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests` -- expected: every workflow/orchestrator pin passes; the EventStore gitlink fact is the one recorded concurrent red.
 - Temporary candidate-index inventory/whitespace checks -- expected: the final tracked `tests/**` file set matches the CA1707 seal and every tracked/untracked reviewed file is whitespace-clean without touching the real index.
 
-**Results (2026-08-31):**
-- Final Release solution build passed in 19.30s with 0 warnings and 0 errors; the focused Shell test-project rebuild also passed with 0 warnings and 0 errors.
-- Isolated `GovernanceBuild` MTP lane passed 2/2 in 56.307s; the evidence validator accepted one TRX containing exactly the two allowlisted identities.
-- Full `AnalyzerPolicyGovernanceTests` direct lane passed 7/7 in 92.524s against a temporary final-candidate index.
-- `GovernanceProcessRunnerTests` passed 5/5 in 9.152s, including caller cancellation and a detached pipe-holder cleanup bound.
-- Packaged analyzer consumer matrix passed 1/1 in 14.092s, exercising clean Debug and Release generated output plus both CA1822 contrasts from Release-packed inputs.
-- Focused CI governance command/evidence facts passed 2/2; the final Python governance/release suite passed 21/21 in 2.930s.
-- The candidate-index CA1707 seal passed at 3,274 declarations with SHA-256 `45a91360dadfaae47984ff873d27fed8810d3c9ad97cadfade10b11156cf5e7c`; `.bmad-loop` remained unchanged.
+**Results (2026-08-31, follow-up review pass):**
+- Release solution build passed with 0 warnings and 0 errors (27.76s cold, 8.11s incremental after the final patch).
+- Full `AnalyzerPolicyGovernanceTests` direct lane passed 8/8 in 56.005s, including both heavy solution builds under the new 420s per-build deadline.
+- `GovernanceProcessRunnerTests` passed 5/5 in 9.211s after the widened detached-pipe bound.
+- `CiGovernanceTests` ran 80 tests with 1 failure: only `EventStoreRuntimeIdentityPinsOwnerApprovedTupleAndTruthfulDriftEvidence`, the concurrent EventStore gitlink drift already recorded in `deferred`. Both new `GovernanceBuild` pins passed.
+- Isolated `GovernanceBuild` MTP lane passed 2/2 in 27.914s; `validate-mtp-evidence` returned `ok: true` against exactly the two allowlisted identities.
+- Packaged analyzer consumer matrix passed 1/1 in 10.768s across the Debug and Release legs.
+- `python3 -m unittest tests/eng/test_ci_governance.py tests/eng/test_release_prepublish.py` passed 23/23 in 2.357s.
+- The CA1707 seal was resealed to 3,277 declarations, SHA-256 `94794758035e3c26ba7cbef15a7d700ce981e823ae6d86ae209f82add88127e3`, for the one new underscore-bearing public test method; `AnalyzerPolicy_IdentifierInventory_MatchesSeal` then passed.
+- `git diff --check` reported no whitespace errors in tracked source; `.bmad-loop` and the deferred-work ledger were not modified.
 
 ## Documented Unrelated Changes
 
@@ -194,41 +220,31 @@ Status: done
 
 ### Summary
 
-Follow-up review pass over the analyzer-governance reliability change (baseline `d738598b`, delivery `1610415e`). No intent gap and no spec defect: the implementation matches the frozen contract. Thirteen patches were applied, three of them closing fail-open holes in guards this story itself introduced — the Release-membership check accepted wildcard-configuration disables, the MTP identity allowlist authenticated test names without outcomes, and the argument-level guards that kept the "forced-Recommended" leg honest were lost with the deleted thirteen-project loop.
+Follow-up review pass over the analyzer-governance reliability change (baseline `d738598b`, delivered by `1610415e` and `d0dbc2ce`). No intent gap and no spec defect: the implementation still matches the frozen contract. Fifteen patches were applied. The one high-severity finding is a verification hole this story opened: moving the two solution builds into adjacent static `Lazy` fields left nothing binding either cached result to the command that produced it, so a one-token slip between the two initializers would have made the forced-vs-activated comparison a self-comparison that passes. Four medium patches close a deadline that could never fire inside its own CI job, a shared cache that inherited one test's cancellation token, an editorconfig warning-control shape that failed open on an unrecognized property, and a heavy trait that would have silently executed in no lane at all if applied outside Shell.Tests.
 
 ### Files Changed
 
-- `.github/scripts/ci_governance.py` — the identity allowlist now also requires passing outcomes, and the per-test roll-up is scoped to allowlisted lanes.
-- `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json` — resealed the CA1707 test inventory to 3,276 declarations for the two new public test methods.
-- `_bmad-output/implementation-artifacts/spec-analyzer-governance-reliability.md` — review triage, deferrals, unrelated-change declaration, and this result.
-- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs` — parsed Release-disabling solution tokens correctly, restored the forced/canonical argument guards, gave solution builds their own deadline, replaced the source-control shape check with a census-agreement invariant, and anchored the synthetic inventory count.
-- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs` — reflection fact binding the `GovernanceBuild` trait set to the workflow identity allowlist.
-- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/GovernanceProcessRunner.cs` — observed the abandoned drain task and documented the completion source.
-- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/GovernanceProcessRunnerTests.cs` — working Windows PID handoff and an explicit skip for the POSIX-only pipe-holder proof.
-- `tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/PackagedAnalyzerConsumerTests.cs` — per-leg freshness proof replacing a tautological assertion; consumer TFM bound to one constant.
-- `tests/ci-governance/fixtures/mtp-quarantine/heavy-pass/module-heavy.trx`, `.../heavy-skipped/module-heavy.trx` — new fixtures for the outcome gate.
-- `tests/eng/test_ci_governance.py` — facts for outcome authentication and roll-up scoping.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs` — cached builds now carry their command line and are asserted per leg; the shared build runs under `CancellationToken.None`; the per-build deadline is 420s; unrecognized editorconfig properties are rejected; the unexpected-field sweep no longer fires on an unresolved shape; the dead namespace branch is gone.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs` — the identity-allowlist pin is scoped to its evidence step and normalizes nested-type spelling; a new source-level fact pins `GovernanceBuild` to the Shell.Tests project.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/GovernanceProcessRunnerTests.cs` — tolerant PID poll in the deadline test, guarded temporary-root cleanup, a realistic detached-pipe bound, and a working Windows redirection.
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/PackagedAnalyzerConsumerTests.cs` — removed a stray double blank line.
+- `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json` — resealed the CA1707 test inventory to 3,277 declarations for the one new public test method.
+- `_bmad-output/implementation-artifacts/spec-analyzer-governance-reliability.md` — triage log, the added `CiGovernanceTests` verification lane, refreshed results, and this section.
 
 ### Review Findings
 
-- Applied 13 patches: 3 high, 5 medium, 5 low.
-- Deferred 2 pre-existing medium findings (untraited in-lane project rebuilds; the EventStore gitlink pin red).
-- Rejected 19 findings as incorrect, already fail-closed, already ledgered, or unchanged pre-existing behavior.
-- Follow-up review recommendation: `true`; high-severity patches were applied and the score is `3 x 5 + 5 = 20`.
+- Applied 15 patches: 1 high, 4 medium, 10 low.
+- Deferred 0 new findings; the three existing `deferred` entries were left exactly as recorded.
+- Rejected 23 findings. The substantive rejections: argparse's `append` action copies its default (not the classic mutable-default bug); the duplicate-identity path in the evidence gate fails closed, not open, and both pinned proofs are `[Fact]`s; the outcome check is already constrained by the identity equality that precedes it; the synthetic inventory compilation is declaration-based, so missing metadata references cannot move the seal; and excluding `GovernanceBuild` from release prepublication is correct rather than a hole — a destructive `--no-incremental` solution rebuild in the middle of a `--no-build` artifact validation would invalidate the very artifacts being validated, and Gate 2b remains blocking on the same commit.
+- Follow-up review recommendation: `true`; a high-severity patch was applied and the score is `3 x 4 + 10 = 22`.
 
 ### Verification
 
-- `dotnet build Hexalith.FrontComposer.slnx -c Release --no-restore -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=4.0.0`: passed, 0 warnings and 0 errors (8.79s incremental; the focused Shell.Tests rebuild also passed 0/0 in 25.01s).
-- Full `AnalyzerPolicyGovernanceTests` direct lane: 8/8 passed in 51.689s (7 prior facts plus the restored argument guard).
-- Isolated `GovernanceBuild` MTP lane: 2/2 passed in 28.483s, one TRX; `validate-mtp-evidence` returned `ok: true` against the two allowlisted identities with the new outcome check active.
-- `GovernanceProcessRunnerTests`: 5/5 passed in 9.390s.
-- Packaged analyzer consumer matrix: 1/1 passed in 10.270s across the Debug and Release legs.
-- `CiGovernanceTests`: 79 total, 1 failed — only the deferred EventStore gitlink pin.
-- `python3 -m unittest tests/eng/test_ci_governance.py tests/eng/test_release_prepublish.py`: 23/23 passed in 2.377s.
-- `git diff --check`: clean. `.bmad-loop` and the deferred-work ledger were not edited by this pass.
+All commands in `## Verification` were re-run after the patches; results are recorded there. Summary: Release solution build 0 warnings / 0 errors; `AnalyzerPolicyGovernanceTests` 8/8; `GovernanceProcessRunnerTests` 5/5; isolated `GovernanceBuild` MTP lane 2/2 with `ok: true` evidence; packaged consumer matrix 1/1; Python governance/release suites 23/23; `CiGovernanceTests` 79/80 with the single failure being the already-deferred EventStore gitlink drift.
 
 ### Residual Risks
 
-- The CA1707 seal moved to 3,276 declarations; any further public underscore-bearing test method requires an intentional reseal, which is the designed cost of the contract.
-- `SolutionBuildTimeoutMilliseconds` is a judgement call (900s against a ~20s local build); if a CI runner ever exceeds it the heavy lane fails closed with a timeout rather than a wrong answer.
-- The Windows branches of the process-runner tests are corrected by inspection only; CI runs Linux, so they remain unexercised on that platform.
+- The per-build deadline moved from 900s to 420s so it can fire inside `build-and-test`'s 20-minute budget. That is roughly 20x the ~28s local build; a pathologically slow runner would now fail closed with a timeout rather than be killed by the job, which is the intended trade but is a tighter bound than before.
+- `release_prepublish.py` no longer runs the forced-Recommended solution build proof, because the heavy facts are excluded there and no replacement lane can run them without rebuilding over the artifacts under validation. The proof remains blocking in CI Gate 2b on the same commit, so this is redundancy lost rather than coverage lost — but the release orchestrator is now dependent on CI for that evidence.
+- The Windows branches of the process-runner tests remain corrected by inspection only; CI runs Linux, so they are still unexercised.
+- The CA1707 seal is now 3,277 declarations; any further public underscore-bearing test declaration requires an intentional reseal, which is the designed cost of the contract.

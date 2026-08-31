@@ -32,7 +32,10 @@ public sealed class CiGovernanceTests {
         string root = RepositoryRoot();
         string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
 
-        string[] allowlisted = [.. Regex.Matches(quality, @"--expected-test\s+(?<identity>\S+)")
+        // Harvest only this lane's allowlist. Scanning the whole workflow would couple this pin to
+        // any future step that pins identities for an unrelated trait.
+        string evidenceStep = ExtractNamedStep(quality, "Gate 2b: Verify analyzer governance build MTP evidence");
+        string[] allowlisted = [.. Regex.Matches(evidenceStep, @"--expected-test\s+(?<identity>\S+)")
             .Select(match => match.Groups["identity"].Value)
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)];
@@ -44,7 +47,9 @@ public sealed class CiGovernanceTests {
                 && attribute.ConstructorArguments.Count == 2
                 && (string?)attribute.ConstructorArguments[0].Value == "Category"
                 && (string?)attribute.ConstructorArguments[1].Value == "GovernanceBuild"))
-            .Select(static method => $"{method.DeclaringType!.FullName}.{method.Name}")
+            // Reflection spells a nested type `Outer+Inner`; MTP and the workflow allowlist spell
+            // it `Outer.Inner`, so an unnormalized comparison would fail opaquely.
+            .Select(static method => $"{method.DeclaringType!.FullName!.Replace('+', '.')}.{method.Name}")
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)];
 
@@ -52,6 +57,33 @@ public sealed class CiGovernanceTests {
         traited.ShouldBe(
             allowlisted,
             "every GovernanceBuild fact must be named by a quality.yml --expected-test allowlist entry, and vice versa");
+    }
+
+    /// <summary>
+    /// `Category=GovernanceBuild` is excluded solution-wide but selected only by the Shell-project
+    /// heavy lane, so the trait applied anywhere else would run in no lane at all — and the
+    /// reflection pin above, scoped to this assembly, would not see it. Pin the trait's home project
+    /// at the source level, which is the only view that spans the other test assemblies.
+    /// </summary>
+    [Fact]
+    public void GovernanceBuildTrait_IsDeclaredOnlyInTheProjectTheHeavyLaneRuns() {
+        string root = RepositoryRoot();
+        string heavyLaneProject = Path.Combine(root, "tests", "Hexalith.FrontComposer.Shell.Tests")
+            + Path.DirectorySeparatorChar;
+
+        string[] strays = [.. Directory
+            .EnumerateFiles(Path.Combine(root, "tests"), "*.cs", SearchOption.AllDirectories)
+            .Where(file => !file.StartsWith(heavyLaneProject, StringComparison.Ordinal))
+            .Where(static file => !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                && !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .Where(static file => Regex.IsMatch(
+                File.ReadAllText(file),
+                @"Trait\s*\(\s*""Category""\s*,\s*""GovernanceBuild""\s*\)"))
+            .Order(StringComparer.Ordinal)];
+
+        strays.ShouldBeEmpty(
+            "GovernanceBuild is selected only by the Shell.Tests heavy lane; the trait outside that "
+            + "project is excluded everywhere and selected nowhere");
     }
 
     [Fact]

@@ -31,8 +31,11 @@ public sealed class AnalyzerPolicyGovernanceTests
 
     // The heavy proofs bound one whole-solution `--no-incremental` Release build, not the
     // single-project builds `DotnetTimeoutMilliseconds` was sized for, so they get their own
-    // deadline. A shared CI runner is several times slower than the ~20s local build.
-    private const int SolutionBuildTimeoutMilliseconds = 900_000;
+    // deadline. A shared CI runner is several times slower than the ~20s local build, but the
+    // bound must stay small enough to fire: both heavy proofs share one `build-and-test` job
+    // whose `timeout-minutes: 20` in `.github/workflows/quality.yml` also covers every other
+    // gate. A deadline the job cannot outlive would be replaced by an undiagnosable job kill.
+    private const int SolutionBuildTimeoutMilliseconds = 420_000;
     private const int GitTimeoutMilliseconds = 60_000;
 
     private static readonly TimeSpan DotnetTimeout = TimeSpan.FromMilliseconds(DotnetTimeoutMilliseconds);
@@ -54,11 +57,11 @@ public sealed class AnalyzerPolicyGovernanceTests
         "evidence",
     ];
 
-    private static readonly Lazy<Task<(int ExitCode, string Output)>> _canonicalReleaseBuild = new(
+    private static readonly Lazy<Task<SolutionBuildResult>> _canonicalReleaseBuild = new(
         () => RunSolutionBuildAsync(forceRecommended: false),
         LazyThreadSafetyMode.ExecutionAndPublication);
 
-    private static readonly Lazy<Task<(int ExitCode, string Output)>> _forcedRecommendedReleaseBuild = new(
+    private static readonly Lazy<Task<SolutionBuildResult>> _forcedRecommendedReleaseBuild = new(
         () => RunSolutionBuildAsync(forceRecommended: true),
         LazyThreadSafetyMode.ExecutionAndPublication);
 
@@ -541,10 +544,11 @@ public sealed class AnalyzerPolicyGovernanceTests
         ValidateStory1122SolutionMembership(XDocument.Load(Path.Combine(root, "Hexalith.FrontComposer.slnx")))
             .ShouldBeEmpty();
 
-        (int exitCode, string output) = await _forcedRecommendedReleaseBuild.Value.ConfigureAwait(true);
+        SolutionBuildResult forced = await _forcedRecommendedReleaseBuild.Value.ConfigureAwait(true);
+        AssertForcedRecommendedCommand(forced);
         AssertZeroWarningZeroErrorBuild(
-            exitCode,
-            output,
+            forced.ExitCode,
+            forced.Output,
             "forced-Recommended Release solution build");
     }
 
@@ -570,15 +574,23 @@ public sealed class AnalyzerPolicyGovernanceTests
     [Trait("Category", "GovernanceBuild")]
     public async Task AnalyzerPolicy_ActivatedReleaseBuild_MatchesForcedRecommendedCandidate()
     {
-        (int canonicalExitCode, string canonicalOutput) = await _canonicalReleaseBuild.Value.ConfigureAwait(true);
-        (int forcedExitCode, string forcedOutput) = await _forcedRecommendedReleaseBuild.Value.ConfigureAwait(true);
+        SolutionBuildResult canonical = await _canonicalReleaseBuild.Value.ConfigureAwait(true);
+        SolutionBuildResult forced = await _forcedRecommendedReleaseBuild.Value.ConfigureAwait(true);
+
+        // Both legs are cached in adjacent, near-identical fields. Without binding each result to
+        // the command that produced it, a one-token slip in either initializer would make this
+        // comparison a self-comparison that passes while proving nothing.
+        AssertCanonicalCommand(canonical);
+        AssertForcedRecommendedCommand(forced);
+        canonical.Command.ShouldNotBe(forced.Command);
+
         (string canonicalWarnings, string canonicalErrors) = AssertZeroWarningZeroErrorBuild(
-            canonicalExitCode,
-            canonicalOutput,
+            canonical.ExitCode,
+            canonical.Output,
             "canonical Release solution build");
         (string forcedWarnings, string forcedErrors) = AssertZeroWarningZeroErrorBuild(
-            forcedExitCode,
-            forcedOutput,
+            forced.ExitCode,
+            forced.Output,
             "forced-Recommended Release solution build");
 
         // After central activation the forced candidate is redundant for severity, but the summaries
@@ -611,6 +623,22 @@ public sealed class AnalyzerPolicyGovernanceTests
                 && !argument.StartsWith("-p:WarningsNotAsErrors=", StringComparison.Ordinal)
                 && !argument.StartsWith("-p:NoWarn=", StringComparison.Ordinal)).ToArray());
         }
+    }
+
+    private static void AssertCanonicalCommand(SolutionBuildResult result)
+    {
+        result.Command.ShouldBe(
+            string.Join(' ', SolutionBuildArguments(forceRecommended: false)),
+            "the canonical leg must be the build launched without -p:AnalysisMode=Recommended");
+        result.Command.ShouldNotContain("-p:AnalysisMode=Recommended");
+    }
+
+    private static void AssertForcedRecommendedCommand(SolutionBuildResult result)
+    {
+        result.Command.ShouldBe(
+            string.Join(' ', SolutionBuildArguments(forceRecommended: true)),
+            "the forced leg must be the build launched with -p:AnalysisMode=Recommended");
+        result.Command.ShouldContain("-p:AnalysisMode=Recommended");
     }
 
     private static string[] ValidateDocument(JsonObject ledger)
@@ -858,10 +886,16 @@ public sealed class AnalyzerPolicyGovernanceTests
                     RegexOptions.CultureInvariant);
                 // Ordinal throughout: the canonical parity key is built from these exact strings,
                 // so a case-only difference would pass here and still drift the key.
-                if (diagnosticProperty.Success
-                    && !diagnosticIds.SequenceEqual(
-                        [diagnosticProperty.Groups["id"].Value],
-                        StringComparer.Ordinal))
+                if (!diagnosticProperty.Success)
+                {
+                    // Skipping the agreement check for an unrecognized property would accept any
+                    // diagnosticIds payload beside it. An editorconfig warning control is a
+                    // per-diagnostic severity row or it is not this shape.
+                    errors.Add($"unsupported editorconfig warning-control property for {key}: {property}");
+                }
+                else if (!diagnosticIds.SequenceEqual(
+                    [diagnosticProperty.Groups["id"].Value],
+                    StringComparer.Ordinal))
                 {
                     errors.Add($"diagnosticIds/property mismatch for {key}");
                 }
@@ -2063,11 +2097,6 @@ public sealed class AnalyzerPolicyGovernanceTests
 
     private static bool IsCa1707PublicDeclaration(ISymbol symbol)
     {
-        if (symbol.Kind == SymbolKind.Namespace)
-        {
-            return true;
-        }
-
         if (symbol.Kind is SymbolKind.Parameter or SymbolKind.TypeParameter)
         {
             return symbol.ContainingSymbol is not null && IsCa1707PublicDeclaration(symbol.ContainingSymbol);
@@ -2352,6 +2381,13 @@ public sealed class AnalyzerPolicyGovernanceTests
             "pragma" or "suppression-attribute" or "emitter-pragma" => ["paths", "entryCount", "diagnosticIds"],
             _ => [],
         };
+        if (shapeFields.Length == 0)
+        {
+            // The shape itself is already reported as unsupported. Sweeping fields against an empty
+            // allow-list would additionally flag every legitimately required field as unexpected.
+            return;
+        }
+
         HashSet<string> allowed = new(StringComparer.Ordinal)
         {
             "key",
@@ -2495,11 +2531,26 @@ public sealed class AnalyzerPolicyGovernanceTests
     private static string Normalize(string path)
         => path.Replace('\\', '/');
 
-    private static Task<(int ExitCode, string Output)> RunSolutionBuildAsync(bool forceRecommended)
-        => RunDotnetResultAsync(
+    /// <summary>
+    /// One cached whole-solution build, carrying the argument vector it was launched with so the
+    /// consuming proofs can bind their claim ("canonical" or "forced-Recommended") to the command
+    /// that produced the summary instead of trusting the field they awaited.
+    /// </summary>
+    private static async Task<SolutionBuildResult> RunSolutionBuildAsync(bool forceRecommended)
+    {
+        string[] arguments = SolutionBuildArguments(forceRecommended);
+
+        // The two heavy facts share this result, so it must not inherit whichever test happened to
+        // force the `Lazy` first. Binding the build to that test's `TestContext` token would let one
+        // test's cancellation surface inside the other, and would cache the cancelled task forever.
+        // `SolutionBuildTimeout` remains the only bound, which is what the shared evidence needs.
+        (int exitCode, string output) = await RunDotnetResultAsync(
             RepositoryRoot(),
-            SolutionBuildArguments(forceRecommended),
-            SolutionBuildTimeout);
+            arguments,
+            SolutionBuildTimeout,
+            CancellationToken.None).ConfigureAwait(false);
+        return new SolutionBuildResult(exitCode, output, string.Join(' ', arguments));
+    }
 
     private static string[] SolutionBuildArguments(bool forceRecommended)
     {
@@ -2547,10 +2598,17 @@ public sealed class AnalyzerPolicyGovernanceTests
         params string[] arguments)
         => RunDotnetResultAsync(workingDirectory, arguments, DotnetTimeout);
 
-    private static async Task<(int ExitCode, string Output)> RunDotnetResultAsync(
+    private static Task<(int ExitCode, string Output)> RunDotnetResultAsync(
         string workingDirectory,
         string[] arguments,
         TimeSpan deadline)
+        => RunDotnetResultAsync(workingDirectory, arguments, deadline, TestContext.Current.CancellationToken);
+
+    private static async Task<(int ExitCode, string Output)> RunDotnetResultAsync(
+        string workingDirectory,
+        string[] arguments,
+        TimeSpan deadline,
+        CancellationToken cancellationToken)
     {
         ProcessStartInfo startInfo = new()
         {
@@ -2566,6 +2624,12 @@ public sealed class AnalyzerPolicyGovernanceTests
         return await GovernanceProcessRunner.RunAsync(
             startInfo,
             deadline,
-            TestContext.Current.CancellationToken).ConfigureAwait(true);
+            cancellationToken).ConfigureAwait(true);
     }
+
+    /// <summary>
+    /// One shared whole-solution build: its exit code, combined output, and the exact command line
+    /// that produced them.
+    /// </summary>
+    private sealed record SolutionBuildResult(int ExitCode, string Output, string Command);
 }

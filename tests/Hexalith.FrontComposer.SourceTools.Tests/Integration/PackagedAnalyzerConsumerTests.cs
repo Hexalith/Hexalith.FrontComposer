@@ -138,7 +138,6 @@ public sealed partial class CreateOrderCommand
             await VerifyConsumerConfigurationAsync(consumer, configuration).ConfigureAwait(true);
         }
 
-
         string assets = await File.ReadAllTextAsync(Path.Combine(consumer, "obj", "project.assets.json"), TestContext.Current.CancellationToken).ConfigureAwait(true);
         assets.ShouldContain("\"Microsoft.FluentUI.AspNetCore.Components/" + FluentV5Version + "\"");
         assets.ShouldContain("\"Microsoft.FluentUI.AspNetCore.Components.Icons/" + FluentV5Version + "\"");
