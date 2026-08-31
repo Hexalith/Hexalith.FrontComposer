@@ -9328,7 +9328,9 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add
 location: .github/workflows/
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Gate story completion on the mechanical commit-scope report by CI machinery, not workflow convention. evidence: `grep -rn "validate-story-artifacts" .github/workflows/` returns nothing. `quality.yml` Gate 2b runs `python3 -m unittest eng.tests.test_validate_story_artifacts`, and `CiGovernanceTests.StoryArtifactValidatorGate_IsBlockingAndExact` pins exactly that command, so CI proves only that the validator is unbroken. The strict gate itself runs only when an agent follows `step-04-review.md`. Epic 9 retro action F9-06/E9-AI-5 asked to gate story completion on the report. A CI job needs a branch-to-spec resolution convention that does not exist (`fix/9-7-story-scope-evidence` maps to `spec-9-7-...` only by coincidence) plus a skip path for non-story branches that would reintroduce skippability. Human decision 2026-08-25: accept workflow enforcement for 9.7, state the boundary in Design Notes, and design CI enforcement in a successor story.
-status: open
+status: done 2026-08-31
+resolution: closed by human decision: Retain step-04 workflow enforcement as the documented completion boundary and close CI automation as intentionally out of scope.
+decision: 2026-08-31 Keep agent gate — Retain step-04 workflow enforcement as the documented completion boundary and close CI automation as intentionally out of scope.
 
 ### DW-1874: Consider a `misattributed` disposition kind for subject-only false story matches.
 
