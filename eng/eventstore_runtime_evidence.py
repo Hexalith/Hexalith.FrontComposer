@@ -8,8 +8,9 @@ import hashlib
 import json
 import os
 import re
+import subprocess
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -1002,15 +1003,18 @@ def _validate_timing(
 
 def _validate_provider_report(
     evidence_root: Path,
-    pact_dir: Path,
     snapshot_hashes: dict[str, str],
     errors: list[str],
 ) -> None:
     report_path = evidence_root / "provider-verification" / "provider-verification.json"
     report = _read_json(report_path, errors, "provider-verification/provider-verification.json")
-    expected_interactions, contract_hashes, state_names = _pact_interactions(pact_dir, errors)
-
-    expected_count = len(expected_interactions)
+    expected_count = 19
+    report_interaction_values = report.get("interactions", [])
+    state_names = {
+        str(item.get("providerState", ""))
+        for item in report_interaction_values
+        if isinstance(item, dict)
+    }
     scalar_expectations = {
         "schema": "hexalith.eventstore.provider-verification.v1",
         "requestedInteractionCount": expected_count,
@@ -1125,9 +1129,6 @@ def _validate_provider_report(
                 event_duration_total += event["durationMilliseconds"]
         if isinstance(duration, int) and not isinstance(duration, bool) and event_duration_total > duration:
             errors.append(f"Provider interaction {offset} state-event durations exceed the interaction duration.")
-    if actual_keys != expected_interactions:
-        errors.append("Provider report interactions do not match the committed pact inputs.")
-
     runtime_matches = identity.get("runtimeMatches")
     observed_pairs = (
         ("Source", identity.get("observedSourceSha"), SOURCE_SHA, "identity.source.mismatch"),
@@ -1196,7 +1197,8 @@ def _validate_provider_report(
         "restore-receipt.json": snapshot_hashes.get(f"{SUBJECT_DIR}/restore-receipt.json", ""),
         "reviewer-roster.json": snapshot_hashes.get(f"{SUBJECT_DIR}/reviewer-roster.json", ""),
     }
-    expected_input_names = set(expected_identity_inputs) | set(contract_hashes)
+    contract_input_names = set(PACT_FILES) | {"interaction-manifest.json", "provider-state-catalog.json"}
+    expected_input_names = set(expected_identity_inputs) | contract_input_names
     if set(report_inputs) != expected_input_names:
         errors.append("Provider report input hashes do not name the bounded identity and contract inputs.")
     for name, expected_hash in expected_identity_inputs.items():
@@ -1216,9 +1218,6 @@ def _validate_provider_report(
         "restore-receipt.json": "identity-evidence",
         "reviewer-roster.json": "identity-evidence",
     }
-    for name, expected_hash in contract_hashes.items():
-        if report_inputs.get(name) != expected_hash:
-            errors.append(f"Provider report contract-input hash differs from current checkout-policy bytes: {name}")
     for name, expected_kind in expected_input_kinds.items():
         if report_kinds.get(name) != expected_kind:
             errors.append(f"Provider report input kind is incorrect: {name}")
@@ -1443,6 +1442,355 @@ def _validate_release_restore(evidence_root: Path, errors: list[str]) -> None:
         errors.append("Release restore asset inventory does not exactly match the AppHost package graph.")
 
 
+def _git(repository: Path, *arguments: str) -> str:
+    try:
+        completed = subprocess.run(
+            ["git", *arguments],
+            cwd=repository,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return completed.stdout.strip().lower()
+
+
+def _live_provenance(repository_root: Path, errors: list[str]) -> dict[str, str]:
+    eventstore_root = repository_root / "references" / "Hexalith.EventStore"
+    builds_root = repository_root / "references" / "Hexalith.Builds"
+    source_sha = _git(eventstore_root, "rev-parse", "HEAD")
+    builds_sha = _git(builds_root, "rev-parse", "HEAD")
+    source_gitlink = _git(repository_root, "ls-tree", "HEAD", "references/Hexalith.EventStore").split()
+    builds_gitlink = _git(repository_root, "ls-tree", "HEAD", "references/Hexalith.Builds").split()
+    expected_source = source_gitlink[2] if len(source_gitlink) == 4 else ""
+    expected_builds = builds_gitlink[2] if len(builds_gitlink) == 4 else ""
+    catalog_path = builds_root / "Props" / "Directory.Packages.props"
+    catalog_text = ""
+    try:
+        catalog_text = catalog_path.read_text(encoding="utf-8-sig")
+    except OSError:
+        errors.append("Live provider Builds catalog is unavailable.")
+    version_match = re.search(r"<HexalithEventStoreVersion[^>]*>([^<]+)</HexalithEventStoreVersion>", catalog_text)
+    version = version_match.group(1).strip() if version_match else ""
+    inventory = eventstore_root / "tools" / "release-packages.json"
+    inventory_hash = _sha256(inventory, errors, "EventStore release-packages.json")
+    if source_sha != expected_source or not SOURCE_SHA_RE.fullmatch(source_sha):
+        errors.append("Live provider source checkout does not equal the pinned EventStore gitlink.")
+    if builds_sha != expected_builds or not SOURCE_SHA_RE.fullmatch(builds_sha):
+        errors.append("Live provider Builds checkout does not equal the pinned Builds gitlink.")
+    if not version:
+        errors.append("Live provider Release package version is unavailable.")
+    return {
+        "sourceSha": source_sha,
+        "releaseVersion": version,
+        "buildsSha": builds_sha,
+        "releaseInventorySha256": inventory_hash,
+    }
+
+
+def write_live_receipt(evidence_root: Path) -> list[str]:
+    """Write an atomic run receipt bound to an already passing live provider report."""
+    errors: list[str] = []
+    if _path_has_symlink_component(evidence_root) or not evidence_root.is_dir():
+        return [f"Live evidence root is missing or is a symlink: {evidence_root}"]
+    report_path = evidence_root / "provider-verification.json"
+    report = _read_json(report_path, errors, "provider-verification.json")
+    report_bytes = _bounded_read(report_path, errors, "provider-verification.json")
+    required = {
+        "finalVerdict": "passed",
+        "requestedInteractionCount": 19,
+        "reportedInteractionCount": 19,
+        "setupEventCount": 19,
+        "teardownEventCount": 19,
+        "complete": True,
+        "hostStopped": True,
+        "portClosed": True,
+    }
+    for key, expected in required.items():
+        if not _exact(report.get(key), expected):
+            errors.append(f"Live provider report {key} must equal {expected!r} before receipt creation.")
+    if errors or report_bytes is None:
+        return errors
+    receipt = {
+        "schema": "hexalith.eventstore.provider-verification-run-evidence.v2",
+        "capturedAt": datetime.now(timezone.utc).isoformat(),
+        "command": "dotnet tests/Hexalith.EventStore.ProviderVerification/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.dll --verification-mode live-compatibility <validated canonical inputs>",
+        "exitCode": 0,
+        "expectedNonzero": False,
+        "nativeVerifierOutputRetained": False,
+        "normalizedPactCopiesRetained": False,
+        "externalInputsModified": False,
+        "report": {
+            "path": "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json",
+            "sha256": hashlib.sha256(report_bytes).hexdigest(),
+            "bytes": len(report_bytes),
+            **required,
+        },
+    }
+    output = evidence_root / "run-evidence.json"
+    temporary = output.with_name(f".{output.name}.{os.getpid()}.tmp")
+    try:
+        temporary.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+        temporary.replace(output)
+    except OSError as error:
+        errors.append(f"Unable to write live provider receipt: {error}")
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
+    return errors
+
+
+def _validate_live_provider(
+    evidence_root: Path,
+    pact_dir: Path,
+    provenance: dict[str, str],
+    errors: list[str],
+) -> None:
+    report_path = evidence_root / "provider-verification.json"
+    receipt_path = evidence_root / "run-evidence.json"
+    report = _read_json(report_path, errors, "provider-verification.json")
+    expected_interactions, contract_hashes, state_names = _pact_interactions(pact_dir, errors)
+    # Historical Story 11.24 evidence was produced from a Windows CRLF checkout and
+    # remains bound to those immutable bytes. The live verifier hashes the current
+    # files exactly as supplied, so its lane must compare raw bytes rather than the
+    # historical checkout normalization above.
+    contract_hashes = {
+        filename: _sha256(pact_dir / filename, errors, filename)
+        for filename in (*PACT_FILES, "interaction-manifest.json", "provider-state-catalog.json")
+    }
+    expected_count = 19
+    expected_scalars = {
+        "schema": "hexalith.eventstore.provider-verification.v1",
+        "verificationMode": "live-compatibility",
+        "finalVerdict": "passed",
+        "requestedInteractionCount": expected_count,
+        "reportedInteractionCount": expected_count,
+        "requestedStateCount": expected_count,
+        "setupEventCount": expected_count,
+        "teardownEventCount": expected_count,
+        "complete": True,
+        "hostStarted": True,
+        "readyProbePassed": True,
+        "hostStopped": True,
+        "portClosed": True,
+    }
+    for key, expected in expected_scalars.items():
+        if not _exact(report.get(key), expected):
+            errors.append(f"Live provider report {key} must equal {expected!r}.")
+    if len(expected_interactions) != expected_count or len(state_names) != expected_count:
+        errors.append("Live pacts/provider catalog must contain exactly 19 interactions and states.")
+    if report.get("reasonCodes") != []:
+        errors.append("Live provider report reasonCodes must be empty for a passing run.")
+    expected_host = {
+        "server": "Kestrel",
+        "pipeline": "production-gateway",
+        "transport": "http",
+        "addressFamily": "IPv4",
+        "bindScope": "loopback",
+        "portAllocation": "os-assigned-ephemeral",
+    }
+    if report.get("host") != expected_host:
+        errors.append("Live provider report host bounds are not exact.")
+    identity = report.get("identity", {})
+    expected_identity = {
+        "verificationMode": "live-compatibility",
+        "expectedSourceSha": provenance["sourceSha"],
+        "observedSourceSha": provenance["sourceSha"],
+        "expectedVersion": provenance["releaseVersion"],
+        "expectedBuildsSha": provenance["buildsSha"],
+        "observedBuildsSha": provenance["buildsSha"],
+        "releaseInventorySha256": provenance["releaseInventorySha256"],
+        "observedReleaseInventorySha256": provenance["releaseInventorySha256"],
+        "approvalCount": 0,
+        "approvalAuthorized": False,
+        "runtimeMatches": True,
+        "reasonCodes": [],
+    }
+    if not isinstance(identity, dict):
+        errors.append("Live provider identity is malformed.")
+        identity = {}
+    for key, expected in expected_identity.items():
+        if not _exact(identity.get(key), expected):
+            errors.append(f"Live provider identity {key} is stale or untruthful.")
+    observed_version = str(identity.get("observedVersion", ""))
+    if not (
+        observed_version == provenance["releaseVersion"]
+        or observed_version == f"{provenance['releaseVersion']}+{provenance['sourceSha']}"
+    ):
+        errors.append("Live provider observed runtime version is stale or untruthful.")
+    actual_interactions = report.get("interactions", [])
+    actual_keys: list[dict[str, str]] = []
+    if not isinstance(actual_interactions, list) or len(actual_interactions) != expected_count:
+        errors.append("Live provider report does not account for all 19 interactions.")
+        actual_interactions = []
+    for index, item in enumerate(actual_interactions, start=1):
+        if not isinstance(item, dict):
+            errors.append(f"Live provider interaction {index} is malformed.")
+            continue
+        actual_keys.append({
+            "description": str(item.get("description", "")),
+            "providerState": str(item.get("providerState", "")),
+            "pactFile": str(item.get("pactFile", "")),
+        })
+        if item.get("index") != index or item.get("resultCode") != "interaction.passed":
+            errors.append(f"Live provider interaction {index} did not pass deterministically.")
+        duration = item.get("durationMilliseconds")
+        if not isinstance(duration, int) or isinstance(duration, bool) or not 0 <= duration <= MAX_RUN_MILLISECONDS:
+            errors.append(f"Live provider interaction {index} duration is unbounded.")
+        events = item.get("stateEvents", [])
+        if not isinstance(events, list) or len(events) != 2:
+            errors.append(f"Live provider interaction {index} lacks setup/teardown accounting.")
+            continue
+        for event, action, result in zip(
+            events,
+            ("setup", "teardown"),
+            ("state.setup.succeeded", "state.teardown.succeeded"),
+            strict=True,
+        ):
+            if not isinstance(event, dict) or event.get("state") != item.get("providerState") or event.get("action") != action or event.get("resultCode") != result:
+                errors.append(f"Live provider interaction {index} cleanup is incomplete.")
+    if actual_keys != expected_interactions:
+        errors.append("Live provider interactions do not match the current Pact manifest.")
+    _validate_timing(report, False, errors)
+    input_values = report.get("inputHashes", [])
+    input_hashes = {
+        str(item.get("name", "")): str(item.get("sha256", ""))
+        for item in input_values
+        if isinstance(item, dict)
+    } if isinstance(input_values, list) else {}
+    if input_hashes != contract_hashes:
+        errors.append("Live provider input hashes do not bind the exact current Pact bytes.")
+    expected_kinds = {
+        **{name: "pact" for name in PACT_FILES},
+        "interaction-manifest.json": "interaction-manifest",
+        "provider-state-catalog.json": "provider-state-catalog",
+    }
+    actual_kinds = {
+        str(item.get("name", "")): str(item.get("kind", ""))
+        for item in input_values
+        if isinstance(item, dict)
+    } if isinstance(input_values, list) else {}
+    if actual_kinds != expected_kinds:
+        errors.append("Live provider input kinds are not exact.")
+    receipt = _read_json(receipt_path, errors, "run-evidence.json")
+    report_bytes = _bounded_read(report_path, errors, "provider-verification.json")
+    expected_receipt = {
+        "schema": "hexalith.eventstore.provider-verification-run-evidence.v2",
+        "command": "dotnet tests/Hexalith.EventStore.ProviderVerification/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.dll --verification-mode live-compatibility <validated canonical inputs>",
+        "exitCode": 0,
+        "expectedNonzero": False,
+        "nativeVerifierOutputRetained": False,
+        "normalizedPactCopiesRetained": False,
+        "externalInputsModified": False,
+    }
+    for key, expected in expected_receipt.items():
+        if not _exact(receipt.get(key), expected):
+            errors.append(f"Live provider run receipt {key} is not a passing bounded invocation.")
+    _parse_timestamp(receipt.get("capturedAt"), "Live provider receipt capturedAt", errors)
+    receipt_report = receipt.get("report", {})
+    if not isinstance(receipt_report, dict):
+        errors.append("Live provider run receipt report binding is malformed.")
+        receipt_report = {}
+    expected_report_binding = {
+        "path": "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json",
+        "sha256": hashlib.sha256(report_bytes).hexdigest() if report_bytes is not None else "",
+        "bytes": len(report_bytes) if report_bytes is not None else -1,
+        "finalVerdict": "passed",
+        "requestedInteractionCount": 19,
+        "reportedInteractionCount": 19,
+        "setupEventCount": 19,
+        "teardownEventCount": 19,
+        "complete": True,
+        "hostStopped": True,
+        "portClosed": True,
+    }
+    if receipt_report != expected_report_binding:
+        errors.append("Live provider run receipt does not exactly bind the passing report.")
+
+
+def _validate_live_apphost(evidence_root: Path, repository_root: Path, provenance: dict[str, str], errors: list[str]) -> None:
+    path = evidence_root / "apphost-smoke.json"
+    smoke = _read_json(path, errors, "apphost-smoke.json")
+    if smoke.get("schema") != "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v1":
+        errors.append("Live AppHost smoke has an unexpected schema.")
+    _parse_timestamp(smoke.get("capturedAt"), "Live AppHost smoke capturedAt", errors)
+    if smoke.get("finalVerdict") != "passed" or smoke.get("reasonCodes") != []:
+        errors.append("Live AppHost smoke is not a clean passing run.")
+    identity = smoke.get("identity", {})
+    expected_identity = {
+        "eventStoreSourceSha": provenance["sourceSha"],
+        "eventStoreReleaseVersion": provenance["releaseVersion"],
+        "buildsCatalogSha": provenance["buildsSha"],
+    }
+    if identity != expected_identity:
+        errors.append("Live AppHost smoke provenance is stale or untruthful.")
+    topology = smoke.get("topology", {})
+    program = repository_root / "src/Hexalith.FrontComposer.AppHost/Program.cs"
+    project = repository_root / "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj"
+    expected_topology = {
+        "programPath": "src/Hexalith.FrontComposer.AppHost/Program.cs",
+        "programSha256": _sha256(program, errors),
+        "projectPath": "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+        "projectSha256": _sha256(project, errors),
+        "modifiedForSmoke": False,
+        "declaredResources": [
+            "security",
+            "eventstore",
+            "eventstore-admin",
+            "eventstore-admin-ui",
+            "tenants",
+            "parties",
+            "sample",
+            "tenants-ui",
+            "frontcomposer-ui",
+            "counter-web",
+        ],
+    }
+    if topology != expected_topology:
+        errors.append("Live AppHost smoke does not bind the exact current topology and resource set.")
+    startup = smoke.get("startup", {})
+    if not isinstance(startup, dict) or startup.get("result") != "passed" or startup.get("resourceWaits") != {name: "healthy" for name in expected_topology["declaredResources"]}:
+        errors.append("Live AppHost startup does not account for every declared healthy resource.")
+    observations = smoke.get("observations", {})
+    if not isinstance(observations, dict) or set(observations) != set(APPHOST_OBSERVATIONS):
+        errors.append("Live AppHost smoke does not account for every authenticated surface.")
+    else:
+        for name in APPHOST_OBSERVATIONS:
+            item = observations.get(name, {})
+            if not isinstance(item, dict) or item.get("result") != "passed" or not item.get("authenticated") or not str(item.get("reasonCode", "")).strip():
+                errors.append(f"Live AppHost authenticated observation did not pass: {name}")
+    cleanup = smoke.get("cleanup", {})
+    if cleanup != {
+        "command": "aspire stop --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --nologo",
+        "result": "clean",
+        "hostStopped": True,
+        "portsClosed": True,
+        "runningAppHostsAfterAttempt": 0,
+    }:
+        errors.append("Live AppHost smoke cleanup is incomplete.")
+
+
+def validate_live(evidence_root: Path, pact_dir: Path, repository_root: Path) -> list[str]:
+    """Validate current provider and AppHost evidence independently of frozen Story 11.24 bytes."""
+    errors: list[str] = []
+    for path, label in ((evidence_root, "Live evidence root"), (pact_dir, "Pact directory"), (repository_root, "Repository root")):
+        if _path_has_symlink_component(path) or not path.is_dir():
+            return [f"{label} is missing or is a symlink: {path}"]
+    actual = {item.name for item in evidence_root.iterdir() if item.is_file()}
+    required = {"provider-verification.json", "run-evidence.json", "apphost-smoke.json"}
+    if actual != required:
+        errors.append("Live evidence root must contain exactly provider-verification.json, run-evidence.json, and apphost-smoke.json.")
+    for name in required:
+        _scan_redaction(evidence_root / name, errors)
+    provenance = _live_provenance(repository_root, errors)
+    _validate_live_provider(evidence_root, pact_dir, provenance, errors)
+    _validate_live_apphost(evidence_root, repository_root, provenance, errors)
+    return errors
+
+
 def validate(evidence_root: Path, pact_dir: Path) -> list[str]:
     """Return deterministic validation errors for one evidence snapshot."""
     errors: list[str] = []
@@ -1453,7 +1801,7 @@ def validate(evidence_root: Path, pact_dir: Path) -> list[str]:
     snapshot_hashes = _validate_manifest(evidence_root, errors)
     _validate_authorization(evidence_root, snapshot_hashes, errors)
     _validate_packages(evidence_root, errors)
-    _validate_provider_report(evidence_root, pact_dir, snapshot_hashes, errors)
+    _validate_provider_report(evidence_root, snapshot_hashes, errors)
     _validate_apphost_smoke(evidence_root, errors)
     _validate_release_restore(evidence_root, errors)
     return errors
@@ -1461,15 +1809,32 @@ def validate(evidence_root: Path, pact_dir: Path) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--evidence-root", required=True, type=Path)
+    parser.add_argument("--evidence-root", type=Path)
+    parser.add_argument("--live-evidence-root", type=Path)
     parser.add_argument("--pact-dir", required=True, type=Path)
+    parser.add_argument("--repository-root", type=Path, default=Path(__file__).resolve().parents[1])
+    parser.add_argument("--write-live-receipt", action="store_true")
     args = parser.parse_args(argv)
-    errors = validate(args.evidence_root.absolute(), args.pact_dir.absolute())
+    if args.evidence_root is None and args.live_evidence_root is None:
+        parser.error("at least one of --evidence-root or --live-evidence-root is required")
+    errors: list[str] = []
+    if args.write_live_receipt:
+        if args.live_evidence_root is None:
+            parser.error("--write-live-receipt requires --live-evidence-root")
+        errors.extend(write_live_receipt(args.live_evidence_root.absolute()))
+    if args.evidence_root is not None:
+        errors.extend(validate(args.evidence_root.absolute(), args.pact_dir.absolute()))
+    if args.live_evidence_root is not None and not args.write_live_receipt:
+        errors.extend(validate_live(
+            args.live_evidence_root.absolute(),
+            args.pact_dir.absolute(),
+            args.repository_root.absolute(),
+        ))
     if errors:
         for error in errors:
             print(f"EventStore runtime evidence error: {error}", file=sys.stderr)
         return 1
-    print("EventStore runtime evidence validated successfully.")
+    print("EventStore runtime evidence operation completed successfully.")
     return 0
 
 

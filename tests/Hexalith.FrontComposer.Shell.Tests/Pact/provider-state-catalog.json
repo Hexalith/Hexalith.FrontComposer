@@ -66,7 +66,7 @@
     },
     {
       "name": "command-not-found",
-      "setup": "Seed tenant-contract-a with missing aggregate order-missing.",
+      "setup": "Seed tenant-contract-a without aggregate order-1.",
       "teardown": "No persisted aggregate state.",
       "seededTenant": "tenant-contract-a",
       "seededUser": "user-contract-a",
@@ -113,13 +113,13 @@
       "testOnlySeam": "Provider-state HTTP endpoint or fixture command in the EventStore submodule"
     },
     {
-      "name": "tenant-mismatch",
-      "setup": "Seed authenticated tenant Tenant_Contract_Case and reject cross-tenant access.",
+      "name": "command-auth-tenant",
+      "setup": "Seed authenticated tenant tenant-contract-case for the command adapter.",
       "teardown": "Clear tenant fixture.",
-      "seededTenant": "tenant-contract-a",
+      "seededTenant": "tenant-contract-case",
       "seededUser": "user-contract-a",
       "seededAggregateId": "order-1",
-      "expectedResult": "tenant value remains authenticated context",
+      "expectedResult": "Authorization required; tenant remains authenticated context",
       "isolatedPerInteraction": true,
       "owningRepository": "Hexalith.EventStore",
       "testOnlySeam": "Provider-state HTTP endpoint or fixture command in the EventStore submodule"
@@ -234,9 +234,9 @@
     },
     {
       "name": "query-auth-tenant",
-      "setup": "Seed authenticated tenant Tenant_Contract_Case for query adapter.",
+      "setup": "Seed authenticated tenant tenant-contract-case for query adapter.",
       "teardown": "Clear tenant fixture.",
-      "seededTenant": "tenant-contract-a",
+      "seededTenant": "tenant-contract-case",
       "seededUser": "user-contract-a",
       "seededAggregateId": "order-1",
       "expectedResult": "Authorization required; tenant preserved",

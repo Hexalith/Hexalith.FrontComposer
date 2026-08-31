@@ -215,11 +215,17 @@ foreach ($file in $requiredFiles) {
 $redactionLines | Set-Content -LiteralPath (Join-Path $ArtifactDir "redaction-scan.txt") -Encoding utf8
 
 $frontComposerEvidenceRoot = Join-Path $repositoryRoot "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24"
-$expectedProviderVerificationReport = Join-Path $frontComposerEvidenceRoot "provider-verification/provider-verification.json"
+$liveEvidenceRoot = Join-Path $repositoryRoot "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation"
+$expectedProviderVerificationReport = Join-Path $liveEvidenceRoot "provider-verification.json"
 $providerStatus = "NOT_REQUIRED"
+$historicalStatus = "NOT_REQUIRED"
+$appHostStatus = "NOT_REQUIRED"
 if ($RequireProviderVerification) {
-  # Required-and-rejected must never be summarized as required-and-absent.
+  # Required-and-rejected must never be summarized as required-and-absent. The frozen
+  # Story 11.24 archive and the current compatibility lane have independent hash authority.
   $providerStatus = "REQUIRED_REJECTED"
+  $historicalStatus = "REQUIRED_REJECTED"
+  $appHostStatus = "REQUIRED_REJECTED"
   if ([string]::IsNullOrWhiteSpace($ProviderVerificationReport)) {
     $ProviderVerificationReport = $expectedProviderVerificationReport
   }
@@ -247,14 +253,18 @@ if ($RequireProviderVerification) {
     $validator = Join-Path $repositoryRoot "eng/eventstore_runtime_evidence.py"
     $validationOutput = @(& python3 $validator `
       --evidence-root $frontComposerEvidenceRoot `
-      --pact-dir $PactDir 2>&1)
+      --live-evidence-root $liveEvidenceRoot `
+      --pact-dir $PactDir `
+      --repository-root $repositoryRoot 2>&1)
     if ($LASTEXITCODE -ne 0) {
       foreach ($line in $validationOutput) {
         $errors.Add([string] $line)
       }
     } elseif ($providerLeaks.Count -eq 0) {
       # A leaking report is a rejected lane; the summary must never call it complete.
-      $providerStatus = "COMPLETE_HASH_BOUND_REPORT"
+      $historicalStatus = "IMMUTABLE_ARCHIVE_VALID"
+      $providerStatus = "CURRENT_PROVIDER_PASSED"
+      $appHostStatus = "AUTHENTICATED_APPHOST_PASSED"
     }
   }
 }
@@ -264,7 +274,9 @@ $summary = @"
 
 - Pact files: $($expectedPacts -join ', ')
 - Interaction count: $($interactionDescriptions.Count)
-- Provider verification: $providerStatus
+- Historical Story 11.24 integrity: $historicalStatus
+- Current provider verification: $providerStatus
+- Current authenticated AppHost smoke: $appHostStatus
 - Pact specification: 4.0
 - PactNet package: 5.0.1
 - Manifest: tests/Hexalith.FrontComposer.Shell.Tests/Pact/interaction-manifest.json

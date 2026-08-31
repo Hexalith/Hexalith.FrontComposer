@@ -1,0 +1,81 @@
+{
+  "schema": "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v1",
+  "capturedAt": "2026-08-31T17:38:45.748704+00:00",
+  "finalVerdict": "failed",
+  "reasonCodes": [
+    "apphost.start.failed"
+  ],
+  "identity": {
+    "eventStoreSourceSha": "1194dfe59bcbc9b235390d1e46a7dfe4ee115d94",
+    "eventStoreReleaseVersion": "3.100.0",
+    "buildsCatalogSha": "b6a0d1bd2c4b4398f0a6b1be15d0f3b698f250a5"
+  },
+  "topology": {
+    "programPath": "src/Hexalith.FrontComposer.AppHost/Program.cs",
+    "programSha256": "474e7aabc58fd0a44b15e2598ee832a7286432779360614180931ef0024f7290",
+    "projectPath": "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+    "projectSha256": "8d7f86141deacf04f482ecada2bfbf520712fe58b19eac7af9711d22cc9c07f2",
+    "modifiedForSmoke": false,
+    "declaredResources": [
+      "security",
+      "eventstore",
+      "eventstore-admin",
+      "eventstore-admin-ui",
+      "tenants",
+      "parties",
+      "sample",
+      "tenants-ui",
+      "frontcomposer-ui",
+      "counter-web"
+    ]
+  },
+  "startup": {
+    "result": "failed",
+    "resourceWaits": {
+      "security": "not-observed",
+      "eventstore": "not-observed",
+      "eventstore-admin": "not-observed",
+      "eventstore-admin-ui": "not-observed",
+      "tenants": "not-observed",
+      "parties": "not-observed",
+      "sample": "not-observed",
+      "tenants-ui": "not-observed",
+      "frontcomposer-ui": "not-observed",
+      "counter-web": "not-observed"
+    }
+  },
+  "observations": {
+    "health": {
+      "result": "not-observed",
+      "authenticated": false,
+      "reasonCode": "runtime.not-reached"
+    },
+    "commandSubmit": {
+      "result": "not-observed",
+      "authenticated": false,
+      "reasonCode": "runtime.not-reached"
+    },
+    "commandStatus": {
+      "result": "not-observed",
+      "authenticated": false,
+      "reasonCode": "runtime.not-reached"
+    },
+    "queryProvenance": {
+      "result": "not-observed",
+      "authenticated": false,
+      "reasonCode": "runtime.not-reached"
+    },
+    "projectionSignalR": {
+      "result": "not-observed",
+      "authenticated": false,
+      "reasonCode": "runtime.not-reached"
+    }
+  },
+  "cleanup": {
+    "command": "aspire stop --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --nologo",
+    "result": "clean",
+    "hostStopped": true,
+    "portsClosed": true,
+    "runningAppHostsAfterAttempt": 0
+  }
+}

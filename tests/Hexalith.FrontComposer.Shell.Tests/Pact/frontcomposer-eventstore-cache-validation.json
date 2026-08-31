@@ -20,32 +20,27 @@
         "headers": {
           "Authorization": "Bearer FC_CONTRACT_TOKEN",
           "Content-Type": "application/json",
-          "If-None-Match": "\u0022etag-cache-1\u0022"
+          "If-None-Match": "\u0022b3JkZXJz.Y2FjaGUtMQ\u0022"
         },
         "body": {
-          "tenant": "tenant-contract-a",
-          "domain": "orders",
-          "aggregateId": "order-1",
-          "queryType": "GetOrders",
-          "projectionType": "orders",
-          "payload": {
-            "filter": null,
-            "skip": null,
-            "take": null,
-            "columnFilters": null,
-            "statusFilters": null,
-            "searchQuery": null,
-            "sortColumn": null,
-            "sortDescending": false
+          "content": {
+            "tenant": "tenant-contract-a",
+            "domain": "orders",
+            "aggregateId": "order-1",
+            "queryType": "GetOrders",
+            "projectionType": "orders",
+            "payload": null,
+            "entityId": null,
+            "projectionActorType": null
           },
-          "entityId": null,
-          "projectionActorType": null
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "response": {
         "status": 304,
         "headers": {
-          "ETag": "\u0022etag-cache-1\u0022"
+          "ETag": "\u0022b3JkZXJz.Y2FjaGUtMQ\u0022"
         }
       },
       "metadata": {
@@ -69,32 +64,27 @@
         "headers": {
           "Authorization": "Bearer FC_CONTRACT_TOKEN",
           "Content-Type": "application/json",
-          "If-None-Match": "\u0022etag-caller-1\u0022"
+          "If-None-Match": "\u0022b3JkZXJz.Y2FsbGVyLTE\u0022"
         },
         "body": {
-          "tenant": "tenant-contract-a",
-          "domain": "orders",
-          "aggregateId": "order-1",
-          "queryType": "GetOrders",
-          "projectionType": "orders",
-          "payload": {
-            "filter": null,
-            "skip": null,
-            "take": null,
-            "columnFilters": null,
-            "statusFilters": null,
-            "searchQuery": null,
-            "sortColumn": null,
-            "sortDescending": false
+          "content": {
+            "tenant": "tenant-contract-a",
+            "domain": "orders",
+            "aggregateId": "order-1",
+            "queryType": "GetOrders",
+            "projectionType": "orders",
+            "payload": null,
+            "entityId": null,
+            "projectionActorType": null
           },
-          "entityId": null,
-          "projectionActorType": null
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "response": {
         "status": 304,
         "headers": {
-          "ETag": "\u0022etag-caller-1\u0022"
+          "ETag": "\u0022b3JkZXJz.Y2FsbGVyLTE\u0022"
         }
       },
       "metadata": {
@@ -118,41 +108,49 @@
         "headers": {
           "Authorization": "Bearer FC_CONTRACT_TOKEN",
           "Content-Type": "application/json",
-          "If-None-Match": "\u0022etag-1\u0022, \u0022etag-2\u0022, \u0022etag-3\u0022"
+          "If-None-Match": "\u0022b3JkZXJz.cXVlcnktdmFsaWRhdG9yLTE\u0022, \u0022b3JkZXJz.cXVlcnktMg\u0022, \u0022b3JkZXJz.cXVlcnktMw\u0022"
         },
         "body": {
-          "tenant": "tenant-contract-a",
-          "domain": "orders",
-          "aggregateId": "order-1",
-          "queryType": "GetOrders",
-          "projectionType": "orders",
-          "payload": {
-            "filter": null,
-            "skip": null,
-            "take": null,
-            "columnFilters": null,
-            "statusFilters": null,
-            "searchQuery": null,
-            "sortColumn": null,
-            "sortDescending": false
+          "content": {
+            "tenant": "tenant-contract-a",
+            "domain": "orders",
+            "aggregateId": "order-1",
+            "queryType": "GetOrders",
+            "projectionType": "orders",
+            "payload": null,
+            "entityId": null,
+            "projectionActorType": null
           },
-          "entityId": null,
-          "projectionActorType": null
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "response": {
         "status": 200,
         "headers": {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "ETag": "\u0022b3JkZXJz.cXVlcnktMQ\u0022"
         },
         "body": {
-          "payload": [
-            {
-              "id": "order-1",
-              "status": "Pending"
+          "content": {
+            "payload": [
+              {
+                "id": "order-1",
+                "status": "Pending"
+              }
+            ],
+            "success": true,
+            "metadata": {
+              "paging": {
+                "pageSize": 25,
+                "offset": 0,
+                "totalCount": 73,
+                "hasMore": true
+              }
             }
-          ],
-          "totalCount": 1
+          },
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "metadata": {

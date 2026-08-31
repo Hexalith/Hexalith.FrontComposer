@@ -1,33 +1,39 @@
 ﻿# EventStore Provider Verification Handoff
 
-Story: 10-3-consumer-driven-contract-tests-pact (handoff), 11-24-adopt-the-owner-approved-eventstore-runtime-identity (preserved run)
+Story: 10-3-consumer-driven-contract-tests-pact (handoff), provider reconciliation live lane
 Consumer: Hexalith.FrontComposer.Shell
 Provider: Hexalith.EventStore
 Interaction count: 19
-Release status: provider verification has run. The preserved EventStore-owned report is
+Historical status: the immutable Story 11.24 EventStore-owned report remains at
 `_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/provider-verification/provider-verification.json`
 (`finalVerdict: failed`, 19/19 interactions, 19 setup and 19 teardown events, host stopped, port closed).
-Its compatibility failures are preserved evidence and do not authorize or revoke the owner-approved
-runtime identity; contract/API reconciliation is separately approved work.
+It records what ran then and is never compared to current Pact bytes.
+
+Current status: the reconciliation report is
+`_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json`
+(`verificationMode: live-compatibility`, `finalVerdict: passed`, 19/19 interactions, exact setup/teardown,
+real loopback Kestrel, host stopped, port closed). Its adjacent `run-evidence.json` binds the exact report.
+Compatibility evidence records current source/version/Builds provenance without claiming migration approval.
 
 Provider verification must run in `Hexalith.EventStore` against a real loopback TCP endpoint. Do not use ASP.NET Core `TestServer` or `WebApplicationFactory` for Pact verifier playback, because the native verifier calls an HTTP endpoint.
 
-Command shape of the preserved run, as recorded by the EventStore-owned run receipt
-`_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/provider-verification/run-evidence.json`:
+Current command shape, run from the EventStore repository root:
 
 ```powershell
-dotnet run --project tests/Hexalith.EventStore.ProviderVerification/Hexalith.EventStore.ProviderVerification.csproj --configuration Release --no-build -- <validated canonical inputs>
+dotnet tests/Hexalith.EventStore.ProviderVerification/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.dll --verification-mode live-compatibility <validated canonical inputs>
 ```
 
-The run exits non-zero (`exitCode: 4`) when interactions fail; that is the truthful compatibility
-outcome, not a broken harness. `eng/eventstore_runtime_evidence.py` pins this exact command shape.
+Any failed interaction, stale input/provenance, unsafe host, incomplete cleanup, or nonzero process exit
+rejects the current lane. Gate 2c separately requires a passing authenticated Aspire AppHost smoke;
+missing infrastructure or credentials remains a blocker and cannot be relabeled as passing evidence.
 
 Required pact path: `tests/Hexalith.FrontComposer.Shell.Tests/Pact/*.json`
 Required manifest: `tests/Hexalith.FrontComposer.Shell.Tests/Pact/interaction-manifest.json`
 Required provider-state catalog: `tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-state-catalog.json`
 
-Ownership split: FrontComposer generates consumer pacts, preserves the byte-identical
-EventStore-owned evidence snapshot, and validates it. Deterministic provider states remain owned by
+Ownership split: FrontComposer generates consumer pacts, preserves the byte-identical historical
+snapshot, captures current evidence outside that tree, and validates both lanes independently.
+Deterministic provider states remain owned by
 the EventStore HTTP pipeline/test host so setup, teardown, health probing, port allocation, and
 stale-process detection are verified beside the provider. Regenerating this evidence therefore
 requires a fresh EventStore-owned run; see `docs/reference/pact-contracts.md`.

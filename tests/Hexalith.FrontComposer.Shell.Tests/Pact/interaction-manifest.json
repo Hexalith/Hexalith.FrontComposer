@@ -62,7 +62,7 @@
     },
     {
       "description": "command propagates authenticated tenant and bearer requirement",
-      "providerState": "tenant-mismatch",
+      "providerState": "command-auth-tenant",
       "method": "POST",
       "path": "/api/v1/commands",
       "generatedSource": "samples/Counter/Counter.Domain/ShipOrderCommand metadata",

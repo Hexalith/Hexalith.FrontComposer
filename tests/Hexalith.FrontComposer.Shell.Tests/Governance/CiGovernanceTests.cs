@@ -3413,12 +3413,12 @@ public sealed class CiGovernanceTests {
     internal sealed record ProcessResult(int ExitCode, string Output, string Error);
 
     [Fact]
-    public void EventStoreRuntimeIdentityPinsOwnerApprovedTupleAndTruthfulDriftEvidence() {
-        const string sourceSha = "38967215e6c1b13e77f2b0006efd95d88d7ad7b8";
-        const string buildsSha = "2b0faab931ec581c7503270e7dd73074654e2eee";
-        const string version = "3.99.0";
-        // The immutable Story 11.24 owner capture remains historical evidence. The current root
-        // identity is separately approved in the active implementation spec.
+    public void EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval() {
+        const string sourceSha = "1194dfe59bcbc9b235390d1e46a7dfe4ee115d94";
+        const string buildsSha = "b6a0d1bd2c4b4398f0a6b1be15d0f3b698f250a5";
+        const string version = "3.100.0";
+        // The immutable Story 11.24 owner capture remains historical evidence. Current source,
+        // package, and Builds values are compatibility provenance, not migration approval.
         const string evidenceSourceSha = "bb94d93e9b84132cff83a38fba84f25455820d31";
         const string evidenceVersion = "3.91.1";
         string root = RepositoryRoot();
@@ -3437,6 +3437,13 @@ public sealed class CiGovernanceTests {
         approval.GetProperty("eventStorePackageVersion").GetString().ShouldBe(version);
         approval.GetProperty("buildsCatalogGitlink").GetString().ShouldBe(buildsSha);
         approval.GetProperty("submodulePointerChangedByApproval").GetBoolean().ShouldBeFalse();
+        JsonElement currentCompatibility = approval.GetProperty("currentCompatibility");
+        currentCompatibility.GetProperty("path").GetString().ShouldBe(
+            "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation");
+        currentCompatibility.GetProperty("eventStoreSourceSha").GetString().ShouldBe(sourceSha);
+        currentCompatibility.GetProperty("eventStorePackageVersion").GetString().ShouldBe(version);
+        currentCompatibility.GetProperty("buildsCatalogSha").GetString().ShouldBe(buildsSha);
+        currentCompatibility.GetProperty("migrationApprovalClaimed").GetBoolean().ShouldBeFalse();
         JsonElement historicalCapture = approval.GetProperty("historicalCapture");
         historicalCapture.GetProperty("path").GetString().ShouldBe(
             "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24");
@@ -3445,7 +3452,7 @@ public sealed class CiGovernanceTests {
         historicalCapture.GetProperty("immutable").GetBoolean().ShouldBeTrue();
         string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
         string artifactLane = ExtractNamedStep(quality, "Gate 2c: Validate contract artifacts");
-        artifactLane.ShouldContain("python3 -m unittest tests/eng/test_eventstore_runtime_evidence.py");
+        artifactLane.ShouldContain("python3 -m unittest tests/eng/test_eventstore_runtime_evidence.py tests/eng/test_pact_provider_apphost_smoke.py");
         // pwsh does not fail the step on a native non-zero exit, and the validator below resets
         // $LASTEXITCODE, so a red evidence suite is only fail-closed with explicit propagation.
         // The propagation must not exit with $LASTEXITCODE itself: it is $null until a native
@@ -3453,12 +3460,20 @@ public sealed class CiGovernanceTests {
         artifactLane.ShouldContain("if (-not $? -or $LASTEXITCODE -ne 0) { exit 1 }");
         artifactLane.ShouldNotContain("exit $LASTEXITCODE");
         artifactLane.ShouldContain("-RequireProviderVerification");
-        artifactLane.ShouldContain("_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/provider-verification/provider-verification.json");
+        artifactLane.ShouldContain("_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json");
         artifactLane.ShouldNotContain("BLOCKED_HANDOFF");
         artifactLane.ShouldNotContain("continue-on-error: true");
+        string liveProviderLane = ExtractNamedStep(quality, "Gate 2c: Live EventStore provider verification");
+        liveProviderLane.ShouldContain("--verification-mode live-compatibility");
+        liveProviderLane.ShouldContain("--write-live-receipt");
+        liveProviderLane.ShouldNotContain("continue-on-error: true");
+        string appHostLane = ExtractNamedStep(quality, "Gate 2c: Authenticated AppHost smoke");
+        appHostLane.ShouldContain("python3 eng/pact_provider_apphost_smoke.py --timeout-seconds 300");
+        appHostLane.ShouldNotContain("continue-on-error: true");
         string uploadLane = ExtractNamedStep(quality, "Upload contract artifacts");
         uploadLane.ShouldContain("if: success()");
         uploadLane.ShouldNotContain("if: always()");
+        uploadLane.ShouldContain("_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/**");
         // A rejected evidence tree is never published, but its validator diagnostics must be.
         string diagnosticsLane = ExtractNamedStep(quality, "Upload contract diagnostics");
         diagnosticsLane.ShouldContain("if: always()");
@@ -3477,6 +3492,26 @@ public sealed class CiGovernanceTests {
             "--pact-dir", "tests/Hexalith.FrontComposer.Shell.Tests/Pact",
         ]);
         validation.ExitCode.ShouldBe(0, validation.Output + validation.Error);
+
+        string liveEvidenceRoot = Path.Combine(
+            root,
+            "_bmad-output",
+            "implementation-artifacts",
+            "evidence",
+            "pact-provider-reconciliation");
+        using JsonDocument liveReport = JsonDocument.Parse(File.ReadAllText(Path.Combine(
+            liveEvidenceRoot,
+            "provider-verification.json")));
+        liveReport.RootElement.GetProperty("verificationMode").GetString().ShouldBe("live-compatibility");
+        liveReport.RootElement.GetProperty("finalVerdict").GetString().ShouldBe("passed");
+        liveReport.RootElement.GetProperty("identity").GetProperty("approvalAuthorized").GetBoolean().ShouldBeFalse();
+        using JsonDocument appHostSmoke = JsonDocument.Parse(File.ReadAllText(Path.Combine(
+            liveEvidenceRoot,
+            "apphost-smoke.json")));
+        appHostSmoke.RootElement.GetProperty("finalVerdict").GetString().ShouldBe("failed",
+            "a blocked real AppHost start must remain failed rather than being relabeled as passing");
+        appHostSmoke.RootElement.GetProperty("reasonCodes").EnumerateArray()
+            .Select(item => item.GetString()).ShouldContain("apphost.start.failed");
 
         ProcessResult eventStoreGitlink = RunProcess(
             root,

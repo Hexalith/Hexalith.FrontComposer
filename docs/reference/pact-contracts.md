@@ -42,26 +42,39 @@ The validator checks that `interaction-manifest.json` exactly matches the commit
 
 Provider verification belongs beside the `Hexalith.EventStore` provider host because PactNet's native verifier must call a real loopback TCP endpoint. Do not use ASP.NET Core `TestServer` or `WebApplicationFactory` for Pact verifier playback.
 
-The EventStore-owned command shape and the preserved run are recorded in `provider-verification-handoff.md`. The run uses the committed pacts plus `provider-state-catalog.json` and produces a bounded report artifact.
+The EventStore-owned command shape is recorded in `provider-verification-handoff.md`. Live compatibility uses the committed pacts plus `interaction-manifest.json` and `provider-state-catalog.json`, and produces a bounded report under `_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/`.
 
-CI is split deliberately: EventStore owns provider execution over real loopback TCP. FrontComposer owns the byte-identical evidence snapshot, verifies its SHA-256 manifest, validates all 19 interactions and cleanup events, scans it for redaction leaks, and uploads it with the consumer artifacts. A missing, incomplete, unbounded, unbound, or unsafe report fails closed.
+CI is split deliberately: EventStore owns provider execution over real loopback TCP. FrontComposer owns the current Pact bytes and validates all 19 interactions and state pairs, exact current source/version/Builds provenance, readiness, redaction, host shutdown, and port closure. A missing, incomplete, unbounded, stale, unsafe, or nonzero run fails closed. Compatibility does not claim migration approval.
+
+Gate 2c also runs `eng/pact_provider_apphost_smoke.py` against the existing AppHost. It uses only `aspire start`, `aspire wait`, `aspire describe`, and `aspire stop`, acquires the repository-provided local Keycloak identity, and requires authenticated health, command submission and terminal status, projection-backed query provenance, and a SignalR connection. Every primary resource declared by `Program.cs` (`security`, `eventstore`, both EventStore admin resources, `tenants`, `parties`, `sample`, `tenants-ui`, `frontcomposer-ui`, and `counter-web`) must be healthy. Missing credentials, Docker/Dapr infrastructure, or a topology startup failure is recorded as a failed blocker; an unauthenticated response is never success.
 
 NFR55 release rule: a release is blocked unless the checked-in pacts verify against the pinned EventStore provider version, or a named contract-drift issue explicitly blocks the release. Story 11.24 does not change that rule; the preserved compatibility verdict is the named, recorded drift, and it is non-authorizing in the other direction as well - its failures do not revoke the separately approved runtime identity. Contract/API reconciliation and any broader release disposition remain separately approved work.
 
-### Evidence hash domains
+### Historical and live evidence lanes
 
-The preserved evidence is bound by two different hash domains, and reproducing a hash requires knowing which one applies:
+The lanes answer different questions and never share mutable hash authority:
 
-- `sha256-manifest.json` hashes each preserved evidence file's exact bytes and records per-file `provenance`: `eventstore-capture` for the twelve files taken from the EventStore-owned capture named by `capturedFromEventStoreCommit`, and `frontcomposer-run` for the AppHost smoke and Release restore evidence this repository produced afterwards. `.gitattributes` marks the evidence tree `-text` so checkout never rewrites the bytes. The manifest alone is not the authority for the captured files: `CAPTURED_EVIDENCE_SHA256` in `eng/eventstore_runtime_evidence.py` pins each of their digests, so a rewritten report re-sealed into the manifest is rejected rather than accepted.
-- The provider report's `inputHashes` entries of `kind: pact`, `interaction-manifest`, and `provider-state-catalog` hash the CRLF-normalized text of the live committed files under `tests/Hexalith.FrontComposer.Shell.Tests/Pact/`, not their on-disk bytes and not their Git blob ids. This keeps the binding stable across Windows and Linux checkouts of files that are not marked `-text`.
+- The immutable Story 11.24 archive under `evidence/frontcomposer-story-11-24/` answers “what ran then.” `.gitattributes`, its SHA-256 manifest, and the hard-coded capture pins protect its exact bytes. Historical validation does not compare that report to current Pact files.
+- The reconciliation lane under `evidence/pact-provider-reconciliation/` answers “do the current consumer bytes work now?” Its provider `inputHashes` bind the exact raw bytes supplied to the live verifier, while its AppHost report binds current `Program.cs` and `.csproj` hashes. It is regenerated whenever those live inputs change.
 
-### Re-capturing the evidence
+### Run and validate the live lane
 
-The gate binds the preserved report to live repository bytes on purpose: the provider report's contract inputs must equal the committed pacts, the interaction manifest, and the provider-state catalog, and `apphost-smoke.json` must equal the current `src/Hexalith.FrontComposer.AppHost/Program.cs` and `.csproj`. An ordinary edit to any of those therefore fails Gate 2c, because the preserved evidence no longer describes what is in the tree. There is no in-repo way to weaken that binding; the remedy is to re-capture:
+Build and run the provider from `references/Hexalith.EventStore` using the live command in its provider-verification README, then bind the successful report and run the AppHost smoke:
 
-1. Pact, manifest, or provider-state changes require a fresh EventStore-owned provider run over real loopback TCP against the new pacts, and a new preserved report plus run receipt.
-2. AppHost topology changes require a fresh AppHost smoke capture against the edited topology.
-3. Update `sha256-manifest.json` and, for a re-captured file, its `CAPTURED_EVIDENCE_SHA256` pin in `eng/eventstore_runtime_evidence.py`, then re-run `pwsh ./eng/validate-contract-artifacts.ps1 -RequireProviderVerification`. Changing a pin is the deliberate, reviewable act of replacing owner-captured bytes.
+```bash
+python3 eng/eventstore_runtime_evidence.py \
+  --live-evidence-root _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation \
+  --pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact \
+  --write-live-receipt
+python3 eng/pact_provider_apphost_smoke.py --timeout-seconds 300
+pwsh ./eng/validate-contract-artifacts.ps1 -RequireProviderVerification
+```
+
+Re-capture rules:
+
+1. Pact, manifest, or provider-state changes require a fresh current EventStore-owned provider run and receipt. Do not update historical capture pins.
+2. AppHost topology changes require a fresh authenticated AppHost smoke.
+3. Run the combined validator; it independently rejects any historical forgery and any stale or failed current result.
 
 ## Troubleshooting
 

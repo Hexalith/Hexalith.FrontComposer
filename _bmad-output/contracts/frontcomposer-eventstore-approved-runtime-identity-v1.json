@@ -1,10 +1,17 @@
 {
   "schema": "hexalith.frontcomposer.eventstore-approved-runtime-identity.v1",
   "approvalRecord": "_bmad-output/implementation-artifacts/spec-actions-33264036185-33264035739-fix-cicd-release.md",
-  "eventStoreSourceGitlink": "38967215e6c1b13e77f2b0006efd95d88d7ad7b8",
-  "eventStorePackageVersion": "3.99.0",
-  "buildsCatalogGitlink": "2b0faab931ec581c7503270e7dd73074654e2eee",
+  "eventStoreSourceGitlink": "1194dfe59bcbc9b235390d1e46a7dfe4ee115d94",
+  "eventStorePackageVersion": "3.100.0",
+  "buildsCatalogGitlink": "b6a0d1bd2c4b4398f0a6b1be15d0f3b698f250a5",
   "submodulePointerChangedByApproval": false,
+  "currentCompatibility": {
+    "path": "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation",
+    "eventStoreSourceSha": "1194dfe59bcbc9b235390d1e46a7dfe4ee115d94",
+    "eventStorePackageVersion": "3.100.0",
+    "buildsCatalogSha": "b6a0d1bd2c4b4398f0a6b1be15d0f3b698f250a5",
+    "migrationApprovalClaimed": false
+  },
   "historicalCapture": {
     "path": "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24",
     "eventStoreSourceSha": "bb94d93e9b84132cff83a38fba84f25455820d31",

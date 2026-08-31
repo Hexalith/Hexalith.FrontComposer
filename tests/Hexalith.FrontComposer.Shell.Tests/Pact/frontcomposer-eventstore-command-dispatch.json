@@ -22,30 +22,51 @@
           "Content-Type": "application/json"
         },
         "body": {
-          "messageId": "01HXCNTRCT0000000000000000",
-          "tenant": "tenant-contract-a",
-          "domain": "orders",
-          "aggregateId": "order-1",
-          "commandType": "Hexalith.FrontComposer.Shell.Tests.Pact.EventStorePactContractTests\u002BShipOrderCommand",
-          "payload": {
-            "tenantId": "tenant-contract-a",
+          "content": {
+            "messageId": "01HXCNTRCT0000000000000000",
+            "tenant": "tenant-contract-a",
+            "domain": "orders",
             "aggregateId": "order-1",
-            "quantity": 3
+            "commandType": "Hexalith.FrontComposer.Shell.Tests.Pact.EventStorePactContractTests\u002BShipOrderCommand",
+            "payload": {
+              "tenantId": "tenant-contract-a",
+              "aggregateId": "order-1",
+              "quantity": 3
+            },
+            "correlationId": null,
+            "extensions": null
           },
-          "correlationId": null,
-          "extensions": null
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "response": {
         "status": 202,
         "headers": {
           "Content-Type": "application/json",
-          "Location": "https://eventstore.test/api/v1/commands/status/corr-command-accepted",
-          "Retry-After": "2",
-          "X-Correlation-ID": "corr-command-accepted"
+          "Location": "https://eventstore.test/api/v1/commands/status/01HXCNTRCT0000000000000000",
+          "Retry-After": "1"
         },
         "body": {
-          "correlationId": "corr-command-accepted"
+          "content": {
+            "correlationId": "01HXCNTRCT0000000000000000",
+            "messageId": "01HXCNTRCT0000000000000000"
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "matchingRules": {
+          "header": {
+            "Location": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "^https?://[^/]\u002B/api/v1/commands/status/01HXCNTRCT0000000000000000$"
+                }
+              ]
+            }
+          }
         }
       },
       "metadata": {
@@ -71,18 +92,22 @@
           "Content-Type": "application/json"
         },
         "body": {
-          "messageId": "01HXCNTRCT0000000000000000",
-          "tenant": "tenant-contract-a",
-          "domain": "orders",
-          "aggregateId": "order-1",
-          "commandType": "Hexalith.FrontComposer.Shell.Tests.Pact.EventStorePactContractTests\u002BShipOrderCommand",
-          "payload": {
-            "tenantId": "tenant-contract-a",
+          "content": {
+            "messageId": "01HXCNTRCT0000000000000000",
+            "tenant": "tenant-contract-a",
+            "domain": "orders",
             "aggregateId": "order-1",
-            "quantity": 3
+            "commandType": "Hexalith.FrontComposer.Shell.Tests.Pact.EventStorePactContractTests\u002BShipOrderCommand",
+            "payload": {
+              "tenantId": "tenant-contract-a",
+              "aggregateId": "order-1",
+              "quantity": 3
+            },
+            "correlationId": null,
+            "extensions": null
           },
-          "correlationId": null,
-          "extensions": null
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "response": {
@@ -91,18 +116,11 @@
           "Content-Type": "application/problem\u002Bjson"
         },
         "body": {
-          "title": "command-validation-failure",
-          "detail": "Synthetic bounded contract fixture.",
-          "status": 400,
-          "errors": {
-            "payload": [
-              "Synthetic validation failure."
-            ]
+          "content": {
+            "status": 400
           },
-          "globalErrors": [
-            "Synthetic global failure."
-          ],
-          "entityLabel": "order-1"
+          "contentType": "application/problem\u002Bjson",
+          "encoded": false
         }
       },
       "metadata": {
@@ -128,18 +146,22 @@
           "Content-Type": "application/json"
         },
         "body": {
-          "messageId": "01HXCNTRCT0000000000000000",
-          "tenant": "tenant-contract-a",
-          "domain": "orders",
-          "aggregateId": "order-1",
-          "commandType": "Hexalith.FrontComposer.Shell.Tests.Pact.EventStorePactContractTests\u002BShipOrderCommand",
-          "payload": {
-            "tenantId": "tenant-contract-a",
+          "content": {
+            "messageId": "01HXCNTRCT0000000000000000",
+            "tenant": "tenant-contract-a",
+            "domain": "orders",
             "aggregateId": "order-1",
-            "quantity": 3
+            "commandType": "Hexalith.FrontComposer.Shell.Tests.Pact.EventStorePactContractTests\u002BShipOrderCommand",
+            "payload": {
+              "tenantId": "tenant-contract-a",
+              "aggregateId": "order-1",
+              "quantity": 3
+            },
+            "correlationId": null,
+            "extensions": null
           },
-          "correlationId": null,
-          "extensions": null
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "response": {
@@ -169,18 +191,22 @@
           "Content-Type": "application/json"
         },
         "body": {
-          "messageId": "01HXCNTRCT0000000000000000",
-          "tenant": "tenant-contract-a",
-          "domain": "orders",
-          "aggregateId": "order-1",
-          "commandType": "Hexalith.FrontComposer.Shell.Tests.Pact.EventStorePactContractTests\u002BShipOrderCommand",
-          "payload": {
-            "tenantId": "tenant-contract-a",
+          "content": {
+            "messageId": "01HXCNTRCT0000000000000000",
+            "tenant": "tenant-contract-a",
+            "domain": "orders",
             "aggregateId": "order-1",
-            "quantity": 3
+            "commandType": "Hexalith.FrontComposer.Shell.Tests.Pact.EventStorePactContractTests\u002BShipOrderCommand",
+            "payload": {
+              "tenantId": "tenant-contract-a",
+              "aggregateId": "order-1",
+              "quantity": 3
+            },
+            "correlationId": null,
+            "extensions": null
           },
-          "correlationId": null,
-          "extensions": null
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "response": {
@@ -189,18 +215,11 @@
           "Content-Type": "application/problem\u002Bjson"
         },
         "body": {
-          "title": "command-forbidden",
-          "detail": "Synthetic bounded contract fixture.",
-          "status": 403,
-          "errors": {
-            "payload": [
-              "Synthetic validation failure."
-            ]
+          "content": {
+            "status": 403
           },
-          "globalErrors": [
-            "Synthetic global failure."
-          ],
-          "entityLabel": "order-1"
+          "contentType": "application/problem\u002Bjson",
+          "encoded": false
         }
       },
       "metadata": {
@@ -226,18 +245,22 @@
           "Content-Type": "application/json"
         },
         "body": {
-          "messageId": "01HXCNTRCT0000000000000000",
-          "tenant": "tenant-contract-a",
-          "domain": "orders",
-          "aggregateId": "order-1",
-          "commandType": "Hexalith.FrontComposer.Shell.Tests.Pact.EventStorePactContractTests\u002BShipOrderCommand",
-          "payload": {
-            "tenantId": "tenant-contract-a",
+          "content": {
+            "messageId": "01HXCNTRCT0000000000000000",
+            "tenant": "tenant-contract-a",
+            "domain": "orders",
             "aggregateId": "order-1",
-            "quantity": 3
+            "commandType": "Hexalith.FrontComposer.Shell.Tests.Pact.EventStorePactContractTests\u002BShipOrderCommand",
+            "payload": {
+              "tenantId": "tenant-contract-a",
+              "aggregateId": "order-1",
+              "quantity": 3
+            },
+            "correlationId": null,
+            "extensions": null
           },
-          "correlationId": null,
-          "extensions": null
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "response": {
@@ -246,18 +269,11 @@
           "Content-Type": "application/problem\u002Bjson"
         },
         "body": {
-          "title": "command-not-found",
-          "detail": "Synthetic bounded contract fixture.",
-          "status": 404,
-          "errors": {
-            "payload": [
-              "Synthetic validation failure."
-            ]
+          "content": {
+            "status": 404
           },
-          "globalErrors": [
-            "Synthetic global failure."
-          ],
-          "entityLabel": "order-1"
+          "contentType": "application/problem\u002Bjson",
+          "encoded": false
         }
       },
       "metadata": {
@@ -283,18 +299,22 @@
           "Content-Type": "application/json"
         },
         "body": {
-          "messageId": "01HXCNTRCT0000000000000000",
-          "tenant": "tenant-contract-a",
-          "domain": "orders",
-          "aggregateId": "order-1",
-          "commandType": "Hexalith.FrontComposer.Shell.Tests.Pact.EventStorePactContractTests\u002BShipOrderCommand",
-          "payload": {
-            "tenantId": "tenant-contract-a",
+          "content": {
+            "messageId": "01HXCNTRCT0000000000000000",
+            "tenant": "tenant-contract-a",
+            "domain": "orders",
             "aggregateId": "order-1",
-            "quantity": 3
+            "commandType": "Hexalith.FrontComposer.Shell.Tests.Pact.EventStorePactContractTests\u002BShipOrderCommand",
+            "payload": {
+              "tenantId": "tenant-contract-a",
+              "aggregateId": "order-1",
+              "quantity": 3
+            },
+            "correlationId": null,
+            "extensions": null
           },
-          "correlationId": null,
-          "extensions": null
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "response": {
@@ -303,18 +323,11 @@
           "Content-Type": "application/problem\u002Bjson"
         },
         "body": {
-          "title": "command-conflict",
-          "detail": "Synthetic bounded contract fixture.",
-          "status": 409,
-          "errors": {
-            "payload": [
-              "Synthetic validation failure."
-            ]
+          "content": {
+            "status": 409
           },
-          "globalErrors": [
-            "Synthetic global failure."
-          ],
-          "entityLabel": "order-1"
+          "contentType": "application/problem\u002Bjson",
+          "encoded": false
         }
       },
       "metadata": {
@@ -340,18 +353,22 @@
           "Content-Type": "application/json"
         },
         "body": {
-          "messageId": "01HXCNTRCT0000000000000000",
-          "tenant": "tenant-contract-a",
-          "domain": "orders",
-          "aggregateId": "order-1",
-          "commandType": "Hexalith.FrontComposer.Shell.Tests.Pact.EventStorePactContractTests\u002BShipOrderCommand",
-          "payload": {
-            "tenantId": "tenant-contract-a",
+          "content": {
+            "messageId": "01HXCNTRCT0000000000000000",
+            "tenant": "tenant-contract-a",
+            "domain": "orders",
             "aggregateId": "order-1",
-            "quantity": 3
+            "commandType": "Hexalith.FrontComposer.Shell.Tests.Pact.EventStorePactContractTests\u002BShipOrderCommand",
+            "payload": {
+              "tenantId": "tenant-contract-a",
+              "aggregateId": "order-1",
+              "quantity": 3
+            },
+            "correlationId": null,
+            "extensions": null
           },
-          "correlationId": null,
-          "extensions": null
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "response": {
@@ -361,18 +378,11 @@
           "Retry-After": "5"
         },
         "body": {
-          "title": "command-rate-limited",
-          "detail": "Synthetic bounded contract fixture.",
-          "status": 429,
-          "errors": {
-            "payload": [
-              "Synthetic validation failure."
-            ]
+          "content": {
+            "status": 429
           },
-          "globalErrors": [
-            "Synthetic global failure."
-          ],
-          "entityLabel": "order-1"
+          "contentType": "application/problem\u002Bjson",
+          "encoded": false
         }
       },
       "metadata": {
@@ -398,18 +408,22 @@
           "Content-Type": "application/json"
         },
         "body": {
-          "messageId": "01HXCNTRCT0000000000000000",
-          "tenant": "tenant-contract-a",
-          "domain": "orders",
-          "aggregateId": "order-1",
-          "commandType": "Hexalith.FrontComposer.Shell.Tests.Pact.EventStorePactContractTests\u002BShipOrderCommand",
-          "payload": {
-            "tenantId": "tenant-contract-a",
+          "content": {
+            "messageId": "01HXCNTRCT0000000000000000",
+            "tenant": "tenant-contract-a",
+            "domain": "orders",
             "aggregateId": "order-1",
-            "quantity": 3
+            "commandType": "Hexalith.FrontComposer.Shell.Tests.Pact.EventStorePactContractTests\u002BShipOrderCommand",
+            "payload": {
+              "tenantId": "tenant-contract-a",
+              "aggregateId": "order-1",
+              "quantity": 3
+            },
+            "correlationId": null,
+            "extensions": null
           },
-          "correlationId": null,
-          "extensions": null
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "response": {

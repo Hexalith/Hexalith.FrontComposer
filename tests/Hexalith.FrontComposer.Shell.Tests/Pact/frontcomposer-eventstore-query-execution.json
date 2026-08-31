@@ -22,39 +22,46 @@
           "Content-Type": "application/json"
         },
         "body": {
-          "tenant": "tenant-contract-a",
-          "domain": "orders",
-          "aggregateId": "order-1",
-          "queryType": "GetOrders",
-          "projectionType": "orders",
-          "payload": {
-            "filter": null,
-            "skip": null,
-            "take": null,
-            "columnFilters": null,
-            "statusFilters": null,
-            "searchQuery": null,
-            "sortColumn": null,
-            "sortDescending": false
+          "content": {
+            "tenant": "tenant-contract-a",
+            "domain": "orders",
+            "aggregateId": "order-1",
+            "queryType": "GetOrders",
+            "projectionType": "orders",
+            "payload": null,
+            "entityId": null,
+            "projectionActorType": null
           },
-          "entityId": null,
-          "projectionActorType": null
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "response": {
         "status": 200,
         "headers": {
           "Content-Type": "application/json",
-          "ETag": "\u0022etag-query-1\u0022"
+          "ETag": "\u0022b3JkZXJz.cXVlcnktMQ\u0022"
         },
         "body": {
-          "payload": [
-            {
-              "id": "order-1",
-              "status": "Pending"
+          "content": {
+            "payload": [
+              {
+                "id": "order-1",
+                "status": "Pending"
+              }
+            ],
+            "success": true,
+            "metadata": {
+              "paging": {
+                "pageSize": 25,
+                "offset": 0,
+                "totalCount": 1,
+                "hasMore": false
+              }
             }
-          ],
-          "totalCount": 1
+          },
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "metadata": {
@@ -80,34 +87,41 @@
           "Content-Type": "application/json"
         },
         "body": {
-          "tenant": "tenant-contract-a",
-          "domain": "orders",
-          "aggregateId": "order-1",
-          "queryType": "GetOrders",
-          "projectionType": "orders",
-          "payload": {
-            "filter": null,
-            "skip": null,
-            "take": null,
-            "columnFilters": null,
-            "statusFilters": null,
-            "searchQuery": null,
-            "sortColumn": null,
-            "sortDescending": false
+          "content": {
+            "tenant": "tenant-contract-a",
+            "domain": "orders",
+            "aggregateId": "order-1",
+            "queryType": "GetOrders",
+            "projectionType": "orders",
+            "payload": null,
+            "entityId": null,
+            "projectionActorType": null
           },
-          "entityId": null,
-          "projectionActorType": null
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "response": {
         "status": 200,
         "headers": {
           "Content-Type": "application/json",
-          "ETag": "\u0022etag-query-1\u0022"
+          "ETag": "\u0022b3JkZXJz.cXVlcnktMQ\u0022"
         },
         "body": {
-          "payload": [],
-          "totalCount": 0
+          "content": {
+            "payload": [],
+            "success": true,
+            "metadata": {
+              "paging": {
+                "pageSize": 25,
+                "offset": 0,
+                "totalCount": 0,
+                "hasMore": false
+              }
+            }
+          },
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "metadata": {
@@ -133,23 +147,18 @@
           "Content-Type": "application/json"
         },
         "body": {
-          "tenant": "tenant-contract-a",
-          "domain": "orders",
-          "aggregateId": "order-1",
-          "queryType": "GetOrders",
-          "projectionType": "orders",
-          "payload": {
-            "filter": null,
-            "skip": null,
-            "take": null,
-            "columnFilters": null,
-            "statusFilters": null,
-            "searchQuery": null,
-            "sortColumn": null,
-            "sortDescending": false
+          "content": {
+            "tenant": "tenant-contract-a",
+            "domain": "orders",
+            "aggregateId": "order-1",
+            "queryType": "GetOrders",
+            "projectionType": "orders",
+            "payload": null,
+            "entityId": null,
+            "projectionActorType": null
           },
-          "entityId": null,
-          "projectionActorType": null
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "response": {
@@ -158,18 +167,11 @@
           "Content-Type": "application/problem\u002Bjson"
         },
         "body": {
-          "title": "query-malformed-payload",
-          "detail": "Synthetic bounded contract fixture.",
-          "status": 400,
-          "errors": {
-            "payload": [
-              "Synthetic validation failure."
-            ]
+          "content": {
+            "status": 400
           },
-          "globalErrors": [
-            "Synthetic global failure."
-          ],
-          "entityLabel": "order-1"
+          "contentType": "application/problem\u002Bjson",
+          "encoded": false
         }
       },
       "metadata": {
@@ -195,23 +197,18 @@
           "Content-Type": "application/json"
         },
         "body": {
-          "tenant": "tenant-contract-a",
-          "domain": "orders",
-          "aggregateId": "order-1",
-          "queryType": "GetOrders",
-          "projectionType": "orders",
-          "payload": {
-            "filter": null,
-            "skip": null,
-            "take": null,
-            "columnFilters": null,
-            "statusFilters": null,
-            "searchQuery": null,
-            "sortColumn": null,
-            "sortDescending": false
+          "content": {
+            "tenant": "tenant-contract-a",
+            "domain": "orders",
+            "aggregateId": "order-1",
+            "queryType": "GetOrders",
+            "projectionType": "orders",
+            "payload": null,
+            "entityId": null,
+            "projectionActorType": null
           },
-          "entityId": null,
-          "projectionActorType": null
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "response": {
@@ -220,18 +217,11 @@
           "Content-Type": "application/problem\u002Bjson"
         },
         "body": {
-          "title": "query-forbidden",
-          "detail": "Synthetic bounded contract fixture.",
-          "status": 403,
-          "errors": {
-            "payload": [
-              "Synthetic validation failure."
-            ]
+          "content": {
+            "status": 403
           },
-          "globalErrors": [
-            "Synthetic global failure."
-          ],
-          "entityLabel": "order-1"
+          "contentType": "application/problem\u002Bjson",
+          "encoded": false
         }
       },
       "metadata": {
@@ -257,23 +247,18 @@
           "Content-Type": "application/json"
         },
         "body": {
-          "tenant": "tenant-contract-a",
-          "domain": "orders",
-          "aggregateId": "order-1",
-          "queryType": "GetOrders",
-          "projectionType": "orders",
-          "payload": {
-            "filter": null,
-            "skip": null,
-            "take": null,
-            "columnFilters": null,
-            "statusFilters": null,
-            "searchQuery": null,
-            "sortColumn": null,
-            "sortDescending": false
+          "content": {
+            "tenant": "tenant-contract-a",
+            "domain": "orders",
+            "aggregateId": "order-1",
+            "queryType": "GetOrders",
+            "projectionType": "orders",
+            "payload": null,
+            "entityId": null,
+            "projectionActorType": null
           },
-          "entityId": null,
-          "projectionActorType": null
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "response": {
@@ -282,18 +267,11 @@
           "Content-Type": "application/problem\u002Bjson"
         },
         "body": {
-          "title": "query-not-found",
-          "detail": "Synthetic bounded contract fixture.",
-          "status": 404,
-          "errors": {
-            "payload": [
-              "Synthetic validation failure."
-            ]
+          "content": {
+            "status": 404
           },
-          "globalErrors": [
-            "Synthetic global failure."
-          ],
-          "entityLabel": "order-1"
+          "contentType": "application/problem\u002Bjson",
+          "encoded": false
         }
       },
       "metadata": {
@@ -319,23 +297,18 @@
           "Content-Type": "application/json"
         },
         "body": {
-          "tenant": "tenant-contract-a",
-          "domain": "orders",
-          "aggregateId": "order-1",
-          "queryType": "GetOrders",
-          "projectionType": "orders",
-          "payload": {
-            "filter": null,
-            "skip": null,
-            "take": null,
-            "columnFilters": null,
-            "statusFilters": null,
-            "searchQuery": null,
-            "sortColumn": null,
-            "sortDescending": false
+          "content": {
+            "tenant": "tenant-contract-a",
+            "domain": "orders",
+            "aggregateId": "order-1",
+            "queryType": "GetOrders",
+            "projectionType": "orders",
+            "payload": null,
+            "entityId": null,
+            "projectionActorType": null
           },
-          "entityId": null,
-          "projectionActorType": null
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "response": {
@@ -345,18 +318,11 @@
           "Retry-After": "5"
         },
         "body": {
-          "title": "query-rate-limited",
-          "detail": "Synthetic bounded contract fixture.",
-          "status": 429,
-          "errors": {
-            "payload": [
-              "Synthetic validation failure."
-            ]
+          "content": {
+            "status": 429
           },
-          "globalErrors": [
-            "Synthetic global failure."
-          ],
-          "entityLabel": "order-1"
+          "contentType": "application/problem\u002Bjson",
+          "encoded": false
         }
       },
       "metadata": {

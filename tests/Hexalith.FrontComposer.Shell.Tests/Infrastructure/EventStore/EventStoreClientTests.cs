@@ -132,9 +132,12 @@ public sealed class EventStoreClientTests {
     [Fact]
     public async Task CommandClient_PostsCamelCaseAcceptedRequest_ToDefaultCommandPath() {
         RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.Accepted) {
-            Content = new StringContent("""{"correlationId":"corr-1"}""", Encoding.UTF8, "application/json"),
+            Content = new StringContent(
+                """{"correlationId":"corr-1","resultPayload":null,"messageId":"01HVTESTULID"}""",
+                Encoding.UTF8,
+                "application/json"),
             Headers = {
-                Location = new Uri("https://eventstore.test/api/v1/commands/status/corr-1"),
+                Location = new Uri("https://eventstore.test/api/v1/commands/status/01HVTESTULID"),
                 RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(1)),
             },
         });
@@ -152,6 +155,7 @@ public sealed class EventStoreClientTests {
         result.Status.ShouldBe("Accepted");
         result.CorrelationId.ShouldBe("corr-1");
         result.RetryAfter.ShouldBe(TimeSpan.FromSeconds(1));
+        result.Location!.AbsolutePath.ShouldEndWith("/01HVTESTULID");
         handler.Requests.Single().Method.ShouldBe(HttpMethod.Post);
         handler.Requests.Single().RequestUri!.PathAndQuery.ShouldBe("/api/v1/commands");
         handler.Requests.Single().Headers.Authorization!.Scheme.ShouldBe("Bearer");
@@ -297,6 +301,96 @@ public sealed class EventStoreClientTests {
         payload.GetProperty("searchQuery").GetString().ShouldBe("needle");
         payload.GetProperty("sortColumn").GetString().ShouldBe("CreatedAt");
         payload.GetProperty("sortDescending").GetBoolean().ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task QueryClient_DefaultCriteria_OmitsSyntheticPayload() {
+        RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.OK) {
+            Content = new StringContent(
+                """{"correlationId":"corr-query","payload":[],"success":true,"metadata":null}""",
+                Encoding.UTF8,
+                "application/json"),
+        });
+        EventStoreQueryClient sut = new(
+            new SingleClientFactory(handler),
+            Options(),
+            new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
+            new EventStoreTestSupport.NoCache(),
+            new EventStoreTestSupport.RecordingAuthRedirector(),
+            NullLogger<EventStoreQueryClient>.Instance);
+
+        _ = await sut.QueryAsync<OrderProjection>(
+            QueryRequest.Create(
+                Criteria: new ProjectionQuery("orders"),
+                TenantId: "acme",
+                Domain: "orders",
+                AggregateId: "order-1",
+                QueryType: "GetOrders"),
+            TestContext.Current.CancellationToken);
+
+        using JsonDocument document = JsonDocument.Parse(handler.Bodies.Single());
+        document.RootElement.GetProperty("payload").ValueKind.ShouldBe(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task QueryClient_CanonicalEnvelope_ReadsNestedPagingTotalCount() {
+        RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.OK) {
+            Content = new StringContent(
+                """{"correlationId":"corr-query","payload":[{"id":"order-1"}],"success":true,"errorMessage":null,"metadata":{"paging":{"pageSize":25,"totalCount":73}}}""",
+                Encoding.UTF8,
+                "application/json"),
+        });
+        EventStoreQueryClient sut = new(
+            new SingleClientFactory(handler),
+            Options(),
+            new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
+            new EventStoreTestSupport.NoCache(),
+            new EventStoreTestSupport.RecordingAuthRedirector(),
+            NullLogger<EventStoreQueryClient>.Instance);
+
+        QueryResult<OrderProjection> result = await sut.QueryAsync<OrderProjection>(
+            QueryRequest.Create(
+                Criteria: new ProjectionQuery("orders"),
+                TenantId: "acme",
+                Domain: "orders",
+                AggregateId: "order-1",
+                QueryType: "GetOrders"),
+            TestContext.Current.CancellationToken);
+
+        result.Items.Single().Id.ShouldBe("order-1");
+        result.TotalCount.ShouldBe(73);
+    }
+
+    [Fact]
+    public async Task QueryClient_SemanticFailureEnvelope_FollowsBoundedFailurePath() {
+        RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.OK) {
+            Content = new StringContent(
+                """{"correlationId":"corr-query","payload":null,"success":false,"errorMessage":"provider-internal-detail"}""",
+                Encoding.UTF8,
+                "application/json"),
+        });
+        EventStoreQueryClient sut = new(
+            new SingleClientFactory(handler),
+            Options(),
+            new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
+            new EventStoreTestSupport.NoCache(),
+            new EventStoreTestSupport.RecordingAuthRedirector(),
+            NullLogger<EventStoreQueryClient>.Instance);
+
+        HttpRequestException exception = await Should.ThrowAsync<HttpRequestException>(() => sut.QueryAsync<OrderProjection>(
+            QueryRequest.Create(
+                Criteria: new ProjectionQuery("orders"),
+                TenantId: "acme",
+                Domain: "orders",
+                AggregateId: "order-1",
+                QueryType: "GetOrders"),
+            TestContext.Current.CancellationToken));
+
+        exception.StatusCode.ShouldBe(HttpStatusCode.OK);
+        exception.Message.ShouldNotContain("provider-internal-detail", Case.Sensitive);
     }
 
     [Fact]

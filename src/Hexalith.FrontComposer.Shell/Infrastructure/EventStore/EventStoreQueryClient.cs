@@ -162,7 +162,7 @@ public sealed class EventStoreQueryClient(
                 _ = httpRequest.Headers.TryAddWithoutValidation("If-None-Match", ifNoneMatch);
             }
 
-            JsonElement payload = SerializeQueryPayload(request);
+            JsonElement? payload = SerializeQueryPayload(request);
             httpRequest.Content = EventStoreRequestContent.Create(
                 new SubmitQueryRequest(
                     tenant,
@@ -242,6 +242,7 @@ public sealed class EventStoreQueryClient(
                         int totalCount;
                         try {
                             using var document = JsonDocument.Parse(body);
+                            EnsureSuccessfulEnvelope(document.RootElement);
                             items = ReadPayloadItems<T>(document.RootElement);
                             totalCount = ReadTotalCount(document.RootElement, items.Count);
                         }
@@ -401,6 +402,7 @@ public sealed class EventStoreQueryClient(
     private static QueryResult<T> DeserializeNotModifiedFromCache<T>(ETagCacheEntry entry, string projectionType) {
         try {
             using var document = JsonDocument.Parse(entry.Payload);
+            EnsureSuccessfulEnvelope(document.RootElement);
             List<T> items = ReadPayloadItems<T>(document.RootElement);
             int totalCount = ReadTotalCount(document.RootElement, items.Count);
             return QueryResult<T>.NotModifiedFromCache(items, totalCount, entry.ETag);
@@ -478,13 +480,48 @@ public sealed class EventStoreQueryClient(
     }
 
     private static int ReadTotalCount(JsonElement root, int defaultCount) {
-        if (root.TryGetProperty("totalCount", out JsonElement totalCount)
-            && totalCount.ValueKind == JsonValueKind.Number
-            && totalCount.TryGetInt32(out int parsed)) {
-            return parsed;
+        if (root.TryGetProperty("metadata", out JsonElement metadata)
+            && metadata.ValueKind == JsonValueKind.Object
+            && metadata.TryGetProperty("paging", out JsonElement paging)
+            && paging.ValueKind == JsonValueKind.Object
+            && paging.TryGetProperty("totalCount", out JsonElement nestedTotalCount)) {
+            return ReadTotalCountValue(nestedTotalCount);
+        }
+
+        if (root.TryGetProperty("totalCount", out JsonElement legacyTotalCount)) {
+            return ReadTotalCountValue(legacyTotalCount);
         }
 
         return defaultCount;
+    }
+
+    private static int ReadTotalCountValue(JsonElement value) {
+        if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out int parsed) || parsed < 0) {
+            throw new InvalidOperationException("EventStore query totalCount must be a non-negative 32-bit integer.");
+        }
+
+        return parsed;
+    }
+
+    private static void EnsureSuccessfulEnvelope(JsonElement root) {
+        if (root.ValueKind != JsonValueKind.Object) {
+            throw new InvalidOperationException("EventStore query response must be a JSON object.");
+        }
+
+        if (!root.TryGetProperty("success", out JsonElement success)) {
+            return;
+        }
+
+        if (success.ValueKind is not JsonValueKind.True and not JsonValueKind.False) {
+            throw new InvalidOperationException("EventStore query success must be a boolean.");
+        }
+
+        if (!success.GetBoolean()) {
+            throw new HttpRequestException(
+                "EventStore query returned a semantic failure envelope.",
+                inner: null,
+                statusCode: System.Net.HttpStatusCode.OK);
+        }
     }
 
     [SuppressMessage(
@@ -492,17 +529,29 @@ public sealed class EventStoreQueryClient(
         "IL2026:RequiresUnreferencedCode",
         Justification = "EventStore adapter serializes query payload metadata through System.Text.Json web defaults.")]
 #pragma warning disable HFC0001 // Legacy Filter is forwarded throughout 2.x until the documented v3.0.0 removal.
-    private static JsonElement SerializeQueryPayload(QueryRequest request) => JsonSerializer.SerializeToElement(
-            new QueryPayload(
-                request.Filter,
-                request.Criteria.Skip,
-                request.Criteria.Take,
-                request.Criteria.ColumnFilters,
-                request.Criteria.StatusFilters,
-                request.Criteria.SearchQuery,
-                request.Criteria.SortColumn,
-                request.Criteria.SortDescending),
-            EventStoreRequestContent.JsonOptions);
+    private static JsonElement? SerializeQueryPayload(QueryRequest request) {
+        var payload = new QueryPayload(
+            request.Filter,
+            request.Criteria.Skip,
+            request.Criteria.Take,
+            request.Criteria.ColumnFilters,
+            request.Criteria.StatusFilters,
+            request.Criteria.SearchQuery,
+            request.Criteria.SortColumn,
+            request.Criteria.SortDescending);
+        return HasMeaningfulQueryPayload(payload)
+            ? JsonSerializer.SerializeToElement(payload, EventStoreRequestContent.JsonOptions)
+            : null;
+    }
+
+    private static bool HasMeaningfulQueryPayload(QueryPayload payload)
+        => !string.IsNullOrWhiteSpace(payload.Filter)
+            || payload.Skip.HasValue
+            || payload.Take.HasValue
+            || payload.ColumnFilters is { Count: > 0 }
+            || payload.StatusFilters is { Count: > 0 }
+            || !string.IsNullOrWhiteSpace(payload.SearchQuery)
+            || !string.IsNullOrWhiteSpace(payload.SortColumn);
 #pragma warning restore HFC0001
 
     private sealed record SubmitQueryRequest(

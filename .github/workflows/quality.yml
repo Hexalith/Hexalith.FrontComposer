@@ -174,13 +174,32 @@ jobs:
           DiffEngine_Disabled: true
         run: dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --no-build --filter-trait "Category=Contract" --results-directory ./TestResults/contract --report-xunit-trx --report-xunit-trx-filename test-results-contract.trx
 
+      - name: 'Gate 2c: Live EventStore provider verification'
+        shell: bash
+        run: |
+          dotnet build references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj --configuration Release -m:1
+          dotnet references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.Tests.dll
+          dotnet references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.dll \
+            --verification-mode live-compatibility \
+            --pact-directory "$GITHUB_WORKSPACE/tests/Hexalith.FrontComposer.Shell.Tests/Pact" \
+            --manifest "$GITHUB_WORKSPACE/tests/Hexalith.FrontComposer.Shell.Tests/Pact/interaction-manifest.json" \
+            --provider-state-catalog "$GITHUB_WORKSPACE/tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-state-catalog.json" \
+            --report-output "$GITHUB_WORKSPACE/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json"
+          python3 eng/eventstore_runtime_evidence.py \
+            --live-evidence-root _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation \
+            --pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact \
+            --write-live-receipt
+
+      - name: 'Gate 2c: Authenticated AppHost smoke'
+        shell: bash
+        run: python3 eng/pact_provider_apphost_smoke.py --timeout-seconds 300
+
       - name: 'Gate 2c: Validate contract artifacts'
         shell: pwsh
         run: |
-          # EventStore owns provider execution. FrontComposer preserves and validates its
-          # complete loopback report without converting compatibility failures into runtime-
-          # identity migration authority.
-          python3 -m unittest tests/eng/test_eventstore_runtime_evidence.py
+          # Historical Story 11.24 bytes and current compatibility evidence are separate
+          # authorities. Neither current success nor failure changes migration approval.
+          python3 -m unittest tests/eng/test_eventstore_runtime_evidence.py tests/eng/test_pact_provider_apphost_smoke.py
           # pwsh does not fail a step on a native non-zero exit, and the validator below resets
           # $LASTEXITCODE, so the evidence suite must propagate its own failure explicitly.
           # $LASTEXITCODE is $null until a native command sets it, and `exit $null` exits 0,
@@ -188,7 +207,7 @@ jobs:
           if (-not $? -or $LASTEXITCODE -ne 0) { exit 1 }
           ./eng/validate-contract-artifacts.ps1 `
             -RequireProviderVerification `
-            -ProviderVerificationReport "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/provider-verification/provider-verification.json"
+            -ProviderVerificationReport "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json"
 
       - name: 'Gate 2c: Fail on stale pact diff'
         shell: bash
@@ -232,6 +251,7 @@ jobs:
           path: |
             artifacts/contracts/**
             _bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/**
+            _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/**
             tests/Hexalith.FrontComposer.Shell.Tests/Pact/*.json
             tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-verification-handoff.md
 

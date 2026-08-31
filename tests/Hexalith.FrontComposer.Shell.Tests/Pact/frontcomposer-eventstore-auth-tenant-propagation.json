@@ -11,7 +11,7 @@
       "description": "command propagates authenticated tenant and bearer requirement",
       "providerStates": [
         {
-          "name": "tenant-mismatch"
+          "name": "command-auth-tenant"
         }
       ],
       "request": {
@@ -22,18 +22,22 @@
           "Content-Type": "application/json"
         },
         "body": {
-          "messageId": "01HXCNTRCT0000000000000000",
-          "tenant": "Tenant_Contract_Case",
-          "domain": "orders",
-          "aggregateId": "order-1",
-          "commandType": "Hexalith.FrontComposer.Shell.Tests.Pact.EventStorePactContractTests\u002BShipOrderCommand",
-          "payload": {
-            "tenantId": "Tenant_Contract_Case",
+          "content": {
+            "messageId": "01HXCNTRCT0000000000000000",
+            "tenant": "tenant-contract-case",
+            "domain": "orders",
             "aggregateId": "order-1",
-            "quantity": 3
+            "commandType": "Hexalith.FrontComposer.Shell.Tests.Pact.EventStorePactContractTests\u002BShipOrderCommand",
+            "payload": {
+              "tenantId": "tenant-contract-case",
+              "aggregateId": "order-1",
+              "quantity": 3
+            },
+            "correlationId": null,
+            "extensions": null
           },
-          "correlationId": null,
-          "extensions": null
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "response": {
@@ -42,7 +46,12 @@
           "Content-Type": "application/json"
         },
         "body": {
-          "correlationId": "corr-auth-tenant"
+          "content": {
+            "correlationId": "01HXCNTRCT0000000000000000",
+            "messageId": "01HXCNTRCT0000000000000000"
+          },
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "metadata": {
@@ -68,23 +77,18 @@
           "Content-Type": "application/json"
         },
         "body": {
-          "tenant": "Tenant_Contract_Case",
-          "domain": "orders",
-          "aggregateId": "order-1",
-          "queryType": "GetOrders",
-          "projectionType": "orders",
-          "payload": {
-            "filter": null,
-            "skip": null,
-            "take": null,
-            "columnFilters": null,
-            "statusFilters": null,
-            "searchQuery": null,
-            "sortColumn": null,
-            "sortDescending": false
+          "content": {
+            "tenant": "tenant-contract-case",
+            "domain": "orders",
+            "aggregateId": "order-1",
+            "queryType": "GetOrders",
+            "projectionType": "orders",
+            "payload": null,
+            "entityId": null,
+            "projectionActorType": null
           },
-          "entityId": null,
-          "projectionActorType": null
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "response": {
@@ -93,13 +97,25 @@
           "Content-Type": "application/json"
         },
         "body": {
-          "payload": [
-            {
-              "id": "order-1",
-              "status": "Pending"
+          "content": {
+            "payload": [
+              {
+                "id": "order-1",
+                "status": "Pending"
+              }
+            ],
+            "success": true,
+            "metadata": {
+              "paging": {
+                "pageSize": 25,
+                "offset": 0,
+                "totalCount": 1,
+                "hasMore": false
+              }
             }
-          ],
-          "totalCount": 1
+          },
+          "contentType": "application/json",
+          "encoded": false
         }
       },
       "metadata": {

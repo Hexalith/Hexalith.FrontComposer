@@ -26,6 +26,9 @@ CANONICAL_EVIDENCE = (
     ROOT / "_bmad-output" / "implementation-artifacts" / "evidence" / "frontcomposer-story-11-24"
 )
 CANONICAL_PACTS = ROOT / "tests" / "Hexalith.FrontComposer.Shell.Tests" / "Pact"
+CANONICAL_LIVE_EVIDENCE = (
+    ROOT / "_bmad-output" / "implementation-artifacts" / "evidence" / "pact-provider-reconciliation"
+)
 
 
 def _sha256(path: Path) -> str:
@@ -124,12 +127,83 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         self.addCleanup(self._temporary.cleanup)
         temporary_root = Path(self._temporary.name)
         self.evidence_root = temporary_root / "evidence"
+        self.live_root = temporary_root / "live-evidence"
         self.pact_root = temporary_root / "pacts"
         shutil.copytree(CANONICAL_EVIDENCE, self.evidence_root)
+        shutil.copytree(CANONICAL_LIVE_EVIDENCE, self.live_root)
         shutil.copytree(CANONICAL_PACTS, self.pact_root)
 
     def validate(self) -> list[str]:
         return evidence.validate(self.evidence_root, self.pact_root)
+
+    def validate_live(self) -> list[str]:
+        return evidence.validate_live(self.live_root, self.pact_root, ROOT)
+
+    def make_live_apphost_pass(self) -> None:
+        provenance_errors: list[str] = []
+        provenance = evidence._live_provenance(ROOT, provenance_errors)
+        self.assertEqual(provenance_errors, [])
+        document = {
+            "schema": "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v1",
+            "capturedAt": "2026-08-31T17:00:00+00:00",
+            "finalVerdict": "passed",
+            "reasonCodes": [],
+            "identity": {
+                "eventStoreSourceSha": provenance["sourceSha"],
+                "eventStoreReleaseVersion": provenance["releaseVersion"],
+                "buildsCatalogSha": provenance["buildsSha"],
+            },
+            "topology": {
+                "programPath": "src/Hexalith.FrontComposer.AppHost/Program.cs",
+                "programSha256": _sha256(ROOT / "src/Hexalith.FrontComposer.AppHost/Program.cs"),
+                "projectPath": "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+                "projectSha256": _sha256(ROOT / "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj"),
+                "modifiedForSmoke": False,
+                "declaredResources": [
+                    "security",
+                    "eventstore",
+                    "eventstore-admin",
+                    "eventstore-admin-ui",
+                    "tenants",
+                    "parties",
+                    "sample",
+                    "tenants-ui",
+                    "frontcomposer-ui",
+                    "counter-web",
+                ],
+            },
+            "startup": {
+                "result": "passed",
+                "resourceWaits": {
+                    "security": "healthy",
+                    "eventstore": "healthy",
+                    "eventstore-admin": "healthy",
+                    "eventstore-admin-ui": "healthy",
+                    "tenants": "healthy",
+                    "parties": "healthy",
+                    "sample": "healthy",
+                    "tenants-ui": "healthy",
+                    "frontcomposer-ui": "healthy",
+                    "counter-web": "healthy",
+                },
+            },
+            "observations": {
+                name: {
+                    "result": "passed",
+                    "authenticated": True,
+                    "reasonCode": f"{name}.authenticated.succeeded",
+                }
+                for name in evidence.APPHOST_OBSERVATIONS
+            },
+            "cleanup": {
+                "command": "aspire stop --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --nologo",
+                "result": "clean",
+                "hostStopped": True,
+                "portsClosed": True,
+                "runningAppHostsAfterAttempt": 0,
+            },
+        }
+        _write_json(self.live_root / "apphost-smoke.json", document)
 
     def repin_captured(self, *relatives: str) -> None:
         """Re-pin captured bytes so a test can exercise structure, not the capture pin."""
@@ -289,17 +363,15 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         self.assertTrue(any("bound_evidence does not match" in error for error in errors), errors)
 
-    def test_pact_byte_mutation_without_description_or_state_change_is_rejected(self) -> None:
+    def test_historical_archive_does_not_compare_report_to_mutated_live_pact_bytes(self) -> None:
         pact_path = self.pact_root / evidence.PACT_FILES[0]
         pact = _read_json(pact_path)
         pact["metadata"]["story1124Mutation"] = "same-interactions-different-bytes"
         _write_json(pact_path, pact)
 
-        errors = self.validate()
+        self.assertEqual(self.validate(), [])
 
-        self.assertTrue(any("contract-input hash differs" in error for error in errors), errors)
-
-    def test_provider_state_catalog_set_must_equal_pact_states(self) -> None:
+    def test_historical_archive_does_not_treat_the_live_state_catalog_as_hash_authority(self) -> None:
         catalog_path = self.pact_root / "provider-state-catalog.json"
         catalog = _read_json(catalog_path)
         extra = copy.deepcopy(catalog["states"][0])
@@ -307,19 +379,69 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         catalog["states"].append(extra)
         _write_json(catalog_path, catalog)
 
-        errors = self.validate()
+        self.assertEqual(self.validate(), [])
 
-        self.assertTrue(any("catalog set must equal" in error for error in errors), errors)
-
-    def test_interaction_manifest_pact_file_attribution_must_be_exact(self) -> None:
+    def test_historical_archive_does_not_treat_the_live_manifest_as_hash_authority(self) -> None:
         manifest_path = self.pact_root / "interaction-manifest.json"
         manifest = _read_json(manifest_path)
         manifest["pactFiles"].pop()
         _write_json(manifest_path, manifest)
 
-        errors = self.validate()
+        self.assertEqual(self.validate(), [])
+
+    def test_live_lane_accepts_exact_current_provider_and_authenticated_apphost_evidence(self) -> None:
+        self.make_live_apphost_pass()
+
+        self.assertEqual(self.validate_live(), [])
+
+    def test_live_lane_rejects_current_pact_byte_drift(self) -> None:
+        self.make_live_apphost_pass()
+        pact_path = self.pact_root / evidence.PACT_FILES[0]
+        pact = _read_json(pact_path)
+        pact["metadata"]["liveMutation"] = "different-current-bytes"
+        _write_json(pact_path, pact)
+
+        errors = self.validate_live()
+
+        self.assertTrue(any("exact current Pact bytes" in error for error in errors), errors)
+
+    def test_live_lane_rejects_manifest_and_catalog_drift(self) -> None:
+        self.make_live_apphost_pass()
+        manifest = _read_json(self.pact_root / "interaction-manifest.json")
+        manifest["pactFiles"].pop()
+        _write_json(self.pact_root / "interaction-manifest.json", manifest)
+        catalog = _read_json(self.pact_root / "provider-state-catalog.json")
+        extra = copy.deepcopy(catalog["states"][0])
+        extra["name"] = "undeclared-extra-state"
+        catalog["states"].append(extra)
+        _write_json(self.pact_root / "provider-state-catalog.json", catalog)
+
+        errors = self.validate_live()
 
         self.assertTrue(any("pact-file attribution" in error for error in errors), errors)
+        self.assertTrue(any("catalog set must equal" in error for error in errors), errors)
+
+    def test_live_lane_rejects_failed_provider_or_apphost_evidence(self) -> None:
+        report = _read_json(self.live_root / "provider-verification.json")
+        report["finalVerdict"] = "failed"
+        _write_json(self.live_root / "provider-verification.json", report)
+
+        errors = self.validate_live()
+
+        self.assertTrue(any("finalVerdict must equal 'passed'" in error for error in errors), errors)
+        self.assertTrue(any("AppHost smoke is not a clean passing run" in error for error in errors), errors)
+
+    def test_live_lane_rejects_stale_provenance_and_extra_files(self) -> None:
+        self.make_live_apphost_pass()
+        report = _read_json(self.live_root / "provider-verification.json")
+        report["identity"]["observedSourceSha"] = "0" * 40
+        _write_json(self.live_root / "provider-verification.json", report)
+        (self.live_root / "unexpected.json").write_text("{}\n", encoding="utf-8")
+
+        errors = self.validate_live()
+
+        self.assertTrue(any("exactly provider-verification" in error for error in errors), errors)
+        self.assertTrue(any("observedSourceSha is stale" in error for error in errors), errors)
 
     def test_duplicate_json_keys_are_rejected_before_validation(self) -> None:
         relative = "apphost-smoke/apphost-smoke.json"
@@ -721,21 +843,22 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         )
         return result, artifact_root / "job-summary.md"
 
-    def test_required_provider_lane_accepts_the_canonical_report_from_any_directory(self) -> None:
+    def test_required_provider_lane_rejects_the_truthfully_failed_canonical_apphost_run(self) -> None:
         result, summary = self._run_contract_validator(
             "-RequireProviderVerification",
             "-ProviderVerificationReport",
-            "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/"
-            "provider-verification/provider-verification.json",
+            "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/"
+            "provider-verification.json",
         )
 
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("Provider verification: COMPLETE_HASH_BOUND_REPORT", summary.read_text(encoding="utf-8"))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Live AppHost smoke is not a clean", result.stdout + result.stderr)
+        self.assertIn("Current authenticated AppHost smoke: REQUIRED_REJECTED", summary.read_text(encoding="utf-8"))
 
     def test_required_provider_lane_rejects_a_report_outside_the_owned_evidence_tree(self) -> None:
         foreign = Path(self._temporary.name) / "foreign-provider-verification.json"
         shutil.copyfile(
-            CANONICAL_EVIDENCE / "provider-verification/provider-verification.json",
+            CANONICAL_LIVE_EVIDENCE / "provider-verification.json",
             foreign,
         )
 
@@ -747,11 +870,11 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("must use the FrontComposer-owned report", result.stdout + result.stderr)
-        self.assertIn("Provider verification: REQUIRED_REJECTED", summary.read_text(encoding="utf-8"))
+        self.assertIn("Current provider verification: REQUIRED_REJECTED", summary.read_text(encoding="utf-8"))
 
     def test_required_provider_lane_propagates_an_evidence_validator_failure(self) -> None:
-        # Semantics-preserving reformatting: the pacts still satisfy the manifest cross-checks,
-        # but the preserved report no longer binds their text, so the lane must fail closed.
+        # Semantics-preserving reformatting: interactions still satisfy the manifest
+        # cross-checks, but the live report no longer binds their bytes.
         manifest_path = self.pact_root / "interaction-manifest.json"
         manifest = _read_json(manifest_path)
         manifest_path.write_text(json.dumps(manifest, indent=4) + "\n", encoding="utf-8")
@@ -764,8 +887,8 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         self.assertNotEqual(result.returncode, 0)
         output = result.stdout + result.stderr
-        self.assertIn("Provider report contract-input hash", output)
-        self.assertIn("Provider verification: REQUIRED_REJECTED", summary.read_text(encoding="utf-8"))
+        self.assertIn("exact current Pact bytes", output)
+        self.assertIn("Current provider verification: REQUIRED_REJECTED", summary.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
