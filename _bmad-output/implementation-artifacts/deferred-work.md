@@ -127,7 +127,9 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-11-23-r
 location: AnalyzerPolicy_ActivatedReleaseBuild_MatchesForcedRecommendedCandidate
 source_spec: `_bmad-output/implementation-artifacts/spec-11-23-recommended-analyzer-repository-activation.md`
 reason: summary: Dual full-solution Release builds in `AnalyzerPolicy_ActivatedReleaseBuild_MatchesForcedRecommendedCandidate` can contend when Governance facts run in parallel. evidence: The new parity fact runs two solution builds against shared outputs; sibling Governance rebuild gates already deferred the same contention class under Story 11.22.
-status: open
+status: done 2026-08-31
+resolution: resolved by sweep bundle dw-analyzer-governance-reliability
+resolution-undo: e4596f494f9c9989040773d97a6329e9d10b7fd5193cf008204a784d3bd533f7 2026-08-31 7374617475733a206f70656e
 
 ### DW-683: `CommandFormEmitterTests` admission dispose ordering still anchors with `IndexOf("try")` / `IndexOf("finally")` after the submitted-log call site; a larger token containing those substrings could mis-order the assert (pre-existing; this chunk only reordered the greater-than checks).
 
@@ -177,14 +179,18 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of spec-11-22-recommended-analyzer-test-and-sample-burn-down.md (2026-08-08)"), 2026-08-27
 location: AnalyzerPolicy_Story1122RecordedProjects_RemainRecommendedClean
 reason: Thirteen-project Recommended Governance rebuild gate (`AnalyzerPolicy_Story1122RecordedProjects_RemainRecommendedClean`) runs sequential 180s-bounded builds and slows every Governance lane; intentional executable gate — optimize later (caching, narrower trait, or shared binary log reuse).
-status: open
+status: done 2026-08-31
+resolution: resolved by sweep bundle dw-analyzer-governance-reliability
+resolution-undo: e4596f494f9c9989040773d97a6329e9d10b7fd5193cf008204a784d3bd533f7 2026-08-31 7374617475733a206f70656e
 
 ### DW-690: `RunDotnetResultAsync` kills on timeout then still awaits stdout/stderr tasks that may cancel uncleanly; pre-existing helper shared by several governance proofs — harden when the next timeout-related flake appears.
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-11-22-recommended-analyzer-test-and-sample-burn-down.md (2026-08-08)"), 2026-08-27
 location: RunDotnetResultAsync
 reason: `RunDotnetResultAsync` kills on timeout then still awaits stdout/stderr tasks that may cancel uncleanly; pre-existing helper shared by several governance proofs — harden when the next timeout-related flake appears.
-status: open
+status: done 2026-08-31
+resolution: resolved by sweep bundle dw-analyzer-governance-reliability
+resolution-undo: e4596f494f9c9989040773d97a6329e9d10b7fd5193cf008204a784d3bd533f7 2026-08-31 7374617475733a206f70656e
 
 ### DW-691: Shell.Tests ASP0006 `NoWarn` comment claims exactly 17 hand-authored fixture sites but nothing asserts that count; debt growth under the same control would stay silent until Story 11.22.
 
@@ -248,7 +254,9 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 11-21-recommended-analyzer-product-and-generator-burndown.md chunk 4a (2026-08-08)"), 2026-08-27
 location: PackagedAnalyzerConsumerTests
 reason: `PackagedAnalyzerConsumerTests` builds the temp consumer Release-only; rewriter unit tests already stress DEBUG vs Release parse safety, but the packaged Recommended gate does not.
-status: open
+status: done 2026-08-31
+resolution: resolved by sweep bundle dw-analyzer-governance-reliability
+resolution-undo: e4596f494f9c9989040773d97a6329e9d10b7fd5193cf008204a784d3bd533f7 2026-08-31 7374617475733a206f70656e
 
 ### DW-700: `RazorEmitter.Truncate` uses `AsSpan(0, maxLength - 1)` (CA1845); `maxLength < 1` on a non-empty value still throws. Sole production call site passes `30`; same failure shape existed with `Substring`.
 
@@ -297,14 +305,18 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 11-20-recommended-analyzer-policy-and-exception-ledger.md (2026-08-08)"), 2026-08-27
 location: tests/**
 reason: Identifier inventory algorithm hashes every underscore-containing C# token under `tests/**` (including locals/discards), so routine non-CA1707 test edits force ledger reseals; narrow the sealed token set only under an explicit follow-up that preserves fail-closed CA1707 scope drift detection.
-status: open
+status: done 2026-08-31
+resolution: resolved by sweep bundle dw-analyzer-governance-reliability
+resolution-undo: e4596f494f9c9989040773d97a6329e9d10b7fd5193cf008204a784d3bd533f7 2026-08-31 7374617475733a206f70656e
 
 ### DW-707: Ledger `warningControls` for `TreatWarningsAsErrors` encode the boolean MSBuild value in `diagnosticIds` (`["true"]` / `["false"]`); schema clarity can improve later without changing the current governance parity keys.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 11-20-recommended-analyzer-policy-and-exception-ledger.md (2026-08-08)"), 2026-08-27
 location: TreatWarningsAsErrors
 reason: Ledger `warningControls` for `TreatWarningsAsErrors` encode the boolean MSBuild value in `diagnosticIds` (`["true"]` / `["false"]`); schema clarity can improve later without changing the current governance parity keys.
-status: open
+status: done 2026-08-31
+resolution: resolved by sweep bundle dw-analyzer-governance-reliability
+resolution-undo: e4596f494f9c9989040773d97a6329e9d10b7fd5193cf008204a784d3bd533f7 2026-08-31 7374617475733a206f70656e
 
 ### DW-708: `Hexalith.FrontComposer.SourceTools.Tests.Docs.FcDocComponentDocumentationContractTests.EveryComponentPageLinksAtLeastOnePublishedAccessibilityDiagnostic` for `docs/reference/components/settings.md`.
 
@@ -9571,4 +9583,36 @@ origin: migrated from legacy ledger ("spec-bump-eventstore-to-3-100-0.md"), 2026
 location: references/Hexalith.Builds/Tools/test-package-version-audit-validator.ps1
 source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-to-3-100-0.md`
 reason: The validator failed twice with `The non-terminating Git shim did not record both owned process IDs.` before passing all 66 scenarios on isolated retry; the scripts were not edited by this EventStore bump, so the intermittent Git-shim PID capture remains deferred.
+status: open
+
+### DW-1907: The packaged-analyzer test's legacy dotnet helper still drains stdout and stderr sequentially and does not terminate the child on cancellation.
+origin: spec-deferred a7b5ab90c27e
+location: tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/PackagedAnalyzerConsumerTests.cs:315
+source_spec: `spec-analyzer-governance-reliability.md`
+severity: medium
+reason: `RunDotnetAllowingFailureAsync` in `PackagedAnalyzerConsumerTests.cs` awaits stdout, then stderr, then `WaitForExitAsync` with the caller token. This pre-dates the Debug/Release matrix and can deadlock on a full stderr pipe or leave dotnet running when the test token is cancelled.
+status: open
+
+### DW-1908: The untraited hidden-control negative probe still runs two `--no-incremental` project rebuilds inside the solution-wide Governance lane.
+origin: spec-deferred 70cb0d757d1c
+location: tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs:AnalyzerPolicy_Story1122HiddenControlNegativeProbes_RemainClean
+source_spec: `spec-analyzer-governance-reliability.md`
+severity: medium
+reason: `AnalyzerPolicy_Story1122HiddenControlNegativeProbes_RemainClean` carries only `Category=Governance`, so `dotnet test Hexalith.FrontComposer.slnx --filter-trait "Category=Governance"` still rebuilds `Shell.Tests.csproj` and `Testing.Tests.csproj` non-incrementally while other solution test modules run. This predates the story and is the same contention class the `GovernanceBuild` trait isolated for the two solution builds; it was not reclassified here.
+status: open
+
+### DW-1909: `CiGovernanceTests.EventStoreRuntimeIdentityPinsOwnerApprovedTupleAndTruthfulDriftEvidence` fails on an EventStore gitlink that no longer matches its owner-approved pin.
+origin: spec-deferred f37d4440d25e
+location: tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:3454
+source_spec: `spec-analyzer-governance-reliability.md`
+severity: medium
+reason: The fact expects `38967215e6c1b13e77f2b0006efd95d88d7ad7b8` but the gitlink is `1194dfe59bcbc9b235390d1e46a7dfe4ee115d94`. That gitlink is byte-identical at this story's baseline `d738598b` and at HEAD, and the story never touched the fact or its pin, so the red is a concurrent EventStore-pin drift owned outside this work.
+status: open
+
+### DW-1910: Follow-up review still recommended for dw-analyzer-governance-reliability after the damping cap was spent
+origin: review-budget-followup
+location: n/a
+source_spec: `spec-analyzer-governance-reliability.md`
+severity: low
+reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260830-234810-e850; this entry preserves the lingering recommendation for a deliberate later review.
 status: open
