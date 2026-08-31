@@ -1061,7 +1061,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 8-6a-schema-negotiation-runtime-gate chunk 4 (2026-05-07)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/SchemaContractFamilyNamesTests.cs:1972-1981
 reason: **DEF-CK4-8 — `SchemaContractFamilyNamesTests.Canonical_DistinctValuesPerFamily` passes vacuously for single-member enum** [`tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/SchemaContractFamilyNamesTests.cs:1972-1981`] — `HashSet.Add` returning `true` is trivial for a single-member enum. **Owner:** Becomes meaningful when second contract family is added. Sources: blind. Reconciliation: Row: DW-0074; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.4 SourceTools/schema-fingerprint follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.4 SourceTools/schema-fingerprint follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
-status: open
+status: done 2026-08-31
+resolution: already resolved: src/Hexalith.FrontComposer.Schema/SchemaContractFamilyNames.cs:8-14 now maps seven schema families, so Canonical_DistinctValuesPerFamily is no longer a vacuous single-member test.
 
 ### DW-806: Precedence matrix Row 4 forbidden set does not include `unknown-version` [`tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationPrecedenceMatrixTests.cs:1300-1307`] — Lower-priority `unknown-version` not blocked by Row 4's forbidden set. Owner: Defense-in-depth on negative-test coverage of precedence matrix. Sources: auditor. Reconciliation: Row: DW-0075; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 
@@ -2706,14 +2707,16 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`NavigateHomeAsync` `JSDisconnectedException` on dead circuit** — Blazor error boundary + the HFC2109 handler-fault catch already absorb; additional `try/catch` is defensive noise. Reconciliation: Row: DW-0300; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4).
-status: open
+status: done 2026-08-31
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Shortcuts/ShortcutService.cs:214-231 invokes the shortcut handler and awaits it inside one try/catch, so a synchronous NavigateTo/JSDisconnectedException is contained and logged.
 
 ### DW-1032: `OpenSettingsAsync` synchronous throw
 
 origin: migrated from legacy ledger ("Deferred from: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`OpenSettingsAsync` synchronous throw** — `FcSettingsDialogLauncher` internal wrapping covers the common cases; out-of-scope for chunk-3 hardening. Reconciliation: Row: DW-0301; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4).
-status: open
+status: done 2026-08-31
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Shortcuts/ShortcutService.cs:214-231 catches failures from both synchronous OpenSettings invocation and the returned asynchronous operation.
 
 ### DW-1033: `FrontComposerRegistry.HasFullPageRoute` duplicate-command ambiguity across manifests
 
@@ -2792,7 +2795,8 @@ resolution: already resolved: tests/Hexalith.FrontComposer.Shell.Tests/Component
 origin: migrated from legacy ledger ("Deferred from: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts (2026-04-21)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Shell/Shortcuts/ShortcutService.cs
 reason: **`ShortcutService.Dispose` race with pending chord timer** — `_chordTimer` callback can take `_chordSync` lock after `Dispose` returned; functionally harmless because the generation guard absorbs any late timer fire, but the race window exists. `FakeTimeProvider` in tests never exercises the real threading path. Revisit only if real threaded TimeProvider is added. `src/Hexalith.FrontComposer.Shell/Shortcuts/ShortcutService.cs:~3410-3440` Reconciliation: Row: DW-0312; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts (2026-04-21).
-status: open
+status: done 2026-08-31
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Shortcuts/ShortcutService.cs:139-179 and :194-204 serialize timer callbacks and disposal through _chordSync while the disposed flag prevents post-dispose timer allocation.
 
 ### DW-1044: Prerender-only scope resolution retry
 
@@ -3468,7 +3472,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 2-2-action-d
 location: fc-expandinrow.js
 severity: medium
 reason: **[MED] `ClosePopoverAsync` delegates scroll+focus ordering to Shell `fc-expandinrow.js`** — AC9 scroll-then-focus contract is enforced in Shell JS, not the emitter. **Defer target:** Group D (Shell JS) review to verify the helper preserves scroll-then-focus order and handles hidden-element edge cases. Reconciliation: Row: DW-0400; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.4; AC coverage: AC12, AC23, AC29, AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.4.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group C (SourceTools layer) chunk.
-status: open
+status: done 2026-08-31
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-expandinrow.js:15-16 performs scrollIntoView before focus.
 
 ### DW-1132: [MED] `PrefillDerivableFieldsAsync` sequential provider awaits
 
@@ -4003,7 +4008,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 5-5-command-idempotency-and-optimistic-updates (2026-04-26)"), 2026-08-27
 location: tests/.../Generated/CounterStoryVerificationTests.*.verified.txt
 reason: **D8 — Counter golden snapshot SVG markup change** [`tests/.../Generated/CounterStoryVerificationTests.*.verified.txt`] — Verify whether the change is from a Fluent UI version bump or an unintended regression in render output for existing components; not introduced by Story 5-5 logic. Reconciliation: Row: DW-0468; Split to Story 11.6 Counter specimen snapshot review 2026-05-13; Disposition: split-to-named-story; Reason: visual/generated snapshot ownership is Shell UX/sample scope; Residual release-gate risk: low.; Related: Story 11.6; Evidence: tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.*.verified.txt.
-status: open
+status: done 2026-08-31
+resolution: already resolved: _bmad-output/implementation-artifacts/spec-11-24-adopt-the-owner-approved-eventstore-runtime-identity.md:29 identifies the Fluent catalog change as the snapshot cause, and line 219 records the drift reconciliation.
 
 ### DW-1200: ETag/304/429/503 polling parity [`State/PendingCommands/PendingCommandPollingCoordinator.cs`] — Continuation of Pass-1 D1. Real `IPendingCommandStatusQuery` not registered; ETag plumbing has no callsite. Lifts when DN4-style real provider ships. Reconciliation: Row: DW-0469; Final classification 2026-05-15: superseded-preserved; Superseded by DW-0461; Decision owner: Shell/EventStore integration owner; Constraint: `PENDING-STATUS-NULL-PROVIDER-V1`; Validation: same pending-status provider split evidence; Release risk: inherited by DW-0461 accepted v1 constraint; Reopen event: only through DW-0461 if provider-backed readiness is claimed; Coverage rationale: if DW-0461 closes by provider implementation, DW-0469 must be re-checked for ETag/304/429/503 polling parity coverage; if DW-0461 closes by permanent constraint, DW-0469 must be explicitly re-routed to an ETag/retry-parity backlog row before EventStore status work resumes (DW-0461's null-provider framing does not strictly imply DW-0469's retry/cache hygiene scope); Evidence: State/PendingCommands/PendingCommandPollingCoordinator.cs and Story 12.3 release decision table.
 
@@ -7499,7 +7505,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-ru
 location: .github/workflows/nightly.yml:49-53
 source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
 reason: summary: Replace maintained per-project benchmark commands with the repository's focused direct-executable pattern and always disable DiffEngine. evidence: `.github/workflows/nightly.yml:49-53` and `tests/README.md:105-106` retain the pre-existing project-level `dotnet test --filter` pattern; the README command also omits the repository-required `DiffEngine_Disabled=true` environment setting. The Story 11.17c change only retargeted those commands from MCP.Tests to the Bench project.
-status: open
+status: done 2026-08-31
+resolution: already resolved: Commit d08d1dec; .github/workflows/nightly.yml:53-57 and tests/README.md:105-116 now use focused project-level MTP execution with DiffEngine_Disabled=true.
 
 ### DW-1657: Pin the exact 20 v1 benchmark prompt IDs.
 
@@ -7895,7 +7902,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-
 location: tests/**/*.cs
 source_spec: `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json`
 reason: summary: Bind the analyzer-policy identifier inventory to a committed revision and assert the delta, instead of hashing working-tree line numbers. evidence: `AnalyzerPolicyGovernanceTests.ValidateIdentifierInventory` recomputes `count` and `sha256` over `path:line:token` from the working tree using the same function that produced the pinned values, so the gate detects only "the ledger is stale" and every drift is resolvable by pasting back the value the failure message prints. Because the hash encodes one-based line numbers, any line-shifting edit anywhere under `tests/**/*.cs` breaks the seal without changing the token count. Reproduced at clean HEAD `04057737`: the test fails with `count=6207` — exactly the sealed count — and `sha256=d31b7ad221d52e8964841b4b64af010216bba90c35fd0aeba0627e139901c648` against the sealed `3ca33cb725c9e1512a1c1b9ef40a4fc4421d0b370476a77e85771059d6edce04`, caused purely by the line shift committed in `04057737`. Owner: GOV-1 / Story 11.19. **Correction (group 4, 2026-08-02):** absorbing *foreign* identifier drift remains on Story 11.17d's Never-List; re-sealing for this story's *own* added test identifiers is in scope under the Administrator's 2026-08-01 ruling (Never-List text reconciled in group 4). Reopen trigger: the inventory is computed from a committed revision, or a delta-attribution assertion (added tokens must lie in approved test projects) is added.
-status: open
+status: done 2026-08-31
+resolution: already resolved: Commit 1610415e; tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs:2038-2048 derives a semantic declaration inventory instead of path-and-line token hashing.
 
 ### DW-1704: Distinguish compiler-synthesized record-struct PrintMembers methods from matching hand-written methods.
 
@@ -8041,7 +8049,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-
 location: Hexalith.FrontComposer.slnx
 source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
 reason: summary: Restore a lane that exercises CI's own `dotnet test` invocation path, or record the reduction in guarantee. evidence: The story's documented commands replaced two solution-level `dotnet test Hexalith.FrontComposer.slnx` lanes with eight direct xUnit v3 runner invocations. The direct runners bypass VSTest discovery, RunSettings, and MSBuild-supplied properties, which is the path the reusable `domain-ci` workflow drives. A discovery-only regression — a project missing from the `.slnx` Release configuration, an `IsTestProject` break — is therefore unobservable locally and first surfaces in CI. The swap is repository-compliant (VSTest/Playwright sockets are blocked in this environment), so this is a disclosed-reduction item rather than a defect. Reopen trigger: a CI-only test-discovery failure, or the socket restriction being lifted.
-status: open
+status: done 2026-08-31
+resolution: already resolved: Commit d08d1dec; .github/workflows/quality.yml:121-149 and :271-284 execute solution/project MTP paths and verify their TRX output.
 decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1720, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1721: Deferred tasks can self-exempt with bare fabricated basenames — existence check only runs when `"/"` is in the path.
@@ -8351,7 +8360,8 @@ origin: migrated from legacy ledger ("Deferred from: build review of 11-20-recom
 location: analyzer-policy-exception-ledger-v1.json
 source_spec: `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
 reason: summary: Ledger `diagnosticIds` is overloaded to carry MSBuild property values, so the root-CA guard runs over a field with two incompatible meanings. evidence: `analyzer-policy-exception-ledger-v1.json` encodes `"property": "TreatWarningsAsErrors", "diagnosticIds": ["true"]`. Splitting into `diagnosticIds` and `propertyValue` is a schema change requiring a coordinated reseal.
-status: open
+status: done 2026-08-31
+resolution: already resolved: Commit 1610415e; _bmad-output/contracts/analyzer-policy-exception-ledger-v1.json:453-470 represents scalar MSBuild settings as propertyValue, guarded by AnalyzerPolicyGovernanceTests.cs:804-878.
 decision: 2026-08-27 Implement requested change — Implement the behavior requested by DW-1758, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1759: Approved census counts 4,070 / 2,958 / 2,959 are hardcoded in the governance test, duplicating the ledger the test is meant to treat as authoritative.
@@ -8376,7 +8386,8 @@ origin: migrated from legacy ledger ("Deferred from: build review of 11-20-recom
 location: quality.yml
 source_spec: `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
 reason: summary: The three compile specimens omit `--no-restore`, carry no timeouts, and use inconsistent flag sets, although Gate 2b runs them inside a `--no-build` test job. evidence: `quality.yml` Gate 2b runs `dotnet test … --no-build --filter "Category=Governance"`; the first synthetic build needs NuGet feed access from the test process, so an offline agent reports a network failure as an analyzer-policy failure.
-status: open
+status: done 2026-08-31
+resolution: already resolved: Commit 1610415e; tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs:2253-2299 applies --no-restore --no-incremental -m:1 /nr:false to every compile specimen through the bounded runner.
 
 ### DW-1762: `RunDotnetAsync` concatenates stdout and stderr before `JsonNode.Parse`, so any MSBuild banner or NuGet line turns the effective-build-graph check into an opaque JSON parse exception.
 
@@ -8486,7 +8497,8 @@ origin: migrated from legacy ledger ("Deferred from: build review of 11-20-recom
 location: Counter.Web
 source_spec: `_bmad-output/implementation-artifacts/11-21-recommended-analyzer-product-and-generator-burndown.md`
 reason: summary: `Counter.Web` and `Counter.Specimens` had their ASP0006 `NoWarn` removed but are not part of any asserted zero-ASP0006 consumer set, so a regression reaching only those consumers would be ungated. evidence: `PackagedAnalyzerConsumerTests` asserts over its own generated temp consumer; the negative control for these two projects was run manually during Story 11.21 and is not encoded as a test.
-status: open
+status: done 2026-08-31
+resolution: already resolved: Commit 1610415e; tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs:68-83 includes Counter.Specimens and Counter.Web in the strict set, with warning-free builds enforced at :539-552.
 
 ### DW-1775: The Story 11.21 census records `totalWarnings: 1125` against `locatedDiagnostics: 1120`, and the five unlocated diagnostics are never dispositioned.
 
@@ -8689,7 +8701,8 @@ origin: migrated from legacy ledger ("Deferred from: Story 11.24 owner decision 
 location: n/a
 source_spec: none
 reason: summary: Make FC-NIP Playwright contract guards cross-platform by fixing PLAYWRIGHT_SKIP_WEBSERVER env syntax that fails on Windows runners. evidence: Split from CI run 31715693323 because the accessibility-visual Windows npm failure is independently shippable from the Linux Gate 2b CA1707 identifier-inventory seal drift.
-status: open
+status: done 2026-08-31
+resolution: already resolved: Commit d08d1dec; tests/e2e/package.json:31-36 uses cross-env for PLAYWRIGHT_SKIP_WEBSERVER and the dependency is locked.
 
 ### DW-1799: Document NightlyProperty as an advisory/ungoverned trait and add a quality.yml lane if it should stay excluded from blocking CI and release.
 
@@ -8707,7 +8720,8 @@ origin: migrated from legacy ledger ("Deferred from: Story 11.24 owner decision 
 location: InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds
 source_spec: `_bmad-output/implementation-artifacts/spec-actions-31779965137-fix-cicd.md`
 reason: summary: Quality Gate 2b on current main fails CentralPackageVersions catalog inheritance and ReleaseWorkflow Builds gitlink SHA checks. evidence: Quality run 31781816546 on `4ccd7727` failed `InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds` and `CiGovernanceTests.ReleaseWorkflow_DelegatesToReusableDomainReleaseAfterCiGate`; those Facts are outside this inventory-seal confirm.
-status: open
+status: done 2026-08-31
+resolution: already resolved: Current focused execution passes both DW-1800 facts defined in tests/Hexalith.FrontComposer.Shell.Tests/Governance/InfrastructureGovernanceTests.cs:36-55 and CiGovernanceTests.cs:1157.
 
 ### DW-1801: Re-dispatch Release on a later release-ready main tip after remaining Gate 2b failures are fixed.
 
@@ -8803,7 +8817,8 @@ origin: migrated from legacy ledger ("Deferred from: Story 11.24 owner decision 
 location: .github/workflows/release.yml
 source_spec: `_bmad-output/implementation-artifacts/spec-split-builds-catalog-gitlink-from-ci-cd-execution-sha.md`
 reason: summary: Reconcile the production Release handoff/evaluator path with the v3 source-provenance manifest schema and its living documentation. evidence: `.github/workflows/release.yml` supplies `DEPENDENCY_RELEASE_HANDOFF` plus `RELEASE_EVALUATOR`, so `eng/release_evidence.py` builds evaluator-style provenance while labeling the manifest `hexalith.release-evidence.v3`; the v3 validator expects source-proof provenance and the current focused success fixture exercises only `--source-proof`.
-status: open
+status: done 2026-08-31
+resolution: already resolved: Commits df689935, 10d61c4f, and c8b31f12; eng/release_evidence.py:33-65 now projects recovered post-release CI handoff into the v3 exact-source schema.
 
 ### DW-1812: Harden Builds execution-coordinate extraction against commented, duplicated, misplaced, or mutable YAML values.
 
