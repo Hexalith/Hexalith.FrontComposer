@@ -22,6 +22,38 @@ public sealed class CiGovernanceTests {
         "blocking",
     ];
 
+    /// <summary>
+    /// The isolated heavy lane is selected by trait but authenticated by a hard-coded identity
+    /// allowlist in `quality.yml`. Pin both directions here so a renamed, added, or removed
+    /// `GovernanceBuild` fact fails at test time instead of at the CI evidence step.
+    /// </summary>
+    [Fact]
+    public void GovernanceBuildTraitedFacts_MatchTheWorkflowIdentityAllowlist() {
+        string root = RepositoryRoot();
+        string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
+
+        string[] allowlisted = [.. Regex.Matches(quality, @"--expected-test\s+(?<identity>\S+)")
+            .Select(match => match.Groups["identity"].Value)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)];
+
+        string[] traited = [.. typeof(AnalyzerPolicyGovernanceTests).Assembly.GetTypes()
+            .SelectMany(static type => type.GetMethods())
+            .Where(static method => method.GetCustomAttributesData().Any(static attribute =>
+                attribute.AttributeType.FullName == "Xunit.TraitAttribute"
+                && attribute.ConstructorArguments.Count == 2
+                && (string?)attribute.ConstructorArguments[0].Value == "Category"
+                && (string?)attribute.ConstructorArguments[1].Value == "GovernanceBuild"))
+            .Select(static method => $"{method.DeclaringType!.FullName}.{method.Name}")
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)];
+
+        traited.ShouldNotBeEmpty("the isolated heavy lane must select at least one fact");
+        traited.ShouldBe(
+            allowlisted,
+            "every GovernanceBuild fact must be named by a quality.yml --expected-test allowlist entry, and vice versa");
+    }
+
     [Fact]
     public void CommitlintJob_BlocksPrTitlesAndCommitMessagesUsedBySemanticRelease() {
         // REL-2 (2026-07-13): commitlint moved out of the inline ci.yml job into the dedicated

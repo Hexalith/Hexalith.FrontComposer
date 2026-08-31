@@ -11,6 +11,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Integration;
 
 public sealed partial class PackagedAnalyzerConsumerTests {
     private const string FluentV5Version = "5.0.0-rc.5-26219.1";
+    private const string ConsumerTargetFramework = "net10.0";
 
     [Fact]
     public async Task PackagedAnalyzer_ContractsOnlyPayload_GeneratedShellConsumerCompiles() {
@@ -65,7 +66,7 @@ public sealed partial class PackagedAnalyzerConsumerTests {
         await File.WriteAllTextAsync(Path.Combine(consumer, "Consumer.csproj"), $$"""
 <Project Sdk="Microsoft.NET.Sdk.Razor">
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>{{ConsumerTargetFramework}}</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -132,9 +133,11 @@ public sealed partial class CreateOrderCommand
         // Keep the shipped inputs Release-packed, but prove the package consumer in both compiler
         // configurations. Each configuration owns a distinct generated-source directory so one
         // successful leg cannot satisfy the other with stale output.
-        foreach (string configuration in new[] { "Debug", "Release" }) {
+        string[] configurations = ["Debug", "Release"];
+        foreach (string configuration in configurations) {
             await VerifyConsumerConfigurationAsync(consumer, configuration).ConfigureAwait(true);
         }
+
 
         string assets = await File.ReadAllTextAsync(Path.Combine(consumer, "obj", "project.assets.json"), TestContext.Current.CancellationToken).ConfigureAwait(true);
         assets.ShouldContain("\"Microsoft.FluentUI.AspNetCore.Components/" + FluentV5Version + "\"");
@@ -142,6 +145,14 @@ public sealed partial class CreateOrderCommand
         assets.ShouldNotContain("\"Microsoft.FluentUI.AspNetCore.Components/4.");
         assets.ShouldNotContain("\"Microsoft.FluentUI.AspNetCore.Components.Icons/4.");
     }
+
+    /// <summary>
+    /// The consumer template routes emitted source to
+    /// `$(BaseIntermediateOutputPath)$(Configuration)/$(TargetFramework)/generated`, so both
+    /// segments must stay in step with the template above.
+    /// </summary>
+    private static string GeneratedRoot(string consumer, string configuration)
+        => Path.Combine(consumer, "obj", configuration, ConsumerTargetFramework, "generated");
 
     private static async Task VerifyConsumerConfigurationAsync(string consumer, string configuration) {
         await RunDotnetAsync(
@@ -152,6 +163,14 @@ public sealed partial class CreateOrderCommand
             configuration,
             "-m:1",
             "/nr:false").ConfigureAwait(true);
+
+        // Start this leg from no emitted source at all. Anything found under the configuration's
+        // own generated root afterwards must therefore come from this configuration's analyzer
+        // run, so a passing leg can never be satisfied by the other leg's stale output.
+        string generatedRoot = GeneratedRoot(consumer, configuration);
+        if (Directory.Exists(generatedRoot)) {
+            Directory.Delete(generatedRoot, recursive: true);
+        }
 
         // Story 11.21 AC3/AC7 — the consumer template enables AnalysisMode=Recommended with
         // TreatWarningsAsErrors intact and no ASP0006 control, so each clean build independently
@@ -167,15 +186,13 @@ public sealed partial class CreateOrderCommand
             "/nr:false").ConfigureAwait(true);
         CollectCaAspDiagnostics(buildLog).ShouldBeEmpty();
 
-        string generatedRoot = Path.Combine(consumer, "obj", configuration, "net10.0", "generated");
+        Directory.Exists(generatedRoot).ShouldBeTrue(
+            $"the packaged analyzer must emit {configuration} source into {generatedRoot}");
         string[] generatedFiles = Directory.GetFiles(
             generatedRoot,
             "*.cs",
             SearchOption.AllDirectories);
         generatedFiles.ShouldNotBeEmpty($"the packaged analyzer must emit {configuration} source in its isolated output");
-        generatedFiles.ShouldAllBe(path => Path.GetFullPath(path).StartsWith(
-            Path.GetFullPath(generatedRoot) + Path.DirectorySeparatorChar,
-            StringComparison.Ordinal));
         string projectionSourcePath = generatedFiles.Single(path => path.EndsWith("OrdersProjection.g.razor.cs", StringComparison.Ordinal));
         string projectionSource = await File.ReadAllTextAsync(projectionSourcePath, TestContext.Current.CancellationToken).ConfigureAwait(true);
         projectionSource.ShouldContain("global::Hexalith.FrontComposer.Shell.Options.FcShellOptions");

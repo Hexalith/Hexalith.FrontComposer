@@ -19,6 +19,20 @@ deferred:
     location: >-
       tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/PackagedAnalyzerConsumerTests.cs:315
     severity: medium
+  - summary: >-
+      The untraited hidden-control negative probe still runs two `--no-incremental` project rebuilds inside the solution-wide Governance lane.
+    evidence: |-
+      `AnalyzerPolicy_Story1122HiddenControlNegativeProbes_RemainClean` carries only `Category=Governance`, so `dotnet test Hexalith.FrontComposer.slnx --filter-trait "Category=Governance"` still rebuilds `Shell.Tests.csproj` and `Testing.Tests.csproj` non-incrementally while other solution test modules run. This predates the story and is the same contention class the `GovernanceBuild` trait isolated for the two solution builds; it was not reclassified here.
+    location: >-
+      tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs:AnalyzerPolicy_Story1122HiddenControlNegativeProbes_RemainClean
+    severity: medium
+  - summary: >-
+      `CiGovernanceTests.EventStoreRuntimeIdentityPinsOwnerApprovedTupleAndTruthfulDriftEvidence` fails on an EventStore gitlink that no longer matches its owner-approved pin.
+    evidence: |-
+      The fact expects `38967215e6c1b13e77f2b0006efd95d88d7ad7b8` but the gitlink is `1194dfe59bcbc9b235390d1e46a7dfe4ee115d94`. That gitlink is byte-identical at this story's baseline `d738598b` and at HEAD, and the story never touched the fact or its pin, so the red is a concurrent EventStore-pin drift owned outside this work.
+    location: >-
+      tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:3454
+    severity: medium
 ---
 
 <intent-contract>
@@ -106,6 +120,27 @@ deferred:
   - `high` `patch` Treated wildcard `*|*` solution disables as disabling every Release configuration.
   - `low` `patch` Added a temporary-candidate-index whitespace/seal verification path so untracked reviewed files are not omitted.
 
+### 2026-08-31 — Review pass
+- intent_gap: 0
+- bad_spec: 0
+- patch: 13: (high 3, medium 5, low 5)
+- defer: 2: (high 0, medium 2, low 0)
+- reject: 19: (high 0, medium 3, low 16)
+- addressed_findings:
+  - `high` `patch` Closed the Release-membership fail-open: a `Build/@Solution` token is now parsed into its configuration half, so `*|Any CPU`, `Release|Any CPU`, and mixed-token spellings are Release disables, with a `Debug|*` non-finding case pinning the inverse.
+  - `high` `patch` Made the MTP identity allowlist authenticate outcomes, not just names, so a skipped or non-executed heavy proof can no longer satisfy the gate at `dotnet test` exit 0; added passing/skipped TRX fixtures and two Python facts.
+  - `high` `patch` Restored the argument-level guards the deleted thirteen-project loop carried: a cheap fact now proves the forced leg adds `-p:AnalysisMode=Recommended`, the canonical leg does not, and neither injects a warnings-weakening override.
+  - `medium` `patch` Gave the whole-solution `--no-incremental` builds their own deadline instead of the 180s bound sized for single-project builds.
+  - `medium` `patch` Pinned the `GovernanceBuild` trait set against the workflow `--expected-test` allowlist by reflection, so a renamed, added, or removed heavy fact fails at test time rather than at the CI evidence step.
+  - `medium` `patch` Replaced the source-control shape check with an entryCount/paths/diagnosticIds agreement invariant that closes the empty-array hole in both directions while preserving the deliberate zero-entry `source-emitter-pragmas` census row.
+  - `medium` `patch` Observed the abandoned drain task so a post-disposal `ExitCode` read cannot surface as an unobserved task exception, and recorded why the completion source exists.
+  - `medium` `patch` Fixed the Windows long-running child, whose `param()` block cannot bind under `-Command`; the PID path now travels through the environment.
+  - `low` `patch` Replaced the bare Windows early return in the pipe-holder proof with an explicit skip so it stops recording a pass it never earned.
+  - `low` `patch` Anchored the synthetic identifier inventory to an absolute count so a regression that inventories nothing cannot satisfy the relative drift assertions.
+  - `low` `patch` Scoped the per-test roll-up in the evidence payload to allowlisted lanes instead of dumping every identity the solution default lane ran.
+  - `low` `patch` Made the EditorConfig diagnosticIds/property comparison `Ordinal`, matching the canonical parity key it feeds.
+  - `low` `patch` Replaced the tautological packaged-consumer isolation assertion with a real per-leg freshness proof, asserted the generated root exists before enumerating it, and bound the consumer TFM to one constant.
+
 ## Design Notes
 
 The heavy trait is additive to class-level `Governance`: existing lanes explicitly exclude it, while a Shell-project-only blocking step selects it. Cache failures as evidence rather than retrying. Canonicalize scalar rows back to their existing `msbuild|path|property|value` keys so schema clarity does not alter policy parity.
@@ -124,6 +159,8 @@ The heavy trait is additive to class-level `Governance`: existing lanes explicit
 - `tests/Hexalith.FrontComposer.Shell.Tests/Governance/GovernanceProcessRunnerTests.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/PackagedAnalyzerConsumerTests.cs`
 - `tests/README.md`
+- `tests/ci-governance/fixtures/mtp-quarantine/heavy-pass/module-heavy.trx`
+- `tests/ci-governance/fixtures/mtp-quarantine/heavy-skipped/module-heavy.trx`
 - `tests/eng/test_ci_governance.py`
 - `tests/eng/test_release_prepublish.py`
 
@@ -147,45 +184,51 @@ The heavy trait is additive to class-level `Governance`: existing lanes explicit
 - Focused CI governance command/evidence facts passed 2/2; the final Python governance/release suite passed 21/21 in 2.930s.
 - The candidate-index CA1707 seal passed at 3,274 declarations with SHA-256 `45a91360dadfaae47984ff873d27fed8810d3c9ad97cadfade10b11156cf5e7c`; `.bmad-loop` remained unchanged.
 
+## Documented Unrelated Changes
+
+- `_bmad-output/implementation-artifacts/deferred-work.md` - orchestrator-owned sweep ledger bookkeeping written outside this story; its entries and statuses are not story output and are never edited here.
+
 ## Auto Run Result
+
+Status: done
 
 ### Summary
 
-Resolved DW-682, DW-689, DW-690, DW-699, DW-706, and DW-707 as one analyzer-governance reliability change: expensive build proofs are serialized in one authenticated lane and share results, process teardown is bounded and cancellation-safe, packaged consumers run a Debug/Release matrix from Release packages, and the analyzer-policy contract uses semantic declaration seals plus explicit scalar property values.
+Follow-up review pass over the analyzer-governance reliability change (baseline `d738598b`, delivery `1610415e`). No intent gap and no spec defect: the implementation matches the frozen contract. Thirteen patches were applied, three of them closing fail-open holes in guards this story itself introduced — the Release-membership check accepted wildcard-configuration disables, the MTP identity allowlist authenticated test names without outcomes, and the argument-level guards that kept the "forced-Recommended" leg honest were lost with the deleted thirteen-project loop.
 
 ### Files Changed
 
-- `.github/scripts/ci_governance.py` — validates an exact repeatable test-identity allowlist in MTP TRX evidence.
-- `.github/workflows/quality.yml` — isolates the two heavy analyzer build proofs and authenticates their identities.
-- `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json` — migrates schema 1.1 scalar values and reseals semantic CA1707 declarations.
-- `_bmad-output/implementation-artifacts/spec-analyzer-governance-reliability.md` — records scope, review triage, verification, and terminal result.
-- `_bmad-output/project-context.md` — documents the durable `GovernanceBuild` lane and release exclusions.
-- `eng/release_prepublish.py` — keeps heavy build proofs out of candidate-preparation test runs.
-- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs` — shares build evidence, replaces per-project rebuilds with sealed solution membership, and hardens schema/inventory validation.
-- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs` — seals lane uniqueness, filters, exact identities, and release adoption.
-- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/GovernanceProcessRunner.cs` — provides bounded kill/exit/drain behavior with cancellation diagnostics.
-- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/GovernanceProcessRunnerTests.cs` — covers success, nonzero exit, timeout, cancellation, child cleanup, and stuck pipe ownership.
-- `tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/PackagedAnalyzerConsumerTests.cs` — builds and probes Debug and Release consumers from one Release package set.
-- `tests/README.md` — documents default, Governance, and isolated heavy-lane filters.
-- `tests/eng/test_ci_governance.py` — proves exact TRX identity validation fails closed.
-- `tests/eng/test_release_prepublish.py` — pins the `GovernanceBuild` release exclusion.
+- `.github/scripts/ci_governance.py` — the identity allowlist now also requires passing outcomes, and the per-test roll-up is scoped to allowlisted lanes.
+- `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json` — resealed the CA1707 test inventory to 3,276 declarations for the two new public test methods.
+- `_bmad-output/implementation-artifacts/spec-analyzer-governance-reliability.md` — review triage, deferrals, unrelated-change declaration, and this result.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs` — parsed Release-disabling solution tokens correctly, restored the forced/canonical argument guards, gave solution builds their own deadline, replaced the source-control shape check with a census-agreement invariant, and anchored the synthetic inventory count.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs` — reflection fact binding the `GovernanceBuild` trait set to the workflow identity allowlist.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/GovernanceProcessRunner.cs` — observed the abandoned drain task and documented the completion source.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/GovernanceProcessRunnerTests.cs` — working Windows PID handoff and an explicit skip for the POSIX-only pipe-holder proof.
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/PackagedAnalyzerConsumerTests.cs` — per-leg freshness proof replacing a tautological assertion; consumer TFM bound to one constant.
+- `tests/ci-governance/fixtures/mtp-quarantine/heavy-pass/module-heavy.trx`, `.../heavy-skipped/module-heavy.trx` — new fixtures for the outcome gate.
+- `tests/eng/test_ci_governance.py` — facts for outcome authentication and roll-up scoping.
 
 ### Review Findings
 
-- Applied 18 patches: 9 high, 6 medium, and 3 low severity.
-- Deferred 1 pre-existing medium-severity packaged-consumer process-helper issue in this spec's `deferred` frontmatter.
-- Rejected 5 findings as speculative, redundant, or outside any observable contract.
-- Follow-up review recommendation: `true`; patch score is `3 × 6 + 3 = 21`, and high-severity patches were applied.
+- Applied 13 patches: 3 high, 5 medium, 5 low.
+- Deferred 2 pre-existing medium findings (untraited in-lane project rebuilds; the EventStore gitlink pin red).
+- Rejected 19 findings as incorrect, already fail-closed, already ledgered, or unchanged pre-existing behavior.
+- Follow-up review recommendation: `true`; high-severity patches were applied and the score is `3 x 5 + 5 = 20`.
 
 ### Verification
 
-- Release solution and focused project builds: passed, 0 warnings and 0 errors.
-- Analyzer governance class: 7/7 passed against the final candidate index.
-- Isolated heavy lane: 2/2 passed; one TRX contained exactly both required identities.
-- Process runner: 5/5 passed; packaged consumer matrix: 1/1 passed.
-- Python governance/release tests: 21/21 passed; focused CI governance facts: 2/2 passed.
-- Candidate-index identifier seal: 3,274 declarations and the recorded SHA-256 matched.
+- `dotnet build Hexalith.FrontComposer.slnx -c Release --no-restore -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=4.0.0`: passed, 0 warnings and 0 errors (8.79s incremental; the focused Shell.Tests rebuild also passed 0/0 in 25.01s).
+- Full `AnalyzerPolicyGovernanceTests` direct lane: 8/8 passed in 51.689s (7 prior facts plus the restored argument guard).
+- Isolated `GovernanceBuild` MTP lane: 2/2 passed in 28.483s, one TRX; `validate-mtp-evidence` returned `ok: true` against the two allowlisted identities with the new outcome check active.
+- `GovernanceProcessRunnerTests`: 5/5 passed in 9.390s.
+- Packaged analyzer consumer matrix: 1/1 passed in 10.270s across the Debug and Release legs.
+- `CiGovernanceTests`: 79 total, 1 failed — only the deferred EventStore gitlink pin.
+- `python3 -m unittest tests/eng/test_ci_governance.py tests/eng/test_release_prepublish.py`: 23/23 passed in 2.377s.
+- `git diff --check`: clean. `.bmad-loop` and the deferred-work ledger were not edited by this pass.
 
 ### Residual Risks
 
-The packaged-consumer test retains its older sequential redirected-stream helper; the verified matrix passes, but that helper should receive a separate bounded process-runner migration. No deferred-work ledger or `.bmad-loop` run bookkeeping was edited.
+- The CA1707 seal moved to 3,276 declarations; any further public underscore-bearing test method requires an intentional reseal, which is the designed cost of the contract.
+- `SolutionBuildTimeoutMilliseconds` is a judgement call (900s against a ~20s local build); if a CI runner ever exceeds it the heavy lane fails closed with a timeout rather than a wrong answer.
+- The Windows branches of the process-runner tests are corrected by inspection only; CI runs Linux, so they remain unexercised on that platform.

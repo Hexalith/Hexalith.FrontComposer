@@ -208,6 +208,18 @@ def validate_mtp_evidence(args: argparse.Namespace) -> int:
                 "exact test identity mismatch: "
                 f"expected {expected_tests}, found {actual_tests}"
             )
+        # Naming an identity only proves the TRX mentions it. A skipped or otherwise
+        # non-executed allowlisted test leaves `dotnet test` at exit 0, so the outcome
+        # is the only evidence that the pinned proof actually ran.
+        not_passed = sorted(
+            f"{result.identity}={result.outcome}"
+            for result in results
+            if result.outcome.casefold() != "passed"
+        )
+        if not_passed:
+            diagnostics.append(
+                f"expected tests must all report Passed, found {not_passed}"
+            )
 
     coverage_files: list[str] = []
     if args.coverage_dir:
@@ -233,7 +245,9 @@ def validate_mtp_evidence(args: argparse.Namespace) -> int:
         "ok": not diagnostics,
         "trx_files": len(trx_files),
         "total": len(results),
-        "tests": sorted(result.identity for result in results),
+        # Only the allowlisted lanes need the per-test roll-up; the solution default lane
+        # would otherwise dump every identity it ran into the step summary.
+        "tests": sorted(result.identity for result in results) if args.expected_test else [],
         "modules": sorted(set(module_identities)),
         "coverage_files": len(coverage_files),
         "diagnostics": diagnostics,

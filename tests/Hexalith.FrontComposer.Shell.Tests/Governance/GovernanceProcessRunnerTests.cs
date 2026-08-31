@@ -105,10 +105,9 @@ public sealed class GovernanceProcessRunnerTests
     [Fact]
     public async Task RunAsync_ExitedParentLeavesPipeHolder_CleanupRemainsBounded()
     {
-        if (OperatingSystem.IsWindows())
-        {
-            return;
-        }
+        Assert.SkipWhen(
+            OperatingSystem.IsWindows(),
+            "the detached pipe-holder cleanup bound is proven with POSIX setsid semantics");
 
         string temporaryRoot = Path.Combine(Path.GetTempPath(), "fc-governance-runner-pipe-" + Guid.NewGuid().ToString("N"));
         string childPidPath = Path.Combine(temporaryRoot, "child.pid");
@@ -169,14 +168,15 @@ public sealed class GovernanceProcessRunnerTests
             windows.ArgumentList.Add("-NoProfile");
             windows.ArgumentList.Add("-NonInteractive");
             windows.ArgumentList.Add("-Command");
+            // `-Command` does not bind a `param()` block from positional arguments, so the PID
+            // path travels through the environment instead.
             windows.ArgumentList.Add(
-                "param([string]$PidPath); "
-                + "Write-Output 'stdout-before-wait'; "
+                "Write-Output 'stdout-before-wait'; "
                 + "[Console]::Error.WriteLine('stderr-before-wait'); "
                 + "$child = Start-Process -FilePath $env:ComSpec -ArgumentList '/d /c ping -t 127.0.0.1 ^>nul' -PassThru; "
-                + "Set-Content -NoNewline -Path $PidPath -Value $child.Id; "
+                + "Set-Content -NoNewline -Path $env:FC_GOVERNANCE_CHILD_PID_PATH -Value $child.Id; "
                 + "Wait-Process -Id $child.Id");
-            windows.ArgumentList.Add(childPidPath);
+            windows.Environment["FC_GOVERNANCE_CHILD_PID_PATH"] = childPidPath;
             return windows;
         }
 

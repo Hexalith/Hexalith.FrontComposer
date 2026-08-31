@@ -28,7 +28,16 @@ public sealed class AnalyzerPolicyGovernanceTests
     private const string Story1123PostActivationReleaseCommand =
         "dotnet build Hexalith.FrontComposer.slnx -c Release --no-restore --no-incremental -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=4.0.0";
     private const int DotnetTimeoutMilliseconds = 180_000;
+
+    // The heavy proofs bound one whole-solution `--no-incremental` Release build, not the
+    // single-project builds `DotnetTimeoutMilliseconds` was sized for, so they get their own
+    // deadline. A shared CI runner is several times slower than the ~20s local build.
+    private const int SolutionBuildTimeoutMilliseconds = 900_000;
     private const int GitTimeoutMilliseconds = 60_000;
+
+    private static readonly TimeSpan DotnetTimeout = TimeSpan.FromMilliseconds(DotnetTimeoutMilliseconds);
+
+    private static readonly TimeSpan SolutionBuildTimeout = TimeSpan.FromMilliseconds(SolutionBuildTimeoutMilliseconds);
 
     private static readonly string[] _requiredDispositionFields =
     [
@@ -197,6 +206,17 @@ public sealed class AnalyzerPolicyGovernanceTests
         ValidateDocument(propertyIncompatibleList)
             .ShouldContain(static error => error.Contains("list MSBuild shape", StringComparison.Ordinal));
 
+        JsonObject emptySourceControlDiagnosticIds = Clone(ledger);
+        FindWarningControl(emptySourceControlDiagnosticIds, "source-pragmas")["diagnosticIds"] = new JsonArray();
+        ValidateDocument(emptySourceControlDiagnosticIds)
+            .ShouldContain(static error => error.Contains("entryCount, paths, and diagnosticIds disagree", StringComparison.Ordinal));
+
+        JsonObject unbackedZeroSourceControl = Clone(ledger);
+        FindWarningControl(unbackedZeroSourceControl, "source-emitter-pragmas")["diagnosticIds"]
+            = new JsonArray("CA1822");
+        ValidateDocument(unbackedZeroSourceControl)
+            .ShouldContain(static error => error.Contains("entryCount, paths, and diagnosticIds disagree", StringComparison.Ordinal));
+
         JsonObject contradictoryEditorConfigDiagnostic = Clone(ledger);
         FindWarningControl(contradictoryEditorConfigDiagnostic, "editorconfig-ca1062")["diagnosticIds"]
             = new JsonArray("CA1822");
@@ -334,15 +354,41 @@ public sealed class AnalyzerPolicyGovernanceTests
         ValidateStory1122SolutionMembership(disabledSolutionProject)
             .ShouldContain(static error => error.Contains("disabled for Release", StringComparison.Ordinal));
 
-        XDocument wildcardDisabledSolutionProject = XDocument.Parse(solution.ToString(SaveOptions.DisableFormatting));
-        wildcardDisabledSolutionProject.Descendants("Project")
+        // Every `Build/@Solution` token whose configuration half covers Release must be caught,
+        // including the wildcard-configuration and concrete-platform spellings the guard would
+        // otherwise let through while the project silently leaves the Release solution build.
+        foreach (string releaseDisablingToken in new[]
+        {
+            "*|*",
+            "*|Any CPU",
+            "Release|Any CPU",
+            "release|x64",
+            "Debug|*;*|Any CPU",
+        })
+        {
+            XDocument wildcardDisabledSolutionProject = XDocument.Parse(solution.ToString(SaveOptions.DisableFormatting));
+            wildcardDisabledSolutionProject.Descendants("Project")
+                .Single(project => (string?)project.Attribute("Path") == Story1122StrictProjects[0])
+                .Add(new XElement(
+                    "Build",
+                    new XAttribute("Solution", releaseDisablingToken),
+                    new XAttribute("Project", "false")));
+            ValidateStory1122SolutionMembership(wildcardDisabledSolutionProject)
+                .ShouldContain(
+                    error => error.Contains("disabled for Release", StringComparison.Ordinal),
+                    $"Solution=\"{releaseDisablingToken}\" must be treated as a Release disable");
+        }
+
+        // A disable that names only another configuration must stay a non-finding, so the guard
+        // cannot be satisfied by rejecting every Build element it sees.
+        XDocument debugOnlyDisabledSolutionProject = XDocument.Parse(solution.ToString(SaveOptions.DisableFormatting));
+        debugOnlyDisabledSolutionProject.Descendants("Project")
             .Single(project => (string?)project.Attribute("Path") == Story1122StrictProjects[0])
             .Add(new XElement(
                 "Build",
-                new XAttribute("Solution", "*|*"),
+                new XAttribute("Solution", "Debug|*"),
                 new XAttribute("Project", "false")));
-        ValidateStory1122SolutionMembership(wildcardDisabledSolutionProject)
-            .ShouldContain(static error => error.Contains("disabled for Release", StringComparison.Ordinal));
+        ValidateStory1122SolutionMembership(debugOnlyDisabledSolutionProject).ShouldBeEmpty();
 
         JsonObject wrongTestAssembly = Clone(ledger);
         RequiredArray(RequiredObject(wrongTestAssembly, "story1122Completion"), "executedTestAssemblies")[5]
@@ -431,6 +477,11 @@ public sealed class AnalyzerPolicyGovernanceTests
             """;
         (int stableCount, string stableHash) = DeclarationIdentifierInventory(
             [("tests/Synthetic/PublicTestSurface.cs", stableSource)]);
+
+        // Anchor the absolute scope so a regression that inventories nothing cannot satisfy the
+        // relative assertions below: the public type, its public method, that method's public
+        // parameter, and the protected property are in scope; the private field is not.
+        stableCount.ShouldBe(4);
         (int localEditCount, string localEditHash) = DeclarationIdentifierInventory(
             [("tests/Synthetic/PublicTestSurface.cs", stableSource
                 .Replace("int local_token = 0;", "// routine line-only churn\n\nint renamed_local = 0;", StringComparison.Ordinal)
@@ -534,6 +585,32 @@ public sealed class AnalyzerPolicyGovernanceTests
         // must still match so a latent CLI-only gate cannot diverge from the activated Release gate.
         forcedWarnings.ShouldBe(canonicalWarnings);
         forcedErrors.ShouldBe(canonicalErrors);
+    }
+
+    /// <summary>
+    /// The two heavy proofs compare build summaries, which stay identical if the "forced" leg
+    /// silently stops forcing Recommended or starts demoting warnings. This cheap fact keeps the
+    /// argument-level guards the deleted thirteen-project loop used to assert, without a build.
+    /// </summary>
+    [Fact]
+    public void AnalyzerPolicy_SolutionBuildArguments_ForceRecommendedWithoutWeakeningWarnings()
+    {
+        string[] canonical = SolutionBuildArguments(forceRecommended: false);
+        string[] forced = SolutionBuildArguments(forceRecommended: true);
+
+        forced.ShouldContain("-p:AnalysisMode=Recommended");
+        canonical.ShouldNotContain("-p:AnalysisMode=Recommended");
+        forced.ShouldBe([.. canonical, "-p:AnalysisMode=Recommended"]);
+
+        foreach (string[] arguments in new[] { canonical, forced })
+        {
+            arguments.ShouldContain("Hexalith.FrontComposer.slnx");
+            arguments.ShouldContain("--no-incremental");
+            arguments.ShouldBe(arguments.Where(static argument =>
+                !argument.StartsWith("-p:TreatWarningsAsErrors=", StringComparison.Ordinal)
+                && !argument.StartsWith("-p:WarningsNotAsErrors=", StringComparison.Ordinal)
+                && !argument.StartsWith("-p:NoWarn=", StringComparison.Ordinal)).ToArray());
+        }
     }
 
     private static string[] ValidateDocument(JsonObject ledger)
@@ -779,10 +856,12 @@ public sealed class AnalyzerPolicyGovernanceTests
                     property,
                     @"^dotnet_diagnostic\.(?<id>[^.]+)\.severity$",
                     RegexOptions.CultureInvariant);
+                // Ordinal throughout: the canonical parity key is built from these exact strings,
+                // so a case-only difference would pass here and still drift the key.
                 if (diagnosticProperty.Success
                     && !diagnosticIds.SequenceEqual(
                         [diagnosticProperty.Groups["id"].Value],
-                        StringComparer.OrdinalIgnoreCase))
+                        StringComparer.Ordinal))
                 {
                     errors.Add($"diagnosticIds/property mismatch for {key}");
                 }
@@ -794,9 +873,24 @@ public sealed class AnalyzerPolicyGovernanceTests
                     RequireValue(control, field, errors);
                 }
 
+                // A census row is either populated or an explicit zero row; `paths`, `entryCount`,
+                // and `diagnosticIds` must agree in both directions. That closes the empty-array
+                // hole the sibling shapes already reject without invalidating the deliberate
+                // zero-entry rows that record the absence of a suppression mechanism.
+                string[] controlPaths = StringArray(control, "paths");
+                bool populated = IntValue(control, "entryCount") > 0;
+                if (populated != (diagnosticIds.Length > 0) || populated != (controlPaths.Length > 0))
+                {
+                    errors.Add($"entryCount, paths, and diagnosticIds disagree for {key}");
+                }
+
                 if (diagnosticIds.Any(static id => string.IsNullOrWhiteSpace(id))
-                    || control.ContainsKey("propertyValue")
-                    || control.ContainsKey("value"))
+                    || controlPaths.Any(static path => string.IsNullOrWhiteSpace(path)))
+                {
+                    errors.Add($"missing or empty diagnosticIds for {key}");
+                }
+
+                if (control.ContainsKey("propertyValue") || control.ContainsKey("value"))
                 {
                     errors.Add($"invalid source control shape for {key}");
                 }
@@ -1520,8 +1614,7 @@ public sealed class AnalyzerPolicyGovernanceTests
                 return string.Equals(projectEnabled, "false", StringComparison.OrdinalIgnoreCase)
                     && (string.IsNullOrWhiteSpace(solutionConfiguration)
                         || solutionConfiguration.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                            .Any(static configuration => string.Equals(configuration, "*|*", StringComparison.OrdinalIgnoreCase)
-                                || configuration.StartsWith("Release|", StringComparison.OrdinalIgnoreCase)));
+                            .Any(DisablesRelease));
             });
             if (disabledForRelease)
             {
@@ -1530,6 +1623,19 @@ public sealed class AnalyzerPolicyGovernanceTests
         }
 
         return [.. errors];
+    }
+
+    /// <summary>
+    /// Decides whether one `.slnx` `Build/@Solution` token disables its project for Release. The
+    /// token is `&lt;configuration&gt;|&lt;platform&gt;`; a wildcard or absent configuration half covers
+    /// Release on every platform, so only a token that names a different configuration is safe.
+    /// </summary>
+    private static bool DisablesRelease(string solutionConfiguration)
+    {
+        string configuration = solutionConfiguration.Split('|', 2)[0].Trim();
+        return configuration.Length == 0
+            || configuration == "*"
+            || string.Equals(configuration, "Release", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string[] ValidateParity(IEnumerable<string> ledgerKeys, IEnumerable<string> configuredKeys)
@@ -2390,6 +2496,12 @@ public sealed class AnalyzerPolicyGovernanceTests
         => path.Replace('\\', '/');
 
     private static Task<(int ExitCode, string Output)> RunSolutionBuildAsync(bool forceRecommended)
+        => RunDotnetResultAsync(
+            RepositoryRoot(),
+            SolutionBuildArguments(forceRecommended),
+            SolutionBuildTimeout);
+
+    private static string[] SolutionBuildArguments(bool forceRecommended)
     {
         List<string> arguments =
         [
@@ -2409,7 +2521,7 @@ public sealed class AnalyzerPolicyGovernanceTests
             arguments.Add("-p:AnalysisMode=Recommended");
         }
 
-        return RunDotnetResultAsync(RepositoryRoot(), [.. arguments]);
+        return [.. arguments];
     }
 
     private static string RepositoryRoot()
@@ -2430,9 +2542,15 @@ public sealed class AnalyzerPolicyGovernanceTests
         return output;
     }
 
-    private static async Task<(int ExitCode, string Output)> RunDotnetResultAsync(
+    private static Task<(int ExitCode, string Output)> RunDotnetResultAsync(
         string workingDirectory,
         params string[] arguments)
+        => RunDotnetResultAsync(workingDirectory, arguments, DotnetTimeout);
+
+    private static async Task<(int ExitCode, string Output)> RunDotnetResultAsync(
+        string workingDirectory,
+        string[] arguments,
+        TimeSpan deadline)
     {
         ProcessStartInfo startInfo = new()
         {
@@ -2447,7 +2565,7 @@ public sealed class AnalyzerPolicyGovernanceTests
 
         return await GovernanceProcessRunner.RunAsync(
             startInfo,
-            TimeSpan.FromMilliseconds(DotnetTimeoutMilliseconds),
+            deadline,
             TestContext.Current.CancellationToken).ConfigureAwait(true);
     }
 }

@@ -180,11 +180,11 @@ class MtpLaneEvidenceTests(unittest.TestCase):
 
     def test_exact_test_identity_allowlist_fails_closed(self) -> None:
         expected = (
-            "Fixtures.ModuleA.Fails",
-            "Fixtures.ModuleA.Passes",
+            "Fixtures.Heavy.FirstProof",
+            "Fixtures.Heavy.SecondProof",
         )
         completed, payload = self._validate(
-            ("nested-a",),
+            ("heavy-pass",),
             "--expected-test",
             expected[0],
             "--expected-test",
@@ -195,7 +195,7 @@ class MtpLaneEvidenceTests(unittest.TestCase):
 
         for supplied in (
             (expected[0],),
-            (*expected, "Fixtures.ModuleA.Unexpected"),
+            (*expected, "Fixtures.Heavy.Unexpected"),
         ):
             with self.subTest(supplied=supplied):
                 arguments = tuple(
@@ -203,12 +203,49 @@ class MtpLaneEvidenceTests(unittest.TestCase):
                     for identity in supplied
                     for argument in ("--expected-test", identity)
                 )
-                completed, payload = self._validate(("nested-a",), *arguments)
+                completed, payload = self._validate(("heavy-pass",), *arguments)
                 self.assertEqual(1, completed.returncode)
                 self.assertTrue(
                     any("exact test identity mismatch" in item for item in payload["diagnostics"]),
                     payload,
                 )
+
+    def test_expected_tests_must_report_passing_outcomes(self) -> None:
+        """A named but skipped or failed proof must not authenticate the lane."""
+
+        for fixture, outcome in (("heavy-skipped", "NotExecuted"), ("nested-a", "Failed")):
+            with self.subTest(fixture=fixture):
+                identities = (
+                    ("Fixtures.Heavy.FirstProof", "Fixtures.Heavy.SecondProof")
+                    if fixture == "heavy-skipped"
+                    else ("Fixtures.ModuleA.Fails", "Fixtures.ModuleA.Passes")
+                )
+                arguments = tuple(
+                    argument
+                    for identity in identities
+                    for argument in ("--expected-test", identity)
+                )
+                completed, payload = self._validate((fixture,), "--require-tests", *arguments)
+                self.assertEqual(1, completed.returncode, payload)
+                self.assertFalse(
+                    any("exact test identity mismatch" in item for item in payload["diagnostics"]),
+                    payload,
+                )
+                self.assertTrue(
+                    any(
+                        "expected tests must all report Passed" in item and outcome in item
+                        for item in payload["diagnostics"]
+                    ),
+                    payload,
+                )
+
+    def test_per_test_roll_up_is_scoped_to_allowlisted_lanes(self) -> None:
+        """The solution default lane must not dump every identity it ran."""
+
+        completed, payload = self._validate(("nested-a",), "--require-tests")
+        self.assertEqual(0, completed.returncode, payload)
+        self.assertEqual(2, payload["total"])
+        self.assertEqual([], payload["tests"])
 
     def test_coverage_requires_parseable_report_with_measured_lines(self) -> None:
         valid = """<?xml version="1.0"?><coverage lines-valid="1"><packages><package><classes><class><lines><line number="1" hits="1" /></lines></class></classes></package></packages></coverage>"""

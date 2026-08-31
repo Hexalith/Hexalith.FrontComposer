@@ -25,6 +25,9 @@ internal static class GovernanceProcessRunner
         TimeSpan deadline,
         CancellationToken cancellationToken)
     {
+        // Caller cancellation must surface as a faulted OperationCanceledException that still
+        // carries the drained child output. Letting RunCoreAsync's task cancel directly would
+        // discard that message, so the cancellation signal is relayed through this source.
         TaskCompletionSource<(int ExitCode, string Output)> completion = new(
             TaskCreationOptions.RunContinuationsAsynchronously);
         _ = TransferCompletionAsync(
@@ -58,6 +61,15 @@ internal static class GovernanceProcessRunner
         Task<string> standardOutput = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
         Task<string> standardError = process.StandardError.ReadToEndAsync(CancellationToken.None);
         Task<(int ExitCode, string Output)> completion = CompleteAsync(process, standardOutput, standardError);
+
+        // On deadline or cancellation this task is abandoned while `process` is disposed under
+        // it, so reading ExitCode can fault. Observe it here to keep that an inert result rather
+        // than an unobserved task exception.
+        _ = completion.ContinueWith(
+            static abandoned => _ = abandoned.Exception,
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
         try
         {
             return await completion.WaitAsync(deadline, cancellationToken).ConfigureAwait(false);
