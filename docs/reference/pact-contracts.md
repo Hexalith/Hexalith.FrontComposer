@@ -5,7 +5,7 @@ genre: reference
 audience: adopter
 ownerStory: 11-24-adopt-the-owner-approved-eventstore-runtime-identity
 status: published
-reviewed: 2026-08-29
+reviewed: 2026-09-01
 uid: frontcomposer.reference.pact-contracts
 slug: reference/pact-contracts/
 ---
@@ -75,6 +75,18 @@ Re-capture rules:
 1. Pact, manifest, or provider-state changes require a fresh current EventStore-owned provider run and receipt. Do not update historical capture pins.
 2. AppHost topology changes require a fresh authenticated AppHost smoke.
 3. Run the combined validator; it independently rejects any historical forgery and any stale or failed current result.
+
+### Current reconciliation outcome
+
+The provider run captured on 2026-09-01 passes all 19 interactions at EventStore source
+`d6b8d2e5c1763713a126ff627822ead738e0f642`, EventStore version
+`999.1.20-proof.fa2d1c9910f8`, and Builds catalog
+`9d77ed7cb22dc8e5cde8d51b7284b3e9a94cd3b6`. The AppHost smoke remains blocked before startup:
+NuGet restore cannot find the proof-version EventStore packages and reports `NU1102` (the nearest
+published version is `3.100.1`). Gate 2c therefore remains failed by design. Resolving that package,
+catalog, or dependency identity is outside this reconciliation's authorized build-metadata boundary;
+the committed smoke records the failed attempt and verified clean stop without claiming authenticated
+runtime observations.
 
 ## Troubleshooting
 

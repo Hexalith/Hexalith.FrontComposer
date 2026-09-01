@@ -1,15 +1,15 @@
 {
   "schema": "hexalith.frontcomposer.eventstore-approved-runtime-identity.v1",
   "approvalRecord": "_bmad-output/implementation-artifacts/spec-actions-33264036185-33264035739-fix-cicd-release.md",
-  "eventStoreSourceGitlink": "1194dfe59bcbc9b235390d1e46a7dfe4ee115d94",
-  "eventStorePackageVersion": "3.100.0",
-  "buildsCatalogGitlink": "b6a0d1bd2c4b4398f0a6b1be15d0f3b698f250a5",
+  "eventStoreSourceGitlink": "bb94d93e9b84132cff83a38fba84f25455820d31",
+  "eventStorePackageVersion": "3.91.1",
+  "buildsCatalogGitlink": "a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a",
   "submodulePointerChangedByApproval": false,
   "currentCompatibility": {
     "path": "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation",
-    "eventStoreSourceSha": "1194dfe59bcbc9b235390d1e46a7dfe4ee115d94",
-    "eventStorePackageVersion": "3.100.0",
-    "buildsCatalogSha": "b6a0d1bd2c4b4398f0a6b1be15d0f3b698f250a5",
+    "eventStoreSourceSha": "d6b8d2e5c1763713a126ff627822ead738e0f642",
+    "eventStorePackageVersion": "999.1.20-proof.fa2d1c9910f8",
+    "buildsCatalogSha": "9d77ed7cb22dc8e5cde8d51b7284b3e9a94cd3b6",
     "migrationApprovalClaimed": false
   },
   "historicalCapture": {

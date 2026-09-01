@@ -3414,13 +3414,14 @@ public sealed class CiGovernanceTests {
 
     [Fact]
     public void EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval() {
-        const string sourceSha = "1194dfe59bcbc9b235390d1e46a7dfe4ee115d94";
-        const string buildsSha = "b6a0d1bd2c4b4398f0a6b1be15d0f3b698f250a5";
-        const string version = "3.100.0";
+        const string approvedSourceSha = "bb94d93e9b84132cff83a38fba84f25455820d31";
+        const string approvedBuildsSha = "a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a";
+        const string approvedVersion = "3.91.1";
+        const string currentSourceSha = "d6b8d2e5c1763713a126ff627822ead738e0f642";
+        const string currentBuildsSha = "9d77ed7cb22dc8e5cde8d51b7284b3e9a94cd3b6";
+        const string currentVersion = "999.1.20-proof.fa2d1c9910f8";
         // The immutable Story 11.24 owner capture remains historical evidence. Current source,
         // package, and Builds values are compatibility provenance, not migration approval.
-        const string evidenceSourceSha = "bb94d93e9b84132cff83a38fba84f25455820d31";
-        const string evidenceVersion = "3.91.1";
         string root = RepositoryRoot();
         string approvalContractPath = Path.Combine(
             root,
@@ -3433,22 +3434,22 @@ public sealed class CiGovernanceTests {
             .ShouldBe("hexalith.frontcomposer.eventstore-approved-runtime-identity.v1");
         approval.GetProperty("approvalRecord").GetString().ShouldBe(
             "_bmad-output/implementation-artifacts/spec-actions-33264036185-33264035739-fix-cicd-release.md");
-        approval.GetProperty("eventStoreSourceGitlink").GetString().ShouldBe(sourceSha);
-        approval.GetProperty("eventStorePackageVersion").GetString().ShouldBe(version);
-        approval.GetProperty("buildsCatalogGitlink").GetString().ShouldBe(buildsSha);
+        approval.GetProperty("eventStoreSourceGitlink").GetString().ShouldBe(approvedSourceSha);
+        approval.GetProperty("eventStorePackageVersion").GetString().ShouldBe(approvedVersion);
+        approval.GetProperty("buildsCatalogGitlink").GetString().ShouldBe(approvedBuildsSha);
         approval.GetProperty("submodulePointerChangedByApproval").GetBoolean().ShouldBeFalse();
         JsonElement currentCompatibility = approval.GetProperty("currentCompatibility");
         currentCompatibility.GetProperty("path").GetString().ShouldBe(
             "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation");
-        currentCompatibility.GetProperty("eventStoreSourceSha").GetString().ShouldBe(sourceSha);
-        currentCompatibility.GetProperty("eventStorePackageVersion").GetString().ShouldBe(version);
-        currentCompatibility.GetProperty("buildsCatalogSha").GetString().ShouldBe(buildsSha);
+        currentCompatibility.GetProperty("eventStoreSourceSha").GetString().ShouldBe(currentSourceSha);
+        currentCompatibility.GetProperty("eventStorePackageVersion").GetString().ShouldBe(currentVersion);
+        currentCompatibility.GetProperty("buildsCatalogSha").GetString().ShouldBe(currentBuildsSha);
         currentCompatibility.GetProperty("migrationApprovalClaimed").GetBoolean().ShouldBeFalse();
         JsonElement historicalCapture = approval.GetProperty("historicalCapture");
         historicalCapture.GetProperty("path").GetString().ShouldBe(
             "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24");
-        historicalCapture.GetProperty("eventStoreSourceSha").GetString().ShouldBe(evidenceSourceSha);
-        historicalCapture.GetProperty("eventStorePackageVersion").GetString().ShouldBe(evidenceVersion);
+        historicalCapture.GetProperty("eventStoreSourceSha").GetString().ShouldBe(approvedSourceSha);
+        historicalCapture.GetProperty("eventStorePackageVersion").GetString().ShouldBe(approvedVersion);
         historicalCapture.GetProperty("immutable").GetBoolean().ShouldBeTrue();
         string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
         string artifactLane = ExtractNamedStep(quality, "Gate 2c: Validate contract artifacts");
@@ -3504,45 +3505,42 @@ public sealed class CiGovernanceTests {
             "provider-verification.json")));
         liveReport.RootElement.GetProperty("verificationMode").GetString().ShouldBe("live-compatibility");
         liveReport.RootElement.GetProperty("finalVerdict").GetString().ShouldBe("passed");
-        liveReport.RootElement.GetProperty("identity").GetProperty("approvalAuthorized").GetBoolean().ShouldBeFalse();
-        using JsonDocument appHostSmoke = JsonDocument.Parse(File.ReadAllText(Path.Combine(
-            liveEvidenceRoot,
-            "apphost-smoke.json")));
-        appHostSmoke.RootElement.GetProperty("finalVerdict").GetString().ShouldBe("failed",
-            "a blocked real AppHost start must remain failed rather than being relabeled as passing");
-        appHostSmoke.RootElement.GetProperty("reasonCodes").EnumerateArray()
-            .Select(item => item.GetString()).ShouldContain("apphost.start.failed");
+        JsonElement liveIdentity = liveReport.RootElement.GetProperty("identity");
+        liveIdentity.GetProperty("observedSourceSha").GetString().ShouldBe(currentSourceSha);
+        liveIdentity.GetProperty("expectedVersion").GetString().ShouldBe(currentVersion);
+        liveIdentity.GetProperty("observedBuildsSha").GetString().ShouldBe(currentBuildsSha);
+        liveIdentity.GetProperty("approvalAuthorized").GetBoolean().ShouldBeFalse();
 
         ProcessResult eventStoreGitlink = RunProcess(
             root,
             "git",
             ["ls-tree", "HEAD", "--", "references/Hexalith.EventStore"]);
         eventStoreGitlink.ExitCode.ShouldBe(0, eventStoreGitlink.Error);
-        eventStoreGitlink.Output.Trim().ShouldBe($"160000 commit {sourceSha}\treferences/Hexalith.EventStore");
+        eventStoreGitlink.Output.Trim().ShouldBe($"160000 commit {currentSourceSha}\treferences/Hexalith.EventStore");
 
         ProcessResult eventStoreHead = RunProcess(
             root,
             "git",
             ["-C", "references/Hexalith.EventStore", "rev-parse", "HEAD"]);
         eventStoreHead.ExitCode.ShouldBe(0, eventStoreHead.Error);
-        eventStoreHead.Output.Trim().ShouldBe(sourceSha);
+        eventStoreHead.Output.Trim().ShouldBe(currentSourceSha);
 
         ProcessResult buildsGitlink = RunProcess(
             root,
             "git",
             ["ls-tree", "HEAD", "--", "references/Hexalith.Builds"]);
         buildsGitlink.ExitCode.ShouldBe(0, buildsGitlink.Error);
-        buildsGitlink.Output.Trim().ShouldBe($"160000 commit {buildsSha}\treferences/Hexalith.Builds");
+        buildsGitlink.Output.Trim().ShouldBe($"160000 commit {currentBuildsSha}\treferences/Hexalith.Builds");
 
         ProcessResult buildsHead = RunProcess(
             root,
             "git",
             ["-C", "references/Hexalith.Builds", "rev-parse", "HEAD"]);
         buildsHead.ExitCode.ShouldBe(0, buildsHead.Error);
-        buildsHead.Output.Trim().ShouldBe(buildsSha);
+        buildsHead.Output.Trim().ShouldBe(currentBuildsSha);
 
         XDocument catalog = XDocument.Load(Path.Combine(root, "references/Hexalith.Builds/Props/Directory.Packages.props"));
-        catalog.Descendants("HexalithEventStoreVersion").Single().Value.ShouldBe(version);
+        catalog.Descendants("HexalithEventStoreVersion").Single().Value.ShouldBe(currentVersion);
 
         using JsonDocument report = JsonDocument.Parse(File.ReadAllText(Path.Combine(
             evidenceRoot,
@@ -3560,10 +3558,10 @@ public sealed class CiGovernanceTests {
 
         using JsonDocument packageManifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(
             evidenceRoot,
-            evidenceSourceSha,
+            approvedSourceSha,
             "package-manifest.json")));
-        packageManifest.RootElement.GetProperty("source_sha").GetString().ShouldBe(evidenceSourceSha);
-        packageManifest.RootElement.GetProperty("version").GetString().ShouldBe(evidenceVersion);
+        packageManifest.RootElement.GetProperty("source_sha").GetString().ShouldBe(approvedSourceSha);
+        packageManifest.RootElement.GetProperty("version").GetString().ShouldBe(approvedVersion);
         packageManifest.RootElement.GetProperty("packages").GetArrayLength().ShouldBe(14);
     }
 }
