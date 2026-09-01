@@ -9,7 +9,45 @@ review_loop_iteration: 0
 followup_review_recommended: true
 context: []
 warnings: [oversized]
-deferred: []
+deferred:
+  - summary: >-
+      The generated audit artifact is written with platform line endings and no
+      .gitattributes rule pins them, so regenerating on Windows rewrites all
+      ~170k lines.
+    evidence: |-
+      Tools/audit-central-package-versions.ps1 terminates the document with
+      [Environment]::NewLine and ConvertTo-Json indents with the platform newline;
+      Tools/.gitattributes pins only Props/Directory.Packages.props. The committed
+      Tools/package-version-audit.json contains zero CR bytes because it was last
+      generated on Linux. Pre-existing: the prior Set-Content -Encoding utf8 write
+      had the same platform dependence, so this change did not introduce it.
+    location: >-
+      references/Hexalith.Builds/Tools/audit-central-package-versions.ps1:1756
+    severity: medium
+  - summary: >-
+      Audit history growth has no retention, pruning, or size policy, and the
+      artifact is already ~9.9 MB.
+    evidence: |-
+      Every refreshed family appends family and package historicalContext records
+      on each incremental run, and the validator round-trips each record for
+      duplicate detection, so both file size and validation cost grow without
+      bound. Pre-existing: the v1 contract also appended history, and this change
+      only narrowed which families append.
+    location: >-
+      references/Hexalith.Builds/Tools/package-version-audit.json
+    severity: medium
+  - summary: >-
+      Almost all stored package history is still v1-schema and is therefore exempt
+      from the new origin ancestry, chronology, and duplicate-identity invariants.
+    evidence: |-
+      The v2 contract accepts both hexalith.package-audit-*-history.v1 and .v2
+      records, but only v2 records carry an origin, and Assert-HistoricalOrigin
+      only validates records that have one. The vast majority of committed package
+      history predates v2, so the new integrity guarantees cover only the records
+      written since this change. Pre-existing data, not introduced by it.
+    location: >-
+      references/Hexalith.Builds/Tools/validate-package-version-audit.ps1
+    severity: low
 ---
 
 <intent-contract>
@@ -65,6 +103,7 @@ deferred: []
 ## Documented Unrelated Changes
 
 - `references/Hexalith.EventStore` - Exact-path legacy-gate classification for the independently completed pointer update documented by the full-SHA shared disposition above; this bundle did not modify or review EventStore.
+- `_bmad-output/implementation-artifacts/deferred-work.md` - Uncommitted orchestrator sweep bookkeeping that closes the five ledger entries this bundle resolved; the ledger is owned by the orchestrator and this bundle neither edited nor re-opened any entry.
 
 ## Tasks & Acceptance
 
@@ -119,6 +158,22 @@ deferred: []
   - `[low]` `[patch]` Proved incremental generation contacts only requested-family package endpoints and rejects unrequested drift before package requests.
   - `[low]` `[patch]` Added package-history deep-equality and cardinality assertions for repeated identical refreshes.
 
+### 2026-09-01 — Review pass (follow-up)
+- intent_gap: 0
+- bad_spec: 0
+- patch: 8: (high 2, medium 5, low 1)
+- defer: 3: (high 0, medium 2, low 1)
+- reject: 14: (high 0, medium 6, low 8)
+- addressed_findings:
+  - `[high]` `[patch]` Consumer `declarationSha256` binds committed blob bytes, but the validator additionally required the worktree file to hash to that same value, so any EOL-normalizing checkout (Windows `core.autocrlf=true`, or a `text` attribute on `*.csproj`) made the shipped audit unvalidatable. The consumer leg now proves the worktree against the audited revision the way Git compares tracked content, mirroring the two-branch treatment the catalog leg already had, and keeps the raw-byte comparison only when the revision cannot supply the blob.
+  - `[high]` `[patch]` The rewritten timeout-cleanup fixture replaced the intermittent PID-capture failure with an intermittent wall-clock failure on the same scenario: it failed when total elapsed reached 20 s, a stopwatch spanning pwsh cold start, up to 15 s of readiness polling, and the 250 ms margin. It was observed failing at 20.37 s under load during this pass and passing on re-run. The measured window now starts at the readiness handshake and both it and the `WaitForExit` bound derive from `$GitBlobReadTimeoutSeconds`.
+  - `[medium]` `[patch]` Added the missing repository-owned negative fixture for the `catalogRawSha256` committed-blob comparison; every prior validator fixture placed its catalog outside the repository, so only the worktree branch was exercised and the repo-owned branch that guards the shipped artifact in CI could have been deleted with the suite still green.
+  - `[medium]` `[patch]` The repository-owned generator fixture's `eol=crlf` setup was inert -- `checkout-index` does not overwrite existing files and the fixture files had no trailing line ending -- and the fixture never validated the audit it generated. It now removes the worktree copies before checkout, asserts the normalized CRLF bytes, and runs the validator on its own output, which is the regression test for the finding above.
+  - `[medium]` `[patch]` An incremental refresh over a pre-v2 prior audit skipped every closed-shape prior assertion and copied unvalidated rows verbatim into a v2 document. It now fails closed and directs the operator to a complete refresh, with a fixture proving no output is written.
+  - `[medium]` `[patch]` Gave the generator's bounded Git-blob reader the same shim seam the validator already had and added a timeout scenario that asserts the diagnostic, process-tree termination of both owned processes, and atomic preservation of the prior output; previously only its byte bound was exercised.
+  - `[medium]` `[patch]` Made the generator's blob read fail closed when `Process.Start` reports failure without throwing; it previously returned zero bytes with no failure, and those bytes would have been hashed into `catalogRawSha256`/`declarationSha256`. The validator's copy already failed closed here.
+  - `[low]` `[patch]` Exposed `-PriorAuditPath` as documented operator surface rather than `DontShow`, documented the blob-read time and size bounds and the v2-prior requirement, and repaired the ragged mid-sentence wraps in the rewritten README paragraphs.
+
 ## Design Notes
 
 Keep the existing normalized `catalogSha256` for semantic equality, add an exact raw blob SHA-256 for reproducibility, and make `generatedFromRevision` mean the catalog/consumer commit. The snapshot envelope owns the current run time and exact refreshed/preserved family partition; each family owns the origin revision/time and family-selection/source/package/consumer fingerprints for its current evidence. Git already retains prior whole artifacts, so history records only genuine family refreshes and deduplicates identical prior snapshots.
@@ -137,31 +192,34 @@ Keep the existing normalized `catalogSha256` for semantic equality, add an exact
 
 ## Auto Run Result
 
-Implemented audit schema v2 with exact committed-catalog provenance, complete/incremental family partitions, targeted refreshes, family-local origins and fingerprints, bounded and deduplicated histories, a strict UTF-8 BOM gate, and deterministic Git-shim cleanup. Reconciled the production audit without changing a package selection: 4 families are refreshed, 137 are preserved, and only `hexalith-eventstore` gains history.
+Implemented audit schema v2 with exact committed-catalog provenance, complete/incremental family partitions, targeted refreshes, family-local origins and fingerprints, bounded and deduplicated histories, a strict UTF-8 BOM gate, and deterministic Git-shim cleanup. Reconciled the production audit without changing a package selection: 4 families are refreshed, 137 are preserved, and only `hexalith-eventstore` gains history. A follow-up review pass then hardened the provenance contract's portability, its process bounds, and the fixtures that were supposed to prove them.
 
 Files changed:
 
-- `references/Hexalith.Builds/Tools/audit-central-package-versions.ps1` -- hardened generation, preservation, bounded Git reads, incremental request scope, history, and atomic output.
-- `references/Hexalith.Builds/Tools/validate-package-version-audit.ps1` -- independently validates exact provenance, typed closed shapes, origins, partitions, histories, containment, and process cleanup.
-- `references/Hexalith.Builds/Tools/test-package-version-audit-generator.ps1` -- expanded complete/incremental and hostile generator coverage to 96 scenarios.
-- `references/Hexalith.Builds/Tools/test-package-version-audit-validator.ps1` -- expanded hostile validation and repeated timeout cleanup coverage to 101 scenarios.
+- `references/Hexalith.Builds/Tools/audit-central-package-versions.ps1` -- hardened generation, preservation, bounded Git reads, incremental request scope, history, and atomic output; incremental refresh now requires a v2 prior, the blob reader fails closed when it cannot start, and it accepts the same test shim seam the validator has.
+- `references/Hexalith.Builds/Tools/validate-package-version-audit.ps1` -- independently validates exact provenance, typed closed shapes, origins, partitions, histories, containment, and process cleanup; consumer declarations are now proved against the audited revision the way Git compares tracked content instead of by raw worktree bytes.
+- `references/Hexalith.Builds/Tools/test-package-version-audit-generator.ps1` -- complete/incremental and hostile generator coverage, now 102 scenarios: the repository fixture genuinely diverges worktree bytes from committed blobs and validates its own audit, and the bounded reader's timeout and process-tree cleanup are covered.
+- `references/Hexalith.Builds/Tools/test-package-version-audit-validator.ps1` -- hostile validation and repeated timeout cleanup coverage, now 102 scenarios: adds the repository-owned raw-catalog-blob negative and measures the bounded window from the readiness handshake rather than from harness start.
 - `references/Hexalith.Builds/Tools/validate-central-package-versions.ps1` -- enforces the UTF-8 BOM and strict UTF-8 decoding before XML evaluation.
 - `references/Hexalith.Builds/Tools/test-central-package-version-validator.ps1` -- covers BOM-bearing, BOM-free, truncated, invalid-UTF-8, and semantic catalogs in 17 scenarios.
-- `references/Hexalith.Builds/Tools/package-version-audit.json` -- records the reconciled 286-package, 141-family audit with exact HEAD blob identity.
-- `references/Hexalith.Builds/Tools/README.md` -- documents the encoding, provenance, refresh, origin, history, and operational contracts.
+- `references/Hexalith.Builds/Tools/package-version-audit.json` -- records the reconciled 286-package, 141-family audit with exact HEAD blob identity; unchanged by the follow-up pass.
+- `references/Hexalith.Builds/Tools/README.md` -- documents the encoding, provenance, refresh, origin, history, and operational contracts, including the normalization-aware consumer proof, the v2-prior requirement, and the blob-read bounds.
 - `_bmad-output/implementation-artifacts/spec-package-audit-provenance-bom.md` -- records the implementation contract, commit scope, review triage, verification, and result.
 
-Review findings: 24 patches applied, 0 items deferred, and 3 items rejected. Rejected claims were direct worktree/raw-blob equality despite required Git EOL normalization, restoration of unsupported schema-less legacy histories despite the typed fail-closed contract, and a broader CycloneDX implementation reading not grounded in any of the five authoritative ledger entries. Follow-up review is recommended: patched findings were high 6, medium 16, low 2; score `3 × 16 + 2 = 50`, and high-severity patches were present.
+Review findings across both passes: 32 patches applied (24 in the first pass, 8 in the follow-up), 3 items deferred, and 17 items rejected. The follow-up pass deferred the artifact's platform-dependent line endings, its unbounded history growth, and the pre-v2 history records that the new origin invariants cannot cover -- all three pre-existing rather than caused by this change. Rejected claims included the two original passes' direct worktree/raw-blob equality and schema-less legacy history restorations, a broader CycloneDX reading not grounded in any of the five ledger entries, and follow-up noise such as the `-Family` parameter naming (an `Alias` already provides it), a SHA-256 object-format assumption, missing `#Requires` directives, and deep-clone performance. Follow-up review is recommended: this pass's patched findings were high 2, medium 5, low 1; score `3 x 5 + 1 = 16`, and high-severity patches were present.
 
-Verification performed:
+Verification performed (all commands run from `references/Hexalith.Builds` after the follow-up patches):
 
-- Central catalog validation passed for 286 entries; central validator fixtures passed 17 scenarios.
-- Authoritative catalog validation passed for 50 identities and 3 shared versions.
-- Generator fixtures passed 96 scenarios; validator fixtures passed 101 scenarios, including three timeout-cleanup repetitions.
-- Production audit validation passed for 286 packages, 141 families, and 1 source.
-- Release build passed with 0 warnings and 0 errors; six PowerShell scripts parsed cleanly.
-- Exact audit raw SHA equals the HEAD catalog blob SHA; snapshot mode is incremental with 4 refreshed and 137 preserved families.
-- Relative to the first v2 audit, only `hexalith-eventstore` gained family history (16 to 17) and its 13 package histories gained one entry; all preserved decisions are otherwise unchanged apart from the diagnostic-bound metadata hash migration.
-- `git diff --check` passed; the catalog, deferred ledger, CycloneDX paths, and both Git indexes remained unchanged.
+- `validate-central-package-versions.ps1` passed for 286 entries; `test-central-package-version-validator.ps1` passed 17 scenarios.
+- `test-authoritative-package-catalog.ps1` passed for 50 approved identities and 3 shared versions.
+- `test-package-version-audit-generator.ps1` passed 102 scenarios, including the new normalizing-checkout validation, the pre-v2 incremental rejection, and the generator timeout/process-cleanup scenario.
+- `test-package-version-audit-validator.ps1` passed 102 scenarios in 458 s, including the repository-owned raw-blob negative and three timeout-cleanup repetitions.
+- `validate-package-version-audit.ps1` passed for 286 packages, 141 families, and 1 source against the unchanged production audit.
+- `dotnet build Hexalith.Builds.slnx --configuration Release` succeeded with 0 warnings and 0 errors.
+- `git diff --check` reported no whitespace errors; `Props/Directory.Packages.props`, `Tools/package-version-audit.json`, and the deferred-work ledger were not modified by this pass.
 
-Residual risk: package-feed observations are point-in-time evidence. Deterministic fixtures do not perform live NuGet queries; the checked-in production audit remains subject to its recorded observation time and source diagnostics.
+Residual risks:
+
+- Package-feed observations remain point-in-time evidence. Deterministic fixtures perform no live NuGet queries, so the checked-in audit stays bound to its recorded observation time and source diagnostics.
+- 137 of the 141 families in the shipped audit carry origins migrated from the v1 envelope rather than fresh v2 observations. This is the intent's incremental reading and is now truthfully labeled, but a complete refresh is still what would make the shipped snapshot single-aged.
+- The consumer-declaration and repository-owned catalog paths are now covered by fixtures on Linux only; CI runs `ubuntu-latest`, so a Windows `core.autocrlf` checkout is proved by construction rather than by a CI lane.
