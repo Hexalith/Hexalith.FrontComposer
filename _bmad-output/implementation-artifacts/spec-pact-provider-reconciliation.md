@@ -2,9 +2,9 @@
 title: 'Reconcile EventStore Provider Pacts and Live Evidence'
 type: 'bugfix'
 created: '2026-08-31'
-status: 'blocked'
+status: ready-for-dev
 baseline_commit: 'ee08c8eed5e4b57b702693d078a1339c95c82b4a'
-baseline_revision: 'ee08c8eed5e4b57b702693d078a1339c95c82b4a'
+baseline_revision: c6fe14c6613534d7397edd2e2c9eb5dccabd09df
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -103,32 +103,3 @@ The provider's conditional-query gate rejects synthetic non-empty criteria and r
 - `pwsh ./eng/validate-contract-artifacts.ps1 -RequireProviderVerification` -- expected: immutable archive valid and current live provider/AppHost evidence accepted.
 - Focused Governance test DLL plus `git diff --exit-code -- tests/Hexalith.FrontComposer.Shell.Tests/Pact` -- expected: quality workflow contract passes and regenerated artifacts are stable.
 
-## Auto Run Result
-
-Status: blocked
-
-Blocking condition: implementation verification failed — the real FrontComposer AppHost cannot build, so authenticated AppHost compatibility evidence and a green Gate 2c cannot be produced within this spec's adapter-only FrontComposer production boundary.
-
-### Completed
-
-- Reconciled Shell query payload/envelope handling and regenerated all 19 Pact interactions against the provider's canonical command, query, error, header, tenant, and ETag behavior.
-- Added EventStore-owned live compatibility mode and verifier-only deterministic state/outbox seams; production EventStore sources and dependency identities remain unchanged.
-- Preserved the immutable Story 11.24 evidence and separated it from new live provider/AppHost evidence validation.
-- Added fail-closed live report, receipt, AppHost smoke, CI governance, and documentation paths. The live provider evidence is passing; the AppHost evidence truthfully remains failed.
-- Confirmed `_bmad-output/implementation-artifacts/deferred-work.md` and `_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/**` are unchanged.
-
-### Verification evidence
-
-- FrontComposer Shell Release build: passed with 0 warnings and 0 errors.
-- Adapter suites: 37/37 and 18/18 passed.
-- Pact suite: 3/3 passed; consecutive generation hashes were byte-stable.
-- EventStore provider-verification Release build: passed with 0 warnings and 0 errors; focused suite 77/77 passed.
-- Independent real loopback provider run: exit 0, `finalVerdict: passed`, 19/19 interactions, 19 setup and 19 teardown events, readiness passed, host stopped, port closed, and exact current source/version/Builds provenance matched.
-- Evidence/AppHost unit suites: 49/49 passed; focused quality and identity governance tests: 1/1 each passed.
-- Root and EventStore `git diff --check`: passed; no FrontComposer AppHost remained running after the failed start attempt.
-- `pwsh ./eng/validate-contract-artifacts.ps1 -RequireProviderVerification`: exit 1 with `Live AppHost smoke is not a clean passing run.`
-- `aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --format Json --non-interactive --nologo`: exit 2 because `Hexalith.FrontComposer.UI.csproj` fails `GenerateStaticWebAssetsDevelopmentManifest` with `InvalidOperationException: Sequence contains more than one element` at `Microsoft.NET.Sdk.StaticWebAssets.targets(664,5)`; a clean rebuild reproduced the failure.
-
-### Matrix audit
-
-The accepted-command, query-success, conditional-query, provider-failure, historical-archive, and live-provider rows have passing executed coverage. The live-AppHost success row has adversarial/unit coverage but could not execute against the real topology because the AppHost build fails before orchestration; therefore the matrix and implementation verification gates remain unsatisfied.
