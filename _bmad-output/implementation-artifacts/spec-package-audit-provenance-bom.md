@@ -2,11 +2,11 @@
 title: 'Harden package audit provenance, family refresh, and catalog BOM'
 type: 'bugfix'
 created: '2026-09-01'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '9d9a6295f8cbf49565cdc521fcbe37b9b937da84'
 baseline_commit: '9d9a6295f8cbf49565cdc521fcbe37b9b937da84'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: [oversized]
 deferred: []
@@ -53,6 +53,19 @@ deferred: []
 - `references/Hexalith.Builds/.github/workflows/ci.yml:44-66` and `references/Hexalith.Builds/.github/workflows/build-release.yml:58-80` -- read-only evidence: existing workflows already run all affected production validators and fixture suites before consumer authority/release.
 - `eng/release_prepublish.py:318-329` and `eng/release_evidence.py:3331-3401` -- read-only boundary: independent CycloneDX SBOM generation/hash binding is not a ledger finding in this bundle.
 
+## File List
+
+- `_bmad-output/implementation-artifacts/spec-package-audit-provenance-bom.md` -- implementation contract, review evidence, and auto-run result.
+- `references/Hexalith.Builds` -- owning submodule pointer for the package-audit, catalog-validation, fixture, evidence, and documentation changes.
+
+## Commit Scope Dispositions
+
+- `06b058f831b799f70a0adfcb4a36afd03fd9bcc8` | `shared` | External orchestration grouped this bundle's spec and Builds pointer with an independently completed EventStore submodule pointer update while verification was running.
+
+## Documented Unrelated Changes
+
+- `references/Hexalith.EventStore` - Exact-path legacy-gate classification for the independently completed pointer update documented by the full-SHA shared disposition above; this bundle did not modify or review EventStore.
+
 ## Tasks & Acceptance
 
 **Execution:**
@@ -74,6 +87,38 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-01 — Review pass
+- intent_gap: 0
+- bad_spec: 0
+- patch: 24: (high 6, medium 16, low 2)
+- defer: 0
+- reject: 3: (high 0, medium 1, low 2)
+- addressed_findings:
+  - `[high]` `[patch]` Compared repository-owned catalog and consumer declarations to the claimed revision, with staged-change fixtures.
+  - `[high]` `[patch]` Validated preserved v2 evidence and recomputed every family-local fingerprint before copying it.
+  - `[medium]` `[patch]` Included per-source diagnostics in package metadata fingerprints and covered diagnostic drift.
+  - `[medium]` `[patch]` Bounded generator Git-blob reads by time and bytes, with oversized-blob coverage.
+  - `[medium]` `[patch]` Made audit output replacement atomic so the prior/default audit survives failed generation.
+  - `[medium]` `[patch]` Required `schemaVersion` to be the JSON integer `2` rather than a coercible string.
+  - `[high]` `[patch]` Bound refreshed-family origins to the current snapshot revision and time while preserving prior origins for preserved families.
+  - `[medium]` `[patch]` Rejected incremental snapshots with an empty refreshed-family partition.
+  - `[high]` `[patch]` Required current and historical origin revisions to exist and be ancestors of the generated-from revision.
+  - `[medium]` `[patch]` Enforced UTC origin chronology relative to the snapshot.
+  - `[medium]` `[patch]` Enforced closed shapes, exact JSON types, and absolute URIs for source records.
+  - `[medium]` `[patch]` Enforced closed shapes and exact JSON types for consumer-evidence envelopes and entries.
+  - `[medium]` `[patch]` Validated v2 historical origin timestamp, revision, and hash formats.
+  - `[medium]` `[patch]` Validated historical source-result values and configured-source coverage.
+  - `[medium]` `[patch]` Rejected duplicate family and package history records.
+  - `[medium]` `[patch]` Required explicit consumer fixtures to remain beneath the audit directory.
+  - `[high]` `[patch]` Made owned process-tree termination and exit waits fail closed.
+  - `[high]` `[patch]` Added an atomic readiness handshake and three timeout-cleanup repetitions.
+  - `[medium]` `[patch]` Made malformed or nonnumeric ready/PID records controlled fixture failures.
+  - `[medium]` `[patch]` Enforced ordinal family-selector identity and rejected case variants.
+  - `[medium]` `[patch]` Deduplicated history using complete origin identity.
+  - `[medium]` `[patch]` Preserved JSON nulls in historical stable/prerelease fields.
+  - `[low]` `[patch]` Proved incremental generation contacts only requested-family package endpoints and rejects unrequested drift before package requests.
+  - `[low]` `[patch]` Added package-history deep-equality and cardinality assertions for repeated identical refreshes.
+
 ## Design Notes
 
 Keep the existing normalized `catalogSha256` for semantic equality, add an exact raw blob SHA-256 for reproducibility, and make `generatedFromRevision` mean the catalog/consumer commit. The snapshot envelope owns the current run time and exact refreshed/preserved family partition; each family owns the origin revision/time and family-selection/source/package/consumer fingerprints for its current evidence. Git already retains prior whole artifacts, so history records only genuine family refreshes and deduplicates identical prior snapshots.
@@ -89,3 +134,34 @@ Keep the existing normalized `catalogSha256` for semantic equality, add an exact
 - `pwsh -NoProfile -File ./Tools/validate-package-version-audit.ps1` -- expected: reconciled production audit passes for the current catalog.
 - `dotnet build Hexalith.Builds.slnx --configuration Release` -- expected: zero warnings and errors.
 - `git diff --check` -- expected: no whitespace errors; `Props/Directory.Packages.props` has no diff and the deferred-work ledger is untouched.
+
+## Auto Run Result
+
+Implemented audit schema v2 with exact committed-catalog provenance, complete/incremental family partitions, targeted refreshes, family-local origins and fingerprints, bounded and deduplicated histories, a strict UTF-8 BOM gate, and deterministic Git-shim cleanup. Reconciled the production audit without changing a package selection: 4 families are refreshed, 137 are preserved, and only `hexalith-eventstore` gains history.
+
+Files changed:
+
+- `references/Hexalith.Builds/Tools/audit-central-package-versions.ps1` -- hardened generation, preservation, bounded Git reads, incremental request scope, history, and atomic output.
+- `references/Hexalith.Builds/Tools/validate-package-version-audit.ps1` -- independently validates exact provenance, typed closed shapes, origins, partitions, histories, containment, and process cleanup.
+- `references/Hexalith.Builds/Tools/test-package-version-audit-generator.ps1` -- expanded complete/incremental and hostile generator coverage to 96 scenarios.
+- `references/Hexalith.Builds/Tools/test-package-version-audit-validator.ps1` -- expanded hostile validation and repeated timeout cleanup coverage to 101 scenarios.
+- `references/Hexalith.Builds/Tools/validate-central-package-versions.ps1` -- enforces the UTF-8 BOM and strict UTF-8 decoding before XML evaluation.
+- `references/Hexalith.Builds/Tools/test-central-package-version-validator.ps1` -- covers BOM-bearing, BOM-free, truncated, invalid-UTF-8, and semantic catalogs in 17 scenarios.
+- `references/Hexalith.Builds/Tools/package-version-audit.json` -- records the reconciled 286-package, 141-family audit with exact HEAD blob identity.
+- `references/Hexalith.Builds/Tools/README.md` -- documents the encoding, provenance, refresh, origin, history, and operational contracts.
+- `_bmad-output/implementation-artifacts/spec-package-audit-provenance-bom.md` -- records the implementation contract, commit scope, review triage, verification, and result.
+
+Review findings: 24 patches applied, 0 items deferred, and 3 items rejected. Rejected claims were direct worktree/raw-blob equality despite required Git EOL normalization, restoration of unsupported schema-less legacy histories despite the typed fail-closed contract, and a broader CycloneDX implementation reading not grounded in any of the five authoritative ledger entries. Follow-up review is recommended: patched findings were high 6, medium 16, low 2; score `3 × 16 + 2 = 50`, and high-severity patches were present.
+
+Verification performed:
+
+- Central catalog validation passed for 286 entries; central validator fixtures passed 17 scenarios.
+- Authoritative catalog validation passed for 50 identities and 3 shared versions.
+- Generator fixtures passed 96 scenarios; validator fixtures passed 101 scenarios, including three timeout-cleanup repetitions.
+- Production audit validation passed for 286 packages, 141 families, and 1 source.
+- Release build passed with 0 warnings and 0 errors; six PowerShell scripts parsed cleanly.
+- Exact audit raw SHA equals the HEAD catalog blob SHA; snapshot mode is incremental with 4 refreshed and 137 preserved families.
+- Relative to the first v2 audit, only `hexalith-eventstore` gained family history (16 to 17) and its 13 package histories gained one entry; all preserved decisions are otherwise unchanged apart from the diagnostic-bound metadata hash migration.
+- `git diff --check` passed; the catalog, deferred ledger, CycloneDX paths, and both Git indexes remained unchanged.
+
+Residual risk: package-feed observations are point-in-time evidence. Deterministic fixtures do not perform live NuGet queries; the checked-in production audit remains subject to its recorded observation time and source diagnostics.
