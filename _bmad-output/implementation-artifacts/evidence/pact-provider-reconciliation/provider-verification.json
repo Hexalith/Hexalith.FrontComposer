@@ -24,37 +24,37 @@
   "timing": {
     "run": {
       "resultCode": "run.succeeded",
-      "startedAt": "2026-09-01T05:15:05.8167827+00:00",
-      "completedAt": "2026-09-01T05:15:09.0736705+00:00",
-      "durationMilliseconds": 3256
+      "startedAt": "2026-09-01T16:44:53.9276543+00:00",
+      "completedAt": "2026-09-01T16:44:58.125814+00:00",
+      "durationMilliseconds": 4200
     },
     "startup": {
       "resultCode": "startup.succeeded",
-      "startedAt": "2026-09-01T05:15:05.9016486+00:00",
-      "completedAt": "2026-09-01T05:15:06.3254842+00:00",
-      "durationMilliseconds": 423
+      "startedAt": "2026-09-01T16:44:54.0638386+00:00",
+      "completedAt": "2026-09-01T16:44:54.7426359+00:00",
+      "durationMilliseconds": 678
     },
     "readiness": {
       "resultCode": "readiness.succeeded",
-      "startedAt": "2026-09-01T05:15:06.3255435+00:00",
-      "completedAt": "2026-09-01T05:15:06.4017687+00:00",
-      "durationMilliseconds": 76
+      "startedAt": "2026-09-01T16:44:54.7427169+00:00",
+      "completedAt": "2026-09-01T16:44:54.8595849+00:00",
+      "durationMilliseconds": 116
     },
     "cleanup": {
       "resultCode": "cleanup.succeeded",
-      "startedAt": "2026-09-01T05:15:09.0596871+00:00",
-      "completedAt": "2026-09-01T05:15:09.0709047+00:00",
-      "durationMilliseconds": 11
+      "startedAt": "2026-09-01T16:44:58.0928224+00:00",
+      "completedAt": "2026-09-01T16:44:58.1189384+00:00",
+      "durationMilliseconds": 26
     }
   },
   "identity": {
     "verificationMode": "live-compatibility",
-    "expectedSourceSha": "d6b8d2e5c1763713a126ff627822ead738e0f642",
-    "observedSourceSha": "d6b8d2e5c1763713a126ff627822ead738e0f642",
-    "expectedVersion": "999.1.20-proof.fa2d1c9910f8",
-    "observedVersion": "999.1.20-proof.fa2d1c9910f8\u002Bd6b8d2e5c1763713a126ff627822ead738e0f642",
-    "expectedBuildsSha": "9d77ed7cb22dc8e5cde8d51b7284b3e9a94cd3b6",
-    "observedBuildsSha": "9d77ed7cb22dc8e5cde8d51b7284b3e9a94cd3b6",
+    "expectedSourceSha": "f152995794337a929c0a1ec2242eff9a5a3a1c44",
+    "observedSourceSha": "f152995794337a929c0a1ec2242eff9a5a3a1c44",
+    "expectedVersion": "3.101.0",
+    "observedVersion": "3.101.0\u002Bf152995794337a929c0a1ec2242eff9a5a3a1c44",
+    "expectedBuildsSha": "7e84ff177d72c3706ab8a955283e6d182348f010",
+    "observedBuildsSha": "7e84ff177d72c3706ab8a955283e6d182348f010",
     "releaseInventorySha256": "6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae",
     "observedReleaseInventorySha256": "6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae",
     "evidenceManifestSha256": "",
@@ -104,7 +104,7 @@
       "pactFile": "frontcomposer-eventstore-command-dispatch.json",
       "providerState": "command-unauthorized",
       "resultCode": "interaction.passed",
-      "durationMilliseconds": 173,
+      "durationMilliseconds": 238,
       "stateEvents": [
         {
           "state": "command-unauthorized",
@@ -126,7 +126,7 @@
       "pactFile": "frontcomposer-eventstore-command-dispatch.json",
       "providerState": "command-conflict",
       "resultCode": "interaction.passed",
-      "durationMilliseconds": 269,
+      "durationMilliseconds": 460,
       "stateEvents": [
         {
           "state": "command-conflict",
@@ -148,7 +148,7 @@
       "pactFile": "frontcomposer-eventstore-command-dispatch.json",
       "providerState": "command-accepted",
       "resultCode": "interaction.passed",
-      "durationMilliseconds": 131,
+      "durationMilliseconds": 149,
       "stateEvents": [
         {
           "state": "command-accepted",
@@ -170,7 +170,7 @@
       "pactFile": "frontcomposer-eventstore-command-dispatch.json",
       "providerState": "command-forbidden",
       "resultCode": "interaction.passed",
-      "durationMilliseconds": 120,
+      "durationMilliseconds": 158,
       "stateEvents": [
         {
           "state": "command-forbidden",
@@ -192,7 +192,7 @@
       "pactFile": "frontcomposer-eventstore-command-dispatch.json",
       "providerState": "command-not-found",
       "resultCode": "interaction.passed",
-      "durationMilliseconds": 130,
+      "durationMilliseconds": 140,
       "stateEvents": [
         {
           "state": "command-not-found",
@@ -214,7 +214,7 @@
       "pactFile": "frontcomposer-eventstore-auth-tenant-propagation.json",
       "providerState": "command-auth-tenant",
       "resultCode": "interaction.passed",
-      "durationMilliseconds": 137,
+      "durationMilliseconds": 140,
       "stateEvents": [
         {
           "state": "command-auth-tenant",
@@ -236,7 +236,7 @@
       "pactFile": "frontcomposer-eventstore-command-dispatch.json",
       "providerState": "command-rate-limited",
       "resultCode": "interaction.passed",
-      "durationMilliseconds": 107,
+      "durationMilliseconds": 148,
       "stateEvents": [
         {
           "state": "command-rate-limited",
@@ -258,7 +258,7 @@
       "pactFile": "frontcomposer-eventstore-command-dispatch.json",
       "providerState": "command-unexpected-5xx",
       "resultCode": "interaction.passed",
-      "durationMilliseconds": 115,
+      "durationMilliseconds": 160,
       "stateEvents": [
         {
           "state": "command-unexpected-5xx",
@@ -280,7 +280,7 @@
       "pactFile": "frontcomposer-eventstore-command-dispatch.json",
       "providerState": "command-validation-failure",
       "resultCode": "interaction.passed",
-      "durationMilliseconds": 121,
+      "durationMilliseconds": 149,
       "stateEvents": [
         {
           "state": "command-validation-failure",
@@ -302,7 +302,7 @@
       "pactFile": "frontcomposer-eventstore-cache-validation.json",
       "providerState": "query-etag-match",
       "resultCode": "interaction.passed",
-      "durationMilliseconds": 219,
+      "durationMilliseconds": 233,
       "stateEvents": [
         {
           "state": "query-etag-match",
@@ -324,7 +324,7 @@
       "pactFile": "frontcomposer-eventstore-cache-validation.json",
       "providerState": "query-etag-no-cache",
       "resultCode": "interaction.passed",
-      "durationMilliseconds": 119,
+      "durationMilliseconds": 156,
       "stateEvents": [
         {
           "state": "query-etag-no-cache",
@@ -346,7 +346,7 @@
       "pactFile": "frontcomposer-eventstore-cache-validation.json",
       "providerState": "query-large-valid-metadata",
       "resultCode": "interaction.passed",
-      "durationMilliseconds": 152,
+      "durationMilliseconds": 156,
       "stateEvents": [
         {
           "state": "query-large-valid-metadata",
@@ -368,7 +368,7 @@
       "pactFile": "frontcomposer-eventstore-query-execution.json",
       "providerState": "query-empty-result",
       "resultCode": "interaction.passed",
-      "durationMilliseconds": 104,
+      "durationMilliseconds": 133,
       "stateEvents": [
         {
           "state": "query-empty-result",
@@ -390,7 +390,7 @@
       "pactFile": "frontcomposer-eventstore-query-execution.json",
       "providerState": "query-forbidden",
       "resultCode": "interaction.passed",
-      "durationMilliseconds": 120,
+      "durationMilliseconds": 130,
       "stateEvents": [
         {
           "state": "query-forbidden",
@@ -412,7 +412,7 @@
       "pactFile": "frontcomposer-eventstore-query-execution.json",
       "providerState": "query-fresh-data",
       "resultCode": "interaction.passed",
-      "durationMilliseconds": 131,
+      "durationMilliseconds": 154,
       "stateEvents": [
         {
           "state": "query-fresh-data",
@@ -434,7 +434,7 @@
       "pactFile": "frontcomposer-eventstore-query-execution.json",
       "providerState": "query-malformed-payload",
       "resultCode": "interaction.passed",
-      "durationMilliseconds": 123,
+      "durationMilliseconds": 124,
       "stateEvents": [
         {
           "state": "query-malformed-payload",
@@ -456,7 +456,7 @@
       "pactFile": "frontcomposer-eventstore-query-execution.json",
       "providerState": "query-not-found",
       "resultCode": "interaction.passed",
-      "durationMilliseconds": 127,
+      "durationMilliseconds": 126,
       "stateEvents": [
         {
           "state": "query-not-found",
@@ -478,7 +478,7 @@
       "pactFile": "frontcomposer-eventstore-auth-tenant-propagation.json",
       "providerState": "query-auth-tenant",
       "resultCode": "interaction.passed",
-      "durationMilliseconds": 129,
+      "durationMilliseconds": 133,
       "stateEvents": [
         {
           "state": "query-auth-tenant",
@@ -500,7 +500,7 @@
       "pactFile": "frontcomposer-eventstore-query-execution.json",
       "providerState": "query-rate-limited",
       "resultCode": "interaction.passed",
-      "durationMilliseconds": 119,
+      "durationMilliseconds": 135,
       "stateEvents": [
         {
           "state": "query-rate-limited",

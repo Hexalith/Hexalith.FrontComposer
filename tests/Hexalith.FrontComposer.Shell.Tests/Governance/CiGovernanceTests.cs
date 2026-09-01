@@ -3417,9 +3417,9 @@ public sealed class CiGovernanceTests {
         const string approvedSourceSha = "bb94d93e9b84132cff83a38fba84f25455820d31";
         const string approvedBuildsSha = "a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a";
         const string approvedVersion = "3.91.1";
-        const string currentSourceSha = "d6b8d2e5c1763713a126ff627822ead738e0f642";
-        const string currentBuildsSha = "9d77ed7cb22dc8e5cde8d51b7284b3e9a94cd3b6";
-        const string currentVersion = "999.1.20-proof.fa2d1c9910f8";
+        const string currentSourceSha = "f152995794337a929c0a1ec2242eff9a5a3a1c44";
+        const string currentBuildsSha = "7e84ff177d72c3706ab8a955283e6d182348f010";
+        const string currentVersion = "3.101.0";
         // The immutable Story 11.24 owner capture remains historical evidence. Current source,
         // package, and Builds values are compatibility provenance, not migration approval.
         string root = RepositoryRoot();

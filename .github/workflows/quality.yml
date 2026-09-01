@@ -179,12 +179,18 @@ jobs:
         run: |
           dotnet build references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj --configuration Release -m:1
           dotnet references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.Tests.dll
-          dotnet references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.dll \
-            --verification-mode live-compatibility \
-            --pact-directory "$GITHUB_WORKSPACE/tests/Hexalith.FrontComposer.Shell.Tests/Pact" \
-            --manifest "$GITHUB_WORKSPACE/tests/Hexalith.FrontComposer.Shell.Tests/Pact/interaction-manifest.json" \
-            --provider-state-catalog "$GITHUB_WORKSPACE/tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-state-catalog.json" \
-            --report-output "$GITHUB_WORKSPACE/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json"
+          # The tool derives its own repository root (source sha, Builds sibling gitlink) by
+          # walking up from the process CWD looking for Hexalith.EventStore.slnx, so it must be
+          # invoked from inside the EventStore submodule; pact/manifest/report paths stay absolute.
+          (
+            cd references/Hexalith.EventStore &&
+            dotnet "$GITHUB_WORKSPACE/references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.dll" \
+              --verification-mode live-compatibility \
+              --pact-directory "$GITHUB_WORKSPACE/tests/Hexalith.FrontComposer.Shell.Tests/Pact" \
+              --manifest "$GITHUB_WORKSPACE/tests/Hexalith.FrontComposer.Shell.Tests/Pact/interaction-manifest.json" \
+              --provider-state-catalog "$GITHUB_WORKSPACE/tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-state-catalog.json" \
+              --report-output "$GITHUB_WORKSPACE/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json"
+          )
           python3 eng/eventstore_runtime_evidence.py \
             --live-evidence-root _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation \
             --pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact \
