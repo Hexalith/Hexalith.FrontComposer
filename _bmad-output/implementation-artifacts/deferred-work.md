@@ -9056,7 +9056,9 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-6-enf
 location: validate-package-version-audit.ps1
 source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-to-3-97-0.md`
 reason: summary: Bind package-audit provenance to the catalog commit it claims to describe and distinguish incremental family refreshes from complete live snapshots. evidence: `validate-package-version-audit.ps1` accepts any lowercase 40-character `generatedFromRevision` without proving that the commit exists or that its catalog blob matches the audited selections, while the audit exposes only artifact-wide timestamp and revision fields for incrementally preserved package decisions.
-status: open
+status: done 2026-09-01
+resolution: resolved by sweep bundle dw-package-audit-provenance-bom
+resolution-undo: 7f557be52a6c44515f315eb53777d6fb25470b175455ff165942faa55a32b52e 2026-09-01 7374617475733a206f70656e
 
 ### DW-1839: Add a Builds-owned validation gate that enforces the required UTF-8 BOM on the central package catalog.
 
@@ -9064,7 +9066,9 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-6-enf
 location: n/a
 source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-to-3-97-0.md`
 reason: summary: Add a Builds-owned validation gate that enforces the required UTF-8 BOM on the central package catalog. evidence: `.gitattributes` enforces CRLF but not the BOM, so pushed catalog commit `761dc0187ef60599f12310fef2411dbaf0206742` removed the marker without a Builds gate failing; this bump repaired the committed bytes but not the systemic regression path.
-status: open
+status: done 2026-09-01
+resolution: resolved by sweep bundle dw-package-audit-provenance-bom
+resolution-undo: 7f557be52a6c44515f315eb53777d6fb25470b175455ff165942faa55a32b52e 2026-09-01 7374617475733a206f70656e
 
 ### DW-1840: Restore a passing full transitive Release AppHost build with the Parties and Tenants UI package graph enabled.
 
@@ -9544,7 +9548,9 @@ origin: migrated from legacy ledger ("spec-bump-eventstore-package-to-3-98-0.md"
 location: references/Hexalith.Builds/Tools/package-version-audit.json:4
 source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-package-to-3-98-0.md`
 reason: The generated audit records parent Builds revision `8f255570b2df14603a943e8d7ee0c5d3f0b025fc` while its catalog hash binds candidate bytes first committed in `c8837217e6c07f7e12ccf3e3b5e86c5bc83ceade`; validators accept this convention, but the revision alone cannot reproduce the audited catalog.
-status: open
+status: done 2026-09-01
+resolution: resolved by sweep bundle dw-package-audit-provenance-bom
+resolution-undo: 7f557be52a6c44515f315eb53777d6fb25470b175455ff165942faa55a32b52e 2026-09-01 7374617475733a206f70656e
 
 ### DW-1898: Prevent catalog-wide audit-history growth for a single-family selector change.
 
@@ -9552,7 +9558,9 @@ origin: migrated from legacy ledger ("spec-bump-eventstore-package-to-3-98-0.md"
 location: references/Hexalith.Builds/Tools/audit-central-package-versions.ps1:917
 source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-package-to-3-98-0.md`
 reason: Refreshing EventStore from `3.97.0` to `3.98.0` caused the generated audit to append preserved history across 140 families and 285 packages, producing 13,241 insertions and 1,447 deletions because preservation is coupled to the complete catalog hash.
-status: open
+status: done 2026-09-01
+resolution: resolved by sweep bundle dw-package-audit-provenance-bom
+resolution-undo: 7f557be52a6c44515f315eb53777d6fb25470b175455ff165942faa55a32b52e 2026-09-01 7374617475733a206f70656e
 
 ### DW-1899: The checked-in central package graph blocks the repository's normal .NET test and solution-build lanes before tests execute.
 origin: spec-deferred 0a702c5a81ac
@@ -9620,7 +9628,9 @@ origin: migrated from legacy ledger ("spec-bump-eventstore-to-3-100-0.md"), 2026
 location: references/Hexalith.Builds/Tools/test-package-version-audit-validator.ps1
 source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-to-3-100-0.md`
 reason: The validator failed twice with `The non-terminating Git shim did not record both owned process IDs.` before passing all 66 scenarios on isolated retry; the scripts were not edited by this EventStore bump, so the intermittent Git-shim PID capture remains deferred.
-status: open
+status: done 2026-09-01
+resolution: resolved by sweep bundle dw-package-audit-provenance-bom
+resolution-undo: 7f557be52a6c44515f315eb53777d6fb25470b175455ff165942faa55a32b52e 2026-09-01 7374617475733a206f70656e
 
 ### DW-1907: The packaged-analyzer test's legacy dotnet helper still drains stdout and stderr sequentially and does not terminate the child on cancellation.
 origin: spec-deferred a7b5ab90c27e
@@ -9653,4 +9663,116 @@ location: n/a
 source_spec: `spec-analyzer-governance-reliability.md`
 severity: low
 reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260830-234810-e850; this entry preserves the lingering recommendation for a deliberate later review.
+status: open
+
+### DW-1911: The generated audit artifact is written with platform line endings and no .gitattributes rule pins them, so regenerating on Windows rewrites all ~170k lines.
+origin: spec-deferred 69a6a2f5d6b4
+location: references/Hexalith.Builds/Tools/audit-central-package-versions.ps1:1756
+source_spec: `spec-package-audit-provenance-bom.md`
+severity: medium
+reason: Tools/audit-central-package-versions.ps1 terminates the document with [Environment]::NewLine and ConvertTo-Json indents with the platform newline; Tools/.gitattributes pins only Props/Directory.Packages.props. The committed Tools/package-version-audit.json contains zero CR bytes because it was last generated on Linux. Pre-existing: the prior Set-Content -Encoding utf8 write had the same platform dependence, so this change did not introduce it.
+status: open
+
+### DW-1912: Audit history growth has no retention, pruning, or size policy, and the artifact is already ~9.9 MB.
+origin: spec-deferred 42fd1cff974a
+location: references/Hexalith.Builds/Tools/package-version-audit.json
+source_spec: `spec-package-audit-provenance-bom.md`
+severity: medium
+reason: Every refreshed family appends family and package historicalContext records on each incremental run, and the validator round-trips each record for duplicate detection, so both file size and validation cost grow without bound. Pre-existing: the v1 contract also appended history, and this change only narrowed which families append.
+status: open
+
+### DW-1913: Almost all stored package history is still v1-schema and is therefore exempt from the new origin ancestry, chronology, and duplicate-identity invariants.
+origin: spec-deferred f218a2755de1
+location: references/Hexalith.Builds/Tools/validate-package-version-audit.ps1
+source_spec: `spec-package-audit-provenance-bom.md`
+severity: low
+reason: The v2 contract accepts both hexalith.package-audit-*-history.v1 and .v2 records, but only v2 records carry an origin, and Assert-HistoricalOrigin only validates records that have one. The vast majority of committed package history predates v2, so the new integrity guarantees cover only the records written since this change. Pre-existing data, not introduced by it.
+status: open
+
+### DW-1914: The validator only enables historical Git blob reads inside the repository-owned catalog branch, so an out-of-repository catalog combined with git-ls-files consumer discovery silently drops every decl
+origin: spec-deferred 69d02df37e1b
+location: references/Hexalith.Builds/Tools/validate-package-version-audit.ps1:1274
+source_spec: `spec-package-audit-provenance-bom.md`
+severity: medium
+reason: $historicalBlobReadsAvailable is initialised to $false and set to $true only within "if ($catalogIsRepositoryOwned -and $generatedFromRevision -cmatch ...)". Blob-read availability actually depends on the revision being an available ancestor, not on catalog ownership. Hoisting that determination out of the catalog branch would newly subject every existing out-of-repository fixture to the ancestor check, so it is not a safe review-pass patch. The shipped artifact uses a repository-owned catalog and is unaffected today.
+status: open
+
+### DW-1915: The emitted familyDecisions and packages arrays are ordered with culture-aware, case-insensitive Sort-Object while every fingerprint sorts case-sensitively.
+origin: spec-deferred b6c59d29bcee
+location: references/Hexalith.Builds/Tools/audit-central-package-versions.ps1:1769
+source_spec: `spec-package-audit-provenance-bom.md`
+severity: medium
+reason: The document is finalised with "Sort-Object family" and "Sort-Object id", whose default comparison is culture-sensitive, whereas packageIds, refreshedFamilies, preservedFamilies and all four origin fingerprints use Sort-Object -CaseSensitive. Regenerating under a different culture can reorder the 141-family / 286-package arrays without any evidence changing. Aligning them risks reordering the 9.9 MB committed artifact, which is out of scope for a review pass that must not touch package selections.
+status: open
+
+### DW-1916: The audit artifact contract changed incompatibly but every commit in the bundle is typed fix(...) with no breaking-change marker.
+origin: spec-deferred 22cc7198ac6d
+location: references/Hexalith.Builds
+source_spec: `spec-package-audit-provenance-bom.md`
+severity: medium
+reason: schemaVersion moved 1 -> 2, top-level auditedAtUtc moved into the snapshot envelope, and the family preservation envelope was replaced by origin. Commits 3b8bac2, cfc6550 and fe3f0b7 are all "fix(audit): ..." with no "!" and no BREAKING CHANGE footer, so semantic-release will cut a patch version of a submodule other Hexalith repositories consume. Commit 7eaa21e in the same range also carries no Conventional Commits type at all.
+status: open
+
+### DW-1917: The checked-in audit artifact is not re-derivable by any shipped code path.
+origin: spec-deferred 518d2d0f7d27
+location: references/Hexalith.Builds/Tools/package-version-audit.json
+source_spec: `spec-package-audit-provenance-bom.md`
+severity: medium
+reason: Tools/package-version-audit.json is snapshot.mode incremental with 4 refreshed and 137 preserved families whose origins were back-filled from the previous v1 audit's global revision and time. That back-fill can only happen on an incremental run over a v1 prior, which the generator now rejects with "incremental refresh requires a schemaVersion 2 prior audit"; a complete refresh would instead stamp all 141 origins with the current revision and time. The artifact is forward-refreshable but cannot be reproduced.
+status: open
+
+### DW-1918: A refreshed family's prior historicalContext is copied forward without passing the closed-shape prior-history contract.
+origin: spec-deferred 185733504fc1
+location: references/Hexalith.Builds/Tools/audit-central-package-versions.ps1:1608
+source_spec: `spec-package-audit-provenance-bom.md`
+severity: low
+reason: Assert-PriorFamilyHistoryContract and Assert-PriorPackageHistoryContract are reached only through Assert-PriorV2PreservedFamily, which runs for preserved families. A refreshed family's prior history records are copied verbatim, so unknown or wrong-typed legacy fields can reach an emitted v2 document; the independent validator rejects it afterwards, but the generator will have written output it cannot validate.
+status: open
+
+### DW-1919: Preserved family observations have no staleness ceiling, and nothing requires the committed artifact to ever be a complete refresh.
+origin: spec-deferred d28de3380010
+location: references/Hexalith.Builds/Tools/package-version-audit.json
+source_spec: `spec-package-audit-provenance-bom.md`
+severity: low
+reason: The shipped artifact preserves 137 of 141 families against two distinct origin revision/timestamp pairs. Neither the generator, the validator, nor CI bounds how long a family may remain preserved, so the feed observations backing most of a freshness tool's own artifact can age indefinitely while every gate stays green.
+status: open
+
+### DW-1920: Dead v1-migration residue remains in the generator's preserved-family branch.
+origin: spec-deferred a7879f839e9a
+location: references/Hexalith.Builds/Tools/audit-central-package-versions.ps1:1509
+source_spec: `spec-package-audit-provenance-bom.md`
+severity: low
+reason: The preserved branch still contains a path that, when a preserved decision has no origin, removes preservation and synthesizes an origin from the prior audit's global revision/time. Incremental refresh now requires a v2 prior, and Assert-PriorV2PreservedFamily's closed shape both requires origin and forbids preservation, so that path can no longer execute. It is the migration path the shipped artifact actually took, left behind after the guard closed it.
+status: open
+
+### DW-1921: Several new fail-closed paths still have no fixture.
+origin: spec-deferred 5f8b14a0d9d0
+location: references/Hexalith.Builds/Tools
+source_spec: `spec-package-audit-provenance-bom.md`
+severity: low
+reason: Untested: "evaluated catalog contains no package families"; the prior/current family-absence pair; the preserved-family "source scope changed without being requested" and "consumer evidence changed without being requested" guards; Assert-RepositoryPathMatchesRevision's "could not be compared" branch; the generator's Get-GitBlobBytes "could not start" branch; and the validator's "Snapshot partition contains unknown family" and "Complete snapshot mode must refresh every family and preserve none" rules. The suites cover the mirror-image cases but not these.
+status: open
+
+### DW-1922: Validation and generation cost scale with total stored history rather than with the refreshed family set on the incremental fast path.
+origin: spec-deferred 4c7674454f19
+location: references/Hexalith.Builds/Tools/validate-package-version-audit.ps1
+source_spec: `spec-package-audit-provenance-bom.md`
+severity: low
+reason: The validator serializes every history record with ConvertTo-Json -Depth 20 -Compress for duplicate detection (5,756 records on the real artifact) and scans the full package list several times per family across 141 families; the generator re-verifies each preserved family's fingerprints twice and JSON round-trips every preserved package row. An incremental refresh that touches 4 families still pays full-document cost. Related to, but distinct from, the unbounded-history entry above.
+status: open
+
+### DW-1923: The new UTF-8 BOM gate is unconditional for a shared submodule whose sibling catalogs are BOM-free, with no opt-out or migration note.
+origin: spec-deferred 39dcc188f3de
+location: references/Hexalith.Builds/Tools/validate-central-package-versions.ps1:86
+source_spec: `spec-package-audit-provenance-bom.md`
+severity: low
+reason: validate-central-package-versions.ps1 now hard-fails any catalog without the exact EF BB BF prefix. Only Props/Directory.Packages.props, Hexalith.Commons and Hexalith.PolymorphicSerializations carry a BOM today; this repository's own root Directory.Packages.props, plus FrontComposer, EventStore, Memories, Parties and Tenants, are BOM-free. Nothing breaks yet because both workflow call sites use the default Props/ catalog, but the two files in this repository now sit under different byte contracts.
+status: open
+
+### DW-1924: Follow-up review still recommended for dw-package-audit-provenance-bom after the damping cap was spent
+origin: review-budget-followup
+location: n/a
+source_spec: `spec-package-audit-provenance-bom.md`
+severity: low
+reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260901-072044-3ff7; this entry preserves the lingering recommendation for a deliberate later review.
 status: open
