@@ -1047,7 +1047,8 @@ resolution: already resolved: tests/Hexalith.FrontComposer.Mcp.Tests/Schema/Sche
 origin: migrated from legacy ledger ("Deferred from: code review of 8-6a-schema-negotiation-runtime-gate chunk 4 (2026-05-07)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/SchemaFixtureCatalogTests.cs:2061-2070
 reason: **DEF-CK4-6 — `Catalog_ShipsExactlyTheStoryT8Set` does not fail-loud on missing `fixtureId`** [`tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/SchemaFixtureCatalogTests.cs:2061-2070`] — Fixture without `fixtureId` is silently excluded from equality check. Defensive only. **Owner:** v1.x fixture-catalog hardening. Sources: blind. Reconciliation: Row: DW-0072; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.4 SourceTools/schema-fingerprint follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.4 SourceTools/schema-fingerprint follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
-status: open
+status: done 2026-09-01
+resolution: already resolved: tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/SchemaFixtureCatalogTests.cs:45-61 fails loudly when fixtureId is missing via TryGetProperty(...).ShouldBeTrue; commit 7e3c160fe72eb1f1a90caa0846e941985d0f0f1e contains the guard.
 
 ### DW-804: Truncation `[Theory]` covers budgets 1-3 but not 0 / 25 boundary [`tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/SchemaMigrationDeltaTruncationTests.cs:45-73`] — P-48 fired at `maxDeltaCount=1` (tested). No coverage for invalid `=0` (see DEF-C2) or boundary `=25`. Owner: Add when next budget bug class shows up. Sources: blind+edge. Reconciliation: Row: DW-0073; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.4 SourceTools/schema-fingerprint follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.4 SourceTools/schema-fingerprint follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 
@@ -1133,7 +1134,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 8-6a-schema-negotiation-runtime-gate chunk 3 (2026-05-07)"), 2026-08-27
 location: SourceTools.cs
 reason: **DEF-CK3-2 — `SourceTools.csproj` ProjectReference to `Schema.csproj` lacks `<PrivateAssets="all" />`** [`src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj:18`] — D9 mandates the reference (both `.Mcp` and `.SourceTools` reference Schema) but no SourceTools source file currently consumes a Schema type. With `IsRoslynComponent=true` + `EnforceExtendedAnalyzerRules=true`, the project reference may flow `Hexalith.FrontComposer.Schema.dll` into the analyzer's runtime closure, increasing the analyzer footprint shipped to consuming projects. The `Microsoft.CodeAnalysis.CSharp` PackageReference correctly carries `PrivateAssets="all"`; the new ProjectReference does not. **Owner:** audit when first analyzer-side delta computation lands (or sooner if analyzer-host validation fails RS1036/RS1038); decide whether `<PrivateAssets="all">` is required for the Schema reference. Sources: blind+edge. Reconciliation: Row: DW-0084; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.4 SourceTools/schema-fingerprint follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.4 SourceTools/schema-fingerprint follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
-status: open
+status: done 2026-09-01
+resolution: already resolved: src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj:12-15 has no Schema ProjectReference; commit 914ae542c8b44b53f644e87d770838a31520699f removed it.
 decision: 2026-08-31 Implement change — Implement the bounded change described by DW-815, update affected contracts and consumers, and add focused regression evidence.
 decision: 2026-08-31 Implement change — Implement the bounded change described by DW-815, update affected contracts and consumers, and add focused regression evidence.
 
@@ -1396,7 +1398,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 8-4-projection-rendering-for-agents (2026-05-03)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs:316-327
 reason: **DF8.4-2 — `FormatEnumerable` hardcoded 5-element cap ignores options** [`src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs:316-327`] — Magic number unrelated to configured cell budget; no option to tune. Less impactful once F21 (arrays should fall through to unsupported placeholder per Formatting Matrix) is fixed via a Patch. **Owner:** Options-pattern cleanup. Sources: edge+blind. Reconciliation: Row: DW-0120; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
-status: open
+status: done 2026-09-01
+resolution: already resolved: src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs:474-480 no longer enumerates or caps five elements; collection values return the canonical unsupported placeholder; commit a776288c0a3661f66c3f840b68c0a6119e40e7df introduced that behavior.
 
 ### DW-852: `EmitStringDictionary` does not null-check `values` [`src/Hexalith.FrontComposer.SourceTools/Emitters/McpManifestEmitter.cs`] — Producer-side `McpParameterDescriptor.BadgeMappings` defaults to empty dictionary in primary ctor, so safe today. NRE-prone if a producer ever passes null. Owner: Defensive cleanup. Sources: blind. Reconciliation: Row: DW-0121; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.4 SourceTools/schema-fingerprint follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.4 SourceTools/schema-fingerprint follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 
@@ -1921,7 +1924,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 7-3-command-authorization-policies (Pass 3, 2026-05-02)"), 2026-08-27
 location: EventStoreQueryClient.cs:121-124
 reason: **D12 — Cached entry with control-character ETag silently filtered, never removed from LRU** [`EventStoreQueryClient.cs:121-124`] — Orphan entry takes quota; never participates in `If-None-Match`. **Owner:** ETag cache hygiene backlog. Sources: E29. Reconciliation: Row: DW-0192; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
-status: open
+status: done 2026-09-01
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs:143-153 removes a cached control-character ETag with CancellationToken.None; commit 652c68f3ae944af997c04fe5ec3d56a3caf2908b introduced the eviction.
 
 ### DW-924: `EventStoreIdentity.RequireUserContext(snapshot)` re-runs `RequireValidSegment` on already-validated fields [`EventStoreIdentity.cs:13-18`] — Dead defensive code; remove with D3. Sources: B26. Reconciliation: Row: DW-0193; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 
@@ -2010,7 +2014,8 @@ decision: 2026-08-27 Accept current behavior — Record the current behavior as 
 origin: migrated from legacy ledger ("Deferred from: code review of 6-6-build-time-validation-error-boundaries-and-diagnostics (2026-05-01)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionTemplateHost.cs
 reason: **D1 — `FcProjectionTemplateHost.OpenComponent` non-generic overload requires `DynamicallyAccessedMembers` / generic-arity for AOT/trim** [`src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionTemplateHost.cs`] — `OpenComponent(0, Descriptor.TemplateType)` non-generic overload triggers trimming warnings without DAM annotations. **Owner:** Epic 9-4 (AOT/trimming sweep) — that story owns the project-wide annotation pass. Reconciliation: Row: DW-0204; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC5-AC13, AC26-AC29, AC33-AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionTemplateHost.cs.
-status: open
+status: done 2026-09-01
+resolution: already resolved: src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionTemplateDescriptor.cs:35-47 propagates DynamicallyAccessedMembers(All) on TemplateType into FcProjectionTemplateHost.OpenComponent; commit 6a9fd9b7c44b35d65d7386b841747538e0fde849 added the trim metadata.
 
 ### DW-936: HFC2117 / HFC2118 / HFC2119 reserved but never emitted (recovery-failure, runtime-fallback, inaccessible-runtime-fallback) [`src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs:404-414`] — Constants exist; no Shell emit sites. The emit code paths depend on later epic features (Epic 7 fail-closed paths after auth/tenant; Epic 9 runtime-only fallbacks). Reservations are intentional and tracked. Owner: Epic 7 (HFC2117 recovery-failure on tenant fail-closed) / Epic 9 (HFC2118/HFC2119 runtime fallback observability). Reconciliation: Row: DW-0205; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2; Evidence: src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs:404-414.
 
@@ -2983,7 +2988,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of story 1-5 round 2 (2026-04-14)"), 2026-08-27
 location: RegistrationEmitter
 reason: **BoundedContext name with invalid C# identifier chars** — Names like `"My Orders"` or `"Order-Management"` produce invalid class names in `RegistrationEmitter`. Pre-existing; no sanitization or diagnostic exists. Reconciliation: Row: DW-0337; Split to Story 11.4 SourceTools identifier diagnostics 2026-05-13; Disposition: split-to-named-story; Reason: generator malformed-name diagnostics are SourceTools scope; Residual release-gate risk: medium for exotic adopters.; Evidence: section: code review of story 1-5 round 2 (2026-04-14).
-status: open
+status: done 2026-09-01
+resolution: already resolved: src/Hexalith.FrontComposer.SourceTools/Emitters/RegistrationEmitter.cs:36-42 derives the generated class identifier from model.TypeName, while lines 63-65 emit BoundedContext only as an escaped string; commit e378cef841962717ef55960ae7f1fdf583fe8670 introduced the type-derived registration class name.
 
 ### DW-1069: Hint name sanitization for exotic namespace formats
 
@@ -7886,7 +7892,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-18-warnin
 location: _bmad-output/implementation-artifacts/sprint-status.yaml:381
 source_spec: `_bmad-output/implementation-artifacts/sprint-status.yaml`
 reason: summary: Reconcile contradictory SDK, REL-1, and REL-4 truth-state records introduced after Story 11.18b. evidence: The current baseline-to-HEAD status file says the expected and reported SDK are both `10.0.302` while calling that a blocker, reopens REL-1 as backlog after recording it closed as superseded, and still says REL-4 enforcement is pending after later entries record implementation and review (`_bmad-output/implementation-artifacts/sprint-status.yaml:381,524-525,621-623`). Git blame places these edits in later non-11.18b commits, so their owning status/release work must reconcile them separately.
-status: open
+status: done 2026-09-01
+resolution: already resolved: Commit 7d85692399f5886b7e7812255b89c98830d2b135 removed the contradictory SDK blocker and stale REL-1/REL-4 truth-state rows from _bmad-output/implementation-artifacts/sprint-status.yaml; the current tracker no longer contains the cited contradictions.
 decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1701, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1702: Support a partial type legally split across two files in the Shell organization guard, or record the one-file contract as deliberate.
@@ -8009,7 +8016,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-
 location: eng/dependency-graph-policy.json:33
 source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
 reason: summary: Bind the policy's blessed `HexalithTenantsVersion` to the Tenants gitlink or to an actual FrontComposer consumer. evidence: `grep -rn "HexalithTenantsVersion" src/ tests/ eng/ scripts/ .github/` returns exactly one hit — the policy row at `eng/dependency-graph-policy.json:33`. The `hexalith.tenants` edge maps to `shared-catalog-baseline-v1`, whose required properties and packages are both empty, so the Tenants edge is provenance-only. Source mode resolves Tenants through the `references/Hexalith.Tenants` gitlink and package mode through the catalog property; nothing asserts the two denote the same release, so a source/package skew that still compiles is invisible. Reopen trigger: a Tenants gitlink move that is not accompanied by a catalog bump, or the first source/package behavioural divergence.
-status: open
+status: done 2026-09-01
+resolution: already resolved: Commit 54edc44f801e94fcf71e8589c54b181c43488a71 removed the stale exact HexalithTenantsVersion mirror. eng/dependency-graph-policy.json:59-67 now requires the property name's presence while selected_catalog_required_properties is deliberately empty; _bmad-output/project-context.md:264-275 documents the value-independent contract.
 decision: 2026-08-28 Implement change — Implement the requested change at eng/dependency-graph-policy.json:33, update affected contracts and consumers, and add focused regression evidence.
 decision: 2026-08-28 Implement change — Implement the requested change at eng/dependency-graph-policy.json:33, update affected contracts and consumers, and add focused regression evidence.
 
@@ -8019,7 +8027,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-
 location: eng/dependency_graph.py:591
 source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
 reason: summary: Give the C# Governance facts a signal for what a profile enforced, not only that its edge was visited. evidence: `eng/dependency_graph.py:591` appends `validated {edge_context} under profile {profile_name}` once per edge regardless of how many checks ran inside the profile, and `InfrastructureGovernanceTests` asserts on those strings plus `selectors_validated`. Measured during this review: deleting the whole required-property loop leaves `validate` at `ok: true, selectors_validated: 7` with all profile diagnostics intact and both Governance facts green. Every future profile check inherits the same blind spot. Reopen trigger: a new profile check is added, or the dependency-graph suite is wired into CI (which would supply the missing signal by another route).
-status: open
+status: done 2026-09-01
+resolution: already resolved: The row's alternate reopening condition is satisfied: .github/workflows/quality.yml:157-166 runs the dependency-graph semantic suites in blocking Gate 2b. tests/eng/test_dependency_graph.py:529-554 covers required-property match/missing/duplicate/mismatch and :1880-1934 pins the landed profile contract.
 
 ### DW-1717: Apply whatever condition-awareness the required-property check gains to `assert_guarded_imports` as well.
 
@@ -8061,7 +8070,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-
 location: eng/validate-story-artifacts.py
 source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
 reason: summary: Deferred tasks can self-exempt with bare fabricated basenames — existence check only runs when `"/"` is in the path. evidence: `eng/validate-story-artifacts.py` deferred existence check requires `"/"` in path; bare phantoms never enter `task_paths`. Pre-existing; surfaced again in group 3. Reopen trigger: bare-basename deferred phantoms are included in existence checks, or the validator documents that bare basenames are intentionally non-evidence.
-status: open
+status: done 2026-09-01
+resolution: already resolved: eng/validate-story-artifacts.py:2551-2569 explicitly documents bare, tree-absent basenames as hypothetical non-output evidence and makes creation claims strict; :2593-2602 implements that exact documented boundary.
 
 ### DW-1722: `no_minver` never scans `.csproj`/other props for MinVer PackageReference — only `Directory.Build.props` is inspected.
 
@@ -8077,7 +8087,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-
 location: eng/dependency-graph-policy.json
 source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
 reason: summary: Dead policy surfaces (`module_build_registry`, `evaluator_authorizations`, contract-tree `resource_limits`) are unused while comments advertise broader Task/AD scope. evidence: `eng/dependency-graph-policy.json` scaffolding fields. Reopen trigger: GOV-1 activates those surfaces or the comments are narrowed to the implemented scope.
-status: open
+status: done 2026-09-01
+resolution: already resolved: The formerly dead policy fields are active: eng/dependency_graph.py:337,381,605,734,877,935,987 consumes resource_limits and module_build_registry; eng/workflow_source_closure.py:177-185,1068-1100 consumes limits and evaluator_authorizations; eng/dependency_handoff.py:103,571 enforces evaluator authorization.
 decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1723, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1724: Shallow CI `fetch-depth: 1` plus multi-pin Builds blob resolution through one FrontComposer Builds object store can under-validate non-HEAD pins when objects are missing.
@@ -8086,7 +8097,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-
 location: .github/workflows/quality.yml
 source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
 reason: summary: Shallow CI `fetch-depth: 1` plus multi-pin Builds blob resolution through one FrontComposer Builds object store can under-validate non-HEAD pins when objects are missing. evidence: `.github/workflows/quality.yml` shallow clone + latent multi-pin risk. Pre-existing. Reopen trigger: fetch depth covers required Builds objects, or multi-pin resolution fails closed when a pin blob is absent.
-status: open
+status: done 2026-09-01
+resolution: already resolved: Commit 8a6a6cb322e978b361170eb7a0a2cc689a4b8b8c changed the primary checkout to complete history for GOV-1. Current .github/workflows/quality.yml:37-43,510-520,602-607 uses fetch-depth: 0 at all three checkout sites.
 
 ### DW-1725: `baseline_commit` remains `0a84e818` despite repeated foreign-absorption and ~40–122 commit staleness warnings across review chunks.
 
@@ -8103,7 +8115,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-shell-
 location: deferred-work.md
 source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
 reason: summary: Committed catalog pins are mutation-blind to Governance/synthetic suites — emptying `selected_catalog_required_*` still passes shape checks and profile-visit diagnostics. evidence: Group 3 deferred this as "already recorded", but no prior `deferred-work.md` entry matched. Live facts assert profile visit / shape, not pin contents. Owner: GOV-1 / dependency-graph maintainers. Reopen trigger: Governance or synthetic suite asserts non-empty pin contents against the selected catalog, or the profile schema gains a fail-closed content seal.
-status: open
+status: done 2026-09-01
+resolution: already resolved: tests/eng/test_dependency_graph.py:1880-1901 pins the exact closed FrontComposer profile shape and nonempty required-name set; :1924-1934 rejects removal of every required module property; :2060-2076 rejects mutation of exact required packages. Emptying the selected-catalog contract no longer passes.
 
 ### DW-1727: Analyzer-policy ledger re-seal remains an opaque SHA paste with narrative-only token provenance.
 
@@ -8266,7 +8279,8 @@ origin: migrated from legacy ledger ("BUILD-REL-1 review deferrals (2026-08-05)"
 location: domain-ci.yml
 source_spec: `_bmad-output/implementation-artifacts/spec-build-rel-1-governed-nuget-release-contract.md`
 reason: summary: After BUILD-REL-1 merges, bump domain-ci.yml self-pins of Builds composites from baseline 824d7ef to the merged commit that contains the changed dapr-init/governed-provenance bytes. evidence: Pins necessarily target the pre-change commit while this PR modifies those composites; consumers otherwise execute pre-change action bytes until a follow-up pin bump.
-status: open
+status: done 2026-09-01
+resolution: already resolved: BUILD-REL-1 has landed and the current Builds workflow no longer uses baseline 824d7ef: references/Hexalith.Builds/.github/workflows/domain-ci.yml:318,397,480,498,554,572 pins initialize-build/dapr-init to 5c3ff35c590cfae9f3a9784b75d08dd065c55cef with BUILD-REL-1 provenance.
 
 ### DW-1747: EventStore `_bmad-output` evidence trees still contain paths longer than Windows MAX_PATH, so any full Windows submodule checkout of the pinned EventStore revision remains unsafe.
 
@@ -8619,7 +8633,8 @@ origin: migrated from legacy ledger ("Deferred from: Story 11.24 owner decision 
 location: n/a
 source_spec: `_bmad-output/implementation-artifacts/spec-11-24-adopt-the-owner-approved-eventstore-runtime-identity.md`
 reason: summary: EventStore supplies a real-loopback Pact provider verifier and separately reconciles the 19 FrontComposer consumer interactions with the provider wire contract. evidence: Neither approved nor current EventStore source contains the required provider-test project, while committed pacts conflict with real query envelopes, ETags, headers, and provider-state inputs.
-status: open
+status: done 2026-09-01
+resolution: already resolved: Post-baseline commits cd1a01d3 and e29b37f8 supplied and refreshed the real-loopback provider proof. _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json:2-22 reports live-compatibility, passed, 19 requested/reported interactions, 19 setup/teardown events, complete Kestrel loopback execution, and clean shutdown.
 decision: 2026-08-29 Approve reconciliation — Reconcile consumers, pacts, adapters, and loopback/AppHost evidence against the approved provider contract.
 decision: 2026-08-29 Approve reconciliation — Reconcile consumers, pacts, adapters, and loopback/AppHost evidence against the approved provider contract.
 
@@ -9114,7 +9129,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-fix-cur
 location: 5.0.0-rc.5-26219.1
 source_spec: `_bmad-output/implementation-artifacts/spec-fix-current-release-compatibility-gates.md`
 reason: summary: Reconcile the checked-in Fluent UI rc.5 catalog with stale Shell/UI expectations and generated rendering tests. evidence: The non-publishing candidate built and packed successfully, then the unchanged full Shell suite failed 16 of 2,648 tests against the already-selected `5.0.0-rc.5-26219.1`, including the rc.4 conformance pin, generated rendering assertions, and analyzer inventory seal.
-status: open
+status: done 2026-09-01
+resolution: already resolved: Commit 79d74ba14730501fe835cb5f57e5bfc7faf9ad04 reconciled the rc.5 expectations and generated visual snapshots. Current Contracts.UI and Testing package-boundary tests pin 5.0.0-rc.5-26219.1 at PackageBoundaryTests.cs:15 and :13 respectively; no rc.4 expectation remains in tests or src.
 
 ### DW-1848: Reconcile paths introduced only by merge resolution in the strict story-scope gate.
 
@@ -9256,7 +9272,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-7-add
 location: _bmad-output/project-context.md
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Refresh authoritative FrontComposer context documents to the selected Fluent UI rc.5 pin. evidence: The selected Builds catalog is `5.0.0-rc.5-26219.1`, but `_bmad-output/project-context.md` and `_bmad-output/project-docs/project-overview.md` still call rc.4 the exact authoritative pin, directing future work toward stale component behavior.
-status: open
+status: done 2026-09-01
+resolution: already resolved: Commit 79d74ba14730501fe835cb5f57e5bfc7faf9ad04 refreshed both authoritative context surfaces. _bmad-output/project-context.md:39-42 and _bmad-output/project-docs/project-overview.md:38-45 now identify Fluent UI 5.0.0-rc.5-26219.1 as the exact selected pin.
 
 ### DW-1865: Make skip-link tests prove same-document fragment targets.
 
@@ -9627,7 +9644,8 @@ location: tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.
 source_spec: `spec-analyzer-governance-reliability.md`
 severity: medium
 reason: The fact expects `38967215e6c1b13e77f2b0006efd95d88d7ad7b8` but the gitlink is `1194dfe59bcbc9b235390d1e46a7dfe4ee115d94`. That gitlink is byte-identical at this story's baseline `d738598b` and at HEAD, and the story never touched the fact or its pin, so the red is a concurrent EventStore-pin drift owned outside this work.
-status: open
+status: done 2026-09-01
+resolution: already resolved: Post-baseline commit e29b37f8 reconciled the governance identity. tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:3420-3422 declares current EventStore d6b8d2e5c1763713a126ff627822ead738e0f642 and :3514-3526 asserts both gitlink and checkout match it; git ls-tree HEAD reports that exact gitlink.
 
 ### DW-1910: Follow-up review still recommended for dw-analyzer-governance-reliability after the damping cap was spent
 origin: review-budget-followup
