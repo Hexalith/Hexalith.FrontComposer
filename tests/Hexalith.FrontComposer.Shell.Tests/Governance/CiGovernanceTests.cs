@@ -539,6 +539,7 @@ public sealed class CiGovernanceTests {
         // TypeScript mirror drift from the .NET authority that StorageKeysTests pins to the
         // identical literal. Pin both mirrors to one string so neither can move alone.
         const string unicodeStorageKeyGoldenVector = "tenant:%C4%B0%CF%83%40example.com:theme";
+        const string unicodeStorageKeyGoldenInput = @"\u0130\u03A3@Example.COM";
         settingsPersistenceSpec.ShouldNotContain("test.skip(");
         settingsPersistenceSpec.ShouldNotContain("test.fixme(");
         settingsPersistenceSpec.ShouldNotContain("test.only(");
@@ -549,10 +550,75 @@ public sealed class CiGovernanceTests {
                 + @"'\);[ \t]*\r?$",
                 RegexOptions.Multiline | RegexOptions.CultureInvariant)
             .ShouldBe(1, "the frozen Unicode golden vector must remain the executed assertion");
-        File.ReadAllText(Path.Combine(root, "tests/Hexalith.FrontComposer.Shell.Tests/State/StorageKeysTests.cs"))
-            .ShouldContain(
-                unicodeStorageKeyGoldenVector,
-                customMessage: "the .NET runtime authority must pin the same golden vector");
+
+        // Second follow-up review (2026-09-02): the file-wide counts above prove the golden vector
+        // and its declaration each occur once somewhere in the spec — not that they occur in the
+        // *same* test. Moving the assertion into a differently titled sibling keeps both counts at
+        // 1 while the `--grep`-selected test asserts nothing, and Playwright reports an
+        // assertion-free body as passed. Bind the executed assertion, its input identity, and the
+        // remaining body-level skip route (`test.info().skip()`, reachable because the pinned
+        // signature takes no `testInfo` argument) to the selected test's own block.
+        Match targetDeclaration = Regex.Match(
+            settingsPersistenceSpec,
+            @"^test\('storage key helper matches \.NET invariant casing for Unicode email identities', \(\) => \{\r?$",
+            RegexOptions.Multiline | RegexOptions.CultureInvariant);
+        targetDeclaration.Success.ShouldBeTrue();
+        Match targetTerminator = Regex.Match(
+            settingsPersistenceSpec[targetDeclaration.Index..],
+            @"^\}\);[ \t]*\r?$",
+            RegexOptions.Multiline | RegexOptions.CultureInvariant);
+        targetTerminator.Success.ShouldBeTrue(
+            "the focused regression must close at a top-level block boundary");
+        string targetTestBlock = settingsPersistenceSpec[
+            targetDeclaration.Index..(targetDeclaration.Index + targetTerminator.Index + targetTerminator.Length)];
+        targetTestBlock.ShouldNotContain(
+            "test.info(",
+            customMessage: "the selected regression must not be able to skip itself at runtime");
+        targetTestBlock.ShouldContain(
+            unicodeStorageKeyGoldenInput,
+            Case.Sensitive,
+            "the selected regression must keep the frozen Unicode input identity");
+        Regex.Count(
+                targetTestBlock,
+                @"^[ \t]*expect\(key\)\.toBe\('"
+                + Regex.Escape(unicodeStorageKeyGoldenVector)
+                + @"'\);[ \t]*\r?$",
+                RegexOptions.Multiline | RegexOptions.CultureInvariant)
+            .ShouldBe(1, "the golden-vector assertion must live inside the selected regression");
+
+        // Second follow-up review (2026-09-02): a whole-file `ShouldContain` over StorageKeysTests
+        // is satisfied by the literal surviving in a comment, an unused constant, or a
+        // `[Fact(Skip = ...)]`, so the ".NET half" of the mirror pin could stop executing while
+        // this fact stayed green. Bind the same input and vector to the body of a non-skipped
+        // `[Fact]` instead, mirroring the liveness proof the TypeScript half already carries.
+        string storageKeysSource = File.ReadAllText(
+            Path.Combine(root, "tests/Hexalith.FrontComposer.Shell.Tests/State/StorageKeysTests.cs"));
+        Match dotnetGoldenFact = Regex.Match(
+            storageKeysSource,
+            @"^    \[Fact\][ \t]*\r?\n"
+            + @"    public void BuildKey_UnicodeEmailIdentity_MatchesInvariantRuntimeGoldenVector\(\) \{\r?$",
+            RegexOptions.Multiline | RegexOptions.CultureInvariant);
+        dotnetGoldenFact.Success.ShouldBeTrue(
+            "the .NET runtime authority must stay an unconditional, non-skipped [Fact]");
+        Match dotnetGoldenFactTerminator = Regex.Match(
+            storageKeysSource[dotnetGoldenFact.Index..],
+            @"^    \}[ \t]*\r?$",
+            RegexOptions.Multiline | RegexOptions.CultureInvariant);
+        dotnetGoldenFactTerminator.Success.ShouldBeTrue(
+            "the .NET runtime authority must close at a member boundary");
+        string dotnetGoldenFactBlock = storageKeysSource[
+            dotnetGoldenFact.Index..(dotnetGoldenFact.Index + dotnetGoldenFactTerminator.Index + dotnetGoldenFactTerminator.Length)];
+        dotnetGoldenFactBlock.ShouldContain(
+            unicodeStorageKeyGoldenInput,
+            Case.Sensitive,
+            "the .NET runtime authority must pin the same Unicode input identity");
+        Regex.Count(
+                dotnetGoldenFactBlock,
+                @"^[ \t]*key\.ShouldBe\("""
+                + Regex.Escape(unicodeStorageKeyGoldenVector)
+                + @"""\);[ \t]*\r?$",
+                RegexOptions.Multiline | RegexOptions.CultureInvariant)
+            .ShouldBe(1, "the .NET runtime authority must pin the same golden vector");
         package.RootElement.GetProperty("devDependencies").GetProperty("cross-env").GetString()
             .ShouldBe("^10.1.0");
         packageLock.RootElement.GetProperty("packages").GetProperty(string.Empty)
