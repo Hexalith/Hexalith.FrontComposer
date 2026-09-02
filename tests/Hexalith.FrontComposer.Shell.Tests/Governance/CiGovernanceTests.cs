@@ -396,6 +396,16 @@ public sealed class CiGovernanceTests {
         string a11yJob = quality[a11yJobStart..a11yJobEnd];
         a11yJob.ShouldNotContain("continue-on-error:");
 
+        // Follow-up review (2026-09-02): a job-level `if:` skips every step below while each
+        // step-scoped assertion still passes, so the job header itself must stay unconditional.
+        int a11yStepsIndex = a11yJob.IndexOf("\n    steps:", StringComparison.Ordinal);
+        a11yStepsIndex.ShouldBeGreaterThan(0);
+        Regex.IsMatch(
+                a11yJob[..a11yStepsIndex],
+                @"^[ \t]*if[ \t]*:",
+                RegexOptions.Multiline | RegexOptions.CultureInvariant)
+            .ShouldBeFalse("the accessibility-visual job must not be conditionally skipped");
+
         quality.ShouldContain("accessibility-visual:");
         quality.ShouldContain("npm run validate:visual-governance");
         quality.ShouldContain("npm run validate:a11y-artifacts");
@@ -404,11 +414,16 @@ public sealed class CiGovernanceTests {
         a11yStep.ShouldContain("npm run test:a11y");
         a11yStep.ShouldNotContain("continue-on-error: true");
 
-        string settingsPersistenceStep = ExtractNamedStep(
+        // Follow-up review (2026-09-02): bound the guard to its own step block. ExtractNamedStep
+        // ends a slice only at the next `- name:`, so a bare `- uses:` neighbour would be absorbed
+        // and turn the exit-code-tail assertion red for an unrelated workflow edit.
+        string settingsPersistenceStep = FindStepBlockContaining(
             a11yJob,
-            "Run settings-persistence storage-key regression (browserless)");
+            "run: npm run test:settings-persistence-storage-key");
+        settingsPersistenceStep.ShouldNotBeEmpty();
+        settingsPersistenceStep.ShouldContain(
+            "- name: Run settings-persistence storage-key regression (browserless)");
         settingsPersistenceStep.ShouldContain("working-directory: tests/e2e");
-        settingsPersistenceStep.ShouldContain("run: npm run test:settings-persistence-storage-key");
         settingsPersistenceStep.ShouldNotContain("continue-on-error: true");
         Regex.IsMatch(
                 settingsPersistenceStep,
@@ -516,6 +531,28 @@ public sealed class CiGovernanceTests {
                 @"^test(?:\.(?:skip|fixme|only))?\('storage key helper matches \.NET invariant casing for Unicode email identities', \(\) => \{\r?$",
                 RegexOptions.Multiline | RegexOptions.CultureInvariant)
             .ShouldBe(1, "duplicate or non-running focused target declarations are forbidden");
+
+        // Follow-up review (2026-09-02): pinning the declaration line proves neither that the
+        // selected test still runs nor that it still asserts the frozen vector. Playwright exits 0
+        // when its only selected test is skipped, so a body-level `test.skip()` would leave the
+        // blocking guard green while guarding nothing; and a retuned expectation would let the
+        // TypeScript mirror drift from the .NET authority that StorageKeysTests pins to the
+        // identical literal. Pin both mirrors to one string so neither can move alone.
+        const string unicodeStorageKeyGoldenVector = "tenant:%C4%B0%CF%83%40example.com:theme";
+        settingsPersistenceSpec.ShouldNotContain("test.skip(");
+        settingsPersistenceSpec.ShouldNotContain("test.fixme(");
+        settingsPersistenceSpec.ShouldNotContain("test.only(");
+        Regex.Count(
+                settingsPersistenceSpec,
+                @"^[ \t]*expect\(key\)\.toBe\('"
+                + Regex.Escape(unicodeStorageKeyGoldenVector)
+                + @"'\);[ \t]*\r?$",
+                RegexOptions.Multiline | RegexOptions.CultureInvariant)
+            .ShouldBe(1, "the frozen Unicode golden vector must remain the executed assertion");
+        File.ReadAllText(Path.Combine(root, "tests/Hexalith.FrontComposer.Shell.Tests/State/StorageKeysTests.cs"))
+            .ShouldContain(
+                unicodeStorageKeyGoldenVector,
+                customMessage: "the .NET runtime authority must pin the same golden vector");
         package.RootElement.GetProperty("devDependencies").GetProperty("cross-env").GetString()
             .ShouldBe("^10.1.0");
         packageLock.RootElement.GetProperty("packages").GetProperty(string.Empty)
