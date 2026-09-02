@@ -382,18 +382,43 @@ public sealed class CiGovernanceTests {
         // Windows MAX_PATH (2026-08-05): accessibility-visual must initialize only
         // references/Hexalith.Builds — never EventStore evidence trees or a bare/full submodule init.
         string root = RepositoryRoot();
-        string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
+        string quality = StripYamlComments(File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml")));
         int a11yJobStart = quality.LastIndexOf("  accessibility-visual:", StringComparison.Ordinal);
         a11yJobStart.ShouldBeGreaterThanOrEqualTo(0);
-        string a11yJob = quality[a11yJobStart..];
+        int a11yJobBodyStart = a11yJobStart + "  accessibility-visual:".Length;
+        Match nextJob = Regex.Match(
+            quality[a11yJobBodyStart..],
+            @"^  [A-Za-z][\w-]*:",
+            RegexOptions.Multiline | RegexOptions.CultureInvariant);
+        int a11yJobEnd = nextJob.Success
+            ? a11yJobBodyStart + nextJob.Index
+            : quality.Length;
+        string a11yJob = quality[a11yJobStart..a11yJobEnd];
+        a11yJob.ShouldNotContain("continue-on-error:");
 
         quality.ShouldContain("accessibility-visual:");
         quality.ShouldContain("npm run validate:visual-governance");
         quality.ShouldContain("npm run validate:a11y-artifacts");
 
-        string a11yStep = ExtractNamedStep(quality, "Run accessibility, keyboard, media, zoom, and visual specimen gate");
+        string a11yStep = ExtractNamedStep(a11yJob, "Run accessibility, keyboard, media, zoom, and visual specimen gate");
         a11yStep.ShouldContain("npm run test:a11y");
         a11yStep.ShouldNotContain("continue-on-error: true");
+
+        string settingsPersistenceStep = ExtractNamedStep(
+            a11yJob,
+            "Run settings-persistence storage-key regression (browserless)");
+        settingsPersistenceStep.ShouldContain("working-directory: tests/e2e");
+        settingsPersistenceStep.ShouldContain("run: npm run test:settings-persistence-storage-key");
+        settingsPersistenceStep.ShouldNotContain("continue-on-error: true");
+        Regex.IsMatch(
+                settingsPersistenceStep,
+                @"^[ \t]*if[ \t]*:",
+                RegexOptions.Multiline | RegexOptions.CultureInvariant)
+            .ShouldBeFalse("the blocking settings-persistence guard must run unconditionally");
+        settingsPersistenceStep.TrimEnd().ShouldEndWith(
+            "run: npm run test:settings-persistence-storage-key");
+        a11yJob.IndexOf(settingsPersistenceStep, StringComparison.Ordinal)
+            .ShouldBeLessThan(a11yJob.IndexOf(a11yStep, StringComparison.Ordinal));
 
         int checkoutStart = a11yJob.IndexOf("      - uses: actions/checkout@", StringComparison.Ordinal);
         checkoutStart.ShouldBeGreaterThanOrEqualTo(0);
@@ -424,6 +449,7 @@ public sealed class CiGovernanceTests {
         foreach (string stepName in new[] {
             "Typecheck Playwright accessibility lane",
             "Run FC-NIP contract guards (browserless)",
+            "Run settings-persistence storage-key regression (browserless)",
             "Validate visual baseline governance",
             "Validate accessibility artifacts",
         }) {
@@ -436,6 +462,16 @@ public sealed class CiGovernanceTests {
         string root = RepositoryRoot();
         using JsonDocument package = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "tests/e2e/package.json")));
         using JsonDocument packageLock = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "tests/e2e/package-lock.json")));
+        string playwrightConfig = Regex.Replace(
+            File.ReadAllText(Path.Combine(root, "tests/e2e/playwright.config.ts")),
+            @"/\*.*?\*/",
+            string.Empty,
+            RegexOptions.Singleline | RegexOptions.CultureInvariant);
+        string settingsPersistenceSpec = Regex.Replace(
+            File.ReadAllText(Path.Combine(root, "tests/e2e/specs/settings-persistence.spec.ts")),
+            @"/\*.*?\*/",
+            string.Empty,
+            RegexOptions.Singleline | RegexOptions.CultureInvariant);
         JsonElement scripts = package.RootElement.GetProperty("scripts");
         string[] expectedBrowserlessScriptNames = [
             "test:fc-level3",
@@ -444,6 +480,7 @@ public sealed class CiGovernanceTests {
             "test:fc-diagnostics",
             "test:fc-nip",
             "test:epic-9",
+            "test:settings-persistence-storage-key",
             "test:story-10-2",
             "test:story-10-3",
             "test:story-10-4",
@@ -459,6 +496,26 @@ public sealed class CiGovernanceTests {
             scripts.GetProperty(scriptName).GetString().ShouldStartWith(
                 "cross-env PLAYWRIGHT_SKIP_WEBSERVER=1 ");
         }
+        scripts.GetProperty("test:settings-persistence-storage-key").GetString().ShouldBe(
+            "cross-env PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test specs/settings-persistence.spec.ts "
+            + "--project=chromium --grep \"^chromium settings-persistence[.]spec[.]ts storage key helper matches "
+            + "[.]NET invariant casing for Unicode email identities$\"");
+        Regex.Count(
+                playwrightConfig,
+                @"^[ \t]*webServer:[ \t]*process\.env\.PLAYWRIGHT_SKIP_WEBSERVER[ \t]*\r?\n"
+                + @"[ \t]*\?[ \t]*undefined[ \t]*\r?\n[ \t]*:[ \t]*\{[ \t]*\r?$",
+                RegexOptions.Multiline | RegexOptions.CultureInvariant)
+            .ShouldBe(1, "PLAYWRIGHT_SKIP_WEBSERVER must disable the configured web server");
+        Regex.Count(
+                settingsPersistenceSpec,
+                @"^test\('storage key helper matches \.NET invariant casing for Unicode email identities', \(\) => \{\r?$",
+                RegexOptions.Multiline | RegexOptions.CultureInvariant)
+            .ShouldBe(1, "the focused target must be one active top-level test declaration");
+        Regex.Count(
+                settingsPersistenceSpec,
+                @"^test(?:\.(?:skip|fixme|only))?\('storage key helper matches \.NET invariant casing for Unicode email identities', \(\) => \{\r?$",
+                RegexOptions.Multiline | RegexOptions.CultureInvariant)
+            .ShouldBe(1, "duplicate or non-running focused target declarations are forbidden");
         package.RootElement.GetProperty("devDependencies").GetProperty("cross-env").GetString()
             .ShouldBe("^10.1.0");
         packageLock.RootElement.GetProperty("packages").GetProperty(string.Empty)

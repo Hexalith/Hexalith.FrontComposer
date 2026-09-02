@@ -572,6 +572,10 @@ jobs:
         working-directory: tests/e2e
         run: npm run test:fc-nip
 
+      - name: Run settings-persistence storage-key regression (browserless)
+        working-directory: tests/e2e
+        run: npm run test:settings-persistence-storage-key
+
       - name: Run accessibility, keyboard, media, zoom, and visual specimen gate
         working-directory: tests/e2e
         env:
