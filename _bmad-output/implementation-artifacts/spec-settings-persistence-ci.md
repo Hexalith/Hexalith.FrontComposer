@@ -99,6 +99,10 @@ deferred:
 
 ## Spec Change Log
 
+### 2026-09-03 -- Operational escalation resolution
+- No feature-intent, acceptance-criteria, or test-matrix change was required. The run paused after successful review because bmad-loop 0.11.1 generated a non-Conventional sweep commit subject.
+- For this paused sweep, the local `[scm]` commit template is `docs(bmad-loop): resolve {story_key}`. Clear the template before future non-sweep story runs so their semantic commit type remains specific to their change.
+
 ## Review Triage Log
 
 ### 2026-09-02 — Review pass
