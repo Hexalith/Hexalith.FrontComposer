@@ -572,6 +572,14 @@ jobs:
         working-directory: tests/e2e
         run: npm run test:fc-nip
 
+      # Browserless settings-persistence storage-key regression. `typecheck` compiles this spec
+      # but never executed it, so the TypeScript storage-key mirror in settings.page.ts could
+      # drift from FrontComposerStorageKey.CanonicalizeUser while CI stayed green. The selected
+      # test is a pure helper assertion over the frozen Unicode golden vector, so it needs no host.
+      - name: Run settings-persistence storage-key regression (browserless)
+        working-directory: tests/e2e
+        run: npm run test:settings-persistence-storage-key
+
       - name: Run accessibility, keyboard, media, zoom, and visual specimen gate
         working-directory: tests/e2e
         env:

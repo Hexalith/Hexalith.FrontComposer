@@ -382,18 +382,58 @@ public sealed class CiGovernanceTests {
         // Windows MAX_PATH (2026-08-05): accessibility-visual must initialize only
         // references/Hexalith.Builds — never EventStore evidence trees or a bare/full submodule init.
         string root = RepositoryRoot();
-        string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
+        string quality = StripYamlComments(File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml")));
         int a11yJobStart = quality.LastIndexOf("  accessibility-visual:", StringComparison.Ordinal);
         a11yJobStart.ShouldBeGreaterThanOrEqualTo(0);
-        string a11yJob = quality[a11yJobStart..];
+        int a11yJobBodyStart = a11yJobStart + "  accessibility-visual:".Length;
+        Match nextJob = Regex.Match(
+            quality[a11yJobBodyStart..],
+            @"^  [A-Za-z][\w-]*:",
+            RegexOptions.Multiline | RegexOptions.CultureInvariant);
+        int a11yJobEnd = nextJob.Success
+            ? a11yJobBodyStart + nextJob.Index
+            : quality.Length;
+        string a11yJob = quality[a11yJobStart..a11yJobEnd];
+        a11yJob.ShouldNotContain("continue-on-error:");
+
+        // Follow-up review (2026-09-02): a job-level `if:` skips every step below while each
+        // step-scoped assertion still passes, so the job header itself must stay unconditional.
+        int a11yStepsIndex = a11yJob.IndexOf("\n    steps:", StringComparison.Ordinal);
+        a11yStepsIndex.ShouldBeGreaterThan(0);
+        Regex.IsMatch(
+                a11yJob[..a11yStepsIndex],
+                @"^[ \t]*if[ \t]*:",
+                RegexOptions.Multiline | RegexOptions.CultureInvariant)
+            .ShouldBeFalse("the accessibility-visual job must not be conditionally skipped");
 
         quality.ShouldContain("accessibility-visual:");
         quality.ShouldContain("npm run validate:visual-governance");
         quality.ShouldContain("npm run validate:a11y-artifacts");
 
-        string a11yStep = ExtractNamedStep(quality, "Run accessibility, keyboard, media, zoom, and visual specimen gate");
+        string a11yStep = ExtractNamedStep(a11yJob, "Run accessibility, keyboard, media, zoom, and visual specimen gate");
         a11yStep.ShouldContain("npm run test:a11y");
         a11yStep.ShouldNotContain("continue-on-error: true");
+
+        // Follow-up review (2026-09-02): bound the guard to its own step block. ExtractNamedStep
+        // ends a slice only at the next `- name:`, so a bare `- uses:` neighbour would be absorbed
+        // and turn the exit-code-tail assertion red for an unrelated workflow edit.
+        string settingsPersistenceStep = FindStepBlockContaining(
+            a11yJob,
+            "run: npm run test:settings-persistence-storage-key");
+        settingsPersistenceStep.ShouldNotBeEmpty();
+        settingsPersistenceStep.ShouldContain(
+            "- name: Run settings-persistence storage-key regression (browserless)");
+        settingsPersistenceStep.ShouldContain("working-directory: tests/e2e");
+        settingsPersistenceStep.ShouldNotContain("continue-on-error: true");
+        Regex.IsMatch(
+                settingsPersistenceStep,
+                @"^[ \t]*if[ \t]*:",
+                RegexOptions.Multiline | RegexOptions.CultureInvariant)
+            .ShouldBeFalse("the blocking settings-persistence guard must run unconditionally");
+        settingsPersistenceStep.TrimEnd().ShouldEndWith(
+            "run: npm run test:settings-persistence-storage-key");
+        a11yJob.IndexOf(settingsPersistenceStep, StringComparison.Ordinal)
+            .ShouldBeLessThan(a11yJob.IndexOf(a11yStep, StringComparison.Ordinal));
 
         int checkoutStart = a11yJob.IndexOf("      - uses: actions/checkout@", StringComparison.Ordinal);
         checkoutStart.ShouldBeGreaterThanOrEqualTo(0);
@@ -424,6 +464,7 @@ public sealed class CiGovernanceTests {
         foreach (string stepName in new[] {
             "Typecheck Playwright accessibility lane",
             "Run FC-NIP contract guards (browserless)",
+            "Run settings-persistence storage-key regression (browserless)",
             "Validate visual baseline governance",
             "Validate accessibility artifacts",
         }) {
@@ -436,6 +477,16 @@ public sealed class CiGovernanceTests {
         string root = RepositoryRoot();
         using JsonDocument package = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "tests/e2e/package.json")));
         using JsonDocument packageLock = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "tests/e2e/package-lock.json")));
+        string playwrightConfig = Regex.Replace(
+            File.ReadAllText(Path.Combine(root, "tests/e2e/playwright.config.ts")),
+            @"/\*.*?\*/",
+            string.Empty,
+            RegexOptions.Singleline | RegexOptions.CultureInvariant);
+        string settingsPersistenceSpec = Regex.Replace(
+            File.ReadAllText(Path.Combine(root, "tests/e2e/specs/settings-persistence.spec.ts")),
+            @"/\*.*?\*/",
+            string.Empty,
+            RegexOptions.Singleline | RegexOptions.CultureInvariant);
         JsonElement scripts = package.RootElement.GetProperty("scripts");
         string[] expectedBrowserlessScriptNames = [
             "test:fc-level3",
@@ -444,6 +495,7 @@ public sealed class CiGovernanceTests {
             "test:fc-diagnostics",
             "test:fc-nip",
             "test:epic-9",
+            "test:settings-persistence-storage-key",
             "test:story-10-2",
             "test:story-10-3",
             "test:story-10-4",
@@ -459,6 +511,114 @@ public sealed class CiGovernanceTests {
             scripts.GetProperty(scriptName).GetString().ShouldStartWith(
                 "cross-env PLAYWRIGHT_SKIP_WEBSERVER=1 ");
         }
+        scripts.GetProperty("test:settings-persistence-storage-key").GetString().ShouldBe(
+            "cross-env PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test specs/settings-persistence.spec.ts "
+            + "--project=chromium --grep \"^chromium settings-persistence[.]spec[.]ts storage key helper matches "
+            + "[.]NET invariant casing for Unicode email identities$\"");
+        Regex.Count(
+                playwrightConfig,
+                @"^[ \t]*webServer:[ \t]*process\.env\.PLAYWRIGHT_SKIP_WEBSERVER[ \t]*\r?\n"
+                + @"[ \t]*\?[ \t]*undefined[ \t]*\r?\n[ \t]*:[ \t]*\{[ \t]*\r?$",
+                RegexOptions.Multiline | RegexOptions.CultureInvariant)
+            .ShouldBe(1, "PLAYWRIGHT_SKIP_WEBSERVER must disable the configured web server");
+        Regex.Count(
+                settingsPersistenceSpec,
+                @"^test\('storage key helper matches \.NET invariant casing for Unicode email identities', \(\) => \{\r?$",
+                RegexOptions.Multiline | RegexOptions.CultureInvariant)
+            .ShouldBe(1, "the focused target must be one active top-level test declaration");
+        Regex.Count(
+                settingsPersistenceSpec,
+                @"^test(?:\.(?:skip|fixme|only))?\('storage key helper matches \.NET invariant casing for Unicode email identities', \(\) => \{\r?$",
+                RegexOptions.Multiline | RegexOptions.CultureInvariant)
+            .ShouldBe(1, "duplicate or non-running focused target declarations are forbidden");
+
+        // Follow-up review (2026-09-02): pinning the declaration line proves neither that the
+        // selected test still runs nor that it still asserts the frozen vector. Playwright exits 0
+        // when its only selected test is skipped, so a body-level `test.skip()` would leave the
+        // blocking guard green while guarding nothing; and a retuned expectation would let the
+        // TypeScript mirror drift from the .NET authority that StorageKeysTests pins to the
+        // identical literal. Pin both mirrors to one string so neither can move alone.
+        const string unicodeStorageKeyGoldenVector = "tenant:%C4%B0%CF%83%40example.com:theme";
+        const string unicodeStorageKeyGoldenInput = @"\u0130\u03A3@Example.COM";
+        settingsPersistenceSpec.ShouldNotContain("test.skip(");
+        settingsPersistenceSpec.ShouldNotContain("test.fixme(");
+        settingsPersistenceSpec.ShouldNotContain("test.only(");
+        Regex.Count(
+                settingsPersistenceSpec,
+                @"^[ \t]*expect\(key\)\.toBe\('"
+                + Regex.Escape(unicodeStorageKeyGoldenVector)
+                + @"'\);[ \t]*\r?$",
+                RegexOptions.Multiline | RegexOptions.CultureInvariant)
+            .ShouldBe(1, "the frozen Unicode golden vector must remain the executed assertion");
+
+        // Second follow-up review (2026-09-02): the file-wide counts above prove the golden vector
+        // and its declaration each occur once somewhere in the spec — not that they occur in the
+        // *same* test. Moving the assertion into a differently titled sibling keeps both counts at
+        // 1 while the `--grep`-selected test asserts nothing, and Playwright reports an
+        // assertion-free body as passed. Bind the executed assertion, its input identity, and the
+        // remaining body-level skip route (`test.info().skip()`, reachable because the pinned
+        // signature takes no `testInfo` argument) to the selected test's own block.
+        Match targetDeclaration = Regex.Match(
+            settingsPersistenceSpec,
+            @"^test\('storage key helper matches \.NET invariant casing for Unicode email identities', \(\) => \{\r?$",
+            RegexOptions.Multiline | RegexOptions.CultureInvariant);
+        targetDeclaration.Success.ShouldBeTrue();
+        Match targetTerminator = Regex.Match(
+            settingsPersistenceSpec[targetDeclaration.Index..],
+            @"^\}\);[ \t]*\r?$",
+            RegexOptions.Multiline | RegexOptions.CultureInvariant);
+        targetTerminator.Success.ShouldBeTrue(
+            "the focused regression must close at a top-level block boundary");
+        string targetTestBlock = settingsPersistenceSpec[
+            targetDeclaration.Index..(targetDeclaration.Index + targetTerminator.Index + targetTerminator.Length)];
+        targetTestBlock.ShouldNotContain(
+            "test.info(",
+            customMessage: "the selected regression must not be able to skip itself at runtime");
+        targetTestBlock.ShouldContain(
+            unicodeStorageKeyGoldenInput,
+            Case.Sensitive,
+            "the selected regression must keep the frozen Unicode input identity");
+        Regex.Count(
+                targetTestBlock,
+                @"^[ \t]*expect\(key\)\.toBe\('"
+                + Regex.Escape(unicodeStorageKeyGoldenVector)
+                + @"'\);[ \t]*\r?$",
+                RegexOptions.Multiline | RegexOptions.CultureInvariant)
+            .ShouldBe(1, "the golden-vector assertion must live inside the selected regression");
+
+        // Second follow-up review (2026-09-02): a whole-file `ShouldContain` over StorageKeysTests
+        // is satisfied by the literal surviving in a comment, an unused constant, or a
+        // `[Fact(Skip = ...)]`, so the ".NET half" of the mirror pin could stop executing while
+        // this fact stayed green. Bind the same input and vector to the body of a non-skipped
+        // `[Fact]` instead, mirroring the liveness proof the TypeScript half already carries.
+        string storageKeysSource = File.ReadAllText(
+            Path.Combine(root, "tests/Hexalith.FrontComposer.Shell.Tests/State/StorageKeysTests.cs"));
+        Match dotnetGoldenFact = Regex.Match(
+            storageKeysSource,
+            @"^    \[Fact\][ \t]*\r?\n"
+            + @"    public void BuildKey_UnicodeEmailIdentity_MatchesInvariantRuntimeGoldenVector\(\) \{\r?$",
+            RegexOptions.Multiline | RegexOptions.CultureInvariant);
+        dotnetGoldenFact.Success.ShouldBeTrue(
+            "the .NET runtime authority must stay an unconditional, non-skipped [Fact]");
+        Match dotnetGoldenFactTerminator = Regex.Match(
+            storageKeysSource[dotnetGoldenFact.Index..],
+            @"^    \}[ \t]*\r?$",
+            RegexOptions.Multiline | RegexOptions.CultureInvariant);
+        dotnetGoldenFactTerminator.Success.ShouldBeTrue(
+            "the .NET runtime authority must close at a member boundary");
+        string dotnetGoldenFactBlock = storageKeysSource[
+            dotnetGoldenFact.Index..(dotnetGoldenFact.Index + dotnetGoldenFactTerminator.Index + dotnetGoldenFactTerminator.Length)];
+        dotnetGoldenFactBlock.ShouldContain(
+            unicodeStorageKeyGoldenInput,
+            Case.Sensitive,
+            "the .NET runtime authority must pin the same Unicode input identity");
+        Regex.Count(
+                dotnetGoldenFactBlock,
+                @"^[ \t]*key\.ShouldBe\("""
+                + Regex.Escape(unicodeStorageKeyGoldenVector)
+                + @"""\);[ \t]*\r?$",
+                RegexOptions.Multiline | RegexOptions.CultureInvariant)
+            .ShouldBe(1, "the .NET runtime authority must pin the same golden vector");
         package.RootElement.GetProperty("devDependencies").GetProperty("cross-env").GetString()
             .ShouldBe("^10.1.0");
         packageLock.RootElement.GetProperty("packages").GetProperty(string.Empty)
