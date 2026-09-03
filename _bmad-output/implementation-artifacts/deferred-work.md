@@ -9577,7 +9577,9 @@ location: .github/workflows/quality.yml:481
 source_spec: `spec-dw-668-followup-review-11-4-security-validation-hardening.md`
 severity: low
 reason: The focused serverless Playwright regression passes 1/1, but the blocking workflow typechecks and selects other specs; reverting the helper casing could therefore escape that CI lane.
-status: open
+status: done 2026-09-02
+resolution: resolved by sweep bundle dw-settings-persistence-ci
+resolution-undo: e45ef9c996eefc0ef4c289927a06915fef408c7039d05a09954fbca459ceb28d 2026-09-02 7374617475733a206f70656e
 
 ### DW-1901: Reconcile the preserved EventStore provider and live AppHost compatibility failures in separately approved pact/API work.
 origin: spec-deferred dbc4b5f12f66
@@ -9773,6 +9775,38 @@ status: open
 origin: review-budget-followup
 location: n/a
 source_spec: `spec-package-audit-provenance-bom.md`
+severity: low
+reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260901-072044-3ff7; this entry preserves the lingering recommendation for a deliberate later review.
+status: open
+
+### DW-1925: The browserless Playwright guards share `playwright-report/` and `test-results/` with the hosted `test:a11y` run, so a browserless failure leaves artifacts that the `if: always()` accessibility-artifa
+origin: spec-deferred 7fe230957182
+location: .github/workflows/quality.yml (accessibility-visual browserless steps)
+source_spec: `spec-settings-persistence-ci.md`
+severity: low
+reason: `tests/e2e/playwright.config.ts` defaults `OUTPUT_DIR`/`HTML_REPORT_DIR`/`JUNIT_PATH` to the same paths for every run, and no browserless step in `accessibility-visual` overrides `FC_E2E_OUTPUT_DIR`/`FC_E2E_HTML_REPORT_DIR`/`FC_E2E_JUNIT_PATH`. Pre-existing: the `Run FC-NIP contract guards (browserless)` step has had this property since it landed; the settings guard follows the same established convention rather than introducing it.
+status: open
+
+### DW-1926: Three of the four `SettingsPage` storage-key mirror paths are still typechecked but never executed in CI.
+origin: spec-deferred 748750670f4e
+location: tests/e2e/page-objects/settings.page.ts:126-158
+source_spec: `spec-settings-persistence-ci.md`
+severity: low
+reason: `tenantSegment`, the non-email branch of `userSegment`, and the `!'()*` re-encoding in `escapeDataString` mirror `FrontComposerStorageKey` with no executing CI lane, while the corresponding .NET paths are covered by `StorageKeysTests`. This bundle's intent scoped the fix to the single existing Unicode regression, so closing the remaining three is separate work.
+status: open
+
+### DW-1927: The seven browser-driven tests in `settings-persistence.spec.ts` -- the AC1 keyboard entry point and the AC2 persist-across-reload claims -- are executed by no CI lane at all.
+origin: spec-deferred 5ffebe87c27f
+location: tests/e2e/specs/settings-persistence.spec.ts:34-213
+source_spec: `spec-settings-persistence-ci.md`
+severity: low
+reason: `test:a11y` resolves to `playwright test specs/specimen-accessibility.spec.ts --project=chromium`, and no other workflow step names this spec, so after this bundle the only executed test in the file is the pure storage-key helper. The file's own header presents AC1/AC2 as the gaps it exists to close. Pre-existing: no lane ever ran them; this bundle's intent scoped execution to the single Unicode regression and its Block If clause forbids starting the Counter web host.
+status: open
+
+### DW-1928: Follow-up review still recommended for dw-settings-persistence-ci after the damping cap was spent
+origin: review-budget-followup
+location: n/a
+source_spec: `spec-settings-persistence-ci.md`
 severity: low
 reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260901-072044-3ff7; this entry preserves the lingering recommendation for a deliberate later review.
 status: open
