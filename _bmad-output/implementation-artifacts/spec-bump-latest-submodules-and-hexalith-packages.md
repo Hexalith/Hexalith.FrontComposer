@@ -2,7 +2,7 @@
 title: 'Bump Latest Root Submodules and Hexalith Packages'
 type: 'refactor'
 created: '2026-09-05'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '1a7edded603cd557a97dda1277e5ae3101fbec4d'
@@ -133,11 +133,21 @@ context:
 **AppHost smoke attempt (post-HALT):**
 - Ran `python3 eng/pact_provider_apphost_smoke.py --timeout-seconds 300`; wrote `apphost-smoke.json` with correct identity (`4ae9cee1…` / `3.102.0` / `0a54e63a…`) but `finalVerdict=failed`, `reasonCodes=['apphost.start.failed']`.
 - Manual `aspire start` failed AppHost build with `CS1704` duplicate `Hexalith.FrontComposer.Shell` (NuGet `4.2.0` vs project) under IDE/MSBuild file locks; clean rebuild also hit locked Shell resources. Residual Gate 2c risk until a clean passing smoke can be captured.
-- No FrontComposer commit/push yet (Ask First).
+- Human landed governance + Tenants follow-up on `d71790bb` (`fix(ci): unblock dependency-governance after Tenants AppHost NuGet fix`), including contract/tests/evidence/spec updates from this bump.
 
 ## Spec Change Log
 
 ## Review Triage Log
+
+- false — Tenants/EventStore gitlink “missing or unauthorized in this changeset”: HEAD already has EventStore `4ae9cee1…`, Memories `3a7a7025…`, Builds `0a54e63a…`; Tenants `b5e9907c…` advanced in parallel human commits (`58197d7c`, `d71790bb`), not by the bump implementation path. CiGovernanceTests ls-tree assertions match landed EventStore/Builds SHAs.
+- false — CommandFormEmitterTests / DW-683 / analyzer-ledger “boundary violations by this bump”: those files entered the baseline→HEAD range via separate human commits (`8b38d7bb`, `1e4743a4`, ledger reseal in `d71790bb`); bump tasks did not author DW-683.
+- false — “EventStore gitlink absent so governance retarget will fail”: `git ls-tree HEAD references/Hexalith.EventStore` is `4ae9cee1…`; focused `EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval` passes against that HEAD.
+- false — claim that acceptance is unmet for EventStore/Memories gitlink parity: submodule HEADs and parent gitlinks equal the frozen SHAs; nested EventStore submodules remain uninitialized (`-` prefix).
+- maybe-false → reject as low — stale HALT / dual tip-SHA wording / empty Spec Change Log in the bump spec: documentation hygiene only; fixing means editing the build spec (forbidden route).
+- medium (defer) — `apphost-smoke.json` remains `finalVerdict=failed` / `apphost.start.failed` after identity refresh; `validate-contract-artifacts.ps1 -RequireProviderVerification` stays red. Pre-existing Gate 2c AppHost start failure (prior capture was also failed); provider live-compatibility lane is green. Full quality Gate 2c will keep failing until a clean Aspire AppHost smoke can be captured.
+- medium (defer) — no automated FrontComposer test pins Release AppHost MSBuild graph to solely `Hexalith.EventStore.Aspire/3.102.0` with zero EventStore project edges; only catalog string + manual eval (historical bump pattern). Would need a new governance fact beyond this catalog landing.
+- low (reject) — CommandFormEmitterTests `IndexOf` uniqueness for SubmittedLogCall: DW-683 surface, not caused by this bump; everyday harm unlikely for this story.
+- defer disposition confirmed for verification-gap AppHost focused-vs-Gate2c note: focused governance fact intentionally does not invoke live AppHost validation; CI Gate 2c does.
 
 ## Design Notes
 

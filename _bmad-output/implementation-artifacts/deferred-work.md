@@ -9838,3 +9838,12 @@ source_spec: `spec-settings-persistence-ci.md`
 severity: low
 reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260901-072044-3ff7; this entry preserves the lingering recommendation for a deliberate later review.
 status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bump-latest-submodules-and-hexalith-packages.md`
+  summary: Gate 2c authenticated AppHost smoke still fails (`apphost.start.failed`) after EventStore 3.102.0 identity refresh.
+  evidence: `apphost-smoke.json` records correct SHAs/version but `finalVerdict=failed`; `validate-contract-artifacts.ps1 -RequireProviderVerification` rejects non-passing smoke. Prior capture was already failed; provider live-compatibility lane passes. Needs a clean Aspire AppHost start (historically blocked by Shell NuGet-vs-project CS1704 / file locks).
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bump-latest-submodules-and-hexalith-packages.md`
+  summary: No automated FrontComposer test pins Release AppHost MSBuild graph to EventStore Aspire 3.102.0 with zero EventStore project edges.
+  evidence: `CiGovernanceTests` asserts catalog `HexalithEventStoreVersion` and csproj condition shape only; prior EventStore bumps relied on manual `msbuild -getItem` evaluation recorded in the spec. A dedicated governance fact would close the regression gap.
+
