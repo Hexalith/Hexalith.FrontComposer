@@ -2,8 +2,8 @@
 title: 'Dispose test-owned service providers'
 type: 'chore'
 created: '2026-09-05'
-status: 'blocked'
-baseline_revision: 'cb7633264032cdcea562b3e76d30734310cb4ddc'
+status: ready-for-dev
+baseline_revision: 092240002f55f7fbacaef017b91d752d8ca10fe3
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -84,57 +84,3 @@ deferred: []
 - `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --no-restore` -- expected: the owning test project builds with recommended analyzers and warnings-as-errors.
 - `dotnet test --project tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --no-build --filter-class "*BadgeCountServiceTests" --filter-class "*NavigationEffectsLastActiveRouteTests"` -- expected: the affected xUnit v3 classes pass through Microsoft.Testing.Platform.
 
-## Auto Run Result
-
-Status: blocked
-Blocking condition: finalization left repository dirty
-
-### Summary
-
-All providers created by the three affected test helpers now have concrete, exception-safe `using ServiceProvider` ownership. `BadgeCountService` instances are declared after their providers, including idempotent `using` fallbacks in the two tests that explicitly exercise `DisposeAsync`, so service teardown precedes provider teardown while every existing assertion remains intact.
-
-### Files Changed
-
-- `../../tests/Hexalith.FrontComposer.Shell.Tests/Badges/BadgeCountServiceTests.cs` -- owns all 17 helper-created providers and guarantees service-first teardown.
-- `../../tests/Hexalith.FrontComposer.Shell.Tests/State/Navigation/NavigationEffectsLastActiveRouteTests.cs` -- owns the three navigation providers previously passed inline.
-- `spec-test-provider-lifetime-cleanup.md` -- records intent, implementation map, review triage, and verification evidence.
-
-### Review Findings
-
-- Patches applied: 1 medium entry (reported twice), adding `using BadgeCountService` fallbacks to both manual-disposal tests.
-- Items deferred: 0.
-- Rejected findings:
-  - Blind scope-envelope mismatch -- false because the staged task delta contains only the two tests and this spec; other baseline paths are concurrent commits or unrelated unstaged work.
-  - Blind request for a disposable sentinel -- false because the ledger specifically requires call-site disposal, which C# `using` guarantees without changing existing assertions.
-  - Blind missing observed verification -- false because observations are recorded in this result after the mandated review phase.
-  - Blind ledger reopening -- rejected because it is real concurrent orchestrator work and the intent explicitly forbids ledger edits by this task.
-  - Blind decisions removal -- rejected because it is concurrent orchestration state outside the test-only intent.
-  - Blind Builds rollback -- false because commit `f93b4b627ca9fe282e76ca7bc9de6135ac2ad0e8` documents the restore-breaking bump rollback.
-  - Blind Memories rollback -- false for the same documented concurrent rollback.
-  - Blind NuGet path portability -- unverified and rejected because Windows/custom-package-root evidence belongs to unrelated, actively changing production UI work.
-  - Blind MCP/SourceTools asset removal -- unverified and rejected because it requires tracing the unrelated nested UI graph.
-  - Blind failed AppHost smoke -- rejected because it is real evidence for separate production work, not this Shell test cleanup.
-  - Blind diagnostics-document staleness -- rejected as low-impact concurrent documentation work outside the explicit intent.
-  - Edge nested-project guard -- false because the concurrent UI work now propagates `CustomAfterMicrosoftCommonTargets` and imports its drop target.
-  - Edge NuGet path portability -- unverified duplicate rejected because it concerns excluded production UI work.
-  - Edge ledger reopening -- rejected duplicate because the task leaves the orchestrator-owned ledger untouched.
-  - Edge decisions removal -- rejected duplicate because the task does not own orchestration state.
-  - Edge scope-envelope mismatch -- false duplicate because staged-path inspection isolates the three task files.
-  - Intent request for disposal-observing assertions -- false because the verbatim ledger selects call-site disposal and requires preserving existing assertions.
-  - Intent eleven-path envelope divergence -- false because it conflates concurrent branch advancement with this task's staged delta.
-  - Verification scope contradiction -- false for the same staged-versus-concurrent distinction.
-  - Verification failed live evidence -- rejected because production smoke evidence is not a verification surface for this test-only task.
-
-### Follow-up Review Recommendation
-
-`false` -- patched entries by verdict: high 0, medium 1, low 0. The single medium entry was directly corrected and covered by the rerun.
-
-### Verification Performed
-
-- `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --no-restore` -- passed with 0 warnings and 0 errors.
-- `dotnet test --project tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --no-build --filter-class "*BadgeCountServiceTests" --filter-class "*NavigationEffectsLastActiveRouteTests"` -- passed: 25 total, 25 succeeded, 0 failed, 0 skipped.
-- `git diff --cached --check` -- passed before review; final staged validation is repeated during commit finalization.
-
-### Residual Risks
-
-No known residual risk remains in the provider-lifetime cleanup. Concurrent production UI/AppHost work is intentionally excluded and preserved.
