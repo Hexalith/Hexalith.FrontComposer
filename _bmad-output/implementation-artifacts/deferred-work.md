@@ -5545,7 +5545,9 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of story-11-2-diagnostic-registry-and-documentation-governance-follow-ups — pass 2 (2026-05-11)"), 2026-08-27
 location: tests/.../DiagnosticRegistryTests.cs:659
 reason: `_bmad-output` Path.Combine case-asymmetry between Windows (case-insensitive) and Linux CI (case-sensitive) — repo policy is lowercase; rename unlikely. Reconciliation: Row: DW-0663; Non-action decision 2026-05-11; Decision owner: Story 11.2 review pass 2; Rationale: cross-platform exposure is theoretical until anyone renames the directory; Evidence: `tests/.../DiagnosticRegistryTests.cs:659`. (blind)
-status: open
+status: done 2026-09-05
+resolution: closed by human decision: The repository owns the lowercase directory name and does not support case-only renames.
+decision: 2026-09-05 Keep lowercase policy — The repository owns the lowercase directory name and does not support case-only renames.
 
 ### DW-1401: `RegistryValidator_CrossPackageRangeException_NegativeControl` is a documented tautology — real negative control requires a positive bypass (out-of-range id listed in exception array) plus a non-HFC1601 cross-package row not in the exception array. Reconciliation: Row: DW-0664; Split to Story 11.2 diagnostic registry negative-control follow-up 2026-05-13; Disposition: split-to-named-story; Reason: registry validator negative control is diagnostic governance; Residual release-gate risk: low.; Related: Story 11.2 follow-up; Evidence: `tests/.../DiagnosticRegistryTests.cs:612-621`. (blind)
 
