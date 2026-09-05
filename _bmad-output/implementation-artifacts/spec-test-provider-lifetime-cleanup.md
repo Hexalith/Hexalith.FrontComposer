@@ -2,7 +2,8 @@
 title: 'Dispose test-owned service providers'
 type: 'chore'
 created: '2026-09-05'
-status: ready-for-dev
+status: in-progress
+baseline_commit: '5cbc5583142a6774ff7813698ad98ec267b336f0'
 baseline_revision: 092240002f55f7fbacaef017b91d752d8ca10fe3
 review_loop_iteration: 0
 followup_review_recommended: false

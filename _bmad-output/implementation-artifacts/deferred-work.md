@@ -9850,31 +9850,59 @@ severity: low
 reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260901-072044-3ff7; this entry preserves the lingering recommendation for a deliberate later review.
 status: open
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-bump-latest-submodules-and-hexalith-packages.md`
-  summary: Gate 2c authenticated AppHost smoke still fails (`apphost.start.failed`) after EventStore 3.102.0 identity refresh.
-  evidence: `apphost-smoke.json` records correct SHAs/version but `finalVerdict=failed`; `validate-contract-artifacts.ps1 -RequireProviderVerification` rejects non-passing smoke. Prior capture was already failed; provider live-compatibility lane passes. Needs a clean Aspire AppHost start (historically blocked by Shell NuGet-vs-project CS1704 / file locks).
+### DW-1929: Gate 2c authenticated AppHost smoke still fails (`apphost.start.failed`) after EventStore 3.102.0 identity refresh.
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-bump-latest-submodules-and-hexalith-packages.md`
-  summary: No automated FrontComposer test pins Release AppHost MSBuild graph to EventStore Aspire 3.102.0 with zero EventStore project edges.
-  evidence: `CiGovernanceTests` asserts catalog `HexalithEventStoreVersion` and csproj condition shape only; prior EventStore bumps relied on manual `msbuild -getItem` evaluation recorded in the spec. A dedicated governance fact would close the regression gap.
+origin: migrated from legacy ledger (""), 2026-09-05
+location: _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/apphost-smoke.json
+source_spec: `_bmad-output/implementation-artifacts/spec-bump-latest-submodules-and-hexalith-packages.md`
+reason: `apphost-smoke.json` records the correct SHAs and version but `finalVerdict=failed`; `validate-contract-artifacts.ps1 -RequireProviderVerification` rejects the non-passing smoke. The prior capture was already failed while the provider live-compatibility lane passes, so this needs a clean Aspire AppHost start after the historical Shell NuGet-versus-project CS1704 or file-lock blocker is cleared.
+status: open
 
-- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-pact-provider-reconciliation-2.md`
-  summary: AppHost smoke reuses the first EventStore base that answers `/health` for later command and query calls.
-  evidence: Unverified (would be medium). Settle by failing command/query on the health-selected base while another advertised EventStore URL would succeed.
+### DW-1930: No automated FrontComposer test pins Release AppHost MSBuild graph to EventStore Aspire 3.102.0 with zero EventStore project edges.
 
-- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-pact-provider-reconciliation-2.md`
-  summary: Drop-published `StaticWebAssetEndpoint` matching may miss items whose Identity is a route rather than a nuget path.
-  evidence: Unverified (would be medium). Settle by inspecting a failing `GenerateStaticWebAssetsDevelopmentManifest` item Identity on Windows or a nested portal.
+origin: migrated from legacy ledger (""), 2026-09-05
+location: tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs
+source_spec: `_bmad-output/implementation-artifacts/spec-bump-latest-submodules-and-hexalith-packages.md`
+reason: `CiGovernanceTests` asserts the catalog `HexalithEventStoreVersion` and project condition shape only; prior EventStore bumps relied on the manual `msbuild -getItem` evaluation recorded in the spec. Add a governance fact that pins the Release AppHost graph to the EventStore Aspire 3.102.0 package with zero EventStore project edges.
+status: open
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-dw-671-675-harden-fc-nip-command-target-contract.md`
-  summary: The analyzer-policy exception ledger 1.0→1.1 identifier-algorithm rewrite is mixed into the DW-671-675 since-baseline diff.
-  evidence: The DW spec only required an alternate-index rename reseal; `schemaVersion`, CA1707 public-declaration hashing, and `propertyValue` MSBuild scalars landed with Stories 11.23+ and are not this bundle's contract work.
+### DW-1931: AppHost smoke reuses the first EventStore base that answers `/health` for later command and query calls.
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-dw-671-675-harden-fc-nip-command-target-contract.md`
-  summary: `tests/e2e/package.json` accumulated Playwright, TypeScript, Node engines, axe-core, faker, and extra scripts besides retargeting `test:fc-nip`.
-  evidence: Those dependency and script hunks are other stories since baseline `e5423273`; this bundle's File List only required pointing `test:fc-nip` at the renamed spec.
+origin: migrated from legacy ledger (""), 2026-09-05
+location: eng/pact_provider_apphost_smoke.py
+source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-pact-provider-reconciliation-2.md`
+reason: This unverified issue would be medium severity if confirmed. Settle it by making command or query fail on the health-selected EventStore base while another advertised EventStore URL would succeed, then verify whether later calls incorrectly remain bound to the first healthy base.
+status: open
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-dw-671-675-harden-fc-nip-command-target-contract.md`
-  summary: `CommandFormEmitterTests` also contains HFC1016 parse-time rejection and DW-683 syntax-tree admission pins on the same review surface.
-  evidence: Those assertions are other stories in the same emitter test class since baseline; they are not the 5912/5913 closed-set or redaction pins.
+### DW-1932: Drop-published `StaticWebAssetEndpoint` matching may miss items whose Identity is a route rather than a nuget path.
+
+origin: migrated from legacy ledger (""), 2026-09-05
+location: src/Hexalith.FrontComposer.UI/DropPublishedFrontComposerAssemblies.targets
+source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-pact-provider-reconciliation-2.md`
+reason: This unverified issue would be medium severity if confirmed. Settle it by inspecting a failing `GenerateStaticWebAssetsDevelopmentManifest` item Identity on Windows or in a nested portal and verify that route-shaped identities are matched correctly.
+status: open
+
+### DW-1933: The analyzer-policy exception ledger 1.0→1.1 identifier-algorithm rewrite is mixed into the DW-671-675 since-baseline diff.
+
+origin: migrated from legacy ledger (""), 2026-09-05
+location: _bmad-output/contracts/analyzer-policy-exception-ledger-v1.json
+source_spec: `_bmad-output/implementation-artifacts/spec-dw-671-675-harden-fc-nip-command-target-contract.md`
+reason: The DW spec required only an alternate-index rename reseal, but the since-baseline diff also contains the `schemaVersion` change, CA1707 public-declaration hashing, and `propertyValue` MSBuild scalars from Stories 11.23 and later. Separate or explicitly account for that analyzer-policy exception-ledger work because it is not part of this bundle's contract scope.
+status: open
+
+### DW-1934: `tests/e2e/package.json` accumulated Playwright, TypeScript, Node engines, axe-core, faker, and extra scripts besides retargeting `test:fc-nip`.
+
+origin: migrated from legacy ledger (""), 2026-09-05
+location: tests/e2e/package.json
+source_spec: `_bmad-output/implementation-artifacts/spec-dw-671-675-harden-fc-nip-command-target-contract.md`
+reason: The dependency and script hunks came from other stories since baseline `e5423273`; this bundle's file list required only retargeting `test:fc-nip` to the renamed spec. Separate or explicitly account for the unrelated package manifest changes on this review surface.
+status: open
+
+### DW-1935: `CommandFormEmitterTests` also contains HFC1016 parse-time rejection and DW-683 syntax-tree admission pins on the same review surface.
+
+origin: migrated from legacy ledger (""), 2026-09-05
+location: tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs
+source_spec: `_bmad-output/implementation-artifacts/spec-dw-671-675-harden-fc-nip-command-target-contract.md`
+reason: The HFC1016 parse-time rejection and DW-683 syntax-tree admission assertions came from other stories in the same emitter test class since baseline. Separate or explicitly account for them because they are not the 5912/5913 closed-set or redaction pins owned by this bundle.
+status: open
 
