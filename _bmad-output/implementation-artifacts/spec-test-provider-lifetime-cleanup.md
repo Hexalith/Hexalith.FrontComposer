@@ -21,9 +21,9 @@ deferred: []
 
 ## Boundaries & Constraints
 
-**Always:** Cover every `EmptyProvider`, `WithNotifier`, and local `BuildServiceProvider` call in the two named test classes. Declare the provider before a disposable system under test so reverse declaration-order teardown disposes the system under test first. Preserve existing test names, setup, actions, and assertions.
+**Always:** Cover every `EmptyProvider`, `WithNotifier`, and local `BuildServiceProvider` call in the two named test classes. Declare the provider before a disposable system under test so reverse declaration-order teardown disposes the system under test first. Preserve existing test names, setup, actions, and assertions. For finalization, evaluate scope against the story-owned staged or committed delta rather than repository-wide cleanliness: preserve and ignore ambient changes only when they are path-disjoint from the three owned files and their outside-story provenance is clear; block finalization when a changed path overlaps an owned file or ownership cannot be separated.
 
-**Never:** Change production code, service registrations, product behavior, unrelated provider call sites, or the deferred-work ledger. Do not make a provider helper own disposal or make the production services dispose a caller-owned provider.
+**Never:** Change production code, service registrations, product behavior, unrelated provider call sites, or the deferred-work ledger. Do not make a provider helper own disposal or make the production services dispose a caller-owned provider. Do not clean, stage, commit, or absorb ambient changes into this story merely to satisfy finalization.
 
 </intent-contract>
 
@@ -46,7 +46,7 @@ deferred: []
 - Given any test in either affected class that calls a provider-building helper, when the test scope exits normally or through an exception, then the concrete `ServiceProvider` is deterministically disposed by a `using` declaration.
 - Given a `BadgeCountService` test with both a provider and a disposable service instance, when scope teardown occurs, then the service is disposed before its provider because the provider local is declared first.
 - Given the two affected test classes, when they execute through the repository's xUnit v3 test runner, then all existing assertions pass unchanged.
-- Given the completed diff, when its paths are inspected, then it contains only the two affected test files and this workflow specification; production code and `_bmad-output/implementation-artifacts/deferred-work.md` are unchanged.
+- Given the completed story-owned delta, when its paths are inspected, then it contains only the two affected test files and this workflow specification; path-disjoint ambient changes with clearly separate provenance do not block finalization and remain untouched, while overlapping or unpartitionable changes block finalization.
 
 ## Spec Change Log
 
