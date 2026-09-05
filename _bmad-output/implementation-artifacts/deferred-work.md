@@ -9729,6 +9729,7 @@ source_spec: `spec-package-audit-provenance-bom.md`
 severity: medium
 reason: schemaVersion moved 1 -> 2, top-level auditedAtUtc moved into the snapshot envelope, and the family preservation envelope was replaced by origin. Commits 3b8bac2, cfc6550 and fe3f0b7 are all "fix(audit): ..." with no "!" and no BREAKING CHANGE footer, so semantic-release will cut a patch version of a submodule other Hexalith repositories consume. Commit 7eaa21e in the same range also carries no Conventional Commits type at all.
 status: open
+decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1916 at references/Hexalith.Builds, update affected contracts and consumers, and add focused compatibility and regression evidence.
 
 ### DW-1917: The checked-in audit artifact is not re-derivable by any shipped code path.
 origin: spec-deferred 518d2d0f7d27
