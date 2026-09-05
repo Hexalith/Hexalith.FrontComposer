@@ -136,7 +136,8 @@ resolution-undo: e4596f494f9c9989040773d97a6329e9d10b7fd5193cf008204a784d3bd533f
 origin: migrated from legacy ledger ("Deferred from: code review of spec-11-22-recommended-analyzer-test-and-sample-burn-down.md chunk 4 (2026-08-08)"), 2026-08-27
 location: CommandFormEmitterTests
 reason: `CommandFormEmitterTests` admission dispose ordering still anchors with `IndexOf("try")` / `IndexOf("finally")` after the submitted-log call site; a larger token containing those substrings could mis-order the assert (pre-existing; this chunk only reordered the greater-than checks).
-status: open
+status: done 2026-09-05
+resolution: already resolved: commit 8b38d7bb replaces substring ordering with Roslyn syntax-node ownership assertions in tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs:648.
 
 ### DW-684: `BadgeCountServiceTests` / `NavigationEffectsLastActiveRouteTests` CA1859 helpers now return concrete `ServiceProvider` but call sites still do not dispose the built providers (same lifetime gap existed when typed as `IServiceProvider`).
 
@@ -3873,7 +3874,8 @@ resolution: already resolved: tests/Hexalith.FrontComposer.Shell.Tests/Infrastru
 origin: migrated from legacy ledger ("Deferred from: code review of 5-3-signalr-connection-and-disconnection-handling Pass-1 (2026-04-26)"), 2026-08-27
 location: RegisterLane
 reason: **P18 — Fallback ETag-validator-usage / cleanup-on-reconnect / 429-503 visible-data-preserved tests** — feasible now that DN1 driver is wired, but artificial without a real lane producer; should land alongside the first lane-registration callsite (DataGrid/count surface). Reconciliation: Row: DW-0449; Split to visible-lane registration story 2026-05-13; Disposition: split-to-named-story; Reason: fallback ETag/429/503 tests need real DataGrid/count lane producers; Residual release-gate risk: medium; Reopen trigger: first DataGrid/count `RegisterLane` callsite is wired (DW-0450 / DW-0460), or fallback ETag/429/503 behavior is observed regressing in production (added by Story 11.7 code review P-11); Evidence: section: code review of 5-3-signalr-connection-and-disconnection-handling Pass-1 (2026-04-26).
-status: open
+status: done 2026-09-05
+resolution: already resolved: src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs:1497 and src/Hexalith.FrontComposer.Shell/Badges/BadgeCountService.cs:268 register real visible lanes; ProjectionFallbackRefreshSchedulerTests.cs:127 and :221 cover reconciliation and ETag comparison.
 
 ### DW-1181: Lane registration callsites for `IProjectionFallbackRefreshScheduler.RegisterLane` are not yet wired in DataGrid/count consumers. The driver fires `TriggerFallbackOnceAsync` while disconnected, but with zero registered lanes the sweep is a no-op. The first consumer-facing pass that mounts `RegisterLane` from the DataGrid/count surface closes AC7 fully end-to-end. Owner: Story 5-4 reconnection sweep work or a dedicated 5-3 follow-up. Reconciliation: Row: DW-0450; Split to visible-lane registration story 2026-05-13; Disposition: split-to-named-story; Reason: generated DataGrid and badge/count RegisterLane callsites are not wired in this story; Residual release-gate risk: medium; Reopen trigger: visible-lane generator wiring story (see DW-0460) lands, or a regression where a reconnect sweep finds zero registered lanes is observed (added by Story 11.7 code review P-11); Evidence: section: code review of 5-3-signalr-connection-and-disconnection-handling Pass-1 (2026-04-26).
 
@@ -5683,14 +5685,16 @@ status: open
 origin: migrated from legacy ledger ("D11 missing-claimed-fingerprint / corpus runtime aggregate — v1 release constraint (revised 2026-05-12 to address DN14)"), 2026-08-27
 location: FrontComposerMcpDescriptorRegistry
 reason: **Telemetry/evidence path:** `FrontComposerMcpDescriptorRegistry` ctor invokes every registered `ISkillCorpusFingerprintProvider` exactly once at host startup; pinned by `AggregateManifestIntegrityTests.DescriptorRegistry_DiConstruction_InvokesAllRegisteredCorpusProviders` (multi-provider) and `DescriptorRegistry_DiConstruction_ZeroProviders_DoesNotFailClosed` (zero-provider). Per-manifest integrity bypass is exercised by `AggregateManifestIntegrityTests.DescriptorRegistry_LoadingTamperedAggregate_FailsClosed_WithIntegrityMismatch` (which proves manifests **with** claimed fingerprints still fail closed on tamper).
-status: open
+status: done 2026-09-05
+resolution: already resolved: tests/Hexalith.FrontComposer.Mcp.Tests/Schema/AggregateManifestIntegrityTests.cs:21,149,170 exercises tampered-aggregate failure and both multi-provider and zero-provider DI construction.
 
 ### DW-1420: Regression guard: the three DI-composition tests above plus the new `Story11_5ResolutionTests.DN10_FourWayFingerprintConflict_FailsClosed_WithoutDowngrade` (four-source disagreement still fails closed) and `Story11_5ResolutionTests.DN8_SentinelRedaction_*` (no corpus-side leak).
 
 origin: migrated from legacy ledger ("D11 missing-claimed-fingerprint / corpus runtime aggregate — v1 release constraint (revised 2026-05-12 to address DN14)"), 2026-08-27
 location: Story11_5ResolutionTests.DN10_FourWayFingerprintConflict_FailsClosed_WithoutDowngrade
 reason: **Regression guard:** the three DI-composition tests above plus the new `Story11_5ResolutionTests.DN10_FourWayFingerprintConflict_FailsClosed_WithoutDowngrade` (four-source disagreement still fails closed) and `Story11_5ResolutionTests.DN8_SentinelRedaction_*` (no corpus-side leak).
-status: open
+status: done 2026-09-05
+resolution: already resolved: tests/Hexalith.FrontComposer.Mcp.Tests/Schema/Story11_5ResolutionTests.cs:56,156,208 pins sentinel redaction and four-way fingerprint-conflict fail-closed behavior.
 
 ### DW-1421: AC5 FcDevModeAnnotation nested button traps: `FcDevModeAnnotation.razor` was not modified in Story 11.6; no executable bUnit test proves absence of nested interactive role traps when the annotation is injected inside a DataGrid cell or other interactive host. Split to Story 11.3/11.4 per row classification. Owner: Story 11.3/11.4.
 
@@ -6220,7 +6224,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 8 verification (2026-05-19)"), 2026-08-27
 location: eng/release_evidence.py:1546-1547
 reason: **CR-12-4-Def46 — Checksum glob crashes with `ValueError` on symlink chains crossing the root:** `p.relative_to(root)` raises when symlink target escapes root. Defense-in-depth; pick up alongside Def40. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:1546-1547`.
-status: open
+status: done 2026-09-05
+resolution: already resolved: eng/release_evidence.py:3018-3021 keeps glob results lexical beneath root and calls relative_to(root) without resolving escaping symlink targets, eliminating the recorded ValueError path.
 
 ### DW-1490: `inputs.dry_run` GHA gate undefined for future non-`workflow_dispatch` triggers: Currently only `workflow_dispatch` runs the workflow; pre-emptively safe. Revisit when a new trigger is added. Owner: release-evidence/workflow maintainer. Evidence: `.github/workflows/release.yml:467`.
 
@@ -6234,7 +6239,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 8 verification (2026-05-19)"), 2026-08-27
 location: prior-release.json
 reason: **CR-12-4-Def48 — Symbol-push success after package-push success leaves forensic-state gap:** `partial-publish-incident phase=symbol-push` does not flag the prior-success state; operators must read `prior-release.json` to know packages already shipped. Real-world impact: monitoring/incident triage UX, not publish-authorization. Owner: release-evidence helper maintainer. Evidence: `.releaserc.json:12` symbol-push branch.
-status: open
+status: done 2026-09-05
+resolution: already resolved: eng/release_prepublish.py:855-874 records the failed phase and exact successful-push count; eng/release_evidence.py:3612-3621 emits typed incident state.
 
 ### DW-1492: `gh api --paginate` lacks per-request timeout: Rate-limited probe could stall for minutes. Release-budget already tracks total minutes; pick up if a real GitHub-API stall extends past the workflow timeout. Owner: release-evidence/workflow maintainer. Evidence: `.github/workflows/release.yml:226-231`.
 
@@ -7841,7 +7847,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-18-fail-c
 location: SecurityLoggingGovernanceTests.cs:51-103
 source_spec: `_bmad-output/implementation-artifacts/11-18-fail-closed-security-log-sites.md`
 reason: summary: Whole-project direct-`Log*` count pins in `SecurityLoggingGovernanceTests` (`sites.Length == 208`, `117` 11.18b + `91` 11.18c, plus a 45-file `ExpectedDirectCallCounts` map) are brittle — any unrelated logging edit in any of ~45 Shell files breaks the test, training maintainers to "just bump the number", and a careless bump could mask a genuinely new direct call. evidence: `SecurityLoggingGovernanceTests.cs:51-103,118,136-137` (rev 3356ae7e). The actual security guarantee is the separate `sites.Where(SecuritySourcePaths...).ShouldBeEmpty()` assertion, which is correct and sufficient; the global count pins add churn without security signal. Intentional per AC1 ("the denominator is never silently reduced") so retained by design, but flagged as a maintainability trade-off. Reopen trigger: the count pins are relaxed to per-security-file assertions, or a count-bump is observed masking a real regression.
-status: open
+status: done 2026-09-05
+resolution: already resolved: tests/Hexalith.FrontComposer.Shell.Tests/Architecture/SecurityLoggingGovernanceTests.cs:242-266 asserts zero direct calls and scoped ownership without brittle whole-project count pins.
 decision: 2026-08-28 Implement requested change — Implement DW-1693 at its recorded touchpoint, update affected contracts and consumers, and add focused regression evidence.
 decision: 2026-08-28 Implement requested change — Implement DW-1693 at its recorded touchpoint, update affected contracts and consumers, and add focused regression evidence.
 
@@ -8175,7 +8182,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-19-doc-co
 location: tests/**.cs
 source_spec: `_bmad-output/implementation-artifacts/11-19-doc-comment-enforcement-realignment.md`
 reason: summary: CA1707 EditorConfig suppressions for `tests/**.cs` and `FcDiagnosticIds.cs` appear in the 11.19a baseline-to-HEAD delta but were landed later in `67154049` (analyzer-policy / Story 11.20 surface), not the CS1591 realignment commit. evidence: `.editorconfig` CA1707 blocks between CS1591 default and freeze scopes. Reopen trigger: 11.20/AnalyzerPolicyGovernance owns or rejects those suppressions explicitly.
-status: open
+status: done 2026-09-05
+resolution: already resolved: _bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md:130 explicitly owns the exact CA1707 test and FcDiagnosticIds scopes.
 
 ### DW-1732: `GetEditorConfigSection` uses first `IndexOf` and would miss a later section that re-disables CS1591 for the same freeze header.
 
@@ -8687,7 +8695,8 @@ origin: migrated from legacy ledger ("Deferred from: Story 11.24 owner decision 
 location: n/a
 source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-package-to-3-93-0.md`
 reason: summary: Bind package-audit provenance to an existing Git revision whose catalog blob matches the audited selections. evidence: The existing validator accepts any 40-character lowercase hexadecimal value and does not verify that `generatedFromRevision` exists or contains the audited catalog.
-status: open
+status: done 2026-09-05
+resolution: already resolved: commit bc31f369; references/Hexalith.Builds/Tools/validate-package-version-audit.ps1:1280 verifies the revision, ancestry, and exact catalog blob.
 
 ### DW-1793: Classify NuGet not-found responses by status rather than one diagnostic string and cover alternate 404 bodies with fixtures.
 
@@ -8728,7 +8737,8 @@ origin: migrated from legacy ledger ("Deferred from: Story 11.24 owner decision 
 location: n/a
 source_spec: none
 reason: summary: Fix Hexalith.Memories integration-fast failures in AccessTelemetry Aspire Dapr clock sidecar startup and OpenBao sidecar secret readiness (CI run 31719611315). evidence: Added from https://github.com/Hexalith/Hexalith.Memories/actions/runs/31719611315 during FrontComposer CA1707 seal planning; independently shippable in Hexalith.Memories and out of scope for FrontComposer ledger reseal.
-status: open
+status: done 2026-09-05
+resolution: already resolved: references/Hexalith.Memories commits f3227b1b and 1d9e9c89 restored AccessTelemetry coverage and stabilized OpenBao integration-fast readiness.
 
 ### DW-1798: Make FC-NIP Playwright contract guards cross-platform by fixing PLAYWRIGHT_SKIP_WEBSERVER env syntax that fails on Windows runners.
 
@@ -9624,7 +9634,8 @@ location: eng/dependency-graph-policy.json
 source_spec: `spec-11-24-adopt-the-owner-approved-eventstore-runtime-identity.md`
 severity: high
 reason: Selecting the owner-approved Builds catalog `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a` is required by the frozen intent, but it moves `eng/dependency-graph-policy.json` backwards from the previously selected `449d3643`: ModelContextProtocol.AspNetCore 2.2.0 -> 1.4.1 (major), Verify and Verify.XunitV3 32.0.0 -> 31.27.0, FsCheck.Xunit.v3 3.4.0 -> 3.3.4, Microsoft.Extensions.Localization and System.Collections.Immutable 10.0.11 -> 10.0.10, Microsoft.NET.Test.Sdk 18.9.0 -> 18.8.1, and Fluent UI v5 rc.5 -> rc.4. The Fluent step also regenerated two verified DataGrid snapshots that lost the `display-mode` and `cell-type` attributes and moved `col-justify` onto a class, which is an accessibility-observable DOM change. Nothing in this repository records a forward path back to the newer catalog.
-status: open
+status: done 2026-09-05
+resolution: already resolved: commit 58197d7c; references/Hexalith.Builds/Props/Directory.Packages.props:8 and :158-315 now carry EventStore 3.102.0 and the restored newer dependency catalog.
 
 ### DW-1904: Follow-up review still recommended for 11-24-adopt-the-owner-approved-eventstore-runtime-identity after the damping cap was spent
 origin: review-budget-followup
