@@ -2507,6 +2507,7 @@ location: src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionEmpt
 reason: **`<AuthorizeView>` flicker on prerender → interactive transition** [`src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionEmptyPlaceholder.razor:11-29`] — Static-SSR/prerender shows nothing; CTA pops in after hydration. Deliberate per AC2.5 but undocumented; tests don't cover prerender vs interactive timing. UX polish. Reconciliation: Row: DW-0272; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionEmptyPlaceholder.razor:11-29.
 status: open
 decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1003 at src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionEmptyPlaceholder.razor:11-29, update affected contracts and consumers, and add focused compatibility and regression evidence.
+decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1003 at src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionEmptyPlaceholder.razor:11-29, update affected contracts and consumers, and add focused compatibility and regression evidence.
 
 ### DW-1004: StatusOverview detail "first item" semantics misleading
 
@@ -6116,6 +6117,7 @@ location: eng/release_evidence.py:911-922
 reason: **CR-12-4-Def17 — `parse_expiry` has no upper bound on accepted year (9999+):** A fallback approval can be authored with effectively infinite expiry. Operationally low risk because fingerprint drift forces re-approval on real config changes regardless. Deferred: defense-in-depth; pick up if a future audit demands explicit max-expiry. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:911-922`.
 status: open
 decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1475 at eng/release_evidence.py:911-922, update affected contracts and consumers, and add focused compatibility and regression evidence.
+decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1475 at eng/release_evidence.py:911-922, update affected contracts and consumers, and add focused compatibility and regression evidence.
 decision: 2026-08-31 Implement the change — Define the chosen behavior for DW-1475, update affected implementations and consumers, and add compatibility-focused regression evidence.
 
 ### DW-1476: `_is_submodule_root` does not handle nested submodules: Edge Case Hunter E18 noted that `Hexalith.Commons/.gitmodules` lists a nested `Hexalith.Builds` submodule that the outer `_is_submodule_root` does not detect. Project rules explicitly forbid initializing or updating nested submodules, so this is outside the inventory boundary by policy. Deferred: pick up only if nested submodule handling becomes a project requirement. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:280-298` `_is_submodule_root`; `Hexalith.Commons/.gitmodules` (nested submodule registration).
@@ -6405,6 +6407,7 @@ location: docs/accessibility-verification/release-candidate-2026-05-15-evidence-
 reason: **CR-12-5-Def14 — Stakeholder YAML `sign_off_refs: []` is opaque; can't distinguish partial sign-off states:** Edge Case Hunter EC-13, EC-14, EC-51 — the flat list cannot represent 3-of-4 sign-off vs 0-of-4. The schema does not require role labels, dates, or scope. Pick up alongside the first stakeholder sign-off. Owner: accessibility-evidence-pack maintainer. Evidence: `docs/accessibility-verification/release-candidate-2026-05-15-evidence-pack.md:42,108-115`.
 status: open
 decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1515 at docs/accessibility-verification/release-candidate-2026-05-15-evidence-pack.md:42, update affected contracts and consumers, and add focused compatibility and regression evidence.
+decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1515 at docs/accessibility-verification/release-candidate-2026-05-15-evidence-pack.md:42, update affected contracts and consumers, and add focused compatibility and regression evidence.
 decision: 2026-08-31 Implement the change — Define the chosen behavior for DW-1515, update affected implementations and consumers, and add compatibility-focused regression evidence.
 
 ### DW-1516: `ready-for-dev → in-progress → review` audit trail loss: Edge Case Hunter EC-70 — Dev Agent Record states an `in-progress` intermediate transition but the diff shows direct `ready-for-dev → review`. Either the `in-progress` state was set and immediately overwritten or the record is inaccurate. Defer: minor; pick up when story status transitions are formally tracked (e.g., status-history field). Owner: story-creation/dev-agent maintainer. Evidence: story `Debug Log References:317`, diff lines 14-15.
@@ -6636,6 +6639,7 @@ location: eng/release_evidence.py:155-157
 reason: **CR-12-4-Def87 — AC26 APPROVAL_MATRIX `attestation-fallback.evidence` field is prose, not structured array:** Acceptance Auditor AA-004 — consumers must string-parse to enumerate required fallback_record subfields. Pick up alongside next APPROVAL_MATRIX schema bump. Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:155-157`.
 status: open
 decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1546 at eng/release_evidence.py:155-157, update affected contracts and consumers, and add focused compatibility and regression evidence.
+decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1546 at eng/release_evidence.py:155-157, update affected contracts and consumers, and add focused compatibility and regression evidence.
 decision: 2026-08-31 Implement the change — Define the chosen behavior for DW-1546, update affected implementations and consumers, and add compatibility-focused regression evidence.
 
 ### DW-1547: jq `display_title` word-boundary regex substitutes `${nextRelease.version}` without escaping dots: Blind Hunter BH-F8 + BH-F22 — resulting regex matches `v1X2Y3` literal substrings as well as `v1.2.3`. SemVer cannot produce `1X2Y3` versions, so real-world collision is impossible; defense-in-depth concern. Pick up alongside P210 follow-up if version schema expands to allow non-numeric segments. Owner: workflow maintainer. Evidence: `.releaserc.json:12` same_version_runs filter.
@@ -6866,6 +6870,7 @@ location: tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/Fau
 source_spec: `_bmad-output/implementation-artifacts/spec-11-2-projection-realtime-resilience.md`
 reason: summary: `ProjectionSubscriptionService.DisposeAsync` leaks the SignalR `HubConnection` (and its unbounded auto-reconnect loop) plus the disposal `CancellationTokenSource` when the operation gate cannot be acquired within the 2s bounded wait. evidence: DisposeAsync gates `_activeGroups.Clear()`, `_connection.StopAsync`/`DisposeAsync`, and `_disposalCts.Dispose()` behind `if (gateAcquired)`; a `SubscribeAsync`/`UnsubscribeAsync` blocked inside `StartAsync`/`JoinGroupAsync` on the caller's token (which `_disposalCts.Cancel()` does not cancel) holds the gate past `GateWaitTimeout`, so on a racing circuit teardown the connection keeps reconnecting forever and the CTS is never freed. Real but a DELIBERATE bounded-disposal tradeoff from the prior review pass (spec triage log 2026-07-06: "does not clear active groups or stop/dispose the hub connection unless the operation gate is owned"), backed by the `DisposeDuringBlockedSubscribe_CompletesWithinBoundedWait` 3s-bound test at `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/ProjectionSubscriptionServiceFaultTests.cs`. A safe fix (e.g. best-effort background teardown once the gate frees, without breaking the bounded-wait guarantee) needs design attention, so it is deferred rather than reverting the prior decision. Evidence: `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/ProjectionSubscriptionService.cs` DisposeAsync `if (gateAcquired)` block.
 status: open
+decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1576 at tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/ProjectionSubscriptionServiceFaultTests.cs, update affected contracts and consumers, and add focused compatibility and regression evidence.
 decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1576 at tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/ProjectionSubscriptionServiceFaultTests.cs, update affected contracts and consumers, and add focused compatibility and regression evidence.
 
 ### DW-1577: A SignalR `Reconnected` event whose rejoin cannot acquire the operation gate within the 2s `GateWaitTimeout` applies `Disconnected`/`RejoinSkipped` and gives up with no retry, so a connection that is actually up can stay reported `Disconnected` with active groups never rejoined server-side (realtime nudges never resume; only slow fallback polling continues) until an unrelated next reconnect event — which is not guaranteed to arrive.
@@ -9697,6 +9702,7 @@ severity: medium
 reason: Every refreshed family appends family and package historicalContext records on each incremental run, and the validator round-trips each record for duplicate detection, so both file size and validation cost grow without bound. Pre-existing: the v1 contract also appended history, and this change only narrowed which families append.
 status: open
 decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1912 at references/Hexalith.Builds/Tools/package-version-audit.json, update affected contracts and consumers, and add focused compatibility and regression evidence.
+decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1912 at references/Hexalith.Builds/Tools/package-version-audit.json, update affected contracts and consumers, and add focused compatibility and regression evidence.
 
 ### DW-1913: Almost all stored package history is still v1-schema and is therefore exempt from the new origin ancestry, chronology, and duplicate-identity invariants.
 origin: spec-deferred f218a2755de1
@@ -9730,6 +9736,7 @@ severity: medium
 reason: schemaVersion moved 1 -> 2, top-level auditedAtUtc moved into the snapshot envelope, and the family preservation envelope was replaced by origin. Commits 3b8bac2, cfc6550 and fe3f0b7 are all "fix(audit): ..." with no "!" and no BREAKING CHANGE footer, so semantic-release will cut a patch version of a submodule other Hexalith repositories consume. Commit 7eaa21e in the same range also carries no Conventional Commits type at all.
 status: open
 decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1916 at references/Hexalith.Builds, update affected contracts and consumers, and add focused compatibility and regression evidence.
+decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1916 at references/Hexalith.Builds, update affected contracts and consumers, and add focused compatibility and regression evidence.
 
 ### DW-1917: The checked-in audit artifact is not re-derivable by any shipped code path.
 origin: spec-deferred 518d2d0f7d27
@@ -9755,6 +9762,7 @@ source_spec: `spec-package-audit-provenance-bom.md`
 severity: low
 reason: The shipped artifact preserves 137 of 141 families against two distinct origin revision/timestamp pairs. Neither the generator, the validator, nor CI bounds how long a family may remain preserved, so the feed observations backing most of a freshness tool's own artifact can age indefinitely while every gate stays green.
 status: open
+decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1919 at references/Hexalith.Builds/Tools/package-version-audit.json, update affected contracts and consumers, and add focused compatibility and regression evidence.
 decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1919 at references/Hexalith.Builds/Tools/package-version-audit.json, update affected contracts and consumers, and add focused compatibility and regression evidence.
 
 ### DW-1920: Dead v1-migration residue remains in the generator's preserved-family branch.
@@ -9788,6 +9796,7 @@ source_spec: `spec-package-audit-provenance-bom.md`
 severity: low
 reason: validate-central-package-versions.ps1 now hard-fails any catalog without the exact EF BB BF prefix. Only Props/Directory.Packages.props, Hexalith.Commons and Hexalith.PolymorphicSerializations carry a BOM today; this repository's own root Directory.Packages.props, plus FrontComposer, EventStore, Memories, Parties and Tenants, are BOM-free. Nothing breaks yet because both workflow call sites use the default Props/ catalog, but the two files in this repository now sit under different byte contracts.
 status: open
+decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1923 at references/Hexalith.Builds/Tools/validate-central-package-versions.ps1:86, update affected contracts and consumers, and add focused compatibility and regression evidence.
 decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1923 at references/Hexalith.Builds/Tools/validate-central-package-versions.ps1:86, update affected contracts and consumers, and add focused compatibility and regression evidence.
 
 ### DW-1924: Follow-up review still recommended for dw-package-audit-provenance-bom after the damping cap was spent
