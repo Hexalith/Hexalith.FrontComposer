@@ -3594,7 +3594,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 2-2-action-d
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 severity: low
 reason: **[LOW] `FrontComposerStorageKey.TryParse` returns URL-encoded segments — naming footgun** — `Tenant`/`User` fields on parse result are canonicalized, not original. **Defer target:** API-clarity polish pass. Reconciliation: Row: DW-0413; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group D (Shell services + Fluxor state + JS module) chunk.
-status: open
+status: done 2026-09-05
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Services/FrontComposerStorageKey.cs:89-107 explicitly names the returned encoded segments TenantCanon/UserCanon and documents canonical round-trip semantics.
 decision: 2026-08-27 Implement change — Implement the behavior requested by DW-1144, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1145: [LOW] `LastUsedSubscriberRegistry` partial-init leak
@@ -6783,7 +6784,8 @@ resolution: already resolved: eng/release_evidence.py:1259
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run.md (2026-05-20, round 13, Group B fixtures)"), 2026-08-27
 location: tests/ci-governance/fixtures/release-readiness-cases.json:189-198
 reason: **CR-12-4-Def105 — Asymmetric stringly-typed boolean coverage:** Round-13 Blind Hunter B10 — `string-false-approval` and `concurrent-same-version-string-input` are present, no `string-true-approval` or `string-false-concurrent` counterpart. Only the "should-be-false-but-coerced-truthy" and "should-be-true-but-string" axes are pinned for one field each. A consumer that accepts any non-empty string as truthy (e.g. `"false"` parsed as truthy) would pass the existing rows but no fixture catches the inverse coercion. Pick up alongside next typed-parsing hardening pass. Owner: governance-tests maintainer. Evidence: `tests/ci-governance/fixtures/release-readiness-cases.json:189-198, 559-568`.
-status: open
+status: done 2026-09-05
+resolution: already resolved: tests/ci-governance/fixtures/release-readiness-cases.json:913-928 now covers string true approval and string false concurrency; introduced by 9a2c6b6f.
 
 ### DW-1567: AC29 categories not covered by helper-side `DANGEROUS_EVIDENCE_PATTERNS`: credentialed URLs and signing-material markers: Round-13 discovered during P269 (D28 patch) application. The current pattern list at `eng/release_evidence.py:213-223` covers Bearer/token-prefix shapes, Windows paths, Unix paths, tenant/user identifiers, and workflow commands — 4 of 9 AC29 categories shape-wise (raw log fragment, env dump, username catch indirectly via embedded credentials). Two categories are NOT caught by any current pattern: (a) credentialed URLs like `https://user:pass@host/`, and (b) signing-material markers like `-----BEGIN CERTIFICATE-----` / `-----BEGIN PRIVATE KEY-----` / `-----BEGIN RSA PRIVATE KEY-----`. Adding fixtures for these would assert blocked outcomes the helper does not produce. Pick up alongside any future redaction-pattern-extension pass. Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:213-223` (`DANGEROUS_EVIDENCE_PATTERNS`) + AC29 enumeration in Story 12.4 spec.
 
@@ -6828,7 +6830,8 @@ decision: 2026-08-27 Implement change — Implement the behavior requested by DW
 origin: migrated from legacy ledger ("Deferred from: code review of story-9.2 (2026-07-05)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs:182
 reason: **CR-9-2-Def04 — New-outside-filter indicator may not render promptly:** `NewItemIndicatorStateService.Add` raises no change notification, so a new badge only appears on the next grid render; usually masked because the confirming lifecycle transition dispatches a Fluxor action that re-renders. Latent. Owner: Shell state maintainer. Evidence: `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs:182`.
-status: open
+status: done 2026-09-05
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/State/PendingCommands/NewItemIndicatorStateService.cs:43-61,145 publishes Add mutations through SnapshotPublisher; commit fb04b428.
 
 ### DW-1573: Producer covers only the polling/status-query path: `LiveNudgeRefresh`/`ReconnectReconciliation` observation sources are not currently wired to construct `PendingCommandOutcomeObservation`s, so the FC-NIP producer covers the real EventStore-confirmation path exactly as the Implementation Gate directs. No current gap; a future nudge-driven terminal resolution would need explicit wiring. Owner: Shell state maintainer. Evidence: `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandPollingCoordinator.cs` (sole resolver caller).
 
@@ -7013,7 +7016,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-14-update
 location: ~/.nuget/packages
 source_spec: `_bmad-output/implementation-artifacts/spec-actions-29182697666-fix-cicd.md`
 reason: summary: Make clean package-consumer fixtures honor NuGet's effective global packages folder. evidence: The pre-existing fixtures construct `~/.nuget/packages` directly, so environments using `NUGET_PACKAGES` can fail despite already containing every restored dependency in their configured global folder.
-status: open
+status: done 2026-09-05
+resolution: already resolved: tests/Hexalith.FrontComposer.Mcp.Tests/Skills/McpRuntimePackageBoundaryTests.cs:270-278 honors NUGET_PACKAGES and falls back to the user package folder; commit 18642609.
 
 ### DW-1595: Clean up temporary clean-consumer package, project, and cache directories after package-boundary tests.
 
@@ -7021,7 +7025,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-14-update
 location: n/a
 source_spec: `_bmad-output/implementation-artifacts/spec-actions-29182697666-fix-cicd.md`
 reason: summary: Clean up temporary clean-consumer package, project, and cache directories after package-boundary tests. evidence: The pre-existing package-consumer tests allocate unique `/tmp` directories on every run and never remove them, causing repeated local or CI executions to accumulate package payloads and generated build outputs.
-status: open
+status: done 2026-09-05
+resolution: already resolved: tests/Hexalith.FrontComposer.Mcp.Tests/Skills/McpRuntimePackageBoundaryTests.cs:29-44,62-119 uses unique consumer directories and removes them in finally blocks.
 
 ### DW-1596: Close the scoped-CSS governance guard blind spot for dynamic `Class="@..."` values on Fluent component roots.
 
@@ -7611,7 +7616,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-ru
 location: n/a
 source_spec: `_bmad-output/implementation-artifacts/spec-actions-29585546315-fix-cicd-2.md`
 reason: summary: Verify JSON-formatted parse failures for Hexalith.Builds command applications. evidence: The updated Hexalith.Builds submodule's parse-valid command tests do not send malformed arguments with `--output json`, so a regression of the HXC001 JSON parse-failure contract would be undetected.
-status: open
+status: done 2026-09-05
+resolution: already resolved: references/Hexalith.Builds/test/Hexalith.Builds.Module.Tests/ModuleCommandApplicationTests.cs:88-147 exercises malformed or blank command arguments with --output json and asserts HXC001 JSON output; commit 345e0ce.
 
 ### DW-1669: Add symlink-containment coverage for module manifest paths.
 
@@ -7619,7 +7625,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-17-mcp-ru
 location: n/a
 source_spec: `_bmad-output/implementation-artifacts/spec-actions-29585546315-fix-cicd-2.md`
 reason: summary: Add symlink-containment coverage for module manifest paths. evidence: The updated Hexalith.Builds submodule tests lexical traversal but does not exercise an in-repository symlink resolving outside the repository root.
-status: open
+status: done 2026-09-05
+resolution: already resolved: references/Hexalith.Builds/test/Hexalith.Builds.Module.Tests/ManifestValidationTests.cs:118-145 contains LoadManifestWithEscapingDescriptorSymlinkFailsClosed; commit 345e0ce.
 
 ### DW-1670: Test complete run-evidence artifacts with inconsistent test counts.
 
@@ -7850,7 +7857,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of run-current-
 location: _bmad-output/project-context.md
 source_spec: `_bmad-output/implementation-artifacts/spec-run-all-tests-fix-failures-2.md`
 reason: summary: Refresh generated project-context dependency facts that no longer match the selected shared catalog. evidence: `_bmad-output/project-context.md` still lists FsCheck.Xunit.v3 3.3.3 and Verify/Verify.XunitV3 31.22.0, while baseline Builds catalog `b529b665` selects 3.3.4 and 31.27.0. The drift pre-dated this repair's policy edit and requires a separately owned project-context regeneration.
-status: open
+status: done 2026-09-05
+resolution: already resolved: _bmad-output/project-context.md:50-51 now matches references/Hexalith.Builds/Props/Directory.Packages.props:158,314-315 for FsCheck.Xunit.v3 3.4.0 and Verify 32.0.0; context update commit 1610415e.
 
 ### DW-1697: Add an EventStore behavioral regression test proving each generated package consumer contains exactly one direct manifest package reference.
 
@@ -8754,7 +8762,8 @@ origin: migrated from legacy ledger ("Deferred from: Story 11.24 owner decision 
 location: System.CommandLine
 source_spec: `_bmad-output/implementation-artifacts/spec-actions-31783283241-fix-cicd.md`
 reason: summary: Document that the first push/PR after a semantic-policy change still evaluates under the event-base exact-pin policy (AD-10 delayed activation). evidence: `diff` loads policy at event-base; current main already fails EventStore `System.CommandLine` `2.0.10` vs `2.0.11`, so the landing change can stay red once until the new presence-only policy is the push base.
-status: open
+status: done 2026-09-05
+resolution: already resolved: _bmad-output/project-context.md:281-286 explicitly documents event-base delayed activation and the two-phase preauthorization policy; commits 54edc44f and dfbe9978.
 
 ### DW-1803: Amend FC-DEP-1 / architecture spine so sibling catalogs are presence-only instead of exact required-package version fail-closed.
 
@@ -9721,7 +9730,8 @@ location: references/Hexalith.Builds/Tools/package-version-audit.json
 source_spec: `spec-package-audit-provenance-bom.md`
 severity: medium
 reason: Tools/package-version-audit.json is snapshot.mode incremental with 4 refreshed and 137 preserved families whose origins were back-filled from the previous v1 audit's global revision and time. That back-fill can only happen on an incremental run over a v1 prior, which the generator now rejects with "incremental refresh requires a schemaVersion 2 prior audit"; a complete refresh would instead stamp all 141 origins with the current revision and time. The artifact is forward-refreshable but cannot be reproduced.
-status: open
+status: done 2026-09-05
+resolution: already resolved: references/Hexalith.Builds/Tools/package-version-audit.json:2-10 is now a schema-v2 complete snapshot with all 141 families refreshed and none preserved, making the checked-in artifact re-derivable; commit 7e84ff1.
 
 ### DW-1918: A refreshed family's prior historicalContext is copied forward without passing the closed-shape prior-history contract.
 origin: spec-deferred 185733504fc1
