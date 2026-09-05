@@ -74,6 +74,25 @@ deferred: []
   - `[false]` `[reject]` Submodule-pointer surfaces diverge from the bundle intent — they are concurrent unstaged state outside the task's explicitly staged paths, not a DW-683 change.
   - `[false]` `[reject]` No runtime generated-form disposal test was added — the bundle identifies a static test-oracle defect, and the syntax-tree regression directly observes the requested test surface without changing or claiming runtime behavior.
 
+### 2026-09-05 — Review pass (bmad-build step-04)
+
+- `[false]` `[carried]` Blind hunter: mixed DW-683 and bump-spec workstreams in one working-tree diff — carried: EventStore/Memories gitlinks and the bump spec are concurrent unstaged workspace state; HEAD commit `8b38d7bb` contains only the owned test and this spec.
+- `[false]` `[carried]` Blind hunter: EventStore gitlink landed option B with no recorded choice — carried: the pointer is not part of the owned change and remains unstaged.
+- `[false]` `[carried]` Blind hunter: gitlink edits omit `currentCompatibility` / `CiGovernanceTests` updates — carried: those pointers are not in the owned commit, so identity tests were not asked to accept a new EventStore SHA.
+- `[medium]` `[carried]` Blind hunter: first post-log `try`/`finally` tokens bound the inner dispatch pair — carried: `Emit_CommandExecutionAdmissionReleasesInFinally` now identifies `admission.Dispose()` as an invocation, walks to its `FinallyClauseSyntax`, and treats that parent `TryStatementSyntax` as the admission lease.
+- `[medium]` `[carried]` Blind hunter: `admission.Dispose()` still located by substring `IndexOf` — carried: the test now selects the exact `admission.Dispose` invocation and asserts its span is inside the admission `finally` block.
+- `[false]` `[carried]` Blind hunter: `DefaultIfEmpty(-1)` weakens missing-keyword failure — carried: a missing invocation or clause now fails via `.Single()` / Shouldly type assertions; a loud failure is the required fail-closed outcome.
+- `[false]` Collision text is spliced after the submitted-log call inside the logger `if` — inserting `retryKeywordCollision` / `finallyKeywordCollision` after the complete call statement remains valid C# in the current braced emission; `FindToken` must be `IdentifierToken`, so a format change that breaks the splice fails parse rather than passing on the wrong token.
+- `[false]` Other `IndexOf("finally")` oracles remain in sibling facts — intent forbids editing unrelated `IndexOf` assertions and the deferred-work ledger, so leftover substring debt in those tests is outside this story.
+- `[false]` Empty Spec Change Log / verification-output fields — the requested fix is to edit this build's spec; executable evidence lives in the test class.
+- `[false]` Bump-spec verification commands are not executable as written — that file is concurrent untracked work excluded by this story's test-oracle intent.
+- `[medium]` `[carried]` Edge-case hunter: first post-log try/finally pair is inner lifecycle — carried: same structural admission-try / inner-cleanup-try split as the patched oracle.
+- `[medium]` `[carried]` Edge-case hunter: later non-finally `admission.Dispose` still passes `IndexOf` — carried: containment is now `disposalFinally.Block.Span.Contains(disposeInvocation.Span)`.
+- `[false]` `[carried]` Edge-case hunter: EventStore gitlink diverges from tagged `v3.102.0` — carried: unstaged concurrent pointer, not in `8b38d7bb`.
+- `[false]` `[carried]` Edge-case hunter: DW-683 would ship unrelated submodule identities — carried: the owned commit does not include gitlink hunks.
+- `[medium]` `[carried]` Verification-gap: hardened fact still binds inner dispatch `try`/`finally` — carried: pre-verified gap; current test asserts the disposal invocation's enclosing `finally` is the admission `try`'s `finally`, that the admission `try` contains the submitted-log call, and that the inner lifecycle `finally` precedes the admission `finally` keyword.
+- `[false]` `[carried]` Verification-gap other: EventStore/Memories gitlinks vs `CiGovernanceTests` — carried: unstaged concurrent state outside the owned paths.
+
 ## Verification
 
 **Commands:**
