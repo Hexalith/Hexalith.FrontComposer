@@ -6635,6 +6635,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted
 location: eng/release_evidence.py:155-157
 reason: **CR-12-4-Def87 — AC26 APPROVAL_MATRIX `attestation-fallback.evidence` field is prose, not structured array:** Acceptance Auditor AA-004 — consumers must string-parse to enumerate required fallback_record subfields. Pick up alongside next APPROVAL_MATRIX schema bump. Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:155-157`.
 status: open
+decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1546 at eng/release_evidence.py:155-157, update affected contracts and consumers, and add focused compatibility and regression evidence.
 decision: 2026-08-31 Implement the change — Define the chosen behavior for DW-1546, update affected implementations and consumers, and add compatibility-focused regression evidence.
 
 ### DW-1547: jq `display_title` word-boundary regex substitutes `${nextRelease.version}` without escaping dots: Blind Hunter BH-F8 + BH-F22 — resulting regex matches `v1X2Y3` literal substrings as well as `v1.2.3`. SemVer cannot produce `1X2Y3` versions, so real-world collision is impossible; defense-in-depth concern. Pick up alongside P210 follow-up if version schema expands to allow non-numeric segments. Owner: workflow maintainer. Evidence: `.releaserc.json:12` same_version_runs filter.
