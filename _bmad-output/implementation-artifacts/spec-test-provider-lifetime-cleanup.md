@@ -2,7 +2,7 @@
 title: 'Dispose test-owned service providers'
 type: 'chore'
 created: '2026-09-05'
-status: 'done'
+status: 'blocked'
 baseline_revision: 'cb7633264032cdcea562b3e76d30734310cb4ddc'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -86,7 +86,8 @@ deferred: []
 
 ## Auto Run Result
 
-Status: done
+Status: blocked
+Blocking condition: finalization left repository dirty
 
 ### Summary
 
