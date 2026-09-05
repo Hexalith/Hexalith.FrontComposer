@@ -9755,6 +9755,7 @@ source_spec: `spec-package-audit-provenance-bom.md`
 severity: low
 reason: The shipped artifact preserves 137 of 141 families against two distinct origin revision/timestamp pairs. Neither the generator, the validator, nor CI bounds how long a family may remain preserved, so the feed observations backing most of a freshness tool's own artifact can age indefinitely while every gate stays green.
 status: open
+decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1919 at references/Hexalith.Builds/Tools/package-version-audit.json, update affected contracts and consumers, and add focused compatibility and regression evidence.
 
 ### DW-1920: Dead v1-migration residue remains in the generator's preserved-family branch.
 origin: spec-deferred a7879f839e9a
