@@ -113,9 +113,28 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertTrue(all(item["result"] == "passed" for item in document["observations"].values()))
         self.assertEqual(document["cleanup"]["result"], "clean")
         self.assertNotIn("synthetic-token", self.output.read_text(encoding="utf-8"))
-        self.assertEqual(runtime.commands[0][:2], ["aspire", "start"])
+        self.assertEqual(runtime.commands[0][:2], ["aspire", "stop"])
+        self.assertEqual(runtime.commands[1][:2], ["aspire", "start"])
         self.assertEqual(runtime.commands[-2][:2], ["aspire", "stop"])
         self.assertEqual(runtime.commands[-1][:2], ["aspire", "describe"])
+
+    def test_handler_computed_query_provenance_is_accepted_for_tenant_routes(self) -> None:
+        runtime = FakeRuntime()
+
+        def json_request(url: str, *, method: str = "GET", token: str | None = None, form: dict[str, str] | None = None, body: dict[str, Any] | None = None, timeout: int = 10) -> tuple[int, dict[str, Any], dict[str, str]]:
+            if url.endswith("/api/v1/queries"):
+                runtime.assert_token_present(token)
+                return 200, {}, {"X-Hexalith-Query-Provenance": "HandlerComputed"}
+            return FakeRuntime.json_request(runtime, url, method=method, token=token, form=form, body=body, timeout=timeout)
+
+        runtime.json_request = json_request  # type: ignore[method-assign]
+
+        result = smoke.capture(self.output, runtime, timeout=30)
+
+        self.assertEqual(result, 0)
+        document = json.loads(self.output.read_text(encoding="utf-8"))
+        self.assertEqual(document["observations"]["queryProvenance"]["reasonCode"], "query.handler-computed")
+        self.assertEqual(document["observations"]["queryProvenance"]["provenance"], "HandlerComputed")
 
     def test_start_failure_is_recorded_and_still_attempts_clean_stop(self) -> None:
         runtime = FakeRuntime(start_code=2)
@@ -127,7 +146,7 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertEqual(document["finalVerdict"], "failed")
         self.assertIn("apphost.start.failed", document["reasonCodes"])
         self.assertEqual(document["cleanup"]["result"], "clean")
-        self.assertEqual([item[1] for item in runtime.commands], ["start", "stop", "describe"])
+        self.assertEqual([item[1] for item in runtime.commands], ["stop", "start", "stop", "describe"])
 
     def test_cleanup_failure_overrides_an_otherwise_passing_capture(self) -> None:
         runtime = FakeRuntime(cleanup_running=True)
@@ -142,12 +161,141 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
 
     def test_resource_parser_and_websocket_url_are_bounded(self) -> None:
         records = smoke._resource_records({"items": [{"Name": "eventstore", "urls": ["http://one", "https://two"]}]})
-        self.assertEqual(smoke._resource_endpoint(records, "eventstore"), "https://two")
+        self.assertEqual(smoke._resource_endpoint(records, "eventstore"), "")
         websocket = smoke._websocket_url("https://localhost:7273/hubs/projection-changes", "connection/id", "token value")
         self.assertEqual(
             websocket,
             "wss://localhost:7273/hubs/projection-changes?id=connection%2Fid&access_token=token+value",
         )
+
+    def test_describe_uses_display_name_and_https_urls_for_replica_resources(self) -> None:
+        document = {
+            "resources": [
+                {
+                    "name": "eventstore-wfstefgr",
+                    "displayName": "eventstore",
+                    "urls": [
+                        {"name": "management", "url": "https://localhost:8543", "isInternal": True},
+                        {"name": "http", "url": "https://localhost:8180"},
+                        {"name": "https", "url": "https://localhost:7141"},
+                    ],
+                }
+            ]
+        }
+        records = smoke._resource_records(document)
+        self.assertEqual([smoke._logical_name(item) for item in records], ["eventstore"])
+        self.assertEqual(smoke._resource_endpoint(records, "eventstore"), "https://localhost:7141")
+        security = {
+            "name": "security-feqgxzbe",
+            "displayName": "security",
+            "urls": [
+                {"name": "management", "url": "https://localhost:8543", "isInternal": True},
+                {"name": "http", "url": "https://localhost:8180"},
+            ],
+        }
+        self.assertEqual(smoke._resource_endpoint([security], "security"), "https://localhost:8180")
+        eventstore = {
+            "name": "eventstore-wfstefgr",
+            "displayName": "eventstore",
+            "urls": [
+                {"name": "http", "url": "http://localhost:8080"},
+                {"name": "https", "url": "https://localhost:7141"},
+            ],
+        }
+        self.assertEqual(
+            smoke._resource_public_urls([eventstore], "eventstore")[:2],
+            ["http://localhost:8080", "http://127.0.0.1:8080"],
+        )
+        eventstore["urls"].append({"name": "target", "url": "http://127.0.0.1:19876", "isInternal": True})
+        signalr_urls = smoke._resource_signalr_urls([eventstore], "eventstore")
+        self.assertIn("http://localhost:8080", signalr_urls)
+        self.assertIn("http://127.0.0.1:19876", signalr_urls)
+        internal_only = {
+            "displayName": "eventstore",
+            "urls": [
+                {"name": "management", "url": "https://localhost:8543", "isInternal": True},
+                {"name": "target", "url": "http://127.0.0.1:19876", "isInternal": True},
+            ],
+        }
+        self.assertEqual(smoke._resource_endpoint([internal_only], "eventstore"), "")
+
+    def test_capture_prefers_http_loopback_after_the_first_probe_fails(self) -> None:
+        runtime = FakeRuntime()
+        requested: list[str] = []
+
+        def command(arguments: list[str], timeout: int) -> smoke.CommandResult:
+            del timeout
+            runtime.commands.append(arguments)
+            operation = arguments[1]
+            if operation == "start":
+                return smoke.CommandResult(0)
+            if operation == "wait":
+                return smoke.CommandResult(0)
+            if operation == "stop":
+                return smoke.CommandResult(0)
+            if operation == "describe":
+                runtime.describe_count += 1
+                if runtime.describe_count == 1:
+                    resources = []
+                    for name in smoke.REQUIRED_RESOURCES:
+                        if name == "security":
+                            resources.append(
+                                {
+                                    "name": "security-replica",
+                                    "displayName": "security",
+                                    "urls": [
+                                        {"name": "http", "url": "http://localhost:18180"},
+                                        {"name": "https", "url": "https://localhost:18443"},
+                                    ],
+                                }
+                            )
+                        elif name == "eventstore":
+                            resources.append(
+                                {
+                                    "name": "eventstore-replica",
+                                    "displayName": "eventstore",
+                                    "urls": [
+                                        {"name": "http", "url": "http://localhost:18080"},
+                                        {"name": "https", "url": "https://localhost:17141"},
+                                    ],
+                                }
+                            )
+                        else:
+                            resources.append({"name": name, "endpoints": [{"url": f"https://{name}.invalid:443"}]})
+                    return smoke.CommandResult(0, json.dumps({"resources": resources}))
+                return smoke.CommandResult(1)
+            raise AssertionError(arguments)
+
+        def json_request(
+            url: str,
+            *,
+            method: str = "GET",
+            token: str | None = None,
+            form: dict[str, str] | None = None,
+            body: dict[str, Any] | None = None,
+            timeout: int = 10,
+        ) -> tuple[int, dict[str, Any], dict[str, str]]:
+            requested.append(url)
+            if len(requested) == 1:
+                return 0, {}, {}
+            return FakeRuntime.json_request(
+                runtime, url, method=method, token=token, form=form, body=body, timeout=timeout
+            )
+
+        runtime.command = command  # type: ignore[method-assign]
+        runtime.json_request = json_request  # type: ignore[method-assign]
+
+        result = smoke.capture(self.output, runtime, timeout=30)
+
+        self.assertEqual(result, 0)
+        self.assertTrue(requested, "capture must issue authenticated HTTP probes")
+        self.assertTrue(requested[0].startswith("http://"), requested[0])
+        for url in requested[1:]:
+            if "/protocol/openid-connect/token" in url or url.endswith("/health") or url.endswith("/alive"):
+                self.assertTrue(
+                    url.startswith("http://localhost") or url.startswith("http://127.0.0.1"),
+                    url,
+                )
 
 
 if __name__ == "__main__":

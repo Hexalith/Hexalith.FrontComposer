@@ -2,7 +2,7 @@
 title: 'Finish Pact Provider Reconciliation at Current Provenance'
 type: 'bugfix'
 created: '2026-09-01'
-status: 'in-progress'
+status: 'done'
 baseline_commit: 'a739d2f77daaa369b42518f5998326c117830649'
 baseline_revision: 'a739d2f77daaa369b42518f5998326c117830649'
 review_loop_iteration: 0
@@ -58,11 +58,11 @@ deferred: []
 ## Tasks & Acceptance
 
 **Execution:**
-- `_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/{provider-verification.json,run-evidence.json}` -- replace stale live files with the fresh EventStore-owned 19/19 run and atomically generated receipt bound to current raw inputs.
-- `_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v1.json` and `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs` -- restore the approved/current identity separation and make governance require truthful current evidence rather than the committed failed smoke.
-- `tests/eng/test_eventstore_runtime_evidence.py` -- keep canonical success and adversarial tests stable at the current provenance so Pact/AppHost failures are not masked by unrelated stale identity errors.
-- `eng/pact_provider_apphost_smoke.py` and `_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/apphost-smoke.json` -- run the unchanged topology with bounded authenticated probes; change code/metadata only for a proven in-scope defect, and block on the current unavailable proof-package tuple if resolution would cross the boundary.
-- `eng/validate-contract-artifacts.ps1`, `.github/workflows/quality.yml`, and `docs/reference/pact-contracts.md` -- retain or tighten the already-separated fail-closed lanes and document the exact current commands/outcomes; do not weaken acceptance to accommodate a failed smoke.
+- [x] `_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/{provider-verification.json,run-evidence.json}` -- replace stale live files with the fresh EventStore-owned 19/19 run and atomically generated receipt bound to current raw inputs.
+- [x] `_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v1.json` and `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs` -- restore the approved/current identity separation and make governance require truthful current evidence rather than the committed failed smoke.
+- [x] `tests/eng/test_eventstore_runtime_evidence.py` -- keep canonical success and adversarial tests stable at the current provenance so Pact/AppHost failures are not masked by unrelated stale identity errors.
+- [x] `eng/pact_provider_apphost_smoke.py` and `_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/apphost-smoke.json` -- run the unchanged topology with bounded authenticated probes; change code/metadata only for a proven in-scope defect, and block on the current unavailable proof-package tuple if resolution would cross the boundary.
+- [x] `eng/validate-contract-artifacts.ps1`, `.github/workflows/quality.yml`, and `docs/reference/pact-contracts.md` -- retain or tighten the already-separated fail-closed lanes and document the exact current commands/outcomes; do not weaken acceptance to accommodate a failed smoke.
 
 **Acceptance Criteria:**
 - Given the current Pacts and provider checkout, when the live EventStore verifier and receipt writer run, then the owned report passes all 19 production-pipeline interactions and binds current source/version/Builds plus every exact Pact/manifest/catalog byte.
@@ -73,6 +73,37 @@ deferred: []
 ## Spec Change Log
 
 ## Review Triage Log
+
+- BH1 spec still describes failed smoke / proof packages — `false` (rejected): the required fix is to edit this build's spec; current HEAD gitlinks and the passing capture are the candidate revision the intent asked to bind.
+- BH2 `_validate_live_apphost` accepts any non-empty observation `reasonCode` and never pins `queryProvenance.provenance` — `medium` (patch): `eng/eventstore_runtime_evidence.py:1757-1764` only checks `result` / `authenticated` / non-empty `reasonCode`, so a drifted stamp still validates.
+- BH3 `CiGovernanceTests` does not pin health/command/cleanup — `low` (rejected): Gate 2c already runs `_validate_live_apphost`, which requires every observation `result=passed` and clean cleanup; extra C# pins would not change everyday CI.
+- BH4 combined provider+smoke failure fixture — `false` (rejected): `test_live_lane_rejects_failed_provider_or_apphost_evidence` asserts both independent diagnostics, and `validate_live` collects both error lists without short-circuit.
+- BH5 `json_request` swallows non-JSON HTTP 200 — `false` (rejected): EventStore `/health` is status `200`/`204` text/plain; token and command paths still require JSON fields (`access_token`, `correlationId`).
+- BH6 describe stdout still tail-truncated at 1 MiB — `low` (rejected): current ten-resource describe is far under the new cap; fail-closed truncation would add branches the capture did not need.
+- BH7 cleanup `_port_open` uses `_resource_endpoint` HTTPS URLs while probes use HTTP loopback — `medium` (patch): `eng/pact_provider_apphost_smoke.py:452-454` vs `:618`.
+- BH8 SignalR handshake does not wait for a projection payload — `false` (rejected): intent requires an authenticated projection-hub connection, not a topology change to EventStore.Sample or an event wait.
+- BH9 `connectionToken` fallback to `connectionId` — `maybe-false` (rejected): would only be `low`; `negotiateVersion=1` still prefers `connectionToken` when present.
+- BH10 pre-stop is `SmokeRuntime` + `sleep(8)` rather than a stopped/ports-closed wait — `medium` (patch): `eng/pact_provider_apphost_smoke.py:419-424` can still start against a half-stopped tree.
+- BH11 drop-published matcher is slash- and case-sensitive and filename-allow-listed — `medium` (patch): `DropPublishedFrontComposerAssemblies.targets:17-31`.
+- BH12 docs still say Gate 2c uses only start/wait/describe/stop — `medium` (patch): `docs/reference/pact-contracts.md:49` omits cold stop, HTTP-preferred probes, and the UI FromSource drop-published exception this capture depends on.
+- BH13 `.gitattributes` says receipts hash every live-evidence file — `low` (rejected): cosmetic comment; `-text` is still required so `provider-verification.json` receipt SHA-256 is not rewritten.
+- EC1 describe truncation nested JSON — `low` (rejected): same defect as BH6; 1 MiB cap covers the current topology.
+- EC2 pre-stop race after 8s — `medium` (patch): same defect as BH10.
+- EC3 token loop can overrun the 30s deadline by one 15s request — `low` (rejected): Keycloak answers quickly here; the 300s smoke budget still bounds the run.
+- EC4 health/alive has no extra deadline — `low` (rejected): request count is finite and each call already has `urlopen` timeout.
+- EC5 WebSocket `recv` can block the full socket timeout — `low` (rejected): SignalR connect timeout is 5s per URL.
+- EC6 `://localhost` substring rewrite — `low` (rejected): Aspire advertised URLs use `localhost`/`127.0.0.1` as the hostname, not a prefix of another host.
+- EC7 `_resource_endpoint` DFS into internal URLs when `urls` exists but public is empty — `medium` (patch): after the public-url filter fails, DFS still walks the record (`:229-239`).
+- EC8 `json_request` does not catch `IncompleteRead` / `OSError` / `HTTPException` — `medium` (patch): those escape `_capture` instead of trying the next base (`:117-118`).
+- EC9 HTTP probe redirects to hanging HTTPS — `false` (rejected): the passing capture used plaintext HTTP successfully; a redirect-to-hang was not shown.
+- EC10 cleanup reports clean while HTTP probe ports remain — `medium` (patch): same defect as BH7.
+- EC11 first healthy EventStore base is reused for command/query — `maybe-false` (defer, would be `medium` if true): live capture succeeded on that base; a later-call mismatch was not shown. Settle by failing command on the health-selected base while another advertised URL would succeed.
+- EC12 SignalR tries URLs serially — `low` (rejected): per-URL timeout is 5s and the smoke budget is 300s.
+- EC13 `StaticWebAssetEndpoint` Identity may be a route, so nuget-path Contains misses — `maybe-false` (defer, would be `medium` if true): this host's AppHost smoke compiled and waited `frontcomposer-ui` healthy. Settle by inspecting a failing `GenerateStaticWebAssetsDevelopmentManifest` item Identity on Windows or a nested portal.
+- EC14 backslash / custom `NUGET_PACKAGES` — `medium` (patch): same defect as BH11.
+- EC15 drop allow-list misses unlisted FrontComposer filenames — `medium` (patch): same defect as BH11.
+- VG1 capture never asserts HTTP-first / multi-base fallback — `medium` (patch, pre-verified): FakeRuntime success path only sees `https://*.invalid:443` and never fails a request.
+- VG2 non-JSON HTTP 200 now counts as health success — `false` (rejected): same as BH5.
 
 ## Design Notes
 

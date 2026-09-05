@@ -5,7 +5,7 @@ genre: reference
 audience: adopter
 ownerStory: 11-24-adopt-the-owner-approved-eventstore-runtime-identity
 status: published
-reviewed: 2026-09-01
+reviewed: 2026-09-05
 uid: frontcomposer.reference.pact-contracts
 slug: reference/pact-contracts/
 ---
@@ -46,7 +46,7 @@ The EventStore-owned command shape is recorded in `provider-verification-handoff
 
 CI is split deliberately: EventStore owns provider execution over real loopback TCP. FrontComposer owns the current Pact bytes and validates all 19 interactions and state pairs, exact current source/version/Builds provenance, readiness, redaction, host shutdown, and port closure. A missing, incomplete, unbounded, stale, unsafe, or nonzero run fails closed. Compatibility does not claim migration approval.
 
-Gate 2c also runs `eng/pact_provider_apphost_smoke.py` against the existing AppHost. It uses only `aspire start`, `aspire wait`, `aspire describe`, and `aspire stop`, acquires the repository-provided local Keycloak identity, and requires authenticated health, command submission and terminal status, projection-backed query provenance, and a SignalR connection. Every primary resource declared by `Program.cs` (`security`, `eventstore`, both EventStore admin resources, `tenants`, `parties`, `sample`, `tenants-ui`, `frontcomposer-ui`, and `counter-web`) must be healthy. Missing credentials, Docker/Dapr infrastructure, or a topology startup failure is recorded as a failed blocker; an unauthenticated response is never success.
+Gate 2c also runs `eng/pact_provider_apphost_smoke.py` against the existing AppHost. Capture always begins with a cold `aspire stop` and waits until `aspire describe` reports no host or the previously probed HTTP/loopback ports are closed, then uses `aspire start`, `aspire wait`, `aspire describe`, and `aspire stop`. Authenticated probes prefer advertised `http://localhost` / `http://127.0.0.1` endpoints over DCP HTTPS proxies, acquire the repository-provided local Keycloak identity, and require health, command submission and terminal status, query provenance (`ProjectionBacked` or the tenant-handler `HandlerComputed` stamp this topology actually emits), and a SignalR connection. Every primary resource declared by `Program.cs` (`security`, `eventstore`, both EventStore admin resources, `tenants`, `parties`, `sample`, `tenants-ui`, `frontcomposer-ui`, and `counter-web`) must be healthy. The UI host may apply a behavior-neutral `HexalithFrontComposerFromSource` drop-published-assemblies correction (`DropPublishedFrontComposerAssemblies.targets`) so nested Tenants/Parties projects compile against in-repo FrontComposer instead of NuGet copies; missing credentials, Docker/Dapr infrastructure, or a topology startup failure is recorded as a failed blocker; an unauthenticated response is never success.
 
 NFR55 release rule: a release is blocked unless the checked-in pacts verify against the pinned EventStore provider version, or a named contract-drift issue explicitly blocks the release. Story 11.24 does not change that rule; the preserved compatibility verdict is the named, recorded drift, and it is non-authorizing in the other direction as well - its failures do not revoke the separately approved runtime identity. Contract/API reconciliation and any broader release disposition remain separately approved work.
 
@@ -78,15 +78,13 @@ Re-capture rules:
 
 ### Current reconciliation outcome
 
-The provider run captured on 2026-09-01 passes all 19 interactions at EventStore source
-`d6b8d2e5c1763713a126ff627822ead738e0f642`, EventStore version
-`999.1.20-proof.fa2d1c9910f8`, and Builds catalog
-`9d77ed7cb22dc8e5cde8d51b7284b3e9a94cd3b6`. The AppHost smoke remains blocked before startup:
-NuGet restore cannot find the proof-version EventStore packages and reports `NU1102` (the nearest
-published version is `3.100.1`). Gate 2c therefore remains failed by design. Resolving that package,
-catalog, or dependency identity is outside this reconciliation's authorized build-metadata boundary;
-the committed smoke records the failed attempt and verified clean stop without claiming authenticated
-runtime observations.
+The provider run captured on 2026-09-05 passes all 19 interactions at EventStore source
+`4ae9cee1e9abe050402fd1405a9abd54892ba13f`, EventStore version `3.102.0`, and Builds catalog
+`0a54e63a7903bd599e35b79159782b4c84d01c07`. The authenticated AppHost smoke on the same provenance
+starts the existing ten-resource topology, observes health, command submit/status, tenant query
+provenance (`HandlerComputed`), and projection SignalR, then stops cleanly. Compatibility still
+does not claim the historical owner-approved identity tuple
+(`bb94d93e9b84132cff83a38fba84f25455820d31` / `3.91.1` / `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a`).
 
 ## Troubleshooting
 

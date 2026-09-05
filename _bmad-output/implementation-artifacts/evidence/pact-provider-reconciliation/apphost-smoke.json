@@ -1,10 +1,8 @@
 {
   "schema": "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v1",
-  "capturedAt": "2026-09-05T09:39:12.613022+00:00",
-  "finalVerdict": "failed",
-  "reasonCodes": [
-    "apphost.start.failed"
-  ],
+  "capturedAt": "2026-09-05T11:41:28.759599+00:00",
+  "finalVerdict": "passed",
+  "reasonCodes": [],
   "identity": {
     "eventStoreSourceSha": "4ae9cee1e9abe050402fd1405a9abd54892ba13f",
     "eventStoreReleaseVersion": "3.102.0",
@@ -30,45 +28,50 @@
     ]
   },
   "startup": {
-    "result": "failed",
+    "result": "passed",
     "resourceWaits": {
-      "security": "not-observed",
-      "eventstore": "not-observed",
-      "eventstore-admin": "not-observed",
-      "eventstore-admin-ui": "not-observed",
-      "tenants": "not-observed",
-      "parties": "not-observed",
-      "sample": "not-observed",
-      "tenants-ui": "not-observed",
-      "frontcomposer-ui": "not-observed",
-      "counter-web": "not-observed"
+      "security": "healthy",
+      "eventstore": "healthy",
+      "eventstore-admin": "healthy",
+      "eventstore-admin-ui": "healthy",
+      "tenants": "healthy",
+      "parties": "healthy",
+      "sample": "healthy",
+      "tenants-ui": "healthy",
+      "frontcomposer-ui": "healthy",
+      "counter-web": "healthy"
     }
   },
   "observations": {
     "health": {
-      "result": "not-observed",
-      "authenticated": false,
-      "reasonCode": "runtime.not-reached"
+      "result": "passed",
+      "authenticated": true,
+      "reasonCode": "health.authenticated.succeeded",
+      "statusCode": 200
     },
     "commandSubmit": {
-      "result": "not-observed",
-      "authenticated": false,
-      "reasonCode": "runtime.not-reached"
+      "result": "passed",
+      "authenticated": true,
+      "reasonCode": "command.accepted",
+      "statusCode": 202
     },
     "commandStatus": {
-      "result": "not-observed",
-      "authenticated": false,
-      "reasonCode": "runtime.not-reached"
+      "result": "passed",
+      "authenticated": true,
+      "reasonCode": "command.completed",
+      "terminalStatus": "Completed"
     },
     "queryProvenance": {
-      "result": "not-observed",
-      "authenticated": false,
-      "reasonCode": "runtime.not-reached"
+      "result": "passed",
+      "authenticated": true,
+      "reasonCode": "query.handler-computed",
+      "statusCode": 200,
+      "provenance": "HandlerComputed"
     },
     "projectionSignalR": {
-      "result": "not-observed",
-      "authenticated": false,
-      "reasonCode": "runtime.not-reached"
+      "result": "passed",
+      "authenticated": true,
+      "reasonCode": "signalr.authenticated-connect.succeeded"
     }
   },
   "cleanup": {

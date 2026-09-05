@@ -13,11 +13,18 @@
     <HexalithMemoriesRoot Condition="'$(HexalithMemoriesRoot)' == ''">$([MSBuild]::NormalizeDirectory('$(_FrontComposerRepoRoot)', 'references', 'Hexalith.Memories'))</HexalithMemoriesRoot>
     <HexalithCommonsRoot Condition="'$(HexalithCommonsRoot)' == ''">$([MSBuild]::NormalizeDirectory('$(_FrontComposerRepoRoot)', 'references', 'Hexalith.Commons'))</HexalithCommonsRoot>
     <HexalithFrontComposerRoot Condition="'$(HexalithFrontComposerRoot)' == ''">$(_FrontComposerRepoRoot)</HexalithFrontComposerRoot>
-    <_HexalithReferenceProperties>HexalithFrontComposerRoot=$(HexalithFrontComposerRoot);HexalithEventStoreRoot=$(HexalithEventStoreRoot);HexalithTenantsRoot=$(HexalithTenantsRoot);HexalithPartiesRoot=$(HexalithPartiesRoot);HexalithMemoriesRoot=$(HexalithMemoriesRoot);HexalithCommonsRoot=$(HexalithCommonsRoot)</_HexalithReferenceProperties>
+    <_FrontComposerDropPublishedTargets>$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', 'DropPublishedFrontComposerAssemblies.targets'))</_FrontComposerDropPublishedTargets>
+    <!-- Parties defaults HexalithFrontComposerFromSource off unless UseHexalithProjectReferences
+         is already true. Do not forward UseHexalithProjectReferences: it CS1704s UniqueIds inside
+         EventStore.Contracts. CustomAfterMicrosoftCommonTargets drops published FrontComposer
+         assets that Tenants.Client still injects into nested AdminPortal/ConsumerPortal. -->
+    <_HexalithReferenceProperties>HexalithFrontComposerRoot=$(HexalithFrontComposerRoot);HexalithEventStoreRoot=$(HexalithEventStoreRoot);HexalithTenantsRoot=$(HexalithTenantsRoot);HexalithPartiesRoot=$(HexalithPartiesRoot);HexalithMemoriesRoot=$(HexalithMemoriesRoot);HexalithCommonsRoot=$(HexalithCommonsRoot);HexalithFrontComposerFromSource=true;CustomAfterMicrosoftCommonTargets=$(_FrontComposerDropPublishedTargets)</_HexalithReferenceProperties>
     <FrontComposerUiUsePublishedModulePackages Condition="'$(FrontComposerUiUsePublishedModulePackages)' == ''">false</FrontComposerUiUsePublishedModulePackages>
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />
+    <ProjectReference Include="..\Hexalith.FrontComposer.Contracts.UI\Hexalith.FrontComposer.Contracts.UI.csproj" />
     <ProjectReference Include="..\Hexalith.FrontComposer.Shell\Hexalith.FrontComposer.Shell.csproj" />
     <ProjectReference Include="$(HexalithTenantsRoot)\src\Hexalith.Tenants.UI\Hexalith.Tenants.UI.csproj"
                       Condition="'$(HexalithTenantsFromSource)' == 'true'"
@@ -52,9 +59,15 @@
     <ItemGroup>
       <StaticWebAsset Remove="@(StaticWebAsset)"
                       Condition="('%(StaticWebAsset.SourceId)' == 'Hexalith.Tenants.UI' or '%(StaticWebAsset.SourceId)' == 'Hexalith.Parties.UI') and '%(StaticWebAsset.BasePath)' == '/' and !$([System.String]::Copy('%(StaticWebAsset.RelativePath)').Contains('.styles.css'))" />
+      <StaticWebAsset Remove="@(StaticWebAsset)"
+                      Condition="$([System.String]::Copy('%(Identity)').Replace('\', '/').ToLowerInvariant().Contains('.nuget/packages/hexalith.frontcomposer'))" />
       <StaticWebAssetEndpoint Remove="@(StaticWebAssetEndpoint)"
                               Condition="('%(StaticWebAssetEndpoint.SourceId)' == 'Hexalith.Tenants.UI' or '%(StaticWebAssetEndpoint.SourceId)' == 'Hexalith.Parties.UI') and !$([System.String]::Copy('%(StaticWebAssetEndpoint.Route)').Contains('.styles.css'))" />
+      <StaticWebAssetEndpoint Remove="@(StaticWebAssetEndpoint)"
+                              Condition="$([System.String]::Copy('%(Identity)').Replace('\', '/').ToLowerInvariant().Contains('.nuget/packages/hexalith.frontcomposer'))" />
     </ItemGroup>
   </Target>
+
+  <Import Project="$(_FrontComposerDropPublishedTargets)" />
 
 </Project>

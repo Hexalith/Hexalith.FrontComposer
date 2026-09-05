@@ -3671,6 +3671,20 @@ public sealed class CiGovernanceTests {
         liveIdentity.GetProperty("observedBuildsSha").GetString().ShouldBe(currentBuildsSha);
         liveIdentity.GetProperty("approvalAuthorized").GetBoolean().ShouldBeFalse();
 
+        using JsonDocument liveSmoke = JsonDocument.Parse(File.ReadAllText(Path.Combine(
+            liveEvidenceRoot,
+            "apphost-smoke.json")));
+        liveSmoke.RootElement.GetProperty("finalVerdict").GetString().ShouldBe("passed");
+        liveSmoke.RootElement.GetProperty("reasonCodes").GetArrayLength().ShouldBe(0);
+        JsonElement smokeIdentity = liveSmoke.RootElement.GetProperty("identity");
+        smokeIdentity.GetProperty("eventStoreSourceSha").GetString().ShouldBe(currentSourceSha);
+        smokeIdentity.GetProperty("eventStoreReleaseVersion").GetString().ShouldBe(currentVersion);
+        smokeIdentity.GetProperty("buildsCatalogSha").GetString().ShouldBe(currentBuildsSha);
+        liveSmoke.RootElement.GetProperty("observations").GetProperty("queryProvenance")
+            .GetProperty("authenticated").GetBoolean().ShouldBeTrue();
+        liveSmoke.RootElement.GetProperty("observations").GetProperty("projectionSignalR")
+            .GetProperty("result").GetString().ShouldBe("passed");
+
         ProcessResult eventStoreGitlink = RunProcess(
             root,
             "git",

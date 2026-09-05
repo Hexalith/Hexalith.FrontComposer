@@ -191,7 +191,12 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                 name: {
                     "result": "passed",
                     "authenticated": True,
-                    "reasonCode": f"{name}.authenticated.succeeded",
+                    "reasonCode": (
+                        "query.handler-computed"
+                        if name == "queryProvenance"
+                        else f"{name}.authenticated.succeeded"
+                    ),
+                    **({"provenance": "HandlerComputed"} if name == "queryProvenance" else {}),
                 }
                 for name in evidence.APPHOST_OBSERVATIONS
             },
@@ -425,11 +430,25 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         report = _read_json(self.live_root / "provider-verification.json")
         report["finalVerdict"] = "failed"
         _write_json(self.live_root / "provider-verification.json", report)
+        smoke = _read_json(self.live_root / "apphost-smoke.json")
+        smoke["finalVerdict"] = "failed"
+        smoke["reasonCodes"] = ["query.provenance.missing"]
+        _write_json(self.live_root / "apphost-smoke.json", smoke)
 
         errors = self.validate_live()
 
         self.assertTrue(any("finalVerdict must equal 'passed'" in error for error in errors), errors)
         self.assertTrue(any("AppHost smoke is not a clean passing run" in error for error in errors), errors)
+
+    def test_live_lane_rejects_drifted_query_provenance_stamp(self) -> None:
+        self.make_live_apphost_pass()
+        smoke = _read_json(self.live_root / "apphost-smoke.json")
+        smoke["observations"]["queryProvenance"]["provenance"] = "Unknown"
+        _write_json(self.live_root / "apphost-smoke.json", smoke)
+
+        errors = self.validate_live()
+
+        self.assertTrue(any("query provenance stamp is missing or drifted" in error for error in errors), errors)
 
     def test_live_lane_rejects_stale_provenance_and_extra_files(self) -> None:
         self.make_live_apphost_pass()
@@ -843,7 +862,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         )
         return result, artifact_root / "job-summary.md"
 
-    def test_required_provider_lane_rejects_the_truthfully_failed_canonical_apphost_run(self) -> None:
+    def test_required_provider_lane_accepts_the_canonical_live_evidence(self) -> None:
         result, summary = self._run_contract_validator(
             "-RequireProviderVerification",
             "-ProviderVerificationReport",
@@ -851,9 +870,11 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             "provider-verification.json",
         )
 
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("Live AppHost smoke is not a clean", result.stdout + result.stderr)
-        self.assertIn("Current authenticated AppHost smoke: REQUIRED_REJECTED", summary.read_text(encoding="utf-8"))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        text = summary.read_text(encoding="utf-8")
+        self.assertIn("Historical Story 11.24 integrity: IMMUTABLE_ARCHIVE_VALID", text)
+        self.assertIn("Current provider verification: CURRENT_PROVIDER_PASSED", text)
+        self.assertIn("Current authenticated AppHost smoke: AUTHENTICATED_APPHOST_PASSED", text)
 
     def test_required_provider_lane_rejects_a_report_outside_the_owned_evidence_tree(self) -> None:
         foreign = Path(self._temporary.name) / "foreign-provider-verification.json"

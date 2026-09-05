@@ -124,6 +124,10 @@ APPHOST_OBSERVATIONS = (
     "queryProvenance",
     "projectionSignalR",
 )
+APPHOST_QUERY_PROVENANCE = {
+    "ProjectionBacked": "query.projection-backed",
+    "HandlerComputed": "query.handler-computed",
+}
 EXPECTED_RECEIPTS = {
     "eventstore-owner.json": {
         "role": "eventstore-owner",
@@ -1762,6 +1766,10 @@ def _validate_live_apphost(evidence_root: Path, repository_root: Path, provenanc
             item = observations.get(name, {})
             if not isinstance(item, dict) or item.get("result") != "passed" or not item.get("authenticated") or not str(item.get("reasonCode", "")).strip():
                 errors.append(f"Live AppHost authenticated observation did not pass: {name}")
+            if name == "queryProvenance":
+                expected_reason = APPHOST_QUERY_PROVENANCE.get(item.get("provenance"))
+                if expected_reason is None or item.get("reasonCode") != expected_reason:
+                    errors.append("Live AppHost query provenance stamp is missing or drifted.")
     cleanup = smoke.get("cleanup", {})
     if cleanup != {
         "command": "aspire stop --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --nologo",

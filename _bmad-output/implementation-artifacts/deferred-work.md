@@ -9858,3 +9858,11 @@ status: open
   summary: No automated FrontComposer test pins Release AppHost MSBuild graph to EventStore Aspire 3.102.0 with zero EventStore project edges.
   evidence: `CiGovernanceTests` asserts catalog `HexalithEventStoreVersion` and csproj condition shape only; prior EventStore bumps relied on manual `msbuild -getItem` evaluation recorded in the spec. A dedicated governance fact would close the regression gap.
 
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-pact-provider-reconciliation-2.md`
+  summary: AppHost smoke reuses the first EventStore base that answers `/health` for later command and query calls.
+  evidence: Unverified (would be medium). Settle by failing command/query on the health-selected base while another advertised EventStore URL would succeed.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-pact-provider-reconciliation-2.md`
+  summary: Drop-published `StaticWebAssetEndpoint` matching may miss items whose Identity is a route rather than a nuget path.
+  evidence: Unverified (would be medium). Settle by inspecting a failing `GenerateStaticWebAssetsDevelopmentManifest` item Identity on Windows or a nested portal.
+

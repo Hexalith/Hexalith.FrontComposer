@@ -1,0 +1,34 @@
+<Project>
+  <!-- Shared by Hexalith.FrontComposer.UI and nested Parties/Tenants project references.
+       Tenants.Client (NuGet) still injects published FrontComposer 4.2.0 while this host
+       project-references the in-repo graph. Drop only those published compile/runtime
+       assets so nested AdminPortal/ConsumerPortal can compile against source. Parties.UI
+       project-references Shell but not Contracts; the published Shell package used to
+       flow Contracts transitively. -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'Hexalith.Parties.UI' and '$(HexalithFrontComposerFromSource)' == 'true'">
+    <ProjectReference Include="$([MSBuild]::NormalizePath('$(HexalithFrontComposerRoot)', 'src', 'Hexalith.FrontComposer.Contracts', 'Hexalith.FrontComposer.Contracts.csproj'))" />
+    <ProjectReference Include="$([MSBuild]::NormalizePath('$(HexalithFrontComposerRoot)', 'src', 'Hexalith.FrontComposer.Contracts.UI', 'Hexalith.FrontComposer.Contracts.UI.csproj'))" />
+  </ItemGroup>
+
+  <Target Name="FrontComposerUiDropPublishedFrontComposerAssemblies"
+          AfterTargets="ResolvePackageAssets"
+          BeforeTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <ResolvedCompileFileDefinitions Remove="@(ResolvedCompileFileDefinitions)"
+                                      Condition="$([System.String]::Copy('%(Identity)').Replace('\', '/').ToLowerInvariant().Contains('.nuget/packages/hexalith.frontcomposer'))" />
+      <RuntimeCopyLocalItems Remove="@(RuntimeCopyLocalItems)"
+                             Condition="$([System.String]::Copy('%(Identity)').Replace('\', '/').ToLowerInvariant().Contains('.nuget/packages/hexalith.frontcomposer'))" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="FrontComposerUiDropPublishedFrontComposerStaticWebAssets"
+          AfterTargets="ResolveReferencedProjectsStaticWebAssets"
+          BeforeTargets="ResolveBuildCompressedStaticWebAssetsConfiguration;GenerateStaticWebAssetsDevelopmentManifest">
+    <ItemGroup>
+      <StaticWebAsset Remove="@(StaticWebAsset)"
+                      Condition="$([System.String]::Copy('%(Identity)').Replace('\', '/').ToLowerInvariant().Contains('.nuget/packages/hexalith.frontcomposer'))" />
+      <StaticWebAssetEndpoint Remove="@(StaticWebAssetEndpoint)"
+                              Condition="$([System.String]::Copy('%(Identity)').Replace('\', '/').ToLowerInvariant().Contains('.nuget/packages/hexalith.frontcomposer'))" />
+    </ItemGroup>
+  </Target>
+</Project>

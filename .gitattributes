@@ -5,3 +5,5 @@
 .husky/* text eol=lf
 # Story 11.24 preserves externally captured evidence bytes; checkout must never rewrite them.
 _bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/** -text
+# Live Gate 2c receipts bind SHA-256 of these files; checkout must not rewrite EOL.
+_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/** -text
