@@ -548,6 +548,15 @@
     "label": "Retry bounded rejoin",
     "resolution": ""
   },
+  "DW-1578": {
+    "answered_at": "2026-09-05",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Track bounded per-key failures, quarantine persistently unreadable entries, and complete seeding after the healthy set is loaded.",
+    "key": "1",
+    "label": "Quarantine bad keys",
+    "resolution": ""
+  },
   "DW-1579": {
     "answered_at": "2026-08-27",
     "bundle_name": "",
