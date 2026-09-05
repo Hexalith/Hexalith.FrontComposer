@@ -29,7 +29,7 @@ from release_compatibility import (  # noqa: E402
 VALIDATION_PROPERTY = "-p:EnableFrontComposerPackageValidation=true"
 BASELINE_PROPERTY = "-p:FrontComposerPackageValidationBaselineVersion=4.1.1"
 SKIP_BASELINE_PROPERTY = "-p:FrontComposerPackageValidationSkipBaseline=false"
-VERSION = "4.2.0-review.compat"
+VERSION = "4.3.0-review.compat"
 
 
 class PackReleasePackagesTests(unittest.TestCase):
@@ -46,7 +46,7 @@ class PackReleasePackagesTests(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         payload = json.loads(result.stdout)
         self.assertTrue(payload["releasePolicy"])
-        self.assertEqual("v4.2", payload["releaseLine"])
+        self.assertEqual("v4.3", payload["releaseLine"])
         restore = payload["restoreCommand"]
         self.assertEqual(["dotnet", "restore"], restore[:2])
         self.assertEqual(str(ROOT / "Hexalith.FrontComposer.slnx"), restore[2])
@@ -80,11 +80,11 @@ class PackReleasePackagesTests(unittest.TestCase):
             self.assertIn(SKIP_BASELINE_PROPERTY, command)
 
     def test_candidate_semver_accepts_prerelease_and_optional_build_metadata(self) -> None:
-        for version in ("4.2.0", "4.2.0-rc.1", "4.2.0-rc.1+build.7"):
+        for version in ("4.3.0", "4.3.0-rc.1", "4.3.0-rc.1+build.7"):
             with self.subTest(version=version), tempfile.TemporaryDirectory() as directory:
                 root = pathlib.Path(directory)
                 paths = self.write_policy_fixture(root, self.ledger())
-                self.assertEqual("v4.2", validate_release_policy(root, version, **paths))
+                self.assertEqual("v4.3", validate_release_policy(root, version, **paths))
 
     def test_candidate_semver_rejects_incomplete_or_empty_identifiers(self) -> None:
         invalid = (
@@ -103,7 +103,7 @@ class PackReleasePackagesTests(unittest.TestCase):
                     validate_release_policy(root, version, **paths)
 
     def test_checked_in_policy_accepts_planned_release_and_published_baseline(self) -> None:
-        self.assertEqual("v4.2", validate_release_policy(ROOT, VERSION))
+        self.assertEqual("v4.3", validate_release_policy(ROOT, VERSION))
         self.assertEqual("4.1.1", PUBLISHED_BASELINE_VERSION)
 
     def test_policy_rejects_wrong_current_release(self) -> None:
@@ -112,7 +112,7 @@ class PackReleasePackagesTests(unittest.TestCase):
             paths = self.write_policy_fixture(root, self.ledger(current_release="v9.9"))
             with self.assertRaisesRegex(
                 ReleaseCompatibilityError,
-                r"release line v4\.2 does not match currentRelease v9\.9",
+                r"release line v4\.3 does not match currentRelease v9\.9",
             ):
                 validate_release_policy(root, VERSION, **paths)
 
@@ -129,29 +129,29 @@ class PackReleasePackagesTests(unittest.TestCase):
                     validate_release_policy(root, VERSION, **paths)
 
     def test_policy_rejects_pre_target_suppression(self) -> None:
-        payload = self.ledger(suppressions=[self.suppression("v4.3", "v4.4")])
+        payload = self.ledger(suppressions=[self.suppression("v4.4", "v4.5")])
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
             paths = self.write_policy_fixture(root, payload)
             with self.assertRaisesRegex(
                 ReleaseCompatibilityError,
-                r"targetRelease v4\.3 is later than --version v4\.2",
+                r"targetRelease v4\.4 is later than --version v4\.3",
             ):
                 validate_release_policy(root, VERSION, **paths)
 
     def test_policy_rejects_expired_suppression(self) -> None:
-        payload = self.ledger(suppressions=[self.suppression("v4.1", "v4.2")])
+        payload = self.ledger(suppressions=[self.suppression("v4.2", "v4.3")])
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
             paths = self.write_policy_fixture(root, payload)
             with self.assertRaisesRegex(
                 ReleaseCompatibilityError,
-                r"expiresAfter v4\.2 has been reached by --version v4\.2",
+                r"expiresAfter v4\.3 has been reached by --version v4\.3",
             ):
                 validate_release_policy(root, VERSION, **paths)
 
     def test_synthetic_policy_checks_suppressions_against_checked_in_current_release(self) -> None:
-        suppression = self.suppression("v4.2", "v4.3")
+        suppression = self.suppression("v4.3", "v4.4")
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
             paths = self.write_policy_fixture(
@@ -187,7 +187,7 @@ class PackReleasePackagesTests(unittest.TestCase):
                 validate_release_policy(root, VERSION, **paths)
 
     def test_policy_rejects_stale_mcp_xml_after_ledger_cleanup(self) -> None:
-        stale = self.suppression("v4.2", "v4.3")
+        stale = self.suppression("v4.3", "v4.4")
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
             paths = self.write_policy_fixture(root, self.ledger(), mcp_xml=self.suppression_xml(stale))
@@ -195,7 +195,7 @@ class PackReleasePackagesTests(unittest.TestCase):
                 validate_release_policy(root, VERSION, **paths)
 
     def test_policy_accepts_exact_non_empty_ledger_xml_parity(self) -> None:
-        suppression = self.suppression("v4.2", "v4.3")
+        suppression = self.suppression("v4.3", "v4.4")
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
             paths = self.write_policy_fixture(
@@ -204,7 +204,7 @@ class PackReleasePackagesTests(unittest.TestCase):
                 mcp_xml=self.suppression_xml(suppression),
             )
 
-            self.assertEqual("v4.2", validate_release_policy(root, VERSION, **paths))
+            self.assertEqual("v4.3", validate_release_policy(root, VERSION, **paths))
 
     def test_policy_rejects_wildcard_signature_diagnostic_and_unapproved_reason(self) -> None:
         mutations = {
@@ -213,7 +213,7 @@ class PackReleasePackagesTests(unittest.TestCase):
             "reason": "temporary-exception",
         }
         for field, value in mutations.items():
-            suppression = self.suppression("v4.2", "v4.3")
+            suppression = self.suppression("v4.3", "v4.4")
             suppression[field] = value
             with self.subTest(field=field), tempfile.TemporaryDirectory() as directory:
                 root = pathlib.Path(directory)
@@ -222,7 +222,7 @@ class PackReleasePackagesTests(unittest.TestCase):
                     validate_release_policy(root, VERSION, **paths)
 
     def test_policy_rejects_malformed_diagnostic_id(self) -> None:
-        suppression = self.suppression("v4.2", "v4.3")
+        suppression = self.suppression("v4.3", "v4.4")
         suppression["apiCompatDiagnosticId"] = "CP12"
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
@@ -231,7 +231,7 @@ class PackReleasePackagesTests(unittest.TestCase):
                 validate_release_policy(root, VERSION, **paths)
 
     def test_policy_rejects_wrong_xml_root_and_unknown_or_duplicate_fields(self) -> None:
-        exact = self.suppression("v4.2", "v4.3")
+        exact = self.suppression("v4.3", "v4.4")
         valid = self.suppression_xml(exact)
         invalid_documents = {
             "root": valid.replace("<Suppressions>", "<Policy>").replace("</Suppressions>", "</Policy>"),
@@ -253,7 +253,7 @@ class PackReleasePackagesTests(unittest.TestCase):
                     validate_release_policy(root, VERSION, **paths)
 
     def test_policy_rejects_xml_assembly_that_does_not_match_package_id(self) -> None:
-        suppression = self.suppression("v4.2", "v4.3")
+        suppression = self.suppression("v4.3", "v4.4")
         document = self.suppression_xml(suppression).replace(
             "Hexalith.FrontComposer.Mcp.dll",
             "Hexalith.FrontComposer.Other.dll",
@@ -475,7 +475,7 @@ class PackReleasePackagesTests(unittest.TestCase):
     @staticmethod
     def ledger(
         *,
-        current_release: str = "v4.2",
+        current_release: str = "v4.3",
         suppressions: list[dict[str, str]] | None = None,
     ) -> dict[str, object]:
         return {

@@ -694,7 +694,7 @@ public sealed partial class DiagnosticRegistryTests {
         JsonObject json = JsonNode.Parse(File.ReadAllText(suppression.FullName, Encoding.UTF8))!.AsObject();
         ValidateCompatibilitySuppressionsJson(json).ShouldBeEmpty();
         json["schemaVersion"]!.GetValue<string>().ShouldBe(CompatibilitySuppressionsSchemaVersion);
-        json["currentRelease"]!.GetValue<string>().ShouldBe("v4.2");
+        json["currentRelease"]!.GetValue<string>().ShouldBe("v4.3");
         JsonArray suppressions = json["suppressions"]!.AsArray();
 
         suppressions.ShouldBeEmpty("the published 4.1.1 baseline absorbs all reviewed v4 MCP removals.");
