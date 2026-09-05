@@ -7,7 +7,9 @@ using Hexalith.FrontComposer.SourceTools.Parsing;
 using Hexalith.FrontComposer.SourceTools.Tests.Parsing.TestFixtures;
 using Hexalith.FrontComposer.SourceTools.Transforms;
 
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 using Shouldly;
 
@@ -639,6 +641,7 @@ public class CommandFormEmitterTests {
 
     [Fact]
     public void Emit_CommandExecutionAdmissionReleasesInFinally() {
+        CancellationToken ct = TestContext.Current.CancellationToken;
         CommandFormModel form = BuildForm([
             new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
         ]);
@@ -646,17 +649,50 @@ public class CommandFormEmitterTests {
 
         // Story 11.21: anchor on the submitted-log CALL SITE, not on the message template. The
         // template now lives in the cached LoggerMessage delegate emitted at the end of the class.
-        int submittedLogIndex = source.IndexOf("LogCommandSubmitted(Logger, correlationId);", StringComparison.Ordinal);
+        const string SubmittedLogCall = "LogCommandSubmitted(Logger, correlationId);";
+        int submittedLogIndex = source.IndexOf(SubmittedLogCall, StringComparison.Ordinal);
         submittedLogIndex.ShouldBeGreaterThan(0);
 
-        int tryIndex = source.IndexOf("try", submittedLogIndex, StringComparison.Ordinal);
-        tryIndex.ShouldBeGreaterThan(0);
+        // DW-683: larger identifiers containing try/finally must not satisfy the keyword anchors.
+        string inspectedSource = source.Insert(
+            submittedLogIndex + SubmittedLogCall.Length,
+            " int retryKeywordCollision = 0; int finallyKeywordCollision = retryKeywordCollision;");
+        Microsoft.CodeAnalysis.SyntaxTree tree = CSharpSyntaxTree.ParseText(inspectedSource, cancellationToken: ct);
+        tree.GetDiagnostics(ct).ShouldBeEmpty();
 
-        int finallyIndex = source.IndexOf("finally", tryIndex, StringComparison.Ordinal);
-        finallyIndex.ShouldBeGreaterThan(tryIndex);
+        SyntaxNode root = tree.GetRoot(ct);
+        int misleadingTryIndex = inspectedSource.IndexOf("try", submittedLogIndex, StringComparison.Ordinal);
+        int misleadingFinallyIndex = inspectedSource.IndexOf("finally", misleadingTryIndex, StringComparison.Ordinal);
+        misleadingTryIndex.ShouldBeGreaterThan(submittedLogIndex);
+        misleadingFinallyIndex.ShouldBeGreaterThan(misleadingTryIndex);
+        root.FindToken(misleadingTryIndex).IsKind(SyntaxKind.IdentifierToken).ShouldBeTrue();
+        root.FindToken(misleadingFinallyIndex).IsKind(SyntaxKind.IdentifierToken).ShouldBeTrue();
 
-        int disposeIndex = source.IndexOf("admission.Dispose();", finallyIndex, StringComparison.Ordinal);
-        disposeIndex.ShouldBeGreaterThan(finallyIndex);
+        InvocationExpressionSyntax disposeInvocation = root.DescendantNodes()
+            .OfType<InvocationExpressionSyntax>()
+            .Single(invocation => invocation.Expression is MemberAccessExpressionSyntax memberAccess
+                && memberAccess.Expression is IdentifierNameSyntax identifier
+                && identifier.Identifier.ValueText == "admission"
+                && memberAccess.Name.Identifier.ValueText == "Dispose");
+        FinallyClauseSyntax disposalFinally = disposeInvocation.Ancestors()
+            .OfType<FinallyClauseSyntax>()
+            .Single();
+        TryStatementSyntax admissionTry = disposalFinally.Parent.ShouldBeOfType<TryStatementSyntax>();
+        TryStatementSyntax lifecycleCleanupTry = admissionTry.Block.Statements
+            .OfType<TryStatementSyntax>()
+            .Single(statement => statement.SpanStart > submittedLogIndex);
+        FinallyClauseSyntax lifecycleCleanupFinally = lifecycleCleanupTry.Finally.ShouldNotBeNull();
+
+        admissionTry.Finally.ShouldBe(disposalFinally);
+        admissionTry.Block.Span.Contains(submittedLogIndex).ShouldBeTrue();
+        disposalFinally.Block.Span.Contains(disposeInvocation.Span).ShouldBeTrue();
+        admissionTry.TryKeyword.SpanStart.ShouldBeLessThan(submittedLogIndex);
+        submittedLogIndex.ShouldBeLessThan(lifecycleCleanupTry.TryKeyword.SpanStart);
+        misleadingTryIndex.ShouldBeLessThan(lifecycleCleanupTry.TryKeyword.SpanStart);
+        misleadingFinallyIndex.ShouldBeLessThan(lifecycleCleanupFinally.FinallyKeyword.SpanStart);
+        lifecycleCleanupTry.TryKeyword.SpanStart.ShouldBeLessThan(lifecycleCleanupFinally.FinallyKeyword.SpanStart);
+        lifecycleCleanupFinally.FinallyKeyword.SpanStart.ShouldBeLessThan(disposalFinally.FinallyKeyword.SpanStart);
+        disposalFinally.FinallyKeyword.Span.End.ShouldBeLessThan(disposeInvocation.SpanStart);
     }
 
     [Fact]
