@@ -7184,6 +7184,7 @@ location: .github/workflows/release.yml
 source_spec: `_bmad-output/implementation-artifacts/spec-actions-29319125606-fix-release-breaking-parser.md`
 reason: summary: Make Release wait for both Commitlint and Quality so malformed commit metadata or a failing release-parser governance check cannot race publication. evidence: `.github/workflows/release.yml` starts after successful `CI` only; direct push `d9d2656e` demonstrated that Release still ran while the separate Commitlint and Quality workflows failed. The v3 compatibility package guard prevents the observed wrong-line publication, so changing workflow dependencies is broader pre-existing hardening and is explicitly outside this fix's approved trigger scope.
 status: open
+decision: 2026-09-05 Require all three — Authenticate successful CI, Commitlint, and Quality runs for the exact candidate SHA before any production release job starts.
 
 ### DW-1612: Semantically bind obsolete API migration before replacing matching identifiers.
 

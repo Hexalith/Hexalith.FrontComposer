@@ -629,6 +629,15 @@
     "label": "Implement change",
     "resolution": ""
   },
+  "DW-1611": {
+    "answered_at": "2026-09-05",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Authenticate successful CI, Commitlint, and Quality runs for the exact candidate SHA before any production release job starts.",
+    "key": "1",
+    "label": "Require all three",
+    "resolution": ""
+  },
   "DW-1665": {
     "answered_at": "2026-08-27",
     "bundle_name": "",
