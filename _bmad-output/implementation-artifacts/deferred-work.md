@@ -9696,6 +9696,7 @@ source_spec: `spec-package-audit-provenance-bom.md`
 severity: medium
 reason: Every refreshed family appends family and package historicalContext records on each incremental run, and the validator round-trips each record for duplicate detection, so both file size and validation cost grow without bound. Pre-existing: the v1 contract also appended history, and this change only narrowed which families append.
 status: open
+decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1912 at references/Hexalith.Builds/Tools/package-version-audit.json, update affected contracts and consumers, and add focused compatibility and regression evidence.
 
 ### DW-1913: Almost all stored package history is still v1-schema and is therefore exempt from the new origin ancestry, chronology, and duplicate-identity invariants.
 origin: spec-deferred f218a2755de1
