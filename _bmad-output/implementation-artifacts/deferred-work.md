@@ -2506,6 +2506,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 4-6-empty-st
 location: src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionEmptyPlaceholder.razor:11-29
 reason: **`<AuthorizeView>` flicker on prerender → interactive transition** [`src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionEmptyPlaceholder.razor:11-29`] — Static-SSR/prerender shows nothing; CTA pops in after hydration. Deliberate per AC2.5 but undocumented; tests don't cover prerender vs interactive timing. UX polish. Reconciliation: Row: DW-0272; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionEmptyPlaceholder.razor:11-29.
 status: open
+decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1003 at src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionEmptyPlaceholder.razor:11-29, update affected contracts and consumers, and add focused compatibility and regression evidence.
 
 ### DW-1004: StatusOverview detail "first item" semantics misleading
 

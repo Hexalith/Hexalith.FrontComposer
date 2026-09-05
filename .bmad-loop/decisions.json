@@ -1,4 +1,13 @@
 {
+  "DW-1003": {
+    "answered_at": "2026-09-05",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Implement the behavior described by DW-1003 at src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionEmptyPlaceholder.razor:11-29, update affected contracts and consumers, and add focused compatibility and regression evidence.",
+    "key": "1",
+    "label": "Implement bounded change",
+    "resolution": ""
+  },
   "DW-1004": {
     "answered_at": "2026-08-28",
     "bundle_name": "",
