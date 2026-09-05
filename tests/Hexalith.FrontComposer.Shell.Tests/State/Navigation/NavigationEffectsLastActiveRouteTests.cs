@@ -101,12 +101,13 @@ public sealed class NavigationEffectsLastActiveRouteTests {
         NavigationManager navigation = new TestNavigationManager(
             "https://localhost/app/",
             "https://localhost/app/domain/counter/counter-list?tab=1#recent");
+        using ServiceProvider provider = BuildServiceProvider(navigation);
         var sut = new NavigationEffects(
             storage,
             MakeAccessor(),
             logger,
             FakeState(BaseState()),
-            BuildServiceProvider(navigation));
+            provider);
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
 
         await sut.HandleBoundedContextChanged(new BoundedContextChangedAction("counter"), dispatcher);
@@ -180,12 +181,13 @@ public sealed class NavigationEffectsLastActiveRouteTests {
         ]);
 
         NavigationManager navigation = new TestNavigationManager("https://localhost/app/", "https://localhost/app/");
+        using ServiceProvider provider = BuildServiceProvider(navigation);
         var sut = new NavigationEffects(
             storage,
             MakeAccessor(),
             logger,
             FakeState(BaseState()),
-            BuildServiceProvider(navigation),
+            provider,
             registry);
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
 
@@ -208,12 +210,13 @@ public sealed class NavigationEffectsLastActiveRouteTests {
         await storage.SetAsync(key, blob, ct);
 
         NavigationManager navigation = new TestNavigationManager("https://localhost/app/", "https://localhost/app/");
+        using ServiceProvider provider = BuildServiceProvider(navigation);
         var sut = new NavigationEffects(
             storage,
             MakeAccessor(),
             logger,
             FakeState(BaseState()),
-            BuildServiceProvider(navigation));
+            provider);
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
 
         await sut.HandleAppInitialized(new AppInitializedAction("c1"), dispatcher);
