@@ -2,7 +2,7 @@
 title: 'Bump Latest Root Submodules and Hexalith Packages'
 type: 'refactor'
 created: '2026-09-05'
-status: 'in-progress'
+status: 'in-review'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '1a7edded603cd557a97dda1277e5ae3101fbec4d'
@@ -63,8 +63,8 @@ context:
 - [x] `references/Hexalith.EventStore` -- detach/reset to `4ae9cee1e9abe050402fd1405a9abd54892ba13f` (`v3.102.0`); confirm exact-match tag; no nested init -- Debug source matches package.
 - [x] `references/Hexalith.Memories` -- fast-forward to `3a7a70259d0ff185947fcc2e4216f7a275651d68` (`origin/main`) -- latest Memories submodule.
 - [x] `references/Hexalith.Builds` -- set `HexalithEventStoreVersion` to `3.102.0`; regenerate EventStore-family audit via official NuGet V3; run Builds catalog/audit validators -- Release package authority.
-- [ ] HALT for human Builds commit+push of catalog+audit; then FrontComposer `references/Hexalith.Builds` gitlink → that exact SHA -- consumer inherits published selector. **Blocked:** catalog commit `b7493539e4c6ede44d895524f4420f1c0ff51d40` exists locally; `Tools/package-version-audit.json` refreshed but uncommitted; parent gitlink still `e0e069468b29ce3fe85082b7bf0eb0d1952ce77c`.
-- [ ] `_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v1.json` + `CiGovernanceTests` current-compatibility constants + pact-provider-reconciliation evidence -- match landed EventStore SHA, `3.102.0`, Builds catalog SHA without touching historicalCapture. **Blocked:** awaits post-HALT Builds gitlink SHA (audit commit) before updating `currentBuildsSha` / re-running live provider verification.
+- [x] HALT for human Builds commit+push of catalog+audit; then FrontComposer `references/Hexalith.Builds` gitlink → that exact SHA -- consumer inherits published selector. **Landed:** human pushed audit commit `0a54e63a7903bd599e35b79159782b4c84d01c07`; parent gitlink matches.
+- [x] `_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v1.json` + `CiGovernanceTests` current-compatibility constants + pact-provider-reconciliation evidence -- match landed EventStore SHA, `3.102.0`, Builds catalog SHA without touching historicalCapture.
 - [x] Isolated Release AppHost restore/eval and Debug source eval -- prove EventStore Aspire/`3.102.0` package mode vs project-reference mode; leave unrelated dirty files unstaged.
 
 **Acceptance Criteria:**
@@ -107,6 +107,33 @@ context:
 6. Commit FrontComposer submodule gitlinks + governance (Ask First).
 
 **Risk:** `CiGovernanceTests.EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval` will fail until steps 3–4 land — contract still names `3.101.0` / `f1529957…` / `7e84ff1…` while EventStore gitlink is staged at `4ae9cee1…`.
+
+### 2026-09-05 — post-HALT governance + live provider evidence
+
+**Human landed (confirmed on main):**
+- EventStore gitlink `4ae9cee1e9abe050402fd1405a9abd54892ba13f` (`v3.102.0`)
+- Memories gitlink `3a7a70259d0ff185947fcc2e4216f7a275651d68`
+- Builds gitlink `0a54e63a7903bd599e35b79159782b4c84d01c07` (catalog `3.102.0` + audit)
+
+**Governance refresh (agent):**
+- Updated `currentCompatibility` only in `frontcomposer-eventstore-approved-runtime-identity-v1.json` — `4ae9cee1…`, `3.102.0`, `0a54e63a…`; `historicalCapture` and approved tuples unchanged.
+- Retargeted `CiGovernanceTests.EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval` `currentSourceSha` / `currentBuildsSha` / `currentVersion` to the same landed identities.
+
+**Live provider evidence (Gate 2c pattern, executed):**
+- Built `Hexalith.EventStore.ProviderVerification` Release; 77/77 unit tests passed.
+- Ran live-compatibility verifier from `references/Hexalith.EventStore` CWD; exit 0; regenerated `provider-verification.json` with identity tuple matching landed SHAs/versions (`observedVersion=3.102.0+4ae9cee1…`).
+- Wrote fresh `run-evidence.json` receipt via `eng/eventstore_runtime_evidence.py --write-live-receipt`.
+
+**Verification:**
+- `python3 -m unittest tests.eng.test_eventstore_runtime_evidence` — 45/45 OK.
+- `python3 -m unittest tests.eng.test_pact_provider_apphost_smoke` — 4/4 OK.
+- `DiffEngine_Disabled=true dotnet test … --filter FullyQualifiedName~EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval` — passed.
+- `eng/validate-contract-artifacts.ps1 -RequireProviderVerification` — still fails: AppHost smoke is not a clean passing run.
+
+**AppHost smoke attempt (post-HALT):**
+- Ran `python3 eng/pact_provider_apphost_smoke.py --timeout-seconds 300`; wrote `apphost-smoke.json` with correct identity (`4ae9cee1…` / `3.102.0` / `0a54e63a…`) but `finalVerdict=failed`, `reasonCodes=['apphost.start.failed']`.
+- Manual `aspire start` failed AppHost build with `CS1704` duplicate `Hexalith.FrontComposer.Shell` (NuGet `4.2.0` vs project) under IDE/MSBuild file locks; clean rebuild also hit locked Shell resources. Residual Gate 2c risk until a clean passing smoke can be captured.
+- No FrontComposer commit/push yet (Ask First).
 
 ## Spec Change Log
 

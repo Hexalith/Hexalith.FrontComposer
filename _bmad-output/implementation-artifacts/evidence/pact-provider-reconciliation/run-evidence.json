@@ -1,6 +1,6 @@
 {
   "schema": "hexalith.eventstore.provider-verification-run-evidence.v2",
-  "capturedAt": "2026-09-01T16:45:47.696090+00:00",
+  "capturedAt": "2026-09-05T09:37:35.174008+00:00",
   "command": "dotnet tests/Hexalith.EventStore.ProviderVerification/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.dll --verification-mode live-compatibility <validated canonical inputs>",
   "exitCode": 0,
   "expectedNonzero": false,
@@ -9,8 +9,8 @@
   "externalInputsModified": false,
   "report": {
     "path": "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json",
-    "sha256": "b7cfa6795c6d6a02d32ec05bad3c61f1020459cf6f2caf0e82070648938c1c77",
-    "bytes": 16483,
+    "sha256": "881233313386d914323445e18db3644e5732f282942c92a9ac1d943a3eb3456e",
+    "bytes": 16482,
     "finalVerdict": "passed",
     "requestedInteractionCount": 19,
     "reportedInteractionCount": 19,
