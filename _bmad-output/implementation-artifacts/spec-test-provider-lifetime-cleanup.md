@@ -2,7 +2,7 @@
 title: 'Dispose test-owned service providers'
 type: 'chore'
 created: '2026-09-05'
-status: in-progress
+status: done
 baseline_commit: '5cbc5583142a6774ff7813698ad98ec267b336f0'
 baseline_revision: 092240002f55f7fbacaef017b91d752d8ca10fe3
 review_loop_iteration: 0
@@ -81,6 +81,20 @@ deferred: []
   - `[false]` `[reject]` Intent auditor: the task change envelope includes eleven paths and edits the forbidden ledger — only three paths are staged for this task; the baseline grew because the branch advanced concurrently, and the ledger is untouched by this run.
   - `[false]` `[reject]` Verification reviewer: the reviewed task contradicts its test-only scope contract — the finding conflates intervening commits and unrelated unstaged edits with the three-file staged task delta.
   - `[medium]` `[reject]` Verification reviewer: production project-graph work lacks passing live evidence — that separate evidence remains failed and is not claimed as verification for this test-only cleanup; no production project-graph file is part of the task delta.
+
+### 2026-09-05 — Resumed review pass
+- verdicts: 10 findings — high 0, medium 8, low 2, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[reject]` Blind hunter: DW-1929 is stale because its cited AppHost smoke now records `finalVerdict: passed`, no reason codes, and authenticated observations; the defect is real but belongs to the concurrent deferred-work migration, and the approved intent explicitly forbids editing or absorbing that ledger.
+  - `[medium]` `[reject]` Blind hunter: DW-1933 remains open after the analyzer-policy changes were separated and commit `d254ecf5` changed only the expected identifier count and hash; this ambient ledger correction is outside the intent and the ledger is explicitly read-only for this story.
+  - `[medium]` `[reject]` Blind hunter: DW-1934 remains open even though `tests/e2e/package.json` is absent from commit `d254ecf5`, so the cited package churn was already separated; this is an unrelated concurrent ledger defect that the intent forbids this story from editing.
+  - `[medium]` `[reject]` Blind hunter: DW-1935 remains open even though the HFC1016 and DW-683 work landed in separately attributable commits rather than `d254ecf5`; the stale ambient ledger entry is expressly outside this test-provider cleanup.
+  - `[medium]` `[reject]` Blind hunter: DW-1931 and DW-1932 contain checkout-specific absolute `source_spec` paths that are not portable; those lines are part of a concurrent ledger migration, and the approved intent explicitly forbids ledger edits.
+  - `[low]` `[reject]` Blind hunter: all seven migrated ledger entries use the empty `origin: migrated from legacy ledger ("")` label despite retaining source-spec context; the weak provenance is real but cosmetic here and correcting it would violate the story's no-ledger-edit boundary.
+  - `[low]` `[reject]` Blind hunter: the workflow's required frontmatter edits introduced mixed CRLF/LF terminators and a Git normalization warning in this specification; the issue is confined to the build spec, and review policy rejects findings whose fix is to edit this build's spec.
+  - `[medium]` `[reject]` Blind hunter: `baseline_commit` is later than implementation commit `9c9ec260`, so the mandated baseline diff omits the two provider-lifetime test files and includes ambient ledger work; the gap is real, but its proposed fix edits this build's spec, while the story-owned three-file commit was inspected directly and its tests were rerun.
+  - `[medium]` `[reject]` Edge-case hunter: the same DW-1931/DW-1932 absolute-path portability defect is confirmed; it remains an unrelated concurrent ledger change that this intent explicitly forbids modifying.
+  - `[medium]` `[reject]` Verification-gap reviewer: the repository story validator rejects the checked tasks because the newly captured current-HEAD baseline excludes the earlier provider-lifetime commit, leaving review layers unable to see those edits; the proposed baseline/spec and workflow-regression changes are outside this story and include a forbidden edit to the build spec, while commit `9c9ec260` was independently audited as the story-owned delta.
 
 ## Verification
 
