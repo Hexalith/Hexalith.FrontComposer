@@ -6874,6 +6874,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-1-token-l
 location: src/Hexalith.FrontComposer.Shell/Extensions/FrontComposerAuthenticationServiceExtensions.cs:254
 reason: **CR-11-1-Def01 — Token relay hook still targets the hard-coded default OIDC scheme:** `AddHexalithFrontComposerAuthentication` registers OIDC using `options.OpenIdConnect.ChallengeScheme`, but `AddHexalithFrontComposerTokenRelay` configures only `FrontComposerTokenRelayServiceExtensions.OidcChallengeScheme`. A host that customizes the OIDC challenge scheme can sign in successfully while token capture attaches to an unused options instance. Deferred because the hard-coded scheme binding pre-existed Story 11.1; pick up in an owned auth-configuration compatibility story. Owner: Shell/auth maintainer. Evidence: `src/Hexalith.FrontComposer.Shell/Extensions/FrontComposerAuthenticationServiceExtensions.cs:254`, `src/Hexalith.FrontComposer.Shell/Extensions/FrontComposerTokenRelayServiceExtensions.cs:26`, `src/Hexalith.FrontComposer.Shell/Extensions/FrontComposerTokenRelayServiceExtensions.cs:47`.
 status: open
+decision: 2026-09-05 Use configured scheme — Bind token relay to FrontComposerAuthenticationOptions.OpenIdConnect.ChallengeScheme while preserving the default and add customized-scheme integration tests.
 
 ### DW-1576: `ProjectionSubscriptionService.DisposeAsync` leaks the SignalR `HubConnection` (and its unbounded auto-reconnect loop) plus the disposal `CancellationTokenSource` when the operation gate cannot be acquired within the 2s bounded wait.
 

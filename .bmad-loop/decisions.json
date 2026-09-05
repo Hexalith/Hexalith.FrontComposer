@@ -521,6 +521,15 @@
     "label": "Implement change",
     "resolution": ""
   },
+  "DW-1575": {
+    "answered_at": "2026-09-05",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Bind token relay to FrontComposerAuthenticationOptions.OpenIdConnect.ChallengeScheme while preserving the default and add customized-scheme integration tests.",
+    "key": "1",
+    "label": "Use configured scheme",
+    "resolution": ""
+  },
   "DW-1576": {
     "answered_at": "2026-09-05",
     "bundle_name": "",
