@@ -104,3 +104,5 @@ Retired diagnostics are not emitted by any channel. Their stubs:
 ### Generated docs prose policy
 
 Per `docsStubProsePolicy` in the registry header, the prose currently between `narrative-start` and `narrative-end` is auto-synthesized placeholder content awaiting Story 9-5 authoring. AC5 stub presence and AC15 docs-link consistency are enforced by chunk-B tests; full authoring (real `Common Causes`, real `How To Fix`, real emitted-message `Example`) is Story 9-5's responsibility.
+
+The production `release.yml` evaluator closure for Builds execution `4eb33928` is authorized in `eng/dependency-graph-policy.json` for the live caller blob.
