@@ -5721,6 +5721,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-6-shell-u
 location: FcDevModeToggleButton.razor.cs
 reason: **W3 — AC18 `FcDevModeToggleButton.razor.css` missing forced-colors and reduced-motion guards:** No `@media (forced-colors: active)` block to restore FluentIcon visibility in High Contrast mode; no `@media (prefers-reduced-motion: reduce)` guard. Accepted per D16 (representative evidence only). Owner: UX accessibility roadmap.
 status: open
+decision: 2026-09-05 Add media guards — Add Fluent-token-compatible forced-colors and reduced-motion rules plus computed-style regression coverage.
 
 ### DW-1424: AC28 WASM/Blazor Auto `IHostEnvironment` ImplementationType registration gap: `FindRegisteredEnvironment` checks `ImplementationInstance` and `ImplementationFactory` but not `ImplementationType`. A standard `AddSingleton<IHostEnvironment, BlazorWebAssemblyEnvironment>()` registration is silently skipped. Owner: Blazor Auto hosting story.
 

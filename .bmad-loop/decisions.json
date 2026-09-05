@@ -359,6 +359,15 @@
     "label": "Implement change",
     "resolution": ""
   },
+  "DW-1423": {
+    "answered_at": "2026-09-05",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Add Fluent-token-compatible forced-colors and reduced-motion rules plus computed-style regression coverage.",
+    "key": "1",
+    "label": "Add media guards",
+    "resolution": ""
+  },
   "DW-1430": {
     "answered_at": "2026-08-28",
     "bundle_name": "",
