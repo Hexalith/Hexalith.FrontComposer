@@ -81,7 +81,9 @@ The focused FC-TBL public baseline currently covers these public types under
 | `FcNewItemIndicator` | Accessible fresh-row indicator component. | `Text`, `AriaLabelOverride`. |
 
 `FcNewItemIndicator` producer wiring uses an explicit command-to-projection `[CommandTarget]`
-declaration. `SameAsSource` is valid only for `Update` and copies the generated row snapshot once
+declaration. The FC-NIP base record was created on 2026-07-04; its decision was approved and the
+record updated on 2026-07-05. Those dates are distinct chronology, not references to two contracts.
+`SameAsSource` is valid only for `Update` and copies the generated row snapshot once
 immediately before dispatch. `Provider` resolves create, cross-row update, status-move, and delete
 identity through exactly one `ICommandTargetIdentityProvider<TCommand>`. A fixed declaration
 `ViewKey`, and every provider-returned view key, must equal the declared projection's canonical

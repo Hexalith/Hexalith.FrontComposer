@@ -32,7 +32,10 @@
         "first-wins",
         "FrontComposer Shell `TimeProvider` at indicator creation"
       ],
-      "notContains": []
+      "notContains": [
+        "the 2026-07-05 row-context contract",
+        "the 2026-07-05 row-context decision"
+      ]
     },
     {
       "path": "_bmad-output/contracts/fc-nip-command-target-identity-contract-2026-08-12.md",
@@ -132,7 +135,10 @@
         "Filtering either level makes the rate unavailable",
         "zero completions also yields no rate"
       ],
-      "notContains": []
+      "notContains": [
+        "the 2026-07-05 row-context contract",
+        "the 2026-07-05 row-context decision"
+      ]
     },
     {
       "path": "_bmad-output/planning-artifacts/prd.md",
@@ -142,7 +148,21 @@
         "_bmad-output/contracts/fc-nip-command-target-identity-contract-2026-08-12.md",
         "D-4 is resolved; Stories 9.4-9.8 still block FR-13/FR-26 completion and Epic 9 closure"
       ],
-      "notContains": []
+      "notContains": [
+        "the 2026-07-05 row-context contract",
+        "the 2026-07-05 row-context decision"
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/spec-9-3-define-explicit-command-target-identity.md",
+      "contains": [
+        "Preserve the 2026-07-04 base record and its 2026-07-05 approval/update as distinct chronology",
+        "historical base record created 2026-07-04 and approved/updated 2026-07-05"
+      ],
+      "notContains": [
+        "the 2026-07-05 row-context contract",
+        "Preserve the 2026-07-05 row-context decision"
+      ]
     },
     {
       "path": "_bmad-output/planning-artifacts/architecture.md",
@@ -152,9 +172,15 @@
         "SameAsSource",
         "CapturedAt",
         "ObservedAt",
-        "`Material`, `NoOp`, or `Unknown`"
+        "`Material`, `NoOp`, or `Unknown`",
+        "created on 2026-07-04",
+        "approved and the record updated on 2026-07-05",
+        "those dates are distinct chronology, not references to two contracts"
       ],
-      "notContains": []
+      "notContains": [
+        "the 2026-07-05 row-context contract",
+        "the 2026-07-05 row-context decision"
+      ]
     },
     {
       "path": "_bmad-output/project-docs/architecture.md",
@@ -172,6 +198,9 @@
       "path": "docs/reference/components/datagrid.md",
       "contains": [
         "producer wiring uses an explicit command-to-projection `[CommandTarget]`",
+        "created on 2026-07-04",
+        "approved and the record updated on 2026-07-05",
+        "Those dates are distinct chronology, not references to two contracts",
         "`SameAsSource` is valid only for `Update`",
         "ICommandTargetIdentityProvider<TCommand>",
         "Only a confirmed or idempotent-confirmed `Material` terminal observation",

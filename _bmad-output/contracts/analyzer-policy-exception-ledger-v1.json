@@ -97,8 +97,8 @@
   },
   "identifierInventory": {
     "algorithm": "SHA-256 over sorted repo-relative path, declaration kind, and underscore-containing identifier for CA1707-relevant public/protected declarations; source line numbers are excluded",
-    "testPublicDeclarationIdentifiers": 3280,
-    "testInventorySha256": "f91d423dc96cd6b1a6f6b940b56f65941d749cf2318643a4faa245e8df785792",
+    "testPublicDeclarationIdentifiers": 3281,
+    "testInventorySha256": "622ea6721e1be292f02419a654edc5e43476d4bd4eb4ffc7eaabf814ebce10be",
     "contractsPublicDeclarationIdentifiers": 89,
     "contractsInventorySha256": "9b81beacad8c65e481b2239b6054ba483dd8e9b6e6af2a0e51ca7065deb3210a"
   },

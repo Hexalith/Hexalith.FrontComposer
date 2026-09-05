@@ -430,10 +430,23 @@ public class CommandFormEmitterTests {
         source.ShouldContain("aggregate.Flatten().InnerExceptions, IsFatalCommandTargetResolutionException");
         source.ShouldNotContain("Command target resolution succeeded. {", Case.Sensitive);
         source.ShouldNotContain("Command target resolution failed closed. Category={Category} {", Case.Sensitive);
+        foreach (string placeholder in new[] { "{ViewKey}", "{EntityKey}", "{PriorStatus}", "{ExpectedStatus}", "{TenantId}", "{UserId}", "{Exception}" }) {
+            source.ShouldNotContain("Command target resolution succeeded. " + placeholder, Case.Sensitive);
+            source.ShouldNotContain("Command target resolution failed closed. Category={Category} " + placeholder, Case.Sensitive);
+        }
+
+        int assignedTarget = source.IndexOf("var commandTarget = targetResolution.Target;", StringComparison.Ordinal);
+        int dispatchCall = source.IndexOf(
+            "CommandService.DispatchWithLifecycleObservationsAsync",
+            assignedTarget,
+            StringComparison.Ordinal);
+        assignedTarget.ShouldBeGreaterThan(0);
+        dispatchCall.ShouldBeGreaterThan(assignedTarget);
+        source[assignedTarget..dispatchCall].ShouldNotContain("return;", Case.Sensitive);
 
         string[] actualCategories = Regex.Matches(
                 source + statusMoveSource + sameSource,
-                "\\\"(?<category>(?:projection-view|provider|same-source|status|target|view)-[a-z-]+)\\\"",
+                @"FailCommandTargetResolution\(""(?<category>[^""]+)""\)",
                 RegexOptions.CultureInvariant)
             .Select(static match => match.Groups["category"].Value)
             .Distinct(StringComparer.Ordinal)
@@ -456,10 +469,12 @@ public class CommandFormEmitterTests {
         actualCategories.ShouldBe(expectedCategories, ignoreOrder: false);
 
         int resolved = source.IndexOf("var resolution = await ResolveCommandTargetCoreAsync", StringComparison.Ordinal);
-        int success = source.IndexOf("TryLogCommandTargetResolutionSucceeded();", StringComparison.Ordinal);
+        int cancelCheck = source.IndexOf("cancellationToken.ThrowIfCancellationRequested();", resolved, StringComparison.Ordinal);
+        int success = source.IndexOf("TryLogCommandTargetResolutionSucceeded();", cancelCheck, StringComparison.Ordinal);
         int returned = source.IndexOf("return resolution;", success, StringComparison.Ordinal);
         resolved.ShouldBeGreaterThan(0);
-        success.ShouldBeGreaterThan(resolved);
+        cancelCheck.ShouldBeGreaterThan(resolved);
+        success.ShouldBeGreaterThan(cancelCheck);
         returned.ShouldBeGreaterThan(success);
     }
 

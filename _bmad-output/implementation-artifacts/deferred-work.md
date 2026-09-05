@@ -9866,3 +9866,15 @@ status: open
   summary: Drop-published `StaticWebAssetEndpoint` matching may miss items whose Identity is a route rather than a nuget path.
   evidence: Unverified (would be medium). Settle by inspecting a failing `GenerateStaticWebAssetsDevelopmentManifest` item Identity on Windows or a nested portal.
 
+- source_spec: `_bmad-output/implementation-artifacts/spec-dw-671-675-harden-fc-nip-command-target-contract.md`
+  summary: The analyzer-policy exception ledger 1.0→1.1 identifier-algorithm rewrite is mixed into the DW-671-675 since-baseline diff.
+  evidence: The DW spec only required an alternate-index rename reseal; `schemaVersion`, CA1707 public-declaration hashing, and `propertyValue` MSBuild scalars landed with Stories 11.23+ and are not this bundle's contract work.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-dw-671-675-harden-fc-nip-command-target-contract.md`
+  summary: `tests/e2e/package.json` accumulated Playwright, TypeScript, Node engines, axe-core, faker, and extra scripts besides retargeting `test:fc-nip`.
+  evidence: Those dependency and script hunks are other stories since baseline `e5423273`; this bundle's File List only required pointing `test:fc-nip` at the renamed spec.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-dw-671-675-harden-fc-nip-command-target-contract.md`
+  summary: `CommandFormEmitterTests` also contains HFC1016 parse-time rejection and DW-683 syntax-tree admission pins on the same review surface.
+  evidence: Those assertions are other stories in the same emitter test class since baseline; they are not the 5912/5913 closed-set or redaction pins.
+

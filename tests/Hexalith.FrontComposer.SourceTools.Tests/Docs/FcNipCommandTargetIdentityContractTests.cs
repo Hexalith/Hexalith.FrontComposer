@@ -42,13 +42,17 @@ public sealed class FcNipCommandTargetIdentityContractTests {
 
     [Theory]
     [InlineData("backslash")]
+    [InlineData("empty-tables")]
     [InlineData("duplicate-table")]
     [InlineData("row-width")]
+    [InlineData("duplicate-cell")]
     public void SharedManifest_WhenStructurallyUnsafe_IsRejected(string scenario) {
         string json = scenario switch {
-            "backslash" => ManifestJson("docs\\escape.md", "[]"),
+            "backslash" => ManifestJson("docs\\escape.md", "[" + TableJson(2) + "]"),
+            "empty-tables" => ManifestJson("docs/example.md", "[]"),
             "duplicate-table" => ManifestJson("docs/example.md", "[" + TableJson(2) + "," + TableJson(2) + "]"),
             "row-width" => ManifestJson("docs/example.md", "[" + TableJson(2, "[\"a\"]") + "]"),
+            "duplicate-cell" => ManifestJson("docs/example.md", "[" + TableJson(2, "[\"a\",\"a\"]") + "]"),
             _ => throw new ArgumentOutOfRangeException(nameof(scenario)),
         };
 
@@ -104,7 +108,7 @@ public sealed class FcNipCommandTargetIdentityContractTests {
             JsonElement documents = root.GetProperty("documents");
             JsonElement tables = root.GetProperty("tables");
             Require(documents.ValueKind == JsonValueKind.Array && documents.GetArrayLength() > 0, "documents must be a non-empty array.");
-            Require(tables.ValueKind == JsonValueKind.Array, "tables must be an array.");
+            Require(tables.ValueKind == JsonValueKind.Array && tables.GetArrayLength() > 0, "tables must be a non-empty array.");
 
             HashSet<string> documentPaths = new(StringComparer.Ordinal);
             foreach (JsonElement manifestDocument in documents.EnumerateArray()) {
@@ -129,8 +133,10 @@ public sealed class FcNipCommandTargetIdentityContractTests {
                     Require(row.ValueKind == JsonValueKind.Array && row.GetArrayLength() > 0, "Each table row must be a non-empty array.");
                     width ??= row.GetArrayLength();
                     Require(row.GetArrayLength() == width, "Table rows have inconsistent widths.");
+                    HashSet<string> cells = new(StringComparer.Ordinal);
                     foreach (JsonElement cell in row.EnumerateArray()) {
-                        _ = RequireNormalizedString(cell, "table cell");
+                        string value = RequireNormalizedString(cell, "table cell");
+                        Require(cells.Add(value), $"Duplicate table cell '{value}'.");
                     }
                 }
             }
@@ -183,7 +189,7 @@ public sealed class FcNipCommandTargetIdentityContractTests {
         => $$"""{"schemaVersion":1,"documents":[{"path":"{{path.Replace("\\", "\\\\", StringComparison.Ordinal)}}","contains":[],"notContains":[]}],"tables":{{tables}}}""";
 
     private static string TableJson(int headerWidth, string? secondRow = null) {
-        string firstRow = "[" + string.Join(',', Enumerable.Repeat("\"x\"", headerWidth)) + "]";
+        string firstRow = "[" + string.Join(',', Enumerable.Range(0, headerWidth).Select(static index => "\"x" + index + "\"")) + "]";
         return $$"""{"path":"docs/example.md","heading":"## Table","rows":[{{firstRow}},{{secondRow ?? firstRow}}]}""";
     }
 

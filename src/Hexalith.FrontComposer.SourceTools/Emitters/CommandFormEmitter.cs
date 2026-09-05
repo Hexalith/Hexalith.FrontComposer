@@ -678,6 +678,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            var resolution = await ResolveCommandTargetCoreAsync(command, cancellationToken).ConfigureAwait(false);");
         _ = sb.AppendLine("            if (resolution.Target is not null)");
         _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                cancellationToken.ThrowIfCancellationRequested();");
         _ = sb.AppendLine("                TryLogCommandTargetResolutionSucceeded();");
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine("            return resolution;");
@@ -805,7 +806,11 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("                    frozenCommand = providerResult.Command;");
             _ = sb.AppendLine("                    if (providerResult.FailureCategory is not null)");
             _ = sb.AppendLine("                    {");
-            _ = sb.AppendLine("                        return (frozenCommand, FailCommandTargetResolution(providerResult.FailureCategory));");
+            _ = sb.AppendLine("                        if (string.Equals(providerResult.FailureCategory, \"provider-duplicate\", StringComparison.Ordinal))");
+            _ = sb.AppendLine("                        {");
+            _ = sb.AppendLine("                            return (frozenCommand, FailCommandTargetResolution(\"provider-duplicate\"));");
+            _ = sb.AppendLine("                        }");
+            _ = sb.AppendLine("                        return (frozenCommand, FailCommandTargetResolution(\"provider-missing\"));");
             _ = sb.AppendLine("                    }");
             _ = sb.AppendLine("                    identity = providerResult.Identity;");
             _ = sb.AppendLine("                }");

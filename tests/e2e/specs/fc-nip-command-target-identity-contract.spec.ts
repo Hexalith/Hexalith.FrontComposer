@@ -46,7 +46,10 @@ test.describe('FC-NIP explicit command-target identity contract', () => {
       rows,
     });
 
-    expect(() => validateManifest({ schemaVersion: 1, documents: [document('docs\\escape.md')], tables: [] })).toThrow();
+    expect(() =>
+      validateManifest({ schemaVersion: 1, documents: [document('docs\\escape.md')], tables: [table([['a', 'b']])] }),
+    ).toThrow();
+    expect(() => validateManifest({ schemaVersion: 1, documents: [document('docs/example.md')], tables: [] })).toThrow();
     expect(() =>
       validateManifest({
         schemaVersion: 1,
@@ -59,6 +62,13 @@ test.describe('FC-NIP explicit command-target identity contract', () => {
         schemaVersion: 1,
         documents: [document('docs/example.md')],
         tables: [table([['a', 'b'], ['a']])],
+      }),
+    ).toThrow();
+    expect(() =>
+      validateManifest({
+        schemaVersion: 1,
+        documents: [document('docs/example.md')],
+        tables: [table([['a', 'a']])],
       }),
     ).toThrow();
   });
@@ -161,7 +171,7 @@ const validateManifest = (candidate: unknown): ContractManifest => {
   requireRecord(candidate, ['schemaVersion', 'documents', 'tables']);
   requireCondition(candidate.schemaVersion === 1, 'schemaVersion must be 1');
   requireCondition(Array.isArray(candidate.documents) && candidate.documents.length > 0, 'documents must be non-empty');
-  requireCondition(Array.isArray(candidate.tables), 'tables must be an array');
+  requireCondition(Array.isArray(candidate.tables) && candidate.tables.length > 0, 'tables must be non-empty');
 
   const documents: ContractDocument[] = [];
   const documentPaths = new Set<string>();

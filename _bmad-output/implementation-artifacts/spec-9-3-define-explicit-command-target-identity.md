@@ -20,7 +20,7 @@ context:
 
 ## Boundaries & Constraints
 
-**Always:** Preserve the 2026-07-05 row-context decision as historical base authority. Define target `ProjectionTypeName`, canonical view/lane, exact `EntityKey`, change kind, prior/expected status, and `CapturedAt`; attach `MessageId` after acceptance and keep terminal `ObservedAt` separate. Resolve dynamic values only through an explicit command-to-projection declaration plus typed `ICommandTargetIdentityProvider<TCommand>`; an explicitly declared `SameAsSource` mode may consume a pre-dispatch source snapshot. Terminal adapters report `Material`, `NoOp`, or `Unknown`; `Unknown` suppresses the indicator.
+**Always:** Preserve the 2026-07-04 base record and its 2026-07-05 approval/update as distinct chronology; that one base decision remains historical authority. Define target `ProjectionTypeName`, canonical view/lane, exact `EntityKey`, change kind, prior/expected status, and `CapturedAt`; attach `MessageId` after acceptance and keep terminal `ObservedAt` separate. Resolve dynamic values only through an explicit command-to-projection declaration plus typed `ICommandTargetIdentityProvider<TCommand>`; an explicitly declared `SameAsSource` mode may consume a pre-dispatch source snapshot. Terminal adapters report `Material`, `NoOp`, or `Unknown`; `Unknown` suppresses the indicator.
 
 **Ask First:** Any public runtime API implementation, EventStore contract change, multi-target command support, or change to the accepted idempotent/ten-second-linger UX requires a separate human decision.
 

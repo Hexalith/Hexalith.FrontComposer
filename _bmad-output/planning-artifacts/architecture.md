@@ -65,8 +65,10 @@ The Shell source architecture guard enforces namespace/folder agreement, the Sta
 - Active indicator identity is `(ViewKey, EntityKey)` and uses atomic first-wins semantics across duplicate and distinct message IDs; later attempts do not replace provenance or extend expiry.
 
 Story 9.3 approved the successor explicit target-identity contract at
-`_bmad-output/contracts/fc-nip-command-target-identity-contract-2026-08-12.md`; the 2026-07-05
-row-context contract remains its historical base authority. Stories 9.4-9.8 implement and prove these
+`_bmad-output/contracts/fc-nip-command-target-identity-contract-2026-08-12.md`. The base record was
+created on 2026-07-04, and its decision was approved and the record updated on 2026-07-05; those dates
+are distinct chronology, not references to two contracts. That one base decision remains historical
+authority. Stories 9.4-9.8 implement and prove these
 invariants without changing EventStore lifecycle/status ownership or the Shell dependency direction.
 
 ## UX, IA, And Route Invariants

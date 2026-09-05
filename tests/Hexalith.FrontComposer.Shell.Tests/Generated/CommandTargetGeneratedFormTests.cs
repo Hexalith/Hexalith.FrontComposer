@@ -332,7 +332,35 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
             entry.Status.ShouldBe(PendingCommandStatus.Confirmed);
             (entry.TargetSnapshot is not null).ShouldBe(successfulResolution);
             logger.TargetEventAttempts.ShouldBe(1);
+            string.Join('|', logger.Messages).ShouldNotContain("logger-provider-sensitive-exception", Case.Sensitive);
         });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CommandTargetCompletion_FatalLoggerFaultEscapesSubmitWithoutDispatch(
+        bool successfulResolution) {
+        TargetEventThrowingLogger<SameSourceTargetCommandForm> logger = new(fatal: true);
+        EarlyTerminalCommandService service = new(AcceptedMessageId);
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        Services.Replace(ServiceDescriptor.Scoped<ILogger<SameSourceTargetCommandForm>>(_ => logger));
+        await InitializeStoreAsync();
+        IRenderedComponent<CascadingValue<PendingCommandRowIdentity?>> host =
+            Render<CascadingValue<PendingCommandRowIdentity?>>(parameters => parameters
+                .Add(component => component.Value, successfulResolution
+                    ? new PendingCommandRowIdentity(
+                        typeof(Counter.Domain.CounterProjection).FullName!,
+                        "Counter:Counter.Domain.CounterProjection",
+                        "counter-logger-fault",
+                        expectedStatusSlot: "Approved")
+                    : null)
+                .Add(component => component.IsFixed, true)
+                .AddChildContent<SameSourceTargetCommandForm>());
+
+        _ = Should.Throw<OutOfMemoryException>(() => host.Find("form").Submit());
+        service.DispatchCount.ShouldBe(0);
+        logger.TargetEventAttempts.ShouldBe(1);
     }
 
     [Fact]
@@ -1345,8 +1373,10 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
         IncompleteStatusMove,
     }
 
-    private sealed class TargetEventThrowingLogger<T> : ILogger<T> {
+    private sealed class TargetEventThrowingLogger<T>(bool fatal = false) : ILogger<T> {
         public int TargetEventAttempts { get; private set; }
+
+        public List<string> Messages { get; } = [];
 
         public IDisposable? BeginScope<TState>(TState state)
             where TState : notnull => null;
@@ -1359,8 +1389,17 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
             TState state,
             Exception? exception,
             Func<TState, Exception?, string> formatter) {
+            Messages.Add(formatter(state, exception));
+            if (exception is not null) {
+                Messages.Add(exception.ToString());
+            }
+
             if (eventId.Id is 5912 or 5913) {
                 TargetEventAttempts++;
+                if (fatal) {
+                    _ = ThrowFatal<object?>();
+                }
+
                 throw new InvalidOperationException("logger-provider-sensitive-exception");
             }
         }
