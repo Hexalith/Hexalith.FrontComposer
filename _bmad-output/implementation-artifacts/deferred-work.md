@@ -9788,6 +9788,7 @@ source_spec: `spec-package-audit-provenance-bom.md`
 severity: low
 reason: validate-central-package-versions.ps1 now hard-fails any catalog without the exact EF BB BF prefix. Only Props/Directory.Packages.props, Hexalith.Commons and Hexalith.PolymorphicSerializations carry a BOM today; this repository's own root Directory.Packages.props, plus FrontComposer, EventStore, Memories, Parties and Tenants, are BOM-free. Nothing breaks yet because both workflow call sites use the default Props/ catalog, but the two files in this repository now sit under different byte contracts.
 status: open
+decision: 2026-09-05 Implement bounded change — Implement the behavior described by DW-1923 at references/Hexalith.Builds/Tools/validate-central-package-versions.ps1:86, update affected contracts and consumers, and add focused compatibility and regression evidence.
 
 ### DW-1924: Follow-up review still recommended for dw-package-audit-provenance-bom after the damping cap was spent
 origin: review-budget-followup
