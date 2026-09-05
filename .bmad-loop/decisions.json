@@ -89,6 +89,15 @@
     "label": "Keep open",
     "resolution": ""
   },
+  "DW-1142": {
+    "answered_at": "2026-09-05",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Keep ordinary keys unchanged, replace only oversized canonical suffixes with a versioned hash, and support legacy read fallback plus migration tests.",
+    "key": "1",
+    "label": "Hash oversized suffix",
+    "resolution": ""
+  },
   "DW-1144": {
     "answered_at": "2026-08-27",
     "bundle_name": "",
