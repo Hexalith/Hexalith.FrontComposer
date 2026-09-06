@@ -1,3 +1,4 @@
+using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Mcp.Invocation;
 
 using Microsoft.Extensions.Options;
@@ -10,10 +11,35 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
 /// Story 11.21 CA1513 regression cover. <c>FrontComposerMcpLifecycleStore.ThrowIfDisposed</c> was
 /// rewritten from an explicit <c>throw new ObjectDisposedException(...)</c> to
 /// <see cref="ObjectDisposedException.ThrowIf(bool, object)"/>. The store's fail-closed contract is
-/// that every post-dispose read still throws <see cref="ObjectDisposedException"/> and that disposal
-/// stays idempotent, so those two properties are pinned here rather than left to the analyzer fix.
+/// that every guarded post-dispose operation still throws <see cref="ObjectDisposedException"/> and
+/// that disposal stays idempotent, so those properties are pinned here rather than left to the analyzer fix.
 /// </summary>
 public sealed class McpLifecycleStoreDisposalTests {
+    [Fact]
+    public void TrackAcknowledged_AfterDispose_ThrowsObjectDisposedException() {
+        FrontComposerMcpLifecycleStore store = CreateStore();
+        store.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(
+            () => store.TrackAcknowledged(null!, null!, null!, null!, new CancellationToken(canceled: true)));
+    }
+
+    [Fact]
+    public void TryRecordObservedTransition_AfterDispose_ThrowsObjectDisposedException() {
+        FrontComposerMcpLifecycleStore store = CreateStore();
+        store.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(
+            () => store.TryRecordObservedTransition(new CommandLifecycleTransition(
+                "01JBX0000000000000000000AB",
+                CommandLifecycleState.Idle,
+                CommandLifecycleState.Submitting,
+                null,
+                DateTimeOffset.UnixEpoch,
+                DateTimeOffset.UnixEpoch,
+                false)));
+    }
+
     [Fact]
     public void TryReadSnapshot_AfterDispose_ThrowsObjectDisposedException() {
         FrontComposerMcpLifecycleStore store = CreateStore();

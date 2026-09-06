@@ -220,7 +220,9 @@ resolution: already resolved: commit 8cabbf54 introduces shared FrontComposerDia
 origin: migrated from legacy ledger ("Deferred from: code review of 11-21-recommended-analyzer-product-and-generator-burndown.md chunk 4b (2026-08-08)"), 2026-08-27
 location: McpLifecycleStoreDisposalTests
 reason: `McpLifecycleStoreDisposalTests` only exercises `TryReadSnapshot` after dispose; `AcknowledgeAsync` / `TryRecordObservedTransition` share `ThrowIfDisposed` but are not pinned.
-status: open
+status: done 2026-09-06
+resolution: resolved by sweep bundle dw-mcp-lifecycle-disposal-coverage
+resolution-undo: 63e0e03ab983b5d73f2c9ee9b02946a52f6b486418a55809a80a3f7006c12e51 2026-09-06 7374617475733a206f70656e
 
 ### DW-694: Badge/Shortcut helpers gained `IsEnabled` stubs for Information-level HFC21xx asserts; other Shell `Substitute.For<ILogger<T>>()` factories that omit `IsEnabled` remain a latent false-negative risk now that wrappers short-circuit.
 
