@@ -9064,6 +9064,7 @@ source_spec: `_bmad-output/implementation-artifacts/spec-9-5-make-indicator-stat
 reason: summary: Add capacity bounds or TTL eviction to `PendingCommandOutcomeResolver._indicatorDecisions`. evidence: Review of `PendingCommandOutcomeResolver.cs` identified unbounded growth of `_indicatorDecisions` across long-running circuit sessions; pre-existing from Story 9.4 commit 90954acc on main.
 status: open
 decision: 2026-09-06 Evict after eligibility horizon — Replace the HashSet with timestamped decisions and evict only after the maximum observation and polling eligibility horizon has irreversibly elapsed, with clock-driven tests.
+decision: 2026-09-06 Evict after eligibility horizon — Replace the HashSet with timestamped decisions and evict only after the maximum observation and polling eligibility horizon has irreversibly elapsed, with clock-driven tests.
 
 ### DW-1832: Reconcile submodule pointer updates in `references/*` with repository release policy.
 

@@ -863,6 +863,15 @@
     "label": "Implement change",
     "resolution": ""
   },
+  "DW-1831": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Replace the HashSet with timestamped decisions and evict only after the maximum observation and polling eligibility horizon has irreversibly elapsed, with clock-driven tests.",
+    "key": "1",
+    "label": "Evict after eligibility horizon",
+    "resolution": ""
+  },
   "DW-1832": {
     "answered_at": "2026-08-27",
     "bundle_name": "",
