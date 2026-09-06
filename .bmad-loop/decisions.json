@@ -44,6 +44,15 @@
     "label": "Reject duplicates",
     "resolution": ""
   },
+  "DW-1041": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Move HFC1601 validation to an idempotent hosted startup gate with DI-resolution and host-start tests.",
+    "key": "1",
+    "label": "Hosted startup gate",
+    "resolution": ""
+  },
   "DW-1072": {
     "answered_at": "2026-08-27",
     "bundle_name": "",
