@@ -3358,6 +3358,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 2-1 (2
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **Nested command types (`Outer.InnerCommand`) emission** — Hint-prefix / namespace emission hasn't been audited for nested `[Command]` types. Counter sample doesn't exercise nesting. Add an HFC1004-style diagnostic if nesting is unsupported, or prove correctness with a test. Reconciliation: Row: DW-0382; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC17-AC20, AC35; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2; Evidence: section: code review of story 2-1 (2026-04-16).
 status: open
+decision: 2026-09-06 Implement the change — Implement the behavior described by DW-1113 at its recorded touchpoint, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1114: Metadata-sourced command symbols
 
