@@ -3601,6 +3601,7 @@ severity: low
 reason: **[LOW] `FrontComposerStorageKey.Build` has no key-length cap** — deeply-nested generic FQN + long email could exceed backend key-length limits (~5KB browser localStorage). **Defer target:** Story 5-2 (ETag caching + storage contract). Reconciliation: Row: DW-0411; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group D (Shell services + Fluxor state + JS module) chunk.
 status: open
 decision: 2026-09-06 Versioned bounded hash — Define a maximum and versioned format that hashes oversized variable segments, retain legacy fallback reads, and add boundary and collision tests.
+decision: 2026-09-06 Versioned bounded hash — Define a maximum and versioned format that hashes oversized variable segments, retain legacy fallback reads, and add boundary and collision tests.
 
 ### DW-1143: [LOW] `LastUsedSubscriberRegistry` scope-resolution ordering
 
