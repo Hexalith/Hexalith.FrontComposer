@@ -62,6 +62,15 @@
     "label": "Implement change",
     "resolution": ""
   },
+  "DW-1090": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Emit a text or date conversion bridge and add culture, nullability, and round-trip tests.",
+    "key": "1",
+    "label": "Support DateOnly",
+    "resolution": ""
+  },
   "DW-1124": {
     "answered_at": "2026-08-27",
     "bundle_name": "",

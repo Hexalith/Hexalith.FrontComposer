@@ -3178,6 +3178,7 @@ location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **DateOnly / DateOnly? `FluentDatePicker` emission** — Fluent UI v5 `FluentDatePicker` is bound to `DateTime?`; `FluentDatePicker<DateOnly>` fails to compile at adopter time. Counter sample does not use `DateOnly`, so not blocking. Route via `FluentTextInput type="date"` with parse converter when the first real `DateOnly`-shaped command lands (or mark unsupported via HFC1004). Reconciliation: Row: DW-0359; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC17-AC20, AC35; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2; Evidence: section: code review of story 2-1 (2026-04-15).
 status: open
 decision: 2026-09-06 Support DateOnly — Emit a text or date conversion bridge and add culture, nullability, and round-trip tests.
+decision: 2026-09-06 Support DateOnly — Emit a text or date conversion bridge and add culture, nullability, and round-trip tests.
 
 ### DW-1091: Enum without a zero-defined member
 
