@@ -2538,6 +2538,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 4-6-empty-st
 location: src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs
 reason: **`_expandPanelId` Guid changes across component re-mounts — AT cache regression** [`src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs ~line 209 of generated emit`] — the per-instance Guid suffix introduced to fix duplicate-id WCAG 4.1.2 collisions also produces a fresh id on every component re-mount under `<Virtualize>` / NavigateTo cycling. AT consumers cached against the previous `aria-controls` will see stale ids. Story 4-5 carry-over. Narrow edge case; revisit if AT user reports surface. Reconciliation: Row: DW-0274; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.4; AC coverage: AC5-AC13, AC26-AC29, AC33-AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.4.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4; Evidence: src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs ~line 209 of generated emit.
 status: open
+decision: 2026-09-06 Stable scoped IDs — Introduce a deterministic view and row scoped panel-ID scheme with multi-instance collision and remount tests.
 
 ### DW-1006: `ProjectionEmptyStateCta` `Struct` target may not flow through generator parser
 
@@ -2807,6 +2808,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 3-4-fc
 location: src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs
 reason: **`FrontComposerRegistry` constructor throw on `HFC1601` — latent, tied to Story 9-4** — `ValidateManifests()` runs in the ctor and can throw `InvalidOperationException` on a DI-resolved singleton, which would cascade-fail circuit startup rather than degrade gracefully. Inert today because `HasFullPageRoute` is tautological (see decision DN6). Revisit when Story 9-4 implements real routing-metadata enforcement; consider moving validation to `OnStart` to avoid DI-time fatals. `src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs:~1325` Reconciliation: Row: DW-0310; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts (2026-04-21).
 status: open
+decision: 2026-09-06 Hosted startup gate — Move HFC1601 validation to an idempotent hosted startup gate with DI-resolution and host-start tests.
 
 ### DW-1042: AC2/AC5/D11 bUnit matrix deferred
 
