@@ -1563,6 +1563,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 8-3-two-call
 location: FrontComposerMcpLifecycleTracker.cs:230-265
 reason: **DF8.3-6 — Per-entry `_gate` reentrancy under recursive transitions** [`Invocation/FrontComposerMcpLifecycleTracker.cs:230-265`] — Speculative; depends on whether `ILifecycleStateService` callback contract is reentrant. Document or harden. **Owner:** Concurrency hardening backlog. Sources: edge 40. Reconciliation: Row: DW-0142; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 status: open
+decision: 2026-09-06 Declare non-reentrant — Fail fast on recursive callback re-entry and document the contract with focused tests.
 
 ### DW-874: Out-of-scope submodule pointer changes in `Hexalith.EventStore` and `Hexalith.Tenants` — Working-tree carries unrelated submodule pointer drifts (release tags, doc updates) not declared in the Story 7-3 File List. Should be reverted or committed under a separate change. Owner: Pre-merge cleanup. Sources: A. Reconciliation: Row: DW-0143; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.4 SourceTools/schema-fingerprint follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.4 SourceTools/schema-fingerprint follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 
@@ -2401,6 +2402,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 3-4-fccomman
 location: src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:HandlePaletteResultActivated
 reason: **`HandlePaletteResultActivated` informational-shortcut early-return gives no UX feedback** [`src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:HandlePaletteResultActivated`] — User presses Enter on `Shortcut + RouteUrl=null` row, nothing happens visibly. v1.x polish (aria-live or row-flash). Reconciliation: Row: DW-0257; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC18, AC21-AC22, AC37; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:HandlePaletteResultActivated.
 status: open
+decision: 2026-09-06 Localized live announcement — Add a palette feedback action and localized resources, render through the polite aria-live region, and test English and French activation without closing or navigation.
 
 ### DW-989: `HandlePaletteQueryChanged` debounce wastes CPU on cancelled queries
 
@@ -2415,6 +2417,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 3-4-fccomman
 location: CommandPaletteEffects.cs
 reason: **Recent-route scoring uses raw URL not human label — long URLs dominate substring matches** [`CommandPaletteEffects.cs` recent-route scoring branch] — Affects perceived ranking quality; v2 with persisted human labels alongside URLs in the ring buffer. Reconciliation: Row: DW-0259; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: CommandPaletteEffects.cs.
 status: open
+decision: 2026-09-06 Versioned URL-label records — Introduce a versioned persisted record containing URL and label, tolerate reads from the current string array, and score and display the stored label.
 
 ### DW-991: `_shortcutAliases` array has no FR-locale aliases (`aide`, `clés`, etc.)
 
@@ -2738,6 +2741,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 3-4-fc
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`FrontComposerRegistry.HasFullPageRoute` duplicate-command ambiguity across manifests** — returning `true` when the same command name appears in two bounded contexts is a build-time governance concern (Story 9-4 analyzer). Runtime routing already disambiguates via `{boundedContext}` segment. Reconciliation: Row: DW-0302; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4).
 status: open
+decision: 2026-09-06 Reject duplicates — Keep the command-name API, detect cross-manifest duplicate full names during validation, and fail startup with a stable diagnostic naming every context.
 
 ### DW-1034: `BoundedContextRouteParser` protocol-relative `//evil/x/y`
 
@@ -3169,6 +3173,7 @@ origin: migrated from legacy ledger ("Added during patch pass (2026-04-15)"), 20
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **DateOnly / DateOnly? `FluentDatePicker` emission** — Fluent UI v5 `FluentDatePicker` is bound to `DateTime?`; `FluentDatePicker<DateOnly>` fails to compile at adopter time. Counter sample does not use `DateOnly`, so not blocking. Route via `FluentTextInput type="date"` with parse converter when the first real `DateOnly`-shaped command lands (or mark unsupported via HFC1004). Reconciliation: Row: DW-0359; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC17-AC20, AC35; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2; Evidence: section: code review of story 2-1 (2026-04-15).
 status: open
+decision: 2026-09-06 Support DateOnly — Emit a text or date conversion bridge and add culture, nullability, and round-trip tests.
 
 ### DW-1091: Enum without a zero-defined member
 
@@ -3352,6 +3357,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 2-1 (2
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **Metadata-sourced command symbols** — `CommandParser.Parse` doesn't guard against `typeSymbol.DeclaringSyntaxReferences.IsDefaultOrEmpty`. A `[Command]` declared in a referenced assembly (not source) could produce surprising hint collisions or emit forms the adopter can't touch. Verify and either support explicitly or reject with a diagnostic. Reconciliation: Row: DW-0383; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-1 (2026-04-16).
 status: open
+decision: 2026-09-06 Reject metadata commands — Reject referenced metadata command symbols with a stable diagnostic and documentation.
 
 ### DW-1115: W1 [HIGH] `DataGridNavigationReducers.Cap` static mutable cross-tenant leak
 
@@ -3588,6 +3594,7 @@ location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 severity: low
 reason: **[LOW] `FrontComposerStorageKey.Build` has no key-length cap** — deeply-nested generic FQN + long email could exceed backend key-length limits (~5KB browser localStorage). **Defer target:** Story 5-2 (ETag caching + storage contract). Reconciliation: Row: DW-0411; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group D (Shell services + Fluxor state + JS module) chunk.
 status: open
+decision: 2026-09-06 Versioned bounded hash — Define a maximum and versioned format that hashes oversized variable segments, retain legacy fallback reads, and add boundary and collision tests.
 
 ### DW-1143: [LOW] `LastUsedSubscriberRegistry` scope-resolution ordering
 
@@ -3837,6 +3844,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 4-3-datagrid
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`FcStatusFilterChips.HumanizeSlotName` returns raw `slot.ToString()`** — "InProgress" renders literally instead of "In progress" / "En cours". Already in the story's Known Gaps; logging here so the review record matches the gap ledger. Reconciliation: Row: DW-0443; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC17-AC20, AC35; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 4-3-datagrid-filtering-sorting-and-search (2026-04-24 pass 2).
 status: open
+decision: 2026-09-06 Localize enum keys — Resolve resources by BadgeSlot name, add English and French values, and fall back to deterministic sentence case.
 
 ### DW-1175: Information-level logging on every projection-connection-state transition floods telemetry on flapping connections
 
@@ -4691,6 +4699,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 6-3-level-3-
 location: samples/Counter/Counter.Web/Components/Templates/CounterCardLayoutTemplate.razor.cs:17
 reason: GC-D27 — `[ProjectionTemplate(typeof(CounterProjection), Current)]` registers without role discriminator [`samples/Counter/Counter.Web/Components/Templates/CounterCardLayoutTemplate.razor.cs:17`] — only one template per projection in current sample; role discriminator is Story 6-2 concern. Reconciliation: Row: DW-0559; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: samples/Counter/Counter.Web/Components/Templates/CounterCardLayoutTemplate.razor.cs:17.
 status: open
+decision: 2026-09-06 Optional role discriminator — Add a backward-compatible defaulted role discriminator and collision tests across parsing, registry, and generated consumers.
 
 ### DW-1291: `EmitDetailDescription` emits `Typography.Caption` which is a `Hexalith.FrontComposer.Contracts.Rendering.FcTypoToken` while `FluentLabel.Typography` is the FluentUI Blazor enum, plus the generator omits the FQN namespace [`src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs:838`] — surfaced during Group C apply when adding `[Display(Description=...)]` to `CounterProjection.Count` triggered CS0103 in `Counter.Domain.CounterProjection.g.razor.cs(879,54)`. Carry forward to Story 4-6 emitter follow-up; Story 6-3 sample rolled back the description annotation to keep build green. Reconciliation: Row: DW-0560; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.4; AC coverage: AC5-AC13, AC26-AC29, AC33-AC34; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.4.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4; Evidence: src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs:838.
 
@@ -4896,7 +4905,9 @@ resolution: already resolved: src/Hexalith.FrontComposer.Mcp/Extensions/FrontCom
 origin: migrated from legacy ledger ("Deferred from: code review of 8-2-hallucination-rejection-and-tenant-scoped-tools (2026-05-02)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpToolAdmissionService.cs:230-250
 reason: `NormalizeForMatching` discards confusable / non-ASCII forms silently rather than producing a documented "unsupported" suggestion category — intentional per spec T2; a future story can route them to a dedicated suggestion path. **Owner:** Post-v1 benchmark-driven follow-up. [`src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpToolAdmissionService.cs:230-250`] Reconciliation: Row: DW-0585; Final classification 2026-05-14: split-to-named-story; Target owner: Story 10.6 benchmark/release guard follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 10.6 benchmark/release guard follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
-status: open
+status: done 2026-09-06
+resolution: closed by human decision: The current silent, fail-closed behavior remains safe and contract-compatible.
+decision: 2026-09-06 Preserve no suggestion — The current silent, fail-closed behavior remains safe and contract-compatible.
 
 ### DW-1317: `Tool.Description = null` round-trip via SDK serializer — pre-existing pattern from Story 8-1 mapping; serializer behavior to be pinned by the future SDK adapter-boundary snapshot test. Owner: Patch P20 in this same story (boundary tests). [`src/Hexalith.FrontComposer.Mcp/FrontComposerMcpProtocolMapper.cs`] Reconciliation: Row: DW-0586; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 
@@ -8544,6 +8555,7 @@ location: LifecycleStateService.cs:80
 source_spec: `_bmad-output/implementation-artifacts/11-21-recommended-analyzer-product-and-generator-burndown.md`
 reason: summary: `ObjectDisposedException.ObjectName` and message changed from the short type name to the namespace-qualified name at five disposal sites, and two `ThrowIf` styles were introduced for the same fix. evidence: `ObjectDisposedException.ThrowIf` uses `Type.FullName`, replacing `new ObjectDisposedException(nameof(X))`. Sites: `LifecycleStateService.cs:80,167`, `ProjectionSubscriptionService.cs:684`, `NewItemIndicatorStateService.cs:237`, `ReconnectionReconciliationCoordinator.cs:239`, `FrontComposerMcpLifecycleStore.cs:294` — the last passes `this` while the others pass `typeof(T)`. No test asserts either the old or the new name.
 status: open
+decision: 2026-09-06 Restore short type names — Restore nameof-style short ObjectName values at every affected guard through one consistent pattern and add exact contract tests.
 
 ### DW-1774: `Counter.Web` and `Counter.Specimens` had their ASP0006 `NoWarn` removed but are not part of any asserted zero-ASP0006 consumer set, so a regression reaching only those consumers would be ungated.
 
@@ -9041,6 +9053,7 @@ location: PendingCommandOutcomeResolver.cs
 source_spec: `_bmad-output/implementation-artifacts/spec-9-5-make-indicator-state-observable-and-scope-safe.md`
 reason: summary: Add capacity bounds or TTL eviction to `PendingCommandOutcomeResolver._indicatorDecisions`. evidence: Review of `PendingCommandOutcomeResolver.cs` identified unbounded growth of `_indicatorDecisions` across long-running circuit sessions; pre-existing from Story 9.4 commit 90954acc on main.
 status: open
+decision: 2026-09-06 Evict after eligibility horizon — Replace the HashSet with timestamped decisions and evict only after the maximum observation and polling eligibility horizon has irreversibly elapsed, with clock-driven tests.
 
 ### DW-1832: Reconcile submodule pointer updates in `references/*` with repository release policy.
 
