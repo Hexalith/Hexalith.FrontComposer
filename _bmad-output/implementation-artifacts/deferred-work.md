@@ -5826,7 +5826,9 @@ resolution: already resolved: _bmad-output/implementation-artifacts/deferred-wor
 origin: migrated from legacy ledger ("Deferred from: code review of 11-6-shell-ux-accessibility-and-sample-coverage-follow-ups (2026-05-13)"), 2026-08-27
 location: TryGetClrGenericStarterName
 reason: **W9 — `TryGetClrGenericStarterName` regex misses nested types and assembly-qualified tokens:** `[A-Za-z0-9_.]` excludes `+`, `-`, `=`, `,` from CLR generic argument syntax; nested types fall back to `{baseName}_Arity{n}`. Consistent with accepted constraints in Story 11.6. Owner: starter-template generator hardening.
-status: open
+status: done 2026-09-06
+resolution: closed by human decision: The Arity fallback is approved behavior for unsupported CLR token shapes.
+decision: 2026-09-06 Close accepted fallback — The Arity fallback is approved behavior for unsupported CLR token shapes.
 
 ### DW-1430: Empty `200 OK` body surfaces as `ProjectionSchemaMismatchException`: The new `ReadBoundedResponseBodyAsync` preserves the prior behavior of routing zero-length successful responses through `JsonDocument.Parse("")`, which then surfaces as a schema-mismatch failure rather than an empty `QueryResult<T>`. Pre-existing classifier behavior, not introduced by this diff. Consider an `EmptyOkBody` failure category in a future EventStore HTTP classifier pass. Owner: EventStore HTTP classifier owner (cf. DW-0252 accepted-with-risk).
 
