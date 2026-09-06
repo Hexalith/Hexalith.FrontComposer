@@ -359,6 +359,15 @@
     "label": "Implement requested change",
     "resolution": ""
   },
+  "DW-1350": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "3",
+    "label": "Keep open",
+    "resolution": ""
+  },
   "DW-1358": {
     "answered_at": "2026-08-28",
     "bundle_name": "",
