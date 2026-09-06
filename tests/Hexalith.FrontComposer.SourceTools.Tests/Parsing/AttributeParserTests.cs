@@ -615,9 +615,20 @@ public partial class CompoundTypeProjection
         CommandModel model = CompilationHelper.ParseCommand(compilation, "TypeFixtures.MetadataCommand")
             .Model.ShouldNotBeNull();
 
+        compilation.GetDiagnostics(TestContext.Current.CancellationToken)
+            .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ShouldBeEmpty();
+        IPropertySymbol nonSzArrayProperty = compilation.GetTypeByMetadataName("MetadataFixtures.MetadataCommandBase")
+            .ShouldNotBeNull()
+            .GetMembers(MetadataAssignmentFixture.NonSzArrayPropertyName)
+            .OfType<IPropertySymbol>()
+            .Single();
+        ((IArrayTypeSymbol)nonSzArrayProperty.Type).IsSZArray.ShouldBeFalse();
+
         foreach (string propertyName in (string[])[
             MetadataAssignmentFixture.InvalidPropertyName,
             MetadataAssignmentFixture.InvalidTypePropertyName,
+            MetadataAssignmentFixture.InvalidNamespacePropertyName,
             MetadataAssignmentFixture.NonSzArrayPropertyName,
         ]) {
             model.DerivableProperties.Single(property => property.Name == propertyName)

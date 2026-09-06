@@ -1,8 +1,15 @@
 using System.Collections.Immutable;
+using System.Reflection;
+using System.Runtime.Loader;
 
 using Hexalith.FrontComposer.SourceTools.Emitters;
 using Hexalith.FrontComposer.SourceTools.Parsing;
 using Hexalith.FrontComposer.SourceTools.Transforms;
+
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Emit;
 
 using Shouldly;
 
@@ -128,9 +135,19 @@ public sealed class RazorEmitterVirtualizationTests {
     public void Emit_TruncateUsesSpanBasedConcatWithIdenticalOutput() {
         string source = RazorEmitter.Emit(Model(Col("Id")));
 
-        // Story 11.21 CA1845 — same characters, one fewer allocation.
-        source.ShouldContain("=> value.Length <= maxLength ? value : string.Concat(value.AsSpan(0, maxLength - 1), \"\\u2026\");");
+        source.ShouldContain("=> maxLength <= 0 ? string.Empty : value.Length <= maxLength ? value : string.Concat(value.AsSpan(0, maxLength - 1), \"\\u2026\");");
         source.ShouldNotContain("value.Substring(0, maxLength - 1) + ");
+    }
+
+    [Fact]
+    public void Emit_TruncateFailsSoftAtNonPositiveAndPositiveBounds() {
+        MethodInfo truncate = CompileTruncateMethod(RazorEmitter.Emit(Model(Col("Id"))));
+
+        truncate.Invoke(null, ["abcdef", -1]).ShouldBe(string.Empty);
+        truncate.Invoke(null, ["abcdef", 0]).ShouldBe(string.Empty);
+        truncate.Invoke(null, ["abcdef", 1]).ShouldBe("\u2026");
+        truncate.Invoke(null, ["abcdef", 4]).ShouldBe("abc\u2026");
+        truncate.Invoke(null, ["abcdef", 6]).ShouldBe("abcdef");
     }
 
     [Fact]
@@ -148,6 +165,102 @@ public sealed class RazorEmitterVirtualizationTests {
     [Fact]
     public void Emit_ProjectionTeardownSuppressesFinalization() {
         RazorEmitter.Emit(Model(Col("Id"))).ShouldContain("System.GC.SuppressFinalize(this);");
+    }
+
+    [Fact]
+    public void Emit_ProjectionTeardownUsesAtomicOnceOnlyGuardsForGridAndNonGridViews() {
+        const string Guard = "if (System.Threading.Interlocked.Exchange(ref _disposed, 1) != 0)";
+        string grid = RazorEmitter.Emit(Model(Col("Id")));
+        RazorModel nonGridModel = new(
+            "OrderProjection",
+            "TestDomain",
+            "Orders",
+            new EquatableArray<ColumnModel>(ImmutableArray.Create(Col("Id"))),
+            ProjectionRenderStrategy.DetailRecord);
+        string nonGrid = RazorEmitter.Emit(nonGridModel);
+
+        grid.ShouldContain("public async ValueTask DisposeAsync()");
+        grid.ShouldContain(Guard);
+        grid.IndexOf(Guard, StringComparison.Ordinal)
+            .ShouldBeLessThan(grid.IndexOf("_newItemIndicatorSubscription?.Dispose();", StringComparison.Ordinal));
+        grid.IndexOf(Guard, StringComparison.Ordinal)
+            .ShouldBeLessThan(grid.IndexOf("System.GC.SuppressFinalize(this);", StringComparison.Ordinal));
+        nonGrid.ShouldContain("public void Dispose()");
+        nonGrid.ShouldContain(Guard);
+        nonGrid.IndexOf(Guard, StringComparison.Ordinal)
+            .ShouldBeLessThan(nonGrid.IndexOf("State.StateChanged -= OnStateChanged;", StringComparison.Ordinal));
+        nonGrid.IndexOf(Guard, StringComparison.Ordinal)
+            .ShouldBeLessThan(nonGrid.IndexOf("System.GC.SuppressFinalize(this);", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Emit_NonGridDisposeUnsubscribesStateHandlerOnlyOnceAtRuntime() {
+        RazorModel nonGridModel = new(
+            "OrderProjection",
+            "TestDomain",
+            "Orders",
+            new EquatableArray<ColumnModel>(ImmutableArray.Create(Col("Id"))),
+            ProjectionRenderStrategy.DetailRecord);
+        Type fixtureType = CompileNonGridDisposeFixture(RazorEmitter.Emit(nonGridModel));
+        object fixture = Activator.CreateInstance(fixtureType)!;
+        MethodInfo dispose = fixtureType.GetMethod("Dispose", BindingFlags.Public | BindingFlags.Instance)!;
+
+        _ = dispose.Invoke(fixture, null);
+        _ = dispose.Invoke(fixture, null);
+
+        fixtureType.GetProperty("StateRemoveCount")!.GetValue(fixture).ShouldBe(1);
+    }
+
+    private static MethodInfo CompileTruncateMethod(string generatedSource) {
+        MethodDeclarationSyntax truncate = CSharpSyntaxTree.ParseText(generatedSource)
+            .GetRoot()
+            .DescendantNodes()
+            .OfType<MethodDeclarationSyntax>()
+            .Single(method => method.Identifier.ValueText == "Truncate");
+        string fixture = "using System;\r\n\r\npublic static class TruncateFixture\r\n{\r\n"
+            + truncate.ToFullString()
+            + "    public static string Invoke(string value, int maxLength) => Truncate(value, maxLength);\r\n}\r\n";
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(
+            fixture,
+            assemblyName: "TruncateFixture_" + Guid.NewGuid().ToString("N"));
+        Assembly assembly = CompileFixture(compilation);
+
+        return assembly.GetType("TruncateFixture")!
+            .GetMethod("Invoke", BindingFlags.Public | BindingFlags.Static)!;
+    }
+
+    private static Type CompileNonGridDisposeFixture(string generatedSource) {
+        SyntaxNode root = CSharpSyntaxTree.ParseText(generatedSource).GetRoot();
+        FieldDeclarationSyntax disposedField = root.DescendantNodes()
+            .OfType<FieldDeclarationSyntax>()
+            .Single(field => field.Declaration.Variables.Any(variable => variable.Identifier.ValueText == "_disposed"));
+        MethodDeclarationSyntax disposeMethod = root.DescendantNodes()
+            .OfType<MethodDeclarationSyntax>()
+            .Single(method => method.Identifier.ValueText == "Dispose" && method.ParameterList.Parameters.Count == 0);
+        string fixture = "using System;\r\n\r\npublic sealed class NonGridDisposeFixture\r\n{\r\n"
+            + disposedField.ToFullString()
+            + "    public RecordingState OrderProjectionState { get; } = new();\r\n"
+            + "    public int StateRemoveCount => OrderProjectionState.RemoveCount;\r\n\r\n"
+            + "    public NonGridDisposeFixture() => OrderProjectionState.StateChanged += OnStateChanged;\r\n\r\n"
+            + "    private void OnStateChanged(object? sender, EventArgs e) { }\r\n\r\n"
+            + disposeMethod.ToFullString()
+            + "}\r\n\r\npublic sealed class RecordingState\r\n{\r\n"
+            + "    public int RemoveCount { get; private set; }\r\n\r\n"
+            + "    public event EventHandler? StateChanged\r\n    {\r\n"
+            + "        add { }\r\n        remove { RemoveCount++; }\r\n    }\r\n}\r\n";
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(
+            fixture,
+            assemblyName: "NonGridDisposeFixture_" + Guid.NewGuid().ToString("N"));
+
+        return CompileFixture(compilation).GetType("NonGridDisposeFixture")!;
+    }
+
+    private static Assembly CompileFixture(CSharpCompilation compilation) {
+        using MemoryStream stream = new();
+        EmitResult result = compilation.Emit(stream, cancellationToken: TestContext.Current.CancellationToken);
+        result.Success.ShouldBeTrue(string.Join(Environment.NewLine, result.Diagnostics));
+        stream.Position = 0;
+        return AssemblyLoadContext.Default.LoadFromStream(stream);
     }
 
 }

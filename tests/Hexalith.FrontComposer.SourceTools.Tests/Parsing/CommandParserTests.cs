@@ -439,6 +439,7 @@ public class CommandParserTests {
         diagnostic.Message.ShouldNotContain("[DerivedFrom]");
         diagnostic.FilePath.ShouldBe("Test0.cs");
         diagnostic.Line.ShouldBe(7);
+        diagnostic.Column.ShouldBe(18);
     }
 
     [Fact]
@@ -462,6 +463,7 @@ public class CommandParserTests {
         DiagnosticInfo diagnostic = result.Diagnostics.Single(item => item.Id == "HFC1016");
         diagnostic.FilePath.ShouldBe("Test0.cs");
         diagnostic.Line.ShouldBe(8);
+        diagnostic.Column.ShouldBe(15);
     }
 
     [Fact]
@@ -493,6 +495,7 @@ public class CommandParserTests {
         DiagnosticInfo diagnostic = result.Diagnostics.Single(item => item.Id == "HFC1016");
         diagnostic.FilePath.ShouldBe("Test0.cs");
         diagnostic.Line.ShouldBe(4);
+        diagnostic.Column.ShouldBe(18);
     }
 
     [Fact]

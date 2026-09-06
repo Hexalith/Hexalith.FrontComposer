@@ -168,14 +168,18 @@ resolution: already resolved: commit 8cabbf54 applies the deferred CA1873 local-
 origin: migrated from legacy ledger ("Deferred from: code review of spec-11-22-recommended-analyzer-test-and-sample-burn-down.md chunk 2 (2026-08-08)"), 2026-08-27
 location: RenderTreeSequenceRewriter.StartsArgumentList
 reason: `RenderTreeSequenceRewriter.StartsArgumentList` now skips whitespace before `(` / the identifier but still ignores comments/trivia (e.g. `( /*x*/ ++seq)`), so the OrFail prefilter can miss some fail-safe leftovers.
-status: open
+status: done 2026-09-06
+resolution: resolved by sweep bundle dw-source-generator-boundary-hardening
+resolution-undo: bf3c48abeb67a658f5f9561c364f753c4213486b2740060223149ab0b51d6cd8 2026-09-06 7374617475733a206f70656e
 
 ### DW-688: `GeneratedLogMethodEmitter.ValidateArguments` rejects null/whitespace `methodName`/`eventName` but still accepts non-empty invalid C# identifiers that would fail to compile in generated output.
 
 origin: migrated from legacy ledger ("Deferred from: code review of spec-11-22-recommended-analyzer-test-and-sample-burn-down.md chunk 2 (2026-08-08)"), 2026-08-27
 location: GeneratedLogMethodEmitter.ValidateArguments
 reason: `GeneratedLogMethodEmitter.ValidateArguments` rejects null/whitespace `methodName`/`eventName` but still accepts non-empty invalid C# identifiers that would fail to compile in generated output.
-status: open
+status: done 2026-09-06
+resolution: resolved by sweep bundle dw-source-generator-boundary-hardening
+resolution-undo: bf3c48abeb67a658f5f9561c364f753c4213486b2740060223149ab0b51d6cd8 2026-09-06 7374617475733a206f70656e
 
 ### DW-689: Thirteen-project Recommended Governance rebuild gate (`AnalyzerPolicy_Story1122RecordedProjects_RemainRecommendedClean`) runs sequential 180s-bounded builds and slows every Governance lane; intentional executable gate — optimize later (caching, narrower trait, or shared binary log reuse).
 
@@ -268,14 +272,18 @@ resolution-undo: e4596f494f9c9989040773d97a6329e9d10b7fd5193cf008204a784d3bd533f
 origin: migrated from legacy ledger ("Deferred from: code review of 11-21-recommended-analyzer-product-and-generator-burndown.md chunk 3 (2026-08-08)"), 2026-08-27
 location: RazorEmitter.Truncate
 reason: `RazorEmitter.Truncate` uses `AsSpan(0, maxLength - 1)` (CA1845); `maxLength < 1` on a non-empty value still throws. Sole production call site passes `30`; same failure shape existed with `Substring`.
-status: open
+status: done 2026-09-06
+resolution: resolved by sweep bundle dw-source-generator-boundary-hardening
+resolution-undo: bf3c48abeb67a658f5f9561c364f753c4213486b2740060223149ab0b51d6cd8 2026-09-06 7374617475733a206f70656e
 
 ### DW-701: RazorEmitter grid `DisposeAsync` / non-grid `Dispose` call `SuppressFinalize` (CA1816) but have no `_disposed` early-return, unlike the form emitter. Teardown is mostly naturally idempotent (null refs / catch); repeat dispose remains weaker than the form path.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 11-21-recommended-analyzer-product-and-generator-burndown.md chunk 3 (2026-08-08)"), 2026-08-27
 location: DisposeAsync
 reason: RazorEmitter grid `DisposeAsync` / non-grid `Dispose` call `SuppressFinalize` (CA1816) but have no `_disposed` early-return, unlike the form emitter. Teardown is mostly naturally idempotent (null refs / catch); repeat dispose remains weaker than the form path.
-status: open
+status: done 2026-09-06
+resolution: resolved by sweep bundle dw-source-generator-boundary-hardening
+resolution-undo: bf3c48abeb67a658f5f9561c364f753c4213486b2740060223149ab0b51d6cd8 2026-09-06 7374617475733a206f70656e
 
 ### DW-702: `FormatLabel` indexes `parts[0]`/`parts[1]` after a space-split with `RemoveEmptyEntries` and no length check; malformed public inputs (e.g. a lone space) can `IndexOutOfRangeException`. Normalize already enforces two chord parts for registered bindings.
 
@@ -10007,3 +10015,137 @@ source_spec: `_bmad-output/implementation-artifacts/spec-dw-671-675-harden-fc-ni
 reason: The HFC1016 parse-time rejection and DW-683 syntax-tree admission assertions came from other stories in the same emitter test class since baseline. Separate or explicitly account for them because they are not the 5912/5913 closed-set or redaction pins owned by this bundle.
 status: open
 
+### DW-1936: AssignLiteralsOrFail can miss runtime sequence increments that exist only in a disabled conditional branch.
+origin: spec-deferred 07cc8345127a
+location: src/Hexalith.FrontComposer.SourceTools/Emitters/RenderTreeSequenceRewriter.cs:182
+source_spec: `spec-source-generator-boundary-hardening.md`
+severity: medium
+reason: AssignLiterals deliberately returns conditional documents unchanged, but FindRuntimeSequenceArgument parses only with DEBUG defined; a counter solely in an inactive #else or non-DEBUG branch remains DisabledTextTrivia. This predates the comment-trivia correction.
+status: open
+
+### DW-1937: The fail-closed render-tree check accepts nonliteral sequence expressions that contain no increment or decrement.
+origin: spec-deferred 2745e2ffd46d
+location: src/Hexalith.FrontComposer.SourceTools/Emitters/RenderTreeSequenceRewriter.cs:182
+source_spec: `spec-source-generator-boundary-hardening.md`
+severity: medium
+reason: The text gate and syntax walk detect ++/-- nodes only, so seq, seq + 1, or GetSequence() can pass. The deferred bundle was limited to comment trivia around increment expressions, and this broader gap predates it.
+status: open
+
+### DW-1938: The governed render-tree method catalog omits AddComponentParameter.
+origin: spec-deferred f3db81064974
+location: src/Hexalith.FrontComposer.SourceTools/Emitters/RenderTreeSequenceRewriter.cs:52
+source_spec: `spec-source-generator-boundary-hardening.md`
+severity: low
+reason: The pinned framework exposes RenderTreeBuilder.AddComponentParameter(int sequence, string name, object? value), while SequenceMethodNames and the masking helper omit it. No SourceTools emitter currently calls it, so this is a pre-existing future-coverage gap.
+status: open
+
+### DW-1939: GeneratedRenderTreeText can mask the numeric prefix of a runtime arithmetic expression.
+origin: spec-deferred 19719ee54ab0
+location: tests/Hexalith.FrontComposer.SourceTools.Tests/GeneratedRenderTreeText.cs:25
+source_spec: `spec-source-generator-boundary-hardening.md`
+severity: medium
+reason: SequenceArgumentPattern has no delimiter after its digit run, so AddContent(12 + seq, ...) becomes AddContent(# + seq, ...). This pre-existing test-helper behavior is outside the four ledger boundaries.
+status: open
+
+### DW-1940: Literal-sequence test helpers use a weaker postfix-increment regex than the production Roslyn check.
+origin: spec-deferred 9738acb88aa5
+location: tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RenderTreeSequenceRewriterTests.cs:505
+source_spec: `spec-source-generator-boundary-hardening.md`
+severity: low
+reason: ShouldUseLiteralRenderTreeSequences and the packaged-consumer gate do not recognize prefix increments, decrements, arithmetic, method calls, or comment-separated expressions. Production AssignLiteralsOrFail still catches the increment/decrement forms addressed here; the duplicate test regex predates this bundle.
+status: open
+
+### DW-1941: The broader increment/decrement prefilter may add a second Roslyn parse for generated documents with ordinary loop increments.
+origin: spec-deferred 42bfb7e0da3e
+location: src/Hexalith.FrontComposer.SourceTools/Emitters/RenderTreeSequenceRewriter.cs:182
+source_spec: `spec-source-generator-boundary-hardening.md`
+reason: Rewritten output can retain unrelated i++ loops, which now pass the cheap text gate even without a surviving sequence counter. A representative generator/IDE benchmark is needed to establish whether the extra parse has material latency.
+status: open
+
+### DW-1942: Named render-tree sequence arguments can evade the positional first-argument scan.
+origin: spec-deferred 12d8822fcb18
+location: src/Hexalith.FrontComposer.SourceTools/Emitters/RenderTreeSequenceRewriter.cs:199
+source_spec: `spec-source-generator-boundary-hardening.md`
+severity: low
+reason: C# permits named arguments to be reordered, while FindRuntimeSequenceArgument inspects syntax argument zero rather than the parameter named sequence. Current emitters use positional calls, making this a pre-existing low-risk gap.
+status: open
+
+### DW-1943: GeneratedLogMethodEmitter does not validate the emitted LogLevel member name.
+origin: spec-deferred 0f4a4c789ccd
+location: src/Hexalith.FrontComposer.SourceTools/Emitters/GeneratedLogMethodEmitter.cs:111
+source_spec: `spec-source-generator-boundary-hardening.md`
+severity: low
+reason: level is appended directly as LogLevel.<value>, so a malformed internal caller value would emit invalid semantic C# after other validation. All current call sites use controlled literals; this was not part of DW-688.
+status: open
+
+### DW-1944: Generated logging parameter names and type strings remain unvalidated before output mutation.
+origin: spec-deferred 109b1834a076
+location: src/Hexalith.FrontComposer.SourceTools/Emitters/GeneratedLogMethodEmitter.cs:126
+source_spec: `spec-source-generator-boundary-hardening.md`
+severity: low
+reason: Keywords, duplicate names, logger/exception collisions, or malformed type strings can still produce uncompilable generated members. Current call sites are internal controlled literals, and this broader pre-existing input contract was not part of DW-688.
+status: open
+
+### DW-1945: Concurrent metadata hardening does not cover every compiler-unreferenceable property type.
+origin: spec-deferred f048578199c5
+location: tests/Hexalith.FrontComposer.SourceTools.Tests/MetadataAssignmentFixture.cs:13
+source_spec: `spec-source-generator-boundary-hardening.md`
+severity: medium
+reason: The separately landed metadata fixture covers invalid identifiers/namespaces and non-SZ arrays, but not inaccessible referenced types or unresolved/error types. That work is outside this bundle and was already committed independently during the run.
+status: open
+
+### DW-1946: Concurrent SourceTypeNameFormatter changes retain top-level array nullability despite the documented non-nullable assignment-type contract.
+origin: spec-deferred 50926467b839
+location: src/Hexalith.FrontComposer.SourceTools/Parsing/SourceTypeNameFormatter.cs:35
+source_spec: `spec-source-generator-boundary-hardening.md`
+severity: medium
+reason: Format passes includeNullableAnnotation:false, but the array branch ignores the flag and records the outer array annotation. DomainModel documents SourceTypeName as non-nullable; the formatter work was committed independently during this run.
+status: open
+
+### DW-1947: Concurrent command-renderer changes suppress obsolete warnings across the entire generated file.
+origin: spec-deferred e28ac3a5dba4
+location: src/Hexalith.FrontComposer.SourceTools/Emitters/CommandRendererEmitter.cs:30
+source_spec: `spec-source-generator-boundary-hardening.md`
+severity: medium
+reason: The new CS0612/CS0618 pragma begins after #nullable and restores at end of file, so unrelated obsolete API use in generated code can be hidden. This separately committed parser/renderer work is outside the four-entry bundle.
+status: open
+
+### DW-1948: Generated OnStateChanged handlers have no disposed guard, so a state notification racing teardown can still reach InvokeAsync(StateHasChanged).
+origin: spec-deferred 5039cc96e10a
+location: src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs:1060
+source_spec: `spec-source-generator-boundary-hardening.md`
+severity: low
+reason: Both the grid and non-grid OnStateChanged bodies call InvokeAsync unconditionally, and Dispose unsubscribes only after claiming the guard. The window predates this bundle: the unsubscribe order is unchanged and the discarded Task makes any ObjectDisposedException unobserved. Only OnNewItemIndicatorsChanged carries a Volatile.Read guard.
+status: open
+
+### DW-1949: The fail-closed render-tree gate's decrement arm is exercised by no test.
+origin: spec-deferred 2c74f33ff97a
+location: src/Hexalith.FrontComposer.SourceTools/Emitters/RenderTreeSequenceRewriter.cs:188
+source_spec: `spec-source-generator-boundary-hardening.md`
+severity: low
+reason: No SourceTools test feeds a decrement sequence argument through AssignLiteralsOrFail, so the '--' half of both the text gate and the Post/PreDecrementExpression walk is unpinned. This is pre-existing: the retired HasIncrementInFirstArgumentPosition prefilter also scanned '--' and was equally uncovered. One theory row on the existing AssignLiteralsOrFail tests would close it.
+status: open
+
+### DW-1950: Concurrent soft-fail arm assertions hardcode a bare LF and fail on a CRLF test host.
+origin: spec-deferred 81de6011a523
+location: tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/CommandRendererStaticAssignmentTests.cs:178
+source_spec: `spec-source-generator-boundary-hardening.md`
+severity: medium
+reason: CommandRendererStaticAssignmentTests compares SliceCase(...).Trim() against a literal 'case "X":\n return false;', while CommandRendererEmitter builds that arm with StringBuilder.AppendLine (Environment.NewLine) and SliceCase does no normalization. Green on Linux, red on Windows. The assertions belong to the independently committed prefill refactor.
+status: open
+
+### DW-1951: Concurrent top-level nullable-annotation suppression in SourceTypeNameFormatter is pinned by no test.
+origin: spec-deferred ee19f2780b9a
+location: src/Hexalith.FrontComposer.SourceTools/Parsing/SourceTypeNameFormatter.cs:35
+source_spec: `spec-source-generator-boundary-hardening.md`
+severity: medium
+reason: Format now passes includeNullableAnnotation:false, but every fixture asserting an annotated SourceTypeName is an array or inner-generic shape that routes around the flag, and no fixture declares a top-level annotated reference type. Restoring the previous default leaves the whole suite green. A 'public string? Note' property asserting SourceTypeName == "global::System.String" would settle it. Committed independently during this run.
+status: open
+
+### DW-1952: The concurrent HFC1016 documentation shows one of three emitted message variants.
+origin: spec-deferred ee258b6ac725
+location: docs/diagnostics/HFC1016.md
+source_spec: `spec-source-generator-boundary-hardening.md`
+severity: low
+reason: CommandParser emits "has no public setter", "is declared with an 'init' accessor", and "has a non-public setter", but the corrected example documents only the first, and the page does not describe where the diagnostic points for a member that comes from metadata rather than source. The doc edit belongs to the independently committed prefill refactor.
+status: open

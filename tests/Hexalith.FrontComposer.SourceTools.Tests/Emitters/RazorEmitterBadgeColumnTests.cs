@@ -75,6 +75,7 @@ public class RazorEmitterBadgeColumnTests {
 
         string source = RazorEmitter.Emit(model);
 
+        RenderTreeSequenceRewriterTests.ShouldUseLiteralRenderTreeSequences(source);
         string masked = GeneratedRenderTreeText.MaskSequenceArguments(source);
         masked.ShouldContain("b.OpenComponent<TemplateColumn<OrderProjection>>(#);");
         masked.ShouldNotContain("b.OpenComponent<PropertyColumn<OrderProjection, string?>>(#);");

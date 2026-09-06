@@ -413,6 +413,52 @@ public sealed partial class RenderTreeSequenceRewriterTests {
     }
 
     [Fact]
+    public void AssignLiteralsOrFail_DetectsIncrementAfterBlockCommentTrivia() {
+        const string failsSafeWithComment = """
+            class C
+            {
+                void BuildRenderTree(RenderTreeBuilder builder)
+                {
+                    int seq = 0;
+                    builder.AddContent(/* sequence */ ++seq, "a");
+                    Helper(builder, ref seq);
+                }
+            }
+            """;
+
+        InvalidOperationException thrown = Should.Throw<InvalidOperationException>(
+            () => RenderTreeSequenceRewriter.AssignLiteralsOrFail(failsSafeWithComment));
+
+        thrown.Message.ShouldContain("builder.AddContent(/* sequence */ ++seq, \"a\")");
+        thrown.Message.ShouldContain("ASP0006");
+    }
+
+    [Fact]
+    public void AssignLiteralsOrFail_DetectsIncrementAfterLineCommentTrivia() {
+        const string failsSafeWithComment = """
+            class C
+            {
+                void BuildRenderTree(RenderTreeBuilder builder)
+                {
+                    int seq = 0;
+                    builder.AddContent(
+                        // sequence
+                        seq++, "a");
+                    Helper(builder, ref seq);
+                }
+            }
+            """;
+
+        InvalidOperationException thrown = Should.Throw<InvalidOperationException>(
+            () => RenderTreeSequenceRewriter.AssignLiteralsOrFail(failsSafeWithComment));
+
+        thrown.Message.ShouldContain("builder.AddContent");
+        thrown.Message.ShouldContain("// sequence");
+        thrown.Message.ShouldContain("seq++, \"a\"");
+        thrown.Message.ShouldContain("ASP0006");
+    }
+
+    [Fact]
     public void RuntimeSequenceArgumentPattern_MatchesSpacedAndTightIncrementArguments() {
         // Pins the packaged / ShouldUseLiteralRenderTreeSequences gate independently of OrFail.
         // Dropping \s* from the regex would leave AssignLiteralsOrFail_DetectsSpacedIncrementLeftByFailSafe

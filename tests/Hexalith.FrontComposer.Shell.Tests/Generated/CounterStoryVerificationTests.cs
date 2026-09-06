@@ -19,6 +19,8 @@ using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
 using Hexalith.FrontComposer.Shell.Services.ProjectionTemplates;
 using Hexalith.FrontComposer.Shell.Services.ProjectionViewOverrides;
+using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
+using Hexalith.FrontComposer.Shell.State.ExpandedRow;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 
 using Microsoft.AspNetCore.Components;
@@ -356,6 +358,9 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         UseFakeTime(s_fixedNow);
         RecordingNewItemIndicatorStateService indicators = new();
         Services.Replace(ServiceDescriptor.Scoped<INewItemIndicatorStateService>(_ => indicators));
+        BunitJSModuleInterop scrollModule = JSInterop.SetupModule(
+            "./_content/Hexalith.FrontComposer.Shell/js/fc-datagrid.js");
+        var pendingJsCleanup = scrollModule.SetupVoid("disposeViewKey", _ => true);
 
         await InitializeStoreAsync();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
@@ -374,11 +379,32 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         await cut.WaitForAssertionAsync(() => indicators.SubscribeCount.ShouldBe(1));
         Action capturedHandler = indicators.ActiveHandler.ShouldNotBeNull();
         RecordingIndicatorSubscription subscription = indicators.Subscription.ShouldNotBeNull();
+        List<object> cleanupActions = [];
+        dispatcher.ActionDispatched += (_, args) => {
+            if (args.Action is ClearPendingPagesAction or CollapseRowAction) {
+                cleanupActions.Add(args.Action);
+            }
+        };
 
+        CounterProjectionView view = cut.Instance;
+        Task firstDisposal = view.DisposeAsync().AsTask();
+        firstDisposal.IsCompleted.ShouldBeFalse();
+        scrollModule.Invocations.Count(invocation => invocation.Identifier == "disposeViewKey").ShouldBe(1);
+
+        Task overlappingDisposal = view.DisposeAsync().AsTask();
+        Task secondOverlappingDisposal = view.DisposeAsync().AsTask();
+        overlappingDisposal.IsCompletedSuccessfully.ShouldBeTrue();
+        secondOverlappingDisposal.IsCompletedSuccessfully.ShouldBeTrue();
+
+        pendingJsCleanup.SetVoidResult();
+        await Task.WhenAll(firstDisposal, overlappingDisposal, secondOverlappingDisposal);
         await DisposeComponentsAsync();
         int renderCountAfterDispose = cut.RenderCount;
 
         subscription.DisposeCount.ShouldBe(1);
+        cleanupActions.Count(action => action is ClearPendingPagesAction).ShouldBe(1);
+        cleanupActions.Count(action => action is CollapseRowAction).ShouldBe(1);
+        scrollModule.Invocations.Count(invocation => invocation.Identifier == "disposeViewKey").ShouldBe(1);
         indicators.ActiveHandler.ShouldBeNull();
         Should.NotThrow(capturedHandler);
         cut.RenderCount.ShouldBe(renderCountAfterDispose);

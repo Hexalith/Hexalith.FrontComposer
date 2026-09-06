@@ -79,6 +79,8 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
     private global::System.IServiceProvider DevModeServices { get; set; } = default!;
 #endif
 
+    private int _disposed;
+
     private const string _viewKey = "Reporting:RoleSpecific.Negative.DashboardWrongShapeProjection";
 
     private static readonly System.Func<DashboardWrongShapeProjection, object> _itemKeyAccessor = static x => (object)x.Id!;
@@ -90,8 +92,6 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
     private IDisposable? _projectionFallbackLaneRegistration;
 
     private string? _registeredProjectionFallbackLaneKey;
-
-    private int _disposed;
 
     private global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel _density = global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable;
 
@@ -568,7 +568,11 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
-        System.Threading.Volatile.Write(ref _disposed, 1);
+        if (System.Threading.Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
         _newItemIndicatorSubscription?.Dispose();
         _newItemIndicatorSubscription = null;
         DashboardWrongShapeProjectionState.StateChanged -= OnStateChanged;
@@ -749,7 +753,7 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
         => System.Array.Empty<string>();
 
     private static string Truncate(string value, int maxLength)
-        => value.Length <= maxLength ? value : string.Concat(value.AsSpan(0, maxLength - 1), "\u2026");
+        => maxLength <= 0 ? string.Empty : value.Length <= maxLength ? value : string.Concat(value.AsSpan(0, maxLength - 1), "\u2026");
 
     private static string HumanizeEnumLabel(string value)
     {

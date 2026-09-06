@@ -235,6 +235,28 @@ public sealed class GeneratedLogMethodEmitterTests {
     }
 
     [Theory]
+    [InlineData("Log Something")]
+    [InlineData("Log-Something")]
+    [InlineData("9LogSomething")]
+    [InlineData("class")]
+    [InlineData("@LogSomething")]
+    public void Emit_WithInvalidMethodName_FailsBeforeAppending(string methodName) {
+        StringBuilder sb = new("existing");
+
+        ArgumentException thrown = Should.Throw<ArgumentException>(() => GeneratedLogMethodEmitter.Emit(
+            sb,
+            methodName,
+            5999,
+            "Event label",
+            "Debug",
+            "no holes",
+            hasException: false));
+
+        thrown.ParamName.ShouldBe("methodName");
+        sb.ToString().ShouldBe("existing");
+    }
+
+    [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
@@ -270,6 +292,28 @@ public sealed class GeneratedLogMethodEmitterTests {
         string emitted = sb.ToString();
         emitted.ShouldContain("new global::Microsoft.Extensions.Logging.EventId(5999, \"NameWith\\\"Quote\"),");
         emitted.ShouldContain("\"Message with \\\"quotes\\\"\"");
+        ShouldBeAValidClassBody(emitted);
+    }
+
+    [Fact]
+    public void Emit_AcceptsAndEscapesArbitraryEventLabelText() {
+        const string EventName = "Event label: !? [quoted \"text\"] \\path";
+        StringBuilder sb = new();
+
+        GeneratedLogMethodEmitter.Emit(
+            sb,
+            "LogArbitraryLabel",
+            5999,
+            EventName,
+            "Debug",
+            "no holes",
+            hasException: false);
+
+        string emitted = sb.ToString();
+        emitted.ShouldContain(
+            "new global::Microsoft.Extensions.Logging.EventId(5999, \""
+            + GeneratedLiteral.Escape(EventName)
+            + "\"),");
         ShouldBeAValidClassBody(emitted);
     }
 

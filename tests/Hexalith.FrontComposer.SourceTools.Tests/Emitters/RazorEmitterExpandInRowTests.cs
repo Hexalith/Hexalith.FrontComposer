@@ -64,6 +64,7 @@ public sealed class RazorEmitterExpandInRowTests {
             Col("Owner"),
             Col("ShippingStreet", group: "Shipping")));
 
+        RenderTreeSequenceRewriterTests.ShouldUseLiteralRenderTreeSequences(src);
         src.ShouldContain("FcExpandInRowDetail");
         src.ShouldContain("\"PanelId\", _expandPanelId");
         src.ShouldContain("\"HasExpanded\", _expandedItem is not null");
@@ -105,6 +106,7 @@ public sealed class RazorEmitterExpandInRowTests {
             Col("Status", TypeCategory.Enum),
             Col("Name")));
 
+        RenderTreeSequenceRewriterTests.ShouldUseLiteralRenderTreeSequences(src);
         src.ShouldContain("OrderProjectionStatusOverviewRow");
         src.ShouldContain("HandleStatusOverviewRowClickAsync");
         src.ShouldContain("TemplateColumn<OrderProjectionStatusOverviewRow>");

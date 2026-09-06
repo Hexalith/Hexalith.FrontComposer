@@ -32,7 +32,7 @@ internal static class SourceTypeNameFormatter {
         }
 
         SortedSet<string> aliases = new(StringComparer.Ordinal);
-        string result = FormatCore(typeSymbol, compilation, aliases);
+        string result = FormatCore(typeSymbol, compilation, aliases, includeNullableAnnotation: false);
         requiredExternAliases = new EquatableArray<string>(ImmutableArray.CreateRange(aliases));
         return result;
     }
@@ -40,7 +40,8 @@ internal static class SourceTypeNameFormatter {
     private static string FormatCore(
         ITypeSymbol typeSymbol,
         Compilation compilation,
-        SortedSet<string> aliases) {
+        SortedSet<string> aliases,
+        bool includeNullableAnnotation = true) {
         switch (typeSymbol) {
             case IArrayTypeSymbol arrayType:
                 return FormatArrayType(arrayType, compilation, aliases);
@@ -53,13 +54,13 @@ internal static class SourceTypeNameFormatter {
                 return functionPointerType.ToDisplayString(FunctionPointerDisplayFormat);
 
             case IDynamicTypeSymbol:
-                return AppendNullableAnnotation(typeSymbol, "global::System.Object");
+                return AppendNullableAnnotation(typeSymbol, "global::System.Object", includeNullableAnnotation);
 
             case ITypeParameterSymbol typeParameter:
-                return AppendNullableAnnotation(typeParameter, EscapeIdentifier(typeParameter.Name));
+                return AppendNullableAnnotation(typeParameter, EscapeIdentifier(typeParameter.Name), includeNullableAnnotation);
 
             case INamedTypeSymbol namedType:
-                return FormatNamedType(namedType, compilation, aliases);
+                return FormatNamedType(namedType, compilation, aliases, includeNullableAnnotation);
 
             default:
                 return typeSymbol.ToDisplayString(FunctionPointerDisplayFormat);
@@ -78,7 +79,11 @@ internal static class SourceTypeNameFormatter {
         }
 
         StringBuilder builder = new(FormatCore(elementType, compilation, aliases));
-        foreach ((int rank, bool isNullable) in layers) {
+        for (int i = 0; i < layers.Count; i++) {
+            int rank = layers[i].Rank;
+            // C# writes the outer array's nullable suffix after all nested rank specifiers,
+            // so nullable annotations occupy the reverse positions of Roslyn's outer-first layers.
+            bool isNullable = layers[layers.Count - i - 1].IsNullable;
             _ = builder.Append('[').Append(',', rank - 1).Append(']');
             if (isNullable) {
                 _ = builder.Append('?');
@@ -88,8 +93,12 @@ internal static class SourceTypeNameFormatter {
         return builder.ToString();
     }
 
-    private static string AppendNullableAnnotation(ITypeSymbol typeSymbol, string sourceTypeName)
-        => typeSymbol.NullableAnnotation == NullableAnnotation.Annotated
+    private static string AppendNullableAnnotation(
+        ITypeSymbol typeSymbol,
+        string sourceTypeName,
+        bool includeNullableAnnotation)
+        => includeNullableAnnotation
+            && typeSymbol.NullableAnnotation == NullableAnnotation.Annotated
             && (typeSymbol.IsReferenceType || typeSymbol is ITypeParameterSymbol)
                 ? sourceTypeName + "?"
                 : sourceTypeName;
@@ -97,10 +106,15 @@ internal static class SourceTypeNameFormatter {
     private static string FormatNamedType(
         INamedTypeSymbol namedType,
         Compilation compilation,
-        SortedSet<string> aliases) {
+        SortedSet<string> aliases,
+        bool includeNullableAnnotation) {
         StringBuilder builder = new();
         if (namedType.ContainingType is not null) {
-            _ = builder.Append(FormatNamedType(namedType.ContainingType, compilation, aliases)).Append('.');
+            _ = builder.Append(FormatNamedType(
+                namedType.ContainingType,
+                compilation,
+                aliases,
+                includeNullableAnnotation: false)).Append('.');
         }
         else {
             _ = builder.Append(GetRootQualifier(namedType.ContainingAssembly, compilation, aliases));
@@ -122,7 +136,7 @@ internal static class SourceTypeNameFormatter {
             _ = builder.Append('>');
         }
 
-        return AppendNullableAnnotation(namedType, builder.ToString());
+        return AppendNullableAnnotation(namedType, builder.ToString(), includeNullableAnnotation);
     }
 
     private static string GetRootQualifier(

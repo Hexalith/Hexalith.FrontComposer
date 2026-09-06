@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -179,7 +179,15 @@ internal static class RenderTreeSequenceRewriter {
     /// <param name="source">Emitted C# source text.</param>
     /// <returns>The offending call text, or <see langword="null"/> when there is none.</returns>
     private static string? FindRuntimeSequenceArgument(string source) {
-        if (string.IsNullOrEmpty(source) || !HasIncrementInFirstArgumentPosition(source)) {
+        // Cheap operator-presence gate only: it skips the parse for output that cannot hold a
+        // surviving counter, and it deliberately over-matches (string, comment, and loop text)
+        // because any narrower text rule reconstructs trivia and reopens the bypass this walk
+        // closes. Both operators are tested here even though AssignLiterals rewrites only '++':
+        // the walk below fails closed on decrements too, so aligning the two gates would silently
+        // drop that arm.
+        if (string.IsNullOrEmpty(source)
+            || (source.IndexOf("++", StringComparison.Ordinal) < 0
+                && source.IndexOf("--", StringComparison.Ordinal) < 0)) {
             return null;
         }
 
@@ -206,65 +214,6 @@ internal static class RenderTreeSequenceRewriter {
         }
 
         return null;
-    }
-
-    /// <summary>
-    /// Cheap text prefilter for <see cref="FindRuntimeSequenceArgument"/>: reports whether any
-    /// <c>++</c>/<c>--</c> operator applies to an identifier that opens an argument list.
-    /// </summary>
-    /// <remarks>
-    /// A sequence argument is always the first argument, so the identifier it increments is preceded
-    /// by <c>(</c>. Loop counters (<c>for (int i = 0; i &lt; n; i++)</c>) and accumulators
-    /// (<c>count++;</c>) are not, which keeps a well-formed rewrite from paying for a second parse of
-    /// the whole document.
-    /// </remarks>
-    private static bool HasIncrementInFirstArgumentPosition(string source) {
-        int index = source.IndexOf("++", StringComparison.Ordinal);
-        while (index >= 0) {
-            if (StartsArgumentList(source, index)) {
-                return true;
-            }
-
-            index = source.IndexOf("++", index + 2, StringComparison.Ordinal);
-        }
-
-        index = source.IndexOf("--", StringComparison.Ordinal);
-        while (index >= 0) {
-            if (StartsArgumentList(source, index)) {
-                return true;
-            }
-
-            index = source.IndexOf("--", index + 2, StringComparison.Ordinal);
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    /// Reports whether the identifier ending at <paramref name="operatorIndex"/> is the first thing
-    /// inside an argument list, or is itself prefixed by an operator that opens one.
-    /// </summary>
-    /// <remarks>
-    /// Whitespace between the identifier and the operator (<c>seq ++</c>) is skipped so a fail-safe
-    /// leftover with spaces cannot bypass the OrFail Roslyn scan via this prefilter.
-    /// </remarks>
-    private static bool StartsArgumentList(string source, int operatorIndex) {
-        // Prefix form: `(++seq, ...)` or `( ++seq, ...)`.
-        int cursor = operatorIndex;
-        while (cursor > 0 && char.IsWhiteSpace(source[cursor - 1])) {
-            cursor--;
-        }
-
-        if (cursor > 0 && source[cursor - 1] == '(') {
-            return true;
-        }
-
-        int start = cursor;
-        while (start > 0 && IsIdentifierCharacter(source[start - 1])) {
-            start--;
-        }
-
-        return start != cursor && start > 0 && source[start - 1] == '(';
     }
 
     /// <summary>Extracts the invoked member's simple name, ignoring any generic argument list.</summary>

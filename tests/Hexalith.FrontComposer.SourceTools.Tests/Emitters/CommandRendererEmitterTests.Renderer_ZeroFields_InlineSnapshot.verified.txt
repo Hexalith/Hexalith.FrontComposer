@@ -2,6 +2,7 @@
 // Do not edit directly
 
 #nullable enable
+#pragma warning disable CS0612, CS0618 // Warning-obsolete derivable properties remain supported by typed prefill.
 
 using System;
 using System.Collections.Generic;
@@ -483,3 +484,5 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
         => _logReturnPathRejected(logger, path, correlationId, null);
 
 }
+
+#pragma warning restore CS0612, CS0618

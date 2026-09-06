@@ -49,6 +49,8 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
     [CascadingParameter]
     private global::Hexalith.FrontComposer.Contracts.Rendering.RenderContext? RenderContext { get; set; }
 
+    private int _disposed;
+
     private static readonly System.Collections.Generic.IReadOnlyList<global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor> _templateColumnsDescriptor = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor[]
     {
         new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("Id", "Id", (int?)null, (string?)null),
@@ -315,12 +317,17 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
+        if (System.Threading.Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
         TimelineProjectionState.StateChanged -= OnStateChanged;
         System.GC.SuppressFinalize(this);
     }
 
     private static string Truncate(string value, int maxLength)
-        => value.Length <= maxLength ? value : string.Concat(value.AsSpan(0, maxLength - 1), "\u2026");
+        => maxLength <= 0 ? string.Empty : value.Length <= maxLength ? value : string.Concat(value.AsSpan(0, maxLength - 1), "\u2026");
 
     private static string HumanizeEnumLabel(string value)
     {

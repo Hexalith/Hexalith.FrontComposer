@@ -70,6 +70,9 @@ public partial class GeneratorDriverTests {
         }
 
         object approved = Enum.Parse(assembly.GetType("RuntimeFixtures.MatrixStatus").ShouldNotBeNull(), "Approved");
+        object pending = Enum.Parse(assembly.GetType("RuntimeFixtures.MatrixStatus").ShouldNotBeNull(), "Pending");
+        InvokeTrySet(trySet, renderer, "Status", 0).ShouldBeTrue();
+        model.GetType().GetProperty("Status").ShouldNotBeNull().GetValue(model).ShouldBe(pending);
         InvokeTrySet(trySet, renderer, "Status", "approved").ShouldBeTrue();
         Guid requestId = Guid.NewGuid();
         InvokeTrySet(trySet, renderer, "RequestId", requestId.ToString("D")).ShouldBeTrue();
@@ -94,18 +97,32 @@ public partial class GeneratorDriverTests {
 
         InvokeTrySet(trySet, renderer, "Count", "not-an-integer").ShouldBeFalse();
         model.GetType().GetProperty("Count").ShouldNotBeNull().GetValue(model).ShouldBe(42);
+        InvokeTrySet(trySet, renderer, "Count", long.MaxValue).ShouldBeFalse();
+        InvokeTrySet(trySet, renderer, "Count", new object()).ShouldBeFalse();
+        model.GetType().GetProperty("Count").ShouldNotBeNull().GetValue(model).ShouldBe(42);
+        InvokeTrySet(trySet, renderer, "Status", "not-a-status").ShouldBeFalse();
+        model.GetType().GetProperty("Status").ShouldNotBeNull().GetValue(model).ShouldBe(approved);
+        InvokeTrySet(trySet, renderer, "RequestId", "not-a-guid").ShouldBeFalse();
+        model.GetType().GetProperty("RequestId").ShouldNotBeNull().GetValue(model).ShouldBe(requestId);
+        InvokeTrySet(trySet, renderer, "OccurredAt", "not-a-date").ShouldBeFalse();
+        model.GetType().GetProperty("OccurredAt").ShouldNotBeNull().GetValue(model)
+            .ShouldBe(new DateTimeOffset(2026, 9, 6, 8, 30, 0, TimeSpan.Zero));
         InvokeTrySet(trySet, renderer, "Custom", new ConversionProbe(returnNull: false)).ShouldBeFalse();
         object unchangedCustom = customProperty.GetValue(model).ShouldNotBeNull();
         unchangedCustom.GetType().GetProperty("Value").ShouldNotBeNull().GetValue(unchangedCustom).ShouldBe(7);
         InvokeTrySet(trySet, renderer, "Unknown", 1).ShouldBeFalse();
         InvokeTrySet(trySet, renderer, "Fatal", 1).ShouldBeFalse();
 
-        ResolvedDerivedValueProvider invalid = new("bad");
+        ResolvedDerivedValueProvider overflow = new(long.MaxValue);
+        ResolvedDerivedValueProvider invalidCast = new(new object());
         ResolvedDerivedValueProvider valid = new("41");
-        SetProviders(rendererType, renderer, invalid, valid);
+        ResolvedDerivedValueProvider afterValid = new("99");
+        SetProviders(rendererType, renderer, overflow, invalidCast, valid, afterValid);
         await InvokePrefillAsync(rendererType, renderer, "Count").ConfigureAwait(true);
-        invalid.Calls.ShouldBe(1);
+        overflow.Calls.ShouldBe(1);
+        invalidCast.Calls.ShouldBe(1);
         valid.Calls.ShouldBe(1);
+        afterValid.Calls.ShouldBe(0);
         model.GetType().GetProperty("Count").ShouldNotBeNull().GetValue(model).ShouldBe(41);
 
         ResolvedDerivedValueProvider unsafeFirst = new(1);
@@ -114,6 +131,87 @@ public partial class GeneratorDriverTests {
         await InvokePrefillAsync(rendererType, renderer, "Fatal").ConfigureAwait(true);
         unsafeFirst.Calls.ShouldBe(1);
         unsafeSecond.Calls.ShouldBe(1);
+    }
+
+    [Fact]
+    public void GeneratedRenderer_PreservesNestedNullabilityAndWarningObsoleteTypedAssignmentUnderWarningsAsErrors() {
+        const string source = """
+            using System;
+            using System.Collections.Generic;
+            using System.Diagnostics.CodeAnalysis;
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace WarningFixtures;
+
+            [Command]
+            public sealed class WarningCommand
+            {
+                public string MessageId { get; set; } = string.Empty;
+                [DerivedFrom(DerivedFromSource.Context)] public List<string?> Values { get; set; } = [];
+                [DerivedFrom(DerivedFromSource.Context)] public string?[]? Names { get; set; }
+                [DerivedFrom(DerivedFromSource.Context)] public string?[,][]? Matrix { get; set; }
+                [Obsolete("warning only")]
+                [DerivedFrom(DerivedFromSource.Context)] public int Legacy { get; set; }
+                [Obsolete]
+                [DerivedFrom(DerivedFromSource.Context)] public int LegacyWithoutMessage { get; set; }
+                [DerivedFrom(DerivedFromSource.Context)] public int SetterFatal { get; [Obsolete("removed", true)] set; }
+                [Experimental("EXP001")]
+                [DerivedFrom(DerivedFromSource.Context)] public int ExperimentalProperty { get; set; }
+                [DerivedFrom(DerivedFromSource.Context)] public int ExperimentalSetter { get; [Experimental("EXP002")] set; }
+            }
+            """;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
+        compilation = compilation.WithOptions(
+            compilation.Options.WithGeneralDiagnosticOption(ReportDiagnostic.Error));
+        GeneratorDriverRunResult result = RunGenerator(compilation, out CSharpCompilation outputCompilation);
+
+        AssertNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
+        string renderer = GetRenderer(result, "WarningFixtures.WarningCommand.CommandRenderer.g.razor.cs");
+        renderer.ShouldContain("#pragma warning disable CS0612, CS0618");
+        renderer.ShouldContain("#pragma warning restore CS0612, CS0618");
+        renderer.ShouldContain("TryConvertPropertyValue<global::System.Collections.Generic.List<global::System.String?>>");
+        renderer.ShouldContain("TryConvertPropertyValue<global::System.String?[]?>");
+        renderer.ShouldContain("TryConvertPropertyValue<global::System.String?[,][]?>");
+        SliceCase(renderer, "Legacy").ShouldContain("_prefilledModel.@Legacy =");
+        SliceCase(renderer, "LegacyWithoutMessage").ShouldContain("_prefilledModel.@LegacyWithoutMessage =");
+        foreach (string propertyName in (string[])["SetterFatal", "ExperimentalProperty", "ExperimentalSetter"]) {
+            SliceCase(renderer, propertyName).Trim().ShouldBe(
+                $"case \"{propertyName}\":\n                return false;");
+        }
+    }
+
+    [Fact]
+    public void GeneratedRenderer_MetadataOnlyUnnameablePropertiesUseSoftFailArmsUnderWarningsAsErrors() {
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            using MetadataFixtures;
+
+            namespace MetadataFixtures;
+
+            [Command]
+            public sealed class MetadataCommand : MetadataCommandBase
+            {
+                public string Payload { get; set; } = string.Empty;
+            }
+            """;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(
+            source,
+            additionalReferences: [MetadataAssignmentFixture.CreateReference()]);
+        compilation = compilation.WithOptions(
+            compilation.Options.WithGeneralDiagnosticOption(ReportDiagnostic.Error));
+        GeneratorDriverRunResult result = RunGenerator(compilation, out CSharpCompilation outputCompilation);
+
+        AssertNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
+        string renderer = GetRenderer(result, "MetadataFixtures.MetadataCommand.CommandRenderer.g.razor.cs");
+        foreach (string propertyName in (string[])[
+            MetadataAssignmentFixture.InvalidPropertyName,
+            MetadataAssignmentFixture.InvalidTypePropertyName,
+            MetadataAssignmentFixture.InvalidNamespacePropertyName,
+            MetadataAssignmentFixture.NonSzArrayPropertyName,
+        ]) {
+            SliceCase(renderer, propertyName).Trim().ShouldBe(
+                $"case \"{propertyName}\":\n                return false;");
+        }
     }
 
     [Fact]

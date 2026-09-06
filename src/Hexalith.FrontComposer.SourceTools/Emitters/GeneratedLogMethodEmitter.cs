@@ -1,6 +1,8 @@
-using System;
+﻿using System;
 using System.Globalization;
 using System.Text;
+
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace Hexalith.FrontComposer.SourceTools.Emitters;
 
@@ -58,9 +60,11 @@ internal static class GeneratedLogMethodEmitter {
     /// </exception>
     /// <exception cref="ArgumentException">
     /// <paramref name="methodName"/> or <paramref name="eventName"/> is null/empty/whitespace,
+    /// <paramref name="methodName"/> is not an unescaped, non-keyword C# identifier,
     /// <paramref name="messageTemplate"/> is malformed, or its placeholder count differs from
     /// <paramref name="parameters"/>'s length — either shape emits source that does not compile or a
-    /// message whose holes never bind.
+    /// message whose holes never bind. <paramref name="eventName"/> is escaped string data, not an
+    /// identifier, so its punctuation is accepted.
     /// </exception>
     internal static void Emit(
         StringBuilder sb,
@@ -205,6 +209,14 @@ internal static class GeneratedLogMethodEmitter {
         if (string.IsNullOrWhiteSpace(methodName)) {
             throw new ArgumentException(
                 "Generated log methodName is required and cannot be empty or whitespace.",
+                nameof(methodName));
+        }
+
+        if (methodName[0] == '@'
+            || !SyntaxFacts.IsValidIdentifier(methodName)
+            || SyntaxFacts.GetKeywordKind(methodName) != SyntaxKind.None) {
+            throw new ArgumentException(
+                "Generated log methodName must be an unescaped, non-keyword C# identifier.",
                 nameof(methodName));
         }
 

@@ -2,7 +2,7 @@
 title: 'Replace derivable command prefill reflection with typed emission'
 type: 'refactor'
 created: '2026-09-06'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 2
 followup_review_recommended: false
@@ -81,6 +81,7 @@ deferred: []
 - HFC1016 now validates all generated command properties against the public non-init setter policy, accumulates independent shape/size diagnostics, reports inherited source locations accurately, and remains fail-closed when suppressed.
 - Compiled integration coverage exercises alias-only references, keyword members, all approved unsafe categories, provider continuation, and the complete conversion/default/failure matrix. Exactly six parser and seven renderer approvals were refreshed; the renderer page approval remains unchanged.
 - Independent matrix audit added executable reference/value/nullable null cases, culture-sensitive numeric and case-insensitive enum conversion, recursive pointer/function-pointer arrays, both null and non-null soft-fail values, provider continuation, and not-assigned warning verification.
+- Review iteration 3 hardened static-reference safety for accessor-level error obsolescence, experimental members, non-SZ arrays, and unnameable CLR metadata; preserved nested nullable syntax; suppressed warning-only obsolete access locally; and completed the executable conversion/provider matrix.
 
 ## Spec Change Log
 
@@ -263,4 +264,5 @@ HFC1016 validation is independent from assignment safety. Invalid setter shapes 
 - Complete SourceTools assembly passed 1,226/1,226 with no skips. The first independent post-build run hit the pre-existing drift benchmark p95 gate at 1,149.431 ms; the immediate isolated complete rerun passed at 638.267 ms.
 - Focused Shell generated-renderer proof passed 13/13; documentation validation and analyzer identifier-inventory governance passed.
 - Diff whitespace, reflective approval additions, exact 13-approval inventory, and unchanged page-approval checks passed.
+- Post-review Release build passed with 0 warnings and 0 errors. After accepting only the intentional pragma pair in the same seven renderer approvals, the complete SourceTools assembly passed 1,252/1,252 with no skips (cache-miss p95 785.232 ms); the focused Shell proof passed 13/13; documentation validation passed; and baseline diff, reflection, exact six-parser/seven-renderer approval inventory, received-file, and unchanged page-approval checks passed.
 

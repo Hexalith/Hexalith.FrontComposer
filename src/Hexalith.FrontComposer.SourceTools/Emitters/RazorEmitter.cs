@@ -319,6 +319,9 @@ public static class RazorEmitter {
     }
 
     private static void EmitStrategyMembers(StringBuilder sb, RazorModel model) {
+        _ = sb.AppendLine("    private int _disposed;");
+        _ = sb.AppendLine();
+
         // Story 4-4 T2.1 / T2.5 — grid-rendering strategies emit the stable per-view key,
         // the compile-time-resolved item-key accessor, and a DotNetObjectReference for the
         // JS-side scroll throttle's invokeMethodAsync callback.
@@ -336,8 +339,6 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    private IDisposable? _projectionFallbackLaneRegistration;");
             _ = sb.AppendLine();
             _ = sb.AppendLine("    private string? _registeredProjectionFallbackLaneKey;");
-            _ = sb.AppendLine();
-            _ = sb.AppendLine("    private int _disposed;");
             _ = sb.AppendLine();
             _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel _density = global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable;");
             _ = sb.AppendLine();
@@ -1197,7 +1198,11 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    /// <inheritdoc />");
             _ = sb.AppendLine("    public async ValueTask DisposeAsync()");
             _ = sb.AppendLine("    {");
-            _ = sb.AppendLine("        System.Threading.Volatile.Write(ref _disposed, 1);");
+            _ = sb.AppendLine("        if (System.Threading.Interlocked.Exchange(ref _disposed, 1) != 0)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            return;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine();
             _ = sb.AppendLine("        _newItemIndicatorSubscription?.Dispose();");
             _ = sb.AppendLine("        _newItemIndicatorSubscription = null;");
             _ = sb.AppendLine("        " + model.TypeName + "State.StateChanged -= OnStateChanged;");
@@ -1278,6 +1283,11 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    /// <inheritdoc />");
             _ = sb.AppendLine("    public void Dispose()");
             _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        if (System.Threading.Interlocked.Exchange(ref _disposed, 1) != 0)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            return;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine();
             _ = sb.AppendLine("        " + model.TypeName + "State.StateChanged -= OnStateChanged;");
             // Story 11.21 CA1816 — suppress finalization for derived types that add a finalizer.
             _ = sb.AppendLine("        System.GC.SuppressFinalize(this);");
@@ -1557,7 +1567,7 @@ public static class RazorEmitter {
         // Story 11.21 CA1845 — span-based concat avoids the intermediate Substring allocation.
         // The produced string is character-identical to the previous Substring(...) + ellipsis form.
         _ = sb.AppendLine("    private static string Truncate(string value, int maxLength)");
-        _ = sb.AppendLine("        => value.Length <= maxLength ? value : string.Concat(value.AsSpan(0, maxLength - 1), \"\\u2026\");");
+        _ = sb.AppendLine("        => maxLength <= 0 ? string.Empty : value.Length <= maxLength ? value : string.Concat(value.AsSpan(0, maxLength - 1), \"\\u2026\");");
         _ = sb.AppendLine();
         if (HasRelativeTimeColumns(model)) {
             // Story 6-1 review F8 — Unspecified DateTime values are interpreted as UTC. The
