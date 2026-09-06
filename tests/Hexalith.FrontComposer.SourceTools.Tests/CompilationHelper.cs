@@ -65,25 +65,43 @@ internal static class CompilationHelper {
         }
     }
 
-    internal static CSharpCompilation CreateCompilation(string source, bool enableNullable = true) {
+    internal static CSharpCompilation CreateCompilation(
+        string source,
+        bool enableNullable = true,
+        bool allowUnsafe = false,
+        IEnumerable<MetadataReference>? additionalReferences = null,
+        string assemblyName = "TestAssembly") {
         CSharpCompilationOptions options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
-            .WithNullableContextOptions(enableNullable ? NullableContextOptions.Enable : NullableContextOptions.Disable);
+            .WithNullableContextOptions(enableNullable ? NullableContextOptions.Enable : NullableContextOptions.Disable)
+            .WithAllowUnsafe(allowUnsafe);
+        IEnumerable<MetadataReference> references = additionalReferences is null
+            ? GetBaseReferences()
+            : GetBaseReferences().Concat(additionalReferences);
 
         return CSharpCompilation.Create(
-            "TestAssembly",
+            assemblyName,
             [CreateSyntaxTree(source, "Test0.cs")],
-            GetBaseReferences(),
+            references,
             options);
     }
 
-    internal static CSharpCompilation CreateCompilation(string[] sources, bool enableNullable = true) {
+    internal static CSharpCompilation CreateCompilation(
+        string[] sources,
+        bool enableNullable = true,
+        bool allowUnsafe = false,
+        IEnumerable<MetadataReference>? additionalReferences = null,
+        string assemblyName = "TestAssembly") {
         CSharpCompilationOptions options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
-            .WithNullableContextOptions(enableNullable ? NullableContextOptions.Enable : NullableContextOptions.Disable);
+            .WithNullableContextOptions(enableNullable ? NullableContextOptions.Enable : NullableContextOptions.Disable)
+            .WithAllowUnsafe(allowUnsafe);
+        IEnumerable<MetadataReference> references = additionalReferences is null
+            ? GetBaseReferences()
+            : GetBaseReferences().Concat(additionalReferences);
 
         return CSharpCompilation.Create(
-            "TestAssembly",
+            assemblyName,
             sources.Select((source, index) => CreateSyntaxTree(source, $"Test{index}.cs")),
-            GetBaseReferences(),
+            references,
             options);
     }
 
@@ -101,7 +119,7 @@ internal static class CompilationHelper {
             ?? throw new InvalidOperationException($"Projection type '{metadataName}' has no declaring syntax reference.");
 
         SyntaxNode targetNode = syntaxReference.GetSyntax(TestContext.Current.CancellationToken);
-        return AttributeParser.Parse(typeSymbol, targetNode, TestContext.Current.CancellationToken);
+        return AttributeParser.Parse(typeSymbol, targetNode, compilation, TestContext.Current.CancellationToken);
     }
 
     internal static CommandParseResult ParseCommand(string source, string metadataName, bool enableNullable = true)
@@ -115,7 +133,7 @@ internal static class CompilationHelper {
             ?? throw new InvalidOperationException($"Command type '{metadataName}' has no declaring syntax reference.");
 
         SyntaxNode targetNode = syntaxReference.GetSyntax(TestContext.Current.CancellationToken);
-        return CommandParser.Parse(typeSymbol, targetNode, TestContext.Current.CancellationToken);
+        return CommandParser.Parse(typeSymbol, targetNode, compilation, TestContext.Current.CancellationToken);
     }
 
     private static SyntaxTree CreateSyntaxTree(string source, string filePath)

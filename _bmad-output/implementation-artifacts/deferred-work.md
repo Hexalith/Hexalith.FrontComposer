@@ -2695,7 +2695,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 1 review (2026-04-21 pass 5)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Shell/Components/Layout/FcCommandPalette.razor.cs:422
 reason: **`NavigationManager.ToAbsoluteUri(targetUrl)` throws on malformed `targetUrl`** — RouteUrls come from the trusted registry; not reachable with realistic data. Revisit if adopter-supplied URLs flow into this path. `src/Hexalith.FrontComposer.Shell/Components/Layout/FcCommandPalette.razor.cs:422` Reconciliation: Row: DW-0295; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 1 review (2026-04-21 pass 5).
-status: open
+status: done 2026-09-06
+resolution: already resolved: CommandPaletteEffects now validates the target with IsInternalRoute and catches navigation invalid-operation failures; the former ToAbsoluteUri call is gone.
 
 ### DW-1027: `StubBadgeService` test stub comparer semantics diverge from production `IBadgeCountService` contract
 
@@ -6427,7 +6428,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 12-5-accessibility-and-stakeholder-acceptance-evidence-pack (2026-05-19)"), 2026-08-27
 location: docs/accessibility-verification/release-candidate-2026-05-15-evidence-pack.md:14
 reason: **CR-12-5-Def08 — Cross-pack precedence rule when multiple `release-candidate-*` packs exist:** Edge Case Hunter EC-10, EC-67 — README at lines 69-73 defines classifications but no rule designates a canonical pack when multiple dated packs coexist; the `evidence_pack_version` has no `supersedes:` chain. Pick up when the second pack is created. Owner: accessibility-evidence-pack maintainer. Evidence: `docs/accessibility-verification/release-candidate-2026-05-15-evidence-pack.md:14`, `docs/accessibility-verification/README.md:69-73`.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 4a038668; docs/accessibility-verification/README.md now defines canonical cross-pack precedence and contradiction handling.
 
 ### DW-1510: Schema example for `ready` / `ready-with-accepted-constraints` packs: Edge Case Hunter EC-53 — README only shows the `blocked` shape; no exemplar YAML for the more restrictive classifications. A future operator producing a `ready` pack has no schema to validate against. Pick up when the first non-blocked pack is required. Owner: accessibility-evidence-pack maintainer. Evidence: `docs/accessibility-verification/README.md:69-73`.
 
@@ -6486,7 +6488,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 12-5-accessibility-and-stakeholder-acceptance-evidence-pack (2026-05-19)"), 2026-08-27
 location: docs/accessibility-verification/release-candidate-2026-05-15-evidence-pack.md:137-143
 reason: **CR-12-5-Def16 — Internal markdown in Evidence Manifest may be misread as external evidence:** Edge Case Hunter EC-57 — the manifest lists three "Repository markdown" rows; automation parsing the manifest may treat them as external artifacts requiring retention/redaction infrastructure. Pick up when an external artifact is first added or when manifest schema gains an `is_external` flag. Owner: accessibility-evidence-pack maintainer. Evidence: `docs/accessibility-verification/release-candidate-2026-05-15-evidence-pack.md:137-143`.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 4a038668; the release-candidate accessibility evidence pack now labels all repository-markdown artifacts as internal.
 
 ### DW-1518: `parse_release_timestamp` 5-minute future-skew tolerance is silent: Blind Hunter BH-011 + Edge Case Hunter EC-38 — auditors cannot tell from logs that an approval timestamp was accepted within a 5-minute skew window. Pick up alongside diagnostic-clarity batch. Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:1069-1071`.
 

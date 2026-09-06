@@ -8,19 +8,25 @@
       Name: Name,
       TypeName: String,
       IsNullable: false,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.String,
+      SupportsStaticAssignment: true
     },
     {
       Name: Count,
       TypeName: Int32,
       IsNullable: false,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.Int32,
+      SupportsStaticAssignment: true
     },
     {
       Name: IsActive,
       TypeName: Boolean,
       IsNullable: false,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.Boolean,
+      SupportsStaticAssignment: true
     }
   ]
 }

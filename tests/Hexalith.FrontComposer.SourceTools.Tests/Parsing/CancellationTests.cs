@@ -20,7 +20,7 @@ public class CancellationTests {
 
         ParseResult? result = null;
 
-        _ = Should.NotThrow(() => result = AttributeParser.Parse(typeSymbol, targetNode, cts.Token));
+        _ = Should.NotThrow(() => result = AttributeParser.Parse(typeSymbol, targetNode, compilation, cts.Token));
         _ = result.ShouldNotBeNull();
         result.Model.ShouldBeNull();
         result.Diagnostics.Count.ShouldBe(0);

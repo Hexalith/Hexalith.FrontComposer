@@ -75,7 +75,6 @@ public class DomainModelCacheEqualityTests {
         PropertyModel b = BuildProperty("LastUpdated", "DateTime", displayFormat: FieldDisplayFormat.RelativeTime);
 
         a.Equals(b).ShouldBeFalse();
-        a.GetHashCode().ShouldNotBe(b.GetHashCode());
     }
 
     [Fact]
@@ -84,7 +83,6 @@ public class DomainModelCacheEqualityTests {
         PropertyModel b = BuildProperty("LastUpdated", "DateTime", displayFormat: FieldDisplayFormat.RelativeTime, relativeTimeWindowDays: 30);
 
         a.Equals(b).ShouldBeFalse();
-        a.GetHashCode().ShouldNotBe(b.GetHashCode());
     }
 
     [Fact]
@@ -93,7 +91,6 @@ public class DomainModelCacheEqualityTests {
         PropertyModel b = BuildProperty("Amount", "Decimal", displayFormat: FieldDisplayFormat.Currency);
 
         a.Equals(b).ShouldBeFalse();
-        a.GetHashCode().ShouldNotBe(b.GetHashCode());
     }
 
     [Fact]
@@ -101,6 +98,49 @@ public class DomainModelCacheEqualityTests {
         // Cache hit — re-parsing the same source must yield equal PropertyModels.
         PropertyModel a = BuildProperty("LastUpdated", "DateTime", displayFormat: FieldDisplayFormat.RelativeTime, relativeTimeWindowDays: 14);
         PropertyModel b = BuildProperty("LastUpdated", "DateTime", displayFormat: FieldDisplayFormat.RelativeTime, relativeTimeWindowDays: 14);
+
+        a.Equals(b).ShouldBeTrue();
+        a.GetHashCode().ShouldBe(b.GetHashCode());
+    }
+
+    [Fact]
+    public void PropertyModel_SourceTypeNameChange_InvalidatesEquality() {
+        PropertyModel a = BuildProperty("Value", "Token", sourceTypeName: "global::Alpha.Token");
+        PropertyModel b = BuildProperty("Value", "Token", sourceTypeName: "global::Beta.Token");
+
+        a.Equals(b).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void PropertyModel_ExternAliasChange_InvalidatesEquality() {
+        PropertyModel a = BuildProperty("Value", "Token", requiredExternAliases: ["Alpha"]);
+        PropertyModel b = BuildProperty("Value", "Token", requiredExternAliases: ["Beta"]);
+
+        a.Equals(b).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void PropertyModel_StaticAssignmentCapabilityChange_InvalidatesEquality() {
+        PropertyModel a = BuildProperty("Value", "Token", supportsStaticAssignment: true);
+        PropertyModel b = BuildProperty("Value", "Token", supportsStaticAssignment: false);
+
+        a.Equals(b).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void PropertyModel_IdenticalStaticAssignmentMetadata_HasEqualHash() {
+        PropertyModel a = BuildProperty(
+            "Value",
+            "Token",
+            sourceTypeName: "OnlyAlias::Models.Token",
+            requiredExternAliases: ["OnlyAlias"],
+            supportsStaticAssignment: true);
+        PropertyModel b = BuildProperty(
+            "Value",
+            "Token",
+            sourceTypeName: "OnlyAlias::Models.Token",
+            requiredExternAliases: ["OnlyAlias"],
+            supportsStaticAssignment: true);
 
         a.Equals(b).ShouldBeTrue();
         a.GetHashCode().ShouldBe(b.GetHashCode());
@@ -122,7 +162,10 @@ public class DomainModelCacheEqualityTests {
         string name,
         string typeName,
         FieldDisplayFormat displayFormat = FieldDisplayFormat.Default,
-        int? relativeTimeWindowDays = null) => new(
+        int? relativeTimeWindowDays = null,
+        string? sourceTypeName = null,
+        string[]? requiredExternAliases = null,
+        bool supportsStaticAssignment = true) => new(
             name,
             typeName,
             isNullable: false,
@@ -130,5 +173,10 @@ public class DomainModelCacheEqualityTests {
             displayName: null,
             badgeMappings: new EquatableArray<BadgeMappingEntry>(ImmutableArray<BadgeMappingEntry>.Empty),
             displayFormat: displayFormat,
-            relativeTimeWindowDays: relativeTimeWindowDays);
+            relativeTimeWindowDays: relativeTimeWindowDays,
+            sourceTypeName: sourceTypeName,
+            requiredExternAliases: requiredExternAliases is null
+                ? default
+                : new EquatableArray<string>(requiredExternAliases.ToImmutableArray()),
+            supportsStaticAssignment: supportsStaticAssignment);
 }

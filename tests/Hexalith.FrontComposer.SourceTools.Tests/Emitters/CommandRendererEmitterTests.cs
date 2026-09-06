@@ -26,12 +26,17 @@ public class CommandRendererEmitterTests {
         string? authorizationPolicyName = null,
         bool isDestructive = false,
         string? destructiveConfirmTitle = null,
-        string? destructiveConfirmBody = null) {
+        string? destructiveConfirmBody = null,
+        IEnumerable<PropertyModel>? derivableProperties = null) {
         var nonDerivable = Enumerable
             .Range(0, nonDerivableCount)
             .Select(i => "Field" + i)
             .ToImmutableArray();
-        ImmutableArray<string> derivable = ["MessageId", "TenantId"];
+        EquatableArray<BadgeMappingEntry> noBadges = new(ImmutableArray<BadgeMappingEntry>.Empty);
+        ImmutableArray<PropertyModel> derivable = derivableProperties?.ToImmutableArray() ?? [
+            new PropertyModel("MessageId", "String", false, false, null, noBadges, sourceTypeName: "global::System.String"),
+            new PropertyModel("TenantId", "String", false, false, null, noBadges, sourceTypeName: "global::System.String"),
+        ];
 
         CommandDensity density = densityOverride ?? nonDerivableCount switch {
             <= 1 => CommandDensity.Inline,
@@ -49,7 +54,7 @@ public class CommandRendererEmitterTests {
             fullPageRoute: "/commands/" + boundedContext + "/" + typeName,
             commandFullyQualifiedName: @namespace + "." + typeName,
             nonDerivablePropertyNames: new EquatableArray<string>(nonDerivable),
-            derivablePropertyNames: new EquatableArray<string>(derivable),
+            derivableProperties: new EquatableArray<PropertyModel>(derivable),
             formComponentName: typeName + "Form",
             actionsWrapperName: typeName + "Actions",
             stateName: typeName + "LifecycleState",
@@ -106,6 +111,120 @@ public class CommandRendererEmitterTests {
         string pageSource = CommandPageEmitter.Emit(BuildModel(5));
         Microsoft.CodeAnalysis.SyntaxTree pageTree = CSharpSyntaxTree.ParseText(pageSource, cancellationToken: ct);
         pageTree.GetDiagnostics(ct).ShouldBeEmpty("FullPage page should parse cleanly");
+    }
+
+    [Fact]
+    public void Renderer_DerivableProperties_EmitTypedDeterministicAssignmentsWithoutReflection() {
+        EquatableArray<BadgeMappingEntry> noBadges = new(ImmutableArray<BadgeMappingEntry>.Empty);
+        PropertyModel[] properties = [
+            new("Zulu", "Int32", false, false, null, noBadges, sourceTypeName: "global::System.Int32"),
+            new("Alpha", "String", false, false, null, noBadges, sourceTypeName: "global::System.String"),
+        ];
+
+        string source = CommandRendererEmitter.Emit(BuildModel(0, derivableProperties: properties));
+
+        source.ShouldNotContain("GetProperty(");
+        source.ShouldNotContain("SetValue(");
+        source.ShouldContain("TryConvertPropertyValue<global::System.String>");
+        source.ShouldContain("_prefilledModel.@Alpha = convertedValue0;");
+        source.IndexOf("case \"Alpha\":", StringComparison.Ordinal)
+            .ShouldBeLessThan(source.IndexOf("case \"Zulu\":", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Renderer_UnsafeProperty_EmitsTypeAndMemberFreeSoftFailArm() {
+        EquatableArray<BadgeMappingEntry> noBadges = new(ImmutableArray<BadgeMappingEntry>.Empty);
+        PropertyModel unsafeProperty = new(
+            "Danger",
+            "Int32*",
+            false,
+            false,
+            null,
+            noBadges,
+            sourceTypeName: "global::System.Int32*",
+            requiredExternAliases: new EquatableArray<string>(ImmutableArray.Create("UnsafeAlias")),
+            supportsStaticAssignment: false);
+
+        string source = CommandRendererEmitter.Emit(BuildModel(0, derivableProperties: [unsafeProperty]));
+        string arm = Slice(source, "case \"Danger\":", "default:");
+
+        arm.ShouldContain("return false;");
+        arm.ShouldNotContain("Int32*");
+        arm.ShouldNotContain("@Danger");
+        source.ShouldNotContain("extern alias UnsafeAlias;");
+    }
+
+    [Fact]
+    public void Renderer_ExternAliases_AreSortedDeduplicatedAndPrecedeUsings() {
+        EquatableArray<BadgeMappingEntry> noBadges = new(ImmutableArray<BadgeMappingEntry>.Empty);
+        EquatableArray<string> aliases = new(ImmutableArray.Create("ZuluAlias", "AlphaAlias", "ZuluAlias"));
+        PropertyModel property = new(
+            "Token",
+            "Token",
+            false,
+            false,
+            null,
+            noBadges,
+            sourceTypeName: "AlphaAlias::Models.Token",
+            requiredExternAliases: aliases);
+
+        string source = CommandRendererEmitter.Emit(BuildModel(0, derivableProperties: [property]));
+
+        int alphaAlias = source.IndexOf("extern alias AlphaAlias;", StringComparison.Ordinal);
+        int zuluAlias = source.IndexOf("extern alias ZuluAlias;", StringComparison.Ordinal);
+        int firstUsing = source.IndexOf("using System;", StringComparison.Ordinal);
+        alphaAlias.ShouldBeGreaterThanOrEqualTo(0);
+        zuluAlias.ShouldBeGreaterThan(alphaAlias);
+        firstUsing.ShouldBeGreaterThan(zuluAlias);
+        System.Text.RegularExpressions.Regex.Count(source, "extern alias ZuluAlias;").ShouldBe(1);
+    }
+
+    [Fact]
+    public void Renderer_KeywordProperty_EscapesDirectMemberAccess() {
+        EquatableArray<BadgeMappingEntry> noBadges = new(ImmutableArray<BadgeMappingEntry>.Empty);
+        PropertyModel property = new(
+            "event",
+            "String",
+            false,
+            false,
+            null,
+            noBadges,
+            sourceTypeName: "global::System.String");
+
+        string source = CommandRendererEmitter.Emit(BuildModel(0, derivableProperties: [property]));
+
+        source.ShouldContain("_prefilledModel.@event = convertedValue0;");
+    }
+
+    [Fact]
+    public void CommandRendererModel_DerivableAssignmentMetadataParticipatesInEqualityAndHashing() {
+        EquatableArray<BadgeMappingEntry> noBadges = new(ImmutableArray<BadgeMappingEntry>.Empty);
+        PropertyModel safe = new(
+            "Value",
+            "String",
+            false,
+            false,
+            null,
+            noBadges,
+            sourceTypeName: "global::System.String",
+            supportsStaticAssignment: true);
+        PropertyModel unsafeProperty = new(
+            "Value",
+            "String",
+            false,
+            false,
+            null,
+            noBadges,
+            sourceTypeName: "global::System.String",
+            supportsStaticAssignment: false);
+
+        CommandRendererModel first = BuildModel(0, derivableProperties: [safe]);
+        CommandRendererModel equal = BuildModel(0, derivableProperties: [safe]);
+        CommandRendererModel changed = BuildModel(0, derivableProperties: [unsafeProperty]);
+
+        first.Equals(equal).ShouldBeTrue();
+        first.GetHashCode().ShouldBe(equal.GetHashCode());
+        first.Equals(changed).ShouldBeFalse();
     }
 
     [Fact]
@@ -215,8 +334,8 @@ public class CommandRendererEmitterTests {
         source.ShouldNotContain("CommandService.DispatchAsync");
         source.ShouldNotContain(".SubmittedAction");
         source.ShouldNotContain("Guid.NewGuid");
-        source.ShouldNotContain("MessageId =");
-        source.ShouldNotContain("CorrelationId =");
+        source.ShouldNotContain("MessageId = Guid.NewGuid");
+        source.ShouldNotContain("CorrelationId = Guid.NewGuid");
     }
 
     [Fact]

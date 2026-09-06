@@ -12,7 +12,7 @@ internal static class SourceToolCompilationHelper {
         INamedTypeSymbol typeSymbol = compilation.GetTypeByMetadataName(metadataName)
             ?? throw new InvalidOperationException("Could not find command type.");
         SyntaxNode targetNode = typeSymbol.DeclaringSyntaxReferences[0].GetSyntax(TestContext.Current.CancellationToken);
-        return CommandParser.Parse(typeSymbol, targetNode, TestContext.Current.CancellationToken);
+        return CommandParser.Parse(typeSymbol, targetNode, compilation, TestContext.Current.CancellationToken);
     }
 
     internal static ParseResult ParseProjection(string source, string metadataName) {
@@ -20,7 +20,7 @@ internal static class SourceToolCompilationHelper {
         INamedTypeSymbol typeSymbol = compilation.GetTypeByMetadataName(metadataName)
             ?? throw new InvalidOperationException("Could not find projection type.");
         SyntaxNode targetNode = typeSymbol.DeclaringSyntaxReferences[0].GetSyntax(TestContext.Current.CancellationToken);
-        return AttributeParser.Parse(typeSymbol, targetNode, TestContext.Current.CancellationToken);
+        return AttributeParser.Parse(typeSymbol, targetNode, compilation, TestContext.Current.CancellationToken);
     }
 
     private static CSharpCompilation CreateCompilation(string source) {

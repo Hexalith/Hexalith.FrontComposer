@@ -8,184 +8,244 @@
       Name: StringField,
       TypeName: String,
       IsNullable: false,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.String,
+      SupportsStaticAssignment: true
     },
     {
       Name: Int32Field,
       TypeName: Int32,
       IsNullable: false,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.Int32,
+      SupportsStaticAssignment: true
     },
     {
       Name: Int64Field,
       TypeName: Int64,
       IsNullable: false,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.Int64,
+      SupportsStaticAssignment: true
     },
     {
       Name: DecimalField,
       TypeName: Decimal,
       IsNullable: false,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.Decimal,
+      SupportsStaticAssignment: true
     },
     {
       Name: DoubleField,
       TypeName: Double,
       IsNullable: false,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.Double,
+      SupportsStaticAssignment: true
     },
     {
       Name: SingleField,
       TypeName: Single,
       IsNullable: false,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.Single,
+      SupportsStaticAssignment: true
     },
     {
       Name: BooleanField,
       TypeName: Boolean,
       IsNullable: false,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.Boolean,
+      SupportsStaticAssignment: true
     },
     {
       Name: DateTimeField,
       TypeName: DateTime,
       IsNullable: false,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.DateTime,
+      SupportsStaticAssignment: true
     },
     {
       Name: DateTimeOffsetField,
       TypeName: DateTimeOffset,
       IsNullable: false,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.DateTimeOffset,
+      SupportsStaticAssignment: true
     },
     {
       Name: DateOnlyField,
       TypeName: DateOnly,
       IsNullable: false,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.DateOnly,
+      SupportsStaticAssignment: true
     },
     {
       Name: TimeOnlyField,
       TypeName: TimeOnly,
       IsNullable: false,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.TimeOnly,
+      SupportsStaticAssignment: true
     },
     {
       Name: GuidField,
       TypeName: Guid,
       IsNullable: false,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.Guid,
+      SupportsStaticAssignment: true
     },
     {
       Name: StatusField,
       TypeName: Enum,
       IsNullable: false,
       IsUnsupported: false,
-      EnumFullyQualifiedName: TestDomain.ItemStatus
+      EnumFullyQualifiedName: TestDomain.ItemStatus,
+      SourceTypeName: global::TestDomain.ItemStatus,
+      SupportsStaticAssignment: true
     },
     {
       Name: NullableInt32,
       TypeName: Int32,
       IsNullable: true,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.Int32,
+      SupportsStaticAssignment: true
     },
     {
       Name: NullableInt64,
       TypeName: Int64,
       IsNullable: true,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.Int64,
+      SupportsStaticAssignment: true
     },
     {
       Name: NullableDecimal,
       TypeName: Decimal,
       IsNullable: true,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.Decimal,
+      SupportsStaticAssignment: true
     },
     {
       Name: NullableDouble,
       TypeName: Double,
       IsNullable: true,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.Double,
+      SupportsStaticAssignment: true
     },
     {
       Name: NullableSingle,
       TypeName: Single,
       IsNullable: true,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.Single,
+      SupportsStaticAssignment: true
     },
     {
       Name: NullableBoolean,
       TypeName: Boolean,
       IsNullable: true,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.Boolean,
+      SupportsStaticAssignment: true
     },
     {
       Name: NullableDateTime,
       TypeName: DateTime,
       IsNullable: true,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.DateTime,
+      SupportsStaticAssignment: true
     },
     {
       Name: NullableDateTimeOffset,
       TypeName: DateTimeOffset,
       IsNullable: true,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.DateTimeOffset,
+      SupportsStaticAssignment: true
     },
     {
       Name: NullableDateOnly,
       TypeName: DateOnly,
       IsNullable: true,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.DateOnly,
+      SupportsStaticAssignment: true
     },
     {
       Name: NullableTimeOnly,
       TypeName: TimeOnly,
       IsNullable: true,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.TimeOnly,
+      SupportsStaticAssignment: true
     },
     {
       Name: NullableGuid,
       TypeName: Guid,
       IsNullable: true,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.Guid,
+      SupportsStaticAssignment: true
     },
     {
       Name: NullableEnum,
       TypeName: Enum,
       IsNullable: true,
       IsUnsupported: false,
-      EnumFullyQualifiedName: TestDomain.ItemStatus
+      EnumFullyQualifiedName: TestDomain.ItemStatus,
+      SourceTypeName: global::TestDomain.ItemStatus,
+      SupportsStaticAssignment: true
     },
     {
       Name: NullableString,
       TypeName: String,
       IsNullable: true,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.String,
+      SupportsStaticAssignment: true
     },
     {
       Name: ListField,
       TypeName: Collection,
       IsNullable: false,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.Collections.Generic.List<global::System.String>,
+      SupportsStaticAssignment: true
     },
     {
       Name: EnumerableField,
       TypeName: Collection,
       IsNullable: false,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.Collections.Generic.IEnumerable<global::System.Int32>,
+      SupportsStaticAssignment: true
     },
     {
       Name: ReadOnlyListField,
       TypeName: Collection,
       IsNullable: false,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.Collections.Generic.IReadOnlyList<global::System.Decimal>,
+      SupportsStaticAssignment: true
     },
     {
       Name: DisplayNameField,
       TypeName: String,
       IsNullable: false,
       IsUnsupported: false,
-      DisplayName: Item Name
+      DisplayName: Item Name,
+      SourceTypeName: global::System.String,
+      SupportsStaticAssignment: true
     }
   ]
 }

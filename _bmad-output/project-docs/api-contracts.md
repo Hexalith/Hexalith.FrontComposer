@@ -93,7 +93,7 @@ and does not register pending state.
 | HFC1012 | Error | `[DefaultValue]` type mismatch |
 | HFC1014 | Error | Nested `[Command]` type |
 | HFC1015 | Warn | RenderMode incompatible with command density |
-| HFC1016 | Error | Non-derivable command property is read-only/init-only |
+| HFC1016 | Error | Command property lacks a public non-init setter, including derivable properties |
 | HFC1017 | Error | Generic `[Command]` type |
 | HFC1020 | Info | Destructive-verb name without `[Destructive]` |
 | HFC1021 | Error | `[Destructive]` command has zero non-derivable properties |
@@ -147,6 +147,8 @@ and does not register pending state.
 \* severity configurable via `HfcDriftSeverity`.
 
 **CLI migration code-fix:** `HFCM9001` — `AddFrontComposerDebugOverlay` → `AddFrontComposerDevMode` (the single allowlisted fix for the 9.1→9.2 edge).
+
+HFC1016 is a uniform command-shape rule: every generated command property, including derivable properties, requires a public non-init setter. This is a breaking derivable-setter migration. Suppression cannot restore generation; a hidden diagnostic still leaves the command invalid and no command artifacts are emitted.
 
 ---
 

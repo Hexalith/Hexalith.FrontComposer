@@ -415,7 +415,10 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
         string? fieldGroup = null,
         string? description = null,
         FieldDisplayFormat displayFormat = FieldDisplayFormat.Default,
-        int? relativeTimeWindowDays = null)
+        int? relativeTimeWindowDays = null,
+        string? sourceTypeName = null,
+        EquatableArray<string> requiredExternAliases = default,
+        bool supportsStaticAssignment = true)
         : this(
             name,
             typeName,
@@ -431,7 +434,10 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
             description,
             displayFormat,
             relativeTimeWindowDays,
-            isWritable: true) {
+            isWritable: true,
+            sourceTypeName: sourceTypeName ?? typeName,
+            requiredExternAliases: requiredExternAliases,
+            supportsStaticAssignment: supportsStaticAssignment) {
     }
 
     internal PropertyModel(
@@ -449,7 +455,10 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
         string? description,
         FieldDisplayFormat displayFormat,
         int? relativeTimeWindowDays,
-        bool isWritable) {
+        bool isWritable,
+        string sourceTypeName,
+        EquatableArray<string> requiredExternAliases,
+        bool supportsStaticAssignment) {
         Name = name;
         TypeName = typeName;
         IsNullable = isNullable;
@@ -465,6 +474,9 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
         DisplayFormat = displayFormat;
         RelativeTimeWindowDays = displayFormat == FieldDisplayFormat.RelativeTime ? relativeTimeWindowDays ?? 7 : null;
         IsWritable = isWritable;
+        SourceTypeName = sourceTypeName;
+        RequiredExternAliases = requiredExternAliases;
+        SupportsStaticAssignment = supportsStaticAssignment;
     }
 
     public string Name { get; }
@@ -540,6 +552,22 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
     /// </summary>
     internal bool IsWritable { get; }
 
+    /// <summary>
+    /// Gets the Roslyn-free source syntax for the property's non-nullable assignment type.
+    /// </summary>
+    public string SourceTypeName { get; }
+
+    /// <summary>
+    /// Gets the sorted aliases that generated source must declare before referencing
+    /// <see cref="SourceTypeName"/>.
+    /// </summary>
+    public EquatableArray<string> RequiredExternAliases { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether generated safe code may name and assign the property.
+    /// </summary>
+    public bool SupportsStaticAssignment { get; }
+
     public bool Equals(PropertyModel? other) {
         if (other is null) {
             return false;
@@ -563,7 +591,10 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
             && Description == other.Description
             && DisplayFormat == other.DisplayFormat
             && RelativeTimeWindowDays == other.RelativeTimeWindowDays
-            && IsWritable == other.IsWritable;
+            && IsWritable == other.IsWritable
+            && SourceTypeName == other.SourceTypeName
+            && RequiredExternAliases == other.RequiredExternAliases
+            && SupportsStaticAssignment == other.SupportsStaticAssignment;
     }
 
     public override bool Equals(object? obj) => Equals(obj as PropertyModel);
@@ -586,6 +617,9 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
             hash = (hash * 31) + DisplayFormat.GetHashCode();
             hash = (hash * 31) + (RelativeTimeWindowDays?.GetHashCode() ?? 0);
             hash = (hash * 31) + IsWritable.GetHashCode();
+            hash = (hash * 31) + (SourceTypeName?.GetHashCode() ?? 0);
+            hash = (hash * 31) + RequiredExternAliases.GetHashCode();
+            hash = (hash * 31) + SupportsStaticAssignment.GetHashCode();
             return hash;
         }
     }

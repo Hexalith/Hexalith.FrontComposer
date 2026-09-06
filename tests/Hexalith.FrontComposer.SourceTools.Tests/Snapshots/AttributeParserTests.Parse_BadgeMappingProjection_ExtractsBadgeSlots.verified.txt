@@ -26,7 +26,9 @@
           Slot: Danger
         }
       ],
-      EnumFullyQualifiedName: TestDomain.OrderStatus
+      EnumFullyQualifiedName: TestDomain.OrderStatus,
+      SourceTypeName: global::TestDomain.OrderStatus,
+      SupportsStaticAssignment: true
     }
   ]
 }

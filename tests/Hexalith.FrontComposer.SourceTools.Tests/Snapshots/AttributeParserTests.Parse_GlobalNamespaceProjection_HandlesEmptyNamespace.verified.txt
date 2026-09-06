@@ -7,7 +7,9 @@
       Name: Name,
       TypeName: String,
       IsNullable: false,
-      IsUnsupported: false
+      IsUnsupported: false,
+      SourceTypeName: global::System.String,
+      SupportsStaticAssignment: true
     }
   ]
 }

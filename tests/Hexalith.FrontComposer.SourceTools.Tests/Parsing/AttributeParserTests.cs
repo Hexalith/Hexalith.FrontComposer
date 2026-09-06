@@ -418,6 +418,119 @@ public partial class CompoundTypeProjection
         hfc1002.Length.ShouldBe(4, "Expected one HFC1002 per unsupported field (byte[], tuple, Dictionary, object)");
     }
 
+    [Fact]
+    public void Parse_NestedGenericArray_PreservesSourceReadyTypeSyntax() {
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace TypeFixtures;
+
+            public sealed class Outer<T>
+            {
+                public sealed class Inner<TValue> { }
+            }
+
+            [Projection]
+            public sealed class TypeSyntaxProjection
+            {
+                public Outer<int>.Inner<string>[,][] Values { get; set; } = [];
+            }
+            """;
+
+        PropertyModel property = CompilationHelper
+            .ParseProjection(source, "TypeFixtures.TypeSyntaxProjection")
+            .Model.ShouldNotBeNull()
+            .Properties.Single();
+
+        property.SourceTypeName.ShouldBe(
+            "global::TypeFixtures.Outer<global::System.Int32>.Inner<global::System.String>[][,]");
+        property.RequiredExternAliases.Count.ShouldBe(0);
+        property.SupportsStaticAssignment.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Parse_UnsafeAndErrorObsoleteProperties_ClassifiesStaticReferenceSafety() {
+        const string source = """
+            using System;
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace TypeFixtures;
+
+            [Projection]
+            public unsafe sealed class StaticSafetyProjection
+            {
+                public Span<int> RefLike { get => default; set { } }
+                public int* Pointer { get; set; }
+                public delegate*<int, int> FunctionPointer { get; set; }
+                public int*[] PointerArray { get; set; } = [];
+                public delegate*<int, int>[] FunctionPointerArray { get; set; } = [];
+
+                [Obsolete("removed", true)]
+                public int ErrorObsolete { get; set; }
+
+                [Obsolete("warning only")]
+                public int WarningObsolete { get; set; }
+            }
+            """;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(source, allowUnsafe: true);
+
+        ParseResult result = CompilationHelper.ParseProjection(compilation, "TypeFixtures.StaticSafetyProjection");
+        DomainModel model = result.Model.ShouldNotBeNull();
+
+        foreach (string propertyName in new[] {
+            "RefLike",
+            "Pointer",
+            "FunctionPointer",
+            "PointerArray",
+            "FunctionPointerArray",
+            "ErrorObsolete",
+        }) {
+            model.Properties.Single(property => property.Name == propertyName)
+                .SupportsStaticAssignment.ShouldBeFalse(propertyName);
+        }
+
+        model.Properties.Single(property => property.Name == "WarningObsolete")
+            .SupportsStaticAssignment.ShouldBeTrue();
+        model.Properties.Single(property => property.Name == "PointerArray")
+            .SourceTypeName.ShouldBe("global::System.Int32*[]");
+        model.Properties.Single(property => property.Name == "FunctionPointer")
+            .SourceTypeName.ShouldContain("delegate*");
+    }
+
+    [Fact]
+    public void Parse_AliasOnlyProperty_PreservesAliasQualifiedSyntaxAndProvenance() {
+        const string aliasSource = "namespace AliasLibrary; public sealed class Token { }";
+        CSharpCompilation aliasCompilation = CompilationHelper.CreateCompilation(aliasSource, assemblyName: "AliasLibrary");
+        using MemoryStream stream = new();
+        aliasCompilation.Emit(stream, cancellationToken: TestContext.Current.CancellationToken).Success.ShouldBeTrue();
+        MetadataReference aliasReference = MetadataReference.CreateFromImage(
+            stream.ToArray(),
+            properties: MetadataReferenceProperties.Assembly.WithAliases(
+                System.Collections.Immutable.ImmutableArray.Create("OnlyAlias")));
+        const string source = """
+            extern alias OnlyAlias;
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace AliasFixtures;
+
+            [Projection]
+            public sealed class AliasProjection
+            {
+                public OnlyAlias::AliasLibrary.Token Value { get; set; } = new();
+            }
+            """;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(
+            source,
+            additionalReferences: [aliasReference]);
+
+        PropertyModel property = CompilationHelper.ParseProjection(compilation, "AliasFixtures.AliasProjection")
+            .Model.ShouldNotBeNull()
+            .Properties.Single();
+
+        property.SourceTypeName.ShouldBe("OnlyAlias::AliasLibrary.Token");
+        property.RequiredExternAliases.ToArray().ShouldBe(["OnlyAlias"]);
+    }
+
     private static async Task VerifyProjectionAsync(string source, string metadataName) {
         ParseResult result = CompilationHelper.ParseProjection(source, metadataName);
         result.Diagnostics.Count.ShouldBe(0);

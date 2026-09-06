@@ -103,53 +103,89 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
 
     private bool TrySetPropertyValue(string propertyName, object? value)
     {
-        System.Reflection.PropertyInfo? property = typeof(Demo.Domain.DemoCommand).GetProperty(propertyName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-        if (property is null || !property.CanWrite)
+        switch (propertyName)
         {
-            return false;
+            case "MessageId":
+                if (value is null)
+                {
+                    _prefilledModel.@MessageId = default!;
+                    return true;
+                }
+                if (!TryConvertPropertyValue<global::System.String>(value, out global::System.String convertedValue0))
+                {
+                    return false;
+                }
+                _prefilledModel.@MessageId = convertedValue0;
+                return true;
+            case "TenantId":
+                if (value is null)
+                {
+                    _prefilledModel.@TenantId = default!;
+                    return true;
+                }
+                if (!TryConvertPropertyValue<global::System.String>(value, out global::System.String convertedValue1))
+                {
+                    return false;
+                }
+                _prefilledModel.@TenantId = convertedValue1;
+                return true;
+            default:
+                return false;
         }
+    }
 
-        if (value is null)
+    private static bool TryConvertPropertyValue<T>(object value, out T converted)
+    {
+        if (value is T exact)
         {
-            property.SetValue(_prefilledModel, null);
+            converted = exact;
             return true;
         }
 
-        Type targetType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
-        object? converted = value;
-        if (!targetType.IsInstanceOfType(value))
+        object? convertedValue;
+        Type targetType = typeof(T);
+        try
         {
-            try
+            if (targetType.IsEnum)
             {
-                if (targetType.IsEnum)
-                {
-                    converted = value is string s
-                        ? Enum.Parse(targetType, s, ignoreCase: true)
-                        : Enum.ToObject(targetType, value);
-                }
-                else if (targetType == typeof(Guid))
-                {
-                    converted = value is Guid guid ? guid : Guid.Parse(Convert.ToString(value, CultureInfo.InvariantCulture)!);
-                }
-                else if (targetType == typeof(DateTimeOffset))
-                {
-                    converted = value is DateTimeOffset dto
-                        ? dto
-                        : DateTimeOffset.Parse(Convert.ToString(value, CultureInfo.CurrentCulture)!, CultureInfo.CurrentCulture);
-                }
-                else
-                {
-                    converted = Convert.ChangeType(value, targetType, CultureInfo.CurrentCulture);
-                }
+                convertedValue = value is string s
+                    ? Enum.Parse(targetType, s, ignoreCase: true)
+                    : Enum.ToObject(targetType, value);
             }
-            catch (Exception ex) when (ex is InvalidCastException or FormatException or OverflowException or ArgumentException)
+            else if (targetType == typeof(Guid))
             {
-                return false;
+                convertedValue = value is Guid guid ? guid : Guid.Parse(Convert.ToString(value, CultureInfo.InvariantCulture)!);
+            }
+            else if (targetType == typeof(DateTimeOffset))
+            {
+                convertedValue = value is DateTimeOffset dto
+                    ? dto
+                    : DateTimeOffset.Parse(Convert.ToString(value, CultureInfo.CurrentCulture)!, CultureInfo.CurrentCulture);
+            }
+            else
+            {
+                convertedValue = Convert.ChangeType(value, targetType, CultureInfo.CurrentCulture);
             }
         }
+        catch (Exception ex) when (ex is InvalidCastException or FormatException or OverflowException or ArgumentException)
+        {
+            converted = default!;
+            return false;
+        }
 
-        property.SetValue(_prefilledModel, converted);
-        return true;
+        if (convertedValue is null)
+        {
+            converted = default!;
+            return true;
+        }
+        if (convertedValue is T typed)
+        {
+            converted = typed;
+            return true;
+        }
+
+        converted = default!;
+        return false;
     }
 
     private static Icon? ResolveIcon()

@@ -44,7 +44,7 @@ public static class AttributeParser {
             return EmptyParseResult;
         }
 
-        return Parse(typeSymbol, context.TargetNode, ct);
+        return Parse(typeSymbol, context.TargetNode, context.SemanticModel.Compilation, ct);
     }
 
     /// <summary>
@@ -54,7 +54,11 @@ public static class AttributeParser {
     /// <param name="targetNode">The syntax node declaring the projection type.</param>
     /// <param name="ct">Cancellation token for generator responsiveness.</param>
     /// <returns>The parsed IR and any collected diagnostics.</returns>
-    public static ParseResult Parse(INamedTypeSymbol typeSymbol, SyntaxNode targetNode, CancellationToken ct) {
+    public static ParseResult Parse(
+        INamedTypeSymbol typeSymbol,
+        SyntaxNode targetNode,
+        Compilation compilation,
+        CancellationToken ct) {
         if (ct.IsCancellationRequested) {
             return EmptyParseResult;
         }
@@ -108,7 +112,7 @@ public static class AttributeParser {
                 return EmptyParseResult;
             }
 
-            PropertyModel property = ParseProperty(propertySymbols[i], typeName, diagnostics, filePath);
+            PropertyModel property = ParseProperty(propertySymbols[i], typeName, diagnostics, filePath, compilation);
             propertiesBuilder.Add(property);
         }
 
@@ -422,13 +426,21 @@ public static class AttributeParser {
         IPropertySymbol propertySymbol,
         string containingTypeName,
         List<DiagnosticInfo> diagnostics,
-        string filePath) => ParseProperty(propertySymbol, containingTypeName, diagnostics, filePath, isCommandContext: true);
+        string filePath,
+        Compilation compilation) => ParseProperty(
+            propertySymbol,
+            containingTypeName,
+            diagnostics,
+            filePath,
+            compilation,
+            isCommandContext: true);
 
     private static PropertyModel ParseProperty(
         IPropertySymbol propertySymbol,
         string containingTypeName,
         List<DiagnosticInfo> diagnostics,
         string filePath,
+        Compilation compilation,
         bool isCommandContext = false) {
         ITypeSymbol propertyType = propertySymbol.Type;
         bool isNullable = false;
@@ -456,6 +468,11 @@ public static class AttributeParser {
 
         bool isEnumType = propertyType.TypeKind == TypeKind.Enum;
         bool isEnum = IsSupportedEnumType(propertyType);
+        string sourceTypeName = SourceTypeNameFormatter.Format(
+            propertyType,
+            compilation,
+            out EquatableArray<string> requiredExternAliases);
+        bool supportsStaticAssignment = SupportsStaticAssignment(propertySymbol, propertyType, compilation);
 
         // Get fully qualified type name for mapping
         if (propertyType is INamedTypeSymbol namedPropertyType && namedPropertyType.IsGenericType) {
@@ -563,7 +580,43 @@ public static class AttributeParser {
             description,
             displayFormat,
             relativeTimeWindowDays,
-            propertySymbol.SetMethod is { DeclaredAccessibility: Accessibility.Public });
+            propertySymbol.SetMethod is { DeclaredAccessibility: Accessibility.Public, IsInitOnly: false },
+            sourceTypeName,
+            requiredExternAliases,
+            supportsStaticAssignment);
+    }
+
+    private static bool SupportsStaticAssignment(
+        IPropertySymbol propertySymbol,
+        ITypeSymbol propertyType,
+        Compilation compilation)
+        => !propertyType.IsRefLikeType
+            && !ContainsPointerSyntax(propertyType)
+            && !HasErrorObsoleteAttribute(propertySymbol, compilation);
+
+    private static bool ContainsPointerSyntax(ITypeSymbol typeSymbol)
+        => typeSymbol switch {
+            IPointerTypeSymbol => true,
+            IFunctionPointerTypeSymbol => true,
+            IArrayTypeSymbol arrayType => ContainsPointerSyntax(arrayType.ElementType),
+            _ => false,
+        };
+
+    private static bool HasErrorObsoleteAttribute(IPropertySymbol propertySymbol, Compilation compilation) {
+        INamedTypeSymbol? obsoleteAttribute = compilation.GetTypeByMetadataName("System.ObsoleteAttribute");
+        if (obsoleteAttribute is null) {
+            return false;
+        }
+
+        foreach (AttributeData attribute in propertySymbol.GetAttributes()) {
+            if (SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, obsoleteAttribute)
+                && attribute.ConstructorArguments.Length > 1
+                && attribute.ConstructorArguments[1].Value is true) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

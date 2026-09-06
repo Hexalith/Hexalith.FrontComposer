@@ -2,10 +2,11 @@
 title: 'Replace derivable command prefill reflection with typed emission'
 type: 'refactor'
 created: '2026-09-06'
-status: 'draft'
+status: 'in-progress'
 route: 'dispatch'
 review_loop_iteration: 2
 followup_review_recommended: false
+baseline_commit: '3270030c0db3c9beabe5f7c6e10c72fc9504eb1a'
 context:
   - '{project-root}/_bmad-output/project-context.md'
 warnings: []

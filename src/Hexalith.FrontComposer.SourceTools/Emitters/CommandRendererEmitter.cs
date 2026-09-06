@@ -28,6 +28,25 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("#nullable enable");
         _ = sb.AppendLine();
+        SortedSet<string> requiredExternAliases = [];
+        foreach (PropertyModel property in model.DerivableProperties) {
+            if (!property.SupportsStaticAssignment) {
+                continue;
+            }
+
+            foreach (string alias in property.RequiredExternAliases) {
+                _ = requiredExternAliases.Add(alias);
+            }
+        }
+
+        foreach (string alias in requiredExternAliases) {
+            _ = sb.AppendLine("extern alias " + SourceTypeNameFormatter.EscapeIdentifier(alias) + ";");
+        }
+
+        if (requiredExternAliases.Count > 0) {
+            _ = sb.AppendLine();
+        }
+
         _ = sb.AppendLine("using System;");
         _ = sb.AppendLine("using System.Collections.Generic;");
         _ = sb.AppendLine("using System.Globalization;");
@@ -303,8 +322,8 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private async Task PrefillDerivableFieldsAsync()");
         _ = sb.AppendLine("    {");
-        foreach (string propertyName in model.DerivablePropertyNames) {
-            string escapedPropertyName = EscapeString(propertyName);
+        foreach (PropertyModel property in model.DerivableProperties) {
+            string escapedPropertyName = EscapeString(property.Name);
             _ = sb.AppendLine("        await TryPrefillPropertyAsync(\"" + escapedPropertyName + "\").ConfigureAwait(false);");
         }
         _ = sb.AppendLine("    }");
@@ -339,58 +358,102 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
-        // Story 2-2 code-review P25 — use CurrentCulture for DateTime/number parse (matches CommandFormEmitter numeric binding).
+        // DW-1137 — property names, types, and assignment capability are pure renderer IR. Safe
+        // properties assign statically; unsafe-to-reference properties retain provider fall-through
+        // through type- and member-free false arms.
         _ = sb.AppendLine("    private bool TrySetPropertyValue(string propertyName, object? value)");
         _ = sb.AppendLine("    {");
-        _ = sb.AppendLine("        System.Reflection.PropertyInfo? property = typeof(" + commandFqn + ").GetProperty(propertyName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);");
-        _ = sb.AppendLine("        if (property is null || !property.CanWrite)");
+        _ = sb.AppendLine("        switch (propertyName)");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            return false;");
-        _ = sb.AppendLine("        }");
-        _ = sb.AppendLine();
-        _ = sb.AppendLine("        if (value is null)");
-        _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            property.SetValue(_prefilledModel, null);");
-        _ = sb.AppendLine("            return true;");
-        _ = sb.AppendLine("        }");
-        _ = sb.AppendLine();
-        _ = sb.AppendLine("        Type targetType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;");
-        _ = sb.AppendLine("        object? converted = value;");
-        _ = sb.AppendLine("        if (!targetType.IsInstanceOfType(value))");
-        _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            try");
-        _ = sb.AppendLine("            {");
-        _ = sb.AppendLine("                if (targetType.IsEnum)");
-        _ = sb.AppendLine("                {");
-        _ = sb.AppendLine("                    converted = value is string s");
-        _ = sb.AppendLine("                        ? Enum.Parse(targetType, s, ignoreCase: true)");
-        _ = sb.AppendLine("                        : Enum.ToObject(targetType, value);");
-        _ = sb.AppendLine("                }");
-        _ = sb.AppendLine("                else if (targetType == typeof(Guid))");
-        _ = sb.AppendLine("                {");
-        _ = sb.AppendLine("                    converted = value is Guid guid ? guid : Guid.Parse(Convert.ToString(value, CultureInfo.InvariantCulture)!);");
-        _ = sb.AppendLine("                }");
-        _ = sb.AppendLine("                else if (targetType == typeof(DateTimeOffset))");
-        _ = sb.AppendLine("                {");
-        _ = sb.AppendLine("                    converted = value is DateTimeOffset dto");
-        _ = sb.AppendLine("                        ? dto");
-        _ = sb.AppendLine("                        : DateTimeOffset.Parse(Convert.ToString(value, CultureInfo.CurrentCulture)!, CultureInfo.CurrentCulture);");
-        _ = sb.AppendLine("                }");
-        _ = sb.AppendLine("                else");
-        _ = sb.AppendLine("                {");
-        _ = sb.AppendLine("                    converted = Convert.ChangeType(value, targetType, CultureInfo.CurrentCulture);");
-        _ = sb.AppendLine("                }");
-        _ = sb.AppendLine("            }");
-        _ = sb.AppendLine("            catch (Exception ex) when (ex is InvalidCastException or FormatException or OverflowException or ArgumentException)");
-        _ = sb.AppendLine("            {");
+        PropertyModel[] sortedDerivableProperties = model.DerivableProperties
+            .OrderBy(static property => property.Name, StringComparer.Ordinal)
+            .ToArray();
+        for (int i = 0; i < sortedDerivableProperties.Length; i++) {
+            PropertyModel property = sortedDerivableProperties[i];
+            _ = sb.AppendLine("            case \"" + EscapeString(property.Name) + "\":");
+            if (!property.SupportsStaticAssignment) {
+                _ = sb.AppendLine("                return false;");
+                continue;
+            }
+
+            string memberName = "@" + property.Name;
+            string convertedName = "convertedValue" + i.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            _ = sb.AppendLine("                if (value is null)");
+            _ = sb.AppendLine("                {");
+            _ = sb.AppendLine("                    _prefilledModel." + memberName + " = default!;");
+            _ = sb.AppendLine("                    return true;");
+            _ = sb.AppendLine("                }");
+            _ = sb.AppendLine("                if (!TryConvertPropertyValue<" + property.SourceTypeName + ">(value, out " + property.SourceTypeName + " " + convertedName + "))");
+            _ = sb.AppendLine("                {");
+            _ = sb.AppendLine("                    return false;");
+            _ = sb.AppendLine("                }");
+            _ = sb.AppendLine("                _prefilledModel." + memberName + " = " + convertedName + ";");
+            _ = sb.AppendLine("                return true;");
+        }
+
+        _ = sb.AppendLine("            default:");
         _ = sb.AppendLine("                return false;");
-        _ = sb.AppendLine("            }");
         _ = sb.AppendLine("        }");
-        _ = sb.AppendLine();
-        _ = sb.AppendLine("        property.SetValue(_prefilledModel, converted);");
-        _ = sb.AppendLine("        return true;");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
+        if (sortedDerivableProperties.Any(static property => property.SupportsStaticAssignment)) {
+            // Story 2-2 code-review P25 — use CurrentCulture for DateTime/number parse (matches CommandFormEmitter numeric binding).
+            _ = sb.AppendLine("    private static bool TryConvertPropertyValue<T>(object value, out T converted)");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        if (value is T exact)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            converted = exact;");
+            _ = sb.AppendLine("            return true;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("        object? convertedValue;");
+            _ = sb.AppendLine("        Type targetType = typeof(T);");
+            _ = sb.AppendLine("        try");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            if (targetType.IsEnum)");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                convertedValue = value is string s");
+            _ = sb.AppendLine("                    ? Enum.Parse(targetType, s, ignoreCase: true)");
+            _ = sb.AppendLine("                    : Enum.ToObject(targetType, value);");
+            _ = sb.AppendLine("            }");
+            _ = sb.AppendLine("            else if (targetType == typeof(Guid))");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                convertedValue = value is Guid guid ? guid : Guid.Parse(Convert.ToString(value, CultureInfo.InvariantCulture)!);");
+            _ = sb.AppendLine("            }");
+            _ = sb.AppendLine("            else if (targetType == typeof(DateTimeOffset))");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                convertedValue = value is DateTimeOffset dto");
+            _ = sb.AppendLine("                    ? dto");
+            _ = sb.AppendLine("                    : DateTimeOffset.Parse(Convert.ToString(value, CultureInfo.CurrentCulture)!, CultureInfo.CurrentCulture);");
+            _ = sb.AppendLine("            }");
+            _ = sb.AppendLine("            else");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                convertedValue = Convert.ChangeType(value, targetType, CultureInfo.CurrentCulture);");
+            _ = sb.AppendLine("            }");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        catch (Exception ex) when (ex is InvalidCastException or FormatException or OverflowException or ArgumentException)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            converted = default!;");
+            _ = sb.AppendLine("            return false;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("        if (convertedValue is null)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            converted = default!;");
+            _ = sb.AppendLine("            return true;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        if (convertedValue is T typed)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            converted = typed;");
+            _ = sb.AppendLine("            return true;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("        converted = default!;");
+            _ = sb.AppendLine("        return false;");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+        }
+
         // Story 11.21 CA1822 — without a configured icon name the helper only calls the static
         // TryResolveIcon fallback; the `Logger` dereference below is the sole instance access.
         // Both call sites are unqualified invocations, so they bind to either form unchanged.

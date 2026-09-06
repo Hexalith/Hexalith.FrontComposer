@@ -130,6 +130,26 @@ public sealed partial class DocsSiteValidationTests {
         }
     }
 
+    [Fact]
+    public void Hfc1016DocumentationPinsUniformSetterAndFailClosedSuppressionContract() {
+        string root = ProjectRoot();
+        string page = File.ReadAllText(Path.Combine(root, "docs", "diagnostics", "HFC1016.md"));
+        string registry = File.ReadAllText(Path.Combine(root, "docs", "diagnostics", "diagnostic-registry.json"));
+        string apiContracts = File.ReadAllText(Path.Combine(root, "_bmad-output", "project-docs", "api-contracts.md"));
+        string releases = File.ReadAllText(Path.Combine(root, "src", "Hexalith.FrontComposer.SourceTools", "AnalyzerReleases.Unshipped.md"));
+
+        page.ShouldContain("Suppression cannot restore generation");
+        page.ShouldContain("Breaking derivable-setter migration");
+        page.ShouldContain("public non-init setter");
+        registry.ShouldContain("suppression cannot restore command generation");
+        registry.ShouldContain("including derivable properties");
+        apiContracts.ShouldContain("including derivable properties");
+        apiContracts.ShouldContain("Suppression cannot restore generation");
+        apiContracts.ShouldContain("breaking derivable-setter migration");
+        releases.ShouldContain("breaking derivable-setter migration");
+        releases.ShouldContain("suppression cannot restore generation");
+    }
+
     [GeneratedRegex("(?s)<!--\\s*hfc:reference:start\\s*-->(.*?)<!--\\s*hfc:reference:end\\s*-->")]
     private static partial Regex HfcReferenceRegion();
 
