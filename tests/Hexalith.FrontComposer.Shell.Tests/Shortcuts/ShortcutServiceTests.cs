@@ -2,6 +2,7 @@
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 
 using Hexalith.FrontComposer.Shell.Shortcuts;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Logging;
@@ -16,11 +17,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Shortcuts;
 public class ShortcutServiceTests {
     private static ShortcutService BuildService(out FakeTimeProvider time, out ILogger<ShortcutService> logger) {
         time = new FakeTimeProvider();
-        logger = Substitute.For<ILogger<ShortcutService>>();
-        logger.IsEnabled(LogLevel.Warning).Returns(true);
-        // Story 11.21 — HFC2108 now flows through FrontComposerDiagnosticLog, whose generated
-        // delegate short-circuits on IsEnabled just like the Warning family already did.
-        logger.IsEnabled(LogLevel.Information).Returns(true);
+        logger = EnabledLoggerSubstitute.Create<ShortcutService>();
         return new ShortcutService(time, logger);
     }
 

@@ -15,6 +15,7 @@ using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Shortcuts;
 using Hexalith.FrontComposer.Shell.State;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.AspNetCore.Components;
@@ -511,7 +512,7 @@ public class CommandPaletteEffectsTests {
 
         FakeTimeProvider tp = time;
         services.AddSingleton<TimeProvider>(tp);
-        services.AddSingleton<IShortcutService>(_ => new ShortcutService(tp, Substitute.For<ILogger<ShortcutService>>()));
+        services.AddSingleton<IShortcutService>(_ => new ShortcutService(tp, EnabledLoggerSubstitute.Create<ShortcutService>()));
 
         IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
         accessor.TenantId.Returns(TestTenant);
@@ -562,7 +563,7 @@ public class CommandPaletteEffectsTests {
         return new CommandPaletteEffects(
             navState,
             paletteState,
-            Substitute.For<ILogger<CommandPaletteEffects>>(),
+            EnabledLoggerSubstitute.Create<CommandPaletteEffects>(),
             serviceProvider);
     }
 

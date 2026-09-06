@@ -25,24 +25,19 @@ public sealed class FrontComposerDiagnosticLogTests
     [Fact]
     public void AllLoggerMessages_PinAContiguousCollisionFreeBand()
     {
-        LoggerMessageAttribute[] attributes = [.. typeof(FrontComposerDiagnosticLog)
+        FrontComposerDiagnosticLogInventoryEntry[] entries = [.. typeof(FrontComposerDiagnosticLog)
             .GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
-            .SelectMany(static method => method.GetCustomAttributes<LoggerMessageAttribute>())
-            .OrderBy(static attribute => attribute.EventId)];
+            .SelectMany(static method => method
+                .GetCustomAttributes<LoggerMessageAttribute>()
+                .Select(attribute => new FrontComposerDiagnosticLogInventoryEntry(
+                    attribute.EventId,
+                    attribute.EventName,
+                    attribute.Level,
+                    method.GetParameters().Any(static parameter =>
+                        typeof(Exception).IsAssignableFrom(parameter.ParameterType)),
+                    $"{method.DeclaringType?.FullName}.{method.Name}")))];
 
-        attributes.Length.ShouldBe(73);
-        attributes.Select(static attribute => attribute.EventId).ShouldBe(Enumerable.Range(6000, 73));
-        attributes.Select(static attribute => attribute.EventName)
-            .Distinct(StringComparer.Ordinal)
-            .Count()
-            .ShouldBe(73);
-        attributes.ShouldAllBe(static attribute => !string.IsNullOrWhiteSpace(attribute.EventName));
-        attributes.ShouldAllBe(static attribute =>
-            attribute.Level == LogLevel.Trace
-            || attribute.Level == LogLevel.Debug
-            || attribute.Level == LogLevel.Information);
-        attributes.Count(static attribute => attribute.Level == LogLevel.Information).ShouldBe(56);
-        attributes.Count(static attribute => attribute.Level == LogLevel.Debug).ShouldBe(17);
+        FrontComposerDiagnosticLogInventoryAssertions.Assert(entries);
     }
 
     [Fact]
@@ -190,7 +185,7 @@ public sealed class FrontComposerDiagnosticLogTests
             })
             .OrderBy(static method => method.Name, StringComparer.Ordinal)];
 
-        wrappers.Length.ShouldBe(73);
+        wrappers.Length.ShouldBe(FrontComposerDiagnosticLogInventoryAssertions.ExpectedEventCount);
 
         foreach (MethodInfo method in wrappers)
         {

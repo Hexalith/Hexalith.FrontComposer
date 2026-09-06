@@ -11,6 +11,7 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.State;
 using Hexalith.FrontComposer.Shell.State.Density;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.Extensions.Logging;
@@ -39,7 +40,7 @@ public class DensityEffectsTests {
         InMemoryStorageService storage = new();
         string key = StorageKeys.BuildKey(TestTenant, TestUser, "density");
         await storage.SetAsync<DensityLevel?>(key, DensityLevel.Compact, ct);
-        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
+        ILogger<DensityEffects> logger = EnabledLoggerSubstitute.Create<DensityEffects>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         IState<FrontComposerNavigationState> navState = FakeNavState(ViewportTier.Desktop);
         IOptions<FcShellOptions> options = MsOptions.Create(new FcShellOptions());
@@ -62,7 +63,7 @@ public class DensityEffectsTests {
         IStorageService storage = Substitute.For<IStorageService>();
         storage.GetKeysAsync(key, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<string>>([]));
-        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
+        ILogger<DensityEffects> logger = EnabledLoggerSubstitute.Create<DensityEffects>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         IState<FrontComposerNavigationState> navState = FakeNavState(ViewportTier.Desktop);
         IOptions<FcShellOptions> options = MsOptions.Create(new FcShellOptions { DefaultDensity = DensityLevel.Roomy });
@@ -83,7 +84,7 @@ public class DensityEffectsTests {
         InMemoryStorageService storage = new();
         string key = StorageKeys.BuildKey(TestTenant, TestUser, "density");
         await storage.SetAsync<DensityLevel?>(key, null, ct);
-        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
+        ILogger<DensityEffects> logger = EnabledLoggerSubstitute.Create<DensityEffects>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         IState<FrontComposerNavigationState> navState = FakeNavState(ViewportTier.Desktop);
         IOptions<FcShellOptions> options = MsOptions.Create(new FcShellOptions());
@@ -108,7 +109,7 @@ public class DensityEffectsTests {
             .Returns(Task.FromResult<DensityLevel?>(null));
         storage.GetAsync<string>(key, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<string?>(DensityLevel.Compact.ToString()));
-        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
+        ILogger<DensityEffects> logger = EnabledLoggerSubstitute.Create<DensityEffects>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         IState<FrontComposerNavigationState> navState = FakeNavState(ViewportTier.Desktop);
         IOptions<FcShellOptions> options = MsOptions.Create(new FcShellOptions());
@@ -131,7 +132,7 @@ public class DensityEffectsTests {
         storage.GetKeysAsync(key, Arg.Any<CancellationToken>())
             .Returns(Task.FromException<IReadOnlyList<string>>(
                 new InvalidOperationException("JavaScript interop calls cannot be issued at this time.")));
-        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
+        ILogger<DensityEffects> logger = EnabledLoggerSubstitute.Create<DensityEffects>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         IState<FrontComposerNavigationState> navState = FakeNavState(ViewportTier.Desktop);
         IOptions<FcShellOptions> options = MsOptions.Create(new FcShellOptions());
@@ -152,7 +153,7 @@ public class DensityEffectsTests {
         // Compact so the Desktop-baseline resolves to Compact; moving to Tablet then forces
         // Comfortable and the dispatch fires.
         InMemoryStorageService storage = new();
-        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
+        ILogger<DensityEffects> logger = EnabledLoggerSubstitute.Create<DensityEffects>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         IState<FrontComposerNavigationState> navState = FakeNavState(ViewportTier.Desktop);
         IOptions<FcShellOptions> options = MsOptions.Create(new FcShellOptions());
@@ -173,7 +174,7 @@ public class DensityEffectsTests {
     [InlineData(ViewportTier.CompactDesktop)]
     public async Task HandleViewportTierChanged_NoPreference_RecomputesDesktopFactoryDefaultToCompact(ViewportTier tier) {
         InMemoryStorageService storage = new();
-        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
+        ILogger<DensityEffects> logger = EnabledLoggerSubstitute.Create<DensityEffects>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         IState<FrontComposerNavigationState> navState = FakeNavState(ViewportTier.Tablet);
         IOptions<FcShellOptions> options = MsOptions.Create(new FcShellOptions());
@@ -193,7 +194,7 @@ public class DensityEffectsTests {
     public async Task HandleUserPreferenceChanged_PersistsToStorage() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         InMemoryStorageService storage = new();
-        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
+        ILogger<DensityEffects> logger = EnabledLoggerSubstitute.Create<DensityEffects>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         IState<FrontComposerNavigationState> navState = FakeNavState(ViewportTier.Desktop);
         IOptions<FcShellOptions> options = MsOptions.Create(new FcShellOptions());

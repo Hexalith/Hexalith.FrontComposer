@@ -26,6 +26,7 @@ using Hexalith.FrontComposer.Shell.Shortcuts;
 using Hexalith.FrontComposer.Shell.State;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
 using Hexalith.FrontComposer.Shell.State.Navigation;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -243,7 +244,7 @@ public sealed class CommandPaletteE2ETests {
             services.AddSingleton(registry);
 
             services.AddSingleton<TimeProvider>(time);
-            services.AddSingleton<IShortcutService>(_ => new ShortcutService(time, Substitute.For<ILogger<ShortcutService>>()));
+            services.AddSingleton<IShortcutService>(_ => new ShortcutService(time, EnabledLoggerSubstitute.Create<ShortcutService>()));
 
             IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
             accessor.TenantId.Returns(TestTenant);
@@ -273,7 +274,7 @@ public sealed class CommandPaletteE2ETests {
             CommandPaletteEffects effects = new(
                 navState,
                 paletteState,
-                Substitute.For<ILogger<CommandPaletteEffects>>(),
+                EnabledLoggerSubstitute.Create<CommandPaletteEffects>(),
                 sp);
 
             PaletteFlowHarness harness = new(

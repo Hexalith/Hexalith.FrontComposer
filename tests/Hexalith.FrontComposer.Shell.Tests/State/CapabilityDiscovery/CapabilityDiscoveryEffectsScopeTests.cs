@@ -9,6 +9,7 @@ using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Badges;
 using Hexalith.FrontComposer.Shell.State;
 using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -47,7 +48,7 @@ public sealed class CapabilityDiscoveryEffectsScopeTests {
             new StubCatalog(),
             new NullActionQueueCountReader(),
             new ServiceCollection().BuildServiceProvider(),
-            EnabledLogger<BadgeCountService>(),
+            EnabledLoggerSubstitute.Create<BadgeCountService>(),
             new FakeTimeProvider());
 
     private static CapabilityDiscoveryEffects MakeEffect(
@@ -73,7 +74,7 @@ public sealed class CapabilityDiscoveryEffectsScopeTests {
     public async Task PersistEffect_InvalidScope_FailsClosed_NoStorageCall_LogsHFC2105_DirectionPersist(
         string? tenantId, string? userId) {
         IStorageService storage = Substitute.For<IStorageService>();
-        ILogger<CapabilityDiscoveryEffects> logger = EnabledLogger<CapabilityDiscoveryEffects>();
+        ILogger<CapabilityDiscoveryEffects> logger = EnabledLoggerSubstitute.Create<CapabilityDiscoveryEffects>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         IUserContextAccessor accessor = MakeAccessor(tenantId, userId);
         using CapabilityDiscoveryEffects sut = MakeEffect(storage, accessor, dispatcher, logger);
@@ -93,7 +94,7 @@ public sealed class CapabilityDiscoveryEffectsScopeTests {
     public async Task HydrateEffect_InvalidScope_FailsClosed_NoGetAsync_DispatchesEmptySeenSet_LogsHFC2105_DirectionHydrate(
         string? tenantId, string? userId) {
         IStorageService storage = Substitute.For<IStorageService>();
-        ILogger<CapabilityDiscoveryEffects> logger = EnabledLogger<CapabilityDiscoveryEffects>();
+        ILogger<CapabilityDiscoveryEffects> logger = EnabledLoggerSubstitute.Create<CapabilityDiscoveryEffects>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         IUserContextAccessor accessor = MakeAccessor(tenantId, userId);
         using CapabilityDiscoveryEffects sut = MakeEffect(storage, accessor, dispatcher, logger);
@@ -114,7 +115,7 @@ public sealed class CapabilityDiscoveryEffectsScopeTests {
         IStorageService storage = Substitute.For<IStorageService>();
         _ = storage.SetAsync(Arg.Any<string>(), Arg.Any<ImmutableHashSet<string>>(), Arg.Any<CancellationToken>())
             .Returns<Task>(_ => throw new InvalidOperationException("disk full"));
-        ILogger<CapabilityDiscoveryEffects> logger = EnabledLogger<CapabilityDiscoveryEffects>();
+        ILogger<CapabilityDiscoveryEffects> logger = EnabledLoggerSubstitute.Create<CapabilityDiscoveryEffects>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         IUserContextAccessor accessor = MakeAccessor("acme", "alice");
         using CapabilityDiscoveryEffects sut = MakeEffect(storage, accessor, dispatcher, logger);
@@ -129,7 +130,7 @@ public sealed class CapabilityDiscoveryEffectsScopeTests {
         IStorageService storage = Substitute.For<IStorageService>();
         _ = storage.GetAsync<ImmutableHashSet<string>>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns<Task<ImmutableHashSet<string>?>>(_ => throw new InvalidOperationException("corrupt"));
-        ILogger<CapabilityDiscoveryEffects> logger = EnabledLogger<CapabilityDiscoveryEffects>();
+        ILogger<CapabilityDiscoveryEffects> logger = EnabledLoggerSubstitute.Create<CapabilityDiscoveryEffects>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         IUserContextAccessor accessor = MakeAccessor("acme", "alice");
         using CapabilityDiscoveryEffects sut = MakeEffect(storage, accessor, dispatcher, logger);
@@ -144,7 +145,7 @@ public sealed class CapabilityDiscoveryEffectsScopeTests {
     public async Task PersistEffect_ValidScope_WritesUnderTenantUserKey() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         InMemoryStorageService storage = new();
-        ILogger<CapabilityDiscoveryEffects> logger = EnabledLogger<CapabilityDiscoveryEffects>();
+        ILogger<CapabilityDiscoveryEffects> logger = EnabledLoggerSubstitute.Create<CapabilityDiscoveryEffects>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         IUserContextAccessor accessor = MakeAccessor("acme", "alice");
         ImmutableHashSet<string> seen = ImmutableHashSet<string>.Empty
@@ -168,7 +169,7 @@ public sealed class CapabilityDiscoveryEffectsScopeTests {
     [Fact]
     public async Task HydrateEffect_ValidScopeEmptyStorage_DispatchesEmptySeenSet() {
         InMemoryStorageService storage = new();
-        ILogger<CapabilityDiscoveryEffects> logger = EnabledLogger<CapabilityDiscoveryEffects>();
+        ILogger<CapabilityDiscoveryEffects> logger = EnabledLoggerSubstitute.Create<CapabilityDiscoveryEffects>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         IUserContextAccessor accessor = MakeAccessor("acme", "alice");
         using CapabilityDiscoveryEffects sut = MakeEffect(storage, accessor, dispatcher, logger);
@@ -189,7 +190,7 @@ public sealed class CapabilityDiscoveryEffectsScopeTests {
             StorageKeys.BuildKey("acme", "alice", "capability-seen"),
             seeded,
             ct);
-        ILogger<CapabilityDiscoveryEffects> logger = EnabledLogger<CapabilityDiscoveryEffects>();
+        ILogger<CapabilityDiscoveryEffects> logger = EnabledLoggerSubstitute.Create<CapabilityDiscoveryEffects>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         IUserContextAccessor accessor = MakeAccessor("acme", "alice");
         using CapabilityDiscoveryEffects sut = MakeEffect(storage, accessor, dispatcher, logger);
@@ -243,9 +244,4 @@ public sealed class CapabilityDiscoveryEffectsScopeTests {
         found.ShouldBeTrue($"Expected ILogger.Log(Information) referencing '{diagnosticId}' AND '{direction}'.");
     }
 
-    private static ILogger<T> EnabledLogger<T>() {
-        ILogger<T> logger = Substitute.For<ILogger<T>>();
-        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
-        return logger;
-    }
 }

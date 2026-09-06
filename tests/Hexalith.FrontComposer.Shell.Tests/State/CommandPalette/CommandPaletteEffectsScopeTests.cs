@@ -12,6 +12,7 @@ using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Shortcuts;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -68,7 +69,7 @@ public class CommandPaletteEffectsScopeTests {
         registry.GetManifests().Returns([]);
         services.AddSingleton(registry);
 
-        services.AddSingleton<IShortcutService>(_ => new ShortcutService(time, Substitute.For<ILogger<ShortcutService>>()));
+        services.AddSingleton<IShortcutService>(_ => new ShortcutService(time, EnabledLoggerSubstitute.Create<ShortcutService>()));
         IUlidFactory ulids = Substitute.For<IUlidFactory>();
         ulids.NewUlid().Returns(_ => Guid.NewGuid().ToString("N"));
         services.AddSingleton(ulids);
@@ -91,6 +92,6 @@ public class CommandPaletteEffectsScopeTests {
             CurrentViewport: ViewportTier.Desktop,
             CurrentBoundedContext: null));
 
-        return new CommandPaletteEffects(navState, paletteState, Substitute.For<ILogger<CommandPaletteEffects>>(), sp);
+        return new CommandPaletteEffects(navState, paletteState, EnabledLoggerSubstitute.Create<CommandPaletteEffects>(), sp);
     }
 }

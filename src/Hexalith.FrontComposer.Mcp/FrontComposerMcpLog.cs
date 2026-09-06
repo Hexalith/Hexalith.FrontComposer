@@ -25,7 +25,8 @@ internal static partial class FrontComposerMcpLog {
             return;
         }
 
-        LogToolsListFailedClosed(logger, category.ToString(), exceptionType);
+        string categoryName = category.ToString();
+        LogToolsListFailedClosed(logger, categoryName, exceptionType);
     }
 
     /// <summary>
@@ -42,7 +43,8 @@ internal static partial class FrontComposerMcpLog {
             return;
         }
 
-        LogLifecyclePrecheckFailedClosed(logger, category.ToString(), exceptionType);
+        string categoryName = category.ToString();
+        LogLifecyclePrecheckFailedClosed(logger, categoryName, exceptionType);
     }
 
     /// <summary>
@@ -59,7 +61,8 @@ internal static partial class FrontComposerMcpLog {
             return;
         }
 
-        LogProjectionReaderFailedClosed(logger, category.ToString(), exceptionType);
+        string categoryName = category.ToString();
+        LogProjectionReaderFailedClosed(logger, categoryName, exceptionType);
     }
 
     /// <summary>
@@ -76,7 +79,8 @@ internal static partial class FrontComposerMcpLog {
             return;
         }
 
-        LogTenantToolGateFailedClosed(logger, SanitizeCategoryValue(boundedContext), exceptionType);
+        string boundedContextDigest = SanitizeCategoryValue(boundedContext);
+        LogTenantToolGateFailedClosed(logger, boundedContextDigest, exceptionType);
     }
 
     /// <summary>
@@ -93,7 +97,8 @@ internal static partial class FrontComposerMcpLog {
             return;
         }
 
-        LogPolicyGateFailedClosed(logger, SanitizeCategoryValue(boundedContext), exceptionType);
+        string boundedContextDigest = SanitizeCategoryValue(boundedContext);
+        LogPolicyGateFailedClosed(logger, boundedContextDigest, exceptionType);
     }
 
     /// <summary>
@@ -144,10 +149,9 @@ internal static partial class FrontComposerMcpLog {
             return;
         }
 
-        LogCommandInvocationUnexpectedFailure(
-            logger,
-            FrontComposerMcpFailureCategory.DownstreamFailed.ToString(),
-            ExceptionTypeOrDefault(exceptionType));
+        string categoryName = FrontComposerMcpFailureCategory.DownstreamFailed.ToString();
+        string boundedExceptionType = ExceptionTypeOrDefault(exceptionType);
+        LogCommandInvocationUnexpectedFailure(logger, categoryName, boundedExceptionType);
     }
 
     /// <summary>

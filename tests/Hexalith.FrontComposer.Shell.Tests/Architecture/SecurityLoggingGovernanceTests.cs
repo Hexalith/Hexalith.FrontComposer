@@ -2,6 +2,10 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
+
+using Microsoft.Extensions.Logging;
+
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Architecture;
@@ -325,22 +329,12 @@ public sealed class SecurityLoggingGovernanceTests
         // every Story 11.18 family and above the 5900+ band owned by SourceTools-generated output.
         LoggerEvent[] diagnosticEvents = [.. events.Where(static entry =>
             entry.Path.EndsWith("/FrontComposerDiagnosticLog.cs", StringComparison.Ordinal))];
-        diagnosticEvents.Select(static entry => entry.EventId).Order().ShouldBe(Enumerable.Range(6000, 73));
-        diagnosticEvents.Count(static entry => entry.Level == "Information").ShouldBe(56);
-        diagnosticEvents.Count(static entry => entry.Level == "Debug").ShouldBe(17);
-        diagnosticEvents.Select(static entry => entry.EventName).Distinct(StringComparer.Ordinal).Count().ShouldBe(73);
-
-        // Unlike the Story 11.18 families, this family preserves the exception attachment of the
-        // direct calls it replaced: exactly the 20 migrated sites that passed an Exception keep one.
-        diagnosticEvents.Count(static entry => entry.HasExceptionParameter).ShouldBe(20);
-        foreach (LoggerEvent entry in diagnosticEvents)
-        {
-            entry.EventName.ShouldNotBeNullOrWhiteSpace($"{entry.Location} must declare an explicit EventName");
-            entry.Level.ShouldBeOneOf(
-                "Trace",
-                "Debug",
-                "Information");
-        }
+        FrontComposerDiagnosticLogInventoryAssertions.Assert(diagnosticEvents.Select(static entry => new FrontComposerDiagnosticLogInventoryEntry(
+            entry.EventId,
+            entry.EventName,
+            ParseLogLevel(entry.Level),
+            entry.HasExceptionParameter,
+            entry.Location)));
 
         int[] story11_18EventIds = [.. existingEvents
             .Concat(securityEvents)
@@ -661,6 +655,9 @@ public sealed class SecurityLoggingGovernanceTests
 
         return false;
     }
+
+    private static LogLevel? ParseLogLevel(string? level)
+        => Enum.TryParse(level, out LogLevel parsed) ? parsed : null;
 
     private static IEnumerable<string> FindUnwrappedIdentifierArguments(SourceFile source)
     {

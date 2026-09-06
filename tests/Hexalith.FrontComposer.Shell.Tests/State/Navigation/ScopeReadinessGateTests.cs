@@ -4,10 +4,13 @@ using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.State.Navigation;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
 
 using NSubstitute;
+
+using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.State.Navigation;
 
@@ -43,7 +46,7 @@ public sealed class ScopeReadinessGateTests {
         IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
         accessor.TenantId.Returns(_ => tenant);
         accessor.UserId.Returns(_ => user);
-        ILogger<ScopeReadinessGate> logger = Substitute.For<ILogger<ScopeReadinessGate>>();
+        ILogger<ScopeReadinessGate> logger = EnabledLoggerSubstitute.Create<ScopeReadinessGate>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         var gate = new ScopeReadinessGate(state, accessor, null, logger);
 
@@ -54,6 +57,21 @@ public sealed class ScopeReadinessGateTests {
         await gate.EvaluateAsync(dispatcher, Xunit.TestContext.Current.CancellationToken);
 
         dispatcher.Received(1).Dispatch(Arg.Any<StorageReadyAction>());
+        logger.ReceivedCalls().Count(static call =>
+        {
+            if (!string.Equals(call.GetMethodInfo().Name, nameof(ILogger.Log), StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            object?[] arguments = call.GetArguments();
+            return arguments[0] is LogLevel.Debug
+                && arguments[1] is EventId
+                {
+                    Id: 6070,
+                    Name: "ScopeReadinessStorageReadyDispatched",
+                };
+        }).ShouldBe(1);
     }
 
     [Fact]
@@ -65,7 +83,7 @@ public sealed class ScopeReadinessGateTests {
         // observation when prerender scope is empty (D1 review-finding patch).
         IState<FrontComposerNavigationState> state = FakeState(BaseState());
         IUserContextAccessor accessor = MakeAccessor("acme", "alice");
-        ILogger<ScopeReadinessGate> logger = Substitute.For<ILogger<ScopeReadinessGate>>();
+        ILogger<ScopeReadinessGate> logger = EnabledLoggerSubstitute.Create<ScopeReadinessGate>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         var gate = new ScopeReadinessGate(state, accessor, null, logger);
 
@@ -78,7 +96,7 @@ public sealed class ScopeReadinessGateTests {
     public async Task EvaluateAsync_NoOpWhenScopeStillEmpty() {
         IState<FrontComposerNavigationState> state = FakeState(BaseState());
         IUserContextAccessor accessor = MakeAccessor(null, "alice");
-        ILogger<ScopeReadinessGate> logger = Substitute.For<ILogger<ScopeReadinessGate>>();
+        ILogger<ScopeReadinessGate> logger = EnabledLoggerSubstitute.Create<ScopeReadinessGate>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         var gate = new ScopeReadinessGate(state, accessor, null, logger);
 
@@ -91,7 +109,7 @@ public sealed class ScopeReadinessGateTests {
     public async Task EvaluateAsync_NoOpWhenAlreadyReady() {
         IState<FrontComposerNavigationState> state = FakeState(BaseState(storageReady: true));
         IUserContextAccessor accessor = MakeAccessor("acme", "alice");
-        ILogger<ScopeReadinessGate> logger = Substitute.For<ILogger<ScopeReadinessGate>>();
+        ILogger<ScopeReadinessGate> logger = EnabledLoggerSubstitute.Create<ScopeReadinessGate>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         var gate = new ScopeReadinessGate(state, accessor, null, logger);
 
@@ -108,7 +126,7 @@ public sealed class ScopeReadinessGateTests {
         IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
         accessor.TenantId.Returns(_ => tenant);
         accessor.UserId.Returns(_ => user);
-        ILogger<ScopeReadinessGate> logger = Substitute.For<ILogger<ScopeReadinessGate>>();
+        ILogger<ScopeReadinessGate> logger = EnabledLoggerSubstitute.Create<ScopeReadinessGate>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         var gate = new ScopeReadinessGate(state, accessor, null, logger);
 
@@ -128,7 +146,7 @@ public sealed class ScopeReadinessGateTests {
     public async Task EvaluateAsync_EmptyTenantWhitespace_NoOp() {
         IState<FrontComposerNavigationState> state = FakeState(BaseState());
         IUserContextAccessor accessor = MakeAccessor("   ", "alice");
-        ILogger<ScopeReadinessGate> logger = Substitute.For<ILogger<ScopeReadinessGate>>();
+        ILogger<ScopeReadinessGate> logger = EnabledLoggerSubstitute.Create<ScopeReadinessGate>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         var gate = new ScopeReadinessGate(state, accessor, null, logger);
 

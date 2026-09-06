@@ -56,7 +56,7 @@ public class ThemeEffectsTests {
         IThemeService themeService = Substitute.For<IThemeService>();
         string key = StorageKeys.BuildKey(TestTenant, TestUser, "theme");
         await storage.SetAsync(key, ThemeValue.Dark, ct);
-        ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
+        ILogger<ThemeEffects> logger = EnabledLoggerSubstitute.Create<ThemeEffects>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         var sut = new ThemeEffects(storage, MsOptions.Create(new FcShellOptions()), StubAccessor(TestTenant, TestUser), logger, themeService);
         var action = new AppInitializedAction("corr-init");
@@ -74,7 +74,7 @@ public class ThemeEffectsTests {
         // Arrange — empty storage, no seeding
         var storage = new InMemoryStorageService();
         IThemeService themeService = Substitute.For<IThemeService>();
-        ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
+        ILogger<ThemeEffects> logger = EnabledLoggerSubstitute.Create<ThemeEffects>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         var sut = new ThemeEffects(storage, MsOptions.Create(new FcShellOptions()), StubAccessor(TestTenant, TestUser), logger, themeService);
         var action = new AppInitializedAction("corr-init");
@@ -99,7 +99,7 @@ public class ThemeEffectsTests {
         var storage = new InMemoryStorageService();
         await storage.SetAsync(StorageKeys.BuildKey(TestTenant, TestUser, "theme"), ThemeValue.Dark, ct);
         IThemeService themeService = Substitute.For<IThemeService>();
-        ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
+        ILogger<ThemeEffects> logger = EnabledLoggerSubstitute.Create<ThemeEffects>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         IState<FrontComposerThemeState> state = Substitute.For<IState<FrontComposerThemeState>>();
         state.Value.Returns(new FrontComposerThemeState(ThemeValue.Light));
@@ -130,7 +130,7 @@ public class ThemeEffectsTests {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         var storage = new InMemoryStorageService();
         IThemeService themeService = Substitute.For<IThemeService>();
-        ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
+        ILogger<ThemeEffects> logger = EnabledLoggerSubstitute.Create<ThemeEffects>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         var sut = new ThemeEffects(storage, MsOptions.Create(new FcShellOptions()), StubAccessor(TestTenant, TestUser), logger, themeService);
         var action = new ThemeChangedAction("corr-1", ThemeValue.Dark);

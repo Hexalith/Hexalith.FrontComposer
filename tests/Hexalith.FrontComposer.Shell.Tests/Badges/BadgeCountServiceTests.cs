@@ -5,6 +5,7 @@ using System.Reactive.Subjects;
 using Hexalith.FrontComposer.Contracts.Badges;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Shell.Badges;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -66,7 +67,7 @@ public sealed class BadgeCountServiceTests {
             catalog,
             reader,
             provider,
-            Substitute.For<ILogger<BadgeCountService>>(),
+            EnabledLoggerSubstitute.Create<BadgeCountService>(),
             new FakeTimeProvider());
 
         await sut.InitializeAsync(Ct);
@@ -82,8 +83,7 @@ public sealed class BadgeCountServiceTests {
         StubReader reader = new((type, _) => type == typeof(ProjectionAlpha)
             ? throw new InvalidOperationException("boom")
             : new ValueTask<int>(7));
-        ILogger<BadgeCountService> logger = Substitute.For<ILogger<BadgeCountService>>();
-        logger.IsEnabled(LogLevel.Warning).Returns(true);
+        ILogger<BadgeCountService> logger = EnabledLoggerSubstitute.Create<BadgeCountService>();
         using ServiceProvider provider = EmptyProvider();
         using BadgeCountService sut = new(
             catalog, reader, provider, logger, new FakeTimeProvider());
@@ -102,7 +102,7 @@ public sealed class BadgeCountServiceTests {
         using ServiceProvider provider = EmptyProvider();
         using BadgeCountService sut = new(
             catalog, reader, provider,
-            Substitute.For<ILogger<BadgeCountService>>(), new FakeTimeProvider());
+            EnabledLoggerSubstitute.Create<BadgeCountService>(), new FakeTimeProvider());
 
         await sut.InitializeAsync(Ct);
 
@@ -121,7 +121,7 @@ public sealed class BadgeCountServiceTests {
         using ServiceProvider provider = WithNotifier(notifier);
         using BadgeCountService sut = new(
             catalog, reader, provider,
-            Substitute.For<ILogger<BadgeCountService>>(), new FakeTimeProvider());
+            EnabledLoggerSubstitute.Create<BadgeCountService>(), new FakeTimeProvider());
 
         await sut.InitializeAsync(Ct);
         sut.Counts[typeof(ProjectionAlpha)].ShouldBe(10);
@@ -137,10 +137,7 @@ public sealed class BadgeCountServiceTests {
         StubCatalog catalog = new(typeof(ProjectionAlpha));
         StubReader reader = new((_, _) => new ValueTask<int>(0));
         StubNotifier notifier = new();
-        ILogger<BadgeCountService> logger = Substitute.For<ILogger<BadgeCountService>>();
-        // Story 11.21 — HFC2113 now flows through FrontComposerDiagnosticLog, whose generated
-        // delegate short-circuits on IsEnabled just like the Warning family already did.
-        logger.IsEnabled(LogLevel.Information).Returns(true);
+        ILogger<BadgeCountService> logger = EnabledLoggerSubstitute.Create<BadgeCountService>();
         using ServiceProvider provider = WithNotifier(notifier);
         using BadgeCountService sut = new(
             catalog, reader, provider, logger, new FakeTimeProvider());
@@ -163,7 +160,7 @@ public sealed class BadgeCountServiceTests {
             return new ValueTask<int>(0);
         });
         StubNotifier notifier = new();
-        ILogger<BadgeCountService> logger = Substitute.For<ILogger<BadgeCountService>>();
+        ILogger<BadgeCountService> logger = EnabledLoggerSubstitute.Create<BadgeCountService>();
         using ServiceProvider provider = WithNotifier(notifier);
         using BadgeCountService sut = new(
             catalog, reader, provider, logger, new FakeTimeProvider());
@@ -189,8 +186,7 @@ public sealed class BadgeCountServiceTests {
             throw new InvalidOperationException("notifier-time boom");
         });
         StubNotifier notifier = new();
-        ILogger<BadgeCountService> logger = Substitute.For<ILogger<BadgeCountService>>();
-        logger.IsEnabled(LogLevel.Warning).Returns(true);
+        ILogger<BadgeCountService> logger = EnabledLoggerSubstitute.Create<BadgeCountService>();
         using ServiceProvider provider = WithNotifier(notifier);
         using BadgeCountService sut = new(
             catalog, reader, provider, logger, new FakeTimeProvider());
@@ -210,7 +206,7 @@ public sealed class BadgeCountServiceTests {
         using ServiceProvider provider = EmptyProvider();
         using BadgeCountService sut = new(
             catalog, reader, provider,
-            Substitute.For<ILogger<BadgeCountService>>(), new FakeTimeProvider());
+            EnabledLoggerSubstitute.Create<BadgeCountService>(), new FakeTimeProvider());
 
         IObservable<BadgeCountChangedArgs> stream = sut.CountChanged;
 
@@ -227,7 +223,7 @@ public sealed class BadgeCountServiceTests {
         using ServiceProvider provider = WithNotifier(notifier);
         using BadgeCountService sut = new(
             catalog, reader, provider,
-            Substitute.For<ILogger<BadgeCountService>>(), new FakeTimeProvider());
+            EnabledLoggerSubstitute.Create<BadgeCountService>(), new FakeTimeProvider());
 
         bool completed = false;
         using IDisposable subscription = sut.CountChanged.Subscribe(
@@ -248,7 +244,7 @@ public sealed class BadgeCountServiceTests {
         using ServiceProvider provider = EmptyProvider();
         using BadgeCountService sut = new(
             catalog, reader, provider,
-            Substitute.For<ILogger<BadgeCountService>>(), new FakeTimeProvider());
+            EnabledLoggerSubstitute.Create<BadgeCountService>(), new FakeTimeProvider());
 
         await sut.InitializeAsync(Ct);
 
@@ -260,7 +256,7 @@ public sealed class BadgeCountServiceTests {
         StubCatalog catalog = new(typeof(ProjectionAlpha));
         StubReader reader = new((_, _) => new ValueTask<int>(0));
         using ServiceProvider provider = EmptyProvider();
-        ILogger<BadgeCountService> logger = Substitute.For<ILogger<BadgeCountService>>();
+        ILogger<BadgeCountService> logger = EnabledLoggerSubstitute.Create<BadgeCountService>();
         TimeProvider time = new FakeTimeProvider();
 
         Should.Throw<ArgumentNullException>(() => new BadgeCountService(null!, reader, provider, logger, time));
@@ -281,7 +277,7 @@ public sealed class BadgeCountServiceTests {
         using ServiceProvider provider = EmptyProvider();
         using BadgeCountService sut = new(
             catalog, reader, provider,
-            Substitute.For<ILogger<BadgeCountService>>(), new FakeTimeProvider());
+            EnabledLoggerSubstitute.Create<BadgeCountService>(), new FakeTimeProvider());
 
         await sut.InitializeAsync(Ct);
 
@@ -298,7 +294,7 @@ public sealed class BadgeCountServiceTests {
         using ServiceProvider provider = EmptyProvider();
         using BadgeCountService sut = new(
             catalog, reader, provider,
-            Substitute.For<ILogger<BadgeCountService>>(), new FakeTimeProvider());
+            EnabledLoggerSubstitute.Create<BadgeCountService>(), new FakeTimeProvider());
         using IDisposable _ = sut.CountChanged.Subscribe(seen.Add);
 
         await sut.InitializeAsync(Ct);
@@ -326,7 +322,7 @@ public sealed class BadgeCountServiceTests {
         using ServiceProvider provider = EmptyProvider();
         using BadgeCountService sut = new(
             catalog, reader, provider,
-            Substitute.For<ILogger<BadgeCountService>>(), time);
+            EnabledLoggerSubstitute.Create<BadgeCountService>(), time);
 
         Task initTask = sut.InitializeAsync(Ct);
         time.Advance(TimeSpan.FromSeconds(6));
@@ -351,7 +347,7 @@ public sealed class BadgeCountServiceTests {
         using ServiceProvider provider = EmptyProvider();
         using BadgeCountService sut = new(
             catalog, reader, provider,
-            Substitute.For<ILogger<BadgeCountService>>(), new FakeTimeProvider());
+            EnabledLoggerSubstitute.Create<BadgeCountService>(), new FakeTimeProvider());
         await sut.InitializeAsync(Ct);
 
         // Parallel reads must always see a non-torn dictionary that contains every seeded key.
@@ -388,7 +384,7 @@ public sealed class BadgeCountServiceTests {
         using ServiceProvider provider = WithNotifier(notifier);
         using BadgeCountService sut = new(
             catalog, reader, provider,
-            Substitute.For<ILogger<BadgeCountService>>(), new FakeTimeProvider());
+            EnabledLoggerSubstitute.Create<BadgeCountService>(), new FakeTimeProvider());
 
         await sut.InitializeAsync(Ct);
         sut.Counts[typeof(ProjectionAlpha)].ShouldBe(10);
@@ -422,7 +418,7 @@ public sealed class BadgeCountServiceTests {
         using ServiceProvider provider = EmptyProvider();
         using BadgeCountService sut = new(
             catalog, reader, provider,
-            Substitute.For<ILogger<BadgeCountService>>(), new FakeTimeProvider());
+            EnabledLoggerSubstitute.Create<BadgeCountService>(), new FakeTimeProvider());
 
         bool completed = false;
         bool errored = false;

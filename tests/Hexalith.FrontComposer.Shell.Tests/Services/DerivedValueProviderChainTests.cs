@@ -226,7 +226,7 @@ public class DerivedValueProviderChainTests {
     [Fact]
     public async Task LastUsed_EmptyUserId_RefusesWrite_PublishesDevDiagnosticOncePerCircuit() {
         IStorageService storage = Substitute.For<IStorageService>();
-        var sink = new InMemoryDiagnosticSink(NullLogger<InMemoryDiagnosticSink>());
+        var sink = new InMemoryDiagnosticSink(EnabledLoggerSubstitute.Create<InMemoryDiagnosticSink>());
         CapturingLogger<LastUsedValueProvider> logger = new();
         var p = new LastUsedValueProvider(storage, StubUser(tenant: "tenant-secret", user: ""), sink, logger);
 
@@ -319,5 +319,4 @@ public class DerivedValueProviderChainTests {
             => Task.FromResult(_impl(t, p));
     }
 
-    private static ILogger<T> NullLogger<T>() => Substitute.For<ILogger<T>>();
 }

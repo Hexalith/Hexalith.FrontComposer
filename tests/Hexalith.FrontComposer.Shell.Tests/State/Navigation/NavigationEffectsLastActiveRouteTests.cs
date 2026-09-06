@@ -7,6 +7,7 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.State;
 using Hexalith.FrontComposer.Shell.State.Navigation;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -62,7 +63,7 @@ public sealed class NavigationEffectsLastActiveRouteTests {
 
     [Fact]
     public async Task HandleBoundedContextChanged_NullBc_DoesNotDispatchRouteChange() {
-        ILogger<NavigationEffects> logger = Substitute.For<ILogger<NavigationEffects>>();
+        ILogger<NavigationEffects> logger = EnabledLoggerSubstitute.Create<NavigationEffects>();
         var storage = new InMemoryStorageService();
         var sut = new NavigationEffects(storage, MakeAccessor(), logger, FakeState(BaseState()));
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
@@ -75,7 +76,7 @@ public sealed class NavigationEffectsLastActiveRouteTests {
     [Fact]
     public async Task HandleLastActiveRouteChanged_PersistsUpdatedBlob() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
-        ILogger<NavigationEffects> logger = Substitute.For<ILogger<NavigationEffects>>();
+        ILogger<NavigationEffects> logger = EnabledLoggerSubstitute.Create<NavigationEffects>();
         var storage = new InMemoryStorageService();
         var sut = new NavigationEffects(
             storage,
@@ -96,7 +97,7 @@ public sealed class NavigationEffectsLastActiveRouteTests {
 
     [Fact]
     public async Task HandleBoundedContextChanged_NormalizesCurrentUriToBaseRelativeRoute() {
-        ILogger<NavigationEffects> logger = Substitute.For<ILogger<NavigationEffects>>();
+        ILogger<NavigationEffects> logger = EnabledLoggerSubstitute.Create<NavigationEffects>();
         var storage = new InMemoryStorageService();
         NavigationManager navigation = new TestNavigationManager(
             "https://localhost/app/",
@@ -118,7 +119,7 @@ public sealed class NavigationEffectsLastActiveRouteTests {
 
     [Fact]
     public async Task HandleAppInitialized_EmptyBlob_DispatchesHydratedCompleted() {
-        ILogger<NavigationEffects> logger = Substitute.For<ILogger<NavigationEffects>>();
+        ILogger<NavigationEffects> logger = EnabledLoggerSubstitute.Create<NavigationEffects>();
         var storage = new InMemoryStorageService();
         var sut = new NavigationEffects(storage, MakeAccessor(), logger, FakeState(BaseState()));
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
@@ -138,7 +139,7 @@ public sealed class NavigationEffectsLastActiveRouteTests {
     [Fact]
     public async Task HandleAppInitialized_StoredRoute_DispatchesHydratedActions() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
-        ILogger<NavigationEffects> logger = Substitute.For<ILogger<NavigationEffects>>();
+        ILogger<NavigationEffects> logger = EnabledLoggerSubstitute.Create<NavigationEffects>();
         var storage = new InMemoryStorageService();
         string key = StorageKeys.BuildKey(Tenant, User, "nav");
         NavigationPersistenceBlob blob = new(
@@ -166,7 +167,7 @@ public sealed class NavigationEffectsLastActiveRouteTests {
     [Fact]
     public async Task HandleAppInitialized_AbsoluteStoredRoute_NormalizesToBaseRelative() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
-        ILogger<NavigationEffects> logger = Substitute.For<ILogger<NavigationEffects>>();
+        ILogger<NavigationEffects> logger = EnabledLoggerSubstitute.Create<NavigationEffects>();
         var storage = new InMemoryStorageService();
         string key = StorageKeys.BuildKey(Tenant, User, "nav");
         NavigationPersistenceBlob blob = new(
@@ -200,7 +201,7 @@ public sealed class NavigationEffectsLastActiveRouteTests {
     [Fact]
     public async Task HandleAppInitialized_ExternalAbsoluteStoredRoute_PrunesToNull() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
-        ILogger<NavigationEffects> logger = Substitute.For<ILogger<NavigationEffects>>();
+        ILogger<NavigationEffects> logger = EnabledLoggerSubstitute.Create<NavigationEffects>();
         var storage = new InMemoryStorageService();
         string key = StorageKeys.BuildKey(Tenant, User, "nav");
         NavigationPersistenceBlob blob = new(
@@ -227,7 +228,7 @@ public sealed class NavigationEffectsLastActiveRouteTests {
     [Fact]
     public async Task HandleAppInitialized_UnregisteredBc_DispatchesNullHydratedAction() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
-        ILogger<NavigationEffects> logger = Substitute.For<ILogger<NavigationEffects>>();
+        ILogger<NavigationEffects> logger = EnabledLoggerSubstitute.Create<NavigationEffects>();
         var storage = new InMemoryStorageService();
         string key = StorageKeys.BuildKey(Tenant, User, "nav");
         NavigationPersistenceBlob blob = new(

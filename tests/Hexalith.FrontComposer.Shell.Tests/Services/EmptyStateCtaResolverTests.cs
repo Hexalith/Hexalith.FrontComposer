@@ -99,7 +99,7 @@ public sealed class EmptyStateCtaResolverTests {
                 call[2] = "Orders";
                 return true;
             });
-        EmptyStateCtaResolver resolver = new(registry, Substitute.For<ILogger<EmptyStateCtaResolver>>());
+        EmptyStateCtaResolver resolver = new(registry, EnabledLoggerSubstitute.Create<EmptyStateCtaResolver>());
 
         EmptyStateCta? cta = resolver.Resolve(typeof(OrderProjection));
 
@@ -140,7 +140,7 @@ public sealed class EmptyStateCtaResolverTests {
             new Dictionary<string, string>(StringComparer.Ordinal) {
                 ["Orders.CreateOrderCommand"] = "OrderApprover",
             }));
-        EmptyStateCtaResolver resolver = new(registry, Substitute.For<ILogger<EmptyStateCtaResolver>>());
+        EmptyStateCtaResolver resolver = new(registry, EnabledLoggerSubstitute.Create<EmptyStateCtaResolver>());
 
         EmptyStateCta? cta = resolver.Resolve(typeof(OrderProjection));
 
@@ -202,7 +202,7 @@ public sealed class EmptyStateCtaResolverTests {
         registry.IsCommandWritable("GetOrdersQuery").Returns(false);
         registry.IsCommandWritable("CreateOrderCommand").Returns(true);
 
-        EmptyStateCtaResolver resolver = new(registry, Substitute.For<ILogger<EmptyStateCtaResolver>>());
+        EmptyStateCtaResolver resolver = new(registry, EnabledLoggerSubstitute.Create<EmptyStateCtaResolver>());
 
         EmptyStateCta? cta = resolver.Resolve(typeof(OrderProjection));
 
@@ -216,7 +216,7 @@ public sealed class EmptyStateCtaResolverTests {
         registry.GetManifests().Returns([Manifest("Orders", typeof(OrderProjection), "GetOrdersQuery", "ListOrdersQuery")]);
         registry.IsCommandWritable(Arg.Any<string>()).Returns(false);
 
-        EmptyStateCtaResolver resolver = new(registry, Substitute.For<ILogger<EmptyStateCtaResolver>>());
+        EmptyStateCtaResolver resolver = new(registry, EnabledLoggerSubstitute.Create<EmptyStateCtaResolver>());
 
         resolver.Resolve(typeof(OrderProjection)).ShouldBeNull();
     }
@@ -275,7 +275,7 @@ public sealed class EmptyStateCtaResolverTests {
     public void RegistryThrowsOperationCanceled_PropagatesCancellation() {
         IWriteAwareRegistry registry = Substitute.For<IWriteAwareRegistry>();
         registry.GetManifests().Returns(_ => throw new OperationCanceledException());
-        var resolver = new EmptyStateCtaResolver(registry, Substitute.For<ILogger<EmptyStateCtaResolver>>());
+        var resolver = new EmptyStateCtaResolver(registry, EnabledLoggerSubstitute.Create<EmptyStateCtaResolver>());
 
         Should.Throw<OperationCanceledException>(() => resolver.Resolve(typeof(OrderProjection)));
     }
@@ -286,7 +286,7 @@ public sealed class EmptyStateCtaResolverTests {
 #pragma warning disable CA2201 // Intentional fatal-exception fixture verifies propagation rather than recovery.
         registry.GetManifests().Returns(_ => throw new AccessViolationException());
 #pragma warning restore CA2201
-        var resolver = new EmptyStateCtaResolver(registry, Substitute.For<ILogger<EmptyStateCtaResolver>>());
+        var resolver = new EmptyStateCtaResolver(registry, EnabledLoggerSubstitute.Create<EmptyStateCtaResolver>());
 
         Should.Throw<AccessViolationException>(() => resolver.Resolve(typeof(OrderProjection)));
     }
@@ -342,7 +342,7 @@ public sealed class EmptyStateCtaResolverTests {
                 call[2] = boundedContext;
                 return policy.Length > 0;
             });
-        return new EmptyStateCtaResolver(registry, Substitute.For<ILogger<EmptyStateCtaResolver>>());
+        return new EmptyStateCtaResolver(registry, EnabledLoggerSubstitute.Create<EmptyStateCtaResolver>());
     }
 
     private static DomainManifest Manifest(string boundedContext, Type projectionType, params string[] commands)

@@ -54,6 +54,11 @@ public sealed class FailClosedLoggingGovernanceTests
             "generated security log calls must not pass raw string parameters directly; wrap with a sanitizing helper. "
             + string.Join(", ", unwrappedArguments));
 
+        string[] argumentViolations = [.. sources.SelectMany(FindGeneratedLogArgumentViolations)];
+        argumentViolations.ShouldBeEmpty(
+            "generated log calls must receive direct parameters or locals declared after the IsEnabled guard. "
+            + string.Join(", ", argumentViolations));
+
         LoggerEvent[] events = [.. sources.SelectMany(FindLoggerEvents)];
         AssertUniqueEventIds(events);
         events.Select(static entry => entry.EventId).Order().ShouldBe([
@@ -119,6 +124,41 @@ public sealed class FailClosedLoggingGovernanceTests
 
         string[] unwrappedArguments = [.. sources.SelectMany(FindUnwrappedIdentifierArguments)];
         unwrappedArguments.ShouldContain("src/Hexalith.FrontComposer.Mcp/FrontComposerMcpLog.cs:Unsafe:tenantId");
+    }
+
+    /// <summary>
+    /// Verifies that inline computations and locals declared before logger enablement guards are rejected.
+    /// </summary>
+    [Fact]
+    public void GovernanceGuard_SyntheticInlineAndPreGuardComputedArguments_AreReportedAndGuardedLocalIsAllowed()
+    {
+        SourceFile[] sources =
+        [
+            new(
+                "src/Hexalith.FrontComposer.Mcp/FrontComposerMcpLog.cs",
+                "using Microsoft.Extensions.Logging; namespace Synthetic; internal static partial class FrontComposerMcpLog { "
+                + "public static void Unsafe(ILogger logger, Category category) { LogUnsafe(logger, category.ToString()); } "
+                + "[LoggerMessage(EventId = 9998, Level = LogLevel.Warning, Message = \"{Category}\")] "
+                + "private static partial void LogUnsafe(ILogger logger, string category); "
+                + "public static void Eager(ILogger logger, Category category, string exceptionType) { "
+                + "string categoryName = category.ToString(); if (!logger.IsEnabled(LogLevel.Warning)) { return; } "
+                + "LogEager(logger, categoryName, exceptionType); } "
+                + "[LoggerMessage(EventId = 9999, Level = LogLevel.Warning, Message = \"{Category} {ExceptionType}\")] "
+                + "private static partial void LogEager(ILogger logger, string category, string exceptionType); "
+                + "public static void Safe(ILogger logger, Category category, string exceptionType) { "
+                + "if (!logger.IsEnabled(LogLevel.Warning)) { return; } string categoryName = category.ToString(); "
+                + "LogSafe(logger, categoryName, exceptionType); } "
+                + "[LoggerMessage(EventId = 10000, Level = LogLevel.Warning, Message = \"{Category} {ExceptionType}\")] "
+                + "private static partial void LogSafe(ILogger logger, string category, string exceptionType); "
+                + "private enum Category { Unknown } }"),
+        ];
+
+        string[] argumentViolations = [.. sources.SelectMany(FindGeneratedLogArgumentViolations)];
+
+        argumentViolations.ShouldBe([
+            "src/Hexalith.FrontComposer.Mcp/FrontComposerMcpLog.cs:Unsafe:LogUnsafe:category.ToString()",
+            "src/Hexalith.FrontComposer.Mcp/FrontComposerMcpLog.cs:Eager:LogEager:categoryName",
+        ]);
     }
 
     [Fact]
@@ -191,6 +231,114 @@ public sealed class FailClosedLoggingGovernanceTests
             }
         }
     }
+
+    private static IEnumerable<string> FindGeneratedLogArgumentViolations(SourceFile source)
+    {
+        SyntaxTree tree = Parse(source);
+        SyntaxNode root = tree.GetRoot();
+        HashSet<string> generatedMethodNames = [.. root.DescendantNodes()
+            .OfType<AttributeSyntax>()
+            .Where(IsLoggerMessageAttribute)
+            .Select(static attribute => attribute.FirstAncestorOrSelf<MethodDeclarationSyntax>())
+            .OfType<MethodDeclarationSyntax>()
+            .Select(static method => method.Identifier.ValueText)];
+
+        foreach (InvocationExpressionSyntax invocation in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
+        {
+            if (invocation.Expression is not IdentifierNameSyntax invokedName
+                || !generatedMethodNames.Contains(invokedName.Identifier.ValueText))
+            {
+                continue;
+            }
+
+            MethodDeclarationSyntax? enclosingMethod = invocation.FirstAncestorOrSelf<MethodDeclarationSyntax>();
+            if (enclosingMethod is null)
+            {
+                continue;
+            }
+
+            string? loggerParameterName = invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression
+                is IdentifierNameSyntax loggerIdentifier
+                ? loggerIdentifier.Identifier.ValueText
+                : null;
+            StatementSyntax? invocationStatement = invocation.Ancestors()
+                .OfType<StatementSyntax>()
+                .FirstOrDefault(static statement => statement.Parent is BlockSyntax);
+            BlockSyntax? invocationBlock = invocationStatement?.Parent as BlockSyntax;
+            IfStatementSyntax? enabledGuard = invocationBlock?.Statements
+                .OfType<IfStatementSyntax>()
+                .Where(candidate => candidate.SpanStart < invocation.SpanStart
+                    && IsDisabledLoggerEarlyReturnGuard(candidate, loggerParameterName))
+                .OrderByDescending(static candidate => candidate.SpanStart)
+                .FirstOrDefault();
+
+            foreach (ArgumentSyntax argument in invocation.ArgumentList.Arguments)
+            {
+                if (argument.Expression is not IdentifierNameSyntax identifier)
+                {
+                    yield return $"{source.Path}:{enclosingMethod.Identifier.ValueText}:"
+                        + $"{invokedName.Identifier.ValueText}:{argument.Expression}";
+                    continue;
+                }
+
+                string argumentName = identifier.Identifier.ValueText;
+                if (IsDirectParameter(enclosingMethod, argumentName))
+                {
+                    continue;
+                }
+
+                VariableDeclaratorSyntax? declaration = invocationBlock?.Statements
+                    .OfType<LocalDeclarationStatementSyntax>()
+                    .Where(candidate => candidate.SpanStart < invocation.SpanStart)
+                    .SelectMany(static candidate => candidate.Declaration.Variables)
+                    .Where(candidate => candidate.SpanStart < invocation.SpanStart
+                        && string.Equals(candidate.Identifier.ValueText, argumentName, StringComparison.Ordinal))
+                    .OrderByDescending(static candidate => candidate.SpanStart)
+                    .FirstOrDefault();
+                if (declaration is not null
+                    && enabledGuard is not null
+                    && declaration.SpanStart > enabledGuard.Span.End)
+                {
+                    continue;
+                }
+
+                yield return $"{source.Path}:{enclosingMethod.Identifier.ValueText}:"
+                    + $"{invokedName.Identifier.ValueText}:{argumentName}";
+            }
+        }
+    }
+
+    private static bool IsDirectParameter(MethodDeclarationSyntax method, string name)
+        => method.ParameterList.Parameters.Any(parameter =>
+            string.Equals(parameter.Identifier.ValueText, name, StringComparison.Ordinal))
+            || method.Ancestors().OfType<TypeDeclarationSyntax>().FirstOrDefault()?.ParameterList?.Parameters.Any(parameter =>
+                string.Equals(parameter.Identifier.ValueText, name, StringComparison.Ordinal)) == true;
+
+    private static bool IsDisabledLoggerEarlyReturnGuard(IfStatementSyntax candidate, string? loggerParameterName)
+    {
+        if (loggerParameterName is null || !IsUnconditionalReturn(candidate.Statement))
+        {
+            return false;
+        }
+
+        return candidate.Condition.DescendantNodesAndSelf()
+            .OfType<PrefixUnaryExpressionSyntax>()
+            .Where(static expression => expression.IsKind(SyntaxKind.LogicalNotExpression))
+            .Select(static expression => expression.Operand)
+            .OfType<InvocationExpressionSyntax>()
+            .Any(invocation => invocation.Expression is MemberAccessExpressionSyntax
+            {
+                Expression: IdentifierNameSyntax loggerIdentifier,
+                Name.Identifier.ValueText: "IsEnabled",
+            } && string.Equals(loggerIdentifier.Identifier.ValueText, loggerParameterName, StringComparison.Ordinal));
+    }
+
+    private static bool IsUnconditionalReturn(StatementSyntax statement)
+        => statement is ReturnStatementSyntax
+            || statement is BlockSyntax
+            {
+                Statements.Count: 1,
+            } block && block.Statements[0] is ReturnStatementSyntax;
 
     private static IEnumerable<DirectLogSite> FindDirectLogSites(SourceFile source)
     {

@@ -82,7 +82,8 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
             return;
         }
 
-        LogReadFailureMessage(logger, ex.GetType().FullName ?? "Exception");
+        string exceptionType = ex.GetType().FullName ?? "Exception";
+        LogReadFailureMessage(logger, exceptionType);
     }
 
     private static bool TryReadHandle(IReadOnlyDictionary<string, JsonElement>? arguments, out string? handle) {

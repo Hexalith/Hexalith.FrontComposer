@@ -5,6 +5,7 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.State;
 using Hexalith.FrontComposer.Shell.State.Theme;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -28,7 +29,7 @@ public sealed class ThemeEffectsScopeTests {
     public async Task HandleThemeChanged_NullTenant_SkipsPersistenceAndLogsHFC2105() {
         IStorageService storage = Substitute.For<IStorageService>();
         IThemeService themeService = Substitute.For<IThemeService>();
-        ILogger<ThemeEffects> logger = EnabledLogger<ThemeEffects>();
+        ILogger<ThemeEffects> logger = EnabledLoggerSubstitute.Create<ThemeEffects>();
         IUserContextAccessor accessor = MakeAccessor(tenantId: null, userId: "alice");
         var sut = new ThemeEffects(storage, MsOptions.Create(new Hexalith.FrontComposer.Shell.Options.FcShellOptions()), accessor, logger, themeService);
 
@@ -44,7 +45,7 @@ public sealed class ThemeEffectsScopeTests {
     public async Task HandleThemeChanged_NullUser_SkipsPersistenceAndLogsHFC2105() {
         IStorageService storage = Substitute.For<IStorageService>();
         IThemeService themeService = Substitute.For<IThemeService>();
-        ILogger<ThemeEffects> logger = EnabledLogger<ThemeEffects>();
+        ILogger<ThemeEffects> logger = EnabledLoggerSubstitute.Create<ThemeEffects>();
         IUserContextAccessor accessor = MakeAccessor(tenantId: "acme", userId: null);
         var sut = new ThemeEffects(storage, MsOptions.Create(new Hexalith.FrontComposer.Shell.Options.FcShellOptions()), accessor, logger, themeService);
 
@@ -62,7 +63,7 @@ public sealed class ThemeEffectsScopeTests {
     public async Task HandleThemeChanged_WhitespaceSegment_SkipsPersistence(string tenantId, string userId) {
         IStorageService storage = Substitute.For<IStorageService>();
         IThemeService themeService = Substitute.For<IThemeService>();
-        ILogger<ThemeEffects> logger = EnabledLogger<ThemeEffects>();
+        ILogger<ThemeEffects> logger = EnabledLoggerSubstitute.Create<ThemeEffects>();
         IUserContextAccessor accessor = MakeAccessor(tenantId, userId);
         var sut = new ThemeEffects(storage, MsOptions.Create(new Hexalith.FrontComposer.Shell.Options.FcShellOptions()), accessor, logger, themeService);
 
@@ -79,7 +80,7 @@ public sealed class ThemeEffectsScopeTests {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         var storage = new InMemoryStorageService();
         IThemeService themeService = Substitute.For<IThemeService>();
-        ILogger<ThemeEffects> logger = EnabledLogger<ThemeEffects>();
+        ILogger<ThemeEffects> logger = EnabledLoggerSubstitute.Create<ThemeEffects>();
         IUserContextAccessor accessor = MakeAccessor("acme", "alice");
         var sut = new ThemeEffects(storage, MsOptions.Create(new Hexalith.FrontComposer.Shell.Options.FcShellOptions()), accessor, logger, themeService);
 
@@ -95,7 +96,7 @@ public sealed class ThemeEffectsScopeTests {
     public async Task HandleAppInitialized_ValidContextEmptyStorage_LogsHFC2106AndDoesNotDispatchThemeChanged() {
         var storage = new InMemoryStorageService();
         IThemeService themeService = Substitute.For<IThemeService>();
-        ILogger<ThemeEffects> logger = EnabledLogger<ThemeEffects>();
+        ILogger<ThemeEffects> logger = EnabledLoggerSubstitute.Create<ThemeEffects>();
         IUserContextAccessor accessor = MakeAccessor("acme", "alice");
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         var sut = new ThemeEffects(storage, MsOptions.Create(new Hexalith.FrontComposer.Shell.Options.FcShellOptions()), accessor, logger, themeService);
@@ -135,9 +136,4 @@ public sealed class ThemeEffectsScopeTests {
         found.ShouldBeTrue($"Expected ILogger.Log call with LogLevel.Information referencing '{diagnosticId}'.");
     }
 
-    private static ILogger<T> EnabledLogger<T>() {
-        ILogger<T> logger = Substitute.For<ILogger<T>>();
-        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
-        return logger;
-    }
 }

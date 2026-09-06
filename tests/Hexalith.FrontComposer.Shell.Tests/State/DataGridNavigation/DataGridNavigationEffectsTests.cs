@@ -7,6 +7,7 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.State;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
@@ -60,7 +61,7 @@ public sealed class DataGridNavigationEffectsTests {
 
     [Fact]
     public async Task HandleAppInitialized_DispatchesHydratingAndCompleted() {
-        ILogger<DataGridNavigationEffects> logger = Substitute.For<ILogger<DataGridNavigationEffects>>();
+        ILogger<DataGridNavigationEffects> logger = EnabledLoggerSubstitute.Create<DataGridNavigationEffects>();
         var storage = new InMemoryStorageService();
         var sut = new DataGridNavigationEffects(storage, MakeAccessor(), logger, FakeState(), EmptyRegistry());
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
@@ -74,7 +75,7 @@ public sealed class DataGridNavigationEffectsTests {
     [Fact]
     public async Task HandleAppInitialized_HydratesStoredView() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
-        ILogger<DataGridNavigationEffects> logger = Substitute.For<ILogger<DataGridNavigationEffects>>();
+        ILogger<DataGridNavigationEffects> logger = EnabledLoggerSubstitute.Create<DataGridNavigationEffects>();
         var storage = new InMemoryStorageService();
         string key = StorageKeys.BuildKey(Tenant, User, "datagrid", ViewKey);
         var blob = GridViewPersistenceBlob.FromSnapshot(Snap());
@@ -97,7 +98,7 @@ public sealed class DataGridNavigationEffectsTests {
     [Fact]
     public async Task HandleAppInitialized_OutOfScopeKey_PrunesAndDoesNotDispatch() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
-        ILogger<DataGridNavigationEffects> logger = Substitute.For<ILogger<DataGridNavigationEffects>>();
+        ILogger<DataGridNavigationEffects> logger = EnabledLoggerSubstitute.Create<DataGridNavigationEffects>();
         var storage = new InMemoryStorageService();
         string key = StorageKeys.BuildKey(Tenant, User, "datagrid", "deleted-bc:Hexalith.Samples.X");
         await storage.SetAsync(key, GridViewPersistenceBlob.FromSnapshot(Snap()), ct);
@@ -115,7 +116,7 @@ public sealed class DataGridNavigationEffectsTests {
     [Fact]
     public async Task HandleClearGridState_RemovesKey() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
-        ILogger<DataGridNavigationEffects> logger = Substitute.For<ILogger<DataGridNavigationEffects>>();
+        ILogger<DataGridNavigationEffects> logger = EnabledLoggerSubstitute.Create<DataGridNavigationEffects>();
         var storage = new InMemoryStorageService();
         string key = StorageKeys.BuildKey(Tenant, User, "datagrid", ViewKey);
         await storage.SetAsync(key, GridViewPersistenceBlob.FromSnapshot(Snap()), ct);
@@ -129,7 +130,7 @@ public sealed class DataGridNavigationEffectsTests {
     [Fact]
     public async Task HandleRestoreGridState_BlobExists_DispatchesHydrated() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
-        ILogger<DataGridNavigationEffects> logger = Substitute.For<ILogger<DataGridNavigationEffects>>();
+        ILogger<DataGridNavigationEffects> logger = EnabledLoggerSubstitute.Create<DataGridNavigationEffects>();
         var storage = new InMemoryStorageService();
         string key = StorageKeys.BuildKey(Tenant, User, "datagrid", ViewKey);
         await storage.SetAsync(key, GridViewPersistenceBlob.FromSnapshot(Snap()), ct);
@@ -144,7 +145,7 @@ public sealed class DataGridNavigationEffectsTests {
 
     [Fact]
     public async Task HandleRestoreGridState_NoBlob_DoesNotDispatch() {
-        ILogger<DataGridNavigationEffects> logger = Substitute.For<ILogger<DataGridNavigationEffects>>();
+        ILogger<DataGridNavigationEffects> logger = EnabledLoggerSubstitute.Create<DataGridNavigationEffects>();
         var storage = new InMemoryStorageService();
         var sut = new DataGridNavigationEffects(storage, MakeAccessor(), logger, FakeState(), EmptyRegistry());
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
@@ -157,7 +158,7 @@ public sealed class DataGridNavigationEffectsTests {
     [Fact]
     public async Task HandleCaptureGridState_PersistsReducerSnapshotAfterDebounce() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
-        ILogger<DataGridNavigationEffects> logger = Substitute.For<ILogger<DataGridNavigationEffects>>();
+        ILogger<DataGridNavigationEffects> logger = EnabledLoggerSubstitute.Create<DataGridNavigationEffects>();
         var storage = new InMemoryStorageService();
         GridViewSnapshot seeded = Snap(scroll: 456);
         var sut = new DataGridNavigationEffects(
@@ -181,7 +182,7 @@ public sealed class DataGridNavigationEffectsTests {
         IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
         accessor.TenantId.Returns(_ => tenant);
         accessor.UserId.Returns(_ => user);
-        ILogger<DataGridNavigationEffects> logger = Substitute.For<ILogger<DataGridNavigationEffects>>();
+        ILogger<DataGridNavigationEffects> logger = EnabledLoggerSubstitute.Create<DataGridNavigationEffects>();
         var storage = new InMemoryStorageService();
         FakeTimeProvider time = new();
         GridViewSnapshot seeded = Snap(scroll: 456);
@@ -208,7 +209,7 @@ public sealed class DataGridNavigationEffectsTests {
     [Fact]
     public async Task HandleAppInitialized_MalformedViewKey_PrunesAndDoesNotDispatch() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
-        ILogger<DataGridNavigationEffects> logger = Substitute.For<ILogger<DataGridNavigationEffects>>();
+        ILogger<DataGridNavigationEffects> logger = EnabledLoggerSubstitute.Create<DataGridNavigationEffects>();
         var storage = new InMemoryStorageService();
         string key = StorageKeys.BuildKey(Tenant, User, "datagrid", "broken-key");
         await storage.SetAsync(key, GridViewPersistenceBlob.FromSnapshot(Snap()), ct);
@@ -224,7 +225,7 @@ public sealed class DataGridNavigationEffectsTests {
 
     [Fact]
     public async Task Dispose_IsIdempotent() {
-        ILogger<DataGridNavigationEffects> logger = Substitute.For<ILogger<DataGridNavigationEffects>>();
+        ILogger<DataGridNavigationEffects> logger = EnabledLoggerSubstitute.Create<DataGridNavigationEffects>();
         var storage = new InMemoryStorageService();
         var sut = new DataGridNavigationEffects(storage, MakeAccessor(), logger, FakeState(), EmptyRegistry());
 

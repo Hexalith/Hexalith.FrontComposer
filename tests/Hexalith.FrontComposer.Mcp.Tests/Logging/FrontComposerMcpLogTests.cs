@@ -2,12 +2,45 @@ using Hexalith.FrontComposer.Mcp.Schema;
 
 using Microsoft.Extensions.Logging;
 
+using NSubstitute;
+
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Mcp.Tests.Logging;
 
 public sealed class FrontComposerMcpLogTests
 {
+    /// <summary>
+    /// Verifies that disabled generated logging wrappers return without emitting.
+    /// </summary>
+    [Fact]
+    public void DisabledLogger_AllWrappersReturnWithoutEmitting()
+    {
+        ILogger logger = Substitute.For<ILogger>();
+        FrontComposerMcpFailureCategory invalidCategory = (FrontComposerMcpFailureCategory)int.MaxValue;
+        string oversizedContext = new('x', 4097);
+
+        Should.NotThrow(() =>
+        {
+            FrontComposerMcpLog.ToolsListFailedClosed(logger, invalidCategory, "Exception");
+            FrontComposerMcpLog.LifecyclePrecheckFailedClosed(logger, invalidCategory, "Exception");
+            FrontComposerMcpLog.ProjectionReaderFailedClosed(logger, invalidCategory, "Exception");
+            FrontComposerMcpLog.TenantToolGateFailedClosed(logger, oversizedContext, "Exception");
+            FrontComposerMcpLog.PolicyGateFailedClosed(logger, oversizedContext, "Exception");
+            FrontComposerMcpLog.CommandInvocationSchemaFailed(logger, invalidCategory);
+            FrontComposerMcpLog.CommandInvocationKnownFailure(logger, invalidCategory);
+            FrontComposerMcpLog.CommandInvocationUnexpectedFailure(logger, string.Empty);
+            FrontComposerMcpLog.SchemaNegotiationDecision(
+                logger,
+                oversizedContext,
+                oversizedContext,
+                oversizedContext,
+                (McpSchemaNegotiationResultKind)int.MaxValue);
+        });
+        logger.ReceivedCalls().ShouldAllBe(static call =>
+            !string.Equals(call.GetMethodInfo().Name, nameof(ILogger.Log), StringComparison.Ordinal));
+    }
+
     [Fact]
     public void CommandInvocationEvents_SecurityInputs_EmitPinnedSanitizedContracts()
     {
