@@ -158,16 +158,10 @@ using Hexalith.FrontComposer.Contracts.Attributes;
 
 namespace TestDomain;
 
-public abstract record CommandBase
-{
-    public string MessageId { get; set; } = string.Empty;
-}
+public abstract record CommandBase(string MessageId = """");
 
 [Command]
-public sealed record ChildCommand : CommandBase
-{
-    public string Extra { get; set; } = string.Empty;
-}";
+public record ChildCommand(string MessageId = """", string Extra = """") : CommandBase(MessageId);";
 
     internal const string BaseClassWithMessageId = @"
 using Hexalith.FrontComposer.Contracts.Attributes;

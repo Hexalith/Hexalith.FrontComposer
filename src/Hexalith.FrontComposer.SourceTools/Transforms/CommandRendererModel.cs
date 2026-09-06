@@ -17,7 +17,7 @@ public sealed class CommandRendererModel : IEquatable<CommandRendererModel> {
         string fullPageRoute,
         string commandFullyQualifiedName,
         EquatableArray<string> nonDerivablePropertyNames,
-        EquatableArray<PropertyModel> derivableProperties,
+        EquatableArray<string> derivablePropertyNames,
         string formComponentName,
         string actionsWrapperName,
         string stateName,
@@ -35,7 +35,7 @@ public sealed class CommandRendererModel : IEquatable<CommandRendererModel> {
         FullPageRoute = fullPageRoute;
         CommandFullyQualifiedName = commandFullyQualifiedName;
         NonDerivablePropertyNames = nonDerivablePropertyNames;
-        DerivableProperties = derivableProperties;
+        DerivablePropertyNames = derivablePropertyNames;
         FormComponentName = formComponentName;
         ActionsWrapperName = actionsWrapperName;
         StateName = stateName;
@@ -66,8 +66,7 @@ public sealed class CommandRendererModel : IEquatable<CommandRendererModel> {
 
     public EquatableArray<string> NonDerivablePropertyNames { get; }
 
-    /// <summary>Gets the typed derivable properties in deterministic emission order.</summary>
-    public EquatableArray<PropertyModel> DerivableProperties { get; }
+    public EquatableArray<string> DerivablePropertyNames { get; }
 
     /// <summary>Name of the generated <c>{TypeName}Form</c> component the renderer delegates to.</summary>
     public string FormComponentName { get; }
@@ -108,7 +107,7 @@ public sealed class CommandRendererModel : IEquatable<CommandRendererModel> {
             && FullPageRoute == other.FullPageRoute
             && CommandFullyQualifiedName == other.CommandFullyQualifiedName
             && NonDerivablePropertyNames == other.NonDerivablePropertyNames
-            && DerivableProperties == other.DerivableProperties
+            && DerivablePropertyNames == other.DerivablePropertyNames
             && FormComponentName == other.FormComponentName
             && ActionsWrapperName == other.ActionsWrapperName
             && StateName == other.StateName
@@ -133,7 +132,7 @@ public sealed class CommandRendererModel : IEquatable<CommandRendererModel> {
             hash = (hash * 31) + (FullPageRoute?.GetHashCode() ?? 0);
             hash = (hash * 31) + (CommandFullyQualifiedName?.GetHashCode() ?? 0);
             hash = (hash * 31) + NonDerivablePropertyNames.GetHashCode();
-            hash = (hash * 31) + DerivableProperties.GetHashCode();
+            hash = (hash * 31) + DerivablePropertyNames.GetHashCode();
             hash = (hash * 31) + (FormComponentName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (ActionsWrapperName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (StateName?.GetHashCode() ?? 0);

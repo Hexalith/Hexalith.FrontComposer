@@ -1,10 +1,9 @@
 ---
 title: 'Replace derivable command prefill reflection with typed emission'
 type: 'refactor'
-created: '2026-08-28'
-status: in-review
-baseline_commit: '0d2fdc8ae633f503d8be90da254d4ae7e19ea5a5'
-baseline_revision: '0bb1d4b5117666bced0383e9a647c4e21bd8937d'
+created: '2026-09-06'
+status: 'draft'
+route: 'dispatch'
 review_loop_iteration: 1
 followup_review_recommended: false
 context:
@@ -13,21 +12,19 @@ warnings: []
 deferred: []
 ---
 
-<intent-contract>
+<frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
 
 ## Intent
 
 **Problem:** Generated command renderers discover writable derivable properties with `PropertyInfo.GetProperty` and assign through `PropertyInfo.SetValue`. That late-bound path is trim/AOT-hostile and discards type information already known by the source generator.
 
-**Approach:** Preserve each derivable property's name and fully qualified source type through renderer IR, then emit a deterministic property-name switch whose arms convert and assign directly to the statically known command members. Generalize HFC1016 so every derivable property must expose a public, non-init setter before renderer emission. Keep the existing provider ordering, culture, conversion-failure, logging, and refresh-before-submit behavior.
+**Approach:** Preserve each derivable property's source type and boxed-assignment capability through pure renderer IR, then emit a deterministic property-name switch whose ordinary arms convert and assign statically. Keep ref-like, pointer, and function-pointer properties accepted under existing HFC1002 behavior, but emit type-free `false` arms so provider fall-through matches the former reflective path; generalize HFC1016 only for invalid setter shapes.
 
 ## Boundaries & Constraints
 
-**Always:** Keep SourceTools netstandard2.0-clean and its IR pure/equatable; use ordinal property-name matching and deterministic property order; preserve `CurrentCulture` for numeric/date conversion, case-insensitive enum parsing, invariant Guid text parsing, nullable/null assignment, and the existing narrow conversion-failure handling; require every derivable property, whether convention-based, attributed, declared, or inherited, to expose a public `{ get; set; }`-style non-init setter; report HFC1016 Error at the property for an `init` accessor, non-public setter, or absent setter and suppress renderer generation for that invalid command; update equality/hash code whenever IR changes; run Verify with `DiffEngine_Disabled=true`.
+**Always:** Keep SourceTools netstandard2.0-clean and all parse/renderer IR symbol-free and fully equatable. Preserve ordinal case order, provider ordering/fall-through, refresh-before-submit, logging, `CurrentCulture` number/date conversion, case-insensitive enum parsing, invariant Guid parsing, nullable/null assignment, and narrow conversion failures. Treat only ref-like, pointer, and function-pointer types as non-boxable; null or non-null provider values for those properties return `false` without naming the type in emitted code. Ordinary unsupported object-representable types retain conversion behavior. A custom conversion returning null for a value type succeeds with `default(T)`, matching reflection. HFC1016 remains Error for absent, non-public, or init-only setters and suppresses generation only after all independent command diagnostics are collected. HFC1016 docs must state that suppression cannot restore generation and identify the breaking derivable-setter migration.
 
-**Block If:** An invalid derivable setter shape can reach renderer emission without HFC1016 Error, or preserving existing conversion semantics would require runtime member reflection.
-
-**Never:** Edit the deferred-work ledger; retain or replace member reflection with `dynamic`, expression compilation, `Type.GetProperty`, `PropertyInfo`, or trimmer annotations; change derivable-property classification, density, provider precedence, command dispatch, or unrelated generator output; hand-edit generated `obj/**` files.
+**Never:** Reject non-boxable derivable types, introduce a new diagnostic for them, mark generated renderers unsafe, or treat every HFC1002 type as non-boxable. Do not retain or replace member reflection with `dynamic`, expression compilation, `Type.GetProperty`, `PropertyInfo`, or trimmer annotations. Do not change derivable classification, density, provider precedence, dispatch, HFC1002 suppression/lifecycle, unrelated generator output, the deferred-work ledger, or generated `obj/**` files.
 
 ## I/O & Edge-Case Matrix
 
@@ -36,40 +33,46 @@ deferred: []
 | Direct value | Provider returns the declared property type | Typed switch assigns the command member and stops provider iteration | No error expected |
 | Convertible value | Provider returns supported text/numeric/enum/Guid/date input | Existing culture and parse rules produce the declared value before direct assignment | Narrow conversion failures return `false` and retain warning flow |
 | Null value | Target is nullable/reference or non-nullable | Direct arm preserves the prior null/default assignment outcome | No member lookup occurs |
+| Null custom conversion | `IConvertible.ToType` returns null for a custom value type | Direct arm assigns `default(T)` and reports success | No `NullReferenceException` escapes |
+| Non-boxable property | Derivable ref-like, pointer, or function-pointer property; provider resolves null or non-null | Type-free case returns `false`, logs not-assigned, and tries later providers | HFC1002 behavior remains unchanged; generated code stays safe and compilable |
 | Unknown name | Name has no emitted arm | Method returns `false` without mutation | Existing not-assigned logging remains authoritative |
 | Invalid derivable setter | Derivable property has an `init` accessor, non-public setter, or no setter | Parser reports HFC1016 Error and emits no renderer for the invalid command | Diagnostic requires a public non-init `{ get; set; }`; it must not suggest adding `[DerivedFrom]` |
+| Multiple command violations | Invalid setter plus size or destructive-command violation | All applicable diagnostics are reported in one parse | Invalid model still suppresses generation |
 
-</intent-contract>
+</frozen-after-approval>
 
 ## Code Map
 
-- `src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs` -- parse boundary where Roslyn can capture the unwrapped property's fully qualified source type before symbols are discarded.
-- `src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs`, `src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs` -- generalize HFC1016 from non-derivable properties to every generated-assignment target and reject incompatible derivable setters before emission.
-- `src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs` -- `PropertyModel` pure IR and equality/hash contract; carry source type metadata here without leaking `ISymbol`.
-- `src/Hexalith.FrontComposer.SourceTools/Transforms/CommandRendererModel.cs` -- renderer IR currently reduces derivable properties to `EquatableArray<string>`; replace that lossy seam with typed property IR.
-- `src/Hexalith.FrontComposer.SourceTools/Transforms/CommandRendererTransform.cs` -- preserve `CommandModel.DerivableProperties` instead of rebuilding a name-only array.
-- `src/Hexalith.FrontComposer.SourceTools/Emitters/CommandRendererEmitter.cs:304` -- prefill loop and reflective `TrySetPropertyValue`; emit compile-time cases and direct assignments here.
-- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandRendererEmitterTests.cs` -- model fixture, parseability/determinism tests, and focused no-reflection/typed-case assertions.
-- `tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/CommandParserTests.cs`, `docs/diagnostics/HFC1016.md`, `docs/diagnostics/diagnostic-registry.json`, `src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md` -- prove and publish the generalized HFC1016 contract.
-- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandRendererEmitterTests.*.verified.txt` -- eight owned Verify approvals; rerun all snapshot cases and approve only intentional renderer changes.
-- `tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererFullPageTests.cs:81` -- existing runtime proof that a resolved `MessageId` reaches the dispatched command; read-only unless behavior regresses.
+- `src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs`, `Parsing/DomainModel.cs` -- capture the unwrapped fully qualified type plus `SupportsObjectValueAssignment`; keep both in `PropertyModel.Equals/GetHashCode` and never retain Roslyn symbols.
+- `src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs` -- apply HFC1016 to all assignment targets, collect HFC1011/HFC1021/HFC1007 before returning an invalid model, and keep non-boxable properties accepted.
+- `src/Hexalith.FrontComposer.SourceTools/Transforms/CommandRendererModel.cs`, `CommandRendererTransform.cs` -- replace the lossy derivable-name array with unchanged `EquatableArray<PropertyModel>`.
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/CommandRendererEmitter.cs` -- replace reflection with typed arms; emit type-free `return false` arms for the three non-boxable categories and preserve conversion/default/fall-through behavior.
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/{Parsing,Incremental,Emitters,Integration}/` -- cover IR equality, diagnostic accumulation, all non-boxable categories, deterministic source, compiled fall-through, DateTimeOffset, and custom-null conversion.
+- `docs/diagnostics/HFC1016.md`, `docs/diagnostics/diagnostic-registry.json`, `src/Hexalith.FrontComposer.SourceTools/{Diagnostics/DiagnosticDescriptors.cs,AnalyzerReleases.Unshipped.md}` -- publish the setter-only breaking contract without changing HFC1002 or adding a diagnostic.
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/DocsSiteValidationTests.cs`, `docs/validation/producer-fingerprints.json`, `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json` -- pin the non-remediating suppression/migration prose and reseal derived governance values after tests settle.
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandRendererEmitterTests.*.verified.txt` -- rerun all eight approvals; seven renderer snapshots may change, while the page snapshot must remain unchanged.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererFullPageTests.cs` -- existing end-to-end resolved `MessageId` dispatch proof; read-only unless behavior regresses.
 
 ## Tasks & Acceptance
 
 **Execution:**
-- [x] `src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs`, `src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs`, `src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md`, `docs/diagnostics/HFC1016.md`, `docs/diagnostics/diagnostic-registry.json` -- generalize HFC1016 to reject every derivable `init`, non-public-set, and setterless property with an Error before renderer emission; retain the existing non-derivable validation and remove `[DerivedFrom]` as a remediation for an incompatible setter.
-- [x] `src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs`, `src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs` -- retain a fully qualified, symbol-free property type in equatable parse IR.
-- [x] `src/Hexalith.FrontComposer.SourceTools/Transforms/CommandRendererModel.cs`, `src/Hexalith.FrontComposer.SourceTools/Transforms/CommandRendererTransform.cs` -- carry `EquatableArray<PropertyModel> DerivableProperties` through renderer transformation and update all consumers/equality members.
-- [x] `src/Hexalith.FrontComposer.SourceTools/Emitters/CommandRendererEmitter.cs` -- replace reflective lookup/set with deterministic typed switch emission while preserving conversion and logging semantics.
-- [x] `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandRendererEmitterTests.cs`, `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandRendererEmitterTests.*.verified.txt` -- add regression assertions and refresh the complete eight-case approval set.
-- [x] `tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/CommandParserTests.cs` -- cover attributed, convention-based, and inherited derivable properties with public setters plus `init`, non-public-set, and setterless rejection cases.
+- [ ] `Parsing/AttributeParser.cs`, `Parsing/DomainModel.cs`, `Transforms/CommandRendererModel.cs`, `Transforms/CommandRendererTransform.cs` -- carry fully qualified source type and object-assignment capability through pure equatable IR.
+- [ ] `Parsing/CommandParser.cs`, `Diagnostics/DiagnosticDescriptors.cs`, `AnalyzerReleases.Unshipped.md` -- generalize setter validation while retaining all independent diagnostics and accepting non-boxable HFC1002 properties.
+- [ ] `Emitters/CommandRendererEmitter.cs` -- emit deterministic typed/direct arms, type-free soft-fail arms, nullable-aware conversion, and successful default assignment for null custom conversions.
+- [ ] `tests/Hexalith.FrontComposer.SourceTools.Tests/{Parsing,Incremental,Emitters,Integration}/` and renderer approvals -- prove setter shapes, diagnostic accumulation, IR equality, all non-boxable categories/provider fall-through, conversion matrix, deterministic output, and no reflection.
+- [ ] `docs/diagnostics/HFC1016.md`, registry/release/fingerprint files, `DocsSiteValidationTests.cs`, and analyzer inventory ledger -- document and pin the non-remediating suppression and breaking migration, then refresh only derived seals.
 
 **Acceptance Criteria:**
 - Given an attributed, convention-based, declared, or inherited derivable property, when its setter is `init`, non-public, or absent, then HFC1016 is reported as an Error at that property, its remediation requires a public non-init setter without suggesting `[DerivedFrom]`, and no renderer is generated for the invalid command.
-- Given a parsed command with derivable properties, when renderer IR is transformed, then each property name and fully qualified type survives in deterministic pure/equatable IR.
-- Given generated renderer source, when a provider resolves a derivable property, then a compile-time property-name switch converts and directly assigns that declared member with no `System.Reflection`, `PropertyInfo`, or `GetProperty` emission.
-- Given exact, convertible, null, unknown, or invalid provider values, when prefill runs, then successful assignments, provider fall-through, culture rules, and warning behavior remain compatible with the prior contract.
-- Given the eight command-renderer approval cases and the focused runtime prefill test, when verification runs, then snapshots are intentionally approved, generated code parses/compiles, derived `MessageId` reaches dispatch, and no unrelated snapshot changes occur.
+- Given a command has an invalid setter plus size or destructive-shape violations, when parsing runs, then all applicable HFC1016/HFC1011/HFC1021/HFC1007 diagnostics are returned together and no model is emitted.
+- Given derivable properties include object-representable and non-boxable types, when renderer IR is transformed, then name, source type, and assignment capability survive deterministically in equality and hashing.
+- Given a provider resolves an object-representable property, when prefill runs, then the emitted ordinal switch converts and directly assigns the member with no member reflection.
+- Given a provider resolves a ref-like, pointer, or function-pointer property with null or non-null, when prefill runs, then the type-free arm returns false, logs not-assigned, and continues to later providers without unsafe or uncompilable output.
+- Given exact, convertible, null, custom-null, DateTimeOffset, unknown, or invalid values, when the compiled generated helper runs, then assignment, defaulting, culture, fall-through, and unchanged-on-failure behavior match the prior contract.
+- Given HFC1016 documentation and governance validation, when an adopter reads suppression and migration guidance, then it states suppression cannot restore generation and names the breaking setter migration for derivable properties.
+- Given all eight approvals and focused runtime checks, when verification runs, then seven renderer snapshots contain only intentional typed-prefill changes, the page snapshot is unchanged, generated output compiles, dispatch receives the derived MessageId, and reflection scans stay empty.
+
+## Implementation Notes
 
 ## Spec Change Log
 
@@ -130,17 +133,35 @@ deferred: []
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandRendererEmitterTests.Renderer_OneField_WithoutIconUsesDefaultSnapshot.verified.txt` - Approve the typed prefill renderer output.
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandRendererEmitterTests.Renderer_TwoFields_CompactInlineSnapshot.verified.txt` - Approve the typed prefill renderer output.
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandRendererEmitterTests.Renderer_ZeroFields_InlineSnapshot.verified.txt` - Approve the typed prefill renderer output.
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandRendererEmitterTests.Page_FiveFields_FullPageBoundarySnapshot.verified.txt` - Verify the page snapshot remains byte-for-byte unchanged.
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandRendererEmitterTests.cs` - Assert deterministic typed switch emission and absence of member reflection.
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/DocsSiteValidationTests.cs` - Pin HFC1016 suppression and migration semantics in the normal governance test suite.
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Incremental/DomainModelCacheEqualityTests.cs` - Cover source type participation in IR equality and hashing.
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/GeneratorDriverTests.cs` - Execute the compiled typed-prefill conversion matrix.
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/CommandParserTests.cs` - Cover valid and invalid derivable setter shapes and typed renderer IR.
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/TestFixtures/CommandTestSources.cs` - Keep parser fixtures compatible with the generalized setter contract.
 
+## Design Notes
+
+The renderer must branch on symbol-free IR before it writes any target type into generated source:
+
+```text
+case property.Name when !property.SupportsObjectValueAssignment:
+    return false
+case property.Name:
+    if value is null: assign default
+    else if TryConvert<property.SourceType>(value, out converted): assign converted
+    return conversion result
+```
+
+Both null and non-null values soft-fail for non-boxable targets. The enclosing provider loop remains responsible for warning logs and trying the next provider. `SupportsObjectValueAssignment` is false only for ref-like, pointer, and function-pointer types; all other properties keep the typed conversion path.
+
 ## Verification
 
 **Commands:**
 - `dotnet build Hexalith.FrontComposer.slnx --configuration Release -m:1 /nr:false` -- expected: zero warnings and errors.
-- `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --no-build --configuration Release --filter "FullyQualifiedName~CommandRendererEmitterTests|FullyQualifiedName~CommandRendererFullPageTests"` -- expected: focused SourceTools approvals and runtime prefill tests pass.
-- `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --no-build --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` -- expected: default lane passes.
-- `git diff --check && ! git diff -- '*.verified.txt' | rg 'System\.Reflection|PropertyInfo|GetProperty'` -- expected: clean diff and no reflective renderer approval output.
+- `DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Release/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll -class Hexalith.FrontComposer.SourceTools.Tests.Emitters.CommandRendererEmitterTests -class Hexalith.FrontComposer.SourceTools.Tests.Integration.GeneratorDriverTests -class Hexalith.FrontComposer.SourceTools.Tests.Parsing.CommandParserTests -class Hexalith.FrontComposer.SourceTools.Tests.Incremental.DomainModelCacheEqualityTests -class Hexalith.FrontComposer.SourceTools.Tests.Docs.DocsSiteValidationTests` -- expected: focused approvals, compiled conversion/fall-through, parser, cache, and governance checks pass under the xUnit v3 runner.
+- `DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -class Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererFullPageTests` -- expected: derived `MessageId` reaches dispatch through the generated full-page renderer.
+- `pwsh ./eng/validate-docs.ps1` -- expected: documentation governance and producer fingerprints pass.
+- `git diff --check && ! git diff -- '*.verified.txt' | rg 'System\.Reflection|PropertyInfo|GetProperty' && git diff --exit-code -- tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandRendererEmitterTests.Page_FiveFields_FullPageBoundarySnapshot.verified.txt` -- expected: clean diff, no reflective renderer approval output, and an unchanged page snapshot.
 
