@@ -17,6 +17,15 @@
     "label": "Implement requested change",
     "resolution": ""
   },
+  "DW-1005": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Introduce a deterministic view and row scoped panel-ID scheme with multi-instance collision and remount tests.",
+    "key": "1",
+    "label": "Stable scoped IDs",
+    "resolution": ""
+  },
   "DW-1009": {
     "answered_at": "2026-08-27",
     "bundle_name": "",
