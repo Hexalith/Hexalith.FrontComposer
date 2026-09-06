@@ -9067,6 +9067,7 @@ location: n/a
 source_spec: `_bmad-output/implementation-artifacts/spec-9-4-converge-terminal-outcomes-on-one-producer-boundary.md`
 reason: summary: Align nested-projection generated grid identity with the configured view key and entity projection type. evidence: Review of generated nested-projection output found the grid lookup identity and target snapshot view key can diverge; the behavior predates Story 9.4 and needs a dedicated generator contract change.
 status: open
+decision: 2026-09-06 Implement the change — Implement the behavior described by DW-1830 at its recorded touchpoint, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1831: Add capacity bounds or TTL eviction to `PendingCommandOutcomeResolver._indicatorDecisions`.
 

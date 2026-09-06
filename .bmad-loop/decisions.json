@@ -890,6 +890,15 @@
     "label": "Implement change",
     "resolution": ""
   },
+  "DW-1830": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Implement the behavior described by DW-1830 at its recorded touchpoint, update affected contracts and consumers, and add focused regression evidence.",
+    "key": "1",
+    "label": "Implement the change",
+    "resolution": ""
+  },
   "DW-1831": {
     "answered_at": "2026-09-06",
     "bundle_name": "",
