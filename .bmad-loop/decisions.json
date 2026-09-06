@@ -215,6 +215,15 @@
     "label": "Implement change",
     "resolution": ""
   },
+  "DW-1290": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Add a backward-compatible defaulted role discriminator and collision tests across parsing, registry, and generated consumers.",
+    "key": "1",
+    "label": "Optional role discriminator",
+    "resolution": ""
+  },
   "DW-1292": {
     "answered_at": "2026-08-28",
     "bundle_name": "",
