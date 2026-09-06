@@ -3363,6 +3363,7 @@ location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **Metadata-sourced command symbols** — `CommandParser.Parse` doesn't guard against `typeSymbol.DeclaringSyntaxReferences.IsDefaultOrEmpty`. A `[Command]` declared in a referenced assembly (not source) could produce surprising hint collisions or emit forms the adopter can't touch. Verify and either support explicitly or reject with a diagnostic. Reconciliation: Row: DW-0383; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-1 (2026-04-16).
 status: open
 decision: 2026-09-06 Reject metadata commands — Reject referenced metadata command symbols with a stable diagnostic and documentation.
+decision: 2026-09-06 Reject metadata commands — Reject referenced metadata command symbols with a stable diagnostic and documentation.
 
 ### DW-1115: W1 [HIGH] `DataGridNavigationReducers.Cap` static mutable cross-tenant leak
 

@@ -71,6 +71,15 @@
     "label": "Support DateOnly",
     "resolution": ""
   },
+  "DW-1114": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Reject referenced metadata command symbols with a stable diagnostic and documentation.",
+    "key": "1",
+    "label": "Reject metadata commands",
+    "resolution": ""
+  },
   "DW-1124": {
     "answered_at": "2026-08-27",
     "bundle_name": "",
