@@ -8565,6 +8565,7 @@ source_spec: `_bmad-output/implementation-artifacts/11-21-recommended-analyzer-p
 reason: summary: `ObjectDisposedException.ObjectName` and message changed from the short type name to the namespace-qualified name at five disposal sites, and two `ThrowIf` styles were introduced for the same fix. evidence: `ObjectDisposedException.ThrowIf` uses `Type.FullName`, replacing `new ObjectDisposedException(nameof(X))`. Sites: `LifecycleStateService.cs:80,167`, `ProjectionSubscriptionService.cs:684`, `NewItemIndicatorStateService.cs:237`, `ReconnectionReconciliationCoordinator.cs:239`, `FrontComposerMcpLifecycleStore.cs:294` — the last passes `this` while the others pass `typeof(T)`. No test asserts either the old or the new name.
 status: open
 decision: 2026-09-06 Restore short type names — Restore nameof-style short ObjectName values at every affected guard through one consistent pattern and add exact contract tests.
+decision: 2026-09-06 Restore short type names — Restore nameof-style short ObjectName values at every affected guard through one consistent pattern and add exact contract tests.
 
 ### DW-1774: `Counter.Web` and `Counter.Specimens` had their ASP0006 `NoWarn` removed but are not part of any asserted zero-ASP0006 consumer set, so a regression reaching only those consumers would be ungated.
 

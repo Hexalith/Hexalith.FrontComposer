@@ -809,6 +809,15 @@
     "label": "Implement requested change",
     "resolution": ""
   },
+  "DW-1773": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Restore nameof-style short ObjectName values at every affected guard through one consistent pattern and add exact contract tests.",
+    "key": "1",
+    "label": "Restore short type names",
+    "resolution": ""
+  },
   "DW-1788": {
     "answered_at": "2026-08-29",
     "bundle_name": "",
