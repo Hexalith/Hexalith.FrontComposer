@@ -237,7 +237,9 @@ resolution: already resolved: commit 8cabbf54 replaces Shell logger substitutes 
 origin: migrated from legacy ledger ("Deferred from: code review of 11-21-recommended-analyzer-product-and-generator-burndown.md chunk 4b (2026-08-08)"), 2026-08-27
 location: Metadata
 reason: Canonical fingerprint golden pins document-level `Metadata` order and empty nested maps but never varies `Collections` order or non-empty `EnumValues`.
-status: open
+status: done 2026-09-06
+resolution: resolved by sweep bundle dw-canonical-fingerprint-vector-coverage
+resolution-undo: 8c9ea2f3d13723111a0a8fec1236d149c43fd650c3069b4a9b45f8eb9f918262 2026-09-06 7374617475733a206f70656e
 
 ### DW-696: `SchemaMigrationDeltaPathTruncationTests` drives only `RemovedField` through `TruncatePath`, hard-codes `MaxPathLength = 256`, and never compares against a Substring-based oracle or additional surrogate cut shapes.
 
@@ -10164,4 +10166,12 @@ location: tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RenderTreeSequ
 source_spec: `spec-source-generator-regression-coverage.md`
 severity: medium
 reason: RenderTreeSequenceRewriterTests.RuntimeSequenceArgumentPattern matches an identifier followed by ++. Bare identifiers, prefix increments, decrements, arithmetic, and method calls can therefore pass this test-only gate. This limitation predates the bundle; production emission still runs AssignLiteralsOrFail, and every current badge/expand output passed the gate and Debug/Release parsing.
+status: open
+
+### DW-1954: Canonical fingerprint golden coverage does not independently pin the public schema test-vector identifier.
+origin: spec-deferred bd5939f7f5f0
+location: src/Hexalith.FrontComposer.Contracts/Schema/SchemaFingerprintContracts.cs:364-387
+source_spec: `spec-canonical-fingerprint-vector-coverage.md`
+severity: medium
+reason: SchemaFingerprint.TestVectorId defaults to SchemaFingerprintAlgorithm.TestVectorIdV1, and the reviewed tests do not assert the literal hfc-schema-v1 identity. A change to that shared constant could propagate without failing these vectors. This predates DW-695 and is separate from collection and EnumValues ordering.
 status: open

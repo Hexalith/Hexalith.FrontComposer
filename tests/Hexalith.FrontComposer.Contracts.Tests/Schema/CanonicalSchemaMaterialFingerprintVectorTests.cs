@@ -18,14 +18,14 @@ namespace Hexalith.FrontComposer.Contracts.Tests.Schema;
 /// </summary>
 public sealed class CanonicalSchemaMaterialFingerprintVectorTests {
     private const string ExpectedCanonicalJson =
-        """{"RootDiscriminator":"frontcomposer.schema.contract.v1","Family":0,"ContractId":"Sales.ApproveOrder.Execute","ContractSchemaVersion":"frontcomposer.command-tool.v1","BoundedContext":"Sales","FullyQualifiedName":"Orders.ApproveOrderCommand","ProtocolIdentifier":"Sales.ApproveOrder.Execute","Fields":[{"Name":"Comment","TypeName":"String","JsonType":"string","IsRequired":false,"IsNullable":true,"Title":null,"Description":null,"EnumValues":[],"ValidationConstraints":{},"Metadata":{}},{"Name":"OrderNumber","TypeName":"String","JsonType":"string","IsRequired":true,"IsNullable":false,"Title":null,"Description":null,"EnumValues":[],"ValidationConstraints":{},"Metadata":{}}],"Collections":[{"Name":"fields","Order":0,"StableIdField":"name"}],"Metadata":{"title":"Approve Order"}}""";
+        """{"RootDiscriminator":"frontcomposer.schema.contract.v1","Family":0,"ContractId":"Sales.ApproveOrder.Execute","ContractSchemaVersion":"frontcomposer.command-tool.v1","BoundedContext":"Sales","FullyQualifiedName":"Orders.ApproveOrderCommand","ProtocolIdentifier":"Sales.ApproveOrder.Execute","Fields":[{"Name":"Comment","TypeName":"String","JsonType":"string","IsRequired":false,"IsNullable":true,"Title":null,"Description":null,"EnumValues":[],"ValidationConstraints":{},"Metadata":{}},{"Name":"OrderNumber","TypeName":"String","JsonType":"string","IsRequired":true,"IsNullable":false,"Title":null,"Description":null,"EnumValues":[],"ValidationConstraints":{},"Metadata":{}},{"Name":"Status","TypeName":"String","JsonType":"string","IsRequired":true,"IsNullable":false,"Title":null,"Description":null,"EnumValues":["Pending","approved","pending"],"ValidationConstraints":{},"Metadata":{}}],"Collections":[{"Name":"Events","Order":1,"StableIdField":"eventId"},{"Name":"commands","Order":0,"StableIdField":"commandId"}],"Metadata":{"title":"Approve Order"}}""";
 
     /// <summary>
     /// SHA-256 of <see cref="ExpectedCanonicalJson"/> as UTF-8 bytes, lowercase hex. Derived
     /// independently of the product code with <c>sha256sum</c> so the pin cannot be circular:
     /// <c>printf '%s' "&lt;canonical json&gt;" | sha256sum</c>.
     /// </summary>
-    private const string ExpectedFingerprint = "15dec2196cd9682e86e3825b574cf7272865318f598190a25ac165da46753b7a";
+    private const string ExpectedFingerprint = "0c44b927ac1a3a56ada1dadeac6e08a4b16b79ad909d1c12f74e4c7006cd6766";
 
     [Fact]
     public void CreatePayload_PinnedDocument_ProducesTheExactCanonicalJsonAndFingerprint() {
@@ -35,6 +35,29 @@ public sealed class CanonicalSchemaMaterialFingerprintVectorTests {
         payload.Fingerprint.Value.ShouldBe(ExpectedFingerprint);
         payload.Fingerprint.AlgorithmId.ShouldBe(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1);
         payload.Fingerprint.CanonicalizerVersion.ShouldBe(SchemaFingerprintAlgorithm.CanonicalizerVersionV1);
+    }
+
+    [Fact]
+    public void CreatePayload_EquivalentCollectionAndEnumPermutations_ProduceThePinnedVector() {
+        SchemaContractDocument original = PinnedDocument();
+        SchemaContractDocument permuted = original with {
+            Fields = [.. original.Fields.Select(field => field.Name == "Status"
+                ? field with { EnumValues = ["approved", "pending", "Pending"] }
+                : field)],
+            Collections = [.. original.Collections.Reverse()],
+        };
+
+        SchemaCanonicalPayload first = CanonicalSchemaMaterial.CreatePayload(original);
+        SchemaCanonicalPayload second = CanonicalSchemaMaterial.CreatePayload(permuted);
+
+        first.Json.ShouldBe(ExpectedCanonicalJson);
+        second.Json.ShouldBe(ExpectedCanonicalJson);
+        first.Fingerprint.Value.ShouldBe(ExpectedFingerprint);
+        second.Fingerprint.Value.ShouldBe(ExpectedFingerprint);
+        first.Fingerprint.AlgorithmId.ShouldBe(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1);
+        second.Fingerprint.AlgorithmId.ShouldBe(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1);
+        first.Fingerprint.CanonicalizerVersion.ShouldBe(SchemaFingerprintAlgorithm.CanonicalizerVersionV1);
+        second.Fingerprint.CanonicalizerVersion.ShouldBe(SchemaFingerprintAlgorithm.CanonicalizerVersionV1);
     }
 
     [Fact]
@@ -149,10 +172,20 @@ public sealed class CanonicalSchemaMaterialFingerprintVectorTests {
         "Orders.ApproveOrderCommand",
         "Sales.ApproveOrder.Execute",
         [
+            new SchemaFieldContract(
+                "Status",
+                "String",
+                "string",
+                true,
+                false,
+                EnumValues: ["pending", "approved", "Pending"]),
             new SchemaFieldContract("OrderNumber", "String", "string", true, false),
             new SchemaFieldContract("Comment", "String", "string", false, true),
         ],
-        [new SchemaCollectionContract("fields", SchemaCollectionOrder.NonStructuralSorted, "name")],
+        [
+            new SchemaCollectionContract("commands", SchemaCollectionOrder.NonStructuralSorted, "commandId"),
+            new SchemaCollectionContract("Events", SchemaCollectionOrder.StructuralOrder, "eventId"),
+        ],
         new Dictionary<string, string> {
             ["title"] = "Approve Order",
         });
