@@ -5,7 +5,7 @@ created: '2026-08-28'
 status: in-review
 baseline_commit: '0d2fdc8ae633f503d8be90da254d4ae7e19ea5a5'
 baseline_revision: '0bb1d4b5117666bced0383e9a647c4e21bd8937d'
-review_loop_iteration: 0
+review_loop_iteration: 1
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/project-context.md'
@@ -76,6 +76,36 @@ deferred: []
 - 2026-08-28: Human escalation resolution authorizes a breaking adopter validation rule: every derivable property must expose a public, non-init setter. HFC1016 is generalized to reject incompatible derivable shapes before typed renderer emission.
 
 ## Review Triage Log
+
+| ID | Layer | Verdict | Route | Evidence |
+|---|---|---|---|---|
+| BH-01 | blind-hunter | high | defer | Verified: the current Builds gitlink is `d0049833f2ac0416075eed37f173712f3ac90e56`, while both live reports retain `0a54e63a7903bd599e35b79159782b4c84d01c07`; the three cited evidence tests fail on that stale identity. This is unrelated to the typed-prefill story. |
+| BH-02 | blind-hunter | medium | defer | Verified: `docs/reference/pact-contracts.md` calls `0a54e63a7903bd599e35b79159782b4c84d01c07` current although the pinned Builds gitlink has advanced. This shares BH-01's unrelated stale-evidence root cause. |
+| BH-03 | blind-hunter | medium | defer | Verified: the Gate 2c stale-diff command checks only `tests/Hexalith.FrontComposer.Shell.Tests/Pact`, although the preceding commands rewrite tracked live-evidence files. This contract-gate issue is unrelated to typed prefill. |
+| BH-04 | blind-hunter | high | defer | Verified: a failed or unparsable post-stop `aspire describe` sets `host_stopped = true`, and an empty endpoint list then copies that value into `ports_closed`; a successful stop command can therefore produce clean evidence without authoritative absence proof. This is unrelated to typed prefill. |
+| BH-05 | blind-hunter | medium | defer | Verified: every smoke observation hard-codes `authenticated: true` after sending a token and no no-token control probes exist, so the evidence cannot detect anonymous-access regressions on protected surfaces. This is unrelated to typed prefill. |
+| BH-06 | blind-hunter | high | defer | Verified: live AppHost validation checks generic passed/authenticated/nonblank-reason fields for most observations; only query provenance receives semantic cross-checking, so contradictory health, command, or SignalR details can pass after report tampering. This is unrelated to typed prefill. |
+| BH-07 | blind-hunter | medium | defer | Verified: `write_live_receipt` checks only eight top-level provider scalars and `main` skips `validate_live` in receipt-writing mode, allowing a receipt to be created before interaction-level validation. Later combined validation mitigates CI acceptance but does not make the receipt writer's own contract truthful. |
+| BH-08 | blind-hunter | medium | defer | Verified: without `--expected-test`, `validate_mtp_evidence` never rejects non-passing `UnitTestResult` outcomes; the existing mixed failed/passed `nested-a` fixture is intentionally accepted by that path. Upstream blocking test commands mitigate ordinary CI runs, but retained evidence itself is not fail-closed. |
+| BH-09 | blind-hunter | medium | defer | Verified: `parse_trx` reconciles only `Counters.total`; contradictory passed, failed, or notExecuted counters are ignored, allowing internally inconsistent evidence. This shares BH-08's unrelated incomplete TRX-semantic-validation root cause. |
+| BH-10 | blind-hunter | medium | defer | Verified: coverage validation checks count, XML shape, and measured lines but extracts no module identity, so copied reports from one module can satisfy the eight-file count. This is unrelated to typed prefill. |
+| BH-11 | blind-hunter | medium | defer | Verified: every drop condition matches the literal `.nuget/packages/hexalith.frontcomposer` fragment rather than `$(NuGetPackageRoot)` or package metadata; a custom global-packages path bypasses the target. This is unrelated to typed prefill. |
+| BH-12 | blind-hunter | high | defer | Verified: `CounterCommandProjectionCatchUpChannel.Publish` catches every `Exception` without the repository fatal-exception guard, and increments `PublishedCount` before subscriber invocation; fatal subscriber failures can be swallowed. This sample issue is unrelated to typed prefill. |
+| BH-13 | blind-hunter | high | defer | Verified: after the two-second disposal timeout, the continuation only disposes the CTS; a later fatal task fault is stored by `OnLoopCompleted`, while all later `DisposeAsync` calls return immediately because `_disposed` is already set. This is unrelated to typed prefill. |
+| BH-14 | blind-hunter | medium | patch | Verified: HFC1016 suppression can hide the diagnostic but cannot restore generation because the parser returns a null model for the invalid assignment target. The documentation's suppression recommendation is therefore non-remediating and misleading. |
+| BH-15 | blind-hunter | medium | patch | Verified: the migration section says no action is required even though this story deliberately extends HFC1016 to previously accepted derivable init-only, non-public-set, and setterless properties. It shares BH-14's incomplete HFC1016 documentation root cause. |
+| BH-16 | blind-hunter | medium | defer | Verified: the Pact guide still uses VSTest-style project `--filter`, while this repository is MTP-native and its working trait syntax is `--filter-trait`. This unrelated command prevents adopters from following the documented regeneration path. |
+| BH-17 | blind-hunter | high | defer | Verified: `_write_event` checks and opens only the final events directory with no-follow semantics; symlinked parent components are resolved normally, so the control-plane write can escape through an ancestor redirect. This is unrelated to typed prefill. |
+| EC-01 | edge-case-hunter | high | intent_gap | Verified: command parsing admits public derivable ref-like, pointer, and function-pointer properties with at most HFC1002, while emission uses each such type as `TryConvertPropertyValue<T>`; those types cannot be boxed through `object` or used by this unconstrained generic helper, so accepted commands can fail consumer compilation. The approved intent does not choose rejection versus compatible soft failure. |
+| EC-02 | edge-case-hunter | false | reject | Refuted: an error-producing type use-site attribute is already reported at the command property's source type use, so repeating the type in generated assignment code does not make an otherwise compilable command fail. A concrete type whose original property declaration compiles without that use-site error would be needed to reopen the claim. |
+| EC-03 | edge-case-hunter | low | patch | Verified: the new `hasInvalidAssignmentTarget` return precedes HFC1011, HFC1021, and HFC1007 checks, so setter errors hide otherwise independent diagnostics until the next build. Moving the final invalid-model return after diagnostic collection is a direct correction. |
+| EC-04 | edge-case-hunter | medium | patch | Verified: for a custom value-type target, `Convert.ChangeType` can call a provider's `IConvertible.ToType` and receive null; `(T)convertedValue!` then throws `NullReferenceException`, whereas the former reflection setter assigned the value type's default. A null converted value must preserve the prior default-assignment success contract. |
+| EC-05 | edge-case-hunter | high | intent_gap | Verified independently as the EC-01 claim: the emitted generic call is not compilable for admitted non-boxable derivable types. It shares EC-01's unresolved intent root cause. |
+| EC-06 | edge-case-hunter | medium | patch | Verified independently as the EC-04 claim: null returned from custom conversion escapes the narrow catch via value-type unboxing. It shares EC-04's conversion-compatibility root cause. |
+| VG-01 | verification-gap | medium | defer | Pre-verified: no executable test imports or runs `.bmad-loop/bmad_loop_hook.py`, so short-write, selected-directory, atomic-name, and redirect-refusal behavior can regress undetected. This is unrelated to typed prefill. |
+| VG-02 | verification-gap | medium | defer | Pre-verified: cached 304 handling calls `EnsureSuccessfulEnvelope`, but existing tests cover only fresh semantic failure, valid cached payload, and malformed cached JSON; removing the cached call remains undetected. This is unrelated to typed prefill. |
+| VG-03 | verification-gap | medium | defer | Pre-verified: adapter tests exercise only a valid positive nested total count, while negative/non-integer/overflow checks are covered only downstream or not at all. This is unrelated to typed prefill. |
+| VG-04 | verification-gap | medium | patch | Pre-verified: DateTimeOffset conversion is asserted only as emitted text; the compiled runtime matrix omits a DateTimeOffset property, so that branch can fail while all focused runtime coverage stays green. |
 
 ## File List
 

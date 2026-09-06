@@ -160,7 +160,8 @@ resolution: already resolved: commit 9ad4312f resolved the ETag seed/dispose rac
 origin: migrated from legacy ledger ("Deferred from: code review of spec-11-22-recommended-analyzer-test-and-sample-burn-down.md chunk 2 (2026-08-08)"), 2026-08-27
 location: FrontComposerMcpLog
 reason: `FrontComposerMcpLog` applies the CA1873 local-binding pattern on some paths only; sibling helpers can still pass category formatting straight into `Log*` — complete when the next MCP logging burn-down touches those sites.
-status: open
+status: done 2026-09-06
+resolution: already resolved: commit 8cabbf54 applies the deferred CA1873 local-binding pattern across src/Hexalith.FrontComposer.Mcp/FrontComposerMcpLog.cs.
 
 ### DW-687: `RenderTreeSequenceRewriter.StartsArgumentList` now skips whitespace before `(` / the identifier but still ignores comments/trivia (e.g. `( /*x*/ ++seq)`), so the OrFail prefilter can miss some fail-safe leftovers.
 
@@ -207,7 +208,8 @@ resolution: Resolved by Story 11.22: project `NoWarn` removed, sites fixed to li
 origin: migrated from legacy ledger ("Deferred from: code review of 11-21-recommended-analyzer-product-and-generator-burndown.md chunk 4b (2026-08-08)"), 2026-08-27
 location: SecurityLoggingGovernanceTests
 reason: Diagnostic EventId/level/exception inventory (73 / 56 Information / 17 Debug / 20 exceptions) is hard-coded independently in `SecurityLoggingGovernanceTests` and `FrontComposerDiagnosticLogTests`, so the two guards can drift.
-status: open
+status: done 2026-09-06
+resolution: already resolved: commit 8cabbf54 introduces shared FrontComposerDiagnosticLogInventoryAssertions used by both logging-governance suites.
 
 ### DW-693: `McpLifecycleStoreDisposalTests` only exercises `TryReadSnapshot` after dispose; `AcknowledgeAsync` / `TryRecordObservedTransition` share `ThrowIfDisposed` but are not pinned.
 
@@ -221,7 +223,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 11-21-recommended-analyzer-product-and-generator-burndown.md chunk 4b (2026-08-08)"), 2026-08-27
 location: IsEnabled
 reason: Badge/Shortcut helpers gained `IsEnabled` stubs for Information-level HFC21xx asserts; other Shell `Substitute.For<ILogger<T>>()` factories that omit `IsEnabled` remain a latent false-negative risk now that wrappers short-circuit.
-status: open
+status: done 2026-09-06
+resolution: already resolved: commit 8cabbf54 replaces Shell logger substitutes with EnabledLoggerSubstitute and adds focused enabled-level regression coverage.
 
 ### DW-695: Canonical fingerprint golden pins document-level `Metadata` order and empty nested maps but never varies `Collections` order or non-empty `EnumValues`.
 
@@ -3609,7 +3612,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 2-2-action-d
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 severity: low
 reason: **[LOW] `LastUsedSubscriberRegistry` scope-resolution ordering** — subscriber resolved in registry's own scope rather than caller's; cross-scope leak possible if a scoped subscriber ever gains scoped deps. **Defer target:** Epic 9 DI hygiene pass. Reconciliation: Row: DW-0412; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group D (Shell services + Fluxor state + JS module) chunk.
-status: open
+status: done 2026-09-06
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs:277-279 registers both the concrete registry and interface as Scoped; src/Hexalith.FrontComposer.Shell/Services/LastUsedSubscriberRegistry.cs:20,37 resolves subscribers from that same scope.
 
 ### DW-1144: [LOW] `FrontComposerStorageKey.TryParse` returns URL-encoded segments — naming footgun
 
@@ -5626,7 +5630,8 @@ resolution: already resolved: src/Hexalith.FrontComposer.Mcp/McpToolResolutionRe
 origin: migrated from legacy ledger ("Fixed in Story 11.5"), 2026-08-27
 location: tests/Hexalith.FrontComposer.Mcp.Tests/Schema/AggregateManifestIntegrityTests.cs
 reason: Rows DW-0636, DW-0633 — production DI constructor selection is pinned through a corpus-provider invocation test; runtime corpus aggregate remains an explicit v1 release constraint until build-time corpus signing/baseline materialization exists. Evidence: `tests/Hexalith.FrontComposer.Mcp.Tests/Schema/AggregateManifestIntegrityTests.cs`; owner: Story 11.5; revalidation trigger: build-time corpus signing or generated baseline materialization work.
-status: open
+status: done 2026-09-06
+resolution: already resolved: tests/Hexalith.FrontComposer.Mcp.Tests/Schema/AggregateManifestIntegrityTests.cs:136-182 pins corpus-aware DI selection, every registered provider, and the zero-provider path.
 
 ### DW-1408: Row DW-0082 — header parser cache, sentinel rethrow, multi-value rejection, empty no-op, uppercase rejection, unsupported algorithm, short, oversized, and malformed values are covered. Evidence: `tests/Hexalith.FrontComposer.Mcp.Tests/AuthContextAccessorTests.cs`.
 
@@ -6638,7 +6643,8 @@ resolution: already resolved: _bmad-output/implementation-artifacts/deferred-wor
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run.md (2026-05-19, round 9)"), 2026-08-27
 location: .github/workflows/release.yml:580-584
 reason: **CR-12-4-Def82 — `release_budget` writes evidence row without sealed manifest when called pre-manifest-creation:** Edge Case Hunter EC-28 — pick up alongside budget-history corruption audit. Owner: release-evidence maintainer. Evidence: `.github/workflows/release.yml:580-584`.
-status: open
+status: done 2026-09-06
+resolution: already resolved: commit ef2823ba removed the release-budget workflow step; .github/workflows/release.yml:292-293 now uses release_prepublish prepare and bundle.
 
 ### DW-1542: Attestation `status` fallthrough sanitize(None) yields empty string in diagnostic prose: Edge Case Hunter EC-34 — UX clarity only. Owner: release-evidence maintainer. Evidence: `eng/release_evidence.py:1567-1568`.
 
@@ -6773,7 +6779,8 @@ resolution: already resolved: _bmad-output/implementation-artifacts/deferred-wor
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run.md (2026-05-20, round 12, Group A only)"), 2026-08-27
 location: partial-publish-placeholder.json
 reason: **CR-12-4-Def100 — Three release-evidence JSON files with overlapping names (`partial-publish-placeholder.json`, `partial-publish-incident.json`, `prior-release.json`):** Round-12 inline review. The placeholder is written pre-publish with `phase=none classification=none`; the incident file is rewritten on push failure; `prior-release.json` records either no-prior-release or actual prior-release API response. A consumer parsing the artifact bundle must read all three to determine "did a real partial publish happen". Pick up alongside any future "single typed release-state artifact" consolidation. Owner: release-evidence maintainer. Evidence: `.releaserc.json:11` prepareCmd + `.github/workflows/release.yml` publishCmd.
-status: open
+status: done 2026-09-06
+resolution: already resolved: eng/release_prepublish.py:426-434 uses one canonical partial-publish-incident.json, while eng/release_evidence.py:3598-3615 gives placeholder and real incidents distinct typed contracts.
 decision: 2026-08-28 Implement change — Implement the requested change at partial-publish-placeholder.json, update affected contracts and consumers, and add focused regression evidence.
 decision: 2026-08-28 Implement change — Implement the requested change at partial-publish-placeholder.json, update affected contracts and consumers, and add focused regression evidence.
 
