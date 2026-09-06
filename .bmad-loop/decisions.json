@@ -161,6 +161,15 @@
     "label": "Keep open",
     "resolution": ""
   },
+  "DW-1174": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Resolve resources by BadgeSlot name, add English and French values, and fall back to deterministic sentence case.",
+    "key": "1",
+    "label": "Localize enum keys",
+    "resolution": ""
+  },
   "DW-1187": {
     "answered_at": "2026-08-28",
     "bundle_name": "",

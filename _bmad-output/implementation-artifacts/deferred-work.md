@@ -3852,6 +3852,7 @@ location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`FcStatusFilterChips.HumanizeSlotName` returns raw `slot.ToString()`** — "InProgress" renders literally instead of "In progress" / "En cours". Already in the story's Known Gaps; logging here so the review record matches the gap ledger. Reconciliation: Row: DW-0443; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC17-AC20, AC35; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 4-3-datagrid-filtering-sorting-and-search (2026-04-24 pass 2).
 status: open
 decision: 2026-09-06 Localize enum keys — Resolve resources by BadgeSlot name, add English and French values, and fall back to deterministic sentence case.
+decision: 2026-09-06 Localize enum keys — Resolve resources by BadgeSlot name, add English and French values, and fall back to deterministic sentence case.
 
 ### DW-1175: Information-level logging on every projection-connection-state transition floods telemetry on flapping connections
 
