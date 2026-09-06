@@ -9231,6 +9231,7 @@ location: 4.2.0-review.fixture+build.7
 source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
 reason: summary: Reconcile accepted SemVer build metadata with the package filenames emitted by dotnet pack. evidence: A real pack of version `4.2.0-review.fixture+build.7` emitted a filename without `+build.7`, while preparation and candidate verification search for the raw version in the filename, so an accepted version cannot complete the production preparation path.
 status: open
+decision: 2026-09-06 Implement the change — Implement the behavior described by DW-1849 at its recorded touchpoint, update affected contracts and consumers, and add focused regression evidence.
 
 ### DW-1850: Apply `--exclude` patterns to committed paths, not only workspace paths.
 
