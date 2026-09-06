@@ -2745,6 +2745,7 @@ location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **`FrontComposerRegistry.HasFullPageRoute` duplicate-command ambiguity across manifests** — returning `true` when the same command name appears in two bounded contexts is a build-time governance concern (Story 9-4 analyzer). Runtime routing already disambiguates via `{boundedContext}` segment. Reconciliation: Row: DW-0302; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4).
 status: open
 decision: 2026-09-06 Reject duplicates — Keep the command-name API, detect cross-manifest duplicate full names during validation, and fail startup with a stable diagnostic naming every context.
+decision: 2026-09-06 Reject duplicates — Keep the command-name API, detect cross-manifest duplicate full names during validation, and fail startup with a stable diagnostic naming every context.
 
 ### DW-1034: `BoundedContextRouteParser` protocol-relative `//evil/x/y`
 

@@ -26,6 +26,15 @@
     "label": "Keep open",
     "resolution": ""
   },
+  "DW-1033": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Keep the command-name API, detect cross-manifest duplicate full names during validation, and fail startup with a stable diagnostic naming every context.",
+    "key": "1",
+    "label": "Reject duplicates",
+    "resolution": ""
+  },
   "DW-1072": {
     "answered_at": "2026-08-27",
     "bundle_name": "",
