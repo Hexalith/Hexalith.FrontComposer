@@ -592,7 +592,13 @@ public static class AttributeParser {
         Compilation compilation)
         => !propertyType.IsRefLikeType
             && !ContainsPointerSyntax(propertyType)
-            && !HasErrorObsoleteAttribute(propertySymbol, compilation);
+            && !ContainsNonSzArray(propertyType)
+            && !HasErrorObsoleteAttribute(propertySymbol, compilation)
+            && !HasErrorObsoleteAttribute(propertySymbol.SetMethod, compilation)
+            && !HasExperimentalAttribute(propertySymbol, compilation)
+            && !HasExperimentalAttribute(propertySymbol.SetMethod, compilation)
+            && IsSourceNameableIdentifier(propertySymbol.Name)
+            && IsSourceNameableType(propertyType);
 
     private static bool ContainsPointerSyntax(ITypeSymbol typeSymbol)
         => typeSymbol switch {
@@ -602,13 +608,21 @@ public static class AttributeParser {
             _ => false,
         };
 
-    private static bool HasErrorObsoleteAttribute(IPropertySymbol propertySymbol, Compilation compilation) {
+    private static bool ContainsNonSzArray(ITypeSymbol typeSymbol)
+        => typeSymbol is IArrayTypeSymbol arrayType
+            && ((arrayType.Rank == 1 && !arrayType.IsSZArray) || ContainsNonSzArray(arrayType.ElementType));
+
+    private static bool HasErrorObsoleteAttribute(ISymbol? symbol, Compilation compilation) {
+        if (symbol is null) {
+            return false;
+        }
+
         INamedTypeSymbol? obsoleteAttribute = compilation.GetTypeByMetadataName("System.ObsoleteAttribute");
         if (obsoleteAttribute is null) {
             return false;
         }
 
-        foreach (AttributeData attribute in propertySymbol.GetAttributes()) {
+        foreach (AttributeData attribute in symbol.GetAttributes()) {
             if (SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, obsoleteAttribute)
                 && attribute.ConstructorArguments.Length > 1
                 && attribute.ConstructorArguments[1].Value is true) {
@@ -618,6 +632,58 @@ public static class AttributeParser {
 
         return false;
     }
+
+    private static bool HasExperimentalAttribute(ISymbol? symbol, Compilation compilation) {
+        if (symbol is null) {
+            return false;
+        }
+
+        INamedTypeSymbol? experimentalAttribute = compilation.GetTypeByMetadataName(
+            "System.Diagnostics.CodeAnalysis.ExperimentalAttribute");
+        return experimentalAttribute is not null
+            && symbol.GetAttributes().Any(attribute =>
+                SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, experimentalAttribute));
+    }
+
+    private static bool IsSourceNameableType(ITypeSymbol typeSymbol)
+        => typeSymbol switch {
+            IArrayTypeSymbol arrayType => IsSourceNameableType(arrayType.ElementType),
+            IPointerTypeSymbol pointerType => IsSourceNameableType(pointerType.PointedAtType),
+            IFunctionPointerTypeSymbol functionPointerType =>
+                IsSourceNameableType(functionPointerType.Signature.ReturnType)
+                && functionPointerType.Signature.Parameters.All(parameter => IsSourceNameableType(parameter.Type)),
+            INamedTypeSymbol namedType => IsSourceNameableNamedType(namedType),
+            ITypeParameterSymbol typeParameter => IsSourceNameableIdentifier(typeParameter.Name),
+            _ => true,
+        };
+
+    private static bool IsSourceNameableNamedType(INamedTypeSymbol namedType) {
+        if (!IsSourceNameableIdentifier(namedType.Name)
+            || (namedType.ContainingType is not null && !IsSourceNameableNamedType(namedType.ContainingType))
+            || !IsSourceNameableNamespace(namedType.ContainingNamespace)) {
+            return false;
+        }
+
+        return namedType.TypeArguments.All(IsSourceNameableType);
+    }
+
+    private static bool IsSourceNameableNamespace(INamespaceSymbol? namespaceSymbol) {
+        INamespaceSymbol? current = namespaceSymbol;
+        while (current is not null && !current.IsGlobalNamespace) {
+            if (!IsSourceNameableIdentifier(current.Name)) {
+                return false;
+            }
+
+            current = current.ContainingNamespace;
+        }
+
+        return true;
+    }
+
+    private static bool IsSourceNameableIdentifier(string identifier)
+        => SyntaxFacts.IsValidIdentifier(identifier)
+            || SyntaxFacts.GetKeywordKind(identifier) != SyntaxKind.None
+            || SyntaxFacts.GetContextualKeywordKind(identifier) != SyntaxKind.None;
 
     /// <summary>
     /// Story 6-1 D5/T2 — supported `[RelativeTime]` window range. Compile-time mirror of the

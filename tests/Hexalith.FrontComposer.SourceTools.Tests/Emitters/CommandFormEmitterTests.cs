@@ -604,7 +604,7 @@ public class CommandFormEmitterTests {
     }
 
     [Fact]
-    public void Emit_ProviderTargetWithReadOnlyDerivedPropertyFailsTargetResolutionWithoutInvalidCloneAssignment() {
+    public void Parse_ProviderTargetWithReadOnlyDerivedPropertyRejectsCommandBeforeEmission() {
         const string commandSource = """
             using Hexalith.FrontComposer.Contracts.Attributes;
             namespace Counter.Domain;
@@ -619,22 +619,16 @@ public class CommandFormEmitterTests {
                 public string Name { get; set; } = string.Empty;
             }
             """;
-        CommandModel command = CompilationHelper.ParseCommand(
+        CommandParseResult result = CompilationHelper.ParseCommand(
             commandSource,
-            "Counter.Domain.CreateCounterCommand").Model.ShouldNotBeNull();
-        CommandFormModel form = CommandFormTransform.Transform(command);
+            "Counter.Domain.CreateCounterCommand");
 
-        string source = CommandFormEmitter.Emit(form, BuildFluxor("CreateCounterCommand"));
-
-        command.DerivableProperties.Single(property => property.Name == "TenantId").IsWritable.ShouldBeFalse();
-        source.ShouldContain("Command target provider cloning requires supported assignable field types.");
-        source.ShouldNotContain("TenantId = command.TenantId,");
-        source.ShouldNotContain("JsonSerializer");
-        source.ShouldNotContain("System.Reflection");
+        result.Model.ShouldBeNull();
+        result.Diagnostics.ShouldContain(diagnostic => diagnostic.Id == "HFC1016");
     }
 
     [Fact]
-    public void Emit_ProviderTargetWithInitOnlyDerivedPropertyUsesObjectInitializerClone() {
+    public void Parse_ProviderTargetWithInitOnlyDerivedPropertyRejectsCommandBeforeEmission() {
         const string commandSource = """
             using Hexalith.FrontComposer.Contracts.Attributes;
             namespace Counter.Domain;
@@ -650,16 +644,12 @@ public class CommandFormEmitterTests {
                 public string Name { get; set; } = string.Empty;
             }
             """;
-        CommandModel command = CompilationHelper.ParseCommand(
+        CommandParseResult result = CompilationHelper.ParseCommand(
             commandSource,
-            "Counter.Domain.CreateCounterCommand").Model.ShouldNotBeNull();
-        CommandFormModel form = CommandFormTransform.Transform(command);
+            "Counter.Domain.CreateCounterCommand");
 
-        string source = CommandFormEmitter.Emit(form, BuildFluxor("CreateCounterCommand"));
-
-        command.DerivableProperties.Single(property => property.Name == "MessageId").IsWritable.ShouldBeTrue();
-        source.ShouldContain("MessageId = command.MessageId,");
-        source.ShouldNotContain("Command target provider cloning requires supported assignable field types.");
+        result.Model.ShouldBeNull();
+        result.Diagnostics.ShouldContain(diagnostic => diagnostic.Id == "HFC1016");
     }
 
     [Fact]

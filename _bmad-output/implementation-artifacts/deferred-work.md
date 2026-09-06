@@ -4912,6 +4912,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 8-1-mcp-serv
 location: src/Hexalith.FrontComposer.Mcp/FrontComposerMcpOptions.cs:375
 reason: `ApiKeys` plaintext storage in options — current `IOptions`-bound config is the standard ASP.NET Core pattern; rotation/secret-store integration is a security follow-up. **Owner:** Epic 7 security follow-up. [`src/Hexalith.FrontComposer.Mcp/FrontComposerMcpOptions.cs:375`] Reconciliation: Row: DW-0582; Final classification 2026-05-14: split-to-named-story; Target owner: Story 11.7 EventStore/release-governance follow-up; Decision owner: Story 12.2 release certification; Rationale: row is adjacent to MCP certification or non-runtime scope and is not required to block MCP v1 release after Story 11.5 evidence; Downstream MCP impact: none or contract-adjacent as recorded in the Story 12.2 release-owner summary; Close trigger: Story 11.7 EventStore/release-governance follow-up lands or explicitly accepts the row with its own evidence; Evidence: Story 11.5 row-scoped matrix, Story 12.1 routing update, and Story 12.2 inventory/validation; Previous owner was Story 11.5.
 status: done 2026-09-06
+decision: 2026-09-06 Use secure configuration — Retain IOptions and require adopters to source values from a secure ASP.NET Core configuration provider.
 resolution: closed by human decision: Retain IOptions and require adopters to source values from a secure ASP.NET Core configuration provider.
 decision: 2026-09-06 Use secure configuration — Retain IOptions and require adopters to source values from a secure ASP.NET Core configuration provider.
 
@@ -5165,6 +5166,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 8-6a-schema-
 location: SchemaContractFamilyNames
 reason: `SchemaContractFamilyNames` switch lacks attribute-based exhaustiveness — covered functionally by the build-time exhaustiveness test in P-46. **Owner:** v2.x compiler-enforced exhaustiveness if Roslyn analyzer ships. Reconciliation: Row: DW-0614; Final classification 2026-05-14: accepted-constraint; Decision owner: Story 11.2 diagnostic/docs governance owner; Likelihood: low; Impact: low to medium; Release risk: non-blocking for v1 with documented trigger; Downstream impact: agent/adopter behavior remains stable for v1; Evidence: Story 11.5 D11/DN9/DN14/DN15 notes, row-scoped matrix, and Story 12.2 release-owner summary; Expiry/revalidation trigger: public MCP category/key changes, descriptor-registry mutability, build-time corpus signing/baseline materialization, or a consumer parsing diagnostic polish strings as contract input; Release-note requirement: required only if public machine keys/categories or corpus/fingerprint publication semantics change; Regression guard: Story11_5ResolutionTests, AggregateManifestIntegrityTests, SchemaNegotiationPrecedenceMatrixTests, AuthContextAccessorTests, and diagnostic docs governance tests as applicable; Previous owner was Story 11.5.
 status: done 2026-09-06
+decision: 2026-09-06 Close accepted constraint — The build-time exhaustiveness test is the approved v1 protection and no analyzer story exists.
 resolution: closed by human decision: The build-time exhaustiveness test is the approved v1 protection and no analyzer story exists.
 decision: 2026-09-06 Close accepted constraint — The build-time exhaustiveness test is the approved v1 protection and no analyzer story exists.
 
@@ -5596,6 +5598,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story-11-2-d
 location: tests/.../DiagnosticRegistryTests.cs:629-650
 reason: `Random rng = new(20260511)` literal seed pattern in `RegistryValidator_DeterministicUnderShuffledInput` — cosmetic; conventional dated seed. Re-evaluate after fixing the shuffle algorithm (Pass-2 patch on `tests/.../DiagnosticRegistryTests.cs:629-650`). Reconciliation: Row: DW-0662; Non-action decision 2026-05-11; Decision owner: Story 11.2 review pass 2; Rationale: deterministic seed pattern recognised; no correctness impact once Fisher-Yates lands; Evidence: `tests/.../DiagnosticRegistryTests.cs:637`. (blind)
 status: done 2026-09-06
+decision: 2026-09-06 Close cosmetic item — The deterministic seed has no correctness or maintenance impact.
 resolution: closed by human decision: The deterministic seed has no correctness or maintenance impact.
 decision: 2026-09-06 Close cosmetic item — The deterministic seed has no correctness or maintenance impact.
 
@@ -5605,6 +5608,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story-11-2-d
 location: tests/.../DiagnosticRegistryTests.cs:659
 reason: `_bmad-output` Path.Combine case-asymmetry between Windows (case-insensitive) and Linux CI (case-sensitive) — repo policy is lowercase; rename unlikely. Reconciliation: Row: DW-0663; Non-action decision 2026-05-11; Decision owner: Story 11.2 review pass 2; Rationale: cross-platform exposure is theoretical until anyone renames the directory; Evidence: `tests/.../DiagnosticRegistryTests.cs:659`. (blind)
 status: done 2026-09-06
+decision: 2026-09-06 Close under policy — The repository mandates lowercase _bmad-output and no rename scenario exists.
 resolution: closed by human decision: The repository mandates lowercase _bmad-output and no rename scenario exists.
 decision: 2026-09-06 Close under policy — The repository mandates lowercase _bmad-output and no rename scenario exists.
 
@@ -5621,6 +5625,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of story-11-2-d
 location: docs/diagnostics/README.md
 reason: `HfcmIdShapeRegex` vs `SampleFindingIdShapeRegex` divergence — intentional split (HFCM-specific for migration-findings, broader sample regex for placeholder evidence). Confusion risk acknowledged. Reconciliation: Row: DW-0665; Non-action decision 2026-05-11; Decision owner: Story 11.2 review pass 2; Rationale: split is intentional per AC15; document split in `docs/diagnostics/README.md` if Story 11.3 expands HFCM scope; Evidence: `tests/.../DiagnosticRegistryTests.cs:474-475,966`. (edge)
 status: done 2026-09-06
+decision: 2026-09-06 Close intentional split — The two validators intentionally accept different evidence domains.
 resolution: closed by human decision: The two validators intentionally accept different evidence domains.
 decision: 2026-09-06 Close intentional split — The two validators intentionally accept different evidence domains.
 
@@ -5827,6 +5832,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-6-shell-u
 location: TryGetClrGenericStarterName
 reason: **W9 — `TryGetClrGenericStarterName` regex misses nested types and assembly-qualified tokens:** `[A-Za-z0-9_.]` excludes `+`, `-`, `=`, `,` from CLR generic argument syntax; nested types fall back to `{baseName}_Arity{n}`. Consistent with accepted constraints in Story 11.6. Owner: starter-template generator hardening.
 status: done 2026-09-06
+decision: 2026-09-06 Close accepted fallback — The Arity fallback is approved behavior for unsupported CLR token shapes.
 resolution: closed by human decision: The Arity fallback is approved behavior for unsupported CLR token shapes.
 decision: 2026-09-06 Close accepted fallback — The Arity fallback is approved behavior for unsupported CLR token shapes.
 
@@ -7315,6 +7321,7 @@ location: src/Hexalith.FrontComposer.Cli/SourceFile.cs:20-35
 source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
 reason: summary: Preserve source-file metadata when replacing a migrated file. evidence: `SourceFile.WriteAsync` writes a new same-directory temporary file and moves it over the target without copying Unix mode bits, ACLs, or other attributes (`src/Hexalith.FrontComposer.Cli/SourceFile.cs:20-35`). The replacement semantics are pre-existing and explicitly frozen by this mechanical story.
 status: open
+decision: 2026-09-06 Keep for contract design
 decision: 2026-09-06 Keep for contract design
 
 ### DW-1620: Recheck the 16 MiB limit after reading concurrently changing source files.

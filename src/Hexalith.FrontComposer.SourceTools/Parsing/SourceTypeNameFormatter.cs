@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text;
 
@@ -42,10 +43,7 @@ internal static class SourceTypeNameFormatter {
         SortedSet<string> aliases) {
         switch (typeSymbol) {
             case IArrayTypeSymbol arrayType:
-                return FormatCore(arrayType.ElementType, compilation, aliases)
-                    + "["
-                    + new string(',', arrayType.Rank - 1)
-                    + "]";
+                return FormatArrayType(arrayType, compilation, aliases);
 
             case IPointerTypeSymbol pointerType:
                 return FormatCore(pointerType.PointedAtType, compilation, aliases) + "*";
@@ -55,10 +53,10 @@ internal static class SourceTypeNameFormatter {
                 return functionPointerType.ToDisplayString(FunctionPointerDisplayFormat);
 
             case IDynamicTypeSymbol:
-                return "global::System.Object";
+                return AppendNullableAnnotation(typeSymbol, "global::System.Object");
 
             case ITypeParameterSymbol typeParameter:
-                return EscapeIdentifier(typeParameter.Name);
+                return AppendNullableAnnotation(typeParameter, EscapeIdentifier(typeParameter.Name));
 
             case INamedTypeSymbol namedType:
                 return FormatNamedType(namedType, compilation, aliases);
@@ -67,6 +65,34 @@ internal static class SourceTypeNameFormatter {
                 return typeSymbol.ToDisplayString(FunctionPointerDisplayFormat);
         }
     }
+
+    private static string FormatArrayType(
+        IArrayTypeSymbol arrayType,
+        Compilation compilation,
+        SortedSet<string> aliases) {
+        List<(int Rank, bool IsNullable)> layers = [];
+        ITypeSymbol elementType = arrayType;
+        while (elementType is IArrayTypeSymbol currentArray) {
+            layers.Add((currentArray.Rank, currentArray.NullableAnnotation == NullableAnnotation.Annotated));
+            elementType = currentArray.ElementType;
+        }
+
+        StringBuilder builder = new(FormatCore(elementType, compilation, aliases));
+        foreach ((int rank, bool isNullable) in layers) {
+            _ = builder.Append('[').Append(',', rank - 1).Append(']');
+            if (isNullable) {
+                _ = builder.Append('?');
+            }
+        }
+
+        return builder.ToString();
+    }
+
+    private static string AppendNullableAnnotation(ITypeSymbol typeSymbol, string sourceTypeName)
+        => typeSymbol.NullableAnnotation == NullableAnnotation.Annotated
+            && (typeSymbol.IsReferenceType || typeSymbol is ITypeParameterSymbol)
+                ? sourceTypeName + "?"
+                : sourceTypeName;
 
     private static string FormatNamedType(
         INamedTypeSymbol namedType,
@@ -96,7 +122,7 @@ internal static class SourceTypeNameFormatter {
             _ = builder.Append('>');
         }
 
-        return builder.ToString();
+        return AppendNullableAnnotation(namedType, builder.ToString());
     }
 
     private static string GetRootQualifier(

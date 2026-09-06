@@ -27,6 +27,7 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("// Do not edit directly");
         _ = sb.AppendLine();
         _ = sb.AppendLine("#nullable enable");
+        _ = sb.AppendLine("#pragma warning disable CS0612, CS0618 // Warning-obsolete derivable properties remain supported by typed prefill.");
         _ = sb.AppendLine();
         SortedSet<string> requiredExternAliases = [];
         foreach (PropertyModel property in model.DerivableProperties) {
@@ -684,6 +685,8 @@ public static class CommandRendererEmitter {
         EmitLogMethods(sb, model, densityName, hasAuthorizationPolicy);
 
         _ = sb.AppendLine("}");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("#pragma warning restore CS0612, CS0618");
 
         // Story 11.21 ASP0006 — the emitters above write runtime `seq++` counters; the rewriter
         // converts each call site to the literal for its position in this document, which is what

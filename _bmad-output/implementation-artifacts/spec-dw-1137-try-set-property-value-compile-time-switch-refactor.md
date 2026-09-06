@@ -2,7 +2,7 @@
 title: 'Replace derivable command prefill reflection with typed emission'
 type: 'refactor'
 created: '2026-09-06'
-status: 'in-progress'
+status: 'in-review'
 route: 'dispatch'
 review_loop_iteration: 2
 followup_review_recommended: false
@@ -59,11 +59,11 @@ deferred: []
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] Extend property parsing and pure IR with deterministic source type syntax, required `extern alias` provenance, recursive static-safety classification, and complete equality/hash participation; keep all Roslyn symbols confined to parsing.
-- [ ] Generalize HFC1016 validation and diagnostic accumulation, including exact source-property coordinates, metadata fallback, and suppressed-diagnostic fail-closed behavior; keep unsafe-to-reference properties accepted.
-- [ ] Carry complete property IR into the renderer and emit sorted alias declarations, escaped direct assignments, conversion validation, and type/member-free soft-fail switch arms with no reflection or unsafe generated context.
-- [ ] Add parser, emitter, incremental, and compiled integration tests for aliases, keyword identifiers, setter shapes, every soft-fail category, diagnostics, provider continuation, and the complete conversion matrix; reapprove exactly the affected six parser and seven renderer snapshots.
-- [ ] Align HFC1016 diagnostics, release notes, registry, API-contract documentation, validation tests, fingerprints, and analyzer inventory; run the full SourceTools, focused Shell, documentation, diff, and snapshot checks.
+- [x] Extend property parsing and pure IR with deterministic source type syntax, required `extern alias` provenance, recursive static-safety classification, and complete equality/hash participation; keep all Roslyn symbols confined to parsing.
+- [x] Generalize HFC1016 validation and diagnostic accumulation, including exact source-property coordinates, metadata fallback, and suppressed-diagnostic fail-closed behavior; keep unsafe-to-reference properties accepted.
+- [x] Carry complete property IR into the renderer and emit sorted alias declarations, escaped direct assignments, conversion validation, and type/member-free soft-fail switch arms with no reflection or unsafe generated context.
+- [x] Add parser, emitter, incremental, and compiled integration tests for aliases, keyword identifiers, setter shapes, every soft-fail category, diagnostics, provider continuation, and the complete conversion matrix; reapprove exactly the affected six parser and seven renderer snapshots.
+- [x] Align HFC1016 diagnostics, release notes, registry, API-contract documentation, validation tests, fingerprints, and analyzer inventory; run the full SourceTools, focused Shell, documentation, diff, and snapshot checks.
 
 **Acceptance Criteria:**
 - Given an attributed, convention-based, declared, or inherited derivable property has an `init`, non-public, or absent setter, when parsing runs, then HFC1016 is reported as an Error at the source property when available or at the command for metadata-only members; suppression hides the diagnostic but still emits no renderer, and remediation requires a public non-init setter without suggesting `[DerivedFrom]`.
@@ -76,6 +76,11 @@ deferred: []
 - Given verification runs against all affected approvals and runtime suites, then six parser and seven renderer snapshots contain only intentional IR/typed-prefill changes, the renderer page snapshot is unchanged, the complete SourceTools assembly and focused Shell proof pass without skips, alias-qualified generated output compiles, dispatch receives the derived `MessageId`, and newly added reflection references remain absent.
 
 ## Implementation Notes
+
+- Property parsing now produces symbol-free source syntax, deterministic alias provenance, and a static-assignment capability. The renderer carries that full property IR and emits typed switch arms; unsafe and error-obsolete targets use member/type-free fall-through arms.
+- HFC1016 now validates all generated command properties against the public non-init setter policy, accumulates independent shape/size diagnostics, reports inherited source locations accurately, and remains fail-closed when suppressed.
+- Compiled integration coverage exercises alias-only references, keyword members, all approved unsafe categories, provider continuation, and the complete conversion/default/failure matrix. Exactly six parser and seven renderer approvals were refreshed; the renderer page approval remains unchanged.
+- Independent matrix audit added executable reference/value/nullable null cases, culture-sensitive numeric and case-insensitive enum conversion, recursive pointer/function-pointer arrays, both null and non-null soft-fail values, provider continuation, and not-assigned warning verification.
 
 ## Spec Change Log
 
@@ -139,6 +144,34 @@ deferred: []
 | EC2-07 | edge-case-hunter | low | patch | Verified: the equality test requires unequal objects to have different hash codes, which `GetHashCode` never guarantees and can make the test spuriously fail on a collision. Remove the non-collision assertion while retaining inequality coverage. |
 | EC2-08 | edge-case-hunter | low | patch | Verified independently for `CommandRendererModel`: unequal renderer models need not produce distinct hash codes. Remove that non-contractual assertion while retaining equality checks. |
 | EC2-09 | edge-case-hunter | false | reject | Refuted by the approved frozen decision: both null and non-null provider values for ref-like, pointer, and function-pointer properties must return `false`. The new behavior intentionally supersedes any reflective null behavior. |
+| BH3-01 | blind-hunter | high | patch | Verified by the reviewer/compiler probe and source inspection: static safety checks error-level obsolescence only on the property symbol, so an error-obsolete public setter is emitted as a direct assignment and fails with CS0619. Treat the setter attribute as the same unsafe-to-reference property case. |
+| BH3-02 | blind-hunter | high | patch | Verified: the formatter drops nullable-reference annotations from generic arguments and array layers while generated files enable nullable analysis; typed locals can therefore produce CS8619 in warnings-as-errors consumers. Preserve nested nullable annotations in source syntax. |
+| BH3-03 | blind-hunter | high | patch | Verified: inherited CLR metadata may expose property, type, or namespace names that are not expressible as C# identifiers, while the formatter escapes only language keywords and the emitter always prefixes the raw member name with `@`. Classify those metadata-only targets as unsafe to reference so their arm remains type- and member-free. |
+| BH3-04 | blind-hunter | medium | reject | Verified that `FcCommandPalette` still calls `ToAbsoluteUri(targetUrl)`, so the external DW-1026 closure is inaccurate; however commit/blame evidence assigns that closure to the independent `349b0cff` sweep and the frozen intent explicitly excludes deferred-ledger work from this story. Preserve the user's external commit and leave correction to its owning work item. |
+| BH3-05 | blind-hunter | false | reject | Refuted as a story implementation claim: all three ledger edits are committed external work introduced by the independent `349b0cff` sweep, not changes made by the DW-1137 implementation session. Reverting them would overwrite user-owned history. |
+| BH3-06 | blind-hunter | low | reject | The file list does omit the MCP helper, cancellation test, and external ledger file, but the requested remedy edits this build's spec and is rejected by review policy. The first two are mechanical call-site updates and the ledger remains external history. |
+| BH3-07 | blind-hunter | medium | patch | Verified: source-property HFC1016 tests assert only line numbers, although the parser records identifier-start columns and acceptance requires exact coordinates. Add identifier-column assertions for direct and inherited source declarations. |
+| BH3-08 | blind-hunter | medium | patch | Verified: runtime coverage proves failed-provider continuation but has no provider after a successful assignment, so removing the early `return` would remain undetected. Add a third provider and assert it is not called. |
+| BH3-09 | blind-hunter | medium | patch | Verified: runtime coverage omits numeric enum success plus invalid enum, Guid, DateTimeOffset, overflow, and invalid-cast failures, leaving dedicated conversion branches and the narrow catch filter weakly pinned. Add compiled success/failure, unchanged-model, and provider-fall-through assertions. |
+| BH3-10 | blind-hunter | low | patch | Verified: the HFC1016 page's example says `has no setter`, while the producer emits `has no public setter`. This is a direct documentation correction. |
+| BH3-11 | blind-hunter | false | reject | Refuted: the registry does not require a migration ID for every breaking semantic update, HFC1016 remains the same active diagnostic introduced in 0.1.0, and its help link already leads to a page with an explicit breaking-migration section. |
+| BH3-12 | blind-hunter | medium | patch | Verified: the remediation text assumes the adopter owns the invalid property, but HFC1016 intentionally covers metadata-inherited properties whose declaration is in another assembly. Document upgrading/fixing the dependency or shadowing the member with an appropriate writable derived property. |
+| BH3-13 | blind-hunter | low | reject | The assertions are whole-file substring checks, but every required phrase is currently unique to HFC1016 in its respective producer and the page itself is already scoped. A future false positive requires an unlikely duplicate phrase plus simultaneous HFC1016 drift, and structural parsing across markdown rows is disproportionate. |
+| BH3-14 | blind-hunter | maybe-false | reject | Repeated reference scans are visible, but no profile or baseline comparison ties them to material latency; the sole first-run p95 miss immediately passed at 638.267 ms on rerun. Establish repeated before/after benchmarks and a call-site profile before adding per-compilation caches; if real, the likely harm is minor generator overhead. |
+| EC3-01 | edge-case-hunter | high | patch | Verified independently as BH3-02: nullable annotations are discarded inside formatted type graphs and can become warnings-as-errors assignment failures. It shares BH3-02's formatter root cause. |
+| EC3-02 | edge-case-hunter | high | patch | Verified: a rank-one non-SZ array from metadata is not source-nameable as the emitted `[]` type, so a typed arm can fail compilation. Classify that specific array shape as unsafe to reference and emit the approved type/member-free fall-through arm. |
+| EC3-03 | edge-case-hunter | high | patch | Verified independently as BH3-01: setter-level error obsolescence is missed and direct assignment produces CS0619. It shares BH3-01's static-safety root cause. |
+| EC3-04 | edge-case-hunter | high | patch | Verified: generated files enable nullable/warning analysis and directly reference warning-obsolete properties without suppressing CS0612/CS0618; warnings-as-errors consumers can fail to compile. Suppress only those compiler warnings within the generated renderer while retaining typed assignment. |
+| EC3-05 | edge-case-hunter | high | patch | Verified: a property or setter marked with `ExperimentalAttribute` can carry a compiler-blocking diagnostic, but current static safety admits it for direct assignment. Treat experimental members as unsafe to reference so their arms name neither type nor member. |
+| EC3-06 | edge-case-hunter | false | reject | Refuted as a regression: the baseline reflection helper also routed DateOnly and TimeOnly text through `Convert.ChangeType`, which rejects those non-IConvertible targets. This story promises compatible existing conversion behavior, not a new temporal parser. |
+| EC3-07 | edge-case-hunter | medium | reject | The uncaught Boolean-backed-enum failure is real for unusual metadata, but such enums are already outside the supported int-backed enum contract and the identical enum conversion/catch behavior predates this story. Frozen intent preserves the narrow failure set and excludes changing HFC1002 behavior. |
+| EC3-08 | edge-case-hunter | false | reject | Carried EC2-05: the prior reflection setter also aborted prefill when a user setter threw, and provider fall-through is not promised for arbitrary setter exceptions. |
+| EC3-09 | edge-case-hunter | high | patch | Verified through the setter-obsolete, experimental-member, invalid-identifier, and non-SZ-array cases: the new capability can mark compiler-unreferenceable metadata members safe and break generated builds. Extend the private capability calculation for those demonstrated categories without changing public surface. |
+| EC3-10 | edge-case-hunter | high | patch | Verified independently as EC3-02: rank-one non-SZ arrays are emitted as incompatible SZ-array syntax. It shares EC3-02's source-nameability root cause. |
+| VG3-01 | verification-gap | medium | patch | Pre-verified: the executable matrix covers only string enum parsing, so the new non-string `Enum.ToObject` branch can regress unnoticed. Add numeric enum assignment and value assertions. |
+| VG3-02 | verification-gap | medium | patch | Pre-verified: executable failure coverage reaches FormatException and wrong-result validation but not InvalidCastException, OverflowException, or ArgumentException. Add compiled failure, unchanged-model, and later-provider continuation cases. |
+| VG3-03 | verification-gap | high | patch | Verified as BH3-01/EC3-03: setter-only error obsolescence compiles as a declaration but fails generated direct access with CS0619, and existing tests cover only property-level obsolescence. Extend classification and compiled regression coverage. |
+| VG3-04 | verification-gap | false | reject | Refuted as a DW-1137 ownership claim by commit and blame evidence: the deferred-ledger changes belong to the independent committed `349b0cff` sweep. They are preserved as external user work rather than reverted by this implementation. |
 
 ## File List
 
@@ -171,6 +204,9 @@ deferred: []
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandRendererEmitterTests.Page_FiveFields_FullPageBoundarySnapshot.verified.txt` - Read-only guard proving the page snapshot remains byte-for-byte unchanged.
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Incremental/DomainModelCacheEqualityTests.cs` - Cover every new IR field in equality and equal-object hashing without asserting unequal hash codes.
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/GeneratorDriverTests.cs` - Compile and execute alias-only, suppression, soft-fail, provider-continuation, keyword-member, and conversion scenarios.
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/CommandRendererStaticAssignmentTests.cs` - Hold the typed-prefill integration facts as a partial `GeneratorDriverTests` implementation.
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/ConversionProbe.cs` - Provide null- and wrong-type `IConvertible` runtime probes.
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/ResolvedDerivedValueProvider.cs` - Provide a counted resolved-value provider for continuation assertions.
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/AttributeParserTests.cs` - Cover type formatting, alias provenance, unsafe categories, arrays, obsolete variants, and symbol-free parsed models.
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/CommandParserTests.cs` - Cover valid/invalid derivable setters, source and metadata diagnostic locations, accumulation, and renderer IR.
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/TestFixtures/CommandTestSources.cs` - Keep parser fixtures compatible with the generalized setter contract.
@@ -221,4 +257,10 @@ HFC1016 validation is independent from assignment safety. Invalid setter shapes 
 - `DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -class Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererFullPageTests` -- expected: derived `MessageId` reaches dispatch through the generated full-page renderer.
 - `pwsh ./eng/validate-docs.ps1` -- expected: documentation governance and producer fingerprints pass.
 - `git diff --check && ! git diff -- '*.verified.txt' | rg '^\+.*(System\.Reflection|PropertyInfo|GetProperty|SetValue)' && git diff --exit-code -- tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandRendererEmitterTests.Page_FiveFields_FullPageBoundarySnapshot.verified.txt` -- expected: clean diff, no newly added reflective renderer approval output, and an unchanged page snapshot.
+
+**Results (2026-09-06):**
+- Release solution build passed with 0 warnings and 0 errors.
+- Complete SourceTools assembly passed 1,226/1,226 with no skips. The first independent post-build run hit the pre-existing drift benchmark p95 gate at 1,149.431 ms; the immediate isolated complete rerun passed at 638.267 ms.
+- Focused Shell generated-renderer proof passed 13/13; documentation validation and analyzer identifier-inventory governance passed.
+- Diff whitespace, reflective approval additions, exact 13-approval inventory, and unchanged page-approval checks passed.
 

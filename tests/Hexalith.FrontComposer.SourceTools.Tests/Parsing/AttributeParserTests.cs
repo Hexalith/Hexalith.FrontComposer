@@ -443,7 +443,7 @@ public partial class CompoundTypeProjection
             .Properties.Single();
 
         property.SourceTypeName.ShouldBe(
-            "global::TypeFixtures.Outer<global::System.Int32>.Inner<global::System.String>[][,]");
+            "global::TypeFixtures.Outer<global::System.Int32>.Inner<global::System.String>[,][]");
         property.RequiredExternAliases.Count.ShouldBe(0);
         property.SupportsStaticAssignment.ShouldBeTrue();
     }
@@ -529,6 +529,100 @@ public partial class CompoundTypeProjection
 
         property.SourceTypeName.ShouldBe("OnlyAlias::AliasLibrary.Token");
         property.RequiredExternAliases.ToArray().ShouldBe(["OnlyAlias"]);
+    }
+
+    [Fact]
+    public void Parse_NestedNullableReferences_PreserveSourceAnnotations() {
+        const string source = """
+            using System.Collections.Generic;
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace TypeFixtures;
+
+            [Projection]
+            public sealed class NullableSyntaxProjection
+            {
+                public List<string?> Values { get; set; } = [];
+                public string?[]? Names { get; set; }
+                public string?[,][]? Matrix { get; set; }
+            }
+            """;
+
+        DomainModel model = CompilationHelper.ParseProjection(source, "TypeFixtures.NullableSyntaxProjection")
+            .Model.ShouldNotBeNull();
+
+        model.Properties.Single(property => property.Name == "Values").SourceTypeName
+            .ShouldBe("global::System.Collections.Generic.List<global::System.String?>");
+        model.Properties.Single(property => property.Name == "Names").SourceTypeName
+            .ShouldBe("global::System.String?[]?");
+        model.Properties.Single(property => property.Name == "Matrix").SourceTypeName
+            .ShouldBe("global::System.String?[,][]?");
+    }
+
+    [Fact]
+    public void Parse_BlockingMemberAttributes_ClassifyOnlyCompilerUnreferenceableMembersAsUnsafe() {
+        const string source = """
+            using System;
+            using System.Diagnostics.CodeAnalysis;
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace TypeFixtures;
+
+            [Projection]
+            public sealed class BlockingAttributeProjection
+            {
+                [Obsolete("warning only")]
+                public int WarningObsolete { get; set; }
+
+                public int SetterErrorObsolete { get; [Obsolete("removed", true)] set; }
+
+                [Experimental("EXP001")]
+                public int ExperimentalProperty { get; set; }
+
+                public int ExperimentalSetter { get; [Experimental("EXP002")] set; }
+            }
+            """;
+
+        DomainModel model = CompilationHelper.ParseProjection(source, "TypeFixtures.BlockingAttributeProjection")
+            .Model.ShouldNotBeNull();
+
+        model.Properties.Single(property => property.Name == "WarningObsolete")
+            .SupportsStaticAssignment.ShouldBeTrue();
+        foreach (string propertyName in (string[])["SetterErrorObsolete", "ExperimentalProperty", "ExperimentalSetter"]) {
+            model.Properties.Single(property => property.Name == propertyName)
+                .SupportsStaticAssignment.ShouldBeFalse(propertyName);
+        }
+    }
+
+    [Fact]
+    public void Parse_MetadataOnlyUnnameableMembers_ClassifyStaticAssignmentAsUnsafe() {
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            using MetadataFixtures;
+
+            namespace TypeFixtures;
+
+            [Command]
+            public sealed class MetadataCommand : MetadataCommandBase
+            {
+                public string Payload { get; set; } = string.Empty;
+            }
+            """;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(
+            source,
+            additionalReferences: [MetadataAssignmentFixture.CreateReference()]);
+
+        CommandModel model = CompilationHelper.ParseCommand(compilation, "TypeFixtures.MetadataCommand")
+            .Model.ShouldNotBeNull();
+
+        foreach (string propertyName in (string[])[
+            MetadataAssignmentFixture.InvalidPropertyName,
+            MetadataAssignmentFixture.InvalidTypePropertyName,
+            MetadataAssignmentFixture.NonSzArrayPropertyName,
+        ]) {
+            model.DerivableProperties.Single(property => property.Name == propertyName)
+                .SupportsStaticAssignment.ShouldBeFalse(propertyName);
+        }
     }
 
     private static async Task VerifyProjectionAsync(string source, string metadataName) {

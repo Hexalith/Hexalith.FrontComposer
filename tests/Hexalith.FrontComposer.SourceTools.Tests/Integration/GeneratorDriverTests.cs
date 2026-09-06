@@ -7,7 +7,7 @@ using Shouldly;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests.Integration;
 
-public class GeneratorDriverTests {
+public partial class GeneratorDriverTests {
     [Fact]
     public void RunGenerators_LiteralEdgeCases_ViewAndMcpSourcesCompileAndRoundTripConstants() {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

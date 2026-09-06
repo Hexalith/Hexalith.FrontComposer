@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Reflection;
 using System.Runtime.Loader;
 
@@ -7,12 +8,13 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
+using Microsoft.Extensions.Logging;
 
 using Shouldly;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests.Integration;
 
-public class CommandRendererStaticAssignmentTests {
+public partial class GeneratorDriverTests {
     [Fact]
     public async Task GeneratedRenderer_ExecutesConversionMatrixAndContinuesProviderChain() {
         const string source = """
@@ -22,7 +24,11 @@ public class CommandRendererStaticAssignmentTests {
             namespace RuntimeFixtures;
 
             public enum MatrixStatus { Pending, Approved }
-            public readonly struct CustomValue { }
+            public readonly struct CustomValue
+            {
+                public CustomValue(int value) => Value = value;
+                public int Value { get; }
+            }
 
             [Command]
             public sealed class MatrixCommand
@@ -30,6 +36,7 @@ public class CommandRendererStaticAssignmentTests {
                 public string MessageId { get; set; } = string.Empty;
                 [DerivedFrom(DerivedFromSource.Context)] public int Count { get; set; }
                 [DerivedFrom(DerivedFromSource.Context)] public int? Optional { get; set; }
+                [DerivedFrom(DerivedFromSource.Context)] public decimal Amount { get; set; }
                 [DerivedFrom(DerivedFromSource.Context)] public MatrixStatus Status { get; set; }
                 [DerivedFrom(DerivedFromSource.Context)] public Guid RequestId { get; set; }
                 [DerivedFrom(DerivedFromSource.Context)] public DateTimeOffset OccurredAt { get; set; }
@@ -45,11 +52,25 @@ public class CommandRendererStaticAssignmentTests {
         FieldInfo modelField = rendererType.GetField("_prefilledModel", BindingFlags.Instance | BindingFlags.NonPublic).ShouldNotBeNull();
         object model = modelField.GetValue(renderer).ShouldNotBeNull();
 
+        InvokeTrySet(trySet, renderer, "MessageId", null).ShouldBeTrue();
+        model.GetType().GetProperty("MessageId").ShouldNotBeNull().GetValue(model).ShouldBeNull();
         InvokeTrySet(trySet, renderer, "MessageId", "exact").ShouldBeTrue();
         InvokeTrySet(trySet, renderer, "Count", "42").ShouldBeTrue();
+        InvokeTrySet(trySet, renderer, "Count", null).ShouldBeTrue();
+        model.GetType().GetProperty("Count").ShouldNotBeNull().GetValue(model).ShouldBe(0);
+        InvokeTrySet(trySet, renderer, "Count", "42").ShouldBeTrue();
         InvokeTrySet(trySet, renderer, "Optional", "7").ShouldBeTrue();
+        CultureInfo originalCulture = CultureInfo.CurrentCulture;
+        try {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("fr-FR");
+            InvokeTrySet(trySet, renderer, "Amount", "12,5").ShouldBeTrue();
+        }
+        finally {
+            CultureInfo.CurrentCulture = originalCulture;
+        }
+
         object approved = Enum.Parse(assembly.GetType("RuntimeFixtures.MatrixStatus").ShouldNotBeNull(), "Approved");
-        InvokeTrySet(trySet, renderer, "Status", approved).ShouldBeTrue();
+        InvokeTrySet(trySet, renderer, "Status", "approved").ShouldBeTrue();
         Guid requestId = Guid.NewGuid();
         InvokeTrySet(trySet, renderer, "RequestId", requestId.ToString("D")).ShouldBeTrue();
         InvokeTrySet(trySet, renderer, "OccurredAt", "2026-09-06T08:30:00+00:00").ShouldBeTrue();
@@ -59,12 +80,23 @@ public class CommandRendererStaticAssignmentTests {
         model.GetType().GetProperty("MessageId").ShouldNotBeNull().GetValue(model).ShouldBe("exact");
         model.GetType().GetProperty("Count").ShouldNotBeNull().GetValue(model).ShouldBe(42);
         model.GetType().GetProperty("Optional").ShouldNotBeNull().GetValue(model).ShouldBeNull();
+        model.GetType().GetProperty("Amount").ShouldNotBeNull().GetValue(model).ShouldBe(12.5m);
         model.GetType().GetProperty("Status").ShouldNotBeNull().GetValue(model).ShouldBe(approved);
         model.GetType().GetProperty("RequestId").ShouldNotBeNull().GetValue(model).ShouldBe(requestId);
+        model.GetType().GetProperty("OccurredAt").ShouldNotBeNull().GetValue(model)
+            .ShouldBe(new DateTimeOffset(2026, 9, 6, 8, 30, 0, TimeSpan.Zero));
+        PropertyInfo customProperty = model.GetType().GetProperty("Custom").ShouldNotBeNull();
+        object defaultCustom = customProperty.GetValue(model).ShouldNotBeNull();
+        defaultCustom.GetType().GetProperty("Value").ShouldNotBeNull().GetValue(defaultCustom).ShouldBe(0);
+
+        object customSeven = Activator.CreateInstance(defaultCustom.GetType(), [7]).ShouldNotBeNull();
+        InvokeTrySet(trySet, renderer, "Custom", customSeven).ShouldBeTrue();
 
         InvokeTrySet(trySet, renderer, "Count", "not-an-integer").ShouldBeFalse();
         model.GetType().GetProperty("Count").ShouldNotBeNull().GetValue(model).ShouldBe(42);
         InvokeTrySet(trySet, renderer, "Custom", new ConversionProbe(returnNull: false)).ShouldBeFalse();
+        object unchangedCustom = customProperty.GetValue(model).ShouldNotBeNull();
+        unchangedCustom.GetType().GetProperty("Value").ShouldNotBeNull().GetValue(unchangedCustom).ShouldBe(7);
         InvokeTrySet(trySet, renderer, "Unknown", 1).ShouldBeFalse();
         InvokeTrySet(trySet, renderer, "Fatal", 1).ShouldBeFalse();
 
@@ -85,7 +117,7 @@ public class CommandRendererStaticAssignmentTests {
     }
 
     [Fact]
-    public void GeneratedRenderer_UnsafeTypesUseSoftFailArmsAndKeywordMemberCompiles() {
+    public async Task GeneratedRenderer_UnsafeTypesUseSoftFailArmsAndKeywordMemberCompiles() {
         const string source = """
             using System;
             using Hexalith.FrontComposer.Contracts.Attributes;
@@ -101,6 +133,8 @@ public class CommandRendererStaticAssignmentTests {
                 [DerivedFrom(DerivedFromSource.Context)] public delegate*<void> Callback { get; set; }
                 [DerivedFrom(DerivedFromSource.Context)] public int*[] PointerArray { get; set; } = [];
                 [DerivedFrom(DerivedFromSource.Context)] public delegate*<void>[] CallbackArray { get; set; } = [];
+                [DerivedFrom(DerivedFromSource.Context)] public int*[][] NestedPointerArray { get; set; } = [];
+                [DerivedFrom(DerivedFromSource.Context)] public delegate*<void>[,][] NestedCallbackArray { get; set; } = null!;
                 [Obsolete("removed", true)]
                 [DerivedFrom(DerivedFromSource.Context)] public int Fatal { get; set; }
                 [DerivedFrom(DerivedFromSource.Context)] public string @event { get; set; } = string.Empty;
@@ -111,7 +145,16 @@ public class CommandRendererStaticAssignmentTests {
 
         AssertNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
         string renderer = GetRenderer(result, "UnsafeFixtures.UnsafeCommand.CommandRenderer.g.razor.cs");
-        foreach (string property in (string[])["RefLike", "Pointer", "Callback", "PointerArray", "CallbackArray", "Fatal"]) {
+        foreach (string property in (string[])[
+            "RefLike",
+            "Pointer",
+            "Callback",
+            "PointerArray",
+            "CallbackArray",
+            "NestedPointerArray",
+            "NestedCallbackArray",
+            "Fatal",
+        ]) {
             string arm = SliceCase(renderer, property);
             arm.Trim().ShouldBe($"case \"{property}\":\n                return false;");
         }
@@ -120,6 +163,43 @@ public class CommandRendererStaticAssignmentTests {
         renderer.ShouldNotContain("GetProperty(");
         renderer.ShouldNotContain("SetValue(");
         renderer.ShouldNotContain("unsafe ");
+
+        Assembly assembly = LoadAssembly(outputCompilation);
+        Type rendererType = assembly.GetType("UnsafeFixtures.UnsafeCommandRenderer").ShouldNotBeNull();
+        object rendererInstance = Activator.CreateInstance(rendererType).ShouldNotBeNull();
+        MethodInfo trySet = rendererType.GetMethod("TrySetPropertyValue", BindingFlags.Instance | BindingFlags.NonPublic).ShouldNotBeNull();
+        object logger = Activator.CreateInstance(typeof(RecordingLogger<>).MakeGenericType(rendererType)).ShouldNotBeNull();
+        rendererType.GetProperty("Logger", BindingFlags.Instance | BindingFlags.NonPublic)
+            .ShouldNotBeNull()
+            .SetValue(rendererInstance, logger);
+        IRecordingLogger recordingLogger = (IRecordingLogger)logger;
+
+        string[] unsafeProperties = [
+            "RefLike",
+            "Pointer",
+            "Callback",
+            "PointerArray",
+            "CallbackArray",
+            "NestedPointerArray",
+            "NestedCallbackArray",
+            "Fatal",
+        ];
+        foreach (string property in unsafeProperties) {
+            InvokeTrySet(trySet, rendererInstance, property, null).ShouldBeFalse(property);
+            InvokeTrySet(trySet, rendererInstance, property, 1).ShouldBeFalse(property);
+
+            foreach (object? value in (object?[])[null, 1]) {
+                ResolvedDerivedValueProvider first = new(value);
+                ResolvedDerivedValueProvider second = new(value);
+                SetProviders(rendererType, rendererInstance, first, second);
+                await InvokePrefillAsync(rendererType, rendererInstance, property).ConfigureAwait(true);
+                first.Calls.ShouldBe(1, property);
+                second.Calls.ShouldBe(1, property);
+            }
+        }
+
+        recordingLogger.Warnings.Count.ShouldBe(unsafeProperties.Length * 4);
+        recordingLogger.Warnings.ShouldAllBe(message => message.Contains("could not be assigned", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -142,7 +222,7 @@ public class CommandRendererStaticAssignmentTests {
             {
                 public string MessageId { get; set; } = string.Empty;
                 [DerivedFrom(DerivedFromSource.Context)]
-                public OnlyAlias::AliasLibrary.Token Token { get; set; } = new();
+                public OnlyAlias::AliasLibrary.Token[,][] Tokens { get; set; } = null!;
             }
             """;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source, additionalReferences: [aliasedReference]);
@@ -151,7 +231,7 @@ public class CommandRendererStaticAssignmentTests {
         AssertNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
         string renderer = GetRenderer(result, "AliasFixtures.AliasCommand.CommandRenderer.g.razor.cs");
         renderer.ShouldContain("extern alias OnlyAlias;");
-        renderer.ShouldContain("TryConvertPropertyValue<OnlyAlias::AliasLibrary.Token>");
+        renderer.ShouldContain("TryConvertPropertyValue<OnlyAlias::AliasLibrary.Token[,][]>");
     }
 
     [Fact]
@@ -178,12 +258,19 @@ public class CommandRendererStaticAssignmentTests {
         AssertNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
     }
 
-    private static Assembly CompileGeneratedAssembly(string source) {
+    private static Assembly CompileGeneratedAssembly(string source, bool allowUnsafe = false) {
         string assemblyName = "RendererRuntime_" + Guid.NewGuid().ToString("N");
-        CSharpCompilation compilation = CompilationHelper.CreateCompilation(source, assemblyName: assemblyName);
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(
+            source,
+            allowUnsafe: allowUnsafe,
+            assemblyName: assemblyName);
         GeneratorDriverRunResult result = RunGenerator(compilation, out CSharpCompilation outputCompilation);
         result.Diagnostics.Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
         AssertNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
+        return LoadAssembly(outputCompilation);
+    }
+
+    private static Assembly LoadAssembly(CSharpCompilation outputCompilation) {
         using MemoryStream stream = new();
         EmitResult emitResult = outputCompilation.Emit(stream, cancellationToken: TestContext.Current.CancellationToken);
         emitResult.Success.ShouldBeTrue(string.Join(Environment.NewLine, emitResult.Diagnostics));
@@ -231,5 +318,32 @@ public class CommandRendererStaticAssignmentTests {
         int end = nextCase >= 0 && nextCase < defaultCase ? nextCase : defaultCase;
         end.ShouldBeGreaterThan(start);
         return source[start..end];
+    }
+
+    private interface IRecordingLogger {
+        IReadOnlyList<string> Warnings { get; }
+    }
+
+    private sealed class RecordingLogger<T> : ILogger<T>, IRecordingLogger {
+        private readonly List<string> _warnings = [];
+
+        public IReadOnlyList<string> Warnings => _warnings;
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull
+            => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter) {
+            if (logLevel == LogLevel.Warning) {
+                _warnings.Add(formatter(state, exception));
+            }
+        }
     }
 }
