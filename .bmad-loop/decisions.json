@@ -674,6 +674,15 @@
     "label": "Implement change",
     "resolution": ""
   },
+  "DW-1619": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "keep-open",
+    "intent": "",
+    "key": "3",
+    "label": "Keep for contract design",
+    "resolution": ""
+  },
   "DW-1665": {
     "answered_at": "2026-08-27",
     "bundle_name": "",

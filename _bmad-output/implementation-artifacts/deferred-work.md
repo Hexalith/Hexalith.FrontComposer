@@ -7315,6 +7315,7 @@ location: src/Hexalith.FrontComposer.Cli/SourceFile.cs:20-35
 source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
 reason: summary: Preserve source-file metadata when replacing a migrated file. evidence: `SourceFile.WriteAsync` writes a new same-directory temporary file and moves it over the target without copying Unix mode bits, ACLs, or other attributes (`src/Hexalith.FrontComposer.Cli/SourceFile.cs:20-35`). The replacement semantics are pre-existing and explicitly frozen by this mechanical story.
 status: open
+decision: 2026-09-06 Keep for contract design
 
 ### DW-1620: Recheck the 16 MiB limit after reading concurrently changing source files.
 
