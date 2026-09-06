@@ -2,9 +2,8 @@
 title: 'Replace derivable command prefill reflection with typed emission'
 type: 'refactor'
 created: '2026-09-06'
-status: 'in-review'
+status: 'draft'
 route: 'dispatch'
-baseline_commit: 'd6ab5e652a2b9ff9cf6b3f1f69e42851c3a6173c'
 review_loop_iteration: 2
 followup_review_recommended: false
 context:
@@ -19,13 +18,13 @@ deferred: []
 
 **Problem:** Generated command renderers discover writable derivable properties with `PropertyInfo.GetProperty` and assign through `PropertyInfo.SetValue`. That late-bound path is trim/AOT-hostile and discards type information already known by the source generator.
 
-**Approach:** Preserve each derivable property's source type and boxed-assignment capability through pure renderer IR, then emit a deterministic property-name switch whose ordinary arms convert and assign statically. Keep ref-like, pointer, and function-pointer properties accepted under existing HFC1002 behavior, but emit type-free `false` arms so provider fall-through matches the former reflective path; generalize HFC1016 only for invalid setter shapes.
+**Approach:** Preserve each derivable property's source-ready type, alias provenance, and safe-static-assignment capability through pure renderer IR, then emit a deterministic property-name switch whose ordinary arms convert and assign statically. Keep ref-like, pointer, function-pointer, recursively pointer-containing array, and `[Obsolete(error: true)]` derivable properties accepted, but emit type-free `false` arms so provider fall-through remains safe; generalize HFC1016 only for invalid setter shapes.
 
 ## Boundaries & Constraints
 
-**Always:** Keep SourceTools netstandard2.0-clean and all parse/renderer IR symbol-free and fully equatable. Preserve ordinal case order, provider ordering/fall-through, refresh-before-submit, logging, `CurrentCulture` number/date conversion, case-insensitive enum parsing, invariant Guid parsing, nullable/null assignment, and narrow conversion failures. Treat only ref-like, pointer, and function-pointer types as non-boxable; null or non-null provider values for those properties return `false` without naming the type in emitted code. Ordinary unsupported object-representable types retain conversion behavior. A custom conversion returning null for a value type succeeds with `default(T)`, matching reflection. HFC1016 remains Error for absent, non-public, or init-only setters and suppresses generation only after all independent command diagnostics are collected. HFC1016 docs must state that suppression cannot restore generation and identify the breaking derivable-setter migration.
+**Always:** Keep SourceTools netstandard2.0-clean and all parse/renderer IR symbol-free and fully equatable. Preserve ordinal case order, provider ordering/fall-through, refresh-before-submit, logging, `CurrentCulture` number/date conversion, case-insensitive enum parsing, invariant Guid parsing, nullable/null assignment, and narrow conversion failures. Treat ref-like, pointer, function-pointer, recursively pointer-containing array, and error-obsolete derivable properties as unsafe to reference statically; null or non-null provider values for them return `false` without naming their type or member in emitted code. Ordinary object-representable properties retain conversion behavior, including types reached through `extern alias`, whose alias declarations and qualified syntax must be reproduced in generated source. A custom conversion returning null for a value type succeeds with `default(T)`, matching reflection, while a wrong non-null result returns `false`. HFC1016 remains Error for absent, non-public, or init-only setters and suppresses generation only after all independent command diagnostics are collected. HFC1016 docs must state that suppression cannot restore generation and identify the breaking derivable-setter migration.
 
-**Never:** Reject non-boxable derivable types, introduce a new diagnostic for them, mark generated renderers unsafe, or treat every HFC1002 type as non-boxable. Do not retain or replace member reflection with `dynamic`, expression compilation, `Type.GetProperty`, `PropertyInfo`, or trimmer annotations. Do not change derivable classification, density, provider precedence, dispatch, HFC1002 suppression/lifecycle, unrelated generator output, the deferred-work ledger, or generated `obj/**` files.
+**Never:** Reject soft-fail derivable properties, introduce a new diagnostic for them, mark generated renderers unsafe, or soft-fail every HFC1002 type. Do not retain or replace member reflection with `dynamic`, expression compilation, `Type.GetProperty`, `PropertyInfo`, unsafe accessors, or trimmer annotations. Do not change derivable classification, density, provider precedence, dispatch, HFC1002 suppression/lifecycle, unrelated generator output, the deferred-work ledger, or generated `obj/**` files.
 
 ## I/O & Edge-Case Matrix
 
@@ -35,7 +34,7 @@ deferred: []
 | Convertible value | Provider returns supported text/numeric/enum/Guid/date input | Existing culture and parse rules produce the declared value before direct assignment | Narrow conversion failures return `false` and retain warning flow |
 | Null value | Target is nullable/reference or non-nullable | Direct arm preserves the prior null/default assignment outcome | No member lookup occurs |
 | Null custom conversion | `IConvertible.ToType` returns null for a custom value type | Direct arm assigns `default(T)` and reports success | No `NullReferenceException` escapes |
-| Non-boxable property | Derivable ref-like, pointer, or function-pointer property; provider resolves null or non-null | Type-free case returns `false`, logs not-assigned, and tries later providers | HFC1002 behavior remains unchanged; generated code stays safe and compilable |
+| Soft-fail property | Derivable ref-like, pointer, function-pointer, recursively pointer-containing array, or error-obsolete property; provider resolves null or non-null | Type- and member-free case returns `false`, logs not-assigned, and tries later providers | Existing diagnostic behavior remains unchanged; generated code stays safe and compilable |
 | Unknown name | Name has no emitted arm | Method returns `false` without mutation | Existing not-assigned logging remains authoritative |
 | Invalid derivable setter | Derivable property has an `init` accessor, non-public setter, or no setter | Parser reports HFC1016 Error and emits no renderer for the invalid command | Diagnostic requires a public non-init `{ get; set; }`; it must not suggest adding `[DerivedFrom]` |
 | Multiple command violations | Invalid setter plus size or destructive-command violation | All applicable diagnostics are reported in one parse | Invalid model still suppresses generation |
