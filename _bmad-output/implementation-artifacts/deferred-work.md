@@ -5595,7 +5595,9 @@ decision: 2026-08-28 Close as accepted — Retain the current behavior as an exp
 origin: migrated from legacy ledger ("Deferred from: code review of story-11-2-diagnostic-registry-and-documentation-governance-follow-ups — pass 2 (2026-05-11)"), 2026-08-27
 location: tests/.../DiagnosticRegistryTests.cs:629-650
 reason: `Random rng = new(20260511)` literal seed pattern in `RegistryValidator_DeterministicUnderShuffledInput` — cosmetic; conventional dated seed. Re-evaluate after fixing the shuffle algorithm (Pass-2 patch on `tests/.../DiagnosticRegistryTests.cs:629-650`). Reconciliation: Row: DW-0662; Non-action decision 2026-05-11; Decision owner: Story 11.2 review pass 2; Rationale: deterministic seed pattern recognised; no correctness impact once Fisher-Yates lands; Evidence: `tests/.../DiagnosticRegistryTests.cs:637`. (blind)
-status: open
+status: done 2026-09-06
+resolution: closed by human decision: The deterministic seed has no correctness or maintenance impact.
+decision: 2026-09-06 Close cosmetic item — The deterministic seed has no correctness or maintenance impact.
 
 ### DW-1400: `_bmad-output` Path.Combine case-asymmetry between Windows (case-insensitive) and Linux CI (case-sensitive) — repo policy is lowercase; rename unlikely. Reconciliation: Row: DW-0663; Non-action decision 2026-05-11; Decision owner: Story 11.2 review pass 2; Rationale: cross-platform exposure is theoretical until anyone renames the directory; Evidence: `tests/.../DiagnosticRegistryTests.cs:659`. (blind)
 
