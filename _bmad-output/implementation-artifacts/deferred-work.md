@@ -2859,14 +2859,16 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of story 3-2-sidebar-navigation-and-responsive-behavior (2026-04-19)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Shell/Components/Layout/FcHamburgerToggle.razor.cs
 reason: **Drawer-open state not reconciled on Tablet→Desktop viewport transitions** — the drawer UI hides because `FcHamburgerToggle.IsVisible` flips false on the transition, but no effect clears the in-flight drawer-open state. Cosmetic; no incorrect data exposed to the user. Revisit if UX receives reports of "ghost drawer" on rapid resize. `src/Hexalith.FrontComposer.Shell/Components/Layout/FcHamburgerToggle.razor.cs` Reconciliation: Row: DW-0317; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 3-2-sidebar-navigation-and-responsive-behavior (2026-04-19).
-status: open
+status: done 2026-09-06
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Components/Layout/FcHamburgerToggle.razor:10-16 documents the superseding tier-specific design, and lines 22-40 render mutually exclusive Desktop versus responsive drawer branches so the drawer instance is removed on Tablet-to-Desktop.
 
 ### DW-1049: `InvalidTierIsIgnored` test relies on bUnit loose-JS coercion
 
 origin: migrated from legacy ledger ("Deferred from: code review of story 3-2-sidebar-navigation-and-responsive-behavior (2026-04-19)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcLayoutBreakpointWatcherTests.cs
 reason: **`InvalidTierIsIgnored` test relies on bUnit loose-JS coercion** — `subscribe` mock returns `true` which bUnit coerces (and the subsequent cast-to-`IJSObjectReference` exception is silently swallowed by the C# catch block). The passing assertion (`CurrentViewport == Desktop` after a `999` dispatch) is therefore a side-effect of the failed subscribe path rather than a clean assertion of the invalid-tier-rejection guard. Test-quality improvement only. `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcLayoutBreakpointWatcherTests.cs` Reconciliation: Row: DW-0318; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 3-2-sidebar-navigation-and-responsive-behavior (2026-04-19).
-status: open
+status: done 2026-09-06
+resolution: already resolved: tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcLayoutBreakpointWatcherTests.cs:117-128 invokes OnViewportTierChangedAsync(999) directly and asserts the state remains Desktop, independent of JS coercion.
 
 ### DW-1050: Null `EditContext` on first render (guard arm window)
 
@@ -3030,7 +3032,8 @@ resolution: already resolved: _bmad-output/implementation-artifacts/deferred-wor
 origin: migrated from legacy ledger ("Deferred from: code review of story 1-5 round 2 (2026-04-14)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-4-drift-detection-and-source-generator-coverage-hardening.md
 reason: **Incremental generator caching edge case** — Changing only `DisplayLabel` on `[BoundedContext]` in a separate partial declaration may not trigger re-generation if `[Projection]` is on a different partial. Speculative; needs investigation. Reconciliation: Row: DW-0340; Accepted constraint 2026-05-14; Decision owner: FrontComposer SourceTools maintainers; Evidence: DisplayLabel participates in `DomainModel`, `RegistrationModel`, equality/hash paths, focused SourceTools regression coverage, and `_bmad-output/implementation-artifacts/11-4-drift-detection-and-source-generator-coverage-hardening.md`; Likelihood: low; Impact: medium if a partial metadata-only edit ever goes stale; Release risk: low until a partial-only DisplayLabel edit regression is observed; Downstream impact: hot reload/incremental-edit scenarios only; Review trigger: incremental cache test exposes stale registration output for partial metadata-only edits; Previous owner was Story 11.4.
-status: open
+status: done 2026-09-06
+resolution: already resolved: src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs:87,107 and 306,328 include BoundedContextDisplayLabel in equality and hashing for both incremental models.
 
 ### DW-1072: Stable release packing fails while Shell depends on prerelease Fluent UI
 
@@ -3357,7 +3360,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of story 2-1 (2026-04-16)"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 reason: **Nested command types (`Outer.InnerCommand`) emission** — Hint-prefix / namespace emission hasn't been audited for nested `[Command]` types. Counter sample doesn't exercise nesting. Add an HFC1004-style diagnostic if nesting is unsupported, or prove correctness with a test. Reconciliation: Row: DW-0382; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC17-AC20, AC35; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2; Evidence: section: code review of story 2-1 (2026-04-16).
-status: open
+status: done 2026-09-06
+resolution: already resolved: src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs:87-102 emits HFC1014 and halts parsing for nested commands; tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/CommandDensityTests.cs:157-174 pins it.
 decision: 2026-09-06 Implement the change — Implement the behavior described by DW-1113 at its recorded touchpoint, update affected contracts and consumers, and add focused regression evidence.
 decision: 2026-09-06 Implement the change — Implement the behavior described by DW-1113 at its recorded touchpoint, update affected contracts and consumers, and add focused regression evidence.
 
@@ -3403,7 +3407,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of story 2-2-ac
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 severity: low
 reason: **W4 [LOW] LRU eviction is O(N²) per overflow capture** — full scan + immutable rebuild per call. Fine for default Cap=50 but pathological for bulk replay (Fluxor effect re-hydrate, server restore). Fix: maintain a parallel min-heap or a `ImmutableSortedDictionary<DateTimeOffset, string>` index. Reconciliation: Row: DW-0387; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of story 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group A (Contracts) chunk.
-status: open
+status: done 2026-09-06
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Services/Lifecycle/LifecycleStateService.cs:323-340 uses ConcurrentQueue dequeue eviction rather than repeated full scans and rebuilds.
 
 ### DW-1119: W5 [LOW] `InlinePopoverRegistry` per-circuit memory pinning
 
@@ -4141,7 +4146,8 @@ decision: 2026-08-28 Close as accepted — Accept the current verified behavior 
 origin: migrated from legacy ledger ("Deferred from: code review of 5-5-command-idempotency-and-optimistic-updates Pass 2 (2026-04-26)"), 2026-08-27
 location: CommandFormEmitter.cs:353
 reason: **P2-D12 — Generated `nameof(commandFqn)` fallback returns simple name when `typeof(...).FullName` is null** [`SourceTools/Emitters/CommandFormEmitter.cs:353`] — Open-generic edge case; current adopters do not hit this. Reconciliation: Row: DW-0480; Split to Story 11.4 SourceTools command-name fallback 2026-05-13; Disposition: split-to-named-story; Reason: open-generic generated fallback is source-generator scope; Residual release-gate risk: low.; Related: Story 11.4; Evidence: SourceTools/Emitters/CommandFormEmitter.cs:353.
-status: open
+status: done 2026-09-06
+resolution: already resolved: src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs:105-120 rejects generic command types with HFC1017, so the open-generic FullName-null fallback is unreachable.
 
 ### DW-1212: Reentrant `NewItemIndicatorStateService.Add` from inside own timer callback could self-dispose previous timer [`State/PendingCommands/NewItemIndicatorStateService.cs:Add`] — Pass-1 P1 generation tombstone already neutralizes stale callbacks; ITimer implementations (`System.Threading.Timer`, `FakeTimeProvider`) handle self-dispose-during-callback gracefully. Defer hardening pending a real-world reentrant scenario. Reconciliation: Row: DW-0481; Accepted constraint 2026-05-13; Disposition: accepted-with-risk; Risk: likelihood very low, impact low; Release risk: stale timer tombstone already neutralizes callback; Downstream impact: reentrant test-only timer behavior; Owner: pending-command owner; Review by: 2026-06-30; Reopen trigger: reentrant timer crash observed; Validation: NewItemIndicatorStateService generation review.; Evidence: State/PendingCommands/NewItemIndicatorStateService.cs:Add.
 
@@ -4617,7 +4623,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 6-3-level-3-slot-level-field-replacement, Group C — Counter Sample (2026-04-30)"), 2026-08-27
 location: samples/Counter/Counter.Web/Components/Slots/CounterCountSlot.razor
 reason: GC-D14 — Recursion-guard (RenderDefault same-field bypass) test not in Counter slot [`samples/Counter/Counter.Web/Components/Slots/CounterCountSlot.razor`] — covered at Shell layer in `FcFieldSlotHostTests.RenderDefault fallback path` (Group B GB-P2); spec D15 same-field bypass discipline lives at the Shell host, not in the sample. Reconciliation: Row: DW-0546; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC17-AC20, AC35; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: samples/Counter/Counter.Web/Components/Slots/CounterCountSlot.razor.
-status: open
+status: done 2026-09-06
+resolution: already resolved: tests/Hexalith.FrontComposer.Shell.Tests/Components/Rendering/FcFieldSlotHostTests.cs:64-82 directly exercises the RenderDefault fallback path at the Shell host boundary.
 
 ### DW-1278: Repeated renders with different RenderContext / culture / density / read-only / parent values not exercised at sample (Testing Standards line 419) [`tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs`] — multi-render variations covered by Shell registry tests; sample-level multiplication would be combinatorial bloat. Reconciliation: Row: DW-0547; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC14-AC16, AC30; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs.
 
@@ -4631,7 +4638,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 6-3-level-3-slot-level-field-replacement, Group C — Counter Sample (2026-04-30)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs
 reason: GC-D16 — Virtualization-style row-reuse / `@key` integration test for Counter sample (Testing Standards line 420 + GB-P16) [`tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs`] — Counter sample renders one row; emitter `@key` wiring proof belongs to Group D SourceTools snapshot tests. Reconciliation: Row: DW-0548; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.4; AC coverage: AC17-AC20, AC35; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.4.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.4; Evidence: tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs.
-status: open
+status: done 2026-09-06
+resolution: already resolved: tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterVirtualizationTests.cs:91-106 pins generated ItemKey identity and fallback behavior at the SourceTools row-reuse layer.
 
 ### DW-1280: `ProjectionSlotRegistry` constructor enumerates sources eagerly; bUnit test ordering invariant (AddSlotOverride must precede first GetRequiredService<IProjectionSlotRegistry>) [`src/Hexalith.FrontComposer.Shell/Services/ProjectionSlots/ProjectionSlotRegistry.cs:26-50`] — current behavior is correct and tests honor the ordering. Document the invariant alongside Story 6-5 dev-overlay UX. Reconciliation: Row: DW-0549; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC5-AC13, AC26-AC29, AC33-AC34; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: src/Hexalith.FrontComposer.Shell/Services/ProjectionSlots/ProjectionSlotRegistry.cs:26-50.
 
@@ -4660,7 +4668,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 6-3-level-3-slot-level-field-replacement, Group C — Counter Sample (2026-04-30)"), 2026-08-27
 location: tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedComponentTestBase.cs:137-143
 reason: GC-D20 — Test base uses `AddSingleton` (not `TryAddSingleton`/`TryAddEnumerable`) for `IProjectionSlotRegistry` and `IProjectionTemplateRegistry` [`tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedComponentTestBase.cs:137-143`] — production uses `TryAddSingleton`; tests intentionally use `AddSingleton` so the test wins ordering. Document the intentional asymmetry. Reconciliation: Row: DW-0552; Final classification 2026-05-13: accepted-with-risk; Decision owner: Story 11.6 release owner; AC coverage: AC14-AC16, AC30; Score: impact=low/medium; risk=low; cost=medium/high; adjacency=accepted; Rationale: Low release-readiness risk or existing lower-level evidence is sufficient for this release pass.; Validation/evidence: focused Story 11.6 Shell/Counter validation plus historical source row; revisit on matching regression or adopter request; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedComponentTestBase.cs:137-143.
-status: open
+status: done 2026-09-06
+resolution: already resolved: tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedComponentTestBase.cs:141-149 documents the empty test registries and intentional descriptor-source override setup immediately above the AddSingleton registrations.
 
 ### DW-1284: `aria-label` on non-interactive `<span>` has variable screen-reader support (NVDA/JAWS) [`samples/Counter/Counter.Web/Components/Slots/CounterCountSlot.razor:4`] — accessibility refinement; out of Story 6-3 contract scope. Reconciliation: Row: DW-0553; Final classification 2026-05-13: fixed-in-11.6; Decision owner: Story 11.6; AC coverage: AC18, AC35; Score: impact=high; risk=medium; cost=low/medium; adjacency=direct; Rationale: Counter slot now uses deterministic aria-labelledby instead of aria-label on a non-interactive span.; Validation/evidence: samples/Counter/Counter.Web/Components/Slots/CounterCountSlot.razor; tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: samples/Counter/Counter.Web/Components/Slots/CounterCountSlot.razor:4.
 
@@ -6138,7 +6147,8 @@ resolution: already resolved: eng/release_evidence.py:177
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 4 (2026-05-17)"), 2026-08-27
 location: .releaserc.json
 reason: **CR-12-4-Def14 — attestation bundle integration still incomplete:** The release workflow now has a blocking `actions/attest-build-provenance@v4` step before `npx semantic-release`, but AC9's full "attestations generated then verified" path remains structurally incomplete because the round-3 `gh attestation verify` step inside `.releaserc.json` `prepareCmd` runs at the same scope as `dotnet nuget sign` and cannot have a workflow step interleaved. Closing the remaining gap requires moving `dotnet nuget sign` (and `dotnet build`/`dotnet pack`/`dotnet CycloneDX`) OUT of `prepareCmd` into workflow-level steps that run BEFORE `npx semantic-release`, plus an earlier `npx semantic-release --dry-run` step that captures `RELEASE_NEXT_VERSION` via stdout-grep so the build/pack/sign steps know which version to produce. Deferred from round-4 patching: structural workflow rewrite that exceeds patch-session scope; production releases stay on `approved-unsupported` fallback (current behavior) until this lands. Owner: release-evidence/workflow maintainer. Evidence: `.releaserc.json:12` prepareCmd, `.github/workflows/release.yml` `Attest release evidence provenance` and `Run semantic-release` steps. Reconciliation: Superseded 2026-07-18 by REL-3 — the workflow-interleaving design this entry prescribed is replaced by the AC18 model: attestation over the exact signed candidates belongs to the upstream BUILD-REL-1 governed contract (candidate phase in `domain-release.yml`), `eng/release_prepublish.py prepare` binds `RELEASE_ATTESTATION_STATUS`/`RELEASE_ATTESTATION_BUNDLE` into the sealed manifest, and `classify-release --require-publishable` fails closed unless the status is `attested` or a sealed owner-approved fallback. Residual dependency tracked in `g2-hexalith-builds-inline-pre-publish-gate-request.md` and REL-5; reopen trigger: the upstream contract lands with a different attestation handoff shape.
-status: open
+status: done 2026-09-06
+resolution: already resolved: .github/workflows/release.yml:307-321 delegates release to the immutable Builds workflow; references/Hexalith.Builds/.github/workflows/domain-release.yml:988-1004 mints and verifies the candidate attestation before publication.
 decision: 2026-08-27 Implement the change — Implement the behavior requested by DW-1472, update affected contracts and consumers, and add focused regression evidence.
 decision: 2026-08-27 Implement the change — Implement the behavior requested by DW-1472, update affected contracts and consumers, and add focused regression evidence.
 
@@ -6290,7 +6300,8 @@ resolution: already resolved: eng/release_prepublish.py:855-874 records the fail
 origin: migrated from legacy ledger ("Deferred from: code review of 12-4-trusted-release-evidence-dry-run round 8 verification (2026-05-19)"), 2026-08-27
 location: .github/workflows/release.yml:226-231
 reason: **CR-12-4-Def49 — `gh api --paginate` lacks per-request timeout:** Rate-limited probe could stall for minutes. Release-budget already tracks total minutes; pick up if a real GitHub-API stall extends past the workflow timeout. Owner: release-evidence/workflow maintainer. Evidence: `.github/workflows/release.yml:226-231`.
-status: open
+status: done 2026-09-06
+resolution: already resolved: .github/workflows/release.yml:21-23 bounds verify-source to 10 minutes and :64-70 uses finite per_page=100 API requests; the former unbounded gh api --paginate probe no longer exists.
 
 ### DW-1493: Case-mismatched package ids between inventory and `dotnet nuget verify` output: NuGet normalizes id casing upstream, so this is theoretical. Pick up if a casing-mismatch incident is logged. Owner: release-evidence helper maintainer. Evidence: `eng/release_evidence.py:566-579`.
 
@@ -6897,7 +6908,8 @@ resolution: already resolved: src/Hexalith.FrontComposer.Shell/State/PendingComm
 origin: migrated from legacy ledger ("Deferred from: code review of story-9.2 (2026-07-05)"), 2026-08-27
 location: src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandPollingCoordinator.cs
 reason: **CR-9-2-Def05 — Producer covers only the polling/status-query path:** `LiveNudgeRefresh`/`ReconnectReconciliation` observation sources are not currently wired to construct `PendingCommandOutcomeObservation`s, so the FC-NIP producer covers the real EventStore-confirmation path exactly as the Implementation Gate directs. No current gap; a future nudge-driven terminal resolution would need explicit wiring. Owner: Shell state maintainer. Evidence: `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandPollingCoordinator.cs` (sole resolver caller).
-status: open
+status: done 2026-09-06
+resolution: already resolved: src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/ProjectionSubscriptionService.cs:320-332 polls pending outcomes on live nudges, while :461-481 invokes reconciliation after reconnect.
 
 ### DW-1574: Governance guard weakened from exact pin to presence-only: the `Hexalith.EventStore.Aspire` assertion no longer detects an unexpected version drift (only presence + non-empty). Intentional/documented and out of FC-NIP scope (first-review Decision #1 — accept the loosening). Consider restoring a drift signal (assert against the centrally-imported `Hexalith.Builds` pin rather than a hard-coded literal) in an owned governance story. Owner: governance-tests maintainer. Evidence: `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:135`.
 
@@ -8824,7 +8836,8 @@ origin: migrated from legacy ledger ("Deferred from: Story 11.24 owner decision 
 location: release.yml
 source_spec: `_bmad-output/implementation-artifacts/spec-actions-31779965137-fix-cicd.md`
 reason: summary: Re-dispatch Release on a later release-ready main tip after remaining Gate 2b failures are fixed. evidence: Failed Release 31779965137 targeted ancestor SHA `d31679c1` and cannot turn green; `release.yml` prepare requires live main, and current tip still fails other Gate 2b Facts.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Tag v4.2.0 at commit df689935 and later tag v4.3.0 at commit 155f25aa prove Release was re-dispatched successfully on later release-ready main tips.
 
 ### DW-1802: Document that the first push/PR after a semantic-policy change still evaluates under the event-base exact-pin policy (AD-10 delayed activation).
 
@@ -9169,7 +9182,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of spec-9-6-enf
 location: Hexalith.EventStore.Aspire/3.97.0
 source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-to-3-97-0.md`
 reason: summary: Add package-mode coverage that constructs and verifies the FrontComposer Aspire application model. evidence: Current checks restore and compile `Hexalith.EventStore.Aspire/3.97.0` but do not execute its topology extensions and assert the EventStore, admin, domain-module, DAPR component, reference, and wait-edge model produced for FrontComposer.
-status: open
+status: done 2026-09-06
+resolution: already resolved: Commit 16996eb5 added the package-mode AppHost runtime-evidence model and tests; eng/eventstore_runtime_evidence.py:1370-1450 now validates the exact Release AppHost restore/package graph and the authenticated smoke constructs the topology.
 
 ### DW-1842: Exercise both shell skip-link activation paths with a browser-level focus assertion.
 
