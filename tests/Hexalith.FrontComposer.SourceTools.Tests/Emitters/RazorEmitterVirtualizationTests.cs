@@ -211,6 +211,26 @@ public sealed class RazorEmitterVirtualizationTests {
         fixtureType.GetProperty("StateRemoveCount")!.GetValue(fixture).ShouldBe(1);
     }
 
+    [Fact]
+    public void Emit_NonGridDisposeIsIdempotentUnderConcurrentEntry() {
+        RazorModel nonGridModel = new(
+            "OrderProjection",
+            "TestDomain",
+            "Orders",
+            new EquatableArray<ColumnModel>(ImmutableArray.Create(Col("Id"))),
+            ProjectionRenderStrategy.DetailRecord);
+        Type fixtureType = CompileNonGridDisposeFixture(RazorEmitter.Emit(nonGridModel));
+        object fixture = Activator.CreateInstance(fixtureType)!;
+        MethodInfo dispose = fixtureType.GetMethod("Dispose", BindingFlags.Public | BindingFlags.Instance)!;
+
+        Parallel.Invoke(
+            () => dispose.Invoke(fixture, null),
+            () => dispose.Invoke(fixture, null),
+            () => dispose.Invoke(fixture, null));
+
+        fixtureType.GetProperty("StateRemoveCount")!.GetValue(fixture).ShouldBe(1);
+    }
+
     private static MethodInfo CompileTruncateMethod(string generatedSource) {
         MethodDeclarationSyntax truncate = CSharpSyntaxTree.ParseText(generatedSource)
             .GetRoot()
@@ -245,9 +265,10 @@ public sealed class RazorEmitterVirtualizationTests {
             + "    private void OnStateChanged(object? sender, EventArgs e) { }\r\n\r\n"
             + disposeMethod.ToFullString()
             + "}\r\n\r\npublic sealed class RecordingState\r\n{\r\n"
-            + "    public int RemoveCount { get; private set; }\r\n\r\n"
+            + "    private int _removeCount;\r\n"
+            + "    public int RemoveCount => _removeCount;\r\n\r\n"
             + "    public event EventHandler? StateChanged\r\n    {\r\n"
-            + "        add { }\r\n        remove { RemoveCount++; }\r\n    }\r\n}\r\n";
+            + "        add { }\r\n        remove { System.Threading.Interlocked.Increment(ref _removeCount); }\r\n    }\r\n}\r\n";
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(
             fixture,
             assemblyName: "NonGridDisposeFixture_" + Guid.NewGuid().ToString("N"));

@@ -10175,3 +10175,11 @@ source_spec: `spec-canonical-fingerprint-vector-coverage.md`
 severity: medium
 reason: SchemaFingerprint.TestVectorId defaults to SchemaFingerprintAlgorithm.TestVectorIdV1, and the reviewed tests do not assert the literal hfc-schema-v1 identity. A change to that shared constant could propagate without failing these vectors. This predates DW-695 and is separate from collection and EnumValues ordering.
 status: open
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-render-tree-generator-hardening.md`
+  summary: The packaged and test-helper postfix `++` regex remains a weaker second gate than the Roslyn walk.
+  evidence: PackagedAnalyzerConsumerTests and RuntimeSequenceArgumentPattern still require identifier-then-++ after `(`, so comment-trivia, prefix, and decrement leftovers miss that net; AssignLiteralsOrFail already fails those shapes and this copy predates the change.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-render-tree-generator-hardening.md`
+  summary: Non-increment runtime sequence arguments still pass the fail-closed inspection.
+  evidence: FindRuntimeSequenceArgument only flags ++/-- in argument 0, so seq, n + 1, or a method call leave ShouldUseLiteralRenderTreeSequences green; emitters use seq++ and AssignLiterals already refuses other references.

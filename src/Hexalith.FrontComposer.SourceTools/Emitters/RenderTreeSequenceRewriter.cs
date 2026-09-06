@@ -178,7 +178,7 @@ internal static class RenderTreeSequenceRewriter {
     /// </summary>
     /// <param name="source">Emitted C# source text.</param>
     /// <returns>The offending call text, or <see langword="null"/> when there is none.</returns>
-    private static string? FindRuntimeSequenceArgument(string source) {
+    internal static string? FindRuntimeSequenceArgument(string source) {
         // Cheap operator-presence gate only: it skips the parse for output that cannot hold a
         // surviving counter, and it deliberately over-matches (string, comment, and loop text)
         // because any narrower text rule reconstructs trivia and reopens the bypass this walk

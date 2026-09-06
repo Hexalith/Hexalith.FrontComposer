@@ -459,13 +459,99 @@ public sealed partial class RenderTreeSequenceRewriterTests {
     }
 
     [Fact]
+    public void AssignLiteralsOrFail_DetectsPostfixIncrementAfterBlockCommentTrivia() {
+        const string failsSafeWithComment = """
+            class C
+            {
+                void BuildRenderTree(RenderTreeBuilder builder)
+                {
+                    int seq = 0;
+                    builder.AddContent(/* sequence */ seq++, "a");
+                    Helper(builder, ref seq);
+                }
+            }
+            """;
+
+        InvalidOperationException thrown = Should.Throw<InvalidOperationException>(
+            () => RenderTreeSequenceRewriter.AssignLiteralsOrFail(failsSafeWithComment));
+
+        thrown.Message.ShouldContain("builder.AddContent(/* sequence */ seq++, \"a\")");
+        thrown.Message.ShouldContain("ASP0006");
+    }
+
+    [Fact]
+    public void AssignLiteralsOrFail_DetectsPrefixIncrementAfterLineCommentTrivia() {
+        const string failsSafeWithComment = """
+            class C
+            {
+                void BuildRenderTree(RenderTreeBuilder builder)
+                {
+                    int seq = 0;
+                    builder.AddContent(
+                        // sequence
+                        ++seq, "a");
+                    Helper(builder, ref seq);
+                }
+            }
+            """;
+
+        InvalidOperationException thrown = Should.Throw<InvalidOperationException>(
+            () => RenderTreeSequenceRewriter.AssignLiteralsOrFail(failsSafeWithComment));
+
+        thrown.Message.ShouldContain("builder.AddContent");
+        thrown.Message.ShouldContain("// sequence");
+        thrown.Message.ShouldContain("++seq, \"a\"");
+        thrown.Message.ShouldContain("ASP0006");
+    }
+
+    [Theory]
+    [InlineData("""builder.AddContent(/* sequence */ ++seq, "a")""")]
+    [InlineData("""builder.AddContent(/* sequence */ seq++, "a")""")]
+    [InlineData("""builder.AddContent(seq /* c */ ++, "a")""")]
+    public void ShouldUseLiteralRenderTreeSequences_RejectsIncrementAfterBlockCommentTrivia(string invocation) {
+        string source = "class C { void BuildRenderTree(RenderTreeBuilder builder) { "
+            + invocation
+            + "; } }";
+
+        RuntimeSequenceArgumentPattern().IsMatch(invocation).ShouldBeFalse();
+        Should.Throw<ShouldAssertException>(() => ShouldUseLiteralRenderTreeSequences(source));
+        RenderTreeSequenceRewriter.FindRuntimeSequenceArgument(source).ShouldNotBeNull();
+    }
+
+    [Theory]
+    [InlineData("seq++")]
+    [InlineData("++seq")]
+    public void ShouldUseLiteralRenderTreeSequences_RejectsIncrementAfterLineCommentTrivia(string increment) {
+        string source = """
+            class C
+            {
+                void BuildRenderTree(RenderTreeBuilder builder)
+                {
+                    builder.AddContent(
+                        // sequence
+                        INCREMENT, "a");
+                }
+            }
+            """.Replace("INCREMENT", increment, StringComparison.Ordinal);
+
+        RuntimeSequenceArgumentPattern().IsMatch(source).ShouldBeFalse();
+        Should.Throw<ShouldAssertException>(() => ShouldUseLiteralRenderTreeSequences(source));
+        RenderTreeSequenceRewriter.FindRuntimeSequenceArgument(source).ShouldNotBeNull();
+    }
+
+    [Fact]
     public void RuntimeSequenceArgumentPattern_MatchesSpacedAndTightIncrementArguments() {
-        // Pins the packaged / ShouldUseLiteralRenderTreeSequences gate independently of OrFail.
-        // Dropping \s* from the regex would leave AssignLiteralsOrFail_DetectsSpacedIncrementLeftByFailSafe
-        // green while spaced leftovers bypass the consumer scan.
+        // Pins the packaged postfix-increment regex as a second gate independently of OrFail.
+        // ShouldUseLiteralRenderTreeSequences uses Roslyn first; this pattern is not that helper's
+        // primary gate. Dropping \s* from the regex would leave
+        // AssignLiteralsOrFail_DetectsSpacedIncrementLeftByFailSafe green while spaced leftovers
+        // bypass the consumer scan.
         RuntimeSequenceArgumentPattern().IsMatch("""builder.AddContent(seq ++, "a")""").ShouldBeTrue();
         RuntimeSequenceArgumentPattern().IsMatch("""builder.AddContent(seq++, "a")""").ShouldBeTrue();
         RuntimeSequenceArgumentPattern().IsMatch("""builder.AddContent(0, "a")""").ShouldBeFalse();
+        RuntimeSequenceArgumentPattern().IsMatch("""builder.AddContent(/* sequence */ ++seq, "a")""").ShouldBeFalse();
+        RuntimeSequenceArgumentPattern().IsMatch("""builder.AddContent(/* sequence */ seq++, "a")""").ShouldBeFalse();
+        RuntimeSequenceArgumentPattern().IsMatch("""builder.AddContent(seq /* c */ ++, "a")""").ShouldBeFalse();
     }
 
     [Fact]
@@ -497,12 +583,22 @@ public sealed partial class RenderTreeSequenceRewriterTests {
     /// </summary>
     /// <param name="generatedSource">Emitted C# source.</param>
     /// <remarks>
-    /// Parsing only with the default options leaves <c>#if DEBUG</c> blocks as disabled text, so the
-    /// dev-mode regions the rewriter renumbered would never be inspected. Both configurations are
-    /// parsed because the rewriter assigns literals under <c>DEBUG</c> while a Release consumer
-    /// compiles the same document without it.
+    /// Roslyn inspection is authoritative for surviving sequence arguments; the packaged regex is a
+    /// second gate that still pins spaced postfix increments. Parsing only with the default options
+    /// leaves <c>#if DEBUG</c> blocks as disabled text, so the dev-mode regions the rewriter
+    /// renumbered would never be inspected. Both configurations are parsed because the rewriter
+    /// assigns literals under <c>DEBUG</c> while a Release consumer compiles the same document
+    /// without it.
     /// </remarks>
     internal static void ShouldUseLiteralRenderTreeSequences(string generatedSource) {
+        // Roslyn is authoritative for surviving sequence arguments: a text prefilter that stops at
+        // the first identifier after `(` misses increment expressions separated by comment trivia.
+        string? survivingCallSite = RenderTreeSequenceRewriter.FindRuntimeSequenceArgument(generatedSource);
+        survivingCallSite.ShouldBeNull(
+            "Generated source still passes a runtime render-tree sequence argument"
+            + (survivingCallSite is null ? "." : ": " + survivingCallSite + ".")
+            + " ASP0006 requires a compile-time constant that identifies a source location.");
+
         Match runtimeSequence = RuntimeSequenceArgumentPattern().Match(generatedSource);
         runtimeSequence.Success.ShouldBeFalse(
             "Generated source still passes a runtime render-tree sequence argument at "
