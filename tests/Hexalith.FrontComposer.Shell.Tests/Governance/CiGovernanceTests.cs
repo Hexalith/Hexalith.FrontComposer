@@ -969,6 +969,8 @@ public sealed class CiGovernanceTests {
         const string expectedDotnetSdk = "10.0.400";
         const string sourceResourceCompatibilitySdk = "10.0.302";
         const string expectedAspire = "13.5.3";
+        const string expectedDaprCli = "1.18.0";
+        const string expectedDaprRuntime = "1.18.2";
         string root = RepositoryRoot();
 
         using (JsonDocument globalJson = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "global.json")))) {
@@ -1020,6 +1022,9 @@ public sealed class CiGovernanceTests {
         aspireInstalls.Length.ShouldBe(1, "active workflows must contain exactly one Aspire CLI installation command");
         aspireInstalls[0].Groups["version"].Value.ShouldBe(expectedAspire);
 
+        quality.ShouldContain($"version: '{expectedDaprCli}'");
+        quality.ShouldContain($"dapr init --runtime-version {expectedDaprRuntime}");
+
         string ideWorkflow = File.ReadAllText(
             Path.Combine(root, ".github", "workflows", "ide-parity-revalidation.yml"));
         ideWorkflow.ShouldContain($"Detected .NET SDK version (e.g. {expectedDotnetSdk})");
@@ -1033,8 +1038,18 @@ public sealed class CiGovernanceTests {
             .ShouldBe($"Aspire.AppHost.Sdk/{expectedAspire}");
         appHost.Descendants("AspireUseCliBundle").Single().Value.ShouldBe("true");
 
-        XDocument catalog = XDocument.Load(
-            Path.Combine(root, "references", "Hexalith.Builds", "Props", "Directory.Packages.props"));
+        string nestedCatalogPath = Path.Combine(
+            root,
+            "references",
+            "Hexalith.Builds",
+            "Props",
+            "Directory.Packages.props");
+        string siblingCatalogPath = Path.Combine(
+            Directory.GetParent(root).ShouldNotBeNull().FullName,
+            "Hexalith.Builds",
+            "Props",
+            "Directory.Packages.props");
+        XDocument catalog = XDocument.Load(File.Exists(nestedCatalogPath) ? nestedCatalogPath : siblingCatalogPath);
         string selectedAspire = catalog
             .Descendants("PackageVersion")
             .Single(element => string.Equals(

@@ -667,7 +667,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          dapr init --runtime-version 1.18.1
+          dapr init --runtime-version 1.18.2
           dapr --version
 
       - name: Typecheck Epic 9 browser proof
