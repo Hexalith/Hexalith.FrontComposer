@@ -2420,6 +2420,7 @@ location: CommandPaletteEffects.cs
 reason: **Recent-route scoring uses raw URL not human label — long URLs dominate substring matches** [`CommandPaletteEffects.cs` recent-route scoring branch] — Affects perceived ranking quality; v2 with persisted human labels alongside URLs in the ring buffer. Reconciliation: Row: DW-0259; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: CommandPaletteEffects.cs.
 status: open
 decision: 2026-09-06 Versioned URL-label records — Introduce a versioned persisted record containing URL and label, tolerate reads from the current string array, and score and display the stored label.
+decision: 2026-09-06 Versioned URL-label records — Introduce a versioned persisted record containing URL and label, tolerate reads from the current string array, and score and display the stored label.
 
 ### DW-991: `_shortcutAliases` array has no FR-locale aliases (`aide`, `clés`, etc.)
 

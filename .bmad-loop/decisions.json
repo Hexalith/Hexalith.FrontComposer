@@ -1060,5 +1060,14 @@
     "key": "1",
     "label": "Localized live announcement",
     "resolution": ""
+  },
+  "DW-990": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Introduce a versioned persisted record containing URL and label, tolerate reads from the current string array, and score and display the stored label.",
+    "key": "1",
+    "label": "Versioned URL-label records",
+    "resolution": ""
   }
 }
