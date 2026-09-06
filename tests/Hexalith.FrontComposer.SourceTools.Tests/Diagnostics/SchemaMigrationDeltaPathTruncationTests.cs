@@ -1,3 +1,6 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
+
 using Hexalith.FrontComposer.Contracts.Schema;
 using Hexalith.FrontComposer.Schema.Diagnostics;
 
@@ -14,12 +17,12 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Diagnostics;
 /// downstream JSON/structured-log encoders emit U+FFFD non-deterministically.
 /// </summary>
 public sealed class SchemaMigrationDeltaPathTruncationTests {
-    private const int MaxPathLength = 256;
     private const string PathPrefix = "$.Fields.";
     private const string TruncationMarker = "...";
 
     // U+1F600 GRINNING FACE — an astral code point, i.e. a UTF-16 surrogate pair.
     private const string SurrogatePair = "\U0001F600";
+    private static readonly int _maxPathLength = GetMaxPathLength();
 
     [Fact]
     public void Compare_RemovedFieldWithShortName_LeavesPathUntruncated() {
@@ -28,55 +31,66 @@ public sealed class SchemaMigrationDeltaPathTruncationTests {
         string path = RemovedFieldPath(name);
 
         path.ShouldBe(PathPrefix + name);
-        path.Length.ShouldBeLessThanOrEqualTo(MaxPathLength);
+        path.Length.ShouldBeLessThanOrEqualTo(_maxPathLength);
     }
 
     [Fact]
     public void Compare_RemovedFieldAtExactBoundary_LeavesPathUntruncated() {
-        // Exactly MaxPathLength characters: TruncatePath returns early on `path.Length <= 256`.
-        string name = new('a', MaxPathLength - PathPrefix.Length);
+        // TruncatePath returns early when the path is exactly the production length bound.
+        string name = new('a', _maxPathLength - PathPrefix.Length);
 
         string path = RemovedFieldPath(name);
 
-        path.Length.ShouldBe(MaxPathLength);
+        path.ShouldBe(PathPrefix + name);
+        path.Length.ShouldBe(_maxPathLength);
         path.ShouldNotEndWith(TruncationMarker);
     }
 
-    [Fact]
-    public void Compare_RemovedFieldWithAsciiNameOverBoundary_TruncatesAtExactlyMaxPathLength() {
-        string name = new('a', 400);
+    [Theory]
+    [InlineData(SchemaDeltaKind.RemovedField)]
+    [InlineData(SchemaDeltaKind.AddedOptionalField)]
+    [InlineData(SchemaDeltaKind.AddedRequiredField)]
+    public void Compare_FieldDeltaWithAsciiNameOverBoundary_MatchesLegacySubstringOracle(SchemaDeltaKind expectedKind) {
+        string name = new('a', _maxPathLength - PathPrefix.Length + 1);
+        string untruncatedPath = PathPrefix + name;
 
-        string path = RemovedFieldPath(name);
+        string path = FieldDeltaPath(name, expectedKind);
 
-        path.ShouldBe(new string('a', MaxPathLength - PathPrefix.Length).Insert(0, PathPrefix) + TruncationMarker);
-        path.Length.ShouldBe(MaxPathLength + TruncationMarker.Length);
+        path.ShouldBe(LegacySubstringOracle(untruncatedPath));
+        path.Length.ShouldBe(_maxPathLength + TruncationMarker.Length);
     }
 
-    [Fact]
-    public void Compare_RemovedFieldWhoseCutSplitsSurrogatePair_StepsBackAndLeavesNoUnpairedSurrogate() {
-        // Place the surrogate pair so the naive cut at index 256 would land between its two code
-        // units: path[255] is the high surrogate and path[256] is the low surrogate.
-        int leading = MaxPathLength - 1 - PathPrefix.Length;
+    [Theory]
+    [InlineData(SchemaDeltaKind.RemovedField, -2)]
+    [InlineData(SchemaDeltaKind.RemovedField, -1)]
+    [InlineData(SchemaDeltaKind.RemovedField, 0)]
+    [InlineData(SchemaDeltaKind.AddedOptionalField, -2)]
+    [InlineData(SchemaDeltaKind.AddedOptionalField, -1)]
+    [InlineData(SchemaDeltaKind.AddedOptionalField, 0)]
+    [InlineData(SchemaDeltaKind.AddedRequiredField, -2)]
+    [InlineData(SchemaDeltaKind.AddedRequiredField, -1)]
+    [InlineData(SchemaDeltaKind.AddedRequiredField, 0)]
+    public void Compare_FieldDeltaWithSurrogatePairAroundCut_MatchesLegacySubstringOracle(
+        SchemaDeltaKind expectedKind,
+        int pairStartOffsetFromCut) {
+        int leading = _maxPathLength + pairStartOffsetFromCut - PathPrefix.Length;
         string name = new string('a', leading) + SurrogatePair + new string('b', 64);
+        string untruncatedPath = PathPrefix + name;
 
-        string path = RemovedFieldPath(name);
+        string path = FieldDeltaPath(name, expectedKind);
 
-        // The step-back drops the whole pair rather than emitting a lone high surrogate.
-        path.ShouldBe(PathPrefix + new string('a', leading) + TruncationMarker);
-        path.Length.ShouldBe(MaxPathLength - 1 + TruncationMarker.Length);
+        path.ShouldBe(LegacySubstringOracle(untruncatedPath));
+        if (pairStartOffsetFromCut == -2) {
+            path.ShouldContain(SurrogatePair);
+            path.Length.ShouldBe(_maxPathLength + TruncationMarker.Length);
+        }
+        else {
+            path.ShouldNotContain(SurrogatePair);
+            int expectedRetainedLength = pairStartOffsetFromCut == -1 ? _maxPathLength - 1 : _maxPathLength;
+            path.Length.ShouldBe(expectedRetainedLength + TruncationMarker.Length);
+        }
+
         HasUnpairedSurrogate(path).ShouldBeFalse("an unpaired surrogate would encode non-deterministically downstream.");
-    }
-
-    [Fact]
-    public void Compare_RemovedFieldWithSurrogatePairFullyInsideBudget_KeepsThePairIntact() {
-        // The pair sits well before the cut, so it must survive verbatim.
-        string name = new string('a', 32) + SurrogatePair + new string('b', 400);
-
-        string path = RemovedFieldPath(name);
-
-        path.ShouldContain(SurrogatePair);
-        path.Length.ShouldBe(MaxPathLength + TruncationMarker.Length);
-        HasUnpairedSurrogate(path).ShouldBeFalse();
     }
 
     private static bool HasUnpairedSurrogate(string value) {
@@ -104,21 +118,62 @@ public sealed class SchemaMigrationDeltaPathTruncationTests {
     /// delta pipeline rather than a private helper: a field present in the baseline and absent from
     /// the current snapshot emits a RemovedField delta whose path is <c>$.Fields.{name}</c>.
     /// </summary>
-    private static string RemovedFieldPath(string fieldName) {
-        SchemaBaselineSnapshot baseline = Snapshot([
-            new SchemaFieldContract("Anchor", "String", "string", true, false),
-            new SchemaFieldContract(fieldName, "String", "string", true, false),
-        ]);
-        SchemaBaselineSnapshot current = Snapshot([
-            new SchemaFieldContract("Anchor", "String", "string", true, false),
-        ]);
+    private static string RemovedFieldPath(string fieldName)
+        => FieldDeltaPath(fieldName, SchemaDeltaKind.RemovedField);
+
+    private static string FieldDeltaPath(string fieldName, SchemaDeltaKind expectedKind) {
+        var anchor = new SchemaFieldContract("Anchor", "String", "string", true, false);
+        var changedField = new SchemaFieldContract(
+            fieldName,
+            "String",
+            "string",
+            expectedKind != SchemaDeltaKind.AddedOptionalField,
+            expectedKind == SchemaDeltaKind.AddedOptionalField);
+
+        SchemaBaselineSnapshot baseline;
+        SchemaBaselineSnapshot current;
+        switch (expectedKind) {
+            case SchemaDeltaKind.RemovedField:
+                baseline = Snapshot([anchor, changedField]);
+                current = Snapshot([anchor]);
+                break;
+            case SchemaDeltaKind.AddedOptionalField:
+            case SchemaDeltaKind.AddedRequiredField:
+                baseline = Snapshot([anchor]);
+                current = Snapshot([anchor, changedField]);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(expectedKind), expectedKind, "Unsupported field delta kind.");
+        }
 
         SchemaMigrationDeltaResult result = SchemaMigrationDeltaAnalyzer.Compare(baseline, current);
 
-        SchemaDelta removed = result.Deltas.ShouldHaveSingleItem();
-        removed.Kind.ShouldBe(SchemaDeltaKind.RemovedField);
-        return removed.Path;
+        SchemaDelta delta = result.Deltas.ShouldHaveSingleItem();
+        delta.Kind.ShouldBe(expectedKind);
+        return delta.Path;
     }
+
+    [SuppressMessage("Performance", "CA1845:Use span-based 'string.Concat'", Justification = "The legacy Substring implementation is the independent regression oracle.")]
+    [SuppressMessage("Style", "IDE0057:Use range operator", Justification = "The legacy Substring implementation is the independent regression oracle.")]
+    private static string LegacySubstringOracle(string path) {
+        if (path.Length <= _maxPathLength) {
+            return path;
+        }
+
+        int cut = _maxPathLength;
+        if (char.IsHighSurrogate(path[cut - 1])) {
+            cut--;
+        }
+
+        return path.Substring(0, cut) + TruncationMarker;
+    }
+
+    private static int GetMaxPathLength()
+        => typeof(SchemaMigrationDeltaAnalyzer)
+            .GetField("_maxPathLength", BindingFlags.NonPublic | BindingFlags.Static)?
+            .GetRawConstantValue() is int maxPathLength
+                ? maxPathLength
+                : throw new InvalidOperationException("SchemaMigrationDeltaAnalyzer._maxPathLength is unavailable.");
 
     private static SchemaBaselineSnapshot Snapshot(IReadOnlyList<SchemaFieldContract> fields) {
         var document = new SchemaContractDocument(

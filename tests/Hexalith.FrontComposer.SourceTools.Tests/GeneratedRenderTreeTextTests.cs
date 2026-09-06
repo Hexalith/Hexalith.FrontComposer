@@ -28,4 +28,28 @@ public sealed class GeneratedRenderTreeTextTests {
     [InlineData("builder.AddContent(/* sequence */ ++seq, \"value\");")]
     public void MaskSequenceArguments_DoesNotMaskRuntimeCounters(string source)
         => GeneratedRenderTreeText.MaskSequenceArguments(source).ShouldBe(source);
+
+    [Fact]
+    public void MaskSequenceArguments_MasksLiteralCallsWithoutHidingInterveningRuntimeCounter() {
+        const string source = """
+            int unrelatedValue = 42;
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(12, "class", "value");
+            builder.AddContent(seq++, "runtime");
+            builder.AddMarkupContent(345, "<span />");
+            builder.AddContent(678, unrelatedValue);
+            builder.CloseElement();
+            """;
+        const string expected = """
+            int unrelatedValue = 42;
+            builder.OpenElement(#, "div");
+            builder.AddAttribute(#, "class", "value");
+            builder.AddContent(seq++, "runtime");
+            builder.AddMarkupContent(#, "<span />");
+            builder.AddContent(#, unrelatedValue);
+            builder.CloseElement();
+            """;
+
+        GeneratedRenderTreeText.MaskSequenceArguments(source).ShouldBe(expected);
+    }
 }

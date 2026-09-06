@@ -242,21 +242,27 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 11-21-recommended-analyzer-product-and-generator-burndown.md chunk 4a (2026-08-08)"), 2026-08-27
 location: SchemaMigrationDeltaPathTruncationTests
 reason: `SchemaMigrationDeltaPathTruncationTests` drives only `RemovedField` through `TruncatePath`, hard-codes `MaxPathLength = 256`, and never compares against a Substring-based oracle or additional surrogate cut shapes.
-status: open
+status: done 2026-09-06
+resolution: resolved by sweep bundle dw-source-generator-regression-coverage
+resolution-undo: f1bc87dff38c0e8658a9a139676fcf5e81e444b417b6e298ec46b26c1b69e0fe 2026-09-06 7374617475733a206f70656e
 
 ### DW-697: `GeneratedRenderTreeText.MaskSequenceArguments` has no dedicated unit tests (including the claimed `seq++` leave-unmasked behavior).
 
 origin: migrated from legacy ledger ("Deferred from: code review of 11-21-recommended-analyzer-product-and-generator-burndown.md chunk 4a (2026-08-08)"), 2026-08-27
 location: GeneratedRenderTreeText.MaskSequenceArguments
 reason: `GeneratedRenderTreeText.MaskSequenceArguments` has no dedicated unit tests (including the claimed `seq++` leave-unmasked behavior).
-status: open
+status: done 2026-09-06
+resolution: resolved by sweep bundle dw-source-generator-regression-coverage
+resolution-undo: f1bc87dff38c0e8658a9a139676fcf5e81e444b417b6e298ec46b26c1b69e0fe 2026-09-06 7374617475733a206f70656e
 
 ### DW-698: `RazorEmitterBadgeColumnTests` / `RazorEmitterExpandInRowTests` never call `ShouldUseLiteralRenderTreeSequences`; literal sequencing is only indirectly pinned via snapshots / negative `int seq = 800` checks.
 
 origin: migrated from legacy ledger ("Deferred from: code review of 11-21-recommended-analyzer-product-and-generator-burndown.md chunk 4a (2026-08-08)"), 2026-08-27
 location: RazorEmitterBadgeColumnTests
 reason: `RazorEmitterBadgeColumnTests` / `RazorEmitterExpandInRowTests` never call `ShouldUseLiteralRenderTreeSequences`; literal sequencing is only indirectly pinned via snapshots / negative `int seq = 800` checks.
-status: open
+status: done 2026-09-06
+resolution: resolved by sweep bundle dw-source-generator-regression-coverage
+resolution-undo: f1bc87dff38c0e8658a9a139676fcf5e81e444b417b6e298ec46b26c1b69e0fe 2026-09-06 7374617475733a206f70656e
 
 ### DW-699: `PackagedAnalyzerConsumerTests` builds the temp consumer Release-only; rewriter unit tests already stress DEBUG vs Release parse safety, but the packaged Recommended gate does not.
 
@@ -10148,4 +10154,12 @@ location: docs/diagnostics/HFC1016.md
 source_spec: `spec-source-generator-boundary-hardening.md`
 severity: low
 reason: CommandParser emits "has no public setter", "is declared with an 'init' accessor", and "has a non-public setter", but the corrected example documents only the first, and the page does not describe where the diagnostic points for a member that comes from metadata rather than source. The doc edit belongs to the independently committed prefill refactor.
+status: open
+
+### DW-1953: The direct literal-sequence test gate recognizes only identifier postfix-increment arguments and can miss other runtime expressions.
+origin: spec-deferred 44c1ff2eca18
+location: tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RenderTreeSequenceRewriterTests.cs:505
+source_spec: `spec-source-generator-regression-coverage.md`
+severity: medium
+reason: RenderTreeSequenceRewriterTests.RuntimeSequenceArgumentPattern matches an identifier followed by ++. Bare identifiers, prefix increments, decrements, arithmetic, and method calls can therefore pass this test-only gate. This limitation predates the bundle; production emission still runs AssignLiteralsOrFail, and every current badge/expand output passed the gate and Debug/Release parsing.
 status: open
