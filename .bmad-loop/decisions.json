@@ -1051,5 +1051,14 @@
     "key": "1",
     "label": "Implement change",
     "resolution": ""
+  },
+  "DW-988": {
+    "answered_at": "2026-09-06",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Add a palette feedback action and localized resources, render through the polite aria-live region, and test English and French activation without closing or navigation.",
+    "key": "1",
+    "label": "Localized live announcement",
+    "resolution": ""
   }
 }
