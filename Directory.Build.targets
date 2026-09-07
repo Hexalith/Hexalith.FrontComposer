@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <EnableFrontComposerPackageValidation Condition="'$(EnableFrontComposerPackageValidation)' == ''">false</EnableFrontComposerPackageValidation>
-    <FrontComposerPackageValidationBaselineVersion Condition="'$(FrontComposerPackageValidationBaselineVersion)' == ''">4.1.1</FrontComposerPackageValidationBaselineVersion>
+    <FrontComposerPackageValidationBaselineVersion Condition="'$(FrontComposerPackageValidationBaselineVersion)' == ''">4.3.0</FrontComposerPackageValidationBaselineVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(IsPackable)' == 'true' AND '$(EnableFrontComposerPackageValidation)' == 'true'">

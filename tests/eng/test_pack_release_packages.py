@@ -3,9 +3,12 @@
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import json
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -23,13 +26,18 @@ from release_compatibility import (  # noqa: E402
     PUBLISHED_BASELINE_VERSION,
     ReleaseCompatibilityError,
     validate_release_policy,
+    xml_values,
 )
 
 
 VALIDATION_PROPERTY = "-p:EnableFrontComposerPackageValidation=true"
-BASELINE_PROPERTY = "-p:FrontComposerPackageValidationBaselineVersion=4.1.1"
+BASELINE_PROPERTY = f"-p:FrontComposerPackageValidationBaselineVersion={PUBLISHED_BASELINE_VERSION}"
 SKIP_BASELINE_PROPERTY = "-p:FrontComposerPackageValidationSkipBaseline=false"
 VERSION = "4.3.0-review.compat"
+# The fixture ledger plans v4.3, so its checked-in baseline must sit on the preceding v4.2
+# line. The real repository plans a different line; its baseline is asserted separately.
+FIXTURE_BASELINE = "4.2.0"
+PRODUCTION_VERSION = "4.4.0-review.compat"
 
 
 class PackReleasePackagesTests(unittest.TestCase):
@@ -41,22 +49,48 @@ class PackReleasePackagesTests(unittest.TestCase):
         return subprocess.run(command, cwd=ROOT, check=False, capture_output=True, text=True)
 
     def test_production_plan_rechecks_policy_and_validates_every_live_pack(self) -> None:
-        result = self.run_plan(VERSION, release_policy=True)
+        # Driven against an inventory-shaped fixture repository rather than the working tree: the
+        # pack-time rule ties the baseline to the candidate's own release line, so a checked-in
+        # ledger that has not yet advanced to the next line would make this assertion transient.
+        module = self.load_packer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            self.write_repository_fixture(
+                root,
+                current_release="v4.4",
+                baseline=PUBLISHED_BASELINE_VERSION,
+            )
+            solution = root / "Hexalith.FrontComposer.slnx"
+            solution.write_text("<Solution />", encoding="utf-8")
+            argv = [
+                str(SCRIPT),
+                str(root / "nupkgs"),
+                PRODUCTION_VERSION,
+                "--release-policy",
+                "--plan",
+            ]
+            stdout = io.StringIO()
+            with mock.patch.object(module, "REPO_ROOT", root), \
+                    mock.patch.object(module, "INVENTORY_PATH", root / "eng" / "release-package-inventory.json"), \
+                    mock.patch.object(module, "SOLUTION_PATH", solution), \
+                    mock.patch.object(sys, "argv", argv), \
+                    contextlib.redirect_stdout(stdout):
+                self.assertEqual(0, module.main())
+            payload = json.loads(stdout.getvalue())
+            solution_path = str(solution)
 
-        self.assertEqual(0, result.returncode, result.stderr)
-        payload = json.loads(result.stdout)
         self.assertTrue(payload["releasePolicy"])
-        self.assertEqual("v4.3", payload["releaseLine"])
+        self.assertEqual("v4.4", payload["releaseLine"])
         restore = payload["restoreCommand"]
         self.assertEqual(["dotnet", "restore"], restore[:2])
-        self.assertEqual(str(ROOT / "Hexalith.FrontComposer.slnx"), restore[2])
+        self.assertEqual(solution_path, restore[2])
         self.assertIn("-p:Configuration=Release", restore)
         # Pin the baseline-resolving properties on the restore itself. Asserting them only
         # through a positional slice goes vacuously green if release_properties(version) is
         # ever dropped from restore_command, which is the cold-cache regression this guards.
-        restore_properties = release_compatibility.release_properties(VERSION)
-        self.assertIn(f"-p:Version={VERSION}", restore)
-        self.assertIn(f"-p:PackageVersion={VERSION}", restore)
+        restore_properties = release_compatibility.release_properties(PRODUCTION_VERSION)
+        self.assertIn(f"-p:Version={PRODUCTION_VERSION}", restore)
+        self.assertIn(f"-p:PackageVersion={PRODUCTION_VERSION}", restore)
         self.assertIn("-p:ContinuousIntegrationBuild=true", restore)
         self.assertIn(VALIDATION_PROPERTY, restore)
         self.assertIn(BASELINE_PROPERTY, restore)
@@ -65,8 +99,8 @@ class PackReleasePackagesTests(unittest.TestCase):
         for command in payload["commands"]:
             self.assertEqual(["dotnet", "pack"], command[:2])
             self.assertIn("--no-build", command)
-            self.assertIn(f"-p:Version={VERSION}", command)
-            self.assertIn(f"-p:PackageVersion={VERSION}", command)
+            self.assertIn(f"-p:Version={PRODUCTION_VERSION}", command)
+            self.assertIn(f"-p:PackageVersion={PRODUCTION_VERSION}", command)
             self.assertIn("-p:ContinuousIntegrationBuild=true", command)
             self.assertIn(VALIDATION_PROPERTY, command)
             self.assertIn(BASELINE_PROPERTY, command)
@@ -112,9 +146,46 @@ class PackReleasePackagesTests(unittest.TestCase):
                 with self.assertRaisesRegex(ReleaseCompatibilityError, "strict SemVer"):
                     validate_release_policy(root, version, **paths)
 
-    def test_checked_in_policy_accepts_planned_release_and_published_baseline(self) -> None:
-        self.assertEqual("v4.3", validate_release_policy(ROOT, VERSION))
-        self.assertEqual("4.1.1", PUBLISHED_BASELINE_VERSION)
+    def test_checked_in_policy_keeps_the_baseline_current_with_the_planned_release(self) -> None:
+        # The checked-in baseline is no longer compared against a literal restated by this test.
+        # The static repository rule fails closed as soon as the ledger's planned release line
+        # moves past it, so this assertion cannot go green on a stale baseline.
+        self.assertIsNone(
+            validate_release_policy(ROOT, "0.0.0-ci-test", match_candidate_release=False)
+        )
+        for path in (
+            ROOT / "Directory.Build.targets",
+            ROOT / "src" / "Hexalith.FrontComposer.Contracts.UI"
+            / "Hexalith.FrontComposer.Contracts.UI.csproj",
+        ):
+            with self.subTest(path=path.name):
+                self.assertEqual(
+                    [PUBLISHED_BASELINE_VERSION],
+                    xml_values(path, "FrontComposerPackageValidationBaselineVersion"),
+                )
+
+    def test_checked_in_baseline_fails_closed_once_the_planned_release_advances(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            ledger = pathlib.Path(directory) / "compatibility-suppressions.json"
+            ledger.write_text(
+                json.dumps({
+                    "schemaVersion": "2.0",
+                    "currentRelease": "v9.9",
+                    "suppressions": [],
+                }),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                ReleaseCompatibilityError,
+                rf"release line for currentRelease v9\.9; "
+                rf"found '{re.escape(PUBLISHED_BASELINE_VERSION)}'",
+            ):
+                validate_release_policy(
+                    ROOT,
+                    "0.0.0-ci-test",
+                    suppressions_path=ledger,
+                    match_candidate_release=False,
+                )
 
     def test_policy_rejects_wrong_current_release(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -186,15 +257,142 @@ class PackReleasePackagesTests(unittest.TestCase):
             with self.assertRaisesRegex(ReleaseCompatibilityError, "schemaVersion must be 2.0"):
                 validate_release_policy(root, VERSION, **paths)
 
-    def test_policy_rejects_unadvanced_baseline(self) -> None:
+    def test_policy_requires_the_release_line_before_the_candidate(self) -> None:
+        # A lagging baseline (4.0.0/4.1.1) and one that runs ahead of the published surface
+        # (4.3.0, the candidate's own line) are both rejected, and the diagnostic names the found
+        # value and the expected line.
+        for baseline in ("4.0.0", "4.1.1", "4.3.0"):
+            with self.subTest(baseline=baseline), tempfile.TemporaryDirectory() as directory:
+                root = pathlib.Path(directory)
+                paths = self.write_policy_fixture(root, self.ledger(), baseline=baseline)
+                with self.assertRaisesRegex(
+                    ReleaseCompatibilityError,
+                    r"immediately preceding --version v4\.3, expected v4\.2; "
+                    rf"found '{re.escape(baseline)}'",
+                ):
+                    validate_release_policy(root, VERSION, **paths)
+
+    def test_policy_accepts_any_patch_on_the_preceding_release_line(self) -> None:
+        for baseline in ("4.2.0", "4.2.7"):
+            with self.subTest(baseline=baseline), tempfile.TemporaryDirectory() as directory:
+                root = pathlib.Path(directory)
+                paths = self.write_policy_fixture(root, self.ledger(), baseline=baseline)
+                self.assertEqual("v4.3", validate_release_policy(root, VERSION, **paths))
+
+    def test_static_policy_rejects_a_baseline_that_lags_current_release(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
-            paths = self.write_policy_fixture(root, self.ledger(), baseline="4.0.0")
+            paths = self.write_policy_fixture(root, self.ledger(), baseline="4.1.1")
             with self.assertRaisesRegex(
                 ReleaseCompatibilityError,
-                r"baseline must be the verified published 4\.1\.1; found '4\.0\.0'",
+                r"must be on the v4\.2 or v4\.3 release line for currentRelease v4\.3; "
+                r"found '4\.1\.1'",
+            ):
+                validate_release_policy(
+                    root,
+                    "0.0.0-ci-test",
+                    match_candidate_release=False,
+                    **paths,
+                )
+
+    def test_static_policy_accepts_the_planned_or_preceding_release_line(self) -> None:
+        for baseline in ("4.2.0", "4.3.9"):
+            with self.subTest(baseline=baseline), tempfile.TemporaryDirectory() as directory:
+                root = pathlib.Path(directory)
+                paths = self.write_policy_fixture(root, self.ledger(), baseline=baseline)
+                self.assertIsNone(validate_release_policy(
+                    root,
+                    "0.0.0-ci-test",
+                    match_candidate_release=False,
+                    **paths,
+                ))
+
+    def test_policy_rejects_baseline_sites_that_disagree(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            paths = self.write_policy_fixture(root, self.ledger(), override_baseline="4.2.7")
+            with self.assertRaisesRegex(
+                ReleaseCompatibilityError,
+                "package-validation baseline sites disagree",
             ):
                 validate_release_policy(root, VERSION, **paths)
+
+    def test_policy_rejects_a_pack_property_that_drifts_from_the_checked_in_baseline(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            paths = self.write_policy_fixture(root, self.ledger())
+            paths["published_baseline"] = "4.2.9"
+            with self.assertRaisesRegex(
+                ReleaseCompatibilityError,
+                r"'4\.2\.0' must equal the published baseline '4\.2\.9'",
+            ):
+                validate_release_policy(root, VERSION, **paths)
+
+    def test_policy_enumerates_suppression_sites_from_the_release_inventory(self) -> None:
+        # Closes the 3-of-8 blind spot: an unreviewed suppression file under any packable project
+        # is compared against the ledger, not ignored because it is outside a hardcoded tuple.
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            self.write_repository_fixture(
+                root,
+                current_release="v4.4",
+                baseline=PUBLISHED_BASELINE_VERSION,
+            )
+            (root / "src" / "Package3" / "CompatibilitySuppressions.xml").write_text(
+                """<?xml version="1.0" encoding="utf-8"?>
+<Suppressions>
+  <Suppression>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:Acme.UnreviewedRemoval</Target>
+    <Left>lib/net10.0/Package.3.dll</Left>
+    <Right>lib/net10.0/Package.3.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+</Suppressions>
+""",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                ReleaseCompatibilityError,
+                r"stale XML rows=.*Acme\.UnreviewedRemoval",
+            ):
+                validate_release_policy(root, PRODUCTION_VERSION)
+
+    def test_policy_rejects_suppression_files_outside_the_packable_inventory(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            self.write_repository_fixture(
+                root,
+                current_release="v4.4",
+                baseline=PUBLISHED_BASELINE_VERSION,
+            )
+            stray = root / "src" / "NotPackable" / "CompatibilitySuppressions.xml"
+            stray.parent.mkdir(parents=True, exist_ok=True)
+            stray.write_text("<Suppressions />\n", encoding="utf-8")
+            with self.assertRaisesRegex(
+                ReleaseCompatibilityError,
+                "outside the packable release inventory",
+            ):
+                validate_release_policy(root, PRODUCTION_VERSION)
+
+    def test_policy_enumerates_baseline_overrides_from_the_release_inventory(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            self.write_repository_fixture(
+                root,
+                current_release="v4.4",
+                baseline=PUBLISHED_BASELINE_VERSION,
+            )
+            (root / "src" / "Package5" / "Package5.csproj").write_text(
+                "<Project><PropertyGroup><FrontComposerPackageValidationBaselineVersion>4.1.1"
+                "</FrontComposerPackageValidationBaselineVersion></PropertyGroup></Project>",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                ReleaseCompatibilityError,
+                "package-validation baseline sites disagree",
+            ):
+                validate_release_policy(root, PRODUCTION_VERSION)
 
     def test_policy_rejects_stale_mcp_xml_after_ledger_cleanup(self) -> None:
         stale = self.suppression("v4.3", "v4.4")
@@ -537,19 +735,23 @@ class PackReleasePackagesTests(unittest.TestCase):
         root: pathlib.Path,
         payload: dict[str, object],
         *,
-        baseline: str = PUBLISHED_BASELINE_VERSION,
+        baseline: str = FIXTURE_BASELINE,
+        override_baseline: str | None = None,
         mcp_xml: str = "<Suppressions />\n",
     ) -> dict[str, object]:
         ledger = root / "compatibility-suppressions.json"
         ledger.write_text(json.dumps(payload), encoding="utf-8")
         shared = root / "Directory.Build.targets"
         contracts_ui = root / "Contracts.UI.csproj"
-        baseline_xml = (
-            "<Project><PropertyGroup><FrontComposerPackageValidationBaselineVersion>"
-            f"{baseline}</FrontComposerPackageValidationBaselineVersion></PropertyGroup></Project>"
-        )
-        shared.write_text(baseline_xml, encoding="utf-8")
-        contracts_ui.write_text(baseline_xml, encoding="utf-8")
+
+        def baseline_xml(value: str) -> str:
+            return (
+                "<Project><PropertyGroup><FrontComposerPackageValidationBaselineVersion>"
+                f"{value}</FrontComposerPackageValidationBaselineVersion></PropertyGroup></Project>"
+            )
+
+        shared.write_text(baseline_xml(baseline), encoding="utf-8")
+        contracts_ui.write_text(baseline_xml(override_baseline or baseline), encoding="utf-8")
         suppression_files: dict[str, pathlib.Path] = {}
         for package in (
             "Hexalith.FrontComposer.Contracts",
@@ -564,9 +766,41 @@ class PackReleasePackagesTests(unittest.TestCase):
             suppression_files[package] = path
         return {
             "suppressions_path": ledger,
-            "baseline_paths": (shared, contracts_ui),
+            "baseline_paths": (shared,),
+            "baseline_override_paths": (contracts_ui,),
             "suppression_files": suppression_files,
+            # The fixture ledger plans a different release line than the checked-in one, so the
+            # pack property the live packer applies is pinned to the fixture's own baseline.
+            "published_baseline": baseline,
         }
+
+    @staticmethod
+    def write_repository_fixture(
+        root: pathlib.Path,
+        *,
+        current_release: str,
+        baseline: str,
+    ) -> None:
+        """Write an inventory-shaped repository the policy can enumerate on its own."""
+        rows = PackReleasePackagesTests.inventory_rows(root)
+        inventory = root / "eng" / "release-package-inventory.json"
+        inventory.parent.mkdir(parents=True, exist_ok=True)
+        inventory.write_text(json.dumps({"packages": rows}), encoding="utf-8")
+        (root / "Directory.Build.targets").write_text(
+            "<Project><PropertyGroup><FrontComposerPackageValidationBaselineVersion>"
+            f"{baseline}</FrontComposerPackageValidationBaselineVersion></PropertyGroup></Project>",
+            encoding="utf-8",
+        )
+        ledger = root / "docs" / "diagnostics" / "compatibility-suppressions.json"
+        ledger.parent.mkdir(parents=True, exist_ok=True)
+        ledger.write_text(
+            json.dumps({
+                "schemaVersion": "2.0",
+                "currentRelease": current_release,
+                "suppressions": [],
+            }),
+            encoding="utf-8",
+        )
 
 
 if __name__ == "__main__":

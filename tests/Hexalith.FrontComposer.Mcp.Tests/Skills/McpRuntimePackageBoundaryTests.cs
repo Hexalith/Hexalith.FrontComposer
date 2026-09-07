@@ -13,8 +13,11 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Skills;
 
 [Trait("Category", "Contract")]
 public sealed class McpRuntimePackageBoundaryTests {
-    private const string CandidateVersion = "4.2.0-review.compat";
-    private const string CandidateBinaryVersion = "4.2.0.0";
+    private const string CandidateVersion = "4.4.0-review.compat";
+    private const string CandidateBinaryVersion = "4.4.0.0";
+    // The published package-validation baseline the release policy applies. It advances with
+    // `Directory.Build.targets`; a candidate below it fails ApiCompat's CP0003 identity rule.
+    private const string PublishedBaselineVersion = "4.3.0";
     private const string McpAssemblyFileName = "Hexalith.FrontComposer.Mcp.dll";
     private const string MissingBaselineVersion = "9999.0.0-frontcomposer-missing-baseline-6f8d3be41a0e4d46";
     private static readonly TimeSpan PackTimeout = TimeSpan.FromMinutes(2);
@@ -56,9 +59,9 @@ public sealed class McpRuntimePackageBoundaryTests {
         string restoredBaselinePackagePath = GetPackagePath(
             restoredPackagesDirectory,
             "Hexalith.FrontComposer.Mcp",
-            "4.1.1");
+            PublishedBaselineVersion);
         File.Exists(restoredBaselinePackagePath).ShouldBeTrue(
-            "the repository restore must cache the MCP 4.1.1 package-validation baseline before the offline test lane runs.");
+            $"the repository restore must cache the MCP {PublishedBaselineVersion} package-validation baseline before the offline test lane runs.");
         string outputDirectory = Path.Combine(Path.GetTempPath(), $"frontcomposer-mcp-package-{Guid.NewGuid():N}");
         _ = Directory.CreateDirectory(outputDirectory);
         try {
@@ -68,7 +71,7 @@ public sealed class McpRuntimePackageBoundaryTests {
                 "artifacts-cold").ConfigureAwait(true);
             result.ExitCode.ShouldBe(
                 0,
-                $"MCP package validation against the configured 4.1.1 baseline must pass.\n{result.Output}");
+                $"MCP package validation against the configured {PublishedBaselineVersion} baseline must pass.\n{result.Output}");
             ProcessResult warmCacheResult = await RunPackAsync(
                 repositoryRoot,
                 outputDirectory,
@@ -198,7 +201,7 @@ public sealed class McpRuntimePackageBoundaryTests {
         startInfo.ArgumentList.Add("--no-build");
         startInfo.ArgumentList.Add("-o");
         startInfo.ArgumentList.Add(outputDirectory);
-        AddReleaseProperties(startInfo, packageValidationBaselineVersion ?? "4.1.1");
+        AddReleaseProperties(startInfo, packageValidationBaselineVersion ?? PublishedBaselineVersion);
         startInfo.ArgumentList.Add("-p:NuGetAudit=false");
         startInfo.ArgumentList.Add(
             $"-p:IntermediateOutputPath={validationIntermediatePath}{Path.DirectorySeparatorChar}");
@@ -218,7 +221,7 @@ public sealed class McpRuntimePackageBoundaryTests {
         startInfo.ArgumentList.Add("Release");
         startInfo.ArgumentList.Add("--no-restore");
         startInfo.ArgumentList.Add("-m:1");
-        AddReleaseProperties(startInfo, "4.1.1");
+        AddReleaseProperties(startInfo, PublishedBaselineVersion);
         startInfo.ArgumentList.Add("-p:NuGetAudit=false");
         return RunProcessAsync(startInfo);
     }

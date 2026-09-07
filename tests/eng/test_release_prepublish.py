@@ -109,7 +109,13 @@ class ReleasePrepublishTests(unittest.TestCase):
             self.assertIn(f"-p:PackageVersion={version}", command)
             self.assertIn("-p:ContinuousIntegrationBuild=true", command)
             self.assertIn("-p:EnableFrontComposerPackageValidation=true", command)
-            self.assertIn("-p:FrontComposerPackageValidationBaselineVersion=4.1.1", command)
+            # Bound to the policy constant the release-compatibility rule validates against
+            # the planned release line, not to a literal this test would have to restate.
+            self.assertIn(
+                "-p:FrontComposerPackageValidationBaselineVersion="
+                f"{prepublish.PUBLISHED_BASELINE_VERSION}",
+                command,
+            )
             self.assertIn("-p:FrontComposerPackageValidationSkipBaseline=false", command)
 
     def test_prepare_rejects_stale_policy_before_build_or_package_cleanup(self) -> None:

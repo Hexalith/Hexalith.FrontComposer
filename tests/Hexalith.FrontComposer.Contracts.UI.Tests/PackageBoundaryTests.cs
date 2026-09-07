@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
@@ -50,21 +51,32 @@ public sealed class PackageBoundaryTests {
     }
 
     [Fact]
-    public void PackageValidation_Published411UsesLatestReleasedBaseline() {
+    public void PackageValidation_PinsTheSharedPublishedBaseline() {
+        // The Contracts.UI override must never drift from the shared default. The value itself is
+        // validated against the planned release line by `eng/release_compatibility.py`, so this
+        // test binds the two checked-in sites together instead of restating a literal twice.
         string root = FindRepoRoot();
         string project = File.ReadAllText(Path.Combine(root, "src", "Hexalith.FrontComposer.Contracts.UI", "Hexalith.FrontComposer.Contracts.UI.csproj"));
         string targets = File.ReadAllText(Path.Combine(root, "Directory.Build.targets"));
 
-        project.ShouldContain("<FrontComposerPackageValidationBaselineVersion>4.1.1</FrontComposerPackageValidationBaselineVersion>");
+        Match sharedBaseline = Regex.Match(
+            targets,
+            @"<FrontComposerPackageValidationBaselineVersion Condition=""'\$\(FrontComposerPackageValidationBaselineVersion\)' == ''"">(?<version>[^<]+)</FrontComposerPackageValidationBaselineVersion>");
+        sharedBaseline.Success.ShouldBeTrue("Directory.Build.targets must default the package-validation baseline.");
+        string baseline = sharedBaseline.Groups["version"].Value;
+        baseline.ShouldBe("4.3.0");
+
+        project.ShouldContain($"<FrontComposerPackageValidationBaselineVersion>{baseline}</FrontComposerPackageValidationBaselineVersion>");
         project.ShouldNotContain("<FrontComposerPackageValidationBaselineVersion>2.0.4</FrontComposerPackageValidationBaselineVersion>");
         project.ShouldNotContain("<FrontComposerPackageValidationBaselineVersion>2.0.0</FrontComposerPackageValidationBaselineVersion>");
+        project.ShouldNotContain("<FrontComposerPackageValidationBaselineVersion>4.1.1</FrontComposerPackageValidationBaselineVersion>");
         project.ShouldNotContain("<FrontComposerPackageValidationSkipBaseline>true</FrontComposerPackageValidationSkipBaseline>");
         project.ShouldNotContain("<EnablePackageValidation>false</EnablePackageValidation>");
-        targets.ShouldContain("<FrontComposerPackageValidationBaselineVersion Condition=\"'$(FrontComposerPackageValidationBaselineVersion)' == ''\">4.1.1</FrontComposerPackageValidationBaselineVersion>");
         targets.ShouldContain("Condition=\"'$(FrontComposerPackageValidationSkipBaseline)' != 'true'\"");
         targets.ShouldNotContain(">0.1.0</FrontComposerPackageValidationBaselineVersion>");
         targets.ShouldNotContain(">1.12.0</FrontComposerPackageValidationBaselineVersion>");
         targets.ShouldNotContain(">2.0.4</FrontComposerPackageValidationBaselineVersion>");
+        targets.ShouldNotContain(">4.1.1</FrontComposerPackageValidationBaselineVersion>");
     }
 
     [Fact]

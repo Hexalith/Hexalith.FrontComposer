@@ -1623,13 +1623,18 @@ public sealed class CiGovernanceTests {
         releasePrepublish.ShouldContain("scripts/pack-release-packages.py");
         releasePrepublish.ShouldContain("\"--release-policy\"");
         releasePrepublish.ShouldContain("eng/verify-candidate-packages.cs");
-        compatibilityPolicy.ShouldContain("PUBLISHED_BASELINE_VERSION = \"4.1.1\"");
+
+        // Bind the published baseline to the packer's own --plan output rather than to a Python
+        // source substring: the literal alone went green on a constant compared with itself.
+        string publishedBaseline = PublishedPackageValidationBaseline(root);
+        publishedBaseline.ShouldBe("4.3.0");
         File.Exists(Path.Combine(root, "eng/pack_release_packages.py")).ShouldBeFalse(
             "the retired build-plus-pack lifecycle entrypoint must not coexist with the live packer.");
         qualityWorkflow.ShouldContain("python3 -m unittest tests/eng/test_pack_release_packages.py tests/eng/test_release_prepublish.py");
         qualityWorkflow.ShouldContain("dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release -p:EnableFrontComposerPackageValidation=true");
         qualityWorkflow.ShouldMatch(@"dotnet pack[^\r\n]+-p:EnableFrontComposerPackageValidation=true");
-        qualityWorkflow.ShouldMatch(@"dotnet pack[^\r\n]+-p:FrontComposerPackageValidationBaselineVersion=4.1.1");
+        qualityWorkflow.ShouldMatch(
+            $@"dotnet pack[^\r\n]+-p:FrontComposerPackageValidationBaselineVersion={Regex.Escape(publishedBaseline)}");
         qualityWorkflow.ShouldMatch(@"dotnet pack[^\r\n]+-p:FrontComposerPackageValidationSkipBaseline=false");
         directoryTargets.ShouldContain("Condition=\"'$(IsPackable)' == 'true' AND '$(EnableFrontComposerPackageValidation)' == 'true'\"");
         directoryTargets.ShouldContain("<IncludeSymbols>true</IncludeSymbols>");
@@ -1673,38 +1678,116 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
-    public void SemanticReleasePack_EvaluatesPublished411PackageValidationBaseline() {
+    public void SemanticReleasePack_EvaluatesThePublishedPackageValidationBaseline() {
         // The shared package-validation policy and the Contracts.UI explicit pin must both resolve
-        // to the latest published 4.1.1 surface before semantic-release packs the 4.2 line.
+        // to the baseline the release policy itself reports, so a checked-in site that lags the
+        // published release line cannot pass by restating its own literal.
         string root = RepositoryRoot();
-
-        static (string enable, string baseline) EvaluatePackageValidation(string root, string project) {
-            ProcessResult result = RunProcess(root, "dotnet", [
-                "msbuild",
-                project,
-                "-getProperty:EnablePackageValidation,PackageValidationBaselineVersion",
-                "-p:EnableFrontComposerPackageValidation=true",
-                "-nologo",
-            ]);
-            result.ExitCode.ShouldBe(0, result.Error);
-            using JsonDocument evaluated = JsonDocument.Parse(result.Output);
-            JsonElement properties = evaluated.RootElement.GetProperty("Properties");
-            return (
-                properties.GetProperty("EnablePackageValidation").GetString() ?? string.Empty,
-                properties.GetProperty("PackageValidationBaselineVersion").GetString() ?? string.Empty);
-        }
+        string publishedBaseline = PublishedPackageValidationBaseline(root);
 
         (string baseEnable, string baseBaseline) = EvaluatePackageValidation(
             root,
             Path.Combine(root, "src", "Hexalith.FrontComposer.Contracts", "Hexalith.FrontComposer.Contracts.csproj"));
         baseEnable.ShouldBe("true");
-        baseBaseline.ShouldBe("4.1.1");
+        baseBaseline.ShouldBe(publishedBaseline);
 
         (string uiEnable, string uiBaseline) = EvaluatePackageValidation(
             root,
             Path.Combine(root, "src", "Hexalith.FrontComposer.Contracts.UI", "Hexalith.FrontComposer.Contracts.UI.csproj"));
         uiEnable.ShouldBe("true");
-        uiBaseline.ShouldBe("4.1.1");
+        uiBaseline.ShouldBe(publishedBaseline);
+    }
+
+    [Fact]
+    public void QualityWorkflow_Gate2aPacksALibraryPackageWithValidationInEffect() {
+        // Spec "make the release compatibility gates actually enforce": Gate 2a used to pack only
+        // Hexalith.FrontComposer.Cli, which is PackAsTool, and the SDK disables package validation
+        // for tool packages — the three validation properties were inert and the gate proved
+        // nothing. Bind the gate to the packed project's evaluated validation behavior rather than
+        // to the step name or the command's source text.
+        string root = RepositoryRoot();
+        string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
+        string publishedBaseline = PublishedPackageValidationBaseline(root);
+
+        string libraryGate = ExtractNamedStep(quality, "Gate 2a: Library Package Validation");
+        libraryGate.ShouldContain("src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj");
+        libraryGate.ShouldContain("-p:EnableFrontComposerPackageValidation=true");
+        libraryGate.ShouldContain($"-p:FrontComposerPackageValidationBaselineVersion={publishedBaseline}");
+        libraryGate.ShouldContain("-p:FrontComposerPackageValidationSkipBaseline=false");
+        libraryGate.ShouldNotContain("continue-on-error");
+
+        // ApiCompat's CP0003 assembly-identity rule rejects the solution build's default 1.0.0.0
+        // assembly version against a 4.x baseline, so this pack must build with an aligned version
+        // instead of reusing the solution build's binaries.
+        libraryGate.ShouldNotContain("--no-build");
+        libraryGate.ShouldMatch(@"-p:Version=" + Regex.Escape(publishedBaseline) + @"[^\s]*");
+
+        // Every project Gate 2a packs, evaluated with the properties the gate applies.
+        HashSet<string> packed = new(StringComparer.Ordinal);
+        foreach (Match match in Regex.Matches(quality, @"dotnet pack (?<project>src/[^\s]+\.csproj)")) {
+            packed.Add(match.Groups["project"].Value);
+        }
+
+        packed.ShouldContain("src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj");
+        packed.ShouldContain("src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj");
+
+        List<string> validating = [];
+        foreach (string project in packed) {
+            (string enable, string baseline) = EvaluatePackageValidation(root, Path.Combine(root, project));
+            if (enable == "true") {
+                baseline.ShouldBe(publishedBaseline, project);
+                validating.Add(project);
+            }
+        }
+
+        validating.ShouldContain(
+            "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj",
+            "Gate 2a must pack at least one library package the SDK does not disable package validation for.");
+        validating.ShouldNotContain(
+            "src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj",
+            "the CLI is PackAsTool, so the SDK disables package validation for it; the CLI pack alone cannot enforce the gate.");
+    }
+
+    private static (string Enable, string Baseline) EvaluatePackageValidation(string root, string project) {
+        ProcessResult result = RunProcess(root, "dotnet", [
+            "msbuild",
+            project,
+            "-getProperty:EnablePackageValidation,PackageValidationBaselineVersion",
+            "-p:EnableFrontComposerPackageValidation=true",
+            "-nologo",
+        ]);
+        result.ExitCode.ShouldBe(0, result.Error);
+        using JsonDocument evaluated = JsonDocument.Parse(result.Output);
+        JsonElement properties = evaluated.RootElement.GetProperty("Properties");
+        return (
+            properties.GetProperty("EnablePackageValidation").GetString() ?? string.Empty,
+            properties.GetProperty("PackageValidationBaselineVersion").GetString() ?? string.Empty);
+    }
+
+    private static string PublishedPackageValidationBaseline(string root) {
+        // Read the baseline from the live packer's own --plan contract. The policy validates that
+        // value against the planned release line, so it cannot be a constant compared with itself.
+        ProcessResult plan = RunPython(root, [
+            "scripts/pack-release-packages.py",
+            Path.Combine(Path.GetTempPath(), $"fc-plan-{Guid.NewGuid():N}"),
+            "0.0.0-ci-test",
+            "--plan",
+        ]);
+        plan.ExitCode.ShouldBe(0, plan.Error);
+        using JsonDocument doc = JsonDocument.Parse(plan.Output);
+        const string prefix = "-p:FrontComposerPackageValidationBaselineVersion=";
+        HashSet<string> baselines = new(StringComparer.Ordinal);
+        foreach (JsonElement command in doc.RootElement.GetProperty("commands").EnumerateArray()) {
+            foreach (JsonElement argument in command.EnumerateArray()) {
+                string value = argument.GetString() ?? string.Empty;
+                if (value.StartsWith(prefix, StringComparison.Ordinal)) {
+                    baselines.Add(value[prefix.Length..]);
+                }
+            }
+        }
+
+        baselines.Count.ShouldBe(1, "every live pack command must apply one identical package-validation baseline.");
+        return baselines.Single();
     }
 
     [Fact]

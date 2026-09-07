@@ -26,76 +26,21 @@ from pathlib import Path
 SCRIPT_PATH = Path(__file__).resolve()
 REPO_ROOT = SCRIPT_PATH.parents[1]
 INVENTORY_PATH = REPO_ROOT / "eng" / "release-package-inventory.json"
-EXPECTED_PACKAGE_COUNT = 8
 SOLUTION_PATH = REPO_ROOT / "Hexalith.FrontComposer.slnx"
 sys.path.insert(0, str(REPO_ROOT / "eng"))
 
 from release_compatibility import release_properties, validate_release_policy  # noqa: E402
+from release_compatibility import packable_projects as inventory_packable_projects  # noqa: E402
 
 
 def packable_projects() -> list[Path]:
-    """Validate and return the exact eight packable projects in the release inventory."""
-    try:
-        with INVENTORY_PATH.open("r", encoding="utf-8") as handle:
-            payload = json.load(handle)
-    except (OSError, UnicodeError, json.JSONDecodeError) as error:
-        raise ValueError(f"{INVENTORY_PATH}: cannot read release package inventory: {error}") from error
-    if not isinstance(payload, dict):
-        raise ValueError(f"{INVENTORY_PATH}: release package inventory must be an object")
-    rows = payload.get("packages")
-    if not isinstance(rows, list):
-        raise ValueError(f"{INVENTORY_PATH}: packages must be an array")
-    packable = [
-        (index, row)
-        for index, row in enumerate(rows)
-        if isinstance(row, dict) and row.get("packable") is True
-    ]
-    if len(packable) != EXPECTED_PACKAGE_COUNT:
-        raise ValueError(
-            f"{INVENTORY_PATH}: expected exactly {EXPECTED_PACKAGE_COUNT} packable packages; "
-            f"found {len(packable)}"
-        )
+    """Return the exact eight packable projects in the release inventory.
 
-    projects: list[Path] = []
-    package_ids: set[str] = set()
-    resolved_projects: set[Path] = set()
-    resolved_root = REPO_ROOT.resolve()
-    for index, row in packable:
-        required = ("project", "package_id", "packable", "symbol_required")
-        missing = [field for field in required if field not in row]
-        if missing:
-            raise ValueError(f"{INVENTORY_PATH}: packable row {index} is missing fields: {missing}")
-        project_value = row["project"]
-        package_id = row["package_id"]
-        if not isinstance(project_value, str) or not project_value.strip():
-            raise ValueError(f"{INVENTORY_PATH}: packable row {index} project must be a non-empty string")
-        if not isinstance(package_id, str) or not package_id.strip():
-            raise ValueError(f"{INVENTORY_PATH}: packable row {index} package_id must be a non-empty string")
-        if row["packable"] is not True or row["symbol_required"] is not True:
-            raise ValueError(
-                f"{INVENTORY_PATH}: packable row {index} must set packable and symbol_required to true"
-            )
-        project_path = Path(project_value)
-        resolved_project = (
-            project_path.resolve()
-            if project_path.is_absolute()
-            else (resolved_root / project_path).resolve()
-        )
-        if not resolved_project.is_relative_to(resolved_root):
-            raise ValueError(f"{INVENTORY_PATH}: packable row {index} project escapes the repository root")
-        if not resolved_project.is_file() or resolved_project.suffix.casefold() != ".csproj":
-            raise ValueError(
-                f"{INVENTORY_PATH}: packable row {index} project does not identify an existing .csproj"
-            )
-        normalized_id = package_id.casefold()
-        if normalized_id in package_ids:
-            raise ValueError(f"{INVENTORY_PATH}: duplicate packable package_id '{package_id}'")
-        if resolved_project in resolved_projects:
-            raise ValueError(f"{INVENTORY_PATH}: duplicate packable project '{project_value}'")
-        package_ids.add(normalized_id)
-        resolved_projects.add(resolved_project)
-        projects.append(resolved_project)
-    return projects
+    The reader lives in ``eng/release_compatibility.py`` so the compatibility policy enumerates
+    baseline and suppression sites from the same inventory rows this packer packs; keeping a
+    module-level wrapper preserves the ``REPO_ROOT``/``INVENTORY_PATH`` seam the tests patch.
+    """
+    return inventory_packable_projects(REPO_ROOT, INVENTORY_PATH)
 
 
 def pack_commands(output_directory: Path, version: str) -> list[list[str]]:

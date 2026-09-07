@@ -948,7 +948,15 @@ public sealed partial class DiagnosticRegistryTests {
 
         string directoryBuildTargets = File.ReadAllText(Path.Combine(ProjectRoot().FullName, "Directory.Build.targets"), Encoding.UTF8);
         directoryBuildTargets.ShouldContain("<EnableFrontComposerPackageValidation Condition=\"'$(EnableFrontComposerPackageValidation)' == ''\">false</EnableFrontComposerPackageValidation>");
-        directoryBuildTargets.ShouldContain("<FrontComposerPackageValidationBaselineVersion Condition=\"'$(FrontComposerPackageValidationBaselineVersion)' == ''\">4.1.1</FrontComposerPackageValidationBaselineVersion>");
+        // The shared default is the single baseline authority; `eng/release_compatibility.py`
+        // validates the value itself against the planned release line, so this test pins the
+        // property's shape and the agreement between the two checked-in sites.
+        Match sharedBaseline = Regex.Match(
+            directoryBuildTargets,
+            @"<FrontComposerPackageValidationBaselineVersion Condition=""'\$\(FrontComposerPackageValidationBaselineVersion\)' == ''"">(?<version>[^<]+)</FrontComposerPackageValidationBaselineVersion>");
+        sharedBaseline.Success.ShouldBeTrue("Directory.Build.targets must default the package-validation baseline.");
+        string packageValidationBaseline = sharedBaseline.Groups["version"].Value;
+        packageValidationBaseline.ShouldBe("4.3.0");
         directoryBuildTargets.ShouldContain("Condition=\"'$(IsPackable)' == 'true' AND '$(EnableFrontComposerPackageValidation)' == 'true'\"");
         directoryBuildTargets.ShouldContain("<EnablePackageValidation>true</EnablePackageValidation>");
         directoryBuildTargets.ShouldContain("<PackageValidationBaselineVersion Condition=\"'$(FrontComposerPackageValidationSkipBaseline)' != 'true'\">$(FrontComposerPackageValidationBaselineVersion)</PackageValidationBaselineVersion>");
@@ -956,9 +964,11 @@ public sealed partial class DiagnosticRegistryTests {
         directoryBuildTargets.ShouldNotContain(">0.1.0</FrontComposerPackageValidationBaselineVersion>");
         directoryBuildTargets.ShouldNotContain(">1.12.0</FrontComposerPackageValidationBaselineVersion>");
         directoryBuildTargets.ShouldNotContain(">2.0.4</FrontComposerPackageValidationBaselineVersion>");
+        directoryBuildTargets.ShouldNotContain(">4.1.1</FrontComposerPackageValidationBaselineVersion>");
+        directoryBuildTargets.ShouldNotContain(">4.2.0</FrontComposerPackageValidationBaselineVersion>");
 
         string contractsUiProject = File.ReadAllText(Path.Combine(ProjectRoot().FullName, "src", "Hexalith.FrontComposer.Contracts.UI", "Hexalith.FrontComposer.Contracts.UI.csproj"), Encoding.UTF8);
-        contractsUiProject.ShouldContain("<FrontComposerPackageValidationBaselineVersion>4.1.1</FrontComposerPackageValidationBaselineVersion>");
+        contractsUiProject.ShouldContain($"<FrontComposerPackageValidationBaselineVersion>{packageValidationBaseline}</FrontComposerPackageValidationBaselineVersion>");
         contractsUiProject.ShouldNotContain("<FrontComposerPackageValidationBaselineVersion>2.0.4</FrontComposerPackageValidationBaselineVersion>");
         contractsUiProject.ShouldNotContain("<FrontComposerPackageValidationBaselineVersion>2.0.0</FrontComposerPackageValidationBaselineVersion>");
         contractsUiProject.ShouldNotContain("<FrontComposerPackageValidationSkipBaseline>true</FrontComposerPackageValidationSkipBaseline>");
@@ -2216,10 +2226,11 @@ public sealed partial class DiagnosticRegistryTests {
             "CP0002",
             "CP0008",
         };
+        // The approved suppression reason is a single source of truth shared with
+        // `eng/release_compatibility.py::APPROVED_SUPPRESSION_REASON`. A wider set here let a
+        // ledger row pass every repository test and then abort a live `prepare`.
         HashSet<string> allowedReasons = new(Ordinal) {
             "intentional-major-break",
-            "known-binary-compatibility-gap",
-            "temporary-release-candidate-exception",
         };
 
         foreach (JsonNode? node in suppressions) {

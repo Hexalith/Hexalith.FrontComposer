@@ -10387,3 +10387,7 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-fix-current-release-compatibility-gates.md`
   summary: Unverified medium: release policy never rejects a candidate at or below the last published version.
   evidence: validate_release_policy compares only the major.minor line against currentRelease, never the full triple against PUBLISHED_BASELINE_VERSION. Settle by tracing whether cmd_prepare can be driven with a non-advancing version past the semantic-release contract and evidence gates.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-make-release-compatibility-gates-enforcing.md`
+  summary: Bump HexalithEventStoreVersion from 3.102.0 to 3.103.0 in the shared Hexalith.Builds package catalog.
+  evidence: User asked for EventStore 3.103.0 during planning of the compatibility-gate spec; it is an independently shippable dependency bump excluded by that spec's Never list, and the file it touches (references/Hexalith.Builds/Props/Directory.Packages.props:8) is owned by the Hexalith.Builds repository. 3.103.0 is published on nuget.org and the references/Hexalith.EventStore gitlink is already at tag v3.103.0, so only the package pin lags; a restore is needed after the bump because 3.103.0 is not in the local NuGet cache.
