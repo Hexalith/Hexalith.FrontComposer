@@ -697,7 +697,7 @@ public sealed partial class DiagnosticRegistryTests {
         json["currentRelease"]!.GetValue<string>().ShouldBe("v4.3");
         JsonArray suppressions = json["suppressions"]!.AsArray();
 
-        suppressions.ShouldBeEmpty("the published 4.1.1 baseline absorbs all reviewed v4 MCP removals.");
+        suppressions.ShouldBeEmpty("the published 4.3.0 baseline absorbs all reviewed v4 MCP removals.");
 
         HashSet<string> apiCompatDiagnosticIds = ["CP0001", "CP0002", "CP0008"];
         Regex targetReleaseRegex = TargetReleaseRegex();
@@ -2195,6 +2195,63 @@ public sealed partial class DiagnosticRegistryTests {
         }
     }
 
+    /// <summary>
+    /// Read the approved suppression reason from the release policy so the C# allowlist and
+    /// <c>eng/release_compatibility.py</c> cannot drift into two literals that agree by accident.
+    /// </summary>
+    private static string ApprovedSuppressionReason() {
+        string policy = File.ReadAllText(
+            Path.Combine(ProjectRoot().FullName, "eng", "release_compatibility.py"),
+            Encoding.UTF8);
+        Match match = Regex.Match(
+            policy,
+            "^APPROVED_SUPPRESSION_REASON\\s*=\\s*\"(?<reason>[^\"]+)\"",
+            RegexOptions.Multiline);
+        match.Success.ShouldBeTrue("eng/release_compatibility.py must declare APPROVED_SUPPRESSION_REASON.");
+        return match.Groups["reason"].Value;
+    }
+
+    [Theory]
+    [InlineData("intentional-major-break", true)]
+    [InlineData("known-binary-compatibility-gap", false)]
+    [InlineData("temporary-release-candidate-exception", false)]
+    public void CompatibilitySuppressionReason_UsesTheSinglePolicyAllowlist(string reason, bool accepted) {
+        // Spec "make the release compatibility gates actually enforce": the allowlist was three
+        // reasons here and one in the policy, so a row could pass every repository test and then
+        // abort a live `prepare`. Both removed reasons must now be rejected.
+        JsonObject json = JsonNode.Parse("""
+            {
+              "schemaVersion": "2.0",
+              "currentRelease": "v2.0",
+              "baselinePolicy": "fixture",
+              "suppressions": [
+                {
+                  "package": "Hexalith.FrontComposer.Contracts",
+                  "tfm": "net10.0",
+                  "oldSignature": "M:Example.Old",
+                  "newState": "removed",
+                  "apiCompatDiagnosticId": "CP0001",
+                  "targetRelease": "v1.0",
+                  "reviewerRationale": "Intentional binary break reviewed for this fixture.",
+                  "ownerStory": "11-2-diagnostic-registry-and-documentation-governance-follow-ups",
+                  "expiresAfter": "v9.9",
+                  "reason": "intentional-major-break"
+                }
+              ]
+            }
+            """)!.AsObject();
+        json["suppressions"]!.AsArray()[0]!.AsObject()["reason"] = reason;
+
+        string[] categories = [.. ValidateCompatibilitySuppressionsJson(json)];
+
+        if (accepted) {
+            reason.ShouldBe(ApprovedSuppressionReason());
+            categories.ShouldBeEmpty();
+        } else {
+            categories.ShouldContain("suppression-unknown-reason");
+        }
+    }
+
     private static IEnumerable<string> ValidateCompatibilitySuppressionsJson(JsonObject json) {
         if (!TryGetString(json, "schemaVersion", out string? schemaVersion)
             || schemaVersion != CompatibilitySuppressionsSchemaVersion) {
@@ -2226,11 +2283,11 @@ public sealed partial class DiagnosticRegistryTests {
             "CP0002",
             "CP0008",
         };
-        // The approved suppression reason is a single source of truth shared with
-        // `eng/release_compatibility.py::APPROVED_SUPPRESSION_REASON`. A wider set here let a
-        // ledger row pass every repository test and then abort a live `prepare`.
+        // The approved suppression reason has one source of truth: it is parsed out of
+        // `eng/release_compatibility.py::APPROVED_SUPPRESSION_REASON`, not restated here. A wider
+        // set let a ledger row pass every repository test and then abort a live `prepare`.
         HashSet<string> allowedReasons = new(Ordinal) {
-            "intentional-major-break",
+            ApprovedSuppressionReason(),
         };
 
         foreach (JsonNode? node in suppressions) {

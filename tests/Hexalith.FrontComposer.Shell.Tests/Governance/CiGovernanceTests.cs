@@ -1699,53 +1699,94 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
-    public void QualityWorkflow_Gate2aPacksALibraryPackageWithValidationInEffect() {
-        // Spec "make the release compatibility gates actually enforce": Gate 2a used to pack only
-        // Hexalith.FrontComposer.Cli, which is PackAsTool, and the SDK disables package validation
-        // for tool packages — the three validation properties were inert and the gate proved
-        // nothing. Bind the gate to the packed project's evaluated validation behavior rather than
-        // to the step name or the command's source text.
+    public void QualityWorkflow_Gate4ValidatesEveryPackableLibrary() {
+        // Spec "make the release compatibility gates actually enforce" (amended after review pass
+        // 1): Gate 2a packs only Hexalith.FrontComposer.Cli, which is PackAsTool, and the SDK
+        // disables package validation for tool layouts — those properties are inert there. Gate 4
+        // must therefore cover EVERY packable library the release inventory declares, so a CP0002
+        // break in Shell, Schema, SourceTools, Testing or Contracts.UI cannot pass CI. Bound to
+        // the packed projects' evaluated validation behavior, not to the step name.
         string root = RepositoryRoot();
         string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
         string publishedBaseline = PublishedPackageValidationBaseline(root);
 
-        string libraryGate = ExtractNamedStep(quality, "Gate 2a: Library Package Validation");
-        libraryGate.ShouldContain("src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj");
+        string libraryGate = ExtractNamedStep(quality, "Gate 4: Library Package Validation (ApiCompat baseline)");
+        libraryGate.ShouldContain("eng/release-package-inventory.json");
         libraryGate.ShouldContain("-p:EnableFrontComposerPackageValidation=true");
         libraryGate.ShouldContain($"-p:FrontComposerPackageValidationBaselineVersion={publishedBaseline}");
         libraryGate.ShouldContain("-p:FrontComposerPackageValidationSkipBaseline=false");
         libraryGate.ShouldNotContain("continue-on-error");
 
         // ApiCompat's CP0003 assembly-identity rule rejects the solution build's default 1.0.0.0
-        // assembly version against a 4.x baseline, so this pack must build with an aligned version
-        // instead of reusing the solution build's binaries.
+        // assembly version against a 4.x baseline, so this pack must build with an aligned
+        // version; the isolated BaseOutputPath keeps the shared bin/ the solution build produced
+        // byte-identical for the ~10 downstream `--no-build` steps.
         libraryGate.ShouldNotContain("--no-build");
         libraryGate.ShouldMatch(@"-p:Version=" + Regex.Escape(publishedBaseline) + @"[^\s]*");
+        libraryGate.ShouldContain("-p:BaseOutputPath=");
 
-        // Every project Gate 2a packs, evaluated with the properties the gate applies.
-        HashSet<string> packed = new(StringComparer.Ordinal);
-        foreach (Match match in Regex.Matches(quality, @"dotnet pack (?<project>src/[^\s]+\.csproj)")) {
-            packed.Add(match.Groups["project"].Value);
-        }
+        // The gate must also sit after every `--no-build` consumer in its own job, so a rebuild
+        // here cannot restamp outputs a later step reads. Scope the search to build-and-test: a
+        // `--no-build` step in any later job would otherwise decide this assertion.
+        string buildJob = ExtractJobBlock(quality, "build-and-test");
+        buildJob.ShouldNotBeNullOrEmpty();
+        buildJob.ShouldContain("Gate 4: Library Package Validation (ApiCompat baseline)");
+        buildJob.Contains("accessibility-visual", StringComparison.Ordinal).ShouldBeFalse(
+            "the extracted block must stop at the next job, or the ordering check below is decided by an unrelated job.");
+        int gateIndex = buildJob.IndexOf("- name: 'Gate 4: Library Package Validation (ApiCompat baseline)'", StringComparison.Ordinal);
+        gateIndex.ShouldBeGreaterThan(
+            buildJob.LastIndexOf("--no-build", StringComparison.Ordinal),
+            "Gate 4 rebuilds packable libraries, so it must run after every --no-build consumer in its job.");
 
-        packed.ShouldContain("src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj");
-        packed.ShouldContain("src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj");
+        // Each pack needs its own output tree; one shared BaseOutputPath lets seven sequential
+        // packs intermingle and ApiCompat can then diff a stale sibling assembly.
+        libraryGate.ShouldMatch(@"-p:BaseOutputPath=""[^""\r\n]*\$name[^""\r\n]*""");
 
-        List<string> validating = [];
-        foreach (string project in packed) {
-            (string enable, string baseline) = EvaluatePackageValidation(root, Path.Combine(root, project));
-            if (enable == "true") {
-                baseline.ShouldBe(publishedBaseline, project);
-                validating.Add(project);
+        // The inventory is the source of truth for what the gate must cover.
+        JsonElement inventory = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(root, "eng/release-package-inventory.json"))).RootElement;
+        List<string> expectedLibraries = [];
+        List<string> toolExceptions = [];
+        foreach (JsonElement row in inventory.GetProperty("packages").EnumerateArray()) {
+            if (!row.TryGetProperty("packable", out JsonElement packable) || !packable.GetBoolean()) {
+                continue;
             }
+
+            string project = row.GetProperty("project").GetString() ?? string.Empty;
+            if (row.TryGetProperty("pack_as_tool", out JsonElement tool) && tool.GetBoolean()) {
+                toolExceptions.Add(project);
+
+                // `exception` means "why this project is not packable" and is consumed by
+                // eng/release_evidence.py as the symbol_artifact stand-in, so the PackAsTool
+                // opt-out documents itself in its own field.
+                row.TryGetProperty("pack_as_tool_reason", out JsonElement documented).ShouldBeTrue(
+                    "the PackAsTool row excluded from the library gate must document why.");
+                (documented.GetString() ?? string.Empty).ShouldNotBeNullOrWhiteSpace();
+                row.TryGetProperty("exception", out _).ShouldBeFalse(
+                    "a packable row must not use `exception`, which means 'why this project is not packable'.");
+                continue;
+            }
+
+            expectedLibraries.Add(project);
         }
 
-        validating.ShouldContain(
-            "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj",
-            "Gate 2a must pack at least one library package the SDK does not disable package validation for.");
-        validating.ShouldNotContain(
-            "src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj",
-            "the CLI is PackAsTool, so the SDK disables package validation for it; the CLI pack alone cannot enforce the gate.");
+        expectedLibraries.Count.ShouldBe(7);
+        toolExceptions.ShouldBe(["src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj"]);
+
+        // Every packable library must actually evaluate package validation on, at the published
+        // baseline; the documented tool exception must evaluate it off.
+        foreach (string project in expectedLibraries) {
+            (string enable, string baseline) = EvaluatePackageValidation(root, Path.Combine(root, project));
+            enable.ShouldBe("true", project);
+            baseline.ShouldBe(publishedBaseline, project);
+        }
+
+        foreach (string project in toolExceptions) {
+            (string enable, _) = EvaluatePackageValidation(root, Path.Combine(root, project));
+            enable.ShouldBe(
+                "false",
+                $"{project} is PackAsTool, so the SDK disables package validation and the CLI pack alone cannot enforce the gate.");
+        }
     }
 
     private static (string Enable, string Baseline) EvaluatePackageValidation(string root, string project) {
@@ -3439,6 +3480,22 @@ public sealed class CiGovernanceTests {
         }
 
         return string.Empty;
+    }
+
+    internal static string ExtractJobBlock(string workflow, string jobId) {
+        // Return one job's text. Job headers are two-space indented (`  build-and-test:`); the
+        // block ends at the next two-space-indented key or at EOF.
+        string jobNeedle = $"\n  {jobId}:";
+        int start = workflow.IndexOf(jobNeedle, StringComparison.Ordinal);
+        if (start < 0) {
+            return string.Empty;
+        }
+
+        start += 1;
+        Match next = Regex.Match(workflow[(start + jobNeedle.Length)..], @"^  [A-Za-z][\w-]*\s*:", RegexOptions.Multiline);
+        return next.Success
+            ? workflow.Substring(start, jobNeedle.Length + next.Index - 1)
+            : workflow[start..];
     }
 
     internal static string ExtractJobPermissionsBlock(string workflow, string jobId) {

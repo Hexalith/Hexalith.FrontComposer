@@ -190,7 +190,7 @@ def phase_build(version: str) -> None:
     exactly once in phase_pack.
 
     Restore opts into package validation so the published PackageValidationBaselineVersion
-    packages (currently 4.1.1) are cached before Contract package-boundary tests run.
+    packages (currently 4.3.0) are cached before Contract package-boundary tests run.
     Quality uses the same switch; omitting it leaves prepare-candidate unable to find the
     MCP baseline under NUGET_PACKAGES.
     """

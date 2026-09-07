@@ -10,19 +10,23 @@
       "project": "src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj",
       "package_id": "Hexalith.FrontComposer.Cli",
       "packable": true,
-      "symbol_required": true
+      "symbol_required": true,
+      "pack_as_tool": true,
+      "pack_as_tool_reason": "PackAsTool tool package: the .NET SDK disables EnablePackageValidation for tool layouts, so this row is excluded from the library ApiCompat gate. This is not an `exception` (that field means 'why this project is not packable'); the CLI is packable and requires symbols."
     },
     {
       "project": "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj",
       "package_id": "Hexalith.FrontComposer.Contracts",
       "packable": true,
-      "symbol_required": true
+      "symbol_required": true,
+      "compatibility_suppressions": true
     },
     {
       "project": "src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj",
       "package_id": "Hexalith.FrontComposer.Contracts.UI",
       "packable": true,
-      "symbol_required": true
+      "symbol_required": true,
+      "baseline_override": true
     },
     {
       "project": "src/Hexalith.FrontComposer.UI/Hexalith.FrontComposer.UI.csproj",
@@ -34,7 +38,8 @@
       "project": "src/Hexalith.FrontComposer.Mcp/Hexalith.FrontComposer.Mcp.csproj",
       "package_id": "Hexalith.FrontComposer.Mcp",
       "packable": true,
-      "symbol_required": true
+      "symbol_required": true,
+      "compatibility_suppressions": true
     },
     {
       "project": "src/Hexalith.FrontComposer.Schema/Hexalith.FrontComposer.Schema.csproj",
@@ -46,7 +51,8 @@
       "project": "src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj",
       "package_id": "Hexalith.FrontComposer.Shell",
       "packable": true,
-      "symbol_required": true
+      "symbol_required": true,
+      "compatibility_suppressions": true
     },
     {
       "project": "src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj",

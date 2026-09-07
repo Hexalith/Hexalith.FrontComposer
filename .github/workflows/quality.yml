@@ -83,17 +83,9 @@ jobs:
       - name: 'Gate 2: Solution Build'
         run: dotnet build Hexalith.FrontComposer.slnx --configuration Release --no-restore
 
-      # Gate 2a: library package validation against the published NuGet baseline. The CLI pack
-      # below is PackAsTool, and the SDK disables EnablePackageValidation for tool packages, so
-      # the three validation properties only have effect on a library package. Contracts is built
-      # here rather than packed --no-build because ApiCompat's CP0003 assembly-identity rule
-      # rejects the solution build's default 1.0.0.0 assembly version against a 4.x baseline.
-      - name: 'Gate 2a: Library Package Validation'
-        shell: bash
-        run: |
-          dotnet pack src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj --configuration Release --output ./nupkgs-validation -p:Version=4.3.0-ci -p:PackageVersion=4.3.0-ci -p:EnableFrontComposerPackageValidation=true -p:FrontComposerPackageValidationBaselineVersion=4.3.0 -p:FrontComposerPackageValidationSkipBaseline=false
-
-      # Gate 2a: CLI tool packaging and local-tool smoke
+      # Gate 2a: CLI tool packaging and local-tool smoke. This pack is PackAsTool, and the SDK
+      # disables EnablePackageValidation for tool layouts, so the ApiCompat baseline gate for the
+      # packable libraries lives in Gate 4 below.
       - name: 'Gate 2a: CLI Tool Package Smoke'
         shell: bash
         run: |
@@ -358,6 +350,46 @@ jobs:
         env:
           DiffEngine_Disabled: true
         run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter-trait "Category=Quarantined" --ignore-exit-code 8 --results-directory ./TestResults/quarantine --report-xunit-trx
+
+      # Gate 4: ApiCompat/package validation against the published baseline for every packable
+      # library `eng/release-package-inventory.json` declares, minus the documented `pack_as_tool`
+      # row (the SDK disables EnablePackageValidation for a PackAsTool layout, so Gate 2a's CLI
+      # pack proves nothing about binary compatibility).
+      #
+      # Placed after every step that consumes the Gate 2 solution build without rebuilding, and
+      # given an isolated per-project BaseOutputPath so the shared `bin/` that build produced is
+      # left byte-identical -- restamping it mid-job is the known missing-assembly flake. A
+      # rebuild is unavoidable here because the solution build stamps assembly version 1.0.0.0
+      # and ApiCompat's CP0003 identity rule rejects that against a 4.x baseline. The governance
+      # test pins that ordering, so this comment must not contain the flag it searches for.
+      # `BaseIntermediateOutputPath` is deliberately NOT
+      # redirected: `DefaultItemExcludes` is derived from it, so moving it un-excludes the real
+      # `obj/` tree and the checked-in source generator fixtures collide as duplicate compile items.
+      - name: 'Gate 4: Library Package Validation (ApiCompat baseline)'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # One definition of "packable and not pack_as_tool": the policy helper the release
+          # path and the governance tests already use.
+          mapfile -t projects < <(python3 -c "
+          import pathlib, sys
+          sys.path.insert(0, 'eng')
+          from release_compatibility import packable_library_projects
+          root = pathlib.Path('.').resolve()
+          for project in packable_library_projects(root):
+              print(project.relative_to(root).as_posix())
+          ")
+          if [ "${#projects[@]}" -ne 7 ]; then
+            echo "expected 7 packable libraries in eng/release-package-inventory.json; found ${#projects[@]}" >&2
+            exit 1
+          fi
+          for project in "${projects[@]}"; do
+            # Each pack gets its own output tree: one shared BaseOutputPath would let seven
+            # sequential packs (and their ProjectReference graphs) intermingle in a single
+            # bin/Release/<tfm>/, and ApiCompat could then diff a stale sibling assembly.
+            name="$(basename "$project" .csproj)"
+            dotnet pack "$project" --configuration Release --output ./nupkgs-validation -p:Version=4.3.0-ci -p:PackageVersion=4.3.0-ci -p:EnableFrontComposerPackageValidation=true -p:FrontComposerPackageValidationBaselineVersion=4.3.0 -p:FrontComposerPackageValidationSkipBaseline=false -p:BaseOutputPath="$GITHUB_WORKSPACE/artifacts/library-package-validation/$name/bin/"
+          done
 
       - name: Quarantine Summary
         if: always()

@@ -439,6 +439,9 @@ FodyWeavers.xsd
 # NuGet output for semantic-release
 nupkgs/
 
+# Quality Gate 4 library package-validation output
+nupkgs-validation/
+
 # REL-3 pre-publication gate and independent-verification generated output
 nupkgs-signed/
 release-evidence/

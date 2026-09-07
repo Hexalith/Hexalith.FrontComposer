@@ -108,6 +108,18 @@ class PackReleasePackagesTests(unittest.TestCase):
             for property_value in restore_properties:
                 self.assertIn(property_value, command)
 
+    def test_real_script_packs_the_checked_in_release_line_under_release_policy(self) -> None:
+        # The production plan test runs against a synthetic fixture, so this is the only guard
+        # that the REAL script exits 0 with --release-policy against the REAL tree. A tree that
+        # cannot pack any version -- the pass-1 regression -- fails here.
+        result = self.run_plan("4.3.1", release_policy=True)
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertTrue(payload["releasePolicy"])
+        self.assertEqual("v4.3", payload["releaseLine"])
+        self.assertEqual(8, len(payload["commands"]))
+
     def test_synthetic_ci_positional_contract_skips_only_release_line_matching(self) -> None:
         result = self.run_plan("0.0.0-ci-test", release_policy=False)
 
@@ -258,27 +270,82 @@ class PackReleasePackagesTests(unittest.TestCase):
             with self.assertRaisesRegex(ReleaseCompatibilityError, "schemaVersion must be 2.0"):
                 validate_release_policy(root, VERSION, **paths)
 
-    def test_policy_requires_the_release_line_before_the_candidate(self) -> None:
-        # A lagging baseline (4.0.0/4.1.1) and one that runs ahead of the published surface
-        # (4.3.0, the candidate's own line) are both rejected, and the diagnostic names the found
-        # value and the expected line.
-        for baseline in ("4.0.0", "4.1.1", "4.3.0"):
+    def test_policy_rejects_a_baseline_more_than_one_line_behind(self) -> None:
+        # Two or more lines back fails closed and the diagnostic names the found value and the
+        # accepted range.
+        for baseline in ("4.0.0", "4.1.1", "3.9.0"):
             with self.subTest(baseline=baseline), tempfile.TemporaryDirectory() as directory:
                 root = pathlib.Path(directory)
                 paths = self.write_policy_fixture(root, self.ledger(), baseline=baseline)
                 with self.assertRaisesRegex(
                     ReleaseCompatibilityError,
-                    r"immediately preceding --version v4\.3, expected v4\.2; "
+                    r"must be on the v4\.2 or v4\.3 release line for --version v4\.3; "
                     rf"found '{re.escape(baseline)}'",
                 ):
                     validate_release_policy(root, VERSION, **paths)
 
-    def test_policy_accepts_any_patch_on_the_preceding_release_line(self) -> None:
-        for baseline in ("4.2.0", "4.2.7"):
+    def test_policy_accepts_the_candidate_line_or_the_one_before_it(self) -> None:
+        # `4.2.x` is the preceding-line case (a minor bump) and `4.3.x` is the same-line hotfix
+        # case: `4.3.1` is diffed against published `4.3.0`. Both are at most one line behind.
+        for baseline in ("4.2.0", "4.2.7", "4.3.0", "4.3.9"):
             with self.subTest(baseline=baseline), tempfile.TemporaryDirectory() as directory:
                 root = pathlib.Path(directory)
                 paths = self.write_policy_fixture(root, self.ledger(), baseline=baseline)
                 self.assertEqual("v4.3", validate_release_policy(root, VERSION, **paths))
+
+    def test_policy_accepts_a_hotfix_candidate_against_the_checked_in_tree(self) -> None:
+        # Regression guard: the strict preceding-line rule made every candidate unpackable, so
+        # `4.3.1` -- which packed before that rule -- must validate against the working tree.
+        self.assertEqual("v4.3", validate_release_policy(ROOT, "4.3.1"))
+
+    def test_major_bump_accepts_any_minor_of_the_previous_major(self) -> None:
+        # Documented limitation of `is_preceding_release_line`: the previous major's last minor
+        # cannot be derived from the candidate version and the ledger records no published
+        # history, so `5.0.0` is accepted against a stale `4.0.x`. Major-bump baselines stay a
+        # reviewed step. Anything two majors back still fails closed.
+        for baseline, accepted in (("5.0.0", True), ("4.0.0", True), ("4.9.3", True), ("3.9.0", False)):
+            with self.subTest(baseline=baseline), tempfile.TemporaryDirectory() as directory:
+                root = pathlib.Path(directory)
+                paths = self.write_policy_fixture(
+                    root,
+                    self.ledger(current_release="v5.0"),
+                    baseline=baseline,
+                )
+                if accepted:
+                    self.assertEqual("v5.0", validate_release_policy(root, "5.0.0", **paths))
+                else:
+                    with self.assertRaisesRegex(
+                        ReleaseCompatibilityError,
+                        r"must be on the v4\.x or v5\.0 release line",
+                    ):
+                        validate_release_policy(root, "5.0.0", **paths)
+
+    def test_zero_release_line_has_no_preceding_line(self) -> None:
+        # v0.0 is the one line with no predecessor: the same-line case still passes, and any other
+        # baseline fails with the explicit "no preceding published release line" diagnostic.
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            paths = self.write_policy_fixture(
+                root,
+                self.ledger(current_release="v0.0"),
+                baseline="0.0.4",
+            )
+            self.assertEqual("v0.0", validate_release_policy(root, "0.0.9", **paths))
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            paths = self.write_policy_fixture(
+                root,
+                self.ledger(current_release="v0.0"),
+                baseline="1.0.0",
+            )
+            # v0.0 has no preceding line, so the accepted range is just v0.0 -- but the
+            # diagnostic must still name both the found and the accepted baseline.
+            with self.assertRaisesRegex(
+                ReleaseCompatibilityError,
+                r"must be on the v0\.0 release line for --version v0\.0; found '1\.0\.0'",
+            ):
+                validate_release_policy(root, "0.0.9", **paths)
 
     def test_static_policy_rejects_a_baseline_that_lags_current_release(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -297,6 +364,7 @@ class PackReleasePackagesTests(unittest.TestCase):
                 )
 
     def test_static_policy_accepts_the_planned_or_preceding_release_line(self) -> None:
+        # Same one-line tolerance as the pack-time check, measured against `currentRelease`.
         for baseline in ("4.2.0", "4.3.9"):
             with self.subTest(baseline=baseline), tempfile.TemporaryDirectory() as directory:
                 root = pathlib.Path(directory)
@@ -358,6 +426,110 @@ class PackReleasePackagesTests(unittest.TestCase):
                 r"stale XML rows=.*Acme\.UnreviewedRemoval",
             ):
                 validate_release_policy(root, PRODUCTION_VERSION)
+
+    def test_policy_rejects_a_deleted_reviewed_suppression_file(self) -> None:
+        # A packable project that never carried a suppression file contributes no rows, but a
+        # reviewed site the inventory flags must fail closed when its file is deleted.
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            self.write_repository_fixture(
+                root,
+                current_release="v4.4",
+                baseline=PUBLISHED_BASELINE_VERSION,
+                reviewed_suppression_packages=("Package.3",),
+            )
+            reviewed = root / "src" / "Package3" / "CompatibilitySuppressions.xml"
+            reviewed.write_text("<Suppressions />\n", encoding="utf-8")
+            self.assertEqual("v4.4", validate_release_policy(root, PRODUCTION_VERSION))
+
+            reviewed.unlink()
+            with self.assertRaisesRegex(
+                ReleaseCompatibilityError,
+                "required compatibility policy XML file is missing",
+            ):
+                validate_release_policy(root, PRODUCTION_VERSION)
+
+    def test_policy_rejects_a_deleted_reviewed_baseline_override(self) -> None:
+        # A packable project flagged `baseline_override` must keep its pin: dropping it used to
+        # fall through to the shared default and pass, hiding the removal of a reviewed site.
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            self.write_repository_fixture(
+                root,
+                current_release="v4.4",
+                baseline=PUBLISHED_BASELINE_VERSION,
+                required_baseline_packages=("Package.5",),
+            )
+            override = root / "src" / "Package5" / "Package5.csproj"
+            override.write_text(
+                "<Project><PropertyGroup><FrontComposerPackageValidationBaselineVersion>"
+                f"{PUBLISHED_BASELINE_VERSION}</FrontComposerPackageValidationBaselineVersion>"
+                "</PropertyGroup></Project>",
+                encoding="utf-8",
+            )
+            self.assertEqual("v4.4", validate_release_policy(root, PRODUCTION_VERSION))
+
+            override.write_text("<Project />", encoding="utf-8")
+            with self.assertRaisesRegex(
+                ReleaseCompatibilityError,
+                "required FrontComposerPackageValidationBaselineVersion declaration is missing",
+            ):
+                validate_release_policy(root, PRODUCTION_VERSION)
+
+    def test_checked_in_contracts_ui_baseline_override_is_required(self) -> None:
+        self.assertIn(
+            ROOT / "src" / "Hexalith.FrontComposer.Contracts.UI"
+            / "Hexalith.FrontComposer.Contracts.UI.csproj",
+            release_compatibility.inventory_required_baseline_paths(ROOT),
+        )
+
+    def test_inventory_flags_must_be_json_booleans(self) -> None:
+        for flag in ("compatibility_suppressions", "baseline_override", "pack_as_tool"):
+            with self.subTest(flag=flag), tempfile.TemporaryDirectory() as directory:
+                root = pathlib.Path(directory)
+                rows = self.inventory_rows(root)
+                rows[0][flag] = "true"
+                inventory = root / "inventory.json"
+                inventory.write_text(json.dumps({"packages": rows}), encoding="utf-8")
+                with self.assertRaisesRegex(
+                    ReleaseCompatibilityError,
+                    rf"{flag} must be the JSON boolean true when present",
+                ):
+                    release_compatibility.packable_packages(root, inventory)
+
+    def test_pack_as_tool_row_must_document_its_reason(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            rows = self.inventory_rows(root)
+            rows[0]["pack_as_tool"] = True
+            inventory = root / "inventory.json"
+            inventory.write_text(json.dumps({"packages": rows}), encoding="utf-8")
+            with self.assertRaisesRegex(
+                ReleaseCompatibilityError,
+                "must document pack_as_tool_reason",
+            ):
+                release_compatibility.packable_packages(root, inventory)
+
+    def test_checked_in_reviewed_suppression_files_are_required(self) -> None:
+        self.assertEqual(
+            {
+                "Hexalith.FrontComposer.Contracts",
+                "Hexalith.FrontComposer.Mcp",
+                "Hexalith.FrontComposer.Shell",
+            },
+            release_compatibility.inventory_required_suppression_files(ROOT),
+        )
+
+    def test_packable_library_projects_exclude_the_pack_as_tool_row(self) -> None:
+        # Quality Gate 4 packs exactly these; the CLI is excluded because the SDK disables
+        # package validation for a PackAsTool layout.
+        libraries = release_compatibility.packable_library_projects(ROOT)
+        self.assertEqual(7, len(libraries))
+        self.assertEqual(8, len(release_compatibility.packable_projects(ROOT)))
+        self.assertNotIn(
+            "Hexalith.FrontComposer.Cli.csproj",
+            {path.name for path in libraries},
+        )
 
     def test_policy_rejects_suppression_files_outside_the_packable_inventory(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -781,9 +953,16 @@ class PackReleasePackagesTests(unittest.TestCase):
         *,
         current_release: str,
         baseline: str,
+        reviewed_suppression_packages: tuple[str, ...] = (),
+        required_baseline_packages: tuple[str, ...] = (),
     ) -> None:
         """Write an inventory-shaped repository the policy can enumerate on its own."""
         rows = PackReleasePackagesTests.inventory_rows(root)
+        for row in rows:
+            if row["package_id"] in reviewed_suppression_packages:
+                row["compatibility_suppressions"] = True
+            if row["package_id"] in required_baseline_packages:
+                row["baseline_override"] = True
         inventory = root / "eng" / "release-package-inventory.json"
         inventory.parent.mkdir(parents=True, exist_ok=True)
         inventory.write_text(json.dumps({"packages": rows}), encoding="utf-8")

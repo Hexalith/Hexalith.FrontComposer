@@ -37,6 +37,19 @@ SHARED_BASELINE_PATH = "Directory.Build.targets"
 INVENTORY_PATH = "eng/release-package-inventory.json"
 EXPECTED_PACKAGE_COUNT = 8
 SUPPRESSION_FILE_NAME = "CompatibilitySuppressions.xml"
+# Inventory row flags. `compatibility_suppressions` marks a package whose suppression XML is a
+# reviewed, checked-in artifact: deleting it must fail closed rather than silently drop a site.
+# `pack_as_tool` marks the PackAsTool row the SDK disables package validation for.
+SUPPRESSION_FLAG_FIELD = "compatibility_suppressions"
+# `baseline_override` marks a packable project whose FrontComposerPackageValidationBaselineVersion
+# pin is a reviewed, checked-in site: removing the pin must fail closed, not silently fall back to
+# the shared default.
+BASELINE_OVERRIDE_FIELD = "baseline_override"
+PACK_AS_TOOL_FIELD = "pack_as_tool"
+PACK_AS_TOOL_REASON_FIELD = "pack_as_tool_reason"
+# Optional inventory row flags. Each must be a real JSON boolean `true` when present: a string
+# "true" is truthy in most readers and would silently stop requiring a reviewed site.
+OPTIONAL_ROW_FLAGS = (SUPPRESSION_FLAG_FIELD, BASELINE_OVERRIDE_FIELD, PACK_AS_TOOL_FIELD)
 # Every packable project lives under this directory, so a suppression file found anywhere else in
 # it belongs to no packable package and can never be reviewed by the ledger parity check.
 SUPPRESSION_SCAN_ROOT = "src"
@@ -77,26 +90,45 @@ def lifecycle_line(value: str, field: str) -> tuple[int, int]:
     return int(match.group("major")), int(match.group("minor"))
 
 
-def preceding_release_line(line: tuple[int, int], field: str) -> str:
-    """Return the human label of the release line immediately preceding ``line``."""
+def preceding_release_line(line: tuple[int, int]) -> str | None:
+    """Return the label of the release line immediately preceding ``line``, or None for v0.0.
+
+    ``v0.0`` is the one line with no predecessor. Returning None instead of raising keeps the
+    baseline diagnostic buildable there, so it can still name the found and the accepted values.
+    """
     major, minor = line
     if minor > 0:
         return f"v{major}.{minor - 1}"
     if major > 0:
         return f"v{major - 1}.x"
-    raise ReleaseCompatibilityError(f"{field} v0.0 has no preceding published release line")
+    return None
 
 
 def is_preceding_release_line(baseline_line: tuple[int, int], line: tuple[int, int]) -> bool:
-    """Return whether ``baseline_line`` is the release line immediately before ``line``."""
+    """Return whether ``baseline_line`` is the release line immediately before ``line``.
+
+    Known limitation for a major bump: a candidate ``M.0.x`` resets the minor, so the line before
+    it is the last minor of major ``M-1`` and that number cannot be derived from the candidate
+    version. The compatibility ledger records only the planned ``currentRelease``, not published
+    history, so there is no in-repository source for it either. Any minor of major ``M-1`` is
+    therefore accepted, which means ``5.0.0`` validates against a stale ``4.0.x`` baseline even
+    when ``4.9.x`` is published. Advancing the baseline across a major bump stays a reviewed step.
+    """
     major, minor = line
     if minor > 0:
         return baseline_line == (major, minor - 1)
     if major > 0:
-        # A major bump resets the minor, so the preceding line is the last minor of the previous
-        # major and its exact number cannot be derived from the candidate version alone.
         return baseline_line[0] == major - 1
     return False
+
+
+def is_within_one_release_line(baseline_line: tuple[int, int], line: tuple[int, int]) -> bool:
+    """Return whether the baseline is at most one release line behind ``line``.
+
+    The baseline may sit on ``line`` itself -- the hotfix case, where ``4.3.1`` is diffed against
+    published ``4.3.0`` -- or on the line immediately before it. Two or more lines back fails.
+    """
+    return baseline_line == line or is_preceding_release_line(baseline_line, line)
 
 
 def packable_packages(
@@ -104,6 +136,14 @@ def packable_packages(
     inventory_path: pathlib.Path | None = None,
 ) -> list[tuple[str, pathlib.Path]]:
     """Validate and return the exact eight packable ``(package_id, project)`` inventory rows."""
+    return [(package_id, project) for package_id, project, _ in _packable_rows(root, inventory_path)]
+
+
+def _packable_rows(
+    root: pathlib.Path,
+    inventory_path: pathlib.Path | None = None,
+) -> list[tuple[str, pathlib.Path, Mapping[str, object]]]:
+    """Validate the inventory and return ``(package_id, project, row)`` for every packable row."""
     root = root.resolve()
     path = _resolve(root, inventory_path or pathlib.Path(INVENTORY_PATH))
     try:
@@ -129,7 +169,7 @@ def packable_packages(
             f"found {len(packable)}"
         )
 
-    packages: list[tuple[str, pathlib.Path]] = []
+    packages: list[tuple[str, pathlib.Path, Mapping[str, object]]] = []
     package_ids: set[str] = set()
     resolved_projects: set[pathlib.Path] = set()
     for index, row in packable:
@@ -151,6 +191,19 @@ def packable_packages(
             raise ReleaseCompatibilityError(
                 f"{path}: packable row {index} must set packable and symbol_required to true"
             )
+        for flag in OPTIONAL_ROW_FLAGS:
+            if flag in row and row[flag] is not True:
+                raise ReleaseCompatibilityError(
+                    f"{path}: packable row {index} {flag} must be the JSON boolean true when "
+                    f"present; found {row[flag]!r}"
+                )
+        if row.get(PACK_AS_TOOL_FIELD) is True:
+            reason = row.get(PACK_AS_TOOL_REASON_FIELD)
+            if not isinstance(reason, str) or not reason.strip():
+                raise ReleaseCompatibilityError(
+                    f"{path}: packable row {index} must document {PACK_AS_TOOL_REASON_FIELD} "
+                    "when it opts out of the library package-validation gate"
+                )
         resolved_project = _resolve(root, pathlib.Path(project_value))
         if not resolved_project.is_relative_to(root):
             raise ReleaseCompatibilityError(
@@ -167,7 +220,7 @@ def packable_packages(
             raise ReleaseCompatibilityError(f"{path}: duplicate packable project '{project_value}'")
         package_ids.add(normalized_id)
         resolved_projects.add(resolved_project)
-        packages.append((package_id, resolved_project))
+        packages.append((package_id, resolved_project, row))
     return packages
 
 
@@ -179,12 +232,59 @@ def packable_projects(
     return [project for _, project in packable_packages(root, inventory_path)]
 
 
+def packable_library_projects(
+    root: pathlib.Path,
+    inventory_path: pathlib.Path | None = None,
+) -> list[pathlib.Path]:
+    """Return every packable project except the documented ``pack_as_tool`` exception.
+
+    These are the packages .NET package validation actually applies to; the SDK disables
+    ``EnablePackageValidation`` for a ``PackAsTool`` layout.
+    """
+    return [
+        project
+        for _, project, flags in _packable_rows(root, inventory_path)
+        if flags.get(PACK_AS_TOOL_FIELD) is not True
+    ]
+
+
+def inventory_required_suppression_files(
+    root: pathlib.Path,
+    inventory_path: pathlib.Path | None = None,
+) -> set[str]:
+    """Return the packages whose checked-in suppression XML must exist."""
+    return {
+        package_id
+        for package_id, _, flags in _packable_rows(root, inventory_path)
+        if flags.get(SUPPRESSION_FLAG_FIELD) is True
+    }
+
+
 def inventory_baseline_override_paths(
     root: pathlib.Path,
     inventory_path: pathlib.Path | None = None,
 ) -> tuple[pathlib.Path, ...]:
-    """Return every packable project that may pin a package-validation baseline override."""
-    return tuple(packable_projects(root, inventory_path))
+    """Return every packable project that MAY pin a package-validation baseline override."""
+    return tuple(
+        project
+        for _, project, flags in _packable_rows(root, inventory_path)
+        if flags.get(BASELINE_OVERRIDE_FIELD) is not True
+    )
+
+
+def inventory_required_baseline_paths(
+    root: pathlib.Path,
+    inventory_path: pathlib.Path | None = None,
+) -> tuple[pathlib.Path, ...]:
+    """Return the shared default plus every packable project that MUST pin the baseline."""
+    return (
+        root.resolve() / SHARED_BASELINE_PATH,
+        *(
+            project
+            for _, project, flags in _packable_rows(root, inventory_path)
+            if flags.get(BASELINE_OVERRIDE_FIELD) is True
+        ),
+    )
 
 
 def inventory_suppression_files(
@@ -244,7 +344,11 @@ def validate_release_policy(
     # hardcoded tuple, so adding a packable package cannot add an unreviewed site.
     configured_baselines = tuple(
         _resolve(root, path)
-        for path in (baseline_paths or (pathlib.Path(SHARED_BASELINE_PATH),))
+        for path in (
+            inventory_required_baseline_paths(root, inventory_path)
+            if baseline_paths is None
+            else baseline_paths
+        )
     )
     configured_overrides = tuple(
         _resolve(root, path)
@@ -263,6 +367,14 @@ def validate_release_policy(
             else suppression_files
         ).items()
     }
+    # A packable project that never carried a suppression file contributes no rows, but a reviewed
+    # file that vanished must fail closed. The inventory's `compatibility_suppressions` flag names
+    # the reviewed sites; an explicit override keeps the stricter all-files-required behaviour.
+    required_suppressions = (
+        inventory_required_suppression_files(root, inventory_path)
+        if inventory_derived_suppressions
+        else set(configured_suppressions)
+    )
 
     payload = _read_ledger(ledger_path)
     if payload.get("schemaVersion") != COMPATIBILITY_SUPPRESSIONS_SCHEMA_VERSION:
@@ -298,12 +410,15 @@ def validate_release_policy(
         published_baseline,
         actual_line if match_candidate_release else current_line,
         policy_label,
-        exact_preceding_line=match_candidate_release,
     )
 
     if inventory_derived_suppressions:
         _reject_unenumerated_suppression_files(root, configured_suppressions)
-    xml_rows = _suppression_xml_rows(configured_suppressions)
+    # A ledger row also establishes its package's site, so its file cannot be deleted either.
+    xml_rows = _suppression_xml_rows(
+        configured_suppressions,
+        required_suppressions | {key.split("|", 1)[0] for key in tracked_rows},
+    )
     if xml_rows != tracked_rows:
         missing = sorted(tracked_rows - xml_rows)
         stale = sorted(xml_rows - tracked_rows)
@@ -407,8 +522,6 @@ def _validate_baseline(
     published_baseline: str,
     line: tuple[int, int],
     policy_label: str,
-    *,
-    exact_preceding_line: bool,
 ) -> None:
     """Check every checked-in baseline site against the release line it must trail."""
     declared: list[tuple[pathlib.Path, str]] = []
@@ -416,7 +529,7 @@ def _validate_baseline(
         values = xml_values(path, BASELINE_PROPERTY_NAME)
         if not values:
             raise ReleaseCompatibilityError(
-                f"{path}: shared {BASELINE_PROPERTY_NAME} default is missing"
+                f"{path}: required {BASELINE_PROPERTY_NAME} declaration is missing"
             )
         declared.extend((path, value) for value in values)
     for path in override_paths:
@@ -430,21 +543,18 @@ def _validate_baseline(
 
     origin, baseline = declared[0]
     baseline_line = candidate_release_line(baseline, f"{origin}: {BASELINE_PROPERTY_NAME}")
-    expected = preceding_release_line(line, policy_label)
-    if exact_preceding_line:
-        # Pack time: the candidate is diffed against the release line immediately before its own,
-        # so packing 4.4.0 requires a published 4.3.x baseline.
-        if not is_preceding_release_line(baseline_line, line):
-            raise ReleaseCompatibilityError(
-                f"{origin}: package-validation baseline must be on the published release line "
-                f"immediately preceding {policy_label}, expected {expected}; found '{baseline}'"
-            )
-    elif not (is_preceding_release_line(baseline_line, line) or baseline_line == line):
-        # Static repository check: the baseline may sit on the planned line or the one before it,
-        # never further back, so a published release cannot leave it behind.
+    # One tolerance for both the pack-time and the static repository check: the baseline may sit on
+    # the release line under validation or on the one immediately before it, never further back.
+    # Packing 4.3.1 against published 4.3.0 is the hotfix case; packing 4.4.0 requires 4.3.x.
+    # The expected label is computed only on failure -- a v0.0 line has no preceding line at all,
+    # and the same-line case must still be accepted there.
+    if not is_within_one_release_line(baseline_line, line):
+        preceding = preceding_release_line(line)
+        current = f"v{line[0]}.{line[1]}"
+        accepted = f"{preceding} or {current}" if preceding else current
         raise ReleaseCompatibilityError(
-            f"{origin}: package-validation baseline must be on the {expected} or "
-            f"v{line[0]}.{line[1]} release line for {policy_label}; found '{baseline}'"
+            f"{origin}: package-validation baseline must be on the {accepted} release line "
+            f"for {policy_label}; found '{baseline}'"
         )
 
     if baseline != published_baseline:
@@ -487,12 +597,17 @@ def _parse_xml(path: pathlib.Path) -> ET.Element:
         raise ReleaseCompatibilityError(f"{path}: cannot read compatibility policy XML: {error}") from error
 
 
-def _suppression_xml_rows(suppression_files: Mapping[str, pathlib.Path]) -> set[str]:
+def _suppression_xml_rows(
+    suppression_files: Mapping[str, pathlib.Path],
+    required_packages: set[str],
+) -> set[str]:
     rows: set[str] = set()
     for package, path in suppression_files.items():
-        # A packable project without a suppression file contributes no rows, exactly like the
-        # empty `<Suppressions />` files the reviewed packages check in.
         if not path.is_file():
+            if package in required_packages:
+                # `_parse_xml` reports the missing reviewed file with its actionable diagnostic.
+                _parse_xml(path)
+            # A packable project that never carried a suppression file contributes no rows.
             continue
         root = _parse_xml(path)
         root_name = root.tag.rsplit("}", 1)[-1]
