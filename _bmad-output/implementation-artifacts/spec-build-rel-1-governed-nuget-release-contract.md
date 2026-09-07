@@ -2,7 +2,7 @@
 title: 'BUILD-REL-1: Opt-in governed NuGet release contract for Hexalith.Builds'
 type: 'feature'
 created: '2026-08-05'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 baseline_commit: '824d7ef100455423aabbcd399c8364074000b2e0'
 context:
@@ -122,3 +122,52 @@ context:
 **Manual checks:**
 - Issue filing deferred this run — skip issue-body check; Release Owner handles later
 - Confirm no FrontComposer submodule or caller workflow files changed in the Builds PR
+
+## Review Triage Log
+
+Reviewed 2026-09-07 against BUILD-REL-1 commit `bd94f7fe7471ec73974e9629a70a4a731f7d1540`
+(range from `baseline_commit` `824d7ef100455423aabbcd399c8364074000b2e0`). Claims verified against
+the current Hexalith.Builds tree at `069d1168d88b53a4854bed1f6f52685b2283c6e2`, which already contains
+later pin-bump and output-sandbox follow-ups.
+
+| # | Finding | Verdict | Evidence |
+|---|---------|---------|----------|
+| 1 | Release never downloads or matches the CI-handoff artifact | false | Frozen I/O and Design Notes assign evidence JSON to the caller; G2 has the post-release verifier re-download both handoffs. Builds validates `ci-run-id` / `ci-run-attempt` / `ci-handoff-artifact` shape and forwards them. |
+| 2 | `npx semantic-release` is a second pack path with no attested-byte check | false | Design Notes: Builds supplies candidate/attest/env; callers own `prepareCmd`. `HEXALITH_RELEASE_CANDIDATE_INVENTORY` and the bundle path are exported before publish. |
+| 3 | `job.workflow_ref` `@` suffix is not required to be 40-hex | false | Identity is `job.workflow_sha == builds-execution-sha` plus a path prefix. That SHA is immutable for the run; caller `@main` pinning is FrontComposer GOV-1 work this story must not edit. |
+| 4 | Governed CI provenance is not uploaded | false | AC requires provenance for the caller handoff; `domain-ci.yml` already emits job/workflow outputs (`governed-provenance-json`, SHA, closure digest). Durable CI upload is caller-owned. |
+| 5 | Policy file bytes are never hashed | false | Policy is a coordinate (repo/path/commit/sha256), not necessarily present in the module checkout. Format is validated and projected; the verifier hashes live policy bytes. |
+| 6 | Evaluator hashes composite `tests/` and `README.md` | false | Intentional fail-closed: `governed_provenance.py` documents hashing every regular file because choosing “executed” helpers would require interpreting `run:` scripts. |
+| 7 | Freeze is a step, so environment/checkout can still fail a frozen run | low | Governed freeze is the first step and skips build/attest/SR. `environment:` wait is approval, not a red fail. Rejected: unlikely in everyday frozen skip, and a job split is more than a direct correction. |
+| 8 | `aspire-tests` / `performance-tests` keep SHA pins instead of local governed composites | false | Design Notes resolved remaining `Github/*@main` to literal 40-hex pins; local-path loading is only for the governed Builds checkout in `build-and-test`. Current pins are `5c3ff35c…` (DW-1746 done). |
+| 9 | Dry-run version scrape treats an unparseable log as “no release” | medium | `domain-release.yml` candidate phase still greps `The next release version is …` and, on a green dry-run with no capture, sets `release-required=false`. A changed success line would skip a warranted publication. |
+| 10 | `write_outputs` uses `name=value` rather than a heredoc | false | Provenance is canonical compact JSON (`assertNotIn("\n", provenance-json)`). Newline-splitting does not occur on the emitted form. |
+| 11 | `action.yml` describes `expected-evaluator-digest` as merely recorded | low | Python and README fail closed on mismatch; the action input text still says “recorded into the provenance”, so a caller reading only metadata would treat a wrong digest as informational. |
+| 12 | Verification hashes the attest action temp `bundle-path` | medium | Collect step still reads `steps.candidate-attestation.outputs.bundle-path`. The durable copy is `.hexalith/release/governed/candidate-attestation.jsonl`. If the temp file is gone under `if: always()`, `bundle_sha256` becomes null after a real attest. |
+| 13 | Point-of-use `rm -rf` check omits the backslash case | medium | Contract gate rejects `\` (`domain-release.yml` contract). The delete-step `case` is `""|/*|~*|*$'\n'*` only, and the comment says it must not depend on the earlier gate. |
+| 14 | `Directory.Packages.props` EventStore 3.91.0 → 3.91.1 | false | Separate parent commit `5223b2fb`, not the BUILD-REL-1 feat commit; not this story’s governed contract. |
+| 15 | Governed-provenance tests run in both `ci.yml` jobs | low | `Tools/test-governed-provenance.ps1` is a pwsh wrapper around the same unittest discover used in `python-tests`. Dual-lane, not a functional hole. Rejected as unlikely everyday harm. |
+| 16 | `expected-package-count` leading zeros skip the inventory check | low | Contract accepts `^[0-9]+$` (so `09`). Candidate count enforcement requires `^[1-9][0-9]*$`, so `09` never constrains inventory size. |
+| 17 | Output path written without a sandbox | false | Current `write_outputs` calls `resolve_workspace_path`; `test_the_output_path_must_stay_inside_the_workspace` already covers `/tmp` and `../`. |
+| 18 | `provenance-json` has no GitHub Actions 1MB output guard | medium | Closure ceiling is 16 MiB of sources; `write_outputs` still writes `provenance-json=` as a single GITHUB_OUTPUT value with no size check. A legal closure can exceed the 1MB Actions limit. |
+| 19 | `subject-path` globs an unescaped `candidate-directory` | low | Default paths have no spaces; contract already rejects newline, backslash, absolute, and `..`. Rejected: unlikely everyday, and switching to an inventory file list is more than a direct correction. |
+| 20 | Candidate and publish steps do not override `GITHUB_SHA` | medium | Checkout uses `ref: release-commit` and git HEAD is proved, but step env never sets `GITHUB_SHA`. semantic-release / GitHub tooling still see the event head. Same claim as #21. |
+| 21 | AC “every operation uses `release-commit` only” vs event-head `GITHUB_SHA` | medium | Same defect as #20: publish tooling can still consume `github.sha`. |
+| 22 | Freeze-gate tests never observe `vars.HEXALITH_RELEASE_PUBLISH_ENABLED` | medium | Pre-verified. `run_freeze_gate` injects the env name; YAML `env:` binding is unasserted. Malformed-value matrix runs only at `occurrence=0`. |
+| 23 | No success-path test for `hexalith.builds-release-verification-data.v1` | medium | Pre-verified. Only the all-false/null collect path is executed; `published = True` is unasserted. |
+| 24 | Default-off CI test omits dual `initialize-build` / `dapr-init` `if:` | medium | Pre-verified. `test_governed_ci_inputs_default_off_and_add_no_permission` lists three governed steps and misses the local-path composites that would break a default-off caller if their `if:` were dropped. |
+
+**Grouping and routing**
+
+- **patch — dry-run parse fail-closed (#9).**
+- **patch — durable attestation digest (#12).**
+- **patch — point-of-use backslash (#13).**
+- **patch — canonical `expected-package-count` (#16).**
+- **patch — GITHUB_OUTPUT 1MB guard (#18).**
+- **patch — override `GITHUB_SHA` with `release-commit` (#20, #21).**
+- **patch — freeze YAML `vars` binding + governed occurrence matrix (#22).**
+- **patch — verification-data success path (#23).**
+- **patch — dual composite `if:` assertions (#24).**
+- **patch — `expected-evaluator-digest` action metadata (#11).**
+
+No intent_gap or bad_spec entries. Patch entries are applied on Hexalith.Builds `feat/build-rel-1-review-hardening`.
