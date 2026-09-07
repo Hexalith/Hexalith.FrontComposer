@@ -140,6 +140,47 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertEqual(document["observations"]["queryProvenance"]["reasonCode"], "query.handler-computed")
         self.assertEqual(document["observations"]["queryProvenance"]["provenance"], "HandlerComputed")
 
+    def test_query_provenance_accepts_metadata_when_header_is_absent(self) -> None:
+        runtime = FakeRuntime()
+
+        def json_request(url: str, *, method: str = "GET", token: str | None = None, form: dict[str, str] | None = None, body: dict[str, Any] | None = None, timeout: int = 10) -> tuple[int, dict[str, Any], dict[str, str]]:
+            if url.endswith("/api/v1/queries"):
+                runtime.assert_token_present(token)
+                return 200, {"metadata": {"provenance": "HandlerComputed"}}, {}
+            return FakeRuntime.json_request(runtime, url, method=method, token=token, form=form, body=body, timeout=timeout)
+
+        runtime.json_request = json_request  # type: ignore[method-assign]
+
+        result = smoke.capture(self.output, runtime, timeout=30)
+
+        self.assertEqual(result, 0)
+        document = json.loads(self.output.read_text(encoding="utf-8"))
+        self.assertEqual(document["observations"]["queryProvenance"]["reasonCode"], "query.handler-computed")
+        self.assertEqual(document["observations"]["queryProvenance"]["provenance"], "HandlerComputed")
+
+    def test_query_targets_the_created_tenant_handler_route(self) -> None:
+        runtime = FakeRuntime()
+        recorded: dict[str, Any] = {}
+
+        def json_request(url: str, *, method: str = "GET", token: str | None = None, form: dict[str, str] | None = None, body: dict[str, Any] | None = None, timeout: int = 10) -> tuple[int, dict[str, Any], dict[str, str]]:
+            if url.endswith("/api/v1/queries"):
+                runtime.assert_token_present(token)
+                recorded.update(body or {})
+                return 200, {}, {"X-Hexalith-Query-Provenance": "HandlerComputed"}
+            return FakeRuntime.json_request(runtime, url, method=method, token=token, form=form, body=body, timeout=timeout)
+
+        runtime.json_request = json_request  # type: ignore[method-assign]
+
+        result = smoke.capture(self.output, runtime, timeout=30)
+
+        self.assertEqual(result, 0)
+        self.assertEqual(recorded.get("queryType"), "get-tenant")
+        self.assertEqual(recorded.get("projectionType"), "tenants")
+        self.assertEqual(recorded.get("domain"), "tenants")
+        self.assertEqual(recorded.get("entityId"), recorded.get("aggregateId"))
+        self.assertNotIn("payload", recorded)
+        self.assertTrue(str(recorded.get("aggregateId", "")).startswith("pact-reconciliation-"))
+
     def test_start_failure_is_recorded_and_still_attempts_clean_stop(self) -> None:
         runtime = FakeRuntime(start_code=2)
 

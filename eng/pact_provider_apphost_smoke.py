@@ -418,6 +418,18 @@ def _clip(text: str, limit: int = 4000) -> str:
     return text[-limit:]
 
 
+def _query_provenance(headers: dict[str, str], document: dict[str, Any]) -> str:
+    header = next((value for key, value in headers.items() if key.lower() == "x-hexalith-query-provenance"), "")
+    if header:
+        return header
+    metadata = document.get("metadata")
+    if isinstance(metadata, dict):
+        value = metadata.get("provenance")
+        if isinstance(value, str):
+            return value
+    return ""
+
+
 def _atomic_write(path: Path, document: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
@@ -632,24 +644,28 @@ def _capture(output: Path, runtime: SmokeRuntime, timeout: int) -> int:
         provenance = ""
         query_deadline = time.monotonic() + 60
         while time.monotonic() < query_deadline:
-            query_status, _, query_headers = runtime.json_request(
+            # list-tenants + projectionType "tenants" is a mismatched route (list-tenants uses
+            # tenant-index). Query the tenant CreateTenant just completed, matching Tenants
+            # AspireTopologyTests: get-tenant / projectionType tenants / entityId = aggregateId.
+            query_status, query_document, query_headers = runtime.json_request(
                 f"{eventstore_base}/api/v1/queries",
                 method="POST",
                 token=token,
                 body={
                     "tenant": "system",
                     "domain": "tenants",
-                    "aggregateId": "index",
-                    "queryType": "list-tenants",
+                    "aggregateId": tenant_id,
+                    "queryType": "get-tenant",
                     "projectionType": "tenants",
-                    "payload": {"pageSize": 10},
+                    "entityId": tenant_id,
                 },
                 timeout=30,
             )
-            provenance = next((value for key, value in query_headers.items() if key.lower() == "x-hexalith-query-provenance"), "")
+            provenance = _query_provenance(query_headers, query_document)
             # Tenant handler routes are stamped HandlerComputed; projection-actor routes are
             # ProjectionBacked. This topology has no EventStore.Sample processor, so the live
-            # tenant query is the authentic provenance observation.
+            # tenant query is the authentic provenance observation. Body metadata.provenance is
+            # the same EventStore contract as the header when a proxy strips custom headers.
             if query_status == 200 and provenance in ("ProjectionBacked", "HandlerComputed"):
                 break
             time.sleep(1)
@@ -765,6 +781,9 @@ def _report_failure(output: Path) -> None:
             value = startup.get(key)
             if value not in (None, ""):
                 print(f"{key}={value}", file=sys.stderr)
+    observations = document.get("observations")
+    if isinstance(observations, dict):
+        print(f"observations={json.dumps(observations, separators=(',', ':'))}", file=sys.stderr)
 
 
 def main(argv: list[str] | None = None) -> int:
