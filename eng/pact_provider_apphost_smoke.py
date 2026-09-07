@@ -477,14 +477,36 @@ def _capture(output: Path, runtime: SmokeRuntime, timeout: int) -> int:
         # `--isolated` keeps the CLI off shared local Aspire state on GitHub-hosted runners.
         # Debug/source references stay the default: Release package mode omits Parties/Tenants
         # UI assemblies (FrontComposerUiUsePublishedModulePackages defaults false) and the
-        # AppHost then fails with CS0234.
+        # AppHost then fails with CS0234. A serialized Debug prebuild plus `--no-build` avoids
+        # the parallel pack file-lock on Hexalith.Commons nupkgs that fails `aspire start` in CI.
         runtime.command(
             ["aspire", "stop", "--apphost", APPHOST_RELATIVE, "--non-interactive", "--nologo"],
             60,
         )
         if runtime.__class__ is SmokeRuntime:
             _wait_until_host_absent_or_ports_closed(runtime, [])
-        start = runtime.command(START_COMMAND, timeout)
+            prebuild = runtime.command(
+                [
+                    "dotnet",
+                    "build",
+                    APPHOST_RELATIVE,
+                    "--configuration",
+                    "Debug",
+                    "-m:1",
+                    "-p:NuGetAudit=false",
+                    "-p:CentralPackageTransitivePinningEnabled=false",
+                ],
+                timeout,
+            )
+            if prebuild.returncode != 0:
+                reason_codes.append("apphost.start.failed")
+                evidence["startup"]["startReturnCode"] = prebuild.returncode
+                evidence["startup"]["startStdout"] = _clip(prebuild.stdout)
+                evidence["startup"]["startStderr"] = _clip(prebuild.stderr)
+                return 1
+            start = runtime.command([*START_COMMAND, "--no-build"], timeout)
+        else:
+            start = runtime.command(START_COMMAND, timeout)
         if start.returncode != 0:
             reason_codes.append("apphost.start.failed")
             evidence["startup"]["startReturnCode"] = start.returncode

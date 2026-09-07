@@ -154,6 +154,31 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertEqual(document["cleanup"]["result"], "clean")
         self.assertEqual([item[1] for item in runtime.commands], ["stop", "start", "stop", "describe"])
 
+    def test_live_runtime_prebuilds_debug_apphost_then_starts_without_rebuild(self) -> None:
+        recorded: list[list[str]] = []
+        runtime = smoke.SmokeRuntime()
+
+        def command(arguments: list[str], timeout: int) -> smoke.CommandResult:
+            del timeout
+            recorded.append(arguments)
+            if arguments[:1] == ["dotnet"]:
+                return smoke.CommandResult(0, "built")
+            if arguments[:2] == ["aspire", "start"]:
+                return smoke.CommandResult(0)
+            return smoke.CommandResult(1)
+
+        runtime.command = command  # type: ignore[method-assign]
+
+        result = smoke.capture(self.output, runtime, timeout=30)
+        self.assertEqual(result, 1)
+        build = next(command_args for command_args in recorded if command_args[:2] == ["dotnet", "build"])
+        self.assertEqual(build[2], smoke.APPHOST_RELATIVE)
+        self.assertIn("-m:1", build)
+        self.assertIn("Debug", build)
+        start = next(command_args for command_args in recorded if command_args[:2] == ["aspire", "start"])
+        self.assertIn("--isolated", start)
+        self.assertIn("--no-build", start)
+
     def test_cleanup_failure_overrides_an_otherwise_passing_capture(self) -> None:
         runtime = FakeRuntime(cleanup_running=True)
 
