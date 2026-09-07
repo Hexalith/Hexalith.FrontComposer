@@ -42,6 +42,16 @@ REQUIRED_RESOURCES = (
 )
 OBSERVATIONS = ("health", "commandSubmit", "commandStatus", "queryProvenance", "projectionSignalR")
 STOP_COMMAND = f"aspire stop --apphost {APPHOST_RELATIVE} --non-interactive --nologo"
+START_COMMAND = [
+    "aspire",
+    "start",
+    "--apphost",
+    APPHOST_RELATIVE,
+    "--isolated",
+    "--non-interactive",
+    "--nologo",
+]
+PACKAGE_REFERENCE_ENV = "UseHexalithProjectReferences"
 # `aspire describe --format Json` for the ten-resource AppHost exceeds 8 KiB. Truncating
 # from the tail made `_json_from_output` parse a nested fragment and fail closed as
 # `apphost.describe.incomplete` after every resource was already healthy.
@@ -403,6 +413,25 @@ def _base_evidence() -> dict[str, Any]:
     }
 
 
+def _clip(text: str, limit: int = 4000) -> str:
+    if len(text) <= limit:
+        return text
+    return text[-limit:]
+
+
+def _force_package_restore_mode() -> str | None:
+    previous = os.environ.get(PACKAGE_REFERENCE_ENV)
+    os.environ[PACKAGE_REFERENCE_ENV] = "false"
+    return previous
+
+
+def _restore_package_restore_mode(previous: str | None) -> None:
+    if previous is None:
+        os.environ.pop(PACKAGE_REFERENCE_ENV, None)
+    else:
+        os.environ[PACKAGE_REFERENCE_ENV] = previous
+
+
 def _atomic_write(path: Path, document: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
@@ -455,22 +484,26 @@ def _capture(output: Path, runtime: SmokeRuntime, timeout: int) -> int:
     probed_urls: list[str] = []
     reason_codes: list[str] = evidence["reasonCodes"]
     started = False
+    previous_package_mode = _force_package_restore_mode()
     try:
         # `aspire start --format Json` restarts a running AppHost. That restart launches
         # frontcomposer-ui with `dotnet run --no-build` against a half-stopped process tree
         # and the resource exits before wait. Stop first so capture is always a cold start.
+        # `--isolated` keeps the CLI off shared local Aspire state. Package-restore mode is
+        # forced because the CLI defaults to Debug, which otherwise enables project
+        # references and collides with the Release NuGet graph Quality already restored.
         runtime.command(
             ["aspire", "stop", "--apphost", APPHOST_RELATIVE, "--non-interactive", "--nologo"],
             60,
         )
         if runtime.__class__ is SmokeRuntime:
             _wait_until_host_absent_or_ports_closed(runtime, [])
-        start = runtime.command(
-            ["aspire", "start", "--apphost", APPHOST_RELATIVE, "--non-interactive", "--nologo"],
-            timeout,
-        )
+        start = runtime.command(START_COMMAND, timeout)
         if start.returncode != 0:
             reason_codes.append("apphost.start.failed")
+            evidence["startup"]["startReturnCode"] = start.returncode
+            evidence["startup"]["startStdout"] = _clip(start.stdout)
+            evidence["startup"]["startStderr"] = _clip(start.stderr)
             return 1
         started = True
         for resource in REQUIRED_RESOURCES:
@@ -647,6 +680,7 @@ def _capture(output: Path, runtime: SmokeRuntime, timeout: int) -> int:
         reason_codes.append(f"apphost.capture.{type(exception).__name__.lower()}")
         return 1
     finally:
+        _restore_package_restore_mode(previous_package_mode)
         stop = runtime.command(
             ["aspire", "stop", "--apphost", APPHOST_RELATIVE, "--non-interactive", "--nologo"],
             60,
@@ -718,6 +752,12 @@ def _report_failure(output: Path) -> None:
         return
     print(f"finalVerdict={document.get('finalVerdict')}", file=sys.stderr)
     print(f"reasonCodes={document.get('reasonCodes')}", file=sys.stderr)
+    startup = document.get("startup")
+    if isinstance(startup, dict):
+        for key in ("startReturnCode", "startStderr", "startStdout"):
+            value = startup.get(key)
+            if value not in (None, ""):
+                print(f"{key}={value}", file=sys.stderr)
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -30,7 +31,8 @@ class FakeRuntime(smoke.SmokeRuntime):
         self.commands.append(arguments)
         operation = arguments[1]
         if operation == "start":
-            return smoke.CommandResult(self.start_code)
+            stderr = "synthetic start failure" if self.start_code != 0 else ""
+            return smoke.CommandResult(self.start_code, "", stderr)
         if operation == "wait":
             return smoke.CommandResult(0)
         if operation == "stop":
@@ -117,6 +119,7 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertNotIn("synthetic-token", self.output.read_text(encoding="utf-8"))
         self.assertEqual(runtime.commands[0][:2], ["aspire", "stop"])
         self.assertEqual(runtime.commands[1][:2], ["aspire", "start"])
+        self.assertIn("--isolated", runtime.commands[1])
         self.assertEqual(runtime.commands[-2][:2], ["aspire", "stop"])
         self.assertEqual(runtime.commands[-1][:2], ["aspire", "describe"])
 
@@ -147,6 +150,8 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         document = json.loads(self.output.read_text(encoding="utf-8"))
         self.assertEqual(document["finalVerdict"], "failed")
         self.assertIn("apphost.start.failed", document["reasonCodes"])
+        self.assertEqual(document["startup"]["startReturnCode"], 2)
+        self.assertEqual(document["startup"]["startStderr"], "synthetic start failure")
         self.assertEqual(document["cleanup"]["result"], "clean")
         self.assertEqual([item[1] for item in runtime.commands], ["stop", "start", "stop", "describe"])
 
@@ -301,7 +306,14 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
 
     def test_cli_failure_report_prints_reason_codes(self) -> None:
         self.output.write_text(
-            json.dumps({"finalVerdict": "failed", "reasonCodes": ["apphost.start.failed"]}) + "\n",
+            json.dumps(
+                {
+                    "finalVerdict": "failed",
+                    "reasonCodes": ["apphost.start.failed"],
+                    "startup": {"startReturnCode": 2, "startStderr": "bind failed"},
+                }
+            )
+            + "\n",
             encoding="utf-8",
         )
         buffer = io.StringIO()
@@ -311,6 +323,26 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertIn("AppHost smoke failed", text)
         self.assertIn("apphost.start.failed", text)
         self.assertIn("finalVerdict=failed", text)
+        self.assertIn("startReturnCode=2", text)
+        self.assertIn("startStderr=bind failed", text)
+
+    def test_capture_forces_package_restore_mode_for_the_debug_cli_default(self) -> None:
+        seen: list[str | None] = []
+
+        class ObservingRuntime(FakeRuntime):
+            def command(self, arguments: list[str], timeout: int) -> smoke.CommandResult:
+                if arguments[1] == "start":
+                    seen.append(os.environ.get("UseHexalithProjectReferences"))
+                return super().command(arguments, timeout)
+
+        os.environ.pop("UseHexalithProjectReferences", None)
+        try:
+            result = smoke.capture(self.output, ObservingRuntime(), timeout=30)
+        finally:
+            os.environ.pop("UseHexalithProjectReferences", None)
+        self.assertEqual(result, 0)
+        self.assertEqual(seen, ["false"])
+        self.assertNotIn("UseHexalithProjectReferences", os.environ)
 
 
 if __name__ == "__main__":
