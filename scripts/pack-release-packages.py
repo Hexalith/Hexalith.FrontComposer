@@ -10,8 +10,10 @@ Tenants' hardcoded ``PACKAGE_PROJECTS`` constant, this reads the single source o
 ``eng/release-package-inventory.json`` (filtering ``packable == true``) so the CI-time
 package set can never drift from the release inventory the governance tests pin. The
 solution is expected to already be built ``-warnaserror`` (the reusable builds before
-calling this), so packing runs ``--no-build``. A validation-aware solution restore runs
-first so package baselines are available even when the NuGet cache starts cold.
+calling this). Production versions pack ``--no-build``; the synthetic ``0.0.0-ci-test``
+coordinate rebuilds with a baseline-compatible assembly identity. A validation-aware
+solution restore runs first so package baselines are available even when the NuGet cache
+starts cold.
 """
 
 from __future__ import annotations
@@ -29,8 +31,9 @@ INVENTORY_PATH = REPO_ROOT / "eng" / "release-package-inventory.json"
 SOLUTION_PATH = REPO_ROOT / "Hexalith.FrontComposer.slnx"
 sys.path.insert(0, str(REPO_ROOT / "eng"))
 
-from release_compatibility import release_properties, validate_release_policy  # noqa: E402
+from release_compatibility import PUBLISHED_BASELINE_VERSION  # noqa: E402
 from release_compatibility import packable_projects as inventory_packable_projects  # noqa: E402
+from release_compatibility import release_properties, validate_release_policy  # noqa: E402
 
 
 def packable_projects() -> list[Path]:
@@ -43,15 +46,32 @@ def packable_projects() -> list[Path]:
     return inventory_packable_projects(REPO_ROOT, INVENTORY_PATH)
 
 
+def is_synthetic_ci_version(version: str) -> bool:
+    """Return whether this is the shared domain-ci synthetic pack coordinate."""
+    return version.startswith("0.0.0-ci")
+
+
 def pack_commands(output_directory: Path, version: str) -> list[list[str]]:
-    """Build the exact eight-package ``dotnet pack --no-build`` command plan."""
+    """Build the exact eight-package ``dotnet pack`` command plan.
+
+    Production candidates keep ``--no-build`` after a versioned solution build. Shared CI packs
+    ``0.0.0-ci-test`` after an unversioned Release build, so ``--no-build`` would ship ``1.0.0.0``
+    assemblies and ApiCompat CP0003 would fail against the published ``4.3.0`` baseline. Those
+    synthetic packs rebuild with a baseline-compatible ``Version`` while ``PackageVersion`` stays
+    on the CI coordinate the consumer validators read.
+    """
     properties = release_properties(version)
+    extra: list[str] = ["--no-build"]
+    if is_synthetic_ci_version(version):
+        extra = []
+        properties = [item for item in properties if not item.startswith("-p:Version=")]
+        properties.insert(0, f"-p:Version={PUBLISHED_BASELINE_VERSION}-ci")
     return [
         [
             "dotnet",
             "pack",
             str(project),
-            "--no-build",
+            *extra,
             "--configuration",
             "Release",
             "--output",

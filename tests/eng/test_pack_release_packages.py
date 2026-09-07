@@ -117,7 +117,8 @@ class PackReleasePackagesTests(unittest.TestCase):
         self.assertIsNone(payload["releaseLine"])
         self.assertEqual(8, len(payload["commands"]))
         for command in payload["commands"]:
-            self.assertIn("-p:Version=0.0.0-ci-test", command)
+            self.assertNotIn("--no-build", command)
+            self.assertIn(f"-p:Version={PUBLISHED_BASELINE_VERSION}-ci", command)
             self.assertIn("-p:PackageVersion=0.0.0-ci-test", command)
             self.assertIn(VALIDATION_PROPERTY, command)
             self.assertIn(BASELINE_PROPERTY, command)
