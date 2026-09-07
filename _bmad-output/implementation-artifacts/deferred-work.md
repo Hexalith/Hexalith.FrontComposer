@@ -10355,3 +10355,35 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-align-latest-hexalith-modules-and-simplify-ci.md`
   summary: The cryptographic ULID test no longer observes NewUlid().
   evidence: UlidFactoryTests.NewUlid_EntropyIsCryptographic_NotPredictableFromPriorOutputs only asserts EntropySource is CSUlidRng; NewUlid() can stop using that source and still pass.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-fix-current-release-compatibility-gates.md`
+  summary: No test ever executes the release packer live; every case appends --plan and returns before any pack runs.
+  evidence: tests/eng/test_pack_release_packages.py:40 appends --plan to every invocation and main() returns at the plan branch before mkdir, the unlink globs, and subprocess.run. This is the hole that let the missing package-validation baseline reach CI.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-fix-current-release-compatibility-gates.md`
+  summary: Emptying the suppression ledger made the C# row-level policy assertions unreachable.
+  evidence: DiagnosticRegistryTests asserts suppressions.ShouldBeEmpty before the foreach, so the diagnostic-id allowlist, rationale bounds, target/expiry ordering and uniqueness checks never execute; the XML loops are dead for the same reason. Drive them from a fixture ledger.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-fix-current-release-compatibility-gates.md`
+  summary: Python release-policy fixtures hardcode version literals instead of deriving them from the ledger.
+  evidence: The retired suite computed the candidate via current_release_version(payload); tests/eng/test_pack_release_packages.py pins VERSION and v4.2/v4.3 literals, so the v4.3 bump required a manual fixture sweep.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-fix-current-release-compatibility-gates.md`
+  summary: eng/verify-candidate-packages.cs checks nuspec identity and assembly versions but never the nuspec dependencies or the .snupkg contents.
+  evidence: A candidate whose Shell package still declared a previous-version dependency on Contracts would pass verification, and symbol packages are never opened; both are cheap additions to the existing ZipArchive pass.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-fix-current-release-compatibility-gates.md`
+  summary: VerifyAssembly's informational-version StartsWith arms are never exercised by any test.
+  evidence: The CandidatePackageVersionVerifierTests fixture builds outside a git repo, so the informational version equals the candidate exactly and only the string.Equals arm runs; the 4.x+<sha> shape a real ContinuousIntegrationBuild release produces is untested.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-fix-current-release-compatibility-gates.md`
+  summary: Quality Gate 2b silently became SDK-dependent while still named a pure suppression-lifecycle test step.
+  evidence: Adding tests/eng/test_release_prepublish.py pulls CandidatePackageVersionVerifierTests, which runs a real dotnet build and dotnet run --file with no skip guard when the SDK is unavailable.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-fix-current-release-compatibility-gates.md`
+  summary: The compatibility-gate commit also advanced the Hexalith.Builds and Hexalith.Tenants gitlinks, which its own Never list excluded.
+  evidence: 2dcc43fe moves references/Hexalith.Builds 4eb33928->2f46aaee and references/Hexalith.Tenants d3527c84->09c746b3, named in no task; consistent with the known workspace auto-commit behavior rather than deliberate scope creep.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-fix-current-release-compatibility-gates.md`
+  summary: Unverified medium: release policy never rejects a candidate at or below the last published version.
+  evidence: validate_release_policy compares only the major.minor line against currentRelease, never the full triple against PUBLISHED_BASELINE_VERSION. Settle by tracing whether cmd_prepare can be driven with a non-advancing version past the semantic-release contract and evidence gates.
