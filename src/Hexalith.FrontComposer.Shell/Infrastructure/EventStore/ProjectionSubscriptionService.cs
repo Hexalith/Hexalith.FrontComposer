@@ -120,13 +120,18 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         bool added = false;
         try {
             ThrowIfDisposed();
-            if (_activeGroups.ContainsKey(key)) {
-                return;
-            }
+            if (_activeGroups.TryGetValue(key, out GroupState existing)) {
+                if (existing.Health != GroupHealth.Pending) {
+                    return;
+                }
 
-            added = _activeGroups.TryAdd(key, new GroupState(GroupHealth.Pending, context));
-            if (!added) {
-                return;
+                // Retained while SignalR owned a transition but never joined on the wire. If that
+                // reconnect never landed (it exhausted to Closed with no restart path), returning
+                // here would report success for a group nothing will ever join, and every later
+                // subscribe would short-circuit the same way. Fall through and retry the join.
+            }
+            else {
+                added = _activeGroups.TryAdd(key, new GroupState(GroupHealth.Pending, context));
             }
 
             ProjectionHubConnectionPhase phase = _connection.Phase;
@@ -184,7 +189,15 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         GroupKey key = ValidateGroup(projectionType, tenantId, scope);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try {
-            if (!_activeGroups.ContainsKey(key) || _disposed) {
+            if (!_activeGroups.TryGetValue(key, out GroupState existing) || _disposed) {
+                return;
+            }
+
+            // A group retained while SignalR owned a transition was never joined on the wire, so
+            // LeaveGroup would throw on the inactive connection and — by the retry rule below —
+            // strand the key in _activeGroups, making every later subscribe short-circuit.
+            if (existing.Health == GroupHealth.Pending) {
+                _ = _activeGroups.TryRemove(key, out _);
                 return;
             }
 
@@ -524,7 +537,10 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
                     }
 
                     await EnsureRequiredAccessTokenAvailableAsync(token).ConfigureAwait(false);
-                    if (!_connection.IsConnected) {
+
+                    // Phase, not IsConnected: IsConnected is also false while SignalR owns an
+                    // automatic reconnect, and starting then is the illegal second StartAsync.
+                    if (_connection.Phase is ProjectionHubConnectionPhase.Disconnected) {
                         _ = Interlocked.Exchange(ref _restartConnectedStateSuppression, 1);
                         try {
                             await _connection.StartAsync(token).ConfigureAwait(false);
@@ -909,9 +925,11 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
     private readonly record struct GroupState(GroupHealth Health, TenantContextSnapshot? TenantContext);
 
     private enum GroupHealth : byte {
-        Pending,
-        Active,
-        Degraded,
-        Blocked,
+        // Active stays 0 so default(GroupState) keeps its historical meaning; see the P4 note in
+        // RejoinActiveGroupsCoreAsync for the bug a fabricated default entry caused.
+        Active = 0,
+        Pending = 1,
+        Degraded = 2,
+        Blocked = 3,
     }
 }

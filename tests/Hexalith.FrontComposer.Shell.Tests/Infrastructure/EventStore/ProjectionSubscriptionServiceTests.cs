@@ -208,28 +208,40 @@ public sealed class ProjectionSubscriptionServiceTests {
             return connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Reconnecting));
         };
 
-        await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
-        connection.StartCount.ShouldBe(1);
+        try {
+            await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
+            connection.StartCount.ShouldBe(1);
 
-        await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Reconnected));
+            await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Reconnected));
 
-        connection.JoinedGroups.ShouldBe(["orders:acme", "orders:acme"]);
+            connection.JoinedGroups.ShouldBe(["orders:acme", "orders:acme"]);
+        }
+        finally {
+            await sut.DisposeAsync().ConfigureAwait(true);
+        }
     }
 
     [Fact]
     public async Task Subscribe_DuringAutomaticReconnect_DoesNotStartAndJoinsNewGroupInEpoch() {
         FakeProjectionHubConnection connection = new();
         ProjectionSubscriptionService sut = Create(connection, new TestNotifier());
-        await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
-        await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Reconnecting));
-        connection.JoinedGroups.Clear();
+        try {
+            await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
+            await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Reconnecting));
+            connection.JoinedGroups.Clear();
 
-        await sut.SubscribeAsync("billing", "acme", TestContext.Current.CancellationToken);
+            await sut.SubscribeAsync("billing", "acme", TestContext.Current.CancellationToken);
 
-        connection.StartCount.ShouldBe(1);
-        connection.JoinedGroups.ShouldBeEmpty();
-        await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Reconnected));
-        connection.JoinedGroups.ShouldBe(["billing:acme", "orders:acme"]);
+            connection.StartCount.ShouldBe(1);
+            connection.JoinedGroups.ShouldBeEmpty();
+            await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Reconnected));
+
+            // The rejoin sweep's ordering is not the contract under test; both groups must rejoin.
+            connection.JoinedGroups.ShouldBe(["billing:acme", "orders:acme"], ignoreOrder: true);
+        }
+        finally {
+            await sut.DisposeAsync().ConfigureAwait(true);
+        }
     }
 
     [Fact]
@@ -276,6 +288,88 @@ public sealed class ProjectionSubscriptionServiceTests {
         connection.StartCount.ShouldBe(3);
         state.Current.Status.ShouldBe(ProjectionConnectionStatus.Connected);
         await sut.DisposeAsync().ConfigureAwait(true);
+    }
+
+    [Fact]
+    public async Task Unsubscribe_OfNeverJoinedPendingGroup_DoesNotLeaveOnTheWireAndAllowsResubscribe() {
+        FakeProjectionHubConnection connection = new();
+        TestNotifier notifier = new();
+        TestProjectionConnectionState state = new();
+        TestRefreshScheduler refresh = new();
+        ProjectionSubscriptionService sut = new(
+            global::Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
+                BaseAddress = new Uri("https://eventstore.test"),
+                RequireAccessToken = false,
+                ProjectionChangesHubPath = "/hubs/projection-changes",
+            }),
+            new FakeProjectionHubConnectionFactory(connection, "https://eventstore.test/hubs/projection-changes"),
+            state,
+            refresh,
+            notifier,
+            NullLogger<ProjectionSubscriptionService>.Instance);
+
+        try {
+            // SignalR owns an automatic reconnect, so the group is retained without a wire join.
+            await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(
+                ProjectionHubConnectionState.Reconnecting,
+                new IOException("transport")));
+
+            await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
+            connection.JoinedGroups.ShouldBeEmpty();
+
+            // LeaveGroup on the inactive connection would throw and strand the key forever.
+            await sut.UnsubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
+            connection.LeftGroups.ShouldBeEmpty();
+
+            // The key was released, so a later subscribe genuinely joins instead of no-oping.
+            await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(
+                ProjectionHubConnectionState.Closed,
+                new IOException("transport")));
+            await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
+            connection.JoinedGroups.ShouldBe(["orders:acme"]);
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task Subscribe_AfterReconnectNeverLanded_RetriesTheJoinInsteadOfReportingSuccess() {
+        FakeProjectionHubConnection connection = new();
+        TestNotifier notifier = new();
+        TestProjectionConnectionState state = new();
+        TestRefreshScheduler refresh = new();
+        ProjectionSubscriptionService sut = new(
+            global::Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
+                BaseAddress = new Uri("https://eventstore.test"),
+                RequireAccessToken = false,
+                ProjectionChangesHubPath = "/hubs/projection-changes",
+            }),
+            new FakeProjectionHubConnectionFactory(connection, "https://eventstore.test/hubs/projection-changes"),
+            state,
+            refresh,
+            notifier,
+            NullLogger<ProjectionSubscriptionService>.Instance);
+
+        try {
+            await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(
+                ProjectionHubConnectionState.Reconnecting,
+                new IOException("transport")));
+
+            await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
+            connection.JoinedGroups.ShouldBeEmpty();
+
+            // The reconnect exhausted; with no restart path the group would stay Pending forever.
+            await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(
+                ProjectionHubConnectionState.Closed,
+                new IOException("transport")));
+
+            await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
+            connection.JoinedGroups.ShouldBe(["orders:acme"]);
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
     }
 
     [Fact]
@@ -859,6 +953,13 @@ public sealed class ProjectionSubscriptionServiceTests {
         }
 
         public async Task StartAsync(CancellationToken cancellationToken) {
+            // Mirrors HubConnection: starting from any phase other than Disconnected is illegal,
+            // so an illegal second start is observable instead of silently succeeding.
+            if (Phase is not ProjectionHubConnectionPhase.Disconnected) {
+                throw new InvalidOperationException(
+                    $"Cannot start a connection that is not disconnected (phase: {Phase}).");
+            }
+
             StartCount++;
             if (StartException is not null) {
                 throw StartException;

@@ -353,8 +353,10 @@ public sealed class ProjectionFallbackPollingDriverTests {
     }
 
     private sealed class CancellableScheduler : IProjectionFallbackRefreshScheduler {
-        private readonly TaskCompletionSource _callChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        private readonly TaskCompletionSource _completionChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        // Re-armed on every signal: a single TaskCompletionSource stays completed after the first
+        // call, which turns every later wait into a busy Task.Yield() spin.
+        private TaskCompletionSource _callChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private TaskCompletionSource _completionChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private int _active;
         private int _calls;
         private int _completions;
@@ -368,7 +370,7 @@ public sealed class ProjectionFallbackPollingDriverTests {
             int active = Interlocked.Increment(ref _active);
             UpdateMaximum(active);
             _ = Interlocked.Increment(ref _calls);
-            _ = _callChanged.TrySetResult();
+            Signal(ref _callChanged);
             try {
                 await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
                 return 0;
@@ -379,24 +381,41 @@ public sealed class ProjectionFallbackPollingDriverTests {
             finally {
                 _ = Interlocked.Decrement(ref _active);
                 _ = Interlocked.Increment(ref _completions);
-                _ = _completionChanged.TrySetResult();
+                Signal(ref _completionChanged);
             }
         }
 
         public Task<int> TriggerNudgeRefreshAsync(string projectionType, string tenantId, CancellationToken cancellationToken = default)
             => Task.FromResult(0);
 
-        public async Task WaitForCallsAsync(int expected, CancellationToken cancellationToken) {
-            while (Volatile.Read(ref _calls) < expected) {
-                await _callChanged.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
-                await Task.Yield();
-            }
-        }
+        public Task WaitForCallsAsync(int expected, CancellationToken cancellationToken)
+            => WaitForCountAsync(
+                () => Volatile.Read(ref _calls),
+                () => Volatile.Read(ref _callChanged),
+                expected,
+                cancellationToken);
 
-        public async Task WaitForCompletionsAsync(int expected, CancellationToken cancellationToken) {
-            while (Volatile.Read(ref _completions) < expected) {
-                await _completionChanged.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
-                await Task.Yield();
+        public Task WaitForCompletionsAsync(int expected, CancellationToken cancellationToken)
+            => WaitForCountAsync(
+                () => Volatile.Read(ref _completions),
+                () => Volatile.Read(ref _completionChanged),
+                expected,
+                cancellationToken);
+
+        private static void Signal(ref TaskCompletionSource source)
+            => Interlocked.Exchange(
+                ref source,
+                new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)).TrySetResult();
+
+        private static async Task WaitForCountAsync(
+            Func<int> read,
+            Func<TaskCompletionSource> readSignal,
+            int expected,
+            CancellationToken cancellationToken) {
+            TaskCompletionSource current = readSignal();
+            while (read() < expected) {
+                await current.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+                current = readSignal();
             }
         }
 

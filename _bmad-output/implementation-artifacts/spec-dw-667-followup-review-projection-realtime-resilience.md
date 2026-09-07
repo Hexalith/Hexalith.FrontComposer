@@ -2,10 +2,10 @@
 title: 'DW-667 follow-up review of projection realtime resilience'
 type: 'bugfix'
 created: '2026-08-27'
-status: 'in-review'
+status: 'done'
 baseline_revision: '521fe2ded4e45e5e8c62705f57ab645419a84671'
 baseline_commit: '521fe2ded4e45e5e8c62705f57ab645419a84671'
-review_loop_iteration: 1
+review_loop_iteration: 1  # no loopback: review produced no intent_gap or bad_spec entries
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/project-context.md'
@@ -92,6 +92,89 @@ deferred: []
   - `[low]` `[bad_spec]` Correct the test Code Map paths and make exact validation commands/results reproducible.
   - `[medium]` `[bad_spec]` Authorize and require the repository identifier-inventory reseal while keeping the deferred-work ledger and analyzer policy unchanged.
 
+### 2026-09-07 — Review pass (iteration 2, independent 3-layer)
+
+Reviewed content: commit `9ad4312f` (the DW-667 implementation, direct child of `baseline_commit`).
+Verification was performed against the **current tree** (`main` at `97a4e6b2`), which also carries the
+later DW-667 follow-ups `d6154159` and `a8222025`.
+
+- intent_gap: 0
+- bad_spec: 0
+- patch: 8 (high 1, medium 4, low 3)
+- defer: 2
+- reject: 8
+
+**Routed to patch**
+- `[high]` `[patch]` Pending-group lifecycle is incomplete on the paths that assume wire membership.
+  (a) `UnsubscribeAsync` (line 192) calls `LeaveGroupAsync` for any tracked key, including a group
+  retained as `Pending` during `Reconnecting` that was never joined; `HubConnection.InvokeAsync`
+  throws when not connected, and by the deliberate design at line 191 the key then stays in
+  `_activeGroups`, so a later re-subscribe short-circuits at `ContainsKey → return` forever.
+  (b) `SubscribeAsync` retains a `Pending` group and returns success; if that reconnect never lands
+  (it exhausts to `Closed` with no restart path) nothing ever joins it, and because the entry is
+  present every later subscribe short-circuits at `ContainsKey → return`, so the caller can never
+  recover. Note the first fix attempted here — refusing the subscribe when
+  `CanRestartClosedConnection()` is false — was wrong and was reverted: the reconnect epoch is driven
+  by SignalR's `Reconnected` event and does not need the fallback gate, and the refusal broke the
+  legitimate `Subscribe_DuringAutomaticReconnect_*` case. The shipped fix instead lets a later
+  subscribe retry the join on a still-`Pending` entry.
+- `[medium]` `[patch]` `Phase` was introduced but `IsConnected` was left as a parallel, unenforced
+  source of truth. `RestartClosedConnectionAsync` (line 527) still gates the restart on
+  `!_connection.IsConnected`, which is false while SignalR is `Reconnecting`, so the loop issues
+  exactly the illegal second `StartAsync` that `Phase` was added to prevent. Both fakes accept a
+  start from any phase, so no test can observe the rule.
+- `[medium]` `[patch]` `Create_ConfiguresProductionRetryTokenAndInitialPhase` asserts the wrapper the
+  factory handed its own observer, not what was installed. Emptying the `WithUrl` configure body
+  ships an unauthenticated hub connection and the test stays green.
+- `[medium]` `[patch]` The ETag dispose contract left dead, actively misleading residue: `Dispose` is
+  an empty body, and both `catch (ObjectDisposedException)` handlers (lines 330, 353) are unreachable
+  now that `_lruSeedGate` is never disposed, while their comments still describe the removed race.
+  The same finding also claimed the "stops new persisted-LRU seed work" doc line is unasserted; that
+  half is `false` — `SetAsync_AfterDispose_DegradesToAnUnseededCacheInsteadOfThrowing` already pins
+  `GetKeysCalls == 0` with a non-vacuous live control, so no test was added for it.
+- `[medium]` `[patch]` Test-harness robustness regressions: the bounded-dispose assertion was replaced
+  by a bare `await` that hangs instead of failing; `pending.Release()` sits outside `try/finally` so a
+  failed assertion disposes a `ManualResetEventSlim` under a blocked pool thread; two new subscription
+  tests never dispose the service; one depends on the rejoin sweep's ordering; the fake overwrites
+  `LastJoinCallbackTask`; `CancellableScheduler` busy-spins on a permanently-completed TCS.
+- `[low]` `[patch]` `GroupHealth.Pending` was inserted first, silently renumbering the `byte` enum and
+  flipping `default(GroupState).Health` from `Active` to `Pending` — the exact shape of the P4 bug
+  documented at line 675.
+- `[low]` `[patch]` `if (!added) return;` is unreachable: `ContainsKey` and `TryAdd` both run under the
+  same held `_gate`.
+- `[low]` `[patch]` `SelectGroupMethod`'s whitespace-only scope boundary — the `IsNullOrWhiteSpace`
+  branch production actually takes — is untested.
+
+**Deferred**
+- `[medium]` `[defer]` `AnalyzerPolicy_IdentifierInventory_MatchesSeal` fails on the current tree
+  (actual count=3320 vs sealed 3298). Not caused by DW-667: later work replaced the ledger algorithm
+  and renamed the field from `testUnderscoreIdentifierTokens` (which DW-667 resealed to 7117) to
+  `testPublicDeclarationIdentifiers`. Owned by the governance story; a non-owning story must not reseal.
+- `[low]` `[defer]` The restart attempt deadline runs on the injected `TimeProvider` while
+  `_gate.WaitAsync(GateWaitTimeout)` always uses the system clock, so the two diverge under a fake
+  clock. Settled by a test that contends on the gate while the virtual restart deadline is pending.
+
+**Rejected**
+- `[false]` Fatal fallback-loop fault unobserved / `EnsureLoopRunning` hot-restart window /
+  `DisposeAsync` missing fatal catch (4 findings, 2 layers): refuted at the cited locations — already
+  fixed in the current tree by `d6154159`, which added `_fatalLoopFailure`, rethrows it from
+  `DisposeAsync`, and tightened the guard to `_loopTask is not null`.
+- `[false]` Subscribe stranded while `Phase` is `Connecting` (2 findings): unreachable. Every
+  `StartAsync` site (lines 143, 530) runs while `_gate` is held, and SignalR's automatic reconnect
+  reports `Reconnecting`, never `Connecting`.
+- `[low]` `[reject]` `MapConnectionPhase` throwing on an unmapped `HubConnectionState`: all four
+  current states are mapped, so this is a loud failure on a state not shown to be reachable.
+- `[low]` `[reject]` Server-side group membership leak when `ThrowIfDisposed` fires after a successful
+  join: the connection is being disposed, and the server drops group membership on disconnect.
+- `[low]` `[reject]` Disposal bound "unbounded" under a fake clock that never advances: production uses
+  `TimeProvider.System`; the proposed double-`WaitAsync` would reintroduce a real-time wait.
+- `[low]` `[reject]` Restart-loop admission during the initial connect now that a `Pending` entry makes
+  `_activeGroups` non-empty: costs one gate-wait timeout and a log, and self-heals.
+- `[low]` `[reject]` Submodule gitlink bumps (`references/Hexalith.EventStore`, `references/Hexalith.Tenants`)
+  riding in the commit against the spec's Never list: the fix is to amend this build's spec or rewrite
+  history, and both gitlinks have since moved independently (now `da5accfc` / `e7f36662`), so no live
+  defect remains.
+
 ## Design Notes
 
 Treat transport phase as an internal adapter fact, not a new package contract. A subscription admitted while SignalR owns automatic reconnect should enter the active-group set for the existing reconnect epoch rather than call `StartAsync`. After any loop exits, converge from current state/options under the existing single-loop guard; do not rely on another event. `SemaphoreSlim` is managed and need not be disposed when disposal races active waiters.
@@ -104,6 +187,30 @@ Treat transport phase as an internal adapter fact, not a new package contract. A
 - `DiffEngine_Disabled=true dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "FullyQualifiedName~FatalExceptionGuardGovernanceTests|FullyQualifiedName~AnalyzerPolicyGovernanceTests.AnalyzerPolicy_IdentifierInventory_MatchesSeal"` -- expected: owned governance tests pass.
 - `DiffEngine_Disabled=true dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` -- expected: no new failures; any baseline release-coordinate failure is recorded separately with focused owned gates green.
 - `git diff --check` -- expected: no whitespace errors; CRLF normalization warnings may be reported separately.
+
+**Results (review pass, 2026-09-07, current tree at `97a4e6b2`):**
+- Shell and Shell.Tests Release builds: 0 warnings, 0 errors under `TreatWarningsAsErrors=true`.
+- Focused owned lane (subscription, fault, factory, fallback, pending, ETag, relocated-registration):
+  100/100 pass, up from 93 after the review patches added regressions.
+- Both new subscription regressions and the strengthened factory token assertion were mutation-checked:
+  each fails against the pre-patch behavior and passes after it, so none is vacuous.
+- `FatalExceptionGuardGovernanceTests`: 2/2 pass.
+- Broad Shell lane (`Category!=Performance&e2e-palette&NightlyProperty&Quarantined`): 2719 total,
+  3 failed, all in `Governance` and none in the DW-667 surface:
+  - `AnalyzerPolicy_IdentifierInventory_MatchesSeal` — proven failing *before* any review patch
+    (actual 3320 vs sealed 3298). The ledger algorithm and field were replaced by later work; owned
+    by the governance story, which must do the reseal.
+  - `AnalyzerPolicy_GovernanceContract_FailsClosed` — the known CA1707 test-identifier ledger drift
+    owned by GOV-1/11.19; a non-owning story must not reseal it.
+  - `CiGovernanceTests.EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval`
+    — fails on the `references/Hexalith.EventStore` gitlink, which `97a4e6b2`
+    ("chore(references): update subproject commits") moved during this session. No submodule is
+    touched by this bundle.
+- `git diff --check`: no whitespace errors; only expected CRLF normalization warnings.
+
+**Documented Unrelated Changes:** `spec-align-latest-hexalith-modules-and-simplify-ci.md`,
+`spec-bump-eventstore-package-to-3-99-0.md`, and `spec-fix-current-release-compatibility-gates.md`
+are modified in the working tree by a concurrent session. They were neither edited nor staged here.
 
 **Results (implementation pass):**
 - Focused runtime/regression lane passed 94/94 after including the relocated-worker integration assertion that observes the newly published pending poll task.
@@ -132,6 +239,16 @@ Treat transport phase as an internal adapter fact, not a new package contract. A
 - `tests/Hexalith.FrontComposer.Shell.Tests/State/ETagCache/ETagCacheServiceTests.cs`
 
 ## Auto Run Result
+
+Status: done; independent review complete and its findings applied.
+
+Review pass 2026-09-07: three independent layers (blind, edge-case, verification-gap) produced 34
+findings. Triage recorded 0 intent_gap, 0 bad_spec (so no loopback), 8 patch entries, 2 defer, 8
+reject. The patches closed two real production defects the original bundle introduced — a never-joined
+`Pending` group could be left on the wire by `UnsubscribeAsync` and then block every later subscribe,
+and the closed-restart loop still gated on `IsConnected` so it could issue the illegal second
+`StartAsync` that `Phase` was added to prevent — plus a factory test that stayed green with the access
+token removed entirely, dead ETag teardown handlers, and five test-harness robustness gaps.
 
 Status: implementation-complete; mandatory review pending.
 

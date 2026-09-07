@@ -91,7 +91,7 @@ public sealed class PendingCommandPollingDriverTests {
 
         Task dispose = sut.DisposeAsync().AsTask();
         time.Advance(TimeSpan.FromSeconds(2));
-        await dispose.ConfigureAwait(true);
+        await dispose.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken).ConfigureAwait(true);
     }
 
     [Fact]
@@ -104,14 +104,17 @@ public sealed class PendingCommandPollingDriverTests {
             time,
             NullLogger<PendingCommandPollingDriver>.Instance);
         sut.Start();
-        time.Advance(TimeSpan.FromSeconds(1));
-        await pending.Started.WaitAsync(TestContext.Current.CancellationToken);
+        try {
+            time.Advance(TimeSpan.FromSeconds(1));
+            await pending.Started.WaitAsync(TestContext.Current.CancellationToken);
 
-        Task dispose = sut.DisposeAsync().AsTask();
-        time.Advance(TimeSpan.FromSeconds(2));
-        await dispose.WaitAsync(TestContext.Current.CancellationToken);
-
-        pending.Release();
+            Task dispose = sut.DisposeAsync().AsTask();
+            time.Advance(TimeSpan.FromSeconds(2));
+            await dispose.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+        }
+        finally {
+            pending.Release();
+        }
     }
 
     [Fact]

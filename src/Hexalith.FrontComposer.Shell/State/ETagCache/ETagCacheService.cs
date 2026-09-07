@@ -70,10 +70,9 @@ public sealed class ETagCacheService : IETagCache, IDisposable {
     /// undisposed so an owner and queued waiters can finish safely during concurrent scope teardown.
     /// </summary>
     public void Dispose() {
-        if (Interlocked.Exchange(ref _disposed, 1) != 0) {
-            return;
-        }
-
+        // Marking disposed is the whole contract: EnsurePersistedLruSeededAsync checks _disposed
+        // before and after the gate, so no new seed work starts once this returns.
+        _ = Interlocked.Exchange(ref _disposed, 1);
     }
 
     /// <inheritdoc />
@@ -324,17 +323,11 @@ public sealed class ETagCacheService : IETagCache, IDisposable {
             return;
         }
 
-        try {
-            await _lruSeedGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (ObjectDisposedException) {
-            // Scope teardown raced this best-effort pass; the LRU simply stays unseeded.
-            return;
-        }
+        await _lruSeedGate.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try {
-            // Re-check after the gate is acquired: Dispose may have raced the wait and released the
-            // semaphore, leaving this waiter holding a disposed gate with seeding still pending.
+            // Re-check after the gate is acquired: Dispose may have completed while this caller
+            // waited, and seeding must not start afterwards.
             if (Volatile.Read(ref _lruSeeded) != 0 || Volatile.Read(ref _disposed) != 0) {
                 return;
             }
@@ -347,12 +340,8 @@ public sealed class ETagCacheService : IETagCache, IDisposable {
             throw;
         }
         finally {
-            try {
-                _ = _lruSeedGate.Release();
-            }
-            catch (ObjectDisposedException) {
-                // Same teardown race as above; the gate no longer needs releasing.
-            }
+            // The gate is deliberately never disposed, so releasing it is always safe.
+            _ = _lruSeedGate.Release();
         }
     }
 

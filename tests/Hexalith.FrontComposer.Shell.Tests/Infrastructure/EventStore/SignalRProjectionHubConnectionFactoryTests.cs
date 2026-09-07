@@ -1,7 +1,9 @@
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 
+using Microsoft.AspNetCore.Http.Connections.Client;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 using Shouldly;
 
@@ -33,6 +35,10 @@ public sealed class SignalRProjectionHubConnectionFactoryTests
                 && descriptor.ImplementationInstance is ProjectionHubRetryPolicy);
             observedTokenProvider.ShouldNotBeNull();
             (await observedTokenProvider()).ShouldBe("captured-token");
+
+            // Assert what WithUrl actually installed, not the wrapper handed to the observer:
+            // emptying the configure callback must not leave this test green.
+            (await ResolveAccessTokenAsync(observedBuilder)).ShouldBe("captured-token");
             connection.Phase.ShouldBe(ProjectionHubConnectionPhase.Disconnected);
         }
     }
@@ -49,6 +55,8 @@ public sealed class SignalRProjectionHubConnectionFactoryTests
 
     [Theory]
     [InlineData(true, null, "JoinGroup")]
+    [InlineData(true, "   ", "JoinGroup")]
+    [InlineData(false, "   ", "LeaveGroup")]
     [InlineData(true, "conversation", "JoinGroupScoped")]
     [InlineData(false, null, "LeaveGroup")]
     [InlineData(false, "conversation", "LeaveGroupScoped")]
@@ -101,5 +109,37 @@ public sealed class SignalRProjectionHubConnectionFactoryTests
         TimeSpan high = new ProjectionHubRetryPolicy(maxExclusive => maxExclusive - 1).NextRetryDelay(context)!.Value;
 
         high.ShouldBeGreaterThan(low);
+    }
+
+    [Fact]
+    public async Task Create_WithoutAccessTokenProvider_InstallsNoAccessTokenProvider()
+    {
+        HubConnectionBuilder? observedBuilder = null;
+        SignalRProjectionHubConnectionFactory sut = new(
+            logger: null,
+            (builder, _) => observedBuilder = builder);
+
+        IProjectionHubConnection connection = sut.Create(
+            new Uri("https://eventstore.test/hubs/projection-changes"),
+            accessTokenProvider: null);
+        await using (connection.ConfigureAwait(false))
+        {
+            observedBuilder.ShouldNotBeNull();
+            HttpConnectionOptions options = ResolveHttpConnectionOptions(observedBuilder);
+            options.AccessTokenProvider.ShouldBeNull();
+        }
+    }
+
+    private static async Task<string?> ResolveAccessTokenAsync(HubConnectionBuilder builder)
+    {
+        HttpConnectionOptions options = ResolveHttpConnectionOptions(builder);
+        options.AccessTokenProvider.ShouldNotBeNull();
+        return await options.AccessTokenProvider().ConfigureAwait(false);
+    }
+
+    private static HttpConnectionOptions ResolveHttpConnectionOptions(HubConnectionBuilder builder)
+    {
+        using ServiceProvider provider = builder.Services.BuildServiceProvider();
+        return provider.GetRequiredService<IOptions<HttpConnectionOptions>>().Value;
     }
 }
