@@ -2,7 +2,7 @@
 title: 'Bump .NET SDK, Packages, and Root Submodules'
 type: 'refactor'
 created: '2026-08-29'
-status: 'in-review'
+status: 'done'
 baseline_commit: '85216682495f8cae26cd0883e2e84a538450af4a'
 review_loop_iteration: 1
 context:
@@ -71,6 +71,39 @@ context:
 - 2026-08-29: Implemented the approved SDK, Aspire, npm, policy-mirror, current-documentation, and root-submodule refresh; completed the verification matrix below.
 - 2026-08-29: Applied review-loop remediation for the source-resource SDK exception, pending IDE evidence contract, exact catalogs, Node floor, workflow/parser governance, legacy runner propagation, primary accessibility lane, and owning-submodule validation; recorded the final latest-tip AppHost incompatibility without altering submodule content.
 - 2026-08-29: After explicit user authorization for shared Builds/Tenants upstream work, adopted Builds `244ea890...`, pushed the focused Tenants source-routing fix at `635c3374...`, and closed the AppHost blocker with a warning-free dual-SDK build plus a `16/16` Running/Healthy Aspire proof.
+
+## Review Triage Log
+
+- BH1 mixed 169-commit dump should be split — `false` (rejected): this story never landed a mixed commit; HEAD after `85216682` is later unrelated work. There is no current-tree defect to split.
+- BH2 three skill trees diverge and Copilot LOADs missing SKILL.md — `false` (rejected): root `.github/agents` LOAD paths exist; `bmad-eval-runner` is present under `.agent`, `.agents`, and `.claude`. The cited loader breakage does not occur.
+- BH3 no root `.nvmrc` / `tests/e2e/.nvmrc` is `24` so Node 24.0–24.9 can run — `false` (rejected): no FrontComposer workflow uses `node-version-file`; `quality.yml` pins `24.10.0`; engines already require `>=24.10.0`; project docs treat `.nvmrc` as the Node 24 line pin.
+- BH4 IDE parity left unfinished while SDK moves to 10.0.400 — `false` (rejected): intent asks first before recapturing manual IDE evidence; `IdeParityMatrixContractTests` fail closed on `revalidation-pending` and historical `10.0.302` manifests.
+- BH5 Gate 3a expected-trx isolation misses Governance overlap — `false` (rejected): Gate 3a counts eight TRX files in `./TestResults/default` only; Governance tests live inside those modules and do not add a ninth file or accept a missing one.
+- BH6 Gate 2c writes tracked `_bmad-output/.../pact-provider-reconciliation/**` — `medium` (defer): `.github/workflows/quality.yml:192-201` and `eng/pact_provider_apphost_smoke.py` write SHA-bound tracked receipts; later pact work, not this SDK bump.
+- BH7 `.github/release-evidence-recovery.json` hard-codes `expected_head_sha` — `false` (rejected): `release-evidence.yml` uses that record only on push to the recovery file to replay a specific historical Release run, not to track current HEAD.
+- BH8 `CustomAfterMicrosoftCommonTargets` replaces nested hooks — `false` (rejected): Tenants and Parties project files do not set `CustomAfterMicrosoftCommonTargets`, so there is no existing hook to replace.
+- BH9 `DropPublishedFrontComposerAssemblies.targets` matches `.nuget/packages/hexalith.frontcomposer` path substring — `medium` (defer): `DropPublishedFrontComposerAssemblies.targets:17-30` will miss restores whose global-packages root is not that substring (same defect as ECH8).
+- BH10 `ContainsNonSzArray` only treats rank-1 non-SZ arrays — `medium` (defer): `AttributeParser.cs:611-613` leaves `T[,]` / `T[,,]` unflagged, so `SupportsStaticAssignment` can stay true for multidimensional arrays.
+- BH11 missing `success` is allowed while bad `totalCount` throws — `medium` (defer): `EventStoreQueryClient.EnsureSuccessfulEnvelope` returns when `success` is absent (`:511-513`) while `ReadTotalCountValue` throws on non-integer/negative counts (`:498-501`).
+- BH12 `CounterCommandProjectionCatchUpChannel.Publish` empty-catches `Exception` — `medium` (defer): `CounterCommandProjectionCatchUpChannel.cs:104-107` swallows every subscriber failure, including process-fatal ones (same defect as ECH9).
+- BH13 UTF-8 BOM on generator files — `low` (defer): `GeneratedLogMethodEmitter.cs` and `RenderTreeSequenceRewriter.cs` start with UTF-8 BOM while `.editorconfig` sets `charset = utf-8`.
+- BH14 `SourceTypeNameFormatter.GetRootQualifier` falls back to `global::` — `medium` (defer): `SourceTypeNameFormatter.cs:179-180` returns `global::` when the assembly is missing from `compilation.References` or the alias set is empty.
+- BH15 `tests/Directory.Build.props` adds CodeCoverage to every `tests/` project — `maybe-false` (rejected): if true this would only be low (bench/extra host package); restore of `Shell.Tests.Bench` was not run, and a low unverified claim is rejected.
+- BH16 `PropertyModel.SourceTypeName` made public without API notes — `false` (rejected): no named generator-consumer caller is shown to diverge; a missing docs sentence is not a demonstrated bad outcome.
+- ECH1 pointer/function-pointer nested in generic type arguments — `medium` (defer): `ContainsPointerSyntax` (`AttributeParser.cs:603-609`) does not walk `INamedTypeSymbol.TypeArguments`.
+- ECH2 `[Obsolete(..., Error = true)]` named argument — `medium` (defer): `HasErrorObsoleteAttribute` (`AttributeParser.cs:625-628`) only reads `ConstructorArguments[1]`, not `NamedArguments`.
+- ECH3 `Convert.ToString` null throws on Guid/DateTimeOffset prefill — `false` (rejected): generated `Guid.Parse`/`DateTimeOffset.Parse` of null throws `ArgumentNullException`, which the nearby `catch` already treats as fail-closed (`CommandRendererEmitter.cs:422-438`).
+- ECH4 cancellation after resolve when `Target` is null — `medium` (defer): `CommandFormEmitter.cs:679-684` calls `ThrowIfCancellationRequested` only when `Target` is not null, so a canceled submit can return a target-resolution failure.
+- ECH5 timeout return disposes deadline while `Task.Run` continues — `medium` (defer): the `using` around `deadline` (`CommandFormEmitter.cs:757-834`) disposes the CTS on `TimeoutException` while the worker still holds `deadlineToken`.
+- ECH6 empty query criteria serialize `payload: null` — `medium` (defer): `SerializeQueryPayload` returns null (`EventStoreQueryClient.cs:542-544`) and `FcJson.PlainWeb` is `JsonSerializerOptions.Web` without `WhenWritingNull`.
+- ECH7 dispose wait timeout drops later fatal loop exceptions — `high` (defer): `ProjectionFallbackPollingDriver.cs:158-186` returns after `WaitAsync` timeout and the `ContinueWith` only disposes the CTS.
+- ECH8 published packages restored outside `.nuget/packages` — grouped with BH9 (same DropPublished path matcher).
+- ECH9 catch-up subscriber throws process-fatal exception — grouped with BH12 (same empty `catch (Exception)`).
+- ECH10 `json_request` unverified TLS / oversized abort for non-loopback — `maybe-false` (defer, unverified medium): callers pass Aspire endpoints; settle by checking whether `aspire describe` can yield a non-loopback URL into `json_request`.
+- ECH11 HTTPError body skips the success-path 1MiB/`IncompleteRead` guards — `medium` (defer): `eng/pact_provider_apphost_smoke.py:111-117` reads the error body without the success-path size raise.
+- ECH12 `_json_from_output` returns the first decodable JSON value — `maybe-false` (defer, unverified medium): settle by feeding `aspire describe` stdout that contains an earlier `{...}` fragment and checking whether topology parse uses that value.
+- VG1 `Take: 0` badge queries have no serialized-body test — `medium` (defer): production `HasMeaningfulQueryPayload` keeps `Take.HasValue`, but `EventStoreActionQueueCountReaderTests` never inspects JSON; a `Take is > 0` regression would stay green.
+- VG2 ULID entropy test no longer calls `NewUlid()` — `medium` (defer): `UlidFactoryTests.cs:94-97` only asserts `EntropySource` is `CSUlidRng`; `NewUlid()` can ignore that property and still pass.
 
 ## File List
 

@@ -10187,3 +10187,111 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-actions-33237411829-33237411614-fix-cicd.md`
   summary: No guard caps tracked path length, so the next content-addressed evidence tree can re-break the Windows accessibility checkout.
   evidence: The longest tracked path is 212 chars (`_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/<40-hex>/acceptances/<64-hex>/eventstore-owner.json`), which with the `D:\a\<repo>\<repo>\` runner prefix lands ~3 chars over MAX_PATH. `core.longpaths` on the checkout treats the symptom; the `Initialize build submodules` step still sets `GIT_CONFIG_COUNT: 1` for `core.symlinks` only and deliberately skips EventStore for the same reason. A path-length assertion would fail fast in any lane instead of only on `windows-latest`.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-eventstore-package-to-3-99-0.md`
+  summary: A catalog selector bump and its regenerated governed audit were committed separately, and the superproject pinned the intermediate commit whose audit fails its own validator.
+  evidence: Commit 45967719 moved the references/Hexalith.Builds gitlink to 569a6e95, which changes only Props/Directory.Packages.props; at that tree the catalog canonically hashes to 1a153573 while the committed audit still records catalogSha256 3659212b and 13 EventStore rows at 3.98.0, which validate-package-version-audit.ps1:1267,1432 rejects. Main carried that state for 13 commits until 61c05256 advanced the gitlink to the audit commit 9aca670a. Already remediated on HEAD (validator passes, 286 packages, exit 0); deferred as a recurrence risk because nothing prevents the same two-commit split from being pinned again.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-eventstore-package-to-3-99-0.md`
+  summary: FrontComposer never runs the Builds catalog or audit validators, so a Builds pin that its own owner's gates reject lands green here.
+  evidence: grep -rn "validate-package-version-audit|validate-central-package-versions" over .github/workflows/ and eng/ returns nothing, while Builds' own ci.yml runs both. This is exactly what allowed the inconsistent pin above to land. Fix adds a governance-lane step, which this spec's frozen Boundaries place under Ask First.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-eventstore-package-to-3-99-0.md`
+  summary: No CI lane restores or builds anything in package mode, so an unresolvable or yanked EventStore selector ships with every gate green.
+  evidence: Hexalith.FrontComposer.slnx:36-38 sets the AppHost Build Solution="Release|*" Project="false", and the AppHost holds the repository's only Hexalith.EventStore.* PackageReference. All CI builds Release, and the one Debug lane (eng/run-epic9-live-proof.sh) resolves the EventStore source project instead. Setting the selector to a nonexistent version would leave every lane green. This is the NU1102 class the repo has already been bitten by.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-eventstore-package-to-3-99-0.md`
+  summary: The "13 rows on one selector" invariant that the EventStore bumps depend on is only partly gated.
+  evidence: test-authoritative-package-catalog.ps1:71-72,91-92 binds only Hexalith.EventStore.Contracts and .Gateway to HexalithEventStoreVersion; the other eleven rows, including the Hexalith.EventStore.Aspire that FrontComposer actually consumes, are unbound. In eng/dependency-graph-policy.json the selector appears only under selected_catalog_required_property_names, which asserts shape and never value, and no EventStore package id appears in the policy's package lists.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-eventstore-package-to-3-99-0.md`
+  summary: Package-mode acceptance evaluates only the AppHost's single direct EventStore edge and never the transitive closure the selector also pins.
+  evidence: Directory.Packages.props:4 enables CentralPackageTransitivePinningEnabled, and src/Hexalith.FrontComposer.UI resolves Hexalith.EventStore.Client, .Contracts and .SignalR with no direct reference of its own, arriving via the Tenants and Parties packages. The spec's acceptance criteria evaluate only the AppHost, so the project whose EventStore closure is actually up-levelled is never restored.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-eventstore-package-to-3-99-0.md`
+  summary: The Builds audit binds evidence to a whole-catalog hash, so any one-line selector edit restamps all 140 families and appends a full history snapshot for all 285 packages.
+  evidence: Get-CatalogSha256 in audit-central-package-versions.ps1 hashes the entire catalog after BOM/CRLF canonicalization, so a single selector change marks every family "tracked catalog declaration bytes changed" — 702 KB of churn for one line here, and roughly 65 percent of the appended historicalContext entries are byte-identical to an earlier entry for the same package. Binding per-family declaration bytes would confine the churn to the family that moved. Pre-existing generator design, in the Builds submodule.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-eventstore-package-to-3-99-0.md`
+  summary: Tools/package-version-audit.json has no line-ending policy though the catalog it audits does.
+  evidence: references/Hexalith.Builds/.gitattributes declares Props/Directory.Packages.props text eol=crlf and test/fixtures/**/*.json text eol=lf but nothing for the audit artifact, while the generator writes [Environment]::NewLine. A Windows regeneration would rewrite every line of a multi-megabyte hash-governed file. Pre-existing.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-eventstore-package-to-3-99-0.md`
+  summary: Family consumer evidence is the SHA-256 of the empty string for 130 of 140 families, yet the record asserts that direct-consumer discovery was performed.
+  evidence: hexalith-eventstore carries representativeConsumers: [] and consumerEvidenceSha256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 while stating "Current NuGet metadata and owned direct-consumer discovery are recorded". Discovery is git-ls-files scoped to the Builds repository, so no EventStore consumer can ever appear. consumerEvidence.repositoryRevision also restamps on every regeneration even when the evidence bytes are unchanged, so it cannot signal staleness. Pre-existing.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-eventstore-package-to-3-99-0.md`
+  summary: Builds commit 9aca670a, which carries the governed audit refresh, has a commit message that violates the repository's Conventional Commits policy.
+  evidence: The message is "Implement code changes to enhance functionality and improve performance" — no type and no scope, rejected by the pinned commitlint config — and it is substantively wrong, since the commit changes only generated audit evidence. It was authored externally; correcting it would require rewriting shared submodule history.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-dotnet-sdk-packages-and-submodules.md`
+  summary: Gate 2c writes SHA-bound Pact/AppHost receipts into tracked `_bmad-output` evidence files.
+  evidence: quality.yml and eng/pact_provider_apphost_smoke.py write `_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/**`, which is already git-tracked. Later pact work, not this SDK bump.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-dotnet-sdk-packages-and-submodules.md`
+  summary: DropPublished FrontComposer targets match a `.nuget/packages/hexalith.frontcomposer` path substring instead of package identity.
+  evidence: DropPublishedFrontComposerAssemblies.targets:17-30 uses Contains on the identity path; restores whose global-packages root is not that substring keep published assemblies on the compile/runtime/static-web lists.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-dotnet-sdk-packages-and-submodules.md`
+  summary: AttributeParser treats only rank-1 non-SZ arrays as unsafe for static assignment.
+  evidence: ContainsNonSzArray in AttributeParser.cs:611-613 does not flag T[,] / T[,,], so generated TrySetPropertyValue can still call Convert.ChangeType on multidimensional arrays.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-dotnet-sdk-packages-and-submodules.md`
+  summary: EventStore query envelopes allow a missing success flag while throwing on a bad totalCount.
+  evidence: EnsureSuccessfulEnvelope returns when success is absent; ReadTotalCountValue throws on non-integer or negative totalCount. Callers can accept an incomplete envelope and then fail closed only on paging.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-dotnet-sdk-packages-and-submodules.md`
+  summary: Counter catch-up Publish swallows every subscriber Exception, including process-fatal failures.
+  evidence: CounterCommandProjectionCatchUpChannel.cs:104-107 empty-catches Exception so a live handler failure cannot abort later subscribers and fatal exceptions never surface.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-dotnet-sdk-packages-and-submodules.md`
+  summary: Two source-generator files were saved with a UTF-8 BOM against charset=utf-8.
+  evidence: GeneratedLogMethodEmitter.cs and RenderTreeSequenceRewriter.cs begin with EF BB BF while .editorconfig sets charset = utf-8.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-dotnet-sdk-packages-and-submodules.md`
+  summary: SourceTypeNameFormatter falls back to global:: when the assembly is unreferenced or has no aliases.
+  evidence: GetRootQualifier in SourceTypeNameFormatter.cs:179-180 returns global:: in those cases, so generated names can bind the wrong assembly.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-dotnet-sdk-packages-and-submodules.md`
+  summary: Pointer and function-pointer types nested in generic arguments are not treated as unsafe for static assignment.
+  evidence: ContainsPointerSyntax walks arrays only and does not recurse INamedTypeSymbol.TypeArguments, so List<int*> can still be marked SupportsStaticAssignment.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-dotnet-sdk-packages-and-submodules.md`
+  summary: Obsolete Error=true supplied as a named argument does not disable static assignment.
+  evidence: HasErrorObsoleteAttribute only reads ConstructorArguments[1], so [Obsolete(Error = true)] named-argument form still emits assignment source.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-dotnet-sdk-packages-and-submodules.md`
+  summary: Command-target resolution can report target-failed instead of cancellation when Target is null.
+  evidence: ResolveCommandTargetAsync throws if canceled only after a non-null Target; a canceled submit that resolved to null returns a failure snapshot.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-dotnet-sdk-packages-and-submodules.md`
+  summary: Command-target timeout disposes the deadline CTS while the provider worker is still running.
+  evidence: The using-bound deadline in CommandFormEmitter.cs is disposed on TimeoutException; the Task.Run worker still captures deadlineToken and can throw ObjectDisposedException.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-dotnet-sdk-packages-and-submodules.md`
+  summary: Empty EventStore query criteria serialize payload:null instead of omitting the payload member.
+  evidence: SerializeQueryPayload returns null and FcJson.PlainWeb is JsonSerializerOptions.Web without WhenWritingNull, so the wire body includes payload:null.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-dotnet-sdk-packages-and-submodules.md`
+  summary: Projection fallback polling can drop a process-fatal loop exception after dispose times out.
+  evidence: ProjectionFallbackPollingDriver.cs:158-186 sets loopCompleted false on WaitAsync timeout and ContinueWith only disposes the CTS, so a later fatal loop exception is not rethrown.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-dotnet-sdk-packages-and-submodules.md`
+  summary: Unverified TLS in AppHost smoke json_request may apply to non-loopback URLs.
+  evidence: json_request always uses ssl._create_unverified_context. Settle by checking whether aspire describe can pass a non-loopback URL into that helper; if it cannot, the claim is false.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-dotnet-sdk-packages-and-submodules.md`
+  summary: AppHost smoke HTTPError responses skip the success-path 1MiB size guard.
+  evidence: eng/pact_provider_apphost_smoke.py:111-117 reads error bodies without the success-path len>1MiB raise, so an oversized error response can still be parsed.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-dotnet-sdk-packages-and-submodules.md`
+  summary: AppHost smoke topology parse may accept the first JSON object in describe stdout.
+  evidence: _json_from_output returns the first successful raw_decode. Settle by feeding stdout that contains an earlier JSON fragment before the describe document.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-dotnet-sdk-packages-and-submodules.md`
+  summary: Take:0 badge-count queries have no serialized-body test on EventStoreQueryClient.
+  evidence: EventStoreActionQueueCountReader sends Take:0, but tests never assert payload.take === 0; a HasMeaningfulQueryPayload regression to Take>0 would stay green.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-dotnet-sdk-packages-and-submodules.md`
+  summary: The cryptographic ULID test no longer observes NewUlid().
+  evidence: UlidFactoryTests.NewUlid_EntropyIsCryptographic_NotPredictableFromPriorOutputs only asserts EntropySource is CSUlidRng; NewUlid() can stop using that source and still pass.
