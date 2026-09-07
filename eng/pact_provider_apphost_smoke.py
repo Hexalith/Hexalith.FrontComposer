@@ -51,7 +51,6 @@ START_COMMAND = [
     "--non-interactive",
     "--nologo",
 ]
-PACKAGE_REFERENCE_ENV = "UseHexalithProjectReferences"
 # `aspire describe --format Json` for the ten-resource AppHost exceeds 8 KiB. Truncating
 # from the tail made `_json_from_output` parse a nested fragment and fail closed as
 # `apphost.describe.incomplete` after every resource was already healthy.
@@ -419,19 +418,6 @@ def _clip(text: str, limit: int = 4000) -> str:
     return text[-limit:]
 
 
-def _force_package_restore_mode() -> str | None:
-    previous = os.environ.get(PACKAGE_REFERENCE_ENV)
-    os.environ[PACKAGE_REFERENCE_ENV] = "false"
-    return previous
-
-
-def _restore_package_restore_mode(previous: str | None) -> None:
-    if previous is None:
-        os.environ.pop(PACKAGE_REFERENCE_ENV, None)
-    else:
-        os.environ[PACKAGE_REFERENCE_ENV] = previous
-
-
 def _atomic_write(path: Path, document: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
@@ -484,14 +470,14 @@ def _capture(output: Path, runtime: SmokeRuntime, timeout: int) -> int:
     probed_urls: list[str] = []
     reason_codes: list[str] = evidence["reasonCodes"]
     started = False
-    previous_package_mode = _force_package_restore_mode()
     try:
         # `aspire start --format Json` restarts a running AppHost. That restart launches
         # frontcomposer-ui with `dotnet run --no-build` against a half-stopped process tree
         # and the resource exits before wait. Stop first so capture is always a cold start.
-        # `--isolated` keeps the CLI off shared local Aspire state. Package-restore mode is
-        # forced because the CLI defaults to Debug, which otherwise enables project
-        # references and collides with the Release NuGet graph Quality already restored.
+        # `--isolated` keeps the CLI off shared local Aspire state on GitHub-hosted runners.
+        # Debug/source references stay the default: Release package mode omits Parties/Tenants
+        # UI assemblies (FrontComposerUiUsePublishedModulePackages defaults false) and the
+        # AppHost then fails with CS0234.
         runtime.command(
             ["aspire", "stop", "--apphost", APPHOST_RELATIVE, "--non-interactive", "--nologo"],
             60,
@@ -680,7 +666,6 @@ def _capture(output: Path, runtime: SmokeRuntime, timeout: int) -> int:
         reason_codes.append(f"apphost.capture.{type(exception).__name__.lower()}")
         return 1
     finally:
-        _restore_package_restore_mode(previous_package_mode)
         stop = runtime.command(
             ["aspire", "stop", "--apphost", APPHOST_RELATIVE, "--non-interactive", "--nologo"],
             60,

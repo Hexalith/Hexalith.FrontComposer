@@ -5,7 +5,6 @@ from __future__ import annotations
 import contextlib
 import io
 import json
-import os
 import sys
 import tempfile
 import unittest
@@ -325,24 +324,6 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertIn("finalVerdict=failed", text)
         self.assertIn("startReturnCode=2", text)
         self.assertIn("startStderr=bind failed", text)
-
-    def test_capture_forces_package_restore_mode_for_the_debug_cli_default(self) -> None:
-        seen: list[str | None] = []
-
-        class ObservingRuntime(FakeRuntime):
-            def command(self, arguments: list[str], timeout: int) -> smoke.CommandResult:
-                if arguments[1] == "start":
-                    seen.append(os.environ.get("UseHexalithProjectReferences"))
-                return super().command(arguments, timeout)
-
-        os.environ.pop("UseHexalithProjectReferences", None)
-        try:
-            result = smoke.capture(self.output, ObservingRuntime(), timeout=30)
-        finally:
-            os.environ.pop("UseHexalithProjectReferences", None)
-        self.assertEqual(result, 0)
-        self.assertEqual(seen, ["false"])
-        self.assertNotIn("UseHexalithProjectReferences", os.environ)
 
 
 if __name__ == "__main__":
