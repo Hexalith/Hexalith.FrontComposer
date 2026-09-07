@@ -2,7 +2,7 @@
 title: 'Bump EventStore Package Family to 3.99.0'
 type: 'refactor'
 created: '2026-08-28'
-status: 'in-review'
+status: 'done'
 baseline_commit: '08c2ddb5cd914b23fef88794cb7f9a1ff908fca7'
 review_loop_iteration: 0
 context:
@@ -80,3 +80,32 @@ context:
 
 - `references/Hexalith.Builds` -- gitlink advances from `59d6992c6fbe8355f96f3ef5ff50a003ac0a3a94` to `9aca670aa9d4605bb147f641ef23d30d37813e92`; its two commits update `Props/Directory.Packages.props` and `Tools/package-version-audit.json` for EventStore `3.99.0`.
 - `_bmad-output/implementation-artifacts/spec-bump-eventstore-package-to-3-99-0.md` -- approved scope, completed tasks, and validation evidence.
+
+## Review Triage Log
+
+Three layers ran (blind-hunter, edge-case-hunter, verification-gap) against a diff of superproject commit `45967719` plus Builds `59d6992c..9aca670a`. Verdicts below were rendered after independent verification; reviewer-assigned severities were discarded.
+
+| # | Finding (layer) | Verdict | Evidence |
+|---|---|---|---|
+| 1 | Gitlink advances to `569a6e95`, not the `9aca670a` the File List claims (blind, edge×3, gap-other) | medium | `git show --stat 45967719` moves `references/Hexalith.Builds` to `569a6e95`, which touches only `Props/Directory.Packages.props`. The File List statement is untrue for the commit this change delivered. |
+| 2 | At that pinned commit the audit gate fails closed (blind, edge×2, gap) | medium | At `569a6e95` the catalog canonically hashes to `1a153573…` while the committed audit records `catalogSha256 3659212b…` and 13 rows at `3.98.0`. `validate-package-version-audit.ps1:1267,1432` compares both. Main carried this for 13 commits until `61c05256` advanced the gitlink to `9aca670a`. Already remediated: `pwsh ./Tools/validate-package-version-audit.ps1` on HEAD passes — 286 packages, 141 families, exit 0. |
+| 3 | Reviewed artifact mixes committed and worktree state (blind) | low | Accurate description of the review input, not a defect in the change; the spec's own Observed-results paragraph records it. |
+| 4 | Builds commit `9aca670a` message fails Conventional Commits (blind) | low | Message is `Implement code changes to enhance functionality and improve performance` — no type, no scope. Committed externally; this session made no commits. Fix requires rewriting shared submodule history. |
+| 5 | Whole-catalog `catalogSha256` makes a 1-line selector edit rewrite 702 KB of evidence (blind, edge) | low | `Get-CatalogSha256` hashes the entire catalog, so all 140 families restamp with `reason: tracked catalog declaration bytes changed`. Pre-existing generator design; this change only exercised it. |
+| 6 | ~65% of appended `historicalContext` is byte-identical filler (blind) | low | Pre-existing generator design; not caused by this change. |
+| 7 | `Tools/package-version-audit.json` has no line-ending policy (blind) | low | `references/Hexalith.Builds/.gitattributes` declares rules for `Props/Directory.Packages.props` (`eol=crlf`) and `test/fixtures/**/*.json` (`eol=lf`), none for the audit artifact. Pre-existing. |
+| 8 | `consumerEvidence.repositoryRevision` restamps though no evidence changed (blind) | low | Pre-existing generator behavior; cannot signal stale consumer evidence. |
+| 9 | Family `consumerEvidenceSha256` is the SHA-256 of the empty string while asserting consumer discovery (blind) | medium | `hexalith-eventstore` carries `representativeConsumers: []` and `e3b0c442…`, as do 130 of 140 families; discovery is scoped to Builds' own repo so no EventStore consumer can ever appear. Pre-existing design. |
+| 10 | Acceptance proves the AppHost's single direct edge and never the transitive closure (blind) | medium | `Directory.Packages.props:4` enables `CentralPackageTransitivePinningEnabled`; `Hexalith.FrontComposer.UI` resolves `EventStore.Client`, `.Contracts`, `.SignalR` with no direct reference. The spec's ACs evaluate only the AppHost. |
+| 11 | Nothing binds the selector to the EventStore gitlink identity (blind, edge) | false | `tests/…/Governance/CiGovernanceTests.cs:3732` asserts `HexalithEventStoreVersion` equals the current runtime identity, and `eng/eventstore_runtime_evidence.py` exists. The claim held at this change's baseline; the guard landed afterwards (see DW-1909). |
+| 12 | The blocked `dependency_graph.py validate` run was narrated but never filed (blind) | low | No `deferred-work.md` row references this spec. The blocker itself is now resolved — `eng/dependency-graph-policy.json:70` pins `FsCheck.Xunit.v3` at `3.4.0`, matching the catalog. |
+| 13 | Verification and structure regress against the 3.98.0 sibling (blind) | low | Accurate: prose bullets replace the sibling's reproducible `set -euo pipefail` assertions, `## Spec Change Log` is empty though the task list was restructured after approval. Fix is an edit to this spec. |
+| 14 | Tenants.Aspire 5.5.0 built against EventStore 3.97.0 is unified to 3.99.0 unverified (edge) | false | No Tenants or Memories package in the AppHost graph declares any EventStore dependency; the named consumer does not pull EventStore. The general empty-consumer-evidence point is row 9. |
+| 15 | All 140 families restamp so unrelated drift is indistinguishable from the EventStore edit (edge) | low | Same mechanism as row 5. |
+| 16 | No FrontComposer verification reads the Builds audit it pins (gap) | medium | `grep -rn "validate-package-version-audit\|validate-central-package-versions" .github/workflows/ eng/` returns nothing. This is precisely what let row 2 land green here while Builds' own CI would have caught it. |
+| 17 | No CI lane restores or builds anything in package mode against the selected version (gap) | medium | `Hexalith.FrontComposer.slnx:36-38` sets the AppHost `Build Solution="Release|*" Project="false"`, and it holds the repository's only `Hexalith.EventStore.*` PackageReference. All CI builds Release; the one Debug lane resolves the EventStore source project. An unpublishable selector ships green — the NU1102 class this repo has already hit. |
+| 18 | The one catalog-aware gate was red for an unrelated reason and is value-blind anyway (gap) | medium | `HexalithEventStoreVersion` appears only in `selected_catalog_required_property_names`, which checks shape, not value; no EventStore package id appears in the policy's package lists. The FsCheck half is resolved (row 12). |
+| 19 | `test-authoritative-package-catalog.ps1` binds 2 of the 13 rows (gap-other) | medium | Lines 71-72 and 91-92 bind only `Hexalith.EventStore.Contracts` and `.Gateway`; the other eleven — including `Hexalith.EventStore.Aspire`, the only one FrontComposer consumes — are unbound, so that test does not establish the 13-row alignment the spec cites it for. |
+| 20 | Audit diff carries no unrelated drift (gap-other, confirmation) | false | Not a defect. Independently reproduced: 285/285 package ids preserved, exactly 39 field changes across the 13 EventStore rows, zero disposition changes, zero unrelated `selectedVersion` changes. |
+
+**Routing:** no `intent_gap` and no `bad_spec` entries, so no loopback. No `patch` entries — row 2's code fix is already in main (`61c05256`), and every other surviving entry's fix edits CI, policy, or the Builds submodule, which this spec's frozen Boundaries place under **Ask First**. Rows 11, 14 and 20 are rejected on their refutations; row 13's fix would edit this spec and is rejected on that rule. The remaining entries are deferred below.
