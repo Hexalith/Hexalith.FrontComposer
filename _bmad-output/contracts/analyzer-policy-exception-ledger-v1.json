@@ -97,8 +97,8 @@
   },
   "identifierInventory": {
     "algorithm": "SHA-256 over sorted repo-relative path, declaration kind, and underscore-containing identifier for CA1707-relevant public/protected declarations; source line numbers are excluded",
-    "testPublicDeclarationIdentifiers": 3298,
-    "testInventorySha256": "5f7c9495a002440748c1b5c4e8c3469e1007a609d3e8f0bfc7e7634d0484dd0f",
+    "testPublicDeclarationIdentifiers": 3324,
+    "testInventorySha256": "7ab6cfdcd7129ad4b9efcad2bea086867963e6873550b762f3ee03cace6f5731",
     "contractsPublicDeclarationIdentifiers": 89,
     "contractsInventorySha256": "9b81beacad8c65e481b2239b6054ba483dd8e9b6e6af2a0e51ca7065deb3210a"
   },
@@ -682,12 +682,17 @@
     {
       "key": "source-emitter-pragmas",
       "sourceKind": "emitter-pragma",
-      "paths": [],
-      "entryCount": 0,
-      "diagnosticIds": [],
-      "exactScope": "no SourceTools emitter emits a pragma warning disable",
+      "paths": [
+        "src/Hexalith.FrontComposer.SourceTools/Emitters/CommandRendererEmitter.cs"
+      ],
+      "entryCount": 2,
+      "diagnosticIds": [
+        "CS0612",
+        "CS0618"
+      ],
+      "exactScope": "listed root-owned source paths",
       "mechanism": "emitted pragma warning disable",
-      "dispositionKey": "asp0006-generator-debt"
+      "dispositionKey": "source-local-compatibility-controls"
     },
     {
       "key": "source-pragmas",
@@ -794,12 +799,14 @@
         "src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs",
         "src/Hexalith.FrontComposer.Shell/State/CommandPalette/ProjectionTypeResolver.cs",
         "src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationEffects.cs",
-        "src/Hexalith.FrontComposer.Testing/ProjectionTestDataBuilder.cs"
+        "src/Hexalith.FrontComposer.Testing/ProjectionTestDataBuilder.cs",
+        "tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/SchemaMigrationDeltaPathTruncationTests.cs"
       ],
-      "entryCount": 43,
+      "entryCount": 45,
       "diagnosticIds": [
         "CA1000",
         "CA1822",
+        "CA1845",
         "CA2007",
         "HFC1002",
         "IDE0057",

@@ -215,8 +215,10 @@ public sealed class AnalyzerPolicyGovernanceTests
             .ShouldContain(static error => error.Contains("entryCount, paths, and diagnosticIds disagree", StringComparison.Ordinal));
 
         JsonObject unbackedZeroSourceControl = Clone(ledger);
-        FindWarningControl(unbackedZeroSourceControl, "source-emitter-pragmas")["diagnosticIds"]
-            = new JsonArray("CA1822");
+        JsonObject emitterPragmas = FindWarningControl(unbackedZeroSourceControl, "source-emitter-pragmas");
+        emitterPragmas["paths"] = new JsonArray();
+        emitterPragmas["entryCount"] = 0;
+        emitterPragmas["diagnosticIds"] = new JsonArray("CA1822");
         ValidateDocument(unbackedZeroSourceControl)
             .ShouldContain(static error => error.Contains("entryCount, paths, and diagnosticIds disagree", StringComparison.Ordinal));
 

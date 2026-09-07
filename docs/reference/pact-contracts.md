@@ -80,7 +80,7 @@ Re-capture rules:
 
 The provider run captured on 2026-09-05 passes all 19 interactions at EventStore source
 `4ae9cee1e9abe050402fd1405a9abd54892ba13f`, EventStore version `3.102.0`, and Builds catalog
-`0a54e63a7903bd599e35b79159782b4c84d01c07`. The authenticated AppHost smoke on the same provenance
+`071ef99733ba398362ae838e4696b4b1641ed07a`. The authenticated AppHost smoke on the same provenance
 starts the existing ten-resource topology, observes health, command submit/status, tenant query
 provenance (`HandlerComputed`), and projection SignalR, then stops cleanly. Compatibility still
 does not claim the historical owner-approved identity tuple

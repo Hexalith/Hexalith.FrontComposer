@@ -6,7 +6,7 @@
   "identity": {
     "eventStoreSourceSha": "4ae9cee1e9abe050402fd1405a9abd54892ba13f",
     "eventStoreReleaseVersion": "3.102.0",
-    "buildsCatalogSha": "0a54e63a7903bd599e35b79159782b4c84d01c07"
+    "buildsCatalogSha": "071ef99733ba398362ae838e4696b4b1641ed07a"
   },
   "topology": {
     "programPath": "src/Hexalith.FrontComposer.AppHost/Program.cs",

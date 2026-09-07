@@ -3676,7 +3676,7 @@ public sealed class CiGovernanceTests {
         const string approvedBuildsSha = "a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a";
         const string approvedVersion = "3.91.1";
         const string currentSourceSha = "4ae9cee1e9abe050402fd1405a9abd54892ba13f";
-        const string currentBuildsSha = "0a54e63a7903bd599e35b79159782b4c84d01c07";
+        const string currentBuildsSha = "071ef99733ba398362ae838e4696b4b1641ed07a";
         const string currentVersion = "3.102.0";
         // The immutable Story 11.24 owner capture remains historical evidence. Current source,
         // package, and Builds values are compatibility provenance, not migration approval.
