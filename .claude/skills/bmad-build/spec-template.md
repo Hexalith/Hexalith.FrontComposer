@@ -92,6 +92,13 @@ context: [] # optional: `{project-root}/`-prefixed paths to project-wide standar
      verdict (high/medium/low/false/maybe-false) with its evidence: the refutation for
      false, what would settle it for maybe-false. Empty until the first review pass. -->
 
+## Commit Scope Dispositions
+
+<!-- Optional; DELETE THIS ENTIRE SECTION when unused. Each declaration must contain a
+     backtick-wrapped full 40-character commit SHA, a `shared` or `process` kind, and
+     a non-empty reason, separated by ` | `. `bootstrap-owned` is reserved for an
+     explicit code-authorized recovery and must never be copied as a routine bypass. -->
+
 ## Design Notes
 
 <!-- If the approach is straightforward, DELETE THIS ENTIRE SECTION. Do not write "N/A" or "None". -->
