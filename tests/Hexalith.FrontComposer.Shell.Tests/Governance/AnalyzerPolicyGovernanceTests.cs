@@ -33,7 +33,7 @@ public sealed class AnalyzerPolicyGovernanceTests
     // single-project builds `DotnetTimeoutMilliseconds` was sized for, so they get their own
     // deadline. A shared CI runner is several times slower than the ~20s local build, but the
     // bound must stay small enough to fire: both heavy proofs share one `build-and-test` job
-    // whose `timeout-minutes: 20` in `.github/workflows/quality.yml` also covers every other
+    // whose `timeout-minutes: 45` in `.github/workflows/quality.yml` also covers every other
     // gate. A deadline the job cannot outlive would be replaced by an undiagnosable job kill.
     private const int SolutionBuildTimeoutMilliseconds = 420_000;
     private const int GitTimeoutMilliseconds = 60_000;

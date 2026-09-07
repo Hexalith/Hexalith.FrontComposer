@@ -13,6 +13,7 @@ import secrets
 import socket
 import ssl
 import subprocess
+import sys
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -702,6 +703,23 @@ def _port_open(url: str) -> bool:
         return False
 
 
+def _report_failure(output: Path) -> None:
+    print(f"AppHost smoke failed; evidence={output}", file=sys.stderr)
+    if not output.is_file():
+        print("No evidence file was written.", file=sys.stderr)
+        return
+    try:
+        document = json.loads(output.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exception:
+        print(f"Could not read evidence: {exception}", file=sys.stderr)
+        return
+    if not isinstance(document, dict):
+        print("Evidence is not a JSON object.", file=sys.stderr)
+        return
+    print(f"finalVerdict={document.get('finalVerdict')}", file=sys.stderr)
+    print(f"reasonCodes={document.get('reasonCodes')}", file=sys.stderr)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -713,7 +731,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if not 30 <= args.timeout_seconds <= 600:
         parser.error("--timeout-seconds must be between 30 and 600")
-    return capture(args.output.absolute(), timeout=args.timeout_seconds)
+    output = args.output.absolute()
+    code = capture(output, timeout=args.timeout_seconds)
+    if code != 0:
+        _report_failure(output)
+    return code
 
 
 if __name__ == "__main__":

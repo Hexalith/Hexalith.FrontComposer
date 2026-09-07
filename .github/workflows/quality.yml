@@ -29,10 +29,13 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  ASPIRE_CLI_INSTALL: dotnet tool install --global Aspire.Cli --version 13.5.3
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -205,6 +208,23 @@ jobs:
             --live-evidence-root _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation \
             --pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact \
             --write-live-receipt
+
+      - name: Install Aspire CLI
+        run: |
+          ${{ env.ASPIRE_CLI_INSTALL }}
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Install Dapr CLI
+        uses: dapr/setup-dapr@8d980918fd43a2765c143ce7f687665b2d46a6b9 # v2
+        with:
+          version: '1.18.0'
+
+      - name: Initialize Dapr runtime
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          dapr init --runtime-version 1.18.2
+          dapr --version
 
       - name: 'Gate 2c: Authenticated AppHost smoke'
         shell: bash
@@ -666,7 +686,9 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Install Aspire CLI
-        run: dotnet tool install --global Aspire.Cli --version 13.5.3
+        run: |
+          ${{ env.ASPIRE_CLI_INSTALL }}
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
 
       - name: Install Dapr CLI
         uses: dapr/setup-dapr@8d980918fd43a2765c143ce7f687665b2d46a6b9 # v2

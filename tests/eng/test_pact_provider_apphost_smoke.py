@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import sys
 import tempfile
@@ -296,6 +298,19 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
                     url.startswith("http://localhost") or url.startswith("http://127.0.0.1"),
                     url,
                 )
+
+    def test_cli_failure_report_prints_reason_codes(self) -> None:
+        self.output.write_text(
+            json.dumps({"finalVerdict": "failed", "reasonCodes": ["apphost.start.failed"]}) + "\n",
+            encoding="utf-8",
+        )
+        buffer = io.StringIO()
+        with contextlib.redirect_stderr(buffer):
+            smoke._report_failure(self.output)
+        text = buffer.getvalue()
+        self.assertIn("AppHost smoke failed", text)
+        self.assertIn("apphost.start.failed", text)
+        self.assertIn("finalVerdict=failed", text)
 
 
 if __name__ == "__main__":
