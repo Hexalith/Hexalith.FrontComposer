@@ -112,12 +112,12 @@ class PackReleasePackagesTests(unittest.TestCase):
         # The production plan test runs against a synthetic fixture, so this is the only guard
         # that the REAL script exits 0 with --release-policy against the REAL tree. A tree that
         # cannot pack any version -- the pass-1 regression -- fails here.
-        result = self.run_plan("4.3.1", release_policy=True)
+        result = self.run_plan("4.4.0", release_policy=True)
 
         self.assertEqual(0, result.returncode, result.stderr)
         payload = json.loads(result.stdout)
         self.assertTrue(payload["releasePolicy"])
-        self.assertEqual("v4.3", payload["releaseLine"])
+        self.assertEqual("v4.4", payload["releaseLine"])
         self.assertEqual(8, len(payload["commands"]))
 
     def test_synthetic_ci_positional_contract_skips_only_release_line_matching(self) -> None:
@@ -295,8 +295,8 @@ class PackReleasePackagesTests(unittest.TestCase):
 
     def test_policy_accepts_a_hotfix_candidate_against_the_checked_in_tree(self) -> None:
         # Regression guard: the strict preceding-line rule made every candidate unpackable, so
-        # `4.3.1` -- which packed before that rule -- must validate against the working tree.
-        self.assertEqual("v4.3", validate_release_policy(ROOT, "4.3.1"))
+        # the next planned line -- `4.4.0` against published `4.3.0` -- must validate here.
+        self.assertEqual("v4.4", validate_release_policy(ROOT, "4.4.0"))
 
     def test_major_bump_accepts_any_minor_of_the_previous_major(self) -> None:
         # Documented limitation of `is_preceding_release_line`: the previous major's last minor
