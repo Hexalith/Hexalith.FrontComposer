@@ -10295,3 +10295,63 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-bump-dotnet-sdk-packages-and-submodules.md`
   summary: The cryptographic ULID test no longer observes NewUlid().
   evidence: UlidFactoryTests.NewUlid_EntropyIsCryptographic_NotPredictableFromPriorOutputs only asserts EntropySource is CSUlidRng; NewUlid() can stop using that source and still pass.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-align-latest-hexalith-modules-and-simplify-ci.md`
+  summary: FcPageTab registers into FcPageTabs and never unregisters, so recreate or dynamic tab lists leak or throw on duplicate ids.
+  evidence: FcPageTab.OnInitialized calls Owner.Register(this); Register throws when another instance already has the same Id; there is no Unregister or IDisposable path.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-align-latest-hexalith-modules-and-simplify-ci.md`
+  summary: Provider-mode command forms still dispatch when command-target resolution fails with provider-missing.
+  evidence: CommandFormEmitter FailCommandTargetResolution returns null and Submit still calls DispatchWithLifecycleObservationsAsync with that null snapshot.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-align-latest-hexalith-modules-and-simplify-ci.md`
+  summary: Shell skip links preventDefault and focus only via JS, while accessibility tests never click them or assert the JS interop.
+  evidence: FrontComposerShell.razor uses @onclick:preventDefault; FocusElementAsync/FocusNavigationAsync no-op when the keyboard module is null; Story13AccessibilityPrimitivesTests only suffix-matches href.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-align-latest-hexalith-modules-and-simplify-ci.md`
+  summary: AuthorizingCommandServiceDecorator allocates a lifecycle adapter per dispatch and can ignore configured FcShellOptions on that path.
+  evidence: When inner is ICommandServiceWithLifecycle only, the decorator news LegacyLifecycleObservationCommandServiceAdapter with Options.Create(new FcShellOptions()) if shellOptions is null.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-align-latest-hexalith-modules-and-simplify-ci.md`
+  summary: EventStore query envelopes without a success property are treated as success.
+  evidence: EventStoreQueryClient.EnsureSuccessfulEnvelope returns when TryGetProperty("success") fails instead of failing closed.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-align-latest-hexalith-modules-and-simplify-ci.md`
+  summary: BMAD skill trees are copied across .agent, .agents, and .claude with no single generated source of truth.
+  evidence: The baseline-to-HEAD diff adds thousands of duplicated skill files; fixing it means editing agent-context trees, not this story's catalog/CI work.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-align-latest-hexalith-modules-and-simplify-ci.md`
+  summary: Descending-only EventStore sorts without SortColumn omit the query payload.
+  evidence: HasMeaningfulQueryPayload checks SortColumn but not SortDescending, so SortDescending=true alone drops the payload.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-align-latest-hexalith-modules-and-simplify-ci.md`
+  summary: Unverified medium: Quality may fail when the quarantined lane matches zero tests and writes no TRX.
+  evidence: summarize_quarantine returns 1 when missing TRX. Settle by running the Gate 3d filter with zero matches and checking whether MTP writes a TRX file.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-align-latest-hexalith-modules-and-simplify-ci.md`
+  summary: AppHost smoke capture can start while a prior host is still present after aspire stop times out.
+  evidence: _wait_until_host_absent_or_ports_closed returns after the deadline without failing, then _capture proceeds to aspire start.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-align-latest-hexalith-modules-and-simplify-ci.md`
+  summary: Projection groups subscribed while the hub is Connecting may never join.
+  evidence: SubscribeAsync returns on Connecting after retaining a pending group; Connected does not rejoin, only Reconnected does.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-align-latest-hexalith-modules-and-simplify-ci.md`
+  summary: Unverified medium: MTP TRX Counters.total that includes tests without UnitTestResult nodes would be rejected as malformed.
+  evidence: parse_trx raises when recorded_total != len(UnitTestResult). Settle with a real MTP TRX whose Counters.total exceeds UnitTestResult count.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-align-latest-hexalith-modules-and-simplify-ci.md`
+  summary: Dependency-graph remote acquisition does not retry HTTP 429.
+  evidence: _TRANSIENT_NETWORK_MARKERS includes "the requested url returned error: 5" but not 429, and "error: 429" does not contain "error: 5".
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-align-latest-hexalith-modules-and-simplify-ci.md`
+  summary: Epic 9 live Quality lane fails if rollForward selects a 10.0.4xx SDK newer than 10.0.400.
+  evidence: global.json rollForward is latestPatch while quality.yml requires test "$(dotnet --version)" = "10.0.400".
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-align-latest-hexalith-modules-and-simplify-ci.md`
+  summary: pack-release-packages.py does not fail when a required .snupkg is missing after a successful pack.
+  evidence: After glob-deleting prior snupkgs and running pack commands, main() returns 0 with no existence check.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-align-latest-hexalith-modules-and-simplify-ci.md`
+  summary: The cryptographic ULID test no longer observes NewUlid().
+  evidence: UlidFactoryTests.NewUlid_EntropyIsCryptographic_NotPredictableFromPriorOutputs only asserts EntropySource is CSUlidRng; NewUlid() can stop using that source and still pass.
