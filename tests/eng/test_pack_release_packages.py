@@ -51,6 +51,16 @@ class PackReleasePackagesTests(unittest.TestCase):
         self.assertEqual(["dotnet", "restore"], restore[:2])
         self.assertEqual(str(ROOT / "Hexalith.FrontComposer.slnx"), restore[2])
         self.assertIn("-p:Configuration=Release", restore)
+        # Pin the baseline-resolving properties on the restore itself. Asserting them only
+        # through a positional slice goes vacuously green if release_properties(version) is
+        # ever dropped from restore_command, which is the cold-cache regression this guards.
+        restore_properties = release_compatibility.release_properties(VERSION)
+        self.assertIn(f"-p:Version={VERSION}", restore)
+        self.assertIn(f"-p:PackageVersion={VERSION}", restore)
+        self.assertIn("-p:ContinuousIntegrationBuild=true", restore)
+        self.assertIn(VALIDATION_PROPERTY, restore)
+        self.assertIn(BASELINE_PROPERTY, restore)
+        self.assertIn(SKIP_BASELINE_PROPERTY, restore)
         self.assertEqual(8, len(payload["commands"]))
         for command in payload["commands"]:
             self.assertEqual(["dotnet", "pack"], command[:2])
@@ -61,7 +71,7 @@ class PackReleasePackagesTests(unittest.TestCase):
             self.assertIn(VALIDATION_PROPERTY, command)
             self.assertIn(BASELINE_PROPERTY, command)
             self.assertIn(SKIP_BASELINE_PROPERTY, command)
-            for property_value in restore[4:-2]:
+            for property_value in restore_properties:
                 self.assertIn(property_value, command)
 
     def test_synthetic_ci_positional_contract_skips_only_release_line_matching(self) -> None:
@@ -392,20 +402,27 @@ class PackReleasePackagesTests(unittest.TestCase):
             sentinel.write_bytes(b"replace after restore")
             argv = [str(SCRIPT), str(output), "0.0.0-ci-test"]
             observed_commands: list[list[str]] = []
+            observed_kwargs: list[dict[str, object]] = []
 
-            def observe_run(command: list[str], **_kwargs: object) -> mock.Mock:
+            def observe_run(command: list[str], **kwargs: object) -> mock.Mock:
                 if not observed_commands:
                     self.assertEqual(b"replace after restore", sentinel.read_bytes())
                 else:
                     self.assertFalse(sentinel.exists())
                 observed_commands.append(command)
+                observed_kwargs.append(kwargs)
                 return mock.Mock(returncode=0)
 
             with mock.patch.object(module.subprocess, "run", side_effect=observe_run), \
                     mock.patch.object(sys, "argv", argv):
                 self.assertEqual(0, module.main())
 
-            self.assertEqual(["dotnet", "restore"], observed_commands[0][:2])
+            # The executed restore must be the same command the --plan contract advertises.
+            self.assertEqual(module.restore_command("0.0.0-ci-test"), observed_commands[0])
+            # check=True is what aborts a cold-cache restore failure before output cleanup;
+            # cwd=REPO_ROOT is what makes the solution path and NuGet.config resolve.
+            self.assertIs(True, observed_kwargs[0]["check"])
+            self.assertEqual(module.REPO_ROOT, observed_kwargs[0]["cwd"])
             self.assertEqual(9, len(observed_commands))
             for command in observed_commands[1:]:
                 self.assertEqual(["dotnet", "pack"], command[:2])

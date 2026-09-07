@@ -173,9 +173,9 @@ def main() -> int:
         sys.stdout.write("\n")
         return 0
 
-    # Policy, candidate SemVer, inventory validation, and validation-aware restore above
-    # must all complete before the first package-output mutation. Shared CI skips only
-    # release-line matching; it never relies on a warm package-baseline cache.
+    # Policy, candidate SemVer, and inventory validation above, plus the validation-aware
+    # restore below, must all complete before the first package-output mutation. Shared CI
+    # skips only release-line matching; it never relies on a warm package-baseline cache.
     subprocess.run(restore, check=True, cwd=REPO_ROOT)
     output_directory.mkdir(parents=True, exist_ok=True)
     for package in output_directory.glob("*.nupkg"):
@@ -193,7 +193,10 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except subprocess.CalledProcessError as exc:
-        print(f"Package packing failed with exit code {exc.returncode}.", file=sys.stderr)
+        # Name the failing stage: the cold-cache case this packer guards fails in restore,
+        # and reporting it as a pack failure hides that from the CI log alone.
+        stage = "restore" if list(exc.cmd)[:2] == ["dotnet", "restore"] else "packing"
+        print(f"Package {stage} failed with exit code {exc.returncode}.", file=sys.stderr)
         raise SystemExit(exc.returncode)
     except Exception as exc:  # noqa: BLE001 - command-line packer should print concise failures.
         print(f"Package packing failed: {exc}", file=sys.stderr)

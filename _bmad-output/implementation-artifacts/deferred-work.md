@@ -10183,3 +10183,7 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-render-tree-generator-hardening.md`
   summary: Non-increment runtime sequence arguments still pass the fail-closed inspection.
   evidence: FindRuntimeSequenceArgument only flags ++/-- in argument 0, so seq, n + 1, or a method call leave ShouldUseLiteralRenderTreeSequences green; emitters use seq++ and AssignLiterals already refuses other references.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-actions-33237411829-33237411614-fix-cicd.md`
+  summary: No guard caps tracked path length, so the next content-addressed evidence tree can re-break the Windows accessibility checkout.
+  evidence: The longest tracked path is 212 chars (`_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/<40-hex>/acceptances/<64-hex>/eventstore-owner.json`), which with the `D:\a\<repo>\<repo>\` runner prefix lands ~3 chars over MAX_PATH. `core.longpaths` on the checkout treats the symptom; the `Initialize build submodules` step still sets `GIT_CONFIG_COUNT: 1` for `core.symlinks` only and deliberately skips EventStore for the same reason. A path-length assertion would fail fast in any lane instead of only on `windows-latest`.
