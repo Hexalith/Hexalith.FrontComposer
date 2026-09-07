@@ -2,7 +2,7 @@
 title: 'Restore compatibility gates on the production release path'
 type: 'bugfix'
 created: '2026-08-22'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 1
 baseline_commit: 'fd04bdd97fbdd4976a0f213e46a316be199fd8a9'
 context:
@@ -125,3 +125,14 @@ Reviewed 2026-09-07 against the implementation commit `2dcc43fea9aa39c42d15b1028
 Because intent_gap entries exist, the cascade calls for reverting the code and looping back to the human.
 That revert was **not** performed: the change merged 378 commits ago, `v4.2.0` and `v4.3.0` shipped on
 top of it, and three peer sessions are live in this working tree. Halting for a human decision instead.
+
+**Disposition 2026-09-07 (human decision):** accepted as shipped. The change merged as
+`2dcc43fea9aa39c42d15b1028fa5ef774b5d8b06`, and `v4.2.0` and `v4.3.0` were released on top of it,
+so the intent_gap cascade's revert-and-re-derive was deliberately not performed. The two intent
+gaps and the confirmed bad_spec/patch entries were filed forward against the current tree as
+`spec-make-release-compatibility-gates-enforcing.md`, with the human decisions recorded there:
+derive the ApiCompat baseline from the latest published release line (advancing it to `4.3.0`),
+and give Quality Gate 2a a library package to pack. The eight remaining low and unverified
+findings were appended to `deferred-work.md`. Finding #24 (SemVer build metadata in a candidate
+version) was rejected: unreachable from `semantic-release-plan.mjs` output and it fails loudly.
+
