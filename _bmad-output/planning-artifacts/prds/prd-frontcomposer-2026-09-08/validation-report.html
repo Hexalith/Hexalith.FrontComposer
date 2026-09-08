@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PRD Validation: Hexalith.FrontComposer Product Requirements Document</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e7e5e4;
+    --text: #1c1917;
+    --muted: #78716c;
+
+    --verdict-strong: #16a34a;
+    --verdict-adequate: #65a30d;
+    --verdict-thin: #d97706;
+    --verdict-broken: #dc2626;
+
+    --sev-low: #64748b;
+    --sev-medium: #ca8a04;
+    --sev-high: #ea580c;
+    --sev-critical: #dc2626;
+
+    --grade-exc: #16a34a;
+    --grade-good: #65a30d;
+    --grade-fair: #d97706;
+    --grade-poor: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  header.report-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .title h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .title .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .grade {
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    color: white;
+    font-size: 15px;
+    white-space: nowrap;
+  }
+  .grade-excellent { background: var(--grade-exc); }
+  .grade-good { background: var(--grade-good); }
+  .grade-fair { background: var(--grade-fair); }
+  .grade-poor { background: var(--grade-poor); }
+
+  .synthesis {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--muted);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 24px;
+    font-size: 15.5px;
+  }
+  .synthesis p { margin: 0 0 10px; }
+  .synthesis p:last-child { margin-bottom: 0; }
+
+  .dimension-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .dim-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .dim-card .dim-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .dim-card .dim-verdict { font-size: 14px; font-weight: 600; }
+
+  section.dimension, section.reviewer-section { margin-bottom: 14px; }
+  section.dimension details, section.reviewer-section details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  section summary {
+    padding: 14px 20px;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  section summary::-webkit-details-marker { display: none; }
+  section summary::before {
+    content: "▸";
+    display: inline-block;
+    color: var(--muted);
+    transition: transform 0.15s ease;
+  }
+  section details[open] summary::before { transform: rotate(90deg); }
+  section summary h2 {
+    display: inline;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    flex: 1;
+  }
+  .verdict-pill {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: white;
+  }
+  .verdict-strong { background: var(--verdict-strong); }
+  .verdict-adequate { background: var(--verdict-adequate); }
+  .verdict-thin { background: var(--verdict-thin); }
+  .verdict-broken { background: var(--verdict-broken); }
+
+  .dim-body { padding: 4px 20px 18px; }
+  .dim-judgment { color: var(--text); font-size: 14.5px; }
+  .dim-judgment p { margin: 0 0 10px; }
+
+  .findings-list { padding: 0 20px 4px; }
+  article.finding {
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+  }
+  article.finding:first-child { border-top: none; }
+  article.finding header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .badge {
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+  }
+  .badge-sev-low { background: rgba(100, 116, 139, 0.12); color: var(--sev-low); }
+  .badge-sev-medium { background: rgba(202, 138, 4, 0.14); color: var(--sev-medium); }
+  .badge-sev-high { background: rgba(234, 88, 12, 0.14); color: var(--sev-high); }
+  .badge-sev-critical { background: rgba(220, 38, 38, 0.14); color: var(--sev-critical); }
+  .finding-title { margin: 0; font-size: 15px; font-weight: 500; flex: 1; min-width: 200px; }
+  .finding-location { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--muted); }
+  .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; }
+  .finding-fix strong { color: var(--muted); font-weight: 500; }
+
+  .reviewer-source {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  .mechanical {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 24px;
+    font-size: 14px;
+  }
+  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mechanical ul { margin: 0; padding-left: 20px; }
+  .mechanical li { margin-bottom: 4px; color: var(--text); }
+
+  footer.report-footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  footer .meta { display: flex; gap: 24px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+  <div class="container">
+
+    <header class="report-header">
+      <div class="title">
+        <h1>Hexalith.FrontComposer Product Requirements Document — Validation Report</h1>
+        <div class="subtitle">_bmad-output/planning-artifacts/prd.md</div>
+      </div>
+      <div class="grade grade-poor">Poor</div>
+    </header>
+
+    <div class="synthesis">
+      <p>This is a high-substance brownfield capability spec: the product bet is specific, failed evidence is named rather than smoothed, baseline FRs are mostly testable, and counter-metrics exist. It is not yet a v1.0 build contract. The work that still gates publication — FC-NIP composition, projection realtime recovery, architecture-review defects, analyzer activation — is tracked as story status and epic numbers instead of PRD-carried done-ness, and the success metrics validate bootstrap and package seals rather than those remaining bets. Downstream UX, architecture, and story workflows can extract IDs and contract paths, but they cannot source-extract what “done” looks like for the requirements that actually remain open.</p>
+      <p>Adversarial and source/current-fit reviewers materially shift that picture. Adversarial review would kill the document as a ship contract: <code>approved-for-v1-readiness</code> launders unauthorized publication, REL-AI-1 is circular, and MCP fail-closed language is weaker than the cited security contract. Source reconciliation shows the PRD is also stale against delivery: Stories 9.3–9.8 and 11.17–11.23 are recorded done, architecture moved FR-24 to unsigned <code>hexalith.release-evidence.v3</code>, and Builds issue 17 was reopened with an accepted revision on 2026-08-08 — four days before this PRD’s <code>updated: 2026-08-12</code> stamp. Those two extra reviews disagree on <em>why</em> 11.20–11.23 fail (overdue backlog vs already landed); they agree the PRD cannot be used as the current v1.0 source of record until it is rewritten against delivery truth and given one named publication-blocker list.</p>
+    </div>
+
+    <div class="dimension-summary">
+      <div class="dim-card">
+        <div class="dim-name">Decision-readiness</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Substance over theater</div>
+        <div class="dim-verdict" style="color: var(--verdict-strong)">strong</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Strategic coherence</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Done-ness clarity</div>
+        <div class="dim-verdict" style="color: var(--verdict-thin)">thin</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Scope honesty</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Downstream usability</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Shape fit</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+    </div>
+
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>Decision-readiness</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>A decision-maker can act on gates that the register already closed. §12 states decisions as decisions: D-3 freezes <code>/commands/{BoundedContext}/{CommandTypeName}</code>; D-4 names what was given up and what replaced it; D-6 records that live v3.2.2 evidence “proved G1 insufficient” and that “publication remains unauthorized”; D-8 explicitly trades a standalone UX spec for <code>ux-design.md</code> plus story-local notes. That is honest trade-off language, not template balance.</p>
+            <p>The register then over-closes. §12.1 says “All PRD open questions identified by the 2026-07-05 readiness follow-up are now resolved, routed, or explicitly accepted.” A scanner of an <code>approved-for-v1-readiness</code> PRD will read that as “nothing left to decide,” while D-6 still blocks the next publication and Stories 9.4–9.8 still block FR-13/FR-26 in the PRD text. D-9 records Product promotion on 2026-07-05 after D-1 through D-8; later load-bearing rows sit in the same table without a re-promotion of status.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Open-question closure hides live publication tensions</h3>
+              <span class="finding-location">§12.1, §12 D-6, §5.7 FR-24</span>
+            </header>
+            <div class="finding-note">§12.1 claims the 2026-07-05 question set is “now resolved,” while D-6 still states “publication remains unauthorized” and FR-24 says REL-4 “source control exists but is not yet accepted as operational proof.” There are zero <code>[NOTE FOR PM]</code> callouts and no remaining Open Questions.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Restore a short open-item list for live gates (REL-4 frozen-run proof, Builds issue 17 successor, Epic 9 composed/live evidence, 11.23 activation) with owner and unblock condition; keep resolved decisions in the register.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Status approval does not cover later load-bearing rows</h3>
+              <span class="finding-location">§12 D-9 vs D-4/D-6/D-10/D-11</span>
+            </header>
+            <div class="finding-note">D-9 is “Resolved 2026-07-05: Product approved D-1 through D-8.” Frontmatter <code>updated: 2026-08-12</code> includes the FC-NIP successor, analyzer staging, and dependency-provenance regime without re-earning status.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a dated D-9 amendment that Product re-approves the post-July register, or change status until that happens.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">HFCM9002 has no decision-register row</h3>
+              <span class="finding-location">§5.7 FR-27, §12</span>
+            </header>
+            <div class="finding-note">FR-27 still requires “HFCM9002 migration-emission behavior is decided and documented” while listing FR-27 as “Complete / release verification.” §12 has no ID, owner, default, or evidence pointer.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Either cite the closed decision/artifact in D-* or reopen it as a named gate.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>Substance over theater</h2>
+          <span class="verdict-pill verdict-strong">strong</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>The Vision cannot be swapped into a generic admin-framework PRD. “FrontComposer makes the domain type the source of truth and uses source generation, schema fingerprints, and strict governance tests to keep UI, lifecycle state, MCP descriptors, and tooling aligned” is a real bet, and the feature groups follow it. The five named user types each drive FRs. UJs have named protagonists and edge cases. NFRs are product-specific rather than “must be scalable/secure.” FR-24 is the opposite of furniture: too much mechanism, not empty importance.</p>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>Strategic coherence</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>The thesis is two-part and mostly held: (1) describe the operational surface once in annotated types; (2) v1.0 is package-consumer safety, not a feature launch. Counter-metrics SM-C1–C3 reject generated-file count, visual polish, and CLI volume.</p>
+            <p>The Success Metrics then validate the baseline and the seal, not the remaining bet. Nothing in §9 validates FR-13, FR-26, FR-12 recovery, or FR-29. §5.0 and §8.2 also turn the PRD into a sprint dashboard, which competes with the product thesis.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Success metrics do not test the remaining v1.0 product bets</h3>
+              <span class="finding-location">§9 vs §1, §5.3 FR-12/FR-13, §5.7 FR-26/FR-29</span>
+            </header>
+            <div class="finding-note">Vision says post-MVP “focuses on row-level command feedback … and architecture-quality remediation.” No SM names composed FC-NIP behavior, self-healing projection realtime, or architecture-review defect closure.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add SMs (or explicit SM mappings) for composed/live FC-NIP, reconnect-and-recover projection freshness, and the H-series runtime/security closures; make the adopter module a named gate or give substitute criteria.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Feature prioritization is being replaced by story-status narration</h3>
+              <span class="finding-location">§5.0, §8.2, §5.7 FR-24/FR-29</span>
+            </header>
+            <div class="finding-note">The status map and FR-24/FR-29 consequences read as a program ledger (REL-2/3/4/5, Stories 11.20–11.23 due dates, “in review”). That is useful operations text, but it is not prioritization derived from the thesis.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Keep one status snapshot table; move REL/story choreography out of FR consequence lists so FRs stay product outcomes.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details open>
+        <summary>
+          <h2>Done-ness clarity</h2>
+          <span class="verdict-pill verdict-thin">thin</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Many baseline FRs are genuinely testable: HFC1003/1006/1009, density counts, MCP “startup throws if required MCP gates are missing,” command budgets, FC-CNC. That is not the problem.</p>
+            <p>The remaining publication-blocking FRs are not done-able from this PRD. FR-29’s requirement is “complete the remaining Epic 11 release-readiness remediation children.” Consequences are process rules. The actual product outcomes live in <code>epics.md</code> and the 2026-07-04 architecture-quality review as H1–H12 / M-series. FR-12 stops at visible reconnect states plus a problem statement. NFR-8/9/11 defer to unnamed budgets, benchmarks, and “lanes required by the changed surface.” FR-13/FR-26 consequences are story checklists.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">FR-29 is a program envelope, not a requirement</h3>
+              <span class="finding-location">§5.7 FR-29, §1</span>
+            </header>
+            <div class="finding-note">“Runtime blind spots” is an adjective. Consequences govern Epic 11 administration. Architecture-review findings H1–H12 / M-series are not listed, so v1.0-blocking runtime/security/maintainability outcomes are not source-extractable here.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Replace FR-29 (or add FR-29.x rows) with one testable outcome per remaining defect class: operator-visible behavior, fail-closed rule, and verification artifact; map each to the H/M ID and story.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Projection reliability has no PRD-carried bounds</h3>
+              <span class="finding-location">§5.3 FR-12, §6 NFR-8/NFR-9/NFR-11</span>
+            </header>
+            <div class="finding-note">FR-12 does not say what recovery means, how long fallback polling may last, or when a circuit is allowed to stay degraded. NFR-8 defers to “configured budgets” that FR-15 defines only for commands. NFR-9 leaves “existing benchmark thresholds and cache caps” unnamed.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Inline the reconnect/retry/fallback numbers (or cite a named contract), name the benchmark IDs/caps, and list the v1.0 mandatory test lanes.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">FR-13/FR-26 done-ness is a story checklist</h3>
+              <span class="finding-location">§5.0, §5.3 FR-13, §5.7 FR-26, §12 D-4</span>
+            </header>
+            <div class="finding-note">The product rule (“never infer row-level fresh indicators from projection nudges that lack row identity”) is clear; the completion rule is “Stories 9.4-9.8 must pass.” Terminal path, invalidation, scope, first-wins, and composed/live gaps are named as remaining work but not as observable conditions.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Promote those gaps to FR consequences and let story IDs be references, not the definition of done.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Catalog FRs defer the testable part to “documented”</h3>
+              <span class="finding-location">§5.1 FR-3, §5.1 FR-1, §5.2 FR-9, §5.3 FR-11</span>
+            </header>
+            <div class="finding-note">FR-1 requires “the documented five-file set” without naming the files. FR-9 caps layout at “the documented max measure.” FR-11 activates column prioritization “when thresholds are met.” UJ-2’s <code>stale</code> state is not in FR-11’s consequence list.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Name the five files, the measure, the column thresholds, and the projection-state set in the PRD, or cite a single canonical contract per item.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>Scope honesty</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>§2.3 Non-Users and §8.3 Out Of Scope do real work. Delivery honesty is unusually good: rejected Epic 9 retrospective, unsigned v3.2.2 packages, G1 insufficient, issue 17 closed without GOV-1, REL-4 not yet operational proof. A1/A2 are indexed and disposed.</p>
+            <p>Omissions a reader could silently assume are the problem. Story 11.24 / EventStore runtime identity never appears. Assumption density is two tags on a reverse-engineered high-stakes PRD. There is no single v1.0 blocker inventory and no sibling <code>addendum.md</code>.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Story 11.24 / EventStore runtime identity is invisible here</h3>
+              <span class="finding-location">§8.2, §8.3, §12 vs Epic 11</span>
+            </header>
+            <div class="finding-note">Epic 11 now includes a blocked identity-adoption story that the PRD does not list as in-scope, non-goal, or deferred. Readers will either treat it as a silent FR-29 child or ship v1.0 without noticing the gate.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add an explicit in-scope / <code>[NON-GOAL for MVP]</code> / deferred row: activation condition, what v1.0 must not change, and whether publication may proceed while it stays backlog.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Open-item and assumption density is too clean for the stakes</h3>
+              <span class="finding-location">§12.1, §13, §8.2</span>
+            </header>
+            <div class="finding-note">Two accepted assumptions and zero open questions on a green-light-to-build PRD whose publication is frozen. §8.2 due dates already slip past 11.20 (2026-07-24) and 11.21 (2026-08-14).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Tag remaining inferences; publish one v1.0 blocker table; refresh or remove due dates.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Addendum depth was dropped</h3>
+              <span class="finding-location">document surface</span>
+            </header>
+            <div class="finding-note">No <code>addendum.md</code> sits next to the canonical PRD. Rejected-alternative rationale and mechanism that used to be extractable overflow now either inflate FR-24/D-6/D-11 or are gone.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Re-home REL/GOV mechanism and source inventory to addendum or architecture; keep product outcomes in the PRD.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>Downstream usability</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>This is a chain-top PRD; this dimension counts. IDs are contiguous and unique. Assumptions roundtrip. Every UJ has a named protagonist. Contract paths for FC-NIP and command routes are concrete.</p>
+            <p>Extraction still snags. UJ-2 says Marc “sees bounded contexts ordered by urgency”; FR-10 and the glossary say operators see a Module with <code>/{module}/{tab}</code>. Command-lifecycle vocabulary does not roundtrip across glossary, FR-15, and UJ-3. D-1 still names an archived BMad run copy. FR-24 cannot be pulled out as one story-sized requirement; FR-29 cannot be pulled out as a requirement at all.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Operator IA nouns are not identical across UJ, glossary, and routes</h3>
+              <span class="finding-location">§2.4 UJ-2, §3, §5.3 FR-10, §12 D-3</span>
+            </header>
+            <div class="finding-note">UJ-2 still says “bounded contexts”; FR-10 says “one Module … <code>/{module}/{tab}</code>”; command activation is <code>/commands/{BoundedContext}/{CommandTypeName}</code>.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Use Module/Module Tab in operator UJs; keep Bounded Context as the adopter/generator noun; state that command-route <code>{BoundedContext}</code> is the technical segment, not the chrome label.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Canonical copy vs run copy is stale</h3>
+              <span class="finding-location">§0, §12 D-1</span>
+            </header>
+            <div class="finding-note">Canonical path is <code>_bmad-output/planning-artifacts/prd.md</code>. D-1 still points at the 2026-07-05 BMad run copy. That folder is archived, and this validation run is a different path.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Point D-1 at the current run folder or declare the canonical file the only source of record and mark run copies as generated mirrors with a sync owner.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Command-lifecycle vocabulary does not roundtrip</h3>
+              <span class="finding-location">§3 Command Lifecycle, §5.4 FR-15, §2.4 UJ-3</span>
+            </header>
+            <div class="finding-note">Glossary under-lists states that FR-15 requires; UJ-3 omits Warning and Degraded.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Make the glossary list the FR-15 state set and align UJ-3, including degraded/timeout as a landing.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>Shape fit</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>The shape matches a brownfield .NET Blazor front-shell framework that feeds UX, architecture, and stories. Capability-first FRs, operational success metrics, public-contract section, and named UJs for a multi-role surface are the right genre. Sampled HFC IDs exist in SourceTools.</p>
+            <p>The PRD is strained at both edges. FR-24, NFR-12/13, D-6, and D-11 are architecture and release-engineering stuffed into product requirements because there is no addendum. Operator UX is under-formalized by D-8 even though the purpose statement names UX as an audience. This is a chain-top document doing three jobs (product contract, program status, release design) and losing done-ness on the first.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Product-contract shape is overloaded with release mechanism and underloaded with operator UX</h3>
+              <span class="finding-location">§4, §5.7 FR-24, §6 NFR-12/13, §12 D-6/D-11, §12 D-8, §10</span>
+            </header>
+            <div class="finding-note">Package-release readiness belongs here; RFC 3161, evaluator closures, graph-edge ceilings, and handoff hashes belong in architecture/addendum. Meanwhile the UX risk is already confessed: “UX requirements remain too compact for visual stories.”</div>
+            <div class="finding-fix"><strong>Fix:</strong> Keep FR-24 as publishable-artifact outcomes and evidence gates; move mechanism; if this PRD still feeds UX, require UJ/FR consequences for the remaining visual states rather than only a pointer to <code>ux-design.md</code>.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="reviewer-section">
+      <details>
+        <summary>
+          <h2>Adversarial review</h2>
+          <span class="reviewer-source">review-adversarial.md</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p><strong>Kill / send back.</strong> This document is not a v1.0 build contract. It is an approved planning artifact that still contains unauthorized publication, overdue sequential analyzer gates, an incomplete operator freshness feature, and MCP “fail-closed” language that is weaker than the cited security contract and silent on tenant-gate bypasses. A skeptical Release Owner cannot tell which items actually block ship, and a security reviewer cannot treat §5.5 / SM-4 as an isolation guarantee.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">Status launders an unfinished release as v1.0-ready</h3>
+              <span class="finding-location">§ frontmatter, §0, §12 D-9 / D-6 / D-10 / D-11</span>
+            </header>
+            <div class="finding-note">YAML <code>status: approved-for-v1-readiness</code> plus D-9 “Blocks: None” is document-approval theater. The same register still says D-6 blocks the next NuGet or GitHub package publication, D-10 gates Story 11.23, and FR-24 says “publication remains unauthorized.” The PRD itself names the trap in §10: “Workflow success is confused with release readiness.” D-9 is that trap, signed.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Split statuses. Keep PRD-approval separate from product-ship authorization. Put a single v1.0 publication blocker list above the FR table. D-9 Blocks must not read “None” while any of those remain open.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">Publication gates are circular; REL-AI-1 cannot close without the release it forbids</h3>
+              <span class="finding-location">§5.7 FR-24, §12 D-6</span>
+            </header>
+            <div class="finding-note">FR-24 says <code>REL-AI-1</code> can be marked done only after a real release records <code>classification=ready</code> and <code>publish_authorized=true</code>, and in the same requirement “publication remains unauthorized.” You cannot prove the exact-artifact gate with a release you are forbidden to cut, and you cannot cut v1.0 until the gate is proven.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Define a named, non-customer gated evidence release (or unsigned dry-run with production-equivalent classifiers) that is allowed to run once to close REL-AI-1, with an explicit rule that it is not v1.0. Or drop REL-AI-1 as a pre-v1.0 completion criterion — pick one, date it, and stop encoding both.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">MCP fail-closed / no existence oracle is not specified tightly enough to sign</h3>
+              <span class="finding-location">§2.4 UJ-4, §5.5 FR-17–FR-19, §6 NFR-5, §9 SM-4</span>
+            </header>
+            <div class="finding-note">The cited security contract makes <code>tools/list</code> on auth/tenant failure a successful empty list (an oracle vs unknown-tool), lets skill resources bypass the visibility gate, documents sample allow-all gates, and allows CompatibleAdditive/Warning side effects. FR-19 only says incompatible fingerprints block side effects. SM-4 validates by “tests cover…” not “no tenant/schema/existence leak in any public MCP response.”</div>
+            <div class="finding-fix"><strong>Fix:</strong> Promote opaque public tokens into FR-19 with a request-class → public-shape table. State skill-resource tenant bypass and ban allow-all in production. Name CompatibleAdditive/Warning as approved or forbidden. Replace SM-4 with an independent leak/oracle suite.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">Stories 11.20–11.23 are a v1.0 publication gate on a schedule that has already failed</h3>
+              <span class="finding-location">§5.0 FR-29, §8.2, §12 D-10</span>
+            </header>
+            <div class="finding-note">Read as written: sequential backlog due 2026-07-24 through 2026-09-11; 11.23 required before v1.0 publication. Three of four dates are past. Source reconciliation finds those stories landed — this finding is the adversarial reading of frozen PRD text, not delivery truth.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Restate against sprint-status. Either re-date with an honest critical path and remove 11.23 from the publication gate, or freeze v1.0 until a replacement decision is signed.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">FR-24 / FR-26–FR-29 / REL-* / GOV-1 bundling hides what actually blocks v1.0</h3>
+              <span class="finding-location">§5.0, §5.7</span>
+            </header>
+            <div class="finding-note">The status map is a smoothing machine. FR-19’s own consequences call MCP lifecycle remediation “v1.0-blocking” while the map labels FR-14–FR-23 “Baseline / release verification.” FR-24 is a novella. A builder cannot answer “what is the minimum ship set?” without a second ledger.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Split the map into v1.0 ship blockers, v1.0 regression baselines, and closed decision records. Promote remaining gates to first-class IDs with one owner, one evidence artifact, and one pass/fail sentence each.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">No consumer-visible public-surface inventory</h3>
+              <span class="finding-location">§4, §5.7 FR-24, §11, §12 D-5</span>
+            </header>
+            <div class="finding-note">§11 is a category list. It does not name package IDs, PublicAPI files, MCP tool names, or diagnostic bands. Spot-check of <code>eng/release-package-inventory.json</code> names eight packable IDs; the UI row says container image while §4 says the product “does not ship FrontComposer-owned containers.”</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a single table: package ID, packable yes/no, public-API baseline file, TFM, breaking-change policy. Resolve UI/AppHost: container, sample-only, or out of v1.0.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Operator jobs are the vision; developer/CI activity is the scoreboard</h3>
+              <span class="finding-location">§1, §2, §9</span>
+            </header>
+            <div class="finding-note">UJ-2 lands when Marc can “trust whether the read model is current.” Primary SMs measure bootstrap, package seals, drift, and MCP test coverage. There is no operator outcome metric. Shipping a generator+NuGet story as v1.0 while FC-NIP composition is still in remediation (in the PRD text) means the named operator value is optional.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Either restate v1.0 as a developer-framework / package-safety release and move operator freshness out of the ship thesis, or add operator SMs that fail the release if Marc cannot trust freshness and command terminal states.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">D-4 “Resolved” while Stories 9.4–9.8 still block the operator freshness feature</h3>
+              <span class="finding-location">§5.0 FR-13, §5.3, §5.7 FR-26, §12 D-4</span>
+            </header>
+            <div class="finding-note">D-4: “Resolved 2026-08-12” then “Stories 9.4-9.8 still block FR-13/FR-26.” Decision-resolved / product-unshippable is exactly the smoothing this review is for. Source reconciliation finds 9.4–9.8 actually done; the PRD still sells both readings.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Mark D-4 as decision recorded, composition accepted or not against the 9.8 packet. Add an explicit v1.0 product choice: FC-NIP composition is a ship blocker, or v1.0 ships without automatic row marking and UJ-2 is rewritten.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Assumptions A1/A2 are treated as approved product law</h3>
+              <span class="finding-location">§2.4, §4, §12 D-9, §13</span>
+            </header>
+            <div class="finding-note">D-9 blesses “accepted assumption dispositions” as the reason the PRD is <code>approved-for-v1-readiness</code>. Assumptions that rewrite the ship thesis are unvalidated strategy. SM-1’s “preferably Tenants” is not a named adopter commitment.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Promote A1 into FR-22 acceptance with named failure states as a gate, or demote it from v1.0. Replace A2/SM-1 “preferably” with a named module, named bootstrap path, and a dated evidence artifact.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Dual “canonical” PRD copies, one path already gone</h3>
+              <span class="finding-location">§0, §12 D-1</span>
+            </header>
+            <div class="finding-note">The 2026-07-05 run copy is not at the cited path; it lives under <code>planning-artifacts/archive/prds/</code>. Two-source-of-record plus a dead path is how agents implement the stale one.</div>
+            <div class="finding-fix"><strong>Fix:</strong> One canonical path. Archive or delete the run-copy claim. If a dated snapshot is required, mark it immutable historical, not a second PRD.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">FR-19 is labeled baseline while its own text says v1.0-blocking</h3>
+              <span class="finding-location">§5.0, §5.5 FR-19</span>
+            </header>
+            <div class="finding-note">Status map: “FR-14 to FR-23 | Baseline / release verification.” FR-19 consequence: Epic 11 MCP lifecycle cross-request remediation is “v1.0-blocking.”</div>
+            <div class="finding-fix"><strong>Fix:</strong> Split FR-19 into fail-closed admission baseline and a cross-request lifecycle gate with a story ID and pass/fail evidence. Stop calling the parent “baseline.”</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">§12.1 claims every open question is resolved while publication, analyzers, and GOV-1 are not</h3>
+              <span class="finding-location">§12.1 vs D-6, D-10, D-11</span>
+            </header>
+            <div class="finding-note">Routing an upstream miss (Builds issue 17 closed without GOV-1) is not resolution. “Local work proceeds” while reusable-workflow integration still gates release eligibility is a buried blocker.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Replace the paragraph with three lists: closed, routed-with-named-external-owner-and-date, accepted-residual. Anything that still blocks NuGet/GitHub publication cannot appear only in the “resolved” column.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">SM-4 / SM-6 / NFR-11 measure activity and CI greenness, not adopter safety</h3>
+              <span class="finding-location">§9, §6 NFR-11</span>
+            </header>
+            <div class="finding-note">Those are necessary hygiene. They are the same class of metric the §10 risk warns against: a green workflow that still has <code>classification=blocked</code>. Counter-metrics SM-C1–C3 attack generated-file count, visual polish, and CLI verbosity — not “CI green ⇒ ship.”</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a counter-metric: workflow green with <code>publish_authorized=false</code> is not release success. Bind SM-2 to the classified manifest. Bind MCP success to a leak/oracle audit.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Fluent UI Blazor RC is pinned as a v1.0 runtime constraint</h3>
+              <span class="finding-location">§7</span>
+            </header>
+            <div class="finding-note">“Fluent UI Blazor v5 pinned centrally at <code>5.0.0-rc.4-26180.1</code>.” Shipping signed v1.0 packages on an RC UI stack is a consumer-safety defect unless the PRD explicitly accepts that v1.0 may break when Fluent 5 stable ships.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Either require a stable Fluent 5 pin before v1.0 publication, or add a dated exception: RC allowed, breaking Fluent updates are a FrontComposer major, with a named compatibility test pack.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Shell / operator tenant isolation is not a requirement; only MCP gates are</h3>
+              <span class="finding-location">§2.1, §5.2–5.4, NFR-5</span>
+            </header>
+            <div class="finding-note">Jobs include “without leaking tenant, auth, or schema details” for agents. Operator journeys UJ-2/UJ-3 never mention tenant. Multi-tenant isolation is specified for MCP gates, not for projection grids, home-directory counts, SignalR groups, or settings storage.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add an FR for shell tenant scope: navigation, queries, SignalR, storage keys, and error text. Define the operator-visible failure when tenant context is missing.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Generated-output path declared a public contract with no compatibility window</h3>
+              <span class="finding-location">§3, §11</span>
+            </header>
+            <div class="finding-note">Files under <code>obj/{Config}/{TFM}/generated/HexalithFrontComposer/</code> are a public contract. Path-as-contract without a deprecation story means any generator folder rename is a breaking v1.0 change.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Version the path or state that only the documented inspect/migrate JSON, not the <code>obj/</code> folder shape, is the supported contract.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">“Sensitive cases” and “internals” are undefined in the product FR text</h3>
+              <span class="finding-location">§5.5 FR-19, UJ-4</span>
+            </header>
+            <div class="finding-note">Even after fixing the critical MCP gap, the PRD still uses “sensitive cases” and “internals” as if they were enumerated. They are not.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Delete those words. Point at the token table.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="reviewer-section">
+      <details>
+        <summary>
+          <h2>Source / current-fit reconciliation</h2>
+          <span class="reviewer-source">review-source-reconciliation.md</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>The canonical PRD is a coherent 2026-08-12 snapshot of Epic 9 remediation kickoff and the 2026-08-02 GOV-1 / REL freeze story, but it no longer matches planning or delivery truth. Stories 9.3–9.8, Epic 11 analyzer activation (including the 11.23 v1.0 publication gate), Story 11.24 EventStore identity, and the unsigned <code>hexalith.release-evidence.v3</code> / <code>workflow_dispatch</code> release architecture all landed after — and in several cases before — the PRD’s <code>updated: 2026-08-12</code> stamp without a corresponding status rewrite.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">Epic 9 / FR-13 / FR-26 / D-4 still treat Stories 9.4–9.8 as open gates</h3>
+              <span class="finding-location">PRD §5.0, FR-13, FR-26, D-4 vs sprint-status and specs 9.3–9.8</span>
+            </header>
+            <div class="finding-note">The PRD’s status map still says “Stories 9.4-9.8 must pass before completion is restored.” Implementation records every child done, with Story 9.8 live acceptance on 2026-08-27. Sprint tracking still has <code>epic-9: in-progress</code> and E9-AI-* open, so orchestrator bookkeeping and the PRD agree with each other more than with story files.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Restate FR-13/FR-26 as complete / release-verification; close or residual-ize D-4 against the 9.8 proof packet; list remaining DW rows as residuals, not epic-open gates.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">FR-24 / NFR-12 / SM-2 still require signed v2 publication</h3>
+              <span class="finding-location">PRD §5.7, §6, §9, D-6 vs architecture.md</span>
+            </header>
+            <div class="finding-note">PRD FR-24 still requires signed, timestamped <code>hexalith.release-evidence.v2</code>. Current architecture checksums unsigned packages, emits v3, and uses <code>workflow_dispatch</code>. REL-5 is done: author signing and RFC 3161 timestamp are deliberately not release requirements. Ledger rows for v4.1.x are valid v3 / <code>fallback-approved</code>; later specs treat v4.2.0/v4.3.0 as published.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Replace FR-24/NFR-12/SM-2/D-6 with the unsigned-author / repository-signature / v3 / dispatch model; distinguish “packages have been published” from “REL-AI-1 is closed.”</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">D-1 BMad run copy path is archived</h3>
+              <span class="finding-location">PRD §0, D-1 vs archive tree</span>
+            </header>
+            <div class="finding-note">Claimed live path <code>_bmad-output/planning-artifacts/prds/prd-frontcomposer-2026-07-05/prd.md</code> does not exist. Files live under <code>archive/prds/</code>.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Point D-1 at the archive (read-only historical) or drop the run-copy claim; keep <code>planning-artifacts/prd.md</code> as the only readiness-discoverable copy.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">D-6 / D-11 still say Builds issue 17 closed without a qualifying revision</h3>
+              <span class="finding-location">PRD D-6, D-11, §12.1 vs G2 request</span>
+            </header>
+            <div class="finding-note"><code>g2-hexalith-builds-inline-pre-publish-gate-request.md</code> (2026-08-08, four days before the PRD stamp): issue 17 reopened with complete GOV-1 amendment, owner-accepted immutable revision <code>a8a50859…</code>. Shared-catalog contract frontmatter still says revision pending. GOV-1 story file is done while sprint-status remains open.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Rewrite D-6/D-11 to the 2026-08-08 accepted revision plus remaining FrontComposer integration/e2e proof; collapse GOV-1 status into one remaining-work sentence.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">FR-29 / §8.2 Epic 11 program status is frozen on the 2026-07-17 workstream table</h3>
+              <span class="finding-location">PRD §5.0, §8.2, FR-29 vs sprint-status, Story 11.23, Story 11.24</span>
+            </header>
+            <div class="finding-note">PRD §8.2 still says 11.17b–d, 11.18b–c, and 11.19a–d are in review and 11.20–11.23 are future phases. Sprint-status marks 11-17 through 11-24 done. Story 11.24 is absent from FR-29 despite shipping a public approved-identity contract.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Replace §5.0/§8.2/FR-29 with sprint-status truth; record 11.23 as landed (publication still separately gated by REL-AI-1); add 11.24 as a named child.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">D-6 REL-4 freeze model contradicts the 2026-08-09 REL-4 story</h3>
+              <span class="finding-location">PRD FR-24 / D-6 vs rel-4 story, architecture.md</span>
+            </header>
+            <div class="finding-note">PRD still claims the caller-side freeze guard in <code>release.yml</code> is in review. REL-4 story: after exact-source dispatch replaced auto <code>workflow_run</code>, the caller freeze-guard is gone. Standing freeze is Builds-hosted <code>HEXALITH_RELEASE_PUBLISH_ENABLED</code>.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Describe freeze as Builds-hosted + operator dispatch; separate default-frozen publisher from already-published 4.1.x+.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">EventStore runtime identity and Pact reconciliation expanded NFR-11 without a PRD requirement</h3>
+              <span class="finding-location">PRD §6 NFR-11, FR-12 vs Story 11.24, Pact specs, identity contract</span>
+            </header>
+            <div class="finding-note">NFR-11 lists “Pact checks” but never names an EventStore runtime identity. Story 11.24 is done; the approved-identity contract now records <code>3.103.0</code> with <code>migrationApprovalClaimed: false</code>. <code>epics.md</code> still calls 11.24 blocked backlog.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add an FR or D-row for owner-approved vs current-compatibility EventStore identity; state that Pact live-provider evidence is a v1 gate distinct from the frozen 11.24 archive.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Success metrics lack the evidence the PRD treats as resolved</h3>
+              <span class="finding-location">PRD §9 / D-7 vs SM-1/SM-2 artifacts</span>
+            </header>
+            <div class="finding-note">No implementation-artifact proof packet for a Tenants three-call bootstrap was found. SM-2 requires <code>classification=ready</code>, signing/timestamp, and matching published hashes; the ledger’s newest owned row is v4.1.1 <code>fallback-approved</code> / unsigned / pending owner FR24 sign-off.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Mark SM-1 unmet or point to a named adopter evidence path; rewrite SM-2 to the v3/fallback-approved/owner-sign-off chain; tick SM-4/SM-5 against 11.3/11.6.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">FR structure dropped load-bearing IA and qualitative UX rules</h3>
+              <span class="finding-location">PRD §3, FR-10 vs ux-design.md, FC-IA-1</span>
+            </header>
+            <div class="finding-note">Glossary and FR-10 correctly say a bounded context is a Module. They omit FC-IA-1’s default-tab rule, module-root alias, and flyout-target rule. Qualitative UX never carried: non-noisy live regions, 32px compact grid, always-visible hamburger, Aspire-dashboard chrome.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Lift FC-IA-1 default-tab / root-alias / flyout-target into FR-10 consequences; promote qualitative rules into FR-8/FR-11/NFR-3 or restore an addendum.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Cited api-contracts.md is a 2026-06-02 brownfield scan</h3>
+              <span class="finding-location">PRD §0, §11 vs project-docs/api-contracts.md</span>
+            </header>
+            <div class="finding-note">That API scan has no Contracts.UI, no <code>[CommandTarget]</code>, no Module/Module Tab routes, and still documents HFC1070 only as Trim/AOT advisory.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Stop treating <code>api-contracts.md</code> as current contract authority, or stamp it superseded by <code>_bmad-output/contracts/*</code> and planning <code>architecture.md</code>.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Successor FC-NIP diagnostic ID was never allocated</h3>
+              <span class="finding-location">PRD FR-13/FR-25 vs successor contract, FcDiagnosticIds</span>
+            </header>
+            <div class="finding-note">Successor contract: allocate the next free build-time identifier (HFC1070 is currently the highest). <code>FcDiagnosticIds</code> still has only HFC1070 Trim/AOT. Invalid <code>[CommandTarget]</code> reuses HFC1005. No HFC1071 exists.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Record the shipped diagnostic ID (or the HFC1005 reuse) and the 5912/5913 telemetry as FR-13/NFR-10 consequences.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Fluent UI pin in §7 is stale against the Builds catalog</h3>
+              <span class="finding-location">PRD §7 vs Directory.Packages.props</span>
+            </header>
+            <div class="finding-note">PRD: <code>5.0.0-rc.4-26180.1</code>. Current Builds catalog: <code>5.0.0-rc.5-26219.1</code>.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Replace the literal pin with “centrally pinned Fluent UI Blazor v5 via the selected Builds catalog” or update the exact version after Product confirms the current catalog.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Architecture quality-review H1–H12 rationale is stale versus delivery</h3>
+              <span class="finding-location">PRD FR-29 vs 2026-07-04 review, Stories 11.6, 11.8, 11.11–11.14</span>
+            </header>
+            <div class="finding-note">The 2026-07-04 review’s “Testing harness can only simulate success” and Contracts-Fluent leakage claims are implemented. The PRD still frames FR-29 as an active program whose children are in review.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Mark H11/M21-class items closed by 11.6/11.8/11.11–11.14; keep only residual H/M IDs that sprint-status does not mark done.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">LEGACY-FR-* can still confuse a naive grep</h3>
+              <span class="finding-location">archived 2026-07-05 review vs current epics.md FR Coverage Map</span>
+            </header>
+            <div class="finding-note">The 2026-07-05 HIGH FR-numbering divergence is cleared. Residual risk: the provenance inventory still lists LEGACY-FR-1…LEGACY-FR-22 with overlapping numbers.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Keep the LEGACY prefix mandatory in any new trace; do not reopen the numbering split.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">No addendum.md beside the canonical PRD</h3>
+              <span class="finding-location">archived memlog vs current tree</span>
+            </header>
+            <div class="finding-note">Archived memlog recorded an addendum with source inventory. Mechanism that now lives in architecture and UX supplements either bloated FR-24 or vanished from FR consequences.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Restore an addendum for mechanism/IA depth, or explicitly adopt architecture.md + ux-design.md as the overflow homes in D-2.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Sprint-status Epic 9 action items remain open after story done</h3>
+              <span class="finding-location">PRD D-4 vs sprint-status.yaml E9-AI-1…6</span>
+            </header>
+            <div class="finding-note">Process drift, not a second product requirement, but it explains why the PRD can look current against actions while stories 9.3–9.8 and the 9.8 proof packet say otherwise.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Close the actions against the proof record or rewrite them as residuals.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Logging governance continued after the PRD froze 11.18 as “in review”</h3>
+              <span class="finding-location">PRD FR-29 vs spec-low-logging-governance-hardening.md</span>
+            </header>
+            <div class="finding-note">Sprint-status marks parent 11-18 done. A 2026-09-06 spec still hardens MCP IsEnabled locals and Shell logger substitutes.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Treat post-11.18 logging work as NFR-10 follow-through, not as proof that FR-29’s 11.18 children are still the queue.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <div class="mechanical">
+      <h3>Mechanical notes</h3>
+      <ul>
+        <li>IDs: UJ-1–6, FR-1–29, NFR-1–13, D-1–11, A1–A2 are unique and contiguous. SM-2a is the only numbering wart; it is unique and load-bearing.</li>
+        <li>Assumptions roundtrip: A1 appears in §2.4 and §5.6 and is indexed in §13; A2 appears in §4 and is indexed. Wording drifts across UJ-6 / FR-22 / SM-5.</li>
+        <li>Glossary drift: operator “bounded context” vs Module; Command Lifecycle incomplete versus FR-15. Missing glossary entries used as if defined: EventStore, Level-2/3/4 customization, REL-3/4/5, REL-AI-1, GOV-1, <code>hexalith.release-evidence.v2</code>.</li>
+        <li>Cross-refs: Story 9.4–9.8, 11.17–11.23, and contract file paths resolve only with <code>epics.md</code> and <code>_bmad-output/contracts/</code>. Story 11.24 is an unresolved epic-side ref. D-1’s 2026-07-05 run copy is archived.</li>
+        <li>No <code>addendum.md</code> beside the canonical PRD; overflow was absorbed into FR-24/D-11 or dropped.</li>
+        <li>Required sections for this shape are present. A v1.0 blocker table is the missing scan surface, not a missing consumer-product section.</li>
+      </ul>
+    </div>
+
+    <footer class="report-footer">
+      <div class="meta">
+        <span>Rubric: /home/administrator/projects/hexalith/frontcomposer/.agents/skills/bmad-prd/assets/prd-validation-checklist.md</span>
+        <span>Generated: 2026-09-08T08:04:52Z</span>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
