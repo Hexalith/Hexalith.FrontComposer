@@ -1,16 +1,16 @@
 {
   "schema": "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v1",
-  "capturedAt": "2026-09-05T11:41:28.759599+00:00",
+  "capturedAt": "2026-09-08T07:59:27.788200+00:00",
   "finalVerdict": "passed",
   "reasonCodes": [],
   "identity": {
-    "eventStoreSourceSha": "4ae9cee1e9abe050402fd1405a9abd54892ba13f",
-    "eventStoreReleaseVersion": "3.102.0",
-    "buildsCatalogSha": "071ef99733ba398362ae838e4696b4b1641ed07a"
+    "eventStoreSourceSha": "059f6a8917bfab26b85775be464840a1610dfdeb",
+    "eventStoreReleaseVersion": "3.103.0",
+    "buildsCatalogSha": "35c3d1e5b8a55a74a440b9c2cad4c5e18747b241"
   },
   "topology": {
     "programPath": "src/Hexalith.FrontComposer.AppHost/Program.cs",
-    "programSha256": "474e7aabc58fd0a44b15e2598ee832a7286432779360614180931ef0024f7290",
+    "programSha256": "d9cd481cc5a2a0a9845a0332e820ac11079f46ac2ea3513fcd9308f57cbfdc46",
     "projectPath": "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
     "projectSha256": "8d7f86141deacf04f482ecada2bfbf520712fe58b19eac7af9711d22cc9c07f2",
     "modifiedForSmoke": false,

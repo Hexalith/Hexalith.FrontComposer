@@ -399,6 +399,25 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         self.assertEqual(self.validate_live(), [])
 
+    def test_live_lane_tolerates_stopwatch_wall_clock_jitter_but_not_forged_durations(self) -> None:
+        self.make_live_apphost_pass()
+        report = _read_json(self.live_root / "provider-verification.json")
+        original = report["timing"]["run"]["durationMilliseconds"]
+        report["timing"]["run"]["durationMilliseconds"] = original + 4
+        _write_json(self.live_root / "provider-verification.json", report)
+        self.assertEqual(evidence.write_live_receipt(self.live_root), [])
+        self.assertEqual(
+            [error for error in self.validate_live() if "duration contradicts" in error],
+            [],
+        )
+
+        report["timing"]["run"]["durationMilliseconds"] = original + 20
+        _write_json(self.live_root / "provider-verification.json", report)
+        self.assertEqual(evidence.write_live_receipt(self.live_root), [])
+        self.assertTrue(
+            any("run duration contradicts its timestamps" in error for error in self.validate_live()),
+        )
+
     def test_live_lane_rejects_current_pact_byte_drift(self) -> None:
         self.make_live_apphost_pass()
         pact_path = self.pact_root / evidence.PACT_FILES[0]

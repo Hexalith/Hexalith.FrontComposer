@@ -947,6 +947,7 @@ def _validate_timing(
     report: dict[str, Any],
     expected_failed: bool,
     errors: list[str],
+    duration_tolerance_microseconds: int = 1000,
 ) -> None:
     timing = report.get("timing", {})
     expected_codes = {
@@ -977,9 +978,10 @@ def _validate_timing(
             or completed < started
         ):
             errors.append(f"Provider report {name} timing is incomplete or unbounded.")
-        elif abs(duration * 1000 - (completed - started) // timedelta(microseconds=1)) > 1000:
-            # The producer may truncate or round a sub-millisecond remainder, so a truthful
-            # duration is the interval to within one millisecond. Anything wider contradicts it.
+        elif abs(duration * 1000 - (completed - started) // timedelta(microseconds=1)) > duration_tolerance_microseconds:
+            # Historical Story 11.24 reports stay at one millisecond. The live EventStore
+            # verifier at the pinned source still uses Stopwatch.ElapsedMilliseconds against
+            # DateTimeOffset timestamps, which can differ by a few milliseconds on WSL/CI.
             errors.append(f"Provider report {name} duration contradicts its timestamps.")
         else:
             parsed_intervals[name] = (started, completed)
@@ -1658,7 +1660,7 @@ def _validate_live_provider(
                 errors.append(f"Live provider interaction {index} cleanup is incomplete.")
     if actual_keys != expected_interactions:
         errors.append("Live provider interactions do not match the current Pact manifest.")
-    _validate_timing(report, False, errors)
+    _validate_timing(report, False, errors, duration_tolerance_microseconds=10_000)
     input_values = report.get("inputHashes", [])
     input_hashes = {
         str(item.get("name", "")): str(item.get("sha256", ""))

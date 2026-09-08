@@ -7,9 +7,9 @@
   "submodulePointerChangedByApproval": false,
   "currentCompatibility": {
     "path": "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation",
-    "eventStoreSourceSha": "4ae9cee1e9abe050402fd1405a9abd54892ba13f",
-    "eventStorePackageVersion": "3.102.0",
-    "buildsCatalogSha": "071ef99733ba398362ae838e4696b4b1641ed07a",
+    "eventStoreSourceSha": "059f6a8917bfab26b85775be464840a1610dfdeb",
+    "eventStorePackageVersion": "3.103.0",
+    "buildsCatalogSha": "35c3d1e5b8a55a74a440b9c2cad4c5e18747b241",
     "migrationApprovalClaimed": false
   },
   "historicalCapture": {

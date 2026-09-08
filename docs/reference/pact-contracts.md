@@ -5,7 +5,7 @@ genre: reference
 audience: adopter
 ownerStory: 11-24-adopt-the-owner-approved-eventstore-runtime-identity
 status: published
-reviewed: 2026-09-05
+reviewed: 2026-09-08
 uid: frontcomposer.reference.pact-contracts
 slug: reference/pact-contracts/
 ---
@@ -78,9 +78,9 @@ Re-capture rules:
 
 ### Current reconciliation outcome
 
-The provider run captured on 2026-09-05 passes all 19 interactions at EventStore source
-`4ae9cee1e9abe050402fd1405a9abd54892ba13f`, EventStore version `3.102.0`, and Builds catalog
-`071ef99733ba398362ae838e4696b4b1641ed07a`. The authenticated AppHost smoke on the same provenance
+The provider run captured on 2026-09-08 passes all 19 interactions at EventStore source
+`059f6a8917bfab26b85775be464840a1610dfdeb`, EventStore version `3.103.0`, and Builds catalog
+`35c3d1e5b8a55a74a440b9c2cad4c5e18747b241`. The authenticated AppHost smoke on the same provenance
 starts the existing ten-resource topology, observes health, command submit/status, tenant query
 provenance (`HandlerComputed`), and projection SignalR, then stops cleanly. Compatibility still
 does not claim the historical owner-approved identity tuple

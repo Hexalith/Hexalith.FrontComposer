@@ -155,8 +155,25 @@ if (security is not null) {
 
     _ = adminServer.WithJwtBearerSecurity(security);
 
+    // EventStore 3.103+ WithEventStoreClientCredentials(security) creates required
+    // secret parameters with no values. Non-interactive aspire start then leaves
+    // eventstore-admin-ui Waiting/ValueMissing. Bind the Keycloak realm local
+    // identity already shipped in KeycloakRealms/hexalith-realm.json.
+    IResourceBuilder<ParameterResource> adminUiUsername = builder.AddParameter(
+        "eventstore-admin-ui-local-auth-username",
+        static () => "admin-user",
+        secret: true);
+    IResourceBuilder<ParameterResource> adminUiPassword = builder.AddParameter(
+        "eventstore-admin-ui-local-auth-password",
+        static () => "admin-pass",
+        secret: true);
+
     _ = adminUI
-        .WithEventStoreClientCredentials(security)
+        .WithEventStoreClientCredentials(
+            security,
+            HexalithEventStoreSecurityOptions.DefaultEventStoreClientId,
+            adminUiUsername,
+            adminUiPassword)
         .WithEnvironment("EventStore__AdminServer__SwaggerUrl", ReferenceExpression.Create($"{adminServerHttps}/swagger/index.html"));
 
     // Interactive browser sign-in (authorization-code flow) for the Tenants UI. Uses a
