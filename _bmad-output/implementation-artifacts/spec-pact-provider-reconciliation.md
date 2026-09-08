@@ -2,7 +2,7 @@
 title: 'Reconcile EventStore Provider Pacts and Live Evidence'
 type: 'bugfix'
 created: '2026-08-31'
-status: ready-for-dev
+status: in-progress
 baseline_commit: 'ee08c8eed5e4b57b702693d078a1339c95c82b4a'
 baseline_revision: c6fe14c6613534d7397edd2e2c9eb5dccabd09df
 review_loop_iteration: 0
