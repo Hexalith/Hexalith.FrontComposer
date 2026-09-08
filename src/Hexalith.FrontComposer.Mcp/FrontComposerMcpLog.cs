@@ -25,6 +25,9 @@ internal static partial class FrontComposerMcpLog {
             return;
         }
 
+        // CA1873: the projection below is already deferred behind the IsEnabled guard above;
+        // binding it to a local keeps that laziness explicit at the call site rather than relying
+        // on the analyzer to model the early-return guard. No behavioural change.
         string categoryName = category.ToString();
         LogToolsListFailedClosed(logger, categoryName, exceptionType);
     }
@@ -43,6 +46,9 @@ internal static partial class FrontComposerMcpLog {
             return;
         }
 
+        // CA1873: the projection below is already deferred behind the IsEnabled guard above;
+        // binding it to a local keeps that laziness explicit at the call site rather than relying
+        // on the analyzer to model the early-return guard. No behavioural change.
         string categoryName = category.ToString();
         LogLifecyclePrecheckFailedClosed(logger, categoryName, exceptionType);
     }
@@ -61,6 +67,9 @@ internal static partial class FrontComposerMcpLog {
             return;
         }
 
+        // CA1873: the projection below is already deferred behind the IsEnabled guard above;
+        // binding it to a local keeps that laziness explicit at the call site rather than relying
+        // on the analyzer to model the early-return guard. No behavioural change.
         string categoryName = category.ToString();
         LogProjectionReaderFailedClosed(logger, categoryName, exceptionType);
     }
@@ -79,6 +88,9 @@ internal static partial class FrontComposerMcpLog {
             return;
         }
 
+        // CA1873: the projection below is already deferred behind the IsEnabled guard above;
+        // binding it to a local keeps that laziness explicit at the call site rather than relying
+        // on the analyzer to model the early-return guard. No behavioural change.
         string boundedContextDigest = SanitizeCategoryValue(boundedContext);
         LogTenantToolGateFailedClosed(logger, boundedContextDigest, exceptionType);
     }
@@ -97,6 +109,9 @@ internal static partial class FrontComposerMcpLog {
             return;
         }
 
+        // CA1873: the projection below is already deferred behind the IsEnabled guard above;
+        // binding it to a local keeps that laziness explicit at the call site rather than relying
+        // on the analyzer to model the early-return guard. No behavioural change.
         string boundedContextDigest = SanitizeCategoryValue(boundedContext);
         LogPolicyGateFailedClosed(logger, boundedContextDigest, exceptionType);
     }
@@ -149,6 +164,9 @@ internal static partial class FrontComposerMcpLog {
             return;
         }
 
+        // CA1873: the projection below is already deferred behind the IsEnabled guard above;
+        // binding it to a local keeps that laziness explicit at the call site rather than relying
+        // on the analyzer to model the early-return guard. No behavioural change.
         string categoryName = FrontComposerMcpFailureCategory.DownstreamFailed.ToString();
         string boundedExceptionType = ExceptionTypeOrDefault(exceptionType);
         LogCommandInvocationUnexpectedFailure(logger, categoryName, boundedExceptionType);

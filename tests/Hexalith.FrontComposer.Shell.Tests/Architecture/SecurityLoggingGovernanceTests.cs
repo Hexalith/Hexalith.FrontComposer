@@ -1,9 +1,8 @@
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-
-using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
-
 using Microsoft.Extensions.Logging;
 
 using Shouldly;

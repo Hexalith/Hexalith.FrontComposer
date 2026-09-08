@@ -82,6 +82,9 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
             return;
         }
 
+        // CA1873: the projection below is already deferred behind the IsEnabled guard above;
+        // binding it to a local keeps that laziness explicit at the call site rather than relying
+        // on the analyzer to model the early-return guard. No behavioural change.
         string exceptionType = ex.GetType().FullName ?? "Exception";
         LogReadFailureMessage(logger, exceptionType);
     }

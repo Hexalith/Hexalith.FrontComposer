@@ -16,8 +16,8 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.State;
 using Hexalith.FrontComposer.Shell.State.Density;
-using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.State.Navigation;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

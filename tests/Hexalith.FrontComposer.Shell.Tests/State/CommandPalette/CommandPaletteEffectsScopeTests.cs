@@ -12,8 +12,8 @@ using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Shortcuts;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
-using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.State.Navigation;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

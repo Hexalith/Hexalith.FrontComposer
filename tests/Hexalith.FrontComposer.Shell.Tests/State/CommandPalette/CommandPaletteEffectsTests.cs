@@ -15,8 +15,8 @@ using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Shortcuts;
 using Hexalith.FrontComposer.Shell.State;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
-using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.State.Navigation;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
