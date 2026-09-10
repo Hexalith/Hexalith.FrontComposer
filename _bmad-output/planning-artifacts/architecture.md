@@ -2,7 +2,7 @@
 title: Hexalith.FrontComposer Architecture Planning Source
 status: canonical-planning-source
 created: 2026-07-05
-updated: 2026-08-16
+updated: 2026-09-09
 sourceOfRecord:
   - _bmad-output/project-docs/architecture.md
   - _bmad-output/project-docs/architecture-quality-review-2026-07-04.md
@@ -96,9 +96,9 @@ invariants without changing EventStore lifecycle/status ownership or the Shell d
 > numeric ceilings below as Architect and Release Owner. This amendment supersedes the former unbounded
 > complete-reachable interpretation of v1.
 >
-> **Release integration update 2026-08-04:** FrontComposer uses its truthful exact-source CI proof and
-> the approved immutable Builds production workflow identity. It does not claim a shared CI evaluator
-> closure that the current mutable CI reference cannot prove.
+> **Release integration update 2026-09-09:** The finalized GOV-1 architecture spine is the
+> authoritative mechanism record. AD-1 through AD-19 retain their stable IDs; this section is a
+> projection and cannot amend their closed schemas, trust boundaries, or implementation gate.
 
 Dependency governance uses a **bounded committed-object graph** and separates two concerns that must
 not be conflated:
@@ -126,17 +126,16 @@ The graph engine is offline/object-only. CI acquires exact base and candidate ob
 root repository and FrontComposer-owned approved remote policy into isolated temporary bare stores,
 including base-only objects needed to prove removals. A versioned `eng/dependency-graph-policy.json`
 owns trusted identity/path mappings, semantic owner profiles, supported module argv/evidence-only
-dispositions, and v1 limits. Base/candidate `.gitmodules` are untrusted graph data. For PRs the active
+dispositions, evaluator authorizations, Release Owner logins, attestation capability, and v1 limits.
+Base/candidate `.gitmodules` are untrusted graph data. For PRs the active
 policy is the exact base commit's policy; for pushes it is the non-zero before commit's policy. Both
 graphs use that immutable revision and evidence records its commit and raw SHA-256. A candidate policy
 change cannot authorize itself: it activates only when it is the base policy of a later change. The
-one-time bootstrap requires an unchanged graph, frozen publication, and approval of the exact policy
-digest, enforced by the Release Owner-controlled
-`HEXALITH_DEPENDENCY_POLICY_BOOTSTRAP_SHA256` repository variable. Base-policy existence permanently
-disables bootstrap after the initial landing. A zero/unavailable before revision may produce
+one-time v1 bootstrap was consumed when the first policy landed on 2026-07-19; base-policy absence is
+permanently fail-closed and no bootstrap mode is reachable. A zero/unavailable before revision may produce
 diagnostic/full-affected evidence, but the gate fails and is never release-eligible. The policy is
-release-definition and fallback-invalidation material. Exact-source proofs and manifest v3 record its repository,
-canonical `eng/dependency-graph-policy.json` path, schema, 40-hex revision, and raw-byte SHA-256.
+release-definition and fallback-invalidation material. The authenticated CI handoff,
+release-verification handoff v3, and manifest v4 record its canonical coordinates and raw-byte SHA-256.
 
 The policy has no implicit semantic or build defaults. Every Builds-selector owner maps to exactly one
 named semantic profile; every governed target identity maps either to the exact standalone .NET
@@ -188,12 +187,15 @@ the same merge revision used for collection and affected builds. Push evidence c
 `github.event.before` with `github.sha`; an unavailable/zero base takes the full-affected fail-closed
 path. Unchanged graphs build no module.
 
-GOV-1 introduces the top-level `manifest_schema: hexalith.release-evidence.v2`, closed
-`dependency_graph`, closed `dependency_policy`, and closed `workflow_provenance` members atomically.
-The existing outer seal covers every top-level member except `seal`. V2 fallback approval hashes the
-existing definition/package-set inputs together with the dependency graph digest, active policy
-SHA-256, and canonical combined CI/release workflow-definition digest. Older manifests are audit-only and always non-publishable; they cannot satisfy fallback and are
-never upgraded or resealed in place. Historical ledger bytes remain unchanged.
+The manifest lineage is `hexalith.release-evidence.v1` (legacy) → `v2` → `v3` → `v4`.
+Preparation emits only `hexalith.release-evidence.v4`; v2/v3 acceptance is confined to explicit audit
+and verification commands, and no legacy manifest is resealed, upgraded, or made fallback-eligible.
+V4 seals the dependency graph, policy, selected quality run, exact attestation-or-fallback projection,
+and CI/Release workflow provenance defined by AD-17. The AD-9 fallback request and canonical
+`hexalith.attestation-fallback-authorization.v3` are bound to one authenticated Release run/attempt,
+candidate, CI handoff, active policy, and fallback digest. A retry or any dependency, policy, workflow,
+package-set, expiry, or run-coordinate drift requires new authorization. Historical ledger bytes remain
+unchanged.
 
 Hexalith.Builds will eventually expose a semantic catalog-contract version through BUILD-CAT-1.
 During migration, consumers validate semantic contents directly and record the computed fingerprint;
@@ -205,17 +207,21 @@ Focused spine: `_bmad-output/planning-artifacts/architecture/architecture-gov-1-
 
 ## FR-24 Release Evidence Architecture
 
-Release authorization is an exact-artifact pipeline:
+Release authorization is an exact-artifact, privilege-separated pipeline:
 
 ```text
-Pack once
-  → validate inventory, tests, and package consumers
-  → generate SBOM and symbol evidence
-  → checksum the exact unsigned packages, symbols, and evidence
-  → seal and verify the release manifest
-  → classify-release --require-publishable
-  → publish those same authorized bytes
-  → verify exact GitHub assets plus NuGet.org repository signatures and package content
+Secretless candidate builder
+  → check out and execute only the exact authenticated candidate
+  → pack once; validate inventory, tests, consumers, checksums, SBOM, and symbols
+  → upload one run-bound publication-candidate artifact
+Protected candidate-free publisher
+  → authenticate the raw archive, descriptor, policy, evaluator, plan, and every declared byte
+  → mint and verify provenance attestation or validate the run-bound approved fallback
+  → prepare, seal, offline/live verify, and classify manifest v4
+  → publish only the authorized bytes
+Independent post-release verifier
+  → verify GitHub assets, NuGet.org repository signatures, normalized package content,
+    attempt disposition, and durable evidence
 ```
 
 Pre-publication authorization and post-publication verification are separate phases. Only the former
@@ -230,48 +236,66 @@ Publication consumes those exact paths without rebuilding or replacing an artifa
 classification, invalid manifest, missing evidence, or `publish_authorized=false` terminates the
 release before NuGet, GitHub Release, tag/changelog, or other external publication side effects.
 
-Push CI emits a closed `hexalith.dependency-release-source.v1` proof for facts FrontComposer can
-authenticate without inventing an upstream guarantee: the successful push-CI run/attempt, exact
-candidate, active base policy, and candidate dependency graph. This deliberately replaces the pending
-AD-16 evaluator handoff. It does not claim an immutable closure for the shared CI workflow while that
-workflow remains selected through a mutable reference.
+Push CI on `main` emits the sealed `hexalith.dependency-release-handoff.v1` artifact (spine AD-13):
+the push-CI run/attempt, exact candidate, active base policy, candidate dependency graph, and the
+active-policy-authorized CI evaluator closure of the 40-hex-pinned `domain-ci.yml`. It is the sole
+release-candidate authority. The `hexalith.dependency-release-source.v1` proof CI also emits is a
+diagnostic only and never authorizes preparation.
 
 Release is operator-controlled through `workflow_dispatch`. Its unprotected gate requires the dispatch
 ref to be exactly `refs/heads/main`, requires the dispatched value to be a lowercase 40-hex commit,
 re-reads the live main ref, and selects exactly one completed successful push CI run for that same SHA.
-It fetches only the run/attempt-named source proof through read-only Actions APIs. Missing, failed,
+It also requires one completed successful push run of `quality.yml` for that SHA, then fetches only
+the run/attempt-named `dependency-release-handoff` through read-only Actions APIs and verifies it
+offline and live. Missing, failed,
 truncated, paginated, duplicated, or malformed responses fail before the protected job. No tag,
 ambient checkout, default-branch value, or later workflow-run head may replace the dispatched candidate.
 
-The production preparation job recomputes the live graph, requires a real `160000` candidate Builds
-gitlink as catalog identity, and emits `hexalith.release-evidence.v3`. That catalog gitlink is an
-independent development dependency and need not equal the approved execution commit. V3 provenance
-binds the raw CI source-proof hash, exact Release caller workflow bytes at the candidate, exact
-reusable `domain-release.yml` bytes at the Builds execution commit, and the identical
-`builds-execution-sha`. The approved Builds execution identity is
-`3f0e3595be693fce56a37648c0bd0f89390f5fd3`; the reusable workflow call and input must remain identical
-literal 40-hex coordinates.
+The selected Hexalith.Builds reusable implements `split-publication-v1` as two fixed jobs defined
+directly in one immutable `domain-release.yml`: `build-publication-candidate` and
+`publish-publication-candidate`. The builder has no environment, publication credential, OIDC or
+attestation authority, or write scope. It may execute the exact candidate only to restore, build, pack,
+plan, validate, and produce the closed `hexalith.publication-candidate.v1` artifact. Builder-side
+manifest, readiness, or classification output is diagnostic denial evidence only and cannot authorize.
 
-The pack-once prepared candidate is sealed to the Release run ID/attempt and uploaded only after
-production approval. The pinned reusable publisher restores and authenticates those exact bytes inside
-Semantic Release, re-verifies the sealed manifest/readiness, and publishes only manifest-authorized
-unsigned candidate packages and symbols. The release configuration does not create a changelog commit, so a
-successful non-draft GitHub Release tag must resolve to the dispatched SHA itself.
+The publisher is the only product-publication actor. It runs under the protected `production`
+environment, executes only the active-policy-authorized candidate-free owner closure, downloads the
+raw publication-candidate ZIP through the authenticated Actions API, enforces AD-7 before extraction,
+and treats every candidate byte as non-executable data. It independently obtains and verifies the
+required GitHub provenance attestation, or validates AD-9's approved-unsupported fallback; prepares and
+seals manifest v4; completes offline/live verification and classification; and requires
+`publish_authorized=true` before its first NuGet or GitHub Release mutation. Attestation minting over
+authenticated package digests is evidence registration, not package/Release publication, and cannot
+authorize by itself. Author signing, production PFX custody, and RFC 3161 author timestamps are not
+requirements; candidates are author-unsigned and NuGet.org repository-signs uploaded packages.
 
-Release Evidence authenticates the completed operator run topology. It reports no-releasable and
-rejected-before-publication dispositions without claiming publication. Once the reusable protected
-publisher starts, a missing GitHub Release, missing asset, mutable release, tag/SHA mismatch, package
-count drift, NuGet payload mismatch, invalid repository signature, or checksum/SBOM/manifest divergence is a
-partial-publication incident and fails closed with retained evidence.
+The manifest and exact `builds-execution-sha` bind the selected reusable in the AD-16 lineage rooted at
+`a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a`. The Builds catalog gitlink is a separate dependency-graph
+identity and need not equal either CI or Release execution pin. A new owner-accepted Builds revision
+implementing the split must enter that lineage and the active policy through delayed activation before
+FrontComposer selects it.
+
+Every authenticated Release run uploads `hexalith.release-verification-handoff.v3` under `if: always()`.
+It carries the selected quality run, original CI handoff, candidate, policy, publication-candidate
+coordinates, release state, final manifest v4, attestation/fallback, assets, denial reason, and Release
+evaluator. The total AD-15 classifier distinguishes gate-frozen, no-releasable, rejected, compliant,
+deferred, missing-artifact, partial-publish, and other non-compliant attempts. The
+`publication_started` marker is set immediately before the first product-publication mutation;
+attestation registration and protected-job start do not set it. External bytes or state inconsistent
+with that marker are a partial-publication incident.
 
 After publication, that independent verifier downloads NuGet and GitHub assets. GitHub package bytes
 must exactly match the sealed checksums. Because NuGet.org repository-signs an unsigned submission by
 adding the root `.signature.p7s` entry, its raw archive hash is expected to differ; the verifier requires
 a valid repository signature for every package and byte-equivalence for every other normalized ZIP
-member. A mismatch, missing asset, or partial publication fails the release and creates an incident
-record; post-publication evidence cannot authorize a release retroactively. Durable evidence attached
-during initial GitHub Release creation is the public evidence chain. Short-retention workflow artifacts
-are supplemental.
+member. A mismatch, missing asset, or partial publication fails closed and creates an incident
+observation; post-publication evidence cannot authorize retroactively.
+`frontcomposer.release-ledger-record.v2` observations are append-only and attempt-keyed: a later green
+verification cannot replace or weaken an incident. Successful product Releases carry the mandatory
+AD-19 assets. If publication started but no complete immutable product Release exists, the separately
+authorized candidate-free incident-recovery stage preserves authenticated and quarantined evidence in
+an immutable reserved-namespace prerelease. Run artifacts are short-retention replay material, never
+durable authorization.
 
 Ownership boundaries:
 
@@ -282,6 +306,34 @@ Ownership boundaries:
   authorized bytes, and downloaded-artifact verification.
 - **Release Owner** owns production environment approval, NuGet publishing credentials, exceptions,
   and partial-publication incident response.
+
+### GOV-1 Adoption And Split Implementation Gate
+
+The current FrontComposer caller still selects a legacy publication-capable path, so the architecture
+target is not a production-state claim. Production releases remain halted and
+`HEXALITH_RELEASE_PUBLISH_ENABLED` must be literal `false` as a deny-only emergency stop; it can never
+authorize. No bounded risk exception is currently approved.
+
+The **GOV-1 split implementation gate** is the canonical packet and approval-projection protocol in the
+spine's Deferred section. It requires
+`_bmad-output/implementation-artifacts/gov-1-split-publication-conformance.json`, authenticated live
+checks and five reviewer reports, a closed nonconformance register, an unchanged protected-main
+evidence PR with Release Owner approval, and a distinct protected-main approval-projection PR. A stale
+spine hash, mixed candidate/Builds/policy/evaluator evidence, unavailable source evidence, any open row,
+direct push, or squash/rebase fails the gate.
+
+Unresolved owner decisions remain explicit:
+
+- Product Owner and Release Owner acceptance of AD-19, the production-release halt, and the current
+  no-exception posture (PRD D-16/G-8).
+- Release Owner or repository-administrator action to set the emergency-stop variable to literal
+  `false` and capture an authenticated API observation.
+- Hexalith.Builds owner and Release Owner acceptance of the immutable split-reusable revision entering
+  the AD-16 lineage.
+- Product Owner and Release Owner approval of the incident acknowledgement/containment target and the
+  `docs/release-incident-response.md` runbook before integration.
+- Release Owner confirmation of the no-bypass protected-main ruleset required for conformance and
+  append-only ledger approvals.
 
 This delivery architecture does not alter FrontComposer runtime, public product behavior, or UX.
 

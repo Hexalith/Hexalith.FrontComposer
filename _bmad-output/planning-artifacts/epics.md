@@ -205,24 +205,25 @@ This is the sole planning coverage map. Requirement semantics and identifiers co
 
 **Release Governance Gate RG-1 (FR-24):** before any NuGet or GitHub package publication, the Release
 Owner must prove that the exact expected package artifacts passed inventory, tests, package-consumer
-validation, symbol/SBOM generation, signature and RFC 3161 timestamp verification, checksum coverage,
-sealed-manifest verification, and `classify-release --require-publishable`. Passing evidence requires
-`classification=ready` and `publish_authorized=true`; the same authorized bytes must be published and
-then independently verified from NuGet and GitHub. Durable release evidence is required. Product work
-may continue while the gate is open, but automated package publication may not.
+validation, symbol/SBOM generation, checksum coverage, mandatory provenance attestation or the
+run-bound approved-unsupported fallback, manifest-v4 sealing, offline/live verification, and final
+classification by the candidate-free protected publisher. Passing evidence requires
+`publish_authorized=true`; the same authorized bytes must be published and independently verified from
+GitHub and NuGet.org, including repository-signature/normalized-member equivalence. Durable attempt and
+incident evidence is required. Product work may continue while the gate is open, but production package
+publication may not.
 
 **Update (correct-course 2026-07-19):** **`GOV-1: Validate shared-catalog compatibility and seal
 dependency provenance`** separates compatibility from provenance. Product Governance validates the
 semantic catalog selected by every Builds edge in the complete defined depth-1/2 v1 graph and contains
 no expected SHA allowlist. Pointer changes emit a deterministic graph diff and run exact affected-module
-Release/NuGet gates. Manifest v2 seals the graph, active closed-policy coordinates, authenticated CI
-handoff, and active-policy-authorized static CI/release workflow/action closures. Every Release attempt
-emits an authenticated post-release handoff preserving the original CI candidate. BUILD-CAT-1 routes
-the semantic catalog marker. **Execution correction 2026-08-02:** issue 17 closed without accepting the
-GOV-1 amendment or recording a qualifying immutable revision. FrontComposer-local graph diff,
-affected-module proof, evaluator closure, handoff schema/consumer, manifest-v2, and fixture work proceeds;
-a reopened issue 17 or successor gates only reusable-workflow integration, end-to-end proof, GOV-1
-completion, release eligibility, and unfreeze.
+Release/NuGet gates. The finalized 2026-09-09 spine preserves AD-1 through AD-19, requires the
+secretless candidate-builder and protected candidate-free publisher split, advances the
+Release-to-verifier handoff to v3 and the manifest to v4, binds fallback authorization to one Release
+run/attempt, and requires append-only attempt evidence plus immutable incident recovery. BUILD-CAT-1
+still owns the semantic catalog marker. Hexalith.Builds revision `a8a50859…` is the accepted AD-16
+lineage predecessor, not the split-reusable revision. Release remains ineligible until owner
+acceptance, implementation convergence, and the spine-defined GOV-1 split implementation gate pass.
 Source of record:
 `_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md`; focused spine:
 `_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md`.
@@ -232,39 +233,29 @@ pre-publication correction and 2026-07-19 GOV-1 architecture):** FR-24 implement
 **`REL-2`** (Tenants reusable-workflow alignment), and `REL-1` is closed as superseded. The accepted
 historical split placed package inventory/consumer validation in shared CI, publication in the reusable
 release, and supplemental post-publication evidence in `release-evidence.yml`. It no longer defines
-FR-24 authorization. Under the ratified model, literal-40-hex-pinned primary CI emits the authenticated
-handoff; the pinned reusable release prepares, signs, seals, live-verifies, and classifies the exact
-`workflow_run.head_sha` before publication; `release-evidence.yml` remains an independent read-only
-post-publication verifier and cannot authorize, prepare, or reseal. See
+FR-24 authorization. Under the current authority, literal-40-hex-pinned primary CI emits the
+authenticated handoff; the secretless builder executes the exact authenticated candidate and emits
+publication-candidate data; the protected candidate-free publisher performs final attestation/fallback,
+manifest-v4 sealing, classification, and publication; and `release-evidence.yml` remains an
+independently authorized read-only verifier that cannot authorize retroactively. See
 `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-13-rel-ai-1-fr24-rehome-into-rel-2.md`.
 
-**Update (correct-course 2026-07-15):** keep `REL-2` done against its accepted G1 criteria, but do not
-use it to close FR-24. Live v3.2.2 evidence reported unsigned packages, an invalid manifest,
-`classification=blocked`, and `publish_authorized=false` while the evidence workflow concluded
-successfully. **`REL-3: Enforce FR-24 before publication and reconcile affected releases`** now owns
-the correction. Hexalith.Builds must forward signing credentials into semantic-release, or the Release
-Owner must explicitly approve a bounded FrontComposer-owned gated workflow. REL-3 packs once, validates
-and signs the exact candidates, seals/verifies/classifies them before publication, publishes those same
-bytes with durable evidence, verifies downloaded NuGet/GitHub bytes, handles partial publication, and
-records v3.2.1/v3.2.2 in the compliance ledger. This stop-the-line gate blocks the next publish-capable
-release; no new product epic is required. See
+**Historical update (correct-course 2026-07-15; mechanism superseded by AD-19):** keep `REL-2` done
+against its accepted G1 criteria, but do not use it to close FR-24. Live v3.2.2 evidence proved that a
+green post-release workflow could coexist with blocked/invalid authorization evidence. REL-3 owns the
+pre-publication correction and historical ledger reconciliation, but its former publication mechanism
+is not implementation authority. The current target is the split builder/publisher contract above. See
 `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-rel-ai-1-prepublish-enforcement.md`.
 
 **Update (truth-state reconciled 2026-08-02):** `REL-4` remains the stop-the-line predecessor to `REL-3`; publication authorization remains closed. Hexalith.Builds issue 17 closed without a qualifying GOV-1 revision. FrontComposer-local GOV-1 work is unblocked, while a reopened issue 17 or successor and its owner-accepted immutable revision still gate reusable-workflow integration, end-to-end exact-candidate/evaluator-handoff proof, completion, release eligibility, and unfreeze. Follow-ups: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-release-freeze-enforcement.md` and `_bmad-output/planning-artifacts/sprint-change-proposal-2026-08-02.md`.
 
-**Update (correct-course 2026-07-15, upstream governed contract):** the Hexalith.Builds dependency
-is corrected from signing-secret forwarding to the full **BUILD-REL-1 opt-in governed NuGet release
-contract** (protected release environment, signing secrets, RFC 3161 timestamp input,
-`id-token`/`attestations` permissions, a version-aware pre-publication candidate phase,
-`actions/attest-build-provenance` over the exact candidates with the bundle bound into manifest
-finalization, no-repack publication, backward compatibility, root-only submodule init). A live
-upstream search found no matching issue or PR; filing is a Release Owner action. `REL-3` is amended
-in place (attestation-before-classification AC, failed-run verification AC, approval-mechanism
-resolution — the REL-4 variable remains the caller-side authorization; no approval tokens enter
-`release.yml`). New **`REL-5: Provision the production signing identity and prove the first
-governed release`** separates operational authority (identity/trust model, certificate custody,
-timestamp-authority approval, upstream filing, first-release authorization, download verification,
-ledger sign-off, REL-AI-1 closure) from REL-3 development work. See
+**Update (2026-09-09, upstream governed contract):** BUILD-REL-1 now means the opt-in/default-off
+`split-publication-v1` contract in the G2 request: one secretless candidate builder, one protected
+candidate-free publisher, exact handoff-v3/manifest-v4/fallback/evidence outputs, backward
+compatibility, and root-only non-recursive dependency initialization. REL-5's 2026-08-04 decision
+removed author signing, production PFX custody, and RFC 3161 author timestamps from the requirements;
+mandatory GitHub provenance attestation or approved fallback and NuGet.org repository-signature
+verification remain. The deny-only variable can freeze but never authorize. See
 `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-governed-release-upstream-contract.md`.
 
 **Additional-requirement coverage:** AR1–AR5 → Epic 1 · AR6 (FC-CMD) → Epic 3 · AR7 (FC-CNC) → Epic 4 · AR8 (budgets) → Epic 3 + Epic 4 · AR9 (EventStore status) → Epic 3 · AR10 (rich components) → out of scope (fast-follow, tracked, not an epic) · AR11 (FC-NIP) → Epic 9 · AR12 (FC-TOOL-GOV) → Epic 10.
@@ -2360,10 +2351,10 @@ EventStore container; any behavioral migration is routed to a separately approve
 
 ### GOV-1: Validate Shared-Catalog Compatibility and Seal Dependency Provenance
 
-**Status:** in-progress; the architecture entry gate was ratified 2026-07-19 and the execution boundary
-was corrected 2026-08-02. **Owners:** Product Owner + Architect + Developer + Release Owner.
-**Priority:** before the next accepted governed release manifest. Story 11.17d completed 2026-08-02
-under its recorded one-story waiver and is not reopened.
+**Status:** in-progress; the finalized 2026-09-09 spine is authoritative, AD-1 through AD-19 are stable,
+and production release eligibility remains blocked. **Owners:** Product Owner + Architect + Developer +
+Release Owner. **Priority:** before the next governed production release. Story 11.17d remains closed
+under its recorded one-story waiver and is not reopened by GOV-1.
 **Decision:** `_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md`.
 **Architecture:** `_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md`.
 **Course correction:** `_bmad-output/planning-artifacts/sprint-change-proposal-2026-08-02.md`.
@@ -2401,41 +2392,49 @@ Zero/unavailable push bases take the full-affected path, fail the gate, and are 
 **Given** a candidate changes the dependency policy,
 **When** the candidate graph is evaluated,
 **Then** both base and candidate use the immutable base/before policy; the change can activate only from
-a later base revision, except for the one-time unchanged-graph bootstrap authorized by the Release
-Owner-controlled `HEXALITH_DEPENDENCY_POLICY_BOOTSTRAP_SHA256`, frozen publication, and recorded
-Architect + Release Owner approval. CI, Release, and post-release evaluator sources must additionally
-project one policy-authorized closure; sealed but unapproved literal revisions fail closed.
+a later base revision. The one-time v1 bootstrap was consumed on 2026-07-19 and no bootstrap path remains.
+CI, Release, post-release, and incident-recovery evaluator sources each project one policy-authorized
+closure; sealed but unapproved literal revisions fail closed.
 
-**Given** release candidates are prepared,
-**When** the manifest is sealed and verified,
-**Then** manifest v2 seals the complete defined depth-1/2 graph, Builds catalog provenance, active policy,
-authenticated successful-CI handoff, and immutable caller/reusable/action definitions. Missing,
-duplicate, malformed, over-limit, unavailable, out-of-order, or drifted evidence fails closed in pre-
-and post-publication verification; legacy manifests remain audit-only and non-publishable.
+**Given** the authenticated candidate is ready for release preparation,
+**When** the selected `split-publication-v1` reusable runs,
+**Then** candidate-controlled code executes only in the secretless/read-only
+`build-publication-candidate` job and crosses into the protected stage only as the authenticated
+`hexalith.publication-candidate.v1` archive. The candidate-free
+`publish-publication-candidate` job independently authenticates every byte, obtains and verifies
+attestation or the run-bound approved fallback, prepares and seals manifest v4, performs final
+offline/live classification, and alone may publish. Builder output can deny early but cannot authorize.
 
-**Given** the release is triggered by a successful CI workflow run,
+**Given** an exact candidate has successful push CI and quality runs,
 **When** release authorization begins,
-**Then** the caller passes and checks out the exact `workflow_run.head_sha`, authenticates the named
-versioned handoff by run ID/attempt, repository, workflow, push/main event, success conclusion, head SHA,
-artifact candidate, CI-only evaluator digest, and raw hash; reloads the exact recorded policy blob; and
-rejects mutable or unapproved workflow/action provenance before publication. The static transitive
-source closure follows conditional sources and composite descendants under fixed cycle/resource limits.
+**Then** operator `workflow_dispatch` authenticates the exact live `main` SHA against exactly one
+completed successful push run of both `ci.yml` and `quality.yml`, verifies the run-bound CI handoff, and
+uses its candidate as the sole authority. No tag, ambient checkout, second-hop SHA, later default branch,
+or diagnostic source proof can replace it.
 
 **Given** a Release attempt completes, fails, or partially publishes,
 **When** the post-release verifier runs through the second `workflow_run` hop,
-**Then** it authenticates the Release run/handoff plus the referenced CI run/attempt/raw handoff hash,
-requires matching policy/candidate projections even on pre-manifest failure, derives the original CI
-candidate and sealed assets from that evidence, never substitutes the second-hop/default-branch SHA, and
-cannot green-no-op. Its own closure must be active-policy-authorized.
+**Then** `hexalith.release-verification-handoff.v3` preserves the selected quality run, original CI
+handoff/candidate, policy, publication-candidate coordinate, release state, final manifest v4,
+attestation/fallback, assets, denial reason, and Release evaluator. The post-release verifier
+independently authenticates both artifacts and its own pinned closure, maps the attempt to exactly one
+closed disposition, appends durable evidence, and cannot substitute identity, green-no-op, or erase an
+incident. An incomplete product Release after publication starts invokes the separately authorized
+immutable incident-evidence preservation path before retry.
 
-**Given** Hexalith.Builds issue 17 closed without accepting the GOV-1 amendment or recording a
-qualifying immutable revision,
+**Given** the owner-accepted Hexalith.Builds revision `a8a50859…` is only the AD-16 lineage predecessor,
 **When** GOV-1 delivery is assessed,
-**Then** all FrontComposer-local graph diff, bounded affected-module, policy/evaluator closure, handoff
-schema/consumer, manifest-v2, and fixture work proceeds; only reusable-workflow integration,
-end-to-end exact-candidate evidence proof, story completion, release eligibility, and REL-4 unfreeze
-remain blocked on a reopened issue 17 or successor with an accepted immutable revision. FrontComposer
-does not edit the Builds submodule or invent a contingency.
+**Then** the Hexalith.Builds owner and Release Owner must accept a later immutable split-reusable
+revision into that lineage before FrontComposer activates it. GOV-1 remains in-progress until the eight
+implementation closure bundles, incident runbook, owner decisions, and the exact spine-defined split
+implementation gate pass. FrontComposer does not edit the Builds submodule or infer a contingency.
+
+**Given** production remains halted,
+**When** owner readiness is reviewed,
+**Then** Product Owner and Release Owner acceptance of AD-19 and the halt/no-exception posture, Release
+Owner verification of `HEXALITH_RELEASE_PUBLISH_ENABLED=false`, the approved incident response target
+and runbook, and the no-bypass protected-main process remain explicit open decisions/actions. The
+deny-only variable can block but never authorize, and no current exception exists.
 
 **Given** Hexalith.Builds has no semantic catalog contract version,
 **When** GOV-1 is handed off,

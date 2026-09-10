@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GOV-1 Spine — Reviewer Gate Validation Report — 2026-09-08</title>
+<style>
+:root{--ink:#1f2328;--muted:#59636e;--line:#d0d7de;--bg:#ffffff;--soft:#f6f8fa;
+--crit:#8b0000;--high:#d9480f;--med:#b7791f;--low:#6e7781;--pass:#1a7f37;--fail:#c62828;--warn:#e5a100}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.45;font-size:14.5px}
+main{max-width:1200px;margin:0 auto;padding:24px 28px 64px}
+h1{font-size:26px;margin:0 0 6px}
+h2{font-size:20px;margin:36px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+h3{font-size:16px;margin:20px 0 8px}
+p{margin:8px 0}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;background:var(--soft);padding:1px 4px;border-radius:4px}
+a{color:#0969da;text-decoration:none}a:hover{text-decoration:underline}
+table{border-collapse:collapse;width:100%;margin:10px 0;font-size:13.5px}
+th,td{border:1px solid var(--line);padding:6px 8px;vertical-align:top;text-align:left}
+th{background:var(--soft);font-weight:600}
+tbody tr:nth-child(even){background:#fbfcfd}
+.meta{border:1px solid var(--line);border-radius:8px;padding:12px 16px;background:var(--soft);margin:12px 0 20px}
+.meta dl{display:grid;grid-template-columns:170px 1fr;gap:4px 12px;margin:0}
+.meta dt{color:var(--muted);font-weight:600}.meta dd{margin:0}
+.banner{border-radius:10px;padding:18px 22px;color:#fff;background:var(--fail);margin:18px 0}
+.banner .v{font-size:28px;font-weight:800;letter-spacing:.5px}
+.banner p{margin:6px 0 0;color:#fff;font-size:15px}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:700;color:#fff;white-space:nowrap}
+.pill.crit{background:var(--crit)}.pill.high{background:var(--high)}.pill.med{background:var(--med)}.pill.low{background:var(--low)}.pill.none{background:#c9d1d9;color:#1f2328}
+.pill.pass{background:var(--pass)}.pill.fail{background:var(--fail)}.pill.pwf{background:var(--warn);color:#1f2328}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px;margin:12px 0}
+.card{border:1px solid var(--line);border-radius:8px;padding:12px 14px;background:#fff}
+.card h4{margin:0 0 6px;font-size:14.5px}
+.card .counts{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.card .counts span{border-radius:6px;padding:2px 8px;font-size:12.5px;font-weight:700;color:#fff}
+.c-c{background:var(--crit)}.c-h{background:var(--high)}.c-m{background:var(--med)}.c-l{background:var(--low)}
+.card small{color:var(--muted)}
+.theme{border-left:4px solid var(--high);border-radius:6px;padding:10px 14px;background:var(--soft);margin:10px 0}
+.theme.crit{border-left-color:var(--crit)}
+.theme h4{margin:0 0 4px;font-size:14.5px}
+.theme .ids{color:var(--muted);font-size:12.5px}
+.heat td.sev{font-weight:700;text-align:center;white-space:nowrap}
+.heat tr.crit td.sev{background:var(--crit);color:#fff}
+.heat tr.high td.sev{background:var(--high);color:#fff}
+.heat tr.med td.sev{background:var(--med);color:#fff}
+.heat tr.low td.sev{background:#e6e8eb;color:var(--ink)}
+.heat tr.none td.sev{background:#dff5e3;color:var(--pass)}
+.heat tr.crit td:first-child{border-left:4px solid var(--crit)}
+.heat tr.high td:first-child{border-left:4px solid var(--high)}
+.heat tr.med td:first-child{border-left:4px solid var(--med)}
+details{border:1px solid var(--line);border-radius:8px;margin:8px 0;background:#fff}
+summary{cursor:pointer;padding:10px 14px;font-weight:600;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"▸";color:var(--muted);transition:transform .15s}
+details[open] summary::after{transform:rotate(90deg)}
+details .body{padding:0 16px 12px}
+ul{margin:6px 0;padding-left:22px}li{margin:3px 0}
+.note{border:1px solid #f0c36d;background:#fff8e6;border-radius:8px;padding:10px 14px;margin:12px 0}
+.quote{border-left:4px solid var(--crit);background:#fdf2f2;padding:10px 14px;margin:12px 0;font-size:13.5px}
+.small{font-size:12.5px;color:var(--muted)}
+.tools{margin:8px 0}.tools button{font:inherit;font-size:12.5px;padding:3px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:pointer;margin-right:6px}
+@media print{body{font-size:11.5px}main{max-width:none;padding:0}details{break-inside:avoid}details:not([open]) .body{display:block}summary::after{display:none}.tools{display:none}h2{break-after:avoid}.banner{-webkit-print-color-adjust:exact;print-color-adjust:exact}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}a{color:inherit}}
+</style>
+</head>
+<body>
+<main>
+<h1>Reviewer Gate — Consolidated Validation Report</h1>
+<p class="small">GOV-1 Architecture Spine · bmad-architecture VALIDATE run · 2026-09-08</p>
+
+<div class="meta"><dl>
+<dt>Spine</dt><dd><code>ARCHITECTURE-SPINE.md</code> — GOV-1 "dependency provenance" (16 ADs, <code>status: final</code>, <code>created</code>/<code>updated: 2026-07-19</code>)</dd>
+<dt>Altitude</dt><dd>EPIC — GOV-1</dd>
+<dt>Validated</dt><dd>2026-09-08</dd>
+<dt>Gate composition</dt><dd>deterministic lint (<code>lint_spine.py</code>, 0 findings) + rubric walker + 2 configured reviewers (current-fit, adversarial) + 2 ad-hoc lenses (implementation drift, security/trust boundary)</dd>
+<dt>Review files</dt><dd>
+<a href="reviews/review-rubric-validate-2026-09-08.md">reviews/review-rubric-validate-2026-09-08.md</a><br>
+<a href="reviews/review-current-fit-validate-2026-09-08.md">reviews/review-current-fit-validate-2026-09-08.md</a><br>
+<a href="reviews/review-adversarial-validate-2026-09-08.md">reviews/review-adversarial-validate-2026-09-08.md</a><br>
+<a href="reviews/review-code-drift-validate-2026-09-08.md">reviews/review-code-drift-validate-2026-09-08.md</a><br>
+<a href="reviews/review-security-validate-2026-09-08.md">reviews/review-security-validate-2026-09-08.md</a></dd>
+</dl></div>
+
+<div class="banner">
+<div class="v">GATE VERDICT: FAIL</div>
+<p>The spine is no longer convergent for the release-integration seam (AD-11–AD-16) and for AD-9's fallback-authorization guarantee; the graph core (AD-1–AD-8, AD-10) holds and is ratified by the shipped code.</p>
+<p class="small" style="color:#ffd9d9">Raw: 1 Critical · 17 High · 29 Medium · 24 Low. Merged Critical/High rows: 1 + 10.</p>
+</div>
+
+<h2>Lens scoreboard</h2>
+<div class="cards">
+<div class="card"><h4>Deterministic lint <span class="pill pass">PASS</span></h4><small><code>lint_spine.py</code></small><div class="counts"><span class="c-c">C 0</span><span class="c-h">H 0</span><span class="c-m">M 0</span><span class="c-l">L 0</span></div></div>
+<div class="card"><h4>Rubric walker <span class="pill fail">FAIL</span></h4><small><a href="reviews/review-rubric-validate-2026-09-08.md">review-rubric-validate-2026-09-08.md</a> — good-spine checklist</small><div class="counts"><span class="c-c">C 0</span><span class="c-h">H 4</span><span class="c-m">M 7</span><span class="c-l">L 5</span></div></div>
+<div class="card"><h4>Current-fit <span class="pill pwf">PASS WITH FINDINGS</span></h4><small><a href="reviews/review-current-fit-validate-2026-09-08.md">review-current-fit-validate-2026-09-08.md</a> — currency / reality check</small><div class="counts"><span class="c-c">C 0</span><span class="c-h">H 2</span><span class="c-m">M 1</span><span class="c-l">L 5</span></div></div>
+<div class="card"><h4>Adversarial divergence <span class="pill fail">FAIL</span></h4><small><a href="reviews/review-adversarial-validate-2026-09-08.md">review-adversarial-validate-2026-09-08.md</a></small><div class="counts"><span class="c-c">C 1</span><span class="c-h">H 5</span><span class="c-m">M 8</span><span class="c-l">L 4</span></div></div>
+<div class="card"><h4>Implementation drift (ad-hoc) <span class="pill fail">FAIL</span></h4><small><a href="reviews/review-code-drift-validate-2026-09-08.md">review-code-drift-validate-2026-09-08.md</a> — header says 7 M / 6 L; table has 6 M / 7 L</small><div class="counts"><span class="c-c">C 0</span><span class="c-h">H 5</span><span class="c-m">M 7*</span><span class="c-l">L 6*</span></div></div>
+<div class="card"><h4>Security / trust boundary (ad-hoc) <span class="pill pwf">PASS WITH FINDINGS</span></h4><small><a href="reviews/review-security-validate-2026-09-08.md">review-security-validate-2026-09-08.md</a></small><div class="counts"><span class="c-c">C 0</span><span class="c-h">H 1</span><span class="c-m">M 6</span><span class="c-l">L 4</span></div></div>
+</div>
+
+<h2>Critical and High findings (merged across lenses)</h2>
+<table>
+<thead><tr><th>#</th><th>ID(s)</th><th>Lens(es)</th><th>Severity</th><th>AD(s)</th><th>Finding</th><th>Proposed disposition</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>A-1</td><td>adversarial</td><td><span class="pill crit">Critical</span></td><td>AD-9</td><td>Fallback approval digest: the spine pins the formula but not who records <code>approved_against_fingerprints_sha256</code>, when, or that the release run may not write it. Shipped code rebinds the digest live before comparing, so graph/policy/workflow drift never invalidates a fallback approval — <code>publish_authorized=true</code> after drift.</td><td><b>autofix</b> spine (immutable Release-Owner-recorded input; no release/prepublish/verification step may write, default, or rebind it; fixture proving drift invalidates) <b>+ escalate</b> implementation nonconformance; <b>owner decision</b> on which authority stands.</td></tr>
+<tr><td>2</td><td>A-5</td><td>adversarial</td><td><span class="pill high">High</span></td><td>AD-9, AD-14</td><td><code>workflow_definition_digest</code> is used in the fallback formula but defined nowhere (AD-14 offers combined ci+release vs CI-only); <code>fallback_invalidation_fingerprints</code> value type unpinned (shipped adds <code>helper_version</code> pseudo-key).</td><td><b>autofix</b> — pin <code>workflow_definition</code> = <code>workflow_provenance.definition_digest</code> (combined) and <code>definition</code> = <code>FALLBACK_INVALIDATION_FILES</code> map with no other keys.</td></tr>
+<tr><td>3</td><td>R-2, C-2, D-1 (+S-2 M)</td><td>rubric, current-fit, code-drift, security</td><td><span class="pill high">High</span></td><td>AD-13 (AD-14, AD-16)</td><td><b>T1</b> Release model drift: spine binds a <code>workflow_run</code> caller passing CI run ID + event head, <code>dependency-release-handoff.v1</code>, and a REL-4 freeze; implementation is operator <code>workflow_dispatch</code> from the exact <code>main</code> SHA, CI run selected via Actions API (<code>release_contract.py select-ci</code>), no freeze guard; parent <code>architecture.md</code> already describes the new model. Neither says which is authoritative.</td><td><b>discuss</b> — Architect + Release Owner choose the authoritative model; amend AD-13, drop <code>workflow_run</code>/REL-4 wording, bind dispatch actor + <code>production</code> environment (S-2), add Inherited Invariants row.</td></tr>
+<tr><td>4</td><td>R-4, C-1, D-2</td><td>rubric, current-fit, code-drift</td><td><span class="pill high">High</span></td><td>AD-16, AD-13, Deferred</td><td><b>T2</b> AD-16 stale: Rule is a dated narrative now false — <code>ci.yml</code>/<code>release.yml</code> pin Builds <code>4eb33928…</code>, <code>evaluator_authorizations</code> populated, v4.1.0/v4.1.1 published 2026-08-14. The formal "owner-accepted immutable revision" record the spine demands is not evidenced.</td><td><b>discuss</b> — confirm whether Builds <code>4eb33928…</code> is the owner-accepted revision and where acceptance is recorded; then <b>autofix</b> AD-16 to the invariant, move chronology to memlog, delete "current @main" sentences from AD-13, collapse Deferred bullet 3.</td></tr>
+<tr><td>5</td><td>R-3, D-3</td><td>rubric, code-drift</td><td><span class="pill high">High</span></td><td>AD-14, AD-9</td><td><b>T3</b> Manifest v3 shipped; spine binds v2: production emits <code>hexalith.release-evidence.v3</code> with a reduced <code>workflow_provenance</code> shape; v2 verify-only; AD-9 defines only the "V2 fallback approval" digest. v2 publishability undecided.</td><td><b>discuss → autofix</b> — add AD-17 "manifest v3" (closed member set, v2 = audit/verify-only, v3 fallback recipe, transitive closure binding via <code>ci.evidence_sha256</code>); retitle AD-14 as v1→v2.</td></tr>
+<tr><td>6</td><td>R-1</td><td>rubric</td><td><span class="pill high">High</span></td><td>Frontmatter, AD-11, AD-12, AD-13, memlog</td><td><b>T7</b> Spine edited 2026-08-03 in commit <code>8a6a6cb3</code> (a test commit) — AD-11/12/13 Rules rewritten — while <code>status: final</code>, <code>updated: 2026-07-19</code> unchanged, memlog ends at "spine finalized", no re-gate.</td><td><b>autofix</b> — memlog event for the edit, bump <code>updated</code>, record this gate; post-<code>final</code> edits require memlog + re-gate.</td></tr>
+<tr><td>7</td><td>A-2</td><td>adversarial</td><td><span class="pill high">High</span></td><td>AD-8, AD-12</td><td>"changed" is undefined for a logical edge keyed <code>(owner_repository, path, repository)</code>; "graph is unchanged" has no equality relation. Shipped code excludes depth-1 <code>owner_commit</code> — useful, not required.</td><td><b>autofix</b> — define the unchanged relation and reuse it in AD-12.</td></tr>
+<tr><td>8</td><td>A-3</td><td>adversarial</td><td><span class="pill high">High</span></td><td>AD-13</td><td>Closure resolution of a "local" <code>uses: ./.hexalith/builds-execution/…</code> path materialised by a prior <code>actions/checkout</code> is undefined: spine-literal fails closed; shipped closure regex-parses checkout <code>with.*</code> — a runtime step argument. Two conforming closures, two digests.</td><td><b>discuss → autofix</b> — <code>checkout_injections</code> policy member, or forbid checkout-injected local actions.</td></tr>
+<tr><td>9</td><td>A-4, D-5</td><td>adversarial, code-drift</td><td><span class="pill high">High</span></td><td>AD-12, AD-13, AD-15</td><td><b>T5</b> <code>reusable</code> is mandatory non-null but the <code>post_release</code> caller has no reusable <code>uses:</code>; shipped policy names an unreachable second root. <code>release-evidence.yml</code> never validates a <code>post_release</code> evaluator (no <code>--root</code>) and the HEAD blob matches none of the five stale rows.</td><td><b>autofix</b> spine (nullable <code>reusable</code>; caller-reachable closures) <b>+ autofix code/policy</b> (authorization check, re-authorize blob) or <b>discuss</b> dropping the stage.</td></tr>
+<tr><td>10</td><td>A-6</td><td>adversarial</td><td><span class="pill high">High</span></td><td>AD-15</td><td>AD-15 <code>evaluator</code> admits three conforming shapes (AD-13, AD-14 <code>release</code> + digest, AD-12 registry row) → three raw SHA-256 values.</td><td><b>autofix</b> — pin to the AD-13 evaluator shape.</td></tr>
+<tr><td>11</td><td>D-4, S-1</td><td>code-drift, security</td><td><span class="pill high">High</span></td><td>AD-13, AD-12, AD-8</td><td><b>T6</b> No workflow records/validates <code>github.workflow_sha</code>/<code>job.workflow_sha</code>; evaluator is projected from the policy row by blob hash; <code>workflow_source_closure.py</code> never runs outside unit tests. Evaluator <em>code</em> runs from the candidate checkout, so delayed activation does not cover the enforcement program.</td><td><b>discuss</b> — wire the closure into production and record <code>job.workflow_sha</code>, or downgrade with a Deferred entry; decide evaluator-code activation (S-1 a/b).</td></tr>
+</tbody></table>
+
+<div class="quote"><b>A-1 parent verification (verbatim):</b> Parent verification 2026-09-08: confirmed in eng/release_evidence.py — the production <code>classify</code> call (line 3834, <code>bind_live_fallback_digest=True</code>) causes lines 2727-2743 to overwrite <code>fallback['approved_against_fingerprints_sha256']</code> with the live-computed digest immediately before <code>fallback_complete</code> compares it. The code comment documents this as deliberate (protect an approver+expiry contingency approval from invalidation by every release-definition edit). It contradicts AD-9's stated intent. This is a spine-vs-code conflict requiring an owner decision, not a reviewer misread.</div>
+<p class="small">Note: the code-drift scorecard marks AD-9 "conforms" (formula material binds graph/policy/workflow) — true of the formula, not of the write path A-1 identifies. Parent verification settles the fact in A-1's favour.</p>
+
+<h2>Cross-lens themes</h2>
+<div class="theme"><h4>T1 — Release model drift</h4><div class="ids">R-2, C-2, D-1, D-2, S-2</div><p>Spine binds a <code>workflow_run</code> caller, the <code>dependency-release-handoff.v1</code> hop, and a REL-4 freeze. Implementation moved to operator <code>workflow_dispatch</code> from an exact <code>main</code> SHA authenticated against a completed push-CI run (<code>release_contract.py select-ci</code>); the freeze guard is gone; v4.1.0/v4.1.1 published 2026-08-14. Protective intent survives, but AD-13's mechanism text is false and the parent architecture already records the new model without the spine saying which wins. Security adds: who may dispatch, under which protected environment, is unbound.</p></div>
+<div class="theme"><h4>T2 — AD-16 / external gate stale</h4><div class="ids">R-4, C-1, D-2</div><p>Builds revision landed and is pinned to <code>4eb33928…</code> everywhere in the GOV-1 path; no <code>@main</code> remains; <code>evaluator_authorizations</code> populated. The spine still narrates the gate as open. The formal "owner-accepted immutable revision" record is not evidenced; lenses disagree on which deferred-work item is open, and no successor issue number appears anywhere.</p></div>
+<div class="theme"><h4>T3 — Manifest v3 shipped; spine binds v2</h4><div class="ids">R-3, D-3</div><p><code>CURRENT_MANIFEST_SCHEMA = hexalith.release-evidence.v3</code> since commit <code>df689935</code> (2026-08-30); v2 verify-only; Governance pins v3. AD-14 member sets/digest material and AD-9 "V2 fallback approval" are stale; v2 publishability undecided.</p></div>
+<div class="theme"><h4>T4 — Bootstrap clause is dead code / never existed</h4><div class="ids">R-9, S-4, D-7, A-12</div><p><code>HEXALITH_DEPENDENCY_POLICY_BOOTSTRAP_SHA256</code> appears nowhere; a base policy has existed on <code>main</code> since 2026-07-19, so bootstrap is permanently unavailable by the AD's own words. The 12-line procedure misstates enforcement (R-9), is a latent TOFU instruction (S-4), hides the actual zero-<code>before</code> behaviour (D-7), and leaves "base policy exists" undefined for a malformed blob (A-12).</p></div>
+<div class="theme"><h4>T5 — Post-release authorization not enforced; <code>post_release</code> <code>reusable</code> undefined</h4><div class="ids">D-5, A-4</div><p>Mandatory <code>reusable</code> has no rule for a caller without a reusable workflow; the shipped policy fills it with an unreachable second root; the verifier never checks any <code>post_release</code> authorization, so five stale rows went unnoticed.</p></div>
+<div class="theme"><h4>T6 — Runtime workflow identity not recorded; closure never executed outside tests</h4><div class="ids">D-4, S-1</div><p>The AD-13 "Governance constructs the same static closure" clause has no production execution; the evaluator is projected from the policy row by blob hash. Evaluator code runs from the candidate checkout, so delayed activation protects declarative policy and workflow blobs but not the enforcement program. The security lens's "Confirmed sound" §4 asserts runtime <code>workflow_sha</code> is checked; D-4 finds it is not.</p></div>
+<div class="theme"><h4>T7 — Spine metadata integrity</h4><div class="ids">R-1</div><p>Commit <code>8a6a6cb3</code> (2026-08-03) rewrote AD-11/12/13 Rules while <code>status: final</code> and <code>updated: 2026-07-19</code> stayed unchanged; memlog ends at "spine finalized"; no re-gate. The 2026-08-08 issue-17 reopening, 2026-08-16 gitlink/execution split, and 2026-08-30 v3 also lack memlog entries.</p></div>
+<div class="theme crit"><h4>T8 — Fallback digest seam</h4><div class="ids">A-1 Critical + A-5 High</div><p>The one live publication-authority risk: the shipped release path rebinds the approval digest to live inputs before comparison (parent-verified), and the formula's <code>workflow_definition_digest</code> identifier is unbound, so a second implementer could legitimately pick the CI-only digest and let release-workflow drift survive fallback. Both must be folded into AD-9 before the release/fallback seam can be called convergent.</p></div>
+
+<h2>Medium / Low tail</h2>
+<div class="tools"><button type="button" onclick="toggleAll(true)">Expand all</button><button type="button" onclick="toggleAll(false)">Collapse all</button></div>
+<details><summary><span>Rubric walker — 7 medium, 5 low</span><a href="reviews/review-rubric-validate-2026-09-08.md" class="small">review file</a></summary><div class="body"><ul>
+<li><b>R-6</b> — AD-6 carries the seed profile roster inside an invariant while L400 says the spine does not mirror volatile policy values (autofix: coverage invariant only).</li>
+<li><b>R-7</b> — Builds catalog gitlink vs CI/CD execution commit split (commit <code>dfbe9978</code>) is silent in the spine (discuss: one Consistency row naming both identities).</li>
+<li><b>R-10</b> — bloat: AD-12/13/14/15 embed member lists, caps, status prose; caps stated three times (autofix: move to contract/code constants).</li>
+<li class="small">Other: R-5 (sprint fact in AD-11 Rule), R-8 (evidence envelopes undecided), R-9 (dead bootstrap), R-11 (no Inherited Invariants / parent ids in <code>binds</code>); Low R-12 (.NET row), R-13 (blanket ADOPTED), R-14 (seed/diagram lag), R-15 (Deferred restates AD-16), R-16 (story AC5 says v2).</li></ul></div></details>
+<details><summary><span>Current-fit — 1 medium, 5 low</span><a href="reviews/review-current-fit-validate-2026-09-08.md" class="small">review file</a></summary><div class="body"><ul>
+<li><b>C-3</b> — Stack row says .NET SDK <code>10.0.302</code>; <code>global.json</code> pins <code>10.0.400</code> (pure wording pin; autofix + memlog <code>version</code> entry).</li>
+<li><b>C-6</b> — <code>job.workflow_*</code> contexts are GitHub.com-only (not GHES); add a memlog <code>version</code> entry and one clause to AD-13.</li>
+<li><b>C-7</b> — Git 3.0 will default new repositories to SHA-256; add a reopen trigger to the Deferred entry.</li>
+<li class="small">Other Low: C-4 (Git/Python upstream ahead; <code>uv</code> picks 3.13), C-5 (run-suffixed artifact names), C-8 (seed omits handoff files).</li></ul></div></details>
+<details><summary><span>Adversarial divergence — 8 medium, 4 low</span><a href="reviews/review-adversarial-validate-2026-09-08.md" class="small">review file</a></summary><div class="body"><ul>
+<li><b>Pure wording pins (autofix):</b> A-7 (Builds-edge constant for offline verification), A-8 (artifact <code>&lt;base&gt;-&lt;run_id&gt;-&lt;run_attempt&gt;</code> + run-coordinate equality), A-9 (<code>assets</code> unique/sorted by <code>name</code>, GitHub assets only), A-10 (ordered AD-3 normalisation grammar; paths byte-exact), A-13 (seal = AD-5 canonical bytes minus <code>seal</code>).</li>
+<li><b>A-11</b> — is the gitlink <em>path</em> trusted policy data or acquisition data? Architect decision (discuss).</li>
+<li><b>A-12, A-14</b> — "base policy exists" = blob at canonical path regardless of validity; name the handoff-contract files in the definition lists (autofix).</li>
+<li class="small">Low: A-15 (escape set), A-16 (null OID), A-17 (<code>ci.run.head_sha</code> source / <code>run_attempt</code>), A-18 (cumulative edge ceiling).</li></ul></div></details>
+<details><summary><span>Implementation drift — 7 medium, 6 low (header; table shows 6 / 7)</span><a href="reviews/review-code-drift-validate-2026-09-08.md" class="small">review file</a></summary><div class="body"><ul>
+<li><b>D-6</b> — <code>ci.yml</code> treats <code>create-ci</code> exit 2 as success (green push run, no AD-13 artifact); spine says it "fails before CI handoff" (DW-1795; discuss hard-fail vs ratify soft-defer).</li>
+<li><b>D-8 / D-9</b> — run-suffixed artifact names and directory upload; <code>.deferred.json</code> sentinel instead of a null-filled AD-15 handoff (autofix spine / discuss).</li>
+<li><b>D-10</b> — second CI→Release authority path (<code>hexalith.dependency-release-source.v1</code>, <code>--source-proof</code>) contradicts "sole release-candidate authority" (discuss).</li>
+<li class="small">Other: D-7 (bootstrap never existed), D-11 (no object-format probe / golden literal); Low D-12 (stage-keyed registry), D-13 (seed omits five <code>eng/</code> modules + tests), D-14 (unnamed identifiers), D-15 (pins improved past spine text), D-16 (<code>ssh://</code> form, trailing slash), D-17 (DW-1803 presence-only catalogs), D-18 (no CI version diagnostics).</li></ul></div></details>
+<details><summary><span>Security / trust boundary — 6 medium, 4 low</span><a href="reviews/review-security-validate-2026-09-08.md" class="small">review file</a></summary><div class="body"><ul>
+<li><b>S-2</b> — publication actor/trigger authorization unbound (who may dispatch; <code>production</code> environment with Release Owner review; actor sealed in evidence) — autofix alongside T1.</li>
+<li><b>S-3</b> — least-privilege stage tokens: spine says "read-only token" yet publication holds <code>contents: write</code>; forbid <code>actions: write</code> and <code>pull_request_target</code> (autofix, new AD).</li>
+<li><b>S-6</b> — "ledger" undefined (writer, location, append-only, retention); failure dispositions should open an incident (discuss).</li>
+<li class="small">Other: S-4 (dead bootstrap / <code>vars</code> writers), S-5 (no CODEOWNERS / branch-protection binding), S-7 (artifact immutability reliance); Low S-8 (revocation/idempotency), S-9 (transport vs content-addressing, SHA-1 acceptance), S-10 (JS action bundle semantics), S-11 (evidence hygiene).</li></ul></div></details>
+
+<h2>Per-AD heatmap</h2>
+<table class="heat">
+<thead><tr><th>AD</th><th>Title</th><th>Worst</th><th>Finding IDs</th><th>Status</th></tr></thead>
+<tbody>
+<tr class="none"><td>AD-1</td><td>v1 graph boundary</td><td class="sev">—</td><td>—</td><td>holds (conforms; census is evidence)</td></tr>
+<tr class="low"><td>AD-2</td><td>committed objects are authoritative</td><td class="sev">Low</td><td>A-16</td><td>holds (null-OID wording pin)</td></tr>
+<tr class="med"><td>AD-3</td><td>repository resolution is closed-world</td><td class="sev">Medium</td><td>A-10, A-11, D-16</td><td>holds; normalisation order + path-trust decision pending</td></tr>
+<tr class="none"><td>AD-4</td><td>v1 edge identity and deterministic order</td><td class="sev">—</td><td>—</td><td>holds</td></tr>
+<tr class="med"><td>AD-5</td><td>v1 canonical material and digest</td><td class="sev">Medium</td><td>A-7, A-13, D-11, A-15, C-7, S-9</td><td>holds; Builds-edge constant, object-format probe, golden literal missing</td></tr>
+<tr class="med"><td>AD-6</td><td>compatibility and provenance are separate</td><td class="sev">Medium</td><td>R-6, D-17</td><td>holds; seed roster inside invariant; sibling presence-only drift (DW-1803)</td></tr>
+<tr class="low"><td>AD-7</td><td>bounded traversal fails closed</td><td class="sev">Low</td><td>A-18</td><td>holds (ceilings match policy)</td></tr>
+<tr class="high"><td>AD-8</td><td>CI uses one explicit revision model</td><td class="sev">High</td><td>A-2, S-1, R-7, R-8, A-16</td><td>holds in code; "changed" undefined; catalog/execution identity split silent</td></tr>
+<tr class="crit"><td>AD-9</td><td>offline structure and live identity are distinct modes</td><td class="sev">Critical</td><td>A-1, A-5, R-3, A-7, A-14, D-10, S-8</td><td><b>conflicts with code</b> (live-rebound fallback digest, parent-verified); unbound identifiers</td></tr>
+<tr class="low"><td>AD-10</td><td>acquisition is isolated from collection</td><td class="sev">Low</td><td>S-9</td><td>holds</td></tr>
+<tr class="high"><td>AD-11</td><td>GOV-1 is governance-only</td><td class="sev">High</td><td>R-1, R-5</td><td>stale / unlogged 2026-08-03 edit; sprint fact inside Rule</td></tr>
+<tr class="high"><td>AD-12</td><td>one versioned trust and semantic policy</td><td class="sev">High</td><td>A-2, A-4, D-5, S-1, R-1, R-6, R-9, A-11, A-12, A-14, D-6, D-7, S-4, S-5, D-12</td><td>stale (dead bootstrap) + silent dimensions (evaluator-code activation, review strength) + <code>post_release</code> shape</td></tr>
+<tr class="high"><td>AD-13</td><td>release consumes the exact CI-tested revision</td><td class="sev">High</td><td>R-2, R-4, R-1, C-1, C-2, A-3, A-4, D-1, D-4, S-1, R-10, A-8, D-6, D-8, D-10, S-2, S-3, S-7, C-5, C-6, A-16, D-14, D-15, S-10</td><td>stale (trigger model, <code>@main</code> prose) + conflicts with code (runtime identity, checkout-injected actions)</td></tr>
+<tr class="high"><td>AD-14</td><td>manifest migration is one-way and fail-closed</td><td class="sev">High</td><td>R-3, D-3, R-2, A-5, A-13, S-6, A-17</td><td>stale (v3 shipped; v2 verify-only)</td></tr>
+<tr class="high"><td>AD-15</td><td>release-to-verifier handoff preserves the original candidate</td><td class="sev">High</td><td>A-4, A-6, D-5, A-8, A-9, D-8, D-9, S-3, S-6, S-7, C-5</td><td>conflicts with code (<code>post_release</code> authorization unenforced; deferred sentinel) + shape ambiguity</td></tr>
+<tr class="high"><td>AD-16</td><td>Hexalith.Builds workflow revision is an external completion gate</td><td class="sev">High</td><td>R-4, C-1, D-2, R-2, R-15</td><td>stale (gate narrated as open; releases published; acceptance record not evidenced)</td></tr>
+<tr class="med"><td>Stack</td><td>observed toolchain</td><td class="sev">Medium</td><td>C-3, R-12, C-4, D-18</td><td>stale (.NET 10.0.302 → 10.0.400; no CI version diagnostics)</td></tr>
+<tr class="low"><td>Seed</td><td>file tree / diagrams</td><td class="sev">Low</td><td>R-14, C-8, D-13</td><td>stale (omits <code>dependency_handoff.py</code>, <code>release_contract.py</code>, <code>release_prepublish.py</code>, tests; no dependency-direction diagram)</td></tr>
+<tr class="high"><td>Deferred</td><td></td><td class="sev">High</td><td>R-4, C-1, D-2, R-15, C-7, S-8</td><td>stale (restates AD-16); silent dimensions: catalog/execution split (R-7), evidence envelopes (R-8), revocation (S-8)</td></tr>
+<tr class="high"><td>Frontmatter</td><td></td><td class="sev">High</td><td>R-1, R-11</td><td>stale (<code>updated</code>, <code>status</code>); <code>binds</code> lacks parent ids; no Inherited Invariants section</td></tr>
+</tbody></table>
+
+<h2>Disposition menu</h2>
+<table>
+<thead><tr><th>Item</th><th>Path</th><th>Action</th></tr></thead>
+<tbody>
+<tr><td>A-1 (Critical, AD-9) / T8</td><td><b>discuss + escalate</b></td><td>Owner decision: does AD-9's invalidation guarantee stand (code must stop rebinding the digest; add fixture) or is the approver+expiry contingency the accepted model (AD-9 rewritten, weaker guarantee stated)? Spine wording autofix follows.</td></tr>
+<tr><td>A-5 (AD-9/AD-14)</td><td>autofix</td><td>Pin <code>workflow_definition</code> and <code>definition</code> identifiers and value types.</td></tr>
+<tr><td>T1 — R-2, C-2, D-1, S-2</td><td><b>discuss</b></td><td>Owner decision: <code>workflow_dispatch</code> exact-SHA model vs return to <code>workflow_run</code>. Then amend AD-13, drop REL-4/<code>workflow_run</code> text, bind dispatch actor + <code>production</code> environment, add Inherited Invariants row.</td></tr>
+<tr><td>T2 — R-4, C-1, D-2</td><td><b>discuss</b></td><td>Owner decision: is Builds <code>4eb33928…</code> the owner-accepted immutable revision, and where is acceptance recorded? Then autofix AD-16 to the invariant; chronology to memlog; close/re-scope the open DW item.</td></tr>
+<tr><td>T3 — R-3, D-3</td><td>discuss → autofix</td><td>Decide v2 disposition (verify-only), add AD-17 "manifest v3", retitle AD-14.</td></tr>
+<tr><td>T4 — R-9, S-4, D-7, A-12</td><td>autofix</td><td>One historical sentence replaces the bootstrap procedure; zero-<code>before</code> rule as implemented; "exists" = blob presence; recovery via AD-16 decision.</td></tr>
+<tr><td>T5 — A-4, D-5</td><td>autofix (spine + code/policy) or discuss</td><td>Nullable <code>reusable</code>; caller-reachable closures; wire <code>post_release</code> authorization into the verifier and re-authorize the current blob — or drop the stage.</td></tr>
+<tr><td>T6 — D-4, S-1</td><td><b>discuss</b></td><td>Wire <code>workflow_source_closure.py</code> into production and record <code>job.workflow_sha</code>, or downgrade with a Deferred entry; decide evaluator-code activation (S-1 a/b).</td></tr>
+<tr><td>T7 — R-1</td><td>autofix</td><td>Memlog event for the 2026-08-03 edit, <code>updated</code> bump, gate record; post-<code>final</code> edit rule.</td></tr>
+<tr><td>A-2 (AD-8/AD-12)</td><td>autofix</td><td>Define the "unchanged" relation.</td></tr>
+<tr><td>A-3 (AD-13)</td><td><b>discuss → autofix</b></td><td>Owner decision: <code>checkout_injections</code> policy member vs forbid checkout-injected local actions.</td></tr>
+<tr><td>A-6 (AD-15)</td><td>autofix</td><td>Pin <code>evaluator</code> to the AD-13 shape.</td></tr>
+<tr><td>A-11 (AD-3/AD-12)</td><td><b>discuss</b></td><td>Owner decision: gitlink path as trusted policy data (fail closed on move) or acquisition data.</td></tr>
+<tr><td>Wording pins (Medium)</td><td>autofix</td><td>A-7, A-8, A-9, A-10, A-12, A-13, A-14, C-3, D-8, D-12, D-15, D-16, R-5, R-6, R-10, S-4, S-7, S-10.</td></tr>
+<tr><td>Silent dimensions</td><td>defer (Deferred entries)</td><td>R-7 (catalog vs execution identity — or a Consistency row), R-8 (evidence envelopes), C-7 (Git 3.0 trigger), S-8 (revocation/idempotency), S-9 (transport/SHA-1 acceptance), D-17 (DW-1803), R-16 (story AC5 wording).</td></tr>
+<tr><td>Implementation nonconformance</td><td>escalate</td><td>A-1 (digest rebinding), D-4 (closure not executed), D-5 (<code>post_release</code> unenforced, stale rows), D-6 (exit-2 soft pass), D-9 (deferred-attempt shape), D-11 (object-format probe, golden literal).</td></tr>
+</tbody></table>
+<div class="note"><b>Explicit owner decisions required before UPDATE can close them:</b> A-1 / AD-9 fallback authority · A-3 checkout-injected local actions · A-11 gitlink-path trust · T1 release trigger model · T2 owner-accepted Builds revision record.<br><span class="small">Also flagged as decisions by the lenses: T3 v2 disposition, T6 evaluator-code activation, D-6 exit-2 semantics, S-5 branch-protection binding, S-6 ledger definition.</span></div>
+
+<h2>Confirmed sound</h2>
+<ul>
+<li>Closed-world identity (AD-3, AD-10): candidate <code>.gitmodules</code> URLs validated but never used as fetch endpoints; remotes reconstructed from policy identity.</li>
+<li>Exact-object provenance (AD-2, AD-4, AD-5): immutable-object reads, strict 40/64-hex, closed JSON schema with duplicate-member rejection, canonicalization pinned by fixtures; envelope/edge member sets and sort tuple match the spine exactly.</li>
+<li>No candidate-controlled execution (AD-8): argv from active policy only; <code>merge_base == event_base</code> fail-closed; nested submodules never initialized; materialization rejects special modes and enforces ceilings before extraction.</li>
+<li>Delayed activation of declarative policy and workflow definitions (AD-12, AD-13): policy from <code>event_base</code>/<code>before</code>; caller blob, reusable commit+blob, every action commit+blob must match an active authorization; HEAD <code>ci.yml</code>/<code>release.yml</code> blobs each authorized exactly once for Builds <code>4eb33928…</code>.</li>
+<li>Static closure over the release path (AD-13): Docker actions, mutable refs, <code>uses:</code> expressions, anchors, cycles, limits fail closed.</li>
+<li>Exact-candidate propagation (AD-13, AD-15): authenticated handoff candidate is the sole authority; <code>main</code> revalidated before protected credentials; live re-collection at release.</li>
+<li>Fail-closed evidence (AD-9, AD-15): <code>publish_authorized=false</code> before side effects; <code>if: always()</code> emit; legacy manifests audit-only, never resealed.</li>
+<li>Zero-base handling (AD-12) and resource ceilings (AD-7) exactly as specified in policy.</li>
+<li>Technology currency: Git plumbing unchanged through 2.55.0; Python 3.14 <code>json.dumps</code>/<code>hashlib.sha256</code> unchanged; all repos <code>sha1</code>; RFC 8785 correctly contrasted; GitHub Actions contexts behave as assumed; 40-hex pins remain the immutable reference form; artifacts immutable since upload-artifact v4.</li>
+<li>AD-6 / BUILD-CAT-1 marker still nullable provenance only; AD-11 / Story 11.17d completion record accurate.</li>
+</ul>
+
+<h2>Inconsistencies between reviews (noted, not resolved)</h2>
+<ol>
+<li>Security "Confirmed sound" §4 states runtime <code>github.workflow_sha</code>/<code>job.workflow_sha</code> are checked; code-drift D-4 finds no workflow records or validates either (with <code>rg</code> evidence). Treat §4 as spine intent.</li>
+<li>Open deferred-work item for the Builds acceptance record: current-fit C-1 says DW-1688 open and DW-1783 done 2026-08-27; code-drift D-2 says DW-1783 still open.</li>
+<li>Rubric R-4 states issue 17 was "reopened and owner-accepted 2026-08-08" (G2 request); current-fit C-1 finds no acceptance record and no successor issue number.</li>
+<li>Code-drift scorecard marks AD-9 "conforms" while adversarial A-1 (Critical) is grounded in the same file; parent verification confirms A-1.</li>
+<li>Code-drift header counts (7 M / 6 L) differ from its table (6 M / 7 L).</li>
+</ol>
+
+<h2>Recommended next step</h2>
+<p>Run <b>bmad-architecture UPDATE</b> against this spine, resuming from <code>.memlog.md</code>, keeping AD IDs AD-1…AD-16 stable (new decisions as AD-17+). Before any AD edit, the memlog must first receive an event entry recording the unlogged 2026-08-03 edit (commit <code>8a6a6cb3</code>, AD-11/12/13 Rules), followed by entries for the 2026-08-08 issue-17 reopening, the 2026-08-16 catalog-gitlink/execution-SHA split, the 2026-08-30 manifest v3, and this 2026-09-08 gate. Collect the five owner decisions first; apply the wording-pin autofixes in the same UPDATE; re-run this five-lens gate before re-stamping <code>final</code>.</p>
+<p class="small">Companion markdown: <a href="validation-report-2026-09-08.md">validation-report-2026-09-08.md</a>.</p>
+</main>
+<script>
+function toggleAll(open){document.querySelectorAll('details').forEach(function(d){d.open=open;});}
+</script>
+</body>
+</html>

@@ -1,211 +1,179 @@
-# Required upstream dependency (G2 / BUILD-REL-1): opt-in governed NuGet release contract for the FR24 pre-publication gate
+# Required upstream dependency (G2 / BUILD-REL-1): privilege-separated governed NuGet release contract
 
-- **Raised by:** REL-2 on 2026-07-13; made mandatory by REL-3 on 2026-07-15; extended with the
-  common release-freeze gate by REL-4 on 2026-07-15 and the exact-candidate/evaluator-handoff contract
-  by ratified GOV-1 on 2026-07-19
-- **Target repository:** [Hexalith/Hexalith.Builds](https://github.com/Hexalith/Hexalith.Builds)
-- **Target files:** `.github/workflows/domain-ci.yml`, `.github/workflows/domain-release.yml`, and
-  exact local composite-action metadata used by those shared reusable workflows
-- **Status:** issue 17 reopened 2026-08-08 with the complete GOV-1 amendment retained alongside the
-  original BUILD-REL-1 governed NuGet + freeze-gate scope; owner-accepted immutable revision recorded
-- **Suggested upstream story title:** "BUILD-REL-1: Add an opt-in governed NuGet release contract
-  to Hexalith.Builds"
-- **Upstream verification (2026-07-15):** a live search of Hexalith.Builds issues and pull requests
-  found no matching issue or PR (only closed 2025 issues #1/#2 and dependabot/docs PRs); filing
-  remained pending until 2026-07-18.
-- **Upstream verification (2026-08-02):** issue 17 is closed with no comment or linked closing pull
-  request. Its original body does not contain the 2026-07-19 GOV-1 amendment, and no accepted 40-hex
-  revision is recorded for that amendment.
-- **Upstream verification (2026-08-08):** Release Owner reopened issue 17, pasted the GOV-1 amendment
-  into the body (keeping BUILD-REL-1 scope), and recorded the owner-accepted revision below with exact
-  workflow/composite blob SHA-256 values. FrontComposer integration (pin, authorize, prove handoffs)
-  remains the next FrontComposer-owned gate.
-- **Upstream owner:** Release Owner (jpiquot) — filed under Release Owner directive on 2026-07-18
-- **Issue/story URL:** <https://github.com/Hexalith/Hexalith.Builds/issues/17> (filed 2026-07-18;
-  reopened 2026-08-08 with GOV-1 amendment; acceptance comment
-  <https://github.com/Hexalith/Hexalith.Builds/issues/17#issuecomment-5226651759>)
-- **Required next request:** FrontComposer integration against the accepted revision — pin
-  `references/Hexalith.Builds` + caller reusable refs to that 40-hex SHA (never `@main`), populate
-  `evaluator_authorizations` for `ci`/`release`/`post_release`, and prove sealed AD-13/AD-15 handoffs
-- **Accepted revision:** `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a`
-- **Release impact:** FrontComposer-local GOV-1 wiring is in place. Reusable-workflow integration,
-  end-to-end exact-candidate evidence proof, GOV-1 completion, release eligibility, unfreeze, and the
-  next FrontComposer NuGet/GitHub release remain blocked until the integration checklist below the
-  accepted revision succeeds. No local contingency is authorized without a new dated Architect +
-  Release Owner decision.
-- **This repo does NOT directly implement the shared change.** `references/Hexalith.Builds` is a shared
-  `@main` submodule consumed by every Hexalith module and must not be edited or committed from
-  FrontComposer. Filing, approval, implementation, and revision tracking are Release Owner plus
-  Hexalith.Builds-owner actions.
+- **Raised by:** REL-2 on 2026-07-13; made mandatory by REL-3/REL-4 on 2026-07-15; amended by
+  ratified GOV-1 on 2026-07-19 and the finalized AD-19 architecture on 2026-09-09.
+- **Target repository:** [Hexalith/Hexalith.Builds](https://github.com/Hexalith/Hexalith.Builds).
+- **Target surface:** `.github/workflows/domain-release.yml` and only the literal-commit local
+  composite/JavaScript actions in its authorized closure.
+- **Status:** successor revision required. Hexalith.Builds issue 17 was reopened and its immutable
+  revision `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a` was owner-accepted on 2026-08-08. That revision is
+  the AD-16 lineage anchor/predecessor; it is not evidence of the AD-19 split reusable.
+- **Current FrontComposer execution pin:** `4eb33928a1d8c7775f97221cf9edc171db0cb5f8`.
+- **Required next upstream outcome:** an owner-accepted immutable revision in the AD-16 lineage that
+  implements `split-publication-v1` exactly as the finalized GOV-1 spine requires.
+- **Owners:** Hexalith.Builds owner + Release Owner for upstream acceptance; FrontComposer Architecture,
+  Product Owner, and Release Owner for adoption.
+- **Issue:** <https://github.com/Hexalith/Hexalith.Builds/issues/17> and acceptance record
+  <https://github.com/Hexalith/Hexalith.Builds/issues/17#issuecomment-5226651759>.
+- **Release impact:** the checked-in FrontComposer caller remains on a legacy publication-capable path.
+  Production releases remain halted; no current release is made compliant by protected-environment
+  approval alone.
+- **Repository boundary:** FrontComposer does not edit or commit shared Hexalith.Builds source. Upstream
+  implementation and acceptance occur in the owning repository; FrontComposer later pins and
+  pre-authorizes the accepted immutable closure through AD-12 delayed activation.
 
 ## Why
 
-The G1 posture approved on 2026-07-13 publishes through `domain-release.yml` and reconstructs evidence
-after publication. Live v3.2.1 and v3.2.2 executions proved G1 insufficient: both evidence workflows
-concluded successfully while packages were unsigned, manifests were invalid, readiness was blocked,
-and `publish_authorized=false`. A reconstructed package cannot prove the bytes NuGet already received.
+FR-24 requires the exact prepared packages and evidence to be validated, authorized, published, and
+verified without allowing candidate-controlled code to hold product-publication authority. The legacy
+and previously proposed governed jobs execute candidate restore/build/release behavior in a protected,
+write-capable context. Environment approval authorizes a job; it does not isolate its credentials from
+candidate code.
 
-REL-3 therefore moves the complete FrontComposer-owned lifecycle into semantic-release preparation:
-pack once, validate, sign/timestamp, verify, checksum, seal/verify the manifest, then run
-`classify-release --require-publishable`. The shared workflow need not implement FrontComposer's evidence
-logic, but it **must** make the signing contract available to the repository-owned semantic-release
-lifecycle. G1 is no longer an approved fallback.
+The accepted successor therefore separates candidate construction from publication. Compatibility,
+graph provenance, exact-candidate handoffs, mandatory attestation or approved fallback, and durable
+attempt evidence remain intact; only pinned candidate-free owner code may make the final authorization
+and publication decision.
 
-## Required change (backward-compatible for existing callers)
+## Required Change
 
-Signing-secret forwarding alone is **under-scoped** and is superseded by this revision. FrontComposer's
-manifest validation (`eng/release_evidence.py`) requires every package to carry
-`attestation_status=attested` with an attestation bundle (or a sealed Release Owner-approved
-`approved-unsupported` fallback). Minting that attestation requires `actions/attest-build-provenance`
-running inside the workflow that owns the candidate packages, with `id-token: write` and
-`attestations: write` — workflow-level permissions and a lifecycle position that no forwarded secret
-can provide. Secret forwarding cannot interleave a GitHub attestation between package preparation and
-readiness classification.
+The selected immutable `domain-release.yml` must provide an opt-in/default-off
+`split-publication-v1` mode. Existing callers remain behaviorally unchanged until they explicitly
+select it. The reusable defines both fixed jobs directly; neither role may be delegated to a nested or
+sibling reusable.
 
-The required upstream feature is an **opt-in governed mode** on `domain-release.yml` — or a sibling
-governed release workflow — providing:
+### 1. Secretless candidate builder
 
-- an opt-in activation input (default off; existing callers unchanged);
-- a protected release-environment/approval input applied to the governed release job;
-- optional `workflow_call` secrets `NUGET_SIGNING_CERTIFICATE_BASE64` and
-  `NUGET_SIGNING_CERTIFICATE_PASSWORD`;
-- a configurable RFC 3161 timestamp-service input (default may remain the approved public timestamp
-  authority);
-- signing secrets scoped only to the governed release steps, never printed or persisted;
-- `id-token: write` and `attestations: write` granted only where required by the governed mode,
-  preserving minimum permissions elsewhere;
-- a pre-publication candidate phase that knows the semantic-release version and produces the exact
-  candidate packages before any publication side effect;
-- `actions/attest-build-provenance` executed over those exact candidate packages;
-- the resulting attestation-bundle path passed to the caller's manifest-finalization hook (e.g., an
-  environment variable or output available to the semantic-release `prepareCmd` lifecycle);
-- semantic-release publishing the already-authorized artifacts without rebuilding or repacking;
-- durable failure and partial-publication evidence surfaced by the governed mode;
-- backward compatibility for every existing Hexalith module caller (all new inputs unset → current
-  behavior);
-- root-only, non-recursive submodule initialization preserved.
+The job named `build-publication-candidate`:
 
-FrontComposer's `.releaserc.json` continues to own the semantic-release `prepareCmd`/`publishCmd`
-evidence lifecycle and consumes `${nextRelease.version}`; the shared workflow provides the governed
-execution context (secrets, permissions, environment, candidate phase, attestation) — not
-FrontComposer's evidence logic.
+- has no environment, publication secret, OIDC/attestation permission, or write scope;
+- checks out only the authenticated AD-13 candidate with `submodules: false`;
+- initializes only dependencies declared by FrontComposer's root `.gitmodules`, never recursively or
+  through nested submodules;
+- executes candidate restore/build/pack/release-planning only in this read-only boundary;
+- prepares one package set and runs the FR-24 inventory, exact-package tests, consumer validation,
+  checksums, SBOM, symbol evidence, and diagnostic early-denial checks against it;
+- emits exactly one `publication-candidate-<run_id>-<run_attempt>` artifact containing the closed
+  `hexalith.publication-candidate.v1` descriptor and every declared package/evidence/metadata byte; and
+- never publishes, mints an attestation, seals a final manifest, or emits an authorization consumed by
+  publication. Builder readiness and classification are denial-only diagnostics.
 
-### Caller shape once G2 lands (FrontComposer)
+### 2. Protected candidate-free publisher
 
-```yaml
-jobs:
-  release:
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@<accepted-40-hex-revision>
-    with:
-      solution: Hexalith.FrontComposer.slnx
-      test-projects: ''
-      governed-release: true
-      release-environment: production-release
-      nuget-signing-timestamper: https://<approved-rfc3161-authority>
-    secrets:
-      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-      NUGET_SIGNING_CERTIFICATE_BASE64: ${{ secrets.NUGET_SIGNING_CERTIFICATE_BASE64 }}
-      NUGET_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.NUGET_SIGNING_CERTIFICATE_PASSWORD }}
-```
+The job named `publish-publication-candidate`:
 
-FrontComposer then runs its pack-once evidence lifecycle from semantic-release `prepareCmd`, re-verifies
-authorization in `publishCmd`, and uses `release-evidence.yml` only to verify downloaded NuGet/GitHub
-assets and update the historical ledger.
+- is the only product-publication actor and runs under the caller-selected protected `production`
+  environment;
+- receives only its minimum token permissions and the environment-scoped NuGet credential; it never
+  uses `secrets: inherit`;
+- executes only the pinned owner-controlled code in the selected reusable/action closure and never
+  checks out FrontComposer, imports candidate helpers, or executes an archive/package lifecycle hook,
+  release configuration, plugin, installer, or candidate command;
+- downloads the raw builder artifact by authenticated Release run/attempt, name, ID, and digest;
+  enforces the AD-7 ZIP limits before extraction; verifies the descriptor, candidate, CI handoff,
+  policy, evaluator, release plan, file inventory, sizes, digests, paths, and destination-name
+  uniqueness; and treats every candidate byte as non-executable data;
+- mints and verifies GitHub provenance attestation over every authenticated package digest, or validates
+  the AD-9 run-bound approved-unsupported fallback when the active policy explicitly records
+  `attestation_capability: unsupported`;
+- prepares and seals `hexalith.release-evidence.v4`, performs complete offline/live verification and
+  classification, and requires `publish_authorized=true` before setting `publication_started` and
+  making the first NuGet or GitHub Release mutation;
+- publishes only descriptor/manifest-authorized bytes, creates an immutable non-draft GitHub Release
+  whose tag resolves to the authenticated candidate, and verifies NuGet.org repository signatures plus
+  byte-equivalent normalized ZIP members other than the root `.signature.p7s`; and
+- preserves the raw publication-candidate archive, descriptor, CI handoff, final manifest, and exactly
+  one attestation bundle or fallback authorization as mandatory durable Release assets.
 
-## Constraints
+Attestation minting over authenticated package digests is evidence registration, not product
+publication, and cannot authorize by itself. Author signing, a production PFX, and RFC 3161 author
+timestamping were removed from the release contract by REL-5 on 2026-08-04. Candidate packages remain
+author-unsigned and NuGet.org repository-signs uploads.
 
-- Must be **opt-in and backward-compatible** — every current caller (Tenants, Parties, EventStore, …)
-  keeps working unchanged with the new inputs unset.
-- Signing secrets are scoped only to the semantic-release step and must not be printed or persisted.
-- Must not weaken the existing `submodules: false` + root-only init invariant.
-- Must preserve minimum workflow permissions.
-- Owner-approved: do not modify the shared submodule from FrontComposer or merge upstream without the
-  Hexalith.Builds owner and Release Owner workflow.
-- Filing the issue/story does not clear the FrontComposer release freeze; the accepted revision must be
-  integrated and REL-3's gate must pass.
+### 3. Exact handoffs, policy, and evaluator identity
 
-## Second required item — common release-freeze gate (all Hexalith modules)
+- Release selection remains operator `workflow_dispatch` on the exact live `main` SHA and authenticates
+  exactly one completed successful push run of both `ci.yml` and `quality.yml` for that candidate.
+- CI emits `hexalith.dependency-release-handoff.v1`; its authenticated candidate remains the sole
+  release-candidate authority.
+- Every Release attempt emits `hexalith.release-verification-handoff.v3` under `if: always()`, carrying
+  the selected quality run, original CI handoff, candidate, active policy, publication-candidate
+  coordinate, release state, final manifest v4, attestation/fallback, assets, denial reason, and exact
+  Release evaluator. The deferred sentinel is valid only when no CI handoff was authenticated.
+- CI, Release, post-release, and incident-recovery evaluators must match one exact active-policy row and
+  complete literal-commit closure. Candidate or later ambient default-branch code cannot make a
+  publication, verification, ledger, or incident-recovery decision.
+- The reusable reference, `builds-execution-sha`, and the `.hexalith/builds-execution` checkout refs in
+  the Release closure are the same immutable AD-16 lineage commit.
 
-Added 2026-07-15 by the approved
-`sprint-change-proposal-2026-07-15-release-freeze-enforcement.md` (REL-4), on the Administrator's
-directive that the freeze mechanism be common to all Hexalith modules. Every module publishing
-through `domain-release.yml` shares the same unguarded `npx semantic-release` exposure FrontComposer
-hit with v3.2.1/v3.2.2.
+### 4. Attempt truth, fallback, and incident recovery
 
-Required contract:
+- `frontcomposer.release-ledger-record.v2` assigns every authenticated attempt exactly one closed
+  disposition. Observations are append-only and keyed by immutable Release/verification coordinates;
+  an incident can never be replaced or weakened by a later green rerun or sign-off.
+- Fallback authorization uses the canonical
+  `hexalith.attestation-fallback-authorization.v3` record and binds one Release run/attempt, candidate,
+  CI handoff, active policy, fallback digest, expiry, and exact `production` deployment approval. A
+  retry or any graph/policy/workflow/package-set/run drift requires a new request and approval.
+- If publication started but no complete immutable product Release exists, the separately authorized
+  candidate-free `incident_recovery` closure preserves authenticated/quarantined evidence in a unique
+  immutable reserved-namespace prerelease. It has no NuGet credential or product-release authority.
+- Before retry or later dispatch, the Release Owner follows `docs/release-incident-response.md`: record
+  acknowledgement and containment, set the publish gate false, preserve immutable evidence, rotate
+  possibly exposed credentials, inventory every external effect, prefer unlisting, and issue any
+  correction under a new version. Re-enable only after documented remediation, independent
+  verification, and Release Owner approval.
 
-- `domain-release.yml` must refuse to run its Semantic Release step unless the **calling
-  repository's** `HEXALITH_RELEASE_PUBLISH_ENABLED` configuration variable is exactly the string
-  `true`, evaluated with an exact (case-sensitive, untrimmed) comparison in a shell step — not a
-  GitHub-expression `==`, which compares case-insensitively.
-- Missing or malformed values freeze publication with an explicit notice; the run concludes green
-  (skip-not-fail) so frozen modules do not accumulate red runs.
-- Called reusable workflows resolve `vars` from the caller's repository/organization, which is what
-  makes one shared gate per-module controllable. The Hexalith.Builds owner must verify this
-  resolution behavior on the current GitHub Actions platform during implementation. Fallback shape
-  if verification fails: a required `publish-enabled` boolean input defaulting to `false`, computed
-  by each caller from its own variable.
-- Rollout is deliberately fail-closed for the whole ecosystem: when the gate lands, every consuming
-  module is frozen until its owner sets the variable. The owner sets `true` on modules that should
-  keep publishing at rollout time; FrontComposer's stays non-`true` until REL-3 completes.
-- Documented hazard: repository-level variables shadow organization-level ones; an org-level `true`
-  leaks into repos with no repo-level value. Frozen repos must carry an explicit repo-level value
-  whenever an org-level value exists.
+## Deny-Only Publication Stop
 
-This item does not gate FrontComposer's own freeze — the REL-4 caller-side `freeze-guard` in
-FrontComposer's `release.yml` enforces it immediately and remains as defense-in-depth. It is
-independent of, though filed alongside, the signing-contract item above; the signing item remains
-blocking for REL-3, while this item is required for ecosystem coverage.
+`HEXALITH_RELEASE_PUBLISH_ENABLED` remains a common deny-only control. Any value other than literal
+`true` prevents publication; it never grants authority and never compensates for an invalid candidate,
+policy, evaluator, handoff, manifest, attestation/fallback, or privilege boundary. During the current
+halt, FrontComposer requires literal `false`. A Release Owner or repository administrator must set and
+verify that value through an authenticated API observation before any release approval or dispatch.
 
-## GOV-1 amendment — exact candidate and evaluator handoffs
+## GOV-1 Split Implementation Gate
 
-Added 2026-07-19 by ratified FC-DEP-1 / architecture AD-13, AD-15, and AD-16. Corrected 2026-08-02:
-issue 17 closed without accepting this amendment. Reopened and owner-accepted on 2026-08-08 at
-`a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a` with exact workflow/composite blob SHA-256 values recorded
-on the issue. FrontComposer must still pin callers to that revision, authorize the live static
-closure, and prove sealed AD-13/AD-15 handoffs before GOV-1 external gates close. The accepted
-revision implements these backward-compatible governed-mode contracts:
+The upstream revision is necessary but not sufficient. FrontComposer may claim adoption only after the
+spine-defined **GOV-1 split implementation gate** passes. The gate requires the canonical
+`frontcomposer.gov1-split-conformance.v1` packet at
+`_bmad-output/implementation-artifacts/gov-1-split-publication-conformance.json`, a spine hash, exact
+FrontComposer/Builds/policy/caller identities, authenticated checks and evidence runs, five passing
+review lenses, a closed nonconformance register, an unchanged protected-main evidence PR with Release
+Owner approval, and a distinct approval-projection PR. Stale, mixed, unavailable, direct-push,
+squashed/rebased, or incomplete evidence fails closed.
 
-- `domain-ci.yml` accepts required governed inputs for the exact candidate SHA, active policy
-  repository/commit/SHA-256, and expected evaluator-authorization digest; validates its actual
-  `job.workflow_ref/job.workflow_sha`; evaluates the bounded static workflow/composite-action closure;
-  and outputs the exact reusable/action provenance needed by the caller to create the single
-  `dependency-release-handoff` artifact (`hexalith.dependency-release-handoff.v1`).
-- `domain-release.yml` accepts required governed inputs for the authenticated CI-handoff candidate,
-  triggering CI run ID/attempt, active policy coordinates, handoff artifact name, and expected Release
-  evaluator-authorization digest. The event head authenticates the CI run but is not an independent
-  candidate source. Every checkout, prepare, seal, live verify,
-  fallback, classify, and publish operation consumes `release-commit`; it validates actual reusable/
-  action coordinates and never selects default-branch HEAD.
-- The caller-side Release run uploads under `if: always()` exactly one
-  `release-verification-handoff` artifact containing
-  `hexalith.release-verification-handoff.v1`: authenticated CI repository/workflow/run ID/attempt/raw
-  handoff hash, exact active-policy projection, original candidate, Release run ID/attempt/conclusion,
-  version/tag/GitHub Release identity, sealed-manifest path/hash/seal, sorted asset name/hash/size rows,
-  and authorized Release evaluator coordinates/digest. The post-release verifier re-downloads both
-  handoffs and requires matching policy/candidate projections. Pre-manifest, failed, or partial runs
-  preserve the CI/policy projection and use the closed null/empty representation for unavailable release
-  fields rather than omitting the artifact.
-- Every reusable workflow/action reference is literal-40-hex-pinned. Local composite actions are loaded
-  from the exact reusable-workflow commit. Their complete static transitive `uses:` closure, including
-  conditional entries and composite descendants, matches the active FrontComposer policy
-  authorization and the handoff/manifest projection.
-- The accepted revision is recorded here with the exact `domain-ci.yml`, `domain-release.yml`, and
-  composite-action blob SHA-256 values before FrontComposer integration.
+The eight implementation closure bundles are:
 
-**GOV-1 completion gate:** **Accepted revision** is `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a`.
-FrontComposer implements local graph diff, bounded affected-module proof, policy-authorized evaluator
-closure, both handoff schemas and consumers, manifest v2, policy governance, and hostile fixtures.
-Reusable-workflow integration against that SHA, end-to-end exact-candidate evidence proof, story
-completion, release eligibility, and any REL-4 unfreeze remain the FrontComposer integration checklist.
-FrontComposer must not edit the Builds submodule. The bounded contingency below is not approved by
-GOV-1; using it requires a new dated Architect + Release Owner decision with scope, expiry, migration
-trigger, and equivalent proofs.
+1. Owner-accepted split reusable plus AD-12 delayed activation.
+2. Caller switch and exact two-job topology.
+3. Removal of `production` from candidate/build jobs.
+4. Publication-candidate production/authentication and hostile-candidate credential fixtures.
+5. Handoff-v3, total classifier, and typed ledger migration.
+6. Candidate-free final attestation/fallback, manifest-v4 classification, and publication.
+7. Pinned post-release helper execution with no ambient or candidate helper.
+8. Duplicate destination asset-name rejection.
 
-## Bounded contingency
+## Unresolved Owner Decisions
 
-If the shared contract cannot land before a required release, stop. A thin FrontComposer-owned gated
-workflow is permitted only by a new dated **Architect + Release Owner** decision that records equivalent
-graph/policy/evaluator/two-handoff/exact-artifact proofs, scope, approvers, expiry/reopen trigger, and
-migration back to Hexalith.Builds. No such contingency is authorized by GOV-1; this section is an
-escalation path, not permission to resume G1 or create a permanent release fork.
+- **Product Owner + Release Owner:** accept or revise AD-19, the production-release halt, and the current
+  no-exception posture (PRD D-16/G-8).
+- **Hexalith.Builds owner + Release Owner:** identify and accept the immutable split-reusable successor
+  entering AD-16 lineage.
+- **Release Owner or repository administrator:** set the deny-only gate to literal `false` and record the
+  authenticated observation.
+- **Product Owner + Release Owner:** approve a measurable incident acknowledgement/containment target
+  and the incident runbook before integration.
+- **Release Owner:** establish and verify the no-bypass protected-main ruleset required for conformance
+  and ledger approvals.
+- **Product Owner + Release Owner + Architect:** no bounded risk exception exists. Any future exception
+  requires a separate dated decision naming scope, expiry, evidence, compensating controls, and
+  revocation trigger.
+
+## Bounded Contingency
+
+If the shared contract cannot land before a required release, stop. A FrontComposer-owned contingency
+is permitted only by a new dated Architect + Release Owner decision that records equivalent
+graph/policy/evaluator/split-role/handoff/manifest/attestation/evidence proofs, scope, approvers, expiry,
+revocation and migration triggers, and closure through the same implementation gate. GOV-1 grants no
+such contingency.

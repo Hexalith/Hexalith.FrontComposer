@@ -1,0 +1,37 @@
+# FrontComposer / Fluent UI Blazor V5 Conformance Review — frontcomposer
+
+## Overall verdict
+
+**Adequate, but not final.** The pair consistently inherits FrontComposer and Fluent UI Blazor V5, keeps Fluent-owned visuals out of custom CSS, rejects legacy V4/FAST tokens, applies the repository accordion contract, and maintains exact visual/behavioral parity for all 21 named component patterns. The current catalog snapshot resolves the Fluent and FrontComposer identifiers used by the spines, but the unapproved package pin and unresolved runtime accent-role mapping remain high-impact handoff blockers; two machine-readable/typography ambiguities also need correction.
+
+## Critical findings
+
+None.
+
+## High findings
+
+- **[high] The Fluent V5 package contract is deliberately uncommitted, so API conformance cannot yet be final.** The Foundation and visual inheritance statements bind the product to FrontComposer + Blazor Fluent UI V5, while both spines explicitly leave the selected catalog pin and exact supported token/API names unresolved (`DESIGN.md:69`, `DESIGN.md:158`, `EXPERIENCE.md:24`, `EXPERIENCE.md:357`). The repository currently resolves `Microsoft.FluentUI.AspNetCore.Components` at `5.0.0-rc.5-26219.1`, and inspection of that package confirms the named APIs in this pair, but D-13/OI-4 has not accepted that pin. A downstream consumer therefore cannot tell whether the inspected RC surface or a later GA/revised surface is the durable contract. *Fix:* record the approved package ID and exact version (or an explicit catalog identity), disposition D-13/OI-4, and rerun the public-component/API/token check against that exact package before changing either spine to `status: final`.
+
+- **[high] `accent-thread` conflates a configurable theme seed/default with the runtime Fluent semantic role.** The only machine-readable color is the literal default `#0097A7`, and component tokens directly reference it for shell, navigation, and fresh-row presentation (`DESIGN.md:15-16`, `DESIGN.md:36-42`, `DESIGN.md:56-58`). The prose correctly says that `FcShellOptions.AccentColor` is configurable and that the accent must flow through the active theme, then admits that the exact replacement for the old `--fc-color-accent` bridge is unknown (`DESIGN.md:71`, `DESIGN.md:75-84`); EXPERIENCE likewise calls the literal token the configurable default (`EXPERIENCE.md:24`). As written, a mechanical DESIGN.md consumer will render the default hex even when the adopter configured another seed, bypassing the theme-generated role and its contrast ramp. *Fix:* separate the configuration default (for example, a clearly named default-only hex token) from the runtime presentation role. Point component contracts to one approved Fluent V5 `Color` parameter or Fluent 2 token derived from `FcShellOptions.AccentColor`, state that consumers must not render the default hex directly, and define the exact semantic fallback when the generated accent role fails contrast or forced-colors requirements.
+
+## Medium findings
+
+- **[medium] `rounded.fluent-default` violates the DESIGN.md frontmatter type contract.** The spec requires each `rounded` value to be a CSS dimension, but `fluent-default` is an object containing a `note`; prose then resolves `{rounded.fluent-default}` as though it were a scalar radius (`DESIGN.md:26-29`, `DESIGN.md:108-110`). A generic token resolver cannot flatten that reference to a usable dimension. *Fix:* remove `rounded.fluent-default` and describe Fluent-radius inheritance only in prose/component rows, or replace it with a valid scalar dimension only if the approved Fluent contract genuinely freezes one. Keep `{rounded.framed-surface-max}` as the explicit FrontComposer-only delta.
+
+- **[medium] The typography aliases do not identify which of the nine governed FrontComposer mappings they use.** `page-title` says `Size700`/`Semibold`, `section-title` says `Size500` or an accordion-owned role, and the prose tells consumers to use those aliases through the nine `FcTypoToken` mappings (`DESIGN.md:17-25`, `DESIGN.md:86-90`, `DESIGN.md:126`). The currently pinned Fluent package supports `TextSize.Size700`, `TextSize.Size500`, `TextWeight.Semibold`, and `Color.Lightweight`, so these are not nonexistent Fluent APIs; the ambiguity is at the FrontComposer layer. The nine governed mappings distinguish `AppTitle`, `BoundedContextHeading`, `ViewTitle`, and `SectionHeading`, and none is named `page-title`. A consumer cannot know whether to use an existing `Typography.*` token, let `FcPageHeader`/`FluentAccordionItem` own the role, or bind raw Fluent parameters. *Fix:* for each alias, name the exact `Typography.*` mapping or the exact owning FrontComposer component. If `FcPageHeader` intentionally owns a direct `TextSize.Size700`/`TextWeight.Semibold` delta outside the nine-token table, state that explicitly instead of implying the alias is one of the nine mappings.
+
+## Low findings
+
+None.
+
+## Mechanical notes
+
+- Current catalog evidence: `references/Hexalith.Builds/Props/Directory.Packages.props:226-227` pins `Microsoft.FluentUI.AspNetCore.Components` and `.Icons` to `5.0.0-rc.5-26219.1`. This is observed repository state, not the missing Product/Architecture approval.
+- Package inspection resolves `FluentText`, `TextSize.Size200/Size500/Size700`, `TextWeight.Semibold`, `Color.Lightweight`, `FluentTabs`, `FluentDataGrid<T>`, `FluentAccordion`, `FluentAccordionItem`, `FluentStack`, `FluentTextInput`, `FluentTooltip`, `FluentBadge`, `FluentDialog`, and `FluentMessageBar` in the current pin. No unsupported Fluent API name was found in the pair.
+- Every named FrontComposer component in the DESIGN Components table exists in the repository, including `FrontComposerNavigation`, `FcPageToolbar`, and `FcCustomizationDiagnosticPanel`. The toolbar is correctly kept as the public product contract; neither nonexistent `FluentToolbar` nor `FluentSearch` is promoted by this draft (`DESIGN.md:128`, `EXPERIENCE.md:103`).
+- The DESIGN and EXPERIENCE component tables use the same 21 pattern identifiers in the same order, with a real visual and behavioral contract for each (`DESIGN.md:118-140`, `EXPERIENCE.md:93-115`).
+- All intended `{colors.*}`, `{typography.*}`, `{rounded.*}`, and `{spacing.*}` references resolve by path. The route/build placeholders `{module}`, `{tab}`, `{default}`, `{BoundedContext}`, `{CommandTypeName}`, `{Config}`, and `{TFM}` in EXPERIENCE are domain-template placeholders, not DESIGN token references. The one resolution-type defect is `rounded.fluent-default`, reported above.
+- No legacy Fluent V4/FAST token is prescribed. The only CSS custom property named is the historical FrontComposer bridge `--fc-color-accent`, and the draft explicitly prohibits carrying it forward without an approved V5 mapping (`DESIGN.md:84`, `DESIGN.md:148`).
+- Raw CSS is restricted to the repository-approved layout/browser carve-outs, while design-system-owned controls and visuals remain FrontComposer/Fluent-first (`DESIGN.md:98`, `DESIGN.md:146-152`, `EXPERIENCE.md:235`).
+- The accordion contract is complete and consistent: one `FluentAccordion` for two or more sibling titled regions, one item per region, primary expanded by default when included, and the only primary region never collapsed (`DESIGN.md:98`, `DESIGN.md:129`, `EXPERIENCE.md:104`). The current pin exposes both `FluentAccordion` and `FluentAccordionItem.Expanded`.
+- Finding counts: critical 0, high 2, medium 2, low 0.

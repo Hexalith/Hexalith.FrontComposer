@@ -1,22 +1,24 @@
 ---
 id: FC-DEP-1
 title: Shared Catalog Compatibility and Dependency Provenance
-status: approved
+status: approved-base-with-open-adoption-gates
 date: 2026-07-19
-amended: 2026-07-19
-amendmentStatus: approved
+amended: 2026-09-09
+amendmentStatus: architecture-adopted-product-and-release-acceptance-pending
 previousStatus: approved
 previousApprovedBy: Administrator
 requiredApproval: Architect + Release Owner
 approvedBy: Administrator (Architect + Release Owner)
 ratified: 2026-07-19
+latestArchitectureAdoption: Administrator (2026-09-09)
+latestRequiredAcceptance: Product Owner + Release Owner
 owners:
   - Product Owner
   - Architect
   - Release Owner
 implementationStory: GOV-1
 upstreamFollowUp: BUILD-CAT-1
-upstreamReleaseFollowUp: BUILD-REL-1 issue 17 (accepted immutable revision pending)
+upstreamReleaseFollowUp: BUILD-REL-1 issue 17 (owner-accepted immutable revision a8a50859 recorded 2026-08-08; pins advance through the spine AD-16 lineage)
 architectureSpine: _bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md
 ---
 
@@ -24,6 +26,10 @@ architectureSpine: _bmad-output/planning-artifacts/architecture/architecture-gov
 
 > **Approved amendment:** Administrator ratified the complete decision below as Architect and Release
 > Owner on 2026-07-19. It supersedes the former unbounded complete-reachable interpretation of v1.
+> The finalized 2026-09-09 GOV-1 spine is now authoritative for AD-1 through AD-19, whose IDs remain
+> stable. Administrator adopted that architecture direction; Product Owner and Release Owner acceptance
+> of the new publication boundary and halt posture remains open and is not inferred from the 2026-07-19
+> approval.
 
 ## Context
 
@@ -86,10 +92,8 @@ does not, by itself, state whether a catalog satisfies a consumer contract.
     base/candidate `.gitmodules` are untrusted graph data. PR evaluation uses the exact base-commit
     policy and push evaluation uses the exact non-zero before-commit policy for both graphs; evidence
     records its commit and raw SHA-256. A candidate policy change activates only as a later change's
-    base policy. The initial bootstrap requires an unchanged dependency graph, frozen publication, and
-    Architect + Release Owner approval of the exact policy digest, enforced by the Release Owner-
-    controlled `HEXALITH_DEPENDENCY_POLICY_BOOTSTRAP_SHA256` repository variable. Once the base contains
-    policy, bootstrap is permanently unavailable. A zero/unavailable push-before may emit diagnostic/
+    base policy. The one-time v1 bootstrap was consumed when the first policy landed on 2026-07-19; base-policy
+    absence is permanently fail-closed and no bootstrap mode is reachable. A zero/unavailable push-before may emit diagnostic/
     full-affected evidence, but the gate fails and is not release-eligible.
     Python owns semantic catalog
     evaluation; C# Governance consumes the machine result rather than duplicating policy. The policy is
@@ -107,9 +111,9 @@ does not, by itself, state whether a catalog satisfies a consumer contract.
     named semantic profile and every governed target maps to an exact standalone build argv or explicit
     evidence-only disposition. The seed registry covers FrontComposer and all eight root-declared
     identities; AI.Tools is evidence-only because its seed commit has no solution/build surface. There
-    is no implicit default. The focused architecture spine contains the exact identity/profile and
-    identity/solution/catalog-binding matrices; missing or candidate-added entries fail closed under
-    decision 10. Build rows run exact static Release/NuGet restore/build argv in an isolated exact-commit
+    is no implicit default. The active policy `eng/dependency-graph-policy.json` contains the exact identity/profile and
+    identity/solution/catalog-binding matrices; the spine defines their closed schema and coverage
+    invariants only. Missing or candidate-added entries fail closed under decision 10. Build rows run exact static Release/NuGet restore/build argv in an isolated exact-commit
     checkout; edge-bound Builds regular-file contract trees are bounded-materialized from the selected
     candidate commit, their catalog re-hashed against the graph, and never initialized as nested
     repositories. Materialization rejects unsafe modes/paths and is capped at 16,384 files, 16 MiB per
@@ -117,50 +121,75 @@ does not, by itself, state whether a catalog satisfies a consumer contract.
     Depth-1 additions/changes build the candidate target and removals build FrontComposer; those changes
     subsume their descendant depth-2 diff. Only remaining depth-2 changes build a candidate owner, with
     an absent owner collapsing to FrontComposer. Every module is scheduled at most once.
-13. The release caller passes `github.event.workflow_run.head_sha` as a required exact commit; the
-    reusable workflow checks out and propagates that commit through preparation, sealing, verification,
-    fallback, and publication. Its Hexalith.Builds workflow reference is an active-policy-authorized immutable 40-hex
-    commit and is sealed with the caller workflow hash and CI-selected policy coordinates. The caller
-    passes the triggering CI run ID and fetches the single versioned dependency-release handoff through
-    the read-only Actions API only after repository/workflow/event/branch/conclusion/run/head metadata
-    match and the recorded candidate equals the event head SHA. Actual caller/reusable workflow refs and
-    SHAs must match sealed coordinates, and release reloads/hashes/parses the policy blob at its recorded
-    FrontComposer commit. Primary CI and release reusable workflows are 40-hex pinned and their
-    transitive sources sealed. Every transitive non-local action is 40-hex pinned; Builds local actions
-    come from an exact reusable-workflow SHA checkout, never `@main`. The handoff evaluator digest is
-    canonical SHA-256 over its exact caller/reusable/action sources. Manifest CI provenance must equal
-    those sources, project the authenticated run, and bind the raw handoff JSON SHA-256; offline
-    verification recomputes both CI-only and combined CI/release definition digests. The current mutable
-    CI/release `@main` calls and missing release exact-ref input are non-conforming, so REL-4 remains
-    frozen until this seam and its tests exist.
-    The action list is a deterministic static closure, independent of conditions, that recursively reads
-    exact caller/reusable/composite metadata blobs. Dynamic/mutable references, Docker actions,
-    ambiguous/unsupported metadata syntax, cycles, or the AD-13 closure ceilings fail closed; action
-    evidence includes raw metadata blob SHA-256.
-14. **`[ADOPTED]` One-way manifest migration.** GOV-1 introduces required
-    top-level `manifest_schema: hexalith.release-evidence.v2`, complete graph, closed policy coordinates,
-    and closed caller/reusable/CI/action workflow provenance. The outer seal covers all top-level members
-    except `seal`; the fallback digest covers its existing definition/package-set inputs plus graph
-    digest, policy SHA-256, and the canonical trusted workflow-definition digest.
-    Legacy manifests are audit-only and non-publishable, cannot satisfy fallback, and are never upgraded
-    or resealed in place. Historical ledger bytes remain unchanged; current fixtures migrate atomically.
-15. **`[ADOPTED]` Release-to-verifier handoff.** Every governed Release attempt uploads under
-    `if: always()` one versioned verification handoff authenticated by Release run ID/attempt. It binds
-    the original authenticated CI run ID/attempt/raw handoff hash, exact active-policy projection,
-    candidate, conclusion, version/tag/GitHub Release identity, manifest path/hash/seal, exact asset
-    name/hash/size rows, and authorized Release evaluator. The post-release verifier re-downloads and
-    authenticates both handoffs and requires their candidate/policy projection to agree even when
-    manifest creation failed. It uses
-    this handoff and sealed manifest as its only candidate authority, never the second-hop
-    `workflow_run.head_sha`/default-branch SHA. It authenticates its own policy-authorized static closure,
-    verifies published bytes or records failure/partial incident state, and cannot green-no-op.
-16. **`[ADOPTED]` External workflow completion gate.** Hexalith.Builds issue 17 / BUILD-REL-1 must
-    deliver the exact CI/release inputs, outputs, runtime identity checks, static closure, exact-candidate
-    and both handoff contracts at an owner-accepted immutable 40-hex revision. The accepted revision is
-    currently pending. FrontComposer may proceed with local graph/policy work, but GOV-1 Tasks 4/5,
-    story completion, release eligibility, and REL-4 unfreeze remain blocked until that revision and
-    workflow/action blobs are recorded in the active policy. No local contingency is authorized without
-    a new dated Architect + Release Owner decision.
+13. **`[ADOPTED AD-13]` Exact candidate and evaluator authority.** Release is operator
+    `workflow_dispatch` on `refs/heads/main`. The dispatched SHA equals the live `main` ref and is the
+    head of exactly one completed successful push run of both `ci.yml` and `quality.yml`, selected
+    through read-only Actions APIs. The run/attempt-named CI handoff is independently authenticated and
+    its candidate is the sole release authority. The active-policy CI and Release evaluator closures use
+    literal immutable coordinates; mutable references, self-authorized rows, ambiguous closure sources,
+    or a candidate/default-branch substitution fail closed. Only the AD-19 secretless builder may
+    execute the authenticated candidate; the protected publisher receives it solely as authenticated
+    publication-candidate data.
+14. **`[ADOPTED AD-14]` One-way manifest migration.** The lineage is
+    `hexalith.release-evidence.v1` (legacy) → `v2` → `v3` → `v4`. Preparation, sealing,
+    classification, fallback, and publication accept only v4. V2/v3 are byte-preserved audit evidence,
+    never produced, resealed, upgraded, or made fallback-eligible for a new publication. The v4 seal
+    covers every top-level member except `seal`, including the complete graph, policy, selected quality
+    run, attestation-or-fallback projection, and workflow provenance.
+15. **`[ADOPTED AD-15]` Release-to-verifier handoff, attempt truth, and durable evidence.** Every
+    authenticated Release run uploads exactly one `hexalith.release-verification-handoff.v3` artifact
+    under `if: always()`, or the narrowly valid deferred sentinel when no CI handoff was authenticated.
+    It preserves the original candidate, quality run, CI handoff, policy, publication-candidate
+    coordinates, release state, denial reason, final manifest v4, attestation/fallback, authorized asset
+    inventory, and Release evaluator. The post-release verifier independently authenticates the CI and
+    Release artifacts and its own pinned `post_release` closure; it never substitutes later branch code
+    or candidate identity. `frontcomposer.release-ledger-record.v2` assigns exactly one fail-closed
+    disposition per attempt, appends rather than replaces observations, and never permits a later green
+    observation or owner sign-off to erase an incident. Incomplete publication is preserved through the
+    separately authorized incident-recovery path and immutable reserved-namespace evidence Release.
+16. **`[ADOPTED AD-16]` Owner-accepted Builds lineage.** The 2026-08-08 owner-accepted revision
+    `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a` roots the accepted BUILD-REL-1 lineage; it is a
+    predecessor, not evidence that the split reusable exists. CI and Release pins may differ but must be
+    in that lineage and present in the active policy through delayed activation. A new immutable Builds
+    revision implementing AD-19 must be accepted into the lineage before FrontComposer selects it. No
+    integration, completion claim, release eligibility, or local contingency exists outside this rule.
+17. **`[ADOPTED AD-17]` Manifest v4 provenance.** Manifest v4 binds the complete dependency graph,
+    active policy, authenticated CI handoff hash and run, selected quality run, exact Release
+    caller/reusable/builds-execution coordinate, and byte-identical attestation-or-fallback projection.
+    Its definition digest binds CI and Release evaluator provenance while keeping quality as denial-only
+    evidence and actor/approval state in the ledger.
+18. **`[ADOPTED AD-18]` Least privilege and run-bound recovery.** Candidate-controlled code, graph
+    gates, and the builder have no environment, publication secret, OIDC/attestation permission, or
+    write scope. Only candidate-free pinned owner code in the protected publisher can hold product
+    publication authority. The fallback is valid only for an explicitly unsupported attestation
+    capability and one authenticated Release run/attempt; expiry, retry, candidate, CI, policy,
+    workflow, graph, or package-set drift invalidates it. Incident recovery is a separate protected,
+    candidate-free, reserved-namespace evidence writer with no product-publication credential.
+19. **`[ADOPTED AD-19]` Split publication and implementation gate.** `split-publication-v1` contains
+    exactly one secretless `build-publication-candidate` role and one protected candidate-free
+    `publish-publication-candidate` role in the selected immutable reusable. The builder produces the
+    closed `hexalith.publication-candidate.v1` archive and can only deny early. The publisher
+    authenticates every byte as data, mints/verifies attestation or validates the run-bound fallback,
+    prepares and seals manifest v4, completes offline/live classification, and alone may publish. The
+    GOV-1 split implementation gate is the exact canonical conformance packet, authenticated review,
+    and approval-projection protocol in the spine; all required register rows must be closed and any
+    stale/mixed/unavailable evidence or unprotected history fails the gate.
+
+## Unresolved Owner Decisions
+
+- Product Owner and Release Owner acceptance of AD-19, the production-release halt, and the current
+  no-exception posture remains open under PRD D-16/G-8.
+- Release Owner or repository-administrator action to set `HEXALITH_RELEASE_PUBLISH_ENABLED` to literal
+  `false` and preserve an authenticated API observation remains open. The value is deny-only.
+- Hexalith.Builds owner and Release Owner acceptance of the immutable split-reusable successor entering
+  AD-16 lineage remains open.
+- Product Owner and Release Owner approval of a measurable incident acknowledgement/containment target
+  and the `docs/release-incident-response.md` runbook remains open.
+- Release Owner confirmation of the no-bypass protected-main ruleset required by the conformance and
+  ledger approval protocols remains open.
+- No bounded risk exception is authorized. Any future exception requires a separate dated Product
+  Owner + Release Owner + Architect decision with scope, expiry, evidence, compensating controls, and a
+  revocation trigger.
 
 ## Consequences
 
@@ -174,13 +203,19 @@ does not, by itself, state whether a catalog satisfies a consumer contract.
 - CI gains targeted graph-diff and affected-module cost only when pointers change.
 - Trust/profile/command expansion takes two changes: land reviewed inactive policy, then use it from a
   later base revision.
-- Publication stays frozen until release is wired to the exact CI-tested commit and immutable reusable
-  workflow provenance.
+- Production publication remains halted until the split reusable, owner decisions, incident runbook,
+  and GOV-1 split implementation gate close. `HEXALITH_RELEASE_PUBLISH_ENABLED=false` is the required
+  deny-only emergency stop during the halt and can never authorize publication.
 - Literal hashes prove identity only; the immutable base/before policy is the independent authorization
   root for CI, Release, and post-release static evaluator closures.
 - Post-release verification remains bound to the original CI candidate across both workflow hops and
   records failed/partial attempts instead of treating an absent default-branch tag as a no-op.
-- BUILD-REL-1 issue 17's accepted immutable revision is a GOV-1 completion/unfreeze prerequisite.
+- Candidate construction and protected publication are distinct roles; builder output cannot become a
+  final seal, classification, authorization, or executable publisher input.
+- New publications use release-verification handoff v3 and manifest v4. Run-bound fallback evidence,
+  append-only attempt observations, and immutable incident preservation remain part of the contract.
+- BUILD-REL-1 issue 17's owner-accepted revision `a8a50859` roots the AD-16 lineage; every CI/release
+  pin must lie in it.
 - Deeper historical back-references are deliberately excluded from v1; a transitive schema must first
   resolve legacy identities, traversal budgets, unresolved-edge policy, and migration fixtures.
 - BUILD-CAT-1 is external coordination and does not authorize editing `references/Hexalith.Builds`
@@ -207,6 +242,14 @@ does not, by itself, state whether a catalog satisfies a consumer contract.
   the landed policy revision.
 - Release fails unless checkout, evidence, and publication all use the triggering successful CI head SHA
   and sealed immutable reusable-workflow identity.
-- Legacy manifests are diagnosable but never publishable or fallback-eligible.
+- Release fails unless the exact split topology keeps candidate execution secretless and makes the
+  candidate-free protected publisher the sole final classifier and publication actor.
+- Legacy manifests are diagnosable but never publishable, resealable, or fallback-eligible.
+- Fallback authorization fails on any run-attempt, candidate, policy, graph, workflow, package-set, or
+  expiry mismatch and cannot carry across a retry.
+- Every attempt maps to one closed ledger disposition; incident observations are append-only and
+  incomplete publication is durably preserved before retry.
+- The GOV-1 split implementation gate fails on an open nonconformance row, stale spine hash, mixed or
+  unavailable evidence, unprotected/direct-push history, or missing authenticated approval projection.
 - Pre- and post-publication verification bind the same sealed graph.
 - No recursive submodule initialization command is introduced.

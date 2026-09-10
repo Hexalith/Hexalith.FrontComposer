@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GOV-1 Architecture Spine — Validation Report — 2026-09-09</title>
+<style>
+:root {
+    --ink: #17202a;
+    --muted: #5d6773;
+    --line: #d7dde4;
+    --soft: #f6f8fa;
+    --critical: #8b0000;
+    --high: #d9480f;
+    --medium: #a96800;
+    --low: #66717d;
+    --pass: #19743b;
+    --fail: #bd2727;
+    --warn: #f0b429;
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    color: var(--ink);
+    background: #fff;
+    font: 14.5px/1.48 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+main { max-width: 1180px; margin: 0 auto; padding: 28px 30px 64px; }
+h1 { margin: 0 0 4px; font-size: 27px; }
+h2 { margin: 34px 0 12px; border-bottom: 1px solid var(--line); padding-bottom: 6px; font-size: 20px; }
+h3 { margin: 22px 0 8px; font-size: 16px; }
+p { margin: 8px 0; }
+a { color: #0969da; text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { background: var(--soft); border-radius: 4px; padding: 1px 4px; font: .92em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.small { color: var(--muted); font-size: 12.5px; }
+.meta { margin: 15px 0; padding: 13px 16px; border: 1px solid var(--line); border-radius: 9px; background: var(--soft); }
+.meta dl { display: grid; grid-template-columns: 160px 1fr; gap: 5px 12px; margin: 0; }
+.meta dt { color: var(--muted); font-weight: 650; }
+.meta dd { margin: 0; }
+.banner { margin: 18px 0; padding: 18px 22px; border-radius: 10px; color: #fff; background: linear-gradient(120deg, #9f1d1d, #c83333); }
+.banner strong { display: block; font-size: 29px; letter-spacing: .4px; }
+.banner p { margin: 6px 0 0; color: #fff; }
+.axis { display: grid; grid-template-columns: repeat(auto-fit, minmax(245px, 1fr)); gap: 12px; margin: 14px 0; }
+.axis article { padding: 13px 15px; border: 1px solid var(--line); border-radius: 9px; background: #fff; }
+.axis h3 { margin: 0 0 7px; }
+.pill { display: inline-block; border-radius: 999px; padding: 2px 8px; color: #fff; font-size: 11.5px; font-weight: 750; white-space: nowrap; }
+.pill.pass { background: var(--pass); }
+.pill.fail { background: var(--fail); }
+.pill.warn { color: #24292f; background: var(--warn); }
+.pill.critical { background: var(--critical); }
+.pill.high { background: var(--high); }
+.pill.medium { background: var(--medium); }
+.pill.low { background: var(--low); }
+table { width: 100%; margin: 10px 0; border-collapse: collapse; font-size: 13.3px; }
+th, td { padding: 7px 8px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { background: var(--soft); font-weight: 650; }
+tbody tr:nth-child(even) { background: #fbfcfd; }
+.finding { margin: 11px 0; padding: 12px 14px; border: 1px solid var(--line); border-left: 5px solid var(--high); border-radius: 8px; }
+.finding.critical { border-left-color: var(--critical); background: #fff8f8; }
+.finding h4 { margin: 0 0 5px; font-size: 14.5px; }
+.finding p { margin: 5px 0; }
+.action { color: #333; }
+details { margin: 8px 0; border: 1px solid var(--line); border-radius: 8px; }
+summary { cursor: pointer; padding: 10px 13px; font-weight: 650; background: var(--soft); }
+details > div { padding: 4px 15px 12px; }
+ul, ol { margin: 7px 0; padding-left: 23px; }
+li { margin: 4px 0; }
+.note { margin: 12px 0; padding: 11px 14px; border: 1px solid #e9c46a; border-radius: 8px; background: #fff9e8; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 13px; }
+@media print {
+    body { font-size: 11.5px; }
+    main { max-width: none; padding: 0; }
+    details > div { display: block; }
+    .banner, .pill { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    .finding { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<main>
+<h1>Reviewer Gate — Consolidated Validation Report</h1>
+<p class="small">GOV-1 Architecture Spine · <code>bmad-architecture</code> VALIDATE · 2026-09-09</p>
+
+<section class="meta">
+<dl>
+<dt>Spine</dt><dd><code>ARCHITECTURE-SPINE.md</code> — GOV-1 dependency provenance; 18 ADs; <code>status: final</code>; <code>updated: 2026-09-08</code></dd>
+<dt>Altitude</dt><dd>Epic — GOV-1</dd>
+<dt>Gate</dt><dd>Deterministic lint + rubric + current-fit + adversarial + implementation-drift + security/trust-boundary</dd>
+<dt>Source SHA-256</dt><dd><code>20efd2722bb0befd6a5ecb8362045b54c2bfc7cead15bf0906cd5009465f40a2</code></dd>
+<dt>Markdown</dt><dd><a href="validation-report-2026-09-09.md">validation-report-2026-09-09.md</a></dd>
+</dl>
+</section>
+
+<section class="banner">
+<strong>GATE VERDICT: FAIL</strong>
+<p>The graph core is clean and strong. The release half has a Critical privilege-boundary contradiction and four merged High convergence gaps; implementation separately fails the contract.</p>
+<p class="small" style="color:#ffe3e3">Raw reviewer output before deduplication: 3 Critical · 12 High · 12 Medium · 8 Low.</p>
+</section>
+
+<div class="axis">
+<article><h3>Mechanics <span class="pill pass">PASS</span></h3><p><code>lint_spine.py</code> returned <code>ok: true</code> with 0 findings.</p></article>
+<article><h3>Spine convergence <span class="pill fail">FAIL</span></h3><p><b>1 Critical · 4 merged High.</b> Privilege separation, canonical bytes, governed-attempt classification, ledger semantics, and post-release helper identity.</p></article>
+<article><h3>Implementation <span class="pill fail">FAIL</span></h3><p><b>1 Critical · 4 merged High.</b> Existing register: 27 active, 3 advisory/deferred, 0 resolved; two present gaps are unregistered.</p></article>
+</div>
+
+<h2>Lens scoreboard</h2>
+<table>
+<thead><tr><th>Lens</th><th>Verdict</th><th>C</th><th>H</th><th>M</th><th>L</th><th>Review</th></tr></thead>
+<tbody>
+<tr><td>Deterministic lint</td><td><span class="pill pass">PASS</span></td><td>0</td><td>0</td><td>0</td><td>0</td><td><code>lint_spine.py</code></td></tr>
+<tr><td>Rubric walker</td><td><span class="pill warn">PASS WITH FINDINGS</span></td><td>0</td><td>0</td><td>3</td><td>5</td><td><a href="reviews/review-rubric-validate-2026-09-09.md">rubric</a></td></tr>
+<tr><td>Current fit</td><td><span class="pill fail">FAIL</span></td><td>1</td><td>4</td><td>2</td><td>1</td><td><a href="reviews/review-current-fit-validate-2026-09-09.md">current fit</a></td></tr>
+<tr><td>Adversarial divergence</td><td><span class="pill fail">FAIL</span></td><td>0</td><td>3</td><td>3</td><td>0</td><td><a href="reviews/review-adversarial-validate-2026-09-09.md">adversarial</a></td></tr>
+<tr><td>Implementation drift</td><td><span class="pill fail">SPINE PWF / IMPL FAIL</span></td><td>1</td><td>3</td><td>3</td><td>2</td><td><a href="reviews/review-code-drift-validate-2026-09-09.md">code drift</a></td></tr>
+<tr><td>Security / trust boundary</td><td><span class="pill fail">FAIL</span></td><td>1</td><td>2</td><td>1</td><td>0</td><td><a href="reviews/review-security-validate-2026-09-09.md">security</a></td></tr>
+</tbody>
+</table>
+
+<h2>Architecture contract — Critical and High</h2>
+
+<article class="finding critical">
+<h4><span class="pill critical">Critical</span> A1 · Candidate code runs with publication authority <span class="small">SEC-VAL-01 · AD-13/18</span></h4>
+<p>AD-18 promises that write-scoped jobs do not consume candidate code, but imposes no build/publish privilege split. The pinned reusable checks out and executes candidate restore/build, caller shell, and Semantic Release while holding GitHub write scopes, OIDC/attestation authority, NuGet credentials, and signing material.</p>
+<p class="action"><b>Disposition:</b> discuss, then require a secretless/read-only builder and a separate protected publisher/signer that treats authenticated packages as data and never executes candidate source. Amend AD-13, AD-17, and AD-18 together.</p>
+</article>
+
+<article class="finding"><h4><span class="pill high">High</span> A2 · Governed publication attempt is undefined <span class="small">ADV-01 · AD-15/16/18</span></h4><p>Legacy and governed inner jobs can lead two literal verifiers to disagree about whether partial-publication inspection is mandatory.</p><p class="action"><b>Disposition:</b> pin the authenticated job topology and a total governed-attempt predicate independent of one inner job name.</p></article>
+
+<article class="finding"><h4><span class="pill high">High</span> A3 · Canonical JSON escape bytes are not unique <span class="small">ADV-02 · AD-5/9/12/14/17</span></h4><p><code>\&quot;</code> and <code>\u0022</code> are both legal readings for an accepted quote, yet hash differently across every graph, closure, fallback, provenance, and seal digest.</p><p class="action"><b>Disposition:</b> bind one exact encoder contract or every escape form; add cross-language golden vectors for ambiguous characters.</p></article>
+
+<article class="finding"><h4><span class="pill high">High</span> A4 · Ledger member list has no closed state machine <span class="small">ADV-03 / RW-03 · AD-15/18</span></h4><p>Disposition/incident vocabularies, field types, immutable Release-attempt key, rerun policy, and REL-AI-1 projection are undefined, so incident records can diverge or be relabelled green.</p><p class="action"><b>Disposition:</b> define closed types/enums, a total classifier mapping, append-only rerun semantics, and immutable attempt identity.</p></article>
+
+<article class="finding"><h4><span class="pill high">High</span> A5 · Later default-branch code can decide post-release evidence <span class="small">SEC-VAL-02 · AD-12/15</span></h4><p>The post-release workflow runs ambient default-branch helpers before checking out the released candidate, while those helper bytes are excluded from the trust fingerprints.</p><p class="action"><b>Disposition:</b> include every executable helper in the <code>post_release</code> evaluator closure or use an exact pre-authorized helper tree.</p></article>
+
+<h2>Implementation — Critical and High</h2>
+
+<article class="finding critical"><h4><span class="pill critical">Critical</span> I1 · Fallback drift invalidation is bypassed <span class="small">CF-01 / ICD-01 · NC-1/2/3/24</span></h4><p>The classifier replaces the Release Owner approval digest with the live digest before comparison; the workflow omits the owner value and fingerprinting uses working-tree bytes plus a missing-file sentinel.</p><p class="action"><b>Disposition:</b> fix before any fallback release—remove rebinding, hash exact candidate blobs, require the immutable input, and add production-path drift fixtures.</p></article>
+
+<article class="finding"><h4><span class="pill high">High</span> I2 · Caller stays on legacy reusable mode <span class="small">CF-02 / SEC-VAL-03 · unregistered</span></h4><p>The caller explicitly leaves <code>governed-release</code> false and omits governed candidate/evidence inputs, while the spine claims the inherited BUILD-REL-1 mode.</p><p class="action"><b>Disposition:</b> resolve A1 first; then accept/pre-authorize the split-phase reusable and switch in a later governed change. Reserve <code>NC-32</code>.</p></article>
+
+<article class="finding"><h4><span class="pill high">High</span> I3 · Quality and closure gates are not in release authority <span class="small">CF-03 / ICD-04 · NC-18/20–23/28/30</span></h4><p>Release authenticates only <code>ci.yml</code>; trust-bearing assertions remain outside that closure; policy-row closure, checkout equality, and lineage checks are incomplete.</p><p class="action"><b>Disposition:</b> carry the exact quality run, move trust checks into CI authority, and implement the missing closure/lineage assertions.</p></article>
+
+<article class="finding"><h4><span class="pill high">High</span> I4 · Evaluator authorization is soft or absent <span class="small">CF-04 / ICD-02 · NC-4–9</span></h4><p>CI/Release can soft-defer unauthorized evaluators; post-release rows are malformed/stale/unenforced; the embedded CI copy is trusted without independent download.</p><p class="action"><b>Disposition:</b> fix helpers and policy in AD-12 two-phase order, then enforce exact post-release authorization and CI artifact authentication.</p></article>
+
+<article class="finding"><h4><span class="pill high">High</span> I5 · Handoff and ledger implementation predates v2 <span class="small">CF-05 / ICD-03 · NC-10/12/19/26/29</span></h4><p>Publication-start/gate state, evaluator, actors, environment protection, authenticated run projections, and one typed ledger writer are absent.</p><p class="action"><b>Disposition:</b> implement only after A2/A4 close the contract.</p></article>
+
+<h2>Medium / Low tail</h2>
+<div class="two">
+<details open><summary>Architecture interoperability</summary><div><ul>
+<li><b>RW-01 / ADV-04 (Medium):</b> <code>quality_run</code> has no authenticated carrier to the ledger.</li>
+<li><b>RW-02 (Medium):</b> run uniqueness differs between “all completed” and “successful completed”.</li>
+<li><b>ADV-05 (Medium):</b> no total projection for <code>release_run.conclusion</code>.</li>
+<li><b>ADV-06 (Medium):</b> historical/recovery verifier execution-SHA scope is ambiguous.</li>
+<li><b>SEC-VAL-04 (Medium):</b> incident containment has no bound owner, freeze action, or response target.</li>
+</ul></div></details>
+<details open><summary>Architecture hygiene</summary><div><ul>
+<li><b>RW-04 (Low):</b> close the <code>environment_protection</code> nested schema and observation time.</li>
+<li><b>RW-05 (Low):</b> name the embedded CI handoff copy and reject duplicate normative matches.</li>
+<li><b>RW-06 (Low):</b> select the Release row in the Builds execution-identity convention.</li>
+<li><b>RW-07 (Low):</b> add the missing inherited no-runtime-change frontmatter binding.</li>
+<li><b>RW-08 (Low):</b> declared story/G2 sources still carry superseded v2/freeze/pending wording.</li>
+<li><b>SCD-01/02 (Low):</b> correct the module dependency diagram and the fixture-directory seed.</li>
+</ul></div></details>
+<details open><summary>Implementation and currency</summary><div><ul>
+<li><b>CF-06 / ICD-05 (Medium):</b> publish commands still accept manifest v2; source proof remains an alternate authority.</li>
+<li><b>CF-07 (Medium):</b> AD-16 lineage is not executable Governance.</li>
+<li><b>ICD-06 (Medium):</b> canonical digest, definition-list, and permission/environment fixtures are missing.</li>
+<li><b>ICD-07 (Medium, new):</b> verifier accepts duplicate asset names with differing hash/size. Reserve <code>NC-31</code>.</li>
+<li><b>CF-08 (Low):</b> local/pinned .NET SDK is 10.0.400; upstream 10.0.401 shipped 2026-09-08.</li>
+</ul></div></details>
+<details open><summary>Register reconciliation</summary><div><ul>
+<li><b>27 active:</b> NC-1–15, NC-18–26, NC-28–30.</li>
+<li><b>3 advisory/deferred:</b> NC-16 prune/retain; NC-17 dead cleanup; NC-27 accepted platform state.</li>
+<li><b>0 resolved.</b></li>
+<li><b>Unregistered:</b> NC-31 duplicate asset-name acceptance; NC-32 legacy-mode selection.</li>
+<li><b>Architecture-first:</b> add the post-release helper-identity implementation row after A5 defines the corrected contract.</li>
+</ul></div></details>
+</div>
+
+<h2>What remains sound</h2>
+<ul>
+<li>AD-1–AD-8 and AD-10: exact committed objects, closed identities/envelopes, depth 1+2, bounded failure, semantic/provenance separation, explicit revisions, and isolated acquisition.</li>
+<li>AD-9 text: immutable, run-bound fallback approval and fail-closed order; I1 is implementation drift.</li>
+<li>Dispatch is tied to live <code>main</code> and CI coordinates before protected work; live <code>production</code> requires a Release Owner and disallows admin bypass.</li>
+<li>Trust-bearing CI/Release references are 40-hex; handoff artifacts are run/attempt bound and use the immutable artifact API generation.</li>
+<li>Manifest v3 production/provenance is current; published assets are immutable/digested and NuGet artifacts are independently compared and repository-signature verified.</li>
+<li>Focused reviewer runs passed 180/180, 190/190, and 44/44 overlapping tests. These prove covered parser/contract behavior, not the missing controls.</li>
+</ul>
+
+<h2>Recommended update order</h2>
+<ol>
+<li>Resolve A1: split candidate build from privileged publication/signing.</li>
+<li>Amend the post-release contract as one unit: A2/A4/A5, <code>quality_run</code> transport, conclusion truth table, historical pin scope, and incident containment.</li>
+<li>Pin canonical bytes (A3) and add hostile/cross-language golden vectors.</li>
+<li>Add NC-31/NC-32 and the later helper-identity row; implement under AD-12 two-phase activation.</li>
+<li>Re-run the five-lens gate before returning to <code>status: final</code> or claiming publication-control conformance.</li>
+</ol>
+
+<div class="note"><b>Next action:</b> run <code>bmad-architecture UPDATE</code>, resume from <code>.memlog.md</code>, and keep AD-1…AD-18 stable. The Release Owner/Architect privilege-boundary decision is the first load-bearing choice.</div>
+
+</main>
+</body>
+</html>

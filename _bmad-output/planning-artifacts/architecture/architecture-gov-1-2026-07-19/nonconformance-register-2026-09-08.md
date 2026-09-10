@@ -1,0 +1,72 @@
+# GOV-1 Spine Update — Implementation Nonconformance Register (through 2026-09-09)
+
+Hand-off to the implementation backlog. Each row is a place where the code at HEAD `053b2008` does
+not honor the amended `ARCHITECTURE-SPINE.md` (AD ids stable). The spine is the authority; these are
+not spine defects. Detail and file:line evidence live in
+`reviews/review-code-drift-update-2026-09-08.md` (NC-1..NC-17) and the adversarial/security/rubric
+update reviews (AU/SU/RU ids). The finalized 2026-09-09 spine advances the target to handoff v3,
+manifest v4, the candidate-builder/protected-publisher split, run-bound fallback authorization, and
+durable incident recovery. No implementation status changed during source reconciliation. Suggested
+order follows the split closure bundles below rather than the legacy row order.
+
+| # | AD | Where | Code today | Spine requires | Size |
+| --- | --- | --- | --- | --- | --- |
+| NC-1 | AD-9 | `eng/release_evidence.py` `classify_release_payload(bind_live_fallback_digest=True)` | Rebinds `approved_against_fingerprints_sha256` to the live digest before comparing. | Compare the immutable Release Owner-recorded value; fail closed on inequality or absence; delete the rebind path. `fallback-digest` stays as the operator tool. | M |
+| NC-2 | AD-9, AD-12 | `.github/workflows/release.yml` prepare env; `eng/release_prepublish.py` classify argv | `vars.RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256` is never forwarded. | Forward it as a shape-validated `RELEASE_ATTESTATION_*` input; empty blocks. | S |
+| NC-3 | AD-9 | `tests/eng/test_release_evidence_v2.py` | Drift fixture exercises `fallback_complete` only. | Production-path fixture: valid digest, then graph/policy/workflow-definition mutation each yields `publish_authorized=false`; absent value blocks. | S |
+| NC-4 | AD-12, AD-13 | `.github/workflows/ci.yml` create-ci step | Exit 2 (no active-policy `ci` row) is treated as success. | Gate failure on push; never a soft deferral (DW-1795). | S |
+| NC-5 | AD-12, AD-15 | `.github/workflows/release.yml` create-release step | Exit 2 on an unpublished attempt exits 0 and writes only `.deferred.json`. | `.deferred.json` is reserved for "no authenticated CI handoff"; an unauthorized release evaluator is a gate failure that still uploads the artifact under `if: always()`. | S |
+| NC-6 | AD-15 | `.github/workflows/release-evidence.yml` verify step | `verify-release` without `--root`, no policy reload, no `post_release` authorization, no run-coordinate check. | Reload the exact base policy, `draft-evaluator --stage post_release`, `require_evaluator_authorized`, compare `release_run` to API coordinates and record both conclusions. | M |
+| NC-7 | AD-12, AD-15 | `eng/dependency-graph-policy.json` `evaluator_authorizations.post_release` | Five rows name an unreachable `domain-release.yml` reusable and none matches the HEAD caller blob. | Rows with `reusable: null`, caller-reachable closure only, current caller blob; prune stale rows via the two-phase pattern. | S |
+| NC-8 | AD-12, AD-13 | `eng/dependency_handoff.py`, `eng/workflow_source_closure.py` | `reusable` must be an object; `require_reusable_edge=False` adds the reusable as an extra root; sort key dereferences `reusable.*`. | Nullable `reusable` for `post_release` only; closures contain only caller-reachable sources; rows sorted by `(caller.repository, caller.workflow_path, caller.blob_sha256, closure_digest)`, `caller.blob_sha256` unique per stage (AU-6, SU-9). | M |
+| NC-9 | AD-15 | `.github/workflows/release-evidence.yml` download steps | Verifies the CI-handoff copy embedded in the Release artifact only. | Independently download the CI artifact; its raw SHA-256 must equal `ci_handoff.evidence_sha256` and the copy's hash; the copy never authenticates (AU-5). | M |
+| NC-10 | AD-15, AD-18 | `.github/workflows/release-evidence.yml` ledger steps; `eng/release_disposition.py` | Two ad-hoc `jq` shapes, string run ids, ignores AD-15 verification, no actors. | One closed `frontcomposer.release-ledger-record.v2` shape with integer coordinates, `evaluator`, `actors`, `environment_protection`, `publish_gate_variable`; `compliant-candidate` only when AD-15 verified; raw SHA-256 recorded (AU-7, AU-9, SU-4). | M |
+| NC-11 | AD-13 | `eng/release_evidence.py` `--source-proof`; `eng/release_prepublish.py` | `hexalith.dependency-release-source.v1` may act as candidate/graph/policy authority. | Remove the source-proof authority path from prepare/verify; keep `create-source`/`verify-source` as CI diagnostics. | S |
+| NC-12 | AD-18, AD-15 | `.github/workflows/release-evidence.yml`; `eng/release_disposition.py` | No actor, triggering actor, or environment-approval evidence. | Post-release verifier records `actors` and `environment_protection` in the ledger record from the run, deployment-review, and `environments/production` APIs (read-only). Sealed manifest and AD-15 handoff stay closed. | S |
+| NC-13 | AD-18 | `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs` | Static assertions cover trigger, environment, secret name, artifact names only. | Assert from the caller blobs and the reusable blob at `reusable.commit`: no `pull_request_target`; workflow-level `contents: read`; no `actions: write`; caller write scopes exactly `{contents, id-token, attestations, issues, pull-requests}`; write-scoped reusable jobs bind `environment: ${{ inputs.environment-name }}`; caller passes `production`; secretless governance/build jobs; `if-no-files-found: error` on uploads (AU-8). | S |
+| NC-14 | AD-5 | `tests/eng/test_dependency_graph.py` | Determinism only, no golden literal. | Golden canonical-bytes and `graph_digest` literal fixture pinning the escape set. | S |
+| NC-15 | AD-12 | Governance / `tests/eng/test_release_evidence_v2.py` | Definition-file lists not pinned member-by-member. | Pin both lists' membership and `fallback_invalidation_fingerprints()` keys == list ∪ `{helper_version}`. | S |
+| NC-16 | AD-16, AD-12 | `eng/dependency-graph-policy.json` rows with `reusable.commit == 0a3508b3…` | Pre-authorized closures for a Builds commit never pinned. | Release Owner decision: prune, or record as an unused lineage member. | S |
+| NC-17 | AD-12 | `.github/workflows/ci.yml` zero-base branch | Dead `policy_commit="$CANDIDATE"` branch. | Remove; the candidate policy never selects the evaluator. | S |
+| NC-18 | AD-13 | `eng/release_contract.py select-ci`; `.github/workflows/release.yml` | Selects one successful `ci.yml` push run only. | Additionally require exactly one completed successful push run of `quality.yml` with the same head; fail closed otherwise (AU-2). | S |
+| NC-28 | AD-12, AD-17, AD-18 | `.github/workflows/ci.yml` `dependency-governance` job; `quality.yml` Gate 2b | Trust-bearing Governance assertions, including the legacy manifest-shape pins, run only in `quality.yml`, outside the authorized closure. | Execute the trust assertions inside `ci.yml` `dependency-governance`, pin manifest v4 and the AD-18 split boundary there, and keep `quality.yml` as a deny-only precondition recorded as `quality_run`. | M |
+| NC-29 | AD-15 | `.github/workflows/release.yml` emit step; `eng/dependency_handoff.py`; `eng/release_disposition.py` | `published` is derived from job success and the verifier does not inspect GitHub/NuGet when reported false. | Handoff v3 carries the owner-controlled `publication_started` marker and `publish_gate_variable`; the verifier reconciles authenticated job state, marker, and external APIs for every started attempt, mapping any mismatch or incomplete side effect to `partial-publish-incident`. | M |
+| NC-30 | AD-16 | Governance | Lineage predicate not verified anywhere. | Governance walks the first-parent policy-blob history on `main` and verifies every pinned Builds commit satisfies the AD-16 lineage predicate back to `a8a50859` (AU2-8). | M |
+| NC-19 | AD-15, AD-19 | `eng/dependency_handoff.py` release-handoff producer/verifier; `release.yml` emitter | Handoff v1 lacks selected quality-run, publication-candidate, prepublication-denial, manifest-v4/attestation projection, exact split topology, and correct `publication_started` semantics. | Migrate atomically to `hexalith.release-verification-handoff.v3`; authenticate the independent CI artifact and publication-candidate; derive `publication_started` from the owner-controlled pre-side-effect marker; require exactly one split builder/publisher job; map malformed/missing topology to the total AD-15 classifier. | L |
+| NC-20 | AD-12, AD-13 | `.github/workflows/ci.yml` dependency-governance job (PR path); `eng/workflow_source_closure.py` | Closure never recomputed outside unit tests; a hand-edited `actions` row passes. | PR gate recomputes each added/changed evaluator row's closure from exact blobs and fails closed on `actions`/`closure_digest` difference (RU-4). | M |
+| NC-21 | AD-13 | `eng/workflow_source_closure.py` checkout-injection regex | Counts only literal Builds checkouts; a second checkout, other repository, mutable ref, or `run:` write into `.hexalith/builds-execution` is not rejected. | Any other step writing into that path fails closed; match over raw blob text, comment lines included (SU-2, AU-16). | S |
+| NC-22 | AD-13 | `eng/release_contract.py builds` | Asserts `uses:@sha` and `builds-execution-sha:` only. | Assert every `.hexalith/builds-execution` checkout `ref:` in `release.yml` before protected credentials; Governance asserts `release-evidence.yml` (AU-10). | S |
+| NC-23 | Consistency | `eng/release_contract.py`, `eng/release_evidence.py` catalog lookups | Catalog identity resolved by literal path `references/Hexalith.Builds`. | Resolve the unique depth-1 edge whose `repository` equals the Builds identity from the graph (AU-11). | S |
+| NC-24 | AD-9 | `eng/release_evidence.py` `fallback_invalidation_fingerprints` | Hashes working-tree bytes; substitutes `sha256("missing")`. | Hash the exact blob at the candidate commit; missing blob fails closed, no sentinel (AU-12). | S |
+| NC-25 | AD-14, AD-17 | `eng/release_evidence.py` publication-oriented commands | Accept legacy manifest schemas beyond audit-only paths. | `prepare-manifest`, `classify-release`, `seal-manifest`, `fallback-digest`, `verify-prepared`, and `publish` accept v4 only; v2/v3 remain byte-preserved audit/verification inputs and are never resealed, upgraded, or fallback-eligible. | M |
+| NC-26 | AD-15 | `eng/release_disposition.py classify` | Falls back to the run `head_sha` as candidate for a governed attempt lacking a handoff candidate. | Run `head_sha` authenticates the coordinate and names the candidate of a non-governed disposition only; a governed attempt without a handoff candidate is an incident (CU-3). | S |
+| NC-27 | Deferred | Repository settings | `main` unprotected, no `CODEOWNERS`, non-admin write collaborator. | Release Owner action: `main` ruleset without bypass actors requiring PR + CI/Governance checks + code-owner review of policy, `eng/*.py`, and the three workflows; protection state recorded in the ledger (SU-1). | S |
+| NC-31 | AD-15, AD-19 | Release-handoff/descriptor asset validation | Duplicate destination asset names can be accepted when hash/size differ. | Reject duplicate non-null `asset_name`/asset names before any side effect and add hostile producer/verifier fixtures. | S |
+| NC-32 | AD-13, AD-16, AD-18, AD-19 | FrontComposer Release caller and pinned Builds reusable | Caller selects a legacy publication-capable path; the prior governed job also combines candidate execution with protected publication authority. | Obtain and pre-authorize an owner-accepted `split-publication-v1` revision, then switch in a later governed change to exactly one secretless builder and one protected candidate-free publisher. Do not flip the legacy mode. | L |
+| NC-33 | AD-12, AD-15, AD-18 | Post-release and incident-recovery evaluator execution | Verification/ledger decisions can execute ambient or candidate helper bytes rather than only the exact authorized closure. | Execute only pinned `post_release`/`incident_recovery` closure bytes, record that evaluator separately from historical Release provenance, and reject ambient/default-branch or candidate helpers before any ledger/recovery decision. | M |
+
+## GOV-1 Split Closure Bundles
+
+Each row is independently required by the spine's GOV-1 split implementation gate. A bundle closes
+only with authenticated evidence in the canonical conformance packet; planning-source agreement or a
+green legacy run is not closure.
+
+| Bundle | Required closure | Register coverage | Status |
+| --- | --- | --- | --- |
+| SCB-1 | Owner-accepted split reusable and AD-12 delayed activation | NC-16, NC-20, NC-30, NC-32 | Open |
+| SCB-2 | FrontComposer caller switch and exact one-builder/one-publisher topology | NC-19, NC-22, NC-29, NC-32 | Open |
+| SCB-3 | Remove `production`, secrets, OIDC/attestation permissions, and write scopes from candidate/build jobs | NC-13, NC-32 | Open |
+| SCB-4 | Produce/authenticate `hexalith.publication-candidate.v1`, enforce AD-7 archive bounds, and prove hostile candidates cannot access credentials or publish | NC-19, NC-29, NC-32 | Open |
+| SCB-5 | Migrate to handoff v3, the total attempt classifier, independent CI authentication, and one typed append-only ledger producer | NC-5, NC-6, NC-9, NC-10, NC-12, NC-19, NC-26, NC-29 | Open |
+| SCB-6 | Candidate-free final attestation/fallback, manifest-v4 sealing/classification, and publication | NC-1, NC-2, NC-3, NC-11, NC-15, NC-24, NC-25, NC-32 | Open |
+| SCB-7 | Execute post-release and incident-recovery decisions only from pinned candidate-free closures and preserve immutable incident evidence | NC-6, NC-7, NC-8, NC-27, NC-33 | Open |
+| SCB-8 | Reject duplicate destination asset names across descriptor and durable Release assets | NC-31 | Open |
+
+## Companion Reconciliation State
+
+- Reconciled 2026-09-09: parent `architecture.md`, FC-DEP-1, the GOV-1 story, the G2 request, PRD
+  projection/addendum, and `epics.md` now project AD-19, handoff v3, manifest v4, run-bound fallback,
+  append-only attempt evidence, incident recovery, and the split implementation gate.
+- Still outside this documentation-only update: `sprint-status.yaml`, `deferred-work.md`, all source,
+  policy, test, workflow, and GitHub-settings changes. Their stale planning/status text or implementation
+  behavior does not weaken this register or close a bundle.
