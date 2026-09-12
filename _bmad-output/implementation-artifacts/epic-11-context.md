@@ -1,4 +1,4 @@
-# Epic 11 Context: Release Readiness Remediation Program
+# Epic 11 Context: Release Readiness Remediation Program (post-MVP quality hardening)
 
 <!-- Compiled from planning artifacts. Edit freely. Regenerate with compile-epic-context if planning docs change. -->
 
@@ -43,6 +43,14 @@ Epic 11 closes the highest release-readiness blind spots left by the architectur
 - Story 11.22: Recommended analyzer test and sample burn-down
 - Story 11.23: Recommended analyzer repository activation
 - Story 11.24: Adopt the Owner-Approved EventStore Runtime Identity
+- Story 11.25: Current EventStore Release Identity and Evidence
+- Story 11.26: Analyzer Identifier Inventory Reconciliation
+- Story 11.27: Generated Command Route Acceptance Locator
+- Story 11.28: FC-NIP Semantic Fixture Alignment
+- Story 11.29: Fallback Refresh and View Registration Correctness
+- Story 11.30: Testing and MCP Boundary Hardening
+- Story 11.31: Canonical Correlation Pseudonymization
+- Story 11.32: Epic 11 Artifact Integrity Enforcement
 
 ## Requirements & Constraints
 
@@ -50,13 +58,21 @@ Work is organized into runtime reliability/security, adopter testing/route integ
 
 Security and support evidence must fail closed and exclude raw tokens, secrets, payloads, stack traces, unrestricted PII, and unbounded local paths. Runtime blind spots require durable regression coverage, including cross-request lifetimes, unlinked stylesheets, dead scoped CSS, and parameter-splat surfaces. Analyzer remediation must use built-in analyzers only, keep warnings-as-errors unchanged, avoid broad category or repository-wide suppressions, and retain only narrow, owned, reviewable exceptions. Mechanical cleanup must preserve behavior and public API shape.
 
+The remediation extension must restore the analyzer, generated-route, and FC-NIP documentation gates without weakening their assertions or reviving obsolete planning text. Runtime hardening must detect material fallback and view-scope changes, keep Testing and MCP identifiers canonical and evidence formatting non-fatal, use one redaction-safe correlation pseudonym across log families, and make story/sprint evidence contradictions fail closed.
+
 ## Technical Decisions
 
 Generated commands use `/commands/{BoundedContext}/{CommandTypeName}`; module tabs use `/{module}/{tab}`, with projection flyouts remaining secondary navigation. The `Contracts` kernel stays netstandard2.0-clean and UI-neutral, while net10-only `Contracts.UI` owns Blazor/Fluent rendering contracts; SourceTools continues to depend only on the kernel. Shell routing owns pure route and label derivation, Infrastructure owns connection and polling workers, and telemetry remains cross-cutting.
 
 MCP lifecycle state spans requests through a singleton store behind a scoped facade without captive scoped dependencies. EventStore authentication supports interactive circuits, token expiry, and sign-out eviction; projection realtime must recover after the default reconnect ladder and dispose concurrent work safely. Logging ownership is exclusive: security/fail-closed sites first, command-lifecycle/projection/polling hot paths second, and residual warning-or-higher sites last. Recommended analyzer adoption is staged through policy/exception classification, product/generator cleanup, test/sample cleanup, and repository-wide activation.
 
-EventStore runtime adoption is an identity-alignment change, not a behavioral migration: source mode and package mode must use the same owner-approved runtime, package bytes must match the approved inventory, and provider verification must exercise the committed consumer pacts against that exact runtime. Existing FrontComposer adapters, rollback paths, topology, and container ownership remain unchanged.
+EventStore runtime adoption is an identity-alignment change, not a behavioral migration. Story 11.24
+and identity v1 are immutable historical authorization for `bb94d93e… / 3.91.1 / a8a50859…`; the
+2026-09-08 live capture at `059f6a89… / 3.103.0 / 35c3d1e5…` is prior compatibility evidence. The
+active release target is `059f6a89… / 3.103.0 / a32cb422…`. Story 11.25 creates a successor active
+record and recaptures provider-plus-AppHost evidence at that exact tuple. No semantic-compatibility
+exception or rollback is approved. Existing FrontComposer adapters, rollback paths, topology, and
+container ownership remain unchanged.
 
 ## UX & Interaction Patterns
 
@@ -64,4 +80,13 @@ Use Fluent UI Blazor v5 and Fluent 2 tokens, with WCAG 2.2 AA keyboard, focus, n
 
 ## Cross-Story Dependencies
 
-Story 11.0 and the signed-off information-architecture gate precede Story 11.7. Story 11.8 precedes Stories 11.11–11.14. Stories 11.17, 11.18, and 11.19 are nonimplementable decomposition parents; only their named children carry queue status. Logging children follow the security → hot-path → residual ordering. The analyzer program is strictly sequential—11.20 → 11.21 → 11.22 → 11.23—with separate Architecture/Product approval at each phase; 11.23 gates v1.0 publication. Story 11.24 remains blocked until EventStore records explicit runtime-migration authority and an approved source/package identity.
+Story 11.0 and the signed-off information-architecture gate precede Story 11.7. Story 11.8 precedes
+Stories 11.11–11.14. Stories 11.17, 11.18, and 11.19 are nonimplementable decomposition parents; only
+their named children carry queue status. Logging children follow the security → hot-path → residual
+ordering. The completed analyzer program was strictly sequential: 11.20 → 11.21 → 11.22 → 11.23.
+
+The approved retrospective-remediation order is 11.25; then 11.26–11.28; an Epic 11 acceptance
+checkpoint; 11.29–11.31; 11.32; then final Epic 11 acceptance. Stories within each three-story group
+may run in parallel. Story 11.32 runs after the runtime/evidence stories so its validator covers final
+artifacts. The first checkpoint is evidence-based and does not close `epic-11` while remediation
+stories remain open.

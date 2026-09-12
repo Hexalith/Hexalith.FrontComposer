@@ -339,24 +339,42 @@ This delivery architecture does not alter FrontComposer runtime, public product 
 
 ## Epic 11 Release Readiness Remediation Program
 
-Epic 11 traces to `_bmad-output/project-docs/architecture-quality-review-2026-07-04.md`. The review found no Critical findings, but it identified High and Medium issues in runtime blind spots and architecture boundaries. Planning is organized into four workstreams:
+Epic 11 traces to `_bmad-output/project-docs/architecture-quality-review-2026-07-04.md`. Stories
+11.0–11.9 and 11.11–11.24 are completed delivery history. The rejected 2026-09-10 epic acceptance and
+approved 2026-09-12 course correction add Stories 11.25–11.32 as a bounded remediation extension:
 
-- **Runtime reliability and security:** Stories 11.0–11.5 are done; 11.18a is in review.
-- **Adopter testing and route integrity:** Stories 11.6–11.7 are done and consume Epic 10 evidence
-  where referenced.
-- **Contracts and package boundary:** Story 11.8 and Stories 11.11–11.14 are done; they are retained as
-  decision/delivery history, not queue candidates.
-- **Maintainability and enforcement:** Stories 11.9, 11.15–11.16, and 11.17a are done;
-  11.17b–d, 11.18b–c, and 11.19a–d are in review. Stories 11.20–11.23 are sequential,
-  separately approval-gated backlog phases materialized by the approved Story 11.19d analyzer
-  decision; Story 11.23 is a v1.0 publication gate.
+- **Current release identity and immediate gates:** Story 11.25 resolves active EventStore identity;
+  Stories 11.26–11.28 repair analyzer, route-e2e, and FC-NIP documentation gates.
+- **Runtime and evidence hardening:** Stories 11.29–11.31 correct fallback/view registration,
+  Testing/MCP boundaries, and shared correlation pseudonymization.
+- **Artifact integrity:** Story 11.32 reconciles queue/story evidence and makes contradictions fail
+  closed.
+- **Acceptance:** rerun after 11.25–11.28, then rerun for final closure after 11.29–11.32.
 
 Stories 11.17, 11.18, and 11.19 are nonimplementable decomposition parents. Logging ownership follows
 security/fail-closed (11.18a), then command-lifecycle/projection/polling hot paths (11.18c), then
-residual Warning/Error/Critical sites (11.18b). The 2026-07-05 Story 11.8 sign-off approved the kernel
-split. Stories 11.11–11.13 implemented the Contracts.UI assembly, ownership relocation, and
-composed-query compatibility surface. Story 11.14 completed release inventory, package-validation,
-migration, and Release Owner documentation evidence.
+residual Warning/Error/Critical sites (11.18b). Only their materialized children carry implementable
+queue state; Story 11.32 enforces that invariant.
+
+### EventStore Active-Identity Invariant
+
+Story 11.24 and `_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v1.json`
+are immutable historical authorization for `bb94d93e… / 3.91.1 / a8a50859…`. The live 2026-09-08
+provider/AppHost capture at `059f6a89… / 3.103.0 / 35c3d1e5…` is immutable prior compatibility
+evidence. Neither record is projected onto a different Builds revision.
+
+The active release target selected by the 2026-09-12 course correction is EventStore source
+`059f6a8917bfab26b85775be464840a1610dfdeb`, package `3.103.0`, and Builds catalog
+`a32cb422749352cce8dec948aa3e78c8f00eb4cf`. Story 11.25 creates a successor active-identity record
+and captures one provider-plus-AppHost packet at exactly that tuple. A semantic-compatibility exception
+and rollback are not approved. The successor record may claim migration approval only after the
+EventStore maintainer, FrontComposer maintainer, and Release Owner sign, or after OI-18 first transfers
+the EventStore approval role through a dated Product and Architecture decision.
+
+Governance resolves the active identity from the successor record and compares it with candidate
+gitlinks/catalog contents. It fails closed on a missing record, tuple mismatch, stale evidence
+provenance, missing artifact hash, or absent required signature; historical SHAs are not embedded as
+unexplained current compatibility constants.
 
 ## Related Planning Artifacts
 
@@ -368,5 +386,6 @@ migration, and Release Owner documentation evidence.
 - `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-e11-contracts-kernel-split.md`
 - `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-rel-ai-1-prepublish-enforcement.md`
 - `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md`
 - `_bmad-output/contracts/fc-contracts-kernel-split-compatibility-plan-2026-07-05.md`
 - `_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md`

@@ -370,10 +370,10 @@ open-redirect/storage-key security surface, dead scoped-CSS remediated behind du
 visual-conformance guards, a genuinely fault-injectable Testing harness (the key Tenants-adoption
 unblock), a unified command/projection route contract (so palette command activation lands on a page
 that exists), a leaner Contracts kernel, and consolidated shell layering + convention alignment.
-Remediation-framed, but each story is justified by operator/adopter/security impact and organized into four coherent release workstreams.
+Remediation-framed, but each story is justified by operator/adopter/security impact and organized into bounded release workstreams.
 **Canonical FRs covered:** FR-7, FR-10, FR-12, FR-19, FR-22, FR-25, FR-28, FR-29 · **Introduces:** architecture-review-finding requirements H1–H12 / M-series · **no net-new user-facing FRs**
-**Delivery model:** four workstreams govern implementation and current state. Stories 11.17, 11.18, and 11.19 are nonimplementable decomposition parents; only their named children enter the queue. The approved Story 11.19d analyzer decision materialized sequential, separately approval-gated Stories 11.20–11.23, with Story 11.23 gating v1.0 publication. Epic 11 consumes completed Epic 10 evidence where referenced and does not reopen completed Epics 1–10.
-**Source of record:** `sprint-change-proposal-2026-07-04.md` (Correct Course, 2026-07-04), triggered by `_bmad-output/project-docs/architecture-quality-review-2026-07-04.md`. A Minor-scope quick-win fix batch was applied in-tree under the same proposal (PR #48).
+**Delivery model:** Stories 11.0–11.24 are completed history. Stories 11.17, 11.18, and 11.19 are nonimplementable decomposition parents; only their named children enter the queue. The approved 2026-09-12 retrospective-remediation extension adds Stories 11.25–11.32 in the order current identity, immediate gates, acceptance checkpoint, runtime/evidence hardening, artifact integrity, and final acceptance. Epic 11 consumes completed Epic 10 evidence where referenced and does not reopen completed Epics 1–10.
+**Source of record:** `sprint-change-proposal-2026-07-04.md` (Correct Course, 2026-07-04), amended by `sprint-change-proposal-2026-09-11.md` (approved 2026-09-12) after `_bmad-output/implementation-artifacts/epic-11-retro-2026-09-10.md` rejected acceptance. A Minor-scope quick-win fix batch was applied in-tree under the original proposal (PR #48).
 **Decisions (contract-confirmation DoD — tracked, owned, dated blocking gates):** **11.0** route-contract decision → **Architect + Product**, assigned 2026-07-05, resolved 2026-07-05 with `/commands/{BoundedContext}/{CommandTypeName}`; **11.8** Contracts kernel split decision and compatibility plan → **Architect + PM**, assigned 2026-07-04, resolved 2026-07-05 with the approved `Contracts` kernel + `Contracts.UI` target. Stories 11.11–11.14 are completed delivery records for that package-boundary change.
 
 > **Out of scope (fast-follow, not an epic):** `<AuditTimeline>` and `<ConsequencePreview>` rich
@@ -1645,8 +1645,9 @@ and punctuation-heavy string secret values.
 > decision records; Stories 11.11–11.14 are completed delivery records. Stories 11.17, 11.18, and
 > 11.19 are nonimplementable decomposition parents. Only their materialized children carry queue state.
 > Story 11.19d approved staged adoption of `AnalysisMode=Recommended` and materialized implementable
-> Stories 11.20–11.23 as sequential, separately approval-gated backlog phases; Story 11.23 is a v1.0
-> publication gate.
+> Stories 11.20–11.23 as sequential, separately approval-gated phases; all are done. Story 11.24 is a
+> completed historical EventStore authorization record. The approved 2026-09-12 retrospective-remediation
+> extension adds Stories 11.25–11.32 and keeps Epic 11 in progress until final reacceptance.
 >
 > **Decision gates (contract-confirmation DoD, 2026-06-21 amendment - tracked, owned, dated):** **Story 11.0**
 > (command/projection route contract) - owner **Architect + Product**, assigned **2026-07-05**, resolved
@@ -1663,12 +1664,12 @@ and punctuation-heavy string secret values.
 
 ### Epic 11 Workstreams And Current State
 
-| Workstream | Stories | Current state on 2026-07-17 |
+| Workstream | Stories | Current state on 2026-09-12 |
 | --- | --- | --- |
-| Runtime reliability and security | 11.0–11.5, 11.18a, 11.24 | 11.0–11.5 done; 11.18a in review; 11.24 is blocked backlog pending EventStore Story 1.20 migration authority. |
-| Adopter testing and route integrity | 11.6–11.7 | Done; 11.6 consumes completed Story 10.5 privacy evidence. |
-| Contracts and package boundary | 11.8, 11.11–11.14 | Done; retained as decision/delivery history, not queue candidates. |
-| Maintainability and enforcement | 11.9, 11.15–11.16, 11.17a–d, 11.18b–c, 11.19a–d, 11.20–11.23 | 11.9, 11.15–11.16, and 11.17a done; 11.17b–d, 11.18b–c, and 11.19a–d in review; 11.20–11.23 are sequential, separately approval-gated backlog phases. |
+| Completed delivery history | 11.0–11.9, 11.11–11.24 | Done; 11.24 and identity v1 remain historical authorization, not the current release target. |
+| Current identity and immediate gate recovery | 11.25–11.28 | Approved backlog. Run 11.25 first; 11.26–11.28 may follow in parallel, then rerun Epic 11 acceptance. |
+| Runtime and evidence hardening | 11.29–11.31 | Approved backlog after the first acceptance checkpoint. |
+| Artifact integrity and final acceptance | 11.32 | Approved backlog after 11.29–11.31; final acceptance follows. |
 
 Within logging remediation, ownership precedence is deterministic: 11.18a security/fail-closed sites
 first, 11.18c command-lifecycle/projection/polling hot paths second, and 11.18b residual
@@ -2302,11 +2303,12 @@ So that analyzer strictness becomes a durable v1.0 build invariant.
 
 ### Story 11.24: Adopt the Owner-Approved EventStore Runtime Identity
 
-**Status:** backlog. **Owner:** FrontComposer Maintainer + EventStore Maintainer.
-**Activation gate:** EventStore Story 1.20 must durably record `final_decision: available`,
-`authorize_consumer_migration: true`, a 40-hex `tested_runtime_sha`, named owner approval, and the
-approved package version and SHA-256 inventory. Until then this story has no implementation file and
-must not move to `ready-for-dev`.
+**Historical status:** done 2026-08-29. **Owner:** FrontComposer Maintainer + EventStore Maintainer.
+**Supersession:** this story and its v1 identity/evidence remain immutable delivery history. Its
+historical tuple is not the active release target. Story 11.25 owns the current
+`059f6a89… / 3.103.0 / a32cb422…` release identity, exact-tuple evidence, and named approval.
+The historical acceptance text below is retained for audit and must not be used to select the current
+runtime.
 
 As a FrontComposer maintainer,
 I want source and package modes aligned to the owner-approved EventStore runtime identity,
@@ -2346,6 +2348,243 @@ query/provenance, and projection SignalR all pass.
 **When** compatibility evidence is reviewed,
 **Then** it does not remove or redesign FrontComposer adapters, rollback paths, topology, or deploy an
 EventStore container; any behavioral migration is routed to a separately approved compatibility story.
+
+### Story 11.25: Current EventStore Release Identity and Evidence
+
+**Status:** backlog. **Owner:** Architect + EventStore Maintainer + FrontComposer Maintainer + Release
+Owner. **Retrospective action:** E11R-AI-1.
+
+As a Release Owner and framework maintainer,
+I want one approved identity record and live proof for the EventStore runtime selected by the current
+repository,
+So that release compatibility is auditable without rewriting historical authorization.
+
+**Given** Story 11.24 identity v1 and its evidence,
+**When** the current identity is recorded,
+**Then** v1 remains byte-for-byte historical, and a successor record identifies v1 as superseded only
+for active release selection.
+
+**Given** the current repository selects EventStore source `059f6a8917bfab26b85775be464840a1610dfdeb`,
+EventStore package `3.103.0`, and Builds `a32cb422749352cce8dec948aa3e78c8f00eb4cf`,
+**When** the successor record is validated,
+**Then** it contains exactly that active tuple, a dated decision selecting recapture rather than a
+semantic exception, and no changed gitlink or package version is attributed to the approval.
+
+**Given** the committed FrontComposer consumer pacts and current AppHost,
+**When** exact-tuple evidence is captured,
+**Then** all 19 provider interactions pass over real loopback, all ten AppHost resources become healthy,
+the authenticated health/command/status/query/provenance/SignalR observations pass, shutdown is clean,
+and the bounded redaction-clean reports bind the exact source, package, Builds, candidate, and artifact
+hashes.
+
+**Given** the successor evidence is complete,
+**When** migration approval is claimed,
+**Then** the EventStore maintainer, FrontComposer maintainer, and Release Owner are named and dated; if
+there is no distinct EventStore maintainer, OI-18 is approved first and the transferred role is explicit.
+
+**Given** Governance evaluates runtime identity,
+**When** the current Builds gitlink changes in a future candidate,
+**Then** the gate compares the candidate with its active identity/evidence record and fails closed on
+unreconciled provenance rather than embedding an unexplained historical SHA.
+
+### Story 11.26: Analyzer Identifier Inventory Reconciliation
+
+**Status:** backlog. **Owner:** Analyzer Policy Owner. **Retrospective action:** E11R-AI-2.
+
+As the analyzer policy owner,
+I want the two-identifier CA1707 scope delta reviewed and intentionally resolved,
+So that the inventory seal detects accidental drift without concealing legitimate declarations.
+
+**Given** the sealed count/hash and the current `3327` / `e33cb6e8…` inventory,
+**When** the delta is reviewed,
+**Then** the two added declarations, owning changes, and in-scope rationale are named in evidence.
+
+**Given** the declarations are intended,
+**When** the inventory is resealed,
+**Then** the exact generated count/hash matches the reviewed source; if either declaration is
+unintended, the source is corrected instead of blessing the drift.
+
+**Given** the correction,
+**When** focused and default analyzer lanes run,
+**Then** `AnalysisMode=Recommended`, `TreatWarningsAsErrors=true`, built-in-analyzer scope, and narrow
+ledger exceptions remain unchanged, with no broad suppression.
+
+### Story 11.27: Generated Command Route Acceptance Locator
+
+**Status:** backlog. **Owner:** QA Engineer. **Retrospective action:** E11R-AI-3.
+
+As a QA engineer,
+I want route acceptance to target the route-level heading unambiguously,
+So that the test proves command activation without colliding with shell chrome.
+
+**Given** command-palette activation of `ConfigureCounterCommand`,
+**When** the route test asserts navigation,
+**Then** the URL remains exactly `/commands/Counter/ConfigureCounterCommand` and the command form is
+visible.
+
+**Given** both shell chrome and page content contain `Counter`,
+**When** heading visibility or focus is asserted,
+**Then** the locator is scoped to the route content or exact heading level/identity and resolves to one
+element without weakening the route assertion.
+
+**Given** the AppHost-backed e2e lane,
+**When** the focused Story 11.7 test runs,
+**Then** it passes without `strict mode violation` and retains tenant setup and palette activation.
+
+### Story 11.28: FC-NIP Semantic Fixture Alignment
+
+**Status:** backlog. **Owner:** Technical Writer + SourceTools Maintainer. **Retrospective action:**
+E11R-AI-4.
+
+As the SourceTools maintainer,
+I want the semantic documentation fixture to describe current FC-NIP delivery truth,
+So that documentation drift is caught without requiring obsolete PRD prose.
+
+**Given** the canonical PRD records D-4 complete, Stories 9.3–9.8 done, and the 9.8 live proof passed,
+**When** the FC-NIP manifest is updated,
+**Then** its positive and negative fragments assert those current outcomes and retain the explicit
+command-target identity, typed materiality, and server-allocated-key non-goal.
+
+**Given** older text such as `Resolved 2026-08-12` and `Stories 9.4-9.8 still block`,
+**When** the correction is reviewed,
+**Then** the obsolete fixture requirements are removed and the canonical PRD is not changed back to
+match them.
+
+**Given** the updated fixture,
+**When** the SourceTools documentation and browserless FC-NIP guards run,
+**Then** they pass against the same language-neutral manifest.
+
+### Story 11.29: Fallback Refresh and View Registration Correctness
+
+**Status:** backlog. **Owner:** Shell Maintainer. **Retrospective action:** E11R-AI-5.
+
+As a shell maintainer,
+I want fallback refresh and view registration to detect material scope/data changes,
+So that equal counts, reused validators, or reused view keys cannot leave stale operator state.
+
+**Given** a no-ETag fallback response with the same row count but changed row values,
+**When** change detection runs,
+**Then** its deterministic signature includes bounded canonical row content and dispatches the changed
+state.
+
+**Given** an equal ETag while a reducer page required by visible state is missing,
+**When** fallback reconciliation runs,
+**Then** it dispatches or rebuilds the required page instead of treating the missing reducer state as
+unchanged.
+
+**Given** an existing ViewKey is registered again with a different tenant or query contract,
+**When** registration is attempted,
+**Then** the runtime rejects the conflict or atomically replaces it only after prior ownership is
+disposed; it never silently retains the old scope.
+
+**Given** deterministic regression fixtures for all three cases,
+**When** focused Shell and applicable default lanes run,
+**Then** changed and unchanged cases are distinguished without cross-tenant leakage or duplicate work.
+
+### Story 11.30: Testing and MCP Boundary Hardening
+
+**Status:** backlog. **Owner:** Testing + MCP Maintainers. **Retrospective action:** E11R-AI-6.
+
+As an adopter and MCP host maintainer,
+I want deterministic identifiers and evidence handling to be canonical, bounded, and fail safe,
+So that test evidence is reproducible and malformed input or formatting failures cannot escape the
+boundary.
+
+**Given** deterministic Testing command dispatch,
+**When** message and correlation identifiers are allocated,
+**Then** they are canonical 26-character ULIDs, stable for the configured deterministic sequence, and
+distinct where the contract requires distinct identities.
+
+**Given** an MCP lifecycle identifier,
+**When** it is parsed,
+**Then** canonical ULIDs through `7ZZZZZZZZZZZZZZZZZZZZZZZZZ` are accepted and overflow encodings
+starting with `8` through `Z`, noncanonical text, and invalid lengths are rejected before side effects.
+
+**Given** evidence serialization throws for an arbitrary command payload,
+**When** Testing records dispatch evidence,
+**Then** dispatch behavior is not failed by evidence formatting and a bounded redacted sentinel is
+recorded instead.
+
+**Given** objects or dictionaries contain credential-bearing keys including `Authorization`, `ApiKey`,
+`Cookie`, `PrivateKey`, or `ConnectionString` in any casing,
+**When** evidence is formatted,
+**Then** their property/key names and values are redacted before truncation, while benign assertion
+values remain useful.
+
+### Story 11.31: Canonical Correlation Pseudonymization
+
+**Status:** backlog. **Owner:** Shell Observability Owner. **Retrospective action:** E11R-AI-7.
+
+As an observability owner,
+I want one correlation pseudonymization contract across diagnostic, lifecycle, readiness, and hot-path
+logs,
+So that related events are joinable without emitting raw identifiers.
+
+**Given** DW-1769 and DW-1770,
+**When** the logging helpers are consolidated,
+**Then** one shared implementation emits the approved token shape `sha256:` plus 16 lowercase hex
+characters for non-empty correlation identifiers, and duplicate private digest implementations are
+removed.
+
+**Given** the same normalized identifier reaches diagnostic, lifecycle, readiness, and hot-path logs,
+**When** events are emitted,
+**Then** every family records the same token; different fixture identifiers produce different tokens;
+no raw correlation identifier is present.
+
+**Given** null, empty, whitespace, oversized, or Unicode input,
+**When** pseudonymization runs,
+**Then** normalization and bounded behavior are explicit, deterministic, allocation-conscious on hot
+paths, and covered by tests.
+
+**Given** the implementation and focused evidence pass,
+**When** deferred work is reconciled,
+**Then** DW-1769 and DW-1770 close with links to the canonical contract and tests.
+
+### Story 11.32: Epic 11 Artifact Integrity Enforcement
+
+**Status:** backlog. **Owner:** QA Automation Maintainer. **Retrospective action:** E11R-AI-8.
+
+As a QA automation maintainer,
+I want story and sprint artifacts validated against repository truth,
+So that a done status cannot conceal nonexistent revisions, incomplete tasks, or contradictory queue
+state.
+
+**Given** Stories 11.17, 11.18, and 11.19 are nonimplementable parents,
+**When** sprint state is reconciled,
+**Then** development status is carried by 11.17a–d, 11.18a–c, and 11.19a–d, while parent summaries do
+not masquerade as implementable queue entries.
+
+**Given** `final_revision` values for Stories 11.7, 11.9, and 11.12,
+**When** each value is checked,
+**Then** it resolves to an existing repository commit that supports the story or is removed/corrected
+with an evidence-backed explanation.
+
+**Given** unchecked required tasks in Story 11.6 or 11.17c and the stale Story 11.15 shadow-spec state,
+**When** artifacts are reconciled,
+**Then** task completion and status agree with evidence without marking unperformed work complete.
+
+**Given** a done story with a nonexistent final revision, unchecked required task, conflicting shadow
+status, missing materialized child, or parent/child queue mismatch,
+**When** story validation runs,
+**Then** it fails closed with the exact story and conflict.
+
+**Given** all eight remediation stories,
+**When** sprint state is finalized,
+**Then** every E11R action has the correct `implementation_story`, evidence link, and status; no manual
+bypass is needed for validation.
+
+### Epic 11 Remediation Sequence and Acceptance
+
+The approved order is 11.25; then 11.26–11.28; an Epic 11 acceptance checkpoint; 11.29–11.31; 11.32;
+then final Epic 11 acceptance. Stories 11.26–11.28 and Stories 11.29–11.31 may run in parallel within
+their respective phase. Story 11.32 follows the runtime/evidence stories so its validator covers their
+final artifacts.
+
+The first acceptance checkpoint must cite the rejected 2026-09-10 retrospective, the exact-tuple
+identity/evidence record, the three restored gates, and the approved owned dispositions in
+11.29–11.32. Its verdict is evidence-based and does not automatically close the epic. Final closure
+requires all eight stories, a final green acceptance record, and consistent PRD, epics, architecture,
+context, sprint, identity, evidence, and deferred-work artifacts.
 
 ## Cross-Cutting Governance Work
 
