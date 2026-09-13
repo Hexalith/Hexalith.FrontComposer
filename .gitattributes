@@ -4,6 +4,12 @@
 *.sh text eol=lf
 .husky/* text eol=lf
 # Story 11.24 preserves externally captured evidence bytes; checkout must never rewrite them.
-_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/** -text
+_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/** -text -eol
 # Live Gate 2c receipts bind SHA-256 of these files; checkout must not rewrite EOL.
-_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/** -text
+_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/** -text -eol
+# Story 11.25 preserves dated provider/AppHost packets as immutable prior evidence.
+_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/** -text -eol
+# Active identity v2 binds exact recapture, decision, roster, and receipt bytes.
+_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/** -text -eol
+# The active decision hash-binds this human-approved proposal's canonical LF bytes.
+_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md -text -eol

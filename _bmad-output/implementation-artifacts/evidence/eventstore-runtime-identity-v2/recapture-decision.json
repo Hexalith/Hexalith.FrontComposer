@@ -1,0 +1,38 @@
+{
+  "schema": "hexalith.frontcomposer.eventstore-runtime-recapture-decision.v2",
+  "recordedAt": "2026-09-12T16:13:00+00:00",
+  "source": {
+    "path": "_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md",
+    "sha256": "ab84473f53fa80616d1bf3ecb4004889d81f1de5984a7d09d5dd1bb49b85a4aa"
+  },
+  "activeTuple": {
+    "eventStoreSourceGitlink": "059f6a8917bfab26b85775be464840a1610dfdeb",
+    "eventStorePackageVersion": "3.103.0",
+    "buildsCatalogGitlink": "a32cb422749352cce8dec948aa3e78c8f00eb4cf"
+  },
+  "frontComposerRevision": "1b3608c9b039dbba1be0884d92a2a6d54054e370",
+  "runtimeInputs": {
+    "path": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/frontcomposer-runtime-inputs.json",
+    "sha256": "ddf822f8d6e1d51f1942fb64ab4650adab0dce03e2a4692534990d40f3ff6686",
+    "treeSha256": "49489498235396119bece5fe129372daea30a933bf78e26764eceb25e0e6074c"
+  },
+  "evidenceFiles": [
+    {
+      "path": "apphost-smoke.json",
+      "sha256": "66d01db034f8224b1cab2177a494f8d82091d0e445a040ce96972be58a34a7fe"
+    },
+    {
+      "path": "provider-verification.json",
+      "sha256": "fba8e8dcf86388ed43a505a686ed0f55d9ea605b594eac56b5065c3e148ebc91"
+    },
+    {
+      "path": "run-evidence.json",
+      "sha256": "e3a635e5c1a22102ea9f60844524d63cf530050e20296b5fe01619ee286ffbb3"
+    }
+  ],
+  "strategy": "exact-tuple-recapture",
+  "semanticCompatibilityExceptionApproved": false,
+  "rollbackApproved": false,
+  "submodulePointerChangedByDecision": false,
+  "packageVersionChangedByDecision": false
+}

@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import copy
+import contextlib
 import hashlib
+import io
 import json
 import os
 import shutil
@@ -14,6 +16,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from typing import Any, Callable
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -29,6 +32,22 @@ CANONICAL_PACTS = ROOT / "tests" / "Hexalith.FrontComposer.Shell.Tests" / "Pact"
 CANONICAL_LIVE_EVIDENCE = (
     ROOT / "_bmad-output" / "implementation-artifacts" / "evidence" / "pact-provider-reconciliation"
 )
+CANONICAL_ACTIVE_EVIDENCE = (
+    ROOT / "_bmad-output" / "implementation-artifacts" / "evidence" / "eventstore-runtime-identity-v2"
+)
+CANONICAL_PRIOR_EVIDENCE = (
+    ROOT / "_bmad-output" / "implementation-artifacts" / "evidence"
+    / "pact-provider-reconciliation-history" / "2026-09-08-builds-35c3d1e5"
+)
+CANONICAL_IDENTITY_V2 = (
+    ROOT / "_bmad-output" / "contracts" / "frontcomposer-eventstore-approved-runtime-identity-v2.json"
+)
+REAL_RUNTIME_INPUT_SNAPSHOT = evidence._runtime_input_snapshot
+REAL_CANONICAL_ACTIVE_LOCATIONS = evidence._canonical_active_locations
+REAL_RUNTIME_GIT_TREE = evidence._runtime_git_tree
+REAL_LIVE_PROVENANCE = evidence._live_provenance
+REAL_GIT = evidence._git
+REAL_GIT_COMPLETED = evidence._git_completed
 
 
 def _sha256(path: Path) -> str:
@@ -121,6 +140,69 @@ def _dependency_state() -> tuple[str, str, str]:
     )
 
 
+class RuntimeInputInventoryTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self._temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self._temporary.cleanup)
+        self.repository = Path(self._temporary.name) / "repository"
+        self.repository.mkdir()
+        subprocess.run(["git", "init", "-q"], cwd=self.repository, check=True)
+        subprocess.run(
+            ["git", "config", "user.name", "Runtime Inventory Test"],
+            cwd=self.repository,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.email", "runtime-inventory@example.test"],
+            cwd=self.repository,
+            check=True,
+        )
+        (self.repository / ".gitignore").write_text(
+            "/src/ignored.cs\n"
+            "/samples/Counter/ignored.json\n"
+            "**/bin/\n"
+            "**/obj/\n",
+            encoding="utf-8",
+        )
+        subprocess.run(["git", "add", ".gitignore"], cwd=self.repository, check=True)
+        subprocess.run(
+            ["git", "commit", "-qm", "test: seed runtime inventory"],
+            cwd=self.repository,
+            check=True,
+        )
+
+    def test_runtime_scope_rejects_ignored_source_and_sample_tree_inputs(self) -> None:
+        ignored_paths = (
+            "src/ignored.cs",
+            "samples/Counter/ignored.json",
+        )
+        for relative in ignored_paths:
+            path = self.repository / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("ignored runtime input\n", encoding="utf-8")
+
+        _, issues = evidence._runtime_input_snapshot(self.repository)
+
+        untracked_issue = next(
+            issue for issue in issues if "contains untracked files" in issue
+        )
+        for relative in ignored_paths:
+            self.assertIn(relative, untracked_issue)
+
+    def test_runtime_scope_allows_generated_bin_and_obj_outputs(self) -> None:
+        for relative in (
+            "src/Feature/bin/Debug/net10.0/generated.cs",
+            "samples/Counter/obj/project.assets.json",
+        ):
+            path = self.repository / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("generated output\n", encoding="utf-8")
+
+        _, issues = evidence._runtime_input_snapshot(self.repository)
+
+        self.assertFalse(any("contains untracked files" in issue for issue in issues), issues)
+
+
 class EventStoreRuntimeEvidenceTests(unittest.TestCase):
     def setUp(self) -> None:
         self._temporary = tempfile.TemporaryDirectory()
@@ -128,10 +210,203 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         temporary_root = Path(self._temporary.name)
         self.evidence_root = temporary_root / "evidence"
         self.live_root = temporary_root / "live-evidence"
-        self.pact_root = temporary_root / "pacts"
+        self.artifact_root = temporary_root / "artifact-root"
+        self.pact_root = self.artifact_root / evidence.CANONICAL_PACT_ROOT
+        self.active_root = (
+            self.artifact_root / "_bmad-output" / "implementation-artifacts" / "evidence"
+            / "eventstore-runtime-identity-v2"
+        )
+        self.history_root = (
+            self.artifact_root / "_bmad-output" / "implementation-artifacts" / "evidence"
+            / "pact-provider-reconciliation-history" / "2026-09-08-builds-35c3d1e5"
+        )
+        self.identity_path = (
+            self.artifact_root / "_bmad-output" / "contracts"
+            / "frontcomposer-eventstore-approved-runtime-identity-v2.json"
+        )
         shutil.copytree(CANONICAL_EVIDENCE, self.evidence_root)
         shutil.copytree(CANONICAL_LIVE_EVIDENCE, self.live_root)
         shutil.copytree(CANONICAL_PACTS, self.pact_root)
+        shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
+        shutil.copytree(CANONICAL_PRIOR_EVIDENCE, self.history_root)
+        self.identity_path.parent.mkdir(parents=True)
+        shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
+        # The checked-in AppHost artifact is the last truthful Loop-4 capture. Build a
+        # synthetic Loop-5 fixture here so unit tests exercise the new evidence shape
+        # without relabelling an execution that did not perform these steps.
+        active_smoke_path = self.active_root / "recapture" / "apphost-smoke.json"
+        active_smoke = _read_json(active_smoke_path)
+        output_preparation = active_smoke["startup"]["outputPreparation"]
+        output_preparation["restore"] = "passed"
+        output_preparation["restoreMode"] = "forced-no-cache"
+        active_smoke["observations"]["health"] = {
+            "result": "passed",
+            "authenticated": False,
+            "reasonCode": "health.readiness.succeeded",
+            "statusCode": 200,
+        }
+        _write_json(active_smoke_path, active_smoke)
+        active_smoke_hash = _sha256(active_smoke_path)
+
+        decision_path = self.active_root / "recapture-decision.json"
+        decision = _read_json(decision_path)
+        next(
+            item for item in decision["evidenceFiles"]
+            if item["path"] == "apphost-smoke.json"
+        )["sha256"] = active_smoke_hash
+        _write_json(decision_path, decision)
+        decision_hash = _sha256(decision_path)
+
+        subject_path = self.active_root / "approval-subject.json"
+        subject = _read_json(subject_path)
+        subject["decision"]["sha256"] = decision_hash
+        next(
+            item for item in subject["evidenceFiles"]
+            if item["path"] == "apphost-smoke.json"
+        )["sha256"] = active_smoke_hash
+        _write_json(subject_path, subject)
+        subject_hash = _sha256(subject_path)
+
+        identity = _read_json(self.identity_path)
+        identity["decision"]["sha256"] = decision_hash
+        next(
+            item for item in identity["activeEvidence"]["files"]
+            if item["path"] == "apphost-smoke.json"
+        )["sha256"] = active_smoke_hash
+        identity["approval"]["subject"]["sha256"] = subject_hash
+        _write_json(self.identity_path, identity)
+        shutil.copyfile(
+            ROOT / "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v1.json",
+            self.identity_path.parent / "frontcomposer-eventstore-approved-runtime-identity-v1.json",
+        )
+        proposal = (
+            self.artifact_root / "_bmad-output" / "planning-artifacts"
+            / "sprint-change-proposal-2026-09-11.md"
+        )
+        proposal.parent.mkdir(parents=True)
+        shutil.copyfile(
+            ROOT / "_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md",
+            proposal,
+        )
+        for relative in (
+            "src/Hexalith.FrontComposer.AppHost/Program.cs",
+            "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+        ):
+            destination = self.artifact_root / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / relative, destination)
+        authority_patcher = mock.patch.object(
+            evidence,
+            "_canonical_active_locations",
+            return_value=(
+                self.identity_path,
+                self.active_root,
+                self.history_root,
+                self.pact_root,
+            ),
+        )
+        authority_patcher.start()
+        self.addCleanup(authority_patcher.stop)
+        cached_entries = _read_json(
+            CANONICAL_ACTIVE_EVIDENCE / "frontcomposer-runtime-inputs.json"
+        )["entries"]
+
+        fixture_roots = {
+            ROOT.resolve(strict=False),
+            self.artifact_root.resolve(strict=False),
+        }
+
+        def cached_runtime_snapshot(repository_root: Path) -> tuple[list[dict[str, Any]], list[str]]:
+            if repository_root.resolve(strict=False) in fixture_roots:
+                return copy.deepcopy(cached_entries), []
+            return REAL_RUNTIME_INPUT_SNAPSHOT(repository_root)
+
+        runtime_patcher = mock.patch.object(
+            evidence,
+            "_runtime_input_snapshot",
+            side_effect=cached_runtime_snapshot,
+        )
+        runtime_patcher.start()
+        self.addCleanup(runtime_patcher.stop)
+
+        captured_manifest = _read_json(
+            CANONICAL_ACTIVE_EVIDENCE / "frontcomposer-runtime-inputs.json"
+        )
+
+        def fixture_live_provenance(
+            repository_root: Path,
+            errors: list[str],
+            *,
+            runtime_manifest: dict[str, Any] | None = None,
+        ) -> dict[str, str]:
+            if repository_root.resolve(strict=False) not in fixture_roots:
+                return REAL_LIVE_PROVENANCE(
+                    repository_root,
+                    errors,
+                    runtime_manifest=runtime_manifest,
+                )
+            manifest = runtime_manifest or captured_manifest
+            return {
+                "sourceSha": evidence.ACTIVE_SOURCE_SHA,
+                "releaseVersion": evidence.ACTIVE_VERSION,
+                "buildsSha": evidence.ACTIVE_BUILDS_SHA,
+                "releaseInventorySha256": evidence.INVENTORY_SHA256,
+                "frontComposerRevision": str(manifest["capturedRevision"]),
+                "runtimeInputTreeSha256": str(manifest["treeSha256"]),
+            }
+
+        provenance_patcher = mock.patch.object(
+            evidence,
+            "_live_provenance",
+            side_effect=fixture_live_provenance,
+        )
+        provenance_patcher.start()
+        self.addCleanup(provenance_patcher.stop)
+
+        def fixture_git(repository_root: Path, *arguments: str) -> str:
+            if repository_root.resolve(strict=False) != self.artifact_root.resolve(strict=False):
+                return REAL_GIT(repository_root, *arguments)
+            if arguments[:2] == ("rev-parse", "HEAD"):
+                return str(captured_manifest["capturedRevision"])
+            if arguments[:2] == ("rev-parse", "--verify"):
+                return str(captured_manifest["capturedRevision"])
+            return ""
+
+        git_patcher = mock.patch.object(evidence, "_git", side_effect=fixture_git)
+        git_patcher.start()
+        self.addCleanup(git_patcher.stop)
+
+        def fixture_git_completed(
+            repository_root: Path,
+            *arguments: str,
+        ) -> subprocess.CompletedProcess[bytes] | None:
+            if repository_root.resolve(strict=False) == self.artifact_root.resolve(strict=False):
+                return subprocess.CompletedProcess(["git", *arguments], 0, b"", b"")
+            return REAL_GIT_COMPLETED(repository_root, *arguments)
+
+        git_completed_patcher = mock.patch.object(
+            evidence,
+            "_git_completed",
+            side_effect=fixture_git_completed,
+        )
+        git_completed_patcher.start()
+        self.addCleanup(git_completed_patcher.stop)
+
+        def fixture_runtime_git_tree(
+            repository_root: Path,
+            revision: str,
+        ) -> tuple[dict[str, tuple[str, str]], list[str]]:
+            if repository_root.resolve(strict=False) == self.artifact_root.resolve(strict=False):
+                return {}, []
+            return REAL_RUNTIME_GIT_TREE(repository_root, revision)
+
+        runtime_tree_patcher = mock.patch.object(
+            evidence,
+            "_runtime_git_tree",
+            side_effect=fixture_runtime_git_tree,
+        )
+        runtime_tree_patcher.start()
+        self.addCleanup(runtime_tree_patcher.stop)
 
     def validate(self) -> list[str]:
         return evidence.validate(self.evidence_root, self.pact_root)
@@ -139,19 +414,42 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
     def validate_live(self) -> list[str]:
         return evidence.validate_live(self.live_root, self.pact_root, ROOT)
 
+    def validate_active(self) -> tuple[list[str], list[str], bool]:
+        return evidence.validate_active(
+            self.identity_path,
+            self.active_root,
+            self.history_root,
+            self.pact_root,
+            self.artifact_root,
+        )
+
+    def write_live_receipt(self) -> list[str]:
+        return evidence.write_live_receipt(
+            self.live_root,
+            self.artifact_root,
+            runtime_input_manifest_path=(
+                self.active_root / "frontcomposer-runtime-inputs.json"
+            ),
+            pact_dir=self.pact_root,
+        )
+
     def make_live_apphost_pass(self) -> None:
         provenance_errors: list[str] = []
         provenance = evidence._live_provenance(ROOT, provenance_errors)
         self.assertEqual(provenance_errors, [])
         document = {
-            "schema": "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v1",
+            "schema": "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v2",
             "capturedAt": "2026-08-31T17:00:00+00:00",
+            "completedAt": "2026-08-31T17:00:10+00:00",
+            "timeoutSeconds": 30,
             "finalVerdict": "passed",
             "reasonCodes": [],
             "identity": {
                 "eventStoreSourceSha": provenance["sourceSha"],
                 "eventStoreReleaseVersion": provenance["releaseVersion"],
                 "buildsCatalogSha": provenance["buildsSha"],
+                "frontComposerRevision": provenance["frontComposerRevision"],
+                "runtimeInputTreeSha256": provenance["runtimeInputTreeSha256"],
             },
             "topology": {
                 "programPath": "src/Hexalith.FrontComposer.AppHost/Program.cs",
@@ -174,6 +472,20 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             },
             "startup": {
                 "result": "passed",
+                "hostStartAttempted": True,
+                "hostStarted": True,
+                "outputPreparation": {
+                    "clean": "passed",
+                    "restore": "passed",
+                    "build": "passed",
+                    "configuration": "Debug",
+                    "restoreMode": "forced-no-cache",
+                    "buildMode": "no-incremental",
+                    "startMode": "no-build",
+                    "evaluatedBuildProperties": evidence.APPHOST_BUILD_PROPERTIES,
+                    "sourceDependencyGitlinks": list(evidence.RUNTIME_DEPENDENCY_GITLINKS),
+                    "evaluatedSourceGraph": "passed",
+                },
                 "resourceWaits": {
                     "security": "healthy",
                     "eventstore": "healthy",
@@ -188,17 +500,62 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                 },
             },
             "observations": {
-                name: {
+                "health": {
+                    "result": "passed", "authenticated": False,
+                    "reasonCode": "health.readiness.succeeded", "statusCode": 200,
+                },
+                "commandSubmit": {
+                    "result": "passed", "authenticated": True,
+                    "reasonCode": "command.accepted", "statusCode": 202,
+                    "aggregateId": "pact-reconciliation-01m2aw1vw8z2ghq0zgcttcwww0",
+                    "messageId": "01M2AW1VW8Z2GHQ0ZGCTTCWWW0",
+                    "correlationId": "01M2AW1VW8Z2GHQ0ZGCTTCWWW0",
+                },
+                "commandStatus": {
+                    "result": "passed", "authenticated": True,
+                    "reasonCode": "command.completed", "terminalStatus": "Completed",
+                    "aggregateId": "pact-reconciliation-01m2aw1vw8z2ghq0zgcttcwww0",
+                },
+                "queryProvenance": {
+                    "result": "passed", "authenticated": True,
+                    "reasonCode": "query.handler-computed", "statusCode": 200,
+                    "provenance": "HandlerComputed", "tenant": "system",
+                    "aggregateId": "pact-reconciliation-01m2aw1vw8z2ghq0zgcttcwww0",
+                    "entityId": "pact-reconciliation-01m2aw1vw8z2ghq0zgcttcwww0",
+                    "responseTenantId": "pact-reconciliation-01m2aw1vw8z2ghq0zgcttcwww0",
+                },
+                "projectionSignalR": {
+                    "result": "passed", "authenticated": True,
+                    "reasonCode": "signalr.authenticated-connect.succeeded",
+                    "endpoint": "http://127.0.0.1:18001/hubs/projection-changes",
+                },
+            },
+            "authorizationControls": {
+                "commandSubmit": {
                     "result": "passed",
-                    "authenticated": True,
-                    "reasonCode": (
-                        "query.handler-computed"
-                        if name == "queryProvenance"
-                        else f"{name}.authenticated.succeeded"
-                    ),
-                    **({"provenance": "HandlerComputed"} if name == "queryProvenance" else {}),
-                }
-                for name in evidence.APPHOST_OBSERVATIONS
+                    "credential": "invalid-bearer",
+                    "reasonCode": "authorization.invalid-bearer.rejected",
+                    "statusCode": 401,
+                },
+                "commandStatus": {
+                    "result": "passed",
+                    "credential": "invalid-bearer",
+                    "reasonCode": "authorization.invalid-bearer.rejected",
+                    "statusCode": 401,
+                },
+                "queryProvenance": {
+                    "result": "passed",
+                    "credential": "invalid-bearer",
+                    "reasonCode": "authorization.invalid-bearer.rejected",
+                    "statusCode": 401,
+                },
+                "projectionSignalR": {
+                    "result": "passed",
+                    "credential": "invalid-bearer",
+                    "reasonCode": "authorization.invalid-bearer.rejected",
+                    "statusCode": 401,
+                    "endpoint": "http://127.0.0.1:18001/hubs/projection-changes",
+                },
             },
             "cleanup": {
                 "command": "aspire stop --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --nologo",
@@ -206,9 +563,226 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                 "hostStopped": True,
                 "portsClosed": True,
                 "runningAppHostsAfterAttempt": 0,
+                "listenerConfirmation": "ports-probed-closed",
+                "confirmation": "aspire-ps-empty",
+                "runtimeInputsCleanAfterRun": True,
+                "daprNameResolutionFiles": {
+                    "absentBeforeRun": [
+                        "src/Hexalith.FrontComposer.AppHost/nr.db",
+                        "src/Hexalith.FrontComposer.AppHost/nr.db-shm",
+                        "src/Hexalith.FrontComposer.AppHost/nr.db-wal",
+                    ],
+                    "createdByInvocation": [],
+                    "removedAfterShutdown": [],
+                    "remainingAfterCleanup": [],
+                },
             },
         }
         _write_json(self.live_root / "apphost-smoke.json", document)
+
+    def claim_active_approval(self, *, transferred_eventstore_role: bool = False) -> None:
+        identity = _read_json(self.identity_path)
+        policy_path = self.active_root / "approval-policy.json"
+        policy = _read_json(policy_path)
+        roster_path = self.active_root / "reviewer-roster.json"
+        roster = _read_json(roster_path)
+        actors = {
+            "eventstore-maintainer": "github:eventstore-maintainer",
+            "frontcomposer-maintainer": "github:frontcomposer-maintainer",
+            "release-owner": "github:release-owner",
+            "accountable-frontcomposer-maintainer": "github:accountable-frontcomposer-maintainer",
+            "product-owner": "github:product-owner",
+            "architect": "github:architect",
+        }
+        sources = {
+            role: f"https://example.test/approvals/{role}"
+            for role in actors
+        }
+        bootstrap = {
+            role: {actors[role]: frozenset({sources[role]})}
+            for role in evidence.POLICY_ROLES
+        }
+        bootstrap_patch = mock.patch.object(
+            evidence, "APPROVAL_AUTHORITY_BOOTSTRAP", bootstrap
+        )
+        bootstrap_patch.start()
+        self.addCleanup(bootstrap_patch.stop)
+        for assignment in policy["assignments"]:
+            role = assignment["role"]
+            assignment["authorities"] = [{
+                "actor": actors[role],
+                "durableSources": [sources[role]],
+            }]
+        _write_json(policy_path, policy)
+        policy_hash = _sha256(policy_path)
+
+        effective_roles = (
+            [
+                "frontcomposer-maintainer",
+                "accountable-frontcomposer-maintainer",
+                "release-owner",
+            ]
+            if transferred_eventstore_role
+            else list(evidence.DEFAULT_REQUIRED_ROLES)
+        )
+        roster["policySha256"] = policy_hash
+        roster["effectiveRequiredRoles"] = effective_roles
+        for assignment in roster["assignments"]:
+            role = assignment["role"]
+            assignment["actors"] = [actors[role]] if role in effective_roles else []
+
+        oi18_subject_hash: str | None = None
+        if transferred_eventstore_role:
+            oi18_dir = self.active_root / "oi18"
+            oi18_dir.mkdir(parents=True, exist_ok=True)
+            transfer_path = oi18_dir / "ownership-transfer-subject.json"
+            _write_json(transfer_path, {
+                "schema": "hexalith.frontcomposer.eventstore-runtime-ownership-transfer-subject.v2",
+                "frozenAt": "2026-09-12T09:58:25+00:00",
+                "policySha256": policy_hash,
+                "activeTuple": identity["activeTuple"],
+                "decision": "remove-eventstore-maintainer-and-substitute-accountable-frontcomposer-maintainer",
+                "removedRole": "eventstore-maintainer",
+                "replacementRole": "accountable-frontcomposer-maintainer",
+                "replacementActors": [actors["accountable-frontcomposer-maintainer"]],
+                "effectiveRequiredRoles": effective_roles,
+            })
+            oi18_subject_hash = _sha256(transfer_path)
+            prerequisite_bindings: dict[str, dict[str, str]] = {}
+            for accepted_at, role in (
+                ("2026-09-12T09:58:30+00:00", "product-owner"),
+                ("2026-09-12T09:58:35+00:00", "architect"),
+            ):
+                filename = f"{role}.json"
+                path = oi18_dir / filename
+                _write_json(path, {
+                    "schema": "hexalith.frontcomposer.eventstore-runtime-ownership-transfer-receipt.v2",
+                    "subjectSha256": oi18_subject_hash,
+                    "policySha256": policy_hash,
+                    "actor": actors[role],
+                    "role": role,
+                    "decision": "ownership-transfer-approved",
+                    "removedRole": "eventstore-maintainer",
+                    "replacementRole": "accountable-frontcomposer-maintainer",
+                    "replacementActors": [actors["accountable-frontcomposer-maintainer"]],
+                    "acceptedAt": accepted_at,
+                    "durableSource": sources[role],
+                    "statement": evidence.OI18_APPROVAL_STATEMENT,
+                })
+                prerequisite_bindings[role] = {
+                    "path": path.relative_to(self.artifact_root).as_posix(),
+                    "sha256": _sha256(path),
+                }
+            roster["oi18"] = {
+                "status": "approved",
+                "transferSubject": {
+                    "path": transfer_path.relative_to(self.artifact_root).as_posix(),
+                    "sha256": oi18_subject_hash,
+                },
+                "productApprovalReceipt": prerequisite_bindings["product-owner"],
+                "architectureApprovalReceipt": prerequisite_bindings["architect"],
+                "replacementRole": "accountable-frontcomposer-maintainer",
+                "replacementActors": [actors["accountable-frontcomposer-maintainer"]],
+            }
+        _write_json(roster_path, roster)
+        roster_hash = _sha256(roster_path)
+
+        subject_path = self.active_root / "approval-subject.json"
+        subject = _read_json(subject_path)
+        subject["policy"] = {
+            "path": evidence.APPROVAL_POLICY_PATH,
+            "sha256": policy_hash,
+        }
+        subject["roster"] = {
+            "path": evidence.APPROVAL_ROSTER_PATH,
+            "sha256": roster_hash,
+        }
+        subject["effectiveRequiredRoles"] = effective_roles
+        subject["oi18"] = roster["oi18"]
+        _write_json(subject_path, subject)
+        subject_hash = _sha256(subject_path)
+
+        identity["approval"]["policy"]["sha256"] = policy_hash
+        identity["approval"]["roster"]["sha256"] = roster_hash
+        identity["approval"]["subject"]["sha256"] = subject_hash
+        identity["approval"]["effectiveRequiredRoles"] = effective_roles
+        receipt_dir = self.active_root / "receipts"
+        receipt_dir.mkdir(parents=True, exist_ok=True)
+        receipt_bindings: list[dict[str, str]] = []
+        for index, role in enumerate(effective_roles):
+            filename = f"{role}.json"
+            path = receipt_dir / filename
+            _write_json(path, {
+                "schema": "hexalith.frontcomposer.eventstore-runtime-approval-receipt.v2",
+                "subjectSha256": subject_hash,
+                "policySha256": policy_hash,
+                "rosterSha256": roster_hash,
+                "activeTuple": subject["activeTuple"],
+                "runtimeInputs": subject["runtimeInputs"],
+                "evidenceFiles": subject["evidenceFiles"],
+                "effectiveRequiredRoles": effective_roles,
+                "oi18SubjectSha256": oi18_subject_hash,
+                "actor": actors[role],
+                "role": role,
+                "decision": "approved",
+                "acceptedAt": f"2026-09-12T16:13:1{index}+00:00",
+                "durableSource": sources[role],
+                "statement": evidence.ACTIVE_APPROVAL_STATEMENT,
+            })
+            receipt_bindings.append({
+                "role": role,
+                "path": path.relative_to(self.artifact_root).as_posix(),
+                "sha256": _sha256(path),
+            })
+        identity["approval"]["receipts"] = receipt_bindings
+        identity["approval"]["migrationApprovalClaimed"] = True
+        _write_json(self.identity_path, identity)
+
+    def repin_active_recapture(
+        self,
+        relative: str,
+        mutate: Callable[[dict[str, Any]], None],
+    ) -> None:
+        path = self.active_root / "recapture" / relative
+        document = _read_json(path)
+        mutate(document)
+        _write_json(path, document)
+
+        identity = _read_json(self.identity_path)
+        file_binding = next(
+            item for item in identity["activeEvidence"]["files"]
+            if item["path"] == relative
+        )
+        file_binding["sha256"] = _sha256(path)
+        decision_path = self.active_root / "recapture-decision.json"
+        decision = _read_json(decision_path)
+        decision["evidenceFiles"] = identity["activeEvidence"]["files"]
+        _write_json(decision_path, decision)
+        identity["decision"]["sha256"] = _sha256(decision_path)
+
+        subject_path = self.active_root / "approval-subject.json"
+        subject = _read_json(subject_path)
+        subject["evidenceFiles"] = identity["activeEvidence"]["files"]
+        subject["decision"]["sha256"] = identity["decision"]["sha256"]
+        _write_json(subject_path, subject)
+        identity["approval"]["subject"]["sha256"] = _sha256(subject_path)
+        _write_json(self.identity_path, identity)
+
+    def repin_active_roster(self, roster: dict[str, Any]) -> None:
+        roster_path = self.active_root / "reviewer-roster.json"
+        _write_json(roster_path, roster)
+        roster_hash = _sha256(roster_path)
+        subject_path = self.active_root / "approval-subject.json"
+        subject = _read_json(subject_path)
+        subject["roster"]["sha256"] = roster_hash
+        subject["effectiveRequiredRoles"] = roster["effectiveRequiredRoles"]
+        subject["oi18"] = roster["oi18"]
+        _write_json(subject_path, subject)
+        identity = _read_json(self.identity_path)
+        identity["approval"]["roster"]["sha256"] = roster_hash
+        identity["approval"]["subject"]["sha256"] = _sha256(subject_path)
+        identity["approval"]["effectiveRequiredRoles"] = roster["effectiveRequiredRoles"]
+        _write_json(self.identity_path, identity)
 
     def repin_captured(self, *relatives: str) -> None:
         """Re-pin captured bytes so a test can exercise structure, not the capture pin."""
@@ -331,9 +905,34 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             relative = path.relative_to(ROOT).as_posix()
             attribute = _git_output("check-attr", "text", "--", relative)
             self.assertEqual(attribute, f"{relative}: text: unset")
+            self.assertEqual(
+                _git_output("check-attr", "eol", "--", relative),
+                f"{relative}: eol: unset",
+            )
             raw_blob = _git_output("hash-object", "--no-filters", "--", relative)
             checkout_blob = _git_output("hash-object", f"--path={relative}", "--", relative)
             self.assertEqual(checkout_blob, raw_blob, f"checkout filters must preserve {relative}")
+
+    def test_active_and_prior_evidence_checkout_policy_preserves_exact_bytes(self) -> None:
+        paths = [
+            *CANONICAL_ACTIVE_EVIDENCE.rglob("*"),
+            *CANONICAL_PRIOR_EVIDENCE.rglob("*"),
+        ]
+        for path in sorted(item for item in paths if item.is_file()):
+            relative = path.relative_to(ROOT).as_posix()
+            self.assertEqual(_git_output("check-attr", "text", "--", relative), f"{relative}: text: unset")
+            self.assertEqual(_git_output("check-attr", "eol", "--", relative), f"{relative}: eol: unset")
+            self.assertEqual(
+                _git_output("hash-object", f"--path={relative}", "--", relative),
+                _git_output("hash-object", "--no-filters", "--", relative),
+            )
+        proposal = "_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md"
+        self.assertEqual(_git_output("check-attr", "text", "--", proposal), f"{proposal}: text: unset")
+        self.assertEqual(_git_output("check-attr", "eol", "--", proposal), f"{proposal}: eol: unset")
+        self.assertEqual(
+            _git_output("hash-object", f"--path={proposal}", "--", proposal),
+            _git_output("hash-object", "--no-filters", "--", proposal),
+        )
 
     def test_manifest_rejects_every_undeclared_file_and_hash_binds_runtime_receipts(self) -> None:
         unexpected = self.evidence_root / "apphost-smoke/unexpected.json"
@@ -394,6 +993,1127 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         self.assertEqual(self.validate(), [])
 
+    def test_active_v2_accepts_exact_evidence_while_approval_remains_open(self) -> None:
+        errors, approval_issues, claimed = self.validate_active()
+
+        self.assertEqual(errors, [])
+        self.assertFalse(claimed)
+        for role in evidence.ACTIVE_REQUIRED_ROLES:
+            self.assertTrue(
+                any(f"Missing valid receipt for required role: {role}" in issue for issue in approval_issues),
+                approval_issues,
+            )
+
+    def test_active_v2_rejects_history_tamper_independently(self) -> None:
+        (self.history_root / "apphost-smoke.json").write_bytes(
+            (self.history_root / "apphost-smoke.json").read_bytes() + b" "
+        )
+
+        errors, _, _ = self.validate_active()
+
+        self.assertTrue(any("Prior compatibility archive is not byte-identical" in error for error in errors), errors)
+
+    def test_active_v2_rejects_detached_evidence_and_history_roots(self) -> None:
+        detached_active = Path(self._temporary.name) / "detached-active"
+        detached_history = Path(self._temporary.name) / "detached-history"
+        shutil.copytree(self.active_root, detached_active)
+        shutil.copytree(self.history_root, detached_history)
+
+        errors, _, _ = evidence.validate_active(
+            self.identity_path,
+            detached_active,
+            detached_history,
+            self.pact_root,
+            ROOT,
+        )
+
+        self.assertTrue(any("identity's canonical coordinate" in error for error in errors), errors)
+
+    def test_active_v2_rejects_a_detached_pact_directory(self) -> None:
+        detached_pacts = Path(self._temporary.name) / "detached-pacts"
+        shutil.copytree(self.pact_root, detached_pacts)
+
+        errors, _, _ = evidence.validate_active(
+            self.identity_path,
+            self.active_root,
+            self.history_root,
+            detached_pacts,
+            ROOT,
+        )
+
+        self.assertTrue(
+            any("canonical repository Pact directory" in error for error in errors),
+            errors,
+        )
+
+    def test_repository_root_fixes_every_active_authority_coordinate(self) -> None:
+        self.assertEqual(
+            REAL_CANONICAL_ACTIVE_LOCATIONS(ROOT),
+            (
+                CANONICAL_IDENTITY_V2,
+                CANONICAL_ACTIVE_EVIDENCE,
+                CANONICAL_PRIOR_EVIDENCE,
+                CANONICAL_PACTS,
+            ),
+        )
+        with mock.patch.object(
+            evidence,
+            "_canonical_active_locations",
+            side_effect=REAL_CANONICAL_ACTIVE_LOCATIONS,
+        ):
+            errors, _, _ = evidence.validate_active(
+                self.identity_path,
+                self.active_root,
+                self.history_root,
+                self.pact_root,
+                ROOT,
+            )
+        self.assertTrue(
+            any("fixed repository identity coordinate" in error for error in errors),
+            errors,
+        )
+
+    def test_symlink_loop_in_an_authority_coordinate_fails_deterministically(self) -> None:
+        first = Path(self._temporary.name) / "authority-loop-a"
+        second = Path(self._temporary.name) / "authority-loop-b"
+        first.symlink_to(second)
+        second.symlink_to(first)
+
+        self.assertFalse(evidence._same_canonical_path(first, second))
+
+    def test_active_v2_rejects_stale_builds_revision_and_evidence_hash(self) -> None:
+        identity = _read_json(self.identity_path)
+        identity["activeTuple"]["buildsCatalogGitlink"] = evidence.PRIOR_BUILDS_SHA
+        identity["frontComposerRevision"] = "0" * 40
+        _write_json(self.identity_path, identity)
+        report_path = self.active_root / "recapture/provider-verification.json"
+        report_path.write_bytes(report_path.read_bytes() + b" ")
+
+        errors, _, _ = self.validate_active()
+
+        self.assertTrue(any("exact approved current tuple" in error for error in errors), errors)
+        self.assertTrue(any("revision differs from the runtime-input capture" in error for error in errors), errors)
+        self.assertTrue(any("Active recapture SHA-256 mismatch" in error for error in errors), errors)
+
+    def test_active_predecessor_rejects_integer_for_boolean(self) -> None:
+        identity = _read_json(self.identity_path)
+        identity["predecessor"]["supersededForActiveReleaseSelectionOnly"] = 1
+        _write_json(self.identity_path, identity)
+
+        errors, _, _ = self.validate_active()
+
+        self.assertTrue(any("immutable identity v1 as its predecessor" in error for error in errors), errors)
+
+    def test_active_v2_rejects_undeclared_or_leaking_evidence(self) -> None:
+        unexpected = self.active_root / "unexpected.json"
+        unexpected.write_text('{"Authorization": "Bearer header.payload.signature"}\n', encoding="utf-8")
+
+        errors, _, _ = self.validate_active()
+
+        self.assertTrue(any("missing or undeclared files" in error for error in errors), errors)
+        self.assertTrue(any("Redaction scan failed for unexpected.json" in error for error in errors), errors)
+
+    def test_claimed_approval_fails_with_actionable_missing_roles(self) -> None:
+        identity = _read_json(self.identity_path)
+        identity["approval"]["migrationApprovalClaimed"] = True
+        _write_json(self.identity_path, identity)
+
+        errors, approval_issues, claimed = self.validate_active()
+
+        self.assertTrue(claimed)
+        for role in evidence.ACTIVE_REQUIRED_ROLES:
+            self.assertTrue(any(role in error for error in errors), errors)
+            self.assertTrue(any(role in issue for issue in approval_issues), approval_issues)
+
+    def test_distinct_post_freeze_role_receipts_can_authorize_the_active_subject(self) -> None:
+        self.claim_active_approval()
+
+        errors, approval_issues, claimed = self.validate_active()
+
+        self.assertTrue(claimed)
+        self.assertEqual(approval_issues, [])
+        self.assertEqual(errors, [])
+
+    def test_complete_approval_cannot_remain_claimed_false(self) -> None:
+        self.claim_active_approval()
+        identity = _read_json(self.identity_path)
+        identity["approval"]["migrationApprovalClaimed"] = False
+        _write_json(self.identity_path, identity)
+
+        errors, approval_issues, claimed = self.validate_active()
+
+        self.assertFalse(claimed)
+        self.assertEqual(approval_issues, [])
+        self.assertTrue(any("approval is complete" in error for error in errors), errors)
+
+    def test_forged_role_receipt_is_rejected_when_approval_is_claimed(self) -> None:
+        self.claim_active_approval()
+        identity = _read_json(self.identity_path)
+        binding = next(item for item in identity["approval"]["receipts"] if item["role"] == "eventstore-maintainer")
+        path = self.artifact_root / binding["path"]
+        receipt = _read_json(path)
+        receipt["role"] = "frontcomposer-maintainer"
+        _write_json(path, receipt)
+        binding["sha256"] = _sha256(path)
+        _write_json(self.identity_path, identity)
+
+        errors, _, claimed = self.validate_active()
+
+        self.assertTrue(claimed)
+        self.assertTrue(any("Receipt role does not bind" in error for error in errors), errors)
+
+    def test_oi18_product_and_architecture_receipts_precede_transferred_ownership(self) -> None:
+        self.claim_active_approval(transferred_eventstore_role=True)
+
+        errors, approval_issues, claimed = self.validate_active()
+
+        self.assertTrue(claimed)
+        self.assertEqual(approval_issues, [])
+        self.assertEqual(errors, [])
+
+    def test_active_receipt_validator_rejects_every_missing_field(self) -> None:
+        self.claim_active_approval()
+        original_identity = _read_json(self.identity_path)
+        binding = next(
+            item for item in original_identity["approval"]["receipts"]
+            if item["role"] == "eventstore-maintainer"
+        )
+        path = self.artifact_root / binding["path"]
+        original_receipt = _read_json(path)
+
+        for field in sorted(original_receipt):
+            with self.subTest(field=field):
+                receipt = copy.deepcopy(original_receipt)
+                receipt.pop(field)
+                _write_json(path, receipt)
+                identity = copy.deepcopy(original_identity)
+                target = next(
+                    item for item in identity["approval"]["receipts"]
+                    if item["role"] == "eventstore-maintainer"
+                )
+                target["sha256"] = _sha256(path)
+                _write_json(self.identity_path, identity)
+
+                errors, approval_issues, claimed = self.validate_active()
+
+                self.assertTrue(claimed)
+                self.assertTrue(approval_issues, (field, errors))
+                self.assertTrue(
+                    any("eventstore-maintainer" in issue for issue in approval_issues),
+                    (field, approval_issues),
+                )
+
+        _write_json(path, original_receipt)
+
+    def test_active_receipt_rejects_every_present_but_wrong_subject_binding(self) -> None:
+        self.claim_active_approval()
+        original_identity = _read_json(self.identity_path)
+        binding = next(
+            item for item in original_identity["approval"]["receipts"]
+            if item["role"] == "eventstore-maintainer"
+        )
+        path = self.artifact_root / binding["path"]
+        original_receipt = _read_json(path)
+        mutations: dict[str, Callable[[dict[str, Any]], None]] = {
+            "subjectSha256": lambda receipt: receipt.__setitem__("subjectSha256", "0" * 64),
+            "policySha256": lambda receipt: receipt.__setitem__("policySha256", "0" * 64),
+            "rosterSha256": lambda receipt: receipt.__setitem__("rosterSha256", "0" * 64),
+            "activeTuple": lambda receipt: receipt["activeTuple"].__setitem__("releaseVersion", "0.0.0"),
+            "runtimeInputs": lambda receipt: receipt["runtimeInputs"].__setitem__("sha256", "0" * 64),
+            "evidenceFiles": lambda receipt: receipt["evidenceFiles"][0].__setitem__("sha256", "0" * 64),
+            "effectiveRequiredRoles": lambda receipt: receipt.__setitem__(
+                "effectiveRequiredRoles", list(reversed(receipt["effectiveRequiredRoles"]))
+            ),
+            "oi18SubjectSha256": lambda receipt: receipt.__setitem__("oi18SubjectSha256", False),
+        }
+        for field, mutate in mutations.items():
+            with self.subTest(field=field):
+                receipt = copy.deepcopy(original_receipt)
+                mutate(receipt)
+                _write_json(path, receipt)
+                identity = copy.deepcopy(original_identity)
+                target = next(
+                    item for item in identity["approval"]["receipts"]
+                    if item["role"] == "eventstore-maintainer"
+                )
+                target["sha256"] = _sha256(path)
+                _write_json(self.identity_path, identity)
+
+                errors, approval_issues, claimed = self.validate_active()
+
+                self.assertTrue(claimed)
+                self.assertTrue(approval_issues, (field, errors))
+                self.assertTrue(
+                    any("eventstore-maintainer" in issue for issue in approval_issues),
+                    (field, approval_issues),
+                )
+        _write_json(self.identity_path, original_identity)
+
+    def test_active_and_oi18_receipts_require_exact_affirmative_statements(self) -> None:
+        self.claim_active_approval(transferred_eventstore_role=True)
+        identity = _read_json(self.identity_path)
+        active_binding = next(
+            item for item in identity["approval"]["receipts"]
+            if item["role"] == "frontcomposer-maintainer"
+        )
+        active_path = self.artifact_root / active_binding["path"]
+        active_receipt = _read_json(active_path)
+        active_receipt["statement"] = "I reject this migration subject."
+        _write_json(active_path, active_receipt)
+
+        roster = _read_json(self.active_root / "reviewer-roster.json")
+        transfer_path = self.artifact_root / roster["oi18"]["productApprovalReceipt"]["path"]
+        transfer_receipt = _read_json(transfer_path)
+        transfer_receipt["statement"] = "I reject this ownership transfer."
+        _write_json(transfer_path, transfer_receipt)
+
+        _, approval_issues, claimed = self.validate_active()
+
+        self.assertTrue(claimed)
+        self.assertTrue(
+            any("exact affirmative approval" in issue for issue in approval_issues),
+            approval_issues,
+        )
+        self.assertTrue(
+            any(
+                "OI-18" in issue and "exact affirmative approval" in issue
+                for issue in approval_issues
+            ),
+            approval_issues,
+        )
+
+    def test_rebound_decision_cannot_enable_any_forbidden_course(self) -> None:
+        decision_path = self.active_root / "recapture-decision.json"
+        subject_path = self.active_root / "approval-subject.json"
+        original_decision = _read_json(decision_path)
+        original_subject = _read_json(subject_path)
+        original_identity = _read_json(self.identity_path)
+        mutations = {
+            "semanticCompatibilityExceptionApproved": True,
+            "rollbackApproved": True,
+            "submodulePointerChangedByDecision": True,
+            "packageVersionChangedByDecision": True,
+        }
+        for field, value in mutations.items():
+            with self.subTest(field=field):
+                decision = copy.deepcopy(original_decision)
+                decision[field] = value
+                _write_json(decision_path, decision)
+                identity = copy.deepcopy(original_identity)
+                identity["decision"]["sha256"] = _sha256(decision_path)
+                subject = copy.deepcopy(original_subject)
+                subject["decision"]["sha256"] = identity["decision"]["sha256"]
+                _write_json(subject_path, subject)
+                identity["approval"]["subject"]["sha256"] = _sha256(subject_path)
+                _write_json(self.identity_path, identity)
+
+                errors, _, _ = self.validate_active()
+
+                self.assertTrue(
+                    any(f"decision {field} is incorrect" in error for error in errors),
+                    errors,
+                )
+
+        _write_json(decision_path, original_decision)
+        _write_json(subject_path, original_subject)
+        _write_json(self.identity_path, original_identity)
+
+    def test_rebound_decision_rejects_integer_zero_as_a_boolean(self) -> None:
+        decision_path = self.active_root / "recapture-decision.json"
+        decision = _read_json(decision_path)
+        decision["rollbackApproved"] = 0
+        _write_json(decision_path, decision)
+        identity = _read_json(self.identity_path)
+        identity["decision"]["sha256"] = _sha256(decision_path)
+        subject_path = self.active_root / "approval-subject.json"
+        subject = _read_json(subject_path)
+        subject["decision"]["sha256"] = identity["decision"]["sha256"]
+        _write_json(subject_path, subject)
+        identity["approval"]["subject"]["sha256"] = _sha256(subject_path)
+        _write_json(self.identity_path, identity)
+
+        errors, _, _ = self.validate_active()
+
+        self.assertTrue(any("decision rollbackApproved is incorrect" in error for error in errors), errors)
+
+    def test_provider_and_apphost_capture_revisions_are_independently_enforced(self) -> None:
+        for relative, mutate, expected in (
+            (
+                "run-evidence.json",
+                lambda document: document.__setitem__("frontComposerRevision", "0" * 40),
+                "Live provider run receipt frontComposerRevision",
+            ),
+            (
+                "apphost-smoke.json",
+                lambda document: document["identity"].__setitem__("frontComposerRevision", "0" * 40),
+                "Live AppHost smoke provenance is stale or untruthful",
+            ),
+        ):
+            with self.subTest(relative=relative):
+                active_backup = Path(self._temporary.name) / f"backup-{relative}"
+                shutil.copytree(self.active_root, active_backup)
+                identity_backup = _read_json(self.identity_path)
+                self.repin_active_recapture(relative, mutate)
+
+                errors, _, _ = self.validate_active()
+
+                self.assertTrue(any(expected in error for error in errors), errors)
+                shutil.rmtree(self.active_root)
+                shutil.copytree(active_backup, self.active_root)
+                _write_json(self.identity_path, identity_backup)
+
+    def test_oi18_rejects_each_missing_prerequisite_receipt(self) -> None:
+        for field, role in (
+            ("productApprovalReceipt", "product-owner"),
+            ("architectureApprovalReceipt", "architect"),
+        ):
+            with self.subTest(role=role):
+                shutil.rmtree(self.active_root)
+                shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
+                shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
+                self.claim_active_approval(transferred_eventstore_role=True)
+                roster = _read_json(self.active_root / "reviewer-roster.json")
+                roster["oi18"][field] = None
+                self.repin_active_roster(roster)
+
+                errors, approval_issues, claimed = self.validate_active()
+
+                self.assertTrue(claimed)
+                self.assertTrue(any(role in issue for issue in approval_issues), approval_issues)
+                self.assertTrue(any("Migration approval claimed" in error for error in errors), errors)
+
+    def test_oi18_rejects_forged_and_predated_prerequisites(self) -> None:
+        for mutation, expected in (
+            ("forged", "role is invalid"),
+            ("predated", "does not postdate the transfer subject"),
+        ):
+            with self.subTest(mutation=mutation):
+                shutil.rmtree(self.active_root)
+                shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
+                shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
+                self.claim_active_approval(transferred_eventstore_role=True)
+                roster = _read_json(self.active_root / "reviewer-roster.json")
+                binding = roster["oi18"]["productApprovalReceipt"]
+                path = self.artifact_root / binding["path"]
+                receipt = _read_json(path)
+                if mutation == "forged":
+                    receipt["role"] = "architect"
+                else:
+                    receipt["acceptedAt"] = "2026-09-12T09:58:24+00:00"
+                _write_json(path, receipt)
+                binding["sha256"] = _sha256(path)
+                self.repin_active_roster(roster)
+
+                errors, approval_issues, claimed = self.validate_active()
+
+                self.assertTrue(claimed)
+                self.assertTrue(any(expected in issue for issue in approval_issues), approval_issues)
+                self.assertTrue(errors)
+
+    def test_oi18_replacement_receipt_must_follow_both_prerequisites(self) -> None:
+        self.claim_active_approval(transferred_eventstore_role=True)
+        identity = _read_json(self.identity_path)
+        binding = next(
+            item for item in identity["approval"]["receipts"]
+            if item["role"] == "accountable-frontcomposer-maintainer"
+        )
+        path = self.artifact_root / binding["path"]
+        receipt = _read_json(path)
+        receipt["acceptedAt"] = "2026-09-12T09:58:34+00:00"
+        _write_json(path, receipt)
+        binding["sha256"] = _sha256(path)
+        _write_json(self.identity_path, identity)
+
+        errors, approval_issues, claimed = self.validate_active()
+
+        self.assertTrue(claimed)
+        self.assertTrue(
+            any("does not postdate both OI-18 prerequisite approvals" in issue for issue in approval_issues),
+            approval_issues,
+        )
+        self.assertTrue(errors)
+
+    def test_oi18_transfer_subject_must_follow_the_authority_policy(self) -> None:
+        self.claim_active_approval(transferred_eventstore_role=True)
+        roster = _read_json(self.active_root / "reviewer-roster.json")
+        binding = roster["oi18"]["transferSubject"]
+        path = self.artifact_root / binding["path"]
+        subject = _read_json(path)
+        subject["frozenAt"] = "2026-09-12T09:58:19+00:00"
+        _write_json(path, subject)
+        binding["sha256"] = _sha256(path)
+        for receipt_field in ("productApprovalReceipt", "architectureApprovalReceipt"):
+            receipt_binding = roster["oi18"][receipt_field]
+            receipt_path = self.artifact_root / receipt_binding["path"]
+            receipt = _read_json(receipt_path)
+            receipt["subjectSha256"] = binding["sha256"]
+            _write_json(receipt_path, receipt)
+            receipt_binding["sha256"] = _sha256(receipt_path)
+        self.repin_active_roster(roster)
+
+        errors, approval_issues, claimed = self.validate_active()
+
+        self.assertTrue(claimed)
+        self.assertTrue(any("not frozen after the approval policy" in issue for issue in approval_issues), approval_issues)
+        self.assertTrue(errors)
+
+    def test_future_receipt_timestamp_is_rejected(self) -> None:
+        self.claim_active_approval()
+        identity = _read_json(self.identity_path)
+        binding = identity["approval"]["receipts"][0]
+        path = self.artifact_root / binding["path"]
+        receipt = _read_json(path)
+        receipt["acceptedAt"] = "2999-01-01T00:00:00+00:00"
+        _write_json(path, receipt)
+        binding["sha256"] = _sha256(path)
+        _write_json(self.identity_path, identity)
+
+        errors, approval_issues, claimed = self.validate_active()
+
+        self.assertTrue(claimed)
+        self.assertTrue(any("five-minute clock skew" in issue for issue in approval_issues), approval_issues)
+        self.assertTrue(errors)
+
+    def test_default_receipts_must_strictly_postdate_the_subject_freeze(self) -> None:
+        for accepted_at in (
+            "2026-09-12T16:13:05+00:00",
+            "2026-09-12T16:13:04+00:00",
+        ):
+            with self.subTest(accepted_at=accepted_at):
+                self.claim_active_approval()
+                identity = _read_json(self.identity_path)
+                binding = identity["approval"]["receipts"][0]
+                path = self.artifact_root / binding["path"]
+                receipt = _read_json(path)
+                receipt["acceptedAt"] = accepted_at
+                _write_json(path, receipt)
+                binding["sha256"] = _sha256(path)
+                _write_json(self.identity_path, identity)
+
+                errors, approval_issues, claimed = self.validate_active()
+
+                self.assertTrue(claimed)
+                self.assertTrue(
+                    any(
+                        "Receipt does not postdate the frozen subject for role: eventstore-maintainer"
+                        in issue
+                        for issue in approval_issues
+                    ),
+                    approval_issues,
+                )
+                self.assertTrue(errors)
+
+    def test_future_decision_and_capture_timestamps_are_rejected(self) -> None:
+        decision_path = self.active_root / "recapture-decision.json"
+        subject_path = self.active_root / "approval-subject.json"
+        decision = _read_json(decision_path)
+        decision["recordedAt"] = "2999-01-01T00:00:00+00:00"
+        _write_json(decision_path, decision)
+        identity = _read_json(self.identity_path)
+        identity["decision"]["sha256"] = _sha256(decision_path)
+        subject = _read_json(subject_path)
+        subject["decision"]["sha256"] = identity["decision"]["sha256"]
+        _write_json(subject_path, subject)
+        identity["approval"]["subject"]["sha256"] = _sha256(subject_path)
+        _write_json(self.identity_path, identity)
+
+        errors, _, _ = self.validate_active()
+
+        self.assertTrue(any("decision recordedAt is later" in error for error in errors), errors)
+
+        shutil.rmtree(self.active_root)
+        shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
+        shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
+        self.repin_active_recapture(
+            "apphost-smoke.json",
+            lambda document: document.__setitem__(
+                "capturedAt",
+                "2999-01-01T00:00:00+00:00",
+            ),
+        )
+
+        errors, _, _ = self.validate_active()
+
+        self.assertTrue(any("AppHost capture start timestamp is later" in error for error in errors), errors)
+
+    def test_ordinary_capture_chronology_is_enforced(self) -> None:
+        self.repin_active_recapture(
+            "apphost-smoke.json",
+            lambda document: document.__setitem__(
+                "completedAt", "2026-09-12T11:29:00+00:00"
+            ),
+        )
+        errors, _, _ = self.validate_active()
+        self.assertTrue(any("completion does not follow" in error for error in errors), errors)
+
+    def test_all_provider_and_apphost_completions_must_strictly_predate_decision(self) -> None:
+        cases = (
+            (
+                "provider-verification.json",
+                lambda document, value: document["timing"]["run"].__setitem__("completedAt", value),
+                "provider run completion",
+            ),
+            (
+                "run-evidence.json",
+                lambda document, value: document.__setitem__("capturedAt", value),
+                "provider receipt capture",
+            ),
+            (
+                "apphost-smoke.json",
+                lambda document, value: document.__setitem__("completedAt", value),
+                "AppHost capture completion",
+            ),
+        )
+        for relative, mutate, label in cases:
+            for timestamp in (
+                "2026-09-12T16:13:00+00:00",
+                "2026-09-12T16:13:01+00:00",
+            ):
+                with self.subTest(relative=relative, timestamp=timestamp):
+                    shutil.rmtree(self.active_root)
+                    shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
+                    shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
+                    self.repin_active_recapture(
+                        relative,
+                        lambda document, value=timestamp, mutate=mutate: mutate(document, value),
+                    )
+
+                    errors, _, _ = self.validate_active()
+
+                    self.assertIn(
+                        f"Active {label} does not predate the recapture decision.",
+                        errors,
+                    )
+
+        shutil.rmtree(self.active_root)
+        shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
+        shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
+        self.repin_active_recapture(
+            "apphost-smoke.json",
+            lambda document: document.__setitem__(
+                "completedAt", "2026-09-12T13:15:41+00:00"
+            ),
+        )
+        errors, _, _ = self.validate_active()
+        self.assertTrue(any("completion does not follow" in error for error in errors), errors)
+
+    def test_runtime_manifest_must_predate_provider_and_apphost_execution(self) -> None:
+        cases = (
+            (
+                "provider-verification.json",
+                lambda document: document["timing"]["run"]["startedAt"],
+                "manifest does not predate provider",
+            ),
+            (
+                "apphost-smoke.json",
+                lambda document: document["capturedAt"],
+                "manifest does not predate AppHost",
+            ),
+        )
+        for capture_name, timestamp, expected in cases:
+            with self.subTest(capture_name=capture_name):
+                shutil.rmtree(self.active_root)
+                shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
+                shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
+                manifest_path = self.active_root / "frontcomposer-runtime-inputs.json"
+                manifest = _read_json(manifest_path)
+                capture = _read_json(self.active_root / "recapture" / capture_name)
+                manifest["capturedAt"] = timestamp(capture)
+                _write_json(manifest_path, manifest)
+                manifest_hash = _sha256(manifest_path)
+                identity = _read_json(self.identity_path)
+                identity["runtimeInputs"]["sha256"] = manifest_hash
+                decision_path = self.active_root / "recapture-decision.json"
+                decision = _read_json(decision_path)
+                decision["runtimeInputs"]["sha256"] = manifest_hash
+                _write_json(decision_path, decision)
+                identity["decision"]["sha256"] = _sha256(decision_path)
+                subject_path = self.active_root / "approval-subject.json"
+                subject = _read_json(subject_path)
+                subject["runtimeInputs"]["sha256"] = manifest_hash
+                subject["decision"]["sha256"] = identity["decision"]["sha256"]
+                _write_json(subject_path, subject)
+                identity["approval"]["subject"]["sha256"] = _sha256(subject_path)
+                _write_json(self.identity_path, identity)
+
+                errors, _, _ = self.validate_active()
+
+                self.assertTrue(any(expected in error for error in errors), errors)
+
+    def test_final_subject_must_postdate_decision_policy_and_roster(self) -> None:
+        cases = (
+            ("recapture-decision.json", "recordedAt", "recapture decision"),
+            ("approval-policy.json", "frozenAt", "approval policy"),
+            ("reviewer-roster.json", "frozenAt", "approval roster"),
+        )
+        for source_name, timestamp_field, label in cases:
+            with self.subTest(label=label):
+                shutil.rmtree(self.active_root)
+                shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
+                shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
+                source = _read_json(self.active_root / source_name)
+                subject_path = self.active_root / "approval-subject.json"
+                subject = _read_json(subject_path)
+                subject["frozenAt"] = source[timestamp_field]
+                _write_json(subject_path, subject)
+                identity = _read_json(self.identity_path)
+                identity["approval"]["subject"]["sha256"] = _sha256(subject_path)
+                _write_json(self.identity_path, identity)
+
+                errors, _, _ = self.validate_active()
+
+                self.assertIn(
+                    f"Active approval subject was not frozen after the {label}.",
+                    errors,
+                )
+
+    def test_default_effective_roles_require_distinct_actors(self) -> None:
+        self.claim_active_approval()
+        roster = _read_json(self.active_root / "reviewer-roster.json")
+        eventstore_actor = next(
+            item for item in roster["assignments"]
+            if item["role"] == "eventstore-maintainer"
+        )["actors"][0]
+        next(
+            item for item in roster["assignments"]
+            if item["role"] == "frontcomposer-maintainer"
+        )["actors"] = [eventstore_actor]
+        self.repin_active_roster(roster)
+
+        errors, approval_issues, claimed = self.validate_active()
+
+        self.assertTrue(claimed)
+        self.assertTrue(any("Required roles must have distinct actors" in issue for issue in approval_issues), approval_issues)
+        self.assertTrue(errors)
+
+    def test_policy_rejects_malformed_actors_and_non_https_sources(self) -> None:
+        policy = _read_json(self.active_root / "approval-policy.json")
+        assignment = policy["assignments"][0]
+        assignment["authorities"] = [{
+            "actor": "github:",
+            "durableSources": ["https://example.test/receipt"],
+        }]
+        errors: list[str] = []
+        evidence._validate_policy(policy, errors)
+        self.assertTrue(any("actor/source authority is malformed" in error for error in errors), errors)
+
+        assignment["authorities"] = [{
+            "actor": "github:valid-actor",
+            "durableSources": ["http://example.test/receipt"],
+        }]
+        errors = []
+        evidence._validate_policy(policy, errors)
+        self.assertTrue(any("actor/source authority is malformed" in error for error in errors), errors)
+
+    def test_repository_policy_cannot_manufacture_validator_authority(self) -> None:
+        policy = _read_json(self.active_root / "approval-policy.json")
+        policy["assignments"][0]["authorities"] = [{
+            "actor": "github:self-appointed",
+            "durableSources": ["https://example.test/self-appointed"],
+        }]
+        errors: list[str] = []
+
+        authority, _ = evidence._validate_policy(policy, errors)
+
+        self.assertTrue(any("validator-owned authority bootstrap" in error for error in errors), errors)
+        self.assertEqual(authority, {role: {} for role in evidence.POLICY_ROLES})
+
+    def test_malformed_unhashable_roster_role_is_a_validation_issue(self) -> None:
+        roster = _read_json(self.active_root / "reviewer-roster.json")
+        roster["assignments"][0]["role"] = {"malformed": True}
+        errors: list[str] = []
+
+        actors, _ = evidence._validate_roster(
+            roster,
+            roster["policySha256"],
+            {role: {} for role in evidence.POLICY_ROLES},
+            errors,
+        )
+
+        self.assertIsInstance(actors, dict)
+        self.assertTrue(any("duplicate or unexpected role" in error for error in errors), errors)
+
+    def test_runtime_scope_rejects_untracked_worktree_index_symlink_and_dependency_drift(self) -> None:
+        repository = Path(self._temporary.name) / "runtime-repository"
+        repository.mkdir()
+
+        def git(*arguments: str) -> None:
+            subprocess.run(
+                ["git", *arguments],
+                cwd=repository,
+                check=True,
+                capture_output=True,
+            )
+
+        git("init", "-q")
+        git("config", "user.name", "Runtime Evidence Test")
+        git("config", "user.email", "runtime-evidence@example.test")
+        for relative in (
+            *evidence.RUNTIME_ROOT_INPUTS,
+            *evidence.RUNTIME_PACT_INPUTS,
+            "src/app.cs",
+            "samples/Counter/Program.cs",
+        ):
+            path = repository / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("runtime input\n", encoding="utf-8")
+        git("add", ".")
+        git("commit", "-qm", "test: seed runtime scope")
+
+        dependency_files: dict[str, Path] = {}
+        for relative in evidence.RUNTIME_DEPENDENCY_GITLINKS:
+            checkout = repository / relative
+            checkout.mkdir(parents=True)
+            dependency_file = checkout / "runtime.txt"
+            subprocess.run(["git", "init", "-q"], cwd=checkout, check=True)
+            subprocess.run(
+                ["git", "config", "user.name", "Runtime Dependency Test"],
+                cwd=checkout,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.email", "runtime-dependency@example.test"],
+                cwd=checkout,
+                check=True,
+            )
+            dependency_file.write_text("runtime dependency\n", encoding="utf-8")
+            subprocess.run(["git", "add", "runtime.txt"], cwd=checkout, check=True)
+            subprocess.run(
+                ["git", "commit", "-qm", "test: seed runtime dependency"],
+                cwd=checkout,
+                check=True,
+            )
+            dependency_sha = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=checkout,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            git(
+                "update-index",
+                "--add",
+                "--cacheinfo",
+                f"160000,{dependency_sha},{relative}",
+            )
+            dependency_files[relative] = dependency_file
+        git("commit", "-qm", "test: add runtime dependency gitlinks")
+
+        _, baseline_issues = evidence._runtime_input_snapshot(repository)
+        self.assertEqual(baseline_issues, [])
+
+        manifest_output = repository / "runtime-input-manifest.json"
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            writer_result = evidence.main(
+                [
+                    "--write-runtime-input-manifest",
+                    "--runtime-input-manifest-output", str(manifest_output),
+                    "--runtime-input-captured-at", "2026-09-12T10:00:00+00:00",
+                    "--repository-root", str(repository),
+                    "--pact-dir", str(self.pact_root),
+                ]
+            )
+        self.assertEqual(writer_result, 0)
+        first_manifest = manifest_output.read_bytes()
+        self.assertTrue(first_manifest.endswith(b"\n"))
+
+        # The prior predictable PID-based temporary name was vulnerable to a
+        # pre-created symlink. The writer must use an unpredictable exclusively
+        # created sibling and leave that trap and its target untouched.
+        symlink_target = repository / "writer-symlink-target.txt"
+        symlink_target.write_text("must remain unchanged\n", encoding="utf-8")
+        predictable_temporary = manifest_output.with_name(
+            f".{manifest_output.name}.{os.getpid()}.tmp"
+        )
+        predictable_temporary.symlink_to(symlink_target)
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            writer_result = evidence.main(
+                [
+                    "--write-runtime-input-manifest",
+                    "--runtime-input-manifest-output", str(manifest_output),
+                    "--runtime-input-captured-at", "2026-09-12T10:00:30+00:00",
+                    "--repository-root", str(repository),
+                    "--pact-dir", str(self.pact_root),
+                ]
+            )
+        self.assertEqual(writer_result, 0)
+        self.assertEqual(
+            symlink_target.read_text(encoding="utf-8"),
+            "must remain unchanged\n",
+        )
+        self.assertTrue(predictable_temporary.is_symlink())
+        first_manifest = manifest_output.read_bytes()
+
+        hidden_dependency = evidence.RUNTIME_DEPENDENCY_GITLINKS[2]
+        hidden_checkout = repository / hidden_dependency
+        subprocess.run(
+            ["git", "update-index", "--assume-unchanged", "runtime.txt"],
+            cwd=hidden_checkout,
+            check=True,
+        )
+        dependency_files[hidden_dependency].write_text(
+            "assume-hidden dependency\n", encoding="utf-8"
+        )
+        _, issues = evidence._runtime_input_snapshot(repository)
+        self.assertTrue(
+            any("dependency contains assume-unchanged entries" in issue for issue in issues),
+            issues,
+        )
+        self.assertTrue(
+            any("dependency worktree bytes differ from the Git index" in issue for issue in issues),
+            issues,
+        )
+        subprocess.run(
+            ["git", "update-index", "--no-assume-unchanged", "runtime.txt"],
+            cwd=hidden_checkout,
+            check=True,
+        )
+        dependency_files[hidden_dependency].write_text(
+            "runtime dependency\n", encoding="utf-8"
+        )
+
+        skip_dependency = evidence.RUNTIME_DEPENDENCY_GITLINKS[3]
+        skip_checkout = repository / skip_dependency
+        subprocess.run(
+            ["git", "update-index", "--skip-worktree", "runtime.txt"],
+            cwd=skip_checkout,
+            check=True,
+        )
+        dependency_files[skip_dependency].write_text(
+            "skip-hidden dependency\n", encoding="utf-8"
+        )
+        _, issues = evidence._runtime_input_snapshot(repository)
+        self.assertTrue(
+            any("dependency contains skip-worktree entries" in issue for issue in issues),
+            issues,
+        )
+        self.assertTrue(
+            any("dependency worktree bytes differ from the Git index" in issue for issue in issues),
+            issues,
+        )
+        subprocess.run(
+            ["git", "update-index", "--no-skip-worktree", "runtime.txt"],
+            cwd=skip_checkout,
+            check=True,
+        )
+        dependency_files[skip_dependency].write_text(
+            "runtime dependency\n", encoding="utf-8"
+        )
+
+        untracked_dependency = evidence.RUNTIME_DEPENDENCY_GITLINKS[4]
+        untracked_input = repository / untracked_dependency / "untracked.props"
+        untracked_input.write_text("runtime dependency input\n", encoding="utf-8")
+        _, issues = evidence._runtime_input_snapshot(repository)
+        self.assertTrue(
+            any("dependency contains untracked inputs" in issue for issue in issues),
+            issues,
+        )
+        untracked_input.unlink()
+
+        symlinked_dependency = evidence.RUNTIME_DEPENDENCY_GITLINKS[5]
+        symlinked_checkout = repository / symlinked_dependency
+        real_checkout = symlinked_checkout.with_name(f"{symlinked_checkout.name}-real")
+        symlinked_checkout.rename(real_checkout)
+        symlinked_checkout.symlink_to(real_checkout, target_is_directory=True)
+        _, issues = evidence._runtime_input_snapshot(repository)
+        self.assertIn(
+            f"Runtime dependency checkout is missing or symlinked: {symlinked_dependency}",
+            issues,
+        )
+        symlinked_checkout.unlink()
+        real_checkout.rename(symlinked_checkout)
+
+        nested_dependency = evidence.RUNTIME_DEPENDENCY_GITLINKS[6]
+        nested_checkout = repository / nested_dependency
+        nested_source = repository / "nested-source"
+        nested_source.mkdir()
+        subprocess.run(["git", "init", "-q"], cwd=nested_source, check=True)
+        subprocess.run(
+            ["git", "config", "user.name", "Nested Dependency Test"],
+            cwd=nested_source,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.email", "nested-dependency@example.test"],
+            cwd=nested_source,
+            check=True,
+        )
+        (nested_source / "nested.txt").write_text("nested\n", encoding="utf-8")
+        subprocess.run(["git", "add", "nested.txt"], cwd=nested_source, check=True)
+        subprocess.run(
+            ["git", "commit", "-qm", "test: seed nested dependency"],
+            cwd=nested_source,
+            check=True,
+        )
+        subprocess.run(
+            [
+                "git", "-c", "protocol.file.allow=always", "submodule", "add", "-q",
+                str(nested_source), "nested",
+            ],
+            cwd=nested_checkout,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "commit", "-qm", "test: initialize nested dependency"],
+            cwd=nested_checkout,
+            check=True,
+        )
+        _, issues = evidence._runtime_input_snapshot(repository)
+        self.assertTrue(
+            any("initialized nested submodules" in issue for issue in issues),
+            issues,
+        )
+
+        dirty_dependency = evidence.RUNTIME_DEPENDENCY_GITLINKS[0]
+        dependency_files[dirty_dependency].write_text(
+            "dirty dependency\n", encoding="utf-8"
+        )
+        _, issues = evidence._runtime_input_snapshot(repository)
+        self.assertIn(f"Runtime dependency checkout is dirty: {dirty_dependency}", issues)
+        dependency_files[dirty_dependency].write_text(
+            "runtime dependency\n", encoding="utf-8"
+        )
+
+        advanced_dependency = evidence.RUNTIME_DEPENDENCY_GITLINKS[1]
+        advanced_checkout = repository / advanced_dependency
+        dependency_files[advanced_dependency].write_text(
+            "advanced dependency\n", encoding="utf-8"
+        )
+        subprocess.run(["git", "add", "runtime.txt"], cwd=advanced_checkout, check=True)
+        subprocess.run(
+            ["git", "commit", "-qm", "test: advance runtime dependency"],
+            cwd=advanced_checkout,
+            check=True,
+        )
+        _, issues = evidence._runtime_input_snapshot(repository)
+        self.assertIn(
+            f"Runtime dependency gitlink/check-out drifted: {advanced_dependency}",
+            issues,
+        )
+
+        untracked = repository / "src/untracked.cs"
+        untracked.write_text("untracked\n", encoding="utf-8")
+        _, issues = evidence._runtime_input_snapshot(repository)
+        self.assertTrue(any("contains untracked files" in issue for issue in issues), issues)
+        untracked.unlink()
+
+        untracked_sample = repository / "samples/Counter/untracked.cs"
+        untracked_sample.write_text("untracked sample\n", encoding="utf-8")
+        _, issues = evidence._runtime_input_snapshot(repository)
+        self.assertTrue(any("contains untracked files" in issue for issue in issues), issues)
+        untracked_sample.unlink()
+
+        tracked = repository / "src/app.cs"
+        tracked.write_text("dirty\n", encoding="utf-8")
+        _, issues = evidence._runtime_input_snapshot(repository)
+        self.assertTrue(any("worktree bytes differ from the Git index" in issue for issue in issues), issues)
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            writer_result = evidence.main(
+                [
+                    "--write-runtime-input-manifest",
+                    "--runtime-input-manifest-output", str(manifest_output),
+                    "--runtime-input-captured-at", "2026-09-12T10:01:00+00:00",
+                    "--repository-root", str(repository),
+                    "--pact-dir", str(self.pact_root),
+                ]
+            )
+        self.assertEqual(writer_result, 1)
+        self.assertEqual(manifest_output.read_bytes(), first_manifest)
+
+        tracked.write_text("runtime input\n", encoding="utf-8")
+        git("update-index", "--assume-unchanged", "src/app.cs")
+        tracked.write_text("assume-hidden\n", encoding="utf-8")
+        _, issues = evidence._runtime_input_snapshot(repository)
+        self.assertTrue(any("assume-unchanged" in issue for issue in issues), issues)
+        self.assertTrue(any("worktree bytes differ from the Git index" in issue for issue in issues), issues)
+        git("update-index", "--no-assume-unchanged", "src/app.cs")
+        tracked.write_text("runtime input\n", encoding="utf-8")
+
+        git("update-index", "--skip-worktree", "src/app.cs")
+        tracked.write_text("skip-hidden\n", encoding="utf-8")
+        _, issues = evidence._runtime_input_snapshot(repository)
+        self.assertTrue(any("skip-worktree" in issue for issue in issues), issues)
+        self.assertTrue(any("worktree bytes differ from the Git index" in issue for issue in issues), issues)
+        git("update-index", "--no-skip-worktree", "src/app.cs")
+        tracked.write_text("runtime input\n", encoding="utf-8")
+
+        ignored_control = repository / "untracked-build.rsp"
+        (repository / ".gitignore").write_text("*.rsp\n", encoding="utf-8")
+        ignored_control.write_text("-p:Injected=true\n", encoding="utf-8")
+        _, issues = evidence._runtime_input_snapshot(repository)
+        self.assertTrue(any("outside the fixed scope: untracked-build.rsp" in issue for issue in issues), issues)
+        ignored_control.unlink()
+
+        tracked.write_text("dirty\n", encoding="utf-8")
+        git("add", "src/app.cs")
+        _, issues = evidence._runtime_input_snapshot(repository)
+        self.assertTrue(any("index differs from HEAD" in issue for issue in issues), issues)
+        git("commit", "-qm", "test: stage deterministic input")
+
+        os.symlink("app.cs", repository / "src/runtime-link.cs")
+        git("add", "src/runtime-link.cs")
+        git("commit", "-qm", "test: add runtime symlink")
+        _, issues = evidence._runtime_input_snapshot(repository)
+        self.assertTrue(any("Runtime-input path is symlinked" in issue for issue in issues), issues)
+
+        tracked_symlink_dependency = evidence.RUNTIME_DEPENDENCY_GITLINKS[0]
+        tracked_symlink_checkout = repository / tracked_symlink_dependency
+        os.symlink("runtime.txt", tracked_symlink_checkout / "tracked-link")
+        subprocess.run(
+            ["git", "add", "tracked-link"],
+            cwd=tracked_symlink_checkout,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "commit", "-qm", "test: add tracked dependency symlink"],
+            cwd=tracked_symlink_checkout,
+            check=True,
+        )
+        tracked_symlink_sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=tracked_symlink_checkout,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        issues = evidence._validate_dependency_checkout(
+            repository,
+            tracked_symlink_dependency,
+            tracked_symlink_sha,
+        )
+        self.assertIn(
+            f"Runtime dependency contains a tracked symlink: {tracked_symlink_dependency}/tracked-link",
+            issues,
+        )
+
+    def test_prior_archive_rejects_nested_extra_content(self) -> None:
+        nested = self.history_root / "nested"
+        nested.mkdir()
+        (nested / "extra.json").write_text("{}\n", encoding="utf-8")
+
+        errors, _, _ = self.validate_active()
+
+        self.assertTrue(any("exactly the dated three-file packet" in error for error in errors), errors)
+
+    def test_prior_archive_and_active_tree_reject_empty_directories(self) -> None:
+        (self.history_root / "empty").mkdir()
+        errors, _, _ = self.validate_active()
+        self.assertTrue(any("undeclared directory" in error for error in errors), errors)
+
+        (self.history_root / "empty").rmdir()
+        (self.active_root / "empty").mkdir()
+        errors, _, _ = self.validate_active()
+        self.assertTrue(any("undeclared directories" in error for error in errors), errors)
+
+    def test_runtime_manifest_names_counter_and_all_source_dependency_gitlinks(self) -> None:
+        manifest = _read_json(CANONICAL_ACTIVE_EVIDENCE / "frontcomposer-runtime-inputs.json")
+        self.assertEqual(manifest["scope"], evidence._runtime_scope())
+        paths = {item["path"] for item in manifest["entries"]}
+        self.assertTrue(any(path.startswith("samples/Counter/") for path in paths))
+        self.assertTrue(set(evidence.RUNTIME_DEPENDENCY_GITLINKS).issubset(paths))
+        directory_rsp = next(item for item in manifest["entries"] if item["path"] == "Directory.Build.rsp")
+        self.assertEqual(directory_rsp, {"path": "Directory.Build.rsp", "kind": "absent"})
+
     def test_live_lane_accepts_exact_current_provider_and_authenticated_apphost_evidence(self) -> None:
         self.make_live_apphost_pass()
 
@@ -405,7 +2125,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         original = report["timing"]["run"]["durationMilliseconds"]
         report["timing"]["run"]["durationMilliseconds"] = original + 4
         _write_json(self.live_root / "provider-verification.json", report)
-        self.assertEqual(evidence.write_live_receipt(self.live_root), [])
+        self.assertEqual(self.write_live_receipt(), [])
         self.assertEqual(
             [error for error in self.validate_live() if "duration contradicts" in error],
             [],
@@ -413,10 +2133,93 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         report["timing"]["run"]["durationMilliseconds"] = original + 20
         _write_json(self.live_root / "provider-verification.json", report)
-        self.assertEqual(evidence.write_live_receipt(self.live_root), [])
+        writer_errors = self.write_live_receipt()
+        self.assertTrue(any("duration contradicts" in error for error in writer_errors), writer_errors)
         self.assertTrue(
             any("run duration contradicts its timestamps" in error for error in self.validate_live()),
         )
+
+    def test_live_receipt_reuses_the_pre_provider_manifest_without_replacing_it(self) -> None:
+        manifest_path = self.active_root / "frontcomposer-runtime-inputs.json"
+        manifest_before = manifest_path.read_bytes()
+
+        self.assertEqual(self.write_live_receipt(), [])
+
+        self.assertEqual(manifest_path.read_bytes(), manifest_before)
+        receipt = _read_json(self.live_root / "run-evidence.json")
+        manifest = _read_json(manifest_path)
+        self.assertEqual(
+            receipt["runtimeInputTreeSha256"],
+            manifest["treeSha256"],
+        )
+        self.assertEqual(
+            receipt["frontComposerRevision"],
+            manifest["capturedRevision"],
+        )
+
+    def test_live_receipt_writer_rejects_a_stale_report_without_replacing_receipt(self) -> None:
+        receipt_path = self.live_root / "run-evidence.json"
+        receipt_before = receipt_path.read_bytes()
+        report_path = self.live_root / "provider-verification.json"
+        report = _read_json(report_path)
+        report["identity"]["observedSourceSha"] = "0" * 40
+        _write_json(report_path, report)
+
+        errors = self.write_live_receipt()
+
+        self.assertTrue(any("observedSourceSha is stale" in error for error in errors), errors)
+        self.assertEqual(receipt_path.read_bytes(), receipt_before)
+
+    def test_live_provider_rejects_invalid_state_event_durations(self) -> None:
+        self.make_live_apphost_pass()
+        report_path = self.live_root / "provider-verification.json"
+        original = _read_json(report_path)
+        for invalid in (None, True, -1, evidence.MAX_RUN_MILLISECONDS + 1):
+            with self.subTest(invalid=invalid):
+                report = copy.deepcopy(original)
+                report["interactions"][0]["stateEvents"][0]["durationMilliseconds"] = invalid
+                _write_json(report_path, report)
+                writer_errors = self.write_live_receipt()
+                self.assertTrue(any("setup duration is unbounded" in error for error in writer_errors), writer_errors)
+                errors = self.validate_live()
+                self.assertTrue(any("setup duration is unbounded" in error for error in errors), errors)
+
+    def test_live_provider_requires_exact_indices_contained_events_and_empty_approval_bindings(self) -> None:
+        self.make_live_apphost_pass()
+        report_path = self.live_root / "provider-verification.json"
+        original = _read_json(report_path)
+        mutations = (
+            lambda report: report["interactions"][0].__setitem__("index", True),
+            lambda report: report["interactions"][0]["stateEvents"][0].__setitem__(
+                "durationMilliseconds",
+                report["interactions"][0]["durationMilliseconds"] + 1,
+            ),
+            lambda report: report["identity"].__setitem__(
+                "evidenceManifestSha256", "0" * 64
+            ),
+            lambda report: report["identity"].__setitem__(
+                "decisionRecordSha256", "0" * 64
+            ),
+            lambda report: report["identity"].__setitem__(
+                "subjectSha256", "0" * 64
+            ),
+        )
+        for mutate in mutations:
+            with self.subTest(mutate=mutate):
+                report = copy.deepcopy(original)
+                mutate(report)
+                _write_json(report_path, report)
+                self.assertNotEqual(self.write_live_receipt(), [])
+                errors = self.validate_live()
+                self.assertTrue(
+                    any(
+                        "did not pass deterministically" in error
+                        or "state-event durations exceed" in error
+                        or "stale or untruthful" in error
+                        for error in errors
+                    ),
+                    errors,
+                )
 
     def test_live_lane_rejects_current_pact_byte_drift(self) -> None:
         self.make_live_apphost_pass()
@@ -468,6 +2271,141 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         errors = self.validate_live()
 
         self.assertTrue(any("query provenance stamp is missing or drifted" in error for error in errors), errors)
+
+    def test_live_provider_rejects_duplicate_input_hash_names(self) -> None:
+        self.make_live_apphost_pass()
+        report_path = self.live_root / "provider-verification.json"
+        report = _read_json(report_path)
+        report["inputHashes"].append(copy.deepcopy(report["inputHashes"][0]))
+        _write_json(report_path, report)
+        writer_errors = self.write_live_receipt()
+        self.assertTrue(any("duplicate names" in error for error in writer_errors), writer_errors)
+
+        errors = self.validate_live()
+
+        self.assertTrue(any("duplicate names" in error for error in errors), errors)
+
+    def test_live_apphost_observations_require_exact_typed_semantics(self) -> None:
+        self.make_live_apphost_pass()
+        path = self.live_root / "apphost-smoke.json"
+        original = _read_json(path)
+        mutations = (
+            lambda document: document["observations"]["health"].__setitem__("statusCode", 500),
+            lambda document: document["observations"]["commandSubmit"].__setitem__("authenticated", 1),
+            lambda document: document["observations"]["commandStatus"].__setitem__("terminalStatus", "Rejected"),
+            lambda document: document["observations"]["queryProvenance"].__setitem__("responseTenantId", "other"),
+            lambda document: document["observations"]["projectionSignalR"].__setitem__("extra", True),
+            lambda document: document["observations"]["commandSubmit"].__setitem__(
+                "aggregateId", "pact-reconciliation-"
+            ),
+            lambda document: document["observations"]["commandSubmit"].__setitem__(
+                "correlationId", "01M2AW1VW8Z2GHQ0ZGCTTCWWW1"
+            ),
+            lambda document: document["observations"]["projectionSignalR"].__setitem__(
+                "endpoint", "http://127.0.0.1:18001/unrelated"
+            ),
+            lambda document: document["authorizationControls"]["projectionSignalR"].__setitem__(
+                "endpoint", "http://127.0.0.1:18001/hubs/projection-changes?drift=true"
+            ),
+        )
+        for mutate in mutations:
+            with self.subTest(mutate=mutate):
+                document = copy.deepcopy(original)
+                mutate(document)
+                _write_json(path, document)
+                errors = self.validate_live()
+                self.assertTrue(
+                    any(
+                        "incorrect semantics" in error
+                        or "health status" in error
+                        or "aggregate identity" in error
+                        or "command correlation" in error
+                        or "projection-change hub" in error
+                        or "authorization control" in error
+                        for error in errors
+                    ),
+                    errors,
+                )
+
+    def test_live_apphost_timeout_and_elapsed_duration_are_exact_and_bounded(self) -> None:
+        self.make_live_apphost_pass()
+        path = self.live_root / "apphost-smoke.json"
+        original = _read_json(path)
+        mutations = (
+            lambda document: document.__setitem__("timeoutSeconds", True),
+            lambda document: document.__setitem__("timeoutSeconds", 29),
+            lambda document: document.__setitem__("completedAt", "2026-08-31T17:00:32+00:00"),
+        )
+        for mutate in mutations:
+            with self.subTest(mutate=mutate):
+                document = copy.deepcopy(original)
+                mutate(document)
+                _write_json(path, document)
+                errors = self.validate_live()
+                self.assertTrue(any("timeoutSeconds" in error or "elapsed duration" in error for error in errors), errors)
+
+    def test_live_apphost_authorization_controls_are_exact_and_credential_specific(self) -> None:
+        self.make_live_apphost_pass()
+        path = self.live_root / "apphost-smoke.json"
+        original = _read_json(path)
+        mutations = (
+            lambda document: document["authorizationControls"].pop("commandStatus"),
+            lambda document: document["authorizationControls"]["queryProvenance"].__setitem__("statusCode", 200),
+            lambda document: document["authorizationControls"]["projectionSignalR"].__setitem__(
+                "reasonCode", "authorization.anonymous.rejected"
+            ),
+            lambda document: document["authorizationControls"]["commandSubmit"].__setitem__("statusCode", True),
+        )
+        for mutate in mutations:
+            with self.subTest(mutate=mutate):
+                document = copy.deepcopy(original)
+                mutate(document)
+                _write_json(path, document)
+                errors = self.validate_live()
+                self.assertTrue(any("authorization" in error.lower() for error in errors), errors)
+
+    def test_live_apphost_cleanup_rejects_integer_boolean_substitutions(self) -> None:
+        self.make_live_apphost_pass()
+        path = self.live_root / "apphost-smoke.json"
+        original = _read_json(path)
+        for field, replacement in (
+            ("hostStopped", 1),
+            ("portsClosed", 1),
+            ("runningAppHostsAfterAttempt", False),
+        ):
+            with self.subTest(field=field):
+                document = copy.deepcopy(original)
+                document["cleanup"][field] = replacement
+                _write_json(path, document)
+                errors = self.validate_live()
+                self.assertTrue(
+                    any("cleanup" in error and "is incomplete" in error for error in errors),
+                    errors,
+                )
+
+    def test_live_tree_recursively_rejects_nested_files_directories_and_cookie_values(self) -> None:
+        self.make_live_apphost_pass()
+        nested = self.live_root / "nested"
+        nested.mkdir()
+        (nested / "diagnostic.txt").write_text("cookie=session-secret\n", encoding="utf-8")
+
+        errors = self.validate_live()
+
+        self.assertTrue(any("must contain exactly" in error for error in errors), errors)
+        self.assertTrue(any("Redaction scan failed" in error for error in errors), errors)
+
+    def test_live_writer_redaction_rejects_quoted_secret_and_cookie_keys(self) -> None:
+        report_path = self.live_root / "provider-verification.json"
+        original = _read_json(report_path)
+        for key in ("access_token", "api_key", "password", "cookie", "session_cookie"):
+            with self.subTest(key=key):
+                report = copy.deepcopy(original)
+                report[key] = "credential-value-never-uploaded"
+                _write_json(report_path, report)
+
+                errors = self.write_live_receipt()
+
+                self.assertTrue(any("Redaction scan failed" in error for error in errors), errors)
 
     def test_live_lane_rejects_stale_provenance_and_extra_files(self) -> None:
         self.make_live_apphost_pass()
@@ -812,21 +2750,28 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         relative = "apphost-smoke/apphost-smoke.json"
         for value, expected in (
             ("Server=db;User Id=sa", "connectionstring"),
-            ("session cookie replayed", "cookie"),
+            ('"cookie": "replayed"', "cookie"),
             ("EVENTSTORE_SECRET=hunter2tokenvalue", "[A-Z0-9_]{8,}=.{6,}"),
         ):
             with self.subTest(expected=expected):
                 def mutate(smoke: dict[str, Any], value: str = value, expected: str = expected) -> None:
-                    smoke["diagnosticDetail"] = (
-                        f"ConnectionString={value}" if expected == "connectionstring" else value
-                    )
+                    if expected == "cookie":
+                        smoke["cookie"] = "replayed"
+                    else:
+                        smoke["diagnosticDetail"] = (
+                            f"ConnectionString={value}" if expected == "connectionstring" else value
+                        )
 
                 _rewrite_evidence_json(self.evidence_root, relative, mutate)
 
                 errors = self.validate()
 
                 self.assertTrue(
-                    any(f"Redaction scan failed for apphost-smoke.json: {expected}" in error for error in errors),
+                    any(
+                        "Redaction scan failed for apphost-smoke.json:" in error
+                        and expected in error
+                        for error in errors
+                    ),
                     errors,
                 )
 
@@ -862,7 +2807,11 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             errors,
         )
 
-    def _run_contract_validator(self, *arguments: str) -> tuple[subprocess.CompletedProcess[str], Path]:
+    def _run_contract_validator(
+        self,
+        *arguments: str,
+        environment: dict[str, str] | None = None,
+    ) -> tuple[subprocess.CompletedProcess[str], Path]:
         artifact_root = Path(self._temporary.name) / "contract-artifacts"
         result = subprocess.run(
             [
@@ -878,22 +2827,148 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             check=False,
             capture_output=True,
             text=True,
+            env=environment,
         )
         return result, artifact_root / "job-summary.md"
 
     def test_required_provider_lane_accepts_the_canonical_live_evidence(self) -> None:
+        fake_bin = Path(self._temporary.name) / "open-validator-bin"
+        fake_bin.mkdir()
+        fake_python = fake_bin / "python3"
+        fake_python.write_text(
+            "#!/bin/sh\n"
+            "printf '%s\\n' 'EventStore runtime evidence operation completed successfully.'\n"
+            "printf '%s\\n' 'EventStore runtime approval: OPEN'\n"
+            "printf '%s\\n' 'EventStore runtime approval issue: Missing named actor for required role: eventstore-maintainer'\n",
+            encoding="utf-8",
+        )
+        fake_python.chmod(0o755)
+        environment = os.environ.copy()
+        environment["PATH"] = f"{fake_bin}{os.pathsep}{environment['PATH']}"
         result, summary = self._run_contract_validator(
             "-RequireProviderVerification",
             "-ProviderVerificationReport",
             "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/"
             "provider-verification.json",
+            environment=environment,
         )
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         text = summary.read_text(encoding="utf-8")
         self.assertIn("Historical Story 11.24 integrity: IMMUTABLE_ARCHIVE_VALID", text)
+        self.assertIn("Prior Builds 35c3d1e5 compatibility archive: PRIOR_COMPATIBILITY_ARCHIVE_VALID", text)
+        self.assertIn("Active EventStore identity v2 and sealed evidence: ACTIVE_IDENTITY_AND_EVIDENCE_VALID", text)
+        self.assertIn("Migration approval: OPEN: Missing named actor for required role: eventstore-maintainer", text)
         self.assertIn("Current provider verification: CURRENT_PROVIDER_PASSED", text)
         self.assertIn("Current authenticated AppHost smoke: AUTHENTICATED_APPHOST_PASSED", text)
+
+    def test_contract_artifact_publication_coordinates_resolve_to_real_files(self) -> None:
+        workflow_lines = (ROOT / ".github/workflows/quality.yml").read_text(
+            encoding="utf-8"
+        ).splitlines()
+        step_header = "- name: Upload contract artifacts"
+        step_start = next(
+            index for index, line in enumerate(workflow_lines)
+            if line.strip() == step_header
+        )
+        step_indent = len(workflow_lines[step_start]) - len(
+            workflow_lines[step_start].lstrip()
+        )
+        step_end = next(
+            (
+                index for index in range(step_start + 1, len(workflow_lines))
+                if workflow_lines[index].strip().startswith("- name:")
+                and len(workflow_lines[index]) - len(workflow_lines[index].lstrip())
+                == step_indent
+            ),
+            len(workflow_lines),
+        )
+        upload_step = workflow_lines[step_start:step_end]
+        self.assertIn("if: success()", (line.strip() for line in upload_step))
+        self.assertTrue(any("actions/upload-artifact@" in line for line in upload_step))
+        path_index = next(
+            index for index, line in enumerate(upload_step)
+            if line.strip() == "path: |"
+        )
+        path_indent = len(upload_step[path_index]) - len(upload_step[path_index].lstrip())
+        upload_patterns: list[str] = []
+        for line in upload_step[path_index + 1:]:
+            indent = len(line) - len(line.lstrip())
+            if line.strip() and indent <= path_indent:
+                break
+            if line.strip():
+                upload_patterns.append(line.strip())
+
+        produced_files: set[Path] = set()
+        for pattern in upload_patterns:
+            matches = {path.resolve() for path in ROOT.glob(pattern) if path.is_file()}
+            if not pattern.startswith("artifacts/contracts/"):
+                self.assertTrue(matches, f"Upload coordinate produced no files: {pattern}")
+            produced_files.update(matches)
+
+        required = (
+            "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v1.json",
+            "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v2.json",
+            "_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md",
+            "_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md",
+            "tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-verification-handoff.md",
+            *evidence.RUNTIME_PACT_INPUTS,
+        )
+        required_files = {(ROOT / relative).resolve() for relative in required}
+        for authority_root in (
+            CANONICAL_EVIDENCE,
+            CANONICAL_PRIOR_EVIDENCE,
+            CANONICAL_ACTIVE_EVIDENCE,
+            CANONICAL_LIVE_EVIDENCE,
+        ):
+            authority_files = {
+                path.resolve() for path in authority_root.rglob("*") if path.is_file()
+            }
+            self.assertTrue(authority_files, f"Authority tree is empty: {authority_root}")
+            required_files.update(authority_files)
+
+        missing = sorted(
+            path.relative_to(ROOT).as_posix()
+            for path in required_files - produced_files
+        )
+        self.assertEqual(missing, [], "Upload step omits required authority files")
+
+    def test_required_provider_lane_publishes_the_approved_summary_branch(self) -> None:
+        self.claim_active_approval()
+        fake_bin = Path(self._temporary.name) / "fake-bin"
+        fake_bin.mkdir()
+        fake_python = fake_bin / "python3"
+        fake_python.write_text(
+            "#!/bin/sh\n"
+            "printf '%s\\n' 'EventStore runtime evidence operation completed successfully.'\n"
+            "printf '%s\\n' 'EventStore runtime approval: APPROVED'\n",
+            encoding="utf-8",
+        )
+        fake_python.chmod(0o755)
+        environment = os.environ.copy()
+        environment["PATH"] = f"{fake_bin}{os.pathsep}{environment['PATH']}"
+        result, summary = self._run_contract_validator(
+            "-RequireProviderVerification",
+            "-PactDir",
+            str(self.pact_root),
+            "-ProviderVerificationReport",
+            str(self.live_root / "provider-verification.json"),
+            "-FrontComposerEvidenceRoot",
+            str(self.evidence_root),
+            "-LiveEvidenceRoot",
+            str(self.live_root),
+            "-PriorEvidenceRoot",
+            str(self.history_root),
+            "-ActiveEvidenceRoot",
+            str(self.active_root),
+            "-ActiveIdentity",
+            str(self.identity_path),
+            environment=environment,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("EventStore runtime approval: APPROVED", result.stdout)
+        self.assertIn("Migration approval: APPROVED", summary.read_text(encoding="utf-8"))
 
     def test_required_provider_lane_rejects_a_report_outside_the_owned_evidence_tree(self) -> None:
         foreign = Path(self._temporary.name) / "foreign-provider-verification.json"
@@ -919,10 +2994,24 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         manifest = _read_json(manifest_path)
         manifest_path.write_text(json.dumps(manifest, indent=4) + "\n", encoding="utf-8")
 
+        fake_bin = Path(self._temporary.name) / "failed-validator-bin"
+        fake_bin.mkdir()
+        fake_python = fake_bin / "python3"
+        fake_python.write_text(
+            "#!/bin/sh\n"
+            "printf '%s\\n' 'Live provider input hash does not bind exact current Pact bytes.' >&2\n"
+            "exit 1\n",
+            encoding="utf-8",
+        )
+        fake_python.chmod(0o755)
+        environment = os.environ.copy()
+        environment["PATH"] = f"{fake_bin}{os.pathsep}{environment['PATH']}"
+
         result, summary = self._run_contract_validator(
             "-RequireProviderVerification",
             "-PactDir",
             str(self.pact_root),
+            environment=environment,
         )
 
         self.assertNotEqual(result.returncode, 0)

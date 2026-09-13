@@ -1,0 +1,84 @@
+{
+  "schema": "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v1",
+  "capturedAt": "2026-09-08T07:59:27.788200+00:00",
+  "finalVerdict": "passed",
+  "reasonCodes": [],
+  "identity": {
+    "eventStoreSourceSha": "059f6a8917bfab26b85775be464840a1610dfdeb",
+    "eventStoreReleaseVersion": "3.103.0",
+    "buildsCatalogSha": "35c3d1e5b8a55a74a440b9c2cad4c5e18747b241"
+  },
+  "topology": {
+    "programPath": "src/Hexalith.FrontComposer.AppHost/Program.cs",
+    "programSha256": "d9cd481cc5a2a0a9845a0332e820ac11079f46ac2ea3513fcd9308f57cbfdc46",
+    "projectPath": "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+    "projectSha256": "8d7f86141deacf04f482ecada2bfbf520712fe58b19eac7af9711d22cc9c07f2",
+    "modifiedForSmoke": false,
+    "declaredResources": [
+      "security",
+      "eventstore",
+      "eventstore-admin",
+      "eventstore-admin-ui",
+      "tenants",
+      "parties",
+      "sample",
+      "tenants-ui",
+      "frontcomposer-ui",
+      "counter-web"
+    ]
+  },
+  "startup": {
+    "result": "passed",
+    "resourceWaits": {
+      "security": "healthy",
+      "eventstore": "healthy",
+      "eventstore-admin": "healthy",
+      "eventstore-admin-ui": "healthy",
+      "tenants": "healthy",
+      "parties": "healthy",
+      "sample": "healthy",
+      "tenants-ui": "healthy",
+      "frontcomposer-ui": "healthy",
+      "counter-web": "healthy"
+    }
+  },
+  "observations": {
+    "health": {
+      "result": "passed",
+      "authenticated": true,
+      "reasonCode": "health.authenticated.succeeded",
+      "statusCode": 200
+    },
+    "commandSubmit": {
+      "result": "passed",
+      "authenticated": true,
+      "reasonCode": "command.accepted",
+      "statusCode": 202
+    },
+    "commandStatus": {
+      "result": "passed",
+      "authenticated": true,
+      "reasonCode": "command.completed",
+      "terminalStatus": "Completed"
+    },
+    "queryProvenance": {
+      "result": "passed",
+      "authenticated": true,
+      "reasonCode": "query.handler-computed",
+      "statusCode": 200,
+      "provenance": "HandlerComputed"
+    },
+    "projectionSignalR": {
+      "result": "passed",
+      "authenticated": true,
+      "reasonCode": "signalr.authenticated-connect.succeeded"
+    }
+  },
+  "cleanup": {
+    "command": "aspire stop --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --nologo",
+    "result": "clean",
+    "hostStopped": true,
+    "portsClosed": true,
+    "runningAppHostsAfterAttempt": 0
+  }
+}

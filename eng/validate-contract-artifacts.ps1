@@ -2,6 +2,11 @@ param(
   [string] $PactDir = "tests/Hexalith.FrontComposer.Shell.Tests/Pact",
   [string] $ArtifactDir = "artifacts/contracts",
   [string] $ProviderVerificationReport = "",
+  [string] $FrontComposerEvidenceRoot = "",
+  [string] $LiveEvidenceRoot = "",
+  [string] $PriorEvidenceRoot = "",
+  [string] $ActiveEvidenceRoot = "",
+  [string] $ActiveIdentity = "",
   [switch] $RequireProviderVerification
 )
 
@@ -164,6 +169,12 @@ function Find-RedactionLeaks([string] $Text) {
     }
   }
 
+  foreach ($secretKey in @("access[_-]?token", "api[_-]?key", "password")) {
+    if ([regex]::IsMatch($normalized, '"?' + $secretKey + '"?\s*:', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
+      $leaks.Add("quoted secret key: $secretKey")
+    }
+  }
+
   if (([regex]::IsMatch($normalized, '"authorization"\s*:', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase) `
       -or [regex]::IsMatch($normalized, '\bauthorization\s*:', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)) `
       -and !$Text.Contains("Bearer FC_CONTRACT_TOKEN")) {
@@ -214,17 +225,34 @@ foreach ($file in $requiredFiles) {
 
 $redactionLines | Set-Content -LiteralPath (Join-Path $ArtifactDir "redaction-scan.txt") -Encoding utf8
 
-$frontComposerEvidenceRoot = Join-Path $repositoryRoot "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24"
-$liveEvidenceRoot = Join-Path $repositoryRoot "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation"
+function Resolve-EvidencePath([string] $value, [string] $defaultRelative) {
+  if ([string]::IsNullOrWhiteSpace($value)) {
+    return Join-Path $repositoryRoot $defaultRelative
+  }
+
+  return [System.IO.Path]::GetFullPath($value, $repositoryRoot)
+}
+
+$frontComposerEvidenceRoot = Resolve-EvidencePath $FrontComposerEvidenceRoot "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24"
+$liveEvidenceRoot = Resolve-EvidencePath $LiveEvidenceRoot "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation"
+$priorEvidenceRoot = Resolve-EvidencePath $PriorEvidenceRoot "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/2026-09-08-builds-35c3d1e5"
+$activeEvidenceRoot = Resolve-EvidencePath $ActiveEvidenceRoot "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2"
+$activeIdentity = Resolve-EvidencePath $ActiveIdentity "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v2.json"
 $expectedProviderVerificationReport = Join-Path $liveEvidenceRoot "provider-verification.json"
 $providerStatus = "NOT_REQUIRED"
 $historicalStatus = "NOT_REQUIRED"
+$priorStatus = "NOT_REQUIRED"
+$activeStatus = "NOT_REQUIRED"
+$approvalStatus = "NOT_REQUIRED"
 $appHostStatus = "NOT_REQUIRED"
 if ($RequireProviderVerification) {
   # Required-and-rejected must never be summarized as required-and-absent. The frozen
   # Story 11.24 archive and the current compatibility lane have independent hash authority.
   $providerStatus = "REQUIRED_REJECTED"
   $historicalStatus = "REQUIRED_REJECTED"
+  $priorStatus = "REQUIRED_REJECTED"
+  $activeStatus = "REQUIRED_REJECTED"
+  $approvalStatus = "REQUIRED_REJECTED"
   $appHostStatus = "REQUIRED_REJECTED"
   if ([string]::IsNullOrWhiteSpace($ProviderVerificationReport)) {
     $ProviderVerificationReport = $expectedProviderVerificationReport
@@ -254,6 +282,9 @@ if ($RequireProviderVerification) {
     $validationOutput = @(& python3 $validator `
       --evidence-root $frontComposerEvidenceRoot `
       --live-evidence-root $liveEvidenceRoot `
+      --active-identity $activeIdentity `
+      --active-evidence-root $activeEvidenceRoot `
+      --history-evidence-root $priorEvidenceRoot `
       --pact-dir $PactDir `
       --repository-root $repositoryRoot 2>&1)
     if ($LASTEXITCODE -ne 0) {
@@ -263,6 +294,28 @@ if ($RequireProviderVerification) {
     } elseif ($providerLeaks.Count -eq 0) {
       # A leaking report is a rejected lane; the summary must never call it complete.
       $historicalStatus = "IMMUTABLE_ARCHIVE_VALID"
+      $priorStatus = "PRIOR_COMPATIBILITY_ARCHIVE_VALID"
+      $activeStatus = "ACTIVE_IDENTITY_AND_EVIDENCE_VALID"
+      $approvalLines = @($validationOutput | Where-Object {
+        ([string] $_).StartsWith("EventStore runtime approval", [System.StringComparison]::Ordinal)
+      })
+      $approvalLines | ForEach-Object { Write-Host ([string] $_) }
+      if ($validationOutput -contains "EventStore runtime approval: APPROVED") {
+        $approvalStatus = "APPROVED"
+      } elseif ($validationOutput -contains "EventStore runtime approval: OPEN") {
+        $issues = @($approvalLines | Where-Object {
+          ([string] $_).StartsWith("EventStore runtime approval issue:", [System.StringComparison]::Ordinal)
+        } | ForEach-Object {
+          ([string] $_).Substring("EventStore runtime approval issue:".Length).Trim()
+        })
+        $approvalStatus = if ($issues.Count -gt 0) {
+          "OPEN: $($issues -join '; ')"
+        } else {
+          "OPEN: validator supplied no actionable approval issue"
+        }
+      } else {
+        $errors.Add("EventStore runtime evidence validator supplied no approval state.")
+      }
       $providerStatus = "CURRENT_PROVIDER_PASSED"
       $appHostStatus = "AUTHENTICATED_APPHOST_PASSED"
     }
@@ -275,6 +328,9 @@ $summary = @"
 - Pact files: $($expectedPacts -join ', ')
 - Interaction count: $($interactionDescriptions.Count)
 - Historical Story 11.24 integrity: $historicalStatus
+- Prior Builds 35c3d1e5 compatibility archive: $priorStatus
+- Active EventStore identity v2 and sealed evidence: $activeStatus
+- Migration approval: $approvalStatus
 - Current provider verification: $providerStatus
 - Current authenticated AppHost smoke: $appHostStatus
 - Pact specification: 4.0
@@ -284,7 +340,7 @@ $summary = @"
 - Redaction scan: $(if ($errors.Count -eq 0) { "clean" } else { "failed" })
 - Submodules: root-level checkout only; no recursive nested submodule command is used by this lane
 - Provider verification required in this lane: $RequireProviderVerification
-- Compatibility verdict: preserved as evidence and does not authorize or revoke the owner-approved runtime identity
+- Authority model: historical v1, dated prior compatibility, sealed active evidence, live recapture, and role receipts validate independently
 "@
 $summary | Set-Content -LiteralPath (Join-Path $ArtifactDir "job-summary.md") -Encoding utf8
 

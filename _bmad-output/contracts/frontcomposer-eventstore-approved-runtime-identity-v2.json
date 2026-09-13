@@ -1,0 +1,88 @@
+{
+  "schema": "hexalith.frontcomposer.eventstore-approved-runtime-identity.v2",
+  "approvalRecord": "_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md",
+  "predecessor": {
+    "path": "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v1.json",
+    "sha256": "80c93e4e865e4cac7532e8c96481aa9205b6e6918d2177352222715e42ff2157",
+    "supersededForActiveReleaseSelectionOnly": true
+  },
+  "activeTuple": {
+    "eventStoreSourceGitlink": "059f6a8917bfab26b85775be464840a1610dfdeb",
+    "eventStorePackageVersion": "3.103.0",
+    "buildsCatalogGitlink": "a32cb422749352cce8dec948aa3e78c8f00eb4cf"
+  },
+  "frontComposerRevision": "1b3608c9b039dbba1be0884d92a2a6d54054e370",
+  "runtimeInputs": {
+    "path": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/frontcomposer-runtime-inputs.json",
+    "sha256": "ddf822f8d6e1d51f1942fb64ab4650adab0dce03e2a4692534990d40f3ff6686",
+    "treeSha256": "49489498235396119bece5fe129372daea30a933bf78e26764eceb25e0e6074c"
+  },
+  "decision": {
+    "path": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/recapture-decision.json",
+    "sha256": "2f8dc63540cae6fa9c8a704438c2abc7f733807637c5ccd15b337eae2da26752"
+  },
+  "priorCompatibility": {
+    "path": "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/2026-09-08-builds-35c3d1e5",
+    "capturedAt": "2026-09-08T08:03:12.957893+00:00",
+    "tuple": {
+      "eventStoreSourceGitlink": "059f6a8917bfab26b85775be464840a1610dfdeb",
+      "eventStorePackageVersion": "3.103.0",
+      "buildsCatalogGitlink": "35c3d1e5b8a55a74a440b9c2cad4c5e18747b241"
+    },
+    "files": [
+      {
+        "path": "apphost-smoke.json",
+        "sha256": "98fe33eebe8e69d549be0b188c9f76240284d6f1672a23a9b2891d8caf3fc707"
+      },
+      {
+        "path": "provider-verification.json",
+        "sha256": "36fa68b27b317a8b1c55ba968a4064616582a6d64d2f40ab3c14845ab7d9a1f9"
+      },
+      {
+        "path": "run-evidence.json",
+        "sha256": "3a3d0cf9967fd7e1c3fe38e94bc95d3aa596d72053030370b23288f84729ad5a"
+      }
+    ]
+  },
+  "activeEvidence": {
+    "path": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/recapture",
+    "files": [
+      {
+        "path": "apphost-smoke.json",
+        "sha256": "66d01db034f8224b1cab2177a494f8d82091d0e445a040ce96972be58a34a7fe"
+      },
+      {
+        "path": "provider-verification.json",
+        "sha256": "fba8e8dcf86388ed43a505a686ed0f55d9ea605b594eac56b5065c3e148ebc91"
+      },
+      {
+        "path": "run-evidence.json",
+        "sha256": "e3a635e5c1a22102ea9f60844524d63cf530050e20296b5fe01619ee286ffbb3"
+      }
+    ]
+  },
+  "approval": {
+    "policy": {
+      "path": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/approval-policy.json",
+      "sha256": "ce4b9265824190e80c1e1ce5c3296ebcdd13e8d71f72bb4ea52f94d77fedf733"
+    },
+    "roster": {
+      "path": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/reviewer-roster.json",
+      "sha256": "e6cd02ea88c26febd8c841520c0b28a0bb943f6b1b5ae26f284f6e038328284d"
+    },
+    "subject": {
+      "path": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/approval-subject.json",
+      "sha256": "4234b1e084514bb6ae99b12b461a143200f0c2b72a67bb92e7a825325c7b683f"
+    },
+    "receiptDirectory": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/receipts",
+    "effectiveRequiredRoles": [
+      "eventstore-maintainer",
+      "frontcomposer-maintainer",
+      "release-owner"
+    ],
+    "receipts": [],
+    "migrationApprovalClaimed": false
+  },
+  "submodulePointerChangedByApproval": false,
+  "packageVersionChangedByApproval": false
+}

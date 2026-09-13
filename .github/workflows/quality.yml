@@ -182,7 +182,15 @@ jobs:
       - name: 'Gate 2c: Live EventStore provider verification'
         shell: bash
         run: |
-          dotnet build references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj --configuration Release -m:1
+          runtime_manifest="$RUNNER_TEMP/frontcomposer-runtime-inputs.json"
+          python3 eng/eventstore_runtime_evidence.py \
+            --write-runtime-input-manifest \
+            --runtime-input-manifest-output "$runtime_manifest" \
+            --pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact
+          rm -f "$GITHUB_WORKSPACE/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json"
+          dotnet clean references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj --configuration Release -m:1 -p:NuGetAudit=false
+          dotnet restore references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj --force --force-evaluate --no-cache --disable-parallel -p:Configuration=Release -p:NuGetAudit=false
+          dotnet build references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj --configuration Release --no-restore --no-incremental -m:1 -p:NuGetAudit=false
           dotnet references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.Tests.dll
           # The tool derives its own repository root (source sha, Builds sibling gitlink) by
           # walking up from the process CWD looking for Hexalith.EventStore.slnx, so it must be
@@ -196,9 +204,11 @@ jobs:
               --provider-state-catalog "$GITHUB_WORKSPACE/tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-state-catalog.json" \
               --report-output "$GITHUB_WORKSPACE/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json"
           )
+          test -s "$GITHUB_WORKSPACE/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json"
           python3 eng/eventstore_runtime_evidence.py \
             --live-evidence-root _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation \
             --pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact \
+            --runtime-input-manifest "$runtime_manifest" \
             --write-live-receipt
 
       - name: Install Aspire CLI
@@ -220,13 +230,13 @@ jobs:
 
       - name: 'Gate 2c: Authenticated AppHost smoke'
         shell: bash
-        run: python3 eng/pact_provider_apphost_smoke.py --timeout-seconds 300
+        run: python3 eng/pact_provider_apphost_smoke.py --timeout-seconds 300 --runtime-input-manifest "$RUNNER_TEMP/frontcomposer-runtime-inputs.json"
 
       - name: 'Gate 2c: Validate contract artifacts'
         shell: pwsh
         run: |
-          # Historical Story 11.24 bytes and current compatibility evidence are separate
-          # authorities. Neither current success nor failure changes migration approval.
+          # Historical v1, the dated prior packet, active v2 evidence, live compatibility,
+          # and role receipts are independent authorities. Evidence success never invents approval.
           python3 -m unittest tests/eng/test_eventstore_runtime_evidence.py tests/eng/test_pact_provider_apphost_smoke.py
           # pwsh does not fail a step on a native non-zero exit, and the validator below resets
           # $LASTEXITCODE, so the evidence suite must propagate its own failure explicitly.
@@ -278,7 +288,13 @@ jobs:
           if-no-files-found: error
           path: |
             artifacts/contracts/**
+            _bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v1.json
+            _bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v2.json
+            _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md
+            _bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md
             _bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/**
+            _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/2026-09-08-builds-35c3d1e5/**
+            _bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/**
             _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/**
             tests/Hexalith.FrontComposer.Shell.Tests/Pact/*.json
             tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-verification-handoff.md

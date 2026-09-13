@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import base64
 import hashlib
+import ipaddress
 import json
 import os
 import re
@@ -14,6 +15,7 @@ import socket
 import ssl
 import subprocess
 import sys
+import tempfile
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -21,6 +23,8 @@ from pathlib import Path
 from http.client import HTTPException, IncompleteRead
 from typing import Any
 from urllib import error, parse, request
+
+import eventstore_runtime_evidence as runtime_evidence
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -41,6 +45,7 @@ REQUIRED_RESOURCES = (
     "counter-web",
 )
 OBSERVATIONS = ("health", "commandSubmit", "commandStatus", "queryProvenance", "projectionSignalR")
+AUTHORIZATION_CONTROLS = ("commandSubmit", "commandStatus", "queryProvenance", "projectionSignalR")
 STOP_COMMAND = f"aspire stop --apphost {APPHOST_RELATIVE} --non-interactive --nologo"
 START_COMMAND = [
     "aspire",
@@ -55,7 +60,26 @@ START_COMMAND = [
 # from the tail made `_json_from_output` parse a nested fragment and fail closed as
 # `apphost.describe.incomplete` after every resource was already healthy.
 MAX_OUTPUT_CHARS = 1_048_576
+MAX_HTTP_BODY_BYTES = 1_048_576
+MAX_WEBSOCKET_HEADER_BYTES = 16_384
+MAX_WEBSOCKET_BYTES = 1_048_576
 ULID_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+WEBSOCKET_ACCEPT_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+APPHOST_BUILD_PROPERTIES = runtime_evidence.APPHOST_BUILD_PROPERTIES
+SOURCE_DEPENDENCY_GITLINKS = runtime_evidence.RUNTIME_DEPENDENCY_GITLINKS
+DAPR_NAME_RESOLUTION_RELATIVES = (
+    "src/Hexalith.FrontComposer.AppHost/nr.db",
+    "src/Hexalith.FrontComposer.AppHost/nr.db-shm",
+    "src/Hexalith.FrontComposer.AppHost/nr.db-wal",
+)
+SOURCE_ROOT_PROPERTIES = {
+    "EventStorePath": "references/Hexalith.EventStore",
+    "TenantsPath": "references/Hexalith.Tenants",
+    "PartiesPath": "references/Hexalith.Parties",
+    "MemoriesPath": "references/Hexalith.Memories",
+    "CommonsPath": "references/Hexalith.Commons",
+    "HexalithPolymorphicSerializationsRoot": "references/Hexalith.PolymorphicSerializations",
+}
 
 
 @dataclass(frozen=True)
@@ -69,10 +93,53 @@ class _CleanupFailed(RuntimeError):
     pass
 
 
+class _RejectRedirectHandler(request.HTTPRedirectHandler):
+    """Turn redirects into their original HTTP response without following them."""
+
+    def redirect_request(self, req: Any, fp: Any, code: int, msg: str, headers: Any, newurl: str) -> None:
+        del req, fp, code, msg, headers, newurl
+        return None
+
+
+def _set_response_timeout(response: Any, timeout: float) -> None:
+    """Best-effort socket timeout refresh for urllib response body reads."""
+    candidates = [
+        getattr(getattr(getattr(response, "fp", None), "raw", None), "_sock", None),
+        getattr(
+            getattr(getattr(getattr(response, "fp", None), "fp", None), "raw", None),
+            "_sock",
+            None,
+        ),
+        getattr(getattr(response, "fp", None), "_sock", None),
+        getattr(response, "_sock", None),
+    ]
+    for candidate in candidates:
+        if candidate is not None and hasattr(candidate, "settimeout"):
+            candidate.settimeout(timeout)
+            return
+
+
+def _bounded_http_body(response: Any, deadline: float) -> bytes:
+    body = bytearray()
+    while len(body) <= MAX_HTTP_BODY_BYTES:
+        remaining = _remaining_timeout(deadline, 10)
+        if remaining is None:
+            raise TimeoutError("http-response-deadline-exceeded")
+        _set_response_timeout(response, remaining)
+        reader = getattr(response, "read1", response.read)
+        chunk = reader(min(65_536, MAX_HTTP_BODY_BYTES + 1 - len(body)))
+        if time.monotonic() >= deadline:
+            raise TimeoutError("http-response-deadline-exceeded")
+        if not chunk:
+            return bytes(body)
+        body.extend(chunk)
+    raise ValueError("response-too-large")
+
+
 class SmokeRuntime:
     """Runtime boundary kept injectable so failure/cleanup behavior is unit-testable."""
 
-    def command(self, arguments: list[str], timeout: int) -> CommandResult:
+    def command(self, arguments: list[str], timeout: float) -> CommandResult:
         try:
             completed = subprocess.run(
                 arguments,
@@ -86,6 +153,10 @@ class SmokeRuntime:
         except (OSError, subprocess.TimeoutExpired) as exception:
             return CommandResult(124, "", type(exception).__name__)
 
+    def source_graph_is_exact(self, project_references: list[Path]) -> bool:
+        """Validate the restored project/assets graph selected by the AppHost build."""
+        return _resolved_source_graph_is_exact(project_references)
+
     def json_request(
         self,
         url: str,
@@ -94,8 +165,10 @@ class SmokeRuntime:
         token: str | None = None,
         form: dict[str, str] | None = None,
         body: dict[str, Any] | None = None,
-        timeout: int = 10,
+        timeout: float = 10,
+        deadline: float | None = None,
     ) -> tuple[int, dict[str, Any], dict[str, str]]:
+        url = _credential_safe_url(url, token=token, form=form)
         data: bytes | None = None
         headers = {"Accept": "application/json"}
         if form is not None:
@@ -108,39 +181,89 @@ class SmokeRuntime:
             headers["Authorization"] = f"Bearer {token}"
         outbound = request.Request(url, data=data, headers=headers, method=method)
         context = ssl._create_unverified_context()  # Local Aspire development certificates only.
+        absolute_deadline = deadline if deadline is not None else time.monotonic() + timeout
+        connect_timeout = _remaining_timeout(absolute_deadline, timeout)
+        if connect_timeout is None:
+            return 0, {}, {}
+        opener = request.build_opener(
+            request.ProxyHandler({}),
+            request.HTTPSHandler(context=context),
+            _RejectRedirectHandler(),
+        )
         try:
-            with request.urlopen(outbound, timeout=timeout, context=context) as response:
-                raw = response.read(1_048_577)
-                if len(raw) > 1_048_576:
-                    raise ValueError("response-too-large")
+            with opener.open(outbound, timeout=connect_timeout) as response:
+                raw = _bounded_http_body(response, absolute_deadline)
                 try:
                     document = json.loads(raw.decode("utf-8")) if raw else {}
                 except (UnicodeDecodeError, json.JSONDecodeError):
                     document = {}
                 return response.status, document if isinstance(document, dict) else {}, dict(response.headers.items())
         except error.HTTPError as exception:
-            raw = exception.read(1_048_577)
             try:
-                document = json.loads(raw.decode("utf-8")) if raw else {}
-            except (UnicodeDecodeError, json.JSONDecodeError):
-                document = {}
-            return exception.code, document if isinstance(document, dict) else {}, dict(exception.headers.items())
+                try:
+                    raw = _bounded_http_body(exception, absolute_deadline)
+                    try:
+                        document = json.loads(raw.decode("utf-8")) if raw else {}
+                    except (UnicodeDecodeError, json.JSONDecodeError):
+                        document = {}
+                    return exception.code, document if isinstance(document, dict) else {}, dict(exception.headers.items())
+                except (TimeoutError, OSError, ValueError, IncompleteRead, HTTPException):
+                    return 0, {}, {}
+            finally:
+                exception.close()
         except (error.URLError, TimeoutError, ssl.SSLError, OSError, IncompleteRead, HTTPException):
             return 0, {}, {}
 
-    def signalr_connect(self, hub_url: str, token: str, timeout: int = 10) -> bool:
+    def signalr_negotiate_status(
+        self,
+        hub_url: str,
+        token: str | None,
+        timeout: float = 10,
+        deadline: float | None = None,
+    ) -> int:
+        _require_loopback_sensitive_destination(hub_url, token=token)
         negotiate = f"{hub_url.rstrip('/')}/negotiate?negotiateVersion=1"
-        status, document, _ = self.json_request(negotiate, method="POST", token=token, body={}, timeout=timeout)
+        status, document, _ = self.json_request(
+            negotiate, method="POST", token=token, body={}, timeout=timeout, deadline=deadline
+        )
+        del document
+        return status
+
+    def signalr_connect(
+        self,
+        hub_url: str,
+        token: str,
+        timeout: float = 10,
+        deadline: float | None = None,
+    ) -> bool:
+        _require_loopback_sensitive_destination(hub_url, token=token)
+        absolute_deadline = deadline if deadline is not None else time.monotonic() + timeout
+        negotiate = f"{hub_url.rstrip('/')}/negotiate?negotiateVersion=1"
+        status, document, _ = self.json_request(
+            negotiate, method="POST", token=token, body={}, timeout=timeout, deadline=absolute_deadline
+        )
         connection_token = document.get("connectionToken")
         if not isinstance(connection_token, str) or not connection_token:
             connection_token = document.get("connectionId")
         transports = document.get("availableTransports", [])
-        if status != 200 or not isinstance(connection_token, str) or not connection_token or not any(
+        if (
+            status != 200
+            or not isinstance(connection_token, str)
+            or not connection_token
+            or not isinstance(transports, list)
+            or not any(
             isinstance(item, dict) and item.get("transport") == "WebSockets" for item in transports
+            )
         ):
             return False
         websocket_url = _websocket_url(hub_url, connection_token, token)
-        return _websocket_signalr_handshake(websocket_url, token, timeout)
+        remaining = _remaining_timeout(absolute_deadline, timeout)
+        return (
+            remaining is not None
+            and _websocket_signalr_handshake(
+                websocket_url, token, remaining, deadline=absolute_deadline
+            )
+        )
 
 
 def _sha256(path: Path) -> str:
@@ -178,16 +301,10 @@ def _ulid() -> str:
 
 
 def _json_from_output(output: str) -> Any:
-    decoder = json.JSONDecoder()
-    for offset, character in enumerate(output):
-        if character not in "[{":
-            continue
-        try:
-            value, _ = decoder.raw_decode(output[offset:])
-            return value
-        except json.JSONDecodeError:
-            continue
-    return None
+    try:
+        return json.loads(output)
+    except json.JSONDecodeError:
+        return None
 
 
 def _logical_name(record: dict[str, Any]) -> str:
@@ -196,6 +313,100 @@ def _logical_name(record: dict[str, Any]) -> str:
         if isinstance(value, str) and value:
             return value
     return ""
+
+
+def _metadata_string(record: dict[str, Any], *keys: str) -> str:
+    for key in keys:
+        value = record.get(key)
+        if isinstance(value, str) and value:
+            return value
+    return ""
+
+
+def _resource_parent(record: dict[str, Any]) -> str:
+    direct = _metadata_string(record, "parent", "parentName", "parentResourceName")
+    if direct:
+        return direct
+    relationships = record.get("relationships")
+    if not isinstance(relationships, list):
+        return ""
+    for relationship in relationships:
+        if not isinstance(relationship, dict):
+            continue
+        relationship_type = _metadata_string(relationship, "type", "relationshipType")
+        if relationship_type.casefold() != "parent":
+            continue
+        parent = _metadata_string(
+            relationship,
+            "resourceName",
+            "resource",
+            "target",
+            "targetName",
+        )
+        if parent:
+            return parent
+    return ""
+
+
+def _is_generated_support_resource(
+    record: dict[str, Any],
+    primary_identifiers: set[str],
+    referenced_by_primary: set[str],
+) -> bool:
+    resource_type = _metadata_string(
+        record,
+        "resourceType",
+        "type",
+        "kind",
+        "resourceKind",
+    )
+    normalized_type = re.sub(r"[^a-z0-9]", "", resource_type.casefold())
+    physical_name = _metadata_string(record, "name", "Name")
+    source = _metadata_string(record, "source")
+    parent = _resource_parent(record)
+    dapr_support = (
+        normalized_type == "executable"
+        and source.casefold() == "dapr"
+        and parent in primary_identifiers
+    )
+    parameter_support = (
+        normalized_type == "parameter"
+        and bool(physical_name)
+        and source == f"Parameters:{physical_name}"
+        and physical_name in referenced_by_primary
+    )
+    return dapr_support or parameter_support
+
+
+def _primary_resource_names(records: list[dict[str, Any]]) -> list[str]:
+    primary_records = [record for record in records if _logical_name(record) in REQUIRED_RESOURCES]
+    primary_identifiers = {
+        name
+        for record in primary_records
+        if (name := _metadata_string(record, "name", "Name"))
+    }
+    referenced_by_primary: set[str] = set()
+    for record in primary_records:
+        relationships = record.get("relationships")
+        if not isinstance(relationships, list):
+            continue
+        for relationship in relationships:
+            if not isinstance(relationship, dict):
+                continue
+            relationship_type = _metadata_string(relationship, "type", "relationshipType")
+            target = _metadata_string(relationship, "resourceName", "resource", "target", "targetName")
+            if relationship_type.casefold() == "reference" and target:
+                referenced_by_primary.add(target)
+    return [
+        name
+        for record in records
+        if (name := _logical_name(record))
+        and not _is_generated_support_resource(
+            record,
+            primary_identifiers,
+            referenced_by_primary,
+        )
+    ]
 
 
 def _resource_records(value: Any) -> list[dict[str, Any]]:
@@ -226,7 +437,7 @@ def _resource_endpoint(records: list[dict[str, Any]], resource: str) -> str:
                 if not isinstance(item, dict):
                     continue
                 url = item.get("url")
-                if not isinstance(url, str) or not url.startswith(("http://", "https://")):
+                if not isinstance(url, str) or not _is_loopback_url(url):
                     continue
                 if item.get("isInternal") is True or item.get("name") == "management":
                     continue
@@ -245,7 +456,7 @@ def _resource_endpoint(records: list[dict[str, Any]], resource: str) -> str:
                 stack.extend(nested.values())
             elif isinstance(nested, list):
                 stack.extend(nested)
-            elif isinstance(nested, str) and nested.startswith(("http://", "https://")):
+            elif isinstance(nested, str) and _is_loopback_url(nested):
                 candidates.append(nested.rstrip("/"))
     secure = next((item for item in candidates if item.startswith("https://")), None)
     return secure or (candidates[0] if candidates else "")
@@ -258,6 +469,75 @@ def _loopback_variants(url: str) -> list[str]:
     elif "://127.0.0.1" in url:
         variants.append(url.replace("://127.0.0.1", "://localhost"))
     return variants
+
+
+def _is_loopback_url(url: str) -> bool:
+    try:
+        parsed = parse.urlsplit(url)
+        _ = parsed.port
+        host = parsed.hostname
+        if parsed.scheme not in {"http", "https"} or not host or parsed.username or parsed.password:
+            return False
+        return host.lower() == "localhost" or ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def _require_loopback_sensitive_destination(
+    url: str,
+    *,
+    token: str | None = None,
+    form: dict[str, str] | None = None,
+) -> None:
+    carries_credentials = token is not None or form is not None
+    if carries_credentials:
+        _numeric_loopback_url(url)
+
+
+def _numeric_loopback_url(url: str) -> str:
+    """Resolve a local hostname before credentials exist and return a numeric peer URL."""
+    try:
+        parsed = parse.urlsplit(url)
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        host = parsed.hostname
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not host
+            or parsed.username
+            or parsed.password
+        ):
+            raise ValueError
+        try:
+            literal = ipaddress.ip_address(host)
+            addresses = [literal]
+        except ValueError:
+            if host.casefold() != "localhost":
+                raise ValueError
+            addresses = []
+            for item in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM):
+                address = ipaddress.ip_address(item[4][0])
+                if address not in addresses:
+                    addresses.append(address)
+        if not addresses or any(not address.is_loopback for address in addresses):
+            raise ValueError
+        selected = next(
+            (address for address in addresses if isinstance(address, ipaddress.IPv4Address)),
+            addresses[0],
+        )
+        numeric_host = f"[{selected}]" if isinstance(selected, ipaddress.IPv6Address) else str(selected)
+        netloc = f"{numeric_host}:{parsed.port}" if parsed.port is not None else numeric_host
+        return parse.urlunsplit((parsed.scheme, netloc, parsed.path, parsed.query, parsed.fragment))
+    except (OSError, ValueError):
+        raise ValueError("credentials-and-tokens-require-loopback: destination-not-verified-numeric") from None
+
+
+def _credential_safe_url(
+    url: str,
+    *,
+    token: str | None = None,
+    form: dict[str, str] | None = None,
+) -> str:
+    return _numeric_loopback_url(url) if token is not None or form is not None else url
 
 
 def _resource_public_urls(records: list[dict[str, Any]], resource: str) -> list[str]:
@@ -273,7 +553,7 @@ def _resource_public_urls(records: list[dict[str, Any]], resource: str) -> list[
             if not isinstance(item, dict) or item.get("isInternal") is True or item.get("name") == "management":
                 continue
             url = item.get("url")
-            if isinstance(url, str) and url.startswith(("http://", "https://")):
+            if isinstance(url, str) and _is_loopback_url(url):
                 extras.append(url.rstrip("/"))
     ordered: list[str] = []
     for url in [primary, *extras]:
@@ -302,7 +582,10 @@ def _resource_signalr_urls(records: list[dict[str, Any]], resource: str) -> list
             if not isinstance(item, dict) or item.get("name") == "management":
                 continue
             url = item.get("url")
-            if isinstance(url, str) and url.startswith(("http://", "https://")):
+            if (
+                isinstance(url, str)
+                and _is_loopback_url(url)
+            ):
                 extras.extend(_loopback_variants(url.rstrip("/")))
     http_extras = [url for url in extras if url.startswith("http://") and url not in ordered]
     https_extras = [url for url in extras if url.startswith("https://") and url not in ordered]
@@ -310,21 +593,155 @@ def _resource_signalr_urls(records: list[dict[str, Any]], resource: str) -> list
 
 
 def _websocket_url(hub_url: str, connection_token: str, token: str) -> str:
-    parsed = parse.urlsplit(hub_url)
+    parsed = parse.urlsplit(_credential_safe_url(hub_url, token=token))
     scheme = "wss" if parsed.scheme == "https" else "ws"
     query = parse.urlencode({"id": connection_token, "access_token": token})
     return parse.urlunsplit((scheme, parsed.netloc, parsed.path, query, ""))
 
 
-def _read_http_headers(stream: socket.socket, timeout: int) -> bytes:
-    stream.settimeout(timeout)
+def _read_http_headers(stream: socket.socket, deadline: float) -> tuple[bytes, bytes]:
     data = bytearray()
-    while b"\r\n\r\n" not in data and len(data) <= 16_384:
+    while b"\r\n\r\n" not in data and len(data) <= MAX_WEBSOCKET_HEADER_BYTES:
+        remaining = _remaining_timeout(deadline, 10)
+        if remaining is None:
+            raise TimeoutError("websocket-header-deadline-exceeded")
+        stream.settimeout(remaining)
         chunk = stream.recv(4_096)
+        if time.monotonic() >= deadline:
+            raise TimeoutError("websocket-header-deadline-exceeded")
         if not chunk:
             break
         data.extend(chunk)
-    return bytes(data)
+        if len(data) > MAX_WEBSOCKET_HEADER_BYTES:
+            raise ValueError("websocket-headers-too-large")
+    boundary = data.find(b"\r\n\r\n")
+    if boundary < 0:
+        return bytes(data), b""
+    end = boundary + 4
+    return bytes(data[:end]), bytes(data[end:])
+
+
+def _valid_websocket_upgrade(headers: bytes, key: str) -> bool:
+    try:
+        lines = headers.decode("iso-8859-1").split("\r\n")
+    except UnicodeDecodeError:
+        return False
+    if not lines or re.fullmatch(r"HTTP/1\.1[ \t]+101(?:[ \t]+[^\r\n]*)?", lines[0]) is None:
+        return False
+    values: dict[str, list[str]] = {}
+    for line in lines[1:]:
+        if not line:
+            continue
+        if ":" not in line:
+            return False
+        name, value = line.split(":", 1)
+        values.setdefault(name.strip().casefold(), []).append(value.strip())
+    upgrade = ",".join(values.get("upgrade", [])).casefold()
+    connection_tokens = {
+        token.strip().casefold()
+        for value in values.get("connection", [])
+        for token in value.split(",")
+    }
+    expected_accept = base64.b64encode(
+        hashlib.sha1((key + WEBSOCKET_ACCEPT_GUID).encode("ascii")).digest()
+    ).decode("ascii")
+    accepts = values.get("sec-websocket-accept", [])
+    return upgrade == "websocket" and "upgrade" in connection_tokens and accepts == [expected_accept]
+
+
+def _read_websocket_frame(
+    stream: socket.socket,
+    buffer: bytearray,
+    deadline: float,
+    total_read: list[int],
+) -> tuple[bool, int, bytes] | None:
+    def require(count: int) -> bool:
+        while len(buffer) < count:
+            remaining = _remaining_timeout(deadline, 10)
+            if remaining is None:
+                return False
+            stream.settimeout(remaining)
+            chunk = stream.recv(min(65_536, MAX_WEBSOCKET_BYTES + 1 - total_read[0]))
+            if time.monotonic() >= deadline:
+                raise TimeoutError("websocket-frame-deadline-exceeded")
+            if not chunk:
+                return False
+            total_read[0] += len(chunk)
+            if total_read[0] > MAX_WEBSOCKET_BYTES:
+                raise ValueError("websocket-response-too-large")
+            buffer.extend(chunk)
+        return True
+
+    if not require(2):
+        return None
+    first, second = buffer[0], buffer[1]
+    final = bool(first & 0x80)
+    opcode = first & 0x0F
+    if first & 0x70 or second & 0x80:
+        raise ValueError("malformed-websocket-frame")
+    length = second & 0x7F
+    offset = 2
+    if length == 126:
+        if not require(4):
+            return None
+        length = int.from_bytes(buffer[2:4], "big")
+        if length < 126:
+            raise ValueError("malformed-websocket-frame")
+        offset = 4
+    elif length == 127:
+        if not require(10):
+            return None
+        length = int.from_bytes(buffer[2:10], "big")
+        if length < 65_536 or length >= 2**63:
+            raise ValueError("malformed-websocket-frame")
+        offset = 10
+    if length > MAX_WEBSOCKET_BYTES or total_read[0] + max(0, length - len(buffer)) > MAX_WEBSOCKET_BYTES:
+        raise ValueError("websocket-response-too-large")
+    if not require(offset + length):
+        return None
+    payload = bytes(buffer[offset:offset + length])
+    del buffer[:offset + length]
+    return final, opcode, payload
+
+
+def _read_signalr_handshake_ack(
+    stream: socket.socket,
+    initial: bytes,
+    deadline: float,
+) -> bool:
+    buffer = bytearray(initial)
+    total_read = [len(initial)]
+    fragmented = bytearray()
+    fragmented_opcode: int | None = None
+    while time.monotonic() < deadline:
+        frame = _read_websocket_frame(stream, buffer, deadline, total_read)
+        if frame is None:
+            return False
+        final, opcode, payload = frame
+        if opcode in (0x8, 0x9, 0xA):
+            if not final or len(payload) > 125:
+                return False
+            if opcode == 0x8:
+                return False
+            continue
+        if opcode == 0x1:
+            if fragmented_opcode is not None:
+                return False
+            fragmented_opcode = opcode
+            fragmented.extend(payload)
+        elif opcode == 0x0 and fragmented_opcode == 0x1:
+            fragmented.extend(payload)
+        else:
+            return False
+        if len(fragmented) > MAX_WEBSOCKET_BYTES:
+            return False
+        if final:
+            try:
+                message = fragmented.decode("utf-8")
+            except UnicodeDecodeError:
+                return False
+            return message == "{}\x1e"
+    return False
 
 
 def _masked_text_frame(payload: bytes) -> bytes:
@@ -338,14 +755,28 @@ def _masked_text_frame(payload: bytes) -> bytes:
     return prefix + mask + masked
 
 
-def _websocket_signalr_handshake(websocket_url: str, token: str, timeout: int) -> bool:
+def _websocket_signalr_handshake(
+    websocket_url: str,
+    token: str,
+    timeout: float,
+    *,
+    deadline: float | None = None,
+) -> bool:
     parsed = parse.urlsplit(websocket_url)
     port = parsed.port or (443 if parsed.scheme == "wss" else 80)
     stream: socket.socket | None = None
+    absolute_deadline = deadline if deadline is not None else time.monotonic() + timeout
     try:
-        stream = socket.create_connection((parsed.hostname or "", port), timeout=timeout)
+        connect_timeout = _remaining_timeout(absolute_deadline, timeout)
+        if connect_timeout is None:
+            return False
+        stream = socket.create_connection((parsed.hostname or "", port), timeout=connect_timeout)
         if parsed.scheme == "wss":
             context = ssl._create_unverified_context()
+            tls_timeout = _remaining_timeout(absolute_deadline, timeout)
+            if tls_timeout is None:
+                return False
+            stream.settimeout(tls_timeout)
             stream = context.wrap_socket(stream, server_hostname=parsed.hostname)
         key = base64.b64encode(secrets.token_bytes(16)).decode("ascii")
         target = parsed.path + (f"?{parsed.query}" if parsed.query else "")
@@ -356,19 +787,23 @@ def _websocket_signalr_handshake(websocket_url: str, token: str, timeout: int) -
             f"Connection: Upgrade\r\nAuthorization: Bearer {token_header}\r\n"
             f"Origin: {origin}\r\nSec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n"
         ).encode("ascii")
-        stream.sendall(upgrade)
-        if not _read_http_headers(stream, timeout).startswith(b"HTTP/1.1 101"):
+        send_timeout = _remaining_timeout(absolute_deadline, timeout)
+        if send_timeout is None:
             return False
+        stream.settimeout(send_timeout)
+        stream.sendall(upgrade)
+        headers, initial_frames = _read_http_headers(stream, absolute_deadline)
+        if not _valid_websocket_upgrade(headers, key):
+            return False
+        if initial_frames:
+            return False
+        send_timeout = _remaining_timeout(absolute_deadline, timeout)
+        if send_timeout is None:
+            return False
+        stream.settimeout(send_timeout)
         stream.sendall(_masked_text_frame(b'{"protocol":"json","version":1}\x1e'))
-        deadline = time.monotonic() + timeout
-        response = b""
-        while time.monotonic() < deadline and b"{}\x1e" not in response:
-            chunk = stream.recv(4_096)
-            if not chunk:
-                break
-            response += chunk
-        return b"{}\x1e" in response
-    except (OSError, ssl.SSLError, ValueError):
+        return _read_signalr_handshake_ack(stream, initial_frames, absolute_deadline)
+    except (OSError, ssl.SSLError, UnicodeError, ValueError):
         return False
     finally:
         if stream is not None:
@@ -378,16 +813,177 @@ def _websocket_signalr_handshake(websocket_url: str, token: str, timeout: int) -
                 pass
 
 
-def _base_evidence() -> dict[str, Any]:
+def _build_property_arguments() -> list[str]:
+    arguments = [
+        f"-p:{name}={'true' if value else 'false'}"
+        for name, value in APPHOST_BUILD_PROPERTIES.items()
+    ]
+    arguments.append(
+        "-p:HexalithPolymorphicSerializationsRoot="
+        + str(ROOT / SOURCE_ROOT_PROPERTIES["HexalithPolymorphicSerializationsRoot"])
+    )
+    return arguments
+
+
+def _evaluated_item_path(item: Any) -> Path | None:
+    if not isinstance(item, dict):
+        return None
+    value = item.get("FullPath") or item.get("Identity")
+    if not isinstance(value, str) or not value:
+        return None
+    candidate = Path(value.replace("\\", os.sep))
+    if not candidate.is_absolute():
+        candidate = APPHOST.parent / candidate
+    try:
+        return candidate.resolve(strict=False)
+    except (OSError, RuntimeError):
+        return None
+
+
+def _resolved_source_graph_is_exact(project_references: list[Path]) -> bool:
+    """Traverse regenerated assets and reject package/shadow selection for source dependencies."""
+    expected_roots = {
+        name: (ROOT / relative).resolve(strict=False)
+        for name, relative in {
+            "Hexalith.EventStore": "references/Hexalith.EventStore",
+            "Hexalith.Tenants": "references/Hexalith.Tenants",
+            "Hexalith.Parties": "references/Hexalith.Parties",
+            "Hexalith.Memories": "references/Hexalith.Memories",
+            "Hexalith.Commons": "references/Hexalith.Commons",
+            "Hexalith.PolymorphicSerializations": "references/Hexalith.PolymorphicSerializations",
+        }.items()
+    }
+    allowed_roots = {
+        (ROOT / "src").resolve(strict=False),
+        (ROOT / "samples" / "Counter").resolve(strict=False),
+        *expected_roots.values(),
+    }
+    seen_roots: set[str] = set()
+    pending = list(project_references)
+    visited: set[Path] = set()
+    while pending:
+        project = pending.pop()
+        try:
+            project = project.resolve(strict=False)
+        except (OSError, RuntimeError):
+            return False
+        if project in visited:
+            continue
+        visited.add(project)
+        if runtime_evidence._path_has_symlink_component(project) or not project.is_file():
+            return False
+        if not any(project.is_relative_to(root) for root in allowed_roots):
+            return False
+        for name, root in expected_roots.items():
+            if project == root or project.is_relative_to(root):
+                seen_roots.add(name)
+        assets_path = project.parent / "obj" / "project.assets.json"
+        try:
+            assets = json.loads(assets_path.read_text(encoding="utf-8-sig"))
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+            return False
+        libraries = assets.get("libraries") if isinstance(assets, dict) else None
+        if not isinstance(libraries, dict):
+            return False
+        for identity, library in libraries.items():
+            if not isinstance(identity, str) or not isinstance(library, dict):
+                return False
+            package_name = identity.split("/", 1)[0]
+            matching_root = next(
+                (name for name in expected_roots if package_name == name or package_name.startswith(f"{name}.")),
+                None,
+            )
+            library_type = library.get("type")
+            if matching_root is not None and library_type != "project":
+                return False
+            if library_type != "project":
+                continue
+            relative = library.get("msbuildProject") or library.get("path")
+            if not isinstance(relative, str) or not relative:
+                return False
+            child = Path(relative.replace("\\", os.sep))
+            if not child.is_absolute():
+                child = project.parent / child
+            pending.append(child)
+    return set(expected_roots) == seen_roots
+
+
+def _evaluate_source_graph(runtime: SmokeRuntime, deadline: float) -> bool:
+    timeout = _remaining_timeout(deadline, 60)
+    if timeout is None:
+        return False
+    property_names = [*APPHOST_BUILD_PROPERTIES, *SOURCE_ROOT_PROPERTIES]
+    result = runtime.command(
+        [
+            "dotnet",
+            "msbuild",
+            APPHOST_RELATIVE,
+            "-p:Configuration=Debug",
+            *_build_property_arguments(),
+            "-getProperty:" + ",".join(property_names),
+            "-getItem:ProjectReference,PackageReference",
+        ],
+        timeout,
+    )
+    document = _json_from_output(result.stdout) if result.returncode == 0 else None
+    properties = document.get("Properties") if isinstance(document, dict) else None
+    items = document.get("Items") if isinstance(document, dict) else None
+    if not isinstance(properties, dict) or not isinstance(items, dict):
+        return False
+    for name, expected in APPHOST_BUILD_PROPERTIES.items():
+        actual = properties.get(name)
+        if not isinstance(actual, str) or actual.casefold() != str(expected).casefold():
+            return False
+    for name, relative in SOURCE_ROOT_PROPERTIES.items():
+        actual = properties.get(name)
+        if not isinstance(actual, str) or not actual:
+            return False
+        try:
+            if Path(actual).resolve() != (ROOT / relative).resolve():
+                return False
+        except (OSError, RuntimeError):
+            return False
+    project_items = items.get("ProjectReference")
+    package_items = items.get("PackageReference")
+    if not isinstance(project_items, list) or not isinstance(package_items, list):
+        return False
+    project_references = [_evaluated_item_path(item) for item in project_items]
+    if not project_references or any(path is None for path in project_references):
+        return False
+    dependency_names = tuple(
+        Path(relative).name for relative in SOURCE_DEPENDENCY_GITLINKS
+    )
+    for item in package_items:
+        if not isinstance(item, dict):
+            return False
+        identity = item.get("Identity")
+        if not isinstance(identity, str):
+            return False
+        if any(identity == name or identity.startswith(f"{name}.") for name in dependency_names):
+            return False
+    return runtime.source_graph_is_exact(
+        [path for path in project_references if path is not None]
+    )
+
+
+def _dapr_name_resolution_paths() -> dict[str, Path]:
+    return {relative: ROOT / relative for relative in DAPR_NAME_RESOLUTION_RELATIVES}
+
+
+def _base_evidence(runtime_manifest: dict[str, Any], timeout: int) -> dict[str, Any]:
     return {
-        "schema": "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v1",
+        "schema": "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v2",
         "capturedAt": datetime.now(timezone.utc).isoformat(),
+        "completedAt": None,
+        "timeoutSeconds": timeout,
         "finalVerdict": "failed",
         "reasonCodes": [],
         "identity": {
             "eventStoreSourceSha": _git(ROOT / "references/Hexalith.EventStore", "rev-parse", "HEAD"),
             "eventStoreReleaseVersion": _release_version(),
             "buildsCatalogSha": _git(ROOT / "references/Hexalith.Builds", "rev-parse", "HEAD"),
+            "frontComposerRevision": runtime_manifest.get("capturedRevision", ""),
+            "runtimeInputTreeSha256": runtime_manifest.get("treeSha256", ""),
         },
         "topology": {
             "programPath": PROGRAM_RELATIVE,
@@ -397,10 +993,36 @@ def _base_evidence() -> dict[str, Any]:
             "modifiedForSmoke": False,
             "declaredResources": list(REQUIRED_RESOURCES),
         },
-        "startup": {"result": "failed", "resourceWaits": {name: "not-observed" for name in REQUIRED_RESOURCES}},
+        "startup": {
+            "result": "failed",
+            "hostStartAttempted": False,
+            "hostStarted": False,
+            "outputPreparation": {
+                "clean": "not-observed",
+                "restore": "not-observed",
+                "build": "not-observed",
+                "configuration": "Debug",
+                "restoreMode": "forced-no-cache",
+                "buildMode": "no-incremental",
+                "startMode": "no-build",
+                "evaluatedBuildProperties": APPHOST_BUILD_PROPERTIES,
+                "sourceDependencyGitlinks": list(SOURCE_DEPENDENCY_GITLINKS),
+                "evaluatedSourceGraph": "not-observed",
+            },
+            "resourceWaits": {name: "not-observed" for name in REQUIRED_RESOURCES},
+        },
         "observations": {
             name: {"result": "not-observed", "authenticated": False, "reasonCode": "runtime.not-reached"}
             for name in OBSERVATIONS
+        },
+        "authorizationControls": {
+            name: {
+                "result": "not-observed",
+                "credential": "invalid-bearer",
+                "reasonCode": "runtime.not-reached",
+                "statusCode": None,
+            }
+            for name in AUTHORIZATION_CONTROLS
         },
         "cleanup": {
             "command": STOP_COMMAND,
@@ -408,8 +1030,30 @@ def _base_evidence() -> dict[str, Any]:
             "hostStopped": False,
             "portsClosed": False,
             "runningAppHostsAfterAttempt": 1,
+            "listenerConfirmation": "not-confirmed",
+            "confirmation": "not-confirmed",
+            "daprNameResolutionFiles": {
+                "absentBeforeRun": [],
+                "createdByInvocation": [],
+                "removedAfterShutdown": [],
+                "remainingAfterCleanup": [],
+            },
+            "runtimeInputsCleanAfterRun": False,
         },
     }
+
+
+def _remaining_timeout(deadline: float, maximum: float) -> float | None:
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        return None
+    return min(maximum, remaining)
+
+
+def _bounded_sleep(deadline: float, seconds: float = 1.0) -> None:
+    remaining = deadline - time.monotonic()
+    if remaining > 0:
+        time.sleep(min(seconds, remaining))
 
 
 def _clip(text: str, limit: int = 4000) -> str:
@@ -420,32 +1064,74 @@ def _clip(text: str, limit: int = 4000) -> str:
 
 def _query_provenance(headers: dict[str, str], document: dict[str, Any]) -> str:
     header = next((value for key, value in headers.items() if key.lower() == "x-hexalith-query-provenance"), "")
-    if header:
-        return header
     metadata = document.get("metadata")
+    metadata_value = ""
     if isinstance(metadata, dict):
         value = metadata.get("provenance")
         if isinstance(value, str):
+            metadata_value = value
+    if header and metadata_value and header != metadata_value:
+        return ""
+    return header or metadata_value
+
+
+def _query_tenant_id(document: dict[str, Any]) -> str:
+    payload: Any = document.get("payload")
+    if isinstance(payload, str):
+        try:
+            payload = json.loads(payload)
+        except json.JSONDecodeError:
+            return ""
+    if not isinstance(payload, dict):
+        return ""
+    for key, value in payload.items():
+        if isinstance(key, str) and key.casefold() == "tenantid" and isinstance(value, str):
             return value
     return ""
 
 
 def _atomic_write(path: Path, document: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-    temporary.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
-    temporary.replace(path)
+    descriptor, temporary_name = tempfile.mkstemp(
+        dir=path.parent,
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
+            stream.write(json.dumps(document, indent=2) + "\n")
+        temporary.replace(path)
+    except BaseException:
+        temporary.unlink(missing_ok=True)
+        raise
 
 
-def _describe_host(runtime: SmokeRuntime) -> tuple[bool, list[dict[str, Any]]]:
+def _describe_host(
+    runtime: SmokeRuntime,
+    timeout: float = 15,
+) -> tuple[bool, list[dict[str, Any]]]:
     described = runtime.command(
         ["aspire", "describe", "--apphost", APPHOST_RELATIVE, "--format", "Json", "--non-interactive", "--nologo"],
-        15,
+        timeout,
     )
     parsed = _json_from_output(described.stdout) if described.returncode == 0 else None
     if described.returncode != 0 or parsed is None:
         return False, []
     return True, _resource_records(parsed)
+
+
+def _running_apphost_count(runtime: SmokeRuntime, timeout: float) -> int | None:
+    listed = runtime.command(
+        ["aspire", "ps", "--format", "Json", "--non-interactive", "--nologo"],
+        timeout,
+    )
+    if listed.returncode != 0:
+        return None
+    parsed = _json_from_output(listed.stdout)
+    if not isinstance(parsed, list) or any(not isinstance(item, dict) for item in parsed):
+        return None
+    return len(parsed)
 
 
 def _probed_resource_urls(records: list[dict[str, Any]]) -> list[str]:
@@ -464,24 +1150,84 @@ def _probed_resource_urls(records: list[dict[str, Any]]) -> list[str]:
     return ordered
 
 
-def _wait_until_host_absent_or_ports_closed(runtime: SmokeRuntime, urls: list[str], timeout: int = 15) -> None:
+def _wait_until_host_absent_or_ports_closed(
+    runtime: SmokeRuntime,
+    urls: list[str],
+    timeout: float = 15,
+) -> bool:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        present, records = _describe_host(runtime)
+        describe_timeout = _remaining_timeout(deadline, 15)
+        if describe_timeout is None:
+            return False
+        present, records = _describe_host(runtime, describe_timeout)
         if not present:
-            return
+            ps_timeout = _remaining_timeout(deadline, 10)
+            running = _running_apphost_count(runtime, ps_timeout) if ps_timeout is not None else None
+            if running == 0:
+                return True
+            _bounded_sleep(deadline, 0.5)
+            continue
         observed = [url for url in urls if url] or _probed_resource_urls(records)
-        if observed and all(not _port_open(url) for url in observed):
-            return
-        time.sleep(0.5)
+        ports_closed = bool(observed)
+        for url in observed:
+            port_timeout = _remaining_timeout(deadline, 1)
+            if port_timeout is None:
+                return False
+            if _port_open(url, port_timeout):
+                ports_closed = False
+                break
+        if ports_closed:
+            ps_timeout = _remaining_timeout(deadline, 10)
+            running = _running_apphost_count(runtime, ps_timeout) if ps_timeout is not None else None
+            if running == 0:
+                return True
+        _bounded_sleep(deadline, 0.5)
+    return False
 
 
-def _capture(output: Path, runtime: SmokeRuntime, timeout: int) -> int:
-    evidence = _base_evidence()
+def _capture(
+    output: Path,
+    runtime: SmokeRuntime,
+    timeout: int,
+    runtime_input_manifest_path: Path | None = None,
+) -> int:
+    runtime_input_issues: list[str] = []
+    runtime_manifest_bytes: bytes | None = None
+    if runtime_input_manifest_path is None:
+        runtime_manifest, runtime_input_issues = runtime_evidence.runtime_input_manifest(ROOT)
+    else:
+        runtime_manifest_bytes = runtime_evidence._bounded_read(
+            runtime_input_manifest_path,
+            runtime_input_issues,
+            "pre-provider runtime-input manifest",
+        )
+        runtime_manifest, _ = runtime_evidence._validate_runtime_input_manifest(
+            runtime_input_manifest_path,
+            ROOT,
+            runtime_input_issues,
+        )
+    evidence = _base_evidence(runtime_manifest, timeout)
+    initial_runtime_tree = runtime_manifest.get("treeSha256")
+    dapr_paths = _dapr_name_resolution_paths()
+    absent_before_run = sorted(
+        relative for relative, path in dapr_paths.items() if not path.exists()
+    )
+    evidence["cleanup"]["daprNameResolutionFiles"]["absentBeforeRun"] = absent_before_run
     endpoints: dict[str, str] = {}
     probed_urls: list[str] = []
     reason_codes: list[str] = evidence["reasonCodes"]
-    started = False
+    overall_deadline = time.monotonic() + timeout
+    cleanup_reserve = min(90.0, max(15.0, timeout * 0.3))
+    capture_deadline = overall_deadline - cleanup_reserve
+    host_start_attempted = False
+    host_started = False
+    cold_stop_confirmed = False
+    if runtime_input_issues:
+        reason_codes.append("runtime-inputs.not-clean-or-complete")
+        evidence["completedAt"] = datetime.now(timezone.utc).isoformat()
+        _atomic_write(output, evidence)
+        return 1
     try:
         # `aspire start --format Json` restarts a running AppHost. That restart launches
         # frontcomposer-ui with `dotnet run --no-build` against a half-stopped process tree
@@ -491,62 +1237,155 @@ def _capture(output: Path, runtime: SmokeRuntime, timeout: int) -> int:
         # UI assemblies (FrontComposerUiUsePublishedModulePackages defaults false) and the
         # AppHost then fails with CS0234. A serialized Debug prebuild plus `--no-build` avoids
         # the parallel pack file-lock on Hexalith.Commons nupkgs that fails `aspire start` in CI.
-        runtime.command(
+        initial_stop_timeout = _remaining_timeout(capture_deadline, 60)
+        if initial_stop_timeout is None:
+            reason_codes.append("apphost.capture.deadline-exceeded")
+            return 1
+        initial_stop = runtime.command(
             ["aspire", "stop", "--apphost", APPHOST_RELATIVE, "--non-interactive", "--nologo"],
-            60,
+            initial_stop_timeout,
         )
-        if runtime.__class__ is SmokeRuntime:
-            _wait_until_host_absent_or_ports_closed(runtime, [])
-            prebuild = runtime.command(
-                [
-                    "dotnet",
-                    "build",
-                    APPHOST_RELATIVE,
-                    "--configuration",
-                    "Debug",
-                    "-m:1",
-                    "-p:NuGetAudit=false",
-                    "-p:CentralPackageTransitivePinningEnabled=false",
-                ],
-                timeout,
-            )
-            if prebuild.returncode != 0:
-                reason_codes.append("apphost.start.failed")
-                evidence["startup"]["startReturnCode"] = prebuild.returncode
-                evidence["startup"]["startStdout"] = _clip(prebuild.stdout)
-                evidence["startup"]["startStderr"] = _clip(prebuild.stderr)
-                return 1
-            start = runtime.command([*START_COMMAND, "--no-build"], timeout)
-        else:
-            start = runtime.command(START_COMMAND, timeout)
+        if initial_stop.returncode != 0:
+            reason_codes.append("apphost.cold-stop.failed")
+            return 1
+        wait_timeout = _remaining_timeout(capture_deadline, 15)
+        if wait_timeout is None:
+            reason_codes.append("apphost.capture.deadline-exceeded")
+            return 1
+        cold_stop_confirmed = _wait_until_host_absent_or_ports_closed(runtime, [], wait_timeout)
+        if not cold_stop_confirmed:
+            reason_codes.append("apphost.cold-stop.not-confirmed")
+            return 1
+        clean_timeout = _remaining_timeout(capture_deadline, timeout)
+        if clean_timeout is None:
+            reason_codes.append("apphost.capture.deadline-exceeded")
+            return 1
+        clean = runtime.command(
+            [
+                "dotnet",
+                "clean",
+                APPHOST_RELATIVE,
+                "--configuration",
+                "Debug",
+                "-m:1",
+                *_build_property_arguments(),
+            ],
+            clean_timeout,
+        )
+        evidence["startup"]["outputPreparation"]["clean"] = (
+            "passed" if clean.returncode == 0 else "failed"
+        )
+        if clean.returncode != 0:
+            reason_codes.append("apphost.output-clean.failed")
+            return 1
+        restore_timeout = _remaining_timeout(capture_deadline, timeout)
+        if restore_timeout is None:
+            reason_codes.append("apphost.capture.deadline-exceeded")
+            return 1
+        restore = runtime.command(
+            [
+                "dotnet",
+                "restore",
+                APPHOST_RELATIVE,
+                "-p:Configuration=Debug",
+                "--force",
+                "--force-evaluate",
+                "--no-cache",
+                "--disable-parallel",
+                *_build_property_arguments(),
+            ],
+            restore_timeout,
+        )
+        evidence["startup"]["outputPreparation"]["restore"] = (
+            "passed" if restore.returncode == 0 else "failed"
+        )
+        if restore.returncode != 0:
+            reason_codes.append("apphost.output-restore.failed")
+            return 1
+        prebuild_timeout = _remaining_timeout(capture_deadline, timeout)
+        if prebuild_timeout is None:
+            reason_codes.append("apphost.capture.deadline-exceeded")
+            return 1
+        prebuild = runtime.command(
+            [
+                "dotnet",
+                "build",
+                APPHOST_RELATIVE,
+                "--configuration",
+                "Debug",
+                "--no-restore",
+                "--no-incremental",
+                "-m:1",
+                *_build_property_arguments(),
+            ],
+            prebuild_timeout,
+        )
+        evidence["startup"]["outputPreparation"]["build"] = (
+            "passed" if prebuild.returncode == 0 else "failed"
+        )
+        if prebuild.returncode != 0:
+            reason_codes.append("apphost.output-build.failed")
+            evidence["startup"]["startReturnCode"] = prebuild.returncode
+            evidence["startup"]["startStdout"] = _clip(prebuild.stdout)
+            evidence["startup"]["startStderr"] = _clip(prebuild.stderr)
+            return 1
+        source_graph_evaluated = _evaluate_source_graph(runtime, capture_deadline)
+        evidence["startup"]["outputPreparation"]["evaluatedSourceGraph"] = (
+            "passed" if source_graph_evaluated else "failed"
+        )
+        if not source_graph_evaluated:
+            reason_codes.append("apphost.source-graph.not-exact")
+            return 1
+        start_timeout = _remaining_timeout(capture_deadline, timeout)
+        if start_timeout is None:
+            reason_codes.append("apphost.capture.deadline-exceeded")
+            return 1
+        host_start_attempted = True
+        evidence["startup"]["hostStartAttempted"] = True
+        start = runtime.command([*START_COMMAND, "--no-build"], start_timeout)
         if start.returncode != 0:
             reason_codes.append("apphost.start.failed")
             evidence["startup"]["startReturnCode"] = start.returncode
             evidence["startup"]["startStdout"] = _clip(start.stdout)
             evidence["startup"]["startStderr"] = _clip(start.stderr)
             return 1
-        started = True
+        host_started = True
+        evidence["startup"]["hostStarted"] = True
         for resource in REQUIRED_RESOURCES:
+            remaining = _remaining_timeout(capture_deadline, 120)
+            wait_seconds = int(remaining) if remaining is not None else 0
+            if wait_seconds < 1:
+                evidence["startup"]["resourceWaits"][resource] = "failed"
+                reason_codes.append("apphost.capture.deadline-exceeded")
+                break
             waited = runtime.command(
-                ["aspire", "wait", resource, "--status", "healthy", "--timeout", "120", "--apphost", APPHOST_RELATIVE, "--non-interactive", "--nologo"],
-                130,
+                ["aspire", "wait", resource, "--status", "healthy", "--timeout", str(wait_seconds), "--apphost", APPHOST_RELATIVE, "--non-interactive", "--nologo"],
+                remaining,
             )
             evidence["startup"]["resourceWaits"][resource] = "healthy" if waited.returncode == 0 else "failed"
             if waited.returncode != 0:
                 reason_codes.append(f"resource.{resource}.not-healthy")
         if reason_codes:
             return 1
+        describe_timeout = _remaining_timeout(capture_deadline, 30)
+        if describe_timeout is None:
+            reason_codes.append("apphost.capture.deadline-exceeded")
+            return 1
         described = runtime.command(
             ["aspire", "describe", "--apphost", APPHOST_RELATIVE, "--format", "Json", "--non-interactive", "--nologo"],
-            30,
+            describe_timeout,
         )
         records = _resource_records(_json_from_output(described.stdout)) if described.returncode == 0 else []
-        names = {_logical_name(item) for item in records}
-        if not set(REQUIRED_RESOURCES).issubset(names):
+        names = _primary_resource_names(records)
+        evidence["topology"]["declaredResources"] = names
+        if len(names) != len(REQUIRED_RESOURCES) or set(names) != set(REQUIRED_RESOURCES):
             reason_codes.append("apphost.describe.incomplete")
             return 1
         endpoints = {name: _resource_endpoint(records, name) for name in REQUIRED_RESOURCES}
-        eventstore_bases = _resource_public_urls(records, "eventstore")
+        # Aspire can advertise a DCP public proxy that accepts and then hangs while its
+        # direct target is a real loopback endpoint. The target is safe for local capture
+        # and already required for SignalR, so REST probes use the same bounded candidates.
+        eventstore_bases = _resource_signalr_urls(records, "eventstore")
         security_bases = _resource_public_urls(records, "security")
         probed_urls = _probed_resource_urls(records)
         if not endpoints["security"] or not endpoints["eventstore"] or not endpoints["tenants"]:
@@ -556,9 +1395,12 @@ def _capture(output: Path, runtime: SmokeRuntime, timeout: int) -> int:
 
         token = None
         token_status = 0
-        deadline = time.monotonic() + 30
-        while time.monotonic() < deadline:
+        token_deadline = min(capture_deadline, time.monotonic() + 30)
+        while time.monotonic() < token_deadline:
             for security_base in security_bases or [endpoints["security"]]:
+                request_timeout = _remaining_timeout(token_deadline, 15)
+                if request_timeout is None:
+                    break
                 token_status, token_document, _ = runtime.json_request(
                     f"{security_base}/realms/hexalith/protocol/openid-connect/token",
                     method="POST",
@@ -568,193 +1410,479 @@ def _capture(output: Path, runtime: SmokeRuntime, timeout: int) -> int:
                         "username": "admin-user",
                         "password": "admin-pass",
                     },
-                    timeout=15,
+                    timeout=request_timeout,
+                    deadline=token_deadline,
                 )
                 token = token_document.get("access_token")
                 if token_status == 200 and isinstance(token, str) and token:
                     break
             if token_status == 200 and isinstance(token, str) and token:
                 break
-            time.sleep(1)
+            _bounded_sleep(token_deadline)
         if token_status != 200 or not isinstance(token, str) or not token:
             reason_codes.append("auth.local-identity.unavailable")
             return 1
 
         health_status = 0
         eventstore_base = eventstore_bases[0] if eventstore_bases else endpoints["eventstore"]
-        for base in eventstore_bases or [endpoints["eventstore"]]:
-            health_status, _, _ = runtime.json_request(f"{base}/health", token=token)
+        # `aspire wait eventstore` can observe the Dapr sidecar as healthy before the
+        # application has finished its bounded operational-metadata discovery. Health is
+        # readiness evidence only; protected runtime surfaces are authenticated separately.
+        health_deadline = min(
+            capture_deadline,
+            time.monotonic() + min(180, max(30, timeout - 30)),
+        )
+        while time.monotonic() < health_deadline and health_status not in (200, 204):
+            for base in eventstore_bases or [endpoints["eventstore"]]:
+                request_timeout = _remaining_timeout(health_deadline, 5)
+                if request_timeout is None:
+                    break
+                health_status, _, _ = runtime.json_request(
+                    f"{base}/health", timeout=request_timeout, deadline=health_deadline
+                )
+                if health_status not in (200, 204):
+                    request_timeout = _remaining_timeout(health_deadline, 5)
+                    if request_timeout is None:
+                        break
+                    health_status, _, _ = runtime.json_request(
+                        f"{base}/alive", timeout=request_timeout, deadline=health_deadline
+                    )
+                if health_status in (200, 204):
+                    eventstore_base = base
+                    break
             if health_status not in (200, 204):
-                health_status, _, _ = runtime.json_request(f"{base}/alive", token=token)
-            if health_status in (200, 204):
-                eventstore_base = base
-                break
+                _bounded_sleep(health_deadline)
         evidence["observations"]["health"] = {
             "result": "passed" if health_status in (200, 204) else "failed",
-            "authenticated": True,
-            "reasonCode": "health.authenticated.succeeded" if health_status in (200, 204) else "health.authenticated.failed",
+            "authenticated": False,
+            "reasonCode": "health.readiness.succeeded" if health_status in (200, 204) else "health.readiness.failed",
             "statusCode": health_status,
         }
 
+        if health_status not in (200, 204):
+            reason_codes.append("health.readiness.failed")
+            return 1
+
         message_id = _ulid()
         tenant_id = f"pact-reconciliation-{message_id.lower()}"
+        command_body = {
+            "messageId": message_id,
+            "tenant": "system",
+            "domain": "tenants",
+            "aggregateId": tenant_id,
+            "commandType": "CreateTenant",
+            "payload": {"TenantId": tenant_id, "Name": "Pact Reconciliation", "Description": "Bounded local smoke"},
+        }
+        command_control_deadline = min(capture_deadline, time.monotonic() + 10)
+        control_timeout = _remaining_timeout(command_control_deadline, 10)
+        if control_timeout is None:
+            reason_codes.append("apphost.capture.deadline-exceeded")
+            return 1
+        invalid_command_status, _, _ = runtime.json_request(
+            f"{eventstore_base}/api/v1/commands",
+            method="POST",
+            token="invalid-local-evidence-token",
+            body=command_body,
+            timeout=control_timeout,
+            deadline=command_control_deadline,
+        )
+        command_control_passed = invalid_command_status in (401, 403)
+        evidence["authorizationControls"]["commandSubmit"] = {
+            "result": "passed" if command_control_passed else "failed",
+            "credential": "invalid-bearer",
+            "reasonCode": (
+                "authorization.invalid-bearer.rejected"
+                if command_control_passed
+                else "authorization.invalid-bearer.not-rejected"
+            ),
+            "statusCode": invalid_command_status,
+        }
+        if not command_control_passed:
+            reason_codes.append("authorization.command-submit.not-enforced")
+            return 1
+
+        submit_deadline = min(capture_deadline, time.monotonic() + 30)
+        submit_timeout = _remaining_timeout(submit_deadline, 30)
+        if submit_timeout is None:
+            reason_codes.append("apphost.capture.deadline-exceeded")
+            return 1
         submit_status, submit_document, _ = runtime.json_request(
             f"{eventstore_base}/api/v1/commands",
             method="POST",
             token=token,
-            body={
-                "messageId": message_id,
-                "tenant": "system",
-                "domain": "tenants",
-                "aggregateId": tenant_id,
-                "commandType": "CreateTenant",
-                "payload": {"TenantId": tenant_id, "Name": "Pact Reconciliation", "Description": "Bounded local smoke"},
-            },
-            timeout=30,
+            body=command_body,
+            timeout=submit_timeout,
+            deadline=submit_deadline,
         )
-        correlation = submit_document.get("correlationId", message_id)
-        submit_passed = submit_status == 202 and isinstance(correlation, str) and bool(correlation)
+        correlation = submit_document.get("correlationId")
+        submit_passed = submit_status == 202 and correlation == message_id
         evidence["observations"]["commandSubmit"] = {
             "result": "passed" if submit_passed else "failed",
-            "authenticated": True,
+            "authenticated": command_control_passed,
             "reasonCode": "command.accepted" if submit_passed else "command.not-accepted",
             "statusCode": submit_status,
+            "aggregateId": tenant_id,
+            "messageId": message_id,
+            "correlationId": correlation if isinstance(correlation, str) else "not-observed",
         }
         terminal = ""
+        status_control_passed = False
         if submit_passed:
-            deadline = time.monotonic() + 60
-            while time.monotonic() < deadline:
+            status_control_deadline = min(capture_deadline, time.monotonic() + 10)
+            control_timeout = _remaining_timeout(status_control_deadline, 10)
+            if control_timeout is not None:
+                invalid_status, _, _ = runtime.json_request(
+                    f"{eventstore_base}/api/v1/commands/status/{parse.quote(correlation, safe='')}",
+                    token="invalid-local-evidence-token",
+                    timeout=control_timeout,
+                    deadline=status_control_deadline,
+                )
+                status_control_passed = invalid_status in (401, 403)
+                evidence["authorizationControls"]["commandStatus"] = {
+                    "result": "passed" if status_control_passed else "failed",
+                    "credential": "invalid-bearer",
+                    "reasonCode": (
+                        "authorization.invalid-bearer.rejected"
+                        if status_control_passed
+                        else "authorization.invalid-bearer.not-rejected"
+                    ),
+                    "statusCode": invalid_status,
+                }
+            if not status_control_passed:
+                reason_codes.append("authorization.command-status.not-enforced")
+                return 1
+            status_deadline = min(capture_deadline, time.monotonic() + 60)
+            while time.monotonic() < status_deadline:
+                status_timeout = _remaining_timeout(status_deadline, 10)
+                if status_timeout is None:
+                    break
                 status_code, status_document, _ = runtime.json_request(
                     f"{eventstore_base}/api/v1/commands/status/{parse.quote(correlation, safe='')}",
                     token=token,
+                    timeout=status_timeout,
+                    deadline=status_deadline,
                 )
                 terminal = str(status_document.get("status", "")) if status_code == 200 else ""
                 if terminal in ("Completed", "Rejected", "PublishFailed", "TimedOut"):
                     break
-                time.sleep(1)
+                _bounded_sleep(status_deadline)
         status_passed = terminal == "Completed"
         evidence["observations"]["commandStatus"] = {
             "result": "passed" if status_passed else "failed",
-            "authenticated": True,
+            "authenticated": status_control_passed,
             "reasonCode": "command.completed" if status_passed else "command.not-completed",
             "terminalStatus": terminal or "not-observed",
+            "aggregateId": tenant_id,
         }
 
         query_status = 0
         provenance = ""
-        query_deadline = time.monotonic() + 60
+        response_tenant_id = ""
+        query_body = {
+            "tenant": "system",
+            "domain": "tenants",
+            "aggregateId": tenant_id,
+            "queryType": "get-tenant",
+            "projectionType": "tenants",
+            "entityId": tenant_id,
+        }
+        query_control_passed = False
+        query_control_deadline = min(capture_deadline, time.monotonic() + 10)
+        control_timeout = _remaining_timeout(query_control_deadline, 10)
+        if control_timeout is not None:
+            invalid_query_status, _, _ = runtime.json_request(
+                f"{eventstore_base}/api/v1/queries",
+                method="POST",
+                token="invalid-local-evidence-token",
+                body=query_body,
+                timeout=control_timeout,
+                deadline=query_control_deadline,
+            )
+            query_control_passed = invalid_query_status in (401, 403)
+            evidence["authorizationControls"]["queryProvenance"] = {
+                "result": "passed" if query_control_passed else "failed",
+                "credential": "invalid-bearer",
+                "reasonCode": (
+                    "authorization.invalid-bearer.rejected"
+                    if query_control_passed
+                    else "authorization.invalid-bearer.not-rejected"
+                ),
+                "statusCode": invalid_query_status,
+            }
+        if not query_control_passed:
+            reason_codes.append("authorization.query.not-enforced")
+            return 1
+        query_deadline = min(capture_deadline, time.monotonic() + 60)
         while time.monotonic() < query_deadline:
             # list-tenants + projectionType "tenants" is a mismatched route (list-tenants uses
             # tenant-index). Query the tenant CreateTenant just completed, matching Tenants
             # AspireTopologyTests: get-tenant / projectionType tenants / entityId = aggregateId.
+            query_timeout = _remaining_timeout(query_deadline, 30)
+            if query_timeout is None:
+                break
             query_status, query_document, query_headers = runtime.json_request(
                 f"{eventstore_base}/api/v1/queries",
                 method="POST",
                 token=token,
-                body={
-                    "tenant": "system",
-                    "domain": "tenants",
-                    "aggregateId": tenant_id,
-                    "queryType": "get-tenant",
-                    "projectionType": "tenants",
-                    "entityId": tenant_id,
-                },
-                timeout=30,
+                body=query_body,
+                timeout=query_timeout,
+                deadline=query_deadline,
             )
             provenance = _query_provenance(query_headers, query_document)
-            # Tenant handler routes are stamped HandlerComputed; projection-actor routes are
-            # ProjectionBacked. This topology has no EventStore.Sample processor, so the live
-            # tenant query is the authentic provenance observation. Body metadata.provenance is
-            # the same EventStore contract as the header when a proxy strips custom headers.
-            if query_status == 200 and provenance in ("ProjectionBacked", "HandlerComputed"):
+            response_tenant_id = _query_tenant_id(query_document)
+            # This exact tenant handler route is stamped HandlerComputed. ProjectionBacked is a
+            # different execution path and must not satisfy this observation.
+            if (
+                query_status == 200
+                and provenance == "HandlerComputed"
+                and response_tenant_id == tenant_id
+            ):
                 break
-            time.sleep(1)
-        query_passed = query_status == 200 and provenance in ("ProjectionBacked", "HandlerComputed")
-        if query_passed and provenance == "ProjectionBacked":
-            query_reason = "query.projection-backed"
-        elif query_passed:
+            _bounded_sleep(query_deadline)
+        query_passed = (
+            query_status == 200
+            and provenance == "HandlerComputed"
+            and response_tenant_id == tenant_id
+        )
+        if query_passed:
             query_reason = "query.handler-computed"
+        elif query_status == 200 and provenance == "HandlerComputed":
+            query_reason = "query.tenant-mismatch"
         else:
             query_reason = "query.provenance.missing"
         evidence["observations"]["queryProvenance"] = {
             "result": "passed" if query_passed else "failed",
-            "authenticated": True,
+            "authenticated": query_control_passed,
             "reasonCode": query_reason,
             "statusCode": query_status,
             "provenance": provenance or "not-observed",
+            "tenant": "system",
+            "aggregateId": tenant_id,
+            "entityId": tenant_id,
+            "responseTenantId": response_tenant_id or "not-observed",
         }
 
+        signalr_bases = _resource_signalr_urls(records, "eventstore") or eventstore_bases or [eventstore_base]
+        signalr_control_passed = False
+        signalr_control_status = 0
         signalr_passed = False
-        for base in _resource_signalr_urls(records, "eventstore") or eventstore_bases or [eventstore_base]:
-            if runtime.signalr_connect(f"{base}/hubs/projection-changes", token, timeout=5):
-                signalr_passed = True
+        signalr_endpoint = ""
+        signalr_deadline = min(capture_deadline, time.monotonic() + 30)
+        for base in signalr_bases:
+            candidate_endpoint = f"{base}/hubs/projection-changes"
+            control_timeout = _remaining_timeout(signalr_deadline, 5)
+            if control_timeout is None:
                 break
+            signalr_control_status = runtime.signalr_negotiate_status(
+                candidate_endpoint,
+                "invalid-local-evidence-token",
+                timeout=control_timeout,
+                deadline=signalr_deadline,
+            )
+            if signalr_control_status in (401, 403):
+                signalr_control_passed = True
+                signalr_endpoint = candidate_endpoint
+                signalr_timeout = _remaining_timeout(signalr_deadline, 5)
+                if signalr_timeout is not None and runtime.signalr_connect(
+                    candidate_endpoint,
+                    token,
+                    timeout=signalr_timeout,
+                    deadline=signalr_deadline,
+                ):
+                    signalr_passed = True
+                    break
+        evidence["authorizationControls"]["projectionSignalR"] = {
+            "result": "passed" if signalr_control_passed else "failed",
+            "credential": "invalid-bearer",
+            "reasonCode": (
+                "authorization.invalid-bearer.rejected"
+                if signalr_control_passed
+                else "authorization.invalid-bearer.not-rejected"
+            ),
+            "statusCode": signalr_control_status,
+            "endpoint": signalr_endpoint,
+        }
+        if not signalr_control_passed:
+            reason_codes.append("authorization.signalr.not-enforced")
+            return 1
+
         evidence["observations"]["projectionSignalR"] = {
             "result": "passed" if signalr_passed else "failed",
-            "authenticated": True,
+            "authenticated": signalr_control_passed,
             "reasonCode": "signalr.authenticated-connect.succeeded" if signalr_passed else "signalr.authenticated-connect.failed",
+            "endpoint": signalr_endpoint,
         }
 
         for name in OBSERVATIONS:
             if evidence["observations"][name]["result"] != "passed":
                 reason_codes.append(evidence["observations"][name]["reasonCode"])
+        for name in AUTHORIZATION_CONTROLS:
+            if evidence["authorizationControls"][name]["result"] != "passed":
+                reason_codes.append(evidence["authorizationControls"][name]["reasonCode"])
         evidence["finalVerdict"] = "passed" if not reason_codes else "failed"
         return 0 if not reason_codes else 1
     except (OSError, ValueError, json.JSONDecodeError) as exception:
         reason_codes.append(f"apphost.capture.{type(exception).__name__.lower()}")
         return 1
     finally:
-        stop = runtime.command(
-            ["aspire", "stop", "--apphost", APPHOST_RELATIVE, "--non-interactive", "--nologo"],
-            60,
+        stop_timeout = _remaining_timeout(overall_deadline, 60)
+        stop = (
+            runtime.command(
+                ["aspire", "stop", "--apphost", APPHOST_RELATIVE, "--non-interactive", "--nologo"],
+                stop_timeout,
+            )
+            if stop_timeout is not None
+            else CommandResult(-1, "", "capture deadline exhausted before cleanup stop")
         )
-        describe_after = runtime.command(
-            ["aspire", "describe", "--apphost", APPHOST_RELATIVE, "--format", "Json", "--non-interactive", "--nologo"],
-            15,
+        describe_timeout = _remaining_timeout(overall_deadline, 15)
+        describe_after = (
+            runtime.command(
+                ["aspire", "describe", "--apphost", APPHOST_RELATIVE, "--format", "Json", "--non-interactive", "--nologo"],
+                describe_timeout,
+            )
+            if describe_timeout is not None
+            else CommandResult(-1, "", "capture deadline exhausted before cleanup describe")
         )
-        host_stopped = describe_after.returncode != 0 or _json_from_output(describe_after.stdout) is None
+        parsed_after = _json_from_output(describe_after.stdout) if describe_after.returncode == 0 else None
+        records_after = _resource_records(parsed_after) if parsed_after is not None else []
+        if records_after:
+            probed_urls.extend(_probed_resource_urls(records_after))
+        running_after: int | None = None
+        while time.monotonic() < overall_deadline:
+            ps_timeout = _remaining_timeout(overall_deadline, 10)
+            if ps_timeout is None:
+                break
+            running_after = _running_apphost_count(runtime, ps_timeout)
+            if running_after == 0:
+                break
+            if running_after is None:
+                break
+            _bounded_sleep(overall_deadline, 0.5)
+        host_stopped = running_after == 0
         ports_closed = False
         urls_to_close = [url for url in [*endpoints.values(), *probed_urls] if url]
         ordered_close: list[str] = []
         for url in urls_to_close:
             if url not in ordered_close:
                 ordered_close.append(url)
-        deadline = time.monotonic() + 15
+        deadline = overall_deadline
         while host_stopped and time.monotonic() < deadline:
-            ports_closed = all(not _port_open(value) for value in ordered_close)
+            ports_closed = True
+            for value in ordered_close:
+                port_timeout = _remaining_timeout(deadline, 1)
+                if port_timeout is None or _port_open(value, port_timeout):
+                    ports_closed = False
+                    break
             if ports_closed:
                 break
-            time.sleep(0.5)
-        if not ordered_close:
+            _bounded_sleep(deadline, 0.5)
+        if ordered_close:
+            listener_confirmation = "ports-probed-closed" if ports_closed else "ports-open-or-unproven"
+        elif not host_start_attempted and not host_started and cold_stop_confirmed:
             ports_closed = host_stopped
-        clean = host_stopped and ports_closed and (stop.returncode == 0 or not started)
+            listener_confirmation = "no-host-started" if ports_closed else "ports-unproven"
+        else:
+            ports_closed = False
+            listener_confirmation = "ports-unproven"
+        lifecycle_clean = host_stopped and ports_closed and stop.returncode == 0
+        created_by_invocation = sorted(
+            relative
+            for relative in absent_before_run
+            if dapr_paths[relative].exists()
+        )
+        removed_after_shutdown: list[str] = []
+        if lifecycle_clean:
+            for relative in created_by_invocation:
+                try:
+                    dapr_paths[relative].unlink()
+                    removed_after_shutdown.append(relative)
+                except OSError:
+                    pass
+        remaining_after_cleanup = sorted(
+            relative
+            for relative in created_by_invocation
+            if dapr_paths[relative].exists()
+        )
+        post_manifest, post_runtime_issues = runtime_evidence.runtime_input_manifest(ROOT)
+        manifest_unchanged = True
+        if runtime_input_manifest_path is not None:
+            manifest_after = runtime_evidence._bounded_read(
+                runtime_input_manifest_path,
+                post_runtime_issues,
+                "pre-provider runtime-input manifest",
+            )
+            manifest_unchanged = (
+                runtime_manifest_bytes is not None
+                and manifest_after == runtime_manifest_bytes
+            )
+        runtime_inputs_clean = (
+            lifecycle_clean
+            and not post_runtime_issues
+            and post_manifest.get("treeSha256") == initial_runtime_tree
+            and manifest_unchanged
+        )
+        clean = (
+            lifecycle_clean
+            and removed_after_shutdown == created_by_invocation
+            and not remaining_after_cleanup
+            and runtime_inputs_clean
+        )
         evidence["cleanup"] = {
             "command": STOP_COMMAND,
             "result": "clean" if clean else "failed",
             "hostStopped": host_stopped,
             "portsClosed": ports_closed,
-            "runningAppHostsAfterAttempt": 0 if host_stopped else 1,
+            "runningAppHostsAfterAttempt": running_after if running_after is not None else -1,
+            "listenerConfirmation": listener_confirmation,
+            "confirmation": (
+                "aspire-ps-empty"
+                if running_after == 0
+                else "aspire-ps-running"
+                if isinstance(running_after, int) and running_after > 0
+                else "aspire-ps-failed"
+            ),
+            "daprNameResolutionFiles": {
+                "absentBeforeRun": absent_before_run,
+                "createdByInvocation": created_by_invocation,
+                "removedAfterShutdown": removed_after_shutdown,
+                "remainingAfterCleanup": remaining_after_cleanup,
+            },
+            "runtimeInputsCleanAfterRun": runtime_inputs_clean,
         }
         if not clean and "apphost.cleanup.incomplete" not in reason_codes:
             reason_codes.append("apphost.cleanup.incomplete")
         if reason_codes:
             evidence["finalVerdict"] = "failed"
+        evidence["completedAt"] = datetime.now(timezone.utc).isoformat()
         _atomic_write(output, evidence)
         if not clean:
             raise _CleanupFailed
 
 
-def capture(output: Path, runtime: SmokeRuntime | None = None, timeout: int = 300) -> int:
+def capture(
+    output: Path,
+    runtime: SmokeRuntime | None = None,
+    timeout: int = 300,
+    runtime_input_manifest_path: Path | None = None,
+) -> int:
     try:
-        return _capture(output, runtime or SmokeRuntime(), timeout)
+        return _capture(
+            output,
+            runtime or SmokeRuntime(),
+            timeout,
+            runtime_input_manifest_path,
+        )
     except _CleanupFailed:
         return 1
 
 
-def _port_open(url: str) -> bool:
+def _port_open(url: str, timeout: float = 1) -> bool:
     parsed = parse.urlsplit(url)
     try:
-        with socket.create_connection((parsed.hostname or "", parsed.port or (443 if parsed.scheme == "https" else 80)), timeout=1):
+        with socket.create_connection(
+            (parsed.hostname or "", parsed.port or (443 if parsed.scheme == "https" else 80)),
+            timeout=timeout,
+        ):
             return True
     except OSError:
         return False
@@ -794,11 +1922,16 @@ def main(argv: list[str] | None = None) -> int:
         default=ROOT / "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/apphost-smoke.json",
     )
     parser.add_argument("--timeout-seconds", type=int, default=300)
+    parser.add_argument("--runtime-input-manifest", required=True, type=Path)
     args = parser.parse_args(argv)
     if not 30 <= args.timeout_seconds <= 600:
         parser.error("--timeout-seconds must be between 30 and 600")
     output = args.output.absolute()
-    code = capture(output, timeout=args.timeout_seconds)
+    code = capture(
+        output,
+        timeout=args.timeout_seconds,
+        runtime_input_manifest_path=args.runtime_input_manifest.absolute(),
+    )
     if code != 0:
         _report_failure(output)
     return code

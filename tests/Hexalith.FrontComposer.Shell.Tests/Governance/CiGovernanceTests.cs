@@ -3733,7 +3733,8 @@ public sealed class CiGovernanceTests {
         const string approvedBuildsSha = "a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a";
         const string approvedVersion = "3.91.1";
         const string currentSourceSha = "059f6a8917bfab26b85775be464840a1610dfdeb";
-        const string currentBuildsSha = "35c3d1e5b8a55a74a440b9c2cad4c5e18747b241";
+        const string priorBuildsSha = "35c3d1e5b8a55a74a440b9c2cad4c5e18747b241";
+        const string currentBuildsSha = "a32cb422749352cce8dec948aa3e78c8f00eb4cf";
         const string currentVersion = "3.103.0";
         // The immutable Story 11.24 owner capture remains historical evidence. Current source,
         // package, and Builds values are compatibility provenance, not migration approval.
@@ -3758,7 +3759,7 @@ public sealed class CiGovernanceTests {
             "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation");
         currentCompatibility.GetProperty("eventStoreSourceSha").GetString().ShouldBe(currentSourceSha);
         currentCompatibility.GetProperty("eventStorePackageVersion").GetString().ShouldBe(currentVersion);
-        currentCompatibility.GetProperty("buildsCatalogSha").GetString().ShouldBe(currentBuildsSha);
+        currentCompatibility.GetProperty("buildsCatalogSha").GetString().ShouldBe(priorBuildsSha);
         currentCompatibility.GetProperty("migrationApprovalClaimed").GetBoolean().ShouldBeFalse();
         JsonElement historicalCapture = approval.GetProperty("historicalCapture");
         historicalCapture.GetProperty("path").GetString().ShouldBe(
@@ -3766,6 +3767,89 @@ public sealed class CiGovernanceTests {
         historicalCapture.GetProperty("eventStoreSourceSha").GetString().ShouldBe(approvedSourceSha);
         historicalCapture.GetProperty("eventStorePackageVersion").GetString().ShouldBe(approvedVersion);
         historicalCapture.GetProperty("immutable").GetBoolean().ShouldBeTrue();
+
+        string activeIdentityPath = Path.Combine(
+            root,
+            "_bmad-output",
+            "contracts",
+            "frontcomposer-eventstore-approved-runtime-identity-v2.json");
+        using JsonDocument activeIdentityDocument = JsonDocument.Parse(File.ReadAllText(activeIdentityPath));
+        JsonElement activeIdentity = activeIdentityDocument.RootElement;
+        activeIdentity.GetProperty("schema").GetString()
+            .ShouldBe("hexalith.frontcomposer.eventstore-approved-runtime-identity.v2");
+        JsonElement predecessor = activeIdentity.GetProperty("predecessor");
+        predecessor.GetProperty("path").GetString().ShouldBe(
+            "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v1.json");
+        predecessor.GetProperty("sha256").GetString().ShouldBe(Sha256File(approvalContractPath));
+        predecessor.GetProperty("supersededForActiveReleaseSelectionOnly").GetBoolean().ShouldBeTrue();
+        JsonElement activeTuple = activeIdentity.GetProperty("activeTuple");
+        activeTuple.GetProperty("eventStoreSourceGitlink").GetString().ShouldBe(currentSourceSha);
+        activeTuple.GetProperty("eventStorePackageVersion").GetString().ShouldBe(currentVersion);
+        activeTuple.GetProperty("buildsCatalogGitlink").GetString().ShouldBe(currentBuildsSha);
+        activeIdentity.GetProperty("frontComposerRevision").GetString().ShouldBe(
+            "1b3608c9b039dbba1be0884d92a2a6d54054e370");
+        JsonElement runtimeInputs = activeIdentity.GetProperty("runtimeInputs");
+        string runtimeManifestPath = Path.Combine(root, runtimeInputs.GetProperty("path").GetString()!);
+        Sha256File(runtimeManifestPath).ShouldBe(runtimeInputs.GetProperty("sha256").GetString());
+        using JsonDocument runtimeManifestDocument = JsonDocument.Parse(File.ReadAllText(runtimeManifestPath));
+        JsonElement runtimeManifest = runtimeManifestDocument.RootElement;
+        runtimeManifest.GetProperty("capturedRevision").GetString().ShouldBe(
+            activeIdentity.GetProperty("frontComposerRevision").GetString());
+        runtimeManifest.GetProperty("treeSha256").GetString().ShouldBe(
+            runtimeInputs.GetProperty("treeSha256").GetString());
+        runtimeManifest.GetProperty("entries").GetArrayLength().ShouldBeGreaterThan(0);
+        JsonElement runtimeScope = runtimeManifest.GetProperty("scope");
+        runtimeScope.GetProperty("trackedTrees").EnumerateArray()
+            .Select(item => item.GetString()).ShouldBe(["src/**", "samples/Counter/**"]);
+        runtimeScope.GetProperty("rootInputs").EnumerateArray()
+            .Select(item => item.GetString()).ShouldContain("Directory.Build.rsp");
+        runtimeManifest.GetProperty("entries").EnumerateArray()
+            .Single(item => item.GetProperty("path").GetString() == "Directory.Build.rsp")
+            .GetProperty("kind").GetString().ShouldBe("absent");
+        runtimeScope.GetProperty("dependencyGitlinks").EnumerateArray()
+            .Select(item => item.GetString()).ShouldBe([
+                "references/Hexalith.Builds",
+                "references/Hexalith.EventStore",
+                "references/Hexalith.Tenants",
+                "references/Hexalith.Parties",
+                "references/Hexalith.Memories",
+                "references/Hexalith.Commons",
+                "references/Hexalith.PolymorphicSerializations",
+            ]);
+        activeIdentity.GetProperty("submodulePointerChangedByApproval").GetBoolean().ShouldBeFalse();
+        activeIdentity.GetProperty("packageVersionChangedByApproval").GetBoolean().ShouldBeFalse();
+        JsonElement priorCompatibility = activeIdentity.GetProperty("priorCompatibility");
+        priorCompatibility.GetProperty("tuple").GetProperty("buildsCatalogGitlink").GetString()
+            .ShouldBe(priorBuildsSha);
+        JsonElement activeEvidence = activeIdentity.GetProperty("activeEvidence");
+        string activeEvidenceRoot = Path.Combine(root, activeEvidence.GetProperty("path").GetString()!);
+        foreach (JsonElement file in activeEvidence.GetProperty("files").EnumerateArray()) {
+            string relative = file.GetProperty("path").GetString()!;
+            Sha256File(Path.Combine(activeEvidenceRoot, relative)).ShouldBe(file.GetProperty("sha256").GetString());
+        }
+        JsonElement activeApproval = activeIdentity.GetProperty("approval");
+        activeApproval.GetProperty("migrationApprovalClaimed").GetBoolean().ShouldBeFalse();
+        activeApproval.GetProperty("receipts").GetArrayLength().ShouldBe(0);
+        activeApproval.GetProperty("effectiveRequiredRoles").EnumerateArray().Select(item => item.GetString()).ShouldBe([
+            "eventstore-maintainer",
+            "frontcomposer-maintainer",
+            "release-owner",
+        ]);
+        foreach (string bindingName in new[] { "policy", "roster", "subject" }) {
+            JsonElement binding = activeApproval.GetProperty(bindingName);
+            Sha256File(Path.Combine(root, binding.GetProperty("path").GetString()!))
+                .ShouldBe(binding.GetProperty("sha256").GetString());
+        }
+        string policyPath = Path.Combine(root, activeApproval.GetProperty("policy").GetProperty("path").GetString()!);
+        using JsonDocument policyDocument = JsonDocument.Parse(File.ReadAllText(policyPath));
+        policyDocument.RootElement.GetProperty("defaultRequiredRoles").EnumerateArray()
+            .Select(item => item.GetString()).ShouldBe([
+                "eventstore-maintainer",
+                "frontcomposer-maintainer",
+                "release-owner",
+            ]);
+        policyDocument.RootElement.GetProperty("oi18Alternative").GetProperty("replacementRole")
+            .GetString().ShouldBe("accountable-frontcomposer-maintainer");
         string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
         string artifactLane = ExtractNamedStep(quality, "Gate 2c: Validate contract artifacts");
         artifactLane.ShouldContain("python3 -m unittest tests/eng/test_eventstore_runtime_evidence.py tests/eng/test_pact_provider_apphost_smoke.py");
@@ -3780,16 +3864,44 @@ public sealed class CiGovernanceTests {
         artifactLane.ShouldNotContain("BLOCKED_HANDOFF");
         artifactLane.ShouldNotContain("continue-on-error: true");
         string liveProviderLane = ExtractNamedStep(quality, "Gate 2c: Live EventStore provider verification");
+        liveProviderLane.ShouldContain("--write-runtime-input-manifest");
+        liveProviderLane.ShouldContain("--runtime-input-manifest-output \"$runtime_manifest\"");
+        liveProviderLane.ShouldContain("dotnet clean references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj --configuration Release -m:1 -p:NuGetAudit=false");
+        liveProviderLane.ShouldContain("dotnet restore references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj --force --force-evaluate --no-cache --disable-parallel -p:Configuration=Release -p:NuGetAudit=false");
+        liveProviderLane.ShouldContain("--configuration Release --no-restore --no-incremental -m:1 -p:NuGetAudit=false");
+        liveProviderLane.ShouldContain("rm -f \"$GITHUB_WORKSPACE/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json\"");
+        liveProviderLane.ShouldContain("test -s \"$GITHUB_WORKSPACE/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json\"");
         liveProviderLane.ShouldContain("--verification-mode live-compatibility");
         liveProviderLane.ShouldContain("--write-live-receipt");
+        liveProviderLane.ShouldContain("--runtime-input-manifest \"$runtime_manifest\"");
+        int manifestIndex = liveProviderLane.IndexOf("--write-runtime-input-manifest", StringComparison.Ordinal);
+        int reportRemovalIndex = liveProviderLane.IndexOf("rm -f", StringComparison.Ordinal);
+        int cleanIndex = liveProviderLane.IndexOf("dotnet clean", StringComparison.Ordinal);
+        int restoreIndex = liveProviderLane.IndexOf("dotnet restore", StringComparison.Ordinal);
+        int buildIndex = liveProviderLane.IndexOf("dotnet build", StringComparison.Ordinal);
+        int verifierIndex = liveProviderLane.IndexOf("--verification-mode live-compatibility", StringComparison.Ordinal);
+        int receiptIndex = liveProviderLane.IndexOf("--write-live-receipt", StringComparison.Ordinal);
+        (manifestIndex < reportRemovalIndex).ShouldBeTrue();
+        (reportRemovalIndex < cleanIndex).ShouldBeTrue();
+        (cleanIndex < restoreIndex).ShouldBeTrue();
+        (restoreIndex < buildIndex).ShouldBeTrue();
+        (buildIndex < verifierIndex).ShouldBeTrue();
+        (verifierIndex < receiptIndex).ShouldBeTrue();
         liveProviderLane.ShouldNotContain("continue-on-error: true");
         string appHostLane = ExtractNamedStep(quality, "Gate 2c: Authenticated AppHost smoke");
         appHostLane.ShouldContain("python3 eng/pact_provider_apphost_smoke.py --timeout-seconds 300");
+        appHostLane.ShouldContain("--runtime-input-manifest \"$RUNNER_TEMP/frontcomposer-runtime-inputs.json\"");
         appHostLane.ShouldNotContain("continue-on-error: true");
         string uploadLane = ExtractNamedStep(quality, "Upload contract artifacts");
         uploadLane.ShouldContain("if: success()");
         uploadLane.ShouldNotContain("if: always()");
+        uploadLane.ShouldContain("frontcomposer-eventstore-approved-runtime-identity-v2.json");
+        uploadLane.ShouldContain("_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/2026-09-08-builds-35c3d1e5/**");
+        uploadLane.ShouldNotContain("_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/**");
+        uploadLane.ShouldContain("_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/**");
         uploadLane.ShouldContain("_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/**");
+        uploadLane.ShouldContain("_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md");
+        uploadLane.ShouldContain("_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md");
         // A rejected evidence tree is never published, but its validator diagnostics must be.
         string diagnosticsLane = ExtractNamedStep(quality, "Upload contract diagnostics");
         diagnosticsLane.ShouldContain("if: always()");
@@ -3801,13 +3913,31 @@ public sealed class CiGovernanceTests {
             "implementation-artifacts",
             "evidence",
             "frontcomposer-story-11-24");
+        string priorEvidenceRoot = Path.Combine(
+            root,
+            "_bmad-output",
+            "implementation-artifacts",
+            "evidence",
+            "pact-provider-reconciliation-history",
+            "2026-09-08-builds-35c3d1e5");
 
         ProcessResult validation = RunPython(root, [
             "eng/eventstore_runtime_evidence.py",
             "--evidence-root", evidenceRoot,
+            "--active-identity", activeIdentityPath,
+            "--active-evidence-root", Path.Combine(
+                root,
+                "_bmad-output",
+                "implementation-artifacts",
+                "evidence",
+                "eventstore-runtime-identity-v2"),
+            "--history-evidence-root", priorEvidenceRoot,
             "--pact-dir", "tests/Hexalith.FrontComposer.Shell.Tests/Pact",
+            "--repository-root", root,
         ]);
         validation.ExitCode.ShouldBe(0, validation.Output + validation.Error);
+        validation.Output.ShouldContain("EventStore runtime approval: OPEN");
+        validation.Output.ShouldContain("Missing valid receipt for required role: eventstore-maintainer");
 
         string liveEvidenceRoot = Path.Combine(
             root,
@@ -3825,20 +3955,101 @@ public sealed class CiGovernanceTests {
         liveIdentity.GetProperty("expectedVersion").GetString().ShouldBe(currentVersion);
         liveIdentity.GetProperty("observedBuildsSha").GetString().ShouldBe(currentBuildsSha);
         liveIdentity.GetProperty("approvalAuthorized").GetBoolean().ShouldBeFalse();
+        liveIdentity.GetProperty("evidenceManifestSha256").GetString().ShouldBeEmpty();
+        liveIdentity.GetProperty("decisionRecordSha256").GetString().ShouldBeEmpty();
+        liveIdentity.GetProperty("subjectSha256").GetString().ShouldBeEmpty();
+        using JsonDocument liveReceipt = JsonDocument.Parse(File.ReadAllText(Path.Combine(
+            liveEvidenceRoot,
+            "run-evidence.json")));
+        liveReceipt.RootElement.GetProperty("frontComposerRevision").GetString().ShouldBe(
+            activeIdentity.GetProperty("frontComposerRevision").GetString());
+        liveReceipt.RootElement.GetProperty("runtimeInputTreeSha256").GetString().ShouldBe(
+            runtimeInputs.GetProperty("treeSha256").GetString());
+        liveReceipt.RootElement.GetProperty("report").GetProperty("path").GetString()
+            .ShouldBe("provider-verification.json");
+        liveReceipt.RootElement.GetProperty("completedAt").GetString().ShouldBe(
+            liveReport.RootElement.GetProperty("timing").GetProperty("run").GetProperty("completedAt").GetString());
 
         using JsonDocument liveSmoke = JsonDocument.Parse(File.ReadAllText(Path.Combine(
             liveEvidenceRoot,
             "apphost-smoke.json")));
         liveSmoke.RootElement.GetProperty("finalVerdict").GetString().ShouldBe("passed");
         liveSmoke.RootElement.GetProperty("reasonCodes").GetArrayLength().ShouldBe(0);
+        liveSmoke.RootElement.GetProperty("timeoutSeconds").GetInt32().ShouldBe(300);
         JsonElement smokeIdentity = liveSmoke.RootElement.GetProperty("identity");
         smokeIdentity.GetProperty("eventStoreSourceSha").GetString().ShouldBe(currentSourceSha);
         smokeIdentity.GetProperty("eventStoreReleaseVersion").GetString().ShouldBe(currentVersion);
         smokeIdentity.GetProperty("buildsCatalogSha").GetString().ShouldBe(currentBuildsSha);
-        liveSmoke.RootElement.GetProperty("observations").GetProperty("queryProvenance")
-            .GetProperty("authenticated").GetBoolean().ShouldBeTrue();
+        smokeIdentity.GetProperty("frontComposerRevision").GetString().ShouldBe(
+            activeIdentity.GetProperty("frontComposerRevision").GetString());
+        smokeIdentity.GetProperty("runtimeInputTreeSha256").GetString().ShouldBe(
+            runtimeInputs.GetProperty("treeSha256").GetString());
+        JsonElement healthObservation = liveSmoke.RootElement.GetProperty("observations").GetProperty("health");
+        healthObservation.GetProperty("authenticated").GetBoolean().ShouldBeFalse();
+        healthObservation.GetProperty("reasonCode").GetString().ShouldBe("health.readiness.succeeded");
+        JsonElement queryObservation = liveSmoke.RootElement.GetProperty("observations").GetProperty("queryProvenance");
+        queryObservation.GetProperty("authenticated").GetBoolean().ShouldBeTrue();
+        queryObservation.GetProperty("tenant").GetString().ShouldBe("system");
+        queryObservation.GetProperty("responseTenantId").GetString().ShouldBe(
+            queryObservation.GetProperty("entityId").GetString());
+        queryObservation.GetProperty("entityId").GetString().ShouldBe(
+            queryObservation.GetProperty("aggregateId").GetString());
+        JsonElement commandObservation = liveSmoke.RootElement.GetProperty("observations").GetProperty("commandSubmit");
+        commandObservation.GetProperty("correlationId").GetString().ShouldBe(
+            commandObservation.GetProperty("messageId").GetString());
         liveSmoke.RootElement.GetProperty("observations").GetProperty("projectionSignalR")
             .GetProperty("result").GetString().ShouldBe("passed");
+        JsonElement startup = liveSmoke.RootElement.GetProperty("startup");
+        startup.GetProperty("hostStartAttempted").GetBoolean().ShouldBeTrue();
+        startup.GetProperty("hostStarted").GetBoolean().ShouldBeTrue();
+        JsonElement outputPreparation = startup.GetProperty("outputPreparation");
+        outputPreparation.GetProperty("clean").GetString().ShouldBe("passed");
+        outputPreparation.GetProperty("restore").GetString().ShouldBe("passed");
+        outputPreparation.GetProperty("build").GetString().ShouldBe("passed");
+        outputPreparation.GetProperty("restoreMode").GetString().ShouldBe("forced-no-cache");
+        outputPreparation.GetProperty("buildMode").GetString().ShouldBe("no-incremental");
+        outputPreparation.GetProperty("startMode").GetString().ShouldBe("no-build");
+        outputPreparation.GetProperty("evaluatedSourceGraph").GetString().ShouldBe("passed");
+        outputPreparation.GetProperty("sourceDependencyGitlinks").GetArrayLength().ShouldBe(7);
+        JsonElement evaluatedBuildProperties = outputPreparation.GetProperty("evaluatedBuildProperties");
+        evaluatedBuildProperties.GetProperty("UseHexalithProjectReferences").GetBoolean().ShouldBeTrue();
+        evaluatedBuildProperties.GetProperty("UseNuGetDeps").GetBoolean().ShouldBeFalse();
+        evaluatedBuildProperties.GetProperty("HexalithEventStoreFromSource").GetBoolean().ShouldBeTrue();
+        evaluatedBuildProperties.GetProperty("HexalithTenantsFromSource").GetBoolean().ShouldBeTrue();
+        evaluatedBuildProperties.GetProperty("HexalithPartiesFromSource").GetBoolean().ShouldBeTrue();
+        evaluatedBuildProperties.GetProperty("HexalithMemoriesFromSource").GetBoolean().ShouldBeTrue();
+        evaluatedBuildProperties.GetProperty("HexalithCommonsFromSource").GetBoolean().ShouldBeTrue();
+        evaluatedBuildProperties.GetProperty("HexalithPolymorphicSerializationsFromSource").GetBoolean().ShouldBeTrue();
+        evaluatedBuildProperties.GetProperty("HexalithFrontComposerFromSource").GetBoolean().ShouldBeTrue();
+        evaluatedBuildProperties.GetProperty("NuGetAudit").GetBoolean().ShouldBeFalse();
+        evaluatedBuildProperties.GetProperty("CentralPackageTransitivePinningEnabled").GetBoolean().ShouldBeFalse();
+        JsonElement authorizationControls = liveSmoke.RootElement.GetProperty("authorizationControls");
+        int[] rejectedStatuses = [401, 403];
+        foreach (string protectedSurface in new[] {
+            "commandSubmit",
+            "commandStatus",
+            "queryProvenance",
+            "projectionSignalR",
+        }) {
+            JsonElement control = authorizationControls.GetProperty(protectedSurface);
+            control.GetProperty("result").GetString().ShouldBe("passed");
+            control.GetProperty("credential").GetString().ShouldBe("invalid-bearer");
+            rejectedStatuses.ShouldContain(control.GetProperty("statusCode").GetInt32());
+        }
+        liveSmoke.RootElement.GetProperty("observations").GetProperty("projectionSignalR")
+            .GetProperty("endpoint").GetString().ShouldBe(
+                authorizationControls.GetProperty("projectionSignalR").GetProperty("endpoint").GetString());
+        liveSmoke.RootElement.GetProperty("cleanup").GetProperty("confirmation").GetString()
+            .ShouldBe("aspire-ps-empty");
+        liveSmoke.RootElement.GetProperty("cleanup").GetProperty("listenerConfirmation").GetString()
+            .ShouldBe("ports-probed-closed");
+        liveSmoke.RootElement.GetProperty("cleanup").GetProperty("runtimeInputsCleanAfterRun")
+            .GetBoolean().ShouldBeTrue();
+        JsonElement daprCleanup = liveSmoke.RootElement.GetProperty("cleanup").GetProperty("daprNameResolutionFiles");
+        daprCleanup.GetProperty("absentBeforeRun").GetArrayLength().ShouldBe(3);
+        daprCleanup.GetProperty("removedAfterShutdown").GetArrayLength().ShouldBe(
+            daprCleanup.GetProperty("createdByInvocation").GetArrayLength());
+        daprCleanup.GetProperty("remainingAfterCleanup").GetArrayLength().ShouldBe(0);
 
         ProcessResult eventStoreGitlink = RunProcess(
             root,
