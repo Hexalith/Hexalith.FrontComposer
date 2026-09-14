@@ -88,7 +88,12 @@ class FakeRuntime(smoke.SmokeRuntime):
             }
             return smoke.CommandResult(0, json.dumps(document))
         if operation == "ps":
-            return smoke.CommandResult(0, '[{"name":"frontcomposer"}]' if self.started else "[]")
+            document = (
+                [{"appHostPath": str((smoke.ROOT / smoke.APPHOST_RELATIVE).resolve())}]
+                if self.started
+                else []
+            )
+            return smoke.CommandResult(0, json.dumps(document))
         raise AssertionError(arguments)
 
     def source_graph_is_exact(self, project_references: list[Path]) -> bool:
@@ -178,8 +183,7 @@ class FakeRuntime(smoke.SmokeRuntime):
                     smoke.ROOT / relative / "src" / f"{Path(relative).name}.csproj"
                 ),
             }
-            for relative in smoke.SOURCE_DEPENDENCY_GITLINKS
-            if Path(relative).name != "Hexalith.Builds"
+            for relative in smoke.REACHABLE_SOURCE_GITLINKS
         ]
         return json.dumps({
             "Properties": properties,
@@ -544,7 +548,6 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
             "Hexalith.Parties",
             "Hexalith.Memories",
             "Hexalith.Commons",
-            "Hexalith.PolymorphicSerializations",
         )
         temporary_root = Path(self.temporary.name) / "repository"
         projects: list[Path] = []
@@ -578,6 +581,30 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
             shadow_assets.write_text(json.dumps({"libraries": {}}), encoding="utf-8")
             self.assertFalse(smoke._resolved_source_graph_is_exact([shadow, *projects[1:]]))
             self.assertFalse(smoke._resolved_source_graph_is_exact([shadow, *projects]))
+
+            polymorphic = (
+                temporary_root
+                / "references"
+                / "Hexalith.PolymorphicSerializations"
+                / "src"
+                / "Hexalith.PolymorphicSerializations.csproj"
+            )
+            polymorphic.parent.mkdir(parents=True)
+            polymorphic.write_text("<Project />", encoding="utf-8")
+            polymorphic_assets = polymorphic.parent / "obj" / "project.assets.json"
+            polymorphic_assets.parent.mkdir()
+            polymorphic_assets.write_text(json.dumps({"libraries": {}}), encoding="utf-8")
+            self.assertFalse(smoke._resolved_source_graph_is_exact([*projects, polymorphic]))
+
+            assets.write_text(
+                json.dumps({
+                    "libraries": {
+                        "Hexalith.PolymorphicSerializations/1.19.2": {"type": "package"}
+                    }
+                }),
+                encoding="utf-8",
+            )
+            self.assertFalse(smoke._resolved_source_graph_is_exact(projects))
 
     def test_owned_dapr_name_resolution_files_are_removed_after_confirmed_shutdown(self) -> None:
         runtime = FakeRuntime()
@@ -1270,6 +1297,42 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertIn("apphost.cold-stop.not-confirmed", document["reasonCodes"])
         self.assertFalse(any(item[0] == "dotnet" for item in runtime.commands))
         self.assertFalse(any(item[:2] == ["aspire", "start"] for item in runtime.commands))
+
+    def test_unrelated_running_apphost_does_not_block_target_cold_stop(self) -> None:
+        runtime = FakeRuntime()
+        original_command = runtime.command
+        unrelated = str((smoke.ROOT.parent / "works" / "src" / "Works.AppHost.csproj").resolve())
+
+        def command(arguments: list[str], timeout: float) -> smoke.CommandResult:
+            if arguments[:2] == ["aspire", "ps"]:
+                runtime.commands.append(arguments)
+                records = [{"appHostPath": unrelated}]
+                if runtime.started:
+                    records.append(
+                        {"appHostPath": str((smoke.ROOT / smoke.APPHOST_RELATIVE).resolve())}
+                    )
+                return smoke.CommandResult(0, json.dumps(records))
+            return original_command(arguments, timeout)
+
+        runtime.command = command  # type: ignore[method-assign]
+
+        result = smoke.capture(self.output, runtime, timeout=30)
+
+        self.assertEqual(result, 0)
+        document = json.loads(self.output.read_text(encoding="utf-8"))
+        self.assertEqual(document["cleanup"]["runningAppHostsAfterAttempt"], 0)
+        self.assertEqual(document["cleanup"]["confirmation"], "aspire-ps-empty")
+
+    def test_running_apphost_count_rejects_unattributed_ps_record(self) -> None:
+        runtime = FakeRuntime()
+
+        def command(arguments: list[str], timeout: float) -> smoke.CommandResult:
+            del arguments, timeout
+            return smoke.CommandResult(0, '[{"name":"frontcomposer"}]')
+
+        runtime.command = command  # type: ignore[method-assign]
+
+        self.assertIsNone(smoke._running_apphost_count(runtime, 10))
 
     def test_no_url_cleanup_is_clean_only_when_no_host_start_was_attempted(self) -> None:
         never_started = FakeRuntime(build_code=2)

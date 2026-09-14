@@ -239,6 +239,15 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         output_preparation = active_smoke["startup"]["outputPreparation"]
         output_preparation["restore"] = "passed"
         output_preparation["restoreMode"] = "forced-no-cache"
+        output_preparation["buildControlGitlinks"] = list(
+            evidence.APPHOST_BUILD_CONTROL_GITLINKS
+        )
+        output_preparation["reachableSourceGitlinks"] = list(
+            evidence.APPHOST_REACHABLE_SOURCE_GITLINKS
+        )
+        output_preparation["inactiveGuardedGitlinks"] = list(
+            evidence.APPHOST_INACTIVE_GUARDED_GITLINKS
+        )
         active_smoke["observations"]["health"] = {
             "result": "passed",
             "authenticated": False,
@@ -484,6 +493,9 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                     "startMode": "no-build",
                     "evaluatedBuildProperties": evidence.APPHOST_BUILD_PROPERTIES,
                     "sourceDependencyGitlinks": list(evidence.RUNTIME_DEPENDENCY_GITLINKS),
+                    "buildControlGitlinks": list(evidence.APPHOST_BUILD_CONTROL_GITLINKS),
+                    "reachableSourceGitlinks": list(evidence.APPHOST_REACHABLE_SOURCE_GITLINKS),
+                    "inactiveGuardedGitlinks": list(evidence.APPHOST_INACTIVE_GUARDED_GITLINKS),
                     "evaluatedSourceGraph": "passed",
                 },
                 "resourceWaits": {
@@ -2082,7 +2094,154 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             tracked_symlink_sha,
         )
         self.assertIn(
-            f"Runtime dependency contains a tracked symlink: {tracked_symlink_dependency}/tracked-link",
+            f"Runtime dependency contains a tracked symlink selected by the build/runtime input scope: {tracked_symlink_dependency}/tracked-link",
+            issues,
+        )
+
+        subprocess.run(
+            ["git", "rm", "-q", "tracked-link"],
+            cwd=tracked_symlink_checkout,
+            check=True,
+        )
+        unapproved_documentation = tracked_symlink_checkout / "docs" / "runtime-notes.md"
+        unapproved_documentation.parent.mkdir()
+        unapproved_documentation.symlink_to("../../architecture.md")
+        unapproved_tooling = tracked_symlink_checkout / ".clinerules"
+        unapproved_tooling.symlink_to("references/Hexalith.Builds/.clinerules")
+        subprocess.run(
+            ["git", "add", "docs/runtime-notes.md", ".clinerules"],
+            cwd=tracked_symlink_checkout,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "commit", "-qm", "test: add unapproved dependency symlinks"],
+            cwd=tracked_symlink_checkout,
+            check=True,
+        )
+        unapproved_symlink_sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=tracked_symlink_checkout,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        issues = evidence._validate_dependency_checkout(
+            repository,
+            tracked_symlink_dependency,
+            unapproved_symlink_sha,
+        )
+        self.assertTrue(
+            any("docs/runtime-notes.md" in issue for issue in issues),
+            issues,
+        )
+        self.assertTrue(any(".clinerules" in issue for issue in issues), issues)
+
+        selected_untracked_symlink = tracked_symlink_checkout / "runtime-link.props"
+        selected_untracked_symlink.symlink_to("runtime.txt")
+        issues = evidence._validate_dependency_checkout(
+            repository,
+            tracked_symlink_dependency,
+            unapproved_symlink_sha,
+        )
+        self.assertIn(
+            f"Runtime dependency contains untracked symlink inputs: {tracked_symlink_dependency}: runtime-link.props",
+            issues,
+        )
+
+        eventstore_dependency = "references/Hexalith.EventStore"
+        eventstore_checkout = repository / eventstore_dependency
+        eventstore_link = (
+            eventstore_checkout
+            / "_bmad-output/planning-artifacts/architecture/"
+            "architecture-eventstore-2026-07-05/ARCHITECTURE-SPINE.md"
+        )
+        eventstore_link.parent.mkdir(parents=True)
+        eventstore_link.symlink_to("../../architecture.md")
+        subprocess.run(
+            ["git", "add", eventstore_link.relative_to(eventstore_checkout).as_posix()],
+            cwd=eventstore_checkout,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "commit", "-qm", "test: add approved EventStore documentation link"],
+            cwd=eventstore_checkout,
+            check=True,
+        )
+        eventstore_sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=eventstore_checkout,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        self.assertEqual(
+            evidence._validate_dependency_checkout(
+                repository,
+                eventstore_dependency,
+                eventstore_sha,
+            ),
+            [],
+        )
+
+        commons_dependency = "references/Hexalith.Commons"
+        commons_checkout = repository / commons_dependency
+        commons_targets = {
+            ".clinerules": "references/Hexalith.Builds/.clinerules",
+            ".cursorrules": "references/Hexalith.Builds/.cursorrules",
+        }
+        for link_name, target in commons_targets.items():
+            (commons_checkout / link_name).symlink_to(target)
+        subprocess.run(
+            ["git", "add", *commons_targets],
+            cwd=commons_checkout,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "commit", "-qm", "test: add approved Commons tooling links"],
+            cwd=commons_checkout,
+            check=True,
+        )
+        commons_sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=commons_checkout,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        self.assertEqual(
+            evidence._validate_dependency_checkout(
+                repository,
+                commons_dependency,
+                commons_sha,
+            ),
+            [],
+        )
+
+        (commons_checkout / ".clinerules").unlink()
+        (commons_checkout / ".clinerules").symlink_to("changed-target")
+        issues = evidence._validate_dependency_checkout(
+            repository,
+            commons_dependency,
+            commons_sha,
+        )
+        self.assertTrue(
+            any("worktree symlink differs from the Git index" in issue for issue in issues),
+            issues,
+        )
+
+        subprocess.run(
+            ["git", "add", ".clinerules"],
+            cwd=commons_checkout,
+            check=True,
+        )
+        issues = evidence._validate_dependency_checkout(
+            repository,
+            commons_dependency,
+            commons_sha,
+        )
+        self.assertTrue(any("index differs from HEAD" in issue for issue in issues), issues)
+        self.assertTrue(
+            any("selected by the build/runtime input scope" in issue for issue in issues),
             issues,
         )
 

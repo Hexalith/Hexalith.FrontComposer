@@ -91,6 +91,34 @@ RUNTIME_DEPENDENCY_GITLINKS = (
     "references/Hexalith.Commons",
     "references/Hexalith.PolymorphicSerializations",
 )
+APPHOST_BUILD_CONTROL_GITLINKS = (
+    "references/Hexalith.Builds",
+)
+APPHOST_REACHABLE_SOURCE_GITLINKS = (
+    "references/Hexalith.EventStore",
+    "references/Hexalith.Tenants",
+    "references/Hexalith.Parties",
+    "references/Hexalith.Memories",
+    "references/Hexalith.Commons",
+)
+APPHOST_INACTIVE_GUARDED_GITLINKS = (
+    "references/Hexalith.PolymorphicSerializations",
+)
+INERT_DEPENDENCY_SYMLINK_OBJECTS = {
+    (
+        "references/Hexalith.EventStore",
+        "_bmad-output/planning-artifacts/architecture/"
+        "architecture-eventstore-2026-07-05/ARCHITECTURE-SPINE.md",
+    ): "7c48eaff1af296179ebc3f766958c54d8134a9f2",
+    (
+        "references/Hexalith.Commons",
+        ".clinerules",
+    ): "a245fc1c6c2d522ea2aa0ecabf1583917087b51c",
+    (
+        "references/Hexalith.Commons",
+        ".cursorrules",
+    ): "86da7cdc6d0e98a2fdd8711088cb375badd093ec",
+}
 APPHOST_BUILD_PROPERTIES = {
     "UseHexalithProjectReferences": True,
     "UseNuGetDeps": False,
@@ -1702,6 +1730,34 @@ def _is_dependency_generated_output(relative: str) -> bool:
     return any(part in {"bin", "obj", ".git"} for part in parts)
 
 
+def _is_inert_dependency_symlink(
+    dependency: str,
+    relative: str,
+    object_id: str,
+) -> bool:
+    """Match one human-approved inert link by dependency, path, and blob identity."""
+    return INERT_DEPENDENCY_SYMLINK_OBJECTS.get((dependency, relative)) == object_id
+
+
+def _symlink_git_object(checkout: Path, relative: str) -> str:
+    """Hash one symlink's stored target without following it."""
+    try:
+        target = os.readlink(checkout / relative)
+        completed = subprocess.run(
+            ["git", "hash-object", "--stdin"],
+            cwd=checkout,
+            input=os.fsencode(target),
+            check=False,
+            capture_output=True,
+            timeout=15,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    if completed.returncode != 0:
+        return ""
+    return completed.stdout.decode("ascii", errors="ignore").strip().lower()
+
+
 def _bulk_worktree_git_objects(
     checkout: Path,
     entries: list[tuple[str, str]],
@@ -1834,12 +1890,14 @@ def _validate_dependency_checkout(
                 head_objects[path] = (mode, object_id.lower())
 
     hash_entries: list[tuple[str, str]] = []
-    for path, (mode, _, stage) in sorted(index_entries.items()):
+    for path, (mode, object_id, stage) in sorted(index_entries.items()):
         if stage == "0" and mode != "160000":
             if mode == "120000":
-                issues.append(
-                    f"Runtime dependency contains a tracked symlink: {relative}/{path}"
-                )
+                if not _is_inert_dependency_symlink(relative, path, object_id):
+                    issues.append(
+                        f"Runtime dependency contains a tracked symlink selected by the "
+                        f"build/runtime input scope: {relative}/{path}"
+                    )
                 continue
             candidate = checkout / path
             if _path_has_symlink_component(candidate):
@@ -1857,6 +1915,19 @@ def _validate_dependency_checkout(
         if mode == "160000":
             continue
         if mode == "120000":
+            candidate = checkout / path
+            if not candidate.is_symlink():
+                issues.append(
+                    f"Runtime dependency tracked symlink is missing from the worktree: "
+                    f"{relative}/{path}"
+                )
+            if head_objects.get(path) != (mode, object_id):
+                issues.append(f"Runtime dependency index identity differs from HEAD: {relative}/{path}")
+            if _symlink_git_object(checkout, path) != object_id:
+                issues.append(
+                    f"Runtime dependency worktree symlink differs from the Git index: "
+                    f"{relative}/{path}"
+                )
             continue
         candidate = checkout / path
         if _path_has_symlink_component(candidate):
@@ -1880,6 +1951,14 @@ def _validate_dependency_checkout(
     relevant_untracked = sorted(
         path for path in untracked_paths if not _is_dependency_generated_output(path)
     )
+    untracked_symlinks = sorted(
+        path for path in relevant_untracked if (checkout / path).is_symlink()
+    )
+    if untracked_symlinks:
+        issues.append(
+            f"Runtime dependency contains untracked symlink inputs: {relative}: "
+            + ", ".join(untracked_symlinks)
+        )
     if relevant_untracked:
         issues.append(
             f"Runtime dependency contains untracked inputs: {relative}: "
@@ -2799,6 +2878,9 @@ def _validate_live_apphost(evidence_root: Path, repository_root: Path, provenanc
             "startMode": "no-build",
             "evaluatedBuildProperties": APPHOST_BUILD_PROPERTIES,
             "sourceDependencyGitlinks": list(RUNTIME_DEPENDENCY_GITLINKS),
+            "buildControlGitlinks": list(APPHOST_BUILD_CONTROL_GITLINKS),
+            "reachableSourceGitlinks": list(APPHOST_REACHABLE_SOURCE_GITLINKS),
+            "inactiveGuardedGitlinks": list(APPHOST_INACTIVE_GUARDED_GITLINKS),
             "evaluatedSourceGraph": "passed",
         },
         "resourceWaits": {

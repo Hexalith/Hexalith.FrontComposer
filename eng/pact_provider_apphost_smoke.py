@@ -67,6 +67,9 @@ ULID_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 WEBSOCKET_ACCEPT_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 APPHOST_BUILD_PROPERTIES = runtime_evidence.APPHOST_BUILD_PROPERTIES
 SOURCE_DEPENDENCY_GITLINKS = runtime_evidence.RUNTIME_DEPENDENCY_GITLINKS
+BUILD_CONTROL_GITLINKS = runtime_evidence.APPHOST_BUILD_CONTROL_GITLINKS
+REACHABLE_SOURCE_GITLINKS = runtime_evidence.APPHOST_REACHABLE_SOURCE_GITLINKS
+INACTIVE_GUARDED_GITLINKS = runtime_evidence.APPHOST_INACTIVE_GUARDED_GITLINKS
 DAPR_NAME_RESOLUTION_RELATIVES = (
     "src/Hexalith.FrontComposer.AppHost/nr.db",
     "src/Hexalith.FrontComposer.AppHost/nr.db-shm",
@@ -842,21 +845,16 @@ def _evaluated_item_path(item: Any) -> Path | None:
 
 def _resolved_source_graph_is_exact(project_references: list[Path]) -> bool:
     """Traverse regenerated assets and reject package/shadow selection for source dependencies."""
-    expected_roots = {
+    reachable_roots = {
         name: (ROOT / relative).resolve(strict=False)
-        for name, relative in {
-            "Hexalith.EventStore": "references/Hexalith.EventStore",
-            "Hexalith.Tenants": "references/Hexalith.Tenants",
-            "Hexalith.Parties": "references/Hexalith.Parties",
-            "Hexalith.Memories": "references/Hexalith.Memories",
-            "Hexalith.Commons": "references/Hexalith.Commons",
-            "Hexalith.PolymorphicSerializations": "references/Hexalith.PolymorphicSerializations",
-        }.items()
+        for relative in REACHABLE_SOURCE_GITLINKS
+        for name in (Path(relative).name,)
     }
+    guarded_names = tuple(Path(relative).name for relative in SOURCE_DEPENDENCY_GITLINKS)
     allowed_roots = {
         (ROOT / "src").resolve(strict=False),
         (ROOT / "samples" / "Counter").resolve(strict=False),
-        *expected_roots.values(),
+        *reachable_roots.values(),
     }
     seen_roots: set[str] = set()
     pending = list(project_references)
@@ -874,7 +872,7 @@ def _resolved_source_graph_is_exact(project_references: list[Path]) -> bool:
             return False
         if not any(project.is_relative_to(root) for root in allowed_roots):
             return False
-        for name, root in expected_roots.items():
+        for name, root in reachable_roots.items():
             if project == root or project.is_relative_to(root):
                 seen_roots.add(name)
         assets_path = project.parent / "obj" / "project.assets.json"
@@ -889,12 +887,12 @@ def _resolved_source_graph_is_exact(project_references: list[Path]) -> bool:
             if not isinstance(identity, str) or not isinstance(library, dict):
                 return False
             package_name = identity.split("/", 1)[0]
-            matching_root = next(
-                (name for name in expected_roots if package_name == name or package_name.startswith(f"{name}.")),
+            matching_guarded_name = next(
+                (name for name in guarded_names if package_name == name or package_name.startswith(f"{name}.")),
                 None,
             )
             library_type = library.get("type")
-            if matching_root is not None and library_type != "project":
+            if matching_guarded_name is not None and library_type != "project":
                 return False
             if library_type != "project":
                 continue
@@ -905,7 +903,7 @@ def _resolved_source_graph_is_exact(project_references: list[Path]) -> bool:
             if not child.is_absolute():
                 child = project.parent / child
             pending.append(child)
-    return set(expected_roots) == seen_roots
+    return set(reachable_roots) == seen_roots
 
 
 def _evaluate_source_graph(runtime: SmokeRuntime, deadline: float) -> bool:
@@ -1007,6 +1005,9 @@ def _base_evidence(runtime_manifest: dict[str, Any], timeout: int) -> dict[str, 
                 "startMode": "no-build",
                 "evaluatedBuildProperties": APPHOST_BUILD_PROPERTIES,
                 "sourceDependencyGitlinks": list(SOURCE_DEPENDENCY_GITLINKS),
+                "buildControlGitlinks": list(BUILD_CONTROL_GITLINKS),
+                "reachableSourceGitlinks": list(REACHABLE_SOURCE_GITLINKS),
+                "inactiveGuardedGitlinks": list(INACTIVE_GUARDED_GITLINKS),
                 "evaluatedSourceGraph": "not-observed",
             },
             "resourceWaits": {name: "not-observed" for name in REQUIRED_RESOURCES},
@@ -1131,7 +1132,19 @@ def _running_apphost_count(runtime: SmokeRuntime, timeout: float) -> int | None:
     parsed = _json_from_output(listed.stdout)
     if not isinstance(parsed, list) or any(not isinstance(item, dict) for item in parsed):
         return None
-    return len(parsed)
+    target = (ROOT / APPHOST_RELATIVE).resolve()
+    running = 0
+    for item in parsed:
+        apphost_path = item.get("appHostPath")
+        if not isinstance(apphost_path, str) or not apphost_path:
+            return None
+        try:
+            candidate = Path(apphost_path).resolve()
+        except OSError:
+            return None
+        if candidate == target:
+            running += 1
+    return running
 
 
 def _probed_resource_urls(records: list[dict[str, Any]]) -> list[str]:
