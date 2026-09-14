@@ -8,11 +8,13 @@ import hashlib
 import http.server
 import io
 import json
+import os
 import sys
 import tempfile
 import threading
 import time
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from unittest import mock
@@ -497,6 +499,94 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertIn("runtime-inputs.not-clean-or-complete", document["reasonCodes"])
         self.assertFalse(document["startup"]["hostStartAttempted"])
 
+    def test_supplied_runtime_manifest_must_predate_apphost_capture(self) -> None:
+        manifest_path = Path(self.temporary.name) / "runtime-input-manifest.json"
+        manifest_path.write_text("{}\n", encoding="utf-8")
+        captured_at = datetime.now(timezone.utc) + timedelta(minutes=1)
+        manifest = {
+            "capturedAt": captured_at.isoformat(),
+            "capturedRevision": "1" * 40,
+            "treeSha256": "2" * 64,
+        }
+        runtime = FakeRuntime()
+
+        with mock.patch.object(
+            smoke.runtime_evidence,
+            "_validate_runtime_input_manifest",
+            return_value=(manifest, captured_at),
+        ):
+            result = smoke.capture(
+                self.output,
+                runtime,
+                timeout=30,
+                runtime_input_manifest_path=manifest_path,
+            )
+
+        self.assertEqual(result, 1)
+        self.assertEqual(runtime.commands, [])
+        document = json.loads(self.output.read_text(encoding="utf-8"))
+        self.assertIn("runtime-inputs.not-clean-or-complete", document["reasonCodes"])
+        self.assertFalse(document["startup"]["hostStartAttempted"])
+
+    def test_supplied_runtime_manifest_bytes_are_rechecked_after_capture(self) -> None:
+        manifest_path = Path(self.temporary.name) / "runtime-input-manifest.json"
+        original_bytes = b'{"marker":"original"}\n'
+        mutated_bytes = b'{"marker":"mutated"}\n'
+        manifest_path.write_bytes(original_bytes)
+        captured_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+        manifest = {
+            "capturedAt": captured_at.isoformat(),
+            "capturedRevision": smoke._git(ROOT, "rev-parse", "HEAD"),
+            "treeSha256": "0" * 64,
+        }
+        runtime = FakeRuntime()
+        original_command = runtime.command
+
+        def command(arguments: list[str], timeout: float) -> smoke.CommandResult:
+            result = original_command(arguments, timeout)
+            if arguments[:2] == ["aspire", "start"] and result.returncode == 0:
+                manifest_path.write_bytes(mutated_bytes)
+            return result
+
+        runtime.command = command  # type: ignore[method-assign]
+        with mock.patch.object(
+            smoke.runtime_evidence,
+            "_validate_runtime_input_manifest",
+            return_value=(manifest, captured_at),
+        ):
+            result = smoke.capture(
+                self.output,
+                runtime,
+                timeout=30,
+                runtime_input_manifest_path=manifest_path,
+            )
+
+        self.assertEqual(result, 1)
+        self.assertEqual(manifest_path.read_bytes(), mutated_bytes)
+        document = json.loads(self.output.read_text(encoding="utf-8"))
+        self.assertFalse(document["cleanup"]["runtimeInputsCleanAfterRun"])
+        self.assertIn("apphost.cleanup.incomplete", document["reasonCodes"])
+
+    def test_evidence_writer_does_not_follow_predictable_temporary_symlink(self) -> None:
+        symlink_target = Path(self.temporary.name) / "writer-symlink-target.json"
+        symlink_target.write_text("must remain unchanged\n", encoding="utf-8")
+        predictable_temporary = self.output.with_name(
+            f".{self.output.name}.{os.getpid()}.tmp"
+        )
+        predictable_temporary.symlink_to(symlink_target)
+
+        smoke._atomic_write(self.output, {"result": "written"})
+
+        self.assertEqual(
+            symlink_target.read_text(encoding="utf-8"),
+            "must remain unchanged\n",
+        )
+        self.assertTrue(predictable_temporary.is_symlink())
+        self.assertEqual(
+            json.loads(self.output.read_text(encoding="utf-8")),
+            {"result": "written"},
+        )
+
     def test_source_graph_must_evaluate_exact_pinned_build_properties(self) -> None:
         runtime = FakeRuntime()
         original_command = runtime.command
@@ -519,27 +609,31 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertIn("apphost.source-graph.not-exact", document["reasonCodes"])
 
     def test_evaluated_dependency_package_reference_fails_before_start(self) -> None:
-        runtime = FakeRuntime()
-        original_command = runtime.command
+        for identity in ("hexalith.eventstore", "HeXaLiTh.TeNaNtS.Client"):
+            with self.subTest(identity=identity):
+                runtime = FakeRuntime()
+                original_command = runtime.command
 
-        def command(arguments: list[str], timeout: float) -> smoke.CommandResult:
-            if arguments[:2] == ["dotnet", "msbuild"]:
-                runtime.commands.append(arguments)
-                document = json.loads(FakeRuntime.evaluation_output())
-                document["Items"]["PackageReference"] = [
-                    {"Identity": "Hexalith.EventStore"}
-                ]
-                return smoke.CommandResult(0, json.dumps(document))
-            return original_command(arguments, timeout)
+                def command(arguments: list[str], timeout: float) -> smoke.CommandResult:
+                    if arguments[:2] == ["dotnet", "msbuild"]:
+                        runtime.commands.append(arguments)
+                        document = json.loads(FakeRuntime.evaluation_output())
+                        document["Items"]["PackageReference"] = [
+                            {"Identity": identity}
+                        ]
+                        return smoke.CommandResult(0, json.dumps(document))
+                    return original_command(arguments, timeout)
 
-        runtime.command = command  # type: ignore[method-assign]
+                runtime.command = command  # type: ignore[method-assign]
 
-        result = smoke.capture(self.output, runtime, timeout=30)
+                result = smoke.capture(self.output, runtime, timeout=30)
 
-        self.assertEqual(result, 1)
-        self.assertFalse(any(args[:2] == ["aspire", "start"] for args in runtime.commands))
-        document = json.loads(self.output.read_text(encoding="utf-8"))
-        self.assertIn("apphost.source-graph.not-exact", document["reasonCodes"])
+                self.assertEqual(result, 1)
+                self.assertFalse(any(
+                    args[:2] == ["aspire", "start"] for args in runtime.commands
+                ))
+                document = json.loads(self.output.read_text(encoding="utf-8"))
+                self.assertIn("apphost.source-graph.not-exact", document["reasonCodes"])
 
     def test_resolved_assets_reject_dependency_packages_and_shadow_projects(self) -> None:
         dependency_names = (
@@ -563,15 +657,16 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         with mock.patch.object(smoke, "ROOT", temporary_root):
             self.assertTrue(smoke._resolved_source_graph_is_exact(projects))
             assets = projects[1].parent / "obj" / "project.assets.json"
-            assets.write_text(
-                json.dumps({
-                    "libraries": {
-                        "Hexalith.EventStore/3.103.0": {"type": "package"}
-                    }
-                }),
-                encoding="utf-8",
-            )
-            self.assertFalse(smoke._resolved_source_graph_is_exact(projects))
+            for identity in (
+                "hexalith.eventstore/3.103.0",
+                "HeXaLiTh.TeNaNtS.Client/3.103.0",
+            ):
+                with self.subTest(identity=identity):
+                    assets.write_text(
+                        json.dumps({"libraries": {identity: {"type": "package"}}}),
+                        encoding="utf-8",
+                    )
+                    self.assertFalse(smoke._resolved_source_graph_is_exact(projects))
             assets.write_text(json.dumps({"libraries": {}}), encoding="utf-8")
             shadow = temporary_root / "shadow" / "Hexalith.EventStore.csproj"
             shadow.parent.mkdir()
@@ -604,6 +699,12 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
                 }),
                 encoding="utf-8",
             )
+            self.assertFalse(smoke._resolved_source_graph_is_exact(projects))
+
+            assets_target = temporary_root / "symlinked-project.assets.json"
+            assets_target.write_text(json.dumps({"libraries": {}}), encoding="utf-8")
+            assets.unlink()
+            assets.symlink_to(assets_target)
             self.assertFalse(smoke._resolved_source_graph_is_exact(projects))
 
     def test_owned_dapr_name_resolution_files_are_removed_after_confirmed_shutdown(self) -> None:
@@ -944,6 +1045,38 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
                     form={"password": "never-sent"},
                 )
         build_opener.assert_not_called()
+
+    def test_numeric_loopback_transport_preserves_logical_authority(self) -> None:
+        observed_host = ""
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_POST(self) -> None:  # noqa: N802
+                nonlocal observed_host
+                observed_host = self.headers.get("Host", "")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"issuer": f"http://{observed_host}/realms/hexalith"}).encode())
+
+            def log_message(self, format: str, *args: Any) -> None:
+                del format, args
+
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+
+        status, document, _ = smoke.SmokeRuntime().json_request(
+            f"http://localhost:{server.server_port}/realms/hexalith/protocol/openid-connect/token",
+            method="POST",
+            form={"password": "never-persisted"},
+            timeout=2,
+        )
+
+        self.assertEqual(status, 200)
+        self.assertEqual(observed_host, f"localhost:{server.server_port}")
+        self.assertEqual(document["issuer"], f"http://localhost:{server.server_port}/realms/hexalith")
 
     def test_signalr_scalar_available_transports_fails_deterministically(self) -> None:
         runtime = smoke.SmokeRuntime()

@@ -19,7 +19,7 @@
   },
   "decision": {
     "path": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/recapture-decision.json",
-    "sha256": "2f8dc63540cae6fa9c8a704438c2abc7f733807637c5ccd15b337eae2da26752"
+    "sha256": "af740eb216f6276bf234e58f5df1ca64031950bf6b2197e164cb64fd95f8302e"
   },
   "priorCompatibility": {
     "path": "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/2026-09-08-builds-35c3d1e5",
@@ -49,7 +49,7 @@
     "files": [
       {
         "path": "apphost-smoke.json",
-        "sha256": "66d01db034f8224b1cab2177a494f8d82091d0e445a040ce96972be58a34a7fe"
+        "sha256": "526be617e793af7e4a219fbcf1f2600245e953b2baa5661cbb58a89bbe343b8e"
       },
       {
         "path": "provider-verification.json",
@@ -72,7 +72,7 @@
     },
     "subject": {
       "path": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/approval-subject.json",
-      "sha256": "4234b1e084514bb6ae99b12b461a143200f0c2b72a67bb92e7a825325c7b683f"
+      "sha256": "638af61071d498da76bb4c6335d05311ba2f24867498574bbc2127d946f62143"
     },
     "receiptDirectory": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/receipts",
     "effectiveRequiredRoles": [

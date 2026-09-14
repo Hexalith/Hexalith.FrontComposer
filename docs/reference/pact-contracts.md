@@ -62,14 +62,34 @@ The lanes answer different questions and never share mutable hash authority:
 
 ### Run and validate the live lane
 
-Build and run the provider from `references/Hexalith.EventStore` using the live command in its provider-verification README, then bind the successful report and run the AppHost smoke:
+Run the live lane in this exact order: capture the immutable pre-run manifest; clean, force-restore, build, and test the provider graph; execute the provider application to create the report; write the receipt; run the AppHost smoke with the same manifest; then run the combined validator. Do not prepare or execute the provider before the manifest exists, and do not create the receipt before the provider application has produced a non-empty current report.
 
 ```bash
+workspace_root="$PWD"
 runtime_manifest="$(mktemp)"
 python3 eng/eventstore_runtime_evidence.py \
   --write-runtime-input-manifest \
   --runtime-input-manifest-output "$runtime_manifest" \
   --pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact
+rm -f _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json
+dotnet clean references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj \
+  --configuration Release -m:1 -p:NuGetAudit=false
+dotnet restore references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj \
+  --force --force-evaluate --no-cache --disable-parallel \
+  -p:Configuration=Release -p:NuGetAudit=false
+dotnet build references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj \
+  --configuration Release --no-restore --no-incremental -m:1 -p:NuGetAudit=false
+dotnet references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.Tests.dll
+(
+  cd references/Hexalith.EventStore
+  dotnet "$workspace_root/references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.dll" \
+    --verification-mode live-compatibility \
+    --pact-directory "$workspace_root/tests/Hexalith.FrontComposer.Shell.Tests/Pact" \
+    --manifest "$workspace_root/tests/Hexalith.FrontComposer.Shell.Tests/Pact/interaction-manifest.json" \
+    --provider-state-catalog "$workspace_root/tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-state-catalog.json" \
+    --report-output "$workspace_root/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json"
+)
+test -s _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json
 python3 eng/eventstore_runtime_evidence.py \
   --live-evidence-root _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation \
   --pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact \
@@ -77,7 +97,9 @@ python3 eng/eventstore_runtime_evidence.py \
   --write-live-receipt
 python3 eng/pact_provider_apphost_smoke.py --timeout-seconds 300 \
   --runtime-input-manifest "$runtime_manifest"
-pwsh ./eng/validate-contract-artifacts.ps1 -RequireProviderVerification
+pwsh -NoLogo -NoProfile -File ./eng/validate-contract-artifacts.ps1 \
+  -RequireProviderVerification \
+  -ProviderVerificationReport _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json
 ```
 
 Re-capture rules:

@@ -14,7 +14,7 @@ import sys
 import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, Iterable
 from urllib import parse
 
 
@@ -1714,20 +1714,35 @@ def _worktree_git_objects(repository_root: Path, relative: str, data: bytes) -> 
     return frozenset(objects)
 
 
-def _is_generated_runtime_output(relative: str) -> bool:
-    parts = PurePosixPath(relative).parts
-    if parts[:1] == ("src",):
-        scoped_parts = parts[1:-1]
-    elif parts[:2] == ("samples", "Counter"):
-        scoped_parts = parts[2:-1]
-    else:
-        return False
-    return any(part in {"bin", "obj"} for part in scoped_parts)
+def _project_output_roots(indexed_paths: Iterable[str]) -> tuple[tuple[str, ...], ...]:
+    """Return only bin/obj roots that are direct children of an indexed project."""
+    project_suffixes = {".csproj", ".fsproj", ".vbproj"}
+    roots = {
+        (*PurePosixPath(relative).parent.parts, output_name)
+        for relative in indexed_paths
+        if PurePosixPath(relative).suffix.casefold() in project_suffixes
+        for output_name in ("bin", "obj")
+    }
+    return tuple(sorted(roots))
 
 
-def _is_dependency_generated_output(relative: str) -> bool:
+def _is_generated_runtime_output(
+    relative: str,
+    project_output_roots: Iterable[tuple[str, ...]],
+) -> bool:
     parts = PurePosixPath(relative).parts
-    return any(part in {"bin", "obj", ".git"} for part in parts)
+    return any(parts[:len(root)] == root for root in project_output_roots)
+
+
+def _is_dependency_generated_output(
+    relative: str,
+    project_output_roots: Iterable[tuple[str, ...]],
+) -> bool:
+    parts = PurePosixPath(relative).parts
+    return parts[:1] == (".git",) or _is_generated_runtime_output(
+        relative,
+        project_output_roots,
+    )
 
 
 def _is_inert_dependency_symlink(
@@ -1948,8 +1963,11 @@ def _validate_dependency_checkout(
             for item in untracked.stdout.split(b"\0")
             if item
         )
+    project_output_roots = _project_output_roots(index_entries)
     relevant_untracked = sorted(
-        path for path in untracked_paths if not _is_dependency_generated_output(path)
+        path
+        for path in untracked_paths
+        if not _is_dependency_generated_output(path, project_output_roots)
     )
     untracked_symlinks = sorted(
         path for path in relevant_untracked if (checkout / path).is_symlink()
@@ -2082,10 +2100,11 @@ def _runtime_input_snapshot(repository_root: Path) -> tuple[list[dict[str, Any]]
             for item in untracked.stdout.split(b"\0")
             if item
         )
+    project_output_roots = _project_output_roots(regular_paths)
     paths = sorted(
         relative
         for relative in untracked_paths
-        if not _is_generated_runtime_output(relative)
+        if not _is_generated_runtime_output(relative, project_output_roots)
     )
     if paths:
         issues.append("Runtime-input scope contains untracked files: " + ", ".join(paths))

@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable
 from unittest import mock
@@ -63,6 +64,10 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 def _write_json(path: Path, value: dict[str, Any]) -> None:
     path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+
+
+def _offset_timestamp(value: str, seconds: int) -> str:
+    return (datetime.fromisoformat(value) + timedelta(seconds=seconds)).isoformat()
 
 
 def _set_manifest_hash(evidence_root: Path, relative: str) -> None:
@@ -191,8 +196,25 @@ class RuntimeInputInventoryTests(unittest.TestCase):
 
     def test_runtime_scope_allows_generated_bin_and_obj_outputs(self) -> None:
         for relative in (
+            "src/Feature/Feature.csproj",
+            "samples/Counter/Counter/Counter.csproj",
+        ):
+            path = self.repository / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("<Project />\n", encoding="utf-8")
+        subprocess.run(
+            ["git", "add", "src/Feature/Feature.csproj", "samples/Counter/Counter/Counter.csproj"],
+            cwd=self.repository,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "commit", "-qm", "test: add projects"],
+            cwd=self.repository,
+            check=True,
+        )
+        for relative in (
             "src/Feature/bin/Debug/net10.0/generated.cs",
-            "samples/Counter/obj/project.assets.json",
+            "samples/Counter/Counter/obj/project.assets.json",
         ):
             path = self.repository / relative
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -201,6 +223,31 @@ class RuntimeInputInventoryTests(unittest.TestCase):
         _, issues = evidence._runtime_input_snapshot(self.repository)
 
         self.assertFalse(any("contains untracked files" in issue for issue in issues), issues)
+
+    def test_runtime_scope_rejects_ignored_bin_nested_below_project_content(self) -> None:
+        project = self.repository / "src/Feature/Feature.csproj"
+        project.parent.mkdir(parents=True, exist_ok=True)
+        project.write_text("<Project />\n", encoding="utf-8")
+        subprocess.run(
+            ["git", "add", "src/Feature/Feature.csproj"],
+            cwd=self.repository,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "commit", "-qm", "test: add project"],
+            cwd=self.repository,
+            check=True,
+        )
+        runtime_content = self.repository / "src/Feature/wwwroot/bin/config.json"
+        runtime_content.parent.mkdir(parents=True)
+        runtime_content.write_text('{"runtime":true}\n', encoding="utf-8")
+
+        _, issues = evidence._runtime_input_snapshot(self.repository)
+
+        untracked_issue = next(
+            issue for issue in issues if "contains untracked files" in issue
+        )
+        self.assertIn("src/Feature/wwwroot/bin/config.json", untracked_issue)
 
 
 class EventStoreRuntimeEvidenceTests(unittest.TestCase):
@@ -737,7 +784,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                 "actor": actors[role],
                 "role": role,
                 "decision": "approved",
-                "acceptedAt": f"2026-09-12T16:13:1{index}+00:00",
+                "acceptedAt": _offset_timestamp(subject["frozenAt"], 10 + index),
                 "durableSource": sources[role],
                 "statement": evidence.ACTIVE_APPROVAL_STATEMENT,
             })
@@ -1487,9 +1534,12 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         self.assertTrue(errors)
 
     def test_default_receipts_must_strictly_postdate_the_subject_freeze(self) -> None:
+        subject_frozen_at = _read_json(
+            CANONICAL_ACTIVE_EVIDENCE / "approval-subject.json"
+        )["frozenAt"]
         for accepted_at in (
-            "2026-09-12T16:13:05+00:00",
-            "2026-09-12T16:13:04+00:00",
+            subject_frozen_at,
+            _offset_timestamp(subject_frozen_at, -1),
         ):
             with self.subTest(accepted_at=accepted_at):
                 self.claim_active_approval()
@@ -1559,6 +1609,9 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         self.assertTrue(any("completion does not follow" in error for error in errors), errors)
 
     def test_all_provider_and_apphost_completions_must_strictly_predate_decision(self) -> None:
+        decision_recorded_at = _read_json(
+            CANONICAL_ACTIVE_EVIDENCE / "recapture-decision.json"
+        )["recordedAt"]
         cases = (
             (
                 "provider-verification.json",
@@ -1578,8 +1631,8 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         )
         for relative, mutate, label in cases:
             for timestamp in (
-                "2026-09-12T16:13:00+00:00",
-                "2026-09-12T16:13:01+00:00",
+                decision_recorded_at,
+                _offset_timestamp(decision_recorded_at, 1),
             ):
                 with self.subTest(relative=relative, timestamp=timestamp):
                     shutil.rmtree(self.active_root)
@@ -2327,6 +2380,23 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         errors = self.write_live_receipt()
 
         self.assertTrue(any("observedSourceSha is stale" in error for error in errors), errors)
+        self.assertEqual(receipt_path.read_bytes(), receipt_before)
+
+    def test_live_receipt_writer_rejects_manifest_at_provider_start_without_replacing_receipt(self) -> None:
+        receipt_path = self.live_root / "run-evidence.json"
+        receipt_before = receipt_path.read_bytes()
+        report = _read_json(self.live_root / "provider-verification.json")
+        manifest_path = self.active_root / "frontcomposer-runtime-inputs.json"
+        manifest = _read_json(manifest_path)
+        manifest["capturedAt"] = report["timing"]["run"]["startedAt"]
+        _write_json(manifest_path, manifest)
+
+        errors = self.write_live_receipt()
+
+        self.assertIn(
+            "Pre-provider runtime-input manifest does not predate provider execution.",
+            errors,
+        )
         self.assertEqual(receipt_path.read_bytes(), receipt_before)
 
     def test_live_provider_rejects_invalid_state_event_durations(self) -> None:

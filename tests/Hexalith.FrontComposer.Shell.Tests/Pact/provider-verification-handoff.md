@@ -21,8 +21,15 @@ Before any provider preparation or execution, generate one clean fixed-scope run
 Then remove the prior live report, clean, force-restore without cache, and non-incrementally rebuild the
 Release `Hexalith.EventStore.ProviderVerification.Tests` graph with `-m:1 -p:NuGetAudit=false`; execute
 its tests and require the current invocation to create a non-empty replacement. Receipt creation reuses
-the exact pre-run manifest and runs full provider/Pact/provenance validation. Current verifier command shape, run from
-the EventStore repository root:
+the exact pre-run manifest and runs full provider/Pact/provenance validation.
+
+Run the built provider test assembly from the FrontComposer repository root:
+
+```powershell
+dotnet references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.Tests.dll
+```
+
+That test invocation does not create the live compatibility report. Run the provider application separately from the EventStore repository root:
 
 ```powershell
 dotnet tests/Hexalith.EventStore.ProviderVerification/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.dll --verification-mode live-compatibility <validated canonical inputs>

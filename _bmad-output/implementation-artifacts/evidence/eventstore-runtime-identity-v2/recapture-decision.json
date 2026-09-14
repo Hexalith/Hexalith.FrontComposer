@@ -1,6 +1,6 @@
 {
   "schema": "hexalith.frontcomposer.eventstore-runtime-recapture-decision.v2",
-  "recordedAt": "2026-09-12T16:13:00+00:00",
+  "recordedAt": "2026-09-14T08:06:20+00:00",
   "source": {
     "path": "_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md",
     "sha256": "ab84473f53fa80616d1bf3ecb4004889d81f1de5984a7d09d5dd1bb49b85a4aa"
@@ -19,7 +19,7 @@
   "evidenceFiles": [
     {
       "path": "apphost-smoke.json",
-      "sha256": "66d01db034f8224b1cab2177a494f8d82091d0e445a040ce96972be58a34a7fe"
+      "sha256": "526be617e793af7e4a219fbcf1f2600245e953b2baa5661cbb58a89bbe343b8e"
     },
     {
       "path": "provider-verification.json",

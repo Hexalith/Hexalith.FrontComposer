@@ -171,9 +171,15 @@ class SmokeRuntime:
         timeout: float = 10,
         deadline: float | None = None,
     ) -> tuple[int, dict[str, Any], dict[str, str]]:
+        logical_url = url
         url = _credential_safe_url(url, token=token, form=form)
         data: bytes | None = None
         headers = {"Accept": "application/json"}
+        if url != logical_url:
+            # Connect to the already resolved numeric loopback peer without changing
+            # the logical authority Keycloak uses in the token issuer. EventStore is
+            # configured against that original realm URL and must see the same issuer.
+            headers["Host"] = parse.urlsplit(logical_url).netloc
         if form is not None:
             data = parse.urlencode(form).encode("utf-8")
             headers["Content-Type"] = "application/x-www-form-urlencoded"
@@ -850,7 +856,9 @@ def _resolved_source_graph_is_exact(project_references: list[Path]) -> bool:
         for relative in REACHABLE_SOURCE_GITLINKS
         for name in (Path(relative).name,)
     }
-    guarded_names = tuple(Path(relative).name for relative in SOURCE_DEPENDENCY_GITLINKS)
+    guarded_names = tuple(
+        Path(relative).name.casefold() for relative in SOURCE_DEPENDENCY_GITLINKS
+    )
     allowed_roots = {
         (ROOT / "src").resolve(strict=False),
         (ROOT / "samples" / "Counter").resolve(strict=False),
@@ -876,6 +884,8 @@ def _resolved_source_graph_is_exact(project_references: list[Path]) -> bool:
             if project == root or project.is_relative_to(root):
                 seen_roots.add(name)
         assets_path = project.parent / "obj" / "project.assets.json"
+        if runtime_evidence._path_has_symlink_component(assets_path):
+            return False
         try:
             assets = json.loads(assets_path.read_text(encoding="utf-8-sig"))
         except (OSError, json.JSONDecodeError, UnicodeDecodeError):
@@ -886,7 +896,7 @@ def _resolved_source_graph_is_exact(project_references: list[Path]) -> bool:
         for identity, library in libraries.items():
             if not isinstance(identity, str) or not isinstance(library, dict):
                 return False
-            package_name = identity.split("/", 1)[0]
+            package_name = identity.split("/", 1)[0].casefold()
             matching_guarded_name = next(
                 (name for name in guarded_names if package_name == name or package_name.startswith(f"{name}.")),
                 None,
@@ -949,7 +959,7 @@ def _evaluate_source_graph(runtime: SmokeRuntime, deadline: float) -> bool:
     if not project_references or any(path is None for path in project_references):
         return False
     dependency_names = tuple(
-        Path(relative).name for relative in SOURCE_DEPENDENCY_GITLINKS
+        Path(relative).name.casefold() for relative in SOURCE_DEPENDENCY_GITLINKS
     )
     for item in package_items:
         if not isinstance(item, dict):
@@ -957,7 +967,11 @@ def _evaluate_source_graph(runtime: SmokeRuntime, deadline: float) -> bool:
         identity = item.get("Identity")
         if not isinstance(identity, str):
             return False
-        if any(identity == name or identity.startswith(f"{name}.") for name in dependency_names):
+        package_name = identity.casefold()
+        if any(
+            package_name == name or package_name.startswith(f"{name}.")
+            for name in dependency_names
+        ):
             return False
     return runtime.source_graph_is_exact(
         [path for path in project_references if path is not None]
@@ -1207,6 +1221,7 @@ def _capture(
 ) -> int:
     runtime_input_issues: list[str] = []
     runtime_manifest_bytes: bytes | None = None
+    runtime_manifest_captured_at: datetime | None = None
     if runtime_input_manifest_path is None:
         runtime_manifest, runtime_input_issues = runtime_evidence.runtime_input_manifest(ROOT)
     else:
@@ -1215,12 +1230,26 @@ def _capture(
             runtime_input_issues,
             "pre-provider runtime-input manifest",
         )
-        runtime_manifest, _ = runtime_evidence._validate_runtime_input_manifest(
+        runtime_manifest, runtime_manifest_captured_at = runtime_evidence._validate_runtime_input_manifest(
             runtime_input_manifest_path,
             ROOT,
             runtime_input_issues,
         )
     evidence = _base_evidence(runtime_manifest, timeout)
+    if runtime_input_manifest_path is not None:
+        apphost_captured_at = runtime_evidence._parse_timestamp(
+            evidence["capturedAt"],
+            "AppHost smoke capturedAt",
+            runtime_input_issues,
+        )
+        if (
+            runtime_manifest_captured_at is None
+            or apphost_captured_at is None
+            or runtime_manifest_captured_at >= apphost_captured_at
+        ):
+            runtime_input_issues.append(
+                "Pre-provider runtime-input manifest does not predate AppHost capture."
+            )
     initial_runtime_tree = runtime_manifest.get("treeSha256")
     dapr_paths = _dapr_name_resolution_paths()
     absent_before_run = sorted(
