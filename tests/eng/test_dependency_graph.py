@@ -2136,11 +2136,9 @@ class PolicyShapeTests(unittest.TestCase):
     def test_eventstore_profile_system_commandline_version_may_move(self) -> None:
         catalog_path = ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props"
         catalog = catalog_path.read_bytes()
-        current_row = b'<PackageVersion Include="System.CommandLine" Version="2.0.10" />'
-        moved_row = b'<PackageVersion Include="System.CommandLine" Version="2.0.11" />'
-        if catalog.count(current_row) != 1:
-            current_row = b'<PackageVersion Include="System.CommandLine" Version="2.0.11" />'
-            moved_row = b'<PackageVersion Include="System.CommandLine" Version="2.0.10" />'
+        current_version = self._catalog_package_version(catalog, "System.CommandLine")
+        current_row = f'<PackageVersion Include="System.CommandLine" Version="{current_version}" />'.encode("ascii")
+        moved_row = b'<PackageVersion Include="System.CommandLine" Version="999.0.0" />'
         self.assertEqual(catalog.count(current_row), 1)
         semantics = self._evaluate_eventstore_profile(catalog.replace(current_row, moved_row, 1))
         self.assertEqual(semantics["selectors_validated"], 1)
@@ -2148,13 +2146,10 @@ class PolicyShapeTests(unittest.TestCase):
     def test_eventstore_profile_missing_system_commandline_fails_with_coordinates(self) -> None:
         catalog_path = ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props"
         catalog = catalog_path.read_bytes()
-        for version in (b"2.0.10", b"2.0.11"):
-            row = b'<PackageVersion Include="System.CommandLine" Version="' + version + b'" />'
-            if catalog.count(row) == 1:
-                catalog = catalog.replace(row, b"", 1)
-                break
-        else:
-            self.fail("System.CommandLine PackageVersion row missing from selected catalog fixture")
+        current_version = self._catalog_package_version(catalog, "System.CommandLine")
+        current_row = f'<PackageVersion Include="System.CommandLine" Version="{current_version}" />'.encode("ascii")
+        self.assertEqual(catalog.count(current_row), 1)
+        catalog = catalog.replace(current_row, b"", 1)
 
         with self.assertRaises(dg.GraphError) as ctx:
             self._evaluate_eventstore_profile(catalog)
@@ -2163,6 +2158,16 @@ class PolicyShapeTests(unittest.TestCase):
         self.assertIn("references/Hexalith.Builds", message)
         self.assertIn("github.com/test/builds@", message)
         self.assertIn("System.CommandLine", message)
+
+    def _catalog_package_version(self, catalog: bytes, package_id: str) -> str:
+        document = ET.fromstring(catalog.decode("utf-8-sig"))
+        versions = [
+            element.attrib["Version"]
+            for element in document.iter("PackageVersion")
+            if element.attrib.get("Include") == package_id
+        ]
+        self.assertEqual(len(versions), 1, f"{package_id} PackageVersion row missing or duplicated in selected catalog fixture")
+        return versions[0]
 
 
 if __name__ == "__main__":

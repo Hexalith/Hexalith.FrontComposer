@@ -10403,3 +10403,63 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-make-release-compatibility-gates-enforcing.md`
   summary: The package-validation baseline is still anchored only to an in-repo constant and a hand-edited ledger, never to what is actually published.
   evidence: release_properties hardcodes PUBLISHED_BASELINE_VERSION into the pack property and _validate_baseline then requires the checked-in XML to equal that same constant; the release-line rule derives from the candidate version or the ledger's hand-edited currentRelease. The gate now catches drift between checked-in sites and the ledger (a real gain over a constant compared with itself), but cannot catch a ledger that is wrong about reality. Closing it needs a published-version source CI can read without calling a live package feed, which docs/diagnostics/README.md forbids.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-actions-34817507610-fix-cicd-release.md`
+  summary: Add mutation-resistant coverage for dependency generated-output classification.
+  evidence: The preserved Story 11.25 tests do not distinguish a real project output root from a nested source path merely named `bin`; replacing the narrow classifier with broad any-segment filtering leaves the cited tests green. Add a dependency fixture with a tracked project, reject `src/Library/wwwroot/bin/config.json`, and retain explicit allowance only for the real project `bin`/`obj` outputs.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-actions-34817507610-fix-cicd-release.md`
+  summary: Do not trust every untracked file under a project output root.
+  evidence: Story 11.25 excludes every untracked file beneath a project-adjacent `bin`/`obj` root before the clean/build/no-build lane. Arbitrary stale assemblies, plug-ins, props, or explicitly consumed inputs can therefore escape the sealed pre-run manifest; classify only proven regenerated outputs or validate the rebuilt output inventory.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-actions-34817507610-fix-cicd-release.md`
+  summary: Reject symlinked dependency output roots before generated-output filtering.
+  evidence: The Story 11.25 dependency scan filters ignored project `bin`/`obj` entries before checking untracked symlinks. A symlinked output root can therefore redirect the later clean/build outputs outside the checkout without appearing in manifest issues; enumerate and reject output-root symlinks before exclusions and verify again after restore/build.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-actions-34817507610-fix-cicd-release.md`
+  summary: Bind AppHost smoke validation to one supplied-manifest byte snapshot.
+  evidence: The Story 11.25 smoke reads the supplied manifest bytes and independently rereads the path for validation. A replace-between-reads race can validate different bytes and restore the first bytes before the final equality check; parse and validate the single bounded byte snapshot or bind every read to one opened handle.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-actions-34817507610-fix-cicd-release.md`
+  summary: Keep EventStore readiness distinct from liveness in AppHost evidence.
+  evidence: The Story 11.25 readiness loop falls back from `/health` to `/alive` and records `health.readiness.succeeded` without preserving which endpoint passed. Later authenticated operations still protect the final result, but the readiness observation itself can be false; require the readiness endpoint or record the two facts separately.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-actions-34817507610-fix-cicd-release.md`
+  summary: Prove anonymous rejection separately from invalid-bearer rejection.
+  evidence: All four Story 11.25 authorization controls send only a malformed bearer. An anonymous surface can reject malformed authorization syntax while still accepting a request with no credentials; add independent anonymous negative probes for command submit, command status, query execution, and projection SignalR.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-actions-34817507610-fix-cicd-release.md`
+  summary: Make the documented live reconciliation lane fail fast.
+  evidence: The documented Story 11.25 Bash sequence has no fail-fast guard or short-circuiting, so failed manifest creation can be followed by report deletion and subsequent lane commands. Add explicit shell failure handling and bounded temporary-file cleanup before presenting the block as an exact run order.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-actions-34817507610-fix-cicd-release.md`
+  summary: Refresh the Pact-contract documentation review date.
+  evidence: The page retains `reviewed: 2026-09-12` although its current-lane behavior and captured outcome were rewritten on 2026-09-14. Refresh the metadata when the separately owned Story 11.25 documentation is next amended.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-actions-34817507610-fix-cicd-release.md`
+  summary: Close Story 8.3 payload-protection scope and verification contradictions.
+  evidence: The moved EventStore story requires sections 5-8 and 14-15 exactly while forbidding public registration and later public/admin/export/provider surfaces; it also assigns V046-V048 conditional reservation behavior while excluding durable/provider wiring. Its assigned vectors total 51 although the prescribed minimum count is 48. Re-scope the normative sections/vectors and add an exact vector-completeness gate before implementation.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-actions-34817507610-fix-cicd-release.md`
+  summary: Make the Story 8.2 reviewed patch reproducible outside one host.
+  evidence: The moved EventStore approval treats a scoped patch digest as authoritative but locates the only named bytes at an absolute `/tmp/...` path. The file exists on this host but the approval packet does not give another checkout a repository-portable command and exact path scope from which to reproduce it.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-actions-34817507610-fix-cicd-release.md`
+  summary: Define parser semantics for corrected Memories memlog questions.
+  evidence: The moved Memories memlog retains a malformed open question immediately followed by an explicit correction and replacement. No parser contract was found proving the correction marker suppresses the malformed predecessor; either define that contract or make the superseded state machine-readable without erasing append-only history.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-actions-34817507610-fix-cicd-release.md`
+  summary: Strengthen AD-16 erasure proof beyond one sample per target.
+  evidence: AD-16 claims complete physical erasure but requires only one sampled pre-deletion record per target to be absent afterwards. That demonstrates the sampled record, not that all other records or copies were purged; define an exhaustive, count-bound, range-bound, or otherwise complete proof for each backend and copy class.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-actions-34817507610-fix-cicd-release.md`
+  summary: Prevent already-admitted writes after credential-revocation fencing.
+  evidence: AD-16 allows confirmed credential revocation instead of a target-local generation comparison, but rejection of new authentication does not by itself cancel a write already admitted on an established session. Define a provider-specific barrier proving all superseded sessions and in-flight writes are drained or fenced before purge.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-actions-34817507610-fix-cicd-release.md`
+  summary: Atomically bind Memories erasure completion evidence and tombstone.
+  evidence: AD-16 describes completion evidence and the irreversible tombstone as distinct appends linked by reference and guarded by a prior CAS, but it does not require one atomic write. A crash between the appends can leave the register and completion evidence inconsistent; define a single-stream atomic event shape or an explicit recoverable commit protocol.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-actions-34817507610-fix-cicd-release.md`
+  summary: Eliminate the regenerated-assets symlink check/read race.
+  evidence: Story 11.25 checks `project.assets.json` for symlink components and later reads it by path in a separate operation. A local replace-between-check-and-read race can redirect source-graph traversal; open the validated file safely and bind parsing to that handle or revalidate identity around the read.

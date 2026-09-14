@@ -143,14 +143,17 @@
     {
       "path": "_bmad-output/planning-artifacts/prd.md",
       "contains": [
-        "Resolved 2026-08-12",
-        "base payload record `_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md` on 2026-07-04; its decision was approved and the record updated on 2026-07-05",
+        "Decision recorded 2026-08-12 (successor contract); composition delivered by Stories 9.3–9.8 with live proof 2026-08-27",
         "_bmad-output/contracts/fc-nip-command-target-identity-contract-2026-08-12.md",
-        "D-4 is resolved; Stories 9.4-9.8 still block FR-13/FR-26 completion and Epic 9 closure"
+        "Automatic row marking uses only an immutable Command Target Identity captured before dispatch from `[CommandTarget]` with a typed `ICommandTargetIdentityProvider<TCommand>` or a declared `SameAsSource` snapshot",
+        "Terminal `Material`, `NoOp`, or `Unknown` classification is independent; unknown identity or materiality suppresses publication",
+        "**[NON-GOAL for v1.0]** Commands whose target key is allocated server-side cannot declare a pre-dispatch target and therefore produce no fresh-row marker",
+        "Composition is complete: Stories 9.3–9.8 are done and the 9.8 live proof is the acceptance artifact"
       ],
       "notContains": [
         "the 2026-07-05 row-context contract",
-        "the 2026-07-05 row-context decision"
+        "the 2026-07-05 row-context decision",
+        "D-4 is resolved; Stories 9.4-9.8 still block FR-13/FR-26 completion and Epic 9 closure"
       ]
     },
     {
