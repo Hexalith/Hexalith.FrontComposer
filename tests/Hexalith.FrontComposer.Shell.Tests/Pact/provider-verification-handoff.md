@@ -17,11 +17,11 @@ Compatibility evidence records current source/version/Builds/FrontComposer/runti
 
 Provider verification must run in `Hexalith.EventStore` against a real loopback TCP endpoint. Do not use ASP.NET Core `TestServer` or `WebApplicationFactory` for Pact verifier playback, because the native verifier calls an HTTP endpoint.
 
-Before any provider preparation or execution, generate one clean fixed-scope runtime-input manifest.
-Then remove the prior live report, clean, force-restore without cache, and non-incrementally rebuild the
-Release `Hexalith.EventStore.ProviderVerification.Tests` graph with `-m:1 -p:NuGetAudit=false`; execute
-its tests and require the current invocation to create a non-empty replacement. Receipt creation reuses
-the exact pre-run manifest and runs full provider/Pact/provenance validation.
+Before any provider preparation or execution, generate one clean fixed-scope runtime-input manifest and
+select a fresh external non-symlinked NuGet package root. Then remove the prior live report, clean,
+force-restore without cache, seal both provider assets graphs plus the exact nupkg and extracted-file
+package bytes, and non-incrementally rebuild the Release provider graph. Receipt creation reuses the
+exact pre-run manifest and package ledger and recomputes the ledger after execution.
 
 Run the built provider test assembly from the FrontComposer repository root:
 
@@ -38,18 +38,21 @@ dotnet tests/Hexalith.EventStore.ProviderVerification/bin/Release/net10.0/Hexali
 Any failed interaction, stale input/provenance, unsafe host, incomplete cleanup, or nonzero process exit
 rejects the current lane. Gate 2c separately requires a passing authenticated Aspire AppHost smoke;
 missing infrastructure or credentials remains a blocker and cannot be relabeled as passing evidence.
-The smoke disables environment proxies, resolves every credential destination to a verified numeric
-loopback peer before sending credentials or tokens, classifies generated support records only from
+The smoke disables environment proxies, resolves every credential destination behind the same deadline
+to a verified numeric loopback peer before sending credentials or tokens, and classifies support records only from
 described type/parent metadata, and observes the exact ten-resource primary topology healthy under one
-recorded deadline. Health is readiness evidence, not authentication. A confirmed cold stop and fresh
-Debug clean/forced-restore/no-restore/no-incremental build precede `--no-build` startup. The build
+recorded deadline. `/health` alone is readiness evidence; `/alive` cannot substitute. A confirmed cold
+stop and fresh Debug clean/forced-restore precede JSON-only AppHost assets discovery and package sealing.
+The capture closes imports, references, analyzers, content/copy, native/runtime inputs, `.deps.json`, and
+runtime outputs to the sealed repository, fresh package root, or selected SDK before `--no-build` startup. The build
 pin `UseHexalithProjectReferences=true`, `UseNuGetDeps=false`, every selected `Hexalith*FromSource=true`,
 `NuGetAudit=false`, and `CentralPackageTransitivePinningEnabled=false`; capture then evaluates those
 properties, evaluated project/package references, regenerated assets, and the seven root source checkouts before starting. A dirty runtime-input preflight writes
 failure evidence without issuing any Aspire lifecycle command. Redirects are refused,
 and phase deadlines bound HTTP bodies, WebSocket upgrade headers, and bounded fragmented frames. It
-proves invalid-bearer 401/403 rejection for protected command submit, command status, query, and SignalR surfaces; the
-SignalR control and standards-valid authenticated handshake use the same endpoint. The successful
+proves invalid-bearer 401/403 rejection for protected command submit, command status, query, and the
+actual SignalR WebSocket upgrade on a separately negotiated connection before any 101. A separate
+standards-valid authenticated negotiation and handshake use the same endpoint. The successful
 returned command correlation must equal the submitted ULID. Consistent header/body `HandlerComputed`
 query provenance binds to the generated tenant/aggregate identity, and failed readiness
 never reaches the state-changing command. Cleanup is successful only when `aspire ps --format Json`

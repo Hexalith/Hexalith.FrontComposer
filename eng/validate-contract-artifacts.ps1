@@ -7,6 +7,8 @@ param(
   [string] $PriorEvidenceRoot = "",
   [string] $ActiveEvidenceRoot = "",
   [string] $ActiveIdentity = "",
+  [string] $ProviderPackageRoot = $env:FRONTCOMPOSER_PROVIDER_PACKAGES,
+  [string] $AppHostPackageRoot = $env:FRONTCOMPOSER_APPHOST_PACKAGES,
   [switch] $RequireProviderVerification
 )
 
@@ -107,6 +109,17 @@ foreach ($duplicate in $duplicates) {
 $manifestPath = Join-Path $PactDir "interaction-manifest.json"
 if (Test-Path -LiteralPath $manifestPath) {
   $manifest = Read-Json $manifestPath
+  $manifestPactFiles = @($manifest.pactFiles)
+  if ($manifestPactFiles.Count -ne $expectedPacts.Count) {
+    $errors.Add("Manifest pactFiles must contain the exact ordered Pact file list.")
+  } else {
+    for ($index = 0; $index -lt $expectedPacts.Count; $index++) {
+      if (![string]::Equals([string] $manifestPactFiles[$index], $expectedPacts[$index], [System.StringComparison]::Ordinal)) {
+        $errors.Add("Manifest pactFiles must contain the exact ordered Pact file list.")
+        break
+      }
+    }
+  }
   if ([int] $manifest.interactionCount -ne $interactionDescriptions.Count) {
     $errors.Add("Manifest interactionCount $($manifest.interactionCount) does not match pact count $($interactionDescriptions.Count).")
   }
@@ -160,7 +173,10 @@ if (Test-Path -LiteralPath $catalogPath) {
 
 function Find-RedactionLeaks([string] $Text) {
   $leaks = New-Object System.Collections.Generic.List[string]
-  $normalized = $Text.Replace("FC_CONTRACT_TOKEN", "ALLOWLISTED_SYNTHETIC_TOKEN")
+  $normalized = [regex]::Replace(
+    $Text,
+    '(?i)["'']authorization["'']\s*:\s*["'']Bearer FC_CONTRACT_TOKEN["'']',
+    '"ALLOWLISTED_HEADER":"ALLOWLISTED_SYNTHETIC_TOKEN"')
   $lower = $normalized.ToLowerInvariant()
 
   foreach ($fragment in @("access_token=", "api_key=", "authorization_payload", "connectionstring", "cookie", "password=", "set-cookie")) {
@@ -169,15 +185,13 @@ function Find-RedactionLeaks([string] $Text) {
     }
   }
 
-  foreach ($secretKey in @("access[_-]?token", "api[_-]?key", "password")) {
-    if ([regex]::IsMatch($normalized, '"?' + $secretKey + '"?\s*:', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
+  foreach ($secretKey in @("access[_-]?token", "client[_-]?secret", "private[_-]?key", "sas[_-]?token", "api[_-]?key", "password")) {
+    if ([regex]::IsMatch($normalized, '"?' + $secretKey + '"?\s*[=:]', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
       $leaks.Add("quoted secret key: $secretKey")
     }
   }
 
-  if (([regex]::IsMatch($normalized, '"authorization"\s*:', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase) `
-      -or [regex]::IsMatch($normalized, '\bauthorization\s*:', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)) `
-      -and !$Text.Contains("Bearer FC_CONTRACT_TOKEN")) {
+  if ([regex]::IsMatch($normalized, '(?:["'']authorization["'']|(?<![A-Za-z0-9_])authorization(?![A-Za-z0-9_]))\s*:(?!\s*\{)\s*', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
     $leaks.Add("raw Authorization header")
   }
 
@@ -193,15 +207,30 @@ function Find-RedactionLeaks([string] $Text) {
     $leaks.Add("environment-shaped secret")
   }
 
-  # A 64-hex value is safe only where the document identifies it as a checksum/hash.
-  # Never allowlist the value globally: the same bytes in a token/secret field must fail.
-  $encodedTokenScan = [regex]::Replace(
-    $normalized,
-    '"[^"\r\n]*(?:sha|hash|checksum|digest|fingerprint)[^"\r\n]*"\s*:\s*"[0-9a-f]{64}"',
-    '"ALLOWLISTED_HASH_FIELD":"ALLOWLISTED_SHA256"',
-    [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
-  if ([regex]::IsMatch($encodedTokenScan, '[A-Za-z0-9+/]{64,}={0,2}', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
-    $leaks.Add("encoded token-like payload")
+  # Python performs encoded-value classification only after a duplicate-free JSON parse.
+  # Keep prose out of this grammar while applying the same field allowlist to JSON artifacts.
+  if ($Text.TrimStart().StartsWith("{", [System.StringComparison]::Ordinal)) {
+    $sha256Fields = @(
+    "byLocationDigest", "catalog_sha256", "certificate_sha256", "contractsInventorySha256", "decisionRecordSha256",
+    "evidenceManifestSha256", "observedReleaseInventorySha256", "oi18SubjectSha256", "policySha256", "programSha256",
+    "projectSha256", "releaseInventorySha256", "release_inventory_sha256", "rosterSha256",
+    "runner_sha256_at_catalog_commit", "runtimeInputTreeSha256", "schema_sha256_at_catalog_commit",
+    "sha256", "subjectSha256", "subject_sha256", "testInventorySha256", "treeSha256",
+    "validator_sha256", "workflow_sha256_at_source")
+    $knownSha256 = ($sha256Fields | ForEach-Object { [regex]::Escape($_) }) -join '|'
+    $encodedTokenScan = [regex]::Replace(
+      $normalized,
+      '"(?:' + $knownSha256 + ')"\s*:\s*"[0-9a-fA-F]{64}"',
+      '"ALLOWLISTED_HASH_FIELD":"ALLOWLISTED_SHA256"',
+      [System.Text.RegularExpressions.RegexOptions]::None)
+    $encodedTokenScan = [regex]::Replace(
+      $encodedTokenScan,
+      '"(?:contentHashSha512|nupkgSha512)"\s*:\s*"[A-Za-z0-9+/]{86}=="',
+      '"ALLOWLISTED_HASH_FIELD":"ALLOWLISTED_SHA512"',
+      [System.Text.RegularExpressions.RegexOptions]::None)
+    if ([regex]::IsMatch($encodedTokenScan, '(?<![A-Za-z0-9+/_-])[A-Za-z0-9+/_-]{64,}={0,2}(?![A-Za-z0-9+/_=-])', [System.Text.RegularExpressions.RegexOptions]::None)) {
+      $leaks.Add("encoded token-like payload")
+    }
   }
 
   return $leaks
@@ -279,6 +308,13 @@ if ($RequireProviderVerification) {
     }
 
     $validator = Join-Path $repositoryRoot "eng/eventstore_runtime_evidence.py"
+    $packageArguments = @()
+    if (![string]::IsNullOrWhiteSpace($ProviderPackageRoot)) {
+      $packageArguments += @("--provider-package-root", [System.IO.Path]::GetFullPath($ProviderPackageRoot, $repositoryRoot))
+    }
+    if (![string]::IsNullOrWhiteSpace($AppHostPackageRoot)) {
+      $packageArguments += @("--apphost-package-root", [System.IO.Path]::GetFullPath($AppHostPackageRoot, $repositoryRoot))
+    }
     $validationOutput = @(& python3 $validator `
       --evidence-root $frontComposerEvidenceRoot `
       --live-evidence-root $liveEvidenceRoot `
@@ -286,7 +322,8 @@ if ($RequireProviderVerification) {
       --active-evidence-root $activeEvidenceRoot `
       --history-evidence-root $priorEvidenceRoot `
       --pact-dir $PactDir `
-      --repository-root $repositoryRoot 2>&1)
+      --repository-root $repositoryRoot `
+      @packageArguments 2>&1)
     if ($LASTEXITCODE -ne 0) {
       foreach ($line in $validationOutput) {
         $errors.Add([string] $line)

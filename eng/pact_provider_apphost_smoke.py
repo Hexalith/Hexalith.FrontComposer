@@ -9,6 +9,7 @@ import hashlib
 import ipaddress
 import json
 import os
+import queue
 import re
 import secrets
 import socket
@@ -16,6 +17,7 @@ import ssl
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -144,9 +146,14 @@ class SmokeRuntime:
 
     def command(self, arguments: list[str], timeout: float) -> CommandResult:
         try:
+            environment = os.environ.copy()
+            package_root = getattr(self, "package_root", None)
+            if isinstance(package_root, Path):
+                environment["NUGET_PACKAGES"] = str(package_root)
             completed = subprocess.run(
                 arguments,
                 cwd=ROOT,
+                env=environment,
                 check=False,
                 capture_output=True,
                 text=True,
@@ -171,8 +178,14 @@ class SmokeRuntime:
         timeout: float = 10,
         deadline: float | None = None,
     ) -> tuple[int, dict[str, Any], dict[str, str]]:
+        absolute_deadline = deadline if deadline is not None else time.monotonic() + timeout
         logical_url = url
-        url = _credential_safe_url(url, token=token, form=form)
+        try:
+            url = _credential_safe_url(
+                url, token=token, form=form, deadline=absolute_deadline
+            )
+        except ValueError:
+            return 0, {}, {}
         data: bytes | None = None
         headers = {"Accept": "application/json"}
         if url != logical_url:
@@ -190,7 +203,6 @@ class SmokeRuntime:
             headers["Authorization"] = f"Bearer {token}"
         outbound = request.Request(url, data=data, headers=headers, method=method)
         context = ssl._create_unverified_context()  # Local Aspire development certificates only.
-        absolute_deadline = deadline if deadline is not None else time.monotonic() + timeout
         connect_timeout = _remaining_timeout(absolute_deadline, timeout)
         if connect_timeout is None:
             return 0, {}, {}
@@ -230,10 +242,18 @@ class SmokeRuntime:
         timeout: float = 10,
         deadline: float | None = None,
     ) -> int:
-        _require_loopback_sensitive_destination(hub_url, token=token)
+        absolute_deadline = deadline if deadline is not None else time.monotonic() + timeout
+        _require_loopback_sensitive_destination(
+            hub_url, token=token, deadline=absolute_deadline
+        )
         negotiate = f"{hub_url.rstrip('/')}/negotiate?negotiateVersion=1"
         status, document, _ = self.json_request(
-            negotiate, method="POST", token=token, body={}, timeout=timeout, deadline=deadline
+            negotiate,
+            method="POST",
+            token=token,
+            body={},
+            timeout=timeout,
+            deadline=absolute_deadline,
         )
         del document
         return status
@@ -245,8 +265,10 @@ class SmokeRuntime:
         timeout: float = 10,
         deadline: float | None = None,
     ) -> bool:
-        _require_loopback_sensitive_destination(hub_url, token=token)
         absolute_deadline = deadline if deadline is not None else time.monotonic() + timeout
+        _require_loopback_sensitive_destination(
+            hub_url, token=token, deadline=absolute_deadline
+        )
         negotiate = f"{hub_url.rstrip('/')}/negotiate?negotiateVersion=1"
         status, document, _ = self.json_request(
             negotiate, method="POST", token=token, body={}, timeout=timeout, deadline=absolute_deadline
@@ -265,7 +287,9 @@ class SmokeRuntime:
             )
         ):
             return False
-        websocket_url = _websocket_url(hub_url, connection_token, token)
+        websocket_url = _websocket_url(
+            hub_url, connection_token, token, deadline=absolute_deadline
+        )
         remaining = _remaining_timeout(absolute_deadline, timeout)
         return (
             remaining is not None
@@ -273,6 +297,55 @@ class SmokeRuntime:
                 websocket_url, token, remaining, deadline=absolute_deadline
             )
         )
+
+    def signalr_invalid_upgrade_status(
+        self,
+        hub_url: str,
+        negotiation_token: str,
+        invalid_token: str,
+        timeout: float = 10,
+        deadline: float | None = None,
+    ) -> int:
+        """Negotiate separately, then prove invalid bearer rejection on the WebSocket upgrade."""
+        absolute_deadline = deadline if deadline is not None else time.monotonic() + timeout
+        negotiate = f"{hub_url.rstrip('/')}/negotiate?negotiateVersion=1"
+        status, document, _ = self.json_request(
+            negotiate,
+            method="POST",
+            token=negotiation_token,
+            body={},
+            timeout=timeout,
+            deadline=absolute_deadline,
+        )
+        connection_token = document.get("connectionToken") if isinstance(document, dict) else None
+        if not isinstance(connection_token, str) or not connection_token:
+            connection_token = document.get("connectionId") if isinstance(document, dict) else None
+        transports = document.get("availableTransports") if isinstance(document, dict) else None
+        if (
+            status != 200
+            or not isinstance(connection_token, str)
+            or not connection_token
+            or not isinstance(transports, list)
+            or not any(
+                isinstance(item, dict) and item.get("transport") == "WebSockets"
+                for item in transports
+            )
+        ):
+            return 0
+        websocket_url = _websocket_url(
+            hub_url, connection_token, invalid_token, deadline=absolute_deadline
+        )
+        remaining = _remaining_timeout(absolute_deadline, timeout)
+        if remaining is None:
+            return 0
+        status_code, _ = _websocket_signalr_exchange(
+            websocket_url,
+            invalid_token,
+            remaining,
+            deadline=absolute_deadline,
+            complete_handshake=False,
+        )
+        return status_code
 
 
 def _sha256(path: Path) -> str:
@@ -497,13 +570,14 @@ def _require_loopback_sensitive_destination(
     *,
     token: str | None = None,
     form: dict[str, str] | None = None,
+    deadline: float | None = None,
 ) -> None:
     carries_credentials = token is not None or form is not None
     if carries_credentials:
-        _numeric_loopback_url(url)
+        _numeric_loopback_url(url, deadline=deadline)
 
 
-def _numeric_loopback_url(url: str) -> str:
+def _numeric_loopback_url(url: str, *, deadline: float | None = None) -> str:
     """Resolve a local hostname before credentials exist and return a numeric peer URL."""
     try:
         parsed = parse.urlsplit(url)
@@ -522,8 +596,27 @@ def _numeric_loopback_url(url: str) -> str:
         except ValueError:
             if host.casefold() != "localhost":
                 raise ValueError
+            absolute_deadline = deadline if deadline is not None else time.monotonic() + 10
+            remaining = _remaining_timeout(absolute_deadline, 10)
+            if remaining is None:
+                raise TimeoutError
+            results: queue.Queue[object] = queue.Queue(maxsize=1)
+
+            def resolve() -> None:
+                try:
+                    results.put(socket.getaddrinfo(host, port, type=socket.SOCK_STREAM))
+                except OSError as exception:
+                    results.put(exception)
+
+            threading.Thread(target=resolve, daemon=True).start()
+            try:
+                resolved = results.get(timeout=remaining)
+            except queue.Empty:
+                raise TimeoutError from None
+            if isinstance(resolved, OSError):
+                raise resolved
             addresses = []
-            for item in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM):
+            for item in resolved:
                 address = ipaddress.ip_address(item[4][0])
                 if address not in addresses:
                     addresses.append(address)
@@ -536,7 +629,7 @@ def _numeric_loopback_url(url: str) -> str:
         numeric_host = f"[{selected}]" if isinstance(selected, ipaddress.IPv6Address) else str(selected)
         netloc = f"{numeric_host}:{parsed.port}" if parsed.port is not None else numeric_host
         return parse.urlunsplit((parsed.scheme, netloc, parsed.path, parsed.query, parsed.fragment))
-    except (OSError, ValueError):
+    except (OSError, TimeoutError, ValueError):
         raise ValueError("credentials-and-tokens-require-loopback: destination-not-verified-numeric") from None
 
 
@@ -545,8 +638,13 @@ def _credential_safe_url(
     *,
     token: str | None = None,
     form: dict[str, str] | None = None,
+    deadline: float | None = None,
 ) -> str:
-    return _numeric_loopback_url(url) if token is not None or form is not None else url
+    return (
+        _numeric_loopback_url(url, deadline=deadline)
+        if token is not None or form is not None
+        else url
+    )
 
 
 def _resource_public_urls(records: list[dict[str, Any]], resource: str) -> list[str]:
@@ -601,8 +699,16 @@ def _resource_signalr_urls(records: list[dict[str, Any]], resource: str) -> list
     return ordered + http_extras + https_extras
 
 
-def _websocket_url(hub_url: str, connection_token: str, token: str) -> str:
-    parsed = parse.urlsplit(_credential_safe_url(hub_url, token=token))
+def _websocket_url(
+    hub_url: str,
+    connection_token: str,
+    token: str,
+    *,
+    deadline: float | None = None,
+) -> str:
+    parsed = parse.urlsplit(
+        _credential_safe_url(hub_url, token=token, deadline=deadline)
+    )
     scheme = "wss" if parsed.scheme == "https" else "ws"
     query = parse.urlencode({"id": connection_token, "access_token": token})
     return parse.urlunsplit((scheme, parsed.netloc, parsed.path, query, ""))
@@ -656,6 +762,15 @@ def _valid_websocket_upgrade(headers: bytes, key: str) -> bool:
     ).decode("ascii")
     accepts = values.get("sec-websocket-accept", [])
     return upgrade == "websocket" and "upgrade" in connection_tokens and accepts == [expected_accept]
+
+
+def _http_status(headers: bytes) -> int:
+    try:
+        status_line = headers.decode("iso-8859-1").split("\r\n", 1)[0]
+    except UnicodeDecodeError:
+        return 0
+    match = re.fullmatch(r"HTTP/1\.1[ \t]+([0-9]{3})(?:[ \t]+[^\r\n]*)?", status_line)
+    return int(match.group(1)) if match is not None else 0
 
 
 def _read_websocket_frame(
@@ -764,13 +879,14 @@ def _masked_text_frame(payload: bytes) -> bytes:
     return prefix + mask + masked
 
 
-def _websocket_signalr_handshake(
+def _websocket_signalr_exchange(
     websocket_url: str,
     token: str,
     timeout: float,
     *,
     deadline: float | None = None,
-) -> bool:
+    complete_handshake: bool,
+) -> tuple[int, bool]:
     parsed = parse.urlsplit(websocket_url)
     port = parsed.port or (443 if parsed.scheme == "wss" else 80)
     stream: socket.socket | None = None
@@ -778,13 +894,13 @@ def _websocket_signalr_handshake(
     try:
         connect_timeout = _remaining_timeout(absolute_deadline, timeout)
         if connect_timeout is None:
-            return False
+            return 0, False
         stream = socket.create_connection((parsed.hostname or "", port), timeout=connect_timeout)
         if parsed.scheme == "wss":
             context = ssl._create_unverified_context()
             tls_timeout = _remaining_timeout(absolute_deadline, timeout)
             if tls_timeout is None:
-                return False
+                return 0, False
             stream.settimeout(tls_timeout)
             stream = context.wrap_socket(stream, server_hostname=parsed.hostname)
         key = base64.b64encode(secrets.token_bytes(16)).decode("ascii")
@@ -798,28 +914,50 @@ def _websocket_signalr_handshake(
         ).encode("ascii")
         send_timeout = _remaining_timeout(absolute_deadline, timeout)
         if send_timeout is None:
-            return False
+            return 0, False
         stream.settimeout(send_timeout)
         stream.sendall(upgrade)
         headers, initial_frames = _read_http_headers(stream, absolute_deadline)
+        status_code = _http_status(headers)
+        if not complete_handshake:
+            return status_code, False
         if not _valid_websocket_upgrade(headers, key):
-            return False
+            return status_code, False
         if initial_frames:
-            return False
+            return status_code, False
         send_timeout = _remaining_timeout(absolute_deadline, timeout)
         if send_timeout is None:
-            return False
+            return status_code, False
         stream.settimeout(send_timeout)
         stream.sendall(_masked_text_frame(b'{"protocol":"json","version":1}\x1e'))
-        return _read_signalr_handshake_ack(stream, initial_frames, absolute_deadline)
+        return status_code, _read_signalr_handshake_ack(
+            stream, initial_frames, absolute_deadline
+        )
     except (OSError, ssl.SSLError, UnicodeError, ValueError):
-        return False
+        return 0, False
     finally:
         if stream is not None:
             try:
                 stream.close()
             except OSError:
                 pass
+
+
+def _websocket_signalr_handshake(
+    websocket_url: str,
+    token: str,
+    timeout: float,
+    *,
+    deadline: float | None = None,
+) -> bool:
+    status, completed = _websocket_signalr_exchange(
+        websocket_url,
+        token,
+        timeout,
+        deadline=deadline,
+        complete_handshake=True,
+    )
+    return status == 101 and completed
 
 
 def _build_property_arguments() -> list[str]:
@@ -834,15 +972,15 @@ def _build_property_arguments() -> list[str]:
     return arguments
 
 
-def _evaluated_item_path(item: Any) -> Path | None:
+def _evaluated_item_path(item: Any, project: Path = APPHOST) -> Path | None:
     if not isinstance(item, dict):
         return None
-    value = item.get("FullPath") or item.get("Identity")
+    value = item.get("FullPath") or item.get("HintPath") or item.get("Identity")
     if not isinstance(value, str) or not value:
         return None
     candidate = Path(value.replace("\\", os.sep))
     if not candidate.is_absolute():
-        candidate = APPHOST.parent / candidate
+        candidate = project.parent / candidate
     try:
         return candidate.resolve(strict=False)
     except (OSError, RuntimeError):
@@ -916,20 +1054,141 @@ def _resolved_source_graph_is_exact(project_references: list[Path]) -> bool:
     return set(reachable_roots) == seen_roots
 
 
-def _evaluate_source_graph(runtime: SmokeRuntime, deadline: float) -> bool:
+def _discover_assets_graphs_from_json(start_project: Path) -> tuple[list[Path], list[Path]] | None:
+    """Discover the restored project closure using only project.assets.json documents."""
+    pending = [start_project]
+    projects: set[Path] = set()
+    assets_paths: set[Path] = set()
+    while pending:
+        candidate = pending.pop()
+        try:
+            project = candidate.resolve(strict=True)
+        except (OSError, RuntimeError):
+            return None
+        if project in projects:
+            continue
+        if runtime_evidence._path_has_symlink_component(project) or not project.is_file():
+            return None
+        projects.add(project)
+        assets_path = project.parent / "obj" / "project.assets.json"
+        if runtime_evidence._path_has_symlink_component(assets_path) or not assets_path.is_file():
+            return None
+        try:
+            assets = json.loads(assets_path.read_text(encoding="utf-8-sig"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            return None
+        libraries = assets.get("libraries") if isinstance(assets, dict) else None
+        if not isinstance(libraries, dict):
+            return None
+        assets_paths.add(assets_path.resolve(strict=True))
+        child_projects: list[str] = []
+        for library in libraries.values():
+            if not isinstance(library, dict) or library.get("type") != "project":
+                continue
+            relative = library.get("msbuildProject") or library.get("path")
+            if not isinstance(relative, str) or not relative:
+                return None
+            child_projects.append(relative)
+        project_metadata = assets.get("project")
+        restore = project_metadata.get("restore") if isinstance(project_metadata, dict) else None
+        frameworks = restore.get("frameworks") if isinstance(restore, dict) else None
+        if frameworks is not None:
+            if not isinstance(frameworks, dict):
+                return None
+            for framework in frameworks.values():
+                references = (
+                    framework.get("projectReferences")
+                    if isinstance(framework, dict)
+                    else None
+                )
+                if references is None:
+                    continue
+                if not isinstance(references, dict):
+                    return None
+                for reference in references.values():
+                    project_path = (
+                        reference.get("projectPath")
+                        if isinstance(reference, dict)
+                        else None
+                    )
+                    if not isinstance(project_path, str) or not project_path:
+                        return None
+                    child_projects.append(project_path)
+        for relative in child_projects:
+            child = Path(relative.replace("\\", os.sep))
+            if not child.is_absolute():
+                child = project.parent / child
+            pending.append(child)
+    return sorted(projects), sorted(assets_paths)
+
+
+def _selected_dotnet_root(runtime: SmokeRuntime, deadline: float) -> Path | None:
+    timeout = _remaining_timeout(deadline, 15)
+    if timeout is None:
+        return None
+    result = runtime.command(["dotnet", "--list-sdks"], timeout)
+    if result.returncode != 0:
+        return None
+    try:
+        global_json = json.loads((ROOT / "global.json").read_text(encoding="utf-8-sig"))
+        version = global_json["sdk"]["version"]
+    except (OSError, KeyError, TypeError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    matches = re.findall(r"^([^ \r\n]+) \[([^\]\r\n]+)\]$", result.stdout, re.MULTILINE)
+    selected = next((Path(root) / item for item, root in matches if item == version), None)
+    if selected is None or runtime_evidence._path_has_symlink_component(selected) or not selected.is_dir():
+        return None
+    return selected.parent.parent.resolve(strict=True)
+
+
+def _bound_input(path: Path, package_root: Path, dotnet_root: Path) -> dict[str, str] | None:
+    try:
+        resolved = path.resolve(strict=True)
+    except (OSError, RuntimeError):
+        return None
+    if runtime_evidence._path_has_symlink_component(path) or not resolved.is_file():
+        return None
+    for authority, root in (
+        ("repository", ROOT.resolve(strict=True)),
+        ("packages", package_root.resolve(strict=True)),
+        ("dotnet", dotnet_root.resolve(strict=True)),
+    ):
+        if resolved.is_relative_to(root):
+            return {
+                "authority": authority,
+                "path": resolved.relative_to(root).as_posix(),
+                "sha256": _sha256(resolved),
+            }
+    return None
+
+
+def _evaluate_source_graph(
+    runtime: SmokeRuntime,
+    deadline: float,
+    *,
+    expected_assets: list[Path] | None = None,
+    package_root: Path | None = None,
+    dotnet_root: Path | None = None,
+) -> dict[str, Any] | None:
     timeout = _remaining_timeout(deadline, 60)
     if timeout is None:
-        return False
-    property_names = [*APPHOST_BUILD_PROPERTIES, *SOURCE_ROOT_PROPERTIES]
+        return None
+    property_names = [*APPHOST_BUILD_PROPERTIES, *SOURCE_ROOT_PROPERTIES, "MSBuildAllProjects"]
+    item_names = (
+        "ProjectReference,PackageReference,Reference,ReferencePath,Analyzer,AdditionalFiles,"
+        "Content,None,NativeCopyLocalItems,RuntimeCopyLocalItems"
+    )
     result = runtime.command(
         [
             "dotnet",
             "msbuild",
             APPHOST_RELATIVE,
             "-p:Configuration=Debug",
+            "-p:BuildProjectReferences=true",
             *_build_property_arguments(),
+            "-target:ResolveReferences",
             "-getProperty:" + ",".join(property_names),
-            "-getItem:ProjectReference,PackageReference",
+            "-getItem:" + item_names,
         ],
         timeout,
     )
@@ -937,45 +1196,200 @@ def _evaluate_source_graph(runtime: SmokeRuntime, deadline: float) -> bool:
     properties = document.get("Properties") if isinstance(document, dict) else None
     items = document.get("Items") if isinstance(document, dict) else None
     if not isinstance(properties, dict) or not isinstance(items, dict):
-        return False
+        return None
     for name, expected in APPHOST_BUILD_PROPERTIES.items():
         actual = properties.get(name)
         if not isinstance(actual, str) or actual.casefold() != str(expected).casefold():
-            return False
+            return None
     for name, relative in SOURCE_ROOT_PROPERTIES.items():
         actual = properties.get(name)
         if not isinstance(actual, str) or not actual:
-            return False
+            return None
         try:
             if Path(actual).resolve() != (ROOT / relative).resolve():
-                return False
+                return None
         except (OSError, RuntimeError):
-            return False
+            return None
     project_items = items.get("ProjectReference")
     package_items = items.get("PackageReference")
     if not isinstance(project_items, list) or not isinstance(package_items, list):
-        return False
+        return None
     project_references = [_evaluated_item_path(item) for item in project_items]
     if not project_references or any(path is None for path in project_references):
-        return False
-    dependency_names = tuple(
-        Path(relative).name.casefold() for relative in SOURCE_DEPENDENCY_GITLINKS
-    )
+        return None
+    dependency_names = tuple(Path(relative).name.casefold() for relative in SOURCE_DEPENDENCY_GITLINKS)
     for item in package_items:
-        if not isinstance(item, dict):
-            return False
-        identity = item.get("Identity")
-        if not isinstance(identity, str):
-            return False
-        package_name = identity.casefold()
-        if any(
-            package_name == name or package_name.startswith(f"{name}.")
-            for name in dependency_names
+        if not isinstance(item, dict) or not isinstance(item.get("Identity"), str):
+            return None
+        package_name = item["Identity"].casefold()
+        if any(package_name == name or package_name.startswith(f"{name}.") for name in dependency_names):
+            return None
+    typed_projects = [path for path in project_references if path is not None]
+    if not runtime.source_graph_is_exact(typed_projects):
+        return None
+    discovered = _discover_assets_graphs_from_json(APPHOST)
+    if discovered is None:
+        return None
+    discovered_projects, discovered_assets = discovered
+    discovered_project_set = set(discovered_projects)
+    if not set(typed_projects).issubset(discovered_project_set):
+        return None
+    if expected_assets is not None:
+        expected_asset_set = {
+            path.resolve(strict=False) for path in expected_assets
+        }
+        canonical_apphost_assets = (
+            ROOT / runtime_evidence.APPHOST_PACKAGE_ASSETS_ROOT
+        ).resolve(strict=False)
+        if (
+            not expected_asset_set
+            or canonical_apphost_assets not in expected_asset_set
+            or set(discovered_assets) != expected_asset_set
         ):
-            return False
-    return runtime.source_graph_is_exact(
-        [path for path in project_references if path is not None]
-    )
+            return None
+    if package_root is None or dotnet_root is None:
+        return {
+            "assetsGraphs": [path.relative_to(ROOT).as_posix() for path in discovered_assets],
+            "inputs": [],
+        }
+    evaluations: list[tuple[Path, dict[str, Any]]] = [(APPHOST.resolve(), document)]
+    for project in discovered_projects:
+        if project == APPHOST.resolve():
+            continue
+        try:
+            project_relative = project.relative_to(ROOT)
+        except ValueError:
+            return None
+        evaluation_timeout = _remaining_timeout(deadline, 60)
+        if evaluation_timeout is None:
+            return None
+        project_result = runtime.command(
+            [
+                "dotnet",
+                "msbuild",
+                str(project_relative),
+                "-p:Configuration=Debug",
+                "-p:BuildProjectReferences=true",
+                *_build_property_arguments(),
+                "-target:ResolveReferences",
+                "-getProperty:MSBuildAllProjects",
+                "-getItem:" + item_names,
+            ],
+            evaluation_timeout,
+        )
+        project_document = (
+            _json_from_output(project_result.stdout)
+            if project_result.returncode == 0
+            else None
+        )
+        if not isinstance(project_document, dict):
+            return None
+        evaluations.append((project, project_document))
+
+    input_paths: set[Path] = set(discovered_projects)
+    evaluated_project_references: set[Path] = set()
+    for project, evaluation in evaluations:
+        evaluated_properties = evaluation.get("Properties")
+        evaluated_items = evaluation.get("Items")
+        if not isinstance(evaluated_properties, dict) or not isinstance(evaluated_items, dict):
+            return None
+        all_projects = evaluated_properties.get("MSBuildAllProjects")
+        if not isinstance(all_projects, str) or not all_projects:
+            return None
+        for raw in all_projects.split(";"):
+            if not raw:
+                continue
+            imported = Path(raw.replace("\\", os.sep))
+            if not imported.is_absolute():
+                imported = project.parent / imported
+            input_paths.add(imported)
+        evaluated_packages = evaluated_items.get("PackageReference")
+        if not isinstance(evaluated_packages, list):
+            return None
+        for item in evaluated_packages:
+            if not isinstance(item, dict) or not isinstance(item.get("Identity"), str):
+                return None
+            package_name = item["Identity"].casefold()
+            if any(
+                package_name == name or package_name.startswith(f"{name}.")
+                for name in dependency_names
+            ):
+                return None
+        evaluated_projects = evaluated_items.get("ProjectReference")
+        if not isinstance(evaluated_projects, list):
+            return None
+        for item in evaluated_projects:
+            project_reference = _evaluated_item_path(item, project)
+            if project_reference is None or not project_reference.is_file():
+                return None
+            evaluated_project_references.add(project_reference)
+        for item_name in (
+            "ProjectReference", "Reference", "ReferencePath", "Analyzer", "AdditionalFiles", "Content", "None",
+            "NativeCopyLocalItems", "RuntimeCopyLocalItems",
+        ):
+            values = evaluated_items.get(item_name, [])
+            if not isinstance(values, list):
+                return None
+            for item in values:
+                path = _evaluated_item_path(item, project)
+                if path is not None and path.exists():
+                    input_paths.add(path)
+    if evaluated_project_references != discovered_project_set - {APPHOST.resolve()}:
+        return None
+    if not runtime.source_graph_is_exact(sorted(evaluated_project_references)):
+        return None
+    bound_inputs: list[dict[str, str]] = []
+    for path in sorted(input_paths):
+        binding = _bound_input(path, package_root, dotnet_root)
+        if binding is None:
+            return None
+        bound_inputs.append(binding)
+    bound_inputs.sort(key=lambda item: (item["authority"], item["path"]))
+    return {
+        "assetsGraphs": [path.relative_to(ROOT).as_posix() for path in discovered_assets],
+        "inputs": bound_inputs,
+    }
+
+
+def _runtime_output_inventory() -> tuple[list[dict[str, Any]], bool]:
+    output_root = APPHOST.parent / "bin" / "Debug"
+    if runtime_evidence._path_has_symlink_component(output_root) or not output_root.is_dir():
+        return [], False
+    files: list[dict[str, Any]] = []
+    apphost_deps_files = 0
+    expected_deps_name = f"{APPHOST.stem}.deps.json"
+    guarded = tuple(Path(value).name.casefold() for value in SOURCE_DEPENDENCY_GITLINKS)
+    for path in sorted(output_root.rglob("*")):
+        if path.is_symlink() or runtime_evidence._path_has_symlink_component(path):
+            return [], False
+        if path.is_dir():
+            continue
+        if not path.is_file():
+            return [], False
+        files.append(
+            {
+                "path": path.relative_to(output_root).as_posix(),
+                "bytes": path.stat().st_size,
+                "sha256": _sha256(path),
+            }
+        )
+        if path.name == expected_deps_name:
+            apphost_deps_files += 1
+            try:
+                deps = json.loads(path.read_text(encoding="utf-8-sig"))
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+                return [], False
+            libraries = deps.get("libraries") if isinstance(deps, dict) else None
+            if not isinstance(libraries, dict):
+                return [], False
+            for identity, library in libraries.items():
+                package_name = str(identity).split("/", 1)[0].casefold()
+                if (
+                    any(package_name == name or package_name.startswith(f"{name}.") for name in guarded)
+                    and (not isinstance(library, dict) or library.get("type") != "project")
+                ):
+                    return [], False
+    return files, bool(files) and apphost_deps_files == 1
 
 
 def _dapr_name_resolution_paths() -> dict[str, Path]:
@@ -984,18 +1398,21 @@ def _dapr_name_resolution_paths() -> dict[str, Path]:
 
 def _base_evidence(runtime_manifest: dict[str, Any], timeout: int) -> dict[str, Any]:
     return {
-        "schema": "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v2",
+        "schema": "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v3",
         "capturedAt": datetime.now(timezone.utc).isoformat(),
+        "executionStartedAt": None,
         "completedAt": None,
         "timeoutSeconds": timeout,
         "finalVerdict": "failed",
         "reasonCodes": [],
+        "packageLedger": None,
         "identity": {
             "eventStoreSourceSha": _git(ROOT / "references/Hexalith.EventStore", "rev-parse", "HEAD"),
             "eventStoreReleaseVersion": _release_version(),
             "buildsCatalogSha": _git(ROOT / "references/Hexalith.Builds", "rev-parse", "HEAD"),
             "frontComposerRevision": runtime_manifest.get("capturedRevision", ""),
             "runtimeInputTreeSha256": runtime_manifest.get("treeSha256", ""),
+            "runtimeInputCapturedAt": runtime_manifest.get("capturedAt", ""),
         },
         "topology": {
             "programPath": PROGRAM_RELATIVE,
@@ -1023,6 +1440,8 @@ def _base_evidence(runtime_manifest: dict[str, Any], timeout: int) -> dict[str, 
                 "reachableSourceGitlinks": list(REACHABLE_SOURCE_GITLINKS),
                 "inactiveGuardedGitlinks": list(INACTIVE_GUARDED_GITLINKS),
                 "evaluatedSourceGraph": "not-observed",
+                "evaluatedInputBinding": None,
+                "runtimeOutputBinding": None,
             },
             "resourceWaits": {name: "not-observed" for name in REQUIRED_RESOURCES},
         },
@@ -1218,6 +1637,7 @@ def _capture(
     runtime: SmokeRuntime,
     timeout: int,
     runtime_input_manifest_path: Path | None = None,
+    package_root: Path | None = None,
 ) -> int:
     runtime_input_issues: list[str] = []
     runtime_manifest_bytes: bytes | None = None
@@ -1235,6 +1655,14 @@ def _capture(
             ROOT,
             runtime_input_issues,
         )
+    if package_root is None:
+        runtime_input_issues.append("A fresh external NuGet package root is required.")
+        package_root = ROOT
+    else:
+        runtime_input_issues.extend(
+            runtime_evidence.validate_fresh_package_root(ROOT, package_root)
+        )
+    runtime.package_root = package_root
     evidence = _base_evidence(runtime_manifest, timeout)
     if runtime_input_manifest_path is not None:
         apphost_captured_at = runtime_evidence._parse_timestamp(
@@ -1258,6 +1686,9 @@ def _capture(
     evidence["cleanup"]["daprNameResolutionFiles"]["absentBeforeRun"] = absent_before_run
     endpoints: dict[str, str] = {}
     probed_urls: list[str] = []
+    assets_paths: list[Path] = []
+    initial_package_ledger: dict[str, Any] | None = None
+    initial_runtime_outputs: list[dict[str, Any]] | None = None
     reason_codes: list[str] = evidence["reasonCodes"]
     overall_deadline = time.monotonic() + timeout
     cleanup_reserve = min(90.0, max(15.0, timeout * 0.3))
@@ -1344,6 +1775,79 @@ def _capture(
         if restore.returncode != 0:
             reason_codes.append("apphost.output-restore.failed")
             return 1
+        discovered = _discover_assets_graphs_from_json(APPHOST)
+        if discovered is None:
+            reason_codes.append("apphost.assets-graph.not-closed")
+            return 1
+        _, assets_paths = discovered
+        canonical_apphost_assets = (
+            ROOT / runtime_evidence.APPHOST_PACKAGE_ASSETS_ROOT
+        ).resolve(strict=False)
+        resolved_assets_paths = {
+            path.resolve(strict=False) for path in assets_paths
+        }
+        if not resolved_assets_paths or canonical_apphost_assets not in resolved_assets_paths:
+            reason_codes.append("apphost.assets-graph.not-closed")
+            return 1
+        package_ledger, package_issues = runtime_evidence.resolved_package_ledger(
+            ROOT,
+            package_root,
+            assets_paths,
+        )
+        package_issues = list(package_issues)
+        runtime_evidence.validate_package_ledger_semantics(
+            package_ledger, package_issues
+        )
+        ledger_graphs = (
+            package_ledger.get("assetsGraphs")
+            if isinstance(package_ledger, dict)
+            else None
+        )
+        ledger_paths = (
+            [item.get("path") for item in ledger_graphs if isinstance(item, dict)]
+            if isinstance(ledger_graphs, list)
+            else []
+        )
+        try:
+            expected_ledger_paths = sorted(
+                path.relative_to(ROOT).as_posix() for path in resolved_assets_paths
+            )
+        except ValueError:
+            expected_ledger_paths = []
+            package_issues.append(
+                "AppHost assets graph set is outside the repository."
+            )
+        if (
+            ledger_paths != expected_ledger_paths
+            or runtime_evidence.APPHOST_PACKAGE_ASSETS_ROOT not in ledger_paths
+        ):
+            package_issues.append(
+                "AppHost package ledger does not bind its exact canonical assets graph set."
+            )
+        if package_issues:
+            reason_codes.append("apphost.package-authority.not-sealed")
+            return 1
+        evidence["packageLedger"] = package_ledger
+        initial_package_ledger = package_ledger
+        dotnet_root = _selected_dotnet_root(runtime, capture_deadline)
+        if dotnet_root is None:
+            reason_codes.append("apphost.sdk-authority.not-selected")
+            return 1
+        evidence["executionStartedAt"] = datetime.now(timezone.utc).isoformat()
+        source_graph_before = _evaluate_source_graph(
+            runtime,
+            capture_deadline,
+            expected_assets=assets_paths,
+            package_root=package_root,
+            dotnet_root=dotnet_root,
+        )
+        evidence["startup"]["outputPreparation"]["evaluatedSourceGraph"] = (
+            "passed" if source_graph_before is not None else "failed"
+        )
+        evidence["startup"]["outputPreparation"]["evaluatedInputBinding"] = source_graph_before
+        if source_graph_before is None:
+            reason_codes.append("apphost.source-graph.not-exact")
+            return 1
         prebuild_timeout = _remaining_timeout(capture_deadline, timeout)
         if prebuild_timeout is None:
             reason_codes.append("apphost.capture.deadline-exceeded")
@@ -1371,13 +1875,25 @@ def _capture(
             evidence["startup"]["startStdout"] = _clip(prebuild.stdout)
             evidence["startup"]["startStderr"] = _clip(prebuild.stderr)
             return 1
-        source_graph_evaluated = _evaluate_source_graph(runtime, capture_deadline)
-        evidence["startup"]["outputPreparation"]["evaluatedSourceGraph"] = (
-            "passed" if source_graph_evaluated else "failed"
+        source_graph_after = _evaluate_source_graph(
+            runtime,
+            capture_deadline,
+            expected_assets=assets_paths,
+            package_root=package_root,
+            dotnet_root=dotnet_root,
         )
-        if not source_graph_evaluated:
+        if source_graph_after is None or not runtime_evidence._exact(
+            source_graph_after, source_graph_before
+        ):
+            evidence["startup"]["outputPreparation"]["evaluatedSourceGraph"] = "failed"
             reason_codes.append("apphost.source-graph.not-exact")
             return 1
+        runtime_outputs, outputs_valid = _runtime_output_inventory()
+        evidence["startup"]["outputPreparation"]["runtimeOutputBinding"] = runtime_outputs
+        if not outputs_valid:
+            reason_codes.append("apphost.runtime-output.not-closed")
+            return 1
+        initial_runtime_outputs = runtime_outputs
         start_timeout = _remaining_timeout(capture_deadline, timeout)
         if start_timeout is None:
             reason_codes.append("apphost.capture.deadline-exceeded")
@@ -1482,13 +1998,6 @@ def _capture(
                 health_status, _, _ = runtime.json_request(
                     f"{base}/health", timeout=request_timeout, deadline=health_deadline
                 )
-                if health_status not in (200, 204):
-                    request_timeout = _remaining_timeout(health_deadline, 5)
-                    if request_timeout is None:
-                        break
-                    health_status, _, _ = runtime.json_request(
-                        f"{base}/alive", timeout=request_timeout, deadline=health_deadline
-                    )
                 if health_status in (200, 204):
                     eventstore_base = base
                     break
@@ -1715,8 +2224,9 @@ def _capture(
             control_timeout = _remaining_timeout(signalr_deadline, 5)
             if control_timeout is None:
                 break
-            signalr_control_status = runtime.signalr_negotiate_status(
+            signalr_control_status = runtime.signalr_invalid_upgrade_status(
                 candidate_endpoint,
+                token,
                 "invalid-local-evidence-token",
                 timeout=control_timeout,
                 deadline=signalr_deadline,
@@ -1743,6 +2253,9 @@ def _capture(
             ),
             "statusCode": signalr_control_status,
             "endpoint": signalr_endpoint,
+            "transport": "websocket-upgrade",
+            "negotiatedWith": "valid-bearer",
+            "upgradeResult": "rejected-before-switching-protocols",
         }
         if not signalr_control_passed:
             reason_codes.append("authorization.signalr.not-enforced")
@@ -1863,11 +2376,32 @@ def _capture(
             and post_manifest.get("treeSha256") == initial_runtime_tree
             and manifest_unchanged
         )
+        package_authority_clean = initial_package_ledger is None
+        if initial_package_ledger is not None and assets_paths:
+            recomputed_package_ledger, package_issues = runtime_evidence.resolved_package_ledger(
+                ROOT,
+                package_root,
+                assets_paths,
+                captured_at=initial_package_ledger.get("capturedAt"),
+            )
+            package_authority_clean = (
+                not package_issues
+                and runtime_evidence._exact(
+                    recomputed_package_ledger, initial_package_ledger
+                )
+            )
+        outputs_after, outputs_valid_after = _runtime_output_inventory()
+        runtime_outputs_clean = initial_runtime_outputs is None or (
+            outputs_valid_after
+            and runtime_evidence._exact(outputs_after, initial_runtime_outputs)
+        )
         clean = (
             lifecycle_clean
             and removed_after_shutdown == created_by_invocation
             and not remaining_after_cleanup
             and runtime_inputs_clean
+            and package_authority_clean
+            and runtime_outputs_clean
         )
         evidence["cleanup"] = {
             "command": STOP_COMMAND,
@@ -1890,6 +2424,8 @@ def _capture(
                 "remainingAfterCleanup": remaining_after_cleanup,
             },
             "runtimeInputsCleanAfterRun": runtime_inputs_clean,
+            "packageAuthorityCleanAfterRun": package_authority_clean,
+            "runtimeOutputsCleanAfterRun": runtime_outputs_clean,
         }
         if not clean and "apphost.cleanup.incomplete" not in reason_codes:
             reason_codes.append("apphost.cleanup.incomplete")
@@ -1906,13 +2442,24 @@ def capture(
     runtime: SmokeRuntime | None = None,
     timeout: int = 300,
     runtime_input_manifest_path: Path | None = None,
+    package_root: Path | None = None,
 ) -> int:
+    if package_root is None:
+        with tempfile.TemporaryDirectory(prefix="frontcomposer-apphost-packages.") as temporary:
+            return capture(
+                output,
+                runtime=runtime,
+                timeout=timeout,
+                runtime_input_manifest_path=runtime_input_manifest_path,
+                package_root=Path(temporary),
+            )
     try:
         return _capture(
             output,
             runtime or SmokeRuntime(),
             timeout,
             runtime_input_manifest_path,
+            package_root,
         )
     except _CleanupFailed:
         return 1
@@ -1965,6 +2512,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--timeout-seconds", type=int, default=300)
     parser.add_argument("--runtime-input-manifest", required=True, type=Path)
+    parser.add_argument("--package-root", required=True, type=Path)
     args = parser.parse_args(argv)
     if not 30 <= args.timeout_seconds <= 600:
         parser.error("--timeout-seconds must be between 30 and 600")
@@ -1973,6 +2521,7 @@ def main(argv: list[str] | None = None) -> int:
         output,
         timeout=args.timeout_seconds,
         runtime_input_manifest_path=args.runtime_input_manifest.absolute(),
+        package_root=args.package_root.absolute(),
     )
     if code != 0:
         _report_failure(output)

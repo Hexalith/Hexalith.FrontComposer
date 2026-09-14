@@ -3,8 +3,9 @@
 
 from __future__ import annotations
 
-import copy
+import base64
 import contextlib
+import copy
 import hashlib
 import io
 import json
@@ -14,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable
@@ -68,6 +70,50 @@ def _write_json(path: Path, value: dict[str, Any]) -> None:
 
 def _offset_timestamp(value: str, seconds: int) -> str:
     return (datetime.fromisoformat(value) + timedelta(seconds=seconds)).isoformat()
+
+
+def _synthetic_package_ledger(
+    assets_paths: list[str],
+    captured_at: str,
+    *,
+    graph_sha256: str,
+) -> dict[str, Any]:
+    content_hash = base64.b64encode(bytes(range(64))).decode("ascii")
+    binding = {
+        "id": "Synthetic.Package",
+        "version": "1.0.0",
+        "relativePath": "synthetic.package/1.0.0",
+        "contentHashSha512": content_hash,
+    }
+    files = [
+        {
+            "path": "lib/net10.0/Synthetic.Package.dll",
+            "bytes": 1,
+            "sha256": "a" * 64,
+        }
+    ]
+    package = {
+        **binding,
+        "nupkgSha512": content_hash,
+        "files": files,
+        "treeSha256": evidence._package_tree_sha256(files),
+    }
+    entries = {
+        "assetsGraphs": [
+            {"path": path, "sha256": graph_sha256, "packages": [binding]}
+            for path in assets_paths
+        ],
+        "packages": [package],
+    }
+    return {
+        "schema": evidence.PACKAGE_LEDGER_SCHEMA,
+        "capturedAt": captured_at,
+        "packageRoot": "fresh-external",
+        **entries,
+        "treeSha256": hashlib.sha256(
+            json.dumps(entries, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest(),
+    }
 
 
 def _set_manifest_hash(evidence_root: Path, relative: str) -> None:
@@ -194,6 +240,21 @@ class RuntimeInputInventoryTests(unittest.TestCase):
         for relative in ignored_paths:
             self.assertIn(relative, untracked_issue)
 
+    def test_runtime_scope_bounds_dirty_path_diagnostics(self) -> None:
+        for index in range(evidence.MAX_DIAGNOSTIC_PATHS + 5):
+            path = self.repository / f"src/untracked-{index:02}.cs"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("untracked runtime input\n", encoding="utf-8")
+
+        _, issues = evidence._runtime_input_snapshot(self.repository)
+
+        untracked_issue = next(
+            issue for issue in issues if "contains untracked files" in issue
+        )
+        self.assertIn("src/untracked-19.cs", untracked_issue)
+        self.assertNotIn("src/untracked-20.cs", untracked_issue)
+        self.assertIn("omitted 5 additional path(s)", untracked_issue)
+
     def test_runtime_scope_allows_generated_bin_and_obj_outputs(self) -> None:
         for relative in (
             "src/Feature/Feature.csproj",
@@ -249,6 +310,330 @@ class RuntimeInputInventoryTests(unittest.TestCase):
         )
         self.assertIn("src/Feature/wwwroot/bin/config.json", untracked_issue)
 
+    def test_raw_crlf_checkout_is_compared_with_validator_owned_eol_rules(self) -> None:
+        attributes = self.repository / ".gitattributes"
+        source = self.repository / "src/Feature/Feature.cs"
+        source.parent.mkdir(parents=True)
+        attributes.write_text("*.cs text eol=crlf\n", encoding="utf-8")
+        source.write_bytes(b"line-one\nline-two\n")
+        subprocess.run(
+            ["git", "add", ".gitattributes", "src/Feature/Feature.cs"],
+            cwd=self.repository,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "commit", "-qm", "test: add text input"],
+            cwd=self.repository,
+            check=True,
+        )
+        source.write_bytes(b"line-one\r\nline-two\r\n")
+
+        objects, error = evidence._bulk_worktree_git_objects(
+            self.repository, [("src/Feature/Feature.cs", "100644")]
+        )
+        index_object = subprocess.run(
+            ["git", "rev-parse", "HEAD:src/Feature/Feature.cs"],
+            cwd=self.repository,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+        self.assertIsNone(error)
+        self.assertIn(index_object, objects["src/Feature/Feature.cs"])
+
+    def test_custom_filter_and_info_attribute_overrides_fail_without_filter_execution(self) -> None:
+        source = self.repository / "src/Feature/Feature.cs"
+        source.parent.mkdir(parents=True)
+        source.write_text("tracked\n", encoding="utf-8")
+        (self.repository / ".gitattributes").write_text(
+            "*.cs filter=credential-leak\n", encoding="utf-8"
+        )
+        subprocess.run(
+            ["git", "add", ".gitattributes", "src/Feature/Feature.cs"],
+            cwd=self.repository,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "commit", "-qm", "test: add filtered input"],
+            cwd=self.repository,
+            check=True,
+        )
+        marker = self.repository / "filter-executed"
+        subprocess.run(
+            [
+                "git", "config", "filter.credential-leak.clean",
+                f"touch {marker}",
+            ],
+            cwd=self.repository,
+            check=True,
+        )
+
+        _, filter_error = evidence._bulk_worktree_git_objects(
+            self.repository, [("src/Feature/Feature.cs", "100644")]
+        )
+
+        self.assertIn("custom Git filter", filter_error or "")
+        self.assertFalse(marker.exists(), "validator must never execute configured clean filters")
+
+        (self.repository / ".git/info/attributes").write_text(
+            "*.cs text eol=lf\n", encoding="utf-8"
+        )
+        _, override_error = evidence._bulk_worktree_git_objects(
+            self.repository, [("src/Feature/Feature.cs", "100644")]
+        )
+        self.assertIn("Repository-local Git attributes", override_error or "")
+
+    def test_ident_encoding_and_external_attribute_sources_fail_closed(self) -> None:
+        source = self.repository / "src/Feature/Feature.cs"
+        attributes = self.repository / ".gitattributes"
+        source.parent.mkdir(parents=True)
+        source.write_text("tracked\n", encoding="utf-8")
+        attributes.write_text("*.cs text\n", encoding="utf-8")
+        subprocess.run(
+            ["git", "add", ".gitattributes", "src/Feature/Feature.cs"],
+            cwd=self.repository,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "commit", "-qm", "test: add attribute input"],
+            cwd=self.repository,
+            check=True,
+        )
+
+        for rule, expected in (
+            ("*.cs ident\n", "ident attribute"),
+            ("*.cs working-tree-encoding=UTF-8\n", "working-tree-encoding"),
+        ):
+            with self.subTest(rule=rule):
+                attributes.write_text(rule, encoding="utf-8")
+                subprocess.run(
+                    ["git", "add", ".gitattributes"], cwd=self.repository, check=True
+                )
+                _, error = evidence._bulk_worktree_git_objects(
+                    self.repository, [("src/Feature/Feature.cs", "100644")]
+                )
+                self.assertIn(expected, error or "")
+
+        attributes.write_text("*.cs text\n", encoding="utf-8")
+        subprocess.run(
+            ["git", "add", ".gitattributes"], cwd=self.repository, check=True
+        )
+        external_attributes = self.repository.parent / "external-attributes"
+        external_attributes.write_text("*.cs eol=lf\n", encoding="utf-8")
+        for scope, variable in (
+            ("global", "GIT_CONFIG_GLOBAL"),
+            ("system", "GIT_CONFIG_SYSTEM"),
+        ):
+            with self.subTest(scope=scope):
+                config = self.repository.parent / f"{scope}.gitconfig"
+                config.write_text(
+                    f"[core]\n\tattributesFile = {external_attributes}\n",
+                    encoding="utf-8",
+                )
+                environment = {
+                    variable: str(config),
+                    "GIT_CONFIG_NOSYSTEM": "0" if scope == "system" else "1",
+                }
+                with mock.patch.dict(os.environ, environment):
+                    _, error = evidence._bulk_worktree_git_objects(
+                        self.repository, [("src/Feature/Feature.cs", "100644")]
+                    )
+                self.assertIn("override tracked attributes", error or "")
+
+    def test_ignored_project_output_symlink_is_rejected_before_output_exemption(self) -> None:
+        project = self.repository / "src/Feature/Feature.csproj"
+        project.parent.mkdir(parents=True)
+        project.write_text("<Project />\n", encoding="utf-8")
+        subprocess.run(
+            ["git", "add", "src/Feature/Feature.csproj"],
+            cwd=self.repository,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "commit", "-qm", "test: add project for symlink"],
+            cwd=self.repository,
+            check=True,
+        )
+        outside = self.repository.parent / "outside-output"
+        outside.mkdir()
+        (project.parent / "obj").symlink_to(outside, target_is_directory=True)
+
+        _, issues = evidence._runtime_input_snapshot(self.repository)
+
+        self.assertTrue(any("untracked symlinks" in issue for issue in issues), issues)
+
+
+class ResolvedPackageLedgerTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self._temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self._temporary.cleanup)
+        root = Path(self._temporary.name)
+        self.repository = root / "repository"
+        self.package_root = root / "packages"
+        self.repository.mkdir()
+        self.package_root.mkdir()
+
+    def _package(
+        self,
+        package_id: str,
+        version: str,
+        payload: bytes,
+        *,
+        signed: bool = False,
+    ) -> dict[str, Any]:
+        relative = f"{package_id.casefold()}/{version.casefold()}"
+        directory = self.package_root / relative
+        (directory / "lib/net10.0").mkdir(parents=True)
+        archive = directory / f"{package_id.casefold()}.{version.casefold()}.nupkg"
+        with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as package:
+            package.writestr("lib/net10.0/package.bin", payload)
+        digest = base64.b64encode(hashlib.sha512(archive.read_bytes()).digest()).decode("ascii")
+        if signed:
+            with zipfile.ZipFile(archive, "a", compression=zipfile.ZIP_STORED) as package:
+                package.writestr(".signature.p7s", b"synthetic-signature")
+        (directory / "lib/net10.0" / f"{package_id}.dll").write_bytes(
+            b"extracted-" + payload
+        )
+        return {"sha512": digest, "type": "package", "path": relative}
+
+    def _assets(self, relative: str, libraries: dict[str, Any]) -> Path:
+        path = self.repository / relative
+        path.parent.mkdir(parents=True)
+        _write_json(
+            path,
+            {
+                "packageFolders": {str(self.package_root) + os.sep: {}},
+                "libraries": libraries,
+            },
+        )
+        return path
+
+    def test_two_assets_graphs_bind_exact_union_archive_and_extracted_bytes(self) -> None:
+        alpha = self._package("Alpha.Package", "1.0.0", b"alpha-archive")
+        beta = self._package("Beta.Package", "2.0.0", b"beta-archive", signed=True)
+        first = self._assets("first/obj/project.assets.json", {"Alpha.Package/1.0.0": alpha})
+        second = self._assets(
+            "second/obj/project.assets.json",
+            {"Alpha.Package/1.0.0": alpha, "Beta.Package/2.0.0": beta},
+        )
+
+        ledger, issues = evidence.resolved_package_ledger(
+            self.repository, self.package_root, [second, first]
+        )
+        semantic_issues: list[str] = []
+        evidence.validate_package_ledger_semantics(ledger, semantic_issues)
+
+        self.assertEqual(issues, [])
+        self.assertEqual(semantic_issues, [])
+        self.assertEqual(
+            [item["path"] for item in ledger["assetsGraphs"]],
+            ["first/obj/project.assets.json", "second/obj/project.assets.json"],
+        )
+        self.assertEqual([item["id"] for item in ledger["packages"]], ["Alpha.Package", "Beta.Package"])
+
+        extracted = self.package_root / "alpha.package/1.0.0/lib/net10.0/Alpha.Package.dll"
+        extracted.write_bytes(b"poisoned")
+        validation_errors: list[str] = []
+        evidence.validate_package_ledger(
+            ledger,
+            self.repository,
+            self.package_root,
+            [first, second],
+            validation_errors,
+        )
+        self.assertTrue(any("differs from the current restored package authority" in error for error in validation_errors), validation_errors)
+
+        extracted.write_bytes(b"extracted-alpha-archive")
+        archive = self.package_root / "alpha.package/1.0.0/alpha.package.1.0.0.nupkg"
+        archive_bytes = archive.read_bytes()
+        archive.write_bytes(b"poisoned-archive")
+        archive_errors: list[str] = []
+        evidence.validate_package_ledger(
+            ledger,
+            self.repository,
+            self.package_root,
+            [first, second],
+            archive_errors,
+        )
+        self.assertTrue(
+            any("nupkg" in error for error in archive_errors),
+            archive_errors,
+        )
+
+        archive.write_bytes(archive_bytes)
+        missing_graph_errors: list[str] = []
+        evidence.validate_package_ledger(
+            ledger,
+            self.repository,
+            self.package_root,
+            [first],
+            missing_graph_errors,
+        )
+        self.assertTrue(
+            any("differs from the current restored package authority" in error for error in missing_graph_errors),
+            missing_graph_errors,
+        )
+
+        orphan = self.package_root / "orphan.package/9.9.9"
+        orphan.mkdir(parents=True)
+        (orphan / "orphan.txt").write_text("orphan\n", encoding="utf-8")
+        orphan_errors: list[str] = []
+        evidence.validate_package_ledger(
+            ledger,
+            self.repository,
+            self.package_root,
+            [first, second],
+            orphan_errors,
+        )
+        self.assertTrue(any("orphan package directories" in error for error in orphan_errors), orphan_errors)
+
+    def test_new_ledgers_require_nonempty_assets_and_global_package_sets(self) -> None:
+        empty_ledger, generation_issues = evidence.resolved_package_ledger(
+            self.repository, self.package_root, []
+        )
+        semantic_issues: list[str] = []
+        evidence.validate_package_ledger_semantics(empty_ledger, semantic_issues)
+
+        for issues in (generation_issues, semantic_issues):
+            self.assertIn(
+                "Resolved-package ledger must bind at least one assets graph.",
+                issues,
+            )
+            self.assertIn(
+                "Resolved-package ledger must bind at least one global package.",
+                issues,
+            )
+
+        package_free_assets = self._assets(
+            "empty/obj/project.assets.json", {}
+        )
+        _, package_free_issues = evidence.resolved_package_ledger(
+            self.repository, self.package_root, [package_free_assets]
+        )
+        self.assertNotIn(
+            "Resolved-package ledger must bind at least one assets graph.",
+            package_free_issues,
+        )
+        self.assertIn(
+            "Resolved-package ledger must bind at least one global package.",
+            package_free_issues,
+        )
+
+    def test_package_root_must_start_fresh_external_and_non_symlinked(self) -> None:
+        self.assertEqual(
+            evidence.validate_fresh_package_root(self.repository, self.package_root), []
+        )
+        (self.package_root / "ambient.txt").write_text("ambient\n", encoding="utf-8")
+        self.assertTrue(
+            any("fresh and empty" in error for error in evidence.validate_fresh_package_root(self.repository, self.package_root))
+        )
+        symlink = self.repository.parent / "linked-packages"
+        symlink.symlink_to(self.package_root, target_is_directory=True)
+        self.assertTrue(
+            any("symlinked" in error for error in evidence.validate_fresh_package_root(self.repository, symlink))
+        )
+
 
 class EventStoreRuntimeEvidenceTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -258,6 +643,15 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         self.evidence_root = temporary_root / "evidence"
         self.live_root = temporary_root / "live-evidence"
         self.artifact_root = temporary_root / "artifact-root"
+        self.package_root = temporary_root / "packages"
+        self.package_root.mkdir()
+        self.package_ledger_path = temporary_root / "provider-package-ledger.json"
+        self.provider_package_ledger = _synthetic_package_ledger(
+            list(evidence.PROVIDER_PACKAGE_ASSETS),
+            "2026-09-12T11:00:00+00:00",
+            graph_sha256="1" * 64,
+        )
+        _write_json(self.package_ledger_path, self.provider_package_ledger)
         self.pact_root = self.artifact_root / evidence.CANONICAL_PACT_ROOT
         self.active_root = (
             self.artifact_root / "_bmad-output" / "implementation-artifacts" / "evidence"
@@ -301,6 +695,31 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             "reasonCode": "health.readiness.succeeded",
             "statusCode": 200,
         }
+        apphost_graph = evidence.APPHOST_PACKAGE_ASSETS_ROOT
+        active_smoke["schema"] = "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v3"
+        active_smoke["executionStartedAt"] = "2026-09-14T08:02:30+00:00"
+        active_smoke["identity"]["runtimeInputCapturedAt"] = "2026-09-12T08:53:30+00:00"
+        active_smoke["packageLedger"] = _synthetic_package_ledger(
+            [apphost_graph],
+            "2026-09-14T08:02:00+00:00",
+            graph_sha256="3" * 64,
+        )
+        output_preparation["evaluatedInputBinding"] = {
+            "assetsGraphs": [apphost_graph],
+            "inputs": [{"authority": "repository", "path": "global.json", "sha256": "5" * 64}],
+        }
+        output_preparation["runtimeOutputBinding"] = [
+            {"path": "net10.0/AppHost.dll", "bytes": 1, "sha256": "6" * 64}
+        ]
+        active_smoke["authorizationControls"]["projectionSignalR"].update(
+            {
+                "transport": "websocket-upgrade",
+                "negotiatedWith": "valid-bearer",
+                "upgradeResult": "rejected-before-switching-protocols",
+            }
+        )
+        active_smoke["cleanup"]["packageAuthorityCleanAfterRun"] = True
+        active_smoke["cleanup"]["runtimeOutputsCleanAfterRun"] = True
         _write_json(active_smoke_path, active_smoke)
         active_smoke_hash = _sha256(active_smoke_path)
 
@@ -463,12 +882,29 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         )
         runtime_tree_patcher.start()
         self.addCleanup(runtime_tree_patcher.stop)
+        package_patcher = mock.patch.object(
+            evidence,
+            "validate_package_ledger",
+            side_effect=lambda document, *args, **kwargs: (
+                datetime.fromisoformat(document["capturedAt"])
+                if isinstance(document, dict) and isinstance(document.get("capturedAt"), str)
+                else None
+            ),
+        )
+        package_patcher.start()
+        self.addCleanup(package_patcher.stop)
 
     def validate(self) -> list[str]:
         return evidence.validate(self.evidence_root, self.pact_root)
 
     def validate_live(self) -> list[str]:
-        return evidence.validate_live(self.live_root, self.pact_root, ROOT)
+        return evidence.validate_live(
+            self.live_root,
+            self.pact_root,
+            ROOT,
+            provider_package_root=self.package_root,
+            apphost_package_root=self.package_root,
+        )
 
     def validate_active(self) -> tuple[list[str], list[str], bool]:
         return evidence.validate_active(
@@ -487,25 +923,39 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                 self.active_root / "frontcomposer-runtime-inputs.json"
             ),
             pact_dir=self.pact_root,
+            package_ledger_path=self.package_ledger_path,
+            package_root=self.package_root,
         )
 
     def make_live_apphost_pass(self) -> None:
         provenance_errors: list[str] = []
         provenance = evidence._live_provenance(ROOT, provenance_errors)
         self.assertEqual(provenance_errors, [])
+        runtime_captured_at = _read_json(
+            CANONICAL_ACTIVE_EVIDENCE / "frontcomposer-runtime-inputs.json"
+        )["capturedAt"]
+        apphost_graph = evidence.APPHOST_PACKAGE_ASSETS_ROOT
+        package_ledger = _synthetic_package_ledger(
+            [apphost_graph],
+            "2026-09-13T17:00:01+00:00",
+            graph_sha256="7" * 64,
+        )
         document = {
-            "schema": "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v2",
-            "capturedAt": "2026-08-31T17:00:00+00:00",
-            "completedAt": "2026-08-31T17:00:10+00:00",
+            "schema": "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v3",
+            "capturedAt": "2026-09-13T17:00:00+00:00",
+            "executionStartedAt": "2026-09-13T17:00:02+00:00",
+            "completedAt": "2026-09-13T17:00:10+00:00",
             "timeoutSeconds": 30,
             "finalVerdict": "passed",
             "reasonCodes": [],
+            "packageLedger": package_ledger,
             "identity": {
                 "eventStoreSourceSha": provenance["sourceSha"],
                 "eventStoreReleaseVersion": provenance["releaseVersion"],
                 "buildsCatalogSha": provenance["buildsSha"],
                 "frontComposerRevision": provenance["frontComposerRevision"],
                 "runtimeInputTreeSha256": provenance["runtimeInputTreeSha256"],
+                "runtimeInputCapturedAt": runtime_captured_at,
             },
             "topology": {
                 "programPath": "src/Hexalith.FrontComposer.AppHost/Program.cs",
@@ -544,6 +994,15 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                     "reachableSourceGitlinks": list(evidence.APPHOST_REACHABLE_SOURCE_GITLINKS),
                     "inactiveGuardedGitlinks": list(evidence.APPHOST_INACTIVE_GUARDED_GITLINKS),
                     "evaluatedSourceGraph": "passed",
+                    "evaluatedInputBinding": {
+                        "assetsGraphs": [apphost_graph],
+                        "inputs": [
+                            {"authority": "repository", "path": "global.json", "sha256": "8" * 64}
+                        ],
+                    },
+                    "runtimeOutputBinding": [
+                        {"path": "net10.0/AppHost.dll", "bytes": 1, "sha256": "9" * 64}
+                    ],
                 },
                 "resourceWaits": {
                     "security": "healthy",
@@ -614,6 +1073,9 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                     "reasonCode": "authorization.invalid-bearer.rejected",
                     "statusCode": 401,
                     "endpoint": "http://127.0.0.1:18001/hubs/projection-changes",
+                    "transport": "websocket-upgrade",
+                    "negotiatedWith": "valid-bearer",
+                    "upgradeResult": "rejected-before-switching-protocols",
                 },
             },
             "cleanup": {
@@ -625,6 +1087,8 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                 "listenerConfirmation": "ports-probed-closed",
                 "confirmation": "aspire-ps-empty",
                 "runtimeInputsCleanAfterRun": True,
+                "packageAuthorityCleanAfterRun": True,
+                "runtimeOutputsCleanAfterRun": True,
                 "daprNameResolutionFiles": {
                     "absentBeforeRun": [
                         "src/Hexalith.FrontComposer.AppHost/nr.db",
@@ -666,6 +1130,16 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         )
         bootstrap_patch.start()
         self.addCleanup(bootstrap_patch.stop)
+        principal_patch = mock.patch.object(
+            evidence,
+            "APPROVAL_PRINCIPAL_BOOTSTRAP",
+            {
+                actor: f"principal:{role}"
+                for role, actor in actors.items()
+            },
+        )
+        principal_patch.start()
+        self.addCleanup(principal_patch.stop)
         for assignment in policy["assignments"]:
             role = assignment["role"]
             assignment["authorities"] = [{
@@ -1221,6 +1695,56 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         self.assertTrue(claimed)
         self.assertTrue(any("Receipt role does not bind" in error for error in errors), errors)
 
+    def test_active_receipt_rejects_wrong_actor_source_and_decision(self) -> None:
+        self.claim_active_approval()
+        original_identity = _read_json(self.identity_path)
+        binding = next(
+            item for item in original_identity["approval"]["receipts"]
+            if item["role"] == "eventstore-maintainer"
+        )
+        path = self.artifact_root / binding["path"]
+        original_receipt = _read_json(path)
+        mutations: tuple[tuple[str, Callable[[dict[str, Any]], None], str], ...] = (
+            (
+                "actor",
+                lambda receipt: receipt.__setitem__("actor", "github:release-owner"),
+                "Receipt actor is not assigned",
+            ),
+            (
+                "durableSource",
+                lambda receipt: receipt.__setitem__(
+                    "durableSource", "https://example.test/approvals/not-authorized"
+                ),
+                "actor/source is not authorized",
+            ),
+            (
+                "decision",
+                lambda receipt: receipt.__setitem__("decision", "rejected"),
+                "Receipt decision does not bind",
+            ),
+        )
+        for field, mutate, expected in mutations:
+            with self.subTest(field=field):
+                receipt = copy.deepcopy(original_receipt)
+                mutate(receipt)
+                _write_json(path, receipt)
+                identity = copy.deepcopy(original_identity)
+                target = next(
+                    item for item in identity["approval"]["receipts"]
+                    if item["role"] == "eventstore-maintainer"
+                )
+                target["sha256"] = _sha256(path)
+                _write_json(self.identity_path, identity)
+
+                errors, approval_issues, claimed = self.validate_active()
+
+                self.assertTrue(claimed)
+                self.assertTrue(any(expected in issue for issue in approval_issues), approval_issues)
+                self.assertTrue(errors)
+
+        _write_json(path, original_receipt)
+        _write_json(self.identity_path, original_identity)
+
     def test_oi18_product_and_architecture_receipts_precede_transferred_ownership(self) -> None:
         self.claim_active_approval(transferred_eventstore_role=True)
 
@@ -1229,6 +1753,47 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         self.assertTrue(claimed)
         self.assertEqual(approval_issues, [])
         self.assertEqual(errors, [])
+
+    def test_oi18_receipt_rejects_wrong_actor_source_and_decision(self) -> None:
+        mutations: tuple[tuple[str, Callable[[dict[str, Any]], None], str], ...] = (
+            (
+                "actor",
+                lambda receipt: receipt.__setitem__("actor", "github:architect"),
+                "actor/source is not authorized",
+            ),
+            (
+                "durableSource",
+                lambda receipt: receipt.__setitem__(
+                    "durableSource", "https://example.test/approvals/not-authorized"
+                ),
+                "actor/source is not authorized",
+            ),
+            (
+                "decision",
+                lambda receipt: receipt.__setitem__("decision", "ownership-transfer-rejected"),
+                "receipt decision is invalid",
+            ),
+        )
+        for field, mutate, expected in mutations:
+            with self.subTest(field=field):
+                shutil.rmtree(self.active_root)
+                shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
+                shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
+                self.claim_active_approval(transferred_eventstore_role=True)
+                roster = _read_json(self.active_root / "reviewer-roster.json")
+                binding = roster["oi18"]["productApprovalReceipt"]
+                path = self.artifact_root / binding["path"]
+                receipt = _read_json(path)
+                mutate(receipt)
+                _write_json(path, receipt)
+                binding["sha256"] = _sha256(path)
+                self.repin_active_roster(roster)
+
+                errors, approval_issues, claimed = self.validate_active()
+
+                self.assertTrue(claimed)
+                self.assertTrue(any(expected in issue for issue in approval_issues), approval_issues)
+                self.assertTrue(errors)
 
     def test_active_receipt_validator_rejects_every_missing_field(self) -> None:
         self.claim_active_approval()
@@ -1704,6 +2269,21 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                 errors, _, _ = self.validate_active()
 
                 self.assertTrue(any(expected in error for error in errors), errors)
+
+    def test_new_apphost_package_ledger_must_predate_execution_boundary(self) -> None:
+        self.repin_active_recapture(
+            "apphost-smoke.json",
+            lambda document: document["packageLedger"].__setitem__(
+                "capturedAt", document["executionStartedAt"]
+            ),
+        )
+
+        errors, _, _ = self.validate_active()
+
+        self.assertIn(
+            "Live AppHost chronology must be runtime manifest, package ledger, execution start, completion.",
+            errors,
+        )
 
     def test_final_subject_must_postdate_decision_policy_and_roster(self) -> None:
         cases = (
@@ -2491,6 +3071,83 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         self.assertTrue(any("finalVerdict must equal 'passed'" in error for error in errors), errors)
         self.assertTrue(any("AppHost smoke is not a clean passing run" in error for error in errors), errors)
 
+    def test_live_apphost_rejects_semantically_self_consistent_empty_package_authority(self) -> None:
+        self.make_live_apphost_pass()
+        smoke_path = self.live_root / "apphost-smoke.json"
+        document = _read_json(smoke_path)
+        ledger = document["packageLedger"]
+        ledger["assetsGraphs"] = []
+        ledger["packages"] = []
+        ledger["treeSha256"] = hashlib.sha256(
+            json.dumps(
+                {"assetsGraphs": [], "packages": []},
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
+        document["startup"]["outputPreparation"]["evaluatedInputBinding"][
+            "assetsGraphs"
+        ] = []
+        _write_json(smoke_path, document)
+
+        errors = evidence.validate_live(
+            self.live_root,
+            self.pact_root,
+            ROOT,
+            provider_package_root=self.package_root,
+            apphost_package_root=None,
+        )
+
+        self.assertIn(
+            "Resolved-package ledger must bind at least one assets graph.", errors
+        )
+        self.assertIn(
+            "Resolved-package ledger must bind at least one global package.", errors
+        )
+        self.assertIn(
+            "Live AppHost package ledger must bind the canonical AppHost assets root.",
+            errors,
+        )
+
+    def test_live_apphost_requires_canonical_root_in_exact_ledger_and_evaluated_set(self) -> None:
+        self.make_live_apphost_pass()
+        smoke_path = self.live_root / "apphost-smoke.json"
+        document = _read_json(smoke_path)
+        replacement = evidence.PROVIDER_PACKAGE_ASSETS[0]
+        ledger = document["packageLedger"]
+        ledger["assetsGraphs"][0]["path"] = replacement
+        ledger["treeSha256"] = hashlib.sha256(
+            json.dumps(
+                {
+                    "assetsGraphs": ledger["assetsGraphs"],
+                    "packages": ledger["packages"],
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
+        document["startup"]["outputPreparation"]["evaluatedInputBinding"][
+            "assetsGraphs"
+        ] = [replacement]
+        _write_json(smoke_path, document)
+
+        errors = evidence.validate_live(
+            self.live_root,
+            self.pact_root,
+            ROOT,
+            provider_package_root=self.package_root,
+            apphost_package_root=None,
+        )
+
+        self.assertIn(
+            "Live AppHost package ledger must bind the canonical AppHost assets root.",
+            errors,
+        )
+        self.assertIn(
+            "Live AppHost evaluated input binding is incomplete or outside its authorities.",
+            errors,
+        )
+
     def test_live_lane_rejects_drifted_query_provenance_stamp(self) -> None:
         self.make_live_apphost_pass()
         smoke = _read_json(self.live_root / "apphost-smoke.json")
@@ -2563,7 +3220,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         mutations = (
             lambda document: document.__setitem__("timeoutSeconds", True),
             lambda document: document.__setitem__("timeoutSeconds", 29),
-            lambda document: document.__setitem__("completedAt", "2026-08-31T17:00:32+00:00"),
+            lambda document: document.__setitem__("completedAt", "2026-09-13T17:00:32+00:00"),
         )
         for mutate in mutations:
             with self.subTest(mutate=mutate):
@@ -2819,6 +3476,62 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         self.assertTrue(any("encoded token-like value" in error for error in errors), errors)
 
+    def test_redaction_classifies_each_authorization_and_new_secret_grammar(self) -> None:
+        artifact = Path(self._temporary.name) / "redaction.json"
+        artifact.write_bytes(
+            (
+                "{\r\n"
+                '  "Authorization": "Bearer FC_CONTRACT_TOKEN",\r\n'
+                '  "authorization": "Bearer opaque-secret",\r\n'
+                '  "client_secret": "value",\r\n'
+                '  "sourceToken": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_abcd"\r\n'
+                "}\r\n"
+            ).encode("utf-8")
+        )
+
+        errors: list[str] = []
+        evidence._scan_redaction(artifact, errors)
+
+        self.assertTrue(any("raw Authorization header" in error for error in errors), errors)
+        self.assertTrue(any("client" in error for error in errors), errors)
+        self.assertTrue(any("encoded token-like value" in error for error in errors), errors)
+
+        benign = Path(self._temporary.name) / "redaction-benign.json"
+        benign.write_text('{"requiresAuthorization":false}\n', encoding="utf-8")
+        benign_errors: list[str] = []
+        evidence._scan_redaction(benign, benign_errors)
+        self.assertFalse(
+            any("raw Authorization header" in error for error in benign_errors),
+            benign_errors,
+        )
+
+    def test_manifest_metadata_drift_is_rejected_before_receipt_replacement(self) -> None:
+        manifest_path = self.pact_root / "interaction-manifest.json"
+        manifest = _read_json(manifest_path)
+        manifest["interactions"][0]["classifierExpectation"] = "forged-but-nonempty"
+        _write_json(manifest_path, manifest)
+
+        errors = self.write_live_receipt()
+
+        self.assertTrue(any("classifierExpectation differs" in error for error in errors), errors)
+
+    def test_distinct_actor_aliases_for_one_principal_do_not_separate_roles(self) -> None:
+        self.claim_active_approval()
+        eventstore_actor = next(
+            iter(evidence.APPROVAL_AUTHORITY_BOOTSTRAP["eventstore-maintainer"])
+        )
+        frontcomposer_actor = next(
+            iter(evidence.APPROVAL_AUTHORITY_BOOTSTRAP["frontcomposer-maintainer"])
+        )
+        evidence.APPROVAL_PRINCIPAL_BOOTSTRAP[frontcomposer_actor] = (
+            evidence.APPROVAL_PRINCIPAL_BOOTSTRAP[eventstore_actor]
+        )
+
+        errors, approval_issues, _ = self.validate_active()
+
+        self.assertTrue(any("immutable principals" in issue for issue in approval_issues), approval_issues)
+        self.assertTrue(any("immutable principals" in error for error in errors), errors)
+
     def test_contract_redaction_does_not_globally_allowlist_known_sha256_value(self) -> None:
         manifest_path = self.pact_root / "interaction-manifest.json"
         manifest = _read_json(manifest_path)
@@ -2847,6 +3560,40 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         output = result.stdout + result.stderr
         self.assertIn("encoded token-like", output)
         self.assertIn("payload", output)
+
+    def test_powershell_redaction_matches_new_secret_keys_and_base64url(self) -> None:
+        manifest_path = self.pact_root / "interaction-manifest.json"
+        manifest = _read_json(manifest_path)
+        manifest["client_secret"] = "opaque"
+        manifest["private_key"] = "opaque"
+        manifest["sas_token"] = "opaque"
+        manifest["reasonToken"] = (
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_abcd"
+        )
+        _write_json(manifest_path, manifest)
+        artifact_root = Path(self._temporary.name) / "contract-artifacts-new-grammar"
+
+        result = subprocess.run(
+            [
+                "pwsh",
+                "-NoProfile",
+                "-File",
+                str(ROOT / "eng/validate-contract-artifacts.ps1"),
+                "-PactDir",
+                str(self.pact_root),
+                "-ArtifactDir",
+                str(artifact_root),
+            ],
+            cwd=ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+        output = result.stdout + result.stderr
+        self.assertNotEqual(result.returncode, 0)
+        for expected in ("client", "private", "sas", "encoded token-like"):
+            self.assertIn(expected, output)
 
     def test_preserved_successor_record_must_be_byte_identical_to_the_capture(self) -> None:
         relative = "frontcomposer-11-24-runtime-identity-successor.md"
@@ -3040,6 +3787,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         self,
         *arguments: str,
         environment: dict[str, str] | None = None,
+        validator_script: Path | None = None,
     ) -> tuple[subprocess.CompletedProcess[str], Path]:
         artifact_root = Path(self._temporary.name) / "contract-artifacts"
         result = subprocess.run(
@@ -3047,7 +3795,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                 "pwsh",
                 "-NoProfile",
                 "-File",
-                str(ROOT / "eng/validate-contract-artifacts.ps1"),
+                str(validator_script or ROOT / "eng/validate-contract-artifacts.ps1"),
                 "-ArtifactDir",
                 str(artifact_root),
                 *arguments,
@@ -3059,6 +3807,71 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             env=environment,
         )
         return result, artifact_root / "job-summary.md"
+
+    def _write_fixture_contract_validator(self) -> Path:
+        """Run the real CLI under the same deterministic fixture authorities as this test."""
+        fixture_eng = self.artifact_root / "eng"
+        fixture_eng.mkdir(parents=True, exist_ok=True)
+        powershell_path = fixture_eng / "validate-contract-artifacts.ps1"
+        shutil.copyfile(ROOT / "eng/validate-contract-artifacts.ps1", powershell_path)
+        captured_manifest = _read_json(
+            self.active_root / "frontcomposer-runtime-inputs.json"
+        )
+        wrapper = f'''#!/usr/bin/env python3
+import copy
+import json
+import subprocess
+import sys
+from datetime import datetime
+from pathlib import Path
+
+sys.path.insert(0, {str(ROOT / "eng")!r})
+import eventstore_runtime_evidence as evidence
+
+fixture_repository = Path({str(self.artifact_root)!r}).resolve()
+captured_manifest = json.loads({json.dumps(json.dumps(captured_manifest))})
+captured_entries = captured_manifest["entries"]
+evidence.APPROVAL_AUTHORITY_BOOTSTRAP = {evidence.APPROVAL_AUTHORITY_BOOTSTRAP!r}
+evidence.APPROVAL_PRINCIPAL_BOOTSTRAP = {evidence.APPROVAL_PRINCIPAL_BOOTSTRAP!r}
+
+evidence._runtime_input_snapshot = lambda repository_root: (copy.deepcopy(captured_entries), [])
+evidence._runtime_git_tree = lambda repository_root, revision: ({{}}, [])
+
+def fixture_git(repository_root, *arguments):
+    if arguments[:2] in (("rev-parse", "HEAD"), ("rev-parse", "--verify")):
+        return captured_manifest["capturedRevision"]
+    return ""
+
+evidence._git = fixture_git
+evidence._git_completed = lambda repository_root, *arguments: subprocess.CompletedProcess(
+    ["git", *arguments], 0, b"", b""
+)
+
+def fixture_provenance(repository_root, errors, *, runtime_manifest=None):
+    manifest = runtime_manifest or captured_manifest
+    return {{
+        "sourceSha": {evidence.ACTIVE_SOURCE_SHA!r},
+        "releaseVersion": {evidence.ACTIVE_VERSION!r},
+        "buildsSha": {evidence.ACTIVE_BUILDS_SHA!r},
+        "releaseInventorySha256": {evidence.INVENTORY_SHA256!r},
+        "frontComposerRevision": str(manifest["capturedRevision"]),
+        "runtimeInputTreeSha256": str(manifest["treeSha256"]),
+    }}
+
+evidence._live_provenance = fixture_provenance
+evidence.validate_package_ledger = lambda document, *args, **kwargs: (
+    datetime.fromisoformat(document["capturedAt"])
+    if isinstance(document, dict) and isinstance(document.get("capturedAt"), str)
+    else None
+)
+
+raise SystemExit(evidence.main())
+'''
+        (fixture_eng / "eventstore_runtime_evidence.py").write_text(
+            wrapper,
+            encoding="utf-8",
+        )
+        return powershell_path
 
     def test_required_provider_lane_accepts_the_canonical_live_evidence(self) -> None:
         fake_bin = Path(self._temporary.name) / "open-validator-bin"
@@ -3164,18 +3977,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
     def test_required_provider_lane_publishes_the_approved_summary_branch(self) -> None:
         self.claim_active_approval()
-        fake_bin = Path(self._temporary.name) / "fake-bin"
-        fake_bin.mkdir()
-        fake_python = fake_bin / "python3"
-        fake_python.write_text(
-            "#!/bin/sh\n"
-            "printf '%s\\n' 'EventStore runtime evidence operation completed successfully.'\n"
-            "printf '%s\\n' 'EventStore runtime approval: APPROVED'\n",
-            encoding="utf-8",
-        )
-        fake_python.chmod(0o755)
-        environment = os.environ.copy()
-        environment["PATH"] = f"{fake_bin}{os.pathsep}{environment['PATH']}"
+        validator_script = self._write_fixture_contract_validator()
         result, summary = self._run_contract_validator(
             "-RequireProviderVerification",
             "-PactDir",
@@ -3192,7 +3994,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             str(self.active_root),
             "-ActiveIdentity",
             str(self.identity_path),
-            environment=environment,
+            validator_script=validator_script,
         )
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

@@ -4,11 +4,13 @@ from __future__ import annotations
 
 
 import argparse
+import base64
 import hashlib
 import ipaddress
 import json
 import os
 import re
+import struct
 import subprocess
 import sys
 import tempfile
@@ -137,12 +139,16 @@ APPHOST_BUILD_PROPERTIES = {
 APPROVAL_AUTHORITY_BOOTSTRAP: dict[str, dict[str, frozenset[str]]] = {
     role: {} for role in POLICY_ROLES
 }
+# Future authority changes must add canonical lower-case actor aliases here and bind each
+# alias to one immutable human principal. This remains deliberately empty for Story 11.25.
+APPROVAL_PRINCIPAL_BOOTSTRAP: dict[str, str] = {}
 ACTIVE_APPROVAL_STATEMENT = "I approve this exact EventStore runtime migration subject."
 OI18_APPROVAL_STATEMENT = "I approve this exact OI-18 ownership transfer subject."
 MAX_CLOCK_SKEW = timedelta(minutes=5)
 ACTOR_RE = re.compile(
-    r"^(?:github:[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})|email:[^@\s]+@[^@\s]+\.[^@\s]+)$"
+    r"^(?:github:[a-z0-9](?:[a-z0-9-]{0,38})|email:[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z0-9-]+)$"
 )
+PRINCIPAL_RE = re.compile(r"^principal:[a-z0-9][a-z0-9._-]{0,127}$")
 MAX_FILE_BYTES = 1_048_576
 MAX_TOTAL_BYTES = 2_097_152
 MAX_RUN_MILLISECONDS = 300_000
@@ -229,6 +235,9 @@ LOCAL_PATH_PATTERNS = (
 # other preserved evidence files would be held to a weaker standard than their siblings.
 SECRET_PATTERNS = (
     re.compile(r'"?access[_-]?token"?\s*[=:]', re.IGNORECASE),
+    re.compile(r'"?client[_-]?secret"?\s*[=:]', re.IGNORECASE),
+    re.compile(r'"?private[_-]?key"?\s*[=:]', re.IGNORECASE),
+    re.compile(r'"?sas[_-]?token"?\s*[=:]', re.IGNORECASE),
     re.compile(r'"?api[_-]?key"?\s*[=:]', re.IGNORECASE),
     re.compile(r'"?password"?\s*[=:]', re.IGNORECASE),
     re.compile(r"set-cookie\s*:", re.IGNORECASE),
@@ -236,12 +245,80 @@ SECRET_PATTERNS = (
     re.compile(r"\bcookie\s*=", re.IGNORECASE),
     re.compile(r"connectionstring", re.IGNORECASE),
     re.compile(r"authorization_payload", re.IGNORECASE),
-    re.compile(r"Bearer\s+[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+"),
+    re.compile(
+        r"Bearer\s+[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+",
+        re.IGNORECASE,
+    ),
     re.compile(r"[A-Z0-9_]{8,}=.{6,}"),
 )
-RAW_AUTHORIZATION_RE = re.compile(r"\bauthorization\s*:", re.IGNORECASE)
-HASH_FIELD_RE = re.compile(r"(?:sha|hash|checksum|digest|fingerprint)", re.IGNORECASE)
-ENCODED_TOKEN_RE = re.compile(r"^[A-Za-z0-9+/]{64,}={0,2}$")
+PROVIDER_PACKAGE_ASSETS = (
+    "references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/obj/project.assets.json",
+    "references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification/obj/project.assets.json",
+)
+APPHOST_PACKAGE_ASSETS_ROOT = (
+    "src/Hexalith.FrontComposer.AppHost/obj/project.assets.json"
+)
+RAW_AUTHORIZATION_RE = re.compile(
+    r"(?:[\"']authorization[\"']|(?<![A-Za-z0-9_])authorization(?![A-Za-z0-9_]))"
+    r"\s*:(?!\s*\{)\s*",
+    re.IGNORECASE,
+)
+EXACT_SHA256_FIELDS = frozenset(
+    {
+        "byLocationDigest",
+        "catalog_sha256",
+        "certificate_sha256",
+        "contractsInventorySha256",
+        "decisionRecordSha256",
+        "evidenceManifestSha256",
+        "observedReleaseInventorySha256",
+        "oi18SubjectSha256",
+        "policySha256",
+        "programSha256",
+        "projectSha256",
+        "releaseInventorySha256",
+        "release_inventory_sha256",
+        "rosterSha256",
+        "runner_sha256_at_catalog_commit",
+        "runtimeInputTreeSha256",
+        "schema_sha256_at_catalog_commit",
+        "sha256",
+        "subjectSha256",
+        "subject_sha256",
+        "testInventorySha256",
+        "treeSha256",
+        "validator_sha256",
+        "workflow_sha256_at_source",
+    }
+)
+EXACT_SHA512_FIELDS = frozenset({"contentHashSha512", "nupkgSha512"})
+EXACT_ENCODED_FIELD_VALUES = {
+    "path": frozenset(
+        {PRIOR_EVIDENCE_ROOT, ACTIVE_EVIDENCE_ROOT, ACTIVE_RECAPTURE_ROOT}
+    ),
+    "receiptDirectory": frozenset({APPROVAL_RECEIPT_ROOT}),
+    "decision": frozenset(
+        {
+            "remove-eventstore-maintainer-and-substitute-accountable-frontcomposer-maintainer"
+        }
+    ),
+}
+ENCODED_TOKEN_RE = re.compile(r"^[A-Za-z0-9+/_-]{64,}={0,2}$")
+EXACT_AUTHORIZATION_LINE_RE = re.compile(
+    r'(?i)["\']authorization["\']\s*:\s*["\']Bearer FC_CONTRACT_TOKEN["\']'
+)
+PACKAGE_LEDGER_SCHEMA = "hexalith.frontcomposer.resolved-package-ledger.v1"
+MAX_DIAGNOSTIC_PATHS = 20
+FROZEN_PROVIDER_RECEIPT_SHA256 = "e3a635e5c1a22102ea9f60844524d63cf530050e20296b5fe01619ee286ffbb3"
+FROZEN_APPHOST_SMOKE_SHA256 = "526be617e793af7e4a219fbcf1f2600245e953b2baa5661cbb58a89bbe343b8e"
+
+
+def _bounded_path_diagnostic(prefix: str, paths: Iterable[str]) -> str:
+    values = sorted(set(paths))
+    displayed = values[:MAX_DIAGNOSTIC_PATHS]
+    omitted = len(values) - len(displayed)
+    suffix = f"; omitted {omitted} additional path(s)" if omitted else ""
+    return prefix + ", ".join(displayed) + suffix
 APPHOST_OBSERVATIONS = (
     "health",
     "commandSubmit",
@@ -484,11 +561,13 @@ def _scan_redaction(path: Path, errors: list[str]) -> None:
     except UnicodeDecodeError:
         errors.append(f"Unable to redaction-scan non-UTF-8 evidence: {path.name}")
         return
-    normalized = text.replace("FC_CONTRACT_TOKEN", "ALLOWLISTED_SYNTHETIC_TOKEN")
+    normalized = text.replace("Bearer FC_CONTRACT_TOKEN", "ALLOWLISTED_SYNTHETIC_TOKEN")
     for pattern in (*LOCAL_PATH_PATTERNS, *SECRET_PATTERNS):
         if pattern.search(normalized):
             errors.append(f"Redaction scan failed for {path.name}: {pattern.pattern}")
-    if RAW_AUTHORIZATION_RE.search(normalized) and "Bearer FC_CONTRACT_TOKEN" not in text:
+    authorization_occurrences = len(RAW_AUTHORIZATION_RE.findall(text))
+    allowed_authorization_occurrences = len(EXACT_AUTHORIZATION_LINE_RE.findall(text))
+    if authorization_occurrences != allowed_authorization_occurrences:
         errors.append(f"Redaction scan failed for {path.name}: raw Authorization header")
     if path.suffix.lower() == ".json":
         try:
@@ -504,8 +583,24 @@ def _scan_redaction(path: Path, errors: list[str]) -> None:
                 for index, child in enumerate(value):
                     scan_value(child, key, f"{location}[{index}]")
             elif isinstance(value, str) and ENCODED_TOKEN_RE.fullmatch(value):
-                is_sha256 = bool(SHA256_RE.fullmatch(value.lower()))
-                if not (is_sha256 and HASH_FIELD_RE.search(key)):
+                is_exact_sha256 = key in EXACT_SHA256_FIELDS and bool(
+                    SHA256_RE.fullmatch(value.lower())
+                )
+                is_exact_sha512 = False
+                if key in EXACT_SHA512_FIELDS:
+                    try:
+                        decoded = base64.b64decode(value, validate=True)
+                        is_exact_sha512 = (
+                            len(decoded) == 64
+                            and base64.b64encode(decoded).decode("ascii") == value
+                        )
+                    except (ValueError, base64.binascii.Error):
+                        pass
+                if not (
+                    is_exact_sha256
+                    or is_exact_sha512
+                    or value in EXACT_ENCODED_FIELD_VALUES.get(key, frozenset())
+                ):
                     errors.append(
                         f"Redaction scan failed for {path.name}: encoded token-like value at {location}"
                     )
@@ -597,16 +692,28 @@ def _validate_manifest(evidence_root: Path, errors: list[str]) -> dict[str, str]
     undeclared = sorted(actual_evidence - declared)
     absent = sorted(declared - actual_evidence)
     if undeclared:
-        errors.append(f"Evidence tree contains undeclared files: {', '.join(undeclared)}")
+        errors.append(
+            _bounded_path_diagnostic("Evidence tree contains undeclared files: ", undeclared)
+        )
     if absent:
-        errors.append(f"Evidence manifest declares missing files: {', '.join(absent)}")
+        errors.append(
+            _bounded_path_diagnostic("Evidence manifest declares missing files: ", absent)
+        )
     if declared != REQUIRED_SNAPSHOT_FILES:
         missing = sorted(REQUIRED_SNAPSHOT_FILES - declared)
         unexpected = sorted(declared - REQUIRED_SNAPSHOT_FILES)
         if missing:
-            errors.append(f"Evidence manifest is missing required files: {', '.join(missing)}")
+            errors.append(
+                _bounded_path_diagnostic(
+                    "Evidence manifest is missing required files: ", missing
+                )
+            )
         if unexpected:
-            errors.append(f"Evidence manifest contains unbounded files: {', '.join(unexpected)}")
+            errors.append(
+                _bounded_path_diagnostic(
+                    "Evidence manifest contains unbounded files: ", unexpected
+                )
+            )
     if total_bytes > MAX_TOTAL_BYTES:
         errors.append(f"Evidence snapshot exceeds the {MAX_TOTAL_BYTES}-byte bound.")
     return hashes
@@ -1050,20 +1157,64 @@ def _pact_interactions(
         path = pact_dir / filename
         hashes[filename] = _sha256_crlf_checkout(path, errors, filename)
         pact = _read_json(path, errors, filename)
+        pact_metadata = pact.get("metadata")
+        if (
+            not isinstance(pact.get("consumer"), dict)
+            or pact["consumer"].get("name") != "Hexalith.FrontComposer.Shell"
+            or not isinstance(pact.get("provider"), dict)
+            or pact["provider"].get("name") != "Hexalith.EventStore"
+            or not isinstance(pact_metadata, dict)
+            or not isinstance(pact_metadata.get("pactSpecification"), dict)
+            or pact_metadata["pactSpecification"].get("version") != "4.0"
+        ):
+            errors.append(f"{filename} has unexpected Pact parties or specification.")
         pact_interactions = pact.get("interactions", [])
         if not isinstance(pact_interactions, list):
             errors.append(f"{filename} interactions must be an array.")
             continue
         for item in pact_interactions:
-            states = item.get("providerStates", []) if isinstance(item, dict) else []
+            if not isinstance(item, dict):
+                errors.append(f"{filename} contains a malformed interaction.")
+                continue
+            states = item.get("providerStates", [])
             if not isinstance(states, list) or len(states) != 1 or not isinstance(states[0], dict):
                 errors.append(f"{filename} contains an interaction without one provider state.")
+                continue
+            request_value = item.get("request")
+            metadata = item.get("metadata")
+            if (
+                item.get("type") != "Synchronous/HTTP"
+                or not isinstance(request_value, dict)
+                or not isinstance(request_value.get("method"), str)
+                or not request_value["method"]
+                or not isinstance(request_value.get("path"), str)
+                or not str(request_value["path"]).startswith("/")
+                or not isinstance(metadata, dict)
+            ):
+                errors.append(f"{filename} contains incomplete HTTP interaction semantics.")
                 continue
             interaction = {
                 "description": str(item.get("description", "")),
                 "providerState": str(states[0].get("name", "")),
                 "pactFile": filename,
             }
+            if not all(interaction.values()):
+                errors.append(f"{filename} contains an interaction with an empty identity field.")
+                continue
+            interaction["method"] = str(request_value["method"])
+            interaction["path"] = str(request_value["path"])
+            for field in (
+                "generatedSource",
+                "adapterPath",
+                "owningAcceptanceCriteria",
+                "classifierExpectation",
+            ):
+                if not isinstance(metadata.get(field), str) or not metadata[field]:
+                    errors.append(
+                        f"{filename} interaction {interaction['description']} lacks {field}."
+                    )
+                else:
+                    interaction[field] = metadata[field]
             description = interaction["description"]
             if description in interactions_by_description:
                 errors.append(f"Committed pacts repeat interaction description: {description}")
@@ -1073,11 +1224,20 @@ def _pact_interactions(
         hashes[filename] = _sha256_crlf_checkout(path, errors, filename)
     manifest_path = pact_dir / "interaction-manifest.json"
     manifest = _read_json(manifest_path, errors, "interaction-manifest.json")
+    if (
+        set(manifest) != {
+            "story", "consumer", "provider", "pactFiles", "interactionCount", "interactions"
+        }
+        or manifest.get("story") != "10-3-consumer-driven-contract-tests-pact"
+        or manifest.get("consumer") != "Hexalith.FrontComposer.Shell"
+        or manifest.get("provider") != "Hexalith.EventStore"
+    ):
+        errors.append("Interaction manifest authority fields are not exact.")
     manifest_pact_files = manifest.get("pactFiles", [])
     if (
         not isinstance(manifest_pact_files, list)
         or len(manifest_pact_files) != len(PACT_FILES)
-        or set(manifest_pact_files) != set(PACT_FILES)
+        or manifest_pact_files != list(PACT_FILES)
     ):
         errors.append("Interaction manifest pact-file attribution does not match the committed pacts.")
     manifest_entries = manifest.get("interactions", [])
@@ -1086,7 +1246,11 @@ def _pact_interactions(
         manifest_entries = []
     ordered: list[dict[str, str]] = []
     for entry in manifest_entries:
-        if not isinstance(entry, dict):
+        manifest_fields = {
+            "description", "providerState", "method", "path", "generatedSource",
+            "adapterPath", "owningAcceptanceCriteria", "classifierExpectation",
+        }
+        if not isinstance(entry, dict) or set(entry) != manifest_fields:
             errors.append("Interaction manifest contains a malformed entry.")
             continue
         description = str(entry.get("description", ""))
@@ -1096,20 +1260,63 @@ def _pact_interactions(
             continue
         if pact_interaction["providerState"] != str(entry.get("providerState", "")):
             errors.append(f"Interaction manifest provider state differs from the pact: {description}")
-        ordered.append(pact_interaction)
+        for field in (
+            "method", "path", "generatedSource", "adapterPath",
+            "owningAcceptanceCriteria", "classifierExpectation",
+        ):
+            if not _exact(entry.get(field), pact_interaction[field]):
+                errors.append(
+                    f"Interaction manifest {field} differs from the pact: {description}"
+                )
+        ordered.append(
+            {
+                "description": pact_interaction["description"],
+                "providerState": pact_interaction["providerState"],
+                "pactFile": pact_interaction["pactFile"],
+            }
+        )
     if not _exact(manifest.get("interactionCount"), len(ordered)):
         errors.append("Interaction manifest interactionCount does not match its exact entries.")
     if set(interactions_by_description) != {entry["description"] for entry in ordered}:
         errors.append("Committed pacts contain interactions absent from the interaction manifest.")
     catalog_path = pact_dir / "provider-state-catalog.json"
     catalog = _read_json(catalog_path, errors, "provider-state-catalog.json")
+    expected_catalog_authority = {
+        "provider": "Hexalith.EventStore",
+        "defaultIsolation": (
+            "state reset per interaction; tenant/user/aggregate/cache data scoped by "
+            "verification run id"
+        ),
+        "forbiddenDependencies": [
+            "DAPR", "Aspire", "Keycloak", "external network", "persisted shared state"
+        ],
+        "startupGuards": [
+            "unique loopback port", "health probe", "bounded startup timeout",
+            "stale process detection", "process cleanup on failure",
+        ],
+    }
+    if set(catalog) != {*expected_catalog_authority, "states"} or any(
+        not _exact(catalog.get(field), expected)
+        for field, expected in expected_catalog_authority.items()
+    ):
+        errors.append("Provider-state catalog authority fields are not exact.")
     states = catalog.get("states", [])
     state_names: set[str] = set()
     if not isinstance(states, list):
         errors.append("Provider-state catalog states must be an array.")
         states = []
     for state in states:
-        if not isinstance(state, dict) or not isinstance(state.get("name"), str) or not state["name"]:
+        state_fields = {
+            "name", "setup", "teardown", "seededTenant", "seededUser",
+            "seededAggregateId", "expectedResult", "isolatedPerInteraction",
+            "owningRepository", "testOnlySeam",
+        }
+        if (
+            not isinstance(state, dict)
+            or set(state) != state_fields
+            or not isinstance(state.get("name"), str)
+            or not state["name"]
+        ):
             errors.append("Provider-state catalog contains a malformed state.")
             continue
         name = state["name"]
@@ -1119,6 +1326,23 @@ def _pact_interactions(
     interaction_states = {item["providerState"] for item in interactions_by_description.values()}
     if state_names != interaction_states:
         errors.append("Provider-state catalog set must equal the committed pact interaction states.")
+    for state in states:
+        if not isinstance(state, dict):
+            continue
+        if (
+            not all(
+                isinstance(state.get(field), str) and bool(state[field])
+                for field in (
+                    "setup", "teardown", "seededTenant", "seededUser",
+                    "seededAggregateId", "expectedResult", "testOnlySeam",
+                )
+            )
+            or state.get("isolatedPerInteraction") is not True
+            or state.get("owningRepository") != "Hexalith.EventStore"
+        ):
+            errors.append(
+                f"Provider-state catalog semantics are incomplete for: {state.get('name', '<unknown>')}"
+            )
     return ordered, hashes, state_names
 
 
@@ -1692,26 +1916,97 @@ def _runtime_index_flag_paths(
 
 
 def _worktree_git_objects(repository_root: Path, relative: str, data: bytes) -> frozenset[str]:
-    """Return raw and checkout-filtered object identities for worktree bytes."""
-    objects: set[str] = set()
-    for arguments in (
-        ["git", "hash-object", "--stdin"],
-        ["git", "hash-object", f"--path={relative}", "--stdin"],
-    ):
+    """Return only the validator-owned raw object identity for worktree bytes."""
+    del relative
+    object_format = _git(repository_root, "rev-parse", "--show-object-format") or "sha1"
+    if object_format not in {"sha1", "sha256"}:
+        return frozenset()
+    digest = hashlib.new(object_format)
+    digest.update(f"blob {len(data)}\0".encode("ascii"))
+    digest.update(data)
+    return frozenset({digest.hexdigest()})
+
+
+def _checked_attributes(
+    checkout: Path,
+    paths: list[str],
+    *,
+    sealed: bool,
+) -> tuple[dict[str, dict[str, str]], str | None]:
+    """Read effective attributes, optionally from tracked/indexed rules with overrides disabled."""
+    arguments = ["git"]
+    environment = os.environ.copy()
+    if sealed:
+        arguments.extend(["-c", "core.attributesFile=/dev/null"])
+        environment["GIT_ATTR_NOSYSTEM"] = "1"
+    arguments.extend(["check-attr"])
+    if sealed:
+        arguments.append("--cached")
+    arguments.extend(["-z", "--stdin", "--all"])
+    try:
+        completed = subprocess.run(
+            arguments,
+            cwd=checkout,
+            env=environment,
+            input=b"".join(os.fsencode(path) + b"\0" for path in paths),
+            check=False,
+            capture_output=True,
+            timeout=60,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return {}, "Unable to inspect Git attributes for worktree inputs."
+    if completed.returncode != 0:
+        return {}, "Unable to inspect Git attributes for worktree inputs."
+    values = completed.stdout.split(b"\0")
+    if values and values[-1] == b"":
+        values.pop()
+    if len(values) % 3:
+        return {}, "Git attribute output is malformed."
+    result: dict[str, dict[str, str]] = {path: {} for path in paths}
+    for offset in range(0, len(values), 3):
         try:
-            completed = subprocess.run(
-                arguments,
-                cwd=repository_root,
-                input=data,
-                check=False,
-                capture_output=True,
-                timeout=15,
-            )
-        except (OSError, subprocess.SubprocessError):
-            continue
-        if completed.returncode == 0:
-            objects.add(completed.stdout.decode("ascii", errors="ignore").strip().lower())
-    return frozenset(objects)
+            path = values[offset].decode("utf-8")
+            name = values[offset + 1].decode("utf-8")
+            value = values[offset + 2].decode("utf-8")
+        except UnicodeDecodeError:
+            return {}, "Git attribute output contains an unreadable value."
+        result.setdefault(path, {})[name] = value
+    return result, None
+
+
+def _has_repository_attribute_override(checkout: Path) -> bool:
+    """Return whether Git's untracked info/attributes source contains an active rule."""
+    located = _git_completed(checkout, "rev-parse", "--git-path", "info/attributes")
+    if located is None or located.returncode != 0:
+        return True
+    try:
+        value = located.stdout.decode("utf-8").strip()
+        attributes_path = Path(value)
+        if not attributes_path.is_absolute():
+            attributes_path = checkout / attributes_path
+        if not attributes_path.exists():
+            return False
+        text = attributes_path.read_text(encoding="utf-8-sig")
+    except (OSError, UnicodeDecodeError):
+        return True
+    return any(
+        line.strip() and not line.lstrip().startswith("#")
+        for line in text.splitlines()
+    )
+
+
+def _git_auto_classifies_text(data: bytes) -> bool:
+    """Mirror Git's bounded binary heuristic before applying text=auto EOL rules."""
+    sample = data[:8000]
+    if b"\0" in sample:
+        return False
+    printable_controls = {8, 9, 10, 12, 13, 27}
+    printable = sum(
+        byte in printable_controls or (32 <= byte < 127) or byte >= 128
+        for byte in sample
+    )
+    nonprintable = len(sample) - printable
+    return (printable >> 7) >= nonprintable
 
 
 def _project_output_roots(indexed_paths: Iterable[str]) -> tuple[tuple[str, ...], ...]:
@@ -1777,30 +2072,64 @@ def _bulk_worktree_git_objects(
     checkout: Path,
     entries: list[tuple[str, str]],
 ) -> tuple[dict[str, frozenset[str]], str | None]:
-    """Bulk-hash raw and checkout-filtered dependency bytes."""
+    """Hash raw bytes and only validator-normalized EOL bytes from tracked attributes."""
     objects: dict[str, set[str]] = {path: set() for path, _ in entries}
     regular_paths = [path for path, mode in entries if mode != "120000"]
-    if any("\n" in path or "\r" in path for path in regular_paths):
-        return {}, "The worktree contains a path unsupported by bulk hashing."
-    if regular_paths:
-        encoded_paths = ("\n".join(regular_paths) + "\n").encode("utf-8")
-        for options in ((), ("--no-filters",)):
-            try:
-                completed = subprocess.run(
-                    ["git", "hash-object", *options, "--stdin-paths"],
-                    cwd=checkout,
-                    input=encoded_paths,
-                    check=False,
-                    capture_output=True,
-                    timeout=60,
-                )
-            except (OSError, subprocess.SubprocessError):
-                return {}, "Unable to hash worktree bytes."
-            digests = completed.stdout.decode("ascii", errors="ignore").splitlines()
-            if completed.returncode != 0 or len(digests) != len(regular_paths):
-                return {}, "Unable to hash worktree bytes."
-            for path, digest in zip(regular_paths, digests, strict=True):
-                objects[path].add(digest.strip().lower())
+    if _has_repository_attribute_override(checkout):
+        return {}, "Repository-local Git attributes override tracked attributes."
+    sealed_attributes, attribute_error = _checked_attributes(
+        checkout, regular_paths, sealed=True
+    )
+    if attribute_error is not None:
+        return {}, attribute_error
+    effective_attributes, attribute_error = _checked_attributes(
+        checkout, regular_paths, sealed=False
+    )
+    if attribute_error is not None:
+        return {}, attribute_error
+    if effective_attributes != sealed_attributes:
+        return {}, "Effective repository-local/global/system Git attributes override tracked attributes."
+    for path, attributes in sealed_attributes.items():
+        filter_value = attributes.get("filter", "unspecified")
+        ident_value = attributes.get("ident", "unspecified")
+        encoding_value = attributes.get("working-tree-encoding", "unspecified")
+        if filter_value not in {"unset", "unspecified"}:
+            return {}, f"Runtime input uses a custom Git filter attribute: {path}"
+        if ident_value not in {"unset", "unspecified"}:
+            return {}, f"Runtime input uses the Git ident attribute: {path}"
+        if encoding_value not in {"unset", "unspecified"}:
+            return {}, f"Runtime input uses a working-tree-encoding attribute: {path}"
+        if "text" in attributes and attributes["text"] not in {"set", "auto", "unset"}:
+            return {}, f"Runtime input has a non-deterministic text attribute: {path}"
+        if "eol" in attributes and attributes["eol"] not in {"lf", "crlf", "unset"}:
+            return {}, f"Runtime input has an invalid eol attribute: {path}"
+    object_format = _git(checkout, "rev-parse", "--show-object-format") or "sha1"
+    if object_format not in {"sha1", "sha256"}:
+        return {}, "Unable to determine the Git object format."
+    for path in regular_paths:
+        try:
+            data = (checkout / path).read_bytes()
+        except OSError:
+            return {}, f"Unable to read worktree bytes: {path}"
+
+        def object_id(payload: bytes) -> str:
+            digest = hashlib.new(object_format)
+            digest.update(f"blob {len(payload)}\0".encode("ascii"))
+            digest.update(payload)
+            return digest.hexdigest()
+
+        objects[path].add(object_id(data))
+        attributes = sealed_attributes.get(path, {})
+        text_value = attributes.get("text")
+        eol_value = attributes.get("eol")
+        should_normalize = (
+            (eol_value in {"lf", "crlf"} and text_value != "unset")
+            or text_value == "set"
+            or (text_value == "auto" and _git_auto_classifies_text(data))
+        )
+        if should_normalize:
+            normalized = data.replace(b"\r\n", b"\n")
+            objects[path].add(object_id(normalized))
 
     return {path: frozenset(values) for path, values in objects.items()}, None
 
@@ -1831,8 +2160,10 @@ def _validate_dependency_checkout(
                 initialized.append(fields[1] if len(fields) > 1 else "<unreadable>")
         if initialized:
             issues.append(
-                f"Runtime dependency contains initialized nested submodules: {relative}: "
-                + ", ".join(sorted(initialized))
+                _bounded_path_diagnostic(
+                    f"Runtime dependency contains initialized nested submodules: {relative}: ",
+                    initialized,
+                )
             )
 
     indexed = _git_completed(checkout, "ls-files", "-s", "-z")
@@ -1862,13 +2193,17 @@ def _validate_dependency_checkout(
     skip_worktree = sorted(path for path, tag in type_flags.items() if tag.upper() == "S")
     if assume_unchanged:
         issues.append(
-            f"Runtime dependency contains assume-unchanged entries: {relative}: "
-            + ", ".join(assume_unchanged)
+            _bounded_path_diagnostic(
+                f"Runtime dependency contains assume-unchanged entries: {relative}: ",
+                assume_unchanged,
+            )
         )
     if skip_worktree:
         issues.append(
-            f"Runtime dependency contains skip-worktree entries: {relative}: "
-            + ", ".join(skip_worktree)
+            _bounded_path_diagnostic(
+                f"Runtime dependency contains skip-worktree entries: {relative}: ",
+                skip_worktree,
+            )
         )
 
     index_drift = _git_completed(
@@ -1964,23 +2299,30 @@ def _validate_dependency_checkout(
             if item
         )
     project_output_roots = _project_output_roots(index_entries)
+    all_untracked_symlinks = sorted(
+        path
+        for path in untracked_paths
+        if (checkout / path).is_symlink()
+        or _path_has_symlink_component(checkout / path)
+    )
+    if all_untracked_symlinks:
+        issues.append(
+            _bounded_path_diagnostic(
+                f"Runtime dependency contains untracked symlink inputs: {relative}: ",
+                all_untracked_symlinks,
+            )
+        )
     relevant_untracked = sorted(
         path
         for path in untracked_paths
         if not _is_dependency_generated_output(path, project_output_roots)
     )
-    untracked_symlinks = sorted(
-        path for path in relevant_untracked if (checkout / path).is_symlink()
-    )
-    if untracked_symlinks:
-        issues.append(
-            f"Runtime dependency contains untracked symlink inputs: {relative}: "
-            + ", ".join(untracked_symlinks)
-        )
     if relevant_untracked:
         issues.append(
-            f"Runtime dependency contains untracked inputs: {relative}: "
-            + ", ".join(relevant_untracked)
+            _bounded_path_diagnostic(
+                f"Runtime dependency contains untracked inputs: {relative}: ",
+                relevant_untracked,
+            )
         )
     return issues
 
@@ -2019,7 +2361,10 @@ def _runtime_input_snapshot(repository_root: Path) -> tuple[list[dict[str, Any]]
     missing_explicit = sorted(expected_explicit - set(regular_paths))
     if missing_explicit:
         issues.append(
-            "The fixed runtime-input scope is missing tracked inputs: " + ", ".join(missing_explicit)
+            _bounded_path_diagnostic(
+                "The fixed runtime-input scope is missing tracked inputs: ",
+                missing_explicit,
+            )
         )
     unexpected_modes = sorted(
         path
@@ -2028,8 +2373,10 @@ def _runtime_input_snapshot(repository_root: Path) -> tuple[list[dict[str, Any]]
     )
     if unexpected_modes:
         issues.append(
-            "Runtime-input files contain a gitlink or unresolved index stage: "
-            + ", ".join(unexpected_modes)
+            _bounded_path_diagnostic(
+                "Runtime-input files contain a gitlink or unresolved index stage: ",
+                unexpected_modes,
+            )
         )
 
     verbose_flags, verbose_error = _runtime_index_flag_paths(
@@ -2049,13 +2396,17 @@ def _runtime_input_snapshot(repository_root: Path) -> tuple[list[dict[str, Any]]
     )
     if assume_unchanged:
         issues.append(
-            "Runtime-input scope contains assume-unchanged entries: "
-            + ", ".join(assume_unchanged)
+            _bounded_path_diagnostic(
+                "Runtime-input scope contains assume-unchanged entries: ",
+                assume_unchanged,
+            )
         )
     if skip_worktree:
         issues.append(
-            "Runtime-input scope contains skip-worktree entries: "
-            + ", ".join(skip_worktree)
+            _bounded_path_diagnostic(
+                "Runtime-input scope contains skip-worktree entries: ",
+                skip_worktree,
+            )
         )
 
     try:
@@ -2101,13 +2452,30 @@ def _runtime_input_snapshot(repository_root: Path) -> tuple[list[dict[str, Any]]
             if item
         )
     project_output_roots = _project_output_roots(regular_paths)
+    all_untracked_symlinks = sorted(
+        relative
+        for relative in untracked_paths
+        if (repository_root / relative).is_symlink()
+        or _path_has_symlink_component(repository_root / relative)
+    )
+    if all_untracked_symlinks:
+        issues.append(
+            _bounded_path_diagnostic(
+                "Runtime-input scope contains untracked symlinks: ",
+                all_untracked_symlinks,
+            )
+        )
     paths = sorted(
         relative
         for relative in untracked_paths
         if not _is_generated_runtime_output(relative, project_output_roots)
     )
     if paths:
-        issues.append("Runtime-input scope contains untracked files: " + ", ".join(paths))
+        issues.append(
+            _bounded_path_diagnostic(
+                "Runtime-input scope contains untracked files: ", paths
+            )
+        )
 
     result = _git_completed(
         repository_root,
@@ -2246,8 +2614,10 @@ def _runtime_git_tree(
     missing_explicit = sorted(expected_explicit - set(objects))
     if missing_explicit:
         issues.append(
-            f"Revision {revision} is missing fixed runtime inputs: "
-            + ", ".join(missing_explicit)
+            _bounded_path_diagnostic(
+                f"Revision {revision} is missing fixed runtime inputs: ",
+                missing_explicit,
+            )
         )
     return objects, issues
 
@@ -2400,6 +2770,632 @@ def _validate_runtime_input_manifest(
     return document, captured_at
 
 
+def _hash_file_streaming(path: Path) -> tuple[int, str, str] | None:
+    """Return byte count, SHA-256, and canonical Base64 SHA-512 for one regular file."""
+    if _path_has_symlink_component(path):
+        return None
+    try:
+        stat = path.stat()
+        if not path.is_file():
+            return None
+        sha256 = hashlib.sha256()
+        sha512 = hashlib.sha512()
+        size = 0
+        with path.open("rb") as stream:
+            while chunk := stream.read(1_048_576):
+                size += len(chunk)
+                sha256.update(chunk)
+                sha512.update(chunk)
+        if size != stat.st_size:
+            return None
+    except OSError:
+        return None
+    return size, sha256.hexdigest(), base64.b64encode(sha512.digest()).decode("ascii")
+
+
+def _nuget_package_content_sha512(path: Path) -> str | None:
+    """Return NuGet's SHA-512 content hash, excluding a package signature when present."""
+    raw_hashes = _hash_file_streaming(path)
+    if raw_hashes is None:
+        return None
+    raw_sha512 = raw_hashes[2]
+    try:
+        file_size = path.stat().st_size
+        with path.open("rb") as stream:
+            tail_size = min(file_size, 65_535 + 22)
+            stream.seek(file_size - tail_size)
+            tail_start = stream.tell()
+            tail = stream.read(tail_size)
+            marker = tail.rfind(b"PK\x05\x06")
+            if marker < 0:
+                return None
+            eocd_offset = tail_start + marker
+            if marker + 22 > len(tail):
+                return None
+            (
+                signature,
+                disk_number,
+                central_disk_number,
+                disk_entries,
+                total_entries,
+                central_size,
+                central_offset,
+                comment_length,
+            ) = struct.unpack("<4s4H2LH", tail[marker : marker + 22])
+            if (
+                signature != b"PK\x05\x06"
+                or disk_number != 0
+                or central_disk_number != 0
+                or disk_entries != total_entries
+                or total_entries in (0, 0xFFFF)
+                or central_size == 0xFFFFFFFF
+                or central_offset == 0xFFFFFFFF
+                or eocd_offset + 22 + comment_length != file_size
+                or central_offset + central_size != eocd_offset
+            ):
+                return None
+
+            entries: list[dict[str, Any]] = []
+            stream.seek(central_offset)
+            for _ in range(total_entries):
+                position = stream.tell()
+                fixed = stream.read(46)
+                if len(fixed) != 46:
+                    return None
+                values = struct.unpack("<4s6H3L5H2L", fixed)
+                if values[0] != b"PK\x01\x02":
+                    return None
+                flags = values[3]
+                name_length, extra_length, entry_comment_length = values[10:13]
+                local_offset = values[16]
+                variable = stream.read(name_length + extra_length + entry_comment_length)
+                if len(variable) != name_length + extra_length + entry_comment_length:
+                    return None
+                entries.append(
+                    {
+                        "position": position,
+                        "raw": fixed + variable,
+                        "name": variable[:name_length],
+                        "flags": flags,
+                        "localOffset": local_offset,
+                        "headerSize": 46 + len(variable),
+                    }
+                )
+            if stream.tell() != eocd_offset:
+                return None
+
+            signature_entries = [
+                entry
+                for entry in entries
+                if entry["name"] == b".signature.p7s"
+                and not (entry["flags"] & 0x0800)
+            ]
+            if not signature_entries:
+                return raw_sha512
+            if len(signature_entries) != 1:
+                return None
+            signature_entry = signature_entries[0]
+            by_local_offset = sorted(entries, key=lambda entry: entry["localOffset"])
+            local_offsets = [entry["localOffset"] for entry in by_local_offset]
+            if local_offsets != sorted(set(local_offsets)) or local_offsets[-1] >= central_offset:
+                return None
+            for index, entry in enumerate(by_local_offset):
+                next_offset = (
+                    by_local_offset[index + 1]["localOffset"]
+                    if index + 1 < len(by_local_offset)
+                    else central_offset
+                )
+                if next_offset <= entry["localOffset"]:
+                    return None
+                entry["fileEntryTotalSize"] = next_offset - entry["localOffset"]
+
+            retained_by_offset = [
+                entry for entry in by_local_offset if entry is not signature_entry
+            ]
+            next_unsigned_offset = local_offsets[0]
+            for entry in retained_by_offset:
+                entry["changeInOffset"] = next_unsigned_offset - entry["localOffset"]
+                next_unsigned_offset += entry["fileEntryTotalSize"]
+
+            digest = hashlib.sha512()
+
+            def hash_range(offset: int, length: int) -> bool:
+                stream.seek(offset)
+                remaining = length
+                while remaining:
+                    chunk = stream.read(min(remaining, 1_048_576))
+                    if not chunk:
+                        return False
+                    digest.update(chunk)
+                    remaining -= len(chunk)
+                return True
+
+            if not hash_range(0, local_offsets[0]):
+                return None
+            for entry in retained_by_offset:
+                if not hash_range(entry["localOffset"], entry["fileEntryTotalSize"]):
+                    return None
+            for entry in entries:
+                if entry is signature_entry:
+                    continue
+                raw = entry["raw"]
+                adjusted_offset = entry["localOffset"] + entry["changeInOffset"]
+                if not 0 <= adjusted_offset <= 0xFFFFFFFF:
+                    return None
+                digest.update(raw[:42])
+                digest.update(struct.pack("<L", adjusted_offset))
+                digest.update(raw[46:])
+
+            signature_file_size = signature_entry["fileEntryTotalSize"]
+            signature_header_size = signature_entry["headerSize"]
+            if (
+                disk_entries < 1
+                or total_entries < 1
+                or central_size < signature_header_size
+                or central_offset < signature_file_size
+            ):
+                return None
+            stream.seek(eocd_offset)
+            eocd = stream.read(file_size - eocd_offset)
+            if len(eocd) != file_size - eocd_offset:
+                return None
+            digest.update(eocd[:8])
+            digest.update(struct.pack("<H", disk_entries - 1))
+            digest.update(struct.pack("<H", total_entries - 1))
+            digest.update(struct.pack("<L", central_size - signature_header_size))
+            digest.update(struct.pack("<L", central_offset - signature_file_size))
+            digest.update(eocd[20:])
+            return base64.b64encode(digest.digest()).decode("ascii")
+    except (OSError, struct.error, ValueError):
+        return None
+
+
+def validate_fresh_package_root(repository_root: Path, package_root: Path) -> list[str]:
+    """Fail unless an already-created package root is external, real, and empty."""
+    issues: list[str] = []
+    if _path_has_symlink_component(package_root) or not package_root.is_dir():
+        return ["The selected NuGet package root is missing or symlinked."]
+    try:
+        resolved_repository = repository_root.resolve(strict=True)
+        resolved_packages = package_root.resolve(strict=True)
+    except (OSError, RuntimeError):
+        return ["The selected NuGet package root cannot be resolved."]
+    if resolved_packages == resolved_repository or resolved_packages.is_relative_to(resolved_repository):
+        issues.append("The selected NuGet package root must be external to the repository.")
+    try:
+        if any(package_root.iterdir()):
+            issues.append("The selected NuGet package root must be fresh and empty before restore.")
+    except OSError:
+        issues.append("The selected NuGet package root cannot be enumerated.")
+    return issues
+
+
+def _package_file_inventory(package_directory: Path) -> tuple[list[dict[str, Any]], list[str]]:
+    files: list[dict[str, Any]] = []
+    issues: list[str] = []
+    pending = [package_directory]
+    while pending:
+        directory = pending.pop()
+        try:
+            entries = sorted(os.scandir(directory), key=lambda item: item.name)
+        except OSError:
+            issues.append(f"Unable to enumerate restored package directory: {directory.name}")
+            continue
+        for entry in entries:
+            path = Path(entry.path)
+            relative = path.relative_to(package_directory).as_posix()
+            if entry.is_symlink():
+                issues.append(f"Restored package contains a symlink: {relative}")
+            elif entry.is_dir(follow_symlinks=False):
+                pending.append(path)
+            elif entry.is_file(follow_symlinks=False):
+                hashes = _hash_file_streaming(path)
+                if hashes is None:
+                    issues.append(f"Restored package file changed or is unreadable: {relative}")
+                    continue
+                size, sha256, _ = hashes
+                files.append({"path": relative, "bytes": size, "sha256": sha256})
+            else:
+                issues.append(f"Restored package contains a non-regular entry: {relative}")
+    files.sort(key=lambda item: str(item["path"]))
+    return files, issues
+
+
+def _package_tree_sha256(files: list[dict[str, Any]]) -> str:
+    encoded = json.dumps(files, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _canonical_sha512(value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
+    try:
+        decoded = base64.b64decode(value, validate=True)
+    except (ValueError, base64.binascii.Error):
+        return False
+    return len(decoded) == 64 and base64.b64encode(decoded).decode("ascii") == value
+
+
+def _valid_package_binding(binding: Any) -> bool:
+    if not isinstance(binding, dict):
+        return False
+    package_id = binding.get("id")
+    version = binding.get("version")
+    relative = binding.get("relativePath")
+    return (
+        set(binding) == {"id", "version", "relativePath", "contentHashSha512"}
+        and isinstance(package_id, str)
+        and bool(package_id)
+        and "/" not in package_id
+        and "\\" not in package_id
+        and isinstance(version, str)
+        and bool(version)
+        and "/" not in version
+        and "\\" not in version
+        and isinstance(relative, str)
+        and _is_safe_relative_path(relative)
+        and PurePosixPath(relative).as_posix() == relative
+        and relative == f"{package_id.casefold()}/{version.casefold()}"
+        and _canonical_sha512(binding.get("contentHashSha512"))
+    )
+
+
+def resolved_package_ledger(
+    repository_root: Path,
+    package_root: Path,
+    assets_paths: Iterable[Path],
+    *,
+    captured_at: str | None = None,
+) -> tuple[dict[str, Any], list[str]]:
+    """Inventory exactly the restored assets graphs and immutable package bytes they select."""
+    issues: list[str] = []
+    if _path_has_symlink_component(package_root) or not package_root.is_dir():
+        return {}, ["The selected NuGet package root is missing or symlinked."]
+    try:
+        repository = repository_root.resolve(strict=True)
+        packages_root = package_root.resolve(strict=True)
+    except (OSError, RuntimeError):
+        return {}, ["The repository or selected NuGet package root cannot be resolved."]
+    if packages_root == repository or packages_root.is_relative_to(repository):
+        issues.append("The selected NuGet package root must be external to the repository.")
+
+    timestamp = captured_at or datetime.now(timezone.utc).isoformat()
+    _parse_timestamp(timestamp, "Resolved-package ledger capturedAt", issues)
+    graphs: list[dict[str, Any]] = []
+    packages_by_coordinate: dict[tuple[str, str], dict[str, str]] = {}
+    seen_assets: set[str] = set()
+    for assets_path in assets_paths:
+        if _path_has_symlink_component(assets_path) or not assets_path.is_file():
+            issues.append(f"Resolved assets graph is missing or symlinked: {assets_path}")
+            continue
+        try:
+            resolved_assets = assets_path.resolve(strict=True)
+            relative_assets = resolved_assets.relative_to(repository).as_posix()
+        except (OSError, RuntimeError, ValueError):
+            issues.append(f"Resolved assets graph is outside the repository: {assets_path}")
+            continue
+        if relative_assets in seen_assets:
+            issues.append(f"Resolved assets graph is repeated: {relative_assets}")
+            continue
+        seen_assets.add(relative_assets)
+        data = _bounded_read(assets_path, issues, f"assets graph {relative_assets}")
+        if data is None:
+            continue
+        try:
+            assets = json.loads(data.decode("utf-8-sig"), object_pairs_hook=_reject_duplicate_keys)
+        except (UnicodeDecodeError, json.JSONDecodeError, _DuplicateJsonKeyError) as error:
+            issues.append(f"Resolved assets graph is malformed: {relative_assets}: {error}")
+            continue
+        package_folders = assets.get("packageFolders") if isinstance(assets, dict) else None
+        if not isinstance(package_folders, dict) or len(package_folders) != 1:
+            issues.append(f"Resolved assets graph lacks one exact package root: {relative_assets}")
+        else:
+            selected_root = next(iter(package_folders))
+            try:
+                if Path(selected_root).resolve(strict=False) != packages_root:
+                    issues.append(
+                        f"Resolved assets graph selected an ambient package root: {relative_assets}"
+                    )
+            except (OSError, RuntimeError):
+                issues.append(f"Resolved assets graph package root is unreadable: {relative_assets}")
+        libraries = assets.get("libraries") if isinstance(assets, dict) else None
+        if not isinstance(libraries, dict):
+            issues.append(f"Resolved assets graph libraries are malformed: {relative_assets}")
+            continue
+        graph_packages: list[dict[str, str]] = []
+        for identity, library in sorted(libraries.items()):
+            if not isinstance(identity, str) or not isinstance(library, dict):
+                issues.append(f"Resolved assets graph contains a malformed library: {relative_assets}")
+                continue
+            if library.get("type") != "package":
+                continue
+            coordinate = identity.rsplit("/", 1)
+            relative_package = library.get("path")
+            content_hash = library.get("sha512")
+            if (
+                len(coordinate) != 2
+                or not all(coordinate)
+                or not isinstance(relative_package, str)
+                or not _is_safe_relative_path(relative_package)
+                or not isinstance(content_hash, str)
+            ):
+                issues.append(f"Resolved package identity is incomplete: {relative_assets}: {identity}")
+                continue
+            if not _canonical_sha512(content_hash):
+                issues.append(f"Resolved package has an invalid Base64 SHA-512: {identity}")
+                continue
+            package_binding = {
+                "id": coordinate[0],
+                "version": coordinate[1],
+                "relativePath": PurePosixPath(relative_package).as_posix(),
+                "contentHashSha512": content_hash,
+            }
+            if package_binding["relativePath"] != (
+                f"{package_binding['id'].casefold()}/{package_binding['version'].casefold()}"
+            ):
+                issues.append(
+                    f"Resolved package path does not bind its identity: {relative_assets}: {identity}"
+                )
+                continue
+            key = (coordinate[0].casefold(), coordinate[1].casefold())
+            previous = packages_by_coordinate.get(key)
+            if previous is not None and not _exact(previous, package_binding):
+                issues.append(f"Resolved package coordinate has conflicting identities: {identity}")
+            packages_by_coordinate[key] = package_binding
+            graph_packages.append(package_binding)
+        graph_packages.sort(key=lambda item: (item["id"].casefold(), item["version"].casefold()))
+        graphs.append(
+            {
+                "path": relative_assets,
+                "sha256": hashlib.sha256(data).hexdigest(),
+                "packages": graph_packages,
+            }
+        )
+    graphs.sort(key=lambda item: str(item["path"]))
+    if not graphs:
+        issues.append("Resolved-package ledger must bind at least one assets graph.")
+
+    packages: list[dict[str, Any]] = []
+    declared_directories: set[Path] = set()
+    for binding in sorted(
+        packages_by_coordinate.values(),
+        key=lambda item: (item["id"].casefold(), item["version"].casefold()),
+    ):
+        package_directory = packages_root / PurePosixPath(binding["relativePath"])
+        if _path_has_symlink_component(package_directory) or not package_directory.is_dir():
+            issues.append(
+                f"Resolved package directory is missing or symlinked: {binding['id']}/{binding['version']}"
+            )
+            continue
+        declared_directories.add(package_directory.resolve(strict=False))
+        files, file_issues = _package_file_inventory(package_directory)
+        issues.extend(
+            f"{binding['id']}/{binding['version']}: {issue}" for issue in file_issues
+        )
+        nupkg_name = f"{binding['id'].casefold()}.{binding['version'].casefold()}.nupkg"
+        nupkg_path = package_directory / nupkg_name
+        nupkg_hashes = _hash_file_streaming(nupkg_path)
+        nupkg_sha512 = _nuget_package_content_sha512(nupkg_path)
+        if nupkg_hashes is None or nupkg_sha512 is None:
+            issues.append(
+                f"Resolved package nupkg is missing or malformed: {binding['id']}/{binding['version']}"
+            )
+        elif nupkg_sha512 != binding["contentHashSha512"]:
+            issues.append(f"Resolved package nupkg SHA-512 differs from assets: {binding['id']}/{binding['version']}")
+        packages.append(
+            {
+                **binding,
+                "nupkgSha512": nupkg_sha512,
+                "files": files,
+                "treeSha256": _package_tree_sha256(files),
+            }
+        )
+    if not packages:
+        issues.append("Resolved-package ledger must bind at least one global package.")
+
+    actual_version_directories: set[Path] = set()
+    try:
+        for package_id in packages_root.iterdir():
+            if package_id.is_symlink() or not package_id.is_dir():
+                issues.append(f"NuGet package root contains an orphan or non-directory: {package_id.name}")
+                continue
+            for version in package_id.iterdir():
+                if version.is_symlink() or not version.is_dir():
+                    issues.append(
+                        f"NuGet package root contains an orphan or non-directory: {package_id.name}/{version.name}"
+                    )
+                    continue
+                actual_version_directories.add(version.resolve(strict=False))
+    except OSError:
+        issues.append("The selected NuGet package root cannot be completely enumerated.")
+    if actual_version_directories != declared_directories:
+        issues.append("NuGet package root contains missing or orphan package directories.")
+
+    ledger_entries = {"assetsGraphs": graphs, "packages": packages}
+    ledger_tree = hashlib.sha256(
+        json.dumps(ledger_entries, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    return {
+        "schema": PACKAGE_LEDGER_SCHEMA,
+        "capturedAt": timestamp,
+        "packageRoot": "fresh-external",
+        **ledger_entries,
+        "treeSha256": ledger_tree,
+    }, issues
+
+
+def validate_package_ledger(
+    document: Any,
+    repository_root: Path,
+    package_root: Path,
+    assets_paths: Iterable[Path],
+    errors: list[str],
+    *,
+    expected_assets_count: int | None = None,
+) -> datetime | None:
+    """Validate ledger semantics and recompute every selected graph and package byte."""
+    captured_at = validate_package_ledger_semantics(document, errors)
+    if not isinstance(document, dict):
+        return captured_at
+    graphs = document.get("assetsGraphs")
+    if expected_assets_count is not None and (
+        not isinstance(graphs, list) or len(graphs) != expected_assets_count
+    ):
+        errors.append(
+            f"Resolved-package ledger must bind exactly {expected_assets_count} assets graphs."
+        )
+    recomputed, recompute_issues = resolved_package_ledger(
+        repository_root,
+        package_root,
+        assets_paths,
+        captured_at=document.get("capturedAt") if isinstance(document.get("capturedAt"), str) else None,
+    )
+    errors.extend(recompute_issues)
+    if not _exact(document, recomputed):
+        errors.append("Resolved-package ledger differs from the current restored package authority.")
+    return captured_at
+
+
+def validate_package_ledger_semantics(
+    document: Any,
+    errors: list[str],
+) -> datetime | None:
+    """Validate a durable ledger without requiring its ephemeral package cache."""
+    if not isinstance(document, dict):
+        errors.append("Resolved-package ledger is malformed.")
+        return None
+    if set(document) != {
+        "schema", "capturedAt", "packageRoot", "assetsGraphs", "packages", "treeSha256"
+    } or document.get("schema") != PACKAGE_LEDGER_SCHEMA or document.get("packageRoot") != "fresh-external":
+        errors.append("Resolved-package ledger schema or exact fields are invalid.")
+    captured_at = _parse_timestamp(
+        document.get("capturedAt"), "Resolved-package ledger capturedAt", errors
+    )
+    graphs = document.get("assetsGraphs")
+    packages = document.get("packages")
+    if not isinstance(graphs, list) or not isinstance(packages, list):
+        errors.append("Resolved-package ledger graph/package arrays are malformed.")
+        return captured_at
+    if not graphs:
+        errors.append("Resolved-package ledger must bind at least one assets graph.")
+    if not packages:
+        errors.append("Resolved-package ledger must bind at least one global package.")
+    graph_paths: list[str] = []
+    graph_union: dict[tuple[str, str], dict[str, str]] = {}
+    binding_fields = {"id", "version", "relativePath", "contentHashSha512"}
+    for graph in graphs:
+        if not isinstance(graph, dict) or set(graph) != {"path", "sha256", "packages"}:
+            errors.append("Resolved-package ledger contains a malformed assets graph.")
+            continue
+        path = graph.get("path")
+        digest = graph.get("sha256")
+        values = graph.get("packages")
+        if (
+            not isinstance(path, str)
+            or not _is_safe_relative_path(path)
+            or not isinstance(digest, str)
+            or not SHA256_RE.fullmatch(digest)
+            or not isinstance(values, list)
+        ):
+            errors.append("Resolved-package ledger assets binding is invalid.")
+            continue
+        graph_paths.append(path)
+        graph_keys: list[tuple[str, str]] = []
+        for binding in values:
+            if not _valid_package_binding(binding):
+                errors.append(f"Resolved-package ledger graph package is malformed: {path}")
+                continue
+            key = (str(binding.get("id", "")).casefold(), str(binding.get("version", "")).casefold())
+            graph_keys.append(key)
+            previous = graph_union.get(key)
+            if previous is not None and not _exact(previous, binding):
+                errors.append("Resolved-package ledger graph package identity conflicts.")
+            graph_union[key] = binding
+        if graph_keys != sorted(set(graph_keys)):
+            errors.append(f"Resolved-package ledger graph package set is not unique and sorted: {path}")
+    if graph_paths != sorted(set(graph_paths)):
+        errors.append("Resolved-package ledger assets graphs must be unique and sorted.")
+
+    global_bindings: dict[tuple[str, str], dict[str, str]] = {}
+    global_keys: list[tuple[str, str]] = []
+    for package in packages:
+        if not isinstance(package, dict) or set(package) != {
+            *binding_fields, "nupkgSha512", "files", "treeSha256"
+        }:
+            errors.append("Resolved-package ledger contains a malformed global package.")
+            continue
+        binding = {field: package[field] for field in binding_fields}
+        if not _valid_package_binding(binding):
+            errors.append("Resolved-package ledger global package identity is invalid.")
+        key = (str(binding["id"]).casefold(), str(binding["version"]).casefold())
+        global_keys.append(key)
+        global_bindings[key] = binding
+        files = package.get("files")
+        if not isinstance(files, list) or not files or any(
+            not isinstance(item, dict)
+            or set(item) != {"path", "bytes", "sha256"}
+            or not isinstance(item.get("path"), str)
+            or not _is_safe_relative_path(item["path"])
+            or not isinstance(item.get("bytes"), int)
+            or isinstance(item.get("bytes"), bool)
+            or item["bytes"] < 0
+            or not isinstance(item.get("sha256"), str)
+            or not SHA256_RE.fullmatch(item["sha256"])
+            for item in files
+        ):
+            errors.append(f"Resolved-package ledger extracted files are malformed: {binding['id']}")
+            files = []
+        if [item["path"] for item in files] != sorted(set(item["path"] for item in files)):
+            errors.append(f"Resolved-package ledger extracted files are not unique and sorted: {binding['id']}")
+        if package.get("treeSha256") != _package_tree_sha256(files):
+            errors.append(f"Resolved-package ledger package tree hash is invalid: {binding['id']}")
+        for hash_field in ("contentHashSha512", "nupkgSha512"):
+            if not _canonical_sha512(package.get(hash_field)):
+                errors.append(f"Resolved-package ledger {hash_field} is not canonical Base64 SHA-512: {binding['id']}")
+        if package.get("contentHashSha512") != package.get("nupkgSha512"):
+            errors.append(f"Resolved-package ledger nupkg hash differs from assets: {binding['id']}")
+    if global_keys != sorted(set(global_keys)):
+        errors.append("Resolved-package ledger global packages must be unique and sorted.")
+    if not _exact(global_bindings, graph_union):
+        errors.append("Resolved-package ledger graph-package union differs from global packages.")
+    entries = {"assetsGraphs": graphs, "packages": packages}
+    expected_tree = hashlib.sha256(
+        json.dumps(entries, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    if document.get("treeSha256") != expected_tree:
+        errors.append("Resolved-package ledger global tree hash is invalid.")
+    return captured_at
+
+
+def write_package_ledger(
+    output: Path,
+    repository_root: Path,
+    package_root: Path,
+    assets_paths: Iterable[Path],
+) -> list[str]:
+    document, issues = resolved_package_ledger(repository_root, package_root, assets_paths)
+    if issues:
+        return issues
+    temporary: Path | None = None
+    try:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        descriptor, temporary_name = tempfile.mkstemp(
+            dir=output.parent, prefix=f".{output.name}.", suffix=".tmp"
+        )
+        temporary = Path(temporary_name)
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
+            stream.write(json.dumps(document, indent=2) + "\n")
+        temporary.replace(output)
+    except OSError as error:
+        issues.append(f"Unable to write resolved-package ledger: {error}")
+        if temporary is not None:
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                pass
+    return issues
+
+
 def _live_provenance(
     repository_root: Path,
     errors: list[str],
@@ -2464,6 +3460,8 @@ def write_live_receipt(
     *,
     runtime_input_manifest_path: Path | None = None,
     pact_dir: Path | None = None,
+    package_ledger_path: Path | None = None,
+    package_root: Path | None = None,
 ) -> list[str]:
     """Validate and bind a passing provider report to its pre-run runtime manifest."""
     errors: list[str] = []
@@ -2476,6 +3474,8 @@ def write_live_receipt(
         return ["Live receipt creation requires the canonical repository Pact directory."]
     if runtime_input_manifest_path is None:
         return ["Live receipt creation requires the pre-provider runtime-input manifest."]
+    if package_ledger_path is None or package_root is None:
+        return ["Live receipt creation requires the sealed provider package ledger and root."]
     manifest_bytes_before = _bounded_read(
         runtime_input_manifest_path,
         errors,
@@ -2485,6 +3485,20 @@ def write_live_receipt(
         runtime_input_manifest_path,
         repository_root,
         errors,
+    )
+    package_ledger_bytes_before = _bounded_read(
+        package_ledger_path, errors, "provider resolved-package ledger"
+    )
+    package_ledger = _read_json(
+        package_ledger_path, errors, "provider resolved-package ledger"
+    )
+    package_captured_at = validate_package_ledger(
+        package_ledger,
+        repository_root,
+        package_root,
+        (repository_root / relative for relative in PROVIDER_PACKAGE_ASSETS),
+        errors,
+        expected_assets_count=2,
     )
     provenance = _live_provenance(
         repository_root,
@@ -2497,6 +3511,7 @@ def write_live_receipt(
         provenance,
         errors,
         validate_receipt=False,
+        repository_root=repository_root,
     )
     report_path = evidence_root / "provider-verification.json"
     report = _read_json(report_path, errors, "provider-verification.json")
@@ -2523,9 +3538,14 @@ def write_live_receipt(
     started = _parse_timestamp(started_at, "Live provider report run startedAt", errors)
     if (
         manifest_captured_at is None
+        or package_captured_at is None
         or started is None
-        or manifest_captured_at >= started
+        or not manifest_captured_at < package_captured_at < started
     ):
+        errors.append(
+            "Provider chronology must be runtime manifest, package ledger, then execution start."
+        )
+    if manifest_captured_at is None or started is None or manifest_captured_at >= started:
         errors.append("Pre-provider runtime-input manifest does not predate provider execution.")
     manifest_bytes_after = _bounded_read(
         runtime_input_manifest_path,
@@ -2534,10 +3554,20 @@ def write_live_receipt(
     )
     if manifest_bytes_before != manifest_bytes_after:
         errors.append("Pre-provider runtime-input manifest changed during receipt creation.")
-    if errors or report_bytes is None or manifest_bytes_before is None:
+    package_ledger_bytes_after = _bounded_read(
+        package_ledger_path, errors, "provider resolved-package ledger"
+    )
+    if package_ledger_bytes_before != package_ledger_bytes_after:
+        errors.append("Provider resolved-package ledger changed during receipt creation.")
+    if (
+        errors
+        or report_bytes is None
+        or manifest_bytes_before is None
+        or package_ledger_bytes_before is None
+    ):
         return errors
     receipt = {
-        "schema": "hexalith.eventstore.provider-verification-run-evidence.v3",
+        "schema": "hexalith.eventstore.provider-verification-run-evidence.v4",
         "capturedAt": datetime.now(timezone.utc).isoformat(),
         "completedAt": completed_at,
         "frontComposerRevision": manifest["capturedRevision"],
@@ -2548,6 +3578,7 @@ def write_live_receipt(
         "nativeVerifierOutputRetained": False,
         "normalizedPactCopiesRetained": False,
         "externalInputsModified": False,
+        "packageLedger": package_ledger,
         "report": {
             "path": "provider-verification.json",
             "sha256": hashlib.sha256(report_bytes).hexdigest(),
@@ -2556,14 +3587,20 @@ def write_live_receipt(
         },
     }
     output = evidence_root / "run-evidence.json"
-    temporary = output.with_name(f".{output.name}.{os.getpid()}.tmp")
+    temporary: Path | None = None
     try:
-        temporary.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+        descriptor, temporary_name = tempfile.mkstemp(
+            dir=output.parent, prefix=f".{output.name}.", suffix=".tmp"
+        )
+        temporary = Path(temporary_name)
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
+            stream.write(json.dumps(receipt, indent=2) + "\n")
         temporary.replace(output)
     except OSError as error:
         errors.append(f"Unable to write live provider receipt: {error}")
         try:
-            temporary.unlink(missing_ok=True)
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
         except OSError:
             pass
     return errors
@@ -2576,7 +3613,10 @@ def _validate_live_provider(
     errors: list[str],
     *,
     validate_receipt: bool = True,
+    package_root: Path | None = None,
+    repository_root: Path | None = None,
 ) -> None:
+    repository_root = repository_root or Path(__file__).resolve().parents[1]
     report_path = evidence_root / "provider-verification.json"
     receipt_path = evidence_root / "run-evidence.json"
     _scan_redaction(report_path, errors)
@@ -2751,9 +3791,18 @@ def _validate_live_provider(
     if not validate_receipt:
         return
     receipt = _read_json(receipt_path, errors, "run-evidence.json")
+    receipt_bytes = _bounded_read(receipt_path, errors, "run-evidence.json")
+    frozen_legacy = (
+        receipt_bytes is not None
+        and hashlib.sha256(receipt_bytes).hexdigest() == FROZEN_PROVIDER_RECEIPT_SHA256
+    )
     report_bytes = _bounded_read(report_path, errors, "provider-verification.json")
     expected_receipt = {
-        "schema": "hexalith.eventstore.provider-verification-run-evidence.v3",
+        "schema": (
+            "hexalith.eventstore.provider-verification-run-evidence.v3"
+            if frozen_legacy
+            else "hexalith.eventstore.provider-verification-run-evidence.v4"
+        ),
         "frontComposerRevision": provenance["frontComposerRevision"],
         "runtimeInputTreeSha256": provenance["runtimeInputTreeSha256"],
         "command": "dotnet tests/Hexalith.EventStore.ProviderVerification/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.dll --verification-mode live-compatibility <validated canonical inputs>",
@@ -2766,7 +3815,10 @@ def _validate_live_provider(
     for key, expected in expected_receipt.items():
         if not _exact(receipt.get(key), expected):
             errors.append(f"Live provider run receipt {key} is not a passing bounded invocation.")
-    if set(receipt) != {*expected_receipt, "capturedAt", "completedAt", "report"}:
+    required_receipt_fields = {*expected_receipt, "capturedAt", "completedAt", "report"}
+    if not frozen_legacy:
+        required_receipt_fields.add("packageLedger")
+    if set(receipt) != required_receipt_fields:
         errors.append("Live provider run receipt does not contain the exact required fields.")
     receipt_captured = _parse_timestamp(receipt.get("capturedAt"), "Live provider receipt capturedAt", errors)
     receipt_completed = _parse_timestamp(receipt.get("completedAt"), "Live provider receipt completedAt", errors)
@@ -2786,6 +3838,42 @@ def _validate_live_provider(
     )
     _timestamp_not_future(report_started, "Live provider report run startedAt", errors)
     _timestamp_not_future(report_completed, "Live provider report run completedAt", errors)
+    if not frozen_legacy:
+        package_ledger = receipt.get("packageLedger")
+        if package_root is None:
+            package_captured = validate_package_ledger_semantics(
+                package_ledger, errors
+            )
+        else:
+            package_captured = validate_package_ledger(
+                package_ledger,
+                repository_root=repository_root,
+                package_root=package_root,
+                assets_paths=(
+                    repository_root / relative
+                    for relative in PROVIDER_PACKAGE_ASSETS
+                ),
+                errors=errors,
+                expected_assets_count=2,
+            )
+        graphs = (
+            package_ledger.get("assetsGraphs")
+            if isinstance(package_ledger, dict)
+            else None
+        )
+        graph_paths = (
+            [item.get("path") for item in graphs if isinstance(item, dict)]
+            if isinstance(graphs, list)
+            else []
+        )
+        if graph_paths != list(PROVIDER_PACKAGE_ASSETS):
+            errors.append("Provider package ledger does not bind its exact two assets graphs.")
+        if (
+            package_captured is None
+            or report_started is None
+            or package_captured >= report_started
+        ):
+            errors.append("Provider package ledger does not predate execution start.")
     if receipt_completed != report_completed:
         errors.append("Live provider receipt completion does not equal the provider run completion.")
     if (
@@ -2815,15 +3903,35 @@ def _validate_live_provider(
         errors.append("Live provider run receipt does not exactly bind the passing report.")
 
 
-def _validate_live_apphost(evidence_root: Path, repository_root: Path, provenance: dict[str, str], errors: list[str]) -> None:
+def _validate_live_apphost(
+    evidence_root: Path,
+    repository_root: Path,
+    provenance: dict[str, str],
+    errors: list[str],
+    *,
+    package_root: Path | None = None,
+) -> None:
     path = evidence_root / "apphost-smoke.json"
     smoke = _read_json(path, errors, "apphost-smoke.json")
-    if set(smoke) != {
+    smoke_bytes = _bounded_read(path, errors, "apphost-smoke.json")
+    frozen_legacy = (
+        smoke_bytes is not None
+        and hashlib.sha256(smoke_bytes).hexdigest() == FROZEN_APPHOST_SMOKE_SHA256
+    )
+    required_fields = {
         "schema", "capturedAt", "completedAt", "timeoutSeconds", "finalVerdict", "reasonCodes",
         "identity", "topology", "startup", "observations", "authorizationControls", "cleanup",
-    }:
+    }
+    if not frozen_legacy:
+        required_fields.update({"executionStartedAt", "packageLedger"})
+    if set(smoke) != required_fields:
         errors.append("Live AppHost smoke does not contain the exact required fields.")
-    if smoke.get("schema") != "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v2":
+    expected_schema = (
+        "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v2"
+        if frozen_legacy
+        else "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v3"
+    )
+    if smoke.get("schema") != expected_schema:
         errors.append("Live AppHost smoke has an unexpected schema.")
     captured_at = _parse_timestamp(smoke.get("capturedAt"), "Live AppHost smoke capturedAt", errors)
     completed_at = _parse_timestamp(smoke.get("completedAt"), "Live AppHost smoke completedAt", errors)
@@ -2854,6 +3962,68 @@ def _validate_live_apphost(evidence_root: Path, repository_root: Path, provenanc
         "frontComposerRevision": provenance["frontComposerRevision"],
         "runtimeInputTreeSha256": provenance["runtimeInputTreeSha256"],
     }
+    runtime_manifest_captured_at: datetime | None = None
+    execution_started_at: datetime | None = None
+    package_captured_at: datetime | None = None
+    if not frozen_legacy:
+        runtime_manifest_captured_at = _parse_timestamp(
+            identity.get("runtimeInputCapturedAt") if isinstance(identity, dict) else None,
+            "Live AppHost runtimeInputCapturedAt",
+            errors,
+        )
+        expected_identity["runtimeInputCapturedAt"] = identity.get("runtimeInputCapturedAt")
+        execution_started_at = _parse_timestamp(
+            smoke.get("executionStartedAt"), "Live AppHost executionStartedAt", errors
+        )
+        package_ledger = smoke.get("packageLedger")
+        graphs = package_ledger.get("assetsGraphs") if isinstance(package_ledger, dict) else None
+        ledger_graph_paths = (
+            [
+                item["path"]
+                for item in graphs
+                if isinstance(item, dict) and isinstance(item.get("path"), str)
+            ]
+            if isinstance(graphs, list)
+            else []
+        )
+        ledger_paths = [
+            repository_root / item["path"]
+            for item in graphs
+            if (
+                isinstance(item, dict)
+                and isinstance(item.get("path"), str)
+                and _is_safe_relative_path(item["path"])
+            )
+        ] if isinstance(graphs, list) else []
+        if package_root is None:
+            package_captured_at = validate_package_ledger_semantics(
+                package_ledger, errors
+            )
+        else:
+            package_captured_at = validate_package_ledger(
+                package_ledger,
+                repository_root,
+                package_root,
+                ledger_paths,
+                errors,
+            )
+        if (
+            ledger_graph_paths != sorted(set(ledger_graph_paths))
+            or APPHOST_PACKAGE_ASSETS_ROOT not in ledger_graph_paths
+        ):
+            errors.append(
+                "Live AppHost package ledger must bind the canonical AppHost assets root."
+            )
+        if (
+            runtime_manifest_captured_at is None
+            or package_captured_at is None
+            or execution_started_at is None
+            or completed_at is None
+            or not runtime_manifest_captured_at < package_captured_at < execution_started_at <= completed_at
+        ):
+            errors.append(
+                "Live AppHost chronology must be runtime manifest, package ledger, execution start, completion."
+            )
     if not _exact(identity, expected_identity):
         errors.append("Live AppHost smoke provenance is stale or untruthful.")
     topology = smoke.get("topology", {})
@@ -2910,6 +4080,71 @@ def _validate_live_apphost(evidence_root: Path, repository_root: Path, provenanc
             )
         },
     }
+    if not frozen_legacy:
+        output_preparation = startup.get("outputPreparation") if isinstance(startup, dict) else None
+        input_binding = output_preparation.get("evaluatedInputBinding") if isinstance(output_preparation, dict) else None
+        output_binding = output_preparation.get("runtimeOutputBinding") if isinstance(output_preparation, dict) else None
+        expected_startup["outputPreparation"]["evaluatedInputBinding"] = input_binding
+        expected_startup["outputPreparation"]["runtimeOutputBinding"] = output_binding
+        input_graph_paths = input_binding.get("assetsGraphs") if isinstance(input_binding, dict) else None
+        inputs = input_binding.get("inputs") if isinstance(input_binding, dict) else None
+        input_keys = (
+            [(item.get("authority"), item.get("path")) for item in inputs]
+            if isinstance(inputs, list)
+            and all(
+                isinstance(item, dict)
+                and isinstance(item.get("authority"), str)
+                and isinstance(item.get("path"), str)
+                for item in inputs
+            )
+            else []
+        )
+        output_paths = (
+            [item.get("path") for item in output_binding]
+            if isinstance(output_binding, list)
+            and all(
+                isinstance(item, dict) and isinstance(item.get("path"), str)
+                for item in output_binding
+            )
+            else []
+        )
+        if (
+            not isinstance(input_graph_paths, list)
+            or input_graph_paths != sorted(set(ledger_graph_paths))
+            or APPHOST_PACKAGE_ASSETS_ROOT not in input_graph_paths
+            or not isinstance(inputs, list)
+            or not inputs
+            or input_keys != sorted(set(input_keys))
+            or any(
+                not isinstance(item, dict)
+                or set(item) != {"authority", "path", "sha256"}
+                or item.get("authority") not in {"repository", "packages", "dotnet"}
+                or not isinstance(item.get("path"), str)
+                or not _is_safe_relative_path(item["path"])
+                or not isinstance(item.get("sha256"), str)
+                or not SHA256_RE.fullmatch(item["sha256"])
+                for item in inputs
+            )
+        ):
+            errors.append("Live AppHost evaluated input binding is incomplete or outside its authorities.")
+        if (
+            not isinstance(output_binding, list)
+            or not output_binding
+            or output_paths != sorted(set(output_paths))
+            or any(
+                not isinstance(item, dict)
+                or set(item) != {"path", "bytes", "sha256"}
+                or not isinstance(item.get("path"), str)
+                or not _is_safe_relative_path(item["path"])
+                or not isinstance(item.get("bytes"), int)
+                or isinstance(item.get("bytes"), bool)
+                or item["bytes"] < 0
+                or not isinstance(item.get("sha256"), str)
+                or not SHA256_RE.fullmatch(item["sha256"])
+                for item in output_binding
+            )
+        ):
+            errors.append("Live AppHost runtime output binding is incomplete.")
     if not _exact(startup, expected_startup):
         errors.append("Live AppHost startup does not account for every declared healthy resource.")
     observations = smoke.get("observations", {})
@@ -2986,6 +4221,10 @@ def _validate_live_apphost(evidence_root: Path, repository_root: Path, provenanc
             expected_fields = {"result", "credential", "reasonCode", "statusCode"}
             if name == "projectionSignalR":
                 expected_fields.add("endpoint")
+                if not frozen_legacy:
+                    expected_fields.update(
+                        {"transport", "negotiatedWith", "upgradeResult"}
+                    )
             status_code = item.get("statusCode") if isinstance(item, dict) else None
             expected_item = {
                 "result": "passed",
@@ -2999,6 +4238,14 @@ def _validate_live_apphost(evidence_root: Path, repository_root: Path, provenanc
             }
             if name == "projectionSignalR":
                 expected_item["endpoint"] = item.get("endpoint") if isinstance(item, dict) else None
+                if not frozen_legacy:
+                    expected_item.update(
+                        {
+                            "transport": "websocket-upgrade",
+                            "negotiatedWith": "valid-bearer",
+                            "upgradeResult": "rejected-before-switching-protocols",
+                        }
+                    )
             if (
                 not isinstance(item, dict)
                 or set(item) != expected_fields
@@ -3042,6 +4289,13 @@ def _validate_live_apphost(evidence_root: Path, repository_root: Path, provenanc
         "confirmation": "aspire-ps-empty",
         "runtimeInputsCleanAfterRun": True,
     }
+    if not frozen_legacy:
+        expected_cleanup.update(
+            {
+                "packageAuthorityCleanAfterRun": True,
+                "runtimeOutputsCleanAfterRun": True,
+            }
+        )
     if not isinstance(cleanup, dict) or set(cleanup) != {
         *expected_cleanup,
         "daprNameResolutionFiles",
@@ -3156,6 +4410,14 @@ def _timestamp_not_future(
         issues.append(f"{label} is later than the allowed five-minute clock skew.")
 
 
+def _canonical_principal(actor: Any) -> str | None:
+    """Resolve one exact canonical actor alias to its validator-owned immutable principal."""
+    if not isinstance(actor, str) or actor != actor.casefold() or not ACTOR_RE.fullmatch(actor):
+        return None
+    principal = APPROVAL_PRINCIPAL_BOOTSTRAP.get(actor)
+    return principal if isinstance(principal, str) and PRINCIPAL_RE.fullmatch(principal) else None
+
+
 def _validate_policy(
     policy: dict[str, Any],
     errors: list[str],
@@ -3217,6 +4479,7 @@ def _validate_policy(
             sources = item.get("durableSources")
             if (
                 not isinstance(actor, str)
+                or actor != actor.casefold()
                 or not ACTOR_RE.fullmatch(actor)
                 or actor in role_authority
                 or not isinstance(sources, list)
@@ -3236,6 +4499,12 @@ def _validate_policy(
     }
     if repository_authority != bootstrap:
         errors.append("Approval policy assignments differ from the validator-owned authority bootstrap.")
+    for role, actors in bootstrap.items():
+        for actor in actors:
+            if _canonical_principal(actor) is None:
+                errors.append(
+                    f"Validator-owned authority actor lacks an immutable principal for role: {role}"
+                )
     return bootstrap, frozen_at
 
 
@@ -3281,7 +4550,13 @@ def _validate_roster(
             continue
         if (
             not isinstance(actors, list)
-            or any(not isinstance(actor, str) or not ACTOR_RE.fullmatch(actor) for actor in actors)
+            or any(
+                not isinstance(actor, str)
+                or actor != actor.casefold()
+                or not ACTOR_RE.fullmatch(actor)
+                or _canonical_principal(actor) is None
+                for actor in actors
+            )
             or len(set(actors)) != len(actors)
         ):
             errors.append(f"Approval roster actors are malformed for role: {role}")
@@ -3302,7 +4577,12 @@ def _validate_source_authority(
     authority: dict[str, dict[str, set[str]]],
     issues: list[str],
 ) -> None:
-    if not isinstance(actor, str) or not ACTOR_RE.fullmatch(actor):
+    if (
+        not isinstance(actor, str)
+        or actor != actor.casefold()
+        or not ACTOR_RE.fullmatch(actor)
+        or _canonical_principal(actor) is None
+    ):
         issues.append(f"Receipt actor is malformed for role: {role}")
         return
     if not _is_valid_durable_source(durable_source):
@@ -3755,7 +5035,12 @@ def validate_active(
         if actual != expected_recapture_paths:
             errors.append("Active recapture must contain exactly the provider, receipt, and AppHost reports.")
         if recapture_directories:
-            errors.append("Active recapture contains undeclared directories: " + ", ".join(sorted(recapture_directories)))
+            errors.append(
+                _bounded_path_diagnostic(
+                    "Active recapture contains undeclared directories: ",
+                    recapture_directories,
+                )
+            )
         for relative, expected_hash in evidence_bindings.items():
             path = recapture_root / relative
             if _sha256(path, errors, f"active/{relative}") != expected_hash:
@@ -3982,15 +5267,22 @@ def validate_active(
         actors = actors_by_role.get(role, set())
         if not actors:
             approval_issues.append(f"Missing named actor for required role: {role}")
-    selected_actors: dict[str, str] = {}
+    selected_principals: dict[str, str] = {}
     for role in effective_roles:
         for actor in actors_by_role.get(role, set()):
-            previous = selected_actors.get(actor)
+            principal = _canonical_principal(actor)
+            if principal is None:
+                approval_issues.append(
+                    f"Required role actor has no validator-owned immutable principal: {role}"
+                )
+                continue
+            previous = selected_principals.get(principal)
             if previous is not None and previous != role:
                 approval_issues.append(
-                    f"Required roles must have distinct actors: {previous} and {role}"
+                    "Required roles must have distinct actors (immutable principals): "
+                    f"{previous} and {role}"
                 )
-            selected_actors[actor] = role
+            selected_principals[principal] = role
 
     receipts = approval.get("receipts")
     if not isinstance(receipts, list):
@@ -4117,11 +5409,24 @@ def validate_active(
         "frontComposerRevision": revision,
     }
     if recapture_root.is_dir():
-        _validate_live_provider(recapture_root, pact_dir, captured_provenance, errors)
+        _validate_live_provider(
+            recapture_root,
+            pact_dir,
+            captured_provenance,
+            errors,
+            repository_root=repository_root,
+        )
         _validate_live_apphost(recapture_root, repository_root, captured_provenance, errors)
     return errors, approval_issues, claimed
 
-def validate_live(evidence_root: Path, pact_dir: Path, repository_root: Path) -> list[str]:
+def validate_live(
+    evidence_root: Path,
+    pact_dir: Path,
+    repository_root: Path,
+    *,
+    provider_package_root: Path | None = None,
+    apphost_package_root: Path | None = None,
+) -> list[str]:
     """Validate current provider and AppHost evidence independently of frozen Story 11.24 bytes."""
     errors: list[str] = []
     for path, label in ((evidence_root, "Live evidence root"), (pact_dir, "Pact directory"), (repository_root, "Repository root")):
@@ -4144,8 +5449,21 @@ def validate_live(evidence_root: Path, pact_dir: Path, repository_root: Path) ->
     if actual_files != required or actual_directories:
         errors.append("Live evidence root must contain exactly provider-verification.json, run-evidence.json, and apphost-smoke.json.")
     provenance = _live_provenance(repository_root, errors)
-    _validate_live_provider(evidence_root, pact_dir, provenance, errors)
-    _validate_live_apphost(evidence_root, repository_root, provenance, errors)
+    _validate_live_provider(
+        evidence_root,
+        pact_dir,
+        provenance,
+        errors,
+        package_root=provider_package_root,
+        repository_root=repository_root,
+    )
+    _validate_live_apphost(
+        evidence_root,
+        repository_root,
+        provenance,
+        errors,
+        package_root=apphost_package_root,
+    )
     return errors
 
 
@@ -4176,15 +5494,23 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--repository-root", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--write-live-receipt", action="store_true")
     parser.add_argument("--write-runtime-input-manifest", action="store_true")
+    parser.add_argument("--write-package-ledger", action="store_true")
     parser.add_argument("--runtime-input-manifest-output", type=Path)
     parser.add_argument("--runtime-input-manifest", type=Path)
     parser.add_argument("--runtime-input-captured-at")
+    parser.add_argument("--package-ledger-output", type=Path)
+    parser.add_argument("--package-ledger", type=Path)
+    parser.add_argument("--package-root", type=Path)
+    parser.add_argument("--package-assets", action="append", type=Path, default=[])
+    parser.add_argument("--provider-package-root", type=Path)
+    parser.add_argument("--apphost-package-root", type=Path)
     args = parser.parse_args(argv)
     if (
         args.evidence_root is None
         and args.live_evidence_root is None
         and args.active_identity is None
         and not args.write_runtime_input_manifest
+        and not args.write_package_ledger
     ):
         parser.error("at least one evidence or active-identity input is required")
     active_arguments = (args.active_identity, args.active_evidence_root, args.history_evidence_root)
@@ -4203,17 +5529,36 @@ def main(argv: list[str] | None = None) -> int:
                 captured_at=args.runtime_input_captured_at,
             )
         )
+    if args.write_package_ledger:
+        if args.package_ledger_output is None or args.package_root is None or not args.package_assets:
+            parser.error(
+                "--write-package-ledger requires --package-ledger-output, --package-root, and --package-assets"
+            )
+        errors.extend(
+            write_package_ledger(
+                args.package_ledger_output.absolute(),
+                args.repository_root.absolute(),
+                args.package_root.absolute(),
+                (path.absolute() for path in args.package_assets),
+            )
+        )
     if args.write_live_receipt:
         if args.live_evidence_root is None:
             parser.error("--write-live-receipt requires --live-evidence-root")
         if args.runtime_input_manifest is None:
             parser.error("--write-live-receipt requires --runtime-input-manifest")
+        if args.package_ledger is None or args.package_root is None:
+            parser.error(
+                "--write-live-receipt requires --package-ledger and --package-root"
+            )
         errors.extend(
             write_live_receipt(
                 args.live_evidence_root.absolute(),
                 args.repository_root.absolute(),
                 runtime_input_manifest_path=args.runtime_input_manifest.absolute(),
                 pact_dir=args.pact_dir.absolute(),
+                package_ledger_path=args.package_ledger.absolute(),
+                package_root=args.package_root.absolute(),
             )
         )
     if args.evidence_root is not None:
@@ -4223,6 +5568,16 @@ def main(argv: list[str] | None = None) -> int:
             args.live_evidence_root.absolute(),
             args.pact_dir.absolute(),
             args.repository_root.absolute(),
+            provider_package_root=(
+                args.provider_package_root.absolute()
+                if args.provider_package_root is not None
+                else None
+            ),
+            apphost_package_root=(
+                args.apphost_package_root.absolute()
+                if args.apphost_package_root is not None
+                else None
+            ),
         ))
     if args.active_identity is not None:
         active_errors, approval_issues, approval_claimed = validate_active(

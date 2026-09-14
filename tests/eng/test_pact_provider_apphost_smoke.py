@@ -25,6 +25,53 @@ sys.path.insert(0, str(ROOT / "eng"))
 
 import pact_provider_apphost_smoke as smoke  # noqa: E402
 
+REAL_RUNTIME_OUTPUT_INVENTORY = smoke._runtime_output_inventory
+
+
+def _synthetic_package_ledger(
+    assets_paths: list[Path], captured_at: str | None = None
+) -> dict[str, Any]:
+    content_hash = base64.b64encode(bytes(range(64))).decode("ascii")
+    binding = {
+        "id": "Synthetic.Package",
+        "version": "1.0.0",
+        "relativePath": "synthetic.package/1.0.0",
+        "contentHashSha512": content_hash,
+    }
+    files = [
+        {
+            "path": "lib/net10.0/Synthetic.Package.dll",
+            "bytes": 1,
+            "sha256": "a" * 64,
+        }
+    ]
+    package = {
+        **binding,
+        "nupkgSha512": content_hash,
+        "files": files,
+        "treeSha256": smoke.runtime_evidence._package_tree_sha256(files),
+    }
+    entries = {
+        "assetsGraphs": [
+            {
+                "path": path.resolve(strict=False).relative_to(smoke.ROOT).as_posix(),
+                "sha256": "b" * 64,
+                "packages": [binding],
+            }
+            for path in sorted(assets_paths)
+        ],
+        "packages": [package],
+    }
+    return {
+        "schema": smoke.runtime_evidence.PACKAGE_LEDGER_SCHEMA,
+        "capturedAt": captured_at or datetime.now(timezone.utc).isoformat(),
+        "packageRoot": "fresh-external",
+        **entries,
+        "treeSha256": hashlib.sha256(
+            json.dumps(entries, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest(),
+    }
+
 
 class FakeRuntime(smoke.SmokeRuntime):
     def __init__(
@@ -154,6 +201,23 @@ class FakeRuntime(smoke.SmokeRuntime):
         self.assert_token_present(token)
         return hub_url.endswith("/hubs/projection-changes")
 
+    def signalr_invalid_upgrade_status(
+        self,
+        hub_url: str,
+        negotiation_token: str,
+        invalid_token: str,
+        timeout: float = 10,
+        deadline: float | None = None,
+    ) -> int:
+        del timeout, deadline
+        self.assert_token_present(negotiation_token)
+        return (
+            401
+            if hub_url.endswith("/hubs/projection-changes")
+            and invalid_token == "invalid-local-evidence-token"
+            else 0
+        )
+
     @staticmethod
     def assert_token_present(token: str | None) -> None:
         if token != "synthetic-token-never-persisted":
@@ -163,6 +227,19 @@ class FakeRuntime(smoke.SmokeRuntime):
     def assert_token_absent(token: str | None) -> None:
         if token is not None:
             raise AssertionError("token acquisition unexpectedly received a bearer")
+
+    @staticmethod
+    def source_projects() -> list[Path]:
+        return [
+            smoke.ROOT / relative
+            for relative in (
+                "references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj",
+                "references/Hexalith.Tenants/src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj",
+                "references/Hexalith.Parties/src/Hexalith.Parties.AdminPortal/Hexalith.Parties.AdminPortal.csproj",
+                "references/Hexalith.Memories/src/Hexalith.Memories.AccessTelemetry.Clock/Hexalith.Memories.AccessTelemetry.Clock.csproj",
+                "references/Hexalith.Commons/src/libraries/Hexalith.Commons.Aspire/Hexalith.Commons.Aspire.csproj",
+            )
+        ]
 
     @staticmethod
     def evaluation_output() -> str:
@@ -176,22 +253,24 @@ class FakeRuntime(smoke.SmokeRuntime):
                 for name, relative in smoke.SOURCE_ROOT_PROPERTIES.items()
             }
         )
+        properties["MSBuildAllProjects"] = str(smoke.APPHOST)
         project_references = [
-            {
-                "Identity": str(
-                    smoke.ROOT / relative / "src" / f"{Path(relative).name}.csproj"
-                ),
-                "FullPath": str(
-                    smoke.ROOT / relative / "src" / f"{Path(relative).name}.csproj"
-                ),
-            }
-            for relative in smoke.REACHABLE_SOURCE_GITLINKS
+            {"Identity": str(path), "FullPath": str(path)}
+            for path in FakeRuntime.source_projects()
         ]
         return json.dumps({
             "Properties": properties,
             "Items": {
                 "ProjectReference": project_references,
                 "PackageReference": [],
+                "Reference": [],
+                "ReferencePath": [],
+                "Analyzer": [],
+                "AdditionalFiles": [],
+                "Content": [],
+                "None": [],
+                "NativeCopyLocalItems": [],
+                "RuntimeCopyLocalItems": [],
             },
         })
 
@@ -212,6 +291,49 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         )
         patcher.start()
         self.addCleanup(patcher.stop)
+        assets_patcher = mock.patch.object(
+            smoke,
+            "_discover_assets_graphs_from_json",
+            return_value=(
+                [smoke.APPHOST, *FakeRuntime.source_projects()],
+                [smoke.APPHOST.parent / "obj/project.assets.json"],
+            ),
+        )
+        assets_patcher.start()
+        self.addCleanup(assets_patcher.stop)
+        sdk_patcher = mock.patch.object(
+            smoke,
+            "_selected_dotnet_root",
+            return_value=ROOT,
+        )
+        sdk_patcher.start()
+        self.addCleanup(sdk_patcher.stop)
+        def package_ledger(
+            repository_root: Path,
+            package_root: Path,
+            assets_paths: Any,
+            *,
+            captured_at: str | None = None,
+        ) -> tuple[dict[str, Any], list[str]]:
+            del repository_root, package_root
+            return _synthetic_package_ledger(
+                list(assets_paths), captured_at
+            ), []
+
+        ledger_patcher = mock.patch.object(
+            smoke.runtime_evidence,
+            "resolved_package_ledger",
+            side_effect=package_ledger,
+        )
+        ledger_patcher.start()
+        self.addCleanup(ledger_patcher.stop)
+        outputs_patcher = mock.patch.object(
+            smoke,
+            "_runtime_output_inventory",
+            return_value=([{"path": "app.dll", "bytes": 1, "sha256": "2" * 64}], True),
+        )
+        outputs_patcher.start()
+        self.addCleanup(outputs_patcher.stop)
         self.dapr_paths = {
             relative: Path(self.temporary.name) / Path(relative).name
             for relative in smoke.DAPR_NAME_RESOLUTION_RELATIVES
@@ -233,7 +355,7 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         document = json.loads(self.output.read_text(encoding="utf-8"))
         self.assertEqual(
             document["schema"],
-            "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v2",
+            "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v3",
         )
         self.assertEqual(document["identity"]["frontComposerRevision"], smoke._git(ROOT, "rev-parse", "HEAD"))
         self.assertEqual(document["finalVerdict"], "passed")
@@ -264,11 +386,34 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertIn("-p:Configuration=Debug", runtime.commands[4])
         self.assertIn("--force", runtime.commands[4])
         self.assertIn("--force-evaluate", runtime.commands[4])
-        self.assertEqual(runtime.commands[5][:2], ["dotnet", "build"])
-        self.assertIn("--no-restore", runtime.commands[5])
-        self.assertEqual(runtime.commands[6][:2], ["dotnet", "msbuild"])
-        self.assertEqual(runtime.commands[7][:2], ["aspire", "start"])
-        self.assertIn("--isolated", runtime.commands[7])
+        build_index = next(
+            index
+            for index, command in enumerate(runtime.commands)
+            if command[:2] == ["dotnet", "build"]
+        )
+        start_index = next(
+            index
+            for index, command in enumerate(runtime.commands)
+            if command[:2] == ["aspire", "start"]
+        )
+        expected_evaluations = 1 + len(FakeRuntime.source_projects())
+        self.assertEqual(
+            sum(command[:2] == ["dotnet", "msbuild"] for command in runtime.commands[5:build_index]),
+            expected_evaluations,
+        )
+        self.assertEqual(
+            sum(command[:2] == ["dotnet", "msbuild"] for command in runtime.commands[build_index:start_index]),
+            expected_evaluations,
+        )
+        evaluation_commands = [
+            command for command in runtime.commands
+            if command[:2] == ["dotnet", "msbuild"]
+        ]
+        self.assertTrue(all("-target:ResolveReferences" in command for command in evaluation_commands))
+        self.assertTrue(all("-p:BuildProjectReferences=true" in command for command in evaluation_commands))
+        self.assertTrue(all(any("ReferencePath" in item for item in command) for command in evaluation_commands))
+        self.assertIn("--no-restore", runtime.commands[build_index])
+        self.assertIn("--isolated", runtime.commands[start_index])
         self.assertEqual(runtime.commands[-3][:2], ["aspire", "stop"])
         self.assertEqual(runtime.commands[-2][:2], ["aspire", "describe"])
         self.assertEqual(runtime.commands[-1][:2], ["aspire", "ps"])
@@ -418,11 +563,16 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertEqual(document["cleanup"]["result"], "failed")
         self.assertEqual(document["cleanup"]["listenerConfirmation"], "ports-unproven")
         self.assertIn("apphost.cleanup.incomplete", document["reasonCodes"])
+        phases = [item[:2] for item in runtime.commands]
+        expected_evaluations = 1 + len(FakeRuntime.source_projects())
         self.assertEqual(
-            [item[:2] for item in runtime.commands],
+            phases,
             [
                 ["aspire", "stop"], ["aspire", "describe"], ["aspire", "ps"],
-                ["dotnet", "clean"], ["dotnet", "restore"], ["dotnet", "build"], ["dotnet", "msbuild"],
+                ["dotnet", "clean"], ["dotnet", "restore"],
+                *[["dotnet", "msbuild"]] * expected_evaluations,
+                ["dotnet", "build"],
+                *[["dotnet", "msbuild"]] * expected_evaluations,
                 ["aspire", "start"],
                 ["aspire", "stop"], ["aspire", "describe"], ["aspire", "ps"],
             ],
@@ -587,7 +737,7 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
             {"result": "written"},
         )
 
-    def test_source_graph_must_evaluate_exact_pinned_build_properties(self) -> None:
+    def test_source_graph_must_evaluate_exact_properties_and_input_authorities(self) -> None:
         runtime = FakeRuntime()
         original_command = runtime.command
 
@@ -607,6 +757,169 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertFalse(any(args[:2] == ["aspire", "start"] for args in runtime.commands))
         document = json.loads(self.output.read_text(encoding="utf-8"))
         self.assertIn("apphost.source-graph.not-exact", document["reasonCodes"])
+
+        external = Path(self.temporary.name) / "external-build-input.bin"
+        external.write_bytes(b"outside sealed authorities")
+        for item_name in (
+            "MSBuildAllProjects",
+            "ProjectReference",
+            "Reference",
+            "Analyzer",
+            "AdditionalFiles",
+            "Content",
+            "None",
+            "NativeCopyLocalItems",
+            "RuntimeCopyLocalItems",
+        ):
+            with self.subTest(item_name=item_name):
+                candidate_runtime = FakeRuntime()
+                candidate_command = candidate_runtime.command
+
+                def command_with_external_input(
+                    arguments: list[str],
+                    timeout: float,
+                    *,
+                    item_name: str = item_name,
+                ) -> smoke.CommandResult:
+                    if arguments[:2] == ["dotnet", "msbuild"]:
+                        candidate_runtime.commands.append(arguments)
+                        candidate = json.loads(FakeRuntime.evaluation_output())
+                        if item_name == "MSBuildAllProjects":
+                            candidate["Properties"][item_name] += f";{external}"
+                        else:
+                            candidate["Items"][item_name] = [
+                                {
+                                    "Identity": "external-input",
+                                    "HintPath": str(external),
+                                }
+                            ]
+                        return smoke.CommandResult(0, json.dumps(candidate))
+                    return candidate_command(arguments, timeout)
+
+                candidate_runtime.command = command_with_external_input  # type: ignore[method-assign]
+
+                result = smoke.capture(self.output, candidate_runtime, timeout=30)
+
+                self.assertEqual(result, 1)
+                self.assertFalse(
+                    any(
+                        arguments[:2] == ["aspire", "start"]
+                        for arguments in candidate_runtime.commands
+                    )
+                )
+                failure = json.loads(self.output.read_text(encoding="utf-8"))
+                self.assertIn("apphost.source-graph.not-exact", failure["reasonCodes"])
+
+    def test_target_resolved_external_reference_path_fails_before_start(self) -> None:
+        runtime = FakeRuntime()
+        original_command = runtime.command
+        external = Path(self.temporary.name) / "target-produced-reference.dll"
+        external.write_bytes(b"outside sealed authorities")
+        resolve_target_seen = False
+
+        def command(arguments: list[str], timeout: float) -> smoke.CommandResult:
+            nonlocal resolve_target_seen
+            if arguments[:2] == ["dotnet", "msbuild"]:
+                runtime.commands.append(arguments)
+                document = json.loads(FakeRuntime.evaluation_output())
+                if "-target:ResolveReferences" in arguments:
+                    resolve_target_seen = True
+                    document["Items"]["ReferencePath"] = [
+                        {"Identity": str(external), "FullPath": str(external)}
+                    ]
+                return smoke.CommandResult(0, json.dumps(document))
+            return original_command(arguments, timeout)
+
+        runtime.command = command  # type: ignore[method-assign]
+
+        result = smoke.capture(self.output, runtime, timeout=30)
+
+        self.assertEqual(result, 1)
+        self.assertTrue(resolve_target_seen)
+        self.assertFalse(any(
+            args[:2] == ["aspire", "start"] for args in runtime.commands
+        ))
+        failure = json.loads(self.output.read_text(encoding="utf-8"))
+        self.assertIn("apphost.source-graph.not-exact", failure["reasonCodes"])
+
+    def test_empty_or_rootless_assets_graph_set_fails_before_ledger_or_start(self) -> None:
+        rootless = smoke.ROOT / smoke.runtime_evidence.PROVIDER_PACKAGE_ASSETS[0]
+        for assets_paths in ([], [rootless]):
+            with self.subTest(assets_paths=assets_paths):
+                runtime = FakeRuntime()
+                with mock.patch.object(
+                    smoke,
+                    "_discover_assets_graphs_from_json",
+                    return_value=([smoke.APPHOST], assets_paths),
+                ):
+                    result = smoke.capture(self.output, runtime, timeout=30)
+
+                self.assertEqual(result, 1)
+                self.assertFalse(any(
+                    args[:2] == ["dotnet", "msbuild"]
+                    or args[:2] == ["aspire", "start"]
+                    for args in runtime.commands
+                ))
+                failure = json.loads(self.output.read_text(encoding="utf-8"))
+                self.assertIn("apphost.assets-graph.not-closed", failure["reasonCodes"])
+
+    def test_semantically_self_consistent_empty_package_ledger_fails_before_execution(self) -> None:
+        runtime = FakeRuntime()
+        empty_entries: dict[str, Any] = {"assetsGraphs": [], "packages": []}
+        empty_ledger = {
+            "schema": smoke.runtime_evidence.PACKAGE_LEDGER_SCHEMA,
+            "capturedAt": datetime.now(timezone.utc).isoformat(),
+            "packageRoot": "fresh-external",
+            **empty_entries,
+            "treeSha256": hashlib.sha256(
+                json.dumps(
+                    empty_entries, sort_keys=True, separators=(",", ":")
+                ).encode("utf-8")
+            ).hexdigest(),
+        }
+        with mock.patch.object(
+            smoke.runtime_evidence,
+            "resolved_package_ledger",
+            return_value=(empty_ledger, []),
+        ):
+            result = smoke.capture(self.output, runtime, timeout=30)
+
+        self.assertEqual(result, 1)
+        self.assertFalse(any(
+            args[:2] == ["dotnet", "msbuild"]
+            or args[:2] == ["aspire", "start"]
+            for args in runtime.commands
+        ))
+        failure = json.loads(self.output.read_text(encoding="utf-8"))
+        self.assertIn("apphost.package-authority.not-sealed", failure["reasonCodes"])
+
+    def test_runtime_output_requires_apphost_deps_and_rejects_package_substitution(self) -> None:
+        apphost = Path(self.temporary.name) / "src/AppHost/AppHost.csproj"
+        output = apphost.parent / "bin/Debug/net10.0"
+        output.mkdir(parents=True)
+        (output / "AppHost.dll").write_bytes(b"apphost")
+
+        with mock.patch.object(smoke, "APPHOST", apphost):
+            _, valid = REAL_RUNTIME_OUTPUT_INVENTORY()
+            self.assertFalse(valid)
+
+            deps_path = output / "AppHost.deps.json"
+            deps_path.write_text('{"libraries":{}}\n', encoding="utf-8")
+            _, valid = REAL_RUNTIME_OUTPUT_INVENTORY()
+            self.assertTrue(valid)
+
+            deps_path.write_text(
+                json.dumps(
+                    {
+                        "libraries": {
+                            "Hexalith.EventStore/3.103.0": {"type": "package"}
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            _, valid = REAL_RUNTIME_OUTPUT_INVENTORY()
+            self.assertFalse(valid)
 
     def test_evaluated_dependency_package_reference_fails_before_start(self) -> None:
         for identity in ("hexalith.eventstore", "HeXaLiTh.TeNaNtS.Client"):
@@ -1026,8 +1339,12 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
             all(smoke._is_loopback_url(url) for url in smoke._resource_signalr_urls(records, "eventstore"))
         )
         runtime = smoke.SmokeRuntime()
-        with self.assertRaisesRegex(ValueError, "require-loopback"):
-            runtime.json_request("https://public.example.test/token", form={"password": "secret"})
+        self.assertEqual(
+            runtime.json_request(
+                "https://public.example.test/token", form={"password": "secret"}
+            ),
+            (0, {}, {}),
+        )
         with self.assertRaisesRegex(ValueError, "require-loopback"):
             runtime.signalr_connect("https://public.example.test/hub", "token")
 
@@ -1039,12 +1356,42 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
             mock.patch.object(smoke.socket, "getaddrinfo", return_value=poisoned),
             mock.patch.object(smoke.request, "build_opener") as build_opener,
         ):
-            with self.assertRaisesRegex(ValueError, "require-loopback"):
+            self.assertEqual(
                 smoke.SmokeRuntime().json_request(
                     "http://localhost:18080/token",
                     form={"password": "never-sent"},
-                )
+                ),
+                (0, {}, {}),
+            )
         build_opener.assert_not_called()
+
+    def test_localhost_resolution_stops_at_the_caller_deadline_without_sending_credentials(self) -> None:
+        release = threading.Event()
+
+        def blocked_resolution(*args: Any, **kwargs: Any) -> list[Any]:
+            del args, kwargs
+            release.wait(1)
+            return [
+                (smoke.socket.AF_INET, smoke.socket.SOCK_STREAM, 6, "", ("127.0.0.1", 18080))
+            ]
+
+        started = time.monotonic()
+        try:
+            with (
+                mock.patch.object(smoke.socket, "getaddrinfo", side_effect=blocked_resolution),
+                mock.patch.object(smoke.request, "build_opener") as build_opener,
+            ):
+                result = smoke.SmokeRuntime().json_request(
+                    "http://localhost:18080/token",
+                    form={"password": "never-sent"},
+                    timeout=0.02,
+                    deadline=time.monotonic() + 0.02,
+                )
+            self.assertEqual(result, (0, {}, {}))
+            self.assertLess(time.monotonic() - started, 0.25)
+            build_opener.assert_not_called()
+        finally:
+            release.set()
 
     def test_numeric_loopback_transport_preserves_logical_authority(self) -> None:
         observed_host = ""
@@ -1154,10 +1501,12 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
             deadline: float | None = None,
         ) -> tuple[int, dict[str, Any], dict[str, str]]:
             requested_urls.append(url)
-            if url.endswith(("/health", "/alive")):
+            if url.endswith("/health"):
                 request_timeouts.append(timeout)
                 clock[0] += timeout
                 return 0, {}, {}
+            if url.endswith("/alive"):
+                return 200, {}, {}
             return original_request(
                 url, method=method, token=token, form=form, body=body, timeout=timeout, deadline=deadline
             )
@@ -1175,6 +1524,7 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertLessEqual(clock[0], 30)
         self.assertTrue(all(0 < value <= 30 for value in runtime.command_timeouts))
         self.assertFalse(any(url.endswith("/api/v1/commands") for url in requested_urls))
+        self.assertFalse(any(url.endswith("/alive") for url in requested_urls))
         document = json.loads(self.output.read_text(encoding="utf-8"))
         self.assertIn("health.readiness.failed", document["reasonCodes"])
         self.assertEqual(document["observations"]["commandSubmit"]["result"], "not-observed")
@@ -1269,7 +1619,7 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
             with self.subTest(surface=surface):
                 runtime = FakeRuntime()
                 original_request = runtime.json_request
-                original_signalr = runtime.signalr_negotiate_status
+                original_signalr = runtime.signalr_invalid_upgrade_status
 
                 def json_request(
                     url: str,
@@ -1296,16 +1646,23 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
 
                 def signalr_status(
                     hub_url: str,
-                    token: str | None,
+                    negotiation_token: str,
+                    invalid_token: str,
                     timeout: float = 10,
                     deadline: float | None = None,
                 ) -> int:
                     if surface == "projectionSignalR":
                         return 200
-                    return original_signalr(hub_url, token, timeout=timeout, deadline=deadline)
+                    return original_signalr(
+                        hub_url,
+                        negotiation_token,
+                        invalid_token,
+                        timeout=timeout,
+                        deadline=deadline,
+                    )
 
                 runtime.json_request = json_request  # type: ignore[method-assign]
-                runtime.signalr_negotiate_status = signalr_status  # type: ignore[method-assign]
+                runtime.signalr_invalid_upgrade_status = signalr_status  # type: ignore[method-assign]
                 result = smoke.capture(self.output, runtime, timeout=30)
                 self.assertEqual(result, 1)
                 document = json.loads(self.output.read_text(encoding="utf-8"))
@@ -1492,12 +1849,14 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
 
         def signalr_status(
             hub_url: str,
-            token: str | None,
+            negotiation_token: str,
+            invalid_token: str,
             timeout: float = 10,
             deadline: float | None = None,
         ) -> int:
             del timeout, deadline
-            runtime.assert_token_absent(None if token == "invalid-local-evidence-token" else token)
+            runtime.assert_token_present(negotiation_token)
+            self.assertEqual(invalid_token, "invalid-local-evidence-token")
             calls.append(("control", hub_url))
             return 401
 
@@ -1512,7 +1871,7 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
             calls.append(("success", hub_url))
             return "localhost" in hub_url
 
-        runtime.signalr_negotiate_status = signalr_status  # type: ignore[method-assign]
+        runtime.signalr_invalid_upgrade_status = signalr_status  # type: ignore[method-assign]
         runtime.signalr_connect = signalr_connect  # type: ignore[method-assign]
 
         result = smoke.capture(self.output, runtime, timeout=30)
