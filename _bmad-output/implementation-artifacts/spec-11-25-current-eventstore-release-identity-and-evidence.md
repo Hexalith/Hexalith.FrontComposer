@@ -2,10 +2,10 @@
 title: 'Story 11.25: Current EventStore Release Identity and Evidence'
 type: 'bugfix'
 created: '2026-09-12'
-status: 'in-progress'
+status: 'in-review'
 route: 'dispatch'
 baseline_commit: '1b3608c9b039dbba1be0884d92a2a6d54054e370'
-review_loop_iteration: 5
+review_loop_iteration: 7
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-11-context.md'
   - '{project-root}/_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md'
@@ -312,6 +312,56 @@ set as topology drift requiring review and recapture. Do not add an artificial p
 | EH6-08 | false | reject | The final active validator compares the recorded AppHost elapsed duration with `timeoutSeconds`; a post-cleanup scan that crosses the limit cannot satisfy Gate 2c even if the standalone writer completes. |
 | EH6-09 | false | reject | The approved task explicitly requires rejecting pre-handshake frames; accepting a coalesced server frame before the client SignalR handshake would weaken that specified negative control. |
 | EH6-10 | low | reject | `runningAppHostsAfterAttempt` deliberately counts the target AppHost so unrelated sessions remain untouched; the `aspire-ps-empty` label is imprecise but changing the bound schema for that cosmetic wording is disproportionate. |
+| BH7-01 | false | reject | carried from BH6-01: the advanced root gitlinks are an explicit future candidate, and fail-closed rejection on current `main` is the required behavior rather than a stale-identity implementation defect. |
+| BH7-02 | maybe-false | defer | A symlinked or surviving provider `bin`/`obj` input could undermine the clean/force-restore sequence only if an executable poisoned-output fixture proves that the regenerated provider graph follows it; that evidence is not present in the diff. |
+| BH7-03 | false | reject | The current cleanup loop calls `_port_open` exactly once per URL and iteration, with the remaining deadline passed to that call; the claimed double probe is not present. |
+| BH7-04 | false | reject | carried from BH5-10: capture probes every described URL/endpoint for the exact required resources and independently requires the target AppHost to disappear; no surviving generated-support listener coordinate was demonstrated. |
+| BH7-05 | false | reject | The topology contract is expressly over named primary resources; unnamed wrapper or metadata objects are not primary resources, while named malformed or extra records remain in the exact-name comparison and fail. |
+| BH7-06 | high | bad_spec | `_bulk_worktree_git_objects` accepts a checkout-filtered object identity as sufficient, so an unsealed local clean filter can normalize altered raw worktree bytes back to the indexed object while MSBuild consumes the altered bytes. This contradicts the required worktree-byte/index identity and needs a filter-independent equivalence design. |
+| BH7-07 | maybe-false | defer | An explicitly imported untracked file below a project output root would escape inventory only if an executable evaluated-build fixture shows that the SDK consumes it despite output exclusions; that evidence is not present in the diff. |
+| BH7-08 | high | patch | The redaction scanners omit common credential keys such as `client_secret`, `private_key`, and `sas_token`, and their encoded-token matcher omits Base64url `-`/`_`; a direct parity update plus regression cases would close the demonstrated leak grammar. |
+| BH7-09 | medium | patch | `write_live_receipt` permits a provider completion up to five minutes in the future and writes the receipt before checking that its own capture time follows completion; the writer must reject that chronology before atomic replacement. |
+| BH7-10 | medium | patch | `_pact_interactions` constructs `set(manifest_pact_files)` before validating element types, so an object or array member raises `TypeError`; validate the exact string list first and return a deterministic issue. |
+| BH7-11 | medium | patch | Receipt creation compares manifest descriptions and provider states but omits its method/path and required semantic fields, so the standalone writer can emit a receipt that the later PowerShell gate rejects; reuse the complete canonical manifest checks before writing. |
+| BH7-12 | false | reject | `ArtifactDir` is a caller-selected output coordinate, not one of the repository-relative authority inputs covered by the nearby comment; CI and the documented command invoke the script from the repository root. |
+| BH7-13 | medium | patch | Dirty dependency diagnostics emit every ignored/untracked path and produced a multi-megabyte message in the current candidate; bound the displayed sample and report the omitted count without weakening rejection. |
+| BH7-14 | false | reject | carried from EH6-04: additive live-provider fields are non-authoritative because exact required identity, hashes, interactions, redaction, approval bindings, and final state are independently validated. |
+| EH7-01 | low | reject | carried from BH3-10: base-evidence reads can fail before a JSON diagnostic is written, but no host, credential probe, or state mutation has begun and the process still fails closed; broader preflight error-state machinery is disproportionate. |
+| EH7-02 | maybe-false | defer | carried from EH6-07: absent-before/present-after ownership could misattribute a concurrent Dapr file, but no concurrent writer is demonstrated after confirmed cold stop; such evidence would establish a medium local-data risk. |
+| EH7-03 | false | reject | carried from EH4-02: changing runtime inputs during the build and restoring them before postflight requires an undemonstrated hostile concurrent writer, not a reachable CI path. |
+| EH7-04 | medium | bad_spec | `_numeric_loopback_url` performs synchronous `socket.getaddrinfo` without the phase or capture deadline, so a stalled NSS/DNS resolution can exceed the advertised bounded run before any credential is sent. The bounded-capture contract needs a deadline-enforced resolution design. |
+| VG7-01 | low | reject | The workflow-order test is source-based, but it asserts the real command ordering and runtime validation separately requires the manifest to predate provider execution; defeating it by duplicating commands in comments requires an intentionally deceptive code change, and extracting a new orchestrator is disproportionate. |
+| VG7-02 | false | reject | carried from BH6-01: the current gitlink advance is the tested future-candidate rejection path and must not be recaptured or relabelled as the sealed Story 11.25 tuple. |
+| BH8-01 | false | reject | carried from BH7-01: the advanced root gitlinks are the explicit future-candidate rejection path, not a defect in the sealed Story 11.25 tuple. |
+| BH8-02 | maybe-false | defer | carried from BH7-07: project-adjacent `bin`/`obj` files are excluded, but no executable evaluated-build fixture demonstrates that one is consumed as an input; such a fixture would establish the claimed provenance gap. |
+| BH8-03 | high | patch | Untracked output paths are filtered before symlink inspection, so a `bin`/`obj` symlink can escape both the manifest and the required symlink rejection. Inspect output symlinks before granting the generated-output exemption. |
+| BH8-04 | maybe-false | defer | The root build-control recognizer is intentionally finite, and the finding supplies no tracked conditional import that an untracked `Custom.Build.props`-style file activates. An evaluated import-graph fixture would settle whether such a file can affect this build. |
+| BH8-05 | high | bad_spec | Restore still consumes ambient NuGet configuration and global-package bytes that are not bound by the runtime manifest. Closing exact runtime provenance across third-party restore inputs requires a coherent source/cache/content identity design, not a local guard. |
+| BH8-06 | false | reject | An A-B-A manifest swap requires an undemonstrated hostile concurrent writer; no CI path rewrites the supplied manifest during receipt validation, matching the previously rejected concurrent-input race. |
+| BH8-07 | medium | defer | carried from BH6-10: the pre-existing live-receipt writer uses a predictable symlink-following temporary path. It remains follow-up evidence-writer hardening rather than a new Story 11.25 root cause. |
+| BH8-08 | false | reject | carried from BH6-08: the approved manifest deliberately seals runtime inputs rather than governance tooling; validator and workflow changes remain tied to the reviewed revision and ordinary code review. |
+| BH8-09 | false | reject | The frozen decision explicitly requires invalid-bearer controls rather than anonymous-only controls, and the protected surfaces use authorization middleware; adding a second anonymous matrix would renegotiate the approved evidence contract. |
+| BH8-10 | high | bad_spec | The readiness loop accepts `/alive` after `/health` fails and then records `health.readiness.succeeded`. Because `/alive` is liveness rather than readiness, the implementation can publish a readiness claim without readiness evidence and needs a re-derived observation contract. |
+| BH8-11 | low | reject | carried from EH7-01: `_base_evidence` can fail before a diagnostic artifact, but this occurs before host start, credential use, or mutation and still fails closed; broader preflight error-state machinery is disproportionate. |
+| BH8-12 | maybe-false | defer | No concurrent capture path is demonstrated in repository CI. A reproducible overlapping-run test showing lifecycle or `nr.db*` ownership interference would establish the claimed high-impact race. |
+| BH8-13 | low | reject | carried from BH6-13: the capture uses a unique ULID tenant in disposable CI infrastructure; safe domain-state deletion would add disproportionate persistence/topology complexity. |
+| BH8-14 | false | reject | carried from BH7-04: capture probes every described endpoint for the exact resources and independently requires the target AppHost to disappear; no surviving support-listener coordinate is demonstrated. |
+| BH8-15 | medium | patch | The documented multi-command live-lane recipe lacks fail-fast shell settings and cleanup, so a copied run can continue into destructive output preparation after manifest failure. Add `set -euo pipefail` and a manifest cleanup trap. |
+| BH8-16 | medium | bad_spec | Distinct-role enforcement compares actor labels literally, so case variants or cross-scheme aliases can represent the same principal. Defining canonical immutable principal identity requires a policy-level design before durable approvals are enabled. |
+| BH8-17 | medium | defer | carried from BH6-12: durable-source content or signature retrieval is outside the repository's existing receipt trust model and requires a separate signing/attestation design. |
+| VG8-01 | medium | patch | Pre-verified: active and OI-18 negative tests omit present-but-wrong actor, durable-source, and decision mutations, so authorization checks can regress while existing tests remain green. Extend both mutation matrices. |
+| VG8-02 | medium | patch | Pre-verified: the approved CLI branch is not exercised with a fully approved fixture because the PowerShell integration substitutes a fake producer. Add a real `main()` approved-output test and use its output in the handoff test. |
+| EH8-01 | high | patch | Confirmed with BH8-03: the generated-output exclusion runs before untracked-symlink rejection, allowing an ignored project-output symlink to evade the sealed scope. |
+| EH8-02 | false | reject | Confirmed with BH8-09: the approved matrix requires invalid-bearer rejection, and an additional anonymous-probe requirement would change rather than enforce the frozen contract. |
+| EH8-03 | medium | defer | carried from BH6-10: the predictable symlink-following live-receipt temporary path is acknowledged follow-up hardening and is not patched again in Story 11.25. |
+| EH8-04 | medium | patch | Confirmed with BH8-15: the documented shell sequence can continue after manifest failure outside GitHub Actions' fail-fast runner wrapper. |
+| EH8-05 | false | reject | carried from BH7-01: current `main` is intentionally the advanced future candidate and must fail the sealed active-tuple gate. |
+| EH8-06 | maybe-false | defer | carried from BH7-07: exclusion of project-output files is real, but an executable fixture must demonstrate that the evaluated build consumes one before this becomes a verified provenance defect. |
+| EH8-07 | false | reject | Swapping and restoring the manifest around independent reads requires the same undemonstrated hostile concurrent writer already rejected for capture-input races. |
+| EH8-08 | false | reject | Replacing and restoring the provider report between full validation and binding likewise requires an undemonstrated concurrent writer; no repository or CI caller performs that mutation. |
+| EH8-09 | false | reject | carried from EH4-02: replacing the resolved-assets path between its symlink check and read requires an undemonstrated hostile concurrent writer. |
+| EH8-10 | high | bad_spec | Confirmed with BH8-10: a successful `/alive` fallback is labelled as readiness, contradicting the strict readiness-evidence claim. |
+| EH8-11 | false | reject | carried from BH7-14: additive provider fields are non-authoritative because required identity, hashes, interactions, redaction, approval bindings, and final state are independently validated. |
 
 ## Design Notes
 
