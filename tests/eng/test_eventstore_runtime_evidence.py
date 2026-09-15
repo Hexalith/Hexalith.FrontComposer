@@ -116,6 +116,32 @@ def _synthetic_package_ledger(
     }
 
 
+def _manifest_entry_sha256(relative: str) -> str:
+    """Return the sealed runtime manifest's exact hash for one tracked runtime input."""
+    manifest = json.loads(
+        (CANONICAL_ACTIVE_EVIDENCE / "frontcomposer-runtime-inputs.json").read_text(
+            encoding="utf-8-sig"
+        )
+    )
+    return next(
+        str(entry["sha256"])
+        for entry in manifest["entries"]
+        if entry.get("path") == relative
+    )
+
+
+def _write_package_ledger_sidecar(
+    root: Path,
+    name: str,
+    document: dict[str, Any],
+) -> dict[str, Any]:
+    """Write one ledger sidecar and return the binding its evidence document stores."""
+    payload = (json.dumps(document, indent=2) + "\n").encode("utf-8")
+    root.mkdir(parents=True, exist_ok=True)
+    (root / name).write_bytes(payload)
+    return evidence.package_ledger_binding(document, name, payload)
+
+
 def _set_manifest_hash(evidence_root: Path, relative: str) -> None:
     manifest_path = evidence_root / "sha256-manifest.json"
     manifest = _read_json(manifest_path)
@@ -667,6 +693,35 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         )
         shutil.copytree(CANONICAL_EVIDENCE, self.evidence_root)
         shutil.copytree(CANONICAL_LIVE_EVIDENCE, self.live_root)
+        # The checked-in live packet is the preserved package-less capture. The frozen-hash
+        # exemption now applies only to the history evidence root, so the live lane fixture
+        # carries a genuine v4 receipt bound to its own ledger sidecar, plus the AppHost
+        # sidecar that every live validation requires.
+        live_receipt_path = self.live_root / "run-evidence.json"
+        live_receipt = _read_json(live_receipt_path)
+        live_receipt["schema"] = "hexalith.eventstore.provider-verification-run-evidence.v4"
+        live_receipt["packageLedger"] = _write_package_ledger_sidecar(
+            self.live_root,
+            evidence.PROVIDER_PACKAGE_LEDGER_FILE,
+            _synthetic_package_ledger(
+                list(evidence.PROVIDER_PACKAGE_ASSETS),
+                "2026-09-12T11:00:00+00:00",
+                graph_sha256="2" * 64,
+            ),
+        )
+        _write_json(live_receipt_path, live_receipt)
+        live_smoke_path = self.live_root / "apphost-smoke.json"
+        live_smoke = _read_json(live_smoke_path)
+        live_smoke["packageLedger"] = _write_package_ledger_sidecar(
+            self.live_root,
+            evidence.APPHOST_PACKAGE_LEDGER_FILE,
+            _synthetic_package_ledger(
+                [evidence.APPHOST_PACKAGE_ASSETS_ROOT],
+                "2026-09-12T11:00:00+00:00",
+                graph_sha256="2" * 64,
+            ),
+        )
+        _write_json(live_smoke_path, live_smoke)
         shutil.copytree(CANONICAL_PACTS, self.pact_root)
         shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
         shutil.copytree(CANONICAL_PRIOR_EVIDENCE, self.history_root)
@@ -699,14 +754,27 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         active_smoke["schema"] = "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v3"
         active_smoke["executionStartedAt"] = "2026-09-14T08:02:30+00:00"
         active_smoke["identity"]["runtimeInputCapturedAt"] = "2026-09-12T08:53:30+00:00"
-        active_smoke["packageLedger"] = _synthetic_package_ledger(
-            [apphost_graph],
-            "2026-09-14T08:02:00+00:00",
-            graph_sha256="3" * 64,
+        active_smoke["packageLedger"] = _write_package_ledger_sidecar(
+            self.active_root / "recapture",
+            evidence.APPHOST_PACKAGE_LEDGER_FILE,
+            _synthetic_package_ledger(
+                [apphost_graph],
+                "2026-09-14T08:02:00+00:00",
+                graph_sha256="3" * 64,
+            ),
+        )
+        active_smoke["topology"]["declaredResources"] = list(
+            evidence.APPHOST_DECLARED_RESOURCES
         )
         output_preparation["evaluatedInputBinding"] = {
             "assetsGraphs": [apphost_graph],
-            "inputs": [{"authority": "repository", "path": "global.json", "sha256": "5" * 64}],
+            "inputs": [
+                {
+                    "authority": "repository",
+                    "path": "global.json",
+                    "sha256": _manifest_entry_sha256("global.json"),
+                }
+            ],
         }
         output_preparation["runtimeOutputBinding"] = [
             {"path": "net10.0/AppHost.dll", "bytes": 1, "sha256": "6" * 64}
@@ -721,33 +789,56 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         active_smoke["cleanup"]["packageAuthorityCleanAfterRun"] = True
         active_smoke["cleanup"]["runtimeOutputsCleanAfterRun"] = True
         _write_json(active_smoke_path, active_smoke)
-        active_smoke_hash = _sha256(active_smoke_path)
+
+        # The committed provider receipt is the preserved package-less packet. The
+        # frozen-hash exemption is scoped to the history evidence root, so the active
+        # lane requires a genuine v4 receipt bound to its own ledger sidecar.
+        active_receipt_path = self.active_root / "recapture" / "run-evidence.json"
+        active_receipt = _read_json(active_receipt_path)
+        active_receipt["schema"] = "hexalith.eventstore.provider-verification-run-evidence.v4"
+        active_receipt["packageLedger"] = _write_package_ledger_sidecar(
+            self.active_root / "recapture",
+            evidence.PROVIDER_PACKAGE_LEDGER_FILE,
+            _synthetic_package_ledger(
+                list(evidence.PROVIDER_PACKAGE_ASSETS),
+                "2026-09-12T11:00:00+00:00",
+                graph_sha256="4" * 64,
+            ),
+        )
+        _write_json(active_receipt_path, active_receipt)
+
+        recapture_hashes = {
+            relative: _sha256(self.active_root / "recapture" / relative)
+            for relative in sorted(
+                {
+                    "apphost-smoke.json",
+                    "provider-verification.json",
+                    "run-evidence.json",
+                    *evidence.PACKAGE_LEDGER_FILES,
+                }
+            )
+        }
+        evidence_files = [
+            {"path": relative, "sha256": digest}
+            for relative, digest in recapture_hashes.items()
+        ]
 
         decision_path = self.active_root / "recapture-decision.json"
         decision = _read_json(decision_path)
-        next(
-            item for item in decision["evidenceFiles"]
-            if item["path"] == "apphost-smoke.json"
-        )["sha256"] = active_smoke_hash
+        decision["evidenceFiles"] = evidence_files
         _write_json(decision_path, decision)
         decision_hash = _sha256(decision_path)
 
         subject_path = self.active_root / "approval-subject.json"
         subject = _read_json(subject_path)
         subject["decision"]["sha256"] = decision_hash
-        next(
-            item for item in subject["evidenceFiles"]
-            if item["path"] == "apphost-smoke.json"
-        )["sha256"] = active_smoke_hash
+        subject["evidenceFiles"] = evidence_files
         _write_json(subject_path, subject)
         subject_hash = _sha256(subject_path)
 
         identity = _read_json(self.identity_path)
         identity["decision"]["sha256"] = decision_hash
-        next(
-            item for item in identity["activeEvidence"]["files"]
-            if item["path"] == "apphost-smoke.json"
-        )["sha256"] = active_smoke_hash
+        identity["activeEvidence"]["files"] = evidence_files
         identity["approval"]["subject"]["sha256"] = subject_hash
         _write_json(self.identity_path, identity)
         shutil.copyfile(
@@ -935,10 +1026,14 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             CANONICAL_ACTIVE_EVIDENCE / "frontcomposer-runtime-inputs.json"
         )["capturedAt"]
         apphost_graph = evidence.APPHOST_PACKAGE_ASSETS_ROOT
-        package_ledger = _synthetic_package_ledger(
-            [apphost_graph],
-            "2026-09-13T17:00:01+00:00",
-            graph_sha256="7" * 64,
+        package_ledger = _write_package_ledger_sidecar(
+            self.live_root,
+            evidence.APPHOST_PACKAGE_LEDGER_FILE,
+            _synthetic_package_ledger(
+                [apphost_graph],
+                "2026-09-13T17:00:01+00:00",
+                graph_sha256="7" * 64,
+            ),
         )
         document = {
             "schema": "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v3",
@@ -963,18 +1058,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                 "projectPath": "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
                 "projectSha256": _sha256(ROOT / "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj"),
                 "modifiedForSmoke": False,
-                "declaredResources": [
-                    "security",
-                    "eventstore",
-                    "eventstore-admin",
-                    "eventstore-admin-ui",
-                    "tenants",
-                    "parties",
-                    "sample",
-                    "tenants-ui",
-                    "frontcomposer-ui",
-                    "counter-web",
-                ],
+                "declaredResources": list(evidence.APPHOST_DECLARED_RESOURCES),
             },
             "startup": {
                 "result": "passed",
@@ -997,7 +1081,11 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                     "evaluatedInputBinding": {
                         "assetsGraphs": [apphost_graph],
                         "inputs": [
-                            {"authority": "repository", "path": "global.json", "sha256": "8" * 64}
+                            {
+                                "authority": "repository",
+                                "path": "global.json",
+                                "sha256": _manifest_entry_sha256("global.json"),
+                            }
                         ],
                     },
                     "runtimeOutputBinding": [
@@ -1301,6 +1389,40 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         identity["approval"]["subject"]["sha256"] = _sha256(subject_path)
         _write_json(self.identity_path, identity)
 
+    def repin_active_package_ledger(
+        self,
+        owner: str,
+        name: str,
+        mutate: Callable[[dict[str, Any]], None],
+    ) -> None:
+        """Mutate one sealed ledger sidecar and repin the document that binds its bytes."""
+        sidecar = self.active_root / "recapture" / name
+        document = _read_json(sidecar)
+        mutate(document)
+        binding = _write_package_ledger_sidecar(
+            self.active_root / "recapture", name, document
+        )
+        self.repin_active_recapture(
+            owner, lambda packet: packet.__setitem__("packageLedger", binding)
+        )
+        self.repin_active_recapture(name, lambda _: None)
+
+    def mutate_live_package_ledger(
+        self,
+        owner: str,
+        name: str,
+        mutate: Callable[[dict[str, Any]], None],
+    ) -> None:
+        """Mutate one live ledger sidecar and rebind its owning evidence document."""
+        sidecar = self.live_root / name
+        document = _read_json(sidecar)
+        mutate(document)
+        binding = _write_package_ledger_sidecar(self.live_root, name, document)
+        owner_path = self.live_root / owner
+        packet = _read_json(owner_path)
+        packet["packageLedger"] = binding
+        _write_json(owner_path, packet)
+
     def repin_active_roster(self, roster: dict[str, Any]) -> None:
         roster_path = self.active_root / "reviewer-roster.json"
         _write_json(roster_path, roster)
@@ -1437,11 +1559,9 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         for path in canonical_files:
             relative = path.relative_to(ROOT).as_posix()
             attribute = _git_output("check-attr", "text", "--", relative)
+            # `text: unset` makes Git treat the path as binary, so `eol` is never consulted;
+            # the byte identity below is the guarantee, not an inert `-eol` attribute.
             self.assertEqual(attribute, f"{relative}: text: unset")
-            self.assertEqual(
-                _git_output("check-attr", "eol", "--", relative),
-                f"{relative}: eol: unset",
-            )
             raw_blob = _git_output("hash-object", "--no-filters", "--", relative)
             checkout_blob = _git_output("hash-object", f"--path={relative}", "--", relative)
             self.assertEqual(checkout_blob, raw_blob, f"checkout filters must preserve {relative}")
@@ -1454,14 +1574,12 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         for path in sorted(item for item in paths if item.is_file()):
             relative = path.relative_to(ROOT).as_posix()
             self.assertEqual(_git_output("check-attr", "text", "--", relative), f"{relative}: text: unset")
-            self.assertEqual(_git_output("check-attr", "eol", "--", relative), f"{relative}: eol: unset")
             self.assertEqual(
                 _git_output("hash-object", f"--path={relative}", "--", relative),
                 _git_output("hash-object", "--no-filters", "--", relative),
             )
         proposal = "_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md"
         self.assertEqual(_git_output("check-attr", "text", "--", proposal), f"{proposal}: text: unset")
-        self.assertEqual(_git_output("check-attr", "eol", "--", proposal), f"{proposal}: eol: unset")
         self.assertEqual(
             _git_output("hash-object", f"--path={proposal}", "--", proposal),
             _git_output("hash-object", "--no-filters", "--", proposal),
@@ -1842,7 +1960,11 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             "subjectSha256": lambda receipt: receipt.__setitem__("subjectSha256", "0" * 64),
             "policySha256": lambda receipt: receipt.__setitem__("policySha256", "0" * 64),
             "rosterSha256": lambda receipt: receipt.__setitem__("rosterSha256", "0" * 64),
-            "activeTuple": lambda receipt: receipt["activeTuple"].__setitem__("releaseVersion", "0.0.0"),
+            # Mutate a key the receipt actually declares, so this exercises a
+            # present-but-wrong value rather than extra-key rejection.
+            "activeTuple": lambda receipt: receipt["activeTuple"].__setitem__(
+                "eventStorePackageVersion", "0.0.0"
+            ),
             "runtimeInputs": lambda receipt: receipt["runtimeInputs"].__setitem__("sha256", "0" * 64),
             "evidenceFiles": lambda receipt: receipt["evidenceFiles"][0].__setitem__("sha256", "0" * 64),
             "effectiveRequiredRoles": lambda receipt: receipt.__setitem__(
@@ -2271,11 +2393,13 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                 self.assertTrue(any(expected in error for error in errors), errors)
 
     def test_new_apphost_package_ledger_must_predate_execution_boundary(self) -> None:
-        self.repin_active_recapture(
+        boundary = _read_json(
+            self.active_root / "recapture" / "apphost-smoke.json"
+        )["executionStartedAt"]
+        self.repin_active_package_ledger(
             "apphost-smoke.json",
-            lambda document: document["packageLedger"].__setitem__(
-                "capturedAt", document["executionStartedAt"]
-            ),
+            evidence.APPHOST_PACKAGE_LEDGER_FILE,
+            lambda ledger: ledger.__setitem__("capturedAt", boundary),
         )
 
         errors, _, _ = self.validate_active()
@@ -2777,7 +2901,8 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             unapproved_symlink_sha,
         )
         self.assertIn(
-            f"Runtime dependency contains untracked symlink inputs: {tracked_symlink_dependency}: runtime-link.props",
+            "Runtime dependency contains untracked symlink inputs selected by the "
+            f"build/runtime input scope: {tracked_symlink_dependency}: runtime-link.props",
             issues,
         )
 
@@ -2905,6 +3030,191 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         self.assertTrue(set(evidence.RUNTIME_DEPENDENCY_GITLINKS).issubset(paths))
         directory_rsp = next(item for item in manifest["entries"] if item["path"] == "Directory.Build.rsp")
         self.assertEqual(directory_rsp, {"path": "Directory.Build.rsp", "kind": "absent"})
+
+    def validate_live_with_manifest(self) -> list[str]:
+        """Exercise the bound live lane: the sealed manifest, not the artifact, is authority."""
+        return evidence.validate_live(
+            self.live_root,
+            self.pact_root,
+            ROOT,
+            provider_package_root=self.package_root,
+            apphost_package_root=self.package_root,
+            runtime_input_manifest_path=(
+                self.active_root / "frontcomposer-runtime-inputs.json"
+            ),
+        )
+
+    def test_live_lane_with_the_sealed_manifest_accepts_the_bound_capture(self) -> None:
+        self.make_live_apphost_pass()
+
+        # The sealed manifest is compared with the real repository, which has advanced past
+        # its capture revision; that separate finding is expected here. What this asserts is
+        # that supplying the manifest raises no live provider or AppHost binding error.
+        errors = [
+            error
+            for error in self.validate_live_with_manifest()
+            if error.startswith("Live ")
+        ]
+
+        self.assertEqual(errors, [])
+
+    def test_live_lane_with_the_sealed_manifest_rejects_a_backdated_capture(self) -> None:
+        self.make_live_apphost_pass()
+        smoke_path = self.live_root / "apphost-smoke.json"
+        document = _read_json(smoke_path)
+        document["identity"]["runtimeInputCapturedAt"] = _offset_timestamp(
+            document["identity"]["runtimeInputCapturedAt"], -60
+        )
+        _write_json(smoke_path, document)
+
+        errors = self.validate_live_with_manifest()
+
+        self.assertIn("Live AppHost smoke provenance is stale or untruthful.", errors)
+
+    def test_live_lane_with_the_sealed_manifest_rejects_an_unbound_evaluated_input(self) -> None:
+        self.make_live_apphost_pass()
+        smoke_path = self.live_root / "apphost-smoke.json"
+        document = _read_json(smoke_path)
+        document["startup"]["outputPreparation"]["evaluatedInputBinding"]["inputs"] = [
+            {"authority": "repository", "path": "global.json", "sha256": "c" * 64}
+        ]
+        _write_json(smoke_path, document)
+
+        errors = self.validate_live_with_manifest()
+
+        self.assertTrue(
+            any(
+                "differs from the sealed runtime manifest" in error for error in errors
+            ),
+            errors,
+        )
+
+    def test_package_ledger_sidecar_binding_must_bind_its_exact_bytes(self) -> None:
+        self.make_live_apphost_pass()
+        for owner, name in (
+            ("run-evidence.json", evidence.PROVIDER_PACKAGE_LEDGER_FILE),
+            ("apphost-smoke.json", evidence.APPHOST_PACKAGE_LEDGER_FILE),
+        ):
+            with self.subTest(sidecar=name):
+                sidecar = self.live_root / name
+                original = sidecar.read_bytes()
+                sidecar.write_bytes(original.replace(b"\n", b"\n ", 1))
+
+                errors = self.validate_live()
+
+                sidecar.write_bytes(original)
+                self.assertTrue(
+                    any(
+                        "package-ledger binding does not bind the sidecar bytes" in error
+                        for error in errors
+                    ),
+                    errors,
+                )
+
+    def test_package_ledger_sidecar_fields_must_match_the_sidecar_document(self) -> None:
+        self.make_live_apphost_pass()
+        smoke_path = self.live_root / "apphost-smoke.json"
+        document = _read_json(smoke_path)
+        document["packageLedger"]["treeSha256"] = "0" * 64
+        _write_json(smoke_path, document)
+
+        errors = self.validate_live()
+
+        self.assertTrue(
+            any(
+                "package-ledger binding does not bind the sidecar bytes" in error
+                or "package-ledger binding treeSha256 differs from the sidecar" in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_missing_package_ledger_sidecar_fails_closed(self) -> None:
+        self.make_live_apphost_pass()
+        (self.live_root / evidence.APPHOST_PACKAGE_LEDGER_FILE).unlink()
+
+        errors = self.validate_live()
+
+        self.assertTrue(
+            any("both package-ledger sidecars" in error for error in errors), errors
+        )
+        self.assertTrue(
+            any(
+                evidence.APPHOST_PACKAGE_LEDGER_FILE in error
+                and "missing or unreadable" in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_active_apphost_rejects_a_backdated_runtime_manifest_capture(self) -> None:
+        self.repin_active_recapture(
+            "apphost-smoke.json",
+            lambda document: document["identity"].__setitem__(
+                "runtimeInputCapturedAt",
+                _offset_timestamp(document["identity"]["runtimeInputCapturedAt"], -60),
+            ),
+        )
+
+        errors, _, _ = self.validate_active()
+
+        self.assertIn("Live AppHost smoke provenance is stale or untruthful.", errors)
+
+    def test_active_apphost_rejects_an_unbound_evaluated_repository_input(self) -> None:
+        sealed = _manifest_entry_sha256("global.json")
+        cases = (
+            (
+                [{"authority": "repository", "path": "global.json", "sha256": "b" * 64}],
+                "differs from the sealed runtime manifest",
+            ),
+            (
+                [
+                    {
+                        "authority": "repository",
+                        "path": "eng/unsealed-input.props",
+                        "sha256": sealed,
+                    }
+                ],
+                "leaves the sealed runtime scope",
+            ),
+            (
+                [
+                    {
+                        "authority": "packages",
+                        "path": "synthetic.package/1.0.0/lib/net10.0/Synthetic.Package.dll",
+                        "sha256": sealed,
+                    }
+                ],
+                "names no repository-authority input",
+            ),
+        )
+        for inputs, expected in cases:
+            with self.subTest(expected=expected):
+                self.repin_active_recapture(
+                    "apphost-smoke.json",
+                    lambda document, replacement=inputs: document["startup"][
+                        "outputPreparation"
+                    ]["evaluatedInputBinding"].__setitem__("inputs", replacement),
+                )
+
+                errors, _, _ = self.validate_active()
+
+                self.assertTrue(any(expected in error for error in errors), errors)
+
+    def test_active_apphost_rejects_reordered_declared_resources(self) -> None:
+        self.repin_active_recapture(
+            "apphost-smoke.json",
+            lambda document: document["topology"].__setitem__(
+                "declaredResources", sorted(evidence.APPHOST_DECLARED_RESOURCES)
+            ),
+        )
+
+        errors, _, _ = self.validate_active()
+
+        self.assertIn(
+            "Live AppHost smoke does not name exactly the ten declared resources in canonical order.",
+            errors,
+        )
 
     def test_live_lane_accepts_exact_current_provider_and_authenticated_apphost_evidence(self) -> None:
         self.make_live_apphost_pass()
@@ -3074,17 +3384,22 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
     def test_live_apphost_rejects_semantically_self_consistent_empty_package_authority(self) -> None:
         self.make_live_apphost_pass()
         smoke_path = self.live_root / "apphost-smoke.json"
+
+        def empty_ledger(ledger: dict[str, Any]) -> None:
+            ledger["assetsGraphs"] = []
+            ledger["packages"] = []
+            ledger["treeSha256"] = hashlib.sha256(
+                json.dumps(
+                    {"assetsGraphs": [], "packages": []},
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+            ).hexdigest()
+
+        self.mutate_live_package_ledger(
+            "apphost-smoke.json", evidence.APPHOST_PACKAGE_LEDGER_FILE, empty_ledger
+        )
         document = _read_json(smoke_path)
-        ledger = document["packageLedger"]
-        ledger["assetsGraphs"] = []
-        ledger["packages"] = []
-        ledger["treeSha256"] = hashlib.sha256(
-            json.dumps(
-                {"assetsGraphs": [], "packages": []},
-                sort_keys=True,
-                separators=(",", ":"),
-            ).encode("utf-8")
-        ).hexdigest()
         document["startup"]["outputPreparation"]["evaluatedInputBinding"][
             "assetsGraphs"
         ] = []
@@ -3112,20 +3427,25 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
     def test_live_apphost_requires_canonical_root_in_exact_ledger_and_evaluated_set(self) -> None:
         self.make_live_apphost_pass()
         smoke_path = self.live_root / "apphost-smoke.json"
-        document = _read_json(smoke_path)
         replacement = evidence.PROVIDER_PACKAGE_ASSETS[0]
-        ledger = document["packageLedger"]
-        ledger["assetsGraphs"][0]["path"] = replacement
-        ledger["treeSha256"] = hashlib.sha256(
-            json.dumps(
-                {
-                    "assetsGraphs": ledger["assetsGraphs"],
-                    "packages": ledger["packages"],
-                },
-                sort_keys=True,
-                separators=(",", ":"),
-            ).encode("utf-8")
-        ).hexdigest()
+
+        def rebind_graph(ledger: dict[str, Any]) -> None:
+            ledger["assetsGraphs"][0]["path"] = replacement
+            ledger["treeSha256"] = hashlib.sha256(
+                json.dumps(
+                    {
+                        "assetsGraphs": ledger["assetsGraphs"],
+                        "packages": ledger["packages"],
+                    },
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+            ).hexdigest()
+
+        self.mutate_live_package_ledger(
+            "apphost-smoke.json", evidence.APPHOST_PACKAGE_LEDGER_FILE, rebind_graph
+        )
+        document = _read_json(smoke_path)
         document["startup"]["outputPreparation"]["evaluatedInputBinding"][
             "assetsGraphs"
         ] = [replacement]
@@ -3302,7 +3622,9 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         errors = self.validate_live()
 
-        self.assertTrue(any("exactly provider-verification" in error for error in errors), errors)
+        self.assertTrue(
+            any("both package-ledger sidecars" in error for error in errors), errors
+        )
         self.assertTrue(any("observedSourceSha is stale" in error for error in errors), errors)
 
     def test_duplicate_json_keys_are_rejected_before_validation(self) -> None:
@@ -3873,7 +4195,73 @@ raise SystemExit(evidence.main())
         )
         return powershell_path
 
-    def test_required_provider_lane_accepts_the_canonical_live_evidence(self) -> None:
+    def test_prose_handoff_artifact_is_scanned_for_encoded_tokens(self) -> None:
+        handoff = self.pact_root / "provider-verification-handoff.md"
+        original = handoff.read_text(encoding="utf-8")
+        handoff.write_text(
+            original + "\n\nLeaked value: " + ("A" * 64) + "\n", encoding="utf-8"
+        )
+
+        result, summary = self._run_contract_validator("-PactDir", str(self.pact_root))
+
+        handoff.write_text(original, encoding="utf-8")
+        self.assertNotEqual(result.returncode, 0)
+        # pwsh wraps and colourizes Write-Error, so read the validator's own error file.
+        recorded = (summary.parent / "contract-validation-errors.txt").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(
+            "Redaction scan failed for provider-verification-handoff.md: encoded token-like payload",
+            recorded,
+        )
+
+    def test_prose_handoff_artifact_accepts_its_committed_bytes(self) -> None:
+        result, _ = self._run_contract_validator("-PactDir", str(self.pact_root))
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_contract_validator_forwards_the_package_and_manifest_environment(self) -> None:
+        recorder = Path(self._temporary.name) / "cli-arguments.txt"
+        fake_bin = Path(self._temporary.name) / "argument-recorder-bin"
+        fake_bin.mkdir()
+        fake_python = fake_bin / "python3"
+        fake_python.write_text(
+            "#!/bin/sh\n"
+            f'printf "%s\\n" "$@" >> {recorder}\n'
+            "printf '%s\\n' 'EventStore runtime evidence operation completed successfully.'\n"
+            "printf '%s\\n' 'EventStore runtime approval: OPEN'\n"
+            "printf '%s\\n' 'EventStore runtime approval issue: Missing named actor for required role: eventstore-maintainer'\n",
+            encoding="utf-8",
+        )
+        fake_python.chmod(0o755)
+        environment = os.environ.copy()
+        environment["PATH"] = f"{fake_bin}{os.pathsep}{environment['PATH']}"
+        environment["FRONTCOMPOSER_PROVIDER_PACKAGES"] = str(self.package_root)
+        environment["FRONTCOMPOSER_APPHOST_PACKAGES"] = str(self.package_root)
+        environment["FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST"] = str(
+            self.active_root / "frontcomposer-runtime-inputs.json"
+        )
+
+        self._run_contract_validator(
+            "-RequireProviderVerification",
+            "-PactDir",
+            str(self.pact_root),
+            "-ProviderVerificationReport",
+            str(self.live_root / "provider-verification.json"),
+            "-LiveEvidenceRoot",
+            str(self.live_root),
+            environment=environment,
+        )
+
+        recorded = recorder.read_text(encoding="utf-8").splitlines()
+        self.assertIn("--provider-package-root", recorded)
+        self.assertIn("--apphost-package-root", recorded)
+        self.assertIn("--runtime-input-manifest", recorded)
+        self.assertIn(
+            str(self.active_root / "frontcomposer-runtime-inputs.json"), recorded
+        )
+
+    def test_required_provider_lane_formats_the_open_approval_summary(self) -> None:
         fake_bin = Path(self._temporary.name) / "open-validator-bin"
         fake_bin.mkdir()
         fake_python = fake_bin / "python3"
@@ -3976,6 +4364,7 @@ raise SystemExit(evidence.main())
         self.assertEqual(missing, [], "Upload step omits required authority files")
 
     def test_required_provider_lane_publishes_the_approved_summary_branch(self) -> None:
+        self.make_live_apphost_pass()
         self.claim_active_approval()
         validator_script = self._write_fixture_contract_validator()
         result, summary = self._run_contract_validator(
@@ -4049,6 +4438,647 @@ raise SystemExit(evidence.main())
         output = result.stdout + result.stderr
         self.assertIn("exact current Pact bytes", output)
         self.assertIn("Current provider verification: REQUIRED_REJECTED", summary.read_text(encoding="utf-8"))
+
+
+class GitTextEquivalenceTests(unittest.TestCase):
+    """Compare the validator's text=auto classifier with real Git, the only authority."""
+
+    SAMPLES = (
+        ("plain crlf text", b"alpha\r\nbeta\r\n"),
+        ("lone carriage return", b"alpha\r\nbeta\rgamma\r\n"),
+        ("embedded nul", b"alpha\r\n\x00beta\r\n"),
+        ("delete control", b"alpha\r\n\x7f\r\n"),
+        ("high bytes", b"alpha\r\n\xc3\xa9\xc3\xa8\r\n"),
+        ("printable controls", b"alpha\r\n\x08\x09\x0c\x1b\r\n"),
+        ("at ratio limit", b"a\r\n" + b"x" * 1021 + b"\x01" * 8),
+        ("below ratio limit", b"a\r\n" + b"x" * 1021 + b"\x01" * 7),
+    )
+
+    def setUp(self) -> None:
+        self._temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self._temporary.cleanup)
+        self.repository = Path(self._temporary.name)
+        subprocess.run(["git", "init", "-q"], cwd=self.repository, check=True)
+        (self.repository / ".gitattributes").write_text("* text=auto\n", encoding="utf-8")
+
+    def _git_normalizes(self, data: bytes) -> bool:
+        """Return whether Git itself applies text=auto EOL normalization to these bytes."""
+        raw = subprocess.run(
+            ["git", "hash-object", "--stdin"],
+            cwd=self.repository,
+            input=data,
+            check=True,
+            capture_output=True,
+        ).stdout.strip()
+        filtered = subprocess.run(
+            ["git", "hash-object", "--path", "sample.txt", "--stdin"],
+            cwd=self.repository,
+            input=data,
+            check=True,
+            capture_output=True,
+        ).stdout.strip()
+        return raw != filtered
+
+    def test_classifier_matches_git_for_every_sample(self) -> None:
+        for label, data in self.SAMPLES:
+            with self.subTest(sample=label):
+                self.assertEqual(
+                    evidence._git_auto_classifies_text(data),
+                    self._git_normalizes(data),
+                    label,
+                )
+
+    def test_lone_carriage_return_and_nul_are_binary(self) -> None:
+        self.assertFalse(evidence._git_auto_classifies_text(b"alpha\rbeta"))
+        self.assertFalse(evidence._git_auto_classifies_text(b"alpha\x00beta"))
+        self.assertTrue(evidence._git_auto_classifies_text(b"alpha\r\nbeta"))
+
+
+class DependencyInertToolingTests(unittest.TestCase):
+    """The frozen 2026-09-13 scope rejects graph-selected inputs, not inert tooling."""
+
+    def setUp(self) -> None:
+        self._temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self._temporary.cleanup)
+        self.repository = Path(self._temporary.name) / "repository"
+        self.dependency = evidence.RUNTIME_DEPENDENCY_GITLINKS[0]
+        self.checkout = self.repository / self.dependency
+        self.checkout.mkdir(parents=True)
+        for directory in (self.repository, self.checkout):
+            subprocess.run(["git", "init", "-q"], cwd=directory, check=True)
+            subprocess.run(
+                ["git", "config", "user.name", "Inert Tooling Test"], cwd=directory, check=True
+            )
+            subprocess.run(
+                ["git", "config", "user.email", "inert@example.test"], cwd=directory, check=True
+            )
+        (self.checkout / "Directory.Build.props").write_text("<Project />\n", encoding="utf-8")
+        # Real dependency checkouts declare their projects under src/, never at the root, so
+        # MSBuild default item globs cannot reach a root-level tooling directory.
+        (self.checkout / "src" / "Tool").mkdir(parents=True)
+        (self.checkout / "src" / "Tool" / "Tool.csproj").write_text(
+            "<Project />\n", encoding="utf-8"
+        )
+        (self.checkout / ".gitignore").write_text(
+            "node_modules/\n.husky/_/\n__pycache__/\nbin/\nobj/\n", encoding="utf-8"
+        )
+        subprocess.run(["git", "add", "-A"], cwd=self.checkout, check=True)
+        subprocess.run(
+            ["git", "commit", "-qm", "test: seed dependency"], cwd=self.checkout, check=True
+        )
+
+    def _head(self) -> str:
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=self.checkout,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+    def _issues(self) -> list[str]:
+        return evidence._validate_dependency_checkout(
+            self.repository, self.dependency, self._head()
+        )
+
+    def test_classifier_separates_inert_tooling_from_graph_selected_paths(self) -> None:
+        indexed = ["src/Tool/Tool.csproj"]
+        output_roots = evidence._project_output_roots(indexed)
+        directories = evidence._project_directories(indexed)
+        for relative, expected in (
+            ("node_modules/.bin/tsc", "inert-tooling"),
+            ("packages/web/node_modules/left-pad/index.js", "inert-tooling"),
+            (".husky/_/pre-commit", "inert-tooling"),
+            ("scripts/__pycache__/tool.cpython-314.pyc", "inert-tooling"),
+            ("src/Tool/bin/Debug/net10.0/Tool.dll", "generated-output"),
+            ("src/Tool/obj/project.assets.json", "generated-output"),
+            ("Directory.Packages.props", "graph-selected"),
+            ("src/Feature.cs", "graph-selected"),
+            # A tooling directory nested under an indexed project is reachable by MSBuild
+            # default item globs, so it is never laundered into the inert class.
+            ("src/Tool/node_modules/left-pad/index.js", "graph-selected"),
+            ("src/Tool/node_modules/.bin/left-pad", "graph-selected"),
+            ("src/Tool/__pycache__/generated.pyc", "graph-selected"),
+        ):
+            with self.subTest(path=relative):
+                self.assertEqual(
+                    evidence._dependency_path_disposition(
+                        relative, output_roots, directories
+                    ),
+                    expected,
+                )
+
+    def test_inert_tooling_trees_do_not_dirty_a_pinned_checkout(self) -> None:
+        for relative in (
+            "node_modules/left-pad/index.js",
+            ".husky/_/pre-commit",
+            "scripts/__pycache__/tool.cpython-314.pyc",
+            "src/Tool/bin/Debug/net10.0/Tool.dll",
+            "src/Tool/obj/project.assets.json",
+        ):
+            path = self.checkout / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("inert\n", encoding="utf-8")
+        (self.checkout / "node_modules" / ".bin").mkdir(parents=True, exist_ok=True)
+        os.symlink("../left-pad/index.js", self.checkout / "node_modules" / ".bin" / "left-pad")
+
+        self.assertEqual(self._issues(), [])
+
+    def test_graph_selected_untracked_input_and_output_symlink_still_fail(self) -> None:
+        (self.checkout / "Directory.Packages.props").write_text(
+            "<Project />\n", encoding="utf-8"
+        )
+        issues = self._issues()
+        self.assertTrue(
+            any("contains untracked inputs" in issue for issue in issues), issues
+        )
+        (self.checkout / "Directory.Packages.props").unlink()
+
+        os.symlink(
+            self._temporary.name,
+            self.checkout / "src" / "Tool" / "bin",
+            target_is_directory=True,
+        )
+        issues = self._issues()
+        self.assertTrue(
+            any("untracked symlink inputs selected by the" in issue for issue in issues),
+            issues,
+        )
+
+
+class DependencyDiagnosticBoundTests(unittest.TestCase):
+    """A dependency-wide drift cause emits one bounded diagnostic, not one error per file."""
+
+    def setUp(self) -> None:
+        self._temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self._temporary.cleanup)
+        self.repository = Path(self._temporary.name) / "repository"
+        self.dependency = evidence.RUNTIME_DEPENDENCY_GITLINKS[0]
+        self.checkout = self.repository / self.dependency
+        self.checkout.mkdir(parents=True)
+        for directory in (self.repository, self.checkout):
+            subprocess.run(["git", "init", "-q"], cwd=directory, check=True)
+            subprocess.run(
+                ["git", "config", "user.name", "Diagnostic Bound Test"],
+                cwd=directory,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.email", "diagnostics@example.test"],
+                cwd=directory,
+                check=True,
+            )
+        self.tracked = [f"src/Input{index:02}.cs" for index in range(
+            evidence.MAX_DIAGNOSTIC_PATHS + 5
+        )]
+        for relative in self.tracked:
+            path = self.checkout / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("// sealed\n", encoding="utf-8")
+        subprocess.run(["git", "add", "-A"], cwd=self.checkout, check=True)
+        subprocess.run(
+            ["git", "commit", "-qm", "test: seed dependency inputs"],
+            cwd=self.checkout,
+            check=True,
+        )
+        self.head = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=self.checkout,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+    def test_worktree_byte_drift_is_reported_once_with_an_omitted_count(self) -> None:
+        for relative in self.tracked:
+            (self.checkout / relative).write_text("// drifted\n", encoding="utf-8")
+
+        issues = evidence._validate_dependency_checkout(
+            self.repository, self.dependency, self.head
+        )
+
+        drift = [issue for issue in issues if "worktree bytes differ" in issue]
+        self.assertEqual(len(drift), 1, issues)
+        self.assertIn("omitted 5 additional path(s)", drift[0])
+
+    def test_a_single_bulk_hash_failure_does_not_emit_one_error_per_file(self) -> None:
+        with mock.patch.object(
+            evidence,
+            "_bulk_worktree_git_objects",
+            return_value=({}, "Unable to inspect Git attributes for worktree inputs."),
+        ):
+            issues = evidence._validate_dependency_checkout(
+                self.repository, self.dependency, self.head
+            )
+
+        self.assertTrue(
+            any("Unable to inspect Git attributes" in issue for issue in issues), issues
+        )
+        self.assertEqual(
+            [issue for issue in issues if "worktree bytes differ" in issue], []
+        )
+
+
+class PactAuthorityExactnessTests(unittest.TestCase):
+    """Every committed-pact, manifest, and catalog exactness rule must be executable."""
+
+    def setUp(self) -> None:
+        self._temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self._temporary.cleanup)
+        self.pact_dir = Path(self._temporary.name) / "Pact"
+        shutil.copytree(CANONICAL_PACTS, self.pact_dir)
+        self.pact_file = evidence.PACT_FILES[0]
+
+    def _errors(self) -> list[str]:
+        errors: list[str] = []
+        evidence._pact_interactions(self.pact_dir, errors)
+        return errors
+
+    def _mutate(self, name: str, mutate: Callable[[dict[str, Any]], None]) -> None:
+        path = self.pact_dir / name
+        document = _read_json(path)
+        mutate(document)
+        _write_json(path, document)
+
+    def test_canonical_pacts_are_accepted(self) -> None:
+        self.assertEqual(self._errors(), [])
+
+    def test_missing_interaction_metadata_is_actionable_not_a_crash(self) -> None:
+        self._mutate(
+            self.pact_file,
+            lambda pact: pact["interactions"][0]["metadata"].pop("generatedSource"),
+        )
+
+        errors = self._errors()
+
+        self.assertTrue(any("lacks generatedSource" in error for error in errors), errors)
+        self.assertTrue(
+            any("absent from committed pacts" in error for error in errors), errors
+        )
+
+    def test_pact_party_specification_and_http_semantics_are_exact(self) -> None:
+        cases = (
+            (
+                lambda pact: pact["provider"].__setitem__("name", "Other.Provider"),
+                "unexpected Pact parties or specification",
+            ),
+            (
+                lambda pact: pact["metadata"]["pactSpecification"].__setitem__("version", "3.0"),
+                "unexpected Pact parties or specification",
+            ),
+            (
+                lambda pact: pact["interactions"][0]["request"].__setitem__("path", "relative"),
+                "incomplete HTTP interaction semantics",
+            ),
+            (
+                lambda pact: pact["interactions"][0].__setitem__("type", "Asynchronous/Messages"),
+                "incomplete HTTP interaction semantics",
+            ),
+            (
+                lambda pact: pact["interactions"].append(
+                    copy.deepcopy(pact["interactions"][0])
+                ),
+                "repeat interaction description",
+            ),
+        )
+        original = _read_json(self.pact_dir / self.pact_file)
+        for mutate, expected in cases:
+            with self.subTest(expected=expected):
+                _write_json(self.pact_dir / self.pact_file, copy.deepcopy(original))
+                self._mutate(self.pact_file, mutate)
+
+                self.assertTrue(
+                    any(expected in error for error in self._errors()), expected
+                )
+        _write_json(self.pact_dir / self.pact_file, original)
+
+    def test_manifest_and_catalog_authority_rules_are_exact(self) -> None:
+        cases = (
+            (
+                "interaction-manifest.json",
+                lambda manifest: manifest.__setitem__("provider", "Other.Provider"),
+                "Interaction manifest authority fields are not exact.",
+            ),
+            (
+                "interaction-manifest.json",
+                lambda manifest: manifest.__setitem__(
+                    "pactFiles", list(reversed(manifest["pactFiles"]))
+                ),
+                "Interaction manifest pact-file attribution does not match the committed pacts.",
+            ),
+            (
+                "interaction-manifest.json",
+                lambda manifest: manifest["interactions"][0].__setitem__("method", "TRACE"),
+                "Interaction manifest method differs from the pact",
+            ),
+            (
+                "interaction-manifest.json",
+                lambda manifest: manifest.__setitem__("interactionCount", 1),
+                "Interaction manifest interactionCount does not match its exact entries.",
+            ),
+            (
+                "provider-state-catalog.json",
+                lambda catalog: catalog.__setitem__("forbiddenDependencies", []),
+                "Provider-state catalog authority fields are not exact.",
+            ),
+            (
+                "provider-state-catalog.json",
+                lambda catalog: catalog["states"][0].__setitem__(
+                    "isolatedPerInteraction", False
+                ),
+                "Provider-state catalog semantics are incomplete for:",
+            ),
+            (
+                "provider-state-catalog.json",
+                lambda catalog: catalog["states"][0].__setitem__("name", "unknown-state"),
+                "Provider-state catalog set must equal the committed pact interaction states.",
+            ),
+        )
+        for name, mutate, expected in cases:
+            with self.subTest(expected=expected):
+                original = _read_json(self.pact_dir / name)
+                self._mutate(name, mutate)
+
+                errors = self._errors()
+
+                _write_json(self.pact_dir / name, original)
+                self.assertTrue(any(expected in error for error in errors), (expected, errors))
+
+
+class RedactionGrammarTests(unittest.TestCase):
+    """Cookie-shaped keys leak; ordinary source paths that contain 'cookie' do not."""
+
+    def setUp(self) -> None:
+        self._temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self._temporary.cleanup)
+        self.root = Path(self._temporary.name)
+
+    def _scan(self, document: dict[str, Any]) -> list[str]:
+        path = self.root / "artifact.json"
+        _write_json(path, document)
+        errors: list[str] = []
+        evidence._scan_redaction(path, errors)
+        return errors
+
+    def test_cookie_shaped_keys_are_rejected(self) -> None:
+        for document in (
+            {"cookie": "a=b"},
+            {"cookies": ["a=b"]},
+            {"cookieHeader": "a=b"},
+            {"set-cookie": "a=b"},
+            {"note": "cookie=abc"},
+        ):
+            with self.subTest(document=document):
+                self.assertTrue(self._scan(document), document)
+
+    def test_source_paths_containing_cookie_are_not_leaks(self) -> None:
+        document = {
+            "entries": [
+                {
+                    "path": "src/Hexalith.FrontComposer.Shell/Options/FrontComposerAuthCookieOptions.cs",
+                    "kind": "file",
+                    "bytes": 10,
+                    "sha256": "a" * 64,
+                }
+            ]
+        }
+
+        self.assertEqual(self._scan(document), [])
+
+
+class LiveProvenanceGuardTests(unittest.TestCase):
+    """Exercise the real checkout-versus-gitlink and Builds-catalog guards."""
+
+    CATALOG = (
+        "<Project><PropertyGroup>"
+        "<HexalithEventStoreVersion>3.103.0</HexalithEventStoreVersion>"
+        "</PropertyGroup></Project>\n"
+    )
+
+    def setUp(self) -> None:
+        self._temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self._temporary.cleanup)
+        self.repository = Path(self._temporary.name) / "repository"
+        self.repository.mkdir(parents=True)
+        self._init(self.repository)
+        self.checkouts = {
+            "references/Hexalith.EventStore": self.repository / "references/Hexalith.EventStore",
+            "references/Hexalith.Builds": self.repository / "references/Hexalith.Builds",
+        }
+        for relative, checkout in self.checkouts.items():
+            checkout.mkdir(parents=True)
+            self._init(checkout)
+            if relative.endswith("EventStore"):
+                inventory = checkout / "tools" / "release-packages.json"
+                inventory.parent.mkdir(parents=True)
+                _write_json(inventory, {"packages": []})
+            else:
+                catalog = checkout / "Props" / "Directory.Packages.props"
+                catalog.parent.mkdir(parents=True)
+                catalog.write_text(self.CATALOG, encoding="utf-8")
+            subprocess.run(["git", "add", "-A"], cwd=checkout, check=True)
+            subprocess.run(["git", "commit", "-qm", "test: seed"], cwd=checkout, check=True)
+        self._commit_gitlinks()
+        self.manifest = {
+            "capturedRevision": self._head(self.repository),
+            "treeSha256": "a" * 64,
+        }
+
+    def _init(self, directory: Path) -> None:
+        subprocess.run(["git", "init", "-q"], cwd=directory, check=True)
+        subprocess.run(
+            ["git", "config", "user.name", "Live Provenance Test"], cwd=directory, check=True
+        )
+        subprocess.run(
+            ["git", "config", "user.email", "provenance@example.test"],
+            cwd=directory,
+            check=True,
+        )
+
+    def _head(self, checkout: Path) -> str:
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=checkout, check=True, capture_output=True, text=True
+        ).stdout.strip()
+
+    def _commit_gitlinks(self) -> None:
+        for relative, checkout in self.checkouts.items():
+            subprocess.run(
+                [
+                    "git", "update-index", "--add", "--cacheinfo",
+                    f"160000,{self._head(checkout)},{relative}",
+                ],
+                cwd=self.repository,
+                check=True,
+            )
+        subprocess.run(
+            ["git", "commit", "-qm", "test: pin dependency gitlinks"],
+            cwd=self.repository,
+            check=True,
+        )
+
+    def _advance(self, checkout: Path) -> None:
+        (checkout / "drift.txt").write_text("drift\n", encoding="utf-8")
+        subprocess.run(["git", "add", "drift.txt"], cwd=checkout, check=True)
+        subprocess.run(["git", "commit", "-qm", "test: advance"], cwd=checkout, check=True)
+
+    def _provenance(self) -> tuple[dict[str, str], list[str]]:
+        errors: list[str] = []
+        return (
+            evidence._live_provenance(
+                self.repository, errors, runtime_manifest=self.manifest
+            ),
+            errors,
+        )
+
+    def test_pinned_checkouts_resolve_the_exact_current_provenance(self) -> None:
+        provenance, errors = self._provenance()
+
+        self.assertEqual(errors, [])
+        self.assertEqual(provenance["releaseVersion"], "3.103.0")
+        self.assertEqual(
+            provenance["sourceSha"], self._head(self.checkouts["references/Hexalith.EventStore"])
+        )
+        self.assertEqual(provenance["runtimeInputTreeSha256"], "a" * 64)
+
+    def test_source_checkout_ahead_of_its_gitlink_is_rejected(self) -> None:
+        self._advance(self.checkouts["references/Hexalith.EventStore"])
+
+        _, errors = self._provenance()
+
+        self.assertIn(
+            "Live provider source checkout does not equal the pinned EventStore gitlink.", errors
+        )
+
+    def test_builds_checkout_ahead_of_its_gitlink_is_rejected(self) -> None:
+        self._advance(self.checkouts["references/Hexalith.Builds"])
+
+        _, errors = self._provenance()
+
+        self.assertIn(
+            "Live provider Builds checkout does not equal the pinned Builds gitlink.", errors
+        )
+
+    def test_missing_builds_catalog_version_is_rejected(self) -> None:
+        catalog = self.checkouts["references/Hexalith.Builds"] / "Props/Directory.Packages.props"
+        catalog.write_text("<Project />\n", encoding="utf-8")
+        subprocess.run(
+            ["git", "commit", "-aqm", "test: drop catalog version"],
+            cwd=self.checkouts["references/Hexalith.Builds"],
+            check=True,
+        )
+        self._commit_gitlinks()
+
+        _, errors = self._provenance()
+
+        self.assertIn("Live provider Release package version is unavailable.", errors)
+
+
+class SealedManifestComparisonTests(unittest.TestCase):
+    """The sealed manifest is compared with a freshly computed worktree snapshot."""
+
+    MISMATCH = "Current runtime-relevant inputs differ from the sealed manifest."
+
+    def setUp(self) -> None:
+        self._temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self._temporary.cleanup)
+        self.repository = Path(self._temporary.name) / "repository"
+        (self.repository / "src").mkdir(parents=True)
+        subprocess.run(["git", "init", "-q"], cwd=self.repository, check=True)
+        subprocess.run(
+            ["git", "config", "user.name", "Sealed Manifest Test"],
+            cwd=self.repository,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.email", "sealed-manifest@example.test"],
+            cwd=self.repository,
+            check=True,
+        )
+        self.runtime_file = self.repository / "src" / "Runtime.cs"
+        self.runtime_file.write_text("// sealed runtime input\n", encoding="utf-8")
+        subprocess.run(["git", "add", "-A"], cwd=self.repository, check=True)
+        subprocess.run(
+            ["git", "commit", "-qm", "test: seed sealed manifest scope"],
+            cwd=self.repository,
+            check=True,
+        )
+        self.manifest_path = Path(self._temporary.name) / "frontcomposer-runtime-inputs.json"
+        document, _ = evidence.runtime_input_manifest(self.repository)
+        _write_json(self.manifest_path, document)
+
+    def _errors(self) -> list[str]:
+        errors: list[str] = []
+        evidence._validate_runtime_input_manifest(self.manifest_path, self.repository, errors)
+        return errors
+
+    def test_unchanged_worktree_matches_the_sealed_manifest(self) -> None:
+        self.assertNotIn(self.MISMATCH, self._errors())
+
+    def test_modified_worktree_bytes_fail_the_sealed_comparison(self) -> None:
+        self.runtime_file.write_text("// drifted runtime input\n", encoding="utf-8")
+
+        self.assertIn(self.MISMATCH, self._errors())
+
+    def test_added_runtime_file_fails_the_sealed_comparison(self) -> None:
+        added = self.repository / "src" / "Added.cs"
+        added.write_text("// added runtime input\n", encoding="utf-8")
+        subprocess.run(["git", "add", "-A"], cwd=self.repository, check=True)
+        subprocess.run(
+            ["git", "commit", "-qm", "test: add runtime input"],
+            cwd=self.repository,
+            check=True,
+        )
+
+        self.assertIn(self.MISMATCH, self._errors())
+
+
+class PreservedPacketRejectionTests(unittest.TestCase):
+    """The preserved package-less packet has no exemption left anywhere."""
+
+    def setUp(self) -> None:
+        self._temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self._temporary.cleanup)
+        self.preserved = Path(self._temporary.name) / "preserved"
+        shutil.copytree(CANONICAL_ACTIVE_EVIDENCE / "recapture", self.preserved)
+        self.provenance = {
+            "sourceSha": evidence.ACTIVE_SOURCE_SHA,
+            "releaseVersion": evidence.ACTIVE_VERSION,
+            "buildsSha": evidence.ACTIVE_BUILDS_SHA,
+            "releaseInventorySha256": evidence.INVENTORY_SHA256,
+            "frontComposerRevision": "1" * 40,
+            "runtimeInputTreeSha256": "2" * 64,
+        }
+
+    def test_preserved_apphost_packet_requires_package_provenance(self) -> None:
+        errors: list[str] = []
+        evidence._validate_live_apphost(self.preserved, ROOT, self.provenance, errors)
+
+        self.assertTrue(
+            any("does not contain the exact required fields" in error for error in errors),
+            errors,
+        )
+        self.assertTrue(any("unexpected schema" in error for error in errors), errors)
+
+    def test_preserved_provider_receipt_requires_its_ledger_sidecar(self) -> None:
+        errors: list[str] = []
+        evidence._validate_live_provider(
+            self.preserved, CANONICAL_PACTS, self.provenance, errors, repository_root=ROOT
+        )
+
+        self.assertTrue(
+            any(
+                "Live provider run receipt does not contain the exact required fields" in error
+                for error in errors
+            ),
+            errors,
+        )
+
+    def test_no_content_hash_exemption_remains_in_the_validator(self) -> None:
+        source = (ROOT / "eng/eventstore_runtime_evidence.py").read_text(encoding="utf-8")
+
+        self.assertNotIn("frozen_legacy", source)
+        self.assertNotIn("FROZEN_APPHOST_SMOKE_SHA256", source)
+        self.assertNotIn("FROZEN_PROVIDER_RECEIPT_SHA256", source)
 
 
 if __name__ == "__main__":

@@ -3,13 +3,15 @@
 # Shell scripts and husky hooks require LF on Unix runners (CRLF breaks /bin/sh shebangs).
 *.sh text eol=lf
 .husky/* text eol=lf
+# These paths are hash-bound evidence: `-text` alone keeps checkout and check-in byte-exact.
+# `eol` is read only when it is set to lf or crlf, so `-eol` would be inert noise here.
 # Story 11.24 preserves externally captured evidence bytes; checkout must never rewrite them.
-_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/** -text -eol
+_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/** -text
 # Live Gate 2c receipts bind SHA-256 of these files; checkout must not rewrite EOL.
-_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/** -text -eol
+_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/** -text
 # Story 11.25 preserves dated provider/AppHost packets as immutable prior evidence.
-_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/** -text -eol
+_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/** -text
 # Active identity v2 binds exact recapture, decision, roster, and receipt bytes.
-_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/** -text -eol
+_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/** -text
 # The active decision hash-binds this human-approved proposal's canonical LF bytes.
-_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md -text -eol
+_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md -text

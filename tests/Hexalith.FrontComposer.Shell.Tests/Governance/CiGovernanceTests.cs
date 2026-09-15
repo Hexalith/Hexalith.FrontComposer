@@ -3870,6 +3870,12 @@ public sealed class CiGovernanceTests {
         liveProviderLane.ShouldContain("test ! -L \"$provider_packages\"");
         liveProviderLane.ShouldContain("test -z \"$(find \"$provider_packages\" -mindepth 1 -maxdepth 1 -print -quit)\"");
         liveProviderLane.ShouldContain("echo \"FRONTCOMPOSER_PROVIDER_PACKAGES=$provider_packages\" >> \"$GITHUB_ENV\"");
+        // The final validator binds the live AppHost capture boundary to this exact sealed
+        // manifest; without the hand-off it can only check that boundary's shape.
+        liveProviderLane.ShouldContain("echo \"FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST=$runtime_manifest\" >> \"$GITHUB_ENV\"");
+        string contractValidator = File.ReadAllText(Path.Combine(root, "eng/validate-contract-artifacts.ps1"));
+        contractValidator.ShouldContain("$RuntimeInputManifest = $env:FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST");
+        contractValidator.ShouldContain("--runtime-input-manifest");
         liveProviderLane.ShouldContain("export NUGET_PACKAGES=\"$provider_packages\"");
         liveProviderLane.ShouldContain("--write-runtime-input-manifest");
         liveProviderLane.ShouldContain("--runtime-input-manifest-output \"$runtime_manifest\"");
@@ -3882,6 +3888,10 @@ public sealed class CiGovernanceTests {
         liveProviderLane.ShouldContain("--package-assets references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification/obj/project.assets.json");
         liveProviderLane.ShouldContain("--configuration Release --no-restore --no-incremental -m:1 -p:NuGetAudit=false");
         liveProviderLane.ShouldContain("rm -f \"$GITHUB_WORKSPACE/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json\"");
+        // The live evidence root must hold exactly this invocation's five files.
+        foreach (string staleArtifact in new[] { "apphost-smoke.json", "provider-package-ledger.json", "apphost-package-ledger.json" }) {
+            liveProviderLane.ShouldContain($"_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/{staleArtifact}\"");
+        }
         liveProviderLane.ShouldContain("test -s \"$GITHUB_WORKSPACE/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json\"");
         liveProviderLane.ShouldContain("--verification-mode live-compatibility");
         liveProviderLane.ShouldContain("--write-live-receipt");
@@ -3917,7 +3927,7 @@ public sealed class CiGovernanceTests {
         appHostLane.ShouldContain("echo \"FRONTCOMPOSER_APPHOST_PACKAGES=$apphost_packages\" >> \"$GITHUB_ENV\"");
         appHostLane.ShouldContain("python3 eng/pact_provider_apphost_smoke.py \\");
         appHostLane.ShouldContain("--timeout-seconds 300 \\");
-        appHostLane.ShouldContain("--runtime-input-manifest \"$RUNNER_TEMP/frontcomposer-runtime-inputs.json\"");
+        appHostLane.ShouldContain("--runtime-input-manifest \"$FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST\"");
         appHostLane.ShouldContain("--package-root \"$apphost_packages\"");
         appHostLane.ShouldNotContain("continue-on-error: true");
         appHostLane.ShouldNotContain("|| true");
@@ -4004,6 +4014,16 @@ public sealed class CiGovernanceTests {
             "pact-provider-reconciliation-history",
             "2026-09-08-builds-35c3d1e5");
 
+        // The immutable Story 11.24 archive is its own authority and must keep validating
+        // independently of the active lane's state.
+        ProcessResult historicalValidation = RunPython(root, [
+            "eng/eventstore_runtime_evidence.py",
+            "--evidence-root", evidenceRoot,
+            "--pact-dir", "tests/Hexalith.FrontComposer.Shell.Tests/Pact",
+            "--repository-root", root,
+        ]);
+        historicalValidation.ExitCode.ShouldBe(0, historicalValidation.Output + historicalValidation.Error);
+
         ProcessResult validation = RunPython(root, [
             "eng/eventstore_runtime_evidence.py",
             "--evidence-root", evidenceRoot,
@@ -4018,9 +4038,16 @@ public sealed class CiGovernanceTests {
             "--pact-dir", "tests/Hexalith.FrontComposer.Shell.Tests/Pact",
             "--repository-root", root,
         ]);
-        validation.ExitCode.ShouldBe(0, validation.Output + validation.Error);
-        validation.Output.ShouldContain("EventStore runtime approval: OPEN");
-        validation.Output.ShouldContain("Missing valid receipt for required role: eventstore-maintainer");
+        // Loop-9 decision 1, human-ratified 2026-09-15: the frozen package-less exemption is
+        // scoped to the history evidence root, so the preserved active recapture no longer
+        // satisfies the active contract. The lane must fail closed, naming the missing package provenance and
+        // execution boundary, until a genuine new-schema recapture replaces that packet.
+        // Restoring a passing active lane requires new evidence, never a weaker assertion.
+        validation.ExitCode.ShouldNotBe(0);
+        string activeValidationOutput = validation.Output + validation.Error;
+        activeValidationOutput.ShouldContain("Live AppHost smoke does not contain the exact required fields.");
+        activeValidationOutput.ShouldContain("Live AppHost smoke has an unexpected schema.");
+        activeValidationOutput.ShouldContain("Live provider run receipt does not contain the exact required fields.");
 
         string liveEvidenceRoot = Path.Combine(
             root,

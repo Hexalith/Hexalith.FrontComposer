@@ -14,9 +14,10 @@ import struct
 import subprocess
 import sys
 import tempfile
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path, PurePosixPath
-from typing import Any, Iterable
+from typing import Any, Iterable, Iterator
 from urllib import parse
 
 
@@ -121,6 +122,11 @@ INERT_DEPENDENCY_SYMLINK_OBJECTS = {
         ".cursorrules",
     ): "86da7cdc6d0e98a2fdd8711088cb375badd093ec",
 }
+# Validator-owned inert tooling roots. npm packages, Husky Git hooks, and Python bytecode
+# caches are never reached by NuGet restore, MSBuild evaluation, the resolved assets graph,
+# or the executed runtime, so the frozen 2026-09-13 runtime-selected-input scope permits
+# them. Everything outside this exact set stays conservatively graph-selected.
+INERT_DEPENDENCY_TOOLING_COMPONENTS = frozenset({"node_modules", ".husky", "__pycache__"})
 APPHOST_BUILD_PROPERTIES = {
     "UseHexalithProjectReferences": True,
     "UseNuGetDeps": False,
@@ -240,9 +246,11 @@ SECRET_PATTERNS = (
     re.compile(r'"?sas[_-]?token"?\s*[=:]', re.IGNORECASE),
     re.compile(r'"?api[_-]?key"?\s*[=:]', re.IGNORECASE),
     re.compile(r'"?password"?\s*[=:]', re.IGNORECASE),
-    re.compile(r"set-cookie\s*:", re.IGNORECASE),
-    re.compile(r'"?cookie"?\s*:', re.IGNORECASE),
-    re.compile(r"\bcookie\s*=", re.IGNORECASE),
+    # Any cookie-shaped key, not just the exact spellings "cookie" and "set-cookie", so
+    # "cookies": [...] and "cookieHeader" cannot pass. Kept byte-identical to the cookie
+    # rule in Find-RedactionLeaks (eng/validate-contract-artifacts.ps1). A bare substring
+    # would reject ordinary source paths such as FrontComposerAuthCookieOptions.cs.
+    re.compile(r'"?cookie[A-Za-z0-9_.-]*"?\s*[=:]', re.IGNORECASE),
     re.compile(r"connectionstring", re.IGNORECASE),
     re.compile(r"authorization_payload", re.IGNORECASE),
     re.compile(
@@ -308,9 +316,47 @@ EXACT_AUTHORIZATION_LINE_RE = re.compile(
     r'(?i)["\']authorization["\']\s*:\s*["\']Bearer FC_CONTRACT_TOKEN["\']'
 )
 PACKAGE_LEDGER_SCHEMA = "hexalith.frontcomposer.resolved-package-ledger.v1"
+# AC 117 requires a byte-bound inventory of every extracted file of every restored
+# package. That inventory is hundreds of times larger than a bounded evidence document,
+# so it lives in its own sidecar artifact instead of inside run-evidence.json /
+# apphost-smoke.json, which stay within MAX_FILE_BYTES. The sidecar bound is derived from
+# the same ceiling so it is still an explicit, fail-closed limit rather than "unbounded".
+PROVIDER_PACKAGE_LEDGER_FILE = "provider-package-ledger.json"
+APPHOST_PACKAGE_LEDGER_FILE = "apphost-package-ledger.json"
+PACKAGE_LEDGER_FILES = frozenset({PROVIDER_PACKAGE_LEDGER_FILE, APPHOST_PACKAGE_LEDGER_FILE})
+MAX_PACKAGE_LEDGER_BYTES = 32 * MAX_FILE_BYTES
+PACKAGE_LEDGER_BINDING_FIELDS = (
+    "path",
+    "sha256",
+    "bytes",
+    "schema",
+    "capturedAt",
+    "treeSha256",
+)
 MAX_DIAGNOSTIC_PATHS = 20
-FROZEN_PROVIDER_RECEIPT_SHA256 = "e3a635e5c1a22102ea9f60844524d63cf530050e20296b5fe01619ee286ffbb3"
-FROZEN_APPHOST_SMOKE_SHA256 = "526be617e793af7e4a219fbcf1f2600245e953b2baa5661cbb58a89bbe343b8e"
+# The 2026-09-15 human decision scoped the preserved package-less exemption to the history
+# evidence root. That root holds the dated 2026-09-08 v1/v2 packet, which _validate_prior_capture
+# already validates under its own pinned hashes, so no caller of the live validators below can
+# reach the exemption. It is therefore not implemented: every provider receipt and AppHost packet
+# must carry the full run-evidence.v4 / apphost-smoke.v3 package provenance, execution boundary,
+# and chronology, and Gate 2c fails closed until a genuine new-schema recapture replaces the
+# preserved packet.
+
+
+# Populated only inside one `_snapshot_cache_scope`, so a memoized runtime-input snapshot
+# can never outlive the validation run that computed it.
+_SNAPSHOT_CACHE: dict[str, tuple[list[dict[str, Any]], list[str]]] | None = None
+
+
+@contextmanager
+def _snapshot_cache_scope() -> Iterator[None]:
+    global _SNAPSHOT_CACHE
+    previous = _SNAPSHOT_CACHE
+    _SNAPSHOT_CACHE = {} if previous is None else previous
+    try:
+        yield
+    finally:
+        _SNAPSHOT_CACHE = previous
 
 
 def _bounded_path_diagnostic(prefix: str, paths: Iterable[str]) -> str:
@@ -319,6 +365,24 @@ def _bounded_path_diagnostic(prefix: str, paths: Iterable[str]) -> str:
     omitted = len(values) - len(displayed)
     suffix = f"; omitted {omitted} additional path(s)" if omitted else ""
     return prefix + ", ".join(displayed) + suffix
+
+
+# The exact ten primary AppHost resources in their canonical declaration order. The
+# evidence value still comes from the real `aspire describe` result; the capture orders
+# that result canonically only after proving exact set equality, so an ordered literal
+# here rejects a reordered, duplicated, or renamed topology record.
+APPHOST_DECLARED_RESOURCES = (
+    "security",
+    "eventstore",
+    "eventstore-admin",
+    "eventstore-admin-ui",
+    "tenants",
+    "parties",
+    "sample",
+    "tenants-ui",
+    "frontcomposer-ui",
+    "counter-web",
+)
 APPHOST_OBSERVATIONS = (
     "health",
     "commandSubmit",
@@ -460,36 +524,50 @@ def _canonical_active_locations(
     )
 
 
-def _bounded_read(path: Path, errors: list[str], label: str | None = None) -> bytes | None:
+def _bounded_read(
+    path: Path,
+    errors: list[str],
+    label: str | None = None,
+    *,
+    max_bytes: int | None = None,
+    category: str = "Evidence",
+) -> bytes | None:
     display = label or path.name
+    limit = MAX_FILE_BYTES if max_bytes is None else max_bytes
     if _path_has_symlink_component(path):
-        errors.append(f"Evidence path contains a symlink: {display}")
+        errors.append(f"{category} path contains a symlink: {display}")
         return None
     try:
         stat = path.stat()
     except OSError:
-        errors.append(f"Evidence file is missing or unreadable: {display}")
+        errors.append(f"{category} file is missing or unreadable: {display}")
         return None
     if not path.is_file():
-        errors.append(f"Evidence path is not a regular file: {display}")
+        errors.append(f"{category} path is not a regular file: {display}")
         return None
-    if stat.st_size <= 0 or stat.st_size > MAX_FILE_BYTES:
-        errors.append(f"Evidence file is empty or exceeds {MAX_FILE_BYTES} bytes: {display}")
+    if stat.st_size <= 0 or stat.st_size > limit:
+        errors.append(f"{category} file is empty or exceeds {limit} bytes: {display}")
         return None
     try:
         with path.open("rb") as stream:
-            data = stream.read(MAX_FILE_BYTES + 1)
+            data = stream.read(limit + 1)
     except OSError:
-        errors.append(f"Evidence file is unreadable: {display}")
+        errors.append(f"{category} file is unreadable: {display}")
         return None
-    if len(data) != stat.st_size or len(data) > MAX_FILE_BYTES:
-        errors.append(f"Evidence file changed while read or exceeds {MAX_FILE_BYTES} bytes: {display}")
+    if len(data) != stat.st_size or len(data) > limit:
+        errors.append(f"{category} file changed while read or exceeds {limit} bytes: {display}")
         return None
     return data
 
 
-def _read_json(path: Path, errors: list[str], label: str | None = None) -> dict[str, Any]:
-    data = _bounded_read(path, errors, label)
+def _read_json(
+    path: Path,
+    errors: list[str],
+    label: str | None = None,
+    *,
+    max_bytes: int | None = None,
+) -> dict[str, Any]:
+    data = _bounded_read(path, errors, label, max_bytes=max_bytes)
     if data is None:
         return {}
     try:
@@ -552,8 +630,13 @@ def _frontmatter(text: str) -> dict[str, str]:
     return values
 
 
+def _evidence_file_limit(name: str) -> int:
+    """Return the bound for one evidence file name (ledger sidecars have their own)."""
+    return MAX_PACKAGE_LEDGER_BYTES if name in PACKAGE_LEDGER_FILES else MAX_FILE_BYTES
+
+
 def _scan_redaction(path: Path, errors: list[str]) -> None:
-    data = _bounded_read(path, errors)
+    data = _bounded_read(path, errors, max_bytes=_evidence_file_limit(path.name))
     if data is None:
         return
     try:
@@ -1203,6 +1286,7 @@ def _pact_interactions(
                 continue
             interaction["method"] = str(request_value["method"])
             interaction["path"] = str(request_value["path"])
+            incomplete_metadata = False
             for field in (
                 "generatedSource",
                 "adapterPath",
@@ -1213,8 +1297,14 @@ def _pact_interactions(
                     errors.append(
                         f"{filename} interaction {interaction['description']} lacks {field}."
                     )
+                    incomplete_metadata = True
                 else:
                     interaction[field] = metadata[field]
+            # An interaction missing provenance metadata is never registered: the manifest
+            # comparison below indexes every attribution field, so registering a partial
+            # record would raise KeyError instead of the actionable error already recorded.
+            if incomplete_metadata:
+                continue
             description = interaction["description"]
             if description in interactions_by_description:
                 errors.append(f"Committed pacts repeat interaction description: {description}")
@@ -1915,18 +2005,6 @@ def _runtime_index_flag_paths(
     return tagged, None
 
 
-def _worktree_git_objects(repository_root: Path, relative: str, data: bytes) -> frozenset[str]:
-    """Return only the validator-owned raw object identity for worktree bytes."""
-    del relative
-    object_format = _git(repository_root, "rev-parse", "--show-object-format") or "sha1"
-    if object_format not in {"sha1", "sha256"}:
-        return frozenset()
-    digest = hashlib.new(object_format)
-    digest.update(f"blob {len(data)}\0".encode("ascii"))
-    digest.update(data)
-    return frozenset({digest.hexdigest()})
-
-
 def _checked_attributes(
     checkout: Path,
     paths: list[str],
@@ -1995,17 +2073,30 @@ def _has_repository_attribute_override(checkout: Path) -> bool:
     )
 
 
+# Every byte Git's gather_stats counts as printable, plus CR and LF, which it counts
+# separately. Deleting this set leaves exactly the bytes Git calls nonprintable.
+_GIT_TEXT_PRINTABLE_BYTES = bytes(
+    value
+    for value in range(256)
+    if value in (8, 9, 10, 12, 13, 27) or 32 <= value < 127 or value >= 128
+)
+
+
 def _git_auto_classifies_text(data: bytes) -> bool:
-    """Mirror Git's bounded binary heuristic before applying text=auto EOL rules."""
-    sample = data[:8000]
-    if b"\0" in sample:
+    """Mirror Git's gather_stats/convert_is_binary rules before applying text=auto EOL rules.
+
+    Git scans the whole blob, stops at the first NUL, counts CR and LF separately from
+    printable bytes, and treats a lone CR (a CR not followed by LF) as binary. Counting
+    CR/LF as printable or sampling only a prefix would accept normalization Git itself
+    would refuse, widening the accepted worktree identity set fail-open.
+    """
+    if b"\0" in data:
         return False
-    printable_controls = {8, 9, 10, 12, 13, 27}
-    printable = sum(
-        byte in printable_controls or (32 <= byte < 127) or byte >= 128
-        for byte in sample
-    )
-    nonprintable = len(sample) - printable
+    carriage_returns = data.count(b"\r")
+    if carriage_returns - data.count(b"\r\n"):
+        return False
+    nonprintable = len(data.translate(None, _GIT_TEXT_PRINTABLE_BYTES))
+    printable = len(data) - carriage_returns - data.count(b"\n") - nonprintable
     return (printable >> 7) >= nonprintable
 
 
@@ -2038,6 +2129,51 @@ def _is_dependency_generated_output(
         relative,
         project_output_roots,
     )
+
+
+def _project_directories(indexed_paths: Iterable[str]) -> tuple[tuple[str, ...], ...]:
+    """Return the directory parts of every indexed project file."""
+    project_suffixes = {".csproj", ".fsproj", ".vbproj"}
+    return tuple(sorted({
+        PurePosixPath(relative).parent.parts
+        for relative in indexed_paths
+        if PurePosixPath(relative).suffix.casefold() in project_suffixes
+    }))
+
+
+def _is_inert_dependency_tooling(
+    relative: str,
+    project_directories: Iterable[tuple[str, ...]],
+) -> bool:
+    """Return whether one dependency path is inert tooling outside the sealed graph.
+
+    The frozen 2026-09-13 decision scopes rejection to paths selected by the sealed
+    restore, evaluated build/source, resolved-asset, or runtime-input graph. npm packages,
+    Husky Git hooks, and Python bytecode caches are outside that graph only while no
+    indexed project can reach them: MSBuild default item globs are rooted at the project
+    directory and do not exclude `node_modules`, so a tooling directory nested under an
+    indexed project is build-selectable and stays rejected. Every path outside these exact
+    roots is conservatively treated as graph-selected.
+    """
+    parts = PurePosixPath(relative).parts
+    if not any(part in INERT_DEPENDENCY_TOOLING_COMPONENTS for part in parts):
+        return False
+    return not any(
+        parts[:len(directory)] == directory for directory in project_directories
+    )
+
+
+def _dependency_path_disposition(
+    relative: str,
+    project_output_roots: Iterable[tuple[str, ...]],
+    project_directories: Iterable[tuple[str, ...]] = (),
+) -> str:
+    """Classify one dependency path as generated output, inert tooling, or graph-selected."""
+    if _is_dependency_generated_output(relative, project_output_roots):
+        return "generated-output"
+    if _is_inert_dependency_tooling(relative, project_directories):
+        return "inert-tooling"
+    return "graph-selected"
 
 
 def _is_inert_dependency_symlink(
@@ -2258,6 +2394,8 @@ def _validate_dependency_checkout(
     if hash_error is not None:
         issues.append(f"{hash_error} Dependency: {relative}")
 
+    head_drift: list[str] = []
+    byte_drift: list[str] = []
     for path, (mode, object_id, stage) in sorted(index_entries.items()):
         if stage != "0":
             issues.append(f"Runtime dependency has an unresolved index stage: {relative}/{path}")
@@ -2283,9 +2421,25 @@ def _validate_dependency_checkout(
         if _path_has_symlink_component(candidate):
             continue
         if head_objects.get(path) != (mode, object_id):
-            issues.append(f"Runtime dependency index identity differs from HEAD: {relative}/{path}")
-        if object_id not in worktree_objects.get(path, frozenset()):
-            issues.append(f"Runtime dependency worktree bytes differ from the Git index: {relative}/{path}")
+            head_drift.append(path)
+        # A bulk-hash failure is one root cause already reported above. Repeating it per
+        # file would emit tens of thousands of lines for a single dependency-wide cause.
+        if hash_error is None and object_id not in worktree_objects.get(path, frozenset()):
+            byte_drift.append(path)
+    if head_drift:
+        issues.append(
+            _bounded_path_diagnostic(
+                f"Runtime dependency index identity differs from HEAD: {relative}: ",
+                head_drift,
+            )
+        )
+    if byte_drift:
+        issues.append(
+            _bounded_path_diagnostic(
+                f"Runtime dependency worktree bytes differ from the Git index: {relative}: ",
+                byte_drift,
+            )
+        )
 
     untracked_paths: set[str] = set()
     for options in (("--exclude-standard",), ("--ignored", "--exclude-standard")):
@@ -2299,23 +2453,37 @@ def _validate_dependency_checkout(
             if item
         )
     project_output_roots = _project_output_roots(index_entries)
+    project_directories = _project_directories(index_entries)
+    dispositions = {
+        path: _dependency_path_disposition(
+            path, project_output_roots, project_directories
+        )
+        for path in untracked_paths
+    }
+    # Symlinks are inspected before the generated-output exemption so a project-adjacent
+    # bin/obj link cannot redirect build writes outside the sealed checkout; only inert
+    # tooling roots outside the sealed graph are exempt.
     all_untracked_symlinks = sorted(
         path
-        for path in untracked_paths
-        if (checkout / path).is_symlink()
-        or _path_has_symlink_component(checkout / path)
+        for path, disposition in dispositions.items()
+        if disposition != "inert-tooling"
+        and (
+            (checkout / path).is_symlink()
+            or _path_has_symlink_component(checkout / path)
+        )
     )
     if all_untracked_symlinks:
         issues.append(
             _bounded_path_diagnostic(
-                f"Runtime dependency contains untracked symlink inputs: {relative}: ",
+                f"Runtime dependency contains untracked symlink inputs selected by the "
+                f"build/runtime input scope: {relative}: ",
                 all_untracked_symlinks,
             )
         )
     relevant_untracked = sorted(
         path
-        for path in untracked_paths
-        if not _is_dependency_generated_output(path, project_output_roots)
+        for path, disposition in dispositions.items()
+        if disposition == "graph-selected"
     )
     if relevant_untracked:
         issues.append(
@@ -2328,6 +2496,27 @@ def _validate_dependency_checkout(
 
 
 def _runtime_input_snapshot(repository_root: Path) -> tuple[list[dict[str, Any]], list[str]]:
+    """Return the fixed runtime-input inventory, memoized inside one validation run.
+
+    One validation resolves the same fixed scope two to three times (manifest comparison,
+    provenance, and the final recomputation). Hashing every tracked runtime input and the
+    seven dependency checkouts repeatedly both costs minutes inside the 45-minute blocking
+    job and prints every dirty-tree diagnostic two or three times. The cache is scoped to
+    an entry point so no result outlives the run that produced it.
+    """
+    cache = _SNAPSHOT_CACHE
+    if cache is None:
+        return _compute_runtime_input_snapshot(repository_root)
+    key = str(repository_root)
+    if key not in cache:
+        cache[key] = _compute_runtime_input_snapshot(repository_root)
+    entries, issues = cache[key]
+    return list(entries), list(issues)
+
+
+def _compute_runtime_input_snapshot(
+    repository_root: Path,
+) -> tuple[list[dict[str, Any]], list[str]]:
     """Return the fixed runtime-input inventory and fail-closed cleanliness issues."""
     issues: list[str] = []
     pathspecs = ["src", "samples/Counter", *RUNTIME_ROOT_INPUTS, *RUNTIME_PACT_INPUTS, *RUNTIME_DEPENDENCY_GITLINKS]
@@ -2520,7 +2709,9 @@ def _runtime_input_snapshot(repository_root: Path) -> tuple[list[dict[str, Any]]
             continue
         if head_objects.get(relative) != (mode, object_id):
             issues.append(f"Runtime-input index identity differs from HEAD: {relative}")
-        if object_id not in worktree_objects.get(relative, frozenset()):
+        # A bulk-hash failure is one root cause already reported above; repeating it per
+        # file would bury the diagnostic under one error per tracked runtime input.
+        if hash_error is None and object_id not in worktree_objects.get(relative, frozenset()):
             issues.append(f"Runtime-input worktree bytes differ from the Git index: {relative}")
         entries.append(
             {
@@ -3078,7 +3269,13 @@ def resolved_package_ledger(
             issues.append(f"Resolved assets graph is repeated: {relative_assets}")
             continue
         seen_assets.add(relative_assets)
-        data = _bounded_read(assets_path, issues, f"assets graph {relative_assets}")
+        data = _bounded_read(
+            assets_path,
+            issues,
+            relative_assets,
+            max_bytes=MAX_PACKAGE_LEDGER_BYTES,
+            category="Resolved assets graph",
+        )
         if data is None:
             continue
         try:
@@ -3367,6 +3564,56 @@ def validate_package_ledger_semantics(
     return captured_at
 
 
+def package_ledger_binding(document: dict[str, Any], name: str, data: bytes) -> dict[str, Any]:
+    """Return the bounded binding that a receipt or AppHost packet stores for one ledger."""
+    return {
+        "path": name,
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "bytes": len(data),
+        "schema": document.get("schema"),
+        "capturedAt": document.get("capturedAt"),
+        "treeSha256": document.get("treeSha256"),
+    }
+
+
+def _read_package_ledger_sidecar(
+    evidence_root: Path,
+    binding: Any,
+    expected_name: str,
+    label: str,
+    errors: list[str],
+) -> dict[str, Any] | None:
+    """Resolve and byte-bind one ledger sidecar from its evidence-document binding."""
+    if not isinstance(binding, dict) or set(binding) != set(PACKAGE_LEDGER_BINDING_FIELDS):
+        errors.append(f"{label} package-ledger binding does not contain the exact fields.")
+        return None
+    if binding.get("path") != expected_name:
+        errors.append(f"{label} package-ledger binding must name {expected_name}.")
+        return None
+    sidecar = evidence_root / expected_name
+    data = _bounded_read(sidecar, errors, expected_name, max_bytes=MAX_PACKAGE_LEDGER_BYTES)
+    if data is None:
+        return None
+    if not _exact(binding.get("sha256"), hashlib.sha256(data).hexdigest()) or not _exact(
+        binding.get("bytes"), len(data)
+    ):
+        errors.append(f"{label} package-ledger binding does not bind the sidecar bytes.")
+        return None
+    try:
+        document = json.loads(data.decode("utf-8-sig"), object_pairs_hook=_reject_duplicate_keys)
+    except (UnicodeDecodeError, json.JSONDecodeError, _DuplicateJsonKeyError) as error:
+        errors.append(f"{expected_name} is not valid duplicate-free UTF-8 JSON: {error}")
+        return None
+    if not isinstance(document, dict):
+        errors.append(f"{expected_name} must contain one JSON object.")
+        return None
+    for field in ("schema", "capturedAt", "treeSha256"):
+        if not _exact(binding.get(field), document.get(field)):
+            errors.append(f"{label} package-ledger binding {field} differs from the sidecar.")
+            return None
+    return document
+
+
 def write_package_ledger(
     output: Path,
     repository_root: Path,
@@ -3464,6 +3711,26 @@ def write_live_receipt(
     package_root: Path | None = None,
 ) -> list[str]:
     """Validate and bind a passing provider report to its pre-run runtime manifest."""
+    with _snapshot_cache_scope():
+        return _write_live_receipt(
+            evidence_root,
+            repository_root,
+            runtime_input_manifest_path=runtime_input_manifest_path,
+            pact_dir=pact_dir,
+            package_ledger_path=package_ledger_path,
+            package_root=package_root,
+        )
+
+
+def _write_live_receipt(
+    evidence_root: Path,
+    repository_root: Path | None = None,
+    *,
+    runtime_input_manifest_path: Path | None = None,
+    pact_dir: Path | None = None,
+    package_ledger_path: Path | None = None,
+    package_root: Path | None = None,
+) -> list[str]:
     errors: list[str] = []
     repository_root = repository_root or Path(__file__).resolve().parents[1]
     if _path_has_symlink_component(evidence_root) or not evidence_root.is_dir():
@@ -3487,10 +3754,16 @@ def write_live_receipt(
         errors,
     )
     package_ledger_bytes_before = _bounded_read(
-        package_ledger_path, errors, "provider resolved-package ledger"
+        package_ledger_path,
+        errors,
+        "provider resolved-package ledger",
+        max_bytes=MAX_PACKAGE_LEDGER_BYTES,
     )
     package_ledger = _read_json(
-        package_ledger_path, errors, "provider resolved-package ledger"
+        package_ledger_path,
+        errors,
+        "provider resolved-package ledger",
+        max_bytes=MAX_PACKAGE_LEDGER_BYTES,
     )
     package_captured_at = validate_package_ledger(
         package_ledger,
@@ -3555,7 +3828,10 @@ def write_live_receipt(
     if manifest_bytes_before != manifest_bytes_after:
         errors.append("Pre-provider runtime-input manifest changed during receipt creation.")
     package_ledger_bytes_after = _bounded_read(
-        package_ledger_path, errors, "provider resolved-package ledger"
+        package_ledger_path,
+        errors,
+        "provider resolved-package ledger",
+        max_bytes=MAX_PACKAGE_LEDGER_BYTES,
     )
     if package_ledger_bytes_before != package_ledger_bytes_after:
         errors.append("Provider resolved-package ledger changed during receipt creation.")
@@ -3578,7 +3854,9 @@ def write_live_receipt(
         "nativeVerifierOutputRetained": False,
         "normalizedPactCopiesRetained": False,
         "externalInputsModified": False,
-        "packageLedger": package_ledger,
+        "packageLedger": package_ledger_binding(
+            package_ledger, PROVIDER_PACKAGE_LEDGER_FILE, package_ledger_bytes_before
+        ),
         "report": {
             "path": "provider-verification.json",
             "sha256": hashlib.sha256(report_bytes).hexdigest(),
@@ -3586,23 +3864,31 @@ def write_live_receipt(
             **required,
         },
     }
+    # The sealed ledger travels with the receipt as a sidecar artifact; the receipt binds
+    # exactly these bytes, so the pair is validated together and never drifts apart.
+    sidecar = evidence_root / PROVIDER_PACKAGE_LEDGER_FILE
     output = evidence_root / "run-evidence.json"
-    temporary: Path | None = None
-    try:
-        descriptor, temporary_name = tempfile.mkstemp(
-            dir=output.parent, prefix=f".{output.name}.", suffix=".tmp"
-        )
-        temporary = Path(temporary_name)
-        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
-            stream.write(json.dumps(receipt, indent=2) + "\n")
-        temporary.replace(output)
-    except OSError as error:
-        errors.append(f"Unable to write live provider receipt: {error}")
+    for target, payload in (
+        (sidecar, package_ledger_bytes_before),
+        (output, (json.dumps(receipt, indent=2) + "\n").encode("utf-8")),
+    ):
+        temporary: Path | None = None
         try:
-            if temporary is not None:
-                temporary.unlink(missing_ok=True)
-        except OSError:
-            pass
+            descriptor, temporary_name = tempfile.mkstemp(
+                dir=target.parent, prefix=f".{target.name}.", suffix=".tmp"
+            )
+            temporary = Path(temporary_name)
+            with os.fdopen(descriptor, "wb") as stream:
+                stream.write(payload)
+            temporary.replace(target)
+        except OSError as error:
+            errors.append(f"Unable to write live provider evidence {target.name}: {error}")
+            try:
+                if temporary is not None:
+                    temporary.unlink(missing_ok=True)
+            except OSError:
+                pass
+            break
     return errors
 
 
@@ -3791,18 +4077,9 @@ def _validate_live_provider(
     if not validate_receipt:
         return
     receipt = _read_json(receipt_path, errors, "run-evidence.json")
-    receipt_bytes = _bounded_read(receipt_path, errors, "run-evidence.json")
-    frozen_legacy = (
-        receipt_bytes is not None
-        and hashlib.sha256(receipt_bytes).hexdigest() == FROZEN_PROVIDER_RECEIPT_SHA256
-    )
     report_bytes = _bounded_read(report_path, errors, "provider-verification.json")
     expected_receipt = {
-        "schema": (
-            "hexalith.eventstore.provider-verification-run-evidence.v3"
-            if frozen_legacy
-            else "hexalith.eventstore.provider-verification-run-evidence.v4"
-        ),
+        "schema": "hexalith.eventstore.provider-verification-run-evidence.v4",
         "frontComposerRevision": provenance["frontComposerRevision"],
         "runtimeInputTreeSha256": provenance["runtimeInputTreeSha256"],
         "command": "dotnet tests/Hexalith.EventStore.ProviderVerification/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.dll --verification-mode live-compatibility <validated canonical inputs>",
@@ -3815,9 +4092,9 @@ def _validate_live_provider(
     for key, expected in expected_receipt.items():
         if not _exact(receipt.get(key), expected):
             errors.append(f"Live provider run receipt {key} is not a passing bounded invocation.")
-    required_receipt_fields = {*expected_receipt, "capturedAt", "completedAt", "report"}
-    if not frozen_legacy:
-        required_receipt_fields.add("packageLedger")
+    required_receipt_fields = {
+        *expected_receipt, "capturedAt", "completedAt", "report", "packageLedger"
+    }
     if set(receipt) != required_receipt_fields:
         errors.append("Live provider run receipt does not contain the exact required fields.")
     receipt_captured = _parse_timestamp(receipt.get("capturedAt"), "Live provider receipt capturedAt", errors)
@@ -3838,42 +4115,47 @@ def _validate_live_provider(
     )
     _timestamp_not_future(report_started, "Live provider report run startedAt", errors)
     _timestamp_not_future(report_completed, "Live provider report run completedAt", errors)
-    if not frozen_legacy:
-        package_ledger = receipt.get("packageLedger")
-        if package_root is None:
-            package_captured = validate_package_ledger_semantics(
-                package_ledger, errors
-            )
-        else:
-            package_captured = validate_package_ledger(
-                package_ledger,
-                repository_root=repository_root,
-                package_root=package_root,
-                assets_paths=(
-                    repository_root / relative
-                    for relative in PROVIDER_PACKAGE_ASSETS
-                ),
-                errors=errors,
-                expected_assets_count=2,
-            )
-        graphs = (
-            package_ledger.get("assetsGraphs")
-            if isinstance(package_ledger, dict)
-            else None
+    package_ledger = _read_package_ledger_sidecar(
+        evidence_root,
+        receipt.get("packageLedger"),
+        PROVIDER_PACKAGE_LEDGER_FILE,
+        "Live provider run receipt",
+        errors,
+    )
+    if package_root is None:
+        package_captured = validate_package_ledger_semantics(
+            package_ledger, errors
         )
-        graph_paths = (
-            [item.get("path") for item in graphs if isinstance(item, dict)]
-            if isinstance(graphs, list)
-            else []
+    else:
+        package_captured = validate_package_ledger(
+            package_ledger,
+            repository_root=repository_root,
+            package_root=package_root,
+            assets_paths=(
+                repository_root / relative
+                for relative in PROVIDER_PACKAGE_ASSETS
+            ),
+            errors=errors,
+            expected_assets_count=2,
         )
-        if graph_paths != list(PROVIDER_PACKAGE_ASSETS):
-            errors.append("Provider package ledger does not bind its exact two assets graphs.")
-        if (
-            package_captured is None
-            or report_started is None
-            or package_captured >= report_started
-        ):
-            errors.append("Provider package ledger does not predate execution start.")
+    graphs = (
+        package_ledger.get("assetsGraphs")
+        if isinstance(package_ledger, dict)
+        else None
+    )
+    graph_paths = (
+        [item.get("path") for item in graphs if isinstance(item, dict)]
+        if isinstance(graphs, list)
+        else []
+    )
+    if graph_paths != list(PROVIDER_PACKAGE_ASSETS):
+        errors.append("Provider package ledger does not bind its exact two assets graphs.")
+    if (
+        package_captured is None
+        or report_started is None
+        or package_captured >= report_started
+    ):
+        errors.append("Provider package ledger does not predate execution start.")
     if receipt_completed != report_completed:
         errors.append("Live provider receipt completion does not equal the provider run completion.")
     if (
@@ -3910,27 +4192,18 @@ def _validate_live_apphost(
     errors: list[str],
     *,
     package_root: Path | None = None,
+    runtime_manifest: dict[str, Any] | None = None,
 ) -> None:
     path = evidence_root / "apphost-smoke.json"
     smoke = _read_json(path, errors, "apphost-smoke.json")
-    smoke_bytes = _bounded_read(path, errors, "apphost-smoke.json")
-    frozen_legacy = (
-        smoke_bytes is not None
-        and hashlib.sha256(smoke_bytes).hexdigest() == FROZEN_APPHOST_SMOKE_SHA256
-    )
     required_fields = {
         "schema", "capturedAt", "completedAt", "timeoutSeconds", "finalVerdict", "reasonCodes",
         "identity", "topology", "startup", "observations", "authorizationControls", "cleanup",
+        "executionStartedAt", "packageLedger",
     }
-    if not frozen_legacy:
-        required_fields.update({"executionStartedAt", "packageLedger"})
     if set(smoke) != required_fields:
         errors.append("Live AppHost smoke does not contain the exact required fields.")
-    expected_schema = (
-        "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v2"
-        if frozen_legacy
-        else "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v3"
-    )
+    expected_schema = "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v3"
     if smoke.get("schema") != expected_schema:
         errors.append("Live AppHost smoke has an unexpected schema.")
     captured_at = _parse_timestamp(smoke.get("capturedAt"), "Live AppHost smoke capturedAt", errors)
@@ -3955,6 +4228,9 @@ def _validate_live_apphost(
     if not _exact(smoke.get("finalVerdict"), "passed") or not _exact(smoke.get("reasonCodes"), []):
         errors.append("Live AppHost smoke is not a clean passing run.")
     identity = smoke.get("identity", {})
+    if not isinstance(identity, dict):
+        errors.append("Live AppHost smoke identity is malformed.")
+        identity = {}
     expected_identity = {
         "eventStoreSourceSha": provenance["sourceSha"],
         "eventStoreReleaseVersion": provenance["releaseVersion"],
@@ -3965,81 +4241,95 @@ def _validate_live_apphost(
     runtime_manifest_captured_at: datetime | None = None
     execution_started_at: datetime | None = None
     package_captured_at: datetime | None = None
-    if not frozen_legacy:
-        runtime_manifest_captured_at = _parse_timestamp(
-            identity.get("runtimeInputCapturedAt") if isinstance(identity, dict) else None,
-            "Live AppHost runtimeInputCapturedAt",
+    recorded_manifest_capture = identity.get("runtimeInputCapturedAt")
+    runtime_manifest_captured_at = _parse_timestamp(
+        recorded_manifest_capture,
+        "Live AppHost runtimeInputCapturedAt",
+        errors,
+    )
+    _timestamp_not_future(
+        runtime_manifest_captured_at, "Live AppHost runtimeInputCapturedAt", errors
+    )
+    if isinstance(runtime_manifest, dict):
+        # Bind the recorded capture boundary to the sealed manifest instead of echoing
+        # the artifact back at itself; a backdated value is then a hard mismatch.
+        expected_identity["runtimeInputCapturedAt"] = runtime_manifest.get("capturedAt")
+    else:
+        expected_identity["runtimeInputCapturedAt"] = recorded_manifest_capture
+        if not isinstance(recorded_manifest_capture, str) or runtime_manifest_captured_at is None:
+            errors.append("Live AppHost runtimeInputCapturedAt is not an exact timestamp.")
+    if (
+        runtime_manifest_captured_at is None
+        or captured_at is None
+        or runtime_manifest_captured_at >= captured_at
+    ):
+        errors.append("Live AppHost runtime manifest does not predate the capture start.")
+    execution_started_at = _parse_timestamp(
+        smoke.get("executionStartedAt"), "Live AppHost executionStartedAt", errors
+    )
+    package_ledger = _read_package_ledger_sidecar(
+        evidence_root,
+        smoke.get("packageLedger"),
+        APPHOST_PACKAGE_LEDGER_FILE,
+        "Live AppHost smoke",
+        errors,
+    )
+    graphs = package_ledger.get("assetsGraphs") if isinstance(package_ledger, dict) else None
+    ledger_graph_paths = (
+        [
+            item["path"]
+            for item in graphs
+            if isinstance(item, dict) and isinstance(item.get("path"), str)
+        ]
+        if isinstance(graphs, list)
+        else []
+    )
+    ledger_paths = [
+        repository_root / item["path"]
+        for item in graphs
+        if (
+            isinstance(item, dict)
+            and isinstance(item.get("path"), str)
+            and _is_safe_relative_path(item["path"])
+        )
+    ] if isinstance(graphs, list) else []
+    if package_root is None:
+        package_captured_at = validate_package_ledger_semantics(
+            package_ledger, errors
+        )
+    else:
+        package_captured_at = validate_package_ledger(
+            package_ledger,
+            repository_root,
+            package_root,
+            ledger_paths,
             errors,
         )
-        expected_identity["runtimeInputCapturedAt"] = identity.get("runtimeInputCapturedAt")
-        execution_started_at = _parse_timestamp(
-            smoke.get("executionStartedAt"), "Live AppHost executionStartedAt", errors
+    if (
+        ledger_graph_paths != sorted(set(ledger_graph_paths))
+        or APPHOST_PACKAGE_ASSETS_ROOT not in ledger_graph_paths
+    ):
+        errors.append(
+            "Live AppHost package ledger must bind the canonical AppHost assets root."
         )
-        package_ledger = smoke.get("packageLedger")
-        graphs = package_ledger.get("assetsGraphs") if isinstance(package_ledger, dict) else None
-        ledger_graph_paths = (
-            [
-                item["path"]
-                for item in graphs
-                if isinstance(item, dict) and isinstance(item.get("path"), str)
-            ]
-            if isinstance(graphs, list)
-            else []
+    if (
+        runtime_manifest_captured_at is None
+        or package_captured_at is None
+        or execution_started_at is None
+        or completed_at is None
+        or not runtime_manifest_captured_at < package_captured_at < execution_started_at <= completed_at
+    ):
+        errors.append(
+            "Live AppHost chronology must be runtime manifest, package ledger, execution start, completion."
         )
-        ledger_paths = [
-            repository_root / item["path"]
-            for item in graphs
-            if (
-                isinstance(item, dict)
-                and isinstance(item.get("path"), str)
-                and _is_safe_relative_path(item["path"])
-            )
-        ] if isinstance(graphs, list) else []
-        if package_root is None:
-            package_captured_at = validate_package_ledger_semantics(
-                package_ledger, errors
-            )
-        else:
-            package_captured_at = validate_package_ledger(
-                package_ledger,
-                repository_root,
-                package_root,
-                ledger_paths,
-                errors,
-            )
-        if (
-            ledger_graph_paths != sorted(set(ledger_graph_paths))
-            or APPHOST_PACKAGE_ASSETS_ROOT not in ledger_graph_paths
-        ):
-            errors.append(
-                "Live AppHost package ledger must bind the canonical AppHost assets root."
-            )
-        if (
-            runtime_manifest_captured_at is None
-            or package_captured_at is None
-            or execution_started_at is None
-            or completed_at is None
-            or not runtime_manifest_captured_at < package_captured_at < execution_started_at <= completed_at
-        ):
-            errors.append(
-                "Live AppHost chronology must be runtime manifest, package ledger, execution start, completion."
-            )
     if not _exact(identity, expected_identity):
         errors.append("Live AppHost smoke provenance is stale or untruthful.")
     topology = smoke.get("topology", {})
     declared_resources = topology.get("declaredResources") if isinstance(topology, dict) else None
-    if (
-        not isinstance(declared_resources, list)
-        or any(not isinstance(name, str) for name in declared_resources)
-        or len(declared_resources) != 10
-        or len(set(declared_resources)) != len(declared_resources)
-        or set(declared_resources) != {
-            "security", "eventstore", "eventstore-admin", "eventstore-admin-ui", "tenants",
-            "parties", "sample", "tenants-ui", "frontcomposer-ui", "counter-web",
-        }
-    ):
-        errors.append("Live AppHost smoke does not name exactly the ten declared resources.")
-        declared_resources = []
+    if not _exact(declared_resources, list(APPHOST_DECLARED_RESOURCES)):
+        errors.append(
+            "Live AppHost smoke does not name exactly the ten declared resources in canonical order."
+        )
     program = repository_root / "src/Hexalith.FrontComposer.AppHost/Program.cs"
     project = repository_root / "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj"
     expected_topology = {
@@ -4048,7 +4338,7 @@ def _validate_live_apphost(
         "projectPath": "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
         "projectSha256": _sha256(project, errors),
         "modifiedForSmoke": False,
-        "declaredResources": declared_resources,
+        "declaredResources": list(APPHOST_DECLARED_RESOURCES),
     }
     if not _exact(topology, expected_topology):
         errors.append("Live AppHost smoke does not bind the exact current topology and resource set.")
@@ -4072,79 +4362,128 @@ def _validate_live_apphost(
             "inactiveGuardedGitlinks": list(APPHOST_INACTIVE_GUARDED_GITLINKS),
             "evaluatedSourceGraph": "passed",
         },
-        "resourceWaits": {
-            name: "healthy"
-            for name in (
-                "security", "eventstore", "eventstore-admin", "eventstore-admin-ui", "tenants",
-                "parties", "sample", "tenants-ui", "frontcomposer-ui", "counter-web",
-            )
-        },
+        "resourceWaits": {name: "healthy" for name in APPHOST_DECLARED_RESOURCES},
     }
-    if not frozen_legacy:
-        output_preparation = startup.get("outputPreparation") if isinstance(startup, dict) else None
-        input_binding = output_preparation.get("evaluatedInputBinding") if isinstance(output_preparation, dict) else None
-        output_binding = output_preparation.get("runtimeOutputBinding") if isinstance(output_preparation, dict) else None
-        expected_startup["outputPreparation"]["evaluatedInputBinding"] = input_binding
-        expected_startup["outputPreparation"]["runtimeOutputBinding"] = output_binding
-        input_graph_paths = input_binding.get("assetsGraphs") if isinstance(input_binding, dict) else None
-        inputs = input_binding.get("inputs") if isinstance(input_binding, dict) else None
-        input_keys = (
-            [(item.get("authority"), item.get("path")) for item in inputs]
-            if isinstance(inputs, list)
-            and all(
-                isinstance(item, dict)
-                and isinstance(item.get("authority"), str)
-                and isinstance(item.get("path"), str)
-                for item in inputs
-            )
-            else []
+    output_preparation = startup.get("outputPreparation") if isinstance(startup, dict) else None
+    input_binding = output_preparation.get("evaluatedInputBinding") if isinstance(output_preparation, dict) else None
+    output_binding = output_preparation.get("runtimeOutputBinding") if isinstance(output_preparation, dict) else None
+    expected_startup["outputPreparation"]["evaluatedInputBinding"] = input_binding
+    expected_startup["outputPreparation"]["runtimeOutputBinding"] = output_binding
+    input_graph_paths = input_binding.get("assetsGraphs") if isinstance(input_binding, dict) else None
+    inputs = input_binding.get("inputs") if isinstance(input_binding, dict) else None
+    input_keys = (
+        [(item.get("authority"), item.get("path")) for item in inputs]
+        if isinstance(inputs, list)
+        and all(
+            isinstance(item, dict)
+            and isinstance(item.get("authority"), str)
+            and isinstance(item.get("path"), str)
+            for item in inputs
         )
-        output_paths = (
-            [item.get("path") for item in output_binding]
-            if isinstance(output_binding, list)
-            and all(
-                isinstance(item, dict) and isinstance(item.get("path"), str)
-                for item in output_binding
-            )
-            else []
+        else []
+    )
+    output_paths = (
+        [item.get("path") for item in output_binding]
+        if isinstance(output_binding, list)
+        and all(
+            isinstance(item, dict) and isinstance(item.get("path"), str)
+            for item in output_binding
         )
-        if (
-            not isinstance(input_graph_paths, list)
-            or input_graph_paths != sorted(set(ledger_graph_paths))
-            or APPHOST_PACKAGE_ASSETS_ROOT not in input_graph_paths
-            or not isinstance(inputs, list)
-            or not inputs
-            or input_keys != sorted(set(input_keys))
-            or any(
-                not isinstance(item, dict)
-                or set(item) != {"authority", "path", "sha256"}
-                or item.get("authority") not in {"repository", "packages", "dotnet"}
-                or not isinstance(item.get("path"), str)
-                or not _is_safe_relative_path(item["path"])
-                or not isinstance(item.get("sha256"), str)
-                or not SHA256_RE.fullmatch(item["sha256"])
-                for item in inputs
+        else []
+    )
+    if (
+        not isinstance(input_graph_paths, list)
+        or input_graph_paths != sorted(set(ledger_graph_paths))
+        or APPHOST_PACKAGE_ASSETS_ROOT not in input_graph_paths
+        or not isinstance(inputs, list)
+        or not inputs
+        or input_keys != sorted(set(input_keys))
+        or any(
+            not isinstance(item, dict)
+            or set(item) != {"authority", "path", "sha256"}
+            or item.get("authority") not in {"repository", "packages", "dotnet"}
+            or not isinstance(item.get("path"), str)
+            or not _is_safe_relative_path(item["path"])
+            or not isinstance(item.get("sha256"), str)
+            or not SHA256_RE.fullmatch(item["sha256"])
+            for item in inputs
+        )
+    ):
+        errors.append("Live AppHost evaluated input binding is incomplete or outside its authorities.")
+    else:
+        # Repository-authority inputs are bound to the sealed runtime scope and, for
+        # every path the sealed manifest already hashes, to that manifest's bytes.
+        # Without this the binding only describes itself.
+        sealed_prefixes = (
+            "src/",
+            "samples/Counter/",
+            *(f"{gitlink}/" for gitlink in RUNTIME_DEPENDENCY_GITLINKS),
+        )
+        sealed_exact = {*RUNTIME_ROOT_INPUTS, *RUNTIME_PACT_INPUTS}
+        manifest_hashes = {
+            entry["path"]: entry["sha256"]
+            for entry in (
+                runtime_manifest.get("entries", [])
+                if isinstance(runtime_manifest, dict)
+                else []
             )
-        ):
-            errors.append("Live AppHost evaluated input binding is incomplete or outside its authorities.")
-        if (
-            not isinstance(output_binding, list)
-            or not output_binding
-            or output_paths != sorted(set(output_paths))
-            or any(
-                not isinstance(item, dict)
-                or set(item) != {"path", "bytes", "sha256"}
-                or not isinstance(item.get("path"), str)
-                or not _is_safe_relative_path(item["path"])
-                or not isinstance(item.get("bytes"), int)
-                or isinstance(item.get("bytes"), bool)
-                or item["bytes"] < 0
-                or not isinstance(item.get("sha256"), str)
-                or not SHA256_RE.fullmatch(item["sha256"])
-                for item in output_binding
+            if isinstance(entry, dict)
+            and isinstance(entry.get("path"), str)
+            and isinstance(entry.get("sha256"), str)
+        }
+        outside_scope: list[str] = []
+        unbound: list[str] = []
+        repository_inputs = 0
+        for item in inputs:
+            if item["authority"] != "repository":
+                continue
+            repository_inputs += 1
+            relative_input = item["path"]
+            if relative_input not in sealed_exact and not relative_input.startswith(
+                sealed_prefixes
+            ):
+                outside_scope.append(relative_input)
+            elif (
+                relative_input in manifest_hashes
+                and manifest_hashes[relative_input] != item["sha256"]
+            ):
+                unbound.append(relative_input)
+        if not repository_inputs:
+            errors.append(
+                "Live AppHost evaluated input binding names no repository-authority input."
             )
-        ):
-            errors.append("Live AppHost runtime output binding is incomplete.")
+        if outside_scope:
+            errors.append(
+                _bounded_path_diagnostic(
+                    "Live AppHost evaluated input binding leaves the sealed runtime scope: ",
+                    outside_scope,
+                )
+            )
+        if unbound:
+            errors.append(
+                _bounded_path_diagnostic(
+                    "Live AppHost evaluated input binding differs from the sealed runtime manifest: ",
+                    unbound,
+                )
+            )
+    if (
+        not isinstance(output_binding, list)
+        or not output_binding
+        or output_paths != sorted(set(output_paths))
+        or any(
+            not isinstance(item, dict)
+            or set(item) != {"path", "bytes", "sha256"}
+            or not isinstance(item.get("path"), str)
+            or not _is_safe_relative_path(item["path"])
+            or not isinstance(item.get("bytes"), int)
+            or isinstance(item.get("bytes"), bool)
+            or item["bytes"] < 0
+            or not isinstance(item.get("sha256"), str)
+            or not SHA256_RE.fullmatch(item["sha256"])
+            for item in output_binding
+        )
+    ):
+        errors.append("Live AppHost runtime output binding is incomplete.")
     if not _exact(startup, expected_startup):
         errors.append("Live AppHost startup does not account for every declared healthy resource.")
     observations = smoke.get("observations", {})
@@ -4221,10 +4560,9 @@ def _validate_live_apphost(
             expected_fields = {"result", "credential", "reasonCode", "statusCode"}
             if name == "projectionSignalR":
                 expected_fields.add("endpoint")
-                if not frozen_legacy:
-                    expected_fields.update(
-                        {"transport", "negotiatedWith", "upgradeResult"}
-                    )
+                expected_fields.update(
+                    {"transport", "negotiatedWith", "upgradeResult"}
+                )
             status_code = item.get("statusCode") if isinstance(item, dict) else None
             expected_item = {
                 "result": "passed",
@@ -4238,14 +4576,13 @@ def _validate_live_apphost(
             }
             if name == "projectionSignalR":
                 expected_item["endpoint"] = item.get("endpoint") if isinstance(item, dict) else None
-                if not frozen_legacy:
-                    expected_item.update(
-                        {
-                            "transport": "websocket-upgrade",
-                            "negotiatedWith": "valid-bearer",
-                            "upgradeResult": "rejected-before-switching-protocols",
-                        }
-                    )
+                expected_item.update(
+                    {
+                        "transport": "websocket-upgrade",
+                        "negotiatedWith": "valid-bearer",
+                        "upgradeResult": "rejected-before-switching-protocols",
+                    }
+                )
             if (
                 not isinstance(item, dict)
                 or set(item) != expected_fields
@@ -4289,13 +4626,12 @@ def _validate_live_apphost(
         "confirmation": "aspire-ps-empty",
         "runtimeInputsCleanAfterRun": True,
     }
-    if not frozen_legacy:
-        expected_cleanup.update(
-            {
-                "packageAuthorityCleanAfterRun": True,
-                "runtimeOutputsCleanAfterRun": True,
-            }
-        )
+    expected_cleanup.update(
+        {
+            "packageAuthorityCleanAfterRun": True,
+            "runtimeOutputsCleanAfterRun": True,
+        }
+    )
     if not isinstance(cleanup, dict) or set(cleanup) != {
         *expected_cleanup,
         "daprNameResolutionFiles",
@@ -4880,6 +5216,19 @@ def validate_active(
     repository_root: Path,
 ) -> tuple[list[str], list[str], bool]:
     """Validate active identity/evidence and separately evaluate migration approval."""
+    with _snapshot_cache_scope():
+        return _validate_active(
+            identity_path, evidence_root, history_root, pact_dir, repository_root
+        )
+
+
+def _validate_active(
+    identity_path: Path,
+    evidence_root: Path,
+    history_root: Path,
+    pact_dir: Path,
+    repository_root: Path,
+) -> tuple[list[str], list[str], bool]:
     errors: list[str] = []
     approval_issues: list[str] = []
     artifact_root = repository_root
@@ -5002,6 +5351,7 @@ def validate_active(
         "apphost-smoke.json",
         "provider-verification.json",
         "run-evidence.json",
+        *PACKAGE_LEDGER_FILES,
     }
     active_evidence = identity.get("activeEvidence")
     if (
@@ -5033,7 +5383,10 @@ def validate_active(
             else:
                 errors.append("Active recapture contains a non-regular entry: " + relative)
         if actual != expected_recapture_paths:
-            errors.append("Active recapture must contain exactly the provider, receipt, and AppHost reports.")
+            errors.append(
+                "Active recapture must contain exactly the provider report, run receipt, "
+                "AppHost smoke, and both package-ledger sidecars."
+            )
         if recapture_directories:
             errors.append(
                 _bounded_path_diagnostic(
@@ -5362,11 +5715,15 @@ def validate_active(
             except OSError:
                 errors.append(f"Active evidence file is unreadable: {relative}")
                 continue
-            total_bytes += size
             _scan_redaction(path, errors)
-            if size <= 0 or size > MAX_FILE_BYTES:
+            limit = _evidence_file_limit(path.name)
+            # Ledger sidecars carry the extracted-file inventory and have their own derived
+            # bound; they are excluded from the bounded-evidence byte total for that reason.
+            if limit == MAX_FILE_BYTES:
+                total_bytes += size
+            if size <= 0 or size > limit:
                 errors.append(
-                    f"Active evidence file is empty or exceeds {MAX_FILE_BYTES} bytes: {relative}"
+                    f"Active evidence file is empty or exceeds {limit} bytes: {relative}"
                 )
         elif path.is_dir():
             actual_tree_directories.add(relative)
@@ -5416,7 +5773,13 @@ def validate_active(
             errors,
             repository_root=repository_root,
         )
-        _validate_live_apphost(recapture_root, repository_root, captured_provenance, errors)
+        _validate_live_apphost(
+            recapture_root,
+            repository_root,
+            captured_provenance,
+            errors,
+            runtime_manifest=manifest,
+        )
     return errors, approval_issues, claimed
 
 def validate_live(
@@ -5426,13 +5789,39 @@ def validate_live(
     *,
     provider_package_root: Path | None = None,
     apphost_package_root: Path | None = None,
+    runtime_input_manifest_path: Path | None = None,
 ) -> list[str]:
     """Validate current provider and AppHost evidence independently of frozen Story 11.24 bytes."""
+    with _snapshot_cache_scope():
+        return _validate_live(
+            evidence_root,
+            pact_dir,
+            repository_root,
+            provider_package_root=provider_package_root,
+            apphost_package_root=apphost_package_root,
+            runtime_input_manifest_path=runtime_input_manifest_path,
+        )
+
+
+def _validate_live(
+    evidence_root: Path,
+    pact_dir: Path,
+    repository_root: Path,
+    *,
+    provider_package_root: Path | None = None,
+    apphost_package_root: Path | None = None,
+    runtime_input_manifest_path: Path | None = None,
+) -> list[str]:
     errors: list[str] = []
     for path, label in ((evidence_root, "Live evidence root"), (pact_dir, "Pact directory"), (repository_root, "Repository root")):
         if _path_has_symlink_component(path) or not path.is_dir():
             return [f"{label} is missing or is a symlink: {path}"]
-    required = {"provider-verification.json", "run-evidence.json", "apphost-smoke.json"}
+    required = {
+        "provider-verification.json",
+        "run-evidence.json",
+        "apphost-smoke.json",
+        *PACKAGE_LEDGER_FILES,
+    }
     actual_files: set[str] = set()
     actual_directories: set[str] = set()
     for item in evidence_root.rglob("*"):
@@ -5447,7 +5836,15 @@ def validate_live(
         else:
             errors.append(f"Live evidence root contains a non-regular entry: {relative}")
     if actual_files != required or actual_directories:
-        errors.append("Live evidence root must contain exactly provider-verification.json, run-evidence.json, and apphost-smoke.json.")
+        errors.append(
+            "Live evidence root must contain exactly the provider report, run receipt, "
+            "AppHost smoke, and both package-ledger sidecars."
+        )
+    live_manifest: dict[str, Any] | None = None
+    if runtime_input_manifest_path is not None:
+        live_manifest, _ = _validate_runtime_input_manifest(
+            runtime_input_manifest_path, repository_root, errors
+        )
     provenance = _live_provenance(repository_root, errors)
     _validate_live_provider(
         evidence_root,
@@ -5463,6 +5860,7 @@ def validate_live(
         provenance,
         errors,
         package_root=apphost_package_root,
+        runtime_manifest=live_manifest,
     )
     return errors
 
@@ -5505,6 +5903,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--provider-package-root", type=Path)
     parser.add_argument("--apphost-package-root", type=Path)
     args = parser.parse_args(argv)
+    with _snapshot_cache_scope():
+        return _run(parser, args)
+
+
+def _run(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     if (
         args.evidence_root is None
         and args.live_evidence_root is None
@@ -5578,6 +5981,11 @@ def main(argv: list[str] | None = None) -> int:
                 if args.apphost_package_root is not None
                 else None
             ),
+            runtime_input_manifest_path=(
+                args.runtime_input_manifest.absolute()
+                if args.runtime_input_manifest is not None
+                else None
+            ),
         ))
     if args.active_identity is not None:
         active_errors, approval_issues, approval_claimed = validate_active(
@@ -5589,7 +5997,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         errors.extend(active_errors)
     if errors:
-        for error in errors:
+        # One root cause can be reported by more than one authority in the same run;
+        # print each distinct diagnostic once, in first-seen order.
+        for error in dict.fromkeys(errors):
             print(f"EventStore runtime evidence error: {error}", file=sys.stderr)
         return 1
     print("EventStore runtime evidence operation completed successfully.")

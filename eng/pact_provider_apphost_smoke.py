@@ -1541,6 +1541,51 @@ def _atomic_write(path: Path, document: dict[str, Any]) -> None:
         raise
 
 
+def _package_ledger_sidecar(output: Path) -> Path:
+    return output.parent / runtime_evidence.APPHOST_PACKAGE_LEDGER_FILE
+
+
+def _write_evidence(
+    output: Path,
+    evidence: dict[str, Any],
+    package_ledger: dict[str, Any] | None,
+) -> None:
+    """Write the AppHost packet and, when sealed, its bound package-ledger sidecar.
+
+    The extracted-file inventory required of the ledger is far larger than a bounded
+    evidence document, so the packet stores only a byte binding and the ledger itself
+    travels beside it. An invocation that never sealed a ledger removes any stale sidecar
+    so the artifact set always describes exactly this run.
+    """
+    sidecar = _package_ledger_sidecar(output)
+    if package_ledger is None:
+        evidence["packageLedger"] = None
+        try:
+            sidecar.unlink(missing_ok=True)
+        except OSError:
+            pass
+    else:
+        payload = (json.dumps(package_ledger, indent=2) + "\n").encode("utf-8")
+        sidecar.parent.mkdir(parents=True, exist_ok=True)
+        descriptor, temporary_name = tempfile.mkstemp(
+            dir=sidecar.parent,
+            prefix=f".{sidecar.name}.",
+            suffix=".tmp",
+        )
+        temporary = Path(temporary_name)
+        try:
+            with os.fdopen(descriptor, "wb") as stream:
+                stream.write(payload)
+            temporary.replace(sidecar)
+        except BaseException:
+            temporary.unlink(missing_ok=True)
+            raise
+        evidence["packageLedger"] = runtime_evidence.package_ledger_binding(
+            package_ledger, runtime_evidence.APPHOST_PACKAGE_LEDGER_FILE, payload
+        )
+    _atomic_write(output, evidence)
+
+
 def _describe_host(
     runtime: SmokeRuntime,
     timeout: float = 15,
@@ -1699,7 +1744,7 @@ def _capture(
     if runtime_input_issues:
         reason_codes.append("runtime-inputs.not-clean-or-complete")
         evidence["completedAt"] = datetime.now(timezone.utc).isoformat()
-        _atomic_write(output, evidence)
+        _write_evidence(output, evidence, None)
         return 1
     try:
         # `aspire start --format Json` restarts a running AppHost. That restart launches
@@ -1827,7 +1872,6 @@ def _capture(
         if package_issues:
             reason_codes.append("apphost.package-authority.not-sealed")
             return 1
-        evidence["packageLedger"] = package_ledger
         initial_package_ledger = package_ledger
         dotnet_root = _selected_dotnet_root(runtime, capture_deadline)
         if dotnet_root is None:
@@ -1939,6 +1983,10 @@ def _capture(
         if len(names) != len(REQUIRED_RESOURCES) or set(names) != set(REQUIRED_RESOURCES):
             reason_codes.append("apphost.describe.incomplete")
             return 1
+        # The content still comes from the real describe result and an extra, missing, or
+        # duplicated record already failed above. Ordering the proven-exact set canonically
+        # lets the validator pin an ordered literal instead of echoing the evidence back.
+        evidence["topology"]["declaredResources"] = list(REQUIRED_RESOURCES)
         endpoints = {name: _resource_endpoint(records, name) for name in REQUIRED_RESOURCES}
         # Aspire can advertise a DCP public proxy that accepts and then hangs while its
         # direct target is a real loopback endpoint. The target is safe for local capture
@@ -2358,6 +2406,11 @@ def _capture(
             for relative in created_by_invocation
             if dapr_paths[relative].exists()
         )
+        # The observed run ends here. Post-run recomputation (manifest, package ledger, and
+        # runtime output inventory) is verification of the same run, not part of it, so it
+        # must not count against the validated completedAt - capturedAt <= timeoutSeconds
+        # window that bounds the capture itself.
+        evidence["completedAt"] = datetime.now(timezone.utc).isoformat()
         post_manifest, post_runtime_issues = runtime_evidence.runtime_input_manifest(ROOT)
         manifest_unchanged = True
         if runtime_input_manifest_path is not None:
@@ -2431,8 +2484,7 @@ def _capture(
             reason_codes.append("apphost.cleanup.incomplete")
         if reason_codes:
             evidence["finalVerdict"] = "failed"
-        evidence["completedAt"] = datetime.now(timezone.utc).isoformat()
-        _atomic_write(output, evidence)
+        _write_evidence(output, evidence, initial_package_ledger)
         if not clean:
             raise _CleanupFailed
 

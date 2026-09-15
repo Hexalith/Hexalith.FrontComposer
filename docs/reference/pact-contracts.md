@@ -5,7 +5,7 @@ genre: reference
 audience: adopter
 ownerStory: 11-25-current-eventstore-release-identity-and-evidence
 status: published
-reviewed: 2026-09-12
+reviewed: 2026-09-15
 uid: frontcomposer.reference.pact-contracts
 slug: reference/pact-contracts/
 ---
@@ -56,8 +56,10 @@ The lanes answer different questions and never share mutable hash authority:
 
 - The immutable Story 11.24 archive under `evidence/frontcomposer-story-11-24/` answers “what ran then.” `.gitattributes`, its SHA-256 manifest, and the hard-coded capture pins protect its exact bytes. Historical validation does not compare that report to current Pact files.
 - The dated archive under `evidence/pact-provider-reconciliation-history/2026-09-08-builds-35c3d1e5/` preserves the prior `059f6a89… / 3.103.0 / 35c3d1e5…` packet under hard-coded hashes.
-- Identity v2 and `evidence/eventstore-runtime-identity-v2/` bind identity v1's SHA-256, the exact active tuple, the FrontComposer capture revision, the recapture decision, and a sealed provider/receipt/AppHost packet. `frontcomposer-runtime-inputs.json` inventories exact bytes for `src/**`, `samples/Counter/**`, root build/package/toolchain inputs (including an explicit present-or-absent `Directory.Build.rsp` coordinate), the identity-owned canonical Pact inputs, and the root-declared Builds, EventStore, Tenants, Parties, Memories, Commons, and PolymorphicSerializations gitlinks. Dirty, staged, untracked, ignored or out-of-scope root build controls, hidden `assume-unchanged`/`skip-worktree` flags in the root or a dependency, dependency nested submodules/untracked inputs, worktree/index/HEAD byte mismatch, symlinks, missing inputs, detached Pacts, and later drift all fail. The CLI creates an unpredictable temporary sibling exclusively and atomically replaces the manifest only after every check passes.
+- Identity v2 and `evidence/eventstore-runtime-identity-v2/` bind identity v1's SHA-256, the exact active tuple, the FrontComposer capture revision, the recapture decision, and a sealed provider/receipt/AppHost packet. `frontcomposer-runtime-inputs.json` inventories exact bytes for `src/**`, `samples/Counter/**`, root build/package/toolchain inputs (including an explicit present-or-absent `Directory.Build.rsp` coordinate), the identity-owned canonical Pact inputs, and the root-declared Builds, EventStore, Tenants, Parties, Memories, Commons, and PolymorphicSerializations gitlinks. Dirty, staged, untracked, ignored or out-of-scope root build controls, hidden `assume-unchanged`/`skip-worktree` flags in the root or a dependency, dependency nested submodules, worktree/index/HEAD byte mismatch, symlinks, missing inputs, detached Pacts, and later drift all fail. Inside a dependency checkout the rejection is scoped to paths the sealed restore, evaluated build/source, resolved-asset, or runtime-input graph can select: `node_modules/`, `.husky/`, and `__pycache__/` trees are inert tooling and are permitted whether tracked or untracked, while an untracked symlink at a project `bin`/`obj` root still fails before the generated-output exemption. The CLI creates an unpredictable temporary sibling exclusively and atomically replaces the manifest only after every check passes.
 - The reconciliation lane under `evidence/pact-provider-reconciliation/` answers “do the current consumer bytes work now?” Its provider `inputHashes` bind the exact raw bytes supplied to the live verifier, its sibling-relative receipt binds the FrontComposer revision and runtime-input tree digest, and its AppHost report binds the same provenance plus current `Program.cs` and `.csproj` hashes. It remains CI's recapture target.
+- Resolved-package provenance lives in two sidecar artifacts, `provider-package-ledger.json` and `apphost-package-ledger.json`, beside the packets that bind them by path, byte count, SHA-256, schema, `capturedAt`, and `treeSha256`. The extracted-file inventory required of the ledger is far larger than a bounded evidence document, so it carries its own derived size limit while `run-evidence.json` and `apphost-smoke.json` stay inside the ordinary bound. A missing sidecar, a binding that does not match its bytes, or a sidecar field that disagrees with the binding fails closed.
+- The preserved package-less capture is exempt from the package-provenance and execution-boundary schema only under the history evidence root. Active and live evidence must present a genuine `provider-verification-run-evidence.v4` receipt and `apphost-smoke.v3` packet, including `executionStartedAt` and the runtime-manifest → package-ledger → execution-start → completion chronology.
 - Approval receipts are a separate authority. The hash-bound policy maps role/actor pairs to exact HTTPS durable-source coordinates before the roster and subject freeze. Approval stays false with named issues when an actor or receipt is absent or invalid, and each normal or OI-18 receipt must carry its validator-pinned exact affirmative statement. The default effective roles are distinct EventStore maintainer, FrontComposer maintainer, and Release Owner actors. An approved OI-18 instead requires separate authorized Product and Architecture transfer receipts, then substitutes an explicitly named `accountable-frontcomposer-maintainer`; that replacement's migration receipt must follow the completed transfer.
 
 ### Run and validate the live lane
@@ -120,8 +122,13 @@ pwsh -NoLogo -NoProfile -File ./eng/validate-contract-artifacts.ps1 \
   -RequireProviderVerification \
   -ProviderVerificationReport _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json \
   -ProviderPackageRoot "$provider_packages" \
-  -AppHostPackageRoot "$apphost_packages"
+  -AppHostPackageRoot "$apphost_packages" \
+  -RuntimeInputManifest "$runtime_manifest"
 ```
+
+The provider receipt step also writes `provider-package-ledger.json` beside the receipt, and the AppHost
+smoke writes `apphost-package-ledger.json` beside its packet. Both sidecars are part of the evidence set:
+the lane fails closed if either is missing, altered, or unbound.
 
 Re-capture rules:
 
@@ -141,8 +148,15 @@ provenance (`HandlerComputed`) with the response bound to the generated tenant/a
 and projection SignalR, proves all four protected surfaces reject an invalid bearer,
 then confirms `aspire ps` is empty and all advertised ports are closed. Identity v1 remains
 byte-identical historical authorization for `bb94d93e… / 3.91.1 / a8a50859…`, and the dated
-`35c3d1e5…` capture remains prior compatibility evidence. Migration approval is still open because
-the three required active-identity receipts do not yet exist.
+`35c3d1e5…` capture remains prior compatibility evidence.
+
+Gate 2c is nevertheless red, for two independent reasons. First, the sealed packet under
+`eventstore-runtime-identity-v2/recapture/` is the preserved package-less capture: it has no
+package-ledger sidecars, no `executionStartedAt`, and the older `run-evidence.v3` /
+`apphost-smoke.v2` schemas, so it fails the current evidence contract and cannot be relabelled —
+only a genuine new-schema recapture clears it. Second, migration approval remains open because the
+three required active-identity receipts do not yet exist. Evidence validity and migration approval
+stay separate states: neither can be satisfied by fixing the other.
 
 ## Troubleshooting
 

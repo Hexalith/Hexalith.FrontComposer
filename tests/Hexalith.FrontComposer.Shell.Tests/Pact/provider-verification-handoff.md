@@ -12,7 +12,10 @@ It records what ran then and is never compared to current Pact bytes.
 Current status: the reconciliation report is
 `_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json`
 (`verificationMode: live-compatibility`, `finalVerdict: passed`, 19/19 interactions, exact setup/teardown,
-real loopback Kestrel, host stopped, port closed). Its adjacent `run-evidence.json` binds the exact report.
+real loopback Kestrel, host stopped, port closed). Its adjacent `run-evidence.json` binds the exact report
+and, by path/size/SHA-256, the `provider-package-ledger.json` sidecar that carries the extracted-file
+package inventory; the AppHost packet binds `apphost-package-ledger.json` the same way. The sidecars keep
+the bounded evidence documents inside their size limit while the ledger itself stays byte-bound.
 Compatibility evidence records current source/version/Builds/FrontComposer/runtime-input-tree provenance without claiming migration approval. The adjacent receipt uses the sibling-relative `provider-verification.json` coordinate so it resolves identically in the live lane and sealed v2 recapture.
 
 Provider verification must run in `Hexalith.EventStore` against a real loopback TCP endpoint. Do not use ASP.NET Core `TestServer` or `WebApplicationFactory` for Pact verifier playback, because the native verifier calls an HTTP endpoint.
@@ -21,7 +24,14 @@ Before any provider preparation or execution, generate one clean fixed-scope run
 select a fresh external non-symlinked NuGet package root. Then remove the prior live report, clean,
 force-restore without cache, seal both provider assets graphs plus the exact nupkg and extracted-file
 package bytes, and non-incrementally rebuild the Release provider graph. Receipt creation reuses the
-exact pre-run manifest and package ledger and recomputes the ledger after execution.
+exact pre-run manifest and package ledger, writes that ledger beside the receipt as
+`provider-package-ledger.json`, and recomputes the ledger after execution.
+
+The preserved package-less capture is exempt from the package-provenance and execution-boundary schema
+only under the history evidence root. Active and live evidence must carry a genuine
+`provider-verification-run-evidence.v4` receipt and `apphost-smoke.v3` packet with their ledger sidecars,
+`executionStartedAt`, and the runtime-manifest/ledger/execution/completion chronology, or Gate 2c fails
+closed.
 
 Run the built provider test assembly from the FrontComposer repository root:
 

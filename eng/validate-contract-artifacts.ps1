@@ -9,6 +9,7 @@ param(
   [string] $ActiveIdentity = "",
   [string] $ProviderPackageRoot = $env:FRONTCOMPOSER_PROVIDER_PACKAGES,
   [string] $AppHostPackageRoot = $env:FRONTCOMPOSER_APPHOST_PACKAGES,
+  [string] $RuntimeInputManifest = $env:FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST,
   [switch] $RequireProviderVerification
 )
 
@@ -179,13 +180,17 @@ function Find-RedactionLeaks([string] $Text) {
     '"ALLOWLISTED_HEADER":"ALLOWLISTED_SYNTHETIC_TOKEN"')
   $lower = $normalized.ToLowerInvariant()
 
-  foreach ($fragment in @("access_token=", "api_key=", "authorization_payload", "connectionstring", "cookie", "password=", "set-cookie")) {
+  foreach ($fragment in @("access_token=", "api_key=", "authorization_payload", "connectionstring", "password=")) {
     if ($lower.Contains($fragment)) {
       $leaks.Add($fragment)
     }
   }
 
-  foreach ($secretKey in @("access[_-]?token", "client[_-]?secret", "private[_-]?key", "sas[_-]?token", "api[_-]?key", "password")) {
+  # The cookie rule is a key shape, not the bare substring: "cookies": [...] and
+  # "cookieHeader" must fail while an ordinary source path such as
+  # FrontComposerAuthCookieOptions.cs must not. Kept byte-identical to SECRET_PATTERNS
+  # in eng/eventstore_runtime_evidence.py.
+  foreach ($secretKey in @("access[_-]?token", "client[_-]?secret", "private[_-]?key", "sas[_-]?token", "api[_-]?key", "password", "cookie[A-Za-z0-9_.\-]*")) {
     if ([regex]::IsMatch($normalized, '"?' + $secretKey + '"?\s*[=:]', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
       $leaks.Add("quoted secret key: $secretKey")
     }
@@ -208,8 +213,9 @@ function Find-RedactionLeaks([string] $Text) {
   }
 
   # Python performs encoded-value classification only after a duplicate-free JSON parse.
-  # Keep prose out of this grammar while applying the same field allowlist to JSON artifacts.
-  if ($Text.TrimStart().StartsWith("{", [System.StringComparison]::Ordinal)) {
+  # Prose artifacts such as provider-verification-handoff.md are published too, so they are
+  # scanned with the same grammar; only path-shaped matches are excluded, never whole files.
+  if ($true) {
     $sha256Fields = @(
     "byLocationDigest", "catalog_sha256", "certificate_sha256", "contractsInventorySha256", "decisionRecordSha256",
     "evidenceManifestSha256", "observedReleaseInventorySha256", "oi18SubjectSha256", "policySha256", "programSha256",
@@ -228,8 +234,11 @@ function Find-RedactionLeaks([string] $Text) {
       '"(?:contentHashSha512|nupkgSha512)"\s*:\s*"[A-Za-z0-9+/]{86}=="',
       '"ALLOWLISTED_HASH_FIELD":"ALLOWLISTED_SHA512"',
       [System.Text.RegularExpressions.RegexOptions]::None)
-    if ([regex]::IsMatch($encodedTokenScan, '(?<![A-Za-z0-9+/_-])[A-Za-z0-9+/_-]{64,}={0,2}(?![A-Za-z0-9+/_=-])', [System.Text.RegularExpressions.RegexOptions]::None)) {
+    # A repository path segment is not a credential: exclude matches that touch a path
+    # separator or a dot rather than skipping the artifact.
+    foreach ($match in [regex]::Matches($encodedTokenScan, '(?<![A-Za-z0-9+/_.\\-])[A-Za-z0-9+/_-]{64,}={0,2}(?![A-Za-z0-9+/_=.\\-])', [System.Text.RegularExpressions.RegexOptions]::None)) {
       $leaks.Add("encoded token-like payload")
+      break
     }
   }
 
@@ -314,6 +323,11 @@ if ($RequireProviderVerification) {
     }
     if (![string]::IsNullOrWhiteSpace($AppHostPackageRoot)) {
       $packageArguments += @("--apphost-package-root", [System.IO.Path]::GetFullPath($AppHostPackageRoot, $repositoryRoot))
+    }
+    # The sealed pre-provider manifest binds the live AppHost capture boundary; without it
+    # the live lane can only check that boundary's shape and chronology.
+    if (![string]::IsNullOrWhiteSpace($RuntimeInputManifest)) {
+      $packageArguments += @("--runtime-input-manifest", [System.IO.Path]::GetFullPath($RuntimeInputManifest, $repositoryRoot))
     }
     $validationOutput = @(& python3 $validator `
       --evidence-root $frontComposerEvidenceRoot `

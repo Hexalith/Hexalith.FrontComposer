@@ -184,6 +184,10 @@ jobs:
         run: |
           set -euo pipefail
           runtime_manifest="$RUNNER_TEMP/frontcomposer-runtime-inputs.json"
+          # The same sealed manifest that gates the provider lane is handed to the final
+          # validator, so the AppHost packet's recorded capture boundary is bound to it
+          # instead of being echoed back from the artifact under validation.
+          echo "FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST=$runtime_manifest" >> "$GITHUB_ENV"
           provider_ledger="$RUNNER_TEMP/frontcomposer-provider-packages.json"
           provider_packages="$(mktemp -d "$RUNNER_TEMP/frontcomposer-provider-packages.XXXXXX")"
           test ! -L "$provider_packages"
@@ -194,7 +198,12 @@ jobs:
             --write-runtime-input-manifest \
             --runtime-input-manifest-output "$runtime_manifest" \
             --pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact
-          rm -f "$GITHUB_WORKSPACE/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json"
+          # The live evidence root must contain exactly this invocation's five files, so every
+          # stale artifact from a previous run is removed before the lane rebuilds them.
+          rm -f "$GITHUB_WORKSPACE/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json" \
+            "$GITHUB_WORKSPACE/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/apphost-smoke.json" \
+            "$GITHUB_WORKSPACE/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-package-ledger.json" \
+            "$GITHUB_WORKSPACE/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/apphost-package-ledger.json"
           dotnet clean references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj --configuration Release -m:1 -p:NuGetAudit=false
           dotnet restore references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj --force --force-evaluate --no-cache --disable-parallel -p:Configuration=Release -p:NuGetAudit=false
           python3 eng/eventstore_runtime_evidence.py \
@@ -254,7 +263,7 @@ jobs:
           echo "FRONTCOMPOSER_APPHOST_PACKAGES=$apphost_packages" >> "$GITHUB_ENV"
           python3 eng/pact_provider_apphost_smoke.py \
             --timeout-seconds 300 \
-            --runtime-input-manifest "$RUNNER_TEMP/frontcomposer-runtime-inputs.json" \
+            --runtime-input-manifest "$FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST" \
             --package-root "$apphost_packages"
 
       - name: 'Gate 2c: Validate contract artifacts'
