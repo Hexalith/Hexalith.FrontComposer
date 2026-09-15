@@ -77,14 +77,7 @@ DAPR_NAME_RESOLUTION_RELATIVES = (
     "src/Hexalith.FrontComposer.AppHost/nr.db-shm",
     "src/Hexalith.FrontComposer.AppHost/nr.db-wal",
 )
-SOURCE_ROOT_PROPERTIES = {
-    "EventStorePath": "references/Hexalith.EventStore",
-    "TenantsPath": "references/Hexalith.Tenants",
-    "PartiesPath": "references/Hexalith.Parties",
-    "MemoriesPath": "references/Hexalith.Memories",
-    "CommonsPath": "references/Hexalith.Commons",
-    "HexalithPolymorphicSerializationsRoot": "references/Hexalith.PolymorphicSerializations",
-}
+SOURCE_ROOT_PROPERTIES = runtime_evidence.APPHOST_SOURCE_ROOT_PROPERTIES
 
 
 @dataclass(frozen=True)
@@ -368,9 +361,11 @@ def _git(directory: Path, *arguments: str) -> str:
 
 
 def _release_version() -> str:
-    catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_text(encoding="utf-8-sig")
-    match = re.search(r"<HexalithEventStoreVersion[^>]*>([^<]+)</HexalithEventStoreVersion>", catalog)
-    return match.group(1).strip() if match else ""
+    issues: list[str] = []
+    version = runtime_evidence._eventstore_catalog_version(
+        ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props", issues
+    )
+    return version if not issues else ""
 
 
 def _ulid() -> str:
@@ -1174,10 +1169,7 @@ def _evaluate_source_graph(
     if timeout is None:
         return None
     property_names = [*APPHOST_BUILD_PROPERTIES, *SOURCE_ROOT_PROPERTIES, "MSBuildAllProjects"]
-    item_names = (
-        "ProjectReference,PackageReference,Reference,ReferencePath,Analyzer,AdditionalFiles,"
-        "Content,None,NativeCopyLocalItems,RuntimeCopyLocalItems"
-    )
+    item_names = ",".join(runtime_evidence.APPHOST_EVALUATED_INPUT_ITEMS)
     result = runtime.command(
         [
             "dotnet",
@@ -1323,10 +1315,9 @@ def _evaluate_source_graph(
             if project_reference is None or not project_reference.is_file():
                 return None
             evaluated_project_references.add(project_reference)
-        for item_name in (
-            "ProjectReference", "Reference", "ReferencePath", "Analyzer", "AdditionalFiles", "Content", "None",
-            "NativeCopyLocalItems", "RuntimeCopyLocalItems",
-        ):
+        for item_name in runtime_evidence.APPHOST_EVALUATED_INPUT_ITEMS:
+            if item_name == "PackageReference":
+                continue
             values = evaluated_items.get(item_name, [])
             if not isinstance(values, list):
                 return None
@@ -1352,44 +1343,9 @@ def _evaluate_source_graph(
 
 
 def _runtime_output_inventory() -> tuple[list[dict[str, Any]], bool]:
-    output_root = APPHOST.parent / "bin" / "Debug"
-    if runtime_evidence._path_has_symlink_component(output_root) or not output_root.is_dir():
-        return [], False
-    files: list[dict[str, Any]] = []
-    apphost_deps_files = 0
-    expected_deps_name = f"{APPHOST.stem}.deps.json"
-    guarded = tuple(Path(value).name.casefold() for value in SOURCE_DEPENDENCY_GITLINKS)
-    for path in sorted(output_root.rglob("*")):
-        if path.is_symlink() or runtime_evidence._path_has_symlink_component(path):
-            return [], False
-        if path.is_dir():
-            continue
-        if not path.is_file():
-            return [], False
-        files.append(
-            {
-                "path": path.relative_to(output_root).as_posix(),
-                "bytes": path.stat().st_size,
-                "sha256": _sha256(path),
-            }
-        )
-        if path.name == expected_deps_name:
-            apphost_deps_files += 1
-            try:
-                deps = json.loads(path.read_text(encoding="utf-8-sig"))
-            except (OSError, UnicodeDecodeError, json.JSONDecodeError):
-                return [], False
-            libraries = deps.get("libraries") if isinstance(deps, dict) else None
-            if not isinstance(libraries, dict):
-                return [], False
-            for identity, library in libraries.items():
-                package_name = str(identity).split("/", 1)[0].casefold()
-                if (
-                    any(package_name == name or package_name.startswith(f"{name}.") for name in guarded)
-                    and (not isinstance(library, dict) or library.get("type") != "project")
-                ):
-                    return [], False
-    return files, bool(files) and apphost_deps_files == 1
+    issues: list[str] = []
+    files = runtime_evidence._apphost_runtime_output_binding(ROOT, issues)
+    return files, not issues
 
 
 def _dapr_name_resolution_paths() -> dict[str, Path]:

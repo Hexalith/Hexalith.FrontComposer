@@ -565,3 +565,34 @@ Preflight ownership is explicit: if the sealed runtime scope is dirty, capture w
 - `write_runtime_input_manifest` can write its manifest inside the sealed tree and dirty it — **low**: CI writes to `$RUNNER_TEMP`, so it is a local-run foot-gun only, and the fix adds a new path guard.
 - `write_package_ledger` has zero executed lines — the reporting layer itself declined to file it: a writer regression fails closed, because `write_live_receipt` re-validates the ledger byte-for-byte against the same package root in the next CI step.
 - The spec's Verification block records "157/157" while the delivered focused suite is 179 tests (121 evidence + 58 smoke) — the fix would edit the spec under review.
+
+**Review loop 11 — code review of `eng/eventstore_runtime_evidence.py` (range `1b3608c9..d06f99cc`, 2026-09-15).** Subchunk 1A only; the focused tests and the remaining four review groups are not covered by this pass.
+
+- [x] [Review][Patch] Independently recompute the complete AppHost evaluated-input closure during final Gate 2c validation — resolved authority model: use the sealed repository, fresh package root, and selected SDK rather than trusting the artifact's own input list or location-only inert-tooling classification [eng/eventstore_runtime_evidence.py:4394]
+- [x] [Review][Patch] Independently recompute every retained AppHost and child-resource runtime output during final Gate 2c validation — resolved authority model: open and hash the produced executable closure rather than trusting the artifact's own output list [eng/eventstore_runtime_evidence.py:4469]
+- [x] [Review][Patch] Apply artifact-size limits consistently to manifest/ledger writers and active recapture hashing [eng/eventstore_runtime_evidence.py:5397]
+- [x] [Review][Patch] Seal root compiler/analyzer configuration such as `.editorconfig` and applicable `.globalconfig` files in the runtime-input scope [eng/eventstore_runtime_evidence.py:71]
+- [x] [Review][Patch] Enforce provider chronology as runtime manifest, package ledger, then execution start during durable validation [eng/eventstore_runtime_evidence.py:4153]
+- [x] [Review][Patch] Require the live runtime manifest and pass it into provenance validation so equivalent descendant commits remain valid [eng/eventstore_runtime_evidence.py:5843]
+- [x] [Review][Patch] Resolve the selected EventStore catalog version with XML/MSBuild semantics instead of first-match regex text [eng/eventstore_runtime_evidence.py:3671]
+- [x] [Review][Patch] Convert all bounded JSON conversion failures into deterministic validation errors [eng/eventstore_runtime_evidence.py:574]
+- [x] [Review][Patch] Reject NUL-containing and non-canonical relative path aliases before filesystem or uniqueness checks [eng/eventstore_runtime_evidence.py:597]
+- [x] [Review][Patch] Require exact non-empty strings for Pact interaction descriptions and provider-state identities [eng/eventstore_runtime_evidence.py:1279]
+- [x] [Review][Patch] Prevent receipt generation when a skew-tolerated provider completion is later than the receipt capture [eng/eventstore_runtime_evidence.py:3807]
+- [x] [Review][Patch] Require AppHost `capturedAt` to precede `executionStartedAt` [eng/eventstore_runtime_evidence.py:4209]
+- [x] [Review][Patch] Pin live evidence and Pact inputs to their canonical repository coordinates [eng/eventstore_runtime_evidence.py:5816]
+- [x] [Review][Patch] Reject a future `capturedAt` when generating or validating a standalone runtime manifest [eng/eventstore_runtime_evidence.py:2826]
+
+All 14 accepted subchunk 1A findings were implemented and verified by the 229-test Gate 2c Python suite on 2026-09-15.
+
+#### Rejected (review loop 11, subchunk 1A)
+
+- Writer destinations may overlap a captured tree — **low / reject**: production writes the runtime manifest to `$RUNNER_TEMP` and the ledger outside the package root; the demonstrated outcome is a local caller foot-gun that later gates reject, while preventing every overlap adds path-policy branches already rejected in the prior review.
+- `_bounded_read` can observe a same-sized replacement between `stat` and `open` — **low / reject**: this needs an undemonstrated concurrent hostile writer, and the proposed no-follow/fstat protocol adds complexity for the same race class repeatedly rejected in earlier Story 11.25 reviews.
+- Additive provider-report fields can coexist with the exact passing fields — **low / reject**: additive fields are non-authoritative because verdict, reason codes, identity, interactions, hashes, timing, and receipt bindings are validated separately; closing the full producer schema would add brittleness without changing the accepted verdict.
+- `--pact-dir` is mandatory for standalone writer modes that do not consume it — **low / reject**: this is minor CLI friction, current production commands already provide the argument, and conditional parser behavior is not justified by a correctness failure.
+- Edge Case Hunter independently repeated the same-sized `_bounded_read` replacement race — **low / reject**: no repository or CI writer was shown to race the validation read, so the extra file-descriptor identity protocol is disproportionate.
+- Deeply nested JSON raises `RecursionError` from the cited `json.loads` call — **false / reject**: direct checks with the configured decoder parsed deeply nested arrays and objects; the proposed catch at `_read_json` does not address the separate recursive redaction walker.
+- Validation can reuse a cached runtime snapshot while a concurrent process rewrites inputs — **low / reject**: the cache is scoped to one validation entry point and no reachable capture-path writer was demonstrated; this is the previously rejected hostile concurrent-input race.
+- Streaming package hashing can miss a same-sized concurrent rewrite — **low / reject**: restore is complete before sealing and no process was shown mutating the fresh package root during hashing; extra pre/post descriptor checks target an undemonstrated race.
+- A receipt-write failure after sidecar replacement can leave the evidence directory internally inconsistent — **low / reject**: the invocation returns nonzero, the required lane has already removed/replaced current artifacts, and all later consumers fail closed; transactional multi-file replacement adds complexity without an acceptance path for the partial state.

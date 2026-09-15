@@ -47,8 +47,11 @@ CANONICAL_IDENTITY_V2 = (
 )
 REAL_RUNTIME_INPUT_SNAPSHOT = evidence._runtime_input_snapshot
 REAL_CANONICAL_ACTIVE_LOCATIONS = evidence._canonical_active_locations
+REAL_CANONICAL_LIVE_LOCATIONS = evidence._canonical_live_locations
 REAL_RUNTIME_GIT_TREE = evidence._runtime_git_tree
 REAL_LIVE_PROVENANCE = evidence._live_provenance
+REAL_EVALUATE_APPHOST_INPUTS = evidence._evaluate_apphost_inputs
+REAL_APPHOST_RUNTIME_OUTPUT_BINDING = evidence._apphost_runtime_output_binding
 REAL_GIT = evidence._git
 REAL_GIT_COMPLETED = evidence._git_completed
 
@@ -727,6 +730,37 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         shutil.copytree(CANONICAL_PRIOR_EVIDENCE, self.history_root)
         self.identity_path.parent.mkdir(parents=True)
         shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
+        editorconfig = ROOT / ".editorconfig"
+        editorconfig_data = editorconfig.read_bytes()
+        manifest_path = self.active_root / "frontcomposer-runtime-inputs.json"
+        fixture_manifest = _read_json(manifest_path)
+        fixture_manifest["scope"] = evidence._runtime_scope()
+        fixture_manifest["entries"] = [
+            *(
+                item
+                for item in fixture_manifest["entries"]
+                if item["path"] != ".editorconfig"
+            ),
+            {
+                "path": ".editorconfig",
+                "kind": "file",
+                "bytes": len(editorconfig_data),
+                "sha256": hashlib.sha256(editorconfig_data).hexdigest(),
+            },
+        ]
+        fixture_manifest["entries"].sort(key=lambda item: item["path"])
+        fixture_manifest["treeSha256"] = evidence._runtime_tree_sha256(
+            fixture_manifest["entries"]
+        )
+        _write_json(manifest_path, fixture_manifest)
+        runtime_binding = {
+            "path": evidence.RUNTIME_INPUT_MANIFEST_PATH,
+            "sha256": _sha256(manifest_path),
+            "treeSha256": fixture_manifest["treeSha256"],
+        }
+        live_receipt["frontComposerRevision"] = fixture_manifest["capturedRevision"]
+        live_receipt["runtimeInputTreeSha256"] = fixture_manifest["treeSha256"]
+        _write_json(live_receipt_path, live_receipt)
         # The checked-in AppHost artifact is the last truthful Loop-4 capture. Build a
         # synthetic Loop-5 fixture here so unit tests exercise the new evidence shape
         # without relabelling an execution that did not perform these steps.
@@ -752,8 +786,12 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         }
         apphost_graph = evidence.APPHOST_PACKAGE_ASSETS_ROOT
         active_smoke["schema"] = "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v3"
+        active_smoke["capturedAt"] = "2026-09-14T08:02:10+00:00"
         active_smoke["executionStartedAt"] = "2026-09-14T08:02:30+00:00"
         active_smoke["identity"]["runtimeInputCapturedAt"] = "2026-09-12T08:53:30+00:00"
+        active_smoke["identity"]["runtimeInputTreeSha256"] = fixture_manifest[
+            "treeSha256"
+        ]
         active_smoke["packageLedger"] = _write_package_ledger_sidecar(
             self.active_root / "recapture",
             evidence.APPHOST_PACKAGE_LEDGER_FILE,
@@ -796,6 +834,8 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         active_receipt_path = self.active_root / "recapture" / "run-evidence.json"
         active_receipt = _read_json(active_receipt_path)
         active_receipt["schema"] = "hexalith.eventstore.provider-verification-run-evidence.v4"
+        active_receipt["frontComposerRevision"] = fixture_manifest["capturedRevision"]
+        active_receipt["runtimeInputTreeSha256"] = fixture_manifest["treeSha256"]
         active_receipt["packageLedger"] = _write_package_ledger_sidecar(
             self.active_root / "recapture",
             evidence.PROVIDER_PACKAGE_LEDGER_FILE,
@@ -825,18 +865,21 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         decision_path = self.active_root / "recapture-decision.json"
         decision = _read_json(decision_path)
+        decision["runtimeInputs"] = runtime_binding
         decision["evidenceFiles"] = evidence_files
         _write_json(decision_path, decision)
         decision_hash = _sha256(decision_path)
 
         subject_path = self.active_root / "approval-subject.json"
         subject = _read_json(subject_path)
+        subject["runtimeInputs"] = runtime_binding
         subject["decision"]["sha256"] = decision_hash
         subject["evidenceFiles"] = evidence_files
         _write_json(subject_path, subject)
         subject_hash = _sha256(subject_path)
 
         identity = _read_json(self.identity_path)
+        identity["runtimeInputs"] = runtime_binding
         identity["decision"]["sha256"] = decision_hash
         identity["activeEvidence"]["files"] = evidence_files
         identity["approval"]["subject"]["sha256"] = subject_hash
@@ -873,8 +916,15 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         )
         authority_patcher.start()
         self.addCleanup(authority_patcher.stop)
+        live_authority_patcher = mock.patch.object(
+            evidence,
+            "_canonical_live_locations",
+            return_value=(self.live_root, self.pact_root),
+        )
+        live_authority_patcher.start()
+        self.addCleanup(live_authority_patcher.stop)
         cached_entries = _read_json(
-            CANONICAL_ACTIVE_EVIDENCE / "frontcomposer-runtime-inputs.json"
+            self.active_root / "frontcomposer-runtime-inputs.json"
         )["entries"]
 
         fixture_roots = {
@@ -896,7 +946,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         self.addCleanup(runtime_patcher.stop)
 
         captured_manifest = _read_json(
-            CANONICAL_ACTIVE_EVIDENCE / "frontcomposer-runtime-inputs.json"
+            self.active_root / "frontcomposer-runtime-inputs.json"
         )
 
         def fixture_live_provenance(
@@ -962,7 +1012,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             repository_root: Path,
             revision: str,
         ) -> tuple[dict[str, tuple[str, str]], list[str]]:
-            if repository_root.resolve(strict=False) == self.artifact_root.resolve(strict=False):
+            if repository_root.resolve(strict=False) in fixture_roots:
                 return {}, []
             return REAL_RUNTIME_GIT_TREE(repository_root, revision)
 
@@ -984,6 +1034,30 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         )
         package_patcher.start()
         self.addCleanup(package_patcher.stop)
+        evaluated_input_patcher = mock.patch.object(
+            evidence,
+            "_evaluate_apphost_inputs",
+            side_effect=lambda *_args, **_kwargs: (
+                _read_json(self.live_root / "apphost-smoke.json")
+                .get("startup", {})
+                .get("outputPreparation", {})
+                .get("evaluatedInputBinding")
+            ),
+        )
+        evaluated_input_patcher.start()
+        self.addCleanup(evaluated_input_patcher.stop)
+        runtime_output_patcher = mock.patch.object(
+            evidence,
+            "_apphost_runtime_output_binding",
+            side_effect=lambda *_args, **_kwargs: (
+                _read_json(self.live_root / "apphost-smoke.json")
+                .get("startup", {})
+                .get("outputPreparation", {})
+                .get("runtimeOutputBinding", [])
+            ),
+        )
+        runtime_output_patcher.start()
+        self.addCleanup(runtime_output_patcher.stop)
 
     def validate(self) -> list[str]:
         return evidence.validate(self.evidence_root, self.pact_root)
@@ -995,6 +1069,9 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             ROOT,
             provider_package_root=self.package_root,
             apphost_package_root=self.package_root,
+            runtime_input_manifest_path=(
+                self.active_root / "frontcomposer-runtime-inputs.json"
+            ),
         )
 
     def validate_active(self) -> tuple[list[str], list[str], bool]:
@@ -3023,9 +3100,10 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         self.assertTrue(any("undeclared directories" in error for error in errors), errors)
 
     def test_runtime_manifest_names_counter_and_all_source_dependency_gitlinks(self) -> None:
-        manifest = _read_json(CANONICAL_ACTIVE_EVIDENCE / "frontcomposer-runtime-inputs.json")
+        manifest = _read_json(self.active_root / "frontcomposer-runtime-inputs.json")
         self.assertEqual(manifest["scope"], evidence._runtime_scope())
         paths = {item["path"] for item in manifest["entries"]}
+        self.assertIn(".editorconfig", paths)
         self.assertTrue(any(path.startswith("samples/Counter/") for path in paths))
         self.assertTrue(set(evidence.RUNTIME_DEPENDENCY_GITLINKS).issubset(paths))
         directory_rsp = next(item for item in manifest["entries"] if item["path"] == "Directory.Build.rsp")
@@ -3087,6 +3165,131 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                 "differs from the sealed runtime manifest" in error for error in errors
             ),
             errors,
+        )
+
+    def test_live_provider_requires_manifest_then_package_then_execution(self) -> None:
+        self.make_live_apphost_pass()
+        self.mutate_live_package_ledger(
+            "run-evidence.json",
+            evidence.PROVIDER_PACKAGE_LEDGER_FILE,
+            lambda ledger: ledger.__setitem__(
+                "capturedAt", "2026-09-12T08:00:00+00:00"
+            ),
+        )
+
+        errors = self.validate_live()
+
+        self.assertIn(
+            "Live provider chronology must be runtime manifest, package ledger, then execution start.",
+            errors,
+        )
+
+    def test_live_validation_requires_the_sealed_manifest(self) -> None:
+        errors = evidence.validate_live(
+            self.live_root,
+            self.pact_root,
+            ROOT,
+            provider_package_root=self.package_root,
+            apphost_package_root=self.package_root,
+        )
+
+        self.assertIn(
+            "Live validation requires the sealed runtime-input manifest.", errors
+        )
+
+    def test_live_validation_rejects_detached_evidence_and_pact_roots(self) -> None:
+        with mock.patch.object(
+            evidence,
+            "_canonical_live_locations",
+            side_effect=REAL_CANONICAL_LIVE_LOCATIONS,
+        ):
+            errors = evidence.validate_live(
+                self.live_root,
+                self.pact_root,
+                ROOT,
+                provider_package_root=self.package_root,
+                apphost_package_root=self.package_root,
+                runtime_input_manifest_path=(
+                    self.active_root / "frontcomposer-runtime-inputs.json"
+                ),
+            )
+
+        self.assertIn(
+            "Live validation requires the canonical repository evidence root.", errors
+        )
+        self.assertIn(
+            "Live validation requires the canonical repository Pact directory.", errors
+        )
+
+    def test_final_gate_recomputes_evaluated_inputs_and_runtime_outputs(self) -> None:
+        self.make_live_apphost_pass()
+        with (
+            mock.patch.object(
+                evidence,
+                "_evaluate_apphost_inputs",
+                return_value={"assetsGraphs": [], "inputs": []},
+            ),
+            mock.patch.object(
+                evidence,
+                "_apphost_runtime_output_binding",
+                return_value=[],
+            ),
+        ):
+            errors = self.validate_live()
+
+        self.assertIn(
+            "Live AppHost evaluated input binding differs from final Gate 2c recomputation.",
+            errors,
+        )
+        self.assertIn(
+            "Live AppHost runtime output binding differs from final Gate 2c recomputation.",
+            errors,
+        )
+
+    def test_live_apphost_capture_start_must_not_follow_execution_start(self) -> None:
+        self.make_live_apphost_pass()
+        smoke_path = self.live_root / "apphost-smoke.json"
+        smoke = _read_json(smoke_path)
+        smoke["capturedAt"] = _offset_timestamp(smoke["executionStartedAt"], 1)
+        _write_json(smoke_path, smoke)
+
+        errors = self.validate_live()
+
+        self.assertIn(
+            "Live AppHost capture start is later than execution start.", errors
+        )
+
+    def test_receipt_writer_rejects_completion_after_its_capture_time(self) -> None:
+        report_path = self.live_root / "provider-verification.json"
+        report = _read_json(report_path)
+        started = datetime.now().astimezone() + timedelta(seconds=30)
+        completed = started + timedelta(seconds=30)
+        report["timing"]["run"]["startedAt"] = started.isoformat()
+        report["timing"]["run"]["completedAt"] = completed.isoformat()
+        _write_json(report_path, report)
+        receipt_path = self.live_root / "run-evidence.json"
+        receipt_before = receipt_path.read_bytes()
+
+        with mock.patch.object(evidence, "_validate_live_provider", return_value=None):
+            errors = self.write_live_receipt()
+
+        self.assertIn(
+            "Live provider report completion is later than the receipt capture time.",
+            errors,
+        )
+        self.assertEqual(receipt_path.read_bytes(), receipt_before)
+
+    def test_pact_interaction_identity_rejects_null_strings(self) -> None:
+        pact_path = self.pact_root / evidence.PACT_FILES[0]
+        pact = _read_json(pact_path)
+        pact["interactions"][0]["description"] = None
+        _write_json(pact_path, pact)
+
+        errors: list[str] = []
+        evidence._pact_interactions(self.pact_root, errors)
+
+        self.assertTrue(
+            any("empty identity field" in error for error in errors), errors
         )
 
     def test_package_ledger_sidecar_binding_must_bind_its_exact_bytes(self) -> None:
@@ -4151,6 +4354,8 @@ sys.path.insert(0, {str(ROOT / "eng")!r})
 import eventstore_runtime_evidence as evidence
 
 fixture_repository = Path({str(self.artifact_root)!r}).resolve()
+fixture_live_root = Path({str(self.live_root)!r}).resolve()
+fixture_pact_root = Path({str(self.pact_root)!r}).resolve()
 captured_manifest = json.loads({json.dumps(json.dumps(captured_manifest))})
 captured_entries = captured_manifest["entries"]
 evidence.APPROVAL_AUTHORITY_BOOTSTRAP = {evidence.APPROVAL_AUTHORITY_BOOTSTRAP!r}
@@ -4158,6 +4363,9 @@ evidence.APPROVAL_PRINCIPAL_BOOTSTRAP = {evidence.APPROVAL_PRINCIPAL_BOOTSTRAP!r
 
 evidence._runtime_input_snapshot = lambda repository_root: (copy.deepcopy(captured_entries), [])
 evidence._runtime_git_tree = lambda repository_root, revision: ({{}}, [])
+evidence._canonical_live_locations = lambda repository_root: (
+    fixture_live_root, fixture_pact_root
+)
 
 def fixture_git(repository_root, *arguments):
     if arguments[:2] in (("rev-parse", "HEAD"), ("rev-parse", "--verify")):
@@ -4186,6 +4394,12 @@ evidence.validate_package_ledger = lambda document, *args, **kwargs: (
     if isinstance(document, dict) and isinstance(document.get("capturedAt"), str)
     else None
 )
+evidence._evaluate_apphost_inputs = lambda *args, **kwargs: json.loads(
+    (fixture_live_root / "apphost-smoke.json").read_text(encoding="utf-8-sig")
+)["startup"]["outputPreparation"]["evaluatedInputBinding"]
+evidence._apphost_runtime_output_binding = lambda *args, **kwargs: json.loads(
+    (fixture_live_root / "apphost-smoke.json").read_text(encoding="utf-8-sig")
+)["startup"]["outputPreparation"]["runtimeOutputBinding"]
 
 raise SystemExit(evidence.main())
 '''
@@ -4383,6 +4597,12 @@ raise SystemExit(evidence.main())
             str(self.active_root),
             "-ActiveIdentity",
             str(self.identity_path),
+            "-ProviderPackageRoot",
+            str(self.package_root),
+            "-AppHostPackageRoot",
+            str(self.package_root),
+            "-RuntimeInputManifest",
+            str(self.active_root / "frontcomposer-runtime-inputs.json"),
             validator_script=validator_script,
         )
 
@@ -4805,6 +5025,144 @@ class PactAuthorityExactnessTests(unittest.TestCase):
                 self.assertTrue(any(expected in error for error in errors), (expected, errors))
 
 
+class ReviewLoop11RegressionTests(unittest.TestCase):
+    def test_relative_paths_must_be_canonical_and_nul_free(self) -> None:
+        self.assertTrue(evidence._is_safe_relative_path("a/b.json"))
+        for value in ("a//b.json", "a/./b.json", "a/../b.json", "a\\b.json", "a\0b", "."):
+            with self.subTest(value=value):
+                self.assertFalse(evidence._is_safe_relative_path(value))
+
+    def test_bounded_json_reader_reports_generic_value_errors(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "document.json"
+            path.write_text('{"value": 1}\n', encoding="utf-8")
+            errors: list[str] = []
+            with mock.patch.object(
+                evidence.json, "loads", side_effect=ValueError("conversion rejected")
+            ):
+                document = evidence._read_json(path, errors)
+
+        self.assertEqual(document, {})
+        self.assertTrue(any("conversion rejected" in error for error in errors), errors)
+
+    def test_sha256_accepts_the_explicit_ledger_bound(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / evidence.APPHOST_PACKAGE_LEDGER_FILE
+            content = b"x" * (evidence.MAX_FILE_BYTES + 1)
+            path.write_bytes(content)
+            default_errors: list[str] = []
+            ledger_errors: list[str] = []
+
+            self.assertEqual(evidence._sha256(path, default_errors), "")
+            digest = evidence._sha256(
+                path,
+                ledger_errors,
+                max_bytes=evidence.MAX_PACKAGE_LEDGER_BYTES,
+            )
+
+        self.assertTrue(default_errors)
+        self.assertEqual(digest, hashlib.sha256(content).hexdigest())
+        self.assertEqual(ledger_errors, [])
+
+    def test_manifest_and_ledger_writers_enforce_their_serialized_bounds(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest_output = root / "manifest.json"
+            ledger_output = root / "ledger.json"
+            oversized = {"payload": "x" * 100}
+            with (
+                mock.patch.object(
+                    evidence,
+                    "runtime_input_manifest",
+                    return_value=(oversized, []),
+                ),
+                mock.patch.object(evidence, "MAX_FILE_BYTES", 64),
+            ):
+                manifest_errors = evidence.write_runtime_input_manifest(
+                    manifest_output, root
+                )
+            with (
+                mock.patch.object(
+                    evidence,
+                    "resolved_package_ledger",
+                    return_value=(oversized, []),
+                ),
+                mock.patch.object(evidence, "MAX_PACKAGE_LEDGER_BYTES", 64),
+            ):
+                ledger_errors = evidence.write_package_ledger(
+                    ledger_output, root, root / "packages", []
+                )
+
+            self.assertFalse(manifest_output.exists())
+            self.assertFalse(ledger_output.exists())
+
+        self.assertTrue(any("evidence bound" in error for error in manifest_errors))
+        self.assertTrue(any("evidence bound" in error for error in ledger_errors))
+
+    def test_runtime_scope_includes_root_compiler_configuration(self) -> None:
+        self.assertIn(".editorconfig", evidence.RUNTIME_ROOT_INPUTS)
+        self.assertTrue(evidence.ROOT_BUILD_CONTROL_RE.fullmatch("rules.globalconfig"))
+        self.assertIn("Compile", evidence.APPHOST_EVALUATED_INPUT_ITEMS)
+        self.assertIn("GlobalAnalyzerConfigFiles", evidence.APPHOST_EVALUATED_INPUT_ITEMS)
+
+    def test_runtime_manifest_generation_rejects_a_future_capture(self) -> None:
+        future = datetime.now().astimezone() + timedelta(minutes=10)
+        with (
+            mock.patch.object(evidence, "_runtime_input_snapshot", return_value=([], [])),
+            mock.patch.object(evidence, "_git", return_value="a" * 40),
+        ):
+            _, errors = evidence.runtime_input_manifest(
+                ROOT, captured_at=future.isoformat()
+            )
+
+        self.assertTrue(any("five-minute clock skew" in error for error in errors), errors)
+
+    def test_runtime_manifest_validation_rejects_a_future_capture(self) -> None:
+        future = datetime.now().astimezone() + timedelta(minutes=10)
+        document = {
+            "schema": "hexalith.frontcomposer.eventstore-runtime-inputs.v1",
+            "capturedAt": future.isoformat(),
+            "capturedRevision": "a" * 40,
+            "scope": evidence._runtime_scope(),
+            "treeSha256": evidence._runtime_tree_sha256([]),
+            "entries": [],
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / "manifest.json"
+            _write_json(path, document)
+            errors: list[str] = []
+            with (
+                mock.patch.object(evidence, "_git", return_value="a" * 40),
+                mock.patch.object(
+                    evidence,
+                    "_git_completed",
+                    return_value=subprocess.CompletedProcess([], 0, b"", b""),
+                ),
+                mock.patch.object(evidence, "_runtime_git_tree", return_value=({}, [])),
+                mock.patch.object(evidence, "_runtime_input_snapshot", return_value=([], [])),
+            ):
+                evidence._validate_runtime_input_manifest(path, root, errors)
+
+        self.assertTrue(any("five-minute clock skew" in error for error in errors), errors)
+
+    def test_catalog_version_requires_one_supported_msbuild_property(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "Directory.Packages.props"
+            path.write_text(
+                "<Project><PropertyGroup>"
+                "<HexalithEventStoreVersion>1.0.0</HexalithEventStoreVersion>"
+                "<HexalithEventStoreVersion>2.0.0</HexalithEventStoreVersion>"
+                "</PropertyGroup></Project>",
+                encoding="utf-8",
+            )
+            errors: list[str] = []
+            version = evidence._eventstore_catalog_version(path, errors)
+
+        self.assertEqual(version, "")
+        self.assertTrue(any("exactly once" in error for error in errors), errors)
+
+
 class RedactionGrammarTests(unittest.TestCase):
     """Cookie-shaped keys leak; ordinary source paths that contain 'cookie' do not."""
 
@@ -4970,7 +5328,10 @@ class LiveProvenanceGuardTests(unittest.TestCase):
 
         _, errors = self._provenance()
 
-        self.assertIn("Live provider Release package version is unavailable.", errors)
+        self.assertIn(
+            "Live provider Builds catalog must define HexalithEventStoreVersion exactly once.",
+            errors,
+        )
 
 
 class SealedManifestComparisonTests(unittest.TestCase):

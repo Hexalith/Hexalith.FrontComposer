@@ -10463,3 +10463,63 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-actions-34817507610-fix-cicd-release.md`
   summary: Eliminate the regenerated-assets symlink check/read race.
   evidence: Story 11.25 checks `project.assets.json` for symlink components and later reads it by path in a separate operation. A local replace-between-check-and-read race can redirect source-graph traversal; open the validated file safely and bind parsing to that handle or revalidate identity around the read.
+
+### DW-1955: Six dependency gitlinks moved off the sealed active tuple between the Story 11.25 baseline and HEAD
+origin: code review of spec-11-25-current-eventstore-release-identity-and-evidence.md (2026-09-14), chunk 1 of 5
+location: references/Hexalith.EventStore
+source_spec: `_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md`
+severity: high
+reason: summary: Six dependency gitlinks moved off the sealed active tuple inside the reviewed range, against the frozen Never "Change a gitlink". evidence: over `1b3608c9..HEAD`, `references/Hexalith.EventStore` moved `059f6a89… → 555c9047…` and `references/Hexalith.Builds` `a32cb422… → aee01323…` (commits `a9d844d4`, `ca0a5643`), with Commons, Memories, Parties, and Tenants also advanced, while `frontcomposer-eventstore-approved-runtime-identity-v2.json` still seals `activeTuple` `059f6a89… / 3.103.0 / a32cb422…` and `frontComposerRevision: 1b3608c9`. The spec's Verification block asserts "No gitlink … changed" and separately calls current `main` "a future dependency advance"; both cannot hold. Deferred from chunk 1 because the change is outside the two reviewed files.
+status: open
+
+### DW-1956: Orphan-package-directory check may reject a real NuGet cache's internal entries
+origin: code review of spec-11-25-current-eventstore-release-identity-and-evidence.md (2026-09-14), chunk 1 of 5
+location: eng/eventstore_runtime_evidence.py:3196
+source_spec: `_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md`
+severity: unverified (medium if confirmed)
+reason: summary: `actual_version_directories` is compared against `declared_directories` with no skip for NuGet-internal entries, so a legitimate restore could be reported as containing orphan package directories. evidence: `eng/eventstore_runtime_evidence.py:3196-3212` enumerates the package root and treats every unexpected directory as an orphan; CI creates a fresh empty root via `mktemp -d` and exports it as `NUGET_PACKAGES`, but NuGet may still create internal entries such as `.tools` alongside the package directories. Not reproduced in this pass. Settled by running a real restore into a fresh `NUGET_PACKAGES` root and listing its top-level entries.
+status: open
+
+### DW-1957: quality.yml deletes the stale provider-verification.json but not the stale apphost-smoke.json
+origin: code review of spec-11-25-current-eventstore-release-identity-and-evidence.md (2026-09-14), chunk 1 of 5
+location: .github/workflows/quality.yml:197
+source_spec: `_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md`
+severity: low
+reason: summary: The Gate 2c provider step removes the previous `provider-verification.json` before the run so the current invocation must replace it, but no step removes the previous `apphost-smoke.json` before the AppHost smoke capture. evidence: `.github/workflows/quality.yml:197` runs `rm -f …/pact-provider-reconciliation/provider-verification.json`; the `Gate 2c: Authenticated AppHost smoke` step has no equivalent. Whether this matters depends on whether `eng/pact_provider_apphost_smoke.py` unconditionally overwrites its artifact, which is owned by the AppHost-smoke and CI review chunks.
+status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md`
+  summary: The governance test now asserts Gate 2c's active lane must fail, and that assertion must be inverted when the genuine v4/v3 recapture lands.
+  evidence: CiGovernanceTests.cs:4041 pins `ExitCode.ShouldNotBe(0)` plus three exact error strings. It is correct today under the human-ratified loop-9 decision 1, but the prescribed remedy (a real `run-evidence.v4`/`apphost-smoke.v3` recapture) will make it fail. Recorded so it is not mistaken for a regression.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md`
+  summary: `_nuget_package_content_sha512` reimplements NuGet signed-package hashing with only a synthetic test fixture.
+  evidence: ~130 lines re-derive the EOCD, strip `.signature.p7s` and rehash; the committed fixture is a synthetic `zipfile` archive. The implementation agent reports a 200/200 match against real signed packages, and every unhandled shape returns `None` and fails closed. Settled by committing a real-package fixture or a CI cross-check against `project.assets.json` `sha512`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md`
+  summary: `-p:NuGetAudit=false` was added to the provider clean/restore/build with no rationale comment.
+  evidence: The AppHost twin documents the same pin as intentional and Story 11.19b owns the value; the provider side has no comment. Settled by either adding the rationale or removing the flag once 11.19b lands.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md`
+  summary: Package versions moved inside this story's reviewed range, against its frozen Never list.
+  evidence: Commit 2cd0496a changed `eng/dependency-graph-policy.json` and `tests/Hexalith.FrontComposer.Testing.Tests/PackageBoundaryTests.cs` (Localization/Immutable 10.0.11->10.0.12, TimeProvider.Testing 10.9.0->10.10.0, Verify 32.0.0->32.0.1, Test.Sdk 18.9.0->18.10.0, xunit v3 4.0.0->4.0.1). Same class as the ratified gitlink drift, which DW-1955 records only for the six gitlinks.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md`
+  summary: An unparsable or unavailable `aspire ps` during the cold-stop wait loops to the deadline instead of failing fast.
+  evidence: Outcome is a deterministic `apphost.cold-stop.not-confirmed` failure, so it is fail-closed, but it burns the whole phase budget. Settled by forcing an unparsable `aspire ps` in a capture run and observing the elapsed time.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md`
+  summary: The AppHost smoke calls runtime-snapshot helpers outside `_snapshot_cache_scope`, re-hashing seven checkouts several times.
+  evidence: Performance only; the capture currently completes in 125-187 s against a 45-minute budget. Settled by measuring the capture after the dependency set grows, or by wrapping `_capture` in the scope.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md`
+  summary: The package-root cleanup step is `always()`-guarded and can fail the job after every gate has passed.
+  evidence: quality.yml:279-291 runs `find -delete`/`rmdir` over the fresh NuGet root; a read-only or locked cache entry would red an otherwise green run. Not observed. Settled by a run whose package root contains a read-only file.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md`
+  summary: The live receipt writer does not bind the assets-graph paths that the next gate requires to be exact.
+  evidence: eng/eventstore_runtime_evidence.py:3696-3699 writes without the assertion `_validate_live_provider` applies at :4048-4060, so a receipt can be written successfully and then rejected. Strictly fail-closed — no path admits wrong evidence — but the two halves should agree.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md`
+  summary: `signalr_negotiate_status` is a public method that no capture or validator calls.
+  evidence: eng/pact_provider_apphost_smoke.py:1531-1545. Dead surface implying a negotiate-stage negative control that is not executed; the executed control is the WebSocket-upgrade one. Settled by removing it or wiring it to the control the handoff document describes.

@@ -25,9 +25,6 @@ sys.path.insert(0, str(ROOT / "eng"))
 
 import pact_provider_apphost_smoke as smoke  # noqa: E402
 
-REAL_RUNTIME_OUTPUT_INVENTORY = smoke._runtime_output_inventory
-
-
 def _synthetic_package_ledger(
     assets_paths: list[Path], captured_at: str | None = None
 ) -> dict[str, Any]:
@@ -894,18 +891,39 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertIn("apphost.package-authority.not-sealed", failure["reasonCodes"])
 
     def test_runtime_output_requires_apphost_deps_and_rejects_package_substitution(self) -> None:
-        apphost = Path(self.temporary.name) / "src/AppHost/AppHost.csproj"
+        repository = Path(self.temporary.name)
+        apphost = repository / "src/AppHost/AppHost.csproj"
+        apphost.parent.mkdir(parents=True, exist_ok=True)
+        apphost.write_text("<Project />\n", encoding="utf-8")
         output = apphost.parent / "bin/Debug/net10.0"
         output.mkdir(parents=True)
         (output / "AppHost.dll").write_bytes(b"apphost")
 
-        with mock.patch.object(smoke, "APPHOST", apphost):
-            _, valid = REAL_RUNTIME_OUTPUT_INVENTORY()
+        def inventory() -> tuple[list[dict[str, Any]], bool]:
+            issues: list[str] = []
+            files = smoke.runtime_evidence._apphost_runtime_output_binding(
+                repository, issues
+            )
+            return files, not issues
+
+        with (
+            mock.patch.object(
+                smoke.runtime_evidence,
+                "APPHOST_PROJECT_PATH",
+                "src/AppHost/AppHost.csproj",
+            ),
+            mock.patch.object(
+                smoke.runtime_evidence,
+                "_discover_apphost_project_graph",
+                return_value=([apphost.resolve()], []),
+            ),
+        ):
+            _, valid = inventory()
             self.assertFalse(valid)
 
             deps_path = output / "AppHost.deps.json"
             deps_path.write_text('{"libraries":{}}\n', encoding="utf-8")
-            _, valid = REAL_RUNTIME_OUTPUT_INVENTORY()
+            _, valid = inventory()
             self.assertTrue(valid)
 
             deps_path.write_text(
@@ -918,7 +936,7 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            _, valid = REAL_RUNTIME_OUTPUT_INVENTORY()
+            _, valid = inventory()
             self.assertFalse(valid)
 
     def test_evaluated_dependency_package_reference_fails_before_start(self) -> None:

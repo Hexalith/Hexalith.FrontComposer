@@ -14,6 +14,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import xml.etree.ElementTree as ET
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path, PurePosixPath
@@ -58,6 +59,9 @@ ACTIVE_IDENTITY_PATH = (
     "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v2.json"
 )
 ACTIVE_RECAPTURE_ROOT = f"{ACTIVE_EVIDENCE_ROOT}/recapture"
+LIVE_EVIDENCE_ROOT = (
+    "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation"
+)
 RUNTIME_INPUT_MANIFEST_PATH = f"{ACTIVE_EVIDENCE_ROOT}/frontcomposer-runtime-inputs.json"
 APPROVAL_POLICY_PATH = f"{ACTIVE_EVIDENCE_ROOT}/approval-policy.json"
 APPROVAL_ROSTER_PATH = f"{ACTIVE_EVIDENCE_ROOT}/reviewer-roster.json"
@@ -69,6 +73,7 @@ PRIOR_EVIDENCE_ROOT = (
 )
 RUNTIME_SCOPE_VERSION = "frontcomposer-eventstore-runtime-inputs.v1"
 RUNTIME_ROOT_INPUTS = (
+    ".editorconfig",
     "Directory.Build.props",
     "Directory.Build.rsp",
     "Directory.Build.targets",
@@ -81,7 +86,8 @@ RUNTIME_ROOT_INPUTS = (
 )
 OPTIONAL_ABSENT_RUNTIME_ROOT_INPUTS = frozenset({"Directory.Build.rsp"})
 ROOT_BUILD_CONTROL_RE = re.compile(
-    r"^(?:Directory\.(?:Build|Packages)\..+|global\.json|nuget\.config|"
+    r"^(?:\.editorconfig|(?:.+\.)?globalconfig|Directory\.(?:Build|Packages)\..+|"
+    r"global\.json|nuget\.config|"
     r"aspire\.config\.json|deps\.[^.]+\.props|[^/]+\.rsp)$",
     re.IGNORECASE,
 )
@@ -140,6 +146,39 @@ APPHOST_BUILD_PROPERTIES = {
     "NuGetAudit": False,
     "CentralPackageTransitivePinningEnabled": False,
 }
+APPHOST_PROJECT_PATH = (
+    "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj"
+)
+APPHOST_SOURCE_ROOT_PROPERTIES = {
+    "EventStorePath": "references/Hexalith.EventStore",
+    "TenantsPath": "references/Hexalith.Tenants",
+    "PartiesPath": "references/Hexalith.Parties",
+    "MemoriesPath": "references/Hexalith.Memories",
+    "CommonsPath": "references/Hexalith.Commons",
+    "HexalithPolymorphicSerializationsRoot": (
+        "references/Hexalith.PolymorphicSerializations"
+    ),
+}
+APPHOST_EVALUATED_INPUT_ITEMS = (
+    "ProjectReference",
+    "PackageReference",
+    "Reference",
+    "ReferencePath",
+    "Analyzer",
+    "AdditionalFiles",
+    "AnalyzerConfigFiles",
+    "EditorConfigFiles",
+    "GlobalAnalyzerConfigFiles",
+    "Compile",
+    "Content",
+    "None",
+    "EmbeddedResource",
+    "Resource",
+    "ApplicationDefinition",
+    "Page",
+    "NativeCopyLocalItems",
+    "RuntimeCopyLocalItems",
+)
 # Human approval authority is code-owned on purpose. Repository evidence may bind this
 # immutable bootstrap, but it may not grant itself authority by editing policy JSON.
 APPROVAL_AUTHORITY_BOOTSTRAP: dict[str, dict[str, frozenset[str]]] = {
@@ -524,6 +563,14 @@ def _canonical_active_locations(
     )
 
 
+def _canonical_live_locations(repository_root: Path) -> tuple[Path, Path]:
+    """Return the only live-evidence and Pact authorities accepted by Gate 2c."""
+    return (
+        repository_root / LIVE_EVIDENCE_ROOT,
+        repository_root / CANONICAL_PACT_ROOT,
+    )
+
+
 def _bounded_read(
     path: Path,
     errors: list[str],
@@ -572,7 +619,7 @@ def _read_json(
         return {}
     try:
         value = json.loads(data.decode("utf-8-sig"), object_pairs_hook=_reject_duplicate_keys)
-    except (UnicodeDecodeError, json.JSONDecodeError, _DuplicateJsonKeyError) as error:
+    except (UnicodeDecodeError, ValueError) as error:
         errors.append(f"{label or path.name} is not valid duplicate-free UTF-8 JSON: {error}")
         return {}
     if not isinstance(value, dict):
@@ -581,8 +628,14 @@ def _read_json(
     return value
 
 
-def _sha256(path: Path, errors: list[str], label: str | None = None) -> str:
-    data = _bounded_read(path, errors, label)
+def _sha256(
+    path: Path,
+    errors: list[str],
+    label: str | None = None,
+    *,
+    max_bytes: int | None = None,
+) -> str:
+    data = _bounded_read(path, errors, label, max_bytes=max_bytes)
     return hashlib.sha256(data).hexdigest() if data is not None else ""
 
 
@@ -596,7 +649,15 @@ def _sha256_crlf_checkout(path: Path, errors: list[str], label: str | None = Non
 
 def _is_safe_relative_path(value: str) -> bool:
     path = PurePosixPath(value)
-    return bool(value) and not path.is_absolute() and ".." not in path.parts and "\\" not in value
+    return (
+        bool(value)
+        and "\0" not in value
+        and "\\" not in value
+        and not path.is_absolute()
+        and path.as_posix() == value
+        and value != "."
+        and ".." not in path.parts
+    )
 
 
 def _parse_timestamp(value: Any, field: str, errors: list[str]) -> datetime | None:
@@ -655,7 +716,7 @@ def _scan_redaction(path: Path, errors: list[str]) -> None:
     if path.suffix.lower() == ".json":
         try:
             document = json.loads(normalized, object_pairs_hook=_reject_duplicate_keys)
-        except (json.JSONDecodeError, _DuplicateJsonKeyError):
+        except ValueError:
             return
 
         def scan_value(value: Any, key: str, location: str) -> None:
@@ -1276,14 +1337,21 @@ def _pact_interactions(
             ):
                 errors.append(f"{filename} contains incomplete HTTP interaction semantics.")
                 continue
-            interaction = {
-                "description": str(item.get("description", "")),
-                "providerState": str(states[0].get("name", "")),
-                "pactFile": filename,
-            }
-            if not all(interaction.values()):
+            description = item.get("description")
+            provider_state = states[0].get("name")
+            if (
+                not isinstance(description, str)
+                or not description
+                or not isinstance(provider_state, str)
+                or not provider_state
+            ):
                 errors.append(f"{filename} contains an interaction with an empty identity field.")
                 continue
+            interaction = {
+                "description": description,
+                "providerState": provider_state,
+                "pactFile": filename,
+            }
             interaction["method"] = str(request_value["method"])
             interaction["path"] = str(request_value["path"])
             incomplete_metadata = False
@@ -2824,7 +2892,8 @@ def runtime_input_manifest(
     if not SOURCE_SHA_RE.fullmatch(revision):
         issues.append("Runtime-input capture revision is unavailable.")
     timestamp = captured_at or datetime.now(timezone.utc).isoformat()
-    _parse_timestamp(timestamp, "Runtime-input manifest capturedAt", issues)
+    captured = _parse_timestamp(timestamp, "Runtime-input manifest capturedAt", issues)
+    _timestamp_not_future(captured, "Runtime-input manifest capturedAt", issues)
     return {
         "schema": "hexalith.frontcomposer.eventstore-runtime-inputs.v1",
         "capturedAt": timestamp,
@@ -2845,6 +2914,11 @@ def write_runtime_input_manifest(
     document, issues = runtime_input_manifest(repository_root, captured_at=captured_at)
     if issues:
         return issues
+    payload = (json.dumps(document, indent=2) + "\n").encode("utf-8")
+    if not payload or len(payload) > MAX_FILE_BYTES:
+        return [
+            f"Runtime-input manifest exceeds the {MAX_FILE_BYTES}-byte evidence bound."
+        ]
     temporary: Path | None = None
     try:
         output.parent.mkdir(parents=True, exist_ok=True)
@@ -2854,8 +2928,8 @@ def write_runtime_input_manifest(
             suffix=".tmp",
         )
         temporary = Path(temporary_name)
-        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
-            stream.write(json.dumps(document, indent=2) + "\n")
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(payload)
         temporary.replace(output)
     except OSError as error:
         issues.append(f"Unable to write runtime-input manifest: {error}")
@@ -2889,6 +2963,7 @@ def _validate_runtime_input_manifest(
     captured_at = _parse_timestamp(
         document.get("capturedAt"), "Runtime-input manifest capturedAt", errors
     )
+    _timestamp_not_future(captured_at, "Runtime-input manifest capturedAt", errors)
     revision = document.get("capturedRevision")
     if not isinstance(revision, str) or not SOURCE_SHA_RE.fullmatch(revision):
         errors.append("Runtime-input manifest capturedRevision is not 40-hex.")
@@ -3280,7 +3355,7 @@ def resolved_package_ledger(
             continue
         try:
             assets = json.loads(data.decode("utf-8-sig"), object_pairs_hook=_reject_duplicate_keys)
-        except (UnicodeDecodeError, json.JSONDecodeError, _DuplicateJsonKeyError) as error:
+        except (UnicodeDecodeError, ValueError) as error:
             issues.append(f"Resolved assets graph is malformed: {relative_assets}: {error}")
             continue
         package_folders = assets.get("packageFolders") if isinstance(assets, dict) else None
@@ -3601,7 +3676,7 @@ def _read_package_ledger_sidecar(
         return None
     try:
         document = json.loads(data.decode("utf-8-sig"), object_pairs_hook=_reject_duplicate_keys)
-    except (UnicodeDecodeError, json.JSONDecodeError, _DuplicateJsonKeyError) as error:
+    except (UnicodeDecodeError, ValueError) as error:
         errors.append(f"{expected_name} is not valid duplicate-free UTF-8 JSON: {error}")
         return None
     if not isinstance(document, dict):
@@ -3623,6 +3698,12 @@ def write_package_ledger(
     document, issues = resolved_package_ledger(repository_root, package_root, assets_paths)
     if issues:
         return issues
+    payload = (json.dumps(document, indent=2) + "\n").encode("utf-8")
+    if not payload or len(payload) > MAX_PACKAGE_LEDGER_BYTES:
+        return [
+            "Resolved-package ledger exceeds the "
+            f"{MAX_PACKAGE_LEDGER_BYTES}-byte evidence bound."
+        ]
     temporary: Path | None = None
     try:
         output.parent.mkdir(parents=True, exist_ok=True)
@@ -3630,8 +3711,8 @@ def write_package_ledger(
             dir=output.parent, prefix=f".{output.name}.", suffix=".tmp"
         )
         temporary = Path(temporary_name)
-        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
-            stream.write(json.dumps(document, indent=2) + "\n")
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(payload)
         temporary.replace(output)
     except OSError as error:
         issues.append(f"Unable to write resolved-package ledger: {error}")
@@ -3641,6 +3722,527 @@ def write_package_ledger(
             except OSError:
                 pass
     return issues
+
+
+def _eventstore_catalog_version(catalog_path: Path, errors: list[str]) -> str:
+    """Read the default EventStore version from the Builds MSBuild XML catalog."""
+    data = _bounded_read(catalog_path, errors, "Builds Directory.Packages.props")
+    if data is None:
+        return ""
+    try:
+        root = ET.fromstring(data.decode("utf-8-sig"))
+    except (UnicodeDecodeError, ET.ParseError, ValueError) as error:
+        errors.append(f"Live provider Builds catalog is not valid MSBuild XML: {error}")
+        return ""
+    if root.tag.rsplit("}", 1)[-1] != "Project":
+        errors.append("Live provider Builds catalog root is not an MSBuild Project.")
+        return ""
+    properties = [
+        element
+        for element in root.iter()
+        if element.tag.rsplit("}", 1)[-1] == "HexalithEventStoreVersion"
+    ]
+    if len(properties) != 1:
+        errors.append(
+            "Live provider Builds catalog must define HexalithEventStoreVersion exactly once."
+        )
+        return ""
+    property_element = properties[0]
+    condition = " ".join(property_element.attrib.get("Condition", "").split())
+    if condition not in {
+        "",
+        "'$(HexalithEventStoreVersion)' == ''",
+        '"$(HexalithEventStoreVersion)" == ""',
+    }:
+        errors.append(
+            "Live provider Builds catalog EventStore version has unsupported conditional semantics."
+        )
+        return ""
+    version = (property_element.text or "").strip()
+    if not version or "$" in version:
+        errors.append("Live provider Release package version is unavailable.")
+        return ""
+    return version
+
+
+def _apphost_build_property_arguments(repository_root: Path) -> list[str]:
+    arguments = [
+        f"-p:{name}={'true' if value else 'false'}"
+        for name, value in APPHOST_BUILD_PROPERTIES.items()
+    ]
+    arguments.append(
+        "-p:HexalithPolymorphicSerializationsRoot="
+        + str(
+            repository_root
+            / APPHOST_SOURCE_ROOT_PROPERTIES[
+                "HexalithPolymorphicSerializationsRoot"
+            ]
+        )
+    )
+    return arguments
+
+
+def _selected_dotnet_root(repository_root: Path, errors: list[str]) -> Path | None:
+    global_json = _read_json(repository_root / "global.json", errors, "global.json")
+    sdk = global_json.get("sdk")
+    version = sdk.get("version") if isinstance(sdk, dict) else None
+    if not isinstance(version, str) or not version:
+        errors.append("The selected .NET SDK version is unavailable from global.json.")
+        return None
+    try:
+        completed = subprocess.run(
+            ["dotnet", "--list-sdks"],
+            cwd=repository_root,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+    except (OSError, subprocess.SubprocessError):
+        errors.append("Unable to enumerate installed .NET SDKs for AppHost validation.")
+        return None
+    if completed.returncode != 0:
+        errors.append("Unable to enumerate installed .NET SDKs for AppHost validation.")
+        return None
+    matches = re.findall(
+        r"^([^ \r\n]+) \[([^\]\r\n]+)\]$", completed.stdout, re.MULTILINE
+    )
+    selected = next(
+        (Path(root) / installed for installed, root in matches if installed == version),
+        None,
+    )
+    if selected is None or _path_has_symlink_component(selected) or not selected.is_dir():
+        errors.append(f"The global.json .NET SDK is not installed as a regular tree: {version}")
+        return None
+    try:
+        dotnet_root = selected.parent.parent.resolve(strict=True)
+    except (OSError, RuntimeError):
+        errors.append("The selected .NET SDK authority root is unavailable.")
+        return None
+    executable = dotnet_root / ("dotnet.exe" if os.name == "nt" else "dotnet")
+    if _path_has_symlink_component(executable) or not executable.is_file():
+        errors.append("The selected .NET SDK authority has no regular dotnet executable.")
+        return None
+    return dotnet_root
+
+
+def _load_assets_graph(path: Path, errors: list[str]) -> dict[str, Any]:
+    return _read_json(
+        path,
+        errors,
+        path.as_posix(),
+        max_bytes=MAX_PACKAGE_LEDGER_BYTES,
+    )
+
+
+def _discover_apphost_project_graph(
+    repository_root: Path,
+    errors: list[str],
+) -> tuple[list[Path], list[Path]]:
+    """Discover the restored AppHost project closure from project.assets.json files."""
+    apphost = repository_root / APPHOST_PROJECT_PATH
+    allowed_roots = (
+        repository_root / "src",
+        repository_root / "samples" / "Counter",
+        *(repository_root / value for value in APPHOST_REACHABLE_SOURCE_GITLINKS),
+    )
+    guarded_names = tuple(
+        Path(relative).name.casefold() for relative in RUNTIME_DEPENDENCY_GITLINKS
+    )
+    reachable_roots = {
+        Path(relative).name: (repository_root / relative).resolve(strict=False)
+        for relative in APPHOST_REACHABLE_SOURCE_GITLINKS
+    }
+    seen_roots: set[str] = set()
+    pending = [apphost]
+    projects: set[Path] = set()
+    assets_paths: set[Path] = set()
+    while pending:
+        candidate = pending.pop()
+        try:
+            project = candidate.resolve(strict=True)
+        except (OSError, RuntimeError):
+            errors.append(f"AppHost project graph contains an unavailable project: {candidate}")
+            continue
+        if project in projects:
+            continue
+        if _path_has_symlink_component(project) or not project.is_file():
+            errors.append(f"AppHost project graph contains a symlinked project: {candidate}")
+            continue
+        if not any(project.is_relative_to(root.resolve(strict=False)) for root in allowed_roots):
+            errors.append(f"AppHost project graph leaves its sealed source roots: {project}")
+            continue
+        projects.add(project)
+        for name, root in reachable_roots.items():
+            if project.is_relative_to(root):
+                seen_roots.add(name)
+        assets_path = project.parent / "obj" / "project.assets.json"
+        if _path_has_symlink_component(assets_path) or not assets_path.is_file():
+            errors.append(f"AppHost project has no regular restored assets graph: {project}")
+            continue
+        assets = _load_assets_graph(assets_path, errors)
+        if not assets:
+            continue
+        assets_paths.add(assets_path.resolve(strict=True))
+        libraries = assets.get("libraries")
+        if not isinstance(libraries, dict):
+            errors.append(f"AppHost assets graph has no library map: {assets_path}")
+            continue
+        child_projects: list[str] = []
+        for identity, library in libraries.items():
+            if not isinstance(identity, str) or not isinstance(library, dict):
+                errors.append(f"AppHost assets graph has a malformed library: {assets_path}")
+                continue
+            package_name = identity.split("/", 1)[0].casefold()
+            guarded = any(
+                package_name == name or package_name.startswith(f"{name}.")
+                for name in guarded_names
+            )
+            if guarded and library.get("type") != "project":
+                errors.append(
+                    f"AppHost assets graph substitutes a source dependency with a package: {identity}"
+                )
+            if library.get("type") != "project":
+                continue
+            relative = library.get("msbuildProject") or library.get("path")
+            if not isinstance(relative, str) or not relative:
+                errors.append(f"AppHost assets graph has a project without a path: {assets_path}")
+                continue
+            child_projects.append(relative)
+        project_metadata = assets.get("project")
+        restore = (
+            project_metadata.get("restore")
+            if isinstance(project_metadata, dict)
+            else None
+        )
+        frameworks = restore.get("frameworks") if isinstance(restore, dict) else None
+        if frameworks is not None and not isinstance(frameworks, dict):
+            errors.append(f"AppHost assets graph restore frameworks are malformed: {assets_path}")
+        elif isinstance(frameworks, dict):
+            for framework in frameworks.values():
+                references = (
+                    framework.get("projectReferences")
+                    if isinstance(framework, dict)
+                    else None
+                )
+                if references is None:
+                    continue
+                if not isinstance(references, dict):
+                    errors.append(
+                        f"AppHost assets graph project references are malformed: {assets_path}"
+                    )
+                    continue
+                for reference in references.values():
+                    project_path = (
+                        reference.get("projectPath")
+                        if isinstance(reference, dict)
+                        else None
+                    )
+                    if not isinstance(project_path, str) or not project_path:
+                        errors.append(
+                            f"AppHost assets graph project reference has no path: {assets_path}"
+                        )
+                        continue
+                    child_projects.append(project_path)
+        for relative in child_projects:
+            child = Path(relative.replace("\\", os.sep))
+            pending.append(child if child.is_absolute() else project.parent / child)
+    missing_roots = sorted(set(reachable_roots) - seen_roots)
+    if missing_roots:
+        errors.append(
+            _bounded_path_diagnostic(
+                "AppHost restored graph omits required source roots: ", missing_roots
+            )
+        )
+    return sorted(projects), sorted(assets_paths)
+
+
+def _evaluated_item_path(item: Any, project: Path) -> Path | None:
+    if not isinstance(item, dict):
+        return None
+    value = item.get("FullPath") or item.get("HintPath") or item.get("Identity")
+    if not isinstance(value, str) or not value:
+        return None
+    candidate = Path(value.replace("\\", os.sep))
+    if not candidate.is_absolute():
+        candidate = project.parent / candidate
+    try:
+        return candidate.resolve(strict=False)
+    except (OSError, RuntimeError):
+        return None
+
+
+def _hash_runtime_file(
+    path: Path,
+    errors: list[str],
+    label: str,
+) -> tuple[int, str] | None:
+    if _path_has_symlink_component(path):
+        errors.append(f"Runtime binding path contains a symlink: {label}")
+        return None
+    try:
+        stat = path.stat()
+        if not path.is_file():
+            raise OSError
+        digest = hashlib.sha256()
+        count = 0
+        with path.open("rb") as stream:
+            while chunk := stream.read(1_048_576):
+                count += len(chunk)
+                digest.update(chunk)
+    except OSError:
+        errors.append(f"Runtime binding input is missing or unreadable: {label}")
+        return None
+    if count != stat.st_size:
+        errors.append(f"Runtime binding input changed while read: {label}")
+        return None
+    return count, digest.hexdigest()
+
+
+def _bound_runtime_input(
+    path: Path,
+    repository_root: Path,
+    package_root: Path,
+    dotnet_root: Path,
+    errors: list[str],
+) -> dict[str, str] | None:
+    try:
+        resolved = path.resolve(strict=True)
+        authorities = (
+            ("repository", repository_root.resolve(strict=True)),
+            ("packages", package_root.resolve(strict=True)),
+            ("dotnet", dotnet_root.resolve(strict=True)),
+        )
+    except (OSError, RuntimeError):
+        errors.append(f"Evaluated AppHost input is unavailable: {path}")
+        return None
+    for authority, root in authorities:
+        if resolved.is_relative_to(root):
+            relative = resolved.relative_to(root).as_posix()
+            hashed = _hash_runtime_file(resolved, errors, f"{authority}:{relative}")
+            if hashed is None:
+                return None
+            return {"authority": authority, "path": relative, "sha256": hashed[1]}
+    errors.append(f"Evaluated AppHost input is outside sealed authorities: {resolved}")
+    return None
+
+
+def _evaluate_apphost_inputs(
+    repository_root: Path,
+    package_root: Path,
+    expected_assets: Iterable[Path],
+    errors: list[str],
+) -> dict[str, Any] | None:
+    """Independently recompute the evaluated AppHost input closure for final Gate 2c."""
+    dotnet_root = _selected_dotnet_root(repository_root, errors)
+    projects, discovered_assets = _discover_apphost_project_graph(repository_root, errors)
+    expected_asset_set = {path.resolve(strict=False) for path in expected_assets}
+    if set(discovered_assets) != expected_asset_set:
+        errors.append("AppHost evaluated assets closure differs from its sealed package ledger.")
+    if dotnet_root is None or not projects:
+        return None
+    dotnet = dotnet_root / ("dotnet.exe" if os.name == "nt" else "dotnet")
+    item_names = ",".join(APPHOST_EVALUATED_INPUT_ITEMS)
+    property_names = [
+        *APPHOST_BUILD_PROPERTIES,
+        *APPHOST_SOURCE_ROOT_PROPERTIES,
+        "MSBuildAllProjects",
+    ]
+    environment = os.environ.copy()
+    environment["NUGET_PACKAGES"] = str(package_root)
+    evaluations: list[tuple[Path, dict[str, Any]]] = []
+    for project in projects:
+        try:
+            relative_project = project.relative_to(repository_root)
+            completed = subprocess.run(
+                [
+                    str(dotnet),
+                    "msbuild",
+                    str(relative_project),
+                    "-p:Configuration=Debug",
+                    "-p:BuildProjectReferences=true",
+                    *_apphost_build_property_arguments(repository_root),
+                    "-target:ResolveReferences",
+                    "-getProperty:" + ",".join(property_names),
+                    "-getItem:" + item_names,
+                ],
+                cwd=repository_root,
+                env=environment,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except (OSError, ValueError, subprocess.SubprocessError):
+            errors.append(f"Unable to reevaluate AppHost project inputs: {project}")
+            continue
+        if completed.returncode != 0:
+            errors.append(f"Unable to reevaluate AppHost project inputs: {project}")
+            continue
+        try:
+            evaluation = json.loads(completed.stdout)
+        except ValueError:
+            errors.append(f"AppHost project evaluation did not return JSON: {project}")
+            continue
+        if not isinstance(evaluation, dict):
+            errors.append(f"AppHost project evaluation is malformed: {project}")
+            continue
+        evaluations.append((project, evaluation))
+    if len(evaluations) != len(projects):
+        return None
+    project_set = set(projects)
+    evaluated_references: set[Path] = set()
+    input_paths: set[Path] = set(projects)
+    dependency_names = tuple(
+        Path(relative).name.casefold() for relative in RUNTIME_DEPENDENCY_GITLINKS
+    )
+    apphost = (repository_root / APPHOST_PROJECT_PATH).resolve(strict=False)
+    for project, evaluation in evaluations:
+        properties = evaluation.get("Properties")
+        items = evaluation.get("Items")
+        if not isinstance(properties, dict) or not isinstance(items, dict):
+            errors.append(f"AppHost project evaluation omits properties or items: {project}")
+            continue
+        if project == apphost:
+            for name, expected in APPHOST_BUILD_PROPERTIES.items():
+                actual = properties.get(name)
+                if not isinstance(actual, str) or actual.casefold() != str(expected).casefold():
+                    errors.append(f"AppHost evaluated build property is incorrect: {name}")
+            for name, relative in APPHOST_SOURCE_ROOT_PROPERTIES.items():
+                actual = properties.get(name)
+                try:
+                    matches = (
+                        isinstance(actual, str)
+                        and Path(actual).resolve(strict=False)
+                        == (repository_root / relative).resolve(strict=False)
+                    )
+                except (OSError, RuntimeError):
+                    matches = False
+                if not matches:
+                    errors.append(f"AppHost evaluated source-root property is incorrect: {name}")
+        all_projects = properties.get("MSBuildAllProjects")
+        if not isinstance(all_projects, str) or not all_projects:
+            errors.append(f"AppHost project evaluation omits MSBuildAllProjects: {project}")
+        else:
+            for raw in all_projects.split(";"):
+                if not raw:
+                    continue
+                imported = Path(raw.replace("\\", os.sep))
+                input_paths.add(imported if imported.is_absolute() else project.parent / imported)
+        package_references = items.get("PackageReference")
+        if not isinstance(package_references, list):
+            errors.append(f"AppHost project evaluation omits PackageReference: {project}")
+        else:
+            for item in package_references:
+                identity = item.get("Identity") if isinstance(item, dict) else None
+                if not isinstance(identity, str):
+                    errors.append(f"AppHost project has a malformed PackageReference: {project}")
+                    continue
+                package_name = identity.casefold()
+                if any(
+                    package_name == name or package_name.startswith(f"{name}.")
+                    for name in dependency_names
+                ):
+                    errors.append(
+                        f"AppHost evaluated graph substitutes a source dependency: {identity}"
+                    )
+        for item_name in APPHOST_EVALUATED_INPUT_ITEMS:
+            if item_name == "PackageReference":
+                continue
+            values = items.get(item_name)
+            if not isinstance(values, list):
+                errors.append(f"AppHost project evaluation omits {item_name}: {project}")
+                continue
+            for item in values:
+                input_path = _evaluated_item_path(item, project)
+                if input_path is not None and input_path.exists():
+                    input_paths.add(input_path)
+                if item_name == "ProjectReference" and input_path is not None:
+                    evaluated_references.add(input_path)
+    if evaluated_references != project_set - {apphost}:
+        errors.append("AppHost evaluated project-reference closure is not exact.")
+    bound_inputs: list[dict[str, str]] = []
+    for input_path in sorted(input_paths):
+        binding = _bound_runtime_input(
+            input_path, repository_root, package_root, dotnet_root, errors
+        )
+        if binding is not None:
+            bound_inputs.append(binding)
+    bound_inputs.sort(key=lambda item: (item["authority"], item["path"]))
+    keys = [(item["authority"], item["path"]) for item in bound_inputs]
+    if keys != sorted(set(keys)):
+        errors.append("AppHost evaluated input closure contains duplicate authority paths.")
+    return {
+        "assetsGraphs": [
+            path.relative_to(repository_root).as_posix() for path in discovered_assets
+        ],
+        "inputs": bound_inputs,
+    }
+
+
+def _apphost_runtime_output_binding(
+    repository_root: Path,
+    errors: list[str],
+) -> list[dict[str, Any]]:
+    """Hash every retained output in the restored AppHost project closure."""
+    projects, _ = _discover_apphost_project_graph(repository_root, errors)
+    apphost = (repository_root / APPHOST_PROJECT_PATH).resolve(strict=False)
+    outputs: list[dict[str, Any]] = []
+    apphost_deps = 0
+    expected_deps = f"{apphost.stem}.deps.json"
+    guarded_names = tuple(
+        Path(relative).name.casefold() for relative in RUNTIME_DEPENDENCY_GITLINKS
+    )
+    for project in projects:
+        output_root = project.parent / "bin" / "Debug"
+        if not output_root.exists():
+            continue
+        if _path_has_symlink_component(output_root) or not output_root.is_dir():
+            errors.append(f"AppHost runtime output root is not a regular directory: {output_root}")
+            continue
+        for path in sorted(output_root.rglob("*")):
+            if path.is_dir():
+                continue
+            try:
+                relative = path.resolve(strict=False).relative_to(repository_root).as_posix()
+            except (OSError, RuntimeError, ValueError):
+                errors.append(f"AppHost runtime output leaves the repository: {path}")
+                continue
+            hashed = _hash_runtime_file(path, errors, relative)
+            if hashed is None:
+                continue
+            outputs.append({"path": relative, "bytes": hashed[0], "sha256": hashed[1]})
+            if project == apphost and path.name == expected_deps:
+                apphost_deps += 1
+                deps = _load_assets_graph(path, errors)
+                libraries = deps.get("libraries") if isinstance(deps, dict) else None
+                if not isinstance(libraries, dict):
+                    errors.append("AppHost runtime deps file has no library map.")
+                else:
+                    for identity, library in libraries.items():
+                        package_name = str(identity).split("/", 1)[0].casefold()
+                        if (
+                            any(
+                                package_name == name
+                                or package_name.startswith(f"{name}.")
+                                for name in guarded_names
+                            )
+                            and (
+                                not isinstance(library, dict)
+                                or library.get("type") != "project"
+                            )
+                        ):
+                            errors.append(
+                                "AppHost runtime deps substitutes a source dependency: "
+                                + str(identity)
+                            )
+    outputs.sort(key=lambda item: item["path"])
+    paths = [item["path"] for item in outputs]
+    if not outputs or paths != sorted(set(paths)) or apphost_deps != 1:
+        errors.append(
+            "AppHost runtime output closure is empty, duplicated, or lacks its exact deps file."
+        )
+    return outputs
 
 
 def _live_provenance(
@@ -3663,21 +4265,13 @@ def _live_provenance(
     expected_source = source_gitlink[2] if len(source_gitlink) == 4 else ""
     expected_builds = builds_gitlink[2] if len(builds_gitlink) == 4 else ""
     catalog_path = builds_root / "Props" / "Directory.Packages.props"
-    catalog_text = ""
-    try:
-        catalog_text = catalog_path.read_text(encoding="utf-8-sig")
-    except OSError:
-        errors.append("Live provider Builds catalog is unavailable.")
-    version_match = re.search(r"<HexalithEventStoreVersion[^>]*>([^<]+)</HexalithEventStoreVersion>", catalog_text)
-    version = version_match.group(1).strip() if version_match else ""
+    version = _eventstore_catalog_version(catalog_path, errors)
     inventory = eventstore_root / "tools" / "release-packages.json"
     inventory_hash = _sha256(inventory, errors, "EventStore release-packages.json")
     if source_sha != expected_source or not SOURCE_SHA_RE.fullmatch(source_sha):
         errors.append("Live provider source checkout does not equal the pinned EventStore gitlink.")
     if builds_sha != expected_builds or not SOURCE_SHA_RE.fullmatch(builds_sha):
         errors.append("Live provider Builds checkout does not equal the pinned Builds gitlink.")
-    if not version:
-        errors.append("Live provider Release package version is unavailable.")
     if not SOURCE_SHA_RE.fullmatch(frontcomposer_revision):
         errors.append("Live FrontComposer revision is unavailable.")
     if isinstance(runtime_manifest, dict):
@@ -3785,6 +4379,7 @@ def _write_live_receipt(
         errors,
         validate_receipt=False,
         repository_root=repository_root,
+        runtime_manifest=manifest,
     )
     report_path = evidence_root / "provider-verification.json"
     report = _read_json(report_path, errors, "provider-verification.json")
@@ -3807,6 +4402,11 @@ def _write_live_receipt(
     completed_at = run_timing.get("completedAt") if isinstance(run_timing, dict) else None
     completed = _parse_timestamp(completed_at, "Live provider report run completedAt", errors)
     _timestamp_not_future(completed, "Live provider report run completedAt", errors)
+    receipt_captured_at = datetime.now(timezone.utc)
+    if completed is not None and completed > receipt_captured_at:
+        errors.append(
+            "Live provider report completion is later than the receipt capture time."
+        )
     started_at = run_timing.get("startedAt") if isinstance(run_timing, dict) else None
     started = _parse_timestamp(started_at, "Live provider report run startedAt", errors)
     if (
@@ -3844,7 +4444,7 @@ def _write_live_receipt(
         return errors
     receipt = {
         "schema": "hexalith.eventstore.provider-verification-run-evidence.v4",
-        "capturedAt": datetime.now(timezone.utc).isoformat(),
+        "capturedAt": receipt_captured_at.isoformat(),
         "completedAt": completed_at,
         "frontComposerRevision": manifest["capturedRevision"],
         "runtimeInputTreeSha256": manifest["treeSha256"],
@@ -3901,6 +4501,7 @@ def _validate_live_provider(
     validate_receipt: bool = True,
     package_root: Path | None = None,
     repository_root: Path | None = None,
+    runtime_manifest: dict[str, Any] | None = None,
 ) -> None:
     repository_root = repository_root or Path(__file__).resolve().parents[1]
     report_path = evidence_root / "provider-verification.json"
@@ -4156,6 +4757,22 @@ def _validate_live_provider(
         or package_captured >= report_started
     ):
         errors.append("Provider package ledger does not predate execution start.")
+    manifest_captured = _parse_timestamp(
+        runtime_manifest.get("capturedAt")
+        if isinstance(runtime_manifest, dict)
+        else None,
+        "Live provider runtime-input manifest capturedAt",
+        errors,
+    )
+    if (
+        manifest_captured is None
+        or package_captured is None
+        or report_started is None
+        or not manifest_captured < package_captured < report_started
+    ):
+        errors.append(
+            "Live provider chronology must be runtime manifest, package ledger, then execution start."
+        )
     if receipt_completed != report_completed:
         errors.append("Live provider receipt completion does not equal the provider run completion.")
     if (
@@ -4322,6 +4939,12 @@ def _validate_live_apphost(
         errors.append(
             "Live AppHost chronology must be runtime manifest, package ledger, execution start, completion."
         )
+    if (
+        captured_at is None
+        or execution_started_at is None
+        or captured_at > execution_started_at
+    ):
+        errors.append("Live AppHost capture start is later than execution start.")
     if not _exact(identity, expected_identity):
         errors.append("Live AppHost smoke provenance is stale or untruthful.")
     topology = smoke.get("topology", {})
@@ -4484,6 +5107,22 @@ def _validate_live_apphost(
         )
     ):
         errors.append("Live AppHost runtime output binding is incomplete.")
+    if package_root is not None:
+        recomputed_inputs = _evaluate_apphost_inputs(
+            repository_root,
+            package_root,
+            ledger_paths,
+            errors,
+        )
+        if recomputed_inputs is None or not _exact(input_binding, recomputed_inputs):
+            errors.append(
+                "Live AppHost evaluated input binding differs from final Gate 2c recomputation."
+            )
+        recomputed_outputs = _apphost_runtime_output_binding(repository_root, errors)
+        if not _exact(output_binding, recomputed_outputs):
+            errors.append(
+                "Live AppHost runtime output binding differs from final Gate 2c recomputation."
+            )
     if not _exact(startup, expected_startup):
         errors.append("Live AppHost startup does not account for every declared healthy resource.")
     observations = smoke.get("observations", {})
@@ -5396,7 +6035,12 @@ def _validate_active(
             )
         for relative, expected_hash in evidence_bindings.items():
             path = recapture_root / relative
-            if _sha256(path, errors, f"active/{relative}") != expected_hash:
+            if _sha256(
+                path,
+                errors,
+                f"active/{relative}",
+                max_bytes=_evidence_file_limit(path.name),
+            ) != expected_hash:
                 errors.append(f"Active recapture SHA-256 mismatch: {relative}")
             _scan_redaction(path, errors)
 
@@ -5747,7 +6391,9 @@ def _validate_active(
     if not claimed and not approval_issues:
         errors.append("Migration approval is complete but migrationApprovalClaimed remains false.")
 
-    repository_provenance = _live_provenance(repository_root, errors)
+    repository_provenance = _live_provenance(
+        repository_root, errors, runtime_manifest=manifest
+    )
     expected_repository = {
         "sourceSha": ACTIVE_SOURCE_SHA,
         "releaseVersion": ACTIVE_VERSION,
@@ -5772,6 +6418,7 @@ def _validate_active(
             captured_provenance,
             errors,
             repository_root=repository_root,
+            runtime_manifest=manifest,
         )
         _validate_live_apphost(
             recapture_root,
@@ -5813,9 +6460,20 @@ def _validate_live(
     runtime_input_manifest_path: Path | None = None,
 ) -> list[str]:
     errors: list[str] = []
+    canonical_evidence_root, canonical_pact_dir = _canonical_live_locations(
+        repository_root
+    )
+    if not _same_canonical_path(evidence_root, canonical_evidence_root):
+        errors.append(
+            "Live validation requires the canonical repository evidence root."
+        )
+    if not _same_canonical_path(pact_dir, canonical_pact_dir):
+        errors.append("Live validation requires the canonical repository Pact directory.")
     for path, label in ((evidence_root, "Live evidence root"), (pact_dir, "Pact directory"), (repository_root, "Repository root")):
         if _path_has_symlink_component(path) or not path.is_dir():
-            return [f"{label} is missing or is a symlink: {path}"]
+            errors.append(f"{label} is missing or is a symlink: {path}")
+    if errors:
+        return errors
     required = {
         "provider-verification.json",
         "run-evidence.json",
@@ -5841,11 +6499,19 @@ def _validate_live(
             "AppHost smoke, and both package-ledger sidecars."
         )
     live_manifest: dict[str, Any] | None = None
-    if runtime_input_manifest_path is not None:
+    if runtime_input_manifest_path is None:
+        errors.append("Live validation requires the sealed runtime-input manifest.")
+    else:
         live_manifest, _ = _validate_runtime_input_manifest(
             runtime_input_manifest_path, repository_root, errors
         )
-    provenance = _live_provenance(repository_root, errors)
+    if provider_package_root is None or apphost_package_root is None:
+        errors.append(
+            "Live validation requires both isolated provider and AppHost package roots."
+        )
+    provenance = _live_provenance(
+        repository_root, errors, runtime_manifest=live_manifest
+    )
     _validate_live_provider(
         evidence_root,
         pact_dir,
@@ -5853,6 +6519,7 @@ def _validate_live(
         errors,
         package_root=provider_package_root,
         repository_root=repository_root,
+        runtime_manifest=live_manifest,
     )
     _validate_live_apphost(
         evidence_root,
