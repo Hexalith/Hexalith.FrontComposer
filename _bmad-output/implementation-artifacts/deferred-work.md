@@ -10523,3 +10523,11 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md`
   summary: `signalr_negotiate_status` is a public method that no capture or validator calls.
   evidence: eng/pact_provider_apphost_smoke.py:1531-1545. Dead surface implying a negotiate-stage negative control that is not executed; the executed control is the WebSocket-upgrade one. Settled by removing it or wiring it to the control the handoff document describes.
+
+### DW-1958: epics.md story-status prose is stale repo-wide for Epic 11 and the retro trail still lists the analyzer-seal finding
+origin: code review of spec-11-26-analyzer-identifier-inventory-reconciliation.md (2026-09-15)
+location: _bmad-output/planning-artifacts/epics.md:2392
+source_spec: `_bmad-output/implementation-artifacts/spec-11-26-analyzer-identifier-inventory-reconciliation.md`
+severity: low
+reason: summary: `epics.md` carries `**Status:** backlog.` for Stories 11.20-11.26 while `sprint-status.yaml` records 11.20-11.25 as `done`, and `epic-11-retro-2026-09-10.md` still lists "analyzer identifier-seal drift" among the findings behind its Rejected acceptance verdict. evidence: a status comparison across Epic 11 shows `epics.md` says `backlog` for every story from 11.20 onward while sprint-status has 11.20-11.25 `done`; stories 11.0-11.19 carry no Status line at all. This is pre-existing repo-wide planning-snapshot staleness that Story 11.26 neither introduced nor worsened - 11.26 is consistent with its five completed predecessors - so `sprint-status.yaml` is the de facto single source of truth. Owned by E11R-AI-8 / Story 11.32 (Epic 11 artifact integrity enforcement), which exists to make exactly this class of metadata contradiction fail closed.
+status: open

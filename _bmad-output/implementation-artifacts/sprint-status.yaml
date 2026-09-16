@@ -166,7 +166,7 @@ development_status:
   11-23-recommended-analyzer-repository-activation: done
   11-24-adopt-the-owner-approved-eventstore-runtime-identity: done
   11-25-current-eventstore-release-identity-and-evidence: done
-  11-26-analyzer-identifier-inventory-reconciliation: review
+  11-26-analyzer-identifier-inventory-reconciliation: done
   11-27-generated-command-route-acceptance-locator: backlog
   11-28-fc-nip-semantic-fixture-alignment: backlog
   11-29-fallback-refresh-and-view-registration-correctness: backlog
@@ -649,8 +649,18 @@ action_items:
     implementation_story: "11.26"
     ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-09-10.md"
     evidence:
-      - "_bmad-output/implementation-artifacts/spec-11-26-analyzer-identifier-inventory-reconciliation.md records the exact declarations, owning commits, approved scope, seal transition, and green verification."
-      - "Commit 1be6b3778b04dd321d5db314c3b0bbcc6979a593 added the two intentional logging-governance declarations; commit 2cd0496a9bcd3c01e03aa0850a08d67d95999e77 resealed the test inventory to 3327 / e33cb6e8c92dea244db0cebde30721da208a5a569a7a7cf9c1e41b7d77ee270f."
+      - "_bmad-output/implementation-artifacts/spec-11-26-analyzer-identifier-inventory-reconciliation.md
+        records the exact declarations, owning commits, approved scope, seal
+        transition, and green verification."
+      - "Commit 1be6b3778b04dd321d5db314c3b0bbcc6979a593 added the two intentional
+        logging-governance declarations; commit 2cd0496a9bcd3c01e03aa0850a08d67d95999e77
+        resealed the test inventory to 3327 /
+        e33cb6e8c92dea244db0cebde30721da208a5a569a7a7cf9c1e41b7d77ee270f."
+      - "Closure followed Story 11.26 acceptance, not preceded it: the 2026-09-15
+        code review resolved its findings and moved
+        development_status['11-26-analyzer-identifier-inventory-reconciliation']
+        to done, and only then was this item closed. Reopen it if that acceptance
+        is revisited."
   - id: "E11R-AI-3"
     epic: 11
     action: "Make the Story 11.7 Playwright heading selector unambiguous and retain
