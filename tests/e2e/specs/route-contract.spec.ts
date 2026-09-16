@@ -15,7 +15,8 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await page.setViewportSize({ width: 1920, height: 900 });
     await page.goto('/counter');
     await expect(page).toHaveURL(/\/counter$/);
-    await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();
+    const routeHeading = page.getByRole('main').getByRole('heading', { name: 'Counter', exact: true, level: 1 });
+    await expect(routeHeading).toBeVisible();
 
     const shell = new ShellPage(page);
     await shell.shellRoot.waitFor();
@@ -24,7 +25,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await expect(shell.counterProjectionItem).toHaveAttribute('data-href', '/counter/counter-projection');
     await shell.counterProjectionItem.click();
     await expect(page).toHaveURL(/\/counter\/counter-projection$/);
-    await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();
+    await expect(routeHeading).toBeVisible();
 
     await page.goto('/counter');
     await expect(page).toHaveURL(/\/counter$/);
