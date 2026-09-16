@@ -17,6 +17,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await expect(page).toHaveURL(/\/counter$/);
     const routeHeading = page.getByRole('main').getByRole('heading', { name: 'Counter', exact: true, level: 1 });
     await expect(routeHeading).toBeVisible();
+    await expect(routeHeading).toBeFocused();
 
     const shell = new ShellPage(page);
     await shell.shellRoot.waitFor();

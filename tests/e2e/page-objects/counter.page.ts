@@ -9,7 +9,7 @@ export class CounterPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.heading = page.getByRole('heading', { name: /counter/i });
+    this.heading = page.getByRole('main').getByRole('heading', { name: 'Counter', exact: true, level: 1 });
     this.currentValue = page.locator("[data-fc-field='Count']").first();
     this.incrementButton = page.locator('#fc-trigger-Counter-Domain-IncrementCommand');
     this.configureLink = page.getByRole('link', { name: 'Configure Counter' });

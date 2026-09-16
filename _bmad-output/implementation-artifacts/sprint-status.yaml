@@ -669,6 +669,10 @@ action_items:
     status: open
     implementation_story: "11.27"
     ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-09-10.md"
+    evidence:
+      - "_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md
+        records the unambiguous route locator, canonical generated command route proof,
+        approved review patches, and focused verification."
   - id: "E11R-AI-4"
     epic: 11
     action: "Update the FC-NIP semantic fixture to the current PRD contract and restore

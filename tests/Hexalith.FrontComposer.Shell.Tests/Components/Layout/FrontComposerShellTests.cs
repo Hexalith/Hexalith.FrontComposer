@@ -205,6 +205,22 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
     }
 
     [Fact]
+    public void HeaderTitle_RendersAsNonHeadingText() {
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+
+        cut.WaitForAssertion(() => {
+            IElement appTitle = cut
+                .Find("[area=\"header\"]")
+                .QuerySelectorAll("fluent-text")
+                .Single(element => element.TextContent.Contains("Hexalith FrontComposer", StringComparison.Ordinal));
+
+            appTitle.Children.ShouldHaveSingleItem().TagName.ShouldBe("SPAN");
+            cut.FindAll("h1").ShouldBeEmpty();
+        });
+    }
+
+    [Fact]
     public void HeaderTitle_WhenParameterProvided_OverridesConfiguredTitle() {
         Services.Configure<FcShellOptions>(o => o.AppTitle = "Hexalith Tenants");
 
