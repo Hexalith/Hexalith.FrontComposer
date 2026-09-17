@@ -10537,7 +10537,7 @@ origin: code review of spec-11-27-generated-command-route-acceptance-locator.md 
 location: tests/e2e/package.json:27
 source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
 severity: medium
-reason: summary: `test:route-contract` is invoked by no workflow, so the generated-command route contract Story 11.27 just repaired has no automated detector. evidence: grepping `.github/workflows/*.yml` for `npm run test:` returns exactly four invocations - `test:fc-nip` (quality.yml:698), `test:settings-persistence-storage-key` (:706), `test:a11y` (:714) and `test:epic-9-evidence` (:806); a grep for `route-contract` across `.github`, `eng`, `scripts`, `tests/e2e/scripts` and `docs` returns zero hits. CI's `npm run typecheck` (quality.yml:688) compiles the spec but never runs it. Delete or misgenerate the `/commands/Counter/ConfigureCounterCommand` route and every CI job stays green - `route-contract.spec.ts:39-40` is the only assertion pinning that URL and the `.fc-command-form[aria-label="Configure Counter command form"]` element. Pre-existing: Story 11.7 left this lane ungated and Story 11.27 neither introduced nor worsened it. Settled by adding a `npm run test:route-contract` step to the quality.yml accessibility job, which already runs `npm ci` in `tests/e2e`, installs Chromium and builds `samples/Counter/Counter.Web` in Release. Caveat to record with any such patch: that lane serves the host as `ASPNETCORE_ENVIRONMENT=Test`, where `AppTitle` falls back to `Hexalith FrontComposer`, so it would catch route-contract regressions but would NOT have caught the Development-only banner collision Story 11.27 fixed. quality.yml is not pinned by `evaluator_authorizations`, so editing it does not de-authorize the release chain. Natural owner: Story 11.30 (Testing and MCP Boundary Hardening).
+reason: summary: `test:route-contract` is invoked by no workflow, so the generated-command route contract Story 11.27 just repaired has no automated detector. evidence: grepping `.github/workflows/*.yml` for `npm run test:` returns exactly four invocations - `test:fc-nip` (quality.yml:698), `test:settings-persistence-storage-key` (:706), `test:a11y` (:714) and `test:epic-9-evidence` (:806); a grep for `route-contract` across `.github`, `eng`, `scripts`, `tests/e2e/scripts` and `docs` returns zero hits. CI's `npm run typecheck` (quality.yml:688) compiles the spec but never runs it. Delete or misgenerate the `/commands/Counter/ConfigureCounterCommand` route and every CI job stays green - `route-contract.spec.ts` is the only proof that pins the URL, generated route heading, navigation focus, and `.fc-command-form[aria-label="Configure Counter command form"]` element. Pre-existing: Story 11.7 left this lane ungated and Story 11.27 neither introduced nor worsened it. Settle this in Story 11.30 by adding the proof to a non-specimen host lane, or first fixing DW-1966 and then enabling it in the accessibility job. Do not add the current proof directly to that job while it sets `Hexalith__FrontComposer__Specimens__Enabled=true`: the resulting `/counter` request fails with the lifecycle-registration defect recorded in DW-1966. A Test-environment lane would catch route-contract regressions but would not reproduce the original Development-only banner collision because `AppTitle` falls back to `Hexalith FrontComposer`. quality.yml is not pinned by `evaluator_authorizations`, so editing it does not de-authorize the release chain. Natural owner: Story 11.30 (Testing and MCP Boundary Hardening).
 status: open
 
 ### DW-1960: The route-contract projection leg re-asserts the same DOM node and proves nothing projection-specific
@@ -10561,16 +10561,8 @@ origin: code review of spec-11-27-generated-command-route-acceptance-locator.md 
 location: tests/e2e/specs/form-abandonment-guard.spec.ts:29
 source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
 severity: low
-reason: summary: Story 11.27 replaced 2 of 16 instances of the page-wide `getByRole('heading', { name: 'Counter' })` pattern; 14 inline assertions still carry it. evidence: `form-abandonment-guard.spec.ts:29,43,81,89`, `command-form-generation.spec.ts:83,139,178`, `lifecycle.spec.ts:14`, `command-lifecycle-budgets.spec.ts:75`, `one-at-a-time-execution-policy.spec.ts:77`, `retry-and-degraded-state-handling.spec.ts:86`, `level-3-field-slot-overrides.spec.ts:72`, `level-4-full-view-overrides.spec.ts:74`, `override-accessibility-safety-diagnostics.spec.ts:45`. The 15th instance, the shared page object `tests/e2e/page-objects/counter.page.ts:12`, is an open patch action item on Story 11.27 and is NOT covered by this entry. Under the Option A decision of 2026-09-16 these 14 sites are a consistency cleanup rather than live breakage: the paired decision retags `Typography.AppTitle` from `TextTag.H1` to `TextTag.Span`, which removes the shell banner title from the accessibility heading tree so no `getByRole('heading')` locator can match it. Until that retag lands, each of these sites aborts on a strict-mode violation when run against the default Development launch profile (`localhost:5201`), because `samples/Counter/Counter.Web/appsettings.Development.json:10` sets `"AppTitle": "Counter"` and the banner renders it as a second exact level-1 `Counter` heading. No lint rule or guard scans locator shapes anywhere under `tests/e2e/scripts`, `eng` or `scripts`, so nothing flags non-adoption. Settled by repointing the 14 sites at the `main`-scoped locator on `CounterPage` once that page object is fixed. Owner: Story 11.30 (Testing and MCP Boundary Hardening).
+reason: summary: Fourteen inline e2e assertions still use the page-wide `getByRole('heading', { name: 'Counter' })` pattern after Story 11.27 centralized its route-contract proof on `CounterPage.heading`. evidence: `form-abandonment-guard.spec.ts:29,43,81,89`, `command-form-generation.spec.ts:83,139,178`, `lifecycle.spec.ts:14`, `command-lifecycle-budgets.spec.ts:75`, `one-at-a-time-execution-policy.spec.ts:77`, `retry-and-degraded-state-handling.spec.ts:86`, `level-3-field-slot-overrides.spec.ts:72`, `level-4-full-view-overrides.spec.ts:74`, `override-accessibility-safety-diagnostics.spec.ts:45`. The shared page object and Story 11.27 route-contract spec now use the same `main`-scoped exact level-one locator. These remaining sites are consistency debt rather than live breakage because `FrontComposerShell` overrides only its own banner rendering to `TextTag.Span`; the public `Typography.AppTitle` token correctly remains mapped to `TextTag.H1`. No lint rule or guard scans locator shapes anywhere under `tests/e2e/scripts`, `eng` or `scripts`, so nothing flags non-adoption. Settled by repointing the 14 sites at `CounterPage.heading`. Owner: Story 11.30 (Testing and MCP Boundary Hardening).
 status: open
-
-- source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
-  summary: The specimen-enabled Counter host crashes on `/counter` because the base command lifecycle feature is not registered.
-  evidence: Both Test and Development launches with `Hexalith:FrontComposer:Specimens:Enabled=true` returned HTTP 500 for `/counter`; the host log records `InvalidOperationException` resolving `IFeature<CreateCounterCommandLifecycleState>` while activating `State<CreateCounterCommandLifecycleState>`. This is a pre-existing specimen-registration defect outside the generated-route locator fix.
-
-- source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
-  summary: The type specimen emits a nested `main` landmark inside the shell's page-level `main` landmark.
-  evidence: `FrontComposerShell.razor` owns the page-level `role="main"`, while `samples/Counter/Counter.Specimens/FrontComposerTypeSpecimen.razor:13` renders another `<main>` as its route root. The specimen's scoped axe check starts at the inner landmark and therefore does not detect the page-level landmark duplication.
 
 ### DW-1963: The visual-baseline governance gate is vacuous on push events
 origin: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-16)
@@ -10596,6 +10588,22 @@ severity: high
 reason: summary: `CiGovernanceTests.EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval` asserts `eng/pact_provider_apphost_smoke.py` contains `ReferencePath`, but that string was removed from the script before Story 11.27 branched, so the Quality workflow is red independently of this story. evidence: `CiGovernanceTests.cs:3944` reads the script and calls `appHostSmokeSource.ShouldContain("ReferencePath")`; `grep -c ReferencePath eng/pact_provider_apphost_smoke.py` returns `0`. `git log -S "ReferencePath" -- eng/pact_provider_apphost_smoke.py` shows the string was introduced at `12523054` and removed at `a2592f3a`, and `git merge-base --is-ancestor a2592f3a aba29291` confirms the removal predates Story 11.27's baseline. The same "Gate 2b: Infrastructure governance and telemetry contracts" step failed on the pre-story run at `9843841b` (run 35003168322). Consequence: `build-and-test` cannot go green on Story 11.27's HEAD even after this story's own governance drift is resealed, so Story 11.27 must not be accepted on a green-CI basis. Settled by either restoring the `ReferencePath` capture in `eng/pact_provider_apphost_smoke.py` or updating the governance assertion to the current evidence contract - a decision owned by the EventStore runtime-evidence lane, not by a locator story.
 status: open
 
+### DW-1966: The specimen-enabled Counter host crashes on `/counter`
+origin: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-16)
+location: samples/Counter/Counter.Web/Program.cs
+source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
+severity: medium
+reason: summary: The specimen-enabled Counter host crashes on `/counter` because the base command lifecycle feature is not registered. evidence: Both Test and Development launches with `Hexalith:FrontComposer:Specimens:Enabled=true` returned HTTP 500 for `/counter`; the host log records `InvalidOperationException` resolving `IFeature<CreateCounterCommandLifecycleState>` while activating `State<CreateCounterCommandLifecycleState>`. This is a pre-existing specimen-registration defect outside the generated-route locator fix and blocks adding the route-contract proof directly to the current specimen-enabled accessibility job.
+status: open
+
+### DW-1967: The type specimen nests a `main` landmark inside the shell's page-level `main`
+origin: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-16)
+location: samples/Counter/Counter.Specimens/FrontComposerTypeSpecimen.razor:13
+source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
+severity: medium
+reason: summary: The type specimen emits a nested `main` landmark inside the shell's page-level `main` landmark. evidence: `FrontComposerShell.razor` owns the page-level `role="main"`, while `samples/Counter/Counter.Specimens/FrontComposerTypeSpecimen.razor:13` renders another `<main>` as its route root. The specimen's scoped axe check starts at the inner landmark, so it does not detect the page-level duplication; a full-page accessibility scan or removal of the inner landmark would expose and settle the defect.
+status: open
+
 - source_spec: `_bmad-output/implementation-artifacts/spec-update-latest-submodules-and-package-versions.md`
   summary: Repair the pre-existing Counter-sample Inline popover auto-close failure after confirmed submission.
   evidence: Formal review confirmed the live S3 path is intentionally skipped because the popover remains open after confirmation; the defect predates the Playwright dependency update and requires Shell lifecycle/event propagation work rather than package compatibility changes.
@@ -10615,3 +10623,27 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-update-latest-submodules-and-package-versions.md`
   summary: Reconcile the concurrent Story 11.27 tracking regression back to its owner-approved state.
   evidence: The baseline diff includes Story 11.27 changing from done/review to in-progress through externally advanced root commit f20a1fc73c6c9be184b6a10949b54799e978e3cb; this dependency-update worktree did not author it and must not overwrite concurrent user history.
+
+### DW-1968: Run the generated-command route and focus proof in a compatible automated CI lane
+origin: Blind Hunter review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-17)
+location: tests/e2e/package.json:27
+source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
+severity: medium
+reason: summary: The final Blind Hunter review confirmed `test:route-contract` remains absent from every workflow, so generated heading, focus, URL, and form regressions can pass CI. evidence: Story 11.30 must add a non-specimen lane or first resolve DW-1966 before reusing the current specimen-enabled accessibility job.
+status: open
+
+### DW-1969: Reconcile the historical locator-only implementation note with later route-generation patches
+origin: Blind Hunter review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-17)
+location: _bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md
+source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
+severity: low
+reason: summary: The initial implementation note says route generation and application markup did not change, while the later owner-approved completion patches intentionally add generated `FcPageHeader` markup. evidence: The review workflow routes fixes to the spec under review to deferred work.
+status: open
+
+### DW-1970: Reconcile the unchecked completion-patch checklist with its delivered state
+origin: Blind Hunter review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-17)
+location: _bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md
+source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
+severity: low
+reason: summary: The final Blind Hunter review confirmed the implementation and verification completed the listed patches while their historical checklist remains unchecked. evidence: The review workflow routes fixes to the spec under review to deferred work.
+status: open

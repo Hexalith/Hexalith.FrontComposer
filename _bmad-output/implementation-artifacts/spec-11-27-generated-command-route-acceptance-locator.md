@@ -2,7 +2,7 @@
 title: 'Story 11.27: Generated Command Route Acceptance Locator'
 type: 'bugfix'
 created: '2026-09-16'
-status: 'in-progress'
+status: 'done'
 route: 'oneshot'
 review_loop_iteration: 0
 context:
@@ -28,6 +28,8 @@ context:
 - Applied the three Release Owner-approved review patches: the shared `CounterPage.heading` now uses the same exact level-one heading scoped to the unique `main` landmark; the shell renders its banner title as `TextTag.Span` without changing the public `Typography.AppTitle` mapping; and `E11R-AI-3` now points to this delivery artifact.
 - Rendering the shell banner as non-heading text corrected two coupled accessibility defects: the banner no longer appears in the heading tree, and Blazor's `FocusOnNavigate Selector="h1"` now focuses the route heading instead of the banner. The six Linux visual baselines were intentionally regenerated after each theme/density comparison reported the same 13,009-pixel delta; the before/after rationale is recorded in `docs/accessibility-verification/baseline-change-rationale.md`. No Windows baseline was regenerated; its existing calibrated tolerance covers the smaller structural delta.
 - Patch verification on 2026-09-16: the Aspire `counter-web` resource rebuild succeeded with 0 warnings and 0 errors; the focused shell render regression passed 1/1; `npm --prefix tests/e2e run typecheck` passed; the Development AppHost route-contract lane passed 1/1 including direct route-heading focus proof; the refreshed visual lane passed 6/6; and visual-baseline governance passed for all six changed snapshots. An exploratory Development smoke run reached the hardened shared heading wait, then failed on the pre-existing missing `Count` projection value and nested hamburger control finding; neither failure was introduced by these patches or is part of this locator story.
+- Completion patches on 2026-09-17 emit a globally qualified `FcPageHeader` with `HeadingTabIndex=-1` on every generated full-page command route, place the header and form in a 24 px vertical `FluentStack`, fall back from a whitespace-only display name to the humanized command type, reuse `CounterPage.heading` for the route-contract proof, assert focus on the generated `Configure Counter` heading, pin the shell banner's retained `size="700"` / `weight="bold"` rendering, document the shell/route heading ownership boundary, reconcile the Story 11.27 deferred-work records, and bind E11R-AI-3 to its delivering commits and CI caveat.
+- Current-tree verification at baseline revision `f1b60402292716a981ebbbe4b6d72e2581477e70` plus this story's working-tree diff: the Aspire `counter-web` resource rebuild passed with 0 warnings and 0 errors; `npm --prefix tests/e2e run typecheck` passed; the Development AppHost `test:route-contract` lane passed 1/1 and rendered the command header/form stack; both affected Debug test projects built with 0 warnings and 0 errors; `CommandRendererEmitterTests` passed 32/32; `FrontComposerShellTests` passed 36/36; the full SourceTools assembly passed 1,278/1,278; and `AnalyzerPolicyGovernanceTests` passed 8/8 before the final inventory-only reseal check passed 1/1. The analyzer inventory was resealed to the verified current-tree value 3,330 / `ac72b72b7c2f9cf781e6b5805d6ca3ae14f781fece67b3edc946a58fd1e42727`, covering this story's two regression identifiers plus the concurrent dependency-maintenance governance identifier.
 
 ## Review Triage Log
 
@@ -52,6 +54,17 @@ context:
 - **low — DW-1962 miscounts the original locator sites:** Rejected as a harmless arithmetic error in historical deferred evidence; it does not change the enumerated fourteen remaining inline sites or their Story 11.30 ownership, and append-only ledger policy forbids rewriting the old entry.
 - **false — `in-progress` status and the historical “left as action items” sentence were stale:** The reviewer inspected the workflow before finalization, when both states were accurate. Finalization moves the completed story to `done`/`review` without rewriting its history.
 - **medium — the type specimen nests a `main` inside the shell's page-level `main`:** Deferred as pre-existing and outside the route-locator change; the inner-root axe scope does not catch the page-level duplication, so an append-only deferred-work entry records the exact source and detection gap.
+
+### Final one-shot Blind Hunter review (2026-09-17)
+
+- **medium — the generator integration assertion still expected a direct `PageTitle`:** Patched to assert the generated `FcPageHeader`, heading, focus tab index, and standard stack gap; the full SourceTools assembly passed 1,278/1,278.
+- **medium — a whitespace-only display name could suppress the generated route heading:** Patched by trimming nonblank display names and otherwise falling back to the humanized command type, with a focused generator regression.
+- **medium — an adopter-defined `FcPageHeader` could shadow the generated component reference:** Patched by emitting the Shell component's fully qualified type name; compilation and the live sample route both pass.
+- **medium — the generated header and form had no standard vertical separation:** Patched by wrapping them in a vertical `FluentStack` with a 24 px gap, confirmed in the rendered Development route.
+- **medium — the generated-route URL, heading, focus, and form proof remains outside CI:** Deferred to Story 11.30 in `DW-1968`; the existing specimen-enabled accessibility lane remains incompatible until `DW-1966` is resolved.
+- **low — changed non-snapshot files did not preserve repository CRLF policy:** Patched by mechanically normalizing changed text files while retaining LF for the Verify snapshot.
+- **low — an initial locator-only note conflicts with the later owner-approved generator patches:** Deferred to `DW-1969` because the review workflow excludes fixes whose target is the spec under review.
+- **low — the historical completion checklist remains unchecked despite delivery:** Deferred to `DW-1970` for the same spec-review constraint; implementation and verification evidence above record the delivered state.
 
 ## Review Findings
 

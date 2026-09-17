@@ -52,8 +52,8 @@ public static class CommandRendererTransform {
     }
 
     private static string BuildDisplayLabel(CommandModel model) {
-        if (!string.IsNullOrEmpty(model.DisplayName)) {
-            return StripTrailingCommand(model.DisplayName!);
+        if (!string.IsNullOrWhiteSpace(model.DisplayName)) {
+            return StripTrailingCommand(model.DisplayName!.Trim());
         }
 
         string? humanized = CamelCaseHumanizer.Humanize(model.TypeName);

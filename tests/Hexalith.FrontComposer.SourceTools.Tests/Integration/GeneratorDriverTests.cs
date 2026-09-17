@@ -814,7 +814,11 @@ public partial class AllUnsupportedProjection
         pageSource.ShouldContain("InferReturnViewKeyFromReferrer");
         pageSource.ShouldContain("projectionTypeFqn");
         pageSource.ShouldContain("NavigationManager.ToAbsoluteUri(NavigationManager.Uri)");
-        pageSource.ShouldContain("OpenComponent<PageTitle>");
+        pageSource.ShouldContain("OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Layout.FcPageHeader>");
+        pageSource.ShouldContain("\"PageTitle\", \"Place Order\"");
+        pageSource.ShouldContain("\"Heading\", \"Place Order\"");
+        pageSource.ShouldContain("\"HeadingTabIndex\", (int?)-1");
+        pageSource.ShouldContain("\"VerticalGap\", \"24px\"");
     }
 
     [Fact]

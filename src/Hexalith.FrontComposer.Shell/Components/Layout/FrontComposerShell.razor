@@ -78,6 +78,9 @@
                                 }
                             </span>
                         }
+                        @* The shell banner is deliberately non-heading text so each route owns the page's
+                           single h1 and FocusOnNavigate targets route content. Keep size and weight bound to
+                           the public AppTitle token; HeaderTitle_RendersAsNonHeadingText pins this override. *@
                         <FluentText Size="@Typography.AppTitle.Size" Weight="@Typography.AppTitle.Weight"
                                     As="@TextTag.Span">
                             @ResolvedAppTitle

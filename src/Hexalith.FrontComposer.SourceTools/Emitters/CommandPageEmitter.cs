@@ -28,7 +28,6 @@ public static class CommandPageEmitter {
         _ = sb.AppendLine("using Hexalith.FrontComposer.Contracts.Rendering;");
         _ = sb.AppendLine("using Microsoft.AspNetCore.Components;");
         _ = sb.AppendLine("using Microsoft.AspNetCore.Components.Rendering;");
-        _ = sb.AppendLine("using Microsoft.AspNetCore.Components.Web;");
         _ = sb.AppendLine();
 
         bool hasNamespace = !string.IsNullOrEmpty(model.Namespace);
@@ -97,11 +96,21 @@ public static class CommandPageEmitter {
         _ = sb.AppendLine("    protected override void BuildRenderTree(RenderTreeBuilder builder)");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        int seq = 0;");
-        _ = sb.AppendLine("        builder.OpenComponent<PageTitle>(seq++);");
-        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)(__pageTitle => __pageTitle.AddContent(0, \"" + pageTitleText + "\")));");
-        _ = sb.AppendLine("        builder.CloseComponent();");
-        _ = sb.AppendLine("        builder.OpenComponent<" + rendererFqn + ">(seq++);");
-        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"RenderMode\", (CommandRenderMode?)CommandRenderMode.FullPage);");
+        _ = sb.AppendLine("        builder.OpenComponent<global::Microsoft.FluentUI.AspNetCore.Components.FluentStack>(seq++);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Orientation\", global::Microsoft.FluentUI.AspNetCore.Components.Orientation.Vertical);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"VerticalGap\", \"24px\");");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)(__page =>");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            int pseq = 0;");
+        _ = sb.AppendLine("            __page.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Layout.FcPageHeader>(pseq++);");
+        _ = sb.AppendLine("            __page.AddAttribute(pseq++, \"PageTitle\", \"" + pageTitleText + "\");");
+        _ = sb.AppendLine("            __page.AddAttribute(pseq++, \"Heading\", \"" + pageTitleText + "\");");
+        _ = sb.AppendLine("            __page.AddAttribute(pseq++, \"HeadingTabIndex\", (int?)-1);");
+        _ = sb.AppendLine("            __page.CloseComponent();");
+        _ = sb.AppendLine("            __page.OpenComponent<" + rendererFqn + ">(pseq++);");
+        _ = sb.AppendLine("            __page.AddAttribute(pseq++, \"RenderMode\", (CommandRenderMode?)CommandRenderMode.FullPage);");
+        _ = sb.AppendLine("            __page.CloseComponent();");
+        _ = sb.AppendLine("        }));");
         _ = sb.AppendLine("        builder.CloseComponent();");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine("}");

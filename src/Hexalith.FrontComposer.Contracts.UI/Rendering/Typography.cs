@@ -35,6 +35,11 @@ namespace Hexalith.FrontComposer.Contracts.Rendering;
 /// </remarks>
 public static class Typography {
     /// <summary>Application title (UX-DR26 role #1). Mapped to Size700 (28 px), Bold, H1.</summary>
+    /// <remarks>
+    /// The framework shell binds this token's size and weight but deliberately renders its banner
+    /// title as non-heading text, leaving each route responsible for the page's single level-one
+    /// heading. Other consumers that bind <see cref="FcTypoToken.Tag"/> retain the public H1 mapping.
+    /// </remarks>
     public static readonly FcTypoToken AppTitle = new(TextSize.Size700, TextWeight.Bold, TextTag.H1);
 
     /// <summary>Bounded-context heading (UX-DR26 role #2). Mapped to Size500 (20 px), Semibold, H2.</summary>

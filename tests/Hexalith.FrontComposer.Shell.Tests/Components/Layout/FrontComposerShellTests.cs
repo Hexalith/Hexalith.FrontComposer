@@ -210,13 +210,15 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
             .AddChildContent("<p>Body</p>"));
 
         cut.WaitForAssertion(() => {
-            IElement appTitle = cut
-                .Find("[area=\"header\"]")
+            IElement header = cut.Find("[area=\"header\"]");
+            IElement appTitle = header
                 .QuerySelectorAll("fluent-text")
                 .Single(element => element.TextContent.Contains("Hexalith FrontComposer", StringComparison.Ordinal));
 
             appTitle.Children.ShouldHaveSingleItem().TagName.ShouldBe("SPAN");
-            cut.FindAll("h1").ShouldBeEmpty();
+            appTitle.GetAttribute("size").ShouldBe("700");
+            appTitle.GetAttribute("weight").ShouldBe("bold");
+            header.QuerySelectorAll("h1").ShouldBeEmpty();
         });
     }
 

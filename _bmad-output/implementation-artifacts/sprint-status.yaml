@@ -167,7 +167,7 @@ development_status:
   11-24-adopt-the-owner-approved-eventstore-runtime-identity: done
   11-25-current-eventstore-release-identity-and-evidence: done
   11-26-analyzer-identifier-inventory-reconciliation: done
-  11-27-generated-command-route-acceptance-locator: in-progress
+  11-27-generated-command-route-acceptance-locator: review
   11-28-fc-nip-semantic-fixture-alignment: backlog
   11-29-fallback-refresh-and-view-registration-correctness: backlog
   11-30-testing-and-mcp-boundary-hardening: backlog
@@ -673,6 +673,13 @@ action_items:
       - "_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md
         records the unambiguous route locator, canonical generated command route proof,
         approved review patches, and focused verification."
+      - "Commit 1732b9415d13bec1b419017d271a86b6b8c1bae7 scoped the Story 11.7
+        acceptance locator to route content; commit
+        1b2240bd00998da0b2f0f20f55dda492c5f7d2ab applied the owner-approved shared
+        page-object, shell-heading, visual-baseline, and focused-verification patches."
+      - "The repaired route-contract proof remains operator-invoked rather than CI-enforced;
+        DW-1959 assigns that pre-existing automation gap to Story 11.30 and records why the
+        current specimen-enabled accessibility job cannot host it unchanged."
   - id: "E11R-AI-4"
     epic: 11
     action: "Update the FC-NIP semantic fixture to the current PRD contract and restore

@@ -114,6 +114,12 @@ The shell ships the FC-A11Y primitive set as part of its own frame:
   and nav rail all carry accessible names; global `Ctrl+K` (command palette), `Ctrl+,` (settings),
   and `g h` (home) never swallow `Tab`, so no focus trap is introduced. *(WCAG 4.1.2 / 2.1.1)*
 
+The shell banner title is deliberately rendered as non-heading text. Its size and weight still come
+from the public `Typography.AppTitle` token, whose `H1` tag mapping remains available to external
+consumers, but the shell overrides that tag to `Span` so routed content owns the page's single `h1`.
+Route pages should render a non-blank `FcPageHeader` with `HeadingTabIndex="-1"`; this gives Blazor's
+`FocusOnNavigate Selector="h1"` an unambiguous, focusable route-content target.
+
 Adopter customizations are held to the same bar at build time by the **override-accessibility
 diagnostics**, which are `Warning` severity promoted to build-breakers under
 `TreatWarningsAsErrors=true`:

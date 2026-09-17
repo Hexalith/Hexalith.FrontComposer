@@ -97,8 +97,8 @@
   },
   "identifierInventory": {
     "algorithm": "SHA-256 over sorted repo-relative path, declaration kind, and underscore-containing identifier for CA1707-relevant public/protected declarations; source line numbers are excluded",
-    "testPublicDeclarationIdentifiers": 3327,
-    "testInventorySha256": "e33cb6e8c92dea244db0cebde30721da208a5a569a7a7cf9c1e41b7d77ee270f",
+    "testPublicDeclarationIdentifiers": 3330,
+    "testInventorySha256": "ac72b72b7c2f9cf781e6b5805d6ca3ae14f781fece67b3edc946a58fd1e42727",
     "contractsPublicDeclarationIdentifiers": 89,
     "contractsInventorySha256": "9b81beacad8c65e481b2239b6054ba483dd8e9b6e6af2a0e51ca7065deb3210a"
   },
@@ -211,7 +211,7 @@
       "decisionDate": "2026-07-17",
       "reviewDate": "2027-07-17",
       "trigger": "Revalidate if the repository test naming convention changes or the test source inventory drifts.",
-      "evidence": "Tracked test-source scope check, identifier inventory, and positive/negative compile specimens. Revalidated 2026-09-15 under the inventory-drift trigger (Story 11.26 / E11R-AI-2): commit 1be6b3778b04dd321d5db314c3b0bbcc6979a593 intentionally added exactly two public underscore-named test declarations, FrontComposerMcpLogTests.Wrapper_EmitsOnlyWhenItsDeclaredLevelIsEnabled and FrontComposerMcpLogTests.WrapperContracts_CoverEveryPublicWrapper, both inside the approved tests/**.cs scope; commit 2cd0496a9bcd3c01e03aa0850a08d67d95999e77 resealed testPublicDeclarationIdentifiers 3325 -> 3327 and testInventorySha256 36c57e1bc4956c297e82ca9614e224be3a2971ae922813099207ac4ffe4f5dd5 -> e33cb6e8c92dea244db0cebde30721da208a5a569a7a7cf9c1e41b7d77ee270f. The delta is exclusively those two declarations, with no removals, and policy remained AnalysisMode=Recommended with TreatWarningsAsErrors=true."
+      "evidence": "Tracked test-source scope check, identifier inventory, and positive/negative compile specimens. Revalidated 2026-09-17 under the inventory-drift trigger (Story 11.27 / E11R-AI-3): commit 1b2240bd00998da0b2f0f20f55dda492c5f7d2ab intentionally added FrontComposerShellTests.HeaderTitle_RendersAsNonHeadingText; concurrent dependency-maintenance commit f1b60402292716a981ebbbe4b6d72e2581477e70 intentionally added CiGovernanceTests.VerifySponsorship_OwnerApproval_IsAppliedThroughSharedTestConfiguration; and the Story 11.27 completion review added CommandRendererEmitterTests.Page_WhitespaceDisplayName_FallsBackToHumanizedTypeName to pin a non-blank generated route heading. All three public underscore-named declarations are inside the approved tests/**.cs scope. Story 11.27 resealed testPublicDeclarationIdentifiers 3327 -> 3330 and testInventorySha256 e33cb6e8c92dea244db0cebde30721da208a5a569a7a7cf9c1e41b7d77ee270f -> ac72b72b7c2f9cf781e6b5805d6ca3ae14f781fece67b3edc946a58fd1e42727. The delta is exclusively those three declarations, with no removals, and policy remains AnalysisMode=Recommended with TreatWarningsAsErrors=true."
     },
     {
       "key": "naming-ca1711-diagnostic-registry-fix",

@@ -8,7 +8,6 @@ using Fluxor;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
-using Microsoft.AspNetCore.Components.Web;
 
 namespace Demo.Domain;
 
@@ -66,11 +65,20 @@ public partial class DemoCommandPage : ComponentBase
 
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
-        builder.OpenComponent<PageTitle>(0);
-        builder.AddAttribute(1, "ChildContent", (RenderFragment)(__pageTitle => __pageTitle.AddContent(0, "Demo")));
-        builder.CloseComponent();
-        builder.OpenComponent<Demo.Domain.DemoCommandRenderer>(2);
-        builder.AddAttribute(3, "RenderMode", (CommandRenderMode?)CommandRenderMode.FullPage);
+        builder.OpenComponent<global::Microsoft.FluentUI.AspNetCore.Components.FluentStack>(0);
+        builder.AddAttribute(1, "Orientation", global::Microsoft.FluentUI.AspNetCore.Components.Orientation.Vertical);
+        builder.AddAttribute(2, "VerticalGap", "24px");
+        builder.AddAttribute(3, "ChildContent", (RenderFragment)(__page =>
+        {
+            __page.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Layout.FcPageHeader>(0);
+            __page.AddAttribute(1, "PageTitle", "Demo");
+            __page.AddAttribute(2, "Heading", "Demo");
+            __page.AddAttribute(3, "HeadingTabIndex", (int?)-1);
+            __page.CloseComponent();
+            __page.OpenComponent<Demo.Domain.DemoCommandRenderer>(4);
+            __page.AddAttribute(5, "RenderMode", (CommandRenderMode?)CommandRenderMode.FullPage);
+            __page.CloseComponent();
+        }));
         builder.CloseComponent();
     }
 }

@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures/index.js';
+import { CounterPage } from '../page-objects/counter.page.js';
 import { ShellPage } from '../page-objects/shell.page.js';
 
 test.describe('Story 11.7: generated command and module route contract', () => {
@@ -13,11 +14,11 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     expect(tenant.tenantId).toBeTruthy();
 
     await page.setViewportSize({ width: 1920, height: 900 });
-    await page.goto('/counter');
+    const counter = new CounterPage(page);
+    await counter.goto();
     await expect(page).toHaveURL(/\/counter$/);
-    const routeHeading = page.getByRole('main').getByRole('heading', { name: 'Counter', exact: true, level: 1 });
-    await expect(routeHeading).toBeVisible();
-    await expect(routeHeading).toBeFocused();
+    await expect(counter.heading).toBeVisible();
+    await expect(counter.heading).toBeFocused();
 
     const shell = new ShellPage(page);
     await shell.shellRoot.waitFor();
@@ -26,7 +27,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await expect(shell.counterProjectionItem).toHaveAttribute('data-href', '/counter/counter-projection');
     await shell.counterProjectionItem.click();
     await expect(page).toHaveURL(/\/counter\/counter-projection$/);
-    await expect(routeHeading).toBeVisible();
+    await expect(counter.heading).toBeVisible();
 
     await page.goto('/counter');
     await expect(page).toHaveURL(/\/counter$/);
@@ -38,6 +39,11 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await configureCounter.click();
 
     await expect(page).toHaveURL(/\/commands\/Counter\/ConfigureCounterCommand$/);
+    const commandHeading = page
+      .getByRole('main')
+      .getByRole('heading', { name: 'Configure Counter', exact: true, level: 1 });
+    await expect(commandHeading).toBeVisible();
+    await expect(commandHeading).toBeFocused();
     await expect(page.locator('.fc-command-form[aria-label="Configure Counter command form"]')).toBeVisible();
   });
 });
