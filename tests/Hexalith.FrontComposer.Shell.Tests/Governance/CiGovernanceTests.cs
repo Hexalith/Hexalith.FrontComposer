@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -414,6 +415,49 @@ public sealed class CiGovernanceTests {
         a11yStep.ShouldContain("npm run test:a11y");
         a11yStep.ShouldNotContain("continue-on-error: true");
 
+        string legacyInstallStep = ExtractNamedStep(a11yJob, "Install legacy Story 2.2 Playwright dependencies");
+        legacyInstallStep.ShouldContain("working-directory: tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd");
+        legacyInstallStep.ShouldContain("run: npm ci");
+        legacyInstallStep.ShouldNotContain("continue-on-error: true");
+
+        string legacyResultContractStep = ExtractNamedStep(a11yJob, "Run legacy Story 2.2 result-contract tests");
+        legacyResultContractStep.ShouldContain("working-directory: tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd");
+        legacyResultContractStep.ShouldContain("run: npm run test:runner");
+
+        string legacyChromiumStep = ExtractNamedStep(a11yJob, "Install legacy Story 2.2 Chromium browser");
+        legacyChromiumStep.ShouldContain("working-directory: tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd");
+        legacyChromiumStep.ShouldContain("run: npx playwright install --with-deps chromium");
+        foreach (string blockingLegacyStep in new[] { legacyResultContractStep, legacyChromiumStep }) {
+            blockingLegacyStep.ShouldNotContain("continue-on-error: true");
+            Regex.IsMatch(
+                    blockingLegacyStep,
+                    @"^[ \t]*if[ \t]*:",
+                    RegexOptions.Multiline | RegexOptions.CultureInvariant)
+                .ShouldBeFalse("legacy Story 2.2 prerequisite and contract steps must run unconditionally");
+        }
+
+        string legacyBrowserStep = ExtractNamedStep(a11yJob, "Run legacy Story 2.2 live browser gate");
+        legacyBrowserStep.ShouldContain("working-directory: tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd");
+        legacyBrowserStep.ShouldContain("FC_STORY_2_2_OUTPUT_DIR: artifacts/story-2-2-live");
+        legacyBrowserStep.ShouldContain("run: npm run story2.2:e2e");
+        legacyBrowserStep.ShouldNotContain("continue-on-error: true");
+        Regex.IsMatch(
+                legacyBrowserStep,
+                @"^[ \t]*if[ \t]*:",
+                RegexOptions.Multiline | RegexOptions.CultureInvariant)
+            .ShouldBeFalse("the blocking legacy browser gate must run unconditionally");
+        a11yJob.IndexOf(legacyInstallStep, StringComparison.Ordinal)
+            .ShouldBeLessThan(a11yJob.IndexOf(legacyResultContractStep, StringComparison.Ordinal));
+        a11yJob.IndexOf(legacyResultContractStep, StringComparison.Ordinal)
+            .ShouldBeLessThan(a11yJob.IndexOf(legacyChromiumStep, StringComparison.Ordinal));
+        a11yJob.IndexOf(legacyChromiumStep, StringComparison.Ordinal)
+            .ShouldBeLessThan(a11yJob.IndexOf(legacyBrowserStep, StringComparison.Ordinal));
+        a11yJob.IndexOf(a11yStep, StringComparison.Ordinal)
+            .ShouldBeLessThan(a11yJob.IndexOf(legacyBrowserStep, StringComparison.Ordinal));
+
+        string artifactUploadStep = ExtractNamedStep(a11yJob, "Upload accessibility and visual artifacts");
+        artifactUploadStep.ShouldContain("artifacts/story-2-2-live/**");
+
         // Follow-up review (2026-09-02): bound the guard to its own step block. ExtractNamedStep
         // ends a slice only at the next `- name:`, so a bare `- uses:` neighbour would be absorbed
         // and turn the exit-code-tail assertion red for an unrelated workflow edit.
@@ -465,6 +509,10 @@ public sealed class CiGovernanceTests {
             "Typecheck Playwright accessibility lane",
             "Run FC-NIP contract guards (browserless)",
             "Run settings-persistence storage-key regression (browserless)",
+            "Install legacy Story 2.2 Playwright dependencies",
+            "Run legacy Story 2.2 result-contract tests",
+            "Install legacy Story 2.2 Chromium browser",
+            "Run legacy Story 2.2 live browser gate",
             "Validate visual baseline governance",
             "Validate accessibility artifacts",
         }) {
@@ -747,6 +795,55 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
+    public void VerifySponsorship_OwnerApproval_IsAppliedThroughSharedTestConfiguration() {
+        string root = RepositoryRoot();
+        string testPropsPath = Path.Combine(root, "tests", "Directory.Build.props");
+        XDocument testProps = XDocument.Load(testPropsPath);
+
+        XElement sponsorship = testProps
+            .Descendants("PropertyGroup")
+            .Single(group => group.Element("Verify_GitHubSponsorAccount") is not null);
+
+        sponsorship.Element("Verify_GitHubSponsorAccount")!.Value.ShouldBe("jpiquot");
+        sponsorship.Element("Verify_SponsorshipStart")!.Value.ShouldBe("2026-09-17");
+        string approvedUntil = sponsorship.Element("FrontComposerVerifySponsorshipApprovedUntil")!.Value;
+        approvedUntil.ShouldBe("2031-09-17");
+        DateOnly.ParseExact(approvedUntil, "yyyy-MM-dd", CultureInfo.InvariantCulture)
+            .ShouldBeGreaterThanOrEqualTo(
+                DateOnly.FromDateTime(DateTime.UtcNow),
+                "the owner-approved sponsorship assertion must not remain active after its recorded term.");
+
+        string[] alternateSponsorModes = [
+            "Verify_OpenCollectiveSponsorAccount",
+            "Verify_PolarSponsorAccount",
+            "Verify_SponsorshipExemption",
+            "Verify_SponsorshipExemptionUntil",
+            "Verify_SponsorshipLicenseIgnored",
+            "Verify_SponsorshipLicensedUntil",
+            "Verify_SponsorshipPrivateUntil",
+        ];
+        foreach (string propertyName in alternateSponsorModes) {
+            testProps.Descendants(propertyName).ShouldBeEmpty(
+                $"the owner approved only the GitHub sponsor-account/start assertion, not {propertyName}.");
+        }
+
+        string[] approvedSponsorProperties = [
+            "Verify_GitHubSponsorAccount",
+            "Verify_SponsorshipStart",
+            .. alternateSponsorModes,
+        ];
+        HashSet<string> approvedSponsorPropertyNames = new(approvedSponsorProperties, StringComparer.Ordinal);
+        string[] projectOverrides = [.. EnumerateRepositoryOwnedBuildInputs(root)
+            .Where(file => !string.Equals(file, testPropsPath, StringComparison.Ordinal))
+            .Where(file => XDocument.Load(file)
+                .Descendants()
+                .Any(element => approvedSponsorPropertyNames.Contains(element.Name.LocalName)))
+            .Select(file => Path.GetRelativePath(root, file))];
+        projectOverrides.ShouldBeEmpty(
+            "repository-owned projects and build inputs must inherit the owner-approved shared SponsorCheck assertion without local overrides.");
+    }
+
+    [Fact]
     public void DependencyGovernance_UsesExactRevisionsAndPolicyOwnedStaticModuleCommands() {
         string root = RepositoryRoot();
         string ci = StripYamlComments(File.ReadAllText(Path.Combine(root, ".github/workflows/ci.yml")));
@@ -1012,6 +1109,16 @@ public sealed class CiGovernanceTests {
         quality.ShouldMatch(
             @"(?ms)^[ \t]*- name:[ \t]*Install source-resource compatibility SDK[ \t]*\r?\n[ \t]*uses:[ \t]*actions/setup-dotnet@[^\r\n]+\r?\n[ \t]*with:[ \t]*\r?\n[ \t]*dotnet-version[ \t]*:[ \t]*(?:'10\.0\.302'|""10\.0\.302""|10\.0\.302)[ \t]*\r?$",
             customMessage: "the sole 10.0.302 pin must stay attached to the explicitly named source-resource compatibility step");
+
+        string sdkVerificationStep = ExtractNamedStep(quality, "Verify root and source-resource SDKs");
+        sdkVerificationStep.ShouldContain("set -euo pipefail");
+        sdkVerificationStep.ShouldContain("active_sdk=\"$(dotnet --version)\"");
+        sdkVerificationStep.ShouldContain("^10\\.0\\.([0-9]+)$");
+        sdkVerificationStep.ShouldContain("10#${BASH_REMATCH[1]} < 401");
+        sdkVerificationStep.ShouldContain("10#${BASH_REMATCH[1]} >= 500");
+        sdkVerificationStep.ShouldContain("dotnet --list-sdks | grep -E '^10\\.0\\.302\\s'");
+        sdkVerificationStep.ShouldContain("dotnet --list-sdks | grep -E '^10\\.0\\.401\\s'");
+        sdkVerificationStep.ShouldNotContain("test \"$(dotnet --version)\" = \"10.0.401\"");
 
         Regex aspireCliInstall = new(
             @"(?m)^[^#\r\n]*\bdotnet\s+tool\s+install\s+--global\s+Aspire\.Cli\s+--version\s+(?<quote>['""]?)(?<version>[^'""#\s]+)\k<quote>(?:\s|$)",
@@ -3643,6 +3750,42 @@ public sealed class CiGovernanceTests {
         }
 
         throw new InvalidOperationException("Could not locate repository root.");
+    }
+
+    private static IEnumerable<string> EnumerateRepositoryOwnedBuildInputs(string root) {
+        HashSet<string> ignoredDirectories = new(StringComparer.OrdinalIgnoreCase) {
+            ".git",
+            ".idea",
+            ".vs",
+            "_bmad-output",
+            "artifacts",
+            "bin",
+            "coverage",
+            "generated",
+            "node_modules",
+            "obj",
+            "references",
+            "TestResults",
+        };
+        Stack<string> pending = new();
+        pending.Push(root);
+
+        while (pending.TryPop(out string? directory)) {
+            foreach (string file in Directory.EnumerateFiles(directory, "*", SearchOption.TopDirectoryOnly)) {
+                string extension = Path.GetExtension(file);
+                if (extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase)
+                    || extension.Equals(".props", StringComparison.OrdinalIgnoreCase)
+                    || extension.Equals(".targets", StringComparison.OrdinalIgnoreCase)) {
+                    yield return file;
+                }
+            }
+
+            foreach (string child in Directory.EnumerateDirectories(directory, "*", SearchOption.TopDirectoryOnly)) {
+                if (!ignoredDirectories.Contains(Path.GetFileName(child))) {
+                    pending.Push(child);
+                }
+            }
+        }
     }
 
     private static ProcessResult RunGovernance(string root, IReadOnlyList<string> arguments) {

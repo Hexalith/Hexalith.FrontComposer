@@ -2,6 +2,15 @@
 
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
+  <PropertyGroup>
+    <!-- The owner-approved five-year Verify sponsorship term ends on 2031-09-17.
+         SponsorCheck enforcement uses the account/start attestation because its licensed-until mode
+         is mutually exclusive with sponsor accounts and capped at one year. -->
+    <FrontComposerVerifySponsorshipApprovedUntil>2031-09-17</FrontComposerVerifySponsorshipApprovedUntil>
+    <Verify_GitHubSponsorAccount>jpiquot</Verify_GitHubSponsorAccount>
+    <Verify_SponsorshipStart>2026-09-17</Verify_SponsorshipStart>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
   </ItemGroup>

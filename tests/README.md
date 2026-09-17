@@ -10,6 +10,7 @@ Top-level guide for every test layer in this repository. Each layer has its own 
 | **Unit — Shell** | `tests/Hexalith.FrontComposer.Shell.Tests/` | xUnit + bUnit | Services, lifecycle state machine, components |
 | **Unit — SourceTools** | `tests/Hexalith.FrontComposer.SourceTools.Tests/` | xUnit + FsCheck | Roslyn analyzers, source generators, property-based |
 | **E2E — Browser** | `tests/e2e/` | Playwright (TS) | Six-state command lifecycle, WCAG 2.1 AA, smoke |
+| **E2E — Legacy Story 2.2** | `tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd/` | Playwright (JS) | Story 2.2 result contract, Fluent render modes, return-path safety, and focused Axe scans |
 
 Submodule test suites (`references/Hexalith.Tenants/**`, `references/Hexalith.EventStore/**`) are run from their own roots and are out of scope for this guide.
 
@@ -225,6 +226,20 @@ npm --prefix tests/e2e run test:smoke       # smoke specs only
 npm --prefix tests/e2e run test:lifecycle   # lifecycle specs only
 npm --prefix tests/e2e run report           # open last HTML report
 ```
+
+The blocking accessibility/visual quality job also runs the legacy Story 2.2 result contract and
+live browser harness. Reproduce that lane independently from the maintained workspace:
+
+```bash
+cd tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd
+npm ci
+npx playwright install --with-deps chromium
+npm run test:runner
+npm run story2.2:e2e
+```
+
+Set `FC_STORY_2_2_OUTPUT_DIR` to a repository-relative directory when results and screenshots should
+be isolated from the checked-in historical evidence beside the harness.
 
 ---
 

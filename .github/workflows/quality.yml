@@ -678,6 +678,18 @@ jobs:
         working-directory: tests/e2e
         run: npm ci
 
+      - name: Install legacy Story 2.2 Playwright dependencies
+        working-directory: tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd
+        run: npm ci
+
+      - name: Run legacy Story 2.2 result-contract tests
+        working-directory: tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd
+        run: npm run test:runner
+
+      - name: Install legacy Story 2.2 Chromium browser
+        working-directory: tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd
+        run: npx playwright install --with-deps chromium
+
       - name: Install Chromium browser
         working-directory: tests/e2e
         run: npx playwright install --with-deps chromium
@@ -713,6 +725,12 @@ jobs:
           Hexalith__FrontComposer__Specimens__Enabled: true
         run: npm run test:a11y
 
+      - name: Run legacy Story 2.2 live browser gate
+        working-directory: tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd
+        env:
+          FC_STORY_2_2_OUTPUT_DIR: artifacts/story-2-2-live
+        run: npm run story2.2:e2e
+
       - name: Validate visual baseline governance
         if: always()
         working-directory: tests/e2e
@@ -733,6 +751,7 @@ jobs:
           path: |
             tests/e2e/playwright-report/**
             tests/e2e/test-results/**
+            artifacts/story-2-2-live/**
 
   epic9-live-acceptance:
     runs-on: ubuntu-latest
@@ -762,7 +781,12 @@ jobs:
       - name: Verify root and source-resource SDKs
         shell: bash
         run: |
-          test "$(dotnet --version)" = "10.0.401"
+          set -euo pipefail
+          active_sdk="$(dotnet --version)"
+          if [[ ! "$active_sdk" =~ ^10\.0\.([0-9]+)$ ]] || (( 10#${BASH_REMATCH[1]} < 401 || 10#${BASH_REMATCH[1]} >= 500 )); then
+            echo "::error::Active .NET SDK $active_sdk is outside the supported [10.0.401, 10.0.500) range."
+            exit 1
+          fi
           dotnet --list-sdks | grep -E '^10\.0\.302\s'
           dotnet --list-sdks | grep -E '^10\.0\.401\s'
 

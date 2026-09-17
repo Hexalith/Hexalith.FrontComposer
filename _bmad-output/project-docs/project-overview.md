@@ -44,11 +44,11 @@ The `frontcomposer` **CLI** (`Hexalith.FrontComposer.Cli`) lets you `inspect` th
 | Source generation | Microsoft.CodeAnalysis.CSharp (Roslyn) | `5.9.0` | incremental generator on netstandard2.0 |
 | MCP | ModelContextProtocol.AspNetCore | `2.2.0` | HTTP streamable transport |
 | Identifiers | NUlid (ULID) | `1.7.3` | **ULIDs, never GUIDs**, for `messageId` / `correlationId` |
-| Real-time | Microsoft.AspNetCore.SignalR.Client | `10.0.11` | EventStore projection subscriptions |
-| Auth | Microsoft.AspNetCore.Authentication.OpenIdConnect | `10.0.11` | host-owned OIDC |
+| Real-time | Microsoft.AspNetCore.SignalR.Client | `10.0.12` | EventStore projection subscriptions |
+| Auth | Microsoft.AspNetCore.Authentication.OpenIdConnect | `10.0.12` | host-owned OIDC |
 | Reactive | System.Reactive | `7.0.0` | badge-count producer/consumer isolation |
 | Orchestration | Aspire.Hosting.AppHost | `13.5.4` | local topology |
-| Testing | xUnit **v3** `4.0.0`, Microsoft.NET.Test.Sdk `18.10.1`, Shouldly `4.3.0`, NSubstitute `6.2.0`, bUnit `2.9.0`, Verify `33.0.2`, FsCheck.Xunit.v3 `3.4.0`, PactNet `5.0.1`, BenchmarkDotNet `0.15.8`, coverlet `10.0.1` | — | see [development-guide.md](./development-guide.md) |
+| Testing | xUnit **v3** `4.0.0`, Microsoft.NET.Test.Sdk `18.10.1`, Shouldly `4.3.0`, NSubstitute `6.2.0`, bUnit `2.11.3`, Verify `33.0.2`, FsCheck.Xunit.v3 `3.4.0`, PactNet `5.0.1`, BenchmarkDotNet `0.15.8`, coverlet `10.0.1` | — | see [development-guide.md](./development-guide.md) |
 | Packages | Centralized | — | [Directory.Packages.props](Directory.Packages.props), `ManagePackageVersionsCentrally=true` |
 
 ## Repository classification

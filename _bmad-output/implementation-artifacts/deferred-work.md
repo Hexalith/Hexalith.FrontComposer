@@ -10595,3 +10595,23 @@ source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command
 severity: high
 reason: summary: `CiGovernanceTests.EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval` asserts `eng/pact_provider_apphost_smoke.py` contains `ReferencePath`, but that string was removed from the script before Story 11.27 branched, so the Quality workflow is red independently of this story. evidence: `CiGovernanceTests.cs:3944` reads the script and calls `appHostSmokeSource.ShouldContain("ReferencePath")`; `grep -c ReferencePath eng/pact_provider_apphost_smoke.py` returns `0`. `git log -S "ReferencePath" -- eng/pact_provider_apphost_smoke.py` shows the string was introduced at `12523054` and removed at `a2592f3a`, and `git merge-base --is-ancestor a2592f3a aba29291` confirms the removal predates Story 11.27's baseline. The same "Gate 2b: Infrastructure governance and telemetry contracts" step failed on the pre-story run at `9843841b` (run 35003168322). Consequence: `build-and-test` cannot go green on Story 11.27's HEAD even after this story's own governance drift is resealed, so Story 11.27 must not be accepted on a green-CI basis. Settled by either restoring the `ReferencePath` capture in `eng/pact_provider_apphost_smoke.py` or updating the governance assertion to the current evidence contract - a decision owned by the EventStore runtime-evidence lane, not by a locator story.
 status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-update-latest-submodules-and-package-versions.md`
+  summary: Repair the pre-existing Counter-sample Inline popover auto-close failure after confirmed submission.
+  evidence: Formal review confirmed the live S3 path is intentionally skipped because the popover remains open after confirmation; the defect predates the Playwright dependency update and requires Shell lifecycle/event propagation work rather than package compatibility changes.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-update-latest-submodules-and-package-versions.md`
+  summary: Repair the pre-existing Counter-sample LastUsed prefill integration failure.
+  evidence: Formal review confirmed the live S5 path is intentionally skipped because submit, navigation, and reopen still produce the constructor default instead of the last submitted value; isolated unit coverage passes, so subscriber/storage integration tracing is required outside this dependency update.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-update-latest-submodules-and-package-versions.md`
+  summary: Restore Escape-key closure for the Inline Fluent popover and add live browser coverage.
+  evidence: Historical Story 2.2 evidence shows Escape does not cross the FluentPopover web-component boundary to the Blazor handler; the dependency-update gate preserves keyboard-accessible Cancel behavior but cannot resolve the pre-existing product event-propagation defect.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-update-latest-submodules-and-package-versions.md`
+  summary: Resolve pre-existing shell-chrome nested-interactive Axe findings with owned full-shell coverage.
+  evidence: Formal review confirmed full-page scanning exposes shell-level nested-interactive findings outside the Story 2.2 command surfaces; the repaired dependency gate now asserts and scans its exact declared surfaces, while shell header/navigation remediation needs a dedicated UI accessibility change.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-update-latest-submodules-and-package-versions.md`
+  summary: Reconcile the concurrent Story 11.27 tracking regression back to its owner-approved state.
+  evidence: The baseline diff includes Story 11.27 changing from done/review to in-progress through externally advanced root commit f20a1fc73c6c9be184b6a10949b54799e978e3cb; this dependency-update worktree did not author it and must not overwrite concurrent user history.

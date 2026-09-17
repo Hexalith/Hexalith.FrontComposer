@@ -68,7 +68,7 @@ DiffEngine_Disabled=true dotnet test tests/Hexalith.FrontComposer.SourceTools.Te
 
 **Trait categories** used as filters: `Governance`, `Contract`, `Performance`, `e2e-palette`, `NightlyProperty`, `Quarantined`. CI runs Governance and the default lane as **blocking**; palette/perf/quarantine lanes are advisory/warning-only.
 
-**Test stack:** xUnit **v3** (`xunit.v3` 4.0.0), Shouldly 4.3.0 (assertions — never raw `Assert.*`), NSubstitute 6.2.0 (mocks), bUnit 2.9.0 (Blazor components), Verify 32.0.0 (snapshots; `Verify.XunitV3`, not `Verify.Xunit`), FsCheck.Xunit.v3 3.4.0 (property tests), PactNet 5.0.1 (consumer contracts), BenchmarkDotNet 0.15.8 (in a **separate** `Shell.Tests.Bench` exe), coverlet 10.0.1.
+**Test stack:** xUnit **v3** (`xunit.v3` 4.0.0), Shouldly 4.3.0 (assertions — never raw `Assert.*`), NSubstitute 6.2.0 (mocks), bUnit 2.11.3 (Blazor components), Verify 33.0.2 (snapshots; `Verify.XunitV3`, not `Verify.Xunit`), FsCheck.Xunit.v3 3.4.0 (property tests), PactNet 5.0.1 (consumer contracts), BenchmarkDotNet 0.15.8 (in a **separate** `Shell.Tests.Bench` exe), coverlet 10.0.1.
 
 **Test conventions:** three-part names `Subject_Scenario_Expectation`; `.verified.txt` snapshots are committed and updated intentionally; generator tests go through `CompilationHelper.CreateCompilation()`; Blazor component tests use `GeneratedComponentTestBase`/`AddFrontComposerTestHost` with `JSInterop.Mode = Loose`; public API baselines are enforced intentionally (`PublicAPI.Shipped.txt` in the Testing library via `PackageBoundaryTests`, and the focused Shell FC-TBL surface in `PublicAPI.FcTbl.Shipped.txt` via `FcTblPackageBoundaryTests`); the **NFR17 tripwire** must be updated alongside any new `IStorageService.SetAsync` call site; CI fails on a **stale pact diff**.
 
@@ -84,6 +84,19 @@ npm run test:a11y          # accessibility + keyboard + media + zoom + visual sp
 ```
 
 CI installs Chromium only for the accessibility/visual lane. The Playwright config also declares Firefox and WebKit projects for local cross-browser checks; install those optional browser payloads with `npm run install:browsers` from `tests/e2e` or `npm run test:e2e:install` from the repository root.
+
+The same blocking quality job also runs the legacy Story 2.2 result contract and live browser harness:
+
+```bash
+cd tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd
+npm ci
+npx playwright install --with-deps chromium
+npm run test:runner
+npm run story2.2:e2e
+```
+
+The live command builds and starts the Counter specimen in Release configuration and writes its
+machine-readable result plus screenshots beside the harness unless `FC_STORY_2_2_OUTPUT_DIR` is set.
 
 The e2e lane builds the `samples/Counter/Counter.Web` specimen host with `Hexalith__FrontComposer__Specimens__Enabled=true` and `ASPNETCORE_ENVIRONMENT=Test`. Root convenience scripts in [package.json](package.json): `npm run test:e2e:install`, `test:e2e`, `test:e2e:a11y`, `test:e2e:visual(:update)`, `test:e2e:ui`, `test:e2e:report`.
 

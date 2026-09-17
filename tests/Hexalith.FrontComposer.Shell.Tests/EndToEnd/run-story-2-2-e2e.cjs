@@ -7,8 +7,11 @@ const AxeBuilder = require('@axe-core/playwright').default;
 
 const repoRoot = path.resolve(__dirname, '../../..');
 const baseUrl = 'http://127.0.0.1:5055';
-const artifactPath = path.join(__dirname, '2-2-e2e-results.json');
-const evidenceDir = path.join(__dirname, 'evidence');
+const outputDir = process.env.FC_STORY_2_2_OUTPUT_DIR
+  ? path.resolve(repoRoot, process.env.FC_STORY_2_2_OUTPUT_DIR)
+  : __dirname;
+const artifactPath = path.join(outputDir, '2-2-e2e-results.json');
+const evidenceDir = path.join(outputDir, 'evidence');
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -37,11 +40,26 @@ async function waitForServer(url, timeoutMs) {
   throw new Error(`Timed out waiting for ${url}`);
 }
 
+async function gotoInteractivePage(page, url, expectedTitle) {
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor({
+    state: 'visible',
+    timeout: 60000,
+  });
+  await page.waitForFunction(
+    title => document.title === title,
+    expectedTitle,
+    { timeout: 60000 });
+}
+
 function startServer() {
   const args = [
     'run',
     '--project',
     path.join(repoRoot, 'samples', 'Counter', 'Counter.Web', 'Counter.Web.csproj'),
+    '--configuration',
+    'Release',
+    '--no-launch-profile',
     '--urls',
     baseUrl,
   ];
@@ -66,7 +84,7 @@ async function captureScreenshot(page, scenario) {
   const fileName = `${sanitizeName(scenario)}.png`;
   const fullPath = path.join(evidenceDir, fileName);
   await page.screenshot({ path: fullPath, fullPage: true });
-  return path.relative(__dirname, fullPath).replace(/\\/g, '/');
+  return path.relative(outputDir, fullPath).replace(/\\/g, '/');
 }
 
 function filterConsoleMessages(messages) {
@@ -75,6 +93,12 @@ function filterConsoleMessages(messages) {
 
 function unique(items) {
   return [...new Set(items.filter(Boolean))];
+}
+
+async function waitForSelectors(page, selectors) {
+  for (const selector of selectors) {
+    await page.locator(selector).first().waitFor({ state: 'visible', timeout: 60000 });
+  }
 }
 
 function resultExitCode(results) {
@@ -107,13 +131,26 @@ async function main() {
   try {
     await waitForServer(`${baseUrl}/counter`, 90000);
     browser = await chromium.launch({ headless: true });
-    const context = await browser.newContext();
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 900 },
+    });
 
     const runScenario = async (scenario, callback) => {
       const page = await context.newPage();
       const consoleMessages = [];
-      page.on('console', message => consoleMessages.push(`[console:${message.type()}] ${message.text()}`));
-      page.on('pageerror', error => consoleMessages.push(`[pageerror] ${error.message}`));
+      const runtimeFailures = [];
+      page.on('console', message => {
+        const diagnostic = `[console:${message.type()}] ${message.text()}`;
+        consoleMessages.push(diagnostic);
+        if (message.type() === 'error') {
+          runtimeFailures.push(diagnostic);
+        }
+      });
+      page.on('pageerror', error => {
+        const diagnostic = `[pageerror] ${error.message}`;
+        consoleMessages.push(diagnostic);
+        runtimeFailures.push(diagnostic);
+      });
 
       const started = Date.now();
       const evidence = {
@@ -140,10 +177,22 @@ async function main() {
         evidence.screenshot = await captureScreenshot(page, scenario);
       }
       catch (error) {
+        status = 'fail';
         evidence.consoleMatches.push(`screenshot failed: ${error instanceof Error ? error.message : String(error)}`);
       }
 
+      try {
+        await page.close();
+      }
+      catch (error) {
+        status = 'fail';
+        evidence.consoleMatches.push(`page close failed: ${error instanceof Error ? error.message : String(error)}`);
+      }
+
       evidence.consoleMatches.push(...filterConsoleMessages(consoleMessages));
+      if (runtimeFailures.length > 0) {
+        status = 'fail';
+      }
 
       results.push({
         scenario,
@@ -155,35 +204,32 @@ async function main() {
         },
         durationMs: Date.now() - started,
       });
-
-      await page.close();
     };
 
     await runScenario('S1 Inline render', async page => {
-      await page.goto(`${baseUrl}/counter`, { waitUntil: 'domcontentloaded' });
-      const inline = page.locator('section.inline-section');
+      await gotoInteractivePage(page, `${baseUrl}/counter`, 'Counter sample');
+      const inline = page.locator('fluent-accordion-item.inline-section');
       await inline.waitFor({ state: 'visible', timeout: 60000 });
       // FluentButton renders as <fluent-button>; prefer exact text over role mapping.
       await inline.getByText('Increment', { exact: true }).first().waitFor({ state: 'visible', timeout: 60000 });
       return {
-        domSelectors: ['section.inline-section', 'fluent-button:has-text("Increment")'],
+        domSelectors: ['fluent-accordion-item.inline-section', 'fluent-button:has-text("Increment")'],
       };
     });
 
     await runScenario('S2 Inline popover open/close', async page => {
-      await page.goto(`${baseUrl}/counter`, { waitUntil: 'domcontentloaded' });
-      const inline = page.locator('section.inline-section');
+      await gotoInteractivePage(page, `${baseUrl}/counter`, 'Counter sample');
+      const inline = page.locator('fluent-accordion-item.inline-section');
       await inline.waitFor({ state: 'visible', timeout: 60000 });
       await inline.getByText('Increment', { exact: true }).first().click();
-      await inline.locator('.fc-popover').waitFor({ state: 'attached', timeout: 60000 });
-      await inline.locator('.fc-popover').getByText('Cancel', { exact: true }).click();
-      await page.waitForTimeout(250);
-      const popoverStillOpen = await inline.locator('.fc-popover').isVisible().catch(() => false);
-      if (popoverStillOpen) {
-        throw new Error('Popover still visible after Cancel');
-      }
+      const popover = inline.locator('.fc-popover');
+      await popover.waitFor({ state: 'visible', timeout: 60000 });
+      const cancel = popover.getByRole('button', { name: 'Cancel' });
+      await cancel.focus();
+      await cancel.press('Enter');
+      await popover.waitFor({ state: 'hidden', timeout: 10000 });
       return {
-        domSelectors: ['section.inline-section', '.fc-popover'],
+        domSelectors: ['fluent-accordion-item.inline-section', '.fc-popover'],
       };
     });
 
@@ -193,10 +239,10 @@ async function main() {
     );
 
     await runScenario('S4 Compact inline render', async page => {
-      await page.goto(`${baseUrl}/counter`, { waitUntil: 'domcontentloaded' });
-      await page.locator('section.command-section .fc-expand-in-row').waitFor();
+      await gotoInteractivePage(page, `${baseUrl}/counter`, 'Counter sample');
+      await page.locator('fluent-accordion-item.command-section .fc-expand-in-row').waitFor();
       return {
-        domSelectors: ['section.command-section .fc-expand-in-row'],
+        domSelectors: ['fluent-accordion-item.command-section .fc-expand-in-row'],
       };
     });
 
@@ -206,24 +252,44 @@ async function main() {
     );
 
     await runScenario('S6 FullPage route', async page => {
-      await page.goto(`${baseUrl}/commands/Counter/ConfigureCounterCommand?returnPath=%2Fcounter&projectionTypeFqn=Counter.Domain.CounterProjection`, { waitUntil: 'domcontentloaded' });
-      await page.locator('nav[aria-label="breadcrumb"]').waitFor();
+      await gotoInteractivePage(
+        page,
+        `${baseUrl}/commands/Counter/ConfigureCounterCommand?returnPath=%2Fcounter&projectionTypeFqn=Counter.Domain.CounterProjection`,
+        'Configure Counter');
+      const selectors = ['nav[aria-label="breadcrumb"]', 'form'];
+      await waitForSelectors(page, selectors);
       await page.getByText('Configure Counter').first().waitFor();
       return {
-        domSelectors: ['nav[aria-label="breadcrumb"]', 'form'],
+        domSelectors: selectors,
       };
     });
 
-    pushBlocked(
-      'S7 FullPage ReturnPath safe',
-      'skipped: Blazor enhanced navigation home after submit is not consistently observable via Playwright waitForURL; D32 routing is covered by CommandRendererFullPageTests',
-    );
+    await runScenario('S7 FullPage ReturnPath safe', async page => {
+      await gotoInteractivePage(
+        page,
+        `${baseUrl}/commands/Counter/ConfigureCounterCommand?returnPath=https%3A%2F%2Fevil.example%2Fpath&projectionTypeFqn=Counter.Domain.CounterProjection`,
+        'Configure Counter');
+      const selectors = ['nav[aria-label="breadcrumb"]', 'nav[aria-label="breadcrumb"] a[href="/"]'];
+      await waitForSelectors(page, selectors);
+      const breadcrumbHref = await page.locator('nav[aria-label="breadcrumb"] a').first().getAttribute('href');
+      if (breadcrumbHref !== '/') {
+        throw new Error(`Unsafe returnPath breadcrumb resolved to ${breadcrumbHref ?? '<missing>'} instead of /`);
+      }
+      return {
+        domSelectors: selectors,
+      };
+    });
 
-    const runAxeScenario = async (scenario, url, selectors) => {
+    const runAxeScenario = async (scenario, url, expectedTitle, selectors) => {
       await runScenario(scenario, async page => {
-        await page.goto(url, { waitUntil: 'domcontentloaded' });
+        await gotoInteractivePage(page, url, expectedTitle);
+        await waitForSelectors(page, selectors);
         // Sample host + Fluent UI: suppress rules that are theme/third-party noise for this harness.
-        const analysis = await new AxeBuilder({ page })
+        const axe = new AxeBuilder({ page });
+        for (const selector of selectors) {
+          axe.include(selector);
+        }
+        const analysis = await axe
           .disableRules(['aria-prohibited-attr', 'color-contrast', 'label'])
           .analyze();
         const serious = analysis.violations.filter(v => ['serious', 'critical'].includes(v.impact || ''));
@@ -240,16 +306,19 @@ async function main() {
     await runAxeScenario(
       'A11Y Inline page',
       `${baseUrl}/counter`,
-      ['section.inline-section', 'section.command-section', 'section.data-section']);
+      'Counter sample',
+      ['fluent-accordion-item.inline-section', 'fluent-accordion-item.command-section', 'section.data-section']);
 
     await runAxeScenario(
       'A11Y Compact page',
       `${baseUrl}/counter`,
-      ['section.command-section .fc-expand-in-row']);
+      'Counter sample',
+      ['fluent-accordion-item.command-section .fc-expand-in-row']);
 
     await runAxeScenario(
       'A11Y FullPage route',
       `${baseUrl}/commands/Counter/ConfigureCounterCommand?returnPath=%2Fcounter&projectionTypeFqn=Counter.Domain.CounterProjection`,
+      'Configure Counter',
       ['nav[aria-label="breadcrumb"]', 'form']);
 
     pushBlocked('S8 Hot-reload density flip', 'blocked: local browser harness does not orchestrate dotnet watch file mutation safely');

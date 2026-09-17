@@ -45,13 +45,15 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **Aspire/AppHost:** `Aspire.Hosting.AppHost` **13.5.4**; Keycloak hosting
   **`13.5.4-preview.1.26464.4`**. Bump in lockstep with sibling AppHosts only in an owned story
 - **Identity:** `NUlid` **1.7.3**; `messageId`/`correlationId` are ULIDs, never GUIDs
-- **Runtime support:** `System.Collections.Immutable`/`System.Text.Json` **10.0.11**,
-  `Microsoft.Extensions.*` **10.0.11**, SignalR/OIDC **10.0.11**, `System.Reactive` **7.0.0**
-- **Testing:** xUnit v3 **4.0.0**, bUnit **2.9.0**, Microsoft.NET.Test.Sdk **18.10.1**, Verify/Verify.XunitV3 **33.0.2**,
+- **Runtime support:** `System.Collections.Immutable`/`System.Text.Json` **10.0.12**,
+  `Microsoft.Extensions.*` **10.0.12**, SignalR/OIDC **10.0.12**, `System.Reactive` **7.0.0**
+- **Testing:** xUnit v3 **4.0.0**, bUnit **2.11.3**, Microsoft.NET.Test.Sdk **18.10.1**, Verify/Verify.XunitV3 **33.0.2**,
   NSubstitute **6.2.0**, Shouldly **4.3.0**, FsCheck.Xunit.v3 **3.4.0**, PactNet **5.0.1**,
   BenchmarkDotNet **0.15.8**
 - **E2E:** Playwright **1.63.0**, TypeScript **7.0.2**, Node types **26.6.1**, Node engine `>=24.10.0`,
-  npm `>=10`; `tests/e2e/.nvmrc` pins Node `24`
+  npm `>=10`; `tests/e2e/.nvmrc` pins Node `24`. The blocking quality lane runs both the maintained
+  `tests/e2e` suite and the legacy Story 2.2 result-contract/live-browser checks under
+  `tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd`
 - **Tooling:** dotnet-stryker **5.0.0**, semantic-release **25.0.9**, commitlint **21.2.2**, Husky **9.1.7**
 - **Release posture:** latest stable baseline is `v1.12.0`; Release Owner approved `2.0.0` for the
   binary-breaking Contracts.UI and Story 11.12 assembly/type ownership moves. The release commit
