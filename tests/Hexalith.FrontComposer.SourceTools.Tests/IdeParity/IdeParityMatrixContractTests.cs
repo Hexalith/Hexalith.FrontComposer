@@ -27,7 +27,7 @@ public sealed class IdeParityMatrixContractTests {
         JsonElement metadata = root.GetProperty("metadata");
         string activeDotnetSdk = RequiredString(metadata, "dotnetSdk");
         string evidenceBaselineDotnetSdk = RequiredString(metadata, "evidenceBaselineDotnetSdk");
-        activeDotnetSdk.ShouldBe("10.0.400");
+        activeDotnetSdk.ShouldBe("10.0.401");
         evidenceBaselineDotnetSdk.ShouldBe("10.0.302");
         RequiredString(metadata, "evidenceRevalidationStatus").ShouldBe("revalidation-pending");
         RequiredString(metadata, "evidenceRevalidationReason").ShouldContain(activeDotnetSdk);
@@ -102,10 +102,10 @@ public sealed class IdeParityMatrixContractTests {
         markdown.ShouldContain("OmniSharp-only VS Code is unsupported in v1");
         markdown.ShouldContain("direct generated-file rename is unsupported");
         markdown.ShouldContain("Generated files remain read-only by design");
-        markdown.ShouldContain("10.0.400");
+        markdown.ShouldContain("10.0.401");
         markdown.ShouldContain("Captured evidence baseline .NET SDK | 10.0.302");
         markdown.ShouldContain("`revalidation-pending`");
-        markdown.ShouldContain("do not certify 10.0.400 manual IDE behavior");
+        markdown.ShouldContain("do not certify 10.0.401 manual IDE behavior");
         markdown.ShouldContain(GeneratedOutputPathContract.Template);
         markdown.ShouldContain("Evidence Manifest Schema");
         markdown.ShouldContain("samples/IdeParityCounter");
@@ -200,10 +200,10 @@ public sealed class IdeParityMatrixContractTests {
             .ShouldContain("matrix-evidence-revalidation-status:validated");
         matrix["metadata"]!["evidenceRevalidationStatus"] = "revalidation-pending";
 
-        manifest["ideVersions"]!["dotnetSdk"] = "10.0.400";
+        manifest["ideVersions"]!["dotnetSdk"] = "10.0.401";
         using var falselyRebasedManifest = JsonDocument.Parse(manifest.ToJsonString());
         ValidateEvidenceManifestBaseline(falselyRebasedManifest.RootElement, "10.0.302", "2026-05-09")
-            .ShouldContain("evidence-dotnet-sdk-baseline:10.0.400");
+            .ShouldContain("evidence-dotnet-sdk-baseline:10.0.401");
 
         JsonArray rows = matrix["rows"]!.AsArray();
         rows[0]!["evidenceArtifact"] = "artifacts/ide-parity/../diagnostic-registry.json";

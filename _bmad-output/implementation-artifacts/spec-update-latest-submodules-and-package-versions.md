@@ -2,9 +2,10 @@
 title: 'Update Root Submodules and FrontComposer Package Versions'
 type: 'chore'
 created: '2026-09-16'
-status: 'ready-for-dev'
+status: 'in-progress'
 route: 'dispatch'
 review_loop_iteration: 0
+baseline_commit: '1e9348e45f4545192e5b74b44d011fc3a9ba4e61'
 context:
   - '{project-root}/_bmad-output/project-context.md'
 ---

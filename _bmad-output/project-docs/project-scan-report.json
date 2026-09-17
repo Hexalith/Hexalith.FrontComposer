@@ -44,7 +44,7 @@
     "src_projects": 7, "test_projects": 7, "sample_projects": 6
   },
   "technology_stack": {
-    "runtime": ".NET 10 (root/default SDK 10.0.400, rollForward latestPatch; source AppHost compatibility SDK 10.0.302 side-by-side)",
+    "runtime": ".NET 10 (root/default SDK 10.0.401, rollForward latestPatch; source AppHost compatibility SDK 10.0.302 side-by-side)",
     "language": "C# latest, Nullable enable, ImplicitUsings enable, TreatWarningsAsErrors true",
     "target_frameworks": "net10.0 (most); net10.0 + netstandard2.0 multi-target for Contracts and SourceTools",
     "ui": "Blazor + Microsoft.FluentUI.AspNetCore.Components 5.0.0-rc.5-26219.1 (FluentUI v5)",
@@ -55,8 +55,8 @@
     "realtime": "Microsoft.AspNetCore.SignalR.Client 10.0.11",
     "auth": "Microsoft.AspNetCore.Authentication.OpenIdConnect 10.0.11",
     "reactive": "System.Reactive 7.0.0",
-    "orchestration": "Aspire.Hosting.AppHost 13.5.3 (Counter sample)",
-    "testing": "xUnit v3 4.0.0, Shouldly 4.3.0, NSubstitute 6.2.0, bUnit 2.9.0, Verify 32.0.0, FsCheck.Xunit.v3 3.4.0, PactNet 5.0.1, BenchmarkDotNet 0.15.8, coverlet 10.0.1; Playwright 1.62.1, TypeScript 7.0.2, Node >=24.10.0",
+    "orchestration": "Aspire.Hosting.AppHost 13.5.4 (Counter sample)",
+    "testing": "xUnit v3 4.0.0, Microsoft.NET.Test.Sdk 18.10.1, Shouldly 4.3.0, NSubstitute 6.2.0, bUnit 2.9.0, Verify 33.0.2, FsCheck.Xunit.v3 3.4.0, PactNet 5.0.1, BenchmarkDotNet 0.15.8, coverlet 10.0.1; Playwright 1.63.0, @types/node 26.6.1, TypeScript 7.0.2, Node >=24.10.0",
     "package_management": "Centralized (Directory.Packages.props, ManagePackageVersionsCentrally true)",
     "release": "exact-SHA operator dispatch -> unsigned NuGet candidates; NuGet.org repository signatures verified after publication; no containers"
   },

@@ -8,9 +8,9 @@ Visual Studio is the calibration IDE used to baseline the suite. It is not the r
 
 | Surface | Pin |
 | --- | --- |
-| Active repository .NET SDK | 10.0.400 |
+| Active repository .NET SDK | 10.0.401 |
 | Captured evidence baseline .NET SDK | 10.0.302 |
-| Evidence revalidation status | `revalidation-pending` — the active SDK changed after the 2026-05-09 capture; existing manifests remain historical evidence and do not certify 10.0.400 manual IDE behavior |
+| Evidence revalidation status | `revalidation-pending` — the active SDK changed after the 2026-05-09 capture; existing manifests remain historical evidence and do not certify 10.0.401 manual IDE behavior |
 | SourceTools package | Hexalith.FrontComposer.SourceTools local v0.1 story-9-3 |
 | Generated output path contract | obj/{Config}/{TFM}/generated/HexalithFrontComposer/{TypeName}.g.razor.cs (canonical: `Hexalith.FrontComposer.Contracts.Conformance.GeneratedOutputPathContract.Template`) |
 | Generated output path contract version | v1 |

@@ -16,11 +16,11 @@ _This file contains critical rules and patterns that AI agents must follow when 
 
 ## Technology Stack & Versions
 
-- **.NET 10** — `global.json` pins SDK `10.0.400` with `rollForward: latestPatch`; root props enable
+- **.NET 10** — `global.json` pins SDK `10.0.401` with `rollForward: latestPatch`; root props enable
   `Nullable`, `ImplicitUsings`, `LangVersion=latest`, and **`TreatWarningsAsErrors=true`**
 - **Source-resource SDK compatibility:** full Debug/Aspire source topology also requires SDK
   `10.0.302` installed side-by-side because the remote-equal Commons, Memories, Parties, and
-  PolymorphicSerializations roots still pin that SDK. The repository root/default remains `10.0.400`;
+  PolymorphicSerializations roots still pin that SDK. The repository root/default remains `10.0.401`;
   this is a narrow source-resource exception, not permission for other stale workflow pins
 - **Solution format:** `Hexalith.FrontComposer.slnx` only. Do not create or use `.sln`
 - **Central package management:** `Directory.Packages.props` owns all package versions; never add
@@ -42,17 +42,17 @@ _This file contains critical rules and patterns that AI agents must follow when 
   UI code uses FrontComposer/Fluent v5 components, not raw interactive HTML controls
 - **State:** `Fluxor.Blazor.Web` **6.11.0**
 - **MCP:** `ModelContextProtocol.AspNetCore` **2.2.0**
-- **Aspire/AppHost:** `Aspire.Hosting.AppHost` **13.5.3**; Keycloak hosting
-  **`13.5.3-preview.1.26425.3`**. Bump in lockstep with sibling AppHosts only in an owned story
+- **Aspire/AppHost:** `Aspire.Hosting.AppHost` **13.5.4**; Keycloak hosting
+  **`13.5.4-preview.1.26464.4`**. Bump in lockstep with sibling AppHosts only in an owned story
 - **Identity:** `NUlid` **1.7.3**; `messageId`/`correlationId` are ULIDs, never GUIDs
 - **Runtime support:** `System.Collections.Immutable`/`System.Text.Json` **10.0.11**,
   `Microsoft.Extensions.*` **10.0.11**, SignalR/OIDC **10.0.11**, `System.Reactive` **7.0.0**
-- **Testing:** xUnit v3 **4.0.0**, bUnit **2.9.0**, Verify/Verify.XunitV3 **32.0.0**,
+- **Testing:** xUnit v3 **4.0.0**, bUnit **2.9.0**, Microsoft.NET.Test.Sdk **18.10.1**, Verify/Verify.XunitV3 **33.0.2**,
   NSubstitute **6.2.0**, Shouldly **4.3.0**, FsCheck.Xunit.v3 **3.4.0**, PactNet **5.0.1**,
   BenchmarkDotNet **0.15.8**
-- **E2E:** Playwright **1.62.1**, TypeScript **7.0.2**, Node engine `>=24.10.0`,
+- **E2E:** Playwright **1.63.0**, TypeScript **7.0.2**, Node types **26.6.1**, Node engine `>=24.10.0`,
   npm `>=10`; `tests/e2e/.nvmrc` pins Node `24`
-- **Release tooling:** semantic-release **25.0.9**, commitlint **21.2.2**, Husky **9.1.7**
+- **Tooling:** dotnet-stryker **5.0.0**, semantic-release **25.0.9**, commitlint **21.2.2**, Husky **9.1.7**
 - **Release posture:** latest stable baseline is `v1.12.0`; Release Owner approved `2.0.0` for the
   binary-breaking Contracts.UI and Story 11.12 assembly/type ownership moves. The release commit
   range must contain `!` or a `BREAKING CHANGE:` footer; `CHANGELOG.md` stays semantic-release-owned

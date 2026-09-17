@@ -36,7 +36,7 @@ The `frontcomposer` **CLI** (`Hexalith.FrontComposer.Cli`) lets you `inspect` th
 
 | Category | Technology | Version | Notes |
 |---|---|---|---|
-| Runtime / SDK | .NET | 10 (root/default SDK `10.0.400`, `rollForward: latestPatch`; source AppHost compatibility SDK `10.0.302` installed side-by-side) | pinned in [global.json](global.json); narrow exception for remote-equal source resources |
+| Runtime / SDK | .NET | 10 (root/default SDK `10.0.401`, `rollForward: latestPatch`; source AppHost compatibility SDK `10.0.302` installed side-by-side) | pinned in [global.json](global.json); narrow exception for remote-equal source resources |
 | Language | C# `latest` | — | `Nullable`, `ImplicitUsings` enabled; **`TreatWarningsAsErrors=true`** ([Directory.Build.props](Directory.Build.props)) |
 | Target frameworks | `net10.0`; `net10.0` + `netstandard2.0`; `netstandard2.0` | — | Contracts is dual-TFM and UI-clean; Contracts.UI/runtime are net10; SourceTools is netstandard2.0 |
 | UI | Microsoft.FluentUI.AspNetCore.Components (FluentUI v5) | `5.0.0-rc.5-26219.1` | exact pin (ADR-003); v5 RC |
@@ -47,8 +47,8 @@ The `frontcomposer` **CLI** (`Hexalith.FrontComposer.Cli`) lets you `inspect` th
 | Real-time | Microsoft.AspNetCore.SignalR.Client | `10.0.11` | EventStore projection subscriptions |
 | Auth | Microsoft.AspNetCore.Authentication.OpenIdConnect | `10.0.11` | host-owned OIDC |
 | Reactive | System.Reactive | `7.0.0` | badge-count producer/consumer isolation |
-| Orchestration | Aspire.Hosting.AppHost | `13.5.3` | local topology |
-| Testing | xUnit **v3** `4.0.0`, Shouldly `4.3.0`, NSubstitute `6.2.0`, bUnit `2.9.0`, Verify `32.0.0`, FsCheck.Xunit.v3 `3.4.0`, PactNet `5.0.1`, BenchmarkDotNet `0.15.8`, coverlet `10.0.1` | — | see [development-guide.md](./development-guide.md) |
+| Orchestration | Aspire.Hosting.AppHost | `13.5.4` | local topology |
+| Testing | xUnit **v3** `4.0.0`, Microsoft.NET.Test.Sdk `18.10.1`, Shouldly `4.3.0`, NSubstitute `6.2.0`, bUnit `2.9.0`, Verify `33.0.2`, FsCheck.Xunit.v3 `3.4.0`, PactNet `5.0.1`, BenchmarkDotNet `0.15.8`, coverlet `10.0.1` | — | see [development-guide.md](./development-guide.md) |
 | Packages | Centralized | — | [Directory.Packages.props](Directory.Packages.props), `ManagePackageVersionsCentrally=true` |
 
 ## Repository classification

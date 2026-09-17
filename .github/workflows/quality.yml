@@ -30,7 +30,7 @@ permissions:
   contents: read
 
 env:
-  ASPIRE_CLI_INSTALL: dotnet tool install --global Aspire.Cli --version 13.5.3
+  ASPIRE_CLI_INSTALL: dotnet tool install --global Aspire.Cli --version 13.5.4
 
 jobs:
   build-and-test:
@@ -50,7 +50,7 @@ jobs:
 
       - uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
         with:
-          dotnet-version: '10.0.400'
+          dotnet-version: '10.0.401'
 
       - name: Record full CI lane start
         shell: bash
@@ -662,7 +662,7 @@ jobs:
 
       - uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
         with:
-          dotnet-version: '10.0.400'
+          dotnet-version: '10.0.401'
 
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
@@ -750,9 +750,9 @@ jobs:
 
       - uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
         with:
-          dotnet-version: '10.0.400'
+          dotnet-version: '10.0.401'
 
-      # The root/default remains 10.0.400. This one live source-resource lane also loads
+      # The root/default remains 10.0.401. This one live source-resource lane also loads
       # remote-equal roots that still pin 10.0.302, so install that SDK side-by-side only here.
       - name: Install source-resource compatibility SDK
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
@@ -762,9 +762,9 @@ jobs:
       - name: Verify root and source-resource SDKs
         shell: bash
         run: |
-          test "$(dotnet --version)" = "10.0.400"
+          test "$(dotnet --version)" = "10.0.401"
           dotnet --list-sdks | grep -E '^10\.0\.302\s'
-          dotnet --list-sdks | grep -E '^10\.0\.400\s'
+          dotnet --list-sdks | grep -E '^10\.0\.401\s'
 
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:

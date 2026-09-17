@@ -299,7 +299,7 @@ if ($rows.Count -eq 0) {
 $pins = @(
     @{ Product = "Visual Studio 2022"; Env = "FRONTCOMPOSER_IDE_VERSION_VISUALSTUDIO"; Minimum = "17.13"; Maximum = "17.14"; Os = "Windows" },
     @{ Product = "JetBrains Rider"; Env = "FRONTCOMPOSER_IDE_VERSION_RIDER"; Minimum = "2026.1"; Maximum = "2026.2"; Os = "Windows/macOS/Linux" },
-    @{ Product = ".NET SDK"; Env = "FRONTCOMPOSER_DOTNET_SDK_VERSION"; Minimum = "10.0.400"; Maximum = "10.0.500"; Pattern = '^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$'; Os = "All supported" }
+    @{ Product = ".NET SDK"; Env = "FRONTCOMPOSER_DOTNET_SDK_VERSION"; Minimum = "10.0.401"; Maximum = "10.0.500"; Pattern = '^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$'; Os = "All supported" }
 )
 
 $githubAvailable = Test-GhAvailable

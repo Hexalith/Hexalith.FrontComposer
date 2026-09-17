@@ -49,8 +49,8 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
     "@faker-js/faker": "^10.6.0",
-    "@playwright/test": "^1.62.1",
-    "@types/node": "^26.4.0",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.6.1",
     "cross-env": "^10.1.0",
     "typescript": "^7.0.2"
   },

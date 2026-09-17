@@ -2,7 +2,7 @@
 title: 'Story 11.27: Generated Command Route Acceptance Locator'
 type: 'bugfix'
 created: '2026-09-16'
-status: 'done'
+status: 'in-progress'
 route: 'oneshot'
 review_loop_iteration: 0
 context:

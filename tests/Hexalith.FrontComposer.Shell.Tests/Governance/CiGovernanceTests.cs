@@ -966,9 +966,9 @@ public sealed class CiGovernanceTests {
 
     [Fact]
     public void ToolchainPins_MatchApprovedDotnetAndAspireVersions() {
-        const string expectedDotnetSdk = "10.0.400";
+        const string expectedDotnetSdk = "10.0.401";
         const string sourceResourceCompatibilitySdk = "10.0.302";
-        const string expectedAspire = "13.5.3";
+        const string expectedAspire = "13.5.4";
         const string expectedDaprCli = "1.18.0";
         const string expectedDaprRuntime = "1.18.2";
         string root = RepositoryRoot();
@@ -981,9 +981,9 @@ public sealed class CiGovernanceTests {
             @"(?m)^[ \t]*dotnet-version[ \t]*:[ \t]*(?<quote>['""]?)(?<version>[^'""#\s]+)\k<quote>[ \t]*(?:#.*)?\r?$",
             RegexOptions.CultureInvariant);
         foreach (string quotingVariant in new[] {
-            "dotnet-version: '10.0.400'",
-            "dotnet-version: \"10.0.400\"",
-            "dotnet-version: 10.0.400",
+            "dotnet-version: '10.0.401'",
+            "dotnet-version: \"10.0.401\"",
+            "dotnet-version: 10.0.401",
         }) {
             Match sample = dotnetVersionPin.Match(quotingVariant);
             sample.Success.ShouldBeTrue($"active dotnet-version parser must support valid YAML quoting: {quotingVariant}");
@@ -1064,12 +1064,13 @@ public sealed class CiGovernanceTests {
 
     [Theory]
     [InlineData("10.0.302", 1)]
-    [InlineData("10.0.400", 0)]
+    [InlineData("10.0.400", 1)]
+    [InlineData("10.0.401", 0)]
     [InlineData("10.0.499", 0)]
     [InlineData("10.0.500", 1)]
-    [InlineData("10.0.400-preview.1", 1)]
+    [InlineData("10.0.401-preview.1", 1)]
     [InlineData("10.0", 1)]
-    [InlineData("10.0.400.1", 1)]
+    [InlineData("10.0.401.1", 1)]
     public void IdeParityVersionRevalidation_DotnetSdkFeatureBand_FailsClosed(
         string detectedSdk,
         int expectedExitCode) {

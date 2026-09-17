@@ -6,7 +6,7 @@
 
 | Tool | Version / note |
 |---|---|
-| .NET SDK | **`10.0.400`** (pinned in [global.json](global.json), `rollForward: latestPatch`); full source/Aspire topology additionally needs `10.0.302` installed side-by-side for remote-equal source resources that still pin it |
+| .NET SDK | **`10.0.401`** (pinned in [global.json](global.json), `rollForward: latestPatch`); full source/Aspire topology additionally needs `10.0.302` installed side-by-side for remote-equal source resources that still pin it |
 | Node.js | **`>=24.10.0`** for release tooling and both Playwright workspaces; `tests/e2e/.nvmrc` pins the Node `24` line |
 | npm | **`>=10`** for the e2e workspace dependencies |
 | PowerShell (`pwsh`) | for the `eng/*.ps1` validation scripts and the docs gate |
@@ -28,7 +28,7 @@ git submodule update --init   # root-declared references/ submodules only
 
 Debug builds reference the submodules as **local `ProjectReference`s** ([deps.local.props](deps.local.props)). Release/package builds reference the published NuGet packages instead ([deps.nuget.props](deps.nuget.props)); direct `references/Hexalith.*` solution entries are disabled for `Release|*`. Use `-p:UseHexalithProjectReferences=true` only for an intentional source-debug Release session. `-p:UseNuGetDeps=true|false` remains the legacy inverse switch.
 
-The repository root/default SDK is always `10.0.400`. A full source-mode AppHost additionally loads
+The repository root/default SDK is always `10.0.401`. A full source-mode AppHost additionally loads
 Commons, Memories, Parties, and PolymorphicSerializations roots that still pin `10.0.302`, so clean
 contributors and CI must install `10.0.302` side-by-side before that topology. Do not change the root
 pin or general workflow setup to `10.0.302`; the compatibility install is scoped to the source-resource lane.
