@@ -7,7 +7,7 @@
 | Tool | Version / note |
 |---|---|
 | .NET SDK | **`10.0.401`** (pinned in [global.json](global.json), `rollForward: latestPatch`); full source/Aspire topology additionally needs `10.0.302` installed side-by-side for remote-equal source resources that still pin it |
-| Node.js | **`>=24.10.0`** for release tooling and both Playwright workspaces; `tests/e2e/.nvmrc` pins the Node `24` line |
+| Node.js | **`>=24.10.0`** in all three npm workspaces: the root release tooling and both e2e/Playwright workspaces; `tests/e2e/.nvmrc` pins the Node `24` line |
 | npm | **`>=10`** for the e2e workspace dependencies |
 | PowerShell (`pwsh`) | for the `eng/*.ps1` validation scripts and the docs gate |
 | dotnet local tools | `dotnet tool restore` (provides DocFX for the docs gate) |

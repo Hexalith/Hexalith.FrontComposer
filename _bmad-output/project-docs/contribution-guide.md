@@ -53,7 +53,7 @@ From [CONTRIBUTING.md](CONTRIBUTING.md) and the generator design:
 
 ## Testing requirements
 
-- Use Node `>=24.10.0` (the repository's Node 24 policy) for release tooling and both e2e workspaces.
+- Use Node `>=24.10.0` (the repository's Node 24 policy) in all three npm workspaces: the root release tooling and both e2e/Playwright workspaces.
   Keep .NET SDK `10.0.401` as the root/default. The full source-mode Aspire topology alone also needs
   SDK `10.0.302` installed side-by-side for remote-equal source resources that still pin that SDK.
 - All configured tests must pass before a change is done.

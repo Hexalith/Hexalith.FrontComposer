@@ -84,13 +84,19 @@ public class CommandFormTransformTests {
         result.ButtonLabel.ShouldBe("Increment Counter");
     }
 
-    [Fact]
-    public void Transform_ButtonLabel_UsesDisplayNameIfPresent() {
-        CommandModel command = BuildCommand(typeName: "SomeCommand", displayName: "Place Order");
+    [Theory]
+    [InlineData("SomeCommand", "Place Order", "Place Order")]
+    [InlineData("SomeCommand", "  Place Order  ", "Place Order")]
+    [InlineData("SomeCommand", "  Place Order Command  ", "Place Order")]
+    [InlineData("ConfigureCounterCommand", "   ", "Configure Counter")]
+    public void Transform_ButtonLabel_UsesDisplayNameIfPresent(string typeName, string displayName, string expected) {
+        CommandModel command = BuildCommand(typeName: typeName, displayName: displayName);
 
         CommandFormModel result = CommandFormTransform.Transform(command);
+        McpCommandDescriptorModel descriptor = McpManifestTransform.TransformCommand(command);
 
-        result.ButtonLabel.ShouldBe("Place Order");
+        result.ButtonLabel.ShouldBe(expected);
+        descriptor.Title.ShouldBe(expected);
     }
 
     [Fact]

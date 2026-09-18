@@ -679,14 +679,17 @@ jobs:
         run: npm ci
 
       - name: Install legacy Story 2.2 Playwright dependencies
+        id: legacy_deps
         working-directory: tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd
         run: npm ci
 
       - name: Run legacy Story 2.2 result-contract tests
+        id: legacy_contract
         working-directory: tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd
         run: npm run test:runner
 
       - name: Install legacy Story 2.2 Chromium browser
+        id: legacy_chromium
         working-directory: tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd
         run: npx playwright install --with-deps chromium
 
@@ -695,6 +698,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Build Counter specimen host
+        id: counter_build
         run: dotnet build samples/Counter/Counter.Web/Counter.Web.csproj --configuration Release
 
       - name: Typecheck Playwright accessibility lane
@@ -726,6 +730,7 @@ jobs:
         run: npm run test:a11y
 
       - name: Run legacy Story 2.2 live browser gate
+        if: ${{ !cancelled() && steps.legacy_deps.outcome == 'success' && steps.legacy_contract.outcome == 'success' && steps.legacy_chromium.outcome == 'success' && steps.counter_build.outcome == 'success' }}
         working-directory: tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd
         env:
           FC_STORY_2_2_OUTPUT_DIR: artifacts/story-2-2-live

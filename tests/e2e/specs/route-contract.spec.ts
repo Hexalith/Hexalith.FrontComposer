@@ -29,7 +29,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await expect(page).toHaveURL(/\/counter\/counter-projection$/);
     await expect(counter.heading).toBeVisible();
 
-    await page.goto('/counter');
+    await counter.goto();
     await expect(page).toHaveURL(/\/counter$/);
 
     await page.getByTestId('fc-palette-trigger').click();

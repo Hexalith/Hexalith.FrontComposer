@@ -100,8 +100,8 @@ public static class CommandFormTransform {
     /// for UX consistency.
     /// </summary>
     private static string BuildButtonLabel(CommandModel model) {
-        if (!string.IsNullOrEmpty(model.DisplayName)) {
-            return StripTrailingCommand(model.DisplayName!);
+        if (!string.IsNullOrWhiteSpace(model.DisplayName)) {
+            return StripTrailingCommand(model.DisplayName!.Trim());
         }
 
         string? humanized = CamelCaseHumanizer.Humanize(model.TypeName);

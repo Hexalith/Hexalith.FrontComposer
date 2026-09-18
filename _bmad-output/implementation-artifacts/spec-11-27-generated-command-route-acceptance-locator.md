@@ -2,7 +2,7 @@
 title: 'Story 11.27: Generated Command Route Acceptance Locator'
 type: 'bugfix'
 created: '2026-09-16'
-status: 'in-progress'
+status: 'done'
 route: 'oneshot'
 review_loop_iteration: 0
 context:
@@ -30,6 +30,8 @@ context:
 - Patch verification on 2026-09-16: the Aspire `counter-web` resource rebuild succeeded with 0 warnings and 0 errors; the focused shell render regression passed 1/1; `npm --prefix tests/e2e run typecheck` passed; the Development AppHost route-contract lane passed 1/1 including direct route-heading focus proof; the refreshed visual lane passed 6/6; and visual-baseline governance passed for all six changed snapshots. An exploratory Development smoke run reached the hardened shared heading wait, then failed on the pre-existing missing `Count` projection value and nested hamburger control finding; neither failure was introduced by these patches or is part of this locator story.
 - Completion patches on 2026-09-17 emit a globally qualified `FcPageHeader` with `HeadingTabIndex=-1` on every generated full-page command route, place the header and form in a 24 px vertical `FluentStack`, fall back from a whitespace-only display name to the humanized command type, reuse `CounterPage.heading` for the route-contract proof, assert focus on the generated `Configure Counter` heading, pin the shell banner's retained `size="700"` / `weight="bold"` rendering, document the shell/route heading ownership boundary, reconcile the Story 11.27 deferred-work records, and bind E11R-AI-3 to its delivering commits and CI caveat.
 - Current-tree verification at baseline revision `f1b60402292716a981ebbbe4b6d72e2581477e70` plus this story's working-tree diff: the Aspire `counter-web` resource rebuild passed with 0 warnings and 0 errors; `npm --prefix tests/e2e run typecheck` passed; the Development AppHost `test:route-contract` lane passed 1/1 and rendered the command header/form stack; both affected Debug test projects built with 0 warnings and 0 errors; `CommandRendererEmitterTests` passed 32/32; `FrontComposerShellTests` passed 36/36; the full SourceTools assembly passed 1,278/1,278; and `AnalyzerPolicyGovernanceTests` passed 8/8 before the final inventory-only reseal check passed 1/1. The analyzer inventory was resealed to the verified current-tree value 3,330 / `ac72b72b7c2f9cf781e6b5805d6ca3ae14f781fece67b3edc946a58fd1e42727`, covering this story's two regression identifiers plus the concurrent dependency-maintenance governance identifier.
+- The 2026-09-18 continuation hardened the blocking Story 2.2 live gate around generated command routes: both FullPage scenarios now require the exact main-scoped level-one heading to be focused, Axe scans that heading, unsafe ReturnPath checks inspect every breadcrumb link, navigation rejects non-OK responses, and child-process exits or spawn failures abort server readiness immediately within the declared timeout. It also aligned whitespace-only and padded command display names across form and MCP labels, restored the route-contract interactivity gate, kept the live workflow step observable after ordinary failures while respecting cancellation and failed prerequisites, clarified generated-header ownership, updated the three-workspace guidance, linked two deferrals to existing `DW-1108`/`DW-1109`, and converted the other three sweep-invisible dependency deferrals to full `DW-1977` through `DW-1979` records.
+- Continuation verification: JavaScript syntax and the hardened legacy runner contract passed 6/6; TypeScript typecheck passed; `CommandFormTransformTests` passed 31/31; the configured non-performance SourceTools lane passed 1,275/1,275; the affected Shell and SourceTools test projects built with 0 warnings and 0 errors; `QualityWorkflow_PinsAccessibilityVisualGate` passed 1/1; the live Story 2.2 harness passed all eight active scenarios with five existing explicit skips before and after review patches; and the Development AppHost route-contract lane passed 1/1 at the discovered healthy `http://localhost:5201` endpoint. The unfiltered SourceTools assembly passed 1,278/1,279 and missed only the performance-category cache-miss p95 soft budget (1,094.819 ms versus 1,000 ms). The docs gate reached its final manifest check and reported the unrelated pre-existing `docs/ide-parity-matrix.md` fingerprint mismatch (`5de4c694...` expected, `02b8efd2...` actual).
 
 ## Review Triage Log
 
@@ -65,6 +67,17 @@ context:
 - **low — changed non-snapshot files did not preserve repository CRLF policy:** Patched by mechanically normalizing changed text files while retaining LF for the Verify snapshot.
 - **low — an initial locator-only note conflicts with the later owner-approved generator patches:** Deferred to `DW-1969` because the review workflow excludes fixes whose target is the spec under review.
 - **low — the historical completion checklist remains unchecked despite delivery:** Deferred to `DW-1970` for the same spec-review constraint; implementation and verification evidence above record the delivered state.
+
+### Final one-shot Blind Hunter review (2026-09-18 continuation)
+
+- **medium — server-readiness fetches could outlive the declared timeout:** Patched by aborting each probe with the remaining readiness budget; the runner contract proves a stalled request terminates at the deadline.
+- **medium — an emitted child-process spawn error was unmonitored:** Patched by resolving one monitored termination outcome from either `error` or `exit`, moving startup inside the evidence-producing `try`, and adding a spawn-error regression.
+- **medium — route-heading focus used a one-shot DOM read:** Patched with a bounded animation-frame retry after heading visibility so `FocusOnNavigate` may settle without introducing a flaky blocking gate.
+- **medium — bare `always()` ignored cancellation and missing prerequisites:** Patched with named dependency, runner-contract, browser, and Counter-build prerequisite outcomes plus `!cancelled()`, while still running after an ordinary specimen/a11y failure; governance pins the condition.
+- **low — the popover auto-close deferral duplicated `DW-1108`:** Patched by removing the new duplicate and enriching the existing open record with the dependency-review source and severity.
+- **low — the LastUsed prefill deferral duplicated `DW-1109`:** Patched by removing the new duplicate and enriching the existing open record with the dependency-review source and severity.
+- **low — padded nonblank display-name trimming lacked a regression:** Patched with padded display-name and padded `Command`-suffix theory cases.
+- **medium — the public MCP descriptor title inherited the new policy without direct coverage:** Patched by asserting `McpManifestTransform.TransformCommand()` produces the same normalized title for ordinary, padded, suffix-bearing, and whitespace-only display names.
 
 ## Review Findings
 

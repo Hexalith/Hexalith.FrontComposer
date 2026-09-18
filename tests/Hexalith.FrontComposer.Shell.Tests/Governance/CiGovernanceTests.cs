@@ -416,15 +416,18 @@ public sealed class CiGovernanceTests {
         a11yStep.ShouldNotContain("continue-on-error: true");
 
         string legacyInstallStep = ExtractNamedStep(a11yJob, "Install legacy Story 2.2 Playwright dependencies");
+        legacyInstallStep.ShouldContain("id: legacy_deps");
         legacyInstallStep.ShouldContain("working-directory: tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd");
         legacyInstallStep.ShouldContain("run: npm ci");
         legacyInstallStep.ShouldNotContain("continue-on-error: true");
 
         string legacyResultContractStep = ExtractNamedStep(a11yJob, "Run legacy Story 2.2 result-contract tests");
+        legacyResultContractStep.ShouldContain("id: legacy_contract");
         legacyResultContractStep.ShouldContain("working-directory: tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd");
         legacyResultContractStep.ShouldContain("run: npm run test:runner");
 
         string legacyChromiumStep = ExtractNamedStep(a11yJob, "Install legacy Story 2.2 Chromium browser");
+        legacyChromiumStep.ShouldContain("id: legacy_chromium");
         legacyChromiumStep.ShouldContain("working-directory: tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd");
         legacyChromiumStep.ShouldContain("run: npx playwright install --with-deps chromium");
         foreach (string blockingLegacyStep in new[] { legacyResultContractStep, legacyChromiumStep }) {
@@ -440,12 +443,14 @@ public sealed class CiGovernanceTests {
         legacyBrowserStep.ShouldContain("working-directory: tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd");
         legacyBrowserStep.ShouldContain("FC_STORY_2_2_OUTPUT_DIR: artifacts/story-2-2-live");
         legacyBrowserStep.ShouldContain("run: npm run story2.2:e2e");
+        legacyBrowserStep.ShouldContain("if: ${{ !cancelled()");
+        legacyBrowserStep.ShouldContain("steps.legacy_deps.outcome == 'success'");
+        legacyBrowserStep.ShouldContain("steps.legacy_contract.outcome == 'success'");
+        legacyBrowserStep.ShouldContain("steps.legacy_chromium.outcome == 'success'");
+        legacyBrowserStep.ShouldContain("steps.counter_build.outcome == 'success'");
         legacyBrowserStep.ShouldNotContain("continue-on-error: true");
-        Regex.IsMatch(
-                legacyBrowserStep,
-                @"^[ \t]*if[ \t]*:",
-                RegexOptions.Multiline | RegexOptions.CultureInvariant)
-            .ShouldBeFalse("the blocking legacy browser gate must run unconditionally");
+        string counterBuildStep = ExtractNamedStep(a11yJob, "Build Counter specimen host");
+        counterBuildStep.ShouldContain("id: counter_build");
         a11yJob.IndexOf(legacyInstallStep, StringComparison.Ordinal)
             .ShouldBeLessThan(a11yJob.IndexOf(legacyResultContractStep, StringComparison.Ordinal));
         a11yJob.IndexOf(legacyResultContractStep, StringComparison.Ordinal)

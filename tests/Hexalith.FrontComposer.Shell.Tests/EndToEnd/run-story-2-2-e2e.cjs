@@ -21,27 +21,57 @@ function sanitizeName(value) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
-async function waitForServer(url, timeoutMs) {
+function serverTerminationError(url, termination) {
+  if (termination.error) {
+    return new Error(`Counter host failed before ${url} became ready: ${termination.error.message}`);
+  }
+
+  return new Error(
+    `Counter host exited before ${url} became ready (code=${termination.code ?? '<none>'}, signal=${termination.signal ?? '<none>'})`);
+}
+
+async function waitForServer(url, timeoutMs, serverTerminationPromise) {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
-    try {
-      const response = await fetch(url);
-      if (response.ok) {
-        return;
-      }
-    }
-    catch {
-      // Server still starting.
+    const remainingMs = timeoutMs - (Date.now() - started);
+    const outcome = await Promise.race([
+      fetch(url, { signal: AbortSignal.timeout(Math.max(1, remainingMs)) })
+        .then(response => ({ kind: 'response', response }))
+        .catch(() => ({ kind: 'retry' })),
+      serverTerminationPromise.then(termination => ({ kind: 'termination', termination })),
+    ]);
+
+    if (outcome.kind === 'termination') {
+      throw serverTerminationError(url, outcome.termination);
     }
 
-    await sleep(1000);
+    if (outcome.kind === 'response' && outcome.response.ok) {
+      return;
+    }
+
+    const remainingDelayMs = timeoutMs - (Date.now() - started);
+    if (remainingDelayMs <= 0) {
+      break;
+    }
+
+    const terminationWhileWaiting = await Promise.race([
+      sleep(Math.min(1000, remainingDelayMs)).then(() => null),
+      serverTerminationPromise,
+    ]);
+    if (terminationWhileWaiting !== null) {
+      throw serverTerminationError(url, terminationWhileWaiting);
+    }
   }
 
   throw new Error(`Timed out waiting for ${url}`);
 }
 
 async function gotoInteractivePage(page, url, expectedTitle) {
-  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  const response = await page.goto(url, { waitUntil: 'domcontentloaded' });
+  if (!response || !response.ok()) {
+    throw new Error(`Navigation to ${url} failed with HTTP ${response?.status() ?? '<no response>'}`);
+  }
+
   await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor({
     state: 'visible',
     timeout: 60000,
@@ -52,7 +82,7 @@ async function gotoInteractivePage(page, url, expectedTitle) {
     { timeout: 60000 });
 }
 
-function startServer() {
+function startServer(spawnProcess = spawn) {
   const args = [
     'run',
     '--project',
@@ -64,7 +94,7 @@ function startServer() {
     baseUrl,
   ];
 
-  const child = spawn('dotnet', args, {
+  const child = spawnProcess('dotnet', args, {
     cwd: repoRoot,
     env: {
       ...process.env,
@@ -77,7 +107,12 @@ function startServer() {
   child.stdout.on('data', chunk => logs.push(chunk.toString()));
   child.stderr.on('data', chunk => logs.push(chunk.toString()));
 
-  return { child, logs };
+  const terminationPromise = new Promise(resolve => {
+    child.once('error', error => resolve({ code: null, signal: null, error }));
+    child.once('exit', (code, signal) => resolve({ code, signal, error: null }));
+  });
+
+  return { child, logs, terminationPromise };
 }
 
 async function captureScreenshot(page, scenario) {
@@ -93,6 +128,37 @@ function filterConsoleMessages(messages) {
 
 function unique(items) {
   return [...new Set(items.filter(Boolean))];
+}
+
+function getRouteHeading(page, name) {
+  return page
+    .getByRole('main')
+    .getByRole('heading', { name, exact: true, level: 1 });
+}
+
+async function assertFocused(locator, description) {
+  await locator.waitFor({ state: 'visible', timeout: 60000 });
+  const isFocused = await locator.evaluate(
+    (element, timeoutMs) => new Promise(resolve => {
+      const deadline = performance.now() + timeoutMs;
+      const checkFocus = () => {
+        if (element === document.activeElement) {
+          resolve(true);
+        }
+        else if (performance.now() >= deadline) {
+          resolve(false);
+        }
+        else {
+          requestAnimationFrame(checkFocus);
+        }
+      };
+
+      checkFocus();
+    }),
+    10000);
+  if (!isFocused) {
+    throw new Error(`${description} is not focused`);
+  }
 }
 
 async function waitForSelectors(page, selectors) {
@@ -113,7 +179,9 @@ async function main() {
   fs.mkdirSync(evidenceDir, { recursive: true });
 
   const results = [];
-  const { child: server, logs: serverLogs } = startServer();
+  let server;
+  let serverLogs = [];
+  let serverTerminationPromise;
   let browser;
 
   const pushBlocked = (scenario, reason) => {
@@ -129,7 +197,11 @@ async function main() {
   };
 
   try {
-    await waitForServer(`${baseUrl}/counter`, 90000);
+    const startedServer = startServer();
+    server = startedServer.child;
+    serverLogs = startedServer.logs;
+    serverTerminationPromise = startedServer.terminationPromise;
+    await waitForServer(`${baseUrl}/counter`, 90000, serverTerminationPromise);
     browser = await chromium.launch({ headless: true });
     const context = await browser.newContext({
       viewport: { width: 1280, height: 900 },
@@ -258,9 +330,10 @@ async function main() {
         'Configure Counter');
       const selectors = ['nav[aria-label="breadcrumb"]', 'form'];
       await waitForSelectors(page, selectors);
-      await page.getByText('Configure Counter').first().waitFor();
+      const heading = getRouteHeading(page, 'Configure Counter');
+      await assertFocused(heading, 'Generated command route heading');
       return {
-        domSelectors: selectors,
+        domSelectors: [...selectors, '[role="main"] h1'],
       };
     });
 
@@ -271,19 +344,27 @@ async function main() {
         'Configure Counter');
       const selectors = ['nav[aria-label="breadcrumb"]', 'nav[aria-label="breadcrumb"] a[href="/"]'];
       await waitForSelectors(page, selectors);
-      const breadcrumbHref = await page.locator('nav[aria-label="breadcrumb"] a').first().getAttribute('href');
-      if (breadcrumbHref !== '/') {
-        throw new Error(`Unsafe returnPath breadcrumb resolved to ${breadcrumbHref ?? '<missing>'} instead of /`);
+      const breadcrumbHrefs = await page.locator('nav[aria-label="breadcrumb"] a').evaluateAll(
+        anchors => anchors.map(anchor => anchor.getAttribute('href')));
+      const unsafeBreadcrumbHrefs = breadcrumbHrefs.filter(href => href !== '/');
+      if (unsafeBreadcrumbHrefs.length > 0) {
+        throw new Error(
+          `Unsafe returnPath breadcrumbs resolved to ${unsafeBreadcrumbHrefs.map(href => href ?? '<missing>').join(', ')} instead of /`);
       }
       return {
         domSelectors: selectors,
       };
     });
 
-    const runAxeScenario = async (scenario, url, expectedTitle, selectors) => {
+    const runAxeScenario = async (scenario, url, expectedTitle, selectors, expectedHeadingName = null) => {
       await runScenario(scenario, async page => {
         await gotoInteractivePage(page, url, expectedTitle);
         await waitForSelectors(page, selectors);
+        if (expectedHeadingName) {
+          const heading = getRouteHeading(page, expectedHeadingName);
+          await assertFocused(heading, `${scenario} route heading`);
+        }
+
         // Sample host + Fluent UI: suppress rules that are theme/third-party noise for this harness.
         const axe = new AxeBuilder({ page });
         for (const selector of selectors) {
@@ -319,7 +400,8 @@ async function main() {
       'A11Y FullPage route',
       `${baseUrl}/commands/Counter/ConfigureCounterCommand?returnPath=%2Fcounter&projectionTypeFqn=Counter.Domain.CounterProjection`,
       'Configure Counter',
-      ['nav[aria-label="breadcrumb"]', 'form']);
+      ['nav[aria-label="breadcrumb"]', 'form', '[role="main"] h1'],
+      'Configure Counter');
 
     pushBlocked('S8 Hot-reload density flip', 'blocked: local browser harness does not orchestrate dotnet watch file mutation safely');
     pushBlocked('S9 D31 dev-mode warning', 'blocked: sample host always wires DemoUserContextAccessor; scenario needs alternate host configuration');
@@ -349,7 +431,9 @@ async function main() {
       await browser.close();
     }
 
-    server.kill();
+    if (server) {
+      server.kill();
+    }
   }
 }
 
@@ -383,4 +467,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { resultExitCode };
+module.exports = { gotoInteractivePage, resultExitCode, startServer, waitForServer };

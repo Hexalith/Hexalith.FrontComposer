@@ -117,8 +117,10 @@ The shell ships the FC-A11Y primitive set as part of its own frame:
 The shell banner title is deliberately rendered as non-heading text. Its size and weight still come
 from the public `Typography.AppTitle` token, whose `H1` tag mapping remains available to external
 consumers, but the shell overrides that tag to `Span` so routed content owns the page's single `h1`.
-Route pages should render a non-blank `FcPageHeader` with `HeadingTabIndex="-1"`; this gives Blazor's
-`FocusOnNavigate Selector="h1"` an unambiguous, focusable route-content target.
+Generated full-page command routes already render a non-blank `FcPageHeader` with
+`HeadingTabIndex="-1"` and must not be wrapped in another page header. Custom route pages should
+render one such header; this gives Blazor's `FocusOnNavigate Selector="h1"` an unambiguous,
+focusable route-content target.
 
 Adopter customizations are held to the same bar at build time by the **override-accessibility
 diagnostics**, which are `Warning` severity promoted to build-breakers under

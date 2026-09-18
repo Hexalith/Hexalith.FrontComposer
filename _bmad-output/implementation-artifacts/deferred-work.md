@@ -2986,6 +2986,8 @@ archived: 2026-09-18
 
 origin: migrated from legacy ledger ("Deferred from: Story 2-2 Session E (2026-04-16) — Counter sample E2E findings"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
+source_spec: `_bmad-output/implementation-artifacts/spec-update-latest-submodules-and-package-versions.md`
+severity: medium
 reason: **S3 — Inline popover does not auto-close on Confirmed in the Counter sample.** The renderer's `OnConfirmedAsync` calls `ClosePopoverAsync()`, and the inner Form's `OnConfirmed` callback is wired via `EventCallback.Factory.Create(this, OnConfirmedAsync)`. In bUnit the `Renderer_OneField_PopoverSubmit_InnerFormDispatchesSubmittedAction` test verifies the dispatch reaches `Idle → Submitting → Confirmed`, but the auto-close side-effect is not asserted. In the Counter sample, after submitting the popover stays `opened='true'`. Hypotheses: (a) `OnStateChanged` fires `OnConfirmed` _before_ the renderer's `_popoverOpen=true` re-render lands, so `ClosePopoverAsync()`'s `if (!_popoverOpen) return;` early-out fires; (b) the FluentPopover web component's `Opened` attribute does not honor a re-render flip from `true → false` after the initial mount. Investigate by adding a Counter.Web smoke that asserts popover closure on Confirmed; consider an explicit `await InvokeAsync(StateHasChanged)` in `OpenPopoverAsync` before yielding, or moving `OnConfirmedAsync` to dispatch via the popover registry's bookkeeping. Reconciliation: Row: DW-0377; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: Story 2-2 Session E (2026-04-16) — Counter sample E2E findings.
 status: open
 
@@ -2993,6 +2995,8 @@ status: open
 
 origin: migrated from legacy ledger ("Deferred from: Story 2-2 Session E (2026-04-16) — Counter sample E2E findings"), 2026-08-27
 location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
+source_spec: `_bmad-output/implementation-artifacts/spec-update-latest-submodules-and-package-versions.md`
+severity: medium
 reason: **S5 — LastUsedValueProvider prefill does not take effect in the Counter sample after Inline-popover submit + navigate-away/back.** Submitting `Amount=7` from the Inline popover, navigating to `/domain` and back to `/counter`, then re-opening the popover shows `Amount = 1` (the constructor initializer) instead of the expected `7`. bUnit-side coverage in `DerivedValueProviderChainTests` + `LastUsedSubscriberRuntimeTests` + `LastUsedSubscriberEmitterTests` all pass — meaning the contract holds in isolation. The integration gap is most likely: (a) `LastUsedSubscriberRegistry.Ensure<T>()` is called by the Form's `OnValidSubmitAsync` but the per-command subscriber may not be active in time to observe the Submitted action's typed payload; (b) the `InMemoryStorageService` (Singleton) write is happening but the read on the next render is not finding the key because of the D39 storage-key canonicalization (verify the read side uses the same `FrontComposerStorageKey.Build` canonicalization); (c) the Confirmed action fires but `OnConfirmed` doesn't invoke `Record<TCommand>` on the typed pending entry. Trace by enabling structured logging on the LastUsed subscriber and re-running the S5 scenario; consider adding a Counter.Web integration test that exercises submit → reload → prefill on the StubCommandService path. Reconciliation: Row: DW-0378; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: Story 2-2 Session E (2026-04-16) — Counter sample E2E findings.
 status: open
 
@@ -9564,25 +9568,30 @@ severity: medium
 reason: summary: The type specimen emits a nested `main` landmark inside the shell's page-level `main` landmark. evidence: `FrontComposerShell.razor` owns the page-level `role="main"`, while `samples/Counter/Counter.Specimens/FrontComposerTypeSpecimen.razor:13` renders another `<main>` as its route root. The specimen's scoped axe check starts at the inner landmark, so it does not detect the page-level duplication; a full-page accessibility scan or removal of the inner landmark would expose and settle the defect.
 status: open
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-update-latest-submodules-and-package-versions.md`
-  summary: Repair the pre-existing Counter-sample Inline popover auto-close failure after confirmed submission.
-  evidence: Formal review confirmed the live S3 path is intentionally skipped because the popover remains open after confirmation; the defect predates the Playwright dependency update and requires Shell lifecycle/event propagation work rather than package compatibility changes.
+### DW-1977: Restore Escape-key closure for the Inline Fluent popover and add live browser coverage
+origin: code review of spec-update-latest-submodules-and-package-versions.md (2026-09-18)
+location: tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd/run-story-2-2-e2e.cjs
+source_spec: `_bmad-output/implementation-artifacts/spec-update-latest-submodules-and-package-versions.md`
+severity: medium
+reason: summary: Escape does not cross the FluentPopover web-component boundary to the Blazor handler. evidence: Historical Story 2.2 evidence demonstrates the pre-existing product event-propagation defect; the dependency-update gate preserves keyboard-accessible Cancel behavior but does not exercise Escape closure.
+status: open
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-update-latest-submodules-and-package-versions.md`
-  summary: Repair the pre-existing Counter-sample LastUsed prefill integration failure.
-  evidence: Formal review confirmed the live S5 path is intentionally skipped because submit, navigation, and reopen still produce the constructor default instead of the last submitted value; isolated unit coverage passes, so subscriber/storage integration tracing is required outside this dependency update.
+### DW-1978: Resolve shell-chrome nested-interactive Axe findings with owned full-shell coverage
+origin: code review of spec-update-latest-submodules-and-package-versions.md (2026-09-18)
+location: src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor
+source_spec: `_bmad-output/implementation-artifacts/spec-update-latest-submodules-and-package-versions.md`
+severity: medium
+reason: summary: Full-page scanning exposes shell-level nested-interactive findings outside the Story 2.2 command surfaces. evidence: The repaired dependency gate asserts and scans its exact declared surfaces, while shell header/navigation remediation needs a dedicated UI accessibility change.
+status: open
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-update-latest-submodules-and-package-versions.md`
-  summary: Restore Escape-key closure for the Inline Fluent popover and add live browser coverage.
-  evidence: Historical Story 2.2 evidence shows Escape does not cross the FluentPopover web-component boundary to the Blazor handler; the dependency-update gate preserves keyboard-accessible Cancel behavior but cannot resolve the pre-existing product event-propagation defect.
-
-- source_spec: `_bmad-output/implementation-artifacts/spec-update-latest-submodules-and-package-versions.md`
-  summary: Resolve pre-existing shell-chrome nested-interactive Axe findings with owned full-shell coverage.
-  evidence: Formal review confirmed full-page scanning exposes shell-level nested-interactive findings outside the Story 2.2 command surfaces; the repaired dependency gate now asserts and scans its exact declared surfaces, while shell header/navigation remediation needs a dedicated UI accessibility change.
-
-- source_spec: `_bmad-output/implementation-artifacts/spec-update-latest-submodules-and-package-versions.md`
-  summary: Reconcile the concurrent Story 11.27 tracking regression back to its owner-approved state.
-  evidence: The baseline diff includes Story 11.27 changing from done/review to in-progress through externally advanced root commit f20a1fc73c6c9be184b6a10949b54799e978e3cb; this dependency-update worktree did not author it and must not overwrite concurrent user history.
+### DW-1979: Reconcile Story 11.27 tracking to its owner-approved state
+origin: code review of spec-update-latest-submodules-and-package-versions.md (2026-09-18)
+location: _bmad-output/implementation-artifacts/sprint-status.yaml
+source_spec: `_bmad-output/implementation-artifacts/spec-update-latest-submodules-and-package-versions.md`
+severity: medium
+reason: summary: The dependency-update baseline includes Story 11.27 changing from done/review to in-progress through externally advanced root commit f20a1fc73c6c9be184b6a10949b54799e978e3cb. evidence: The dependency-update worktree did not author that tracking change and could not overwrite concurrent user history; the Story 11.27 owner must reconcile it.
+status: done 2026-09-18
+resolution: Story 11.27 completed its one-shot implementation and review workflow; its spec is done and sprint status is review.
 
 ### DW-1968: Run the generated-command route and focus proof in a compatible automated CI lane
 origin: Blind Hunter review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-17)
