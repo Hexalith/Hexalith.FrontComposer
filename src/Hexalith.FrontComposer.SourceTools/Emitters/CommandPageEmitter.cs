@@ -7,8 +7,8 @@ using Microsoft.CodeAnalysis.CSharp;
 namespace Hexalith.FrontComposer.SourceTools.Emitters;
 
 /// <summary>
-/// Story 2-2 Task 4.5 — emits <c>{CommandTypeName}Page.g.razor.cs</c>: a routable wrapper
-/// hosting the FullPage renderer under <c>/commands/{BoundedContext}/{CommandTypeName}</c>.
+/// Story 2-2 Task 4.5 — emits <c>{CommandTypeName}Page.g.razor.cs</c>: a routable page
+/// composing the route header and FullPage renderer under <c>/commands/{BoundedContext}/{CommandTypeName}</c>.
 /// Dispatches the <c>RestoreGridStateAction</c> on mount (Decision D30 — reducer-only no-op today).
 /// </summary>
 public static class CommandPageEmitter {
@@ -41,7 +41,7 @@ public static class CommandPageEmitter {
         string route = model.FullPageRoute;
         string pageTitleText = EscapeString(model.DisplayLabel);
 
-        _ = sb.AppendLine("/// <summary>Generated routable host for the FullPage renderer (Story 2-2 Decision D5 + D22).</summary>");
+        _ = sb.AppendLine("/// <summary>Generated routable page composing a route header and FullPage renderer (Story 2-2 Decision D5 + D22).</summary>");
         _ = sb.AppendLine("[Route(\"" + route + "\")]");
         _ = sb.AppendLine("public partial class " + pageName + " : ComponentBase");
         _ = sb.AppendLine("{");

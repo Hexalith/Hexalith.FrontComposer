@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Components.Rendering;
 
 namespace Demo.Domain;
 
-/// <summary>Generated routable host for the FullPage renderer (Story 2-2 Decision D5 + D22).</summary>
+/// <summary>Generated routable page composing a route header and FullPage renderer (Story 2-2 Decision D5 + D22).</summary>
 [Route("/commands/Demo/DemoCommand")]
 public partial class DemoCommandPage : ComponentBase
 {

@@ -9652,3 +9652,32 @@ source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command
 severity: medium
 reason: summary: Unverified. `runScenario` records `console` `error` and `pageerror` into `runtimeFailures` and marks the scenario `fail` with no allowlist. evidence: `run-story-2-2-e2e.cjs:142-195`. Fluent/Blazor Development-host noise could fail the new blocking quality step; that emission is not shown on this HEAD. Settled by one live `npm run story2.2:e2e` run's `consoleMatches` on `c8beb9d9`. If the host is quiet, reject; if not, add a narrow allowlist or fix the host.
 status: open
+## Deferred from: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-18, chunk 1 product runtime)
+
+Reconfirmed existing open items without new ids: DW-1964 (Windows visual lane does not pin the banner retag), DW-1971 (no generated-command visual snapshot).
+
+### DW-1980: Generated command FcPageHeader does not name the shell main landmark
+origin: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-18, chunk 1)
+location: src/Hexalith.FrontComposer.SourceTools/Emitters/CommandPageEmitter.cs:105
+source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
+severity: low
+reason: summary: Generated full-page command routes now emit `FcPageHeader` without `HeadingId` and without `FcContentLabel`, so `#fc-main-content` keeps the implicit "main" name. evidence: `CommandPageEmitter.cs:105-109` sets `PageTitle`, `Heading`, and `HeadingTabIndex=-1` only; `FcPageHeader` docs require `HeadingId` plus `ContentLabelledBy`/`FcContentLabel` to name the landmark. Pre-existing unnamed-main default; AC2 requires one route heading, not an ID-contract. Settled by emitting a stable heading id and `FcContentLabel`, or by an explicit decision that generated command routes keep the implicit landmark name. Natural owner: a11y follow-up / Story 11.30.
+status: open
+
+### DW-1981: Field DisplayName still treats whitespace as an explicit label
+origin: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-18, chunk 1)
+location: src/Hexalith.FrontComposer.SourceTools/Transforms/CommandFormTransform.cs:53
+source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
+severity: low
+reason: summary: Command-level `[Display(Name)]` now uses `IsNullOrWhiteSpace` plus `Trim()`, but field mapping still uses `IsNullOrEmpty` for `hasExplicitDisplay` and `ResolveLabel`. evidence: `CommandFormTransform.cs:53-54` and `:88-90`; `RazorModelTransform.cs:343-344` is the same field path. Pre-existing; this story did not change field labels. Settled by applying the same trim/fallback to property display names, or by leaving field labels on the original empty-string rule.
+status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
+  summary: Add a canonical File List to Story 11.27.
+  evidence: The focused `validate-story-artifacts.py` invocation fails because the spec has no File List and therefore cannot reconcile the six changed story paths; the review workflow defers fixes whose target is the spec under review.
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
+  summary: Correct the product-runtime review tally and resolved-patch summary.
+  evidence: The recorded `1 decision-needed + 3 patch + 3 defer + 9 rejected` totals 16 rather than 15, and the summary still says three patches remain after all three entries were checked; the review workflow defers fixes whose target is the spec under review.
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
+  summary: Separate the appended product-runtime review headings from preceding Markdown content.
+  evidence: The spec's product-runtime review heading and the deferred-work product-runtime heading immediately follow list or record content without blank lines; the spec half of the formatting correction is deferred because the review workflow excludes fixes to the spec under review.

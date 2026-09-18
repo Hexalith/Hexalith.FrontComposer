@@ -111,6 +111,27 @@ public class CommandRendererEmitterTests {
     }
 
     [Fact]
+    public void Page_PaddedDisplayName_IsTrimmed() {
+        EquatableArray<PropertyModel> noProperties = new(ImmutableArray<PropertyModel>.Empty);
+        CommandModel command = new(
+            "ConfigureCounterCommand",
+            "Counter.Domain",
+            "Counter",
+            null,
+            "  Configure Counter Command  ",
+            noProperties,
+            noProperties,
+            noProperties);
+
+        CommandRendererModel renderer = CommandRendererTransform.Transform(
+            command,
+            CommandFluxorTransform.Transform(command));
+
+        renderer.DisplayLabel.ShouldBe("Configure Counter");
+        CommandPageEmitter.Emit(renderer).ShouldContain("\"Heading\", \"Configure Counter\"");
+    }
+
+    [Fact]
     public Task Renderer_OneField_WithIconAttributeSnapshot()
         => Verify(CommandRendererEmitter.Emit(BuildModel(1, iconName: "Regular.Size20.Settings")));
 
