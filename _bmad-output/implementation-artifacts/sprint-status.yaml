@@ -168,7 +168,7 @@ development_status:
   11-25-current-eventstore-release-identity-and-evidence: done
   11-26-analyzer-identifier-inventory-reconciliation: done
   11-27-generated-command-route-acceptance-locator: done
-  11-28-fc-nip-semantic-fixture-alignment: backlog
+  11-28-fc-nip-semantic-fixture-alignment: done
   11-29-fallback-refresh-and-view-registration-correctness: backlog
   11-30-testing-and-mcp-boundary-hardening: backlog
   11-31-canonical-correlation-pseudonymization: backlog

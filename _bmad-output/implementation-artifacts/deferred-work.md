@@ -9685,3 +9685,11 @@ status: open
 ## Deferred from: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-18, groups 1-2)
 
 Reconfirmed existing open items without new ids: DW-1980 (generated `FcPageHeader` does not name `#fc-main-content`), DW-1981 (field `DisplayName` still uses `IsNullOrEmpty`), DW-1964 (Linux visual baselines unused in CI), DW-1959/DW-1968 (`test:route-contract` remains operator-invoked), DW-1962 (fourteen page-wide `Counter` locators).
+
+### DW-1982: Reject duplicate exact table headings before parsing FC-NIP semantic tables.
+origin: spec-deferred d91cda565d3d
+location: tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/FcNipCommandTargetIdentityContractTests.cs:209; tests/e2e/specs/fc-nip-command-target-identity-contract.spec.ts:243
+source_spec: `spec-11-28-fc-nip-semantic-fixture-alignment.md`
+severity: medium
+reason: Both shared-manifest consumers locate only the first exact heading and validate that table. A later conflicting duplicate heading would be ignored, allowing documentation contradiction to escape the governance guard. This behavior predates Story 11.28 and is not caused by its fixture alignment.
+status: open
