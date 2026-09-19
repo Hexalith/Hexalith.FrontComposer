@@ -778,7 +778,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         self.package_ledger_path = temporary_root / "provider-package-ledger.json"
         self.provider_package_ledger = _synthetic_package_ledger(
             list(evidence.PROVIDER_PACKAGE_ASSETS),
-            "2026-09-19T18:43:43.792125+00:00",
+            "2026-09-19T19:58:33.842837+00:00",
             graph_sha256="1" * 64,
         )
         _write_json(self.package_ledger_path, self.provider_package_ledger)
@@ -820,7 +820,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             evidence.PROVIDER_PACKAGE_LEDGER_FILE,
             _synthetic_package_ledger(
                 list(evidence.PROVIDER_PACKAGE_ASSETS),
-                "2026-09-19T18:43:43.792125+00:00",
+                "2026-09-19T19:58:33.842837+00:00",
                 graph_sha256="2" * 64,
             ),
         )
@@ -1118,7 +1118,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             repository_root: Path,
             *arguments: str,
         ) -> subprocess.CompletedProcess[bytes] | None:
-            if repository_root.resolve(strict=False) == self.artifact_root.resolve(strict=False):
+            if repository_root.resolve(strict=False) in fixture_roots:
                 return subprocess.CompletedProcess(["git", *arguments], 0, b"", b"")
             return REAL_GIT_COMPLETED(repository_root, *arguments)
 
@@ -1200,6 +1200,85 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             self.artifact_root,
         )
 
+    def validate_successor_preparation(
+        self,
+        *,
+        frontcomposer_revision: str | None = None,
+        eventstore_source_revision: str = evidence.SUCCESSOR_SOURCE_SHA,
+        eventstore_package_version: str = evidence.SUCCESSOR_VERSION,
+        builds_catalog_revision: str = evidence.SUCCESSOR_BUILDS_SHA,
+        expected_identity_hash: str | None = None,
+    ) -> tuple[list[str], list[str], bool]:
+        manifest = _read_json(self.active_root / "frontcomposer-runtime-inputs.json")
+        revision = frontcomposer_revision or str(manifest["capturedRevision"])
+        provenance = {
+            "sourceSha": evidence.SUCCESSOR_SOURCE_SHA,
+            "releaseVersion": evidence.SUCCESSOR_VERSION,
+            "buildsSha": evidence.SUCCESSOR_BUILDS_SHA,
+            "releaseInventorySha256": evidence.INVENTORY_SHA256,
+            "frontComposerRevision": str(manifest["capturedRevision"]),
+            "runtimeInputTreeSha256": str(manifest["treeSha256"]),
+        }
+        identity_hash = expected_identity_hash or _sha256(self.identity_path)
+        with (
+            mock.patch.object(evidence, "IDENTITY_V3_SHA256", identity_hash),
+            mock.patch.object(evidence, "_live_provenance", return_value=provenance),
+        ):
+            return evidence.validate_successor_preparation(
+                self.identity_path,
+                self.active_root,
+                self.history_root,
+                self.pact_root,
+                self.artifact_root,
+                frontcomposer_revision=revision,
+                eventstore_source_revision=eventstore_source_revision,
+                eventstore_package_version=eventstore_package_version,
+                builds_catalog_revision=builds_catalog_revision,
+            )
+
+    def run_successor_cli(
+        self,
+        **coordinate_overrides: str,
+    ) -> tuple[int, str, str]:
+        manifest = _read_json(self.active_root / "frontcomposer-runtime-inputs.json")
+        coordinates = {
+            "frontcomposer_revision": str(manifest["capturedRevision"]),
+            "eventstore_source_revision": evidence.SUCCESSOR_SOURCE_SHA,
+            "eventstore_package_version": evidence.SUCCESSOR_VERSION,
+            "builds_catalog_revision": evidence.SUCCESSOR_BUILDS_SHA,
+            **coordinate_overrides,
+        }
+        provenance = {
+            "sourceSha": evidence.SUCCESSOR_SOURCE_SHA,
+            "releaseVersion": evidence.SUCCESSOR_VERSION,
+            "buildsSha": evidence.SUCCESSOR_BUILDS_SHA,
+            "releaseInventorySha256": evidence.INVENTORY_SHA256,
+            "frontComposerRevision": str(manifest["capturedRevision"]),
+            "runtimeInputTreeSha256": str(manifest["treeSha256"]),
+        }
+        arguments = [
+            "--prepare-runtime-successor",
+            "--active-identity", str(self.identity_path),
+            "--active-evidence-root", str(self.active_root),
+            "--history-evidence-root", str(self.history_root),
+            "--pact-dir", str(self.pact_root),
+            "--repository-root", str(self.artifact_root),
+            "--successor-frontcomposer-revision", coordinates["frontcomposer_revision"],
+            "--successor-eventstore-source-revision", coordinates["eventstore_source_revision"],
+            "--successor-eventstore-package-version", coordinates["eventstore_package_version"],
+            "--successor-builds-catalog-revision", coordinates["builds_catalog_revision"],
+        ]
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with (
+            mock.patch.object(evidence, "IDENTITY_V3_SHA256", _sha256(self.identity_path)),
+            mock.patch.object(evidence, "_live_provenance", return_value=provenance),
+            contextlib.redirect_stdout(stdout),
+            contextlib.redirect_stderr(stderr),
+        ):
+            result = evidence.main(arguments)
+        return result, stdout.getvalue(), stderr.getvalue()
+
     def write_live_receipt(self) -> list[str]:
         return evidence.write_live_receipt(
             self.live_root,
@@ -1225,15 +1304,15 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             evidence.APPHOST_PACKAGE_LEDGER_FILE,
             _synthetic_package_ledger(
                 [apphost_graph],
-                "2026-09-19T18:48:01.076589+00:00",
+                "2026-09-19T20:01:10.321867+00:00",
                 graph_sha256="7" * 64,
             ),
         )
         document = {
             "schema": "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v3",
-            "capturedAt": "2026-09-19T18:44:39.054401+00:00",
-            "executionStartedAt": "2026-09-19T18:48:06.876435+00:00",
-            "completedAt": "2026-09-19T18:49:16.126647+00:00",
+            "capturedAt": "2026-09-19T19:59:18.156037+00:00",
+            "executionStartedAt": "2026-09-19T20:01:13.576526+00:00",
+            "completedAt": "2026-09-19T20:02:02.038341+00:00",
             "timeoutSeconds": 600,
             "finalVerdict": "passed",
             "reasonCodes": [],
@@ -1778,6 +1857,14 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             _git_output("hash-object", f"--path={proposal}", "--", proposal),
             _git_output("hash-object", "--no-filters", "--", proposal),
         )
+        for reserved in (
+            "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v4.json",
+            "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v4/future.json",
+        ):
+            self.assertEqual(
+                _git_output("check-attr", "text", "--", reserved),
+                f"{reserved}: text: unset",
+            )
 
     def test_manifest_rejects_every_undeclared_file_and_hash_binds_runtime_receipts(self) -> None:
         unexpected = self.evidence_root / "apphost-smoke/unexpected.json"
@@ -1848,6 +1935,129 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                 any(f"Missing valid receipt for required role: {role}" in issue for issue in approval_issues),
                 approval_issues,
             )
+
+    def test_successor_preparation_accepts_exact_target_with_open_v3_predecessor(self) -> None:
+        errors, approval_issues, claimed = self.validate_successor_preparation()
+
+        self.assertEqual(errors, [])
+        self.assertFalse(claimed)
+        self.assertEqual(
+            evidence.SUCCESSOR_PREDECESSOR,
+            {
+                "path": evidence.ACTIVE_IDENTITY_PATH,
+                "sha256": evidence.IDENTITY_V3_SHA256,
+                "supersededForActiveReleaseSelectionOnly": True,
+            },
+        )
+        for role in evidence.ACTIVE_REQUIRED_ROLES:
+            self.assertTrue(
+                any(f"Missing valid receipt for required role: {role}" in issue for issue in approval_issues),
+                approval_issues,
+            )
+
+    def test_successor_cli_forwards_the_exact_four_coordinate_tuple(self) -> None:
+        result, stdout, stderr = self.run_successor_cli()
+
+        self.assertEqual(result, 0, stderr)
+        self.assertIn("EventStore runtime approval: OPEN", stdout)
+
+    def test_successor_cli_forwards_each_individually_drifted_coordinate(self) -> None:
+        cases = (
+            {"frontcomposer_revision": "0" * 40},
+            {"eventstore_source_revision": "0" * 40},
+            {"eventstore_package_version": "0.0.0"},
+            {"builds_catalog_revision": "0" * 40},
+        )
+
+        for coordinates in cases:
+            with self.subTest(coordinates=coordinates):
+                result, _, stderr = self.run_successor_cli(**coordinates)
+                self.assertEqual(result, 1, stderr)
+                self.assertTrue(
+                    "validator-owned target tuple" in stderr
+                    or "exact successor target inputs" in stderr,
+                    stderr,
+                )
+
+    def test_successor_preparation_reads_pins_and_parses_identity_v3_once(self) -> None:
+        real_bounded_read = evidence._bounded_read
+        identity_reads = 0
+
+        def tracking_bounded_read(path: Path, *args: Any, **kwargs: Any) -> bytes | None:
+            nonlocal identity_reads
+            if path == self.identity_path:
+                identity_reads += 1
+            return real_bounded_read(path, *args, **kwargs)
+
+        with mock.patch.object(evidence, "_bounded_read", side_effect=tracking_bounded_read):
+            errors, _, claimed = self.validate_successor_preparation()
+
+        self.assertEqual(errors, [])
+        self.assertFalse(claimed)
+        self.assertEqual(identity_reads, 1)
+
+    def test_successor_preparation_rejects_each_dispatch_target_drift(self) -> None:
+        manifest = _read_json(self.active_root / "frontcomposer-runtime-inputs.json")
+        cases = (
+            {"frontcomposer_revision": "0" * 40},
+            {"eventstore_source_revision": "0" * 40},
+            {"eventstore_package_version": "0.0.0"},
+            {"builds_catalog_revision": "0" * 40},
+        )
+
+        for arguments in cases:
+            with self.subTest(arguments=arguments):
+                errors, _, _ = self.validate_successor_preparation(**arguments)
+                self.assertTrue(
+                    any(
+                        "validator-owned target tuple" in error
+                        or "exact successor target inputs" in error
+                        for error in errors
+                    ),
+                    errors,
+                )
+        self.assertNotEqual(manifest["capturedRevision"], "0" * 40)
+
+    def test_successor_preparation_rejects_v3_tamper_or_materialized_v4(self) -> None:
+        sealed_v3_hash = _sha256(self.identity_path)
+        identity = _read_json(self.identity_path)
+        identity["approval"]["migrationApprovalClaimed"] = True
+        _write_json(self.identity_path, identity)
+        successor_identity = self.artifact_root / evidence.SUCCESSOR_IDENTITY_PATH
+        successor_identity.parent.mkdir(parents=True, exist_ok=True)
+        successor_identity.write_text("{}\n", encoding="utf-8")
+        successor_evidence = self.artifact_root / evidence.SUCCESSOR_EVIDENCE_ROOT
+        successor_evidence.mkdir(parents=True)
+
+        errors, _, claimed = self.validate_successor_preparation(
+            expected_identity_hash=sealed_v3_hash,
+        )
+
+        self.assertTrue(claimed)
+        self.assertTrue(any("future-v4 predecessor" in error for error in errors), errors)
+        self.assertTrue(any("approval must remain explicitly open" in error for error in errors), errors)
+        self.assertTrue(any("must not create an identity v4 record" in error for error in errors), errors)
+        self.assertTrue(any("must not create an identity v4 evidence tree" in error for error in errors), errors)
+
+    def test_v3_active_selection_stays_fail_closed_at_the_successor_builds_tuple(self) -> None:
+        manifest = _read_json(self.active_root / "frontcomposer-runtime-inputs.json")
+        successor_provenance = {
+            "sourceSha": evidence.SUCCESSOR_SOURCE_SHA,
+            "releaseVersion": evidence.SUCCESSOR_VERSION,
+            "buildsSha": evidence.SUCCESSOR_BUILDS_SHA,
+            "releaseInventorySha256": evidence.INVENTORY_SHA256,
+            "frontComposerRevision": str(manifest["capturedRevision"]),
+            "runtimeInputTreeSha256": str(manifest["treeSha256"]),
+        }
+        with mock.patch.object(evidence, "_live_provenance", return_value=successor_provenance):
+            errors, _, _ = self.validate_active()
+
+        self.assertTrue(
+            any("differs from active identity v3" in error for error in errors),
+            errors,
+        )
+        preparation_errors, _, _ = self.validate_successor_preparation()
+        self.assertEqual(preparation_errors, [])
 
     def test_active_v3_rejects_history_tamper_independently(self) -> None:
         (self.history_root / "apphost-smoke.json").write_bytes(
@@ -4633,6 +4843,31 @@ raise SystemExit(evidence.main())
         )
         return powershell_path
 
+    def test_contract_validator_rejects_successor_preparation_without_provider_verification(self) -> None:
+        result, _ = self._run_contract_validator("-PrepareRuntimeSuccessor")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            "PrepareRuntimeSuccessor requires RequireProviderVerification",
+            result.stdout + result.stderr,
+        )
+
+    def test_contract_validator_rejects_each_orphaned_successor_coordinate(self) -> None:
+        cases = (
+            ("-SuccessorFrontComposerRevision", "a" * 40),
+            ("-SuccessorEventStoreSourceRevision", "b" * 40),
+            ("-SuccessorEventStorePackageVersion", "3.106.0"),
+            ("-SuccessorBuildsCatalogRevision", "c" * 40),
+        )
+
+        for argument, value in cases:
+            with self.subTest(argument=argument):
+                result, _ = self._run_contract_validator(argument, value)
+                self.assertNotEqual(result.returncode, 0)
+                output = result.stdout + result.stderr
+                self.assertIn("Successor coordinates require PrepareRuntimeSuccessor", output)
+                self.assertIn(argument.removeprefix("-"), output)
+
     def test_prose_handoff_artifact_is_scanned_for_encoded_tokens(self) -> None:
         handoff = self.pact_root / "provider-verification-handoff.md"
         original = handoff.read_text(encoding="utf-8")
@@ -4884,6 +5119,114 @@ raise SystemExit(evidence.main())
         output = result.stdout + result.stderr
         self.assertIn("exact current Pact bytes", output)
         self.assertIn("Current provider verification: REQUIRED_REJECTED", summary.read_text(encoding="utf-8"))
+
+
+class SuccessorCliGuardTests(unittest.TestCase):
+    def test_successor_preparation_rejects_every_write_mode_before_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = [
+                "--prepare-runtime-successor",
+                "--active-identity", str(root / "identity.json"),
+                "--active-evidence-root", str(root / "active"),
+                "--history-evidence-root", str(root / "history"),
+                "--pact-dir", str(root / "pacts"),
+                "--repository-root", str(root),
+                "--successor-frontcomposer-revision", "a" * 40,
+                "--successor-eventstore-source-revision", evidence.SUCCESSOR_SOURCE_SHA,
+                "--successor-eventstore-package-version", evidence.SUCCESSOR_VERSION,
+                "--successor-builds-catalog-revision", evidence.SUCCESSOR_BUILDS_SHA,
+            ]
+            write_modes = (
+                [
+                    "--write-runtime-input-manifest",
+                    "--runtime-input-manifest-output", str(root / "manifest-output.json"),
+                ],
+                [
+                    "--write-package-ledger",
+                    "--package-ledger-output", str(root / "ledger-output.json"),
+                    "--package-root", str(root / "packages"),
+                    "--package-assets", str(root / "project.assets.json"),
+                ],
+                [
+                    "--write-live-receipt",
+                    "--live-evidence-root", str(root / "live"),
+                    "--runtime-input-manifest", str(root / "manifest.json"),
+                    "--package-ledger", str(root / "ledger.json"),
+                    "--package-root", str(root / "packages"),
+                ],
+                [
+                    "--assemble-runtime-successor-candidate",
+                    "--live-evidence-root", str(root / "live"),
+                    "--runtime-input-manifest", str(root / "manifest.json"),
+                    "--successor-candidate-output", str(root / "candidate"),
+                ],
+            )
+
+            for write_arguments in write_modes:
+                with self.subTest(write_mode=write_arguments[0]):
+                    stderr = io.StringIO()
+                    with (
+                        mock.patch.object(evidence, "write_runtime_input_manifest") as manifest_write,
+                        mock.patch.object(evidence, "write_package_ledger") as ledger_write,
+                        mock.patch.object(evidence, "write_live_receipt") as receipt_write,
+                        mock.patch.object(evidence, "assemble_successor_candidate") as candidate_write,
+                        contextlib.redirect_stderr(stderr),
+                        self.assertRaises(SystemExit) as raised,
+                    ):
+                        evidence.main([*base, *write_arguments])
+                    self.assertEqual(raised.exception.code, 2)
+                    self.assertIn(
+                        "--prepare-runtime-successor cannot be combined with a write mode",
+                        stderr.getvalue(),
+                    )
+                    manifest_write.assert_not_called()
+                    ledger_write.assert_not_called()
+                    receipt_write.assert_not_called()
+                    candidate_write.assert_not_called()
+            self.assertFalse((root / "manifest-output.json").exists())
+            self.assertFalse((root / "ledger-output.json").exists())
+            self.assertFalse((root / "candidate").exists())
+
+
+class SuccessorCandidateAssemblyTests(unittest.TestCase):
+    def test_successor_candidate_cli_assembles_exact_regular_source_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest = root / "sealed-manifest.json"
+            manifest.write_bytes(b'{"manifest":"exact"}\n')
+            live_root = root / "live"
+            live_root.mkdir()
+            source_bytes = {
+                evidence.SUCCESSOR_CANDIDATE_MANIFEST_FILE: manifest.read_bytes(),
+            }
+            for index, name in enumerate(evidence.SUCCESSOR_CANDIDATE_LIVE_FILES, start=1):
+                data = f"live-file-{index}:{name}\n".encode("utf-8")
+                (live_root / name).write_bytes(data)
+                source_bytes[name] = data
+            candidate_root = root / "candidate"
+
+            result = evidence.main(
+                [
+                    "--assemble-runtime-successor-candidate",
+                    "--runtime-input-manifest", str(manifest),
+                    "--live-evidence-root", str(live_root),
+                    "--successor-candidate-output", str(candidate_root),
+                    "--pact-dir", str(CANONICAL_PACTS),
+                ]
+            )
+
+            self.assertEqual(result, 0)
+            self.assertEqual(
+                {path.name for path in candidate_root.iterdir()},
+                set(evidence.SUCCESSOR_CANDIDATE_FILES),
+            )
+            self.assertEqual(len(list(candidate_root.iterdir())), 6)
+            for name, expected in source_bytes.items():
+                path = candidate_root / name
+                self.assertTrue(path.is_file())
+                self.assertFalse(path.is_symlink())
+                self.assertEqual(path.read_bytes(), expected)
 
 
 class GitTextEquivalenceTests(unittest.TestCase):

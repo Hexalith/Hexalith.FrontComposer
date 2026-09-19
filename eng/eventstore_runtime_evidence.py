@@ -39,9 +39,13 @@ CONSUMER_SCOPE = "Hexalith.FrontComposer Story 11.24"
 AUTHORIZED_ACTOR = "github:jpiquot"
 IDENTITY_V1_SHA256 = "80c93e4e865e4cac7532e8c96481aa9205b6e6918d2177352222715e42ff2157"
 IDENTITY_V2_SHA256 = "9167a5e34fc9ed6a913efe54c254817781281bb652e9b5dfaf7cd53eb3d6d661"
-ACTIVE_SOURCE_SHA = "2d680d7d08e00baef63f5b2aca98c6ad6fcc178d"
-ACTIVE_BUILDS_SHA = "87f6f27425666c540fb6db41800a3af1d3767e39"
+IDENTITY_V3_SHA256 = "6dc9aaa586cf35531de112bd68dd4d724a81d7ad76a11930684e8e9fe6c98892"
+ACTIVE_SOURCE_SHA = "ba7ac196e60db8820525961791eccfacec24633f"
+ACTIVE_BUILDS_SHA = "4f522a8caa62ad82584bdf56d54e16109b717b1c"
 ACTIVE_VERSION = "3.106.0"
+SUCCESSOR_SOURCE_SHA = "ba7ac196e60db8820525961791eccfacec24633f"
+SUCCESSOR_BUILDS_SHA = "59862a00d72ef8c7b3e3be020fa967ebd89507a0"
+SUCCESSOR_VERSION = "3.106.0"
 PRIOR_SOURCE_SHA = "059f6a8917bfab26b85775be464840a1610dfdeb"
 PRIOR_VERSION = "3.103.0"
 PRIOR_BUILDS_SHA = "35c3d1e5b8a55a74a440b9c2cad4c5e18747b241"
@@ -63,9 +67,32 @@ ACTIVE_EVIDENCE_ROOT = "_bmad-output/implementation-artifacts/evidence/eventstor
 ACTIVE_IDENTITY_PATH = (
     "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v3.json"
 )
+SUCCESSOR_IDENTITY_PATH = (
+    "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v4.json"
+)
 ACTIVE_RECAPTURE_ROOT = f"{ACTIVE_EVIDENCE_ROOT}/recapture"
+SUCCESSOR_EVIDENCE_ROOT = (
+    "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v4"
+)
+SUCCESSOR_PREDECESSOR = {
+    "path": ACTIVE_IDENTITY_PATH,
+    "sha256": IDENTITY_V3_SHA256,
+    "supersededForActiveReleaseSelectionOnly": True,
+}
 LIVE_EVIDENCE_ROOT = (
     "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation"
+)
+SUCCESSOR_CANDIDATE_MANIFEST_FILE = "frontcomposer-runtime-inputs.json"
+SUCCESSOR_CANDIDATE_LIVE_FILES = (
+    "apphost-package-ledger.json",
+    "apphost-smoke.json",
+    "provider-package-ledger.json",
+    "provider-verification.json",
+    "run-evidence.json",
+)
+SUCCESSOR_CANDIDATE_FILES = (
+    SUCCESSOR_CANDIDATE_MANIFEST_FILE,
+    *SUCCESSOR_CANDIDATE_LIVE_FILES,
 )
 RUNTIME_INPUT_MANIFEST_PATH = f"{ACTIVE_EVIDENCE_ROOT}/frontcomposer-runtime-inputs.json"
 APPROVAL_POLICY_PATH = f"{ACTIVE_EVIDENCE_ROOT}/approval-policy.json"
@@ -702,13 +729,23 @@ def _read_json(
     data = _bounded_read(path, errors, label, max_bytes=max_bytes)
     if data is None:
         return {}
+    return _parse_json_object(data, errors, label or path.name, path.name)
+
+
+def _parse_json_object(
+    data: bytes,
+    errors: list[str],
+    label: str,
+    file_name: str,
+) -> dict[str, Any]:
+    """Parse one already-bounded byte snapshot as duplicate-free UTF-8 JSON."""
     try:
         value = json.loads(data.decode("utf-8-sig"), object_pairs_hook=_reject_duplicate_keys)
     except (UnicodeDecodeError, ValueError) as error:
-        errors.append(f"{label or path.name} is not valid duplicate-free UTF-8 JSON: {error}")
+        errors.append(f"{label} is not valid duplicate-free UTF-8 JSON: {error}")
         return {}
     if not isinstance(value, dict):
-        errors.append(f"{path.name} must contain one JSON object.")
+        errors.append(f"{file_name} must contain one JSON object.")
         return {}
     return value
 
@@ -781,10 +818,8 @@ def _evidence_file_limit(name: str) -> int:
     return MAX_PACKAGE_LEDGER_BYTES if name in PACKAGE_LEDGER_FILES else MAX_FILE_BYTES
 
 
-def _scan_redaction(path: Path, errors: list[str]) -> None:
-    data = _bounded_read(path, errors, max_bytes=_evidence_file_limit(path.name))
-    if data is None:
-        return
+def _scan_redaction_bytes(path: Path, data: bytes, errors: list[str]) -> None:
+    """Scan a caller-owned bounded snapshot without reopening its authority path."""
     try:
         text = data.decode("utf-8-sig")
     except UnicodeDecodeError:
@@ -875,6 +910,12 @@ def _scan_redaction(path: Path, errors: list[str]) -> None:
                     )
 
         scan_value(document, "", "$.")
+
+
+def _scan_redaction(path: Path, errors: list[str]) -> None:
+    data = _bounded_read(path, errors, max_bytes=_evidence_file_limit(path.name))
+    if data is not None:
+        _scan_redaction_bytes(path, data, errors)
 
 
 def _validate_manifest(evidence_root: Path, errors: list[str]) -> dict[str, str]:
@@ -3079,6 +3120,8 @@ def _validate_runtime_input_manifest(
     path: Path,
     repository_root: Path,
     errors: list[str],
+    *,
+    require_current_match: bool = True,
 ) -> tuple[dict[str, Any], datetime | None]:
     document = _read_json(path, errors, "frontcomposer-runtime-inputs.json")
     _scan_redaction(path, errors)
@@ -3149,7 +3192,7 @@ def _validate_runtime_input_manifest(
     tree_hash = _runtime_tree_sha256(entries)
     if document.get("treeSha256") != tree_hash:
         errors.append("Runtime-input manifest tree SHA-256 is invalid.")
-    if revision:
+    if revision and require_current_match:
         captured_tree, captured_issues = _runtime_git_tree(
             repository_root,
             revision,
@@ -3161,12 +3204,13 @@ def _validate_runtime_input_manifest(
             errors.append(
                 "Current committed runtime inputs differ from the claimed capture revision."
             )
-    current_entries, current_issues = _runtime_input_snapshot(repository_root)
-    errors.extend(current_issues)
-    if not _exact(current_entries, entries) or not _exact(
-        _runtime_tree_sha256(current_entries), document.get("treeSha256")
-    ):
-        errors.append("Current runtime-relevant inputs differ from the sealed manifest.")
+    if require_current_match:
+        current_entries, current_issues = _runtime_input_snapshot(repository_root)
+        errors.extend(current_issues)
+        if not _exact(current_entries, entries) or not _exact(
+            _runtime_tree_sha256(current_entries), document.get("treeSha256")
+        ):
+            errors.append("Current runtime-relevant inputs differ from the sealed manifest.")
     return document, captured_at
 
 
@@ -6259,6 +6303,9 @@ def _validate_active(
     history_root: Path,
     pact_dir: Path,
     repository_root: Path,
+    *,
+    require_current_match: bool = True,
+    identity_snapshot: tuple[bytes, dict[str, Any]] | None = None,
 ) -> tuple[list[str], list[str], bool]:
     errors: list[str] = []
     approval_issues: list[str] = []
@@ -6285,8 +6332,16 @@ def _validate_active(
 
     if _path_has_symlink_component(identity_path):
         errors.append("Active identity path contains a symlink.")
-    identity = _read_json(identity_path, errors, identity_path.name)
-    _scan_redaction(identity_path, errors)
+    if identity_snapshot is None:
+        identity_bytes = _bounded_read(identity_path, errors, identity_path.name)
+        identity = (
+            _parse_json_object(identity_bytes, errors, identity_path.name, identity_path.name)
+            if identity_bytes is not None
+            else {}
+        )
+    else:
+        identity_bytes, identity = identity_snapshot
+    _scan_redaction_bytes(identity_path, identity_bytes, errors)
     if set(identity) != {
         "schema",
         "approvalRecord",
@@ -6336,7 +6391,10 @@ def _validate_active(
     manifest_path = artifact_root / RUNTIME_INPUT_MANIFEST_PATH
     manifest_hash = _sha256(manifest_path, errors, "frontcomposer-runtime-inputs.json")
     manifest, manifest_captured_at = _validate_runtime_input_manifest(
-        manifest_path, repository_root, errors
+        manifest_path,
+        repository_root,
+        errors,
+        require_current_match=require_current_match,
     )
     runtime_binding = {
         "path": RUNTIME_INPUT_MANIFEST_PATH,
@@ -6783,9 +6841,6 @@ def _validate_active(
     if not claimed and not approval_issues:
         errors.append("Migration approval is complete but migrationApprovalClaimed remains false.")
 
-    repository_provenance = _live_provenance(
-        repository_root, errors, runtime_manifest=manifest
-    )
     expected_repository = {
         "sourceSha": ACTIVE_SOURCE_SHA,
         "releaseVersion": ACTIVE_VERSION,
@@ -6793,11 +6848,17 @@ def _validate_active(
         "releaseInventorySha256": INVENTORY_SHA256,
         "runtimeInputTreeSha256": manifest.get("treeSha256"),
     }
-    observed_repository = {
-        key: repository_provenance.get(key) for key in expected_repository
-    }
-    if not _exact(observed_repository, expected_repository):
-        errors.append("Current repository dependency/runtime provenance differs from active identity v3.")
+    if require_current_match:
+        repository_provenance = _live_provenance(
+            repository_root, errors, runtime_manifest=manifest
+        )
+        observed_repository = {
+            key: repository_provenance.get(key) for key in expected_repository
+        }
+        if not _exact(observed_repository, expected_repository):
+            errors.append(
+                "Current repository dependency/runtime provenance differs from active identity v3."
+            )
 
     captured_provenance = {
         **expected_repository,
@@ -6820,6 +6881,176 @@ def _validate_active(
             runtime_manifest=manifest,
         )
     return errors, approval_issues, claimed
+
+
+def validate_successor_preparation(
+    identity_path: Path,
+    evidence_root: Path,
+    history_root: Path,
+    pact_dir: Path,
+    repository_root: Path,
+    *,
+    frontcomposer_revision: str,
+    eventstore_source_revision: str,
+    eventstore_package_version: str,
+    builds_catalog_revision: str,
+) -> tuple[list[str], list[str], bool]:
+    """Validate sealed v3 as the open predecessor for an exact future-v4 capture."""
+    snapshot_errors: list[str] = []
+    canonical_identity_path = _canonical_active_locations(repository_root)[0]
+    identity_bytes = _bounded_read(
+        canonical_identity_path,
+        snapshot_errors,
+        "identity v3",
+    )
+    identity_snapshot_bytes = identity_bytes or b""
+    identity = (
+        _parse_json_object(
+            identity_snapshot_bytes,
+            snapshot_errors,
+            "identity v3",
+            canonical_identity_path.name,
+        )
+        if identity_bytes is not None
+        else {}
+    )
+    with _snapshot_cache_scope():
+        active_errors, approval_issues, claimed = _validate_active(
+            identity_path,
+            evidence_root,
+            history_root,
+            pact_dir,
+            repository_root,
+            require_current_match=False,
+            identity_snapshot=(identity_snapshot_bytes, identity),
+        )
+        errors = [*snapshot_errors, *active_errors]
+
+        expected_target = {
+            "frontComposerRevision": frontcomposer_revision,
+            "eventStoreSourceGitlink": eventstore_source_revision,
+            "eventStorePackageVersion": eventstore_package_version,
+            "buildsCatalogGitlink": builds_catalog_revision,
+        }
+        if not SOURCE_SHA_RE.fullmatch(frontcomposer_revision):
+            errors.append("Successor FrontComposer revision must be lowercase 40-hex.")
+        if not _exact(
+            {
+                "eventStoreSourceGitlink": eventstore_source_revision,
+                "eventStorePackageVersion": eventstore_package_version,
+                "buildsCatalogGitlink": builds_catalog_revision,
+            },
+            {
+                "eventStoreSourceGitlink": SUCCESSOR_SOURCE_SHA,
+                "eventStorePackageVersion": SUCCESSOR_VERSION,
+                "buildsCatalogGitlink": SUCCESSOR_BUILDS_SHA,
+            },
+        ):
+            errors.append("Successor inputs do not bind the validator-owned target tuple.")
+
+        if hashlib.sha256(identity_snapshot_bytes).hexdigest() != IDENTITY_V3_SHA256:
+            errors.append("Identity v3 is not byte-identical to the future-v4 predecessor.")
+
+        approval = identity.get("approval")
+        if (
+            not isinstance(approval, dict)
+            or approval.get("migrationApprovalClaimed") is not False
+            or approval.get("receipts") != []
+        ):
+            errors.append("Future-v4 predecessor approval must remain explicitly open.")
+        if claimed:
+            errors.append("Future-v4 predecessor must not claim migration approval.")
+
+        successor_identity = repository_root / SUCCESSOR_IDENTITY_PATH
+        successor_evidence = repository_root / SUCCESSOR_EVIDENCE_ROOT
+        if successor_identity.exists() or successor_identity.is_symlink():
+            errors.append("Successor preparation must not create an identity v4 record.")
+        if successor_evidence.exists() or successor_evidence.is_symlink():
+            errors.append("Successor preparation must not create an identity v4 evidence tree.")
+
+        provenance = _live_provenance(repository_root, errors)
+        observed_target = {
+            "frontComposerRevision": provenance.get("frontComposerRevision"),
+            "eventStoreSourceGitlink": provenance.get("sourceSha"),
+            "eventStorePackageVersion": provenance.get("releaseVersion"),
+            "buildsCatalogGitlink": provenance.get("buildsSha"),
+        }
+        if not _exact(observed_target, expected_target):
+            errors.append("Current checkout does not match the exact successor target inputs.")
+        return errors, approval_issues, claimed
+
+
+def assemble_successor_candidate(
+    runtime_input_manifest_path: Path,
+    live_evidence_root: Path,
+    candidate_root: Path,
+) -> list[str]:
+    """Copy the exact six reviewed capture inputs into a new candidate directory."""
+    errors: list[str] = []
+    if _path_has_symlink_component(live_evidence_root) or not live_evidence_root.is_dir():
+        return [f"Successor candidate live evidence root is missing or is a symlink: {live_evidence_root}"]
+    if candidate_root.exists() or candidate_root.is_symlink():
+        return [f"Successor candidate output already exists: {candidate_root}"]
+    if _path_has_symlink_component(candidate_root.parent) or not candidate_root.parent.is_dir():
+        return [f"Successor candidate output parent is missing or is a symlink: {candidate_root.parent}"]
+
+    actual_entries: set[str] = set()
+    for item in live_evidence_root.iterdir():
+        actual_entries.add(item.name)
+        if item.is_symlink() or not item.is_file():
+            errors.append(
+                f"Successor candidate live evidence contains a non-regular entry: {item.name}"
+            )
+    if actual_entries != set(SUCCESSOR_CANDIDATE_LIVE_FILES):
+        errors.append(
+            "Successor candidate live evidence root must contain exactly the intended five files."
+        )
+
+    sources = {
+        SUCCESSOR_CANDIDATE_MANIFEST_FILE: _bounded_read(
+            runtime_input_manifest_path,
+            errors,
+            SUCCESSOR_CANDIDATE_MANIFEST_FILE,
+        )
+    }
+    for name in SUCCESSOR_CANDIDATE_LIVE_FILES:
+        sources[name] = _bounded_read(
+            live_evidence_root / name,
+            errors,
+            name,
+            max_bytes=_evidence_file_limit(name),
+        )
+    if errors or any(data is None for data in sources.values()):
+        return errors
+
+    try:
+        candidate_root.mkdir(mode=0o700)
+        for name in SUCCESSOR_CANDIDATE_FILES:
+            destination = candidate_root / name
+            destination.write_bytes(sources[name] or b"")
+            destination.chmod(0o644)
+    except OSError as error:
+        errors.append(f"Unable to assemble successor candidate: {error}")
+        return errors
+
+    candidate_entries = {item.name for item in candidate_root.iterdir()}
+    if candidate_entries != set(SUCCESSOR_CANDIDATE_FILES):
+        errors.append("Successor candidate output does not contain exactly six files.")
+    for name in SUCCESSOR_CANDIDATE_FILES:
+        destination = candidate_root / name
+        if destination.is_symlink() or not destination.is_file():
+            errors.append(f"Successor candidate output is not a regular file: {name}")
+            continue
+        copied = _bounded_read(
+            destination,
+            errors,
+            f"successor candidate {name}",
+            max_bytes=_evidence_file_limit(name),
+        )
+        if copied != sources[name]:
+            errors.append(f"Successor candidate output differs from its source bytes: {name}")
+    return errors
+
 
 def validate_live(
     evidence_root: Path,
@@ -6947,11 +7178,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--active-identity", type=Path)
     parser.add_argument("--active-evidence-root", type=Path)
     parser.add_argument("--history-evidence-root", type=Path)
+    parser.add_argument("--prepare-runtime-successor", action="store_true")
+    parser.add_argument("--successor-frontcomposer-revision")
+    parser.add_argument("--successor-eventstore-source-revision")
+    parser.add_argument("--successor-eventstore-package-version")
+    parser.add_argument("--successor-builds-catalog-revision")
     parser.add_argument("--pact-dir", required=True, type=Path)
     parser.add_argument("--repository-root", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--write-live-receipt", action="store_true")
     parser.add_argument("--write-runtime-input-manifest", action="store_true")
     parser.add_argument("--write-package-ledger", action="store_true")
+    parser.add_argument("--assemble-runtime-successor-candidate", action="store_true")
+    parser.add_argument("--successor-candidate-output", type=Path)
     parser.add_argument("--prune-unselected-packages", action="store_true")
     parser.add_argument("--runtime-input-manifest-output", type=Path)
     parser.add_argument("--runtime-input-manifest", type=Path)
@@ -6972,13 +7210,52 @@ def _run(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         args.evidence_root is None
         and args.live_evidence_root is None
         and args.active_identity is None
+        and not args.prepare_runtime_successor
         and not args.write_runtime_input_manifest
         and not args.write_package_ledger
+        and not args.assemble_runtime_successor_candidate
     ):
         parser.error("at least one evidence or active-identity input is required")
     active_arguments = (args.active_identity, args.active_evidence_root, args.history_evidence_root)
     if any(value is not None for value in active_arguments) and not all(value is not None for value in active_arguments):
         parser.error("active validation requires --active-identity, --active-evidence-root, and --history-evidence-root")
+    successor_arguments = (
+        args.successor_frontcomposer_revision,
+        args.successor_eventstore_source_revision,
+        args.successor_eventstore_package_version,
+        args.successor_builds_catalog_revision,
+    )
+    if args.prepare_runtime_successor and (
+        not all(value is not None for value in active_arguments)
+        or not all(value is not None for value in successor_arguments)
+    ):
+        parser.error(
+            "successor preparation requires all active validation and successor target inputs"
+        )
+    if not args.prepare_runtime_successor and any(
+        value is not None for value in successor_arguments
+    ):
+        parser.error("successor target inputs require --prepare-runtime-successor")
+    write_modes = (
+        args.write_runtime_input_manifest,
+        args.write_package_ledger,
+        args.write_live_receipt,
+        args.assemble_runtime_successor_candidate,
+    )
+    if args.prepare_runtime_successor and any(write_modes):
+        parser.error("--prepare-runtime-successor cannot be combined with a write mode")
+    if args.assemble_runtime_successor_candidate:
+        if (
+            args.live_evidence_root is None
+            or args.runtime_input_manifest is None
+            or args.successor_candidate_output is None
+        ):
+            parser.error(
+                "--assemble-runtime-successor-candidate requires --live-evidence-root, "
+                "--runtime-input-manifest, and --successor-candidate-output"
+            )
+        if any(write_modes[:3]) or args.evidence_root is not None or args.active_identity is not None:
+            parser.error("--assemble-runtime-successor-candidate must be the only operation")
     errors: list[str] = []
     approval_issues: list[str] = []
     approval_claimed = False
@@ -7027,9 +7304,21 @@ def _run(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
                 package_root=args.package_root.absolute(),
             )
         )
+    if args.assemble_runtime_successor_candidate:
+        errors.extend(
+            assemble_successor_candidate(
+                args.runtime_input_manifest.absolute(),
+                args.live_evidence_root.absolute(),
+                args.successor_candidate_output.absolute(),
+            )
+        )
     if args.evidence_root is not None:
         errors.extend(validate(args.evidence_root.absolute(), args.pact_dir.absolute()))
-    if args.live_evidence_root is not None and not args.write_live_receipt:
+    if (
+        args.live_evidence_root is not None
+        and not args.write_live_receipt
+        and not args.assemble_runtime_successor_candidate
+    ):
         errors.extend(validate_live(
             args.live_evidence_root.absolute(),
             args.pact_dir.absolute(),
@@ -7051,13 +7340,26 @@ def _run(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
             ),
         ))
     if args.active_identity is not None:
-        active_errors, approval_issues, approval_claimed = validate_active(
-            args.active_identity.absolute(),
-            args.active_evidence_root.absolute(),
-            args.history_evidence_root.absolute(),
-            args.pact_dir.absolute(),
-            args.repository_root.absolute(),
-        )
+        if args.prepare_runtime_successor:
+            active_errors, approval_issues, approval_claimed = validate_successor_preparation(
+                args.active_identity.absolute(),
+                args.active_evidence_root.absolute(),
+                args.history_evidence_root.absolute(),
+                args.pact_dir.absolute(),
+                args.repository_root.absolute(),
+                frontcomposer_revision=args.successor_frontcomposer_revision,
+                eventstore_source_revision=args.successor_eventstore_source_revision,
+                eventstore_package_version=args.successor_eventstore_package_version,
+                builds_catalog_revision=args.successor_builds_catalog_revision,
+            )
+        else:
+            active_errors, approval_issues, approval_claimed = validate_active(
+                args.active_identity.absolute(),
+                args.active_evidence_root.absolute(),
+                args.history_evidence_root.absolute(),
+                args.pact_dir.absolute(),
+                args.repository_root.absolute(),
+            )
         errors.extend(active_errors)
     if errors:
         # One root cause can be reported by more than one authority in the same run;

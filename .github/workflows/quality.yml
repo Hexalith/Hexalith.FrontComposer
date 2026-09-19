@@ -21,9 +21,27 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      frontcomposer_revision:
+        description: Exact pushed FrontComposer preparation revision
+        required: true
+        type: string
+      eventstore_source_revision:
+        description: Exact EventStore source gitlink
+        required: true
+        type: string
+      eventstore_package_version:
+        description: Exact EventStore package version
+        required: true
+        type: string
+      builds_catalog_revision:
+        description: Exact Builds catalog gitlink
+        required: true
+        type: string
 
 concurrency:
-  group: quality-${{ github.ref }}
+  group: quality-${{ github.event_name == 'workflow_dispatch' && format('dispatch-{0}', inputs.frontcomposer_revision) || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -178,6 +196,29 @@ jobs:
         env:
           DiffEngine_Disabled: true
         run: dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --no-build --filter-trait "Category=Contract" --results-directory ./TestResults/contract --report-xunit-trx --report-xunit-trx-filename test-results-contract.trx
+
+      - name: 'Gate 2c: Validate EventStore successor target'
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        shell: bash
+        env:
+          TARGET_FRONTCOMPOSER_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.frontcomposer_revision || github.sha }}
+          TARGET_EVENTSTORE_SOURCE_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.eventstore_source_revision || 'ba7ac196e60db8820525961791eccfacec24633f' }}
+          TARGET_EVENTSTORE_PACKAGE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.eventstore_package_version || '3.106.0' }}
+          TARGET_BUILDS_CATALOG_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.builds_catalog_revision || '59862a00d72ef8c7b3e3be020fa967ebd89507a0' }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          python3 eng/eventstore_runtime_evidence.py \
+            --prepare-runtime-successor \
+            --active-identity _bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v3.json \
+            --active-evidence-root _bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3 \
+            --history-evidence-root _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/2026-09-08-builds-35c3d1e5 \
+            --pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact \
+            --repository-root . \
+            --successor-frontcomposer-revision "$TARGET_FRONTCOMPOSER_REVISION" \
+            --successor-eventstore-source-revision "$TARGET_EVENTSTORE_SOURCE_REVISION" \
+            --successor-eventstore-package-version "$TARGET_EVENTSTORE_PACKAGE_VERSION" \
+            --successor-builds-catalog-revision "$TARGET_BUILDS_CATALOG_REVISION"
 
       - name: 'Gate 2c: Live EventStore provider verification'
         shell: bash
@@ -346,25 +387,27 @@ jobs:
             --runtime-input-manifest "$FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST" \
             --provider-package-root "$FRONTCOMPOSER_PROVIDER_PACKAGES"
 
-      - name: Stage current EventStore capture candidate
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Stage EventStore successor capture candidate
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         shell: bash
         run: |
           set -euo pipefail
-          candidate_root="$RUNNER_TEMP/eventstore-3-106-recapture-candidate"
-          mkdir "$candidate_root"
-          install -m 0644 "$FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST" "$candidate_root/frontcomposer-runtime-inputs.json"
-          cp -a _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/. "$candidate_root/"
-          test "$(find "$candidate_root" -mindepth 1 -maxdepth 1 -type f | wc -l)" -eq 6
+          candidate_root="$RUNNER_TEMP/eventstore-runtime-successor-candidate"
+          python3 eng/eventstore_runtime_evidence.py \
+            --assemble-runtime-successor-candidate \
+            --runtime-input-manifest "$FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST" \
+            --live-evidence-root _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation \
+            --successor-candidate-output "$candidate_root" \
+            --pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact
 
-      - name: Publish current EventStore capture candidate
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Publish EventStore successor capture candidate
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: eventstore-3-106-recapture-candidate-${{ github.run_attempt }}
+          name: eventstore-runtime-successor-candidate-${{ github.run_attempt }}
           retention-days: 14
           if-no-files-found: error
-          path: ${{ runner.temp }}/eventstore-3-106-recapture-candidate
+          path: ${{ runner.temp }}/eventstore-runtime-successor-candidate
 
       - name: 'Gate 2c: Validate contract artifacts'
         shell: pwsh
@@ -379,6 +422,11 @@ jobs:
           if (-not $? -or $LASTEXITCODE -ne 0) { exit 1 }
           ./eng/validate-contract-artifacts.ps1 `
             -RequireProviderVerification `
+            -PrepareRuntimeSuccessor `
+            -SuccessorFrontComposerRevision "${{ github.sha }}" `
+            -SuccessorEventStoreSourceRevision "ba7ac196e60db8820525961791eccfacec24633f" `
+            -SuccessorEventStorePackageVersion "3.106.0" `
+            -SuccessorBuildsCatalogRevision "59862a00d72ef8c7b3e3be020fa967ebd89507a0" `
             -AppHostPackageRoot "" `
             -ProviderVerificationReport "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json"
 
@@ -446,11 +494,11 @@ jobs:
             _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md
             _bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md
             _bmad-output/implementation-artifacts/spec-11-25-eventstore-3-106-evidence-reconciliation.md
-            _bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/**
-            _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/2026-09-08-builds-35c3d1e5/**
-            _bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/**
-            _bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/**
-            _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/**
+            _bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/**/*
+            _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/2026-09-08-builds-35c3d1e5/**/*
+            _bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/**/*
+            _bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/**/*
+            _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/**/*
             tests/Hexalith.FrontComposer.Shell.Tests/Pact/*.json
             tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-verification-handoff.md
 

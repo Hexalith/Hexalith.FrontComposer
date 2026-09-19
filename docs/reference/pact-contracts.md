@@ -48,7 +48,7 @@ CI is split deliberately: EventStore owns provider execution over real loopback 
 
 Gate 2c also runs `eng/pact_provider_apphost_smoke.py` against the existing AppHost using that same pre-run manifest and a separate fresh external package root. A dirty sealed-input preflight writes failure evidence and returns without issuing a stop or start. A clean capture first requires a successful stop plus single-document Aspire-state confirmation, then cleans and force-restores without cache. It discovers the complete AppHost assets closure from JSON only, seals every graph and package byte, records `executionStartedAt`, enumerates imports plus project/package/reference/analyzer/additional/content/copy/native/runtime inputs, and accepts only the sealed repository, package root, or selected SDK installation. That deterministic binding is checked before and after the non-incremental build; `.deps.json` and every runtime output are inventoried before `--no-build` startup and rechecked after execution. The commands pin and record `UseHexalithProjectReferences=true`, `UseNuGetDeps=false`, every selected `Hexalith*FromSource=true`, and the intentional NuGet audit/transitive-pinning values. Tracked symlinks fail even when their link text hashes to the index. One recorded wall-clock deadline bounds cold-stop readiness, hostname resolution, build/start, every `aspire wait`/`describe`, every HTTP/WebSocket attempt (including negative-response bodies and fragmented frames), and final cleanup. HTTP disables environment proxies and never follows redirects. Before any credential is sent, `localhost` resolution runs behind the same absolute deadline and is rejected if it times out or any result is non-loopback, then the connection uses a verified numeric loopback peer. Generated Dapr/auth support records are excluded from the exact ten-resource primary topology only when explicit described type and parent metadata identify them. `/health` alone is readiness evidence; `/alive` cannot satisfy it. The smoke proves invalid-bearer rejection (401/403) separately for command submission, command status, query execution, and the actual projection SignalR WebSocket upgrade before recording authenticated success. SignalR uses a separately valid negotiation/upgrade for success on the exact same `/hubs/projection-changes` endpoint; success rejects a preemptive acknowledgement and validates the full HTTP upgrade, `Sec-WebSocket-Accept`, bounded WebSocket framing, fragmentation, and the exact SignalR acknowledgement. Command correlation must equal the submitted ULID. The successful query must return the same generated tenant/aggregate identity and must have consistent header/body `HandlerComputed` provenance. Failed readiness returns before the state-changing `CreateTenant` command. Cleanup independently requires `aspire ps --format Json` to show no AppHost and probes every discovered listener closed; without a discovered URL it passes only when the artifact proves this capture never attempted to start a host after a confirmed cold stop. After confirmed shutdown it removes only local Dapr `nr.db*` files absent before and created by the invocation, preserving pre-existing files byte-for-byte, then requires the sealed runtime scope, package ledger, and runtime-output inventory to remain exact. Missing credentials, Docker/Dapr infrastructure, topology startup failure, a missing authorization rejection, deadline exhaustion, or incomplete cleanup is a failed blocker.
 
-NFR55 release rule: a release is blocked unless the checked-in pacts verify against the pinned EventStore provider version, or a named contract-drift issue explicitly blocks the release. Story 11.24 remains immutable authorization history. Story 11.25 proves the current tuple but does not close G-3 until the required EventStore-maintainer, FrontComposer-maintainer, and Release-Owner receipts validate.
+NFR55 release rule: a release is blocked unless the checked-in pacts verify against the pinned EventStore provider version, or a named contract-drift issue explicitly blocks the release. Story 11.24 remains immutable authorization history. Story 11.25 and identity v3 preserve historical compatibility for their sealed tuple; they do not prove the successor Builds target or close G-3. Closure still requires genuine successor evidence and valid EventStore-maintainer, FrontComposer-maintainer, and Release-Owner receipts.
 
 ### Independent evidence and approval authorities
 
@@ -130,33 +130,68 @@ The provider receipt step also writes `provider-package-ledger.json` beside the 
 smoke writes `apphost-package-ledger.json` beside its packet. Both sidecars are part of the evidence set:
 the lane fails closed if either is missing, altered, or unbound.
 
+### Prepare the Builds-successor capture
+
+Identity v3 is sealed at EventStore source `ba7ac196e60db8820525961791eccfacec24633f`,
+package `3.106.0`, and Builds catalog `4f522a8caa62ad82584bdf56d54e16109b717b1c`.
+The selected successor changes only the Builds catalog to
+`59862a00d72ef8c7b3e3be020fa967ebd89507a0`. Do not rewrite or relabel identity v3.
+After the preparation merge is pushed to `main`, dispatch the target-bound capture with its exact
+40-hex merge revision:
+
+```bash
+set -euo pipefail
+test "$(git branch --show-current)" = "main"
+local_main_revision="$(git rev-parse refs/heads/main)"
+test "$(git rev-parse HEAD)" = "$local_main_revision"
+remote_main_revision="$(git ls-remote --exit-code https://github.com/Hexalith/Hexalith.FrontComposer.git refs/heads/main | awk 'NR == 1 { print $1 }')"
+test -n "$remote_main_revision"
+test "$local_main_revision" = "$remote_main_revision"
+gh workflow run quality.yml \
+  --repo Hexalith/Hexalith.FrontComposer \
+  --ref main \
+  -f frontcomposer_revision="$local_main_revision" \
+  -f eventstore_source_revision=ba7ac196e60db8820525961791eccfacec24633f \
+  -f eventstore_package_version=3.106.0 \
+  -f builds_catalog_revision=59862a00d72ef8c7b3e3be020fa967ebd89507a0
+```
+
+The command refuses to dispatch unless the checked-out local `main` and the hosted `main` resolve to
+the same revision. For either a `push` to `main` or a `workflow_dispatch` on `main`, the workflow
+preflight requires the checked-out FrontComposer revision and the exact source/package/Builds target,
+validates identity v3 and its evidence as the byte-exact future-v4 predecessor, and requires v3
+approval to remain open. Any mismatch stops before live capture. Provider and authenticated AppHost
+validation must both pass before the workflow uploads
+`eventstore-runtime-successor-candidate-<run-attempt>`, containing exactly
+`frontcomposer-runtime-inputs.json` plus the five current live-evidence files.
+
+This is phase 1 only. Download and review that six-file artifact without copying it into the repository.
+A later phase 2 change may import those exact bytes, record the decision and approval subject after the
+capture timestamps, and create identity v4. Until then, the v4 identity and evidence tree remain absent,
+receipts remain empty, `migrationApprovalClaimed=false`, and identity v3 deliberately fails active
+selection against the successor Builds gitlink.
+
 Re-capture rules:
 
 1. Pact, manifest, or provider-state changes require a fresh current EventStore-owned provider run and receipt. Do not update historical capture pins.
 2. AppHost topology changes require a fresh authenticated AppHost smoke.
-3. A release-identity update must seal the accepted current packet under `eventstore-runtime-identity-v2/recapture/` and update its hash-bound approval subject; routine CI recapture never rewrites that sealed packet.
+3. Identity v3 is sealed historical compatibility and must never be rewritten or relabelled. A future phase 2 may import only the reviewed six-file hosted candidate under `eventstore-runtime-identity-v4/`, bind v3 as its byte-exact predecessor, and create the v4 decision and approval subject.
 4. Generate `frontcomposer-runtime-inputs.json` only from a clean fixed scope, before the provider/AppHost runs. Evidence capture times precede the decision, the decision precedes the subject, and every migration receipt follows the subject. Future-dated records beyond the five-minute skew allowance fail.
 5. Run the combined validator; it independently rejects any historical forgery, prior-archive tamper, stale active identity, runtime-tree drift, failed current result, or false approval claim. Governance-only commits after the capture revision are accepted only while the fixed runtime tree remains byte-equivalent.
 
-### Current reconciliation outcome
+### Current successor status
 
-The Story 11.25 provider run passes all 19 interactions at EventStore source
-`059f6a8917bfab26b85775be464840a1610dfdeb`, EventStore version `3.103.0`, and current Builds catalog
-`a32cb422749352cce8dec948aa3e78c8f00eb4cf`. The authenticated AppHost smoke on the same provenance
-starts the existing ten-resource topology, observes readiness health, authenticated command submit/status, tenant query
-provenance (`HandlerComputed`) with the response bound to the generated tenant/aggregate identity,
-and projection SignalR, proves all four protected surfaces reject an invalid bearer,
-then confirms `aspire ps` is empty and all advertised ports are closed. Identity v1 remains
-byte-identical historical authorization for `bb94d93e… / 3.91.1 / a8a50859…`, and the dated
-`35c3d1e5…` capture remains prior compatibility evidence.
+Identity v3 is sealed historical compatibility for EventStore source
+`ba7ac196e60db8820525961791eccfacec24633f`, package `3.106.0`, and Builds catalog
+`4f522a8caa62ad82584bdf56d54e16109b717b1c`. The current checkout target keeps that EventStore
+source and package but selects Builds catalog `59862a00d72ef8c7b3e3be020fa967ebd89507a0`.
 
-Gate 2c is nevertheless red, for two independent reasons. First, the sealed packet under
-`eventstore-runtime-identity-v2/recapture/` is the preserved package-less capture: it has no
-package-ledger sidecars, no `executionStartedAt`, and the older `run-evidence.v3` /
-`apphost-smoke.v2` schemas, so it fails the current evidence contract and cannot be relabelled —
-only a genuine new-schema recapture clears it. Second, migration approval remains open because the
-three required active-identity receipts do not yet exist. Evidence validity and migration approval
-stay separate states: neither can be satisfied by fixing the other.
+Identity v4 remains pending genuine hosted provider and authenticated AppHost evidence for that exact
+target. No v4 identity, evidence tree, decision, approval subject, or receipt is present.
+Migration approval remains open: identity v3 has `migrationApprovalClaimed=false` and an empty receipt
+set, and any future v4 must begin in the same open state. Until phase 2 imports and validates the
+reviewed hosted bytes, active release selection fails closed instead of treating the stale v3 packet
+as current.
 
 ## Troubleshooting
 

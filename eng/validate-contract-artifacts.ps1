@@ -10,10 +10,39 @@ param(
   [string] $ProviderPackageRoot = $env:FRONTCOMPOSER_PROVIDER_PACKAGES,
   [string] $AppHostPackageRoot = $env:FRONTCOMPOSER_APPHOST_PACKAGES,
   [string] $RuntimeInputManifest = $env:FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST,
+  [switch] $PrepareRuntimeSuccessor,
+  [string] $SuccessorFrontComposerRevision = "",
+  [string] $SuccessorEventStoreSourceRevision = "",
+  [string] $SuccessorEventStorePackageVersion = "",
+  [string] $SuccessorBuildsCatalogRevision = "",
   [switch] $RequireProviderVerification
 )
 
 $ErrorActionPreference = "Stop"
+
+$successorBindings = @(
+  @{ Name = "SuccessorFrontComposerRevision"; Value = $SuccessorFrontComposerRevision },
+  @{ Name = "SuccessorEventStoreSourceRevision"; Value = $SuccessorEventStoreSourceRevision },
+  @{ Name = "SuccessorEventStorePackageVersion"; Value = $SuccessorEventStorePackageVersion },
+  @{ Name = "SuccessorBuildsCatalogRevision"; Value = $SuccessorBuildsCatalogRevision }
+)
+if ($PrepareRuntimeSuccessor -and !$RequireProviderVerification) {
+  throw "PrepareRuntimeSuccessor requires RequireProviderVerification."
+}
+if ($PrepareRuntimeSuccessor) {
+  foreach ($binding in $successorBindings) {
+    if ([string]::IsNullOrWhiteSpace([string] $binding.Value)) {
+      throw "$($binding.Name) is required when PrepareRuntimeSuccessor is set."
+    }
+  }
+} else {
+  $orphanedSuccessorBindings = @($successorBindings | Where-Object {
+    ![string]::IsNullOrWhiteSpace([string] $_.Value)
+  })
+  if ($orphanedSuccessorBindings.Count -gt 0) {
+    throw "Successor coordinates require PrepareRuntimeSuccessor: $($orphanedSuccessorBindings.Name -join ', ')."
+  }
+}
 
 # Every repository-relative input resolves against the repository root, not the caller's
 # working directory, so the documented command works from anywhere.
@@ -329,6 +358,16 @@ if ($RequireProviderVerification) {
     if (![string]::IsNullOrWhiteSpace($RuntimeInputManifest)) {
       $packageArguments += @("--runtime-input-manifest", [System.IO.Path]::GetFullPath($RuntimeInputManifest, $repositoryRoot))
     }
+    $successorArguments = @()
+    if ($PrepareRuntimeSuccessor) {
+      $successorArguments = @(
+        "--prepare-runtime-successor",
+        "--successor-frontcomposer-revision", $SuccessorFrontComposerRevision,
+        "--successor-eventstore-source-revision", $SuccessorEventStoreSourceRevision,
+        "--successor-eventstore-package-version", $SuccessorEventStorePackageVersion,
+        "--successor-builds-catalog-revision", $SuccessorBuildsCatalogRevision
+      )
+    }
     $validationOutput = @(& python3 $validator `
       --evidence-root $frontComposerEvidenceRoot `
       --live-evidence-root $liveEvidenceRoot `
@@ -337,6 +376,7 @@ if ($RequireProviderVerification) {
       --history-evidence-root $priorEvidenceRoot `
       --pact-dir $PactDir `
       --repository-root $repositoryRoot `
+      @successorArguments `
       @packageArguments 2>&1)
     if ($LASTEXITCODE -ne 0) {
       foreach ($line in $validationOutput) {
@@ -346,7 +386,11 @@ if ($RequireProviderVerification) {
       # A leaking report is a rejected lane; the summary must never call it complete.
       $historicalStatus = "IMMUTABLE_ARCHIVE_VALID"
       $priorStatus = "PRIOR_COMPATIBILITY_ARCHIVE_VALID"
-      $activeStatus = "ACTIVE_IDENTITY_AND_EVIDENCE_VALID"
+      $activeStatus = if ($PrepareRuntimeSuccessor) {
+        "SEALED_V3_PREDECESSOR_VALID_ACTIVE_V4_PENDING"
+      } else {
+        "ACTIVE_IDENTITY_AND_EVIDENCE_VALID"
+      }
       $approvalLines = @($validationOutput | Where-Object {
         ([string] $_).StartsWith("EventStore runtime approval", [System.StringComparison]::Ordinal)
       })

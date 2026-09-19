@@ -21,5 +21,9 @@ _bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/**
 _bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/** -text
 _bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v3.json -text
 _bmad-output/implementation-artifacts/spec-11-25-eventstore-3-106-evidence-reconciliation.md -text
+# Identity v4 is intentionally absent during successor preparation; reserve its future
+# identity/evidence coordinates so imported hosted bytes can never be EOL-normalized.
+_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v4/** -text
+_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v4.json -text
 # The active decision hash-binds this human-approved proposal's canonical LF bytes.
 _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md -text

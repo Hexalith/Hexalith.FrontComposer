@@ -3893,8 +3893,11 @@ public sealed class CiGovernanceTests {
         const string priorBuildsSha = "35c3d1e5b8a55a74a440b9c2cad4c5e18747b241";
         const string sealedV2BuildsSha = "a32cb422749352cce8dec948aa3e78c8f00eb4cf";
         const string sealedV2Version = "3.103.0";
-        const string currentSourceSha = "2d680d7d08e00baef63f5b2aca98c6ad6fcc178d";
-        const string currentBuildsSha = "87f6f27425666c540fb6db41800a3af1d3767e39";
+        const string activePacketSourceSha = "ba7ac196e60db8820525961791eccfacec24633f";
+        const string activePacketBuildsSha = "4f522a8caa62ad82584bdf56d54e16109b717b1c";
+        const string sealedV3IdentitySha = "6dc9aaa586cf35531de112bd68dd4d724a81d7ad76a11930684e8e9fe6c98892";
+        const string currentSourceSha = "ba7ac196e60db8820525961791eccfacec24633f";
+        const string currentBuildsSha = "59862a00d72ef8c7b3e3be020fa967ebd89507a0";
         const string currentVersion = "3.106.0";
         // The immutable Story 11.24 owner capture remains historical evidence. Current source,
         // package, and Builds values are compatibility provenance, not migration approval.
@@ -3948,6 +3951,7 @@ public sealed class CiGovernanceTests {
             "_bmad-output",
             "contracts",
             "frontcomposer-eventstore-approved-runtime-identity-v3.json");
+        Sha256File(activeIdentityPath).ShouldBe(sealedV3IdentitySha);
         using JsonDocument activeIdentityDocument = JsonDocument.Parse(File.ReadAllText(activeIdentityPath));
         JsonElement activeIdentity = activeIdentityDocument.RootElement;
         activeIdentity.GetProperty("schema").GetString()
@@ -3958,9 +3962,9 @@ public sealed class CiGovernanceTests {
         predecessor.GetProperty("sha256").GetString().ShouldBe(sealedV2IdentitySha);
         predecessor.GetProperty("supersededForActiveReleaseSelectionOnly").GetBoolean().ShouldBeTrue();
         JsonElement activeTuple = activeIdentity.GetProperty("activeTuple");
-        activeTuple.GetProperty("eventStoreSourceGitlink").GetString().ShouldBe(currentSourceSha);
+        activeTuple.GetProperty("eventStoreSourceGitlink").GetString().ShouldBe(activePacketSourceSha);
         activeTuple.GetProperty("eventStorePackageVersion").GetString().ShouldBe(currentVersion);
-        activeTuple.GetProperty("buildsCatalogGitlink").GetString().ShouldBe(currentBuildsSha);
+        activeTuple.GetProperty("buildsCatalogGitlink").GetString().ShouldBe(activePacketBuildsSha);
         JsonElement runtimeInputs = activeIdentity.GetProperty("runtimeInputs");
         string runtimeManifestPath = Path.Combine(root, runtimeInputs.GetProperty("path").GetString()!);
         Sha256File(runtimeManifestPath).ShouldBe(runtimeInputs.GetProperty("sha256").GetString());
@@ -4038,6 +4042,37 @@ public sealed class CiGovernanceTests {
         policyDocument.RootElement.GetProperty("oi18Alternative").GetProperty("replacementRole")
             .GetString().ShouldBe("accountable-frontcomposer-maintainer");
         string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
+        quality.ShouldContain("workflow_dispatch:");
+        quality.ShouldContain("group: quality-${{ github.event_name == 'workflow_dispatch' && format('dispatch-{0}', inputs.frontcomposer_revision) || github.ref }}");
+        quality.ShouldContain("cancel-in-progress: true");
+        quality.ShouldNotContain("group: quality-${{ github.ref }}");
+        foreach (string dispatchInput in new[] {
+            "frontcomposer_revision",
+            "eventstore_source_revision",
+            "eventstore_package_version",
+            "builds_catalog_revision",
+        }) {
+            Regex.IsMatch(
+                    quality,
+                    $@"(?m)^      {dispatchInput}:\r?\n        description: .+\r?\n        required: true\r?$",
+                    RegexOptions.CultureInvariant)
+                .ShouldBeTrue($"workflow_dispatch input {dispatchInput} must remain required");
+        }
+        string successorTargetLane = ExtractNamedStep(
+            quality,
+            "Gate 2c: Validate EventStore successor target");
+        const string successorCandidateCondition = "github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')";
+        successorTargetLane.ShouldContain($"if: {successorCandidateCondition}");
+        successorTargetLane.ShouldContain("TARGET_FRONTCOMPOSER_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.frontcomposer_revision || github.sha }}");
+        successorTargetLane.ShouldContain($"TARGET_EVENTSTORE_SOURCE_REVISION: ${{{{ github.event_name == 'workflow_dispatch' && inputs.eventstore_source_revision || '{currentSourceSha}' }}}}");
+        successorTargetLane.ShouldContain($"TARGET_EVENTSTORE_PACKAGE_VERSION: ${{{{ github.event_name == 'workflow_dispatch' && inputs.eventstore_package_version || '{currentVersion}' }}}}");
+        successorTargetLane.ShouldContain($"TARGET_BUILDS_CATALOG_REVISION: ${{{{ github.event_name == 'workflow_dispatch' && inputs.builds_catalog_revision || '{currentBuildsSha}' }}}}");
+        successorTargetLane.ShouldContain("test \"$GITHUB_REF\" = \"refs/heads/main\"");
+        successorTargetLane.ShouldContain("--prepare-runtime-successor");
+        successorTargetLane.ShouldContain("--successor-frontcomposer-revision \"$TARGET_FRONTCOMPOSER_REVISION\"");
+        successorTargetLane.ShouldContain("--successor-eventstore-source-revision \"$TARGET_EVENTSTORE_SOURCE_REVISION\"");
+        successorTargetLane.ShouldContain("--successor-eventstore-package-version \"$TARGET_EVENTSTORE_PACKAGE_VERSION\"");
+        successorTargetLane.ShouldContain("--successor-builds-catalog-revision \"$TARGET_BUILDS_CATALOG_REVISION\"");
         string artifactLane = ExtractNamedStep(quality, "Gate 2c: Validate contract artifacts");
         artifactLane.ShouldContain("python3 -m unittest tests/eng/test_eventstore_runtime_evidence.py tests/eng/test_pact_provider_apphost_smoke.py");
         // pwsh does not fail the step on a native non-zero exit, and the validator below resets
@@ -4047,6 +4082,11 @@ public sealed class CiGovernanceTests {
         artifactLane.ShouldContain("if (-not $? -or $LASTEXITCODE -ne 0) { exit 1 }");
         artifactLane.ShouldNotContain("exit $LASTEXITCODE");
         artifactLane.ShouldContain("-RequireProviderVerification");
+        artifactLane.ShouldContain("-PrepareRuntimeSuccessor");
+        artifactLane.ShouldContain("-SuccessorFrontComposerRevision \"${{ github.sha }}\"");
+        artifactLane.ShouldContain($"-SuccessorEventStoreSourceRevision \"{currentSourceSha}\"");
+        artifactLane.ShouldContain($"-SuccessorEventStorePackageVersion \"{currentVersion}\"");
+        artifactLane.ShouldContain($"-SuccessorBuildsCatalogRevision \"{currentBuildsSha}\"");
         artifactLane.ShouldContain("-AppHostPackageRoot \"\"");
         artifactLane.ShouldContain("_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json");
         artifactLane.ShouldNotContain("BLOCKED_HANDOFF");
@@ -4064,6 +4104,9 @@ public sealed class CiGovernanceTests {
         string contractValidator = File.ReadAllText(Path.Combine(root, "eng/validate-contract-artifacts.ps1"));
         contractValidator.ShouldContain("$RuntimeInputManifest = $env:FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST");
         contractValidator.ShouldContain("--runtime-input-manifest");
+        contractValidator.ShouldContain("$PrepareRuntimeSuccessor");
+        contractValidator.ShouldContain("--prepare-runtime-successor");
+        contractValidator.ShouldContain("--successor-builds-catalog-revision");
         liveProviderLane.ShouldContain("export NUGET_PACKAGES=\"$provider_packages\"");
         liveProviderLane.ShouldContain("--write-runtime-input-manifest");
         liveProviderLane.ShouldContain("--runtime-input-manifest-output \"$runtime_manifest\"");
@@ -4178,22 +4221,24 @@ public sealed class CiGovernanceTests {
         liveCaptureValidationLane.ShouldNotContain("continue-on-error: true");
         liveCaptureValidationLane.ShouldNotContain("|| true");
 
-        string stageCandidateLane = ExtractNamedStep(quality, "Stage current EventStore capture candidate");
-        stageCandidateLane.ShouldContain("if: github.event_name == 'push' && github.ref == 'refs/heads/main'");
+        string stageCandidateLane = ExtractNamedStep(quality, "Stage EventStore successor capture candidate");
+        stageCandidateLane.ShouldContain($"if: {successorCandidateCondition}");
         stageCandidateLane.ShouldContain("set -euo pipefail");
-        stageCandidateLane.ShouldContain("candidate_root=\"$RUNNER_TEMP/eventstore-3-106-recapture-candidate\"");
-        stageCandidateLane.ShouldContain("mkdir \"$candidate_root\"");
-        stageCandidateLane.ShouldContain("install -m 0644 \"$FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST\" \"$candidate_root/frontcomposer-runtime-inputs.json\"");
-        stageCandidateLane.ShouldContain("cp -a _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/. \"$candidate_root/\"");
-        stageCandidateLane.ShouldContain("test \"$(find \"$candidate_root\" -mindepth 1 -maxdepth 1 -type f | wc -l)\" -eq 6");
+        stageCandidateLane.ShouldContain("candidate_root=\"$RUNNER_TEMP/eventstore-runtime-successor-candidate\"");
+        stageCandidateLane.ShouldContain("python3 eng/eventstore_runtime_evidence.py \\");
+        stageCandidateLane.ShouldContain("--assemble-runtime-successor-candidate \\");
+        stageCandidateLane.ShouldContain("--runtime-input-manifest \"$FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST\" \\");
+        stageCandidateLane.ShouldContain("--live-evidence-root _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation \\");
+        stageCandidateLane.ShouldContain("--successor-candidate-output \"$candidate_root\" \\");
+        stageCandidateLane.ShouldContain("--pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact");
         stageCandidateLane.ShouldNotContain("continue-on-error: true");
         stageCandidateLane.ShouldNotContain("|| true");
 
-        string publishCandidateLane = ExtractNamedStep(quality, "Publish current EventStore capture candidate");
-        publishCandidateLane.ShouldContain("if: github.event_name == 'push' && github.ref == 'refs/heads/main'");
+        string publishCandidateLane = ExtractNamedStep(quality, "Publish EventStore successor capture candidate");
+        publishCandidateLane.ShouldContain($"if: {successorCandidateCondition}");
         publishCandidateLane.ShouldContain("uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a");
-        publishCandidateLane.ShouldContain("name: eventstore-3-106-recapture-candidate-${{ github.run_attempt }}");
-        publishCandidateLane.ShouldContain("path: ${{ runner.temp }}/eventstore-3-106-recapture-candidate");
+        publishCandidateLane.ShouldContain("name: eventstore-runtime-successor-candidate-${{ github.run_attempt }}");
+        publishCandidateLane.ShouldContain("path: ${{ runner.temp }}/eventstore-runtime-successor-candidate");
         publishCandidateLane.ShouldNotContain("frontcomposer-runtime-inputs.json");
         publishCandidateLane.ShouldNotContain("pact-provider-reconciliation/**");
         publishCandidateLane.ShouldNotContain("continue-on-error: true");
@@ -4215,6 +4260,7 @@ public sealed class CiGovernanceTests {
         appHostSmokeSource.ShouldContain("runtime_evidence.APPHOST_EVALUATED_INPUT_ITEMS");
         appHostSmokeSource.ShouldContain("runtime_evidence.runtime_output_binding(runtime_outputs)");
         string runtimeEvidenceSource = File.ReadAllText(Path.Combine(root, "eng/eventstore_runtime_evidence.py"));
+        runtimeEvidenceSource.ShouldContain("def assemble_successor_candidate(");
         runtimeEvidenceSource.ShouldContain("getattr(os, \"O_NOFOLLOW\", None)");
         runtimeEvidenceSource.ShouldContain("\"st_mtime_ns\"");
         runtimeEvidenceSource.ShouldContain("\"st_ctime_ns\"");
@@ -4269,19 +4315,33 @@ public sealed class CiGovernanceTests {
         cleanupLane.ShouldContain("rm -f -- \"$RUNNER_TEMP/frontcomposer-runtime-inputs.json\" \"$RUNNER_TEMP/frontcomposer-provider-packages.json\"");
         cleanupLane.ShouldNotContain("continue-on-error: true");
         cleanupLane.ShouldNotContain("|| true");
+        int successorTargetStepIndex = quality.IndexOf("- name: 'Gate 2c: Validate EventStore successor target'", StringComparison.Ordinal);
+        int liveProviderStepIndex = quality.IndexOf("- name: 'Gate 2c: Live EventStore provider verification'", StringComparison.Ordinal);
         int appHostStepIndex = quality.IndexOf("- name: 'Gate 2c: Authenticated AppHost smoke'", StringComparison.Ordinal);
         int liveCaptureValidationStepIndex = quality.IndexOf("- name: 'Gate 2c: Validate current live capture'", StringComparison.Ordinal);
-        int stageCandidateStepIndex = quality.IndexOf("- name: Stage current EventStore capture candidate", StringComparison.Ordinal);
-        int publishCandidateStepIndex = quality.IndexOf("- name: Publish current EventStore capture candidate", StringComparison.Ordinal);
+        int stageCandidateStepIndex = quality.IndexOf("- name: Stage EventStore successor capture candidate", StringComparison.Ordinal);
+        int publishCandidateStepIndex = quality.IndexOf("- name: Publish EventStore successor capture candidate", StringComparison.Ordinal);
         int validationStepIndex = quality.IndexOf("- name: 'Gate 2c: Validate contract artifacts'", StringComparison.Ordinal);
         int cleanupStepIndex = quality.IndexOf("- name: 'Gate 2c: Clean package authority roots'", StringComparison.Ordinal);
         int stalePactStepIndex = quality.IndexOf("- name: 'Gate 2c: Fail on stale pact diff'", StringComparison.Ordinal);
+        (successorTargetStepIndex < liveProviderStepIndex).ShouldBeTrue();
+        (liveProviderStepIndex < appHostStepIndex).ShouldBeTrue();
         (appHostStepIndex < liveCaptureValidationStepIndex).ShouldBeTrue();
         (liveCaptureValidationStepIndex < stageCandidateStepIndex).ShouldBeTrue();
         (stageCandidateStepIndex < publishCandidateStepIndex).ShouldBeTrue();
         (publishCandidateStepIndex < validationStepIndex).ShouldBeTrue();
         (validationStepIndex < cleanupStepIndex).ShouldBeTrue();
         (cleanupStepIndex < stalePactStepIndex).ShouldBeTrue();
+        string pactContracts = File.ReadAllText(Path.Combine(root, "docs/reference/pact-contracts.md"));
+        pactContracts.ShouldContain("--repo Hexalith/Hexalith.FrontComposer");
+        pactContracts.ShouldContain("test \"$local_main_revision\" = \"$remote_main_revision\"");
+        pactContracts.ShouldContain($"`{activePacketSourceSha}`, package `{currentVersion}`, and Builds catalog");
+        pactContracts.ShouldContain($"`{activePacketBuildsSha}`. The current checkout target");
+        pactContracts.ShouldContain($"selects Builds catalog `{currentBuildsSha}`");
+        pactContracts.ShouldContain("Identity v4 remains pending genuine hosted provider and authenticated AppHost evidence");
+        pactContracts.ShouldContain("Migration approval remains open");
+        pactContracts.ShouldNotContain("### Current reconciliation outcome");
+        pactContracts.ShouldNotContain("eventstore-runtime-identity-v2/recapture/");
         string uploadLane = ExtractNamedStep(quality, "Upload contract artifacts");
         uploadLane.ShouldContain("if: success()");
         uploadLane.ShouldNotContain("if: always()");
@@ -4340,9 +4400,15 @@ public sealed class CiGovernanceTests {
         liveReport.RootElement.GetProperty("verificationMode").GetString().ShouldBe("live-compatibility");
         liveReport.RootElement.GetProperty("finalVerdict").GetString().ShouldBe("passed");
         JsonElement liveIdentity = liveReport.RootElement.GetProperty("identity");
-        liveIdentity.GetProperty("observedSourceSha").GetString().ShouldBe(sealedV2SourceSha);
-        liveIdentity.GetProperty("expectedVersion").GetString().ShouldBe(sealedV2Version);
-        liveIdentity.GetProperty("observedBuildsSha").GetString().ShouldBe(sealedV2BuildsSha);
+        string? liveSourceSha = liveIdentity.GetProperty("observedSourceSha").GetString();
+        bool isSealedV2Capture = liveSourceSha == sealedV2SourceSha;
+        bool isCurrentCapture = liveSourceSha == currentSourceSha;
+        (isSealedV2Capture || isCurrentCapture).ShouldBeTrue(
+            "the live root must contain either the committed sealed v2 packet or this workflow's exact current recapture");
+        string expectedLiveVersion = isCurrentCapture ? currentVersion : sealedV2Version;
+        string expectedLiveBuildsSha = isCurrentCapture ? currentBuildsSha : sealedV2BuildsSha;
+        liveIdentity.GetProperty("expectedVersion").GetString().ShouldBe(expectedLiveVersion);
+        liveIdentity.GetProperty("observedBuildsSha").GetString().ShouldBe(expectedLiveBuildsSha);
         liveIdentity.GetProperty("approvalAuthorized").GetBoolean().ShouldBeFalse();
         liveIdentity.GetProperty("evidenceManifestSha256").GetString().ShouldBeEmpty();
         liveIdentity.GetProperty("decisionRecordSha256").GetString().ShouldBeEmpty();
@@ -4350,10 +4416,8 @@ public sealed class CiGovernanceTests {
         using JsonDocument liveReceipt = JsonDocument.Parse(File.ReadAllText(Path.Combine(
             liveEvidenceRoot,
             "run-evidence.json")));
-        liveReceipt.RootElement.GetProperty("frontComposerRevision").GetString().ShouldBe(
-            activeIdentity.GetProperty("frontComposerRevision").GetString());
-        liveReceipt.RootElement.GetProperty("runtimeInputTreeSha256").GetString().ShouldBe(
-            runtimeInputs.GetProperty("treeSha256").GetString());
+        string? compatibilityRevision = liveReceipt.RootElement.GetProperty("frontComposerRevision").GetString();
+        string? compatibilityRuntimeTree = liveReceipt.RootElement.GetProperty("runtimeInputTreeSha256").GetString();
         liveReceipt.RootElement.GetProperty("report").GetProperty("path").GetString()
             .ShouldBe("provider-verification.json");
         liveReceipt.RootElement.GetProperty("completedAt").GetString().ShouldBe(
@@ -4364,15 +4428,13 @@ public sealed class CiGovernanceTests {
             "apphost-smoke.json")));
         liveSmoke.RootElement.GetProperty("finalVerdict").GetString().ShouldBe("passed");
         liveSmoke.RootElement.GetProperty("reasonCodes").GetArrayLength().ShouldBe(0);
-        liveSmoke.RootElement.GetProperty("timeoutSeconds").GetInt32().ShouldBe(300);
+        liveSmoke.RootElement.GetProperty("timeoutSeconds").GetInt32().ShouldBe(isCurrentCapture ? 600 : 300);
         JsonElement smokeIdentity = liveSmoke.RootElement.GetProperty("identity");
-        smokeIdentity.GetProperty("eventStoreSourceSha").GetString().ShouldBe(sealedV2SourceSha);
-        smokeIdentity.GetProperty("eventStoreReleaseVersion").GetString().ShouldBe(sealedV2Version);
-        smokeIdentity.GetProperty("buildsCatalogSha").GetString().ShouldBe(sealedV2BuildsSha);
-        smokeIdentity.GetProperty("frontComposerRevision").GetString().ShouldBe(
-            activeIdentity.GetProperty("frontComposerRevision").GetString());
-        smokeIdentity.GetProperty("runtimeInputTreeSha256").GetString().ShouldBe(
-            runtimeInputs.GetProperty("treeSha256").GetString());
+        smokeIdentity.GetProperty("eventStoreSourceSha").GetString().ShouldBe(liveSourceSha);
+        smokeIdentity.GetProperty("eventStoreReleaseVersion").GetString().ShouldBe(expectedLiveVersion);
+        smokeIdentity.GetProperty("buildsCatalogSha").GetString().ShouldBe(expectedLiveBuildsSha);
+        smokeIdentity.GetProperty("frontComposerRevision").GetString().ShouldBe(compatibilityRevision);
+        smokeIdentity.GetProperty("runtimeInputTreeSha256").GetString().ShouldBe(compatibilityRuntimeTree);
         JsonElement healthObservation = liveSmoke.RootElement.GetProperty("observations").GetProperty("health");
         healthObservation.GetProperty("authenticated").GetBoolean().ShouldBeFalse();
         healthObservation.GetProperty("reasonCode").GetString().ShouldBe("health.readiness.succeeded");
