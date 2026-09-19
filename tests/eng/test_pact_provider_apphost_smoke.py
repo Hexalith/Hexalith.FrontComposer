@@ -106,7 +106,7 @@ class FakeRuntime(smoke.SmokeRuntime):
             if operation == "build":
                 return smoke.CommandResult(self.build_code)
             if operation == "msbuild":
-                return smoke.CommandResult(0, self.evaluation_output())
+                return self.evaluation_result(arguments)
             raise AssertionError(arguments)
         if operation == "start":
             stderr = "synthetic start failure" if self.start_code != 0 else ""
@@ -271,6 +271,25 @@ class FakeRuntime(smoke.SmokeRuntime):
             },
         })
 
+    @staticmethod
+    def evaluation_result(
+        arguments: list[str],
+        document: str | None = None,
+        *,
+        stdout: str = "",
+    ) -> smoke.CommandResult:
+        option = next(
+            argument
+            for argument in arguments
+            if argument.startswith("-getResultOutputFile:")
+        )
+        result_path = Path(option.split(":", 1)[1])
+        result_path.write_text(
+            document if document is not None else FakeRuntime.evaluation_output(),
+            encoding="utf-8",
+        )
+        return smoke.CommandResult(0, stdout)
+
 
 class PactProviderAppHostSmokeTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -408,6 +427,10 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         ]
         self.assertTrue(all("-target:ResolveReferences" in command for command in evaluation_commands))
         self.assertTrue(all("-p:BuildProjectReferences=true" in command for command in evaluation_commands))
+        self.assertTrue(all(
+            any(argument.startswith("-getResultOutputFile:") for argument in command)
+            for command in evaluation_commands
+        ))
         self.assertTrue(all(any("ReferencePath" in item for item in command) for command in evaluation_commands))
         self.assertIn("--no-restore", runtime.commands[build_index])
         self.assertIn("--isolated", runtime.commands[start_index])
@@ -583,7 +606,7 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
             del timeout
             recorded.append(arguments)
             if arguments[:2] == ["dotnet", "msbuild"]:
-                return smoke.CommandResult(0, FakeRuntime.evaluation_output())
+                return FakeRuntime.evaluation_result(arguments)
             if arguments[:1] == ["dotnet"]:
                 return smoke.CommandResult(0, "built")
             if arguments[:2] == ["aspire", "start"]:
@@ -743,7 +766,7 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
                 runtime.commands.append(arguments)
                 document = json.loads(FakeRuntime.evaluation_output())
                 document["Properties"]["UseNuGetDeps"] = "true"
-                return smoke.CommandResult(0, json.dumps(document))
+                return FakeRuntime.evaluation_result(arguments, json.dumps(document))
             return original_command(arguments, timeout)
 
         runtime.command = command  # type: ignore[method-assign]
@@ -790,7 +813,7 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
                                     "HintPath": str(external),
                                 }
                             ]
-                        return smoke.CommandResult(0, json.dumps(candidate))
+                        return FakeRuntime.evaluation_result(arguments, json.dumps(candidate))
                     return candidate_command(arguments, timeout)
 
                 candidate_runtime.command = command_with_external_input  # type: ignore[method-assign]
@@ -824,7 +847,7 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
                     document["Items"]["ReferencePath"] = [
                         {"Identity": str(external), "FullPath": str(external)}
                     ]
-                return smoke.CommandResult(0, json.dumps(document))
+                return FakeRuntime.evaluation_result(arguments, json.dumps(document))
             return original_command(arguments, timeout)
 
         runtime.command = command  # type: ignore[method-assign]
@@ -952,7 +975,7 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
                         document["Items"]["PackageReference"] = [
                             {"Identity": identity}
                         ]
-                        return smoke.CommandResult(0, json.dumps(document))
+                        return FakeRuntime.evaluation_result(arguments, json.dumps(document))
                     return original_command(arguments, timeout)
 
                 runtime.command = command  # type: ignore[method-assign]
@@ -1125,6 +1148,87 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertIsNone(smoke._json_from_output('[]\n[{"name":"hidden"}]'))
         self.assertIsNone(smoke._json_from_output('noise before [{"name":"hidden"}]'))
 
+    def test_msbuild_evaluation_reads_large_bounded_result_file_instead_of_truncated_stdout(self) -> None:
+        document = json.loads(FakeRuntime.evaluation_output())
+        document["Items"]["ReferencePath"] = [
+            {"Identity": "x" * (smoke.MAX_OUTPUT_CHARS + 1024)}
+        ]
+        payload = json.dumps(document)
+        self.assertGreater(len(payload), smoke.MAX_OUTPUT_CHARS)
+        truncated_stdout = payload[-smoke.MAX_OUTPUT_CHARS:]
+        self.assertIsNone(smoke._json_from_output(truncated_stdout))
+        runtime = mock.Mock()
+
+        def command(arguments: list[str], timeout: float) -> smoke.CommandResult:
+            del timeout
+            option = next(
+                argument
+                for argument in arguments
+                if argument.startswith("-getResultOutputFile:")
+            )
+            Path(option.split(":", 1)[1]).write_text(payload, encoding="utf-8")
+            return smoke.CommandResult(0, truncated_stdout)
+
+        runtime.command.side_effect = command
+
+        result, parsed = smoke._msbuild_evaluation(
+            runtime,
+            ["dotnet", "msbuild", "AppHost.csproj"],
+            30,
+        )
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(parsed, document)
+
+    def test_msbuild_evaluation_rejects_missing_malformed_symlinked_and_oversized_results(self) -> None:
+        symlink_target = Path(self.temporary.name) / "msbuild-result-target.json"
+        symlink_target.write_text(FakeRuntime.evaluation_output(), encoding="utf-8")
+
+        def missing(path: Path) -> None:
+            del path
+
+        def malformed(path: Path) -> None:
+            path.write_text("{", encoding="utf-8")
+
+        def symlinked(path: Path) -> None:
+            path.symlink_to(symlink_target)
+
+        def oversized(path: Path) -> None:
+            path.write_text('{"value":"' + ("x" * 128) + '"}', encoding="utf-8")
+
+        for name, writer in (
+            ("missing", missing),
+            ("malformed", malformed),
+            ("symlinked", symlinked),
+            ("oversized", oversized),
+        ):
+            with self.subTest(name=name):
+                runtime = mock.Mock()
+
+                def command(
+                    arguments: list[str],
+                    timeout: float,
+                    *,
+                    writer: Any = writer,
+                ) -> smoke.CommandResult:
+                    del timeout
+                    option = next(
+                        argument
+                        for argument in arguments
+                        if argument.startswith("-getResultOutputFile:")
+                    )
+                    writer(Path(option.split(":", 1)[1]))
+                    return smoke.CommandResult(0)
+
+                runtime.command.side_effect = command
+                with mock.patch.object(smoke, "MAX_MSBUILD_RESULT_BYTES", 64):
+                    _, parsed = smoke._msbuild_evaluation(
+                        runtime,
+                        ["dotnet", "msbuild", "AppHost.csproj"],
+                        30,
+                    )
+                self.assertIsNone(parsed)
+
     def test_http_body_limit_accepts_exactly_the_limit_and_rejects_one_more_byte(self) -> None:
         exact = io.BytesIO(b"x" * smoke.MAX_HTTP_BODY_BYTES)
         self.assertEqual(
@@ -1257,9 +1361,11 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
             runtime.commands.append(arguments)
             operation = arguments[1]
             if arguments[0] == "dotnet":
+                if operation == "msbuild":
+                    return FakeRuntime.evaluation_result(arguments)
                 return smoke.CommandResult(
                     0,
-                    FakeRuntime.evaluation_output() if operation == "msbuild" else "",
+                    "",
                 )
             if operation == "start":
                 running[0] = True

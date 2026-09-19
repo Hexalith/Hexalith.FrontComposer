@@ -14,7 +14,7 @@ COMPATIBILITY_SUPPRESSIONS_SCHEMA_VERSION = "2.0"
 # The published package-validation baseline every live pack command applies. It is no longer
 # self-referential: `validate_release_policy` checks it against the release line the candidate (or
 # the checked-in `currentRelease`) declares, so leaving it behind a published line fails closed.
-PUBLISHED_BASELINE_VERSION = "4.3.0"
+PUBLISHED_BASELINE_VERSION = "4.4.0"
 LIFECYCLE_TOKEN = re.compile(
     r"^v(?P<major>0|[1-9][0-9]*)\.(?P<minor>0|[1-9][0-9]*)$"
 )
@@ -125,8 +125,8 @@ def is_preceding_release_line(baseline_line: tuple[int, int], line: tuple[int, i
 def is_within_one_release_line(baseline_line: tuple[int, int], line: tuple[int, int]) -> bool:
     """Return whether the baseline is at most one release line behind ``line``.
 
-    The baseline may sit on ``line`` itself -- the hotfix case, where ``4.3.1`` is diffed against
-    published ``4.3.0`` -- or on the line immediately before it. Two or more lines back fails.
+    The baseline may sit on ``line`` itself -- the hotfix case, where ``4.4.1`` is diffed against
+    published ``4.4.0`` -- or on the line immediately before it. Two or more lines back fails.
     """
     return baseline_line == line or is_preceding_release_line(baseline_line, line)
 
@@ -545,7 +545,7 @@ def _validate_baseline(
     baseline_line = candidate_release_line(baseline, f"{origin}: {BASELINE_PROPERTY_NAME}")
     # One tolerance for both the pack-time and the static repository check: the baseline may sit on
     # the release line under validation or on the one immediately before it, never further back.
-    # Packing 4.3.1 against published 4.3.0 is the hotfix case; packing 4.4.0 requires 4.3.x.
+    # Packing 4.4.1 against published 4.4.0 is the hotfix case; packing 4.5.0 requires 4.4.x.
     # The expected label is computed only on failure -- a v0.0 line has no preceding line at all,
     # and the same-line case must still be accepted there.
     if not is_within_one_release_line(baseline_line, line):

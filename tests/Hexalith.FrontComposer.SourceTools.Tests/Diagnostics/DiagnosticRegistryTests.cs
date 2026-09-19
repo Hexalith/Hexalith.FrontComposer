@@ -694,10 +694,10 @@ public sealed partial class DiagnosticRegistryTests {
         JsonObject json = JsonNode.Parse(File.ReadAllText(suppression.FullName, Encoding.UTF8))!.AsObject();
         ValidateCompatibilitySuppressionsJson(json).ShouldBeEmpty();
         json["schemaVersion"]!.GetValue<string>().ShouldBe(CompatibilitySuppressionsSchemaVersion);
-        json["currentRelease"]!.GetValue<string>().ShouldBe("v4.4");
+        json["currentRelease"]!.GetValue<string>().ShouldBe("v4.5");
         JsonArray suppressions = json["suppressions"]!.AsArray();
 
-        suppressions.ShouldBeEmpty("the published 4.3.0 baseline absorbs all reviewed v4 MCP removals.");
+        suppressions.ShouldBeEmpty("the published 4.4.0 baseline absorbs all reviewed v4 MCP removals.");
 
         HashSet<string> apiCompatDiagnosticIds = ["CP0001", "CP0002", "CP0008"];
         Regex targetReleaseRegex = TargetReleaseRegex();
@@ -956,7 +956,7 @@ public sealed partial class DiagnosticRegistryTests {
             @"<FrontComposerPackageValidationBaselineVersion Condition=""'\$\(FrontComposerPackageValidationBaselineVersion\)' == ''"">(?<version>[^<]+)</FrontComposerPackageValidationBaselineVersion>");
         sharedBaseline.Success.ShouldBeTrue("Directory.Build.targets must default the package-validation baseline.");
         string packageValidationBaseline = sharedBaseline.Groups["version"].Value;
-        packageValidationBaseline.ShouldBe("4.3.0");
+        packageValidationBaseline.ShouldBe("4.4.0");
         directoryBuildTargets.ShouldContain("Condition=\"'$(IsPackable)' == 'true' AND '$(EnableFrontComposerPackageValidation)' == 'true'\"");
         directoryBuildTargets.ShouldContain("<EnablePackageValidation>true</EnablePackageValidation>");
         directoryBuildTargets.ShouldContain("<PackageValidationBaselineVersion Condition=\"'$(FrontComposerPackageValidationSkipBaseline)' != 'true'\">$(FrontComposerPackageValidationBaselineVersion)</PackageValidationBaselineVersion>");
@@ -966,6 +966,7 @@ public sealed partial class DiagnosticRegistryTests {
         directoryBuildTargets.ShouldNotContain(">2.0.4</FrontComposerPackageValidationBaselineVersion>");
         directoryBuildTargets.ShouldNotContain(">4.1.1</FrontComposerPackageValidationBaselineVersion>");
         directoryBuildTargets.ShouldNotContain(">4.2.0</FrontComposerPackageValidationBaselineVersion>");
+        directoryBuildTargets.ShouldNotContain(">4.3.0</FrontComposerPackageValidationBaselineVersion>");
 
         string contractsUiProject = File.ReadAllText(Path.Combine(ProjectRoot().FullName, "src", "Hexalith.FrontComposer.Contracts.UI", "Hexalith.FrontComposer.Contracts.UI.csproj"), Encoding.UTF8);
         contractsUiProject.ShouldContain($"<FrontComposerPackageValidationBaselineVersion>{packageValidationBaseline}</FrontComposerPackageValidationBaselineVersion>");

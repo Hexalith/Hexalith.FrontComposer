@@ -56,7 +56,7 @@ def pack_commands(output_directory: Path, version: str) -> list[list[str]]:
 
     Production candidates keep ``--no-build`` after a versioned solution build. Shared CI packs
     ``0.0.0-ci-test`` after an unversioned Release build, so ``--no-build`` would ship ``1.0.0.0``
-    assemblies and ApiCompat CP0003 would fail against the published ``4.3.0`` baseline. Those
+    assemblies and ApiCompat CP0003 would fail against the published ``4.4.0`` baseline. Those
     synthetic packs rebuild with a baseline-compatible ``Version`` while ``PackageVersion`` stays
     on the CI coordinate the consumer validators read.
     """

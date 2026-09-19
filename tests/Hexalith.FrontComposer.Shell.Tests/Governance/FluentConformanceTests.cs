@@ -467,17 +467,33 @@ public sealed class FluentConformanceTests {
             IgnoreInaccessible = true,
         };
 
-        // The emitter writes attribute names as escaped string literals (e.g. b.AddAttribute(seq, "Header", …)),
-        // so on disk an emitted `Heading` attribute appears as the substring \"Heading\". This excludes the
-        // valid \"HeadingLevel\" emission (the char after "Heading" is 'L', not the closing escaped quote).
+        // Scope the removed attribute check to each emitted FluentAccordionItem block. Other generated components,
+        // such as FcPageHeader, legitimately expose a distinct `Heading` parameter.
         const string emittedV4HeadingAttribute = "\\\"Heading\\\"";
-
-        List<string> offenders = Directory
+        const string emittedAccordionItemOpen = "OpenComponent<FluentAccordionItem>";
+        const string emittedComponentClose = ".CloseComponent();";
+        List<string> offenders = [];
+        foreach (string file in Directory
             .EnumerateFiles(emittersRoot, "*.cs", options)
-            .Where(f => !IsBuildOutput(f))
-            .Where(f => File.ReadAllText(f).Contains(emittedV4HeadingAttribute, StringComparison.Ordinal))
-            .Select(f => Path.GetRelativePath(RepositoryRoot(), f).Replace('\\', '/'))
-            .ToList();
+            .Where(f => !IsBuildOutput(f))) {
+            bool insideAccordionItem = false;
+            int lineNumber = 0;
+            foreach (string line in File.ReadLines(file)) {
+                lineNumber++;
+                if (line.Contains(emittedAccordionItemOpen, StringComparison.Ordinal)) {
+                    insideAccordionItem = true;
+                }
+
+                if (insideAccordionItem && line.Contains(emittedV4HeadingAttribute, StringComparison.Ordinal)) {
+                    string relative = Path.GetRelativePath(RepositoryRoot(), file).Replace('\\', '/');
+                    offenders.Add($"{relative}:{lineNumber}");
+                }
+
+                if (insideAccordionItem && line.Contains(emittedComponentClose, StringComparison.Ordinal)) {
+                    insideAccordionItem = false;
+                }
+            }
+        }
 
         offenders.ShouldBeEmpty(
             "The Razor emitter must emit the Fluent v5 `Header` attribute for FluentAccordionItem, not the "

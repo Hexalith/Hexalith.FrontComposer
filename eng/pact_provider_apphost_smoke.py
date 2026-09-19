@@ -62,6 +62,7 @@ START_COMMAND = [
 # from the tail made `_json_from_output` parse a nested fragment and fail closed as
 # `apphost.describe.incomplete` after every resource was already healthy.
 MAX_OUTPUT_CHARS = 1_048_576
+MAX_MSBUILD_RESULT_BYTES = 8 * 1_048_576
 MAX_HTTP_BODY_BYTES = 1_048_576
 MAX_WEBSOCKET_HEADER_BYTES = 16_384
 MAX_WEBSOCKET_BYTES = 1_048_576
@@ -382,6 +383,30 @@ def _json_from_output(output: str) -> Any:
         return json.loads(output)
     except json.JSONDecodeError:
         return None
+
+
+def _msbuild_evaluation(
+    runtime: SmokeRuntime,
+    arguments: list[str],
+    timeout: float,
+) -> tuple[CommandResult, dict[str, Any] | None]:
+    """Run one get* evaluation without routing its large JSON document through stdout."""
+    with tempfile.TemporaryDirectory(prefix="frontcomposer-apphost-msbuild-") as directory:
+        result_path = Path(directory) / "evaluation.json"
+        result = runtime.command(
+            [*arguments, f"-getResultOutputFile:{result_path}"],
+            timeout,
+        )
+        if result.returncode != 0:
+            return result, None
+        errors: list[str] = []
+        document = runtime_evidence._read_json(
+            result_path,
+            errors,
+            "AppHost MSBuild evaluation result",
+            max_bytes=MAX_MSBUILD_RESULT_BYTES,
+        )
+        return result, document if not errors else None
 
 
 def _logical_name(record: dict[str, Any]) -> str:
@@ -1170,7 +1195,8 @@ def _evaluate_source_graph(
         return None
     property_names = [*APPHOST_BUILD_PROPERTIES, *SOURCE_ROOT_PROPERTIES, "MSBuildAllProjects"]
     item_names = ",".join(runtime_evidence.APPHOST_EVALUATED_INPUT_ITEMS)
-    result = runtime.command(
+    result, document = _msbuild_evaluation(
+        runtime,
         [
             "dotnet",
             "msbuild",
@@ -1184,7 +1210,6 @@ def _evaluate_source_graph(
         ],
         timeout,
     )
-    document = _json_from_output(result.stdout) if result.returncode == 0 else None
     properties = document.get("Properties") if isinstance(document, dict) else None
     items = document.get("Items") if isinstance(document, dict) else None
     if not isinstance(properties, dict) or not isinstance(items, dict):
@@ -1255,7 +1280,8 @@ def _evaluate_source_graph(
         evaluation_timeout = _remaining_timeout(deadline, 60)
         if evaluation_timeout is None:
             return None
-        project_result = runtime.command(
+        _, project_document = _msbuild_evaluation(
+            runtime,
             [
                 "dotnet",
                 "msbuild",
@@ -1268,11 +1294,6 @@ def _evaluate_source_graph(
                 "-getItem:" + item_names,
             ],
             evaluation_timeout,
-        )
-        project_document = (
-            _json_from_output(project_result.stdout)
-            if project_result.returncode == 0
-            else None
         )
         if not isinstance(project_document, dict):
             return None

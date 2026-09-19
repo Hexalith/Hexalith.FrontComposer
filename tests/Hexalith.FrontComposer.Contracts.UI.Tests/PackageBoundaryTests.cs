@@ -64,12 +64,13 @@ public sealed class PackageBoundaryTests {
             @"<FrontComposerPackageValidationBaselineVersion Condition=""'\$\(FrontComposerPackageValidationBaselineVersion\)' == ''"">(?<version>[^<]+)</FrontComposerPackageValidationBaselineVersion>");
         sharedBaseline.Success.ShouldBeTrue("Directory.Build.targets must default the package-validation baseline.");
         string baseline = sharedBaseline.Groups["version"].Value;
-        baseline.ShouldBe("4.3.0");
+        baseline.ShouldBe("4.4.0");
 
         project.ShouldContain($"<FrontComposerPackageValidationBaselineVersion>{baseline}</FrontComposerPackageValidationBaselineVersion>");
         project.ShouldNotContain("<FrontComposerPackageValidationBaselineVersion>2.0.4</FrontComposerPackageValidationBaselineVersion>");
         project.ShouldNotContain("<FrontComposerPackageValidationBaselineVersion>2.0.0</FrontComposerPackageValidationBaselineVersion>");
         project.ShouldNotContain("<FrontComposerPackageValidationBaselineVersion>4.1.1</FrontComposerPackageValidationBaselineVersion>");
+        project.ShouldNotContain("<FrontComposerPackageValidationBaselineVersion>4.3.0</FrontComposerPackageValidationBaselineVersion>");
         project.ShouldNotContain("<FrontComposerPackageValidationSkipBaseline>true</FrontComposerPackageValidationSkipBaseline>");
         project.ShouldNotContain("<EnablePackageValidation>false</EnablePackageValidation>");
         targets.ShouldContain("Condition=\"'$(FrontComposerPackageValidationSkipBaseline)' != 'true'\"");
@@ -77,6 +78,7 @@ public sealed class PackageBoundaryTests {
         targets.ShouldNotContain(">1.12.0</FrontComposerPackageValidationBaselineVersion>");
         targets.ShouldNotContain(">2.0.4</FrontComposerPackageValidationBaselineVersion>");
         targets.ShouldNotContain(">4.1.1</FrontComposerPackageValidationBaselineVersion>");
+        targets.ShouldNotContain(">4.3.0</FrontComposerPackageValidationBaselineVersion>");
     }
 
     [Fact]

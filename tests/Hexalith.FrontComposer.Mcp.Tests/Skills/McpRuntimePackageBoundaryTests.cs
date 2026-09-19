@@ -13,11 +13,11 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Skills;
 
 [Trait("Category", "Contract")]
 public sealed class McpRuntimePackageBoundaryTests {
-    private const string CandidateVersion = "4.4.0-review.compat";
-    private const string CandidateBinaryVersion = "4.4.0.0";
+    private const string CandidateVersion = "4.5.0-review.compat";
+    private const string CandidateBinaryVersion = "4.5.0.0";
     // The published package-validation baseline the release policy applies. It advances with
     // `Directory.Build.targets`; a candidate below it fails ApiCompat's CP0003 identity rule.
-    private const string PublishedBaselineVersion = "4.3.0";
+    private const string PublishedBaselineVersion = "4.4.0";
     private const string McpAssemblyFileName = "Hexalith.FrontComposer.Mcp.dll";
     private const string MissingBaselineVersion = "9999.0.0-frontcomposer-missing-baseline-6f8d3be41a0e4d46";
     private static readonly TimeSpan PackTimeout = TimeSpan.FromMinutes(2);

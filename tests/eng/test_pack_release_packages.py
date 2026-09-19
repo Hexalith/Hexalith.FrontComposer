@@ -37,7 +37,7 @@ VERSION = "4.3.0-review.compat"
 # The fixture ledger plans v4.3, so its checked-in baseline must sit on the preceding v4.2
 # line. The real repository plans a different line; its baseline is asserted separately.
 FIXTURE_BASELINE = "4.2.0"
-PRODUCTION_VERSION = "4.4.0-review.compat"
+PRODUCTION_VERSION = "4.5.0-review.compat"
 
 
 class PackReleasePackagesTests(unittest.TestCase):
@@ -57,7 +57,7 @@ class PackReleasePackagesTests(unittest.TestCase):
             root = pathlib.Path(directory)
             self.write_repository_fixture(
                 root,
-                current_release="v4.4",
+                current_release="v4.5",
                 baseline=PUBLISHED_BASELINE_VERSION,
             )
             solution = root / "Hexalith.FrontComposer.slnx"
@@ -80,7 +80,7 @@ class PackReleasePackagesTests(unittest.TestCase):
             solution_path = str(solution)
 
         self.assertTrue(payload["releasePolicy"])
-        self.assertEqual("v4.4", payload["releaseLine"])
+        self.assertEqual("v4.5", payload["releaseLine"])
         restore = payload["restoreCommand"]
         self.assertEqual(["dotnet", "restore"], restore[:2])
         self.assertEqual(solution_path, restore[2])
@@ -112,12 +112,12 @@ class PackReleasePackagesTests(unittest.TestCase):
         # The production plan test runs against a synthetic fixture, so this is the only guard
         # that the REAL script exits 0 with --release-policy against the REAL tree. A tree that
         # cannot pack any version -- the pass-1 regression -- fails here.
-        result = self.run_plan("4.4.0", release_policy=True)
+        result = self.run_plan("4.5.0", release_policy=True)
 
         self.assertEqual(0, result.returncode, result.stderr)
         payload = json.loads(result.stdout)
         self.assertTrue(payload["releasePolicy"])
-        self.assertEqual("v4.4", payload["releaseLine"])
+        self.assertEqual("v4.5", payload["releaseLine"])
         self.assertEqual(8, len(payload["commands"]))
 
     def test_synthetic_ci_positional_contract_skips_only_release_line_matching(self) -> None:
@@ -295,8 +295,8 @@ class PackReleasePackagesTests(unittest.TestCase):
 
     def test_policy_accepts_a_hotfix_candidate_against_the_checked_in_tree(self) -> None:
         # Regression guard: the strict preceding-line rule made every candidate unpackable, so
-        # the next planned line -- `4.4.0` against published `4.3.0` -- must validate here.
-        self.assertEqual("v4.4", validate_release_policy(ROOT, "4.4.0"))
+        # the next planned line -- `4.5.0` against published `4.4.0` -- must validate here.
+        self.assertEqual("v4.5", validate_release_policy(ROOT, "4.5.0"))
 
     def test_major_bump_accepts_any_minor_of_the_previous_major(self) -> None:
         # Documented limitation of `is_preceding_release_line`: the previous major's last minor
@@ -404,7 +404,7 @@ class PackReleasePackagesTests(unittest.TestCase):
             root = pathlib.Path(directory)
             self.write_repository_fixture(
                 root,
-                current_release="v4.4",
+                current_release="v4.5",
                 baseline=PUBLISHED_BASELINE_VERSION,
             )
             (root / "src" / "Package3" / "CompatibilitySuppressions.xml").write_text(
@@ -434,13 +434,13 @@ class PackReleasePackagesTests(unittest.TestCase):
             root = pathlib.Path(directory)
             self.write_repository_fixture(
                 root,
-                current_release="v4.4",
+                current_release="v4.5",
                 baseline=PUBLISHED_BASELINE_VERSION,
                 reviewed_suppression_packages=("Package.3",),
             )
             reviewed = root / "src" / "Package3" / "CompatibilitySuppressions.xml"
             reviewed.write_text("<Suppressions />\n", encoding="utf-8")
-            self.assertEqual("v4.4", validate_release_policy(root, PRODUCTION_VERSION))
+            self.assertEqual("v4.5", validate_release_policy(root, PRODUCTION_VERSION))
 
             reviewed.unlink()
             with self.assertRaisesRegex(
@@ -456,7 +456,7 @@ class PackReleasePackagesTests(unittest.TestCase):
             root = pathlib.Path(directory)
             self.write_repository_fixture(
                 root,
-                current_release="v4.4",
+                current_release="v4.5",
                 baseline=PUBLISHED_BASELINE_VERSION,
                 required_baseline_packages=("Package.5",),
             )
@@ -467,7 +467,7 @@ class PackReleasePackagesTests(unittest.TestCase):
                 "</PropertyGroup></Project>",
                 encoding="utf-8",
             )
-            self.assertEqual("v4.4", validate_release_policy(root, PRODUCTION_VERSION))
+            self.assertEqual("v4.5", validate_release_policy(root, PRODUCTION_VERSION))
 
             override.write_text("<Project />", encoding="utf-8")
             with self.assertRaisesRegex(
@@ -536,7 +536,7 @@ class PackReleasePackagesTests(unittest.TestCase):
             root = pathlib.Path(directory)
             self.write_repository_fixture(
                 root,
-                current_release="v4.4",
+                current_release="v4.5",
                 baseline=PUBLISHED_BASELINE_VERSION,
             )
             stray = root / "src" / "NotPackable" / "CompatibilitySuppressions.xml"
@@ -553,7 +553,7 @@ class PackReleasePackagesTests(unittest.TestCase):
             root = pathlib.Path(directory)
             self.write_repository_fixture(
                 root,
-                current_release="v4.4",
+                current_release="v4.5",
                 baseline=PUBLISHED_BASELINE_VERSION,
             )
             (root / "src" / "Package5" / "Package5.csproj").write_text(
