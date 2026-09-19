@@ -749,6 +749,19 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
 
         runtime.command = command  # type: ignore[method-assign]
 
+        evaluation_issues: list[str] = []
+        self.assertIsNone(
+            smoke._evaluate_source_graph(
+                runtime,
+                time.monotonic() + 30,
+                issues=evaluation_issues,
+            )
+        )
+        self.assertEqual(
+            evaluation_issues,
+            ["apphost-build-property-mismatch:UseNuGetDeps"],
+        )
+
         result = smoke.capture(self.output, runtime, timeout=30)
 
         self.assertEqual(result, 1)
