@@ -3893,8 +3893,8 @@ public sealed class CiGovernanceTests {
         const string priorBuildsSha = "35c3d1e5b8a55a74a440b9c2cad4c5e18747b241";
         const string sealedV2BuildsSha = "a32cb422749352cce8dec948aa3e78c8f00eb4cf";
         const string sealedV2Version = "3.103.0";
-        const string activePacketSourceSha = "2d680d7d08e00baef63f5b2aca98c6ad6fcc178d";
-        const string activePacketBuildsSha = "87f6f27425666c540fb6db41800a3af1d3767e39";
+        const string activePacketSourceSha = "ba7ac196e60db8820525961791eccfacec24633f";
+        const string activePacketBuildsSha = "4f522a8caa62ad82584bdf56d54e16109b717b1c";
         const string currentSourceSha = "ba7ac196e60db8820525961791eccfacec24633f";
         const string currentBuildsSha = "4f522a8caa62ad82584bdf56d54e16109b717b1c";
         const string currentVersion = "3.106.0";

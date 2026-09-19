@@ -1,9 +1,9 @@
 {
   "schema": "hexalith.eventstore.provider-verification-run-evidence.v4",
-  "capturedAt": "2026-09-19T18:44:14.578633+00:00",
-  "completedAt": "2026-09-19T18:44:02.4383708+00:00",
-  "frontComposerRevision": "d7e0a615e73dc4f5f3152eee24d1223954d4034d",
-  "runtimeInputTreeSha256": "0b61f85ca3afb73d7093ab801dd1bc78789977788eaf96c3655066c6114d7f9a",
+  "capturedAt": "2026-09-19T19:58:53.822057+00:00",
+  "completedAt": "2026-09-19T19:58:47.0588048+00:00",
+  "frontComposerRevision": "828e98b5d7bff607bc625dc67c40fa14b2909025",
+  "runtimeInputTreeSha256": "ffa13e0ea97d59f6e9a67cc0bae43dfad3d4143ef9720874d4047edbd4881dbe",
   "command": "dotnet tests/Hexalith.EventStore.ProviderVerification/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.dll --verification-mode live-compatibility <validated canonical inputs>",
   "exitCode": 0,
   "expectedNonzero": false,
@@ -12,16 +12,16 @@
   "externalInputsModified": false,
   "packageLedger": {
     "path": "provider-package-ledger.json",
-    "sha256": "2da0bde621c7ffc1cefdc2e9439ec5b6f310bfcb6928b8fe7ca8a97f97bfc09d",
-    "bytes": 813281,
+    "sha256": "cc6637a21c7f1c9aa64add5225d61cc7cb814a2a01bb95d6f8249c8648262034",
+    "bytes": 813288,
     "schema": "hexalith.frontcomposer.resolved-package-ledger.v2",
-    "capturedAt": "2026-09-19T18:43:43.792125+00:00",
-    "treeSha256": "cac84f36fd23a30d26ce29a2e88fca1cf700d5d6aa68a30b7e613f883720f101"
+    "capturedAt": "2026-09-19T19:58:33.842837+00:00",
+    "treeSha256": "3caafea02345284977219905c17da8ec54924db1700ee872252bddd89ca75f93"
   },
   "report": {
     "path": "provider-verification.json",
-    "sha256": "296426a35a1f088c96d64038f99dc3373a06c7266752590fdf82be98f68ad1a0",
-    "bytes": 16482,
+    "sha256": "2f49942cbe4bf9104d393ded7b874524311be87343040a68b49afe511849dfd4",
+    "bytes": 16480,
     "finalVerdict": "passed",
     "requestedInteractionCount": 19,
     "reportedInteractionCount": 19,

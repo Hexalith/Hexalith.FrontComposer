@@ -1,41 +1,41 @@
 {
   "schema": "hexalith.frontcomposer.eventstore-runtime-recapture-decision.v3",
-  "recordedAt": "2026-09-19T18:53:10+00:00",
+  "recordedAt": "2026-09-19T20:05:40+00:00",
   "source": {
     "path": "_bmad-output/implementation-artifacts/spec-11-25-eventstore-3-106-evidence-reconciliation.md",
     "sha256": "ee6852a4d4593bb2727405e4338b4beea459c139a0c8d9e3231e50da4dc7abac"
   },
   "activeTuple": {
-    "eventStoreSourceGitlink": "2d680d7d08e00baef63f5b2aca98c6ad6fcc178d",
+    "eventStoreSourceGitlink": "ba7ac196e60db8820525961791eccfacec24633f",
     "eventStorePackageVersion": "3.106.0",
-    "buildsCatalogGitlink": "87f6f27425666c540fb6db41800a3af1d3767e39"
+    "buildsCatalogGitlink": "4f522a8caa62ad82584bdf56d54e16109b717b1c"
   },
-  "frontComposerRevision": "d7e0a615e73dc4f5f3152eee24d1223954d4034d",
+  "frontComposerRevision": "828e98b5d7bff607bc625dc67c40fa14b2909025",
   "runtimeInputs": {
     "path": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/frontcomposer-runtime-inputs.json",
-    "sha256": "2ed54eb20534dba67d7295f7de8ad29f42c37dca76a4cad7c24060dfb9014b8d",
-    "treeSha256": "0b61f85ca3afb73d7093ab801dd1bc78789977788eaf96c3655066c6114d7f9a"
+    "sha256": "c2ea111f767e28fbe9e0e9870219591865649faa3c7ed0bd3efcbf0a9faad330",
+    "treeSha256": "ffa13e0ea97d59f6e9a67cc0bae43dfad3d4143ef9720874d4047edbd4881dbe"
   },
   "evidenceFiles": [
     {
       "path": "apphost-package-ledger.json",
-      "sha256": "ae5403cfd9027fbf100c31da734f5c7b3e24b44be72c9b286148712229eb466b"
+      "sha256": "fc37e2af83ec4622611d61b6fa741434e1be1ea21463eb0847287ad4bfe517df"
     },
     {
       "path": "apphost-smoke.json",
-      "sha256": "07092d7eb0fe92d9286cdc37aff2c6922b6bf787b2561024ecf3e6041b5d11af"
+      "sha256": "4911f87a754039582e3e07e90fb7511d8a7a34daa2510264354951846130dde8"
     },
     {
       "path": "provider-package-ledger.json",
-      "sha256": "2da0bde621c7ffc1cefdc2e9439ec5b6f310bfcb6928b8fe7ca8a97f97bfc09d"
+      "sha256": "cc6637a21c7f1c9aa64add5225d61cc7cb814a2a01bb95d6f8249c8648262034"
     },
     {
       "path": "provider-verification.json",
-      "sha256": "296426a35a1f088c96d64038f99dc3373a06c7266752590fdf82be98f68ad1a0"
+      "sha256": "2f49942cbe4bf9104d393ded7b874524311be87343040a68b49afe511849dfd4"
     },
     {
       "path": "run-evidence.json",
-      "sha256": "832ca586b31a05498f12acef29281b777b91c6fae9e30f80fb3543399a1d19bf"
+      "sha256": "3979dfeef3622c657409327f5ce643e4a9e0035a5ad9c88a8b5e782ffad22f8f"
     }
   ],
   "strategy": "exact-tuple-recapture",

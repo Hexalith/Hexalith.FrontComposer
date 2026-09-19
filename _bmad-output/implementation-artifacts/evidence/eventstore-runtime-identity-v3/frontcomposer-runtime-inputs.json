@@ -1,7 +1,7 @@
 {
   "schema": "hexalith.frontcomposer.eventstore-runtime-inputs.v1",
-  "capturedAt": "2026-09-19T18:43:31.826841+00:00",
-  "capturedRevision": "d7e0a615e73dc4f5f3152eee24d1223954d4034d",
+  "capturedAt": "2026-09-19T19:58:25.887020+00:00",
+  "capturedRevision": "828e98b5d7bff607bc625dc67c40fa14b2909025",
   "scope": {
     "version": "frontcomposer-eventstore-runtime-inputs.v1",
     "trackedTrees": [
@@ -39,7 +39,7 @@
       "references/Hexalith.PolymorphicSerializations"
     ]
   },
-  "treeSha256": "0b61f85ca3afb73d7093ab801dd1bc78789977788eaf96c3655066c6114d7f9a",
+  "treeSha256": "ffa13e0ea97d59f6e9a67cc0bae43dfad3d4143ef9720874d4047edbd4881dbe",
   "entries": [
     {
       "path": ".editorconfig",
@@ -180,17 +180,17 @@
     {
       "path": "references/Hexalith.Builds",
       "kind": "gitlink",
-      "commit": "87f6f27425666c540fb6db41800a3af1d3767e39"
+      "commit": "4f522a8caa62ad82584bdf56d54e16109b717b1c"
     },
     {
       "path": "references/Hexalith.Commons",
       "kind": "gitlink",
-      "commit": "db7da1bad68ae470fbb1c90091994d45a00119c1"
+      "commit": "9f4809d37095e64e3732abc3e766535f9e836563"
     },
     {
       "path": "references/Hexalith.EventStore",
       "kind": "gitlink",
-      "commit": "2d680d7d08e00baef63f5b2aca98c6ad6fcc178d"
+      "commit": "ba7ac196e60db8820525961791eccfacec24633f"
     },
     {
       "path": "references/Hexalith.Memories",
@@ -205,7 +205,7 @@
     {
       "path": "references/Hexalith.PolymorphicSerializations",
       "kind": "gitlink",
-      "commit": "b96ea91798a37ef3b8ac2a1c800d16127976dd5d"
+      "commit": "7e95556c919ff1142864e54f306a6aa0101b2bf5"
     },
     {
       "path": "references/Hexalith.Tenants",
@@ -653,8 +653,8 @@
     {
       "path": "src/Hexalith.FrontComposer.AppHost/HexalithTenantsSample.cs",
       "kind": "file",
-      "bytes": 664,
-      "sha256": "b691121e0ca19520db88a10a2358f3c5f5cd967f42a507bdb63fc62b5cb7cb7e"
+      "bytes": 647,
+      "sha256": "42eb598ff149f5c5e2ea5c1213e2c1b017f7fdefbed4e6e11bb72a18b5ca9e66"
     },
     {
       "path": "src/Hexalith.FrontComposer.AppHost/HexalithTenantsUI.cs",
