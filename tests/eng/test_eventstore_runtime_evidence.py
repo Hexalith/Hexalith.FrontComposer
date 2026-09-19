@@ -3795,8 +3795,14 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             "Live AppHost package ledger must bind the canonical AppHost assets root.",
             errors,
         )
-        self.assertIn(
-            "Live AppHost evaluated input binding is incomplete or outside its authorities.",
+        self.assertTrue(
+            any(
+                error.startswith(
+                    "Live AppHost evaluated input binding is incomplete or outside its authorities: "
+                )
+                and "apphost-assets-graph-missing" in error
+                for error in errors
+            ),
             errors,
         )
 
@@ -4404,6 +4410,33 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                     ),
                     errors,
                 )
+
+    def test_redaction_diagnostic_names_json_location_without_disclosing_value(self) -> None:
+        path = Path(self._temporary.name) / "location-diagnostic.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "startup": {
+                        "outputPreparation": {
+                            "evaluatedInputBinding": {
+                                "inputs": [{"path": "/home/runner/work/private-project"}]
+                            }
+                        }
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        errors: list[str] = []
+
+        evidence._scan_redaction(path, errors)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn(
+            "locations=$.startup.outputPreparation.evaluatedInputBinding.inputs[0].path",
+            errors[0],
+        )
+        self.assertNotIn("private-project", errors[0])
 
     def test_evidence_redaction_rejects_a_raw_authorization_header(self) -> None:
         relative = "apphost-smoke/apphost-smoke.json"

@@ -783,18 +783,41 @@ def _scan_redaction(path: Path, errors: list[str]) -> None:
         errors.append(f"Unable to redaction-scan non-UTF-8 evidence: {path.name}")
         return
     normalized = text.replace("Bearer FC_CONTRACT_TOKEN", "ALLOWLISTED_SYNTHETIC_TOKEN")
-    for pattern in (*LOCAL_PATH_PATTERNS, *SECRET_PATTERNS):
-        if pattern.search(normalized):
-            errors.append(f"Redaction scan failed for {path.name}: {pattern.pattern}")
-    authorization_occurrences = len(RAW_AUTHORIZATION_RE.findall(text))
-    allowed_authorization_occurrences = len(EXACT_AUTHORIZATION_LINE_RE.findall(text))
-    if authorization_occurrences != allowed_authorization_occurrences:
-        errors.append(f"Redaction scan failed for {path.name}: raw Authorization header")
+    document: Any = None
     if path.suffix.lower() == ".json":
         try:
             document = json.loads(normalized, object_pairs_hook=_reject_duplicate_keys)
         except ValueError:
-            return
+            pass
+
+    def matching_locations(value: Any, pattern: re.Pattern[str], location: str) -> list[str]:
+        matches: list[str] = []
+        if isinstance(value, dict):
+            for key, child in value.items():
+                matches.extend(matching_locations(child, pattern, f"{location}.{key}"))
+        elif isinstance(value, list):
+            for index, child in enumerate(value):
+                matches.extend(matching_locations(child, pattern, f"{location}[{index}]"))
+        elif isinstance(value, str) and pattern.search(value):
+            matches.append(location)
+        return matches
+
+    for pattern in (*LOCAL_PATH_PATTERNS, *SECRET_PATTERNS):
+        if pattern.search(normalized):
+            locations = matching_locations(document, pattern, "$") if document is not None else []
+            location_suffix = (
+                "; locations=" + ",".join(sorted(set(locations))[:8])
+                if locations
+                else ""
+            )
+            errors.append(
+                f"Redaction scan failed for {path.name}: {pattern.pattern}{location_suffix}"
+            )
+    authorization_occurrences = len(RAW_AUTHORIZATION_RE.findall(text))
+    allowed_authorization_occurrences = len(EXACT_AUTHORIZATION_LINE_RE.findall(text))
+    if authorization_occurrences != allowed_authorization_occurrences:
+        errors.append(f"Redaction scan failed for {path.name}: raw Authorization header")
+    if document is not None:
 
         def scan_value(value: Any, key: str, location: str) -> None:
             if isinstance(value, dict):
@@ -4449,17 +4472,20 @@ def _evaluate_apphost_inputs(
                     evaluated_references.add(input_path)
     if evaluated_references != project_set - {apphost}:
         errors.append("AppHost evaluated project-reference closure is not exact.")
-    bound_inputs: list[dict[str, str]] = []
+    bound_inputs_by_key: dict[tuple[str, str], dict[str, str]] = {}
     for input_path in sorted(input_paths):
         binding = _bound_runtime_input(
             input_path, repository_root, package_root, dotnet_root, errors
         )
         if binding is not None:
-            bound_inputs.append(binding)
-    bound_inputs.sort(key=lambda item: (item["authority"], item["path"]))
-    keys = [(item["authority"], item["path"]) for item in bound_inputs]
-    if keys != sorted(set(keys)):
-        errors.append("AppHost evaluated input closure contains duplicate authority paths.")
+            key = (binding["authority"], binding["path"])
+            previous = bound_inputs_by_key.get(key)
+            if previous is not None and previous != binding:
+                errors.append(
+                    "AppHost evaluated input closure has conflicting hashes for one authority path."
+                )
+            bound_inputs_by_key[key] = binding
+    bound_inputs = [bound_inputs_by_key[key] for key in sorted(bound_inputs_by_key)]
     return {
         "assetsGraphs": [
             path.relative_to(repository_root).as_posix() for path in discovered_assets
@@ -5321,25 +5347,42 @@ def _validate_live_apphost(
         )
         else []
     )
-    if (
-        not isinstance(input_graph_paths, list)
-        or input_graph_paths != sorted(set(ledger_graph_paths))
-        or APPHOST_PACKAGE_ASSETS_ROOT not in input_graph_paths
-        or not isinstance(inputs, list)
-        or not inputs
-        or input_keys != sorted(set(input_keys))
-        or any(
-            not isinstance(item, dict)
-            or set(item) != {"authority", "path", "sha256"}
-            or item.get("authority") not in {"repository", "packages", "dotnet"}
-            or not isinstance(item.get("path"), str)
-            or not _is_safe_relative_path(item["path"])
-            or not isinstance(item.get("sha256"), str)
-            or not SHA256_RE.fullmatch(item["sha256"])
-            for item in inputs
+    input_binding_issues: list[str] = []
+    if not isinstance(input_graph_paths, list):
+        input_binding_issues.append("assets-graphs-not-array")
+    elif input_graph_paths != sorted(set(ledger_graph_paths)):
+        input_binding_issues.append("assets-graphs-differ-from-ledger")
+    elif APPHOST_PACKAGE_ASSETS_ROOT not in input_graph_paths:
+        input_binding_issues.append("apphost-assets-graph-missing")
+    if not isinstance(inputs, list):
+        input_binding_issues.append("inputs-not-array")
+    elif not inputs:
+        input_binding_issues.append("inputs-empty")
+    else:
+        if input_keys != sorted(set(input_keys)):
+            input_binding_issues.append("input-authority-paths-not-unique-and-sorted")
+        for index, item in enumerate(inputs):
+            if not isinstance(item, dict):
+                input_binding_issues.append(f"input-{index}-not-object")
+            elif set(item) != {"authority", "path", "sha256"}:
+                input_binding_issues.append(f"input-{index}-fields-invalid")
+            elif item.get("authority") not in {"repository", "packages", "dotnet"}:
+                input_binding_issues.append(f"input-{index}-authority-invalid")
+            elif not isinstance(item.get("path"), str) or not _is_safe_relative_path(
+                item["path"]
+            ):
+                input_binding_issues.append(f"input-{index}-path-invalid")
+            elif not isinstance(item.get("sha256"), str) or not SHA256_RE.fullmatch(
+                item["sha256"]
+            ):
+                input_binding_issues.append(f"input-{index}-sha256-invalid")
+            if len(input_binding_issues) >= 8:
+                break
+    if input_binding_issues:
+        errors.append(
+            "Live AppHost evaluated input binding is incomplete or outside its authorities: "
+            + ",".join(input_binding_issues)
         )
-    ):
-        errors.append("Live AppHost evaluated input binding is incomplete or outside its authorities.")
     else:
         # Repository-authority inputs are bound to the sealed runtime scope and, for
         # every path the sealed manifest already hashes, to that manifest's bytes.

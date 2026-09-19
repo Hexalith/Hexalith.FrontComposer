@@ -1527,13 +1527,17 @@ def _evaluate_source_graph(
         return reject("evaluated-project-closure-not-exact")
     if not runtime.source_graph_is_exact(sorted(evaluated_project_references)):
         return reject("evaluated-resolved-source-graph-not-exact")
-    bound_inputs: list[dict[str, str]] = []
+    bound_inputs_by_key: dict[tuple[str, str], dict[str, str]] = {}
     for path in sorted(input_paths):
         binding = _bound_input(path, package_root, dotnet_root)
         if binding is None:
             return reject("evaluated-input-outside-authorities")
-        bound_inputs.append(binding)
-    bound_inputs.sort(key=lambda item: (item["authority"], item["path"]))
+        key = (binding["authority"], binding["path"])
+        previous = bound_inputs_by_key.get(key)
+        if previous is not None and previous != binding:
+            return reject("evaluated-input-binding-conflict")
+        bound_inputs_by_key[key] = binding
+    bound_inputs = [bound_inputs_by_key[key] for key in sorted(bound_inputs_by_key)]
     return {
         "assetsGraphs": [path.relative_to(ROOT).as_posix() for path in discovered_assets],
         "inputs": bound_inputs,
