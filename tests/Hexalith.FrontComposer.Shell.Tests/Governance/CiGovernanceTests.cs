@@ -3888,6 +3888,7 @@ public sealed class CiGovernanceTests {
         const string approvedBuildsSha = "a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a";
         const string approvedVersion = "3.91.1";
         const string sealedV2SourceSha = "059f6a8917bfab26b85775be464840a1610dfdeb";
+        const string sealedV2IdentitySha = "9167a5e34fc9ed6a913efe54c254817781281bb652e9b5dfaf7cd53eb3d6d661";
         const string priorBuildsSha = "35c3d1e5b8a55a74a440b9c2cad4c5e18747b241";
         const string sealedV2BuildsSha = "a32cb422749352cce8dec948aa3e78c8f00eb4cf";
         const string sealedV2Version = "3.103.0";
@@ -3926,26 +3927,39 @@ public sealed class CiGovernanceTests {
         historicalCapture.GetProperty("eventStorePackageVersion").GetString().ShouldBe(approvedVersion);
         historicalCapture.GetProperty("immutable").GetBoolean().ShouldBeTrue();
 
-        string activeIdentityPath = Path.Combine(
+        string sealedV2IdentityPath = Path.Combine(
             root,
             "_bmad-output",
             "contracts",
             "frontcomposer-eventstore-approved-runtime-identity-v2.json");
+        Sha256File(sealedV2IdentityPath).ShouldBe(sealedV2IdentitySha);
+        using JsonDocument sealedV2IdentityDocument = JsonDocument.Parse(File.ReadAllText(sealedV2IdentityPath));
+        JsonElement sealedV2Identity = sealedV2IdentityDocument.RootElement;
+        sealedV2Identity.GetProperty("schema").GetString()
+            .ShouldBe("hexalith.frontcomposer.eventstore-approved-runtime-identity.v2");
+        JsonElement sealedV2Tuple = sealedV2Identity.GetProperty("activeTuple");
+        sealedV2Tuple.GetProperty("eventStoreSourceGitlink").GetString().ShouldBe(sealedV2SourceSha);
+        sealedV2Tuple.GetProperty("eventStorePackageVersion").GetString().ShouldBe(sealedV2Version);
+        sealedV2Tuple.GetProperty("buildsCatalogGitlink").GetString().ShouldBe(sealedV2BuildsSha);
+
+        string activeIdentityPath = Path.Combine(
+            root,
+            "_bmad-output",
+            "contracts",
+            "frontcomposer-eventstore-approved-runtime-identity-v3.json");
         using JsonDocument activeIdentityDocument = JsonDocument.Parse(File.ReadAllText(activeIdentityPath));
         JsonElement activeIdentity = activeIdentityDocument.RootElement;
         activeIdentity.GetProperty("schema").GetString()
-            .ShouldBe("hexalith.frontcomposer.eventstore-approved-runtime-identity.v2");
+            .ShouldBe("hexalith.frontcomposer.eventstore-approved-runtime-identity.v3");
         JsonElement predecessor = activeIdentity.GetProperty("predecessor");
         predecessor.GetProperty("path").GetString().ShouldBe(
-            "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v1.json");
-        predecessor.GetProperty("sha256").GetString().ShouldBe(Sha256File(approvalContractPath));
+            "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v2.json");
+        predecessor.GetProperty("sha256").GetString().ShouldBe(sealedV2IdentitySha);
         predecessor.GetProperty("supersededForActiveReleaseSelectionOnly").GetBoolean().ShouldBeTrue();
         JsonElement activeTuple = activeIdentity.GetProperty("activeTuple");
-        activeTuple.GetProperty("eventStoreSourceGitlink").GetString().ShouldBe(sealedV2SourceSha);
-        activeTuple.GetProperty("eventStorePackageVersion").GetString().ShouldBe(sealedV2Version);
-        activeTuple.GetProperty("buildsCatalogGitlink").GetString().ShouldBe(sealedV2BuildsSha);
-        activeIdentity.GetProperty("frontComposerRevision").GetString().ShouldBe(
-            "1b3608c9b039dbba1be0884d92a2a6d54054e370");
+        activeTuple.GetProperty("eventStoreSourceGitlink").GetString().ShouldBe(currentSourceSha);
+        activeTuple.GetProperty("eventStorePackageVersion").GetString().ShouldBe(currentVersion);
+        activeTuple.GetProperty("buildsCatalogGitlink").GetString().ShouldBe(currentBuildsSha);
         JsonElement runtimeInputs = activeIdentity.GetProperty("runtimeInputs");
         string runtimeManifestPath = Path.Combine(root, runtimeInputs.GetProperty("path").GetString()!);
         Sha256File(runtimeManifestPath).ShouldBe(runtimeInputs.GetProperty("sha256").GetString());
@@ -3977,9 +3991,19 @@ public sealed class CiGovernanceTests {
         activeIdentity.GetProperty("submodulePointerChangedByApproval").GetBoolean().ShouldBeFalse();
         activeIdentity.GetProperty("packageVersionChangedByApproval").GetBoolean().ShouldBeFalse();
         JsonElement priorCompatibility = activeIdentity.GetProperty("priorCompatibility");
-        priorCompatibility.GetProperty("tuple").GetProperty("buildsCatalogGitlink").GetString()
-            .ShouldBe(priorBuildsSha);
+        JsonElement priorTuple = priorCompatibility.GetProperty("tuple");
+        priorTuple.GetProperty("eventStoreSourceGitlink").GetString().ShouldBe(sealedV2SourceSha);
+        priorTuple.GetProperty("eventStorePackageVersion").GetString().ShouldBe(sealedV2Version);
+        priorTuple.GetProperty("buildsCatalogGitlink").GetString().ShouldBe(priorBuildsSha);
         JsonElement activeEvidence = activeIdentity.GetProperty("activeEvidence");
+        activeEvidence.GetProperty("files").EnumerateArray()
+            .Select(file => file.GetProperty("path").GetString()).ShouldBe([
+                "apphost-package-ledger.json",
+                "apphost-smoke.json",
+                "provider-package-ledger.json",
+                "provider-verification.json",
+                "run-evidence.json",
+            ]);
         string activeEvidenceRoot = Path.Combine(root, activeEvidence.GetProperty("path").GetString()!);
         foreach (JsonElement file in activeEvidence.GetProperty("files").EnumerateArray()) {
             string relative = file.GetProperty("path").GetString()!;
@@ -4257,12 +4281,15 @@ public sealed class CiGovernanceTests {
         uploadLane.ShouldContain("if: success()");
         uploadLane.ShouldNotContain("if: always()");
         uploadLane.ShouldContain("frontcomposer-eventstore-approved-runtime-identity-v2.json");
+        uploadLane.ShouldContain("frontcomposer-eventstore-approved-runtime-identity-v3.json");
         uploadLane.ShouldContain("_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/2026-09-08-builds-35c3d1e5/**");
         uploadLane.ShouldNotContain("_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/**");
         uploadLane.ShouldContain("_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/**");
+        uploadLane.ShouldContain("_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/**");
         uploadLane.ShouldContain("_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/**");
         uploadLane.ShouldContain("_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md");
         uploadLane.ShouldContain("_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md");
+        uploadLane.ShouldContain("_bmad-output/implementation-artifacts/spec-11-25-eventstore-3-106-evidence-reconciliation.md");
         // A rejected evidence tree is never published, but its validator diagnostics must be.
         string diagnosticsLane = ExtractNamedStep(quality, "Upload contract diagnostics");
         diagnosticsLane.ShouldContain("if: always()");
@@ -4301,21 +4328,13 @@ public sealed class CiGovernanceTests {
                 "_bmad-output",
                 "implementation-artifacts",
                 "evidence",
-                "eventstore-runtime-identity-v2"),
+                "eventstore-runtime-identity-v3"),
             "--history-evidence-root", priorEvidenceRoot,
             "--pact-dir", "tests/Hexalith.FrontComposer.Shell.Tests/Pact",
             "--repository-root", root,
         ]);
-        // Loop-9 decision 1, human-ratified 2026-09-15: the frozen package-less exemption is
-        // scoped to the history evidence root, so the preserved active recapture no longer
-        // satisfies the active contract. The lane must fail closed, naming the missing package provenance and
-        // execution boundary, until a genuine new-schema recapture replaces that packet.
-        // Restoring a passing active lane requires new evidence, never a weaker assertion.
-        validation.ExitCode.ShouldNotBe(0);
-        string activeValidationOutput = validation.Output + validation.Error;
-        activeValidationOutput.ShouldContain("Live AppHost smoke does not contain the exact required fields.");
-        activeValidationOutput.ShouldContain("Live AppHost smoke has an unexpected schema.");
-        activeValidationOutput.ShouldContain("Live provider run receipt does not contain the exact required fields.");
+        validation.ExitCode.ShouldBe(0, validation.Output + validation.Error);
+        validation.Output.ShouldContain("EventStore runtime approval: OPEN");
 
         string liveEvidenceRoot = Path.Combine(
             root,

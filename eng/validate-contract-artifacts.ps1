@@ -274,8 +274,8 @@ function Resolve-EvidencePath([string] $value, [string] $defaultRelative) {
 $frontComposerEvidenceRoot = Resolve-EvidencePath $FrontComposerEvidenceRoot "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24"
 $liveEvidenceRoot = Resolve-EvidencePath $LiveEvidenceRoot "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation"
 $priorEvidenceRoot = Resolve-EvidencePath $PriorEvidenceRoot "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/2026-09-08-builds-35c3d1e5"
-$activeEvidenceRoot = Resolve-EvidencePath $ActiveEvidenceRoot "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2"
-$activeIdentity = Resolve-EvidencePath $ActiveIdentity "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v2.json"
+$activeEvidenceRoot = Resolve-EvidencePath $ActiveEvidenceRoot "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3"
+$activeIdentity = Resolve-EvidencePath $ActiveIdentity "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v3.json"
 $expectedProviderVerificationReport = Join-Path $liveEvidenceRoot "provider-verification.json"
 $providerStatus = "NOT_REQUIRED"
 $historicalStatus = "NOT_REQUIRED"
@@ -380,7 +380,7 @@ $summary = @"
 - Interaction count: $($interactionDescriptions.Count)
 - Historical Story 11.24 integrity: $historicalStatus
 - Prior Builds 35c3d1e5 compatibility archive: $priorStatus
-- Active EventStore identity v2 and sealed evidence: $activeStatus
+- Active EventStore identity v3 and sealed evidence: $activeStatus
 - Migration approval: $approvalStatus
 - Current provider verification: $providerStatus
 - Current authenticated AppHost smoke: $appHostStatus
