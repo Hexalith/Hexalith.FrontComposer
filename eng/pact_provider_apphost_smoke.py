@@ -404,8 +404,19 @@ def _msbuild_evaluation(
     runtime: SmokeRuntime,
     arguments: list[str],
     timeout: float,
+    *,
+    issues: list[str] | None = None,
+    issue_scope: str = "apphost",
 ) -> tuple[CommandResult, dict[str, Any] | None]:
     """Run one get* evaluation without routing its large JSON document through stdout."""
+    def reject(code: str) -> None:
+        if issues is not None:
+            issues.append(
+                f"{issue_scope}-msbuild-command-failed"
+                if code == "command-failed"
+                else f"{issue_scope}-msbuild-result-{code}"
+            )
+
     with tempfile.TemporaryDirectory(prefix="frontcomposer-apphost-msbuild-") as directory:
         result_path = Path(directory) / "evaluation.json"
         result = runtime.command(
@@ -413,6 +424,7 @@ def _msbuild_evaluation(
             timeout,
         )
         if result.returncode != 0:
+            reject("command-failed")
             return result, None
         errors: list[str] = []
         document = runtime_evidence._read_json(
@@ -421,7 +433,34 @@ def _msbuild_evaluation(
             "AppHost MSBuild evaluation result",
             max_bytes=MAX_MSBUILD_RESULT_BYTES,
         )
-        return result, document if not errors else None
+        if not errors:
+            return result, document
+
+        detail = " ".join(errors).casefold()
+        if "contains a symlink" in detail:
+            code = "symlink"
+        elif "missing or unreadable" in detail:
+            code = "missing-or-unreadable"
+        elif "file is unreadable" in detail:
+            code = "unreadable"
+        elif "not a regular file" in detail:
+            code = "not-regular"
+        elif "file is empty" in detail:
+            code = "empty"
+        elif "file exceeds" in detail:
+            code = "oversized"
+        elif "lacks no-follow" in detail:
+            code = "unsupported-platform"
+        elif "changed before read" in detail or "changed while read" in detail:
+            code = "changed-during-read"
+        elif "duplicate key" in detail:
+            code = "duplicate-member"
+        elif "must contain one json object" in detail:
+            code = "not-an-object"
+        else:
+            code = "invalid-json"
+        reject(code)
+        return result, None
 
 
 def _logical_name(record: dict[str, Any]) -> str:
@@ -1022,6 +1061,18 @@ def _evaluated_item_path(item: Any, project: Path = APPHOST) -> Path | None:
         return None
 
 
+def _read_assets_json(path: Path, label: str) -> dict[str, Any] | None:
+    """Read one assets graph through the shared bounded, no-follow JSON boundary."""
+    errors: list[str] = []
+    document = runtime_evidence._read_json(
+        path,
+        errors,
+        label,
+        max_bytes=runtime_evidence.MAX_PACKAGE_LEDGER_BYTES,
+    )
+    return document if not errors else None
+
+
 def _resolved_source_graph_is_exact(project_references: list[Path]) -> bool:
     """Traverse regenerated assets and reject package/shadow selection for source dependencies."""
     reachable_roots = {
@@ -1059,9 +1110,8 @@ def _resolved_source_graph_is_exact(project_references: list[Path]) -> bool:
         assets_path = project.parent / "obj" / "project.assets.json"
         if runtime_evidence._path_has_symlink_component(assets_path):
             return False
-        try:
-            assets = json.loads(assets_path.read_text(encoding="utf-8-sig"))
-        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        assets = _read_assets_json(assets_path, "AppHost source assets graph")
+        if assets is None:
             return False
         libraries = assets.get("libraries") if isinstance(assets, dict) else None
         if not isinstance(libraries, dict):
@@ -1108,9 +1158,8 @@ def _discover_assets_graphs_from_json(start_project: Path) -> tuple[list[Path], 
         assets_path = project.parent / "obj" / "project.assets.json"
         if runtime_evidence._path_has_symlink_component(assets_path) or not assets_path.is_file():
             return None
-        try:
-            assets = json.loads(assets_path.read_text(encoding="utf-8-sig"))
-        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        assets = _read_assets_json(assets_path, "AppHost restored assets graph")
+        if assets is None:
             return None
         libraries = assets.get("libraries") if isinstance(assets, dict) else None
         if not isinstance(libraries, dict):
@@ -1161,7 +1210,9 @@ def _discover_assets_graphs_from_json(start_project: Path) -> tuple[list[Path], 
     # only discriminator between this restore closure and any stale local obj directory.
     root_assets_path = start_project.parent / "obj" / "project.assets.json"
     try:
-        root_assets = json.loads(root_assets_path.read_text(encoding="utf-8-sig"))
+        root_assets = _read_assets_json(root_assets_path, "AppHost root assets graph")
+        if root_assets is None:
+            return None
         package_folders = root_assets.get("packageFolders")
         if not isinstance(package_folders, dict) or len(package_folders) != 1:
             return None
@@ -1183,7 +1234,9 @@ def _discover_assets_graphs_from_json(start_project: Path) -> tuple[list[Path], 
                     continue
                 if runtime_evidence._path_has_symlink_component(assets_path) or not assets_path.is_file():
                     return None
-                candidate = json.loads(assets_path.read_text(encoding="utf-8-sig"))
+                candidate = _read_assets_json(assets_path, "AppHost restored assets graph")
+                if candidate is None:
+                    return None
                 candidate_folders = candidate.get("packageFolders")
                 if not isinstance(candidate_folders, dict) or len(candidate_folders) != 1:
                     continue
@@ -1280,6 +1333,7 @@ def _evaluate_source_graph(
         "MSBuildAllProjects",
     ]
     item_names = ",".join(runtime_evidence.APPHOST_EVALUATED_INPUT_ITEMS)
+    evaluation_issues: list[str] = []
     result, document = _msbuild_evaluation(
         runtime,
         [
@@ -1297,6 +1351,7 @@ def _evaluate_source_graph(
             "-getItem:" + item_names,
         ],
         timeout,
+        issues=evaluation_issues,
     )
     properties = document.get("Properties") if isinstance(document, dict) else None
     items = document.get("Items") if isinstance(document, dict) else None
@@ -1306,7 +1361,11 @@ def _evaluate_source_graph(
             + _safe_process_diagnostic(result),
             file=sys.stderr,
         )
-        return reject("apphost-msbuild-output-invalid")
+        return reject(
+            evaluation_issues[0]
+            if evaluation_issues
+            else "apphost-msbuild-output-invalid"
+        )
     for name, expected in APPHOST_BUILD_PROPERTIES.items():
         actual = properties.get(name)
         if not isinstance(actual, str) or actual.casefold() != str(expected).casefold():
@@ -1381,6 +1440,7 @@ def _evaluate_source_graph(
         evaluation_timeout = _remaining_timeout(deadline, 60)
         if evaluation_timeout is None:
             return reject("project-evaluation-deadline-exceeded")
+        project_evaluation_issues: list[str] = []
         project_result, project_document = _msbuild_evaluation(
             runtime,
             [
@@ -1398,6 +1458,8 @@ def _evaluate_source_graph(
                 "-getItem:" + item_names,
             ],
             evaluation_timeout,
+            issues=project_evaluation_issues,
+            issue_scope="project",
         )
         if not isinstance(project_document, dict):
             print(
@@ -1407,7 +1469,11 @@ def _evaluate_source_graph(
                 + _safe_process_diagnostic(project_result),
                 file=sys.stderr,
             )
-            return reject("project-msbuild-output-invalid")
+            return reject(
+                project_evaluation_issues[0]
+                if project_evaluation_issues
+                else "project-msbuild-output-invalid"
+            )
         evaluations.append((project, project_document))
 
     input_paths: set[Path] = set(discovered_projects)
@@ -1474,10 +1540,14 @@ def _evaluate_source_graph(
     }
 
 
-def _runtime_output_inventory() -> tuple[list[dict[str, Any]], bool]:
-    issues: list[str] = []
-    files = runtime_evidence._apphost_runtime_output_binding(ROOT, issues)
-    return files, not issues
+def _runtime_output_inventory(
+    issues: list[str] | None = None,
+) -> tuple[list[dict[str, Any]], bool]:
+    output_issues: list[str] = []
+    files = runtime_evidence._apphost_runtime_output_binding(ROOT, output_issues)
+    if issues is not None:
+        issues.extend(output_issues)
+    return files, not output_issues
 
 
 def _resolved_apphost_package_ledger(
@@ -2183,11 +2253,17 @@ def _capture(
             reason_codes.append("apphost.package-authority.not-sealed")
             return 1
         initial_package_ledger = package_ledger
-        runtime_outputs, outputs_valid = _runtime_output_inventory()
+        runtime_output_issues: list[str] = []
+        runtime_outputs, outputs_valid = _runtime_output_inventory(runtime_output_issues)
         evidence["startup"]["outputPreparation"]["runtimeOutputBinding"] = (
             runtime_evidence.runtime_output_binding(runtime_outputs)
         )
         if not outputs_valid:
+            print(
+                "AppHost runtime output closure failed: "
+                + "; ".join(runtime_output_issues or ["unspecified"]),
+                file=sys.stderr,
+            )
             reason_codes.append("apphost.runtime-output.not-closed")
             return 1
         initial_runtime_outputs = runtime_outputs

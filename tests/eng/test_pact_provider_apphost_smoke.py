@@ -27,6 +27,7 @@ sys.path.insert(0, str(ROOT / "eng"))
 import pact_provider_apphost_smoke as smoke  # noqa: E402
 
 REAL_DISCOVER_ASSETS_GRAPHS = smoke._discover_assets_graphs_from_json
+REAL_DISCOVER_APPHOST_PROJECT_GRAPH = smoke.runtime_evidence._discover_apphost_project_graph
 
 def _synthetic_package_ledger(
     assets_paths: list[Path], captured_at: str | None = None
@@ -1089,6 +1090,69 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
             ),
         )
 
+        runtime_errors: list[str] = []
+        with (
+            mock.patch.object(
+                smoke.runtime_evidence,
+                "APPHOST_PROJECT_PATH",
+                "src/AppHost/AppHost.csproj",
+            ),
+            mock.patch.object(
+                smoke.runtime_evidence,
+                "APPHOST_REACHABLE_SOURCE_GITLINKS",
+                (),
+            ),
+            mock.patch.object(
+                smoke.runtime_evidence,
+                "RUNTIME_DEPENDENCY_GITLINKS",
+                (),
+            ),
+        ):
+            runtime_projects, runtime_assets = REAL_DISCOVER_APPHOST_PROJECT_GRAPH(
+                repository,
+                runtime_errors,
+            )
+
+        self.assertEqual(runtime_errors, [])
+        self.assertEqual(runtime_projects, projects)
+        self.assertEqual(runtime_assets, assets_paths)
+
+    def test_assets_graph_traversals_reject_oversized_and_symlinked_root_json(self) -> None:
+        for mode in ("oversized", "symlinked"):
+            with self.subTest(mode=mode):
+                repository = Path(self.temporary.name) / mode
+                project = repository / "src/AppHost/AppHost.csproj"
+                assets_path = project.parent / "obj/project.assets.json"
+                assets_path.parent.mkdir(parents=True)
+                project.write_text("<Project />\n", encoding="utf-8")
+                assets = {
+                    "packageFolders": {str(repository / "packages") + os.sep: {}},
+                    "libraries": {},
+                    "project": {"restore": {"projectPath": str(project)}},
+                }
+                payload = json.dumps(assets)
+                if mode == "oversized":
+                    assets_path.write_text(payload, encoding="utf-8")
+                else:
+                    target = repository / "assets-target.json"
+                    target.write_text(payload, encoding="utf-8")
+                    assets_path.symlink_to(target)
+                (repository / "samples/Counter").mkdir(parents=True)
+
+                patches = (
+                    mock.patch.object(smoke, "ROOT", repository),
+                    mock.patch.object(smoke, "REACHABLE_SOURCE_GITLINKS", ()),
+                    mock.patch.object(smoke, "SOURCE_DEPENDENCY_GITLINKS", ()),
+                    mock.patch.object(
+                        smoke.runtime_evidence,
+                        "MAX_PACKAGE_LEDGER_BYTES",
+                        64 if mode == "oversized" else 1024 * 1024,
+                    ),
+                )
+                with patches[0], patches[1], patches[2], patches[3]:
+                    self.assertIsNone(REAL_DISCOVER_ASSETS_GRAPHS(project))
+                    self.assertFalse(smoke._resolved_source_graph_is_exact([project]))
+
     def test_process_diagnostic_redacts_secret_shaped_output(self) -> None:
         diagnostic = smoke._safe_process_diagnostic(
             smoke.CommandResult(
@@ -1427,11 +1491,12 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
     def test_msbuild_evaluation_reads_large_bounded_result_file_instead_of_truncated_stdout(self) -> None:
         document = json.loads(FakeRuntime.evaluation_output())
         document["Items"]["ReferencePath"] = [
-            {"Identity": "x" * (smoke.MAX_OUTPUT_CHARS + 1024)}
+            {"Identity": "x" * (smoke.MAX_MSBUILD_OUTPUT_CHARS + 1024)}
         ]
         payload = json.dumps(document)
-        self.assertGreater(len(payload), smoke.MAX_OUTPUT_CHARS)
-        truncated_stdout = payload[-smoke.MAX_OUTPUT_CHARS:]
+        self.assertGreater(len(payload), smoke.MAX_MSBUILD_OUTPUT_CHARS)
+        self.assertLess(len(payload), smoke.MAX_MSBUILD_RESULT_BYTES)
+        truncated_stdout = payload[-smoke.MAX_MSBUILD_OUTPUT_CHARS:]
         self.assertIsNone(smoke._json_from_output(truncated_stdout))
         runtime = mock.Mock()
 
@@ -1456,7 +1521,7 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertEqual(parsed, document)
 
-    def test_msbuild_evaluation_rejects_missing_malformed_symlinked_and_oversized_results(self) -> None:
+    def test_msbuild_evaluation_reports_distinct_bounded_result_failures(self) -> None:
         symlink_target = Path(self.temporary.name) / "msbuild-result-target.json"
         symlink_target.write_text(FakeRuntime.evaluation_output(), encoding="utf-8")
 
@@ -1466,17 +1531,21 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         def malformed(path: Path) -> None:
             path.write_text("{", encoding="utf-8")
 
+        def duplicate_member(path: Path) -> None:
+            path.write_text('{"value":1,"value":2}', encoding="utf-8")
+
         def symlinked(path: Path) -> None:
             path.symlink_to(symlink_target)
 
         def oversized(path: Path) -> None:
             path.write_text('{"value":"' + ("x" * 128) + '"}', encoding="utf-8")
 
-        for name, writer in (
-            ("missing", missing),
-            ("malformed", malformed),
-            ("symlinked", symlinked),
-            ("oversized", oversized),
+        for name, writer, expected_issue in (
+            ("missing", missing, "apphost-msbuild-result-missing-or-unreadable"),
+            ("malformed", malformed, "apphost-msbuild-result-invalid-json"),
+            ("duplicate", duplicate_member, "apphost-msbuild-result-duplicate-member"),
+            ("symlinked", symlinked, "apphost-msbuild-result-symlink"),
+            ("oversized", oversized, "apphost-msbuild-result-oversized"),
         ):
             with self.subTest(name=name):
                 runtime = mock.Mock()
@@ -1497,13 +1566,168 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
                     return smoke.CommandResult(0)
 
                 runtime.command.side_effect = command
+                issues: list[str] = []
                 with mock.patch.object(smoke, "MAX_MSBUILD_RESULT_BYTES", 64):
                     _, parsed = smoke._msbuild_evaluation(
                         runtime,
                         ["dotnet", "msbuild", "AppHost.csproj"],
                         30,
+                        issues=issues,
                     )
                 self.assertIsNone(parsed)
+                self.assertEqual(issues, [expected_issue])
+
+    def test_msbuild_evaluation_fails_closed_without_no_follow_opening(self) -> None:
+        runtime = mock.Mock()
+
+        def command(arguments: list[str], timeout: float) -> smoke.CommandResult:
+            del timeout
+            option = next(
+                argument
+                for argument in arguments
+                if argument.startswith("-getResultOutputFile:")
+            )
+            Path(option.split(":", 1)[1]).write_text(
+                FakeRuntime.evaluation_output(),
+                encoding="utf-8",
+            )
+            return smoke.CommandResult(0)
+
+        runtime.command.side_effect = command
+        issues: list[str] = []
+        with mock.patch.object(smoke.runtime_evidence.os, "O_NOFOLLOW", None):
+            _, parsed = smoke._msbuild_evaluation(
+                runtime,
+                ["dotnet", "msbuild", "AppHost.csproj"],
+                30,
+                issues=issues,
+            )
+
+        self.assertIsNone(parsed)
+        self.assertEqual(issues, ["apphost-msbuild-result-unsupported-platform"])
+
+    def test_msbuild_evaluation_accepts_exact_limit_and_rejects_limit_plus_one(self) -> None:
+        limit = 64
+        empty_payload = b'{"value":""}'
+
+        def payload(size: int) -> bytes:
+            return b'{"value":"' + (b"x" * (size - len(empty_payload))) + b'"}'
+
+        self.assertEqual(len(payload(limit)), limit)
+        self.assertEqual(len(payload(limit + 1)), limit + 1)
+        for name, result_payload, expected_issue in (
+            ("exact", payload(limit), None),
+            ("one-too-large", payload(limit + 1), "apphost-msbuild-result-oversized"),
+        ):
+            with self.subTest(name=name):
+                runtime = mock.Mock()
+
+                def command(arguments: list[str], timeout: float) -> smoke.CommandResult:
+                    del timeout
+                    option = next(
+                        argument
+                        for argument in arguments
+                        if argument.startswith("-getResultOutputFile:")
+                    )
+                    Path(option.split(":", 1)[1]).write_bytes(result_payload)
+                    return smoke.CommandResult(0)
+
+                runtime.command.side_effect = command
+                issues: list[str] = []
+                with mock.patch.object(smoke, "MAX_MSBUILD_RESULT_BYTES", limit):
+                    _, parsed = smoke._msbuild_evaluation(
+                        runtime,
+                        ["dotnet", "msbuild", "AppHost.csproj"],
+                        30,
+                        issues=issues,
+                    )
+                if expected_issue is None:
+                    self.assertEqual(parsed, {"value": "x" * (limit - len(empty_payload))})
+                    self.assertEqual(issues, [])
+                else:
+                    self.assertIsNone(parsed)
+                    self.assertEqual(issues, [expected_issue])
+
+    def test_source_graph_reports_the_sanitized_msbuild_result_failure(self) -> None:
+        runtime = mock.Mock()
+
+        def command(arguments: list[str], timeout: float) -> smoke.CommandResult:
+            del timeout
+            option = next(
+                argument
+                for argument in arguments
+                if argument.startswith("-getResultOutputFile:")
+            )
+            Path(option.split(":", 1)[1]).write_text("{", encoding="utf-8")
+            return smoke.CommandResult(0, "secret-shaped diagnostic remains out of the reason code")
+
+        runtime.command.side_effect = command
+        issues: list[str] = []
+
+        result = smoke._evaluate_source_graph(
+            runtime,
+            time.monotonic() + 30,
+            issues=issues,
+        )
+
+        self.assertIsNone(result)
+        self.assertEqual(issues, ["apphost-msbuild-result-invalid-json"])
+
+    def test_msbuild_evaluation_rejects_same_size_mutation_and_path_replacement(self) -> None:
+        original_payload = b'{"value":"original"}'
+        mutated_payload = b'{"value":"modified"}'
+        self.assertEqual(len(original_payload), len(mutated_payload))
+        real_read = os.read
+
+        for name, replace_path in (("same-size-mutation", False), ("replacement", True)):
+            with self.subTest(name=name):
+                runtime = mock.Mock()
+                result_path: list[Path] = []
+
+                def command(arguments: list[str], timeout: float) -> smoke.CommandResult:
+                    del timeout
+                    option = next(
+                        argument
+                        for argument in arguments
+                        if argument.startswith("-getResultOutputFile:")
+                    )
+                    path = Path(option.split(":", 1)[1])
+                    path.write_bytes(original_payload)
+                    result_path.append(path)
+                    return smoke.CommandResult(0)
+
+                mutated = False
+
+                def read_and_mutate(descriptor: int, count: int) -> bytes:
+                    nonlocal mutated
+                    data = real_read(descriptor, count)
+                    if data and not mutated:
+                        mutated = True
+                        path = result_path[0]
+                        if replace_path:
+                            replacement = path.with_suffix(".replacement")
+                            replacement.write_bytes(mutated_payload)
+                            os.replace(replacement, path)
+                        else:
+                            before = path.stat()
+                            path.write_bytes(mutated_payload)
+                            os.utime(
+                                path,
+                                ns=(before.st_atime_ns, before.st_mtime_ns + 1_000_000_000),
+                            )
+                    return data
+
+                runtime.command.side_effect = command
+                issues: list[str] = []
+                with mock.patch.object(smoke.runtime_evidence.os, "read", side_effect=read_and_mutate):
+                    _, parsed = smoke._msbuild_evaluation(
+                        runtime,
+                        ["dotnet", "msbuild", "AppHost.csproj"],
+                        30,
+                        issues=issues,
+                    )
+                self.assertIsNone(parsed)
+                self.assertEqual(issues, ["apphost-msbuild-result-changed-during-read"])
 
     def test_http_body_limit_accepts_exactly_the_limit_and_rejects_one_more_byte(self) -> None:
         exact = io.BytesIO(b"x" * smoke.MAX_HTTP_BODY_BYTES)

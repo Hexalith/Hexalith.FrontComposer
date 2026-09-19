@@ -4179,9 +4179,17 @@ public sealed class CiGovernanceTests {
         appHostSmokeSource.ShouldContain("\"-nodeReuse:false\"");
         appHostSmokeSource.ShouldContain("f\"-getResultOutputFile:{result_path}\"");
         appHostSmokeSource.ShouldContain("max_bytes=MAX_MSBUILD_RESULT_BYTES");
+        appHostSmokeSource.ShouldContain("changed-during-read");
+        appHostSmokeSource.ShouldContain("duplicate-member");
+        appHostSmokeSource.ShouldContain("unsupported-platform");
+        appHostSmokeSource.ShouldContain("AppHost runtime output closure failed:");
         appHostSmokeSource.ShouldContain("runtime_evidence.APPHOST_EVALUATED_INPUT_ITEMS");
         appHostSmokeSource.ShouldContain("runtime_evidence.runtime_output_binding(runtime_outputs)");
         string runtimeEvidenceSource = File.ReadAllText(Path.Combine(root, "eng/eventstore_runtime_evidence.py"));
+        runtimeEvidenceSource.ShouldContain("getattr(os, \"O_NOFOLLOW\", None)");
+        runtimeEvidenceSource.ShouldContain("\"st_mtime_ns\"");
+        runtimeEvidenceSource.ShouldContain("\"st_ctime_ns\"");
+        runtimeEvidenceSource.ShouldContain("AppHost assets graph does not select one package authority root.");
         runtimeEvidenceSource.ShouldContain("\"GeneratePackageOnBuild\": False");
         runtimeEvidenceSource.ShouldContain("APPHOST_EVALUATION_TARGET_FRAMEWORK = \"net10.0\"");
         runtimeEvidenceSource.ShouldContain("\"-p:BuildProjectReferences=false\"");
@@ -4199,6 +4207,8 @@ public sealed class CiGovernanceTests {
         appHostCaptureSource.ShouldContain("prune_unselected=True");
         appHostCaptureSource.ShouldContain("evidence[\"executionStartedAt\"] = datetime.now(timezone.utc).isoformat()");
         appHostCaptureSource.ShouldContain("source_graph_before = _evaluate_source_graph(");
+        appHostCaptureSource.ShouldContain("source_graph_after");
+        appHostCaptureSource.ShouldContain("[\"evaluatedInputBinding\"] = source_graph_after");
         appHostCaptureSource.ShouldContain("prebuild = runtime.command(");
         appHostCaptureSource.ShouldContain("start = runtime.command([*START_COMMAND, \"--no-build\"], start_timeout)");
         int appHostRestoreIndex = appHostCaptureSource.IndexOf("restore = runtime.command(", StringComparison.Ordinal);

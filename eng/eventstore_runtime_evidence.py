@@ -11,6 +11,7 @@ import json
 import os
 import re
 import shutil
+import stat as stat_module
 import struct
 import subprocess
 import sys
@@ -598,24 +599,87 @@ def _bounded_read(
         errors.append(f"{category} path contains a symlink: {display}")
         return None
     try:
-        stat = path.stat()
+        path_stat = path.stat(follow_symlinks=False)
     except OSError:
         errors.append(f"{category} file is missing or unreadable: {display}")
         return None
-    if not path.is_file():
+    if not stat_module.S_ISREG(path_stat.st_mode):
         errors.append(f"{category} path is not a regular file: {display}")
         return None
-    if stat.st_size <= 0 or stat.st_size > limit:
-        errors.append(f"{category} file is empty or exceeds {limit} bytes: {display}")
+    if path_stat.st_size <= 0:
+        errors.append(f"{category} file is empty: {display}")
         return None
+    if path_stat.st_size > limit:
+        errors.append(f"{category} file exceeds {limit} bytes: {display}")
+        return None
+
+    no_follow = getattr(os, "O_NOFOLLOW", None)
+    if not isinstance(no_follow, int) or no_follow == 0:
+        errors.append(f"{category} platform lacks no-follow file opening: {display}")
+        return None
+
+    descriptor = -1
     try:
-        with path.open("rb") as stream:
-            data = stream.read(limit + 1)
+        flags = (
+            os.O_RDONLY
+            | getattr(os, "O_CLOEXEC", 0)
+            | no_follow
+        )
+        descriptor = os.open(path, flags)
+        opened_stat = os.fstat(descriptor)
+        if (
+            not stat_module.S_ISREG(opened_stat.st_mode)
+            or (opened_stat.st_dev, opened_stat.st_ino)
+            != (path_stat.st_dev, path_stat.st_ino)
+        ):
+            errors.append(f"{category} file changed before read: {display}")
+            return None
+        chunks: list[bytes] = []
+        remaining = limit + 1
+        while remaining > 0:
+            chunk = os.read(descriptor, remaining)
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        data = b"".join(chunks)
+        after_read_stat = os.fstat(descriptor)
+        final_path_stat = path.stat(follow_symlinks=False)
     except OSError:
-        errors.append(f"{category} file is unreadable: {display}")
+        errors.append(
+            f"{category} file changed while read: {display}"
+            if descriptor >= 0
+            else f"{category} file changed before read: {display}"
+        )
         return None
-    if len(data) != stat.st_size or len(data) > limit:
-        errors.append(f"{category} file changed while read or exceeds {limit} bytes: {display}")
+    finally:
+        if descriptor >= 0:
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+
+    stable_metadata = (
+        "st_dev",
+        "st_ino",
+        "st_mode",
+        "st_size",
+        "st_mtime_ns",
+        "st_ctime_ns",
+    )
+    if any(
+        getattr(path_stat, field) != getattr(after_read_stat, field)
+        or getattr(opened_stat, field) != getattr(after_read_stat, field)
+        or getattr(after_read_stat, field) != getattr(final_path_stat, field)
+        for field in stable_metadata
+    ):
+        errors.append(f"{category} file changed while read: {display}")
+        return None
+    if len(data) != path_stat.st_size:
+        errors.append(f"{category} file changed while read: {display}")
+        return None
+    if len(data) > limit:
+        errors.append(f"{category} file exceeds {limit} bytes: {display}")
         return None
     return data
 
@@ -4159,6 +4223,7 @@ def _discover_apphost_project_graph(
         for relative in child_projects:
             child = Path(relative.replace("\\", os.sep))
             pending.append(child if child.is_absolute() else project.parent / child)
+
     missing_roots = sorted(set(reachable_roots) - seen_roots)
     if missing_roots:
         errors.append(
