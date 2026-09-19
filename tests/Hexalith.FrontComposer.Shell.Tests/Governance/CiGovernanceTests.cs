@@ -4160,7 +4160,9 @@ public sealed class CiGovernanceTests {
         appHostSmokeSource.ShouldContain("runtime_evidence.APPHOST_PACKAGE_ASSETS_ROOT");
         appHostSmokeSource.ShouldContain("runtime_evidence.validate_package_ledger_semantics(");
         appHostSmokeSource.ShouldContain("\"-target:ResolveReferences\"");
-        appHostSmokeSource.ShouldContain("\"-p:BuildProjectReferences=true\"");
+        appHostSmokeSource.ShouldContain("\"-p:BuildProjectReferences=false\"");
+        appHostSmokeSource.ShouldContain("\"-p:GeneratePackageOnBuild=false\"");
+        appHostSmokeSource.ShouldContain("\"-nodeReuse:false\"");
         appHostSmokeSource.ShouldContain("runtime_evidence.APPHOST_EVALUATED_INPUT_ITEMS");
         string runtimeEvidenceSource = File.ReadAllText(Path.Combine(root, "eng/eventstore_runtime_evidence.py"));
         runtimeEvidenceSource.ShouldContain("\"ReferencePath\"");
