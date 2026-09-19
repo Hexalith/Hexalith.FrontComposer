@@ -208,13 +208,34 @@ jobs:
           dotnet restore references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj --force --force-evaluate --no-cache --disable-parallel -p:Configuration=Release -p:NuGetAudit=false
           python3 eng/eventstore_runtime_evidence.py \
             --write-package-ledger \
+            --prune-unselected-packages \
             --package-ledger-output "$provider_ledger" \
             --package-root "$provider_packages" \
+            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/obj/project.assets.json \
+            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.Client/obj/project.assets.json \
+            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/obj/project.assets.json \
+            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/obj/project.assets.json \
+            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.Gateway/obj/project.assets.json \
+            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.Server/obj/project.assets.json \
+            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/obj/project.assets.json \
+            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.SignalR/obj/project.assets.json \
+            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.Testing/obj/project.assets.json \
             --package-assets references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/obj/project.assets.json \
             --package-assets references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification/obj/project.assets.json \
             --pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact
           dotnet build references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj --configuration Release --no-restore --no-incremental -m:1 -p:NuGetAudit=false
-          dotnet references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.Tests.dll
+          # The pinned EventStore tests resolve their accepted Pact corpus through the
+          # repository's FrontComposer gitlink. Do not initialize that historical nested
+          # checkout: stage the six current, already-gated JSON inputs into its empty worktree.
+          provider_test_pact_dir="$GITHUB_WORKSPACE/references/Hexalith.EventStore/references/Hexalith.FrontComposer/tests/Hexalith.FrontComposer.Shell.Tests/Pact"
+          mkdir -p "$provider_test_pact_dir"
+          find "$GITHUB_WORKSPACE/tests/Hexalith.FrontComposer.Shell.Tests/Pact" \
+            -maxdepth 1 -type f -name '*.json' -exec install -m 0644 {} "$provider_test_pact_dir/" \;
+          test "$(find "$provider_test_pact_dir" -maxdepth 1 -type f -name '*.json' | wc -l)" -eq 6
+          (
+            cd references/Hexalith.EventStore &&
+            dotnet tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.Tests.dll
+          )
           # The tool derives its own repository root (source sha, Builds sibling gitlink) by
           # walking up from the process CWD looking for Hexalith.EventStore.slnx, so it must be
           # invoked from inside the EventStore submodule; pact/manifest/report paths stay absolute.
@@ -265,6 +286,38 @@ jobs:
             --timeout-seconds 300 \
             --runtime-input-manifest "$FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST" \
             --package-root "$apphost_packages"
+
+      - name: 'Gate 2c: Validate current live capture'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 eng/eventstore_runtime_evidence.py \
+            --live-evidence-root _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation \
+            --pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact \
+            --repository-root . \
+            --runtime-input-manifest "$FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST" \
+            --provider-package-root "$FRONTCOMPOSER_PROVIDER_PACKAGES" \
+            --apphost-package-root "$FRONTCOMPOSER_APPHOST_PACKAGES"
+
+      - name: Stage current EventStore capture candidate
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate_root="$RUNNER_TEMP/eventstore-3-106-recapture-candidate"
+          mkdir "$candidate_root"
+          install -m 0644 "$FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST" "$candidate_root/frontcomposer-runtime-inputs.json"
+          cp -a _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/. "$candidate_root/"
+          test "$(find "$candidate_root" -mindepth 1 -maxdepth 1 -type f | wc -l)" -eq 6
+
+      - name: Publish current EventStore capture candidate
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: eventstore-3-106-recapture-candidate-${{ github.run_attempt }}
+          retention-days: 14
+          if-no-files-found: error
+          path: ${{ runner.temp }}/eventstore-3-106-recapture-candidate
 
       - name: 'Gate 2c: Validate contract artifacts'
         shell: pwsh

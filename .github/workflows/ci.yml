@@ -58,6 +58,11 @@ jobs:
           # Exact stores are acquired below from active-policy-approved identities.
           submodules: false
 
+      - name: Initialize .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
       - name: Select exact dependency revisions
         id: revisions
         shell: bash

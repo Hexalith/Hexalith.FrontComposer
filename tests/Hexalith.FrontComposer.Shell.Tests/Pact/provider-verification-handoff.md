@@ -33,10 +33,15 @@ only under the history evidence root. Active and live evidence must carry a genu
 `executionStartedAt`, and the runtime-manifest/ledger/execution/completion chronology, or Gate 2c fails
 closed.
 
-Run the built provider test assembly from the FrontComposer repository root:
+The pinned EventStore 3.106 test assembly locates the accepted Pact corpus through its
+`references/Hexalith.FrontComposer` gitlink. In a FrontComposer source-closure workflow,
+leave that historical nested submodule uninitialized and stage the six current generated
+Pact JSON files into its empty worktree. Then run the built provider test assembly from the
+EventStore repository root:
 
 ```powershell
-dotnet references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.Tests.dll
+Set-Location references/Hexalith.EventStore
+dotnet tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.Tests.dll
 ```
 
 That test invocation does not create the live compatibility report. Run the provider application separately from the EventStore repository root:

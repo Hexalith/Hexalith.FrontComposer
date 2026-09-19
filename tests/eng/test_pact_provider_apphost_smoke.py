@@ -25,6 +25,8 @@ sys.path.insert(0, str(ROOT / "eng"))
 
 import pact_provider_apphost_smoke as smoke  # noqa: E402
 
+REAL_DISCOVER_ASSETS_GRAPHS = smoke._discover_assets_graphs_from_json
+
 def _synthetic_package_ledger(
     assets_paths: list[Path], captured_at: str | None = None
 ) -> dict[str, Any]:
@@ -48,6 +50,24 @@ def _synthetic_package_ledger(
         "files": files,
         "treeSha256": smoke.runtime_evidence._package_tree_sha256(files),
     }
+    tool_bindings = [
+        {
+            "id": package_id,
+            "version": version,
+            "relativePath": f"{package_id.casefold()}/{version.casefold()}",
+            "contentHashSha512": content_hash,
+        }
+        for package_id, version in smoke.runtime_evidence.APPHOST_TOOL_PACKAGES
+    ]
+    tool_packages = [
+        {
+            **tool_binding,
+            "nupkgSha512": content_hash,
+            "files": files,
+            "treeSha256": smoke.runtime_evidence._package_tree_sha256(files),
+        }
+        for tool_binding in tool_bindings
+    ]
     entries = {
         "assetsGraphs": [
             {
@@ -57,7 +77,11 @@ def _synthetic_package_ledger(
             }
             for path in sorted(assets_paths)
         ],
-        "packages": [package],
+        "toolPackages": tool_bindings,
+        "packages": sorted(
+            [package, *tool_packages],
+            key=lambda item: (item["id"].casefold(), item["version"].casefold()),
+        ),
     }
     return {
         "schema": smoke.runtime_evidence.PACKAGE_LEDGER_SCHEMA,
@@ -311,8 +335,11 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
             assets_paths: Any,
             *,
             captured_at: str | None = None,
+            prune_unselected: bool = False,
+            tool_packages: Any = (),
         ) -> tuple[dict[str, Any], list[str]]:
-            del repository_root, package_root
+            del repository_root, package_root, prune_unselected
+            self.assertEqual(tuple(tool_packages), smoke.runtime_evidence.APPHOST_TOOL_PACKAGES)
             return _synthetic_package_ledger(
                 list(assets_paths), captured_at
             ), []
@@ -407,7 +434,10 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
             if command[:2] == ["dotnet", "msbuild"]
         ]
         self.assertTrue(all("-target:ResolveReferences" in command for command in evaluation_commands))
-        self.assertTrue(all("-p:BuildProjectReferences=true" in command for command in evaluation_commands))
+        self.assertTrue(all("-p:BuildProjectReferences=false" in command for command in evaluation_commands))
+        self.assertTrue(all("-p:GeneratePackageOnBuild=false" in command for command in evaluation_commands))
+        self.assertTrue(all("-m:1" in command for command in evaluation_commands))
+        self.assertTrue(all("-nodeReuse:false" in command for command in evaluation_commands))
         self.assertTrue(all(any("ReferencePath" in item for item in command) for command in evaluation_commands))
         self.assertIn("--no-restore", runtime.commands[build_index])
         self.assertIn("--isolated", runtime.commands[start_index])
@@ -603,6 +633,7 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertEqual(result, 1)
         clean = next(command_args for command_args in recorded if command_args[:2] == ["dotnet", "clean"])
         self.assertEqual(clean[2], smoke.APPHOST_RELATIVE)
+
         restore = next(command_args for command_args in recorded if command_args[:2] == ["dotnet", "restore"])
         self.assertEqual(restore[2], smoke.APPHOST_RELATIVE)
         self.assertIn("--force", restore)
@@ -630,6 +661,20 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         start = next(command_args for command_args in recorded if command_args[:2] == ["aspire", "start"])
         self.assertIn("--isolated", start)
         self.assertIn("--no-build", start)
+
+    def test_msbuild_evaluation_has_a_separate_bounded_json_output_budget(self) -> None:
+        payload = "prefix" + ("x" * (smoke.MAX_MSBUILD_OUTPUT_CHARS + 17))
+        completed = mock.Mock(returncode=0, stdout=payload, stderr=payload)
+        runtime = smoke.SmokeRuntime()
+
+        with mock.patch.object(smoke.subprocess, "run", return_value=completed):
+            msbuild = runtime.command(["dotnet", "msbuild"], 30)
+            describe = runtime.command(["aspire", "describe"], 30)
+
+        self.assertEqual(len(msbuild.stdout), smoke.MAX_MSBUILD_OUTPUT_CHARS)
+        self.assertEqual(len(msbuild.stderr), smoke.MAX_MSBUILD_OUTPUT_CHARS)
+        self.assertEqual(len(describe.stdout), smoke.MAX_OUTPUT_CHARS)
+        self.assertEqual(len(describe.stderr), smoke.MAX_OUTPUT_CHARS)
 
     def test_dirty_runtime_preflight_performs_no_lifecycle_or_build_mutation(self) -> None:
         smoke.runtime_evidence.runtime_input_manifest.return_value = (  # type: ignore[attr-defined]
@@ -748,6 +793,19 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
 
         runtime.command = command  # type: ignore[method-assign]
 
+        evaluation_issues: list[str] = []
+        self.assertIsNone(
+            smoke._evaluate_source_graph(
+                runtime,
+                time.monotonic() + 30,
+                issues=evaluation_issues,
+            )
+        )
+        self.assertEqual(
+            evaluation_issues,
+            ["apphost-build-property-mismatch:UseNuGetDeps"],
+        )
+
         result = smoke.capture(self.output, runtime, timeout=30)
 
         self.assertEqual(result, 1)
@@ -807,6 +865,57 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
                 failure = json.loads(self.output.read_text(encoding="utf-8"))
                 self.assertIn("apphost.source-graph.not-exact", failure["reasonCodes"])
 
+    def test_assets_discovery_includes_fresh_conditionally_restored_projects(self) -> None:
+        repository = Path(self.temporary.name) / "repository"
+        package_root = Path(self.temporary.name) / "fresh-packages"
+        package_root.mkdir()
+        root_project = repository / "src/AppHost/AppHost.csproj"
+        conditional_project = repository / "src/Conditional/Conditional.csproj"
+        for project in (root_project, conditional_project):
+            project.parent.mkdir(parents=True)
+            project.write_text("<Project />\n", encoding="utf-8")
+            assets = {
+                "packageFolders": {str(package_root) + os.sep: {}},
+                "libraries": {},
+                "project": {"restore": {"projectPath": str(project)}},
+            }
+            assets_path = project.parent / "obj/project.assets.json"
+            assets_path.parent.mkdir()
+            assets_path.write_text(json.dumps(assets), encoding="utf-8")
+        (repository / "samples/Counter").mkdir(parents=True)
+
+        with (
+            mock.patch.object(smoke, "ROOT", repository),
+            mock.patch.object(smoke, "REACHABLE_SOURCE_GITLINKS", ()),
+        ):
+            discovered = REAL_DISCOVER_ASSETS_GRAPHS(root_project)
+
+        self.assertIsNotNone(discovered)
+        projects, assets_paths = discovered or ([], [])
+        self.assertEqual(projects, sorted([root_project, conditional_project]))
+        self.assertEqual(
+            assets_paths,
+            sorted(
+                [
+                    root_project.parent / "obj/project.assets.json",
+                    conditional_project.parent / "obj/project.assets.json",
+                ]
+            ),
+        )
+
+    def test_process_diagnostic_redacts_secret_shaped_output(self) -> None:
+        diagnostic = smoke._safe_process_diagnostic(
+            smoke.CommandResult(
+                1,
+                "ordinary failure beneath /home/runner/work/project",
+                "password=must-not-escape",
+            )
+        )
+
+        self.assertIn("returnCode=1", diagnostic)
+        self.assertIn("detail=redacted", diagnostic)
+        self.assertNotIn("must-not-escape", diagnostic)
+
     def test_target_resolved_external_reference_path_fails_before_start(self) -> None:
         runtime = FakeRuntime()
         original_command = runtime.command
@@ -862,7 +971,11 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
 
     def test_semantically_self_consistent_empty_package_ledger_fails_before_execution(self) -> None:
         runtime = FakeRuntime()
-        empty_entries: dict[str, Any] = {"assetsGraphs": [], "packages": []}
+        empty_entries: dict[str, Any] = {
+            "assetsGraphs": [],
+            "toolPackages": [],
+            "packages": [],
+        }
         empty_ledger = {
             "schema": smoke.runtime_evidence.PACKAGE_LEDGER_SCHEMA,
             "capturedAt": datetime.now(timezone.utc).isoformat(),

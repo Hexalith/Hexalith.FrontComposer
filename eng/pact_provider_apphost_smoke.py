@@ -62,6 +62,7 @@ START_COMMAND = [
 # from the tail made `_json_from_output` parse a nested fragment and fail closed as
 # `apphost.describe.incomplete` after every resource was already healthy.
 MAX_OUTPUT_CHARS = 1_048_576
+MAX_MSBUILD_OUTPUT_CHARS = 4_194_304
 MAX_HTTP_BODY_BYTES = 1_048_576
 MAX_WEBSOCKET_HEADER_BYTES = 16_384
 MAX_WEBSOCKET_BYTES = 1_048_576
@@ -152,7 +153,16 @@ class SmokeRuntime:
                 text=True,
                 timeout=timeout,
             )
-            return CommandResult(completed.returncode, completed.stdout[-MAX_OUTPUT_CHARS:], completed.stderr[-MAX_OUTPUT_CHARS:])
+            output_limit = (
+                MAX_MSBUILD_OUTPUT_CHARS
+                if arguments[:2] == ["dotnet", "msbuild"]
+                else MAX_OUTPUT_CHARS
+            )
+            return CommandResult(
+                completed.returncode,
+                completed.stdout[-output_limit:],
+                completed.stderr[-output_limit:],
+            )
         except (OSError, subprocess.TimeoutExpired) as exception:
             return CommandResult(124, "", type(exception).__name__)
 
@@ -1050,7 +1060,7 @@ def _resolved_source_graph_is_exact(project_references: list[Path]) -> bool:
 
 
 def _discover_assets_graphs_from_json(start_project: Path) -> tuple[list[Path], list[Path]] | None:
-    """Discover the restored project closure using only project.assets.json documents."""
+    """Discover the fresh restored project closure using only assets JSON documents."""
     pending = [start_project]
     projects: set[Path] = set()
     assets_paths: set[Path] = set()
@@ -1114,6 +1124,59 @@ def _discover_assets_graphs_from_json(start_project: Path) -> tuple[list[Path], 
             if not child.is_absolute():
                 child = project.parent / child
             pending.append(child)
+
+    # Some conditional source references are evaluated by MSBuild but omitted from the
+    # root assets graph's project-reference metadata. Restore still writes their assets
+    # files. The package root is created fresh for this invocation, so it is a stable JSON-
+    # only discriminator between this restore closure and any stale local obj directory.
+    root_assets_path = start_project.parent / "obj" / "project.assets.json"
+    try:
+        root_assets = json.loads(root_assets_path.read_text(encoding="utf-8-sig"))
+        package_folders = root_assets.get("packageFolders")
+        if not isinstance(package_folders, dict) or len(package_folders) != 1:
+            return None
+        selected_package_root = Path(next(iter(package_folders))).resolve(strict=False)
+    except (OSError, RuntimeError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    authority_roots = [
+        ROOT / "src",
+        ROOT / "samples" / "Counter",
+        *(ROOT / relative for relative in REACHABLE_SOURCE_GITLINKS),
+    ]
+    for authority_root in authority_roots:
+        if runtime_evidence._path_has_symlink_component(authority_root) or not authority_root.is_dir():
+            return None
+        try:
+            candidates = authority_root.rglob("project.assets.json")
+            for assets_path in candidates:
+                if assets_path.parent.name != "obj" or assets_path.resolve(strict=False) in assets_paths:
+                    continue
+                if runtime_evidence._path_has_symlink_component(assets_path) or not assets_path.is_file():
+                    return None
+                candidate = json.loads(assets_path.read_text(encoding="utf-8-sig"))
+                candidate_folders = candidate.get("packageFolders")
+                if not isinstance(candidate_folders, dict) or len(candidate_folders) != 1:
+                    continue
+                candidate_root = Path(next(iter(candidate_folders))).resolve(strict=False)
+                if candidate_root != selected_package_root:
+                    continue
+                project_metadata = candidate.get("project")
+                restore = project_metadata.get("restore") if isinstance(project_metadata, dict) else None
+                project_path = restore.get("projectPath") if isinstance(restore, dict) else None
+                if not isinstance(project_path, str) or not project_path:
+                    return None
+                project = Path(project_path.replace("\\", os.sep)).resolve(strict=True)
+                if (
+                    runtime_evidence._path_has_symlink_component(project)
+                    or not project.is_file()
+                    or (project.parent / "obj" / "project.assets.json").resolve(strict=True)
+                    != assets_path.resolve(strict=True)
+                ):
+                    return None
+                projects.add(project)
+                assets_paths.add(assets_path.resolve(strict=True))
+        except (OSError, RuntimeError, UnicodeDecodeError, json.JSONDecodeError):
+            return None
     return sorted(projects), sorted(assets_paths)
 
 
@@ -1164,10 +1227,16 @@ def _evaluate_source_graph(
     expected_assets: list[Path] | None = None,
     package_root: Path | None = None,
     dotnet_root: Path | None = None,
+    issues: list[str] | None = None,
 ) -> dict[str, Any] | None:
+    def reject(reason: str) -> None:
+        if issues is not None:
+            issues.append(reason)
+        return None
+
     timeout = _remaining_timeout(deadline, 60)
     if timeout is None:
-        return None
+        return reject("evaluation-deadline-exceeded")
     property_names = [*APPHOST_BUILD_PROPERTIES, *SOURCE_ROOT_PROPERTIES, "MSBuildAllProjects"]
     item_names = ",".join(runtime_evidence.APPHOST_EVALUATED_INPUT_ITEMS)
     result = runtime.command(
@@ -1176,7 +1245,9 @@ def _evaluate_source_graph(
             "msbuild",
             APPHOST_RELATIVE,
             "-p:Configuration=Debug",
-            "-p:BuildProjectReferences=true",
+            "-p:BuildProjectReferences=false",
+            "-m:1",
+            "-nodeReuse:false",
             *_build_property_arguments(),
             "-target:ResolveReferences",
             "-getProperty:" + ",".join(property_names),
@@ -1188,44 +1259,49 @@ def _evaluate_source_graph(
     properties = document.get("Properties") if isinstance(document, dict) else None
     items = document.get("Items") if isinstance(document, dict) else None
     if not isinstance(properties, dict) or not isinstance(items, dict):
-        return None
+        print(
+            "AppHost MSBuild evaluation diagnostic: "
+            + _safe_process_diagnostic(result),
+            file=sys.stderr,
+        )
+        return reject("apphost-msbuild-output-invalid")
     for name, expected in APPHOST_BUILD_PROPERTIES.items():
         actual = properties.get(name)
         if not isinstance(actual, str) or actual.casefold() != str(expected).casefold():
-            return None
+            return reject(f"apphost-build-property-mismatch:{name}")
     for name, relative in SOURCE_ROOT_PROPERTIES.items():
         actual = properties.get(name)
         if not isinstance(actual, str) or not actual:
-            return None
+            return reject(f"apphost-source-root-missing:{name}")
         try:
             if Path(actual).resolve() != (ROOT / relative).resolve():
-                return None
+                return reject(f"apphost-source-root-mismatch:{name}")
         except (OSError, RuntimeError):
-            return None
+            return reject(f"apphost-source-root-unresolvable:{name}")
     project_items = items.get("ProjectReference")
     package_items = items.get("PackageReference")
     if not isinstance(project_items, list) or not isinstance(package_items, list):
-        return None
+        return reject("apphost-reference-items-invalid")
     project_references = [_evaluated_item_path(item) for item in project_items]
     if not project_references or any(path is None for path in project_references):
-        return None
+        return reject("apphost-project-reference-path-invalid")
     dependency_names = tuple(Path(relative).name.casefold() for relative in SOURCE_DEPENDENCY_GITLINKS)
     for item in package_items:
         if not isinstance(item, dict) or not isinstance(item.get("Identity"), str):
-            return None
+            return reject("apphost-package-reference-invalid")
         package_name = item["Identity"].casefold()
         if any(package_name == name or package_name.startswith(f"{name}.") for name in dependency_names):
-            return None
+            return reject("apphost-guarded-dependency-selected-as-package")
     typed_projects = [path for path in project_references if path is not None]
     if not runtime.source_graph_is_exact(typed_projects):
-        return None
+        return reject("apphost-resolved-source-graph-not-exact")
     discovered = _discover_assets_graphs_from_json(APPHOST)
     if discovered is None:
-        return None
+        return reject("apphost-assets-discovery-failed")
     discovered_projects, discovered_assets = discovered
     discovered_project_set = set(discovered_projects)
     if not set(typed_projects).issubset(discovered_project_set):
-        return None
+        return reject("apphost-project-references-not-in-assets-closure")
     if expected_assets is not None:
         expected_asset_set = {
             path.resolve(strict=False) for path in expected_assets
@@ -1238,7 +1314,7 @@ def _evaluate_source_graph(
             or canonical_apphost_assets not in expected_asset_set
             or set(discovered_assets) != expected_asset_set
         ):
-            return None
+            return reject("apphost-assets-closure-changed")
     if package_root is None or dotnet_root is None:
         return {
             "assetsGraphs": [path.relative_to(ROOT).as_posix() for path in discovered_assets],
@@ -1251,17 +1327,19 @@ def _evaluate_source_graph(
         try:
             project_relative = project.relative_to(ROOT)
         except ValueError:
-            return None
+            return reject("project-outside-repository")
         evaluation_timeout = _remaining_timeout(deadline, 60)
         if evaluation_timeout is None:
-            return None
+            return reject("project-evaluation-deadline-exceeded")
         project_result = runtime.command(
             [
                 "dotnet",
                 "msbuild",
                 str(project_relative),
                 "-p:Configuration=Debug",
-                "-p:BuildProjectReferences=true",
+                "-p:BuildProjectReferences=false",
+                "-m:1",
+                "-nodeReuse:false",
                 *_build_property_arguments(),
                 "-target:ResolveReferences",
                 "-getProperty:MSBuildAllProjects",
@@ -1275,7 +1353,7 @@ def _evaluate_source_graph(
             else None
         )
         if not isinstance(project_document, dict):
-            return None
+            return reject("project-msbuild-output-invalid")
         evaluations.append((project, project_document))
 
     input_paths: set[Path] = set(discovered_projects)
@@ -1284,10 +1362,10 @@ def _evaluate_source_graph(
         evaluated_properties = evaluation.get("Properties")
         evaluated_items = evaluation.get("Items")
         if not isinstance(evaluated_properties, dict) or not isinstance(evaluated_items, dict):
-            return None
+            return reject("project-evaluation-shape-invalid")
         all_projects = evaluated_properties.get("MSBuildAllProjects")
         if not isinstance(all_projects, str) or not all_projects:
-            return None
+            return reject("project-import-closure-missing")
         for raw in all_projects.split(";"):
             if not raw:
                 continue
@@ -1297,43 +1375,43 @@ def _evaluate_source_graph(
             input_paths.add(imported)
         evaluated_packages = evaluated_items.get("PackageReference")
         if not isinstance(evaluated_packages, list):
-            return None
+            return reject("project-package-references-invalid")
         for item in evaluated_packages:
             if not isinstance(item, dict) or not isinstance(item.get("Identity"), str):
-                return None
+                return reject("project-package-reference-invalid")
             package_name = item["Identity"].casefold()
             if any(
                 package_name == name or package_name.startswith(f"{name}.")
                 for name in dependency_names
             ):
-                return None
+                return reject("project-guarded-dependency-selected-as-package")
         evaluated_projects = evaluated_items.get("ProjectReference")
         if not isinstance(evaluated_projects, list):
-            return None
+            return reject("project-reference-items-invalid")
         for item in evaluated_projects:
             project_reference = _evaluated_item_path(item, project)
             if project_reference is None or not project_reference.is_file():
-                return None
+                return reject("project-reference-path-invalid")
             evaluated_project_references.add(project_reference)
         for item_name in runtime_evidence.APPHOST_EVALUATED_INPUT_ITEMS:
             if item_name == "PackageReference":
                 continue
             values = evaluated_items.get(item_name, [])
             if not isinstance(values, list):
-                return None
+                return reject(f"project-input-items-invalid:{item_name}")
             for item in values:
                 path = _evaluated_item_path(item, project)
                 if path is not None and path.exists():
                     input_paths.add(path)
     if evaluated_project_references != discovered_project_set - {APPHOST.resolve()}:
-        return None
+        return reject("evaluated-project-closure-not-exact")
     if not runtime.source_graph_is_exact(sorted(evaluated_project_references)):
-        return None
+        return reject("evaluated-resolved-source-graph-not-exact")
     bound_inputs: list[dict[str, str]] = []
     for path in sorted(input_paths):
         binding = _bound_input(path, package_root, dotnet_root)
         if binding is None:
-            return None
+            return reject("evaluated-input-outside-authorities")
         bound_inputs.append(binding)
     bound_inputs.sort(key=lambda item: (item["authority"], item["path"]))
     return {
@@ -1450,6 +1528,24 @@ def _clip(text: str, limit: int = 4000) -> str:
     if len(text) <= limit:
         return text
     return text[-limit:]
+
+
+def _safe_process_diagnostic(result: CommandResult, limit: int = 2000) -> str:
+    """Return a bounded error tail, or hashes only when secret-shaped text is present."""
+    text = "\n".join(part for part in (result.stdout, result.stderr) if part).strip()
+    stdout_sha256 = hashlib.sha256(result.stdout.encode("utf-8")).hexdigest()
+    stderr_sha256 = hashlib.sha256(result.stderr.encode("utf-8")).hexdigest()
+    hashes = (
+        f"returnCode={result.returncode}; stdoutSha256={stdout_sha256}; "
+        f"stderrSha256={stderr_sha256}"
+    )
+    normalized = text.replace("Bearer FC_CONTRACT_TOKEN", "ALLOWLISTED_SYNTHETIC_TOKEN")
+    if any(pattern.search(normalized) for pattern in runtime_evidence.SECRET_PATTERNS):
+        return hashes + "; detail=redacted"
+    normalized = normalized.replace(str(ROOT), "$REPOSITORY")
+    for pattern in runtime_evidence.LOCAL_PATH_PATTERNS:
+        normalized = pattern.sub("$LOCAL/", normalized)
+    return hashes + "; detail=" + _clip(normalized, limit)
 
 
 def _query_provenance(headers: dict[str, str], document: dict[str, Any]) -> str:
@@ -1794,6 +1890,8 @@ def _capture(
             ROOT,
             package_root,
             assets_paths,
+            prune_unselected=True,
+            tool_packages=runtime_evidence.APPHOST_TOOL_PACKAGES,
         )
         package_issues = list(package_issues)
         runtime_evidence.validate_package_ledger_semantics(
@@ -1834,18 +1932,25 @@ def _capture(
             reason_codes.append("apphost.sdk-authority.not-selected")
             return 1
         evidence["executionStartedAt"] = datetime.now(timezone.utc).isoformat()
+        source_graph_issues: list[str] = []
         source_graph_before = _evaluate_source_graph(
             runtime,
             capture_deadline,
             expected_assets=assets_paths,
             package_root=package_root,
             dotnet_root=dotnet_root,
+            issues=source_graph_issues,
         )
         evidence["startup"]["outputPreparation"]["evaluatedSourceGraph"] = (
             "passed" if source_graph_before is not None else "failed"
         )
         evidence["startup"]["outputPreparation"]["evaluatedInputBinding"] = source_graph_before
         if source_graph_before is None:
+            print(
+                "AppHost source graph evaluation failed: "
+                + ", ".join(source_graph_issues or ["unspecified"]),
+                file=sys.stderr,
+            )
             reason_codes.append("apphost.source-graph.not-exact")
             return 1
         prebuild_timeout = _remaining_timeout(capture_deadline, timeout)
@@ -1875,16 +1980,26 @@ def _capture(
             evidence["startup"]["startStdout"] = _clip(prebuild.stdout)
             evidence["startup"]["startStderr"] = _clip(prebuild.stderr)
             return 1
+        source_graph_issues = []
         source_graph_after = _evaluate_source_graph(
             runtime,
             capture_deadline,
             expected_assets=assets_paths,
             package_root=package_root,
             dotnet_root=dotnet_root,
+            issues=source_graph_issues,
         )
         if source_graph_after is None or not runtime_evidence._exact(
             source_graph_after, source_graph_before
         ):
+            print(
+                "AppHost source graph re-evaluation failed: "
+                + ", ".join(
+                    source_graph_issues
+                    or (["binding-changed-after-build"] if source_graph_after is not None else ["unspecified"])
+                ),
+                file=sys.stderr,
+            )
             evidence["startup"]["outputPreparation"]["evaluatedSourceGraph"] = "failed"
             reason_codes.append("apphost.source-graph.not-exact")
             return 1
@@ -2392,6 +2507,7 @@ def _capture(
                 package_root,
                 assets_paths,
                 captured_at=initial_package_ledger.get("capturedAt"),
+                tool_packages=runtime_evidence.APPHOST_TOOL_PACKAGES,
             )
             package_authority_clean = (
                 not package_issues
