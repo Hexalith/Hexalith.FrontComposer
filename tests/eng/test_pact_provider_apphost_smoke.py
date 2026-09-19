@@ -501,6 +501,93 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         document = json.loads(self.output.read_text(encoding="utf-8"))
         self.assertEqual(document["observations"]["health"]["result"], "passed")
 
+    def test_disposable_writer_protocol_cutover_is_guarded_and_authenticated(self) -> None:
+        runtime = FakeRuntime()
+        activated = False
+        cutover_requests: list[tuple[str | None, dict[str, Any] | None]] = []
+
+        def json_request(
+            url: str,
+            *,
+            method: str = "GET",
+            token: str | None = None,
+            form: dict[str, str] | None = None,
+            body: dict[str, Any] | None = None,
+            timeout: float = 10,
+            deadline: float | None = None,
+        ) -> tuple[int, dict[str, Any], dict[str, str]]:
+            nonlocal activated
+            del timeout, deadline
+            if url.endswith("/health") and not activated:
+                runtime.assert_token_absent(token)
+                return 503, {
+                    "status": "Unhealthy",
+                    "results": {
+                        smoke.WRITER_PROTOCOL_HEALTH_CHECK: {"status": "Unhealthy"},
+                        "self": {"status": "Healthy"},
+                    },
+                }, {}
+            if url.endswith(smoke.WRITER_PROTOCOL_ACTIVATION_PATH):
+                self.assertEqual(method, "POST")
+                self.assertIsNone(form)
+                cutover_requests.append((token, body))
+                if token == "invalid-local-evidence-token":
+                    return 401, {}, {}
+                runtime.assert_token_present(token)
+                self.assertEqual(body, {
+                    "cutoverCommit": smoke._git(
+                        smoke.ROOT / "references/Hexalith.EventStore", "rev-parse", "HEAD"
+                    ),
+                    "backupReference": "frontcomposer-disposable-smoke-no-durable-state",
+                    "writersQuiesced": True,
+                    "retryWorkersQuiesced": True,
+                    "downgradeProhibitedAcknowledged": True,
+                })
+                activated = True
+                return 200, {"status": "Activated"}, {}
+            return FakeRuntime.json_request(
+                runtime,
+                url,
+                method=method,
+                token=token,
+                form=form,
+                body=body,
+            )
+
+        runtime.json_request = json_request  # type: ignore[method-assign]
+
+        result = smoke.capture(self.output, runtime, timeout=30)
+
+        self.assertEqual(result, 0)
+        self.assertTrue(activated)
+        self.assertEqual(
+            [token for token, _ in cutover_requests],
+            ["invalid-local-evidence-token", "synthetic-token-never-persisted"],
+        )
+        document = json.loads(self.output.read_text(encoding="utf-8"))
+        self.assertEqual(document["observations"]["health"]["result"], "passed")
+        self.assertNotIn("synthetic-token", self.output.read_text(encoding="utf-8"))
+
+    def test_writer_protocol_cutover_requires_every_sibling_to_be_ready(self) -> None:
+        self.assertTrue(smoke._writer_protocol_is_only_unhealthy({
+            "results": {
+                smoke.WRITER_PROTOCOL_HEALTH_CHECK: {"status": "Unhealthy"},
+                "redis": {"status": "Healthy"},
+                "configstore": {"status": "Degraded"},
+            },
+        }))
+        self.assertFalse(smoke._writer_protocol_is_only_unhealthy({
+            "results": {
+                smoke.WRITER_PROTOCOL_HEALTH_CHECK: {"status": "Unhealthy"},
+                "redis": {"status": "Unhealthy"},
+            },
+        }))
+        self.assertFalse(smoke._writer_protocol_is_only_unhealthy({
+            "results": {
+                smoke.WRITER_PROTOCOL_HEALTH_CHECK: {"status": "Healthy"},
+            },
+        }))
+
     def test_handler_computed_query_provenance_is_accepted_for_tenant_routes(self) -> None:
         runtime = FakeRuntime()
 

@@ -48,6 +48,10 @@ REQUIRED_RESOURCES = (
 )
 OBSERVATIONS = ("health", "commandSubmit", "commandStatus", "queryProvenance", "projectionSignalR")
 AUTHORIZATION_CONTROLS = ("commandSubmit", "commandStatus", "queryProvenance", "projectionSignalR")
+WRITER_PROTOCOL_HEALTH_CHECK = "projection-delivery-writer-protocol"
+WRITER_PROTOCOL_ACTIVATION_PATH = (
+    "/api/v1/admin/projections/delivery-writer-protocol/activate"
+)
 STOP_COMMAND = f"aspire stop --apphost {APPHOST_RELATIVE} --non-interactive --nologo"
 START_COMMAND = [
     "aspire",
@@ -1611,6 +1615,25 @@ def _query_provenance(headers: dict[str, str], document: dict[str, Any]) -> str:
     return header or metadata_value
 
 
+def _writer_protocol_is_only_unhealthy(document: dict[str, Any]) -> bool:
+    """Return whether a disposable topology is ready for explicit writer cutover."""
+    results = document.get("results")
+    if not isinstance(results, dict):
+        return False
+    marker_is_unhealthy = False
+    for name, result in results.items():
+        if not isinstance(name, str) or not isinstance(result, dict):
+            return False
+        status = result.get("status")
+        if not isinstance(status, str):
+            return False
+        if name == WRITER_PROTOCOL_HEALTH_CHECK:
+            marker_is_unhealthy = status == "Unhealthy"
+        elif status not in {"Healthy", "Degraded"}:
+            return False
+    return marker_is_unhealthy
+
+
 def _query_tenant_id(document: dict[str, Any]) -> str:
     payload: Any = document.get("payload")
     if isinstance(payload, str):
@@ -2152,10 +2175,15 @@ def _capture(
             return 1
 
         health_status = 0
+        cutover_control_passed = False
         eventstore_base = eventstore_bases[0] if eventstore_bases else endpoints["eventstore"]
         # `aspire wait eventstore` can observe the Dapr sidecar as healthy before the
-        # application has finished its bounded operational-metadata discovery. Health is
-        # readiness evidence only; protected runtime surfaces are authenticated separately.
+        # application has finished its bounded operational-metadata discovery. EventStore
+        # 3.106 also stays deliberately unhealthy until an operator activates the store-global
+        # writer protocol. This invocation owns a fresh disposable Dapr state store with no
+        # legacy writers or durable data, so mirror EventStore's own disposable Aspire fixtures:
+        # require that marker to be the only unhealthy check, prove the cutover endpoint rejects
+        # an invalid bearer, then activate it with explicit no-mixed-writer attestations.
         health_deadline = min(
             capture_deadline,
             time.monotonic() + min(180, max(30, timeout - 30)),
@@ -2165,12 +2193,61 @@ def _capture(
                 request_timeout = _remaining_timeout(health_deadline, 5)
                 if request_timeout is None:
                     break
-                health_status, _, _ = runtime.json_request(
+                health_status, health_document, _ = runtime.json_request(
                     f"{base}/health", timeout=request_timeout, deadline=health_deadline
                 )
                 if health_status in (200, 204):
                     eventstore_base = base
                     break
+                if health_status != 503 or not _writer_protocol_is_only_unhealthy(
+                    health_document
+                ):
+                    continue
+                cutover_body = {
+                    "cutoverCommit": evidence["identity"]["eventStoreSourceSha"],
+                    "backupReference": "frontcomposer-disposable-smoke-no-durable-state",
+                    "writersQuiesced": True,
+                    "retryWorkersQuiesced": True,
+                    "downgradeProhibitedAcknowledged": True,
+                }
+                if not cutover_control_passed:
+                    control_timeout = _remaining_timeout(health_deadline, 10)
+                    if control_timeout is None:
+                        break
+                    invalid_status, _, _ = runtime.json_request(
+                        f"{base}{WRITER_PROTOCOL_ACTIVATION_PATH}",
+                        method="POST",
+                        token="invalid-local-evidence-token",
+                        body=cutover_body,
+                        timeout=control_timeout,
+                        deadline=health_deadline,
+                    )
+                    if invalid_status not in (401, 403):
+                        reason_codes.append(
+                            "authorization.writer-protocol-cutover.not-enforced"
+                        )
+                        return 1
+                    cutover_control_passed = True
+                activation_timeout = _remaining_timeout(health_deadline, 15)
+                if activation_timeout is None:
+                    break
+                activation_status, activation_document, _ = runtime.json_request(
+                    f"{base}{WRITER_PROTOCOL_ACTIVATION_PATH}",
+                    method="POST",
+                    token=token,
+                    body=cutover_body,
+                    timeout=activation_timeout,
+                    deadline=health_deadline,
+                )
+                if (
+                    activation_status == 200
+                    and activation_document.get("status") == "Activated"
+                ):
+                    eventstore_base = base
+                    break
+                if activation_status not in (408, 429) and activation_status < 500:
+                    reason_codes.append("apphost.writer-protocol-cutover.rejected")
+                    return 1
             if health_status not in (200, 204):
                 _bounded_sleep(health_deadline)
         evidence["observations"]["health"] = {
