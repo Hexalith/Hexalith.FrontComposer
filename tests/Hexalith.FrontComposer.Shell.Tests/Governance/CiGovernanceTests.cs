@@ -4342,9 +4342,15 @@ public sealed class CiGovernanceTests {
         liveReport.RootElement.GetProperty("verificationMode").GetString().ShouldBe("live-compatibility");
         liveReport.RootElement.GetProperty("finalVerdict").GetString().ShouldBe("passed");
         JsonElement liveIdentity = liveReport.RootElement.GetProperty("identity");
-        liveIdentity.GetProperty("observedSourceSha").GetString().ShouldBe(sealedV2SourceSha);
-        liveIdentity.GetProperty("expectedVersion").GetString().ShouldBe(sealedV2Version);
-        liveIdentity.GetProperty("observedBuildsSha").GetString().ShouldBe(sealedV2BuildsSha);
+        string? liveSourceSha = liveIdentity.GetProperty("observedSourceSha").GetString();
+        bool isSealedV2Capture = liveSourceSha == sealedV2SourceSha;
+        bool isCurrentCapture = liveSourceSha == currentSourceSha;
+        (isSealedV2Capture || isCurrentCapture).ShouldBeTrue(
+            "the live root must contain either the committed sealed v2 packet or this workflow's exact current recapture");
+        string expectedLiveVersion = isCurrentCapture ? currentVersion : sealedV2Version;
+        string expectedLiveBuildsSha = isCurrentCapture ? currentBuildsSha : sealedV2BuildsSha;
+        liveIdentity.GetProperty("expectedVersion").GetString().ShouldBe(expectedLiveVersion);
+        liveIdentity.GetProperty("observedBuildsSha").GetString().ShouldBe(expectedLiveBuildsSha);
         liveIdentity.GetProperty("approvalAuthorized").GetBoolean().ShouldBeFalse();
         liveIdentity.GetProperty("evidenceManifestSha256").GetString().ShouldBeEmpty();
         liveIdentity.GetProperty("decisionRecordSha256").GetString().ShouldBeEmpty();
@@ -4366,9 +4372,9 @@ public sealed class CiGovernanceTests {
         liveSmoke.RootElement.GetProperty("reasonCodes").GetArrayLength().ShouldBe(0);
         liveSmoke.RootElement.GetProperty("timeoutSeconds").GetInt32().ShouldBe(300);
         JsonElement smokeIdentity = liveSmoke.RootElement.GetProperty("identity");
-        smokeIdentity.GetProperty("eventStoreSourceSha").GetString().ShouldBe(sealedV2SourceSha);
-        smokeIdentity.GetProperty("eventStoreReleaseVersion").GetString().ShouldBe(sealedV2Version);
-        smokeIdentity.GetProperty("buildsCatalogSha").GetString().ShouldBe(sealedV2BuildsSha);
+        smokeIdentity.GetProperty("eventStoreSourceSha").GetString().ShouldBe(liveSourceSha);
+        smokeIdentity.GetProperty("eventStoreReleaseVersion").GetString().ShouldBe(expectedLiveVersion);
+        smokeIdentity.GetProperty("buildsCatalogSha").GetString().ShouldBe(expectedLiveBuildsSha);
         smokeIdentity.GetProperty("frontComposerRevision").GetString().ShouldBe(compatibilityRevision);
         smokeIdentity.GetProperty("runtimeInputTreeSha256").GetString().ShouldBe(compatibilityRuntimeTree);
         JsonElement healthObservation = liveSmoke.RootElement.GetProperty("observations").GetProperty("health");
