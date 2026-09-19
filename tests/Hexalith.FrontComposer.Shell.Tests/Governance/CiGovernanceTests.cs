@@ -3893,8 +3893,10 @@ public sealed class CiGovernanceTests {
         const string priorBuildsSha = "35c3d1e5b8a55a74a440b9c2cad4c5e18747b241";
         const string sealedV2BuildsSha = "a32cb422749352cce8dec948aa3e78c8f00eb4cf";
         const string sealedV2Version = "3.103.0";
-        const string currentSourceSha = "2d680d7d08e00baef63f5b2aca98c6ad6fcc178d";
-        const string currentBuildsSha = "87f6f27425666c540fb6db41800a3af1d3767e39";
+        const string activePacketSourceSha = "2d680d7d08e00baef63f5b2aca98c6ad6fcc178d";
+        const string activePacketBuildsSha = "87f6f27425666c540fb6db41800a3af1d3767e39";
+        const string currentSourceSha = "ba7ac196e60db8820525961791eccfacec24633f";
+        const string currentBuildsSha = "4f522a8caa62ad82584bdf56d54e16109b717b1c";
         const string currentVersion = "3.106.0";
         // The immutable Story 11.24 owner capture remains historical evidence. Current source,
         // package, and Builds values are compatibility provenance, not migration approval.
@@ -3958,9 +3960,9 @@ public sealed class CiGovernanceTests {
         predecessor.GetProperty("sha256").GetString().ShouldBe(sealedV2IdentitySha);
         predecessor.GetProperty("supersededForActiveReleaseSelectionOnly").GetBoolean().ShouldBeTrue();
         JsonElement activeTuple = activeIdentity.GetProperty("activeTuple");
-        activeTuple.GetProperty("eventStoreSourceGitlink").GetString().ShouldBe(currentSourceSha);
+        activeTuple.GetProperty("eventStoreSourceGitlink").GetString().ShouldBe(activePacketSourceSha);
         activeTuple.GetProperty("eventStorePackageVersion").GetString().ShouldBe(currentVersion);
-        activeTuple.GetProperty("buildsCatalogGitlink").GetString().ShouldBe(currentBuildsSha);
+        activeTuple.GetProperty("buildsCatalogGitlink").GetString().ShouldBe(activePacketBuildsSha);
         JsonElement runtimeInputs = activeIdentity.GetProperty("runtimeInputs");
         string runtimeManifestPath = Path.Combine(root, runtimeInputs.GetProperty("path").GetString()!);
         Sha256File(runtimeManifestPath).ShouldBe(runtimeInputs.GetProperty("sha256").GetString());
