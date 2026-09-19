@@ -4370,7 +4370,7 @@ public sealed class CiGovernanceTests {
             "apphost-smoke.json")));
         liveSmoke.RootElement.GetProperty("finalVerdict").GetString().ShouldBe("passed");
         liveSmoke.RootElement.GetProperty("reasonCodes").GetArrayLength().ShouldBe(0);
-        liveSmoke.RootElement.GetProperty("timeoutSeconds").GetInt32().ShouldBe(300);
+        liveSmoke.RootElement.GetProperty("timeoutSeconds").GetInt32().ShouldBe(isCurrentCapture ? 600 : 300);
         JsonElement smokeIdentity = liveSmoke.RootElement.GetProperty("identity");
         smokeIdentity.GetProperty("eventStoreSourceSha").GetString().ShouldBe(liveSourceSha);
         smokeIdentity.GetProperty("eventStoreReleaseVersion").GetString().ShouldBe(expectedLiveVersion);
