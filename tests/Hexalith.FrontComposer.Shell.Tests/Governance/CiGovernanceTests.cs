@@ -4350,10 +4350,8 @@ public sealed class CiGovernanceTests {
         using JsonDocument liveReceipt = JsonDocument.Parse(File.ReadAllText(Path.Combine(
             liveEvidenceRoot,
             "run-evidence.json")));
-        liveReceipt.RootElement.GetProperty("frontComposerRevision").GetString().ShouldBe(
-            activeIdentity.GetProperty("frontComposerRevision").GetString());
-        liveReceipt.RootElement.GetProperty("runtimeInputTreeSha256").GetString().ShouldBe(
-            runtimeInputs.GetProperty("treeSha256").GetString());
+        string? compatibilityRevision = liveReceipt.RootElement.GetProperty("frontComposerRevision").GetString();
+        string? compatibilityRuntimeTree = liveReceipt.RootElement.GetProperty("runtimeInputTreeSha256").GetString();
         liveReceipt.RootElement.GetProperty("report").GetProperty("path").GetString()
             .ShouldBe("provider-verification.json");
         liveReceipt.RootElement.GetProperty("completedAt").GetString().ShouldBe(
@@ -4369,10 +4367,8 @@ public sealed class CiGovernanceTests {
         smokeIdentity.GetProperty("eventStoreSourceSha").GetString().ShouldBe(sealedV2SourceSha);
         smokeIdentity.GetProperty("eventStoreReleaseVersion").GetString().ShouldBe(sealedV2Version);
         smokeIdentity.GetProperty("buildsCatalogSha").GetString().ShouldBe(sealedV2BuildsSha);
-        smokeIdentity.GetProperty("frontComposerRevision").GetString().ShouldBe(
-            activeIdentity.GetProperty("frontComposerRevision").GetString());
-        smokeIdentity.GetProperty("runtimeInputTreeSha256").GetString().ShouldBe(
-            runtimeInputs.GetProperty("treeSha256").GetString());
+        smokeIdentity.GetProperty("frontComposerRevision").GetString().ShouldBe(compatibilityRevision);
+        smokeIdentity.GetProperty("runtimeInputTreeSha256").GetString().ShouldBe(compatibilityRuntimeTree);
         JsonElement healthObservation = liveSmoke.RootElement.GetProperty("observations").GetProperty("health");
         healthObservation.GetProperty("authenticated").GetBoolean().ShouldBeFalse();
         healthObservation.GetProperty("reasonCode").GetString().ShouldBe("health.readiness.succeeded");

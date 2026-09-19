@@ -78,8 +78,8 @@
         "System.ComponentModel.Annotations": "5.0.0",
         "System.Reactive": "7.0.0",
         "System.Threading.Tasks.Extensions": "4.6.3",
-        "Verify": "33.0.2",
-        "Verify.XunitV3": "33.0.2"
+        "Verify": "33.1.0",
+        "Verify.XunitV3": "33.1.0"
       }
     },
     "eventstore-catalog-v1": {
