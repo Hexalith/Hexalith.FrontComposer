@@ -2753,6 +2753,9 @@ def _report_failure(output: Path) -> None:
     observations = document.get("observations")
     if isinstance(observations, dict):
         print(f"observations={json.dumps(observations, separators=(',', ':'))}", file=sys.stderr)
+    cleanup = document.get("cleanup")
+    if isinstance(cleanup, dict):
+        print(f"cleanup={json.dumps(cleanup, separators=(',', ':'))}", file=sys.stderr)
 
 
 def main(argv: list[str] | None = None) -> int:

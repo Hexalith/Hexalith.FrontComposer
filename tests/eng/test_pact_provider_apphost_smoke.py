@@ -2572,6 +2572,11 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
                     "finalVerdict": "failed",
                     "reasonCodes": ["apphost.start.failed"],
                     "startup": {"startReturnCode": 2, "startStderr": "bind failed"},
+                    "cleanup": {
+                        "result": "failed",
+                        "hostStopped": True,
+                        "portsClosed": False,
+                    },
                 }
             )
             + "\n",
@@ -2586,6 +2591,10 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertIn("finalVerdict=failed", text)
         self.assertIn("startReturnCode=2", text)
         self.assertIn("startStderr=bind failed", text)
+        self.assertIn(
+            'cleanup={"result":"failed","hostStopped":true,"portsClosed":false}',
+            text,
+        )
 
 
 if __name__ == "__main__":
