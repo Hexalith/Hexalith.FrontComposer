@@ -877,6 +877,12 @@ public sealed class CiGovernanceTests {
         ci.ShouldContain("dependency-release-handoff-${{ github.run_id }}-${{ github.run_attempt }}");
         ci.ShouldNotContain("submodule update --init --recursive");
         ci.ShouldNotContain("eval ");
+        string dependencyDotnetStep = ExtractNamedStep(ci, "Initialize .NET");
+        dependencyDotnetStep.ShouldContain(
+            "actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68");
+        dependencyDotnetStep.ShouldContain("global-json-file: global.json");
+        ci.IndexOf(dependencyDotnetStep, StringComparison.Ordinal).ShouldBeLessThan(
+            ci.IndexOf("      - name: Build policy-authorized affected modules", StringComparison.Ordinal));
 
         string helperStep = ExtractNamedStep(quality, "Gate 2b: Dependency graph semantic policy tests");
         helperStep.ShouldContain("tests/eng/test_dependency_graph.py");
@@ -4090,7 +4096,9 @@ public sealed class CiGovernanceTests {
         appHostSmokeSource.ShouldContain("runtime_evidence.validate_package_ledger_semantics(");
         appHostSmokeSource.ShouldContain("\"-target:ResolveReferences\"");
         appHostSmokeSource.ShouldContain("\"-p:BuildProjectReferences=true\"");
-        appHostSmokeSource.ShouldContain("ReferencePath");
+        appHostSmokeSource.ShouldContain("runtime_evidence.APPHOST_EVALUATED_INPUT_ITEMS");
+        string runtimeEvidenceSource = File.ReadAllText(Path.Combine(root, "eng/eventstore_runtime_evidence.py"));
+        runtimeEvidenceSource.ShouldContain("\"ReferencePath\"");
         int appHostCaptureSourceStart = appHostSmokeSource.IndexOf("def _capture(", StringComparison.Ordinal);
         int appHostCaptureSourceEnd = appHostSmokeSource.IndexOf("\ndef capture(", appHostCaptureSourceStart, StringComparison.Ordinal);
         appHostCaptureSourceStart.ShouldBeGreaterThanOrEqualTo(0);
