@@ -1602,6 +1602,63 @@ def _safe_process_diagnostic(result: CommandResult, limit: int = 2000) -> str:
     return hashes + "; detail=" + _clip(normalized, limit)
 
 
+def _keyed_binding_differences(
+    before: Any,
+    after: Any,
+    *,
+    section: str,
+    key: str,
+) -> list[str]:
+    """Return bounded identity-only diagnostics for two sealed binding lists."""
+    if not isinstance(before, list) or not isinstance(after, list):
+        return [f"{section}:malformed"]
+    before_by_key = {
+        item.get(key): item
+        for item in before
+        if isinstance(item, dict) and isinstance(item.get(key), str)
+    }
+    after_by_key = {
+        item.get(key): item
+        for item in after
+        if isinstance(item, dict) and isinstance(item.get(key), str)
+    }
+    if len(before_by_key) != len(before) or len(after_by_key) != len(after):
+        return [f"{section}:malformed"]
+    return [
+        f"{section}:{identity}"
+        for identity in sorted(set(before_by_key) | set(after_by_key))
+        if before_by_key.get(identity) != after_by_key.get(identity)
+    ][:64]
+
+
+def _package_ledger_differences(before: Any, after: Any) -> list[str]:
+    if not isinstance(before, dict) or not isinstance(after, dict):
+        return ["ledger:malformed"]
+    differences: list[str] = []
+    differences.extend(_keyed_binding_differences(
+        before.get("assetsGraphs"),
+        after.get("assetsGraphs"),
+        section="assetsGraph",
+        key="path",
+    ))
+    differences.extend(_keyed_binding_differences(
+        before.get("packages"),
+        after.get("packages"),
+        section="package",
+        key="relativePath",
+    ))
+    differences.extend(_keyed_binding_differences(
+        before.get("toolPackages"),
+        after.get("toolPackages"),
+        section="toolPackage",
+        key="relativePath",
+    ))
+    for field in ("schema", "capturedAt", "packageRoot", "treeSha256"):
+        if before.get(field) != after.get(field):
+            differences.append(f"ledger:{field}")
+    return differences[:64]
+
+
 def _query_provenance(headers: dict[str, str], document: dict[str, Any]) -> str:
     header = next((value for key, value in headers.items() if key.lower() == "x-hexalith-query-provenance"), "")
     metadata = document.get("metadata")
@@ -2643,11 +2700,44 @@ def _capture(
                     recomputed_package_ledger, initial_package_ledger
                 )
             )
+            if not package_authority_clean:
+                if package_issues:
+                    print(
+                        "AppHost package cleanup issues: "
+                        + _safe_process_diagnostic(
+                            CommandResult(1, "", "\n".join(package_issues))
+                        ),
+                        file=sys.stderr,
+                    )
+                print(
+                    "AppHost package cleanup differences: "
+                    + json.dumps(
+                        _package_ledger_differences(
+                            initial_package_ledger, recomputed_package_ledger
+                        ),
+                        separators=(",", ":"),
+                    ),
+                    file=sys.stderr,
+                )
         outputs_after, outputs_valid_after = _runtime_output_inventory()
         runtime_outputs_clean = initial_runtime_outputs is None or (
             outputs_valid_after
             and runtime_evidence._exact(outputs_after, initial_runtime_outputs)
         )
+        if not runtime_outputs_clean and initial_runtime_outputs is not None:
+            print(
+                "AppHost runtime-output cleanup differences: "
+                + json.dumps(
+                    _keyed_binding_differences(
+                        initial_runtime_outputs,
+                        outputs_after,
+                        section="runtimeOutput",
+                        key="path",
+                    ),
+                    separators=(",", ":"),
+                ),
+                file=sys.stderr,
+            )
         clean = (
             lifecycle_clean
             and removed_after_shutdown == created_by_invocation

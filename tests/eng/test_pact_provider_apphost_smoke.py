@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import contextlib
+import copy
 import hashlib
 import http.server
 import io
@@ -2594,6 +2595,37 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertIn(
             'cleanup={"result":"failed","hostStopped":true,"portsClosed":false}',
             text,
+        )
+
+    def test_cleanup_binding_diagnostics_disclose_identities_not_contents(self) -> None:
+        before = {
+            "schema": "ledger.v1",
+            "capturedAt": "2026-09-19T00:00:00+00:00",
+            "packageRoot": "fresh-external",
+            "assetsGraphs": [{"path": "src/app/obj/project.assets.json", "sha256": "1" * 64}],
+            "packages": [{
+                "relativePath": "example.package/1.0.0",
+                "files": [{"path": "secret-shaped-name.txt", "sha256": "2" * 64}],
+            }],
+            "toolPackages": [],
+            "treeSha256": "3" * 64,
+        }
+        after = copy.deepcopy(before)
+        after["packages"][0]["files"][0]["sha256"] = "4" * 64
+        after["treeSha256"] = "5" * 64
+
+        self.assertEqual(
+            smoke._package_ledger_differences(before, after),
+            ["package:example.package/1.0.0", "ledger:treeSha256"],
+        )
+        self.assertEqual(
+            smoke._keyed_binding_differences(
+                [{"path": "bin/app.dll", "sha256": "6" * 64}],
+                [{"path": "bin/app.dll", "sha256": "7" * 64}],
+                section="runtimeOutput",
+                key="path",
+            ),
+            ["runtimeOutput:bin/app.dll"],
         )
 
 
