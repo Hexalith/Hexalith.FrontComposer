@@ -572,6 +572,7 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         document = json.loads(self.output.read_text(encoding="utf-8"))
         self.assertEqual(document["observations"]["health"]["result"], "passed")
         self.assertNotIn("synthetic-token", self.output.read_text(encoding="utf-8"))
+        self.assertNotIn("\n  ", self.output.read_text(encoding="utf-8"))
 
     def test_writer_protocol_cutover_requires_every_sibling_to_be_ready(self) -> None:
         self.assertTrue(smoke._writer_protocol_is_only_unhealthy({
@@ -913,6 +914,18 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertEqual(
             json.loads(self.output.read_text(encoding="utf-8")),
             {"result": "written"},
+        )
+
+    def test_evidence_writer_can_emit_compact_bounded_json(self) -> None:
+        smoke._atomic_write(
+            self.output,
+            {"items": [{"name": "binding", "sha256": "a" * 64}]},
+            compact=True,
+        )
+
+        self.assertEqual(
+            self.output.read_text(encoding="utf-8"),
+            '{"items":[{"name":"binding","sha256":"' + ("a" * 64) + '"}]}\n',
         )
 
     def test_source_graph_must_evaluate_exact_properties_and_input_authorities(self) -> None:

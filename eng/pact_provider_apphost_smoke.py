@@ -1754,7 +1754,12 @@ def _query_tenant_id(document: dict[str, Any]) -> str:
     return ""
 
 
-def _atomic_write(path: Path, document: dict[str, Any]) -> None:
+def _atomic_write(
+    path: Path,
+    document: dict[str, Any],
+    *,
+    compact: bool = False,
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary_name = tempfile.mkstemp(
         dir=path.parent,
@@ -1764,7 +1769,14 @@ def _atomic_write(path: Path, document: dict[str, Any]) -> None:
     temporary = Path(temporary_name)
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
-            stream.write(json.dumps(document, indent=2) + "\n")
+            stream.write(
+                json.dumps(
+                    document,
+                    indent=None if compact else 2,
+                    separators=(",", ":") if compact else None,
+                )
+                + "\n"
+            )
         temporary.replace(path)
     except BaseException:
         temporary.unlink(missing_ok=True)
@@ -1813,7 +1825,17 @@ def _write_evidence(
         evidence["packageLedger"] = runtime_evidence.package_ledger_binding(
             package_ledger, runtime_evidence.APPHOST_PACKAGE_LEDGER_FILE, payload
         )
-    _atomic_write(output, evidence)
+    # The input/output closures are intentionally exhaustive and can contain thousands of
+    # hash bindings. Store the packet as canonical compact JSON so the complete proof stays
+    # inside the validator's 1 MiB evidence-document bound; the package inventory remains in
+    # its separately bounded sidecar.
+    _atomic_write(output, evidence, compact=True)
+    try:
+        evidence_bytes = output.stat().st_size
+        if evidence_bytes > (runtime_evidence.MAX_FILE_BYTES * 3) // 4:
+            print(f"AppHost evidence document bytes={evidence_bytes}")
+    except OSError:
+        pass
 
 
 def _describe_host(

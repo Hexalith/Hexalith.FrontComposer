@@ -6747,9 +6747,9 @@ def _validate_live(
         live_manifest, _ = _validate_runtime_input_manifest(
             runtime_input_manifest_path, repository_root, errors
         )
-    if provider_package_root is None or apphost_package_root is None:
+    if provider_package_root is None and apphost_package_root is None:
         errors.append(
-            "Live validation requires both isolated provider and AppHost package roots."
+            "Live validation requires at least one isolated package root for byte recomputation."
         )
     provenance = _live_provenance(
         repository_root, errors, runtime_manifest=live_manifest

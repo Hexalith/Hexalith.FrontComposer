@@ -4018,6 +4018,7 @@ public sealed class CiGovernanceTests {
         artifactLane.ShouldContain("if (-not $? -or $LASTEXITCODE -ne 0) { exit 1 }");
         artifactLane.ShouldNotContain("exit $LASTEXITCODE");
         artifactLane.ShouldContain("-RequireProviderVerification");
+        artifactLane.ShouldContain("-AppHostPackageRoot \"\"");
         artifactLane.ShouldContain("_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json");
         artifactLane.ShouldNotContain("BLOCKED_HANDOFF");
         artifactLane.ShouldNotContain("continue-on-error: true");
@@ -4093,6 +4094,7 @@ public sealed class CiGovernanceTests {
         int providerTestIndex = liveProviderLane.IndexOf("dotnet tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.Tests.dll", StringComparison.Ordinal);
         int verifierIndex = liveProviderLane.IndexOf("--verification-mode live-compatibility", StringComparison.Ordinal);
         int receiptIndex = liveProviderLane.IndexOf("--write-live-receipt", StringComparison.Ordinal);
+        int providerSnapshotIndex = liveProviderLane.IndexOf("provider_assets_snapshot=", StringComparison.Ordinal);
         (providerPackageRootIndex < providerPackageExportIndex).ShouldBeTrue();
         (providerPackageExportIndex < manifestIndex).ShouldBeTrue();
         (manifestIndex < reportRemovalIndex).ShouldBeTrue();
@@ -4104,6 +4106,9 @@ public sealed class CiGovernanceTests {
         (providerTestPactStagingIndex < providerTestIndex).ShouldBeTrue();
         (providerTestIndex < verifierIndex).ShouldBeTrue();
         (verifierIndex < receiptIndex).ShouldBeTrue();
+        (receiptIndex < providerSnapshotIndex).ShouldBeTrue();
+        liveProviderLane.ShouldContain("FRONTCOMPOSER_PROVIDER_ASSETS_SNAPSHOT=$provider_assets_snapshot");
+        liveProviderLane.ShouldContain("test \"$(find \"$provider_assets_snapshot\" -type f -name project.assets.json | wc -l)\" -eq 11");
         liveProviderLane.ShouldNotContain("continue-on-error: true");
         liveProviderLane.ShouldNotContain("|| true");
         string appHostLane = ExtractNamedStep(quality, "Gate 2c: Authenticated AppHost smoke");
@@ -4129,8 +4134,18 @@ public sealed class CiGovernanceTests {
         liveCaptureValidationLane.ShouldContain("--pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact \\");
         liveCaptureValidationLane.ShouldContain("--repository-root . \\");
         liveCaptureValidationLane.ShouldContain("--runtime-input-manifest \"$FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST\" \\");
-        liveCaptureValidationLane.ShouldContain("--provider-package-root \"$FRONTCOMPOSER_PROVIDER_PACKAGES\" \\");
+        liveCaptureValidationLane.ShouldContain("--provider-package-root \"$FRONTCOMPOSER_PROVIDER_PACKAGES\"");
         liveCaptureValidationLane.ShouldContain("--apphost-package-root \"$FRONTCOMPOSER_APPHOST_PACKAGES\"");
+        Regex.Count(
+                liveCaptureValidationLane,
+                "python3 eng/eventstore_runtime_evidence.py",
+                RegexOptions.CultureInvariant)
+            .ShouldBe(2, "the AppHost and provider package authorities must be recomputed sequentially");
+        int appHostValidationIndex = liveCaptureValidationLane.IndexOf("--apphost-package-root", StringComparison.Ordinal);
+        int providerAssetsRestoreIndex = liveCaptureValidationLane.IndexOf("test -d \"$FRONTCOMPOSER_PROVIDER_ASSETS_SNAPSHOT\"", StringComparison.Ordinal);
+        int providerValidationIndex = liveCaptureValidationLane.IndexOf("--provider-package-root", StringComparison.Ordinal);
+        (appHostValidationIndex < providerAssetsRestoreIndex).ShouldBeTrue();
+        (providerAssetsRestoreIndex < providerValidationIndex).ShouldBeTrue();
         liveCaptureValidationLane.ShouldNotContain("continue-on-error: true");
         liveCaptureValidationLane.ShouldNotContain("|| true");
 

@@ -3286,6 +3286,46 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             "Live validation requires the sealed runtime-input manifest.", errors
         )
 
+    def test_live_validation_requires_at_least_one_recomputed_package_authority(self) -> None:
+        errors = evidence.validate_live(
+            self.live_root,
+            self.pact_root,
+            ROOT,
+            runtime_input_manifest_path=(
+                self.active_root / "frontcomposer-runtime-inputs.json"
+            ),
+        )
+
+        self.assertIn(
+            "Live validation requires at least one isolated package root for byte recomputation.",
+            errors,
+        )
+
+    def test_live_validation_supports_sequential_isolated_package_authorities(self) -> None:
+        self.make_live_apphost_pass()
+        manifest = self.active_root / "frontcomposer-runtime-inputs.json"
+
+        provider_errors = evidence.validate_live(
+            self.live_root,
+            self.pact_root,
+            ROOT,
+            provider_package_root=self.package_root,
+            runtime_input_manifest_path=manifest,
+        )
+        apphost_errors = evidence.validate_live(
+            self.live_root,
+            self.pact_root,
+            ROOT,
+            apphost_package_root=self.package_root,
+            runtime_input_manifest_path=manifest,
+        )
+
+        required_root_error = (
+            "Live validation requires at least one isolated package root for byte recomputation."
+        )
+        self.assertNotIn(required_root_error, provider_errors)
+        self.assertNotIn(required_root_error, apphost_errors)
+
     def test_live_validation_rejects_detached_evidence_and_pact_roots(self) -> None:
         with mock.patch.object(
             evidence,
