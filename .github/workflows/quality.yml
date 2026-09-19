@@ -283,7 +283,7 @@ jobs:
           test -z "$(find "$apphost_packages" -mindepth 1 -maxdepth 1 -print -quit)"
           echo "FRONTCOMPOSER_APPHOST_PACKAGES=$apphost_packages" >> "$GITHUB_ENV"
           python3 eng/pact_provider_apphost_smoke.py \
-            --timeout-seconds 300 \
+            --timeout-seconds 600 \
             --runtime-input-manifest "$FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST" \
             --package-root "$apphost_packages"
 

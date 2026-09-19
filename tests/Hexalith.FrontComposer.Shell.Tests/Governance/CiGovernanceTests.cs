@@ -4113,7 +4113,7 @@ public sealed class CiGovernanceTests {
         appHostLane.ShouldContain("test -z \"$(find \"$apphost_packages\" -mindepth 1 -maxdepth 1 -print -quit)\"");
         appHostLane.ShouldContain("echo \"FRONTCOMPOSER_APPHOST_PACKAGES=$apphost_packages\" >> \"$GITHUB_ENV\"");
         appHostLane.ShouldContain("python3 eng/pact_provider_apphost_smoke.py \\");
-        appHostLane.ShouldContain("--timeout-seconds 300 \\");
+        appHostLane.ShouldContain("--timeout-seconds 600 \\");
         appHostLane.ShouldContain("--runtime-input-manifest \"$FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST\"");
         appHostLane.ShouldContain("--package-root \"$apphost_packages\"");
         appHostLane.ShouldNotContain("continue-on-error: true");
