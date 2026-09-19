@@ -4065,6 +4065,11 @@ public sealed class CiGovernanceTests {
         Regex.Count(liveProviderLane, "--package-assets ", RegexOptions.CultureInvariant)
             .ShouldBe(11, "the package ledger must bind the exact eleven-project restore closure");
         liveProviderLane.ShouldContain("--configuration Release --no-restore --no-incremental -m:1 -p:NuGetAudit=false");
+        liveProviderLane.ShouldContain("provider_test_pact_dir=\"$GITHUB_WORKSPACE/references/Hexalith.EventStore/references/Hexalith.FrontComposer/tests/Hexalith.FrontComposer.Shell.Tests/Pact\"");
+        liveProviderLane.ShouldContain("-maxdepth 1 -type f -name '*.json' -exec install -m 0644 {} \"$provider_test_pact_dir/\" \\;");
+        liveProviderLane.ShouldContain("test \"$(find \"$provider_test_pact_dir\" -maxdepth 1 -type f -name '*.json' | wc -l)\" -eq 6");
+        liveProviderLane.ShouldContain("cd references/Hexalith.EventStore &&");
+        liveProviderLane.ShouldContain("dotnet tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.Tests.dll");
         liveProviderLane.ShouldContain("rm -f \"$GITHUB_WORKSPACE/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json\"");
         // The live evidence root must hold exactly this invocation's five files.
         foreach (string staleArtifact in new[] { "apphost-smoke.json", "provider-package-ledger.json", "apphost-package-ledger.json" }) {
@@ -4084,6 +4089,8 @@ public sealed class CiGovernanceTests {
         int restoreIndex = liveProviderLane.IndexOf("dotnet restore", StringComparison.Ordinal);
         int packageLedgerIndex = liveProviderLane.IndexOf("--write-package-ledger", StringComparison.Ordinal);
         int buildIndex = liveProviderLane.IndexOf("dotnet build", StringComparison.Ordinal);
+        int providerTestPactStagingIndex = liveProviderLane.IndexOf("provider_test_pact_dir=", StringComparison.Ordinal);
+        int providerTestIndex = liveProviderLane.IndexOf("dotnet tests/Hexalith.EventStore.ProviderVerification.Tests/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.Tests.dll", StringComparison.Ordinal);
         int verifierIndex = liveProviderLane.IndexOf("--verification-mode live-compatibility", StringComparison.Ordinal);
         int receiptIndex = liveProviderLane.IndexOf("--write-live-receipt", StringComparison.Ordinal);
         (providerPackageRootIndex < providerPackageExportIndex).ShouldBeTrue();
@@ -4093,7 +4100,9 @@ public sealed class CiGovernanceTests {
         (cleanIndex < restoreIndex).ShouldBeTrue();
         (restoreIndex < packageLedgerIndex).ShouldBeTrue();
         (packageLedgerIndex < buildIndex).ShouldBeTrue();
-        (buildIndex < verifierIndex).ShouldBeTrue();
+        (buildIndex < providerTestPactStagingIndex).ShouldBeTrue();
+        (providerTestPactStagingIndex < providerTestIndex).ShouldBeTrue();
+        (providerTestIndex < verifierIndex).ShouldBeTrue();
         (verifierIndex < receiptIndex).ShouldBeTrue();
         liveProviderLane.ShouldNotContain("continue-on-error: true");
         liveProviderLane.ShouldNotContain("|| true");
