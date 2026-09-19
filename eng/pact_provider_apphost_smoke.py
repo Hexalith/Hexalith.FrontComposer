@@ -69,6 +69,7 @@ MAX_WEBSOCKET_BYTES = 1_048_576
 ULID_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 WEBSOCKET_ACCEPT_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 APPHOST_BUILD_PROPERTIES = runtime_evidence.APPHOST_BUILD_PROPERTIES
+APPHOST_EVALUATION_TARGET_FRAMEWORK = runtime_evidence.APPHOST_EVALUATION_TARGET_FRAMEWORK
 SOURCE_DEPENDENCY_GITLINKS = runtime_evidence.RUNTIME_DEPENDENCY_GITLINKS
 BUILD_CONTROL_GITLINKS = runtime_evidence.APPHOST_BUILD_CONTROL_GITLINKS
 REACHABLE_SOURCE_GITLINKS = runtime_evidence.APPHOST_REACHABLE_SOURCE_GITLINKS
@@ -1234,10 +1235,21 @@ def _evaluate_source_graph(
             issues.append(reason)
         return None
 
+    target_errors: list[str] = []
+    apphost_target = runtime_evidence._restored_project_target_framework(
+        APPHOST, target_errors
+    )
+    if apphost_target != APPHOST_EVALUATION_TARGET_FRAMEWORK:
+        return reject("apphost-restored-target-invalid")
     timeout = _remaining_timeout(deadline, 60)
     if timeout is None:
         return reject("evaluation-deadline-exceeded")
-    property_names = [*APPHOST_BUILD_PROPERTIES, *SOURCE_ROOT_PROPERTIES, "MSBuildAllProjects"]
+    property_names = [
+        *APPHOST_BUILD_PROPERTIES,
+        *SOURCE_ROOT_PROPERTIES,
+        "TargetFramework",
+        "MSBuildAllProjects",
+    ]
     item_names = ",".join(runtime_evidence.APPHOST_EVALUATED_INPUT_ITEMS)
     result = runtime.command(
         [
@@ -1249,6 +1261,7 @@ def _evaluate_source_graph(
             "-m:1",
             "-nodeReuse:false",
             *_build_property_arguments(),
+            f"-p:TargetFramework={apphost_target}",
             "-target:ResolveReferences",
             "-getProperty:" + ",".join(property_names),
             "-getItem:" + item_names,
@@ -1269,6 +1282,8 @@ def _evaluate_source_graph(
         actual = properties.get(name)
         if not isinstance(actual, str) or actual.casefold() != str(expected).casefold():
             return reject(f"apphost-build-property-mismatch:{name}")
+    if properties.get("TargetFramework") != APPHOST_EVALUATION_TARGET_FRAMEWORK:
+        return reject("apphost-target-framework-mismatch")
     for name, relative in SOURCE_ROOT_PROPERTIES.items():
         actual = properties.get(name)
         if not isinstance(actual, str) or not actual:
@@ -1324,6 +1339,12 @@ def _evaluate_source_graph(
     for project in discovered_projects:
         if project == APPHOST.resolve():
             continue
+        project_target_errors: list[str] = []
+        project_target = runtime_evidence._restored_project_target_framework(
+            project, project_target_errors
+        )
+        if project_target is None:
+            return reject("project-restored-target-invalid")
         try:
             project_relative = project.relative_to(ROOT)
         except ValueError:
@@ -1341,6 +1362,7 @@ def _evaluate_source_graph(
                 "-m:1",
                 "-nodeReuse:false",
                 *_build_property_arguments(),
+                f"-p:TargetFramework={project_target}",
                 "-target:ResolveReferences",
                 "-getProperty:MSBuildAllProjects",
                 "-getItem:" + item_names,
@@ -1353,6 +1375,13 @@ def _evaluate_source_graph(
             else None
         )
         if not isinstance(project_document, dict):
+            print(
+                "AppHost project MSBuild diagnostic: "
+                + project_relative.as_posix()
+                + "; "
+                + _safe_process_diagnostic(project_result),
+                file=sys.stderr,
+            )
             return reject("project-msbuild-output-invalid")
         evaluations.append((project, project_document))
 

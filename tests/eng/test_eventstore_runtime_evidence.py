@@ -4804,6 +4804,53 @@ class GitTextEquivalenceTests(unittest.TestCase):
         self.assertTrue(evidence._git_auto_classifies_text(b"alpha\r\nbeta"))
 
 
+class RestoredProjectTargetFrameworkTests(unittest.TestCase):
+    """MSBuild evaluation follows each project's fresh restored target set."""
+
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.project = Path(self.temporary.name) / "src" / "Tool" / "Tool.csproj"
+        self.project.parent.mkdir(parents=True)
+        self.project.write_text("<Project />\n", encoding="utf-8")
+
+    def _write_targets(self, *targets: str) -> None:
+        assets = self.project.parent / "obj" / "project.assets.json"
+        assets.parent.mkdir()
+        assets.write_text(
+            json.dumps({"targets": {target: {} for target in targets}}),
+            encoding="utf-8",
+        )
+
+    def test_sole_restored_analyzer_target_is_selected(self) -> None:
+        self._write_targets("netstandard2.0")
+        errors: list[str] = []
+
+        selected = evidence._restored_project_target_framework(self.project, errors)
+
+        self.assertEqual(selected, "netstandard2.0")
+        self.assertEqual(errors, [])
+
+    def test_runtime_target_is_preferred_for_a_multitargeted_project(self) -> None:
+        self._write_targets("netstandard2.0", "net10.0/linux-x64", "net10.0")
+        errors: list[str] = []
+
+        selected = evidence._restored_project_target_framework(self.project, errors)
+
+        self.assertEqual(selected, evidence.APPHOST_EVALUATION_TARGET_FRAMEWORK)
+        self.assertEqual(errors, [])
+
+    def test_ambiguous_non_runtime_targets_are_rejected(self) -> None:
+        self._write_targets("net8.0", "net9.0")
+        errors: list[str] = []
+
+        selected = evidence._restored_project_target_framework(self.project, errors)
+
+        self.assertIsNone(selected)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("ambiguous restored targets", errors[0])
+
+
 class DependencyInertToolingTests(unittest.TestCase):
     """The frozen 2026-09-13 scope rejects graph-selected inputs, not inert tooling."""
 
