@@ -136,6 +136,7 @@ INERT_DEPENDENCY_SYMLINK_OBJECTS = {
 INERT_DEPENDENCY_TOOLING_COMPONENTS = frozenset({"node_modules", ".husky", "__pycache__"})
 APPHOST_BUILD_PROPERTIES = {
     "GeneratePackageOnBuild": False,
+    "TargetFramework": "net10.0",
     "UseHexalithProjectReferences": True,
     "UseNuGetDeps": False,
     "HexalithEventStoreFromSource": True,
@@ -3884,7 +3885,7 @@ def _eventstore_catalog_version(catalog_path: Path, errors: list[str]) -> str:
 
 def _apphost_build_property_arguments(repository_root: Path) -> list[str]:
     arguments = [
-        f"-p:{name}={'true' if value else 'false'}"
+        f"-p:{name}={str(value).lower() if isinstance(value, bool) else value}"
         for name, value in APPHOST_BUILD_PROPERTIES.items()
     ]
     arguments.append(
@@ -4177,7 +4178,9 @@ def _evaluate_apphost_inputs(
                     "msbuild",
                     str(relative_project),
                     "-p:Configuration=Debug",
-                    "-p:BuildProjectReferences=true",
+                    "-p:BuildProjectReferences=false",
+                    "-m:1",
+                    "-nodeReuse:false",
                     *_apphost_build_property_arguments(repository_root),
                     "-target:ResolveReferences",
                     "-getProperty:" + ",".join(property_names),

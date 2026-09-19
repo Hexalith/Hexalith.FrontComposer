@@ -4165,6 +4165,9 @@ public sealed class CiGovernanceTests {
         appHostSmokeSource.ShouldContain("runtime_evidence.APPHOST_EVALUATED_INPUT_ITEMS");
         string runtimeEvidenceSource = File.ReadAllText(Path.Combine(root, "eng/eventstore_runtime_evidence.py"));
         runtimeEvidenceSource.ShouldContain("\"GeneratePackageOnBuild\": False");
+        runtimeEvidenceSource.ShouldContain("\"TargetFramework\": \"net10.0\"");
+        runtimeEvidenceSource.ShouldContain("\"-p:BuildProjectReferences=false\"");
+        runtimeEvidenceSource.ShouldContain("\"-nodeReuse:false\"");
         runtimeEvidenceSource.ShouldContain("\"ReferencePath\"");
         int appHostCaptureSourceStart = appHostSmokeSource.IndexOf("def _capture(", StringComparison.Ordinal);
         int appHostCaptureSourceEnd = appHostSmokeSource.IndexOf("\ndef capture(", appHostCaptureSourceStart, StringComparison.Ordinal);

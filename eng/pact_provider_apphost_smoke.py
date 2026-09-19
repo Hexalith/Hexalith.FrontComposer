@@ -967,7 +967,7 @@ def _websocket_signalr_handshake(
 
 def _build_property_arguments() -> list[str]:
     arguments = [
-        f"-p:{name}={'true' if value else 'false'}"
+        f"-p:{name}={str(value).lower() if isinstance(value, bool) else value}"
         for name, value in APPHOST_BUILD_PROPERTIES.items()
     ]
     arguments.append(
@@ -1353,6 +1353,13 @@ def _evaluate_source_graph(
             else None
         )
         if not isinstance(project_document, dict):
+            print(
+                "AppHost project MSBuild diagnostic: "
+                + project_relative.as_posix()
+                + "; "
+                + _safe_process_diagnostic(project_result),
+                file=sys.stderr,
+            )
             return reject("project-msbuild-output-invalid")
         evaluations.append((project, project_document))
 

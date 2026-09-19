@@ -436,6 +436,7 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertTrue(all("-target:ResolveReferences" in command for command in evaluation_commands))
         self.assertTrue(all("-p:BuildProjectReferences=false" in command for command in evaluation_commands))
         self.assertTrue(all("-p:GeneratePackageOnBuild=false" in command for command in evaluation_commands))
+        self.assertTrue(all("-p:TargetFramework=net10.0" in command for command in evaluation_commands))
         self.assertTrue(all("-m:1" in command for command in evaluation_commands))
         self.assertTrue(all("-nodeReuse:false" in command for command in evaluation_commands))
         self.assertTrue(all(any("ReferencePath" in item for item in command) for command in evaluation_commands))
