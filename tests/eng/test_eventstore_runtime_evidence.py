@@ -101,12 +101,38 @@ def _synthetic_package_ledger(
         "files": files,
         "treeSha256": evidence._package_tree_sha256(files),
     }
+    tool_bindings = [
+        {
+            "id": package_id,
+            "version": version,
+            "relativePath": f"{package_id.casefold()}/{version.casefold()}",
+            "contentHashSha512": content_hash,
+        }
+        for package_id, version in (
+            evidence.APPHOST_TOOL_PACKAGES
+            if assets_paths == [evidence.APPHOST_PACKAGE_ASSETS_ROOT]
+            else ()
+        )
+    ]
+    tool_packages = [
+        {
+            **tool_binding,
+            "nupkgSha512": content_hash,
+            "files": files,
+            "treeSha256": evidence._package_tree_sha256(files),
+        }
+        for tool_binding in tool_bindings
+    ]
     entries = {
         "assetsGraphs": [
             {"path": path, "sha256": graph_sha256, "packages": [binding]}
             for path in assets_paths
         ],
-        "packages": [package],
+        "toolPackages": tool_bindings,
+        "packages": sorted(
+            [package, *tool_packages],
+            key=lambda item: (item["id"].casefold(), item["version"].casefold()),
+        ),
     }
     return {
         "schema": evidence.PACKAGE_LEDGER_SCHEMA,
@@ -617,6 +643,26 @@ class ResolvedPackageLedgerTests(unittest.TestCase):
         )
         self.assertTrue(any("orphan package directories" in error for error in orphan_errors), orphan_errors)
 
+        pruned_ledger_path = self.repository / "pruned-package-ledger.json"
+        prune_errors = evidence.write_package_ledger(
+            pruned_ledger_path,
+            self.repository,
+            self.package_root,
+            [first, second],
+            prune_unselected=True,
+        )
+        self.assertEqual(prune_errors, [])
+        self.assertFalse(orphan.exists())
+        pruned_validation_errors: list[str] = []
+        evidence.validate_package_ledger(
+            _read_json(pruned_ledger_path),
+            self.repository,
+            self.package_root,
+            [first, second],
+            pruned_validation_errors,
+        )
+        self.assertEqual(pruned_validation_errors, [])
+
     def test_new_ledgers_require_nonempty_assets_and_global_package_sets(self) -> None:
         empty_ledger, generation_issues = evidence.resolved_package_ledger(
             self.repository, self.package_root, []
@@ -648,6 +694,49 @@ class ResolvedPackageLedgerTests(unittest.TestCase):
             "Resolved-package ledger must bind at least one global package.",
             package_free_issues,
         )
+
+    def test_tool_package_is_bound_and_survives_unselected_candidate_pruning(self) -> None:
+        runtime = self._package("Runtime.Package", "1.0.0", b"runtime-archive")
+        self._package("Build.Tool.Sdk", "2.0.0", b"tool-archive")
+        orphan = self._package("Unused.Candidate", "9.0.0", b"unused-archive")
+        assets = self._assets(
+            "apphost/obj/project.assets.json",
+            {"Runtime.Package/1.0.0": runtime},
+        )
+
+        ledger, issues = evidence.resolved_package_ledger(
+            self.repository,
+            self.package_root,
+            [assets],
+            prune_unselected=True,
+            tool_packages=[("Build.Tool.Sdk", "2.0.0")],
+        )
+        semantic_issues: list[str] = []
+        evidence.validate_package_ledger_semantics(ledger, semantic_issues)
+
+        self.assertEqual(issues, [])
+        self.assertEqual(semantic_issues, [])
+        self.assertEqual(
+            [(item["id"], item["version"]) for item in ledger["toolPackages"]],
+            [("Build.Tool.Sdk", "2.0.0")],
+        )
+        self.assertEqual(
+            [item["id"] for item in ledger["packages"]],
+            ["Build.Tool.Sdk", "Runtime.Package"],
+        )
+        self.assertFalse(
+            (self.package_root / orphan["path"]).exists(),
+        )
+        validation_errors: list[str] = []
+        evidence.validate_package_ledger(
+            ledger,
+            self.repository,
+            self.package_root,
+            [assets],
+            validation_errors,
+            tool_packages=[("Build.Tool.Sdk", "2.0.0")],
+        )
+        self.assertEqual(validation_errors, [])
 
     def test_package_root_must_start_fresh_external_and_non_symlinked(self) -> None:
         self.assertEqual(
@@ -3590,10 +3679,11 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         def empty_ledger(ledger: dict[str, Any]) -> None:
             ledger["assetsGraphs"] = []
+            ledger["toolPackages"] = []
             ledger["packages"] = []
             ledger["treeSha256"] = hashlib.sha256(
                 json.dumps(
-                    {"assetsGraphs": [], "packages": []},
+                    {"assetsGraphs": [], "toolPackages": [], "packages": []},
                     sort_keys=True,
                     separators=(",", ":"),
                 ).encode("utf-8")
@@ -4712,6 +4802,53 @@ class GitTextEquivalenceTests(unittest.TestCase):
         self.assertFalse(evidence._git_auto_classifies_text(b"alpha\rbeta"))
         self.assertFalse(evidence._git_auto_classifies_text(b"alpha\x00beta"))
         self.assertTrue(evidence._git_auto_classifies_text(b"alpha\r\nbeta"))
+
+
+class RestoredProjectTargetFrameworkTests(unittest.TestCase):
+    """MSBuild evaluation follows each project's fresh restored target set."""
+
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.project = Path(self.temporary.name) / "src" / "Tool" / "Tool.csproj"
+        self.project.parent.mkdir(parents=True)
+        self.project.write_text("<Project />\n", encoding="utf-8")
+
+    def _write_targets(self, *targets: str) -> None:
+        assets = self.project.parent / "obj" / "project.assets.json"
+        assets.parent.mkdir()
+        assets.write_text(
+            json.dumps({"targets": {target: {} for target in targets}}),
+            encoding="utf-8",
+        )
+
+    def test_sole_restored_analyzer_target_is_selected(self) -> None:
+        self._write_targets("netstandard2.0")
+        errors: list[str] = []
+
+        selected = evidence._restored_project_target_framework(self.project, errors)
+
+        self.assertEqual(selected, "netstandard2.0")
+        self.assertEqual(errors, [])
+
+    def test_runtime_target_is_preferred_for_a_multitargeted_project(self) -> None:
+        self._write_targets("netstandard2.0", "net10.0/linux-x64", "net10.0")
+        errors: list[str] = []
+
+        selected = evidence._restored_project_target_framework(self.project, errors)
+
+        self.assertEqual(selected, evidence.APPHOST_EVALUATION_TARGET_FRAMEWORK)
+        self.assertEqual(errors, [])
+
+    def test_ambiguous_non_runtime_targets_are_rejected(self) -> None:
+        self._write_targets("net8.0", "net9.0")
+        errors: list[str] = []
+
+        selected = evidence._restored_project_target_framework(self.project, errors)
+
+        self.assertIsNone(selected)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("ambiguous restored targets", errors[0])
 
 
 class DependencyInertToolingTests(unittest.TestCase):

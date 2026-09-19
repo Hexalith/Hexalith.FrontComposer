@@ -10,6 +10,7 @@ import ipaddress
 import json
 import os
 import re
+import shutil
 import struct
 import subprocess
 import sys
@@ -133,7 +134,9 @@ INERT_DEPENDENCY_SYMLINK_OBJECTS = {
 # or the executed runtime, so the frozen 2026-09-13 runtime-selected-input scope permits
 # them. Everything outside this exact set stays conservatively graph-selected.
 INERT_DEPENDENCY_TOOLING_COMPONENTS = frozenset({"node_modules", ".husky", "__pycache__"})
+APPHOST_EVALUATION_TARGET_FRAMEWORK = "net10.0"
 APPHOST_BUILD_PROPERTIES = {
+    "GeneratePackageOnBuild": False,
     "UseHexalithProjectReferences": True,
     "UseNuGetDeps": False,
     "HexalithEventStoreFromSource": True,
@@ -299,12 +302,22 @@ SECRET_PATTERNS = (
     re.compile(r"[A-Z0-9_]{8,}=.{6,}"),
 )
 PROVIDER_PACKAGE_ASSETS = (
+    "references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/obj/project.assets.json",
+    "references/Hexalith.EventStore/src/Hexalith.EventStore.Client/obj/project.assets.json",
+    "references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/obj/project.assets.json",
+    "references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/obj/project.assets.json",
+    "references/Hexalith.EventStore/src/Hexalith.EventStore.Gateway/obj/project.assets.json",
+    "references/Hexalith.EventStore/src/Hexalith.EventStore.Server/obj/project.assets.json",
+    "references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/obj/project.assets.json",
+    "references/Hexalith.EventStore/src/Hexalith.EventStore.SignalR/obj/project.assets.json",
+    "references/Hexalith.EventStore/src/Hexalith.EventStore.Testing/obj/project.assets.json",
     "references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/obj/project.assets.json",
     "references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification/obj/project.assets.json",
 )
 APPHOST_PACKAGE_ASSETS_ROOT = (
     "src/Hexalith.FrontComposer.AppHost/obj/project.assets.json"
 )
+APPHOST_TOOL_PACKAGES = (("Aspire.AppHost.Sdk", "13.5.4"),)
 RAW_AUTHORIZATION_RE = re.compile(
     r"(?:[\"']authorization[\"']|(?<![A-Za-z0-9_])authorization(?![A-Za-z0-9_]))"
     r"\s*:(?!\s*\{)\s*",
@@ -354,7 +367,7 @@ ENCODED_TOKEN_RE = re.compile(r"^[A-Za-z0-9+/_-]{64,}={0,2}$")
 EXACT_AUTHORIZATION_LINE_RE = re.compile(
     r'(?i)["\']authorization["\']\s*:\s*["\']Bearer FC_CONTRACT_TOKEN["\']'
 )
-PACKAGE_LEDGER_SCHEMA = "hexalith.frontcomposer.resolved-package-ledger.v1"
+PACKAGE_LEDGER_SCHEMA = "hexalith.frontcomposer.resolved-package-ledger.v2"
 # AC 117 requires a byte-bound inventory of every extracted file of every restored
 # package. That inventory is hundreds of times larger than a bounded evidence document,
 # so it lives in its own sidecar artifact instead of inside run-evidence.json /
@@ -3312,8 +3325,10 @@ def resolved_package_ledger(
     assets_paths: Iterable[Path],
     *,
     captured_at: str | None = None,
+    prune_unselected: bool = False,
+    tool_packages: Iterable[tuple[str, str]] = (),
 ) -> tuple[dict[str, Any], list[str]]:
-    """Inventory exactly the restored assets graphs and immutable package bytes they select."""
+    """Inventory restored assets plus explicit build/runtime tool package authorities."""
     issues: list[str] = []
     if _path_has_symlink_component(package_root) or not package_root.is_dir():
         return {}, ["The selected NuGet package root is missing or symlinked."]
@@ -3427,6 +3442,43 @@ def resolved_package_ledger(
     if not graphs:
         issues.append("Resolved-package ledger must bind at least one assets graph.")
 
+    tool_bindings: list[dict[str, str]] = []
+    normalized_tool_coordinates = sorted(
+        {(package_id.casefold(), version.casefold(), package_id, version) for package_id, version in tool_packages},
+        key=lambda item: (item[0], item[1]),
+    )
+    for package_id_lower, version_lower, package_id, version in normalized_tool_coordinates:
+        if (
+            not package_id
+            or not version
+            or "/" in package_id
+            or "\\" in package_id
+            or "/" in version
+            or "\\" in version
+        ):
+            issues.append("Resolved tool package coordinate is malformed.")
+            continue
+        relative_package = f"{package_id_lower}/{version_lower}"
+        package_directory = packages_root / relative_package
+        nupkg_path = package_directory / f"{package_id_lower}.{version_lower}.nupkg"
+        content_hash = _nuget_package_content_sha512(nupkg_path)
+        if content_hash is None:
+            issues.append(f"Resolved tool package nupkg is missing or malformed: {package_id}/{version}")
+            continue
+        binding = {
+            "id": package_id,
+            "version": version,
+            "relativePath": relative_package,
+            "contentHashSha512": content_hash,
+        }
+        key = (package_id_lower, version_lower)
+        previous = packages_by_coordinate.get(key)
+        if previous is not None and not _exact(previous, binding):
+            issues.append(f"Resolved tool package conflicts with assets identity: {package_id}/{version}")
+            continue
+        packages_by_coordinate[key] = binding
+        tool_bindings.append(binding)
+
     packages: list[dict[str, Any]] = []
     declared_directories: set[Path] = set()
     for binding in sorted(
@@ -3480,10 +3532,41 @@ def resolved_package_ledger(
                 actual_version_directories.add(version.resolve(strict=False))
     except OSError:
         issues.append("The selected NuGet package root cannot be completely enumerated.")
+    missing_directories = declared_directories - actual_version_directories
+    unselected_directories = actual_version_directories - declared_directories
+    if prune_unselected and not issues and not missing_directories:
+        # NuGet may download candidates that final dependency resolution does not select.
+        # Remove those version directories before the execution build so the durable ledger
+        # remains an exact inventory of every package available to that build. Never follow a
+        # symlink and never remove anything outside the validated fresh package root.
+        for directory in sorted(unselected_directories):
+            if (
+                directory.parent.parent != packages_root
+                or directory.is_symlink()
+                or not directory.is_dir()
+            ):
+                issues.append("Refusing to prune an unsafe unselected package directory.")
+                continue
+            try:
+                shutil.rmtree(directory)
+                directory.parent.rmdir()
+            except OSError:
+                # A package-id directory can legitimately retain another selected version.
+                if directory.exists():
+                    issues.append(
+                        "Unable to prune an unselected package directory: "
+                        f"{directory.relative_to(packages_root).as_posix()}"
+                    )
+        if not issues:
+            actual_version_directories -= unselected_directories
     if actual_version_directories != declared_directories:
         issues.append("NuGet package root contains missing or orphan package directories.")
 
-    ledger_entries = {"assetsGraphs": graphs, "packages": packages}
+    ledger_entries = {
+        "assetsGraphs": graphs,
+        "toolPackages": tool_bindings,
+        "packages": packages,
+    }
     ledger_tree = hashlib.sha256(
         json.dumps(ledger_entries, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
@@ -3504,6 +3587,7 @@ def validate_package_ledger(
     errors: list[str],
     *,
     expected_assets_count: int | None = None,
+    tool_packages: Iterable[tuple[str, str]] = (),
 ) -> datetime | None:
     """Validate ledger semantics and recompute every selected graph and package byte."""
     captured_at = validate_package_ledger_semantics(document, errors)
@@ -3521,6 +3605,7 @@ def validate_package_ledger(
         package_root,
         assets_paths,
         captured_at=document.get("capturedAt") if isinstance(document.get("capturedAt"), str) else None,
+        tool_packages=tool_packages,
     )
     errors.extend(recompute_issues)
     if not _exact(document, recomputed):
@@ -3537,16 +3622,21 @@ def validate_package_ledger_semantics(
         errors.append("Resolved-package ledger is malformed.")
         return None
     if set(document) != {
-        "schema", "capturedAt", "packageRoot", "assetsGraphs", "packages", "treeSha256"
+        "schema", "capturedAt", "packageRoot", "assetsGraphs", "toolPackages", "packages", "treeSha256"
     } or document.get("schema") != PACKAGE_LEDGER_SCHEMA or document.get("packageRoot") != "fresh-external":
         errors.append("Resolved-package ledger schema or exact fields are invalid.")
     captured_at = _parse_timestamp(
         document.get("capturedAt"), "Resolved-package ledger capturedAt", errors
     )
     graphs = document.get("assetsGraphs")
+    tool_packages = document.get("toolPackages")
     packages = document.get("packages")
-    if not isinstance(graphs, list) or not isinstance(packages, list):
-        errors.append("Resolved-package ledger graph/package arrays are malformed.")
+    if (
+        not isinstance(graphs, list)
+        or not isinstance(tool_packages, list)
+        or not isinstance(packages, list)
+    ):
+        errors.append("Resolved-package ledger graph/tool/global package arrays are malformed.")
         return captured_at
     if not graphs:
         errors.append("Resolved-package ledger must bind at least one assets graph.")
@@ -3588,6 +3678,20 @@ def validate_package_ledger_semantics(
     if graph_paths != sorted(set(graph_paths)):
         errors.append("Resolved-package ledger assets graphs must be unique and sorted.")
 
+    tool_union: dict[tuple[str, str], dict[str, str]] = {}
+    tool_keys: list[tuple[str, str]] = []
+    for binding in tool_packages:
+        if not _valid_package_binding(binding):
+            errors.append("Resolved-package ledger tool package is malformed.")
+            continue
+        key = (str(binding.get("id", "")).casefold(), str(binding.get("version", "")).casefold())
+        tool_keys.append(key)
+        if key in graph_union and not _exact(graph_union[key], binding):
+            errors.append("Resolved-package ledger tool package conflicts with assets identity.")
+        tool_union[key] = binding
+    if tool_keys != sorted(set(tool_keys)):
+        errors.append("Resolved-package ledger tool packages must be unique and sorted.")
+
     global_bindings: dict[tuple[str, str], dict[str, str]] = {}
     global_keys: list[tuple[str, str]] = []
     for package in packages:
@@ -3628,9 +3732,16 @@ def validate_package_ledger_semantics(
             errors.append(f"Resolved-package ledger nupkg hash differs from assets: {binding['id']}")
     if global_keys != sorted(set(global_keys)):
         errors.append("Resolved-package ledger global packages must be unique and sorted.")
-    if not _exact(global_bindings, graph_union):
-        errors.append("Resolved-package ledger graph-package union differs from global packages.")
-    entries = {"assetsGraphs": graphs, "packages": packages}
+    selected_bindings = {**graph_union, **tool_union}
+    if not _exact(global_bindings, selected_bindings):
+        errors.append(
+            "Resolved-package ledger graph/tool-package union differs from global packages."
+        )
+    entries = {
+        "assetsGraphs": graphs,
+        "toolPackages": tool_packages,
+        "packages": packages,
+    }
     expected_tree = hashlib.sha256(
         json.dumps(entries, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
@@ -3694,8 +3805,15 @@ def write_package_ledger(
     repository_root: Path,
     package_root: Path,
     assets_paths: Iterable[Path],
+    *,
+    prune_unselected: bool = False,
 ) -> list[str]:
-    document, issues = resolved_package_ledger(repository_root, package_root, assets_paths)
+    document, issues = resolved_package_ledger(
+        repository_root,
+        package_root,
+        assets_paths,
+        prune_unselected=prune_unselected,
+    )
     if issues:
         return issues
     payload = (json.dumps(document, indent=2) + "\n").encode("utf-8")
@@ -3833,6 +3951,38 @@ def _load_assets_graph(path: Path, errors: list[str]) -> dict[str, Any]:
         path.as_posix(),
         max_bytes=MAX_PACKAGE_LEDGER_BYTES,
     )
+
+
+def _restored_project_target_framework(
+    project: Path,
+    errors: list[str],
+) -> str | None:
+    """Select one deterministic evaluation target from a project's restored graph."""
+    assets_path = project.parent / "obj" / "project.assets.json"
+    if _path_has_symlink_component(assets_path) or not assets_path.is_file():
+        errors.append(f"Project has no regular restored assets graph: {project}")
+        return None
+    assets = _load_assets_graph(assets_path, errors)
+    targets = assets.get("targets")
+    if not isinstance(targets, dict) or not targets:
+        errors.append(f"Project assets graph has no restored targets: {assets_path}")
+        return None
+    frameworks: set[str] = set()
+    for target in targets:
+        if not isinstance(target, str):
+            errors.append(f"Project assets graph has a malformed target: {assets_path}")
+            return None
+        framework = target.split("/", 1)[0]
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.+_-]*", framework):
+            errors.append(f"Project assets graph has an unsafe target: {assets_path}")
+            return None
+        frameworks.add(framework)
+    if APPHOST_EVALUATION_TARGET_FRAMEWORK in frameworks:
+        return APPHOST_EVALUATION_TARGET_FRAMEWORK
+    if len(frameworks) == 1:
+        return next(iter(frameworks))
+    errors.append(f"Project assets graph has ambiguous restored targets: {assets_path}")
+    return None
 
 
 def _discover_apphost_project_graph(
@@ -4046,12 +4196,16 @@ def _evaluate_apphost_inputs(
     property_names = [
         *APPHOST_BUILD_PROPERTIES,
         *APPHOST_SOURCE_ROOT_PROPERTIES,
+        "TargetFramework",
         "MSBuildAllProjects",
     ]
     environment = os.environ.copy()
     environment["NUGET_PACKAGES"] = str(package_root)
-    evaluations: list[tuple[Path, dict[str, Any]]] = []
+    evaluations: list[tuple[Path, str, dict[str, Any]]] = []
     for project in projects:
+        target_framework = _restored_project_target_framework(project, errors)
+        if target_framework is None:
+            continue
         try:
             relative_project = project.relative_to(repository_root)
             completed = subprocess.run(
@@ -4060,8 +4214,11 @@ def _evaluate_apphost_inputs(
                     "msbuild",
                     str(relative_project),
                     "-p:Configuration=Debug",
-                    "-p:BuildProjectReferences=true",
+                    "-p:BuildProjectReferences=false",
+                    "-m:1",
+                    "-nodeReuse:false",
                     *_apphost_build_property_arguments(repository_root),
+                    f"-p:TargetFramework={target_framework}",
                     "-target:ResolveReferences",
                     "-getProperty:" + ",".join(property_names),
                     "-getItem:" + item_names,
@@ -4087,7 +4244,7 @@ def _evaluate_apphost_inputs(
         if not isinstance(evaluation, dict):
             errors.append(f"AppHost project evaluation is malformed: {project}")
             continue
-        evaluations.append((project, evaluation))
+        evaluations.append((project, target_framework, evaluation))
     if len(evaluations) != len(projects):
         return None
     project_set = set(projects)
@@ -4097,17 +4254,21 @@ def _evaluate_apphost_inputs(
         Path(relative).name.casefold() for relative in RUNTIME_DEPENDENCY_GITLINKS
     )
     apphost = (repository_root / APPHOST_PROJECT_PATH).resolve(strict=False)
-    for project, evaluation in evaluations:
+    for project, target_framework, evaluation in evaluations:
         properties = evaluation.get("Properties")
         items = evaluation.get("Items")
         if not isinstance(properties, dict) or not isinstance(items, dict):
             errors.append(f"AppHost project evaluation omits properties or items: {project}")
             continue
+        if properties.get("TargetFramework") != target_framework:
+            errors.append(f"Project evaluated target framework is incorrect: {project}")
         if project == apphost:
             for name, expected in APPHOST_BUILD_PROPERTIES.items():
                 actual = properties.get(name)
                 if not isinstance(actual, str) or actual.casefold() != str(expected).casefold():
                     errors.append(f"AppHost evaluated build property is incorrect: {name}")
+            if target_framework != APPHOST_EVALUATION_TARGET_FRAMEWORK:
+                errors.append("AppHost evaluated target framework is incorrect.")
             for name, relative in APPHOST_SOURCE_ROOT_PROPERTIES.items():
                 actual = properties.get(name)
                 try:
@@ -4365,7 +4526,7 @@ def _write_live_receipt(
         package_root,
         (repository_root / relative for relative in PROVIDER_PACKAGE_ASSETS),
         errors,
-        expected_assets_count=2,
+        expected_assets_count=len(PROVIDER_PACKAGE_ASSETS),
     )
     provenance = _live_provenance(
         repository_root,
@@ -4737,7 +4898,7 @@ def _validate_live_provider(
                 for relative in PROVIDER_PACKAGE_ASSETS
             ),
             errors=errors,
-            expected_assets_count=2,
+            expected_assets_count=len(PROVIDER_PACKAGE_ASSETS),
         )
     graphs = (
         package_ledger.get("assetsGraphs")
@@ -4750,7 +4911,7 @@ def _validate_live_provider(
         else []
     )
     if graph_paths != list(PROVIDER_PACKAGE_ASSETS):
-        errors.append("Provider package ledger does not bind its exact two assets graphs.")
+        errors.append("Provider package ledger does not bind its exact restored assets closure.")
     if (
         package_captured is None
         or report_started is None
@@ -4901,6 +5062,20 @@ def _validate_live_apphost(
         if isinstance(graphs, list)
         else []
     )
+    ledger_tool_packages = (
+        package_ledger.get("toolPackages")
+        if isinstance(package_ledger, dict)
+        else None
+    )
+    ledger_tool_coordinates = (
+        [
+            (item.get("id"), item.get("version"))
+            for item in ledger_tool_packages
+            if isinstance(item, dict)
+        ]
+        if isinstance(ledger_tool_packages, list)
+        else []
+    )
     ledger_paths = [
         repository_root / item["path"]
         for item in graphs
@@ -4921,6 +5096,7 @@ def _validate_live_apphost(
             package_root,
             ledger_paths,
             errors,
+            tool_packages=APPHOST_TOOL_PACKAGES,
         )
     if (
         ledger_graph_paths != sorted(set(ledger_graph_paths))
@@ -4928,6 +5104,10 @@ def _validate_live_apphost(
     ):
         errors.append(
             "Live AppHost package ledger must bind the canonical AppHost assets root."
+        )
+    if ledger_tool_coordinates != list(APPHOST_TOOL_PACKAGES):
+        errors.append(
+            "Live AppHost package ledger must bind the exact AppHost tool package set."
         )
     if (
         runtime_manifest_captured_at is None
@@ -6560,6 +6740,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--write-live-receipt", action="store_true")
     parser.add_argument("--write-runtime-input-manifest", action="store_true")
     parser.add_argument("--write-package-ledger", action="store_true")
+    parser.add_argument("--prune-unselected-packages", action="store_true")
     parser.add_argument("--runtime-input-manifest-output", type=Path)
     parser.add_argument("--runtime-input-manifest", type=Path)
     parser.add_argument("--runtime-input-captured-at")
@@ -6610,8 +6791,11 @@ def _run(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
                 args.repository_root.absolute(),
                 args.package_root.absolute(),
                 (path.absolute() for path in args.package_assets),
+                prune_unselected=args.prune_unselected_packages,
             )
         )
+    elif args.prune_unselected_packages:
+        parser.error("--prune-unselected-packages requires --write-package-ledger")
     if args.write_live_receipt:
         if args.live_evidence_root is None:
             parser.error("--write-live-receipt requires --live-evidence-root")

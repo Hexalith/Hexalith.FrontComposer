@@ -7,7 +7,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Architecture;
 
 [Trait("Category", "Governance")]
 public sealed class FatalExceptionGuardGovernanceTests {
-    private const int ExpectedCatchFilterCount = 44;
+    private const int ExpectedCatchFilterCount = 45;
     private const string ExceptionGuardPath = "Services/ExceptionGuard.cs";
     private static readonly HashSet<string> FatalTypeNames = new(StringComparer.Ordinal) {
         nameof(OutOfMemoryException),
