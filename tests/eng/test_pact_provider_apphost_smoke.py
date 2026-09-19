@@ -434,7 +434,10 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
             if command[:2] == ["dotnet", "msbuild"]
         ]
         self.assertTrue(all("-target:ResolveReferences" in command for command in evaluation_commands))
-        self.assertTrue(all("-p:BuildProjectReferences=true" in command for command in evaluation_commands))
+        self.assertTrue(all("-p:BuildProjectReferences=false" in command for command in evaluation_commands))
+        self.assertTrue(all("-p:GeneratePackageOnBuild=false" in command for command in evaluation_commands))
+        self.assertTrue(all("-m:1" in command for command in evaluation_commands))
+        self.assertTrue(all("-nodeReuse:false" in command for command in evaluation_commands))
         self.assertTrue(all(any("ReferencePath" in item for item in command) for command in evaluation_commands))
         self.assertIn("--no-restore", runtime.commands[build_index])
         self.assertIn("--isolated", runtime.commands[start_index])

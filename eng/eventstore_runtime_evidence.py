@@ -135,6 +135,7 @@ INERT_DEPENDENCY_SYMLINK_OBJECTS = {
 # them. Everything outside this exact set stays conservatively graph-selected.
 INERT_DEPENDENCY_TOOLING_COMPONENTS = frozenset({"node_modules", ".husky", "__pycache__"})
 APPHOST_BUILD_PROPERTIES = {
+    "GeneratePackageOnBuild": False,
     "UseHexalithProjectReferences": True,
     "UseNuGetDeps": False,
     "HexalithEventStoreFromSource": True,
