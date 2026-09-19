@@ -4468,6 +4468,15 @@ def _apphost_runtime_output_binding(
     return outputs
 
 
+def runtime_output_binding(files: list[dict[str, Any]]) -> dict[str, Any]:
+    """Bind an exact runtime-output inventory without duplicating every path in evidence."""
+    payload = json.dumps(files, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return {
+        "fileCount": len(files),
+        "treeSha256": hashlib.sha256(payload).hexdigest(),
+    }
+
+
 def _live_provenance(
     repository_root: Path,
     errors: list[str],
@@ -5247,15 +5256,6 @@ def _validate_live_apphost(
         )
         else []
     )
-    output_paths = (
-        [item.get("path") for item in output_binding]
-        if isinstance(output_binding, list)
-        and all(
-            isinstance(item, dict) and isinstance(item.get("path"), str)
-            for item in output_binding
-        )
-        else []
-    )
     if (
         not isinstance(input_graph_paths, list)
         or input_graph_paths != sorted(set(ledger_graph_paths))
@@ -5332,21 +5332,13 @@ def _validate_live_apphost(
                 )
             )
     if (
-        not isinstance(output_binding, list)
-        or not output_binding
-        or output_paths != sorted(set(output_paths))
-        or any(
-            not isinstance(item, dict)
-            or set(item) != {"path", "bytes", "sha256"}
-            or not isinstance(item.get("path"), str)
-            or not _is_safe_relative_path(item["path"])
-            or not isinstance(item.get("bytes"), int)
-            or isinstance(item.get("bytes"), bool)
-            or item["bytes"] < 0
-            or not isinstance(item.get("sha256"), str)
-            or not SHA256_RE.fullmatch(item["sha256"])
-            for item in output_binding
-        )
+        not isinstance(output_binding, dict)
+        or set(output_binding) != {"fileCount", "treeSha256"}
+        or not isinstance(output_binding.get("fileCount"), int)
+        or isinstance(output_binding.get("fileCount"), bool)
+        or output_binding["fileCount"] < 1
+        or not isinstance(output_binding.get("treeSha256"), str)
+        or not SHA256_RE.fullmatch(output_binding["treeSha256"])
     ):
         errors.append("Live AppHost runtime output binding is incomplete.")
     if package_root is not None:
@@ -5361,7 +5353,7 @@ def _validate_live_apphost(
                 "Live AppHost evaluated input binding differs from final Gate 2c recomputation."
             )
         recomputed_outputs = _apphost_runtime_output_binding(repository_root, errors)
-        if not _exact(output_binding, recomputed_outputs):
+        if not _exact(output_binding, runtime_output_binding(recomputed_outputs)):
             errors.append(
                 "Live AppHost runtime output binding differs from final Gate 2c recomputation."
             )

@@ -75,6 +75,10 @@ def _offset_timestamp(value: str, seconds: int) -> str:
     return (datetime.fromisoformat(value) + timedelta(seconds=seconds)).isoformat()
 
 
+def _synthetic_runtime_outputs(digest: str) -> list[dict[str, Any]]:
+    return [{"path": "net10.0/AppHost.dll", "bytes": 1, "sha256": digest}]
+
+
 def _synthetic_package_ledger(
     assets_paths: list[str],
     captured_at: str,
@@ -903,9 +907,9 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                 }
             ],
         }
-        output_preparation["runtimeOutputBinding"] = [
-            {"path": "net10.0/AppHost.dll", "bytes": 1, "sha256": "6" * 64}
-        ]
+        output_preparation["runtimeOutputBinding"] = evidence.runtime_output_binding(
+            _synthetic_runtime_outputs("6" * 64)
+        )
         active_smoke["authorizationControls"]["projectionSignalR"].update(
             {
                 "transport": "websocket-upgrade",
@@ -1138,12 +1142,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         runtime_output_patcher = mock.patch.object(
             evidence,
             "_apphost_runtime_output_binding",
-            side_effect=lambda *_args, **_kwargs: (
-                _read_json(self.live_root / "apphost-smoke.json")
-                .get("startup", {})
-                .get("outputPreparation", {})
-                .get("runtimeOutputBinding", [])
-            ),
+            return_value=_synthetic_runtime_outputs("9" * 64),
         )
         runtime_output_patcher.start()
         self.addCleanup(runtime_output_patcher.stop)
@@ -1254,9 +1253,9 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                             }
                         ],
                     },
-                    "runtimeOutputBinding": [
-                        {"path": "net10.0/AppHost.dll", "bytes": 1, "sha256": "9" * 64}
-                    ],
+                    "runtimeOutputBinding": evidence.runtime_output_binding(
+                        _synthetic_runtime_outputs("9" * 64)
+                    ),
                 },
                 "resourceWaits": {
                     "security": "healthy",
@@ -4527,9 +4526,11 @@ evidence.validate_package_ledger = lambda document, *args, **kwargs: (
 evidence._evaluate_apphost_inputs = lambda *args, **kwargs: json.loads(
     (fixture_live_root / "apphost-smoke.json").read_text(encoding="utf-8-sig")
 )["startup"]["outputPreparation"]["evaluatedInputBinding"]
-evidence._apphost_runtime_output_binding = lambda *args, **kwargs: json.loads(
-    (fixture_live_root / "apphost-smoke.json").read_text(encoding="utf-8-sig")
-)["startup"]["outputPreparation"]["runtimeOutputBinding"]
+evidence._apphost_runtime_output_binding = lambda *args, **kwargs: [{{
+    "path": "net10.0/AppHost.dll",
+    "bytes": 1,
+    "sha256": "{'9' * 64}",
+}}]
 
 raise SystemExit(evidence.main())
 '''

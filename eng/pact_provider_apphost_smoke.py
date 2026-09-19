@@ -2184,7 +2184,9 @@ def _capture(
             return 1
         initial_package_ledger = package_ledger
         runtime_outputs, outputs_valid = _runtime_output_inventory()
-        evidence["startup"]["outputPreparation"]["runtimeOutputBinding"] = runtime_outputs
+        evidence["startup"]["outputPreparation"]["runtimeOutputBinding"] = (
+            runtime_evidence.runtime_output_binding(runtime_outputs)
+        )
         if not outputs_valid:
             reason_codes.append("apphost.runtime-output.not-closed")
             return 1

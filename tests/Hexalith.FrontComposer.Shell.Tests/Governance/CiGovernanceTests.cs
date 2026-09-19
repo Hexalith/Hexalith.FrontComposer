@@ -4180,12 +4180,14 @@ public sealed class CiGovernanceTests {
         appHostSmokeSource.ShouldContain("f\"-getResultOutputFile:{result_path}\"");
         appHostSmokeSource.ShouldContain("max_bytes=MAX_MSBUILD_RESULT_BYTES");
         appHostSmokeSource.ShouldContain("runtime_evidence.APPHOST_EVALUATED_INPUT_ITEMS");
+        appHostSmokeSource.ShouldContain("runtime_evidence.runtime_output_binding(runtime_outputs)");
         string runtimeEvidenceSource = File.ReadAllText(Path.Combine(root, "eng/eventstore_runtime_evidence.py"));
         runtimeEvidenceSource.ShouldContain("\"GeneratePackageOnBuild\": False");
         runtimeEvidenceSource.ShouldContain("APPHOST_EVALUATION_TARGET_FRAMEWORK = \"net10.0\"");
         runtimeEvidenceSource.ShouldContain("\"-p:BuildProjectReferences=false\"");
         runtimeEvidenceSource.ShouldContain("\"-nodeReuse:false\"");
         runtimeEvidenceSource.ShouldContain("\"ReferencePath\"");
+        runtimeEvidenceSource.ShouldContain("def runtime_output_binding(files: list[dict[str, Any]])");
         int appHostCaptureSourceStart = appHostSmokeSource.IndexOf("def _capture(", StringComparison.Ordinal);
         int appHostCaptureSourceEnd = appHostSmokeSource.IndexOf("\ndef capture(", appHostCaptureSourceStart, StringComparison.Ordinal);
         appHostCaptureSourceStart.ShouldBeGreaterThanOrEqualTo(0);
