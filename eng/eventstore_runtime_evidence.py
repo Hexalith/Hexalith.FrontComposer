@@ -87,6 +87,11 @@ RUNTIME_ROOT_INPUTS = (
     "nuget.config",
 )
 OPTIONAL_ABSENT_RUNTIME_ROOT_INPUTS = frozenset({"Directory.Build.rsp"})
+RUNTIME_TRACKED_TREES = (
+    "src",
+    "samples/Counter",
+    "docs/skills/frontcomposer",
+)
 ROOT_BUILD_CONTROL_RE = re.compile(
     r"^(?:\.editorconfig|(?:.+\.)?globalconfig|Directory\.(?:Build|Packages)\..+|"
     r"global\.json|nuget\.config|"
@@ -2157,7 +2162,7 @@ def _git_completed(repository: Path, *arguments: str) -> subprocess.CompletedPro
 def _runtime_scope() -> dict[str, Any]:
     return {
         "version": RUNTIME_SCOPE_VERSION,
-        "trackedTrees": ["src/**", "samples/Counter/**"],
+        "trackedTrees": [f"{tree}/**" for tree in RUNTIME_TRACKED_TREES],
         "rootInputs": list(RUNTIME_ROOT_INPUTS),
         "pactInputs": list(RUNTIME_PACT_INPUTS),
         "dependencyGitlinks": list(RUNTIME_DEPENDENCY_GITLINKS),
@@ -2704,7 +2709,12 @@ def _compute_runtime_input_snapshot(
 ) -> tuple[list[dict[str, Any]], list[str]]:
     """Return the fixed runtime-input inventory and fail-closed cleanliness issues."""
     issues: list[str] = []
-    pathspecs = ["src", "samples/Counter", *RUNTIME_ROOT_INPUTS, *RUNTIME_PACT_INPUTS, *RUNTIME_DEPENDENCY_GITLINKS]
+    pathspecs = [
+        *RUNTIME_TRACKED_TREES,
+        *RUNTIME_ROOT_INPUTS,
+        *RUNTIME_PACT_INPUTS,
+        *RUNTIME_DEPENDENCY_GITLINKS,
+    ]
     indexed = _git_completed(repository_root, "ls-files", "-s", "-z", "--", *pathspecs)
     if indexed is None or indexed.returncode != 0:
         return [], ["Unable to enumerate the fixed runtime-input scope from the Git index."]
@@ -2812,8 +2822,7 @@ def _compute_runtime_input_snapshot(
             *options,
             "-z",
             "--",
-            "src",
-            "samples/Counter",
+            *RUNTIME_TRACKED_TREES,
             *RUNTIME_ROOT_INPUTS,
             *RUNTIME_PACT_INPUTS,
         )
@@ -2946,7 +2955,12 @@ def _runtime_git_tree(
 ) -> tuple[dict[str, tuple[str, str]], list[str]]:
     """Return mode/object identities for the fixed scope at one commit."""
     issues: list[str] = []
-    pathspecs = ["src", "samples/Counter", *RUNTIME_ROOT_INPUTS, *RUNTIME_PACT_INPUTS, *RUNTIME_DEPENDENCY_GITLINKS]
+    pathspecs = [
+        *RUNTIME_TRACKED_TREES,
+        *RUNTIME_ROOT_INPUTS,
+        *RUNTIME_PACT_INPUTS,
+        *RUNTIME_DEPENDENCY_GITLINKS,
+    ]
     listed = _git_completed(
         repository_root,
         "ls-tree",
@@ -5422,8 +5436,7 @@ def _validate_live_apphost(
         # every path the sealed manifest already hashes, to that manifest's bytes.
         # Without this the binding only describes itself.
         sealed_prefixes = (
-            "src/",
-            "samples/Counter/",
+            *(f"{tree}/" for tree in RUNTIME_TRACKED_TREES),
             *(f"{gitlink}/" for gitlink in RUNTIME_DEPENDENCY_GITLINKS),
         )
         sealed_exact = {*RUNTIME_ROOT_INPUTS, *RUNTIME_PACT_INPUTS}

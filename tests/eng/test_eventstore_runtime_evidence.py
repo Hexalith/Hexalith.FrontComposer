@@ -270,6 +270,7 @@ class RuntimeInputInventoryTests(unittest.TestCase):
         (self.repository / ".gitignore").write_text(
             "/src/ignored.cs\n"
             "/samples/Counter/ignored.json\n"
+            "/docs/skills/frontcomposer/ignored.md\n"
             "**/bin/\n"
             "**/obj/\n",
             encoding="utf-8",
@@ -281,10 +282,11 @@ class RuntimeInputInventoryTests(unittest.TestCase):
             check=True,
         )
 
-    def test_runtime_scope_rejects_ignored_source_and_sample_tree_inputs(self) -> None:
+    def test_runtime_scope_rejects_ignored_tracked_tree_inputs(self) -> None:
         ignored_paths = (
             "src/ignored.cs",
             "samples/Counter/ignored.json",
+            "docs/skills/frontcomposer/ignored.md",
         )
         for relative in ignored_paths:
             path = self.repository / relative
@@ -5399,6 +5401,7 @@ class ReviewLoop11RegressionTests(unittest.TestCase):
 
     def test_runtime_scope_includes_root_compiler_configuration(self) -> None:
         self.assertIn(".editorconfig", evidence.RUNTIME_ROOT_INPUTS)
+        self.assertIn("docs/skills/frontcomposer", evidence.RUNTIME_TRACKED_TREES)
         self.assertTrue(evidence.ROOT_BUILD_CONTROL_RE.fullmatch("rules.globalconfig"))
         self.assertIn("Compile", evidence.APPHOST_EVALUATED_INPUT_ITEMS)
         self.assertIn("GlobalAnalyzerConfigFiles", evidence.APPHOST_EVALUATED_INPUT_ITEMS)
