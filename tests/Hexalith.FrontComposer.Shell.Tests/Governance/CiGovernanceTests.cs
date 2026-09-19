@@ -3972,7 +3972,11 @@ public sealed class CiGovernanceTests {
         runtimeManifest.GetProperty("entries").GetArrayLength().ShouldBeGreaterThan(0);
         JsonElement runtimeScope = runtimeManifest.GetProperty("scope");
         runtimeScope.GetProperty("trackedTrees").EnumerateArray()
-            .Select(item => item.GetString()).ShouldBe(["src/**", "samples/Counter/**"]);
+            .Select(item => item.GetString()).ShouldBe([
+                "src/**",
+                "samples/Counter/**",
+                "docs/skills/frontcomposer/**",
+            ]);
         runtimeScope.GetProperty("rootInputs").EnumerateArray()
             .Select(item => item.GetString()).ShouldContain("Directory.Build.rsp");
         runtimeManifest.GetProperty("entries").EnumerateArray()
