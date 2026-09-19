@@ -1480,6 +1480,54 @@ def _runtime_output_inventory() -> tuple[list[dict[str, Any]], bool]:
     return files, not issues
 
 
+def _resolved_apphost_package_ledger(
+    package_root: Path,
+    assets_paths: list[Path],
+    *,
+    prune_unselected: bool,
+) -> tuple[dict[str, Any], list[str]]:
+    """Resolve and validate the exact AppHost package authority at a capture boundary."""
+    package_ledger, package_issues = runtime_evidence.resolved_package_ledger(
+        ROOT,
+        package_root,
+        assets_paths,
+        prune_unselected=prune_unselected,
+        tool_packages=runtime_evidence.APPHOST_TOOL_PACKAGES,
+    )
+    package_issues = list(package_issues)
+    runtime_evidence.validate_package_ledger_semantics(
+        package_ledger, package_issues
+    )
+    ledger_graphs = (
+        package_ledger.get("assetsGraphs")
+        if isinstance(package_ledger, dict)
+        else None
+    )
+    ledger_paths = (
+        [item.get("path") for item in ledger_graphs if isinstance(item, dict)]
+        if isinstance(ledger_graphs, list)
+        else []
+    )
+    try:
+        expected_ledger_paths = sorted(
+            path.resolve(strict=False).relative_to(ROOT).as_posix()
+            for path in assets_paths
+        )
+    except ValueError:
+        expected_ledger_paths = []
+        package_issues.append(
+            "AppHost assets graph set is outside the repository."
+        )
+    if (
+        ledger_paths != expected_ledger_paths
+        or runtime_evidence.APPHOST_PACKAGE_ASSETS_ROOT not in ledger_paths
+    ):
+        package_issues.append(
+            "AppHost package ledger does not bind its exact canonical assets graph set."
+        )
+    return package_ledger, package_issues
+
+
 def _dapr_name_resolution_paths() -> dict[str, Path]:
     return {relative: ROOT / relative for relative in DAPR_NAME_RESOLUTION_RELATIVES}
 
@@ -2016,52 +2064,18 @@ def _capture(
         if not resolved_assets_paths or canonical_apphost_assets not in resolved_assets_paths:
             reason_codes.append("apphost.assets-graph.not-closed")
             return 1
-        package_ledger, package_issues = runtime_evidence.resolved_package_ledger(
-            ROOT,
+        _, package_issues = _resolved_apphost_package_ledger(
             package_root,
             assets_paths,
             prune_unselected=True,
-            tool_packages=runtime_evidence.APPHOST_TOOL_PACKAGES,
         )
-        package_issues = list(package_issues)
-        runtime_evidence.validate_package_ledger_semantics(
-            package_ledger, package_issues
-        )
-        ledger_graphs = (
-            package_ledger.get("assetsGraphs")
-            if isinstance(package_ledger, dict)
-            else None
-        )
-        ledger_paths = (
-            [item.get("path") for item in ledger_graphs if isinstance(item, dict)]
-            if isinstance(ledger_graphs, list)
-            else []
-        )
-        try:
-            expected_ledger_paths = sorted(
-                path.relative_to(ROOT).as_posix() for path in resolved_assets_paths
-            )
-        except ValueError:
-            expected_ledger_paths = []
-            package_issues.append(
-                "AppHost assets graph set is outside the repository."
-            )
-        if (
-            ledger_paths != expected_ledger_paths
-            or runtime_evidence.APPHOST_PACKAGE_ASSETS_ROOT not in ledger_paths
-        ):
-            package_issues.append(
-                "AppHost package ledger does not bind its exact canonical assets graph set."
-            )
         if package_issues:
             reason_codes.append("apphost.package-authority.not-sealed")
             return 1
-        initial_package_ledger = package_ledger
         dotnet_root = _selected_dotnet_root(runtime, capture_deadline)
         if dotnet_root is None:
             reason_codes.append("apphost.sdk-authority.not-selected")
             return 1
-        evidence["executionStartedAt"] = datetime.now(timezone.utc).isoformat()
         source_graph_issues: list[str] = []
         source_graph_before = _evaluate_source_graph(
             runtime,
@@ -2134,12 +2148,26 @@ def _capture(
         # items after the explicit build. The post-build evaluation is authoritative: it
         # is independently recomputed by final Gate 2c and remains stable through cleanup.
         evidence["startup"]["outputPreparation"]["evaluatedInputBinding"] = source_graph_after
+        # Restore discovery has to precede the explicit build, but the build can legitimately
+        # finalize assets graphs and extracted package content. Seal the durable package ledger
+        # only after every preparation step, immediately before the runtime-output boundary and
+        # execution timestamp. Cleanup then proves that runtime execution changed neither.
+        package_ledger, package_issues = _resolved_apphost_package_ledger(
+            package_root,
+            assets_paths,
+            prune_unselected=False,
+        )
+        if package_issues:
+            reason_codes.append("apphost.package-authority.not-sealed")
+            return 1
+        initial_package_ledger = package_ledger
         runtime_outputs, outputs_valid = _runtime_output_inventory()
         evidence["startup"]["outputPreparation"]["runtimeOutputBinding"] = runtime_outputs
         if not outputs_valid:
             reason_codes.append("apphost.runtime-output.not-closed")
             return 1
         initial_runtime_outputs = runtime_outputs
+        evidence["executionStartedAt"] = datetime.now(timezone.utc).isoformat()
         start_timeout = _remaining_timeout(capture_deadline, timeout)
         if start_timeout is None:
             reason_codes.append("apphost.capture.deadline-exceeded")

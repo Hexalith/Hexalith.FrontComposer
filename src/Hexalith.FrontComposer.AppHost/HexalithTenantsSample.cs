@@ -12,4 +12,6 @@ public class HexalithTenantsSample : IProjectMetadata {
         "samples",
         "Hexalith.Tenants.Sample",
         "Hexalith.Tenants.Sample.csproj");
+
+    public bool SuppressBuild => true;
 }

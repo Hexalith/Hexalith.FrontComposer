@@ -81,6 +81,18 @@ public sealed class FrontComposerUiAppHostTests {
     }
 
     [Fact]
+    public void AppHost_TenantsSampleSuppressesRuntimeBuildAfterTheSealedPrebuild() {
+        string root = FindRepoRoot();
+        string metadata = File.ReadAllText(Path.Combine(
+            root,
+            "src",
+            "Hexalith.FrontComposer.AppHost",
+            "HexalithTenantsSample.cs"));
+
+        metadata.ShouldContain("public bool SuppressBuild => true;");
+    }
+
+    [Fact]
     public void Realm_DeclaresFrontComposerUiConfidentialClientMatchingAppHostDefaults() {
         JsonElement client = FindRealmClient(FrontComposerUiClientId);
 

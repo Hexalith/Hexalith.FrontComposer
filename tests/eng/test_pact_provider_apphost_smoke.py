@@ -474,6 +474,10 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertTrue(all(any("ReferencePath" in item for item in command) for command in evaluation_commands))
         self.assertIn("--no-restore", runtime.commands[build_index])
         self.assertIn("--isolated", runtime.commands[start_index])
+        self.assertGreater(
+            datetime.fromisoformat(document["executionStartedAt"]),
+            datetime.fromisoformat(document["packageLedger"]["capturedAt"]),
+        )
         self.assertEqual(runtime.commands[-3][:2], ["aspire", "stop"])
         self.assertEqual(runtime.commands[-2][:2], ["aspire", "describe"])
         self.assertEqual(runtime.commands[-1][:2], ["aspire", "ps"])
