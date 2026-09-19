@@ -4040,6 +4040,7 @@ public sealed class CiGovernanceTests {
         liveProviderLane.ShouldContain("dotnet clean references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj --configuration Release -m:1 -p:NuGetAudit=false");
         liveProviderLane.ShouldContain("dotnet restore references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj --force --force-evaluate --no-cache --disable-parallel -p:Configuration=Release -p:NuGetAudit=false");
         liveProviderLane.ShouldContain("--write-package-ledger");
+        liveProviderLane.ShouldContain("--prune-unselected-packages");
         liveProviderLane.ShouldContain("--package-ledger-output \"$provider_ledger\"");
         liveProviderLane.ShouldContain("--package-root \"$provider_packages\"");
         foreach (string providerAssetsPath in new[] {

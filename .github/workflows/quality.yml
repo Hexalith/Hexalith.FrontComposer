@@ -208,6 +208,7 @@ jobs:
           dotnet restore references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/Hexalith.EventStore.ProviderVerification.Tests.csproj --force --force-evaluate --no-cache --disable-parallel -p:Configuration=Release -p:NuGetAudit=false
           python3 eng/eventstore_runtime_evidence.py \
             --write-package-ledger \
+            --prune-unselected-packages \
             --package-ledger-output "$provider_ledger" \
             --package-root "$provider_packages" \
             --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/obj/project.assets.json \

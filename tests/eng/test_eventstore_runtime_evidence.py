@@ -617,6 +617,26 @@ class ResolvedPackageLedgerTests(unittest.TestCase):
         )
         self.assertTrue(any("orphan package directories" in error for error in orphan_errors), orphan_errors)
 
+        pruned_ledger_path = self.repository / "pruned-package-ledger.json"
+        prune_errors = evidence.write_package_ledger(
+            pruned_ledger_path,
+            self.repository,
+            self.package_root,
+            [first, second],
+            prune_unselected=True,
+        )
+        self.assertEqual(prune_errors, [])
+        self.assertFalse(orphan.exists())
+        pruned_validation_errors: list[str] = []
+        evidence.validate_package_ledger(
+            _read_json(pruned_ledger_path),
+            self.repository,
+            self.package_root,
+            [first, second],
+            pruned_validation_errors,
+        )
+        self.assertEqual(pruned_validation_errors, [])
+
     def test_new_ledgers_require_nonempty_assets_and_global_package_sets(self) -> None:
         empty_ledger, generation_issues = evidence.resolved_package_ledger(
             self.repository, self.package_root, []

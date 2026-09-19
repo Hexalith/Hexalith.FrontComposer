@@ -10,6 +10,7 @@ import ipaddress
 import json
 import os
 import re
+import shutil
 import struct
 import subprocess
 import sys
@@ -3321,6 +3322,7 @@ def resolved_package_ledger(
     assets_paths: Iterable[Path],
     *,
     captured_at: str | None = None,
+    prune_unselected: bool = False,
 ) -> tuple[dict[str, Any], list[str]]:
     """Inventory exactly the restored assets graphs and immutable package bytes they select."""
     issues: list[str] = []
@@ -3489,6 +3491,33 @@ def resolved_package_ledger(
                 actual_version_directories.add(version.resolve(strict=False))
     except OSError:
         issues.append("The selected NuGet package root cannot be completely enumerated.")
+    missing_directories = declared_directories - actual_version_directories
+    unselected_directories = actual_version_directories - declared_directories
+    if prune_unselected and not issues and not missing_directories:
+        # NuGet may download candidates that final dependency resolution does not select.
+        # Remove those version directories before the execution build so the durable ledger
+        # remains an exact inventory of every package available to that build. Never follow a
+        # symlink and never remove anything outside the validated fresh package root.
+        for directory in sorted(unselected_directories):
+            if (
+                directory.parent.parent != packages_root
+                or directory.is_symlink()
+                or not directory.is_dir()
+            ):
+                issues.append("Refusing to prune an unsafe unselected package directory.")
+                continue
+            try:
+                shutil.rmtree(directory)
+                directory.parent.rmdir()
+            except OSError:
+                # A package-id directory can legitimately retain another selected version.
+                if directory.exists():
+                    issues.append(
+                        "Unable to prune an unselected package directory: "
+                        f"{directory.relative_to(packages_root).as_posix()}"
+                    )
+        if not issues:
+            actual_version_directories -= unselected_directories
     if actual_version_directories != declared_directories:
         issues.append("NuGet package root contains missing or orphan package directories.")
 
@@ -3703,8 +3732,15 @@ def write_package_ledger(
     repository_root: Path,
     package_root: Path,
     assets_paths: Iterable[Path],
+    *,
+    prune_unselected: bool = False,
 ) -> list[str]:
-    document, issues = resolved_package_ledger(repository_root, package_root, assets_paths)
+    document, issues = resolved_package_ledger(
+        repository_root,
+        package_root,
+        assets_paths,
+        prune_unselected=prune_unselected,
+    )
     if issues:
         return issues
     payload = (json.dumps(document, indent=2) + "\n").encode("utf-8")
@@ -6569,6 +6605,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--write-live-receipt", action="store_true")
     parser.add_argument("--write-runtime-input-manifest", action="store_true")
     parser.add_argument("--write-package-ledger", action="store_true")
+    parser.add_argument("--prune-unselected-packages", action="store_true")
     parser.add_argument("--runtime-input-manifest-output", type=Path)
     parser.add_argument("--runtime-input-manifest", type=Path)
     parser.add_argument("--runtime-input-captured-at")
@@ -6619,8 +6656,11 @@ def _run(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
                 args.repository_root.absolute(),
                 args.package_root.absolute(),
                 (path.absolute() for path in args.package_assets),
+                prune_unselected=args.prune_unselected_packages,
             )
         )
+    elif args.prune_unselected_packages:
+        parser.error("--prune-unselected-packages requires --write-package-ledger")
     if args.write_live_receipt:
         if args.live_evidence_root is None:
             parser.error("--write-live-receipt requires --live-evidence-root")
