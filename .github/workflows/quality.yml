@@ -266,6 +266,38 @@ jobs:
             --runtime-input-manifest "$FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST" \
             --package-root "$apphost_packages"
 
+      - name: 'Gate 2c: Validate current live capture'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 eng/eventstore_runtime_evidence.py \
+            --live-evidence-root _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation \
+            --pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact \
+            --repository-root . \
+            --runtime-input-manifest "$FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST" \
+            --provider-package-root "$FRONTCOMPOSER_PROVIDER_PACKAGES" \
+            --apphost-package-root "$FRONTCOMPOSER_APPHOST_PACKAGES"
+
+      - name: Stage current EventStore capture candidate
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate_root="$RUNNER_TEMP/eventstore-3-106-recapture-candidate"
+          mkdir "$candidate_root"
+          install -m 0644 "$FRONTCOMPOSER_RUNTIME_INPUT_MANIFEST" "$candidate_root/frontcomposer-runtime-inputs.json"
+          cp -a _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/. "$candidate_root/"
+          test "$(find "$candidate_root" -mindepth 1 -maxdepth 1 -type f | wc -l)" -eq 6
+
+      - name: Publish current EventStore capture candidate
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: eventstore-3-106-recapture-candidate-${{ github.run_attempt }}
+          retention-days: 14
+          if-no-files-found: error
+          path: ${{ runner.temp }}/eventstore-3-106-recapture-candidate
+
       - name: 'Gate 2c: Validate contract artifacts'
         shell: pwsh
         run: |
