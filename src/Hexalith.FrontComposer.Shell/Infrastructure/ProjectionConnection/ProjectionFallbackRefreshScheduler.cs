@@ -34,6 +34,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
     // to reference equality for class-typed adopter projections).
     private readonly ConcurrentDictionary<string, string> _lastEtagByLane = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, string> _lastNoEtagSignatureByLane = new(StringComparer.Ordinal);
+    private readonly object _laneGate = new();
     private long _latestObservedEpoch;
 
     public ProjectionFallbackRefreshScheduler(
@@ -49,17 +50,23 @@ public sealed class ProjectionFallbackRefreshScheduler(
         ArgumentNullException.ThrowIfNull(lane);
         ValidateLane(lane);
 
-        // P2 — refcount duplicate registrations on the same ViewKey instead of overwriting.
-        // The first disposer to drop the count to zero removes the entry; cross-component
-        // disposers no longer cancel each other.
-        LaneEntry entry = _lanes.AddOrUpdate(
-            lane.ViewKey,
-            static (_, l) => new LaneEntry(l),
-            static (_, existing, _) => {
-                _ = Interlocked.Increment(ref existing.RefCount);
-                return existing;
-            },
-            lane);
+        LaneEntry entry;
+        lock (_laneGate) {
+            if (_lanes.TryGetValue(lane.ViewKey, out LaneEntry? existing)) {
+                if (!LaneContractsAreEquivalent(existing.Lane, lane)) {
+                    throw new InvalidOperationException("A conflicting fallback lane contract is already registered for this view.");
+                }
+
+                existing.RefCount++;
+                entry = existing;
+            }
+            else {
+                entry = new LaneEntry(lane);
+                if (!_lanes.TryAdd(lane.ViewKey, entry)) {
+                    throw new InvalidOperationException("The fallback lane registration could not be completed.");
+                }
+            }
+        }
 
         return new Registration(() => DecrementLane(lane.ViewKey, entry));
     }
@@ -100,7 +107,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
                 break;
             }
 
-            if (await RefreshLaneAsync(entry.Lane, cancellationToken).ConfigureAwait(false) is not ProjectionLaneRefreshResult.Skipped) {
+            if (await RefreshLaneAsync(entry, cancellationToken).ConfigureAwait(false) is not ProjectionLaneRefreshResult.Skipped) {
                 refreshed++;
             }
         }
@@ -130,7 +137,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
                 break;
             }
 
-            if (await RefreshLaneAsync(entry.Lane, cancellationToken).ConfigureAwait(false) is not ProjectionLaneRefreshResult.Skipped) {
+            if (await RefreshLaneAsync(entry, cancellationToken).ConfigureAwait(false) is not ProjectionLaneRefreshResult.Skipped) {
                 refreshed++;
             }
         }
@@ -158,15 +165,15 @@ public sealed class ProjectionFallbackRefreshScheduler(
 
         // P28 — apply lane cap AFTER dedupe so two lanes that hash to the same dedupe key do
         // not consume the budget twice.
-        ProjectionFallbackLane[] orderedLanes = _lanes.Values
-            .Select(static entry => entry.Lane)
-            .OrderBy(static lane => lane.ViewKey, StringComparer.Ordinal)
+        LaneEntry[] orderedLanes = _lanes.Values
+            .OrderBy(static entry => entry.Lane.ViewKey, StringComparer.Ordinal)
             .ToArray();
 
         List<string> changed = [];
         int refreshed = 0;
         HashSet<string> seen = new(StringComparer.Ordinal);
-        foreach (ProjectionFallbackLane lane in orderedLanes) {
+        foreach (LaneEntry entry in orderedLanes) {
+            ProjectionFallbackLane lane = entry.Lane;
             cancellationToken.ThrowIfCancellationRequested();
             if (refreshed >= budget) {
                 break;
@@ -195,7 +202,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
                 continue;
             }
 
-            ProjectionLaneRefreshResult result = await RefreshLaneAsync(lane, cancellationToken).ConfigureAwait(false);
+            ProjectionLaneRefreshResult result = await RefreshLaneAsync(entry, cancellationToken).ConfigureAwait(false);
             if (result is ProjectionLaneRefreshResult.Skipped) {
                 continue;
             }
@@ -211,8 +218,13 @@ public sealed class ProjectionFallbackRefreshScheduler(
             : new ProjectionReconciliationRefreshResult(refreshed, changed);
     }
 
-    private async Task<ProjectionLaneRefreshResult> RefreshLaneAsync(ProjectionFallbackLane lane, CancellationToken cancellationToken) {
+    private async Task<ProjectionLaneRefreshResult> RefreshLaneAsync(LaneEntry entry, CancellationToken cancellationToken) {
         cancellationToken.ThrowIfCancellationRequested();
+        ProjectionFallbackLane lane = entry.Lane;
+        if (!IsLaneActive(entry)) {
+            return ProjectionLaneRefreshResult.Skipped;
+        }
+
         if (!_inFlight.TryAdd(lane.ViewKey, 0)) {
             // P1 — mark pending so the final nudge gets a replay after the in-flight refresh
             // resolves. The dedupe window must not drop the last nudge after a failure.
@@ -235,7 +247,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
                     lane.SortDescending,
                     lane.SearchQuery,
                     cancellationToken).ConfigureAwait(false);
-                outcome = ClassifyRefreshResult(lane, result);
+                outcome = ClassifyRefreshResult(entry, result);
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
@@ -248,12 +260,19 @@ public sealed class ProjectionFallbackRefreshScheduler(
             _ = _inFlight.TryRemove(lane.ViewKey, out _);
         }
 
+        if (!IsLaneActive(entry)) {
+            outcome = ProjectionLaneRefreshResult.Skipped;
+        }
+
         // P1 — if a nudge arrived during the in-flight window, replay exactly once. Pending is
         // cleared before retry so further bursts during the retry can themselves enqueue a
         // single follow-up. P24 — recursion is bounded to depth 1 because _pendingRetry is
         // cleared atomically and only one replay token can be set per lane.
         if (_pendingRetry.TryRemove(lane.ViewKey, out _) && !cancellationToken.IsCancellationRequested) {
-            return await RefreshLaneAsync(lane, cancellationToken).ConfigureAwait(false);
+            LaneEntry? retryEntry = GetActiveLane(lane.ViewKey);
+            if (retryEntry is not null) {
+                return await RefreshLaneAsync(retryEntry, cancellationToken).ConfigureAwait(false);
+            }
         }
 
         return outcome;
@@ -265,8 +284,19 @@ public sealed class ProjectionFallbackRefreshScheduler(
     /// protocol failure rather than data, and never let a malformed value drive a Changed.
     /// P23 — null-guard before any dereference of result.Items in the comparison branches.
     /// </summary>
-    private ProjectionLaneRefreshResult ClassifyRefreshResult(ProjectionFallbackLane lane, ProjectionPageResult result) {
+    private ProjectionLaneRefreshResult ClassifyRefreshResult(LaneEntry entry, ProjectionPageResult result) {
+        ProjectionFallbackLane lane = entry.Lane;
+        if (!IsLaneActive(entry)) {
+            return ProjectionLaneRefreshResult.Skipped;
+        }
+
+        bool reducerPageMissing = !HasReducerPage(lane);
         if (result.IsNotModified) {
+            if (reducerPageMissing) {
+                DispatchPageSuccess(lane, result);
+                return ProjectionLaneRefreshResult.Changed;
+            }
+
             dispatcher.Dispatch(new LoadPageNotModifiedAction(lane.ViewKey, lane.Skip, result.Items ?? []));
             return ProjectionLaneRefreshResult.NotModified;
         }
@@ -279,20 +309,24 @@ public sealed class ProjectionFallbackRefreshScheduler(
             return ProjectionLaneRefreshResult.Skipped;
         }
 
-        string laneIdentity = BuildDedupeKey(lane);
+        string laneIdentity = lane.ViewKey;
         string? newEtag = result.ETag;
-        bool hadPrevious = _lastEtagByLane.TryGetValue(laneIdentity, out string? previousEtag);
-        if (!string.IsNullOrEmpty(newEtag)) {
-            _lastEtagByLane[laneIdentity] = newEtag;
-        }
-
-        bool reducerVisibleDelta = HasReducerVisibleDelta(lane, result);
         if (string.IsNullOrEmpty(newEtag)) {
-            string signature = BuildNoEtagSignature(result);
-            bool signatureChanged = !_lastNoEtagSignatureByLane.TryGetValue(laneIdentity, out string? previousSignature)
-                || !string.Equals(previousSignature, signature, StringComparison.Ordinal);
-            _lastNoEtagSignatureByLane[laneIdentity] = signature;
-            if (signatureChanged && reducerVisibleDelta) {
+            string signature = ProjectionFallbackRowSignature.Create(result, out bool signatureReliable);
+            bool signatureChanged;
+            lock (_laneGate) {
+                if (!IsLaneActiveWithoutLock(entry)) {
+                    return ProjectionLaneRefreshResult.Skipped;
+                }
+
+                _ = _lastEtagByLane.TryRemove(laneIdentity, out _);
+                signatureChanged = !signatureReliable
+                    || !_lastNoEtagSignatureByLane.TryGetValue(laneIdentity, out string? previousSignature)
+                    || !string.Equals(previousSignature, signature, StringComparison.Ordinal);
+                _lastNoEtagSignatureByLane[laneIdentity] = signature;
+            }
+
+            if (signatureChanged || reducerPageMissing) {
                 DispatchPageSuccess(lane, result);
                 return ProjectionLaneRefreshResult.Changed;
             }
@@ -300,38 +334,95 @@ public sealed class ProjectionFallbackRefreshScheduler(
             return ProjectionLaneRefreshResult.NotModified;
         }
 
-        if (!hadPrevious || !string.Equals(previousEtag, newEtag, StringComparison.Ordinal)) {
-            if (reducerVisibleDelta) {
-                DispatchPageSuccess(lane, result);
-                return ProjectionLaneRefreshResult.Changed;
+        bool etagChanged;
+        lock (_laneGate) {
+            if (!IsLaneActiveWithoutLock(entry)) {
+                return ProjectionLaneRefreshResult.Skipped;
             }
 
-            return ProjectionLaneRefreshResult.NotModified;
+            bool hadPrevious = _lastEtagByLane.TryGetValue(laneIdentity, out string? previousEtag);
+            etagChanged = !hadPrevious || !string.Equals(previousEtag, newEtag, StringComparison.Ordinal);
+            _lastEtagByLane[laneIdentity] = newEtag;
+            _ = _lastNoEtagSignatureByLane.TryRemove(laneIdentity, out _);
+        }
+
+        if (etagChanged || reducerPageMissing) {
+            DispatchPageSuccess(lane, result);
+            return ProjectionLaneRefreshResult.Changed;
         }
 
         return ProjectionLaneRefreshResult.NotModified;
     }
 
     private void DecrementLane(string viewKey, LaneEntry expected) {
-        if (!_lanes.TryGetValue(viewKey, out LaneEntry? current) || !ReferenceEquals(current, expected)) {
-            return;
-        }
+        lock (_laneGate) {
+            if (!_lanes.TryGetValue(viewKey, out LaneEntry? current) || !ReferenceEquals(current, expected)) {
+                return;
+            }
 
-        if (Interlocked.Decrement(ref current.RefCount) <= 0) {
-            // Best-effort removal: only succeed when the entry is still the one we owned.
-            // KeyValuePair-based TryRemove avoids a TOCTOU race with a concurrent registration
-            // that would have replaced the entry under a same ViewKey.
-            ICollection<KeyValuePair<string, LaneEntry>> col = _lanes;
-            _ = col.Remove(new KeyValuePair<string, LaneEntry>(viewKey, current));
-            // Drop the cached ETag for the removed lane so a re-registration with the same key
-            // starts from a clean delta-detection slate.
-            string laneIdentity = BuildDedupeKey(expected.Lane);
-            _ = _lastEtagByLane.TryRemove(laneIdentity, out _);
-            _ = _lastNoEtagSignatureByLane.TryRemove(laneIdentity, out _);
+            current.RefCount--;
+            if (current.RefCount == 0) {
+                _ = _lanes.TryRemove(new KeyValuePair<string, LaneEntry>(viewKey, current));
+                _ = _lastEtagByLane.TryRemove(viewKey, out _);
+                _ = _lastNoEtagSignatureByLane.TryRemove(viewKey, out _);
+            }
         }
     }
 
+    private LaneEntry? GetActiveLane(string viewKey) {
+        lock (_laneGate) {
+            return _lanes.TryGetValue(viewKey, out LaneEntry? entry) ? entry : null;
+        }
+    }
+
+    private bool IsLaneActive(LaneEntry entry) {
+        lock (_laneGate) {
+            return IsLaneActiveWithoutLock(entry);
+        }
+    }
+
+    private bool IsLaneActiveWithoutLock(LaneEntry entry)
+        => _lanes.TryGetValue(entry.Lane.ViewKey, out LaneEntry? current)
+            && ReferenceEquals(current, entry);
+
+    private static bool LaneContractsAreEquivalent(ProjectionFallbackLane first, ProjectionFallbackLane second)
+        => string.Equals(first.ViewKey, second.ViewKey, StringComparison.Ordinal)
+            && string.Equals(first.ProjectionType, second.ProjectionType, StringComparison.Ordinal)
+            && string.Equals(first.TenantId, second.TenantId, StringComparison.Ordinal)
+            && first.Skip == second.Skip
+            && first.Take == second.Take
+            && FiltersAreEquivalent(first.Filters, second.Filters)
+            && string.Equals(first.SortColumn, second.SortColumn, StringComparison.Ordinal)
+            && first.SortDescending == second.SortDescending
+            && string.Equals(first.SearchQuery, second.SearchQuery, StringComparison.Ordinal)
+            && Equals(first.RefreshAsync, second.RefreshAsync);
+
+    private static bool FiltersAreEquivalent(
+        IImmutableDictionary<string, string> first,
+        IImmutableDictionary<string, string> second) {
+        if (first.Count != second.Count) {
+            return false;
+        }
+
+        using IEnumerator<KeyValuePair<string, string>> firstEnumerator = first
+            .OrderBy(static pair => pair.Key, StringComparer.Ordinal)
+            .GetEnumerator();
+        using IEnumerator<KeyValuePair<string, string>> secondEnumerator = second
+            .OrderBy(static pair => pair.Key, StringComparer.Ordinal)
+            .GetEnumerator();
+        while (firstEnumerator.MoveNext() && secondEnumerator.MoveNext()) {
+            if (!string.Equals(firstEnumerator.Current.Key, secondEnumerator.Current.Key, StringComparison.Ordinal)
+                || !string.Equals(firstEnumerator.Current.Value, secondEnumerator.Current.Value, StringComparison.Ordinal)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private static void ValidateLane(ProjectionFallbackLane lane) {
+        ArgumentNullException.ThrowIfNull(lane.Filters);
+
         if (string.IsNullOrWhiteSpace(lane.ViewKey)) {
             throw new ArgumentException("View key cannot be null, empty, or whitespace.", nameof(lane));
         }
@@ -417,18 +508,9 @@ public sealed class ProjectionFallbackRefreshScheduler(
         return !_activeGroups.TryGetValue(key, out bool active) || active;
     }
 
-    private bool HasReducerVisibleDelta(ProjectionFallbackLane lane, ProjectionPageResult result) {
+    private bool HasReducerPage(ProjectionFallbackLane lane) {
         (string ViewKey, int Skip) pageKey = (lane.ViewKey, lane.Skip);
-        LoadedPageState state = loadedPages.Value;
-        bool hasPage = state.PagesByKey.TryGetValue(pageKey, out IReadOnlyList<object>? currentItems);
-        bool totalSame = state.TotalCountByKey.TryGetValue(lane.ViewKey, out int currentTotal)
-            && currentTotal == result.TotalCount;
-
-        if (!hasPage) {
-            return (result.Items?.Count ?? 0) > 0 || result.TotalCount > 0;
-        }
-
-        return !totalSame || !ReferenceEquals(currentItems, result.Items);
+        return loadedPages.Value.PagesByKey.ContainsKey(pageKey);
     }
 
     private void DispatchPageSuccess(ProjectionFallbackLane lane, ProjectionPageResult result)
@@ -445,12 +527,6 @@ public sealed class ProjectionFallbackRefreshScheduler(
             ProjectionFallbackLaneRefreshOutcome.NotModified => ProjectionLaneRefreshResult.NotModified,
             _ => ProjectionLaneRefreshResult.Skipped,
         };
-
-    private static string BuildNoEtagSignature(ProjectionPageResult result)
-        => string.Concat(
-            result.TotalCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            "|",
-            (result.Items?.Count ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture));
 
     private sealed class LaneEntry(ProjectionFallbackLane lane) {
         public ProjectionFallbackLane Lane { get; } = lane;

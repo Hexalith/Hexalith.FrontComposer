@@ -1,4 +1,8 @@
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Text.Json;
+
+using Fluxor;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Shell.Infrastructure.ProjectionConnection;
@@ -125,11 +129,6 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
 
     [Fact]
     public async Task TriggerReconciliationOnce_SnapshotsVisibleLanes_DedupesAndReportsChangedOnlyFor200Delta() {
-        TestConnectionState state = new(new ProjectionConnectionSnapshot(
-            ProjectionConnectionStatus.Connected,
-            DateTimeOffset.UtcNow,
-            ReconnectAttempt: 0,
-            LastFailureCategory: null));
         IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
         loader.LoadPageAsync(
             "CustomersProjection",
@@ -152,11 +151,18 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
             Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProjectionPageResult(new object[] { "order-2" }, 1, "\"v2\"")));
 
-        ProjectionFallbackRefreshScheduler sut = new(
-            state,
+        LoadedPageState pageState = new() {
+            PagesByKey = ImmutableDictionary<(string ViewKey, int Skip), IReadOnlyList<object>>.Empty
+                .Add(("acme:CustomersProjection", 0), [])
+                .Add(("acme:OrdersProjection", 0), ["order-1"]),
+            TotalCountByKey = ImmutableDictionary<string, int>.Empty
+                .Add("acme:CustomersProjection", 0)
+                .Add("acme:OrdersProjection", 1),
+        };
+        ProjectionFallbackRefreshScheduler sut = CreateScheduler(
             loader,
-            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxProjectionFallbackPollingLanes = 10 }).ToMonitor(),
-            NullLogger<ProjectionFallbackRefreshScheduler>.Instance);
+            Substitute.For<IDispatcher>(),
+            new MutableLoadedPageState(pageState));
         _ = sut.RegisterLane(new ProjectionFallbackLane("acme:CustomersProjection", "CustomersProjection", "acme", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
         _ = sut.RegisterLane(new ProjectionFallbackLane("acme:OrdersProjection", "OrdersProjection", "acme", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
         _ = sut.RegisterLane(new ProjectionFallbackLane("acme:OrdersProjection:dup", "OrdersProjection", "acme", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
@@ -223,11 +229,7 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
         // ETag and reports Changed (initial observation with items). Second refresh with the SAME
         // ETag must report NotModified — no false positives for class-typed projections that lack
         // value-equality semantics.
-        TestConnectionState state = new(new ProjectionConnectionSnapshot(
-            ProjectionConnectionStatus.Connected,
-            DateTimeOffset.UtcNow,
-            ReconnectAttempt: 0,
-            LastFailureCategory: null));
+        const string viewKey = "acme:OrdersProjection";
         IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
         loader.LoadPageAsync(
             "OrdersProjection",
@@ -240,18 +242,17 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
             Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProjectionPageResult(new object[] { "order-1" }, 1, "\"v1\"")));
 
-        ProjectionFallbackRefreshScheduler sut = new(
-            state,
+        ProjectionFallbackRefreshScheduler sut = CreateScheduler(
             loader,
-            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxProjectionFallbackPollingLanes = 10 }).ToMonitor(),
-            NullLogger<ProjectionFallbackRefreshScheduler>.Instance);
-        _ = sut.RegisterLane(new ProjectionFallbackLane("acme:OrdersProjection", "OrdersProjection", "acme", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
+            Substitute.For<IDispatcher>(),
+            new MutableLoadedPageState(PageState(viewKey, ["order-1"], totalCount: 1)));
+        _ = sut.RegisterLane(DefaultLane(viewKey));
 
         ProjectionReconciliationRefreshResult firstPass = await sut.TriggerReconciliationOnceAsync(1, TestContext.Current.CancellationToken);
         ProjectionReconciliationRefreshResult secondPass = await sut.TriggerReconciliationOnceAsync(2, TestContext.Current.CancellationToken);
 
         // First pass: first observation with items → Changed.
-        firstPass.ChangedViewKeys.ShouldBe(["acme:OrdersProjection"]);
+        firstPass.ChangedViewKeys.ShouldBe([viewKey]);
         // Second pass: same ETag → NotModified, no false-positive Changed.
         secondPass.ChangedViewKeys.ShouldBeEmpty();
     }
@@ -420,11 +421,7 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
 
     [Fact]
     public async Task TriggerReconciliationOnce_NoEtagLaneDoesNotRepeatChangedForSameSignature() {
-        TestConnectionState state = new(new ProjectionConnectionSnapshot(
-            ProjectionConnectionStatus.Connected,
-            DateTimeOffset.UtcNow,
-            ReconnectAttempt: 0,
-            LastFailureCategory: null));
+        const string viewKey = "acme:OrdersProjection";
         IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
         loader.LoadPageAsync(
             Arg.Any<string>(),
@@ -436,17 +433,16 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new ProjectionPageResult(new object[] { "order-1" }, 1, null)));
-        ProjectionFallbackRefreshScheduler sut = new(
-            state,
+        ProjectionFallbackRefreshScheduler sut = CreateScheduler(
             loader,
-            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxProjectionFallbackPollingLanes = 10 }).ToMonitor(),
-            NullLogger<ProjectionFallbackRefreshScheduler>.Instance);
-        _ = sut.RegisterLane(new ProjectionFallbackLane("acme:OrdersProjection", "OrdersProjection", "acme", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
+            Substitute.For<IDispatcher>(),
+            new MutableLoadedPageState(PageState(viewKey, ["existing"], totalCount: 1)));
+        _ = sut.RegisterLane(DefaultLane(viewKey));
 
         ProjectionReconciliationRefreshResult first = await sut.TriggerReconciliationOnceAsync(1, TestContext.Current.CancellationToken);
         ProjectionReconciliationRefreshResult second = await sut.TriggerReconciliationOnceAsync(2, TestContext.Current.CancellationToken);
 
-        first.ChangedViewKeys.ShouldBe(["acme:OrdersProjection"]);
+        first.ChangedViewKeys.ShouldBe([viewKey]);
         second.ChangedViewKeys.ShouldBeEmpty();
     }
 
@@ -481,6 +477,308 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
         result.RefreshedCount.ShouldBe(2);
     }
 
+    [Fact]
+    public async Task TriggerReconciliationOnce_NoEtagEqualCountsAndChangedRows_DispatchesChanged() {
+        const string viewKey = "acme:OrdersProjection";
+        object[] overLimitRows = Enumerable.Range(0, 129).Select(static value => (object)value).ToArray();
+        Queue<ProjectionPageResult> results = new([
+            new ProjectionPageResult([JsonRow("{\"id\":1,\"values\":[1,2]}")], 1, null),
+            new ProjectionPageResult([JsonRow("{\"id\":1,\"values\":[2,1]}")], 1, null),
+            new ProjectionPageResult(overLimitRows, overLimitRows.Length, null),
+            new ProjectionPageResult(overLimitRows, overLimitRows.Length, null),
+            new ProjectionPageResult([new ThrowingRow()], 1, null),
+            new ProjectionPageResult([new ThrowingRow()], 1, null),
+        ]);
+        IProjectionPageLoader loader = LoaderReturning(results);
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        MutableLoadedPageState loadedPages = new(PageState(viewKey, ["existing"], totalCount: 1));
+        ProjectionFallbackRefreshScheduler sut = CreateScheduler(loader, dispatcher, loadedPages);
+        _ = sut.RegisterLane(DefaultLane(viewKey));
+
+        ProjectionReconciliationRefreshResult first = await sut.TriggerReconciliationOnceAsync(1, TestContext.Current.CancellationToken);
+        ProjectionReconciliationRefreshResult second = await sut.TriggerReconciliationOnceAsync(2, TestContext.Current.CancellationToken);
+        ProjectionReconciliationRefreshResult boundedFirst = await sut.TriggerReconciliationOnceAsync(3, TestContext.Current.CancellationToken);
+        ProjectionReconciliationRefreshResult boundedRepeat = await sut.TriggerReconciliationOnceAsync(4, TestContext.Current.CancellationToken);
+        ProjectionReconciliationRefreshResult failedFirst = await sut.TriggerReconciliationOnceAsync(5, TestContext.Current.CancellationToken);
+        ProjectionReconciliationRefreshResult failedRepeat = await sut.TriggerReconciliationOnceAsync(6, TestContext.Current.CancellationToken);
+
+        first.ChangedViewKeys.ShouldBe([viewKey]);
+        second.ChangedViewKeys.ShouldBe([viewKey]);
+        boundedFirst.ChangedViewKeys.ShouldBe([viewKey]);
+        boundedRepeat.ChangedViewKeys.ShouldBe([viewKey]);
+        failedFirst.ChangedViewKeys.ShouldBe([viewKey]);
+        failedRepeat.ChangedViewKeys.ShouldBe([viewKey]);
+        dispatcher.Received(6).Dispatch(Arg.Is<LoadPageSucceededAction>(action => action.ViewKey == viewKey));
+    }
+
+    [Fact]
+    public async Task TriggerReconciliationOnce_NoEtagEquivalentCanonicalRows_DoesNotDispatchAgain() {
+        const string viewKey = "acme:OrdersProjection";
+        Queue<ProjectionPageResult> results = new([
+            new ProjectionPageResult([JsonRow("{\"id\":1,\"details\":{\"name\":\"one\",\"rank\":2},\"values\":[1,2]}")], 1, null),
+            new ProjectionPageResult([JsonRow("{\"values\":[1,2],\"details\":{\"rank\":2,\"name\":\"one\"},\"id\":1}")], 1, null),
+        ]);
+        IProjectionPageLoader loader = LoaderReturning(results);
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        MutableLoadedPageState loadedPages = new(PageState(viewKey, ["existing"], totalCount: 1));
+        ProjectionFallbackRefreshScheduler sut = CreateScheduler(loader, dispatcher, loadedPages);
+        _ = sut.RegisterLane(DefaultLane(viewKey));
+
+        ProjectionReconciliationRefreshResult first = await sut.TriggerReconciliationOnceAsync(1, TestContext.Current.CancellationToken);
+        ProjectionReconciliationRefreshResult second = await sut.TriggerReconciliationOnceAsync(2, TestContext.Current.CancellationToken);
+
+        first.ChangedViewKeys.ShouldBe([viewKey]);
+        second.ChangedViewKeys.ShouldBeEmpty();
+        dispatcher.Received(1).Dispatch(Arg.Is<LoadPageSucceededAction>(action => action.ViewKey == viewKey));
+    }
+
+    [Fact]
+    public async Task TriggerReconciliationOnce_EqualEtagAndMissingEmptyPage_RebuildsPage() {
+        const string viewKey = "acme:OrdersProjection";
+        IProjectionPageLoader loader = LoaderReturning(new ProjectionPageResult([], 0, "\"v1\""));
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        MutableLoadedPageState loadedPages = new(PageState(viewKey, [], totalCount: 0));
+        ProjectionFallbackRefreshScheduler sut = CreateScheduler(loader, dispatcher, loadedPages);
+        _ = sut.RegisterLane(DefaultLane(viewKey));
+
+        _ = await sut.TriggerReconciliationOnceAsync(1, TestContext.Current.CancellationToken);
+        dispatcher.ClearReceivedCalls();
+        loadedPages.Value = new LoadedPageState();
+
+        ProjectionReconciliationRefreshResult result = await sut.TriggerReconciliationOnceAsync(2, TestContext.Current.CancellationToken);
+
+        result.ChangedViewKeys.ShouldBe([viewKey]);
+        dispatcher.Received(1).Dispatch(Arg.Is<LoadPageSucceededAction>(action =>
+            action.ViewKey == viewKey && action.Items != null && action.Items.Count == 0));
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<LoadPageNotModifiedAction>());
+    }
+
+    [Fact]
+    public async Task TriggerReconciliationOnce_NotModifiedAndMissingEmptyPage_RebuildsPage() {
+        const string viewKey = "acme:OrdersProjection";
+        IProjectionPageLoader loader = LoaderReturning(new ProjectionPageResult([], 0, "\"v1\"", IsNotModified: true));
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        MutableLoadedPageState loadedPages = new(new LoadedPageState());
+        ProjectionFallbackRefreshScheduler sut = CreateScheduler(loader, dispatcher, loadedPages);
+        _ = sut.RegisterLane(DefaultLane(viewKey));
+
+        ProjectionReconciliationRefreshResult result = await sut.TriggerReconciliationOnceAsync(1, TestContext.Current.CancellationToken);
+
+        result.ChangedViewKeys.ShouldBe([viewKey]);
+        dispatcher.Received(1).Dispatch(Arg.Is<LoadPageSucceededAction>(action =>
+            action.ViewKey == viewKey && action.Items != null && action.Items.Count == 0));
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<LoadPageNotModifiedAction>());
+    }
+
+    [Fact]
+    public async Task RegisterLane_EquivalentContracts_RefcountUntilFinalDisposal() {
+        const string viewKey = "acme:OrdersProjection";
+        IProjectionPageLoader loader = LoaderReturning(new ProjectionPageResult([], 0, null, IsNotModified: true));
+        MutableLoadedPageState loadedPages = new(PageState(viewKey, [], totalCount: 0));
+        ProjectionFallbackRefreshScheduler sut = CreateScheduler(loader, Substitute.For<IDispatcher>(), loadedPages);
+        ProjectionFallbackLane firstLane = DefaultLane(
+            viewKey,
+            ImmutableDictionary<string, string>.Empty.Add("status", "open").Add("region", "west"));
+        ProjectionFallbackLane secondLane = DefaultLane(
+            viewKey,
+            ImmutableDictionary<string, string>.Empty.Add("region", "west").Add("status", "open"));
+
+        IDisposable first = sut.RegisterLane(firstLane);
+        IDisposable second = sut.RegisterLane(secondLane);
+
+        (await sut.TriggerNudgeRefreshAsync("OrdersProjection", "acme", TestContext.Current.CancellationToken)).ShouldBe(1);
+        first.Dispose();
+        (await sut.TriggerNudgeRefreshAsync("OrdersProjection", "acme", TestContext.Current.CancellationToken)).ShouldBe(1);
+        second.Dispose();
+        (await sut.TriggerNudgeRefreshAsync("OrdersProjection", "acme", TestContext.Current.CancellationToken)).ShouldBe(0);
+        _ = loader.Received(2).LoadPageAsync(
+            Arg.Any<string>(),
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Any<IImmutableDictionary<string, string>>(),
+            Arg.Any<string?>(),
+            Arg.Any<bool>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RegisterLane_ConflictingTenant_RejectsAndRetainsIncumbent() {
+        const string viewKey = "shared-view";
+        IProjectionPageLoader loader = LoaderReturning(new ProjectionPageResult([], 0, null, IsNotModified: true));
+        MutableLoadedPageState loadedPages = new(PageState(viewKey, [], totalCount: 0));
+        ProjectionFallbackRefreshScheduler sut = CreateScheduler(loader, Substitute.For<IDispatcher>(), loadedPages);
+        _ = sut.RegisterLane(DefaultLane(viewKey));
+
+        InvalidOperationException exception = Should.Throw<InvalidOperationException>(() =>
+            sut.RegisterLane(DefaultLane(viewKey) with { TenantId = "other" }));
+
+        exception.Message.ShouldBe("A conflicting fallback lane contract is already registered for this view.");
+        exception.Message.ShouldNotContain("acme", Case.Insensitive);
+        exception.Message.ShouldNotContain("other", Case.Insensitive);
+        (await sut.TriggerNudgeRefreshAsync("OrdersProjection", "acme", TestContext.Current.CancellationToken)).ShouldBe(1);
+        (await sut.TriggerNudgeRefreshAsync("OrdersProjection", "other", TestContext.Current.CancellationToken)).ShouldBe(0);
+    }
+
+    [Fact]
+    public void RegisterLane_ConflictingQueryOrCallback_RejectsEveryContractDifference() {
+        const string viewKey = "shared-view";
+        ProjectionFallbackRefreshScheduler sut = CreateScheduler(
+            Substitute.For<IProjectionPageLoader>(),
+            Substitute.For<IDispatcher>(),
+            new MutableLoadedPageState(new LoadedPageState()));
+        ProjectionFallbackLane incumbent = DefaultLane(viewKey);
+        _ = sut.RegisterLane(incumbent);
+        Func<CancellationToken, ValueTask<ProjectionFallbackLaneRefreshOutcome>> callback =
+            static _ => ValueTask.FromResult(ProjectionFallbackLaneRefreshOutcome.Changed);
+        ProjectionFallbackLane[] conflicts = [
+            incumbent with { ProjectionType = "CustomersProjection" },
+            incumbent with { Skip = 20 },
+            incumbent with { Take = 50 },
+            incumbent with { Filters = incumbent.Filters.Add("status", "open") },
+            incumbent with { SortColumn = "Name" },
+            incumbent with { SortDescending = true },
+            incumbent with { SearchQuery = "query" },
+            incumbent with { RefreshAsync = callback },
+        ];
+
+        foreach (ProjectionFallbackLane conflict in conflicts) {
+            InvalidOperationException exception = Should.Throw<InvalidOperationException>(() => sut.RegisterLane(conflict));
+            exception.Message.ShouldBe("A conflicting fallback lane contract is already registered for this view.");
+        }
+    }
+
+    [Fact]
+    public async Task RegisterLane_AfterFinalDisposal_AllowsNewContractAndClearsSignature() {
+        const string viewKey = "shared-view";
+        ProjectionPageResult page = new([JsonRow("{\"id\":1}")], 1, null);
+        IProjectionPageLoader loader = LoaderReturning(page);
+        MutableLoadedPageState loadedPages = new(PageState(viewKey, ["existing"], totalCount: 1));
+        ProjectionFallbackRefreshScheduler sut = CreateScheduler(loader, Substitute.For<IDispatcher>(), loadedPages);
+        IDisposable registration = sut.RegisterLane(DefaultLane(viewKey));
+
+        ProjectionReconciliationRefreshResult first = await sut.TriggerReconciliationOnceAsync(1, TestContext.Current.CancellationToken);
+        registration.Dispose();
+        _ = sut.RegisterLane(DefaultLane(viewKey) with { TenantId = "other" });
+        ProjectionReconciliationRefreshResult second = await sut.TriggerReconciliationOnceAsync(2, TestContext.Current.CancellationToken);
+
+        first.ChangedViewKeys.ShouldBe([viewKey]);
+        second.ChangedViewKeys.ShouldBe([viewKey]);
+    }
+
+    [Fact]
+    public async Task RegisterLane_ConcurrentEquivalentAndConflictingRegistrations_PreserveSingleIncumbent() {
+        const string viewKey = "shared-view";
+        IProjectionPageLoader loader = LoaderReturning(new ProjectionPageResult([], 0, null, IsNotModified: true));
+        MutableLoadedPageState loadedPages = new(PageState(viewKey, [], totalCount: 0));
+        ProjectionFallbackRefreshScheduler sut = CreateScheduler(loader, Substitute.For<IDispatcher>(), loadedPages);
+        ProjectionFallbackLane incumbent = DefaultLane(viewKey);
+        IDisposable initial = sut.RegisterLane(incumbent);
+        ConcurrentBag<IDisposable> equivalentRegistrations = [];
+        ConcurrentBag<InvalidOperationException> conflicts = [];
+
+        Parallel.For(0, 32, index => {
+            if (index % 2 == 0) {
+                equivalentRegistrations.Add(sut.RegisterLane(incumbent with { }));
+                return;
+            }
+
+            try {
+                _ = sut.RegisterLane(incumbent with { TenantId = $"other-{index}" });
+            }
+            catch (InvalidOperationException exception) {
+                conflicts.Add(exception);
+            }
+        });
+
+        conflicts.Count.ShouldBe(16);
+        (await sut.TriggerNudgeRefreshAsync("OrdersProjection", "acme", TestContext.Current.CancellationToken)).ShouldBe(1);
+        initial.Dispose();
+        foreach (IDisposable registration in equivalentRegistrations) {
+            registration.Dispose();
+        }
+
+        (await sut.TriggerNudgeRefreshAsync("OrdersProjection", "acme", TestContext.Current.CancellationToken)).ShouldBe(0);
+        _ = sut.RegisterLane(incumbent with { TenantId = "other" });
+    }
+
+    private static ProjectionFallbackRefreshScheduler CreateScheduler(
+        IProjectionPageLoader loader,
+        IDispatcher dispatcher,
+        IState<LoadedPageState> loadedPages) {
+        TestConnectionState state = new(new ProjectionConnectionSnapshot(
+            ProjectionConnectionStatus.Connected,
+            DateTimeOffset.UtcNow,
+            ReconnectAttempt: 0,
+            LastFailureCategory: null));
+        return new ProjectionFallbackRefreshScheduler(
+            state,
+            loader,
+            dispatcher,
+            loadedPages,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions {
+                ProjectionFallbackPollingIntervalSeconds = 15,
+                MaxProjectionFallbackPollingLanes = 10,
+            }).ToMonitor(),
+            NullLogger<ProjectionFallbackRefreshScheduler>.Instance);
+    }
+
+    private static ProjectionFallbackLane DefaultLane(
+        string viewKey,
+        IImmutableDictionary<string, string>? filters = null)
+        => new(
+            viewKey,
+            "OrdersProjection",
+            "acme",
+            0,
+            20,
+            filters ?? ImmutableDictionary<string, string>.Empty,
+            null,
+            false,
+            null);
+
+    private static IProjectionPageLoader LoaderReturning(ProjectionPageResult result) {
+        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
+        loader.LoadPageAsync(
+            Arg.Any<string>(),
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Any<IImmutableDictionary<string, string>>(),
+            Arg.Any<string?>(),
+            Arg.Any<bool>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(result));
+        return loader;
+    }
+
+    private static IProjectionPageLoader LoaderReturning(Queue<ProjectionPageResult> results) {
+        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
+        loader.LoadPageAsync(
+            Arg.Any<string>(),
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Any<IImmutableDictionary<string, string>>(),
+            Arg.Any<string?>(),
+            Arg.Any<bool>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult(results.Dequeue()));
+        return loader;
+    }
+
+    private static LoadedPageState PageState(string viewKey, IReadOnlyList<object> items, int totalCount)
+        => new() {
+            PagesByKey = ImmutableDictionary<(string ViewKey, int Skip), IReadOnlyList<object>>.Empty
+                .Add((viewKey, 0), items),
+            TotalCountByKey = ImmutableDictionary<string, int>.Empty.Add(viewKey, totalCount),
+        };
+
+    private static JsonElement JsonRow(string json) {
+        using JsonDocument document = JsonDocument.Parse(json);
+        return document.RootElement.Clone();
+    }
+
     private sealed class TestConnectionState(ProjectionConnectionSnapshot snapshot) : IProjectionConnectionState {
         public ProjectionConnectionSnapshot Current { get; private set; } = snapshot;
 
@@ -497,6 +795,24 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
     private sealed class Registration : IDisposable {
         public void Dispose() {
         }
+    }
+
+    private sealed class MutableLoadedPageState(LoadedPageState value) : IState<LoadedPageState> {
+        public LoadedPageState Value { get; set; } = value;
+
+        public event EventHandler? StateChanged {
+            add {
+            }
+
+            remove {
+            }
+        }
+    }
+
+    private sealed class ThrowingRow {
+        private readonly string _failure = "Intentional serialization failure.";
+
+        public string Value => throw new InvalidOperationException(_failure);
     }
 }
 
