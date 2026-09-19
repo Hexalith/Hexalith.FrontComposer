@@ -796,7 +796,14 @@ def _scan_redaction(path: Path, errors: list[str]) -> None:
             for key, child in value.items():
                 safe_key = key if re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,63}", key) else "<dynamic-key>"
                 child_location = f"{location}.{safe_key}"
-                if pattern.search(key):
+                # Some secret rules deliberately include the JSON/key-value
+                # delimiter so ordinary source names such as *CookieOptions.cs
+                # remain valid. Match those rules against one isolated key too.
+                if (
+                    pattern.search(key)
+                    or pattern.search(f"{json.dumps(key)}:")
+                    or pattern.search(f"{key}=")
+                ):
                     matches.append(f"{location}.<dynamic-key>")
                 matches.extend(matching_locations(child, pattern, child_location))
         elif isinstance(value, list):
@@ -807,8 +814,14 @@ def _scan_redaction(path: Path, errors: list[str]) -> None:
         return matches
 
     for pattern in (*LOCAL_PATH_PATTERNS, *SECRET_PATTERNS):
-        if pattern.search(normalized):
+        raw_match = pattern.search(normalized)
+        if raw_match:
             locations = matching_locations(document, pattern, "$") if document is not None else []
+            # Compact JSON can synthesize path- or secret-shaped text across adjacent
+            # keys, values, and delimiters even though no JSON string contains it.
+            # Parsed JSON is therefore authoritative for these scalar/key patterns.
+            if document is not None and not locations:
+                continue
             location_suffix = (
                 "; locations=" + ",".join(sorted(set(locations))[:8])
                 if locations
@@ -4491,9 +4504,9 @@ def _evaluate_apphost_inputs(
             bound_inputs_by_key[key] = binding
     bound_inputs = [bound_inputs_by_key[key] for key in sorted(bound_inputs_by_key)]
     return {
-        "assetsGraphs": [
+        "assetsGraphs": sorted(
             path.relative_to(repository_root).as_posix() for path in discovered_assets
-        ],
+        ),
         "inputs": bound_inputs,
     }
 

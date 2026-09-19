@@ -4452,6 +4452,21 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         self.assertIn("locations=$.startup.<dynamic-key>", errors[0])
         self.assertNotIn("private-project", errors[0])
 
+    def test_redaction_ignores_pattern_synthesized_across_compact_json_scalars(self) -> None:
+        path = Path(self._temporary.name) / "compact-json-boundary.json"
+        path.write_text(
+            json.dumps(
+                {"first": "/home", "second": "runner/"},
+                separators=(",", ":"),
+            ),
+            encoding="utf-8",
+        )
+        errors: list[str] = []
+
+        evidence._scan_redaction(path, errors)
+
+        self.assertEqual(errors, [])
+
     def test_evidence_redaction_rejects_a_raw_authorization_header(self) -> None:
         relative = "apphost-smoke/apphost-smoke.json"
 
