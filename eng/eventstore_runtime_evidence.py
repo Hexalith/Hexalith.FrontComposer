@@ -794,7 +794,11 @@ def _scan_redaction(path: Path, errors: list[str]) -> None:
         matches: list[str] = []
         if isinstance(value, dict):
             for key, child in value.items():
-                matches.extend(matching_locations(child, pattern, f"{location}.{key}"))
+                safe_key = key if re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,63}", key) else "<dynamic-key>"
+                child_location = f"{location}.{safe_key}"
+                if pattern.search(key):
+                    matches.append(f"{location}.<dynamic-key>")
+                matches.extend(matching_locations(child, pattern, child_location))
         elif isinstance(value, list):
             for index, child in enumerate(value):
                 matches.extend(matching_locations(child, pattern, f"{location}[{index}]"))
@@ -5351,7 +5355,24 @@ def _validate_live_apphost(
     if not isinstance(input_graph_paths, list):
         input_binding_issues.append("assets-graphs-not-array")
     elif input_graph_paths != sorted(set(ledger_graph_paths)):
-        input_binding_issues.append("assets-graphs-differ-from-ledger")
+        input_paths = {
+            item for item in input_graph_paths if isinstance(item, str)
+        }
+        ledger_paths_set = set(ledger_graph_paths)
+        input_binding_issues.append(
+            _bounded_path_diagnostic(
+                "assets-graphs-differ-from-ledger:binding-only=",
+                input_paths - ledger_paths_set,
+            )
+        )
+        input_binding_issues.append(
+            _bounded_path_diagnostic(
+                "assets-graphs-differ-from-ledger:ledger-only=",
+                ledger_paths_set - input_paths,
+            )
+        )
+        if input_paths == ledger_paths_set:
+            input_binding_issues.append("assets-graphs-differ-from-ledger:order-only")
     elif APPHOST_PACKAGE_ASSETS_ROOT not in input_graph_paths:
         input_binding_issues.append("apphost-assets-graph-missing")
     if not isinstance(inputs, list):

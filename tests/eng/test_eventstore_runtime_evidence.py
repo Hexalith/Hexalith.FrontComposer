@@ -4438,6 +4438,20 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         )
         self.assertNotIn("private-project", errors[0])
 
+    def test_redaction_diagnostic_names_dynamic_key_without_disclosing_key(self) -> None:
+        path = Path(self._temporary.name) / "key-location-diagnostic.json"
+        path.write_text(
+            json.dumps({"startup": {"/home/runner/work/private-project": True}}),
+            encoding="utf-8",
+        )
+        errors: list[str] = []
+
+        evidence._scan_redaction(path, errors)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("locations=$.startup.<dynamic-key>", errors[0])
+        self.assertNotIn("private-project", errors[0])
+
     def test_evidence_redaction_rejects_a_raw_authorization_header(self) -> None:
         relative = "apphost-smoke/apphost-smoke.json"
 
