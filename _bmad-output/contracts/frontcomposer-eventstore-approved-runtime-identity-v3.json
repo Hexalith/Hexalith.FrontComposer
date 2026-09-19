@@ -1,0 +1,96 @@
+{
+  "schema": "hexalith.frontcomposer.eventstore-approved-runtime-identity.v3",
+  "approvalRecord": "_bmad-output/implementation-artifacts/spec-11-25-eventstore-3-106-evidence-reconciliation.md",
+  "predecessor": {
+    "path": "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v2.json",
+    "sha256": "9167a5e34fc9ed6a913efe54c254817781281bb652e9b5dfaf7cd53eb3d6d661",
+    "supersededForActiveReleaseSelectionOnly": true
+  },
+  "activeTuple": {
+    "eventStoreSourceGitlink": "2d680d7d08e00baef63f5b2aca98c6ad6fcc178d",
+    "eventStorePackageVersion": "3.106.0",
+    "buildsCatalogGitlink": "87f6f27425666c540fb6db41800a3af1d3767e39"
+  },
+  "frontComposerRevision": "d7e0a615e73dc4f5f3152eee24d1223954d4034d",
+  "runtimeInputs": {
+    "path": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/frontcomposer-runtime-inputs.json",
+    "sha256": "2ed54eb20534dba67d7295f7de8ad29f42c37dca76a4cad7c24060dfb9014b8d",
+    "treeSha256": "0b61f85ca3afb73d7093ab801dd1bc78789977788eaf96c3655066c6114d7f9a"
+  },
+  "decision": {
+    "path": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/recapture-decision.json",
+    "sha256": "33a9976c13d4b49670f3b1614393a50ebaaa9f2d82cfbea05b4a582dc2be1683"
+  },
+  "priorCompatibility": {
+    "path": "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/2026-09-08-builds-35c3d1e5",
+    "capturedAt": "2026-09-08T08:03:12.957893+00:00",
+    "tuple": {
+      "eventStoreSourceGitlink": "059f6a8917bfab26b85775be464840a1610dfdeb",
+      "eventStorePackageVersion": "3.103.0",
+      "buildsCatalogGitlink": "35c3d1e5b8a55a74a440b9c2cad4c5e18747b241"
+    },
+    "files": [
+      {
+        "path": "apphost-smoke.json",
+        "sha256": "98fe33eebe8e69d549be0b188c9f76240284d6f1672a23a9b2891d8caf3fc707"
+      },
+      {
+        "path": "provider-verification.json",
+        "sha256": "36fa68b27b317a8b1c55ba968a4064616582a6d64d2f40ab3c14845ab7d9a1f9"
+      },
+      {
+        "path": "run-evidence.json",
+        "sha256": "3a3d0cf9967fd7e1c3fe38e94bc95d3aa596d72053030370b23288f84729ad5a"
+      }
+    ]
+  },
+  "activeEvidence": {
+    "path": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/recapture",
+    "files": [
+      {
+        "path": "apphost-package-ledger.json",
+        "sha256": "ae5403cfd9027fbf100c31da734f5c7b3e24b44be72c9b286148712229eb466b"
+      },
+      {
+        "path": "apphost-smoke.json",
+        "sha256": "07092d7eb0fe92d9286cdc37aff2c6922b6bf787b2561024ecf3e6041b5d11af"
+      },
+      {
+        "path": "provider-package-ledger.json",
+        "sha256": "2da0bde621c7ffc1cefdc2e9439ec5b6f310bfcb6928b8fe7ca8a97f97bfc09d"
+      },
+      {
+        "path": "provider-verification.json",
+        "sha256": "296426a35a1f088c96d64038f99dc3373a06c7266752590fdf82be98f68ad1a0"
+      },
+      {
+        "path": "run-evidence.json",
+        "sha256": "832ca586b31a05498f12acef29281b777b91c6fae9e30f80fb3543399a1d19bf"
+      }
+    ]
+  },
+  "approval": {
+    "policy": {
+      "path": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/approval-policy.json",
+      "sha256": "ce4b9265824190e80c1e1ce5c3296ebcdd13e8d71f72bb4ea52f94d77fedf733"
+    },
+    "roster": {
+      "path": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/reviewer-roster.json",
+      "sha256": "e6cd02ea88c26febd8c841520c0b28a0bb943f6b1b5ae26f284f6e038328284d"
+    },
+    "subject": {
+      "path": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/approval-subject.json",
+      "sha256": "e61e36d40187afd603c59e30dc99a1fb79de8e88cf2921b76ecdc2269644b995"
+    },
+    "receiptDirectory": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/receipts",
+    "effectiveRequiredRoles": [
+      "eventstore-maintainer",
+      "frontcomposer-maintainer",
+      "release-owner"
+    ],
+    "receipts": [],
+    "migrationApprovalClaimed": false
+  },
+  "submodulePointerChangedByApproval": false,
+  "packageVersionChangedByApproval": false
+}

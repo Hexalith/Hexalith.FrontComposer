@@ -39,8 +39,8 @@ passing, approved, published, or deployed.
   governance tests.
 - [x] Add a CI capture-candidate upload that runs only after independent current-live
   validation succeeds.
-- [ ] Run the GitHub-hosted live lane and download the validated candidate.
-- [ ] Record the candidate as a hash-bound v3 active identity without changing v1/v2.
+- [x] Run the GitHub-hosted live lane and download the validated candidate.
+- [x] Record the candidate as a hash-bound v3 active identity without changing v1/v2.
 - [ ] Re-run the focused evidence suites and full FrontComposer CI.
 
 Acceptance requires exact current gitlink/catalog identity, 19/19 provider interactions,
@@ -63,6 +63,116 @@ manifest, and an explicitly open migration approval state.
   three `Microsoft.Extensions.Logging*` versions). Provider and AppHost ledger capture now
   explicitly remove only unselected version directories from the validated external root
   before sealing; the subsequent no-restore build proves none was an execution input.
+- Quality run `35439820984` sealed the provider package root but launched the pinned
+  EventStore verifier from FrontComposer's working directory, so three interactions could
+  not locate their current Pact documents. The lane now stages the six repository Pacts
+  into the pinned EventStore checkout and executes the 83-test verifier from that root.
+- Quality runs `35440661153` and `35441438442` passed all provider interactions but failed
+  closed during AppHost source-graph evaluation. Bounded diagnostics narrowed the failure
+  from `apphost.source-graph.not-exact` to `apphost-msbuild-output-invalid` without
+  retaining unbounded MSBuild output or runner paths.
+- Quality run `35441948746` identified a pruned `Dapr.Common 1.18.7` package required by
+  conditionally restored source projects. AppHost closure discovery now includes every
+  repository assets graph bound to the same fresh package root and explicitly binds the
+  `Aspire.AppHost.Sdk 13.5.4` MSBuild SDK package; 64 focused evidence tests passed before
+  retrying the hosted lane.
+- Quality run `35442653835` passed the provider capture and reached AppHost evaluation,
+  where `BuildProjectReferences=true` started transitive pack/build work and failed on a
+  missing package README plus concurrent resource writes. Evaluation is now isolated,
+  serialized, package-generation-free, and followed by the existing explicit serial
+  no-restore AppHost build.
+- Quality runs `35443476777` through `35444622055` successively exposed stale governance
+  assertions, an incorrectly located assertion, and truncation of the large MSBuild JSON
+  evaluation document. The assertions now bind the effective evaluation controls and the
+  evaluator uses a dedicated bounded result channel instead of the ordinary command-output
+  budget.
+- Quality runs `35445285784` and `35445911478` proved that one global `net10.0` property
+  cannot govern both restore/build and every independently evaluated project: the former
+  changed restore semantics, while the latter rejected the analyzer-only SourceTools
+  project's sole restored `netstandard2.0` target. Restore/build no longer receive that
+  property; evaluation selects each project's deterministic target from its fresh assets
+  graph and rejects ambiguous non-runtime target sets.
+- Quality runs `35446649229` and `35447067363` were cancelled by newer main-branch pushes
+  before candidate publication. Run `35447465188` then passed Epic 9 and the visual lane
+  but failed before live capture because a newly added governance assertion searched for
+  non-f-string source text. Commit `4d0042f8` corrects that exact assertion while retaining
+  the bounded MSBuild result-file control.
+- Quality run `35448171676` passed provider verification and both independent acceptance
+  lanes, then proved that a successful build legitimately adds generated `Compile`,
+  analyzer, and reference items to the evaluated input binding. Both evaluations still
+  enforce the exact source project closure; the post-build binding is now authoritative
+  and remains subject to the final Gate 2c independent recomputation.
+- Quality run `35448951466` reached post-build runtime-output sealing and exposed that the
+  independent validator still discovered only explicit project-reference metadata while
+  the smoke lane already included conditional projects restored into the same fresh
+  package root. Independent discovery now applies that identical fresh-root discriminator
+  and rejects stale assets from earlier build lanes.
+- Quality run `35449805021` attempt 1 passed provider verification and both independent
+  acceptance lanes, then reached the real AppHost. Its first Keycloak health wait exhausted
+  the 300-second capture envelope after fresh restore, graph evaluation, and build, leaving
+  only the reserved cleanup interval. The validator already caps this fail-closed envelope
+  at 600 seconds; the workflow and its governance assertion now use that bound.
+- Quality run `35449805021` attempt 2 made every Aspire resource healthy but exhausted the
+  remaining 300-second window while EventStore readiness stayed unavailable. Run
+  `35451136802` proved the widened envelope reached the service and consistently received
+  HTTP 503. EventStore 3.106 intentionally holds `/health` unhealthy until its store-global
+  projection-delivery writer protocol is activated. The smoke now mirrors EventStore's own
+  disposable Aspire fixtures: it permits activation only when that marker is the sole
+  unhealthy check, proves the endpoint rejects an invalid bearer, and submits authenticated
+  no-legacy-writer/no-durable-data attestations before continuing.
+- Quality runs `35452087655` and `35452808521` passed the full authenticated runtime
+  sequence after that cutover: health, command submission and completion, exact-tenant
+  handler-computed query provenance, and SignalR. Cleanup also stopped the AppHost, closed
+  every probed port, and removed all invocation-created Dapr name-resolution files, but
+  failed closed because both the isolated NuGet authority and retained runtime-output byte
+  bindings changed during execution. Bounded coordinate/path diagnostics were added to
+  identify those mutations without disclosing file contents.
+- Quality run `35453476895` identified the remaining mutation as the Tenants sample and
+  its dependency closure. Its path-only `IProjectMetadata` was the sole AppHost resource
+  locator missing `SuppressBuild=true`, so Aspire rebuilt it after the package and output
+  boundaries were captured. Commit `a4540359` suppresses that runtime build, re-seals the
+  package authority after the explicit prebuild, and records `executionStartedAt` only
+  after both the package and output boundaries are complete.
+- Quality run `35454666528` stopped before live capture because the governance test still
+  enforced the superseded prebuild chronology and an underscore-bearing regression-test
+  name changed the sealed CA1707 identifier inventory. The assertion now requires restore,
+  initial authority validation, evaluation, prebuild, final authority seal, execution
+  timestamp, and start in that order; the regression test does not expand the exception.
+- Quality run `35455094590` passed the authenticated AppHost smoke and clean byte-stability
+  checks. The following independent validation rejected the pretty-printed exhaustive smoke
+  document above its 1 MiB bound and found that AppHost restore had replaced eight provider
+  assets graphs with the AppHost package-root selection. The smoke packet now uses compact
+  JSON, and the final gate recomputes AppHost and provider package authorities sequentially
+  around an exact eleven-file provider-assets snapshot.
+- Quality run `35456374556` proved the sequential provider/AppHost snapshot path reached
+  validation and measured the compact exhaustive smoke packet at 1,122,084 bytes. The
+  runtime-output inventory is now retained as an exact file count and SHA-256 tree binding;
+  full file entries remain independently recomputed before execution, after shutdown, and
+  in the final validator without duplicating those paths in the bounded document.
+- Quality run `35457643860` passed all 19 provider interactions, the authenticated AppHost
+  smoke, clean shutdown, and the 799,656-byte compact packet. Independent validation then
+  failed closed on a local-runner path and a non-canonical evaluated-input binding before
+  candidate publication. Authority-path bindings are now deduplicated after resolution, and
+  bounded diagnostics report only JSON locations and structural reason codes without
+  disclosing evidence values.
+- Quality run `35458730675` retained the same passing runtime result and proved the remaining
+  structural mismatch is the sealed assets-graph list rather than duplicate authority paths.
+  The next retry reports bounded binding-only/ledger-only repository coordinates and detects
+  a local-path leak in dynamic JSON keys without emitting the key or value.
+- Quality run `35459973310` passed provider verification and the authenticated AppHost smoke,
+  then isolated the graph mismatch to ordering only. It also proved the apparent runner path
+  was synthesized across adjacent compact-JSON scalars rather than retained in any key or
+  value. Graph coordinates are now sorted by their serialized repository-relative paths and
+  valid JSON redaction checks use parsed scalar/key boundaries.
+- Quality run `35461025253` passed the same live runtime and both independent acceptance lanes,
+  then identified twelve tracked `docs/skills/frontcomposer` Markdown files consumed by the
+  evaluated AppHost graph but absent from the pre-run seal. The fixed runtime scope now hashes
+  that complete tracked documentation tree and rejects its untracked or ignored inputs.
+- Quality run `35461741938` independently validated the exact EventStore `3.106.0` tuple,
+  all 19 provider interactions, the ten-resource authenticated AppHost smoke, both package
+  authorities, runtime outputs, and the 994-entry runtime-input manifest. It staged and
+  published the six-file `eventstore-3-106-recapture-candidate-1` artifact; the downloaded
+  bytes are recorded below without claiming migration approval.
 
 ## Review Triage Log
 

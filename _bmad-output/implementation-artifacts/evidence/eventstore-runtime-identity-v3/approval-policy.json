@@ -1,0 +1,48 @@
+{
+  "schema": "hexalith.frontcomposer.eventstore-runtime-approval-policy.v2",
+  "frozenAt": "2026-09-12T09:58:20+00:00",
+  "defaultRequiredRoles": [
+    "eventstore-maintainer",
+    "frontcomposer-maintainer",
+    "release-owner"
+  ],
+  "oi18Alternative": {
+    "prerequisiteRoles": [
+      "product-owner",
+      "architect"
+    ],
+    "removedRole": "eventstore-maintainer",
+    "replacementRole": "accountable-frontcomposer-maintainer",
+    "effectiveRequiredRoles": [
+      "frontcomposer-maintainer",
+      "accountable-frontcomposer-maintainer",
+      "release-owner"
+    ]
+  },
+  "assignments": [
+    {
+      "role": "eventstore-maintainer",
+      "authorities": []
+    },
+    {
+      "role": "frontcomposer-maintainer",
+      "authorities": []
+    },
+    {
+      "role": "release-owner",
+      "authorities": []
+    },
+    {
+      "role": "accountable-frontcomposer-maintainer",
+      "authorities": []
+    },
+    {
+      "role": "product-owner",
+      "authorities": []
+    },
+    {
+      "role": "architect",
+      "authorities": []
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "schema": "hexalith.eventstore.provider-verification-run-evidence.v4",
+  "capturedAt": "2026-09-19T18:44:14.578633+00:00",
+  "completedAt": "2026-09-19T18:44:02.4383708+00:00",
+  "frontComposerRevision": "d7e0a615e73dc4f5f3152eee24d1223954d4034d",
+  "runtimeInputTreeSha256": "0b61f85ca3afb73d7093ab801dd1bc78789977788eaf96c3655066c6114d7f9a",
+  "command": "dotnet tests/Hexalith.EventStore.ProviderVerification/bin/Release/net10.0/Hexalith.EventStore.ProviderVerification.dll --verification-mode live-compatibility <validated canonical inputs>",
+  "exitCode": 0,
+  "expectedNonzero": false,
+  "nativeVerifierOutputRetained": false,
+  "normalizedPactCopiesRetained": false,
+  "externalInputsModified": false,
+  "packageLedger": {
+    "path": "provider-package-ledger.json",
+    "sha256": "2da0bde621c7ffc1cefdc2e9439ec5b6f310bfcb6928b8fe7ca8a97f97bfc09d",
+    "bytes": 813281,
+    "schema": "hexalith.frontcomposer.resolved-package-ledger.v2",
+    "capturedAt": "2026-09-19T18:43:43.792125+00:00",
+    "treeSha256": "cac84f36fd23a30d26ce29a2e88fca1cf700d5d6aa68a30b7e613f883720f101"
+  },
+  "report": {
+    "path": "provider-verification.json",
+    "sha256": "296426a35a1f088c96d64038f99dc3373a06c7266752590fdf82be98f68ad1a0",
+    "bytes": 16482,
+    "finalVerdict": "passed",
+    "requestedInteractionCount": 19,
+    "reportedInteractionCount": 19,
+    "setupEventCount": 19,
+    "teardownEventCount": 19,
+    "complete": true,
+    "hostStopped": true,
+    "portClosed": true
+  }
+}

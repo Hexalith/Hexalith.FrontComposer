@@ -1,0 +1,36 @@
+{
+  "schema": "hexalith.frontcomposer.eventstore-runtime-reviewer-roster.v2",
+  "frozenAt": "2026-09-12T09:58:40+00:00",
+  "policySha256": "ce4b9265824190e80c1e1ce5c3296ebcdd13e8d71f72bb4ea52f94d77fedf733",
+  "effectiveRequiredRoles": [
+    "eventstore-maintainer",
+    "frontcomposer-maintainer",
+    "release-owner"
+  ],
+  "assignments": [
+    {
+      "role": "eventstore-maintainer",
+      "actors": []
+    },
+    {
+      "role": "frontcomposer-maintainer",
+      "actors": []
+    },
+    {
+      "role": "release-owner",
+      "actors": []
+    },
+    {
+      "role": "accountable-frontcomposer-maintainer",
+      "actors": []
+    }
+  ],
+  "oi18": {
+    "status": "open",
+    "transferSubject": null,
+    "productApprovalReceipt": null,
+    "architectureApprovalReceipt": null,
+    "replacementRole": null,
+    "replacementActors": []
+  }
+}
