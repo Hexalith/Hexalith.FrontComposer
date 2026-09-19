@@ -274,6 +274,7 @@ class FakeRuntime(smoke.SmokeRuntime):
                 for name, relative in smoke.SOURCE_ROOT_PROPERTIES.items()
             }
         )
+        properties["TargetFramework"] = smoke.APPHOST_EVALUATION_TARGET_FRAMEWORK
         properties["MSBuildAllProjects"] = str(smoke.APPHOST)
         project_references = [
             {"Identity": str(path), "FullPath": str(path)}
@@ -640,12 +641,20 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertIn("--force", restore)
         self.assertIn("--force-evaluate", restore)
         self.assertIn("--no-cache", restore)
+        self.assertNotIn(
+            f"-p:TargetFramework={smoke.APPHOST_EVALUATION_TARGET_FRAMEWORK}",
+            restore,
+        )
         build = next(command_args for command_args in recorded if command_args[:2] == ["dotnet", "build"])
         self.assertEqual(build[2], smoke.APPHOST_RELATIVE)
         self.assertIn("-m:1", build)
         self.assertIn("Debug", build)
         self.assertIn("--no-incremental", build)
         self.assertIn("--no-restore", build)
+        self.assertNotIn(
+            f"-p:TargetFramework={smoke.APPHOST_EVALUATION_TARGET_FRAMEWORK}",
+            build,
+        )
         for property_argument in smoke._build_property_arguments():
             self.assertIn(property_argument, clean)
             self.assertIn(property_argument, build)
@@ -653,6 +662,10 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
             command_args
             for command_args in recorded
             if command_args[:2] == ["dotnet", "msbuild"]
+        )
+        self.assertIn(
+            f"-p:TargetFramework={smoke.APPHOST_EVALUATION_TARGET_FRAMEWORK}",
+            evaluation,
         )
         self.assertLess(recorded.index(evaluation), next(
             index

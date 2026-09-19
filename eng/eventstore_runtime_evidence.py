@@ -134,9 +134,9 @@ INERT_DEPENDENCY_SYMLINK_OBJECTS = {
 # or the executed runtime, so the frozen 2026-09-13 runtime-selected-input scope permits
 # them. Everything outside this exact set stays conservatively graph-selected.
 INERT_DEPENDENCY_TOOLING_COMPONENTS = frozenset({"node_modules", ".husky", "__pycache__"})
+APPHOST_EVALUATION_TARGET_FRAMEWORK = "net10.0"
 APPHOST_BUILD_PROPERTIES = {
     "GeneratePackageOnBuild": False,
-    "TargetFramework": "net10.0",
     "UseHexalithProjectReferences": True,
     "UseNuGetDeps": False,
     "HexalithEventStoreFromSource": True,
@@ -3885,7 +3885,7 @@ def _eventstore_catalog_version(catalog_path: Path, errors: list[str]) -> str:
 
 def _apphost_build_property_arguments(repository_root: Path) -> list[str]:
     arguments = [
-        f"-p:{name}={str(value).lower() if isinstance(value, bool) else value}"
+        f"-p:{name}={'true' if value else 'false'}"
         for name, value in APPHOST_BUILD_PROPERTIES.items()
     ]
     arguments.append(
@@ -4164,6 +4164,7 @@ def _evaluate_apphost_inputs(
     property_names = [
         *APPHOST_BUILD_PROPERTIES,
         *APPHOST_SOURCE_ROOT_PROPERTIES,
+        "TargetFramework",
         "MSBuildAllProjects",
     ]
     environment = os.environ.copy()
@@ -4182,6 +4183,7 @@ def _evaluate_apphost_inputs(
                     "-m:1",
                     "-nodeReuse:false",
                     *_apphost_build_property_arguments(repository_root),
+                    f"-p:TargetFramework={APPHOST_EVALUATION_TARGET_FRAMEWORK}",
                     "-target:ResolveReferences",
                     "-getProperty:" + ",".join(property_names),
                     "-getItem:" + item_names,
@@ -4228,6 +4230,8 @@ def _evaluate_apphost_inputs(
                 actual = properties.get(name)
                 if not isinstance(actual, str) or actual.casefold() != str(expected).casefold():
                     errors.append(f"AppHost evaluated build property is incorrect: {name}")
+            if properties.get("TargetFramework") != APPHOST_EVALUATION_TARGET_FRAMEWORK:
+                errors.append("AppHost evaluated target framework is incorrect.")
             for name, relative in APPHOST_SOURCE_ROOT_PROPERTIES.items():
                 actual = properties.get(name)
                 try:
