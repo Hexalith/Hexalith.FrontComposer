@@ -909,6 +909,43 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
                 failure = json.loads(self.output.read_text(encoding="utf-8"))
                 self.assertIn("apphost.source-graph.not-exact", failure["reasonCodes"])
 
+    def test_postbuild_evaluated_input_binding_is_authoritative(self) -> None:
+        before = {
+            "assetsGraphs": ["src/AppHost/obj/project.assets.json"],
+            "inputs": [
+                {
+                    "authority": "repository",
+                    "path": "src/AppHost/AppHost.csproj",
+                    "sha256": "a" * 64,
+                }
+            ],
+        }
+        after = {
+            "assetsGraphs": ["src/AppHost/obj/project.assets.json"],
+            "inputs": [
+                *before["inputs"],
+                {
+                    "authority": "repository",
+                    "path": "src/AppHost/obj/Debug/net10.0/AppHost.AssemblyInfo.cs",
+                    "sha256": "b" * 64,
+                },
+            ],
+        }
+
+        with mock.patch.object(
+            smoke,
+            "_evaluate_source_graph",
+            side_effect=[before, after],
+        ):
+            result = smoke.capture(self.output, FakeRuntime(), timeout=30)
+
+        self.assertEqual(result, 0)
+        document = json.loads(self.output.read_text(encoding="utf-8"))
+        self.assertEqual(
+            document["startup"]["outputPreparation"]["evaluatedInputBinding"],
+            after,
+        )
+
     def test_assets_discovery_includes_fresh_conditionally_restored_projects(self) -> None:
         repository = Path(self.temporary.name) / "repository"
         package_root = Path(self.temporary.name) / "fresh-packages"

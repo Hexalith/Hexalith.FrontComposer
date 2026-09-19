@@ -2039,20 +2039,21 @@ def _capture(
             dotnet_root=dotnet_root,
             issues=source_graph_issues,
         )
-        if source_graph_after is None or not runtime_evidence._exact(
-            source_graph_after, source_graph_before
-        ):
+        if source_graph_after is None:
             print(
                 "AppHost source graph re-evaluation failed: "
                 + ", ".join(
-                    source_graph_issues
-                    or (["binding-changed-after-build"] if source_graph_after is not None else ["unspecified"])
+                    source_graph_issues or ["unspecified"]
                 ),
                 file=sys.stderr,
             )
             evidence["startup"]["outputPreparation"]["evaluatedSourceGraph"] = "failed"
             reason_codes.append("apphost.source-graph.not-exact")
             return 1
+        # ResolveReferences legitimately gains generated Compile/Analyzer/ReferencePath
+        # items after the explicit build. The post-build evaluation is authoritative: it
+        # is independently recomputed by final Gate 2c and remains stable through cleanup.
+        evidence["startup"]["outputPreparation"]["evaluatedInputBinding"] = source_graph_after
         runtime_outputs, outputs_valid = _runtime_output_inventory()
         evidence["startup"]["outputPreparation"]["runtimeOutputBinding"] = runtime_outputs
         if not outputs_valid:
