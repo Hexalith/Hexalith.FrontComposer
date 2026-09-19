@@ -210,6 +210,15 @@ jobs:
             --write-package-ledger \
             --package-ledger-output "$provider_ledger" \
             --package-root "$provider_packages" \
+            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/obj/project.assets.json \
+            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.Client/obj/project.assets.json \
+            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/obj/project.assets.json \
+            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/obj/project.assets.json \
+            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.Gateway/obj/project.assets.json \
+            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.Server/obj/project.assets.json \
+            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/obj/project.assets.json \
+            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.SignalR/obj/project.assets.json \
+            --package-assets references/Hexalith.EventStore/src/Hexalith.EventStore.Testing/obj/project.assets.json \
             --package-assets references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/obj/project.assets.json \
             --package-assets references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification/obj/project.assets.json \
             --pact-dir tests/Hexalith.FrontComposer.Shell.Tests/Pact

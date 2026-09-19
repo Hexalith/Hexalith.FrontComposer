@@ -4042,8 +4042,27 @@ public sealed class CiGovernanceTests {
         liveProviderLane.ShouldContain("--write-package-ledger");
         liveProviderLane.ShouldContain("--package-ledger-output \"$provider_ledger\"");
         liveProviderLane.ShouldContain("--package-root \"$provider_packages\"");
-        liveProviderLane.ShouldContain("--package-assets references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/obj/project.assets.json");
-        liveProviderLane.ShouldContain("--package-assets references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification/obj/project.assets.json");
+        foreach (string providerAssetsPath in new[] {
+            "references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/obj/project.assets.json",
+            "references/Hexalith.EventStore/src/Hexalith.EventStore.Client/obj/project.assets.json",
+            "references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/obj/project.assets.json",
+            "references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/obj/project.assets.json",
+            "references/Hexalith.EventStore/src/Hexalith.EventStore.Gateway/obj/project.assets.json",
+            "references/Hexalith.EventStore/src/Hexalith.EventStore.Server/obj/project.assets.json",
+            "references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/obj/project.assets.json",
+            "references/Hexalith.EventStore/src/Hexalith.EventStore.SignalR/obj/project.assets.json",
+            "references/Hexalith.EventStore/src/Hexalith.EventStore.Testing/obj/project.assets.json",
+            "references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/obj/project.assets.json",
+            "references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification/obj/project.assets.json",
+        }) {
+            Regex.Count(
+                    liveProviderLane,
+                    $"--package-assets {Regex.Escape(providerAssetsPath)}",
+                    RegexOptions.CultureInvariant)
+                .ShouldBe(1, $"the package ledger must bind restored graph {providerAssetsPath} exactly once");
+        }
+        Regex.Count(liveProviderLane, "--package-assets ", RegexOptions.CultureInvariant)
+            .ShouldBe(11, "the package ledger must bind the exact eleven-project restore closure");
         liveProviderLane.ShouldContain("--configuration Release --no-restore --no-incremental -m:1 -p:NuGetAudit=false");
         liveProviderLane.ShouldContain("rm -f \"$GITHUB_WORKSPACE/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json\"");
         // The live evidence root must hold exactly this invocation's five files.

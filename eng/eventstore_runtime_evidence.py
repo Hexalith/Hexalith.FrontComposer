@@ -299,6 +299,15 @@ SECRET_PATTERNS = (
     re.compile(r"[A-Z0-9_]{8,}=.{6,}"),
 )
 PROVIDER_PACKAGE_ASSETS = (
+    "references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/obj/project.assets.json",
+    "references/Hexalith.EventStore/src/Hexalith.EventStore.Client/obj/project.assets.json",
+    "references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/obj/project.assets.json",
+    "references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/obj/project.assets.json",
+    "references/Hexalith.EventStore/src/Hexalith.EventStore.Gateway/obj/project.assets.json",
+    "references/Hexalith.EventStore/src/Hexalith.EventStore.Server/obj/project.assets.json",
+    "references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/obj/project.assets.json",
+    "references/Hexalith.EventStore/src/Hexalith.EventStore.SignalR/obj/project.assets.json",
+    "references/Hexalith.EventStore/src/Hexalith.EventStore.Testing/obj/project.assets.json",
     "references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification.Tests/obj/project.assets.json",
     "references/Hexalith.EventStore/tests/Hexalith.EventStore.ProviderVerification/obj/project.assets.json",
 )
@@ -4365,7 +4374,7 @@ def _write_live_receipt(
         package_root,
         (repository_root / relative for relative in PROVIDER_PACKAGE_ASSETS),
         errors,
-        expected_assets_count=2,
+        expected_assets_count=len(PROVIDER_PACKAGE_ASSETS),
     )
     provenance = _live_provenance(
         repository_root,
@@ -4737,7 +4746,7 @@ def _validate_live_provider(
                 for relative in PROVIDER_PACKAGE_ASSETS
             ),
             errors=errors,
-            expected_assets_count=2,
+            expected_assets_count=len(PROVIDER_PACKAGE_ASSETS),
         )
     graphs = (
         package_ledger.get("assetsGraphs")
@@ -4750,7 +4759,7 @@ def _validate_live_provider(
         else []
     )
     if graph_paths != list(PROVIDER_PACKAGE_ASSETS):
-        errors.append("Provider package ledger does not bind its exact two assets graphs.")
+        errors.append("Provider package ledger does not bind its exact restored assets closure.")
     if (
         package_captured is None
         or report_started is None

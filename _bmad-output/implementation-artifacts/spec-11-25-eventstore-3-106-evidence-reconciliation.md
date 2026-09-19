@@ -54,6 +54,10 @@ manifest, and an explicitly open migration approval state.
   bounded retries exited `124` after 600 and 180 seconds respectively with zero bytes in
   their fresh `NUGET_PACKAGES` roots. NuGet.org index and direct package downloads were
   reachable, so the authoritative recapture is routed to the GitHub-hosted Quality lane.
+- Quality run `35438506827` restored the provider successfully but failed closed while
+  building its package ledger: the lane declared only the two verifier assets graphs even
+  though the isolated restore populated private build packages selected by the complete
+  eleven-project restore closure. The retry binds all eleven generated assets graphs.
 
 ## Review Triage Log
 
