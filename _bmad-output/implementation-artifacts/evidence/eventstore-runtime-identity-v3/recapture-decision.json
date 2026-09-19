@@ -1,0 +1,46 @@
+{
+  "schema": "hexalith.frontcomposer.eventstore-runtime-recapture-decision.v3",
+  "recordedAt": "2026-09-19T18:53:10+00:00",
+  "source": {
+    "path": "_bmad-output/implementation-artifacts/spec-11-25-eventstore-3-106-evidence-reconciliation.md",
+    "sha256": "641d9cb975ae62016e2f00032e8355753900ccb6b919070234358bae6edaeeb4"
+  },
+  "activeTuple": {
+    "eventStoreSourceGitlink": "2d680d7d08e00baef63f5b2aca98c6ad6fcc178d",
+    "eventStorePackageVersion": "3.106.0",
+    "buildsCatalogGitlink": "87f6f27425666c540fb6db41800a3af1d3767e39"
+  },
+  "frontComposerRevision": "d7e0a615e73dc4f5f3152eee24d1223954d4034d",
+  "runtimeInputs": {
+    "path": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/frontcomposer-runtime-inputs.json",
+    "sha256": "2ed54eb20534dba67d7295f7de8ad29f42c37dca76a4cad7c24060dfb9014b8d",
+    "treeSha256": "0b61f85ca3afb73d7093ab801dd1bc78789977788eaf96c3655066c6114d7f9a"
+  },
+  "evidenceFiles": [
+    {
+      "path": "apphost-package-ledger.json",
+      "sha256": "ae5403cfd9027fbf100c31da734f5c7b3e24b44be72c9b286148712229eb466b"
+    },
+    {
+      "path": "apphost-smoke.json",
+      "sha256": "07092d7eb0fe92d9286cdc37aff2c6922b6bf787b2561024ecf3e6041b5d11af"
+    },
+    {
+      "path": "provider-package-ledger.json",
+      "sha256": "2da0bde621c7ffc1cefdc2e9439ec5b6f310bfcb6928b8fe7ca8a97f97bfc09d"
+    },
+    {
+      "path": "provider-verification.json",
+      "sha256": "296426a35a1f088c96d64038f99dc3373a06c7266752590fdf82be98f68ad1a0"
+    },
+    {
+      "path": "run-evidence.json",
+      "sha256": "832ca586b31a05498f12acef29281b777b91c6fae9e30f80fb3543399a1d19bf"
+    }
+  ],
+  "strategy": "exact-tuple-recapture",
+  "semanticCompatibilityExceptionApproved": false,
+  "rollbackApproved": false,
+  "submodulePointerChangedByDecision": false,
+  "packageVersionChangedByDecision": false
+}

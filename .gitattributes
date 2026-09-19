@@ -13,5 +13,8 @@ _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/** -
 _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/** -text
 # Active identity v2 binds exact recapture, decision, roster, and receipt bytes.
 _bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/** -text
+# Active identity v3 binds the hosted recapture candidate and its decision bytes.
+_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/** -text
+_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v3.json -text
 # The active decision hash-binds this human-approved proposal's canonical LF bytes.
 _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md -text

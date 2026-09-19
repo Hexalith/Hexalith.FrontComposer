@@ -36,7 +36,7 @@ CANONICAL_LIVE_EVIDENCE = (
     ROOT / "_bmad-output" / "implementation-artifacts" / "evidence" / "pact-provider-reconciliation"
 )
 CANONICAL_ACTIVE_EVIDENCE = (
-    ROOT / "_bmad-output" / "implementation-artifacts" / "evidence" / "eventstore-runtime-identity-v2"
+    ROOT / "_bmad-output" / "implementation-artifacts" / "evidence" / "eventstore-runtime-identity-v3"
 )
 CANONICAL_PRIOR_EVIDENCE = (
     ROOT / "_bmad-output" / "implementation-artifacts" / "evidence"
@@ -44,6 +44,9 @@ CANONICAL_PRIOR_EVIDENCE = (
 )
 CANONICAL_IDENTITY_V2 = (
     ROOT / "_bmad-output" / "contracts" / "frontcomposer-eventstore-approved-runtime-identity-v2.json"
+)
+CANONICAL_IDENTITY_V3 = (
+    ROOT / "_bmad-output" / "contracts" / "frontcomposer-eventstore-approved-runtime-identity-v3.json"
 )
 REAL_RUNTIME_INPUT_SNAPSHOT = evidence._runtime_input_snapshot
 REAL_CANONICAL_ACTIVE_LOCATIONS = evidence._canonical_active_locations
@@ -68,7 +71,10 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 
 def _write_json(path: Path, value: dict[str, Any]) -> None:
-    path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(value, separators=(",", ":")) + "\n",
+        encoding="utf-8",
+    )
 
 
 def _offset_timestamp(value: str, seconds: int) -> str:
@@ -270,6 +276,7 @@ class RuntimeInputInventoryTests(unittest.TestCase):
         (self.repository / ".gitignore").write_text(
             "/src/ignored.cs\n"
             "/samples/Counter/ignored.json\n"
+            "/docs/skills/frontcomposer/ignored.md\n"
             "**/bin/\n"
             "**/obj/\n",
             encoding="utf-8",
@@ -281,10 +288,11 @@ class RuntimeInputInventoryTests(unittest.TestCase):
             check=True,
         )
 
-    def test_runtime_scope_rejects_ignored_source_and_sample_tree_inputs(self) -> None:
+    def test_runtime_scope_rejects_ignored_tracked_tree_inputs(self) -> None:
         ignored_paths = (
             "src/ignored.cs",
             "samples/Counter/ignored.json",
+            "docs/skills/frontcomposer/ignored.md",
         )
         for relative in ignored_paths:
             path = self.repository / relative
@@ -770,14 +778,14 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         self.package_ledger_path = temporary_root / "provider-package-ledger.json"
         self.provider_package_ledger = _synthetic_package_ledger(
             list(evidence.PROVIDER_PACKAGE_ASSETS),
-            "2026-09-12T11:00:00+00:00",
+            "2026-09-19T18:43:43.792125+00:00",
             graph_sha256="1" * 64,
         )
         _write_json(self.package_ledger_path, self.provider_package_ledger)
         self.pact_root = self.artifact_root / evidence.CANONICAL_PACT_ROOT
         self.active_root = (
             self.artifact_root / "_bmad-output" / "implementation-artifacts" / "evidence"
-            / "eventstore-runtime-identity-v2"
+            / "eventstore-runtime-identity-v3"
         )
         self.history_root = (
             self.artifact_root / "_bmad-output" / "implementation-artifacts" / "evidence"
@@ -785,10 +793,21 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         )
         self.identity_path = (
             self.artifact_root / "_bmad-output" / "contracts"
-            / "frontcomposer-eventstore-approved-runtime-identity-v2.json"
+            / "frontcomposer-eventstore-approved-runtime-identity-v3.json"
         )
         shutil.copytree(CANONICAL_EVIDENCE, self.evidence_root)
         shutil.copytree(CANONICAL_LIVE_EVIDENCE, self.live_root)
+        for name in (
+            "apphost-package-ledger.json",
+            "apphost-smoke.json",
+            "provider-package-ledger.json",
+            "provider-verification.json",
+            "run-evidence.json",
+        ):
+            shutil.copyfile(
+                CANONICAL_ACTIVE_EVIDENCE / "recapture" / name,
+                self.live_root / name,
+            )
         # The checked-in live packet is the preserved package-less capture. The frozen-hash
         # exemption now applies only to the history evidence root, so the live lane fixture
         # carries a genuine v4 receipt bound to its own ledger sidecar, plus the AppHost
@@ -801,28 +820,18 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             evidence.PROVIDER_PACKAGE_LEDGER_FILE,
             _synthetic_package_ledger(
                 list(evidence.PROVIDER_PACKAGE_ASSETS),
-                "2026-09-12T11:00:00+00:00",
+                "2026-09-19T18:43:43.792125+00:00",
                 graph_sha256="2" * 64,
             ),
         )
         _write_json(live_receipt_path, live_receipt)
         live_smoke_path = self.live_root / "apphost-smoke.json"
         live_smoke = _read_json(live_smoke_path)
-        live_smoke["packageLedger"] = _write_package_ledger_sidecar(
-            self.live_root,
-            evidence.APPHOST_PACKAGE_LEDGER_FILE,
-            _synthetic_package_ledger(
-                [evidence.APPHOST_PACKAGE_ASSETS_ROOT],
-                "2026-09-12T11:00:00+00:00",
-                graph_sha256="2" * 64,
-            ),
-        )
-        _write_json(live_smoke_path, live_smoke)
         shutil.copytree(CANONICAL_PACTS, self.pact_root)
         shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
         shutil.copytree(CANONICAL_PRIOR_EVIDENCE, self.history_root)
         self.identity_path.parent.mkdir(parents=True)
-        shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
+        shutil.copyfile(CANONICAL_IDENTITY_V3, self.identity_path)
         editorconfig = ROOT / ".editorconfig"
         editorconfig_data = editorconfig.read_bytes()
         manifest_path = self.active_root / "frontcomposer-runtime-inputs.json"
@@ -853,7 +862,41 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         }
         live_receipt["frontComposerRevision"] = fixture_manifest["capturedRevision"]
         live_receipt["runtimeInputTreeSha256"] = fixture_manifest["treeSha256"]
+        live_report_path = self.live_root / "provider-verification.json"
+        live_report = _read_json(live_report_path)
+        for item in live_report["inputHashes"]:
+            item["sha256"] = _sha256(self.pact_root / item["name"])
+        _write_json(live_report_path, live_report)
+        live_receipt["report"]["sha256"] = _sha256(live_report_path)
+        live_receipt["report"]["bytes"] = live_report_path.stat().st_size
         _write_json(live_receipt_path, live_receipt)
+        live_smoke["identity"]["frontComposerRevision"] = fixture_manifest[
+            "capturedRevision"
+        ]
+        live_smoke["identity"]["runtimeInputTreeSha256"] = fixture_manifest[
+            "treeSha256"
+        ]
+        live_smoke["identity"]["runtimeInputCapturedAt"] = fixture_manifest[
+            "capturedAt"
+        ]
+        fixture_manifest_hashes = {
+            item["path"]: item["sha256"]
+            for item in fixture_manifest["entries"]
+            if item.get("kind") == "file"
+        }
+        for item in live_smoke["startup"]["outputPreparation"][
+            "evaluatedInputBinding"
+        ]["inputs"]:
+            if item["authority"] == "repository" and item["path"] in fixture_manifest_hashes:
+                item["sha256"] = fixture_manifest_hashes[item["path"]]
+        live_smoke["topology"]["programSha256"] = _sha256(
+            ROOT / "src/Hexalith.FrontComposer.AppHost/Program.cs"
+        )
+        live_smoke["topology"]["projectSha256"] = _sha256(
+            ROOT
+            / "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj"
+        )
+        _write_json(live_smoke_path, live_smoke)
         # The checked-in AppHost artifact is the last truthful Loop-4 capture. Build a
         # synthetic Loop-5 fixture here so unit tests exercise the new evidence shape
         # without relabelling an execution that did not perform these steps.
@@ -879,34 +922,25 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         }
         apphost_graph = evidence.APPHOST_PACKAGE_ASSETS_ROOT
         active_smoke["schema"] = "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v3"
-        active_smoke["capturedAt"] = "2026-09-14T08:02:10+00:00"
-        active_smoke["executionStartedAt"] = "2026-09-14T08:02:30+00:00"
-        active_smoke["identity"]["runtimeInputCapturedAt"] = "2026-09-12T08:53:30+00:00"
+        active_smoke["identity"]["runtimeInputCapturedAt"] = fixture_manifest[
+            "capturedAt"
+        ]
         active_smoke["identity"]["runtimeInputTreeSha256"] = fixture_manifest[
             "treeSha256"
         ]
-        active_smoke["packageLedger"] = _write_package_ledger_sidecar(
-            self.active_root / "recapture",
-            evidence.APPHOST_PACKAGE_LEDGER_FILE,
-            _synthetic_package_ledger(
-                [apphost_graph],
-                "2026-09-14T08:02:00+00:00",
-                graph_sha256="3" * 64,
-            ),
+        active_smoke["topology"]["programSha256"] = _sha256(
+            ROOT / "src/Hexalith.FrontComposer.AppHost/Program.cs"
+        )
+        active_smoke["topology"]["projectSha256"] = _sha256(
+            ROOT
+            / "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj"
         )
         active_smoke["topology"]["declaredResources"] = list(
             evidence.APPHOST_DECLARED_RESOURCES
         )
-        output_preparation["evaluatedInputBinding"] = {
-            "assetsGraphs": [apphost_graph],
-            "inputs": [
-                {
-                    "authority": "repository",
-                    "path": "global.json",
-                    "sha256": _manifest_entry_sha256("global.json"),
-                }
-            ],
-        }
+        for item in output_preparation["evaluatedInputBinding"]["inputs"]:
+            if item["authority"] == "repository" and item["path"] in fixture_manifest_hashes:
+                item["sha256"] = fixture_manifest_hashes[item["path"]]
         output_preparation["runtimeOutputBinding"] = evidence.runtime_output_binding(
             _synthetic_runtime_outputs("6" * 64)
         )
@@ -929,15 +963,13 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         active_receipt["schema"] = "hexalith.eventstore.provider-verification-run-evidence.v4"
         active_receipt["frontComposerRevision"] = fixture_manifest["capturedRevision"]
         active_receipt["runtimeInputTreeSha256"] = fixture_manifest["treeSha256"]
-        active_receipt["packageLedger"] = _write_package_ledger_sidecar(
-            self.active_root / "recapture",
-            evidence.PROVIDER_PACKAGE_LEDGER_FILE,
-            _synthetic_package_ledger(
-                list(evidence.PROVIDER_PACKAGE_ASSETS),
-                "2026-09-12T11:00:00+00:00",
-                graph_sha256="4" * 64,
-            ),
-        )
+        active_report_path = self.active_root / "recapture/provider-verification.json"
+        active_report = _read_json(active_report_path)
+        for item in active_report["inputHashes"]:
+            item["sha256"] = _sha256(self.pact_root / item["name"])
+        _write_json(active_report_path, active_report)
+        active_receipt["report"]["sha256"] = _sha256(active_report_path)
+        active_receipt["report"]["bytes"] = active_report_path.stat().st_size
         _write_json(active_receipt_path, active_receipt)
 
         recapture_hashes = {
@@ -977,18 +1009,15 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         identity["activeEvidence"]["files"] = evidence_files
         identity["approval"]["subject"]["sha256"] = subject_hash
         _write_json(self.identity_path, identity)
-        shutil.copyfile(
-            ROOT / "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v1.json",
-            self.identity_path.parent / "frontcomposer-eventstore-approved-runtime-identity-v1.json",
+        shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path.parent / CANONICAL_IDENTITY_V2.name)
+        decision_source = (
+            self.artifact_root / "_bmad-output" / "implementation-artifacts"
+            / "spec-11-25-eventstore-3-106-evidence-reconciliation.md"
         )
-        proposal = (
-            self.artifact_root / "_bmad-output" / "planning-artifacts"
-            / "sprint-change-proposal-2026-09-11.md"
-        )
-        proposal.parent.mkdir(parents=True)
+        decision_source.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(
-            ROOT / "_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md",
-            proposal,
+            ROOT / "_bmad-output/implementation-artifacts/spec-11-25-eventstore-3-106-evidence-reconciliation.md",
+            decision_source,
         )
         for relative in (
             "src/Hexalith.FrontComposer.AppHost/Program.cs",
@@ -1196,16 +1225,16 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             evidence.APPHOST_PACKAGE_LEDGER_FILE,
             _synthetic_package_ledger(
                 [apphost_graph],
-                "2026-09-13T17:00:01+00:00",
+                "2026-09-19T18:48:01.076589+00:00",
                 graph_sha256="7" * 64,
             ),
         )
         document = {
             "schema": "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v3",
-            "capturedAt": "2026-09-13T17:00:00+00:00",
-            "executionStartedAt": "2026-09-13T17:00:02+00:00",
-            "completedAt": "2026-09-13T17:00:10+00:00",
-            "timeoutSeconds": 30,
+            "capturedAt": "2026-09-19T18:44:39.054401+00:00",
+            "executionStartedAt": "2026-09-19T18:48:06.876435+00:00",
+            "completedAt": "2026-09-19T18:49:16.126647+00:00",
+            "timeoutSeconds": 600,
             "finalVerdict": "passed",
             "reasonCodes": [],
             "packageLedger": package_ledger,
@@ -1809,7 +1838,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         self.assertEqual(self.validate(), [])
 
-    def test_active_v2_accepts_exact_evidence_while_approval_remains_open(self) -> None:
+    def test_active_v3_accepts_exact_evidence_while_approval_remains_open(self) -> None:
         errors, approval_issues, claimed = self.validate_active()
 
         self.assertEqual(errors, [])
@@ -1820,7 +1849,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                 approval_issues,
             )
 
-    def test_active_v2_rejects_history_tamper_independently(self) -> None:
+    def test_active_v3_rejects_history_tamper_independently(self) -> None:
         (self.history_root / "apphost-smoke.json").write_bytes(
             (self.history_root / "apphost-smoke.json").read_bytes() + b" "
         )
@@ -1829,7 +1858,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         self.assertTrue(any("Prior compatibility archive is not byte-identical" in error for error in errors), errors)
 
-    def test_active_v2_rejects_detached_evidence_and_history_roots(self) -> None:
+    def test_active_v3_rejects_detached_evidence_and_history_roots(self) -> None:
         detached_active = Path(self._temporary.name) / "detached-active"
         detached_history = Path(self._temporary.name) / "detached-history"
         shutil.copytree(self.active_root, detached_active)
@@ -1845,7 +1874,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         self.assertTrue(any("identity's canonical coordinate" in error for error in errors), errors)
 
-    def test_active_v2_rejects_a_detached_pact_directory(self) -> None:
+    def test_active_v3_rejects_a_detached_pact_directory(self) -> None:
         detached_pacts = Path(self._temporary.name) / "detached-pacts"
         shutil.copytree(self.pact_root, detached_pacts)
 
@@ -1866,7 +1895,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         self.assertEqual(
             REAL_CANONICAL_ACTIVE_LOCATIONS(ROOT),
             (
-                CANONICAL_IDENTITY_V2,
+                CANONICAL_IDENTITY_V3,
                 CANONICAL_ACTIVE_EVIDENCE,
                 CANONICAL_PRIOR_EVIDENCE,
                 CANONICAL_PACTS,
@@ -1897,7 +1926,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         self.assertFalse(evidence._same_canonical_path(first, second))
 
-    def test_active_v2_rejects_stale_builds_revision_and_evidence_hash(self) -> None:
+    def test_active_v3_rejects_stale_builds_revision_and_evidence_hash(self) -> None:
         identity = _read_json(self.identity_path)
         identity["activeTuple"]["buildsCatalogGitlink"] = evidence.PRIOR_BUILDS_SHA
         identity["frontComposerRevision"] = "0" * 40
@@ -1918,9 +1947,9 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         errors, _, _ = self.validate_active()
 
-        self.assertTrue(any("immutable identity v1 as its predecessor" in error for error in errors), errors)
+        self.assertTrue(any("immutable identity v2 as its predecessor" in error for error in errors), errors)
 
-    def test_active_v2_rejects_undeclared_or_leaking_evidence(self) -> None:
+    def test_active_v3_rejects_undeclared_or_leaking_evidence(self) -> None:
         unexpected = self.active_root / "unexpected.json"
         unexpected.write_text('{"Authorization": "Bearer header.payload.signature"}\n', encoding="utf-8")
 
@@ -2061,7 +2090,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             with self.subTest(field=field):
                 shutil.rmtree(self.active_root)
                 shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
-                shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
+                shutil.copyfile(CANONICAL_IDENTITY_V3, self.identity_path)
                 self.claim_active_approval(transferred_eventstore_role=True)
                 roster = _read_json(self.active_root / "reviewer-roster.json")
                 binding = roster["oi18"]["productApprovalReceipt"]
@@ -2281,7 +2310,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             with self.subTest(role=role):
                 shutil.rmtree(self.active_root)
                 shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
-                shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
+                shutil.copyfile(CANONICAL_IDENTITY_V3, self.identity_path)
                 self.claim_active_approval(transferred_eventstore_role=True)
                 roster = _read_json(self.active_root / "reviewer-roster.json")
                 roster["oi18"][field] = None
@@ -2301,7 +2330,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             with self.subTest(mutation=mutation):
                 shutil.rmtree(self.active_root)
                 shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
-                shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
+                shutil.copyfile(CANONICAL_IDENTITY_V3, self.identity_path)
                 self.claim_active_approval(transferred_eventstore_role=True)
                 roster = _read_json(self.active_root / "reviewer-roster.json")
                 binding = roster["oi18"]["productApprovalReceipt"]
@@ -2437,7 +2466,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         shutil.rmtree(self.active_root)
         shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
-        shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
+        shutil.copyfile(CANONICAL_IDENTITY_V3, self.identity_path)
         self.repin_active_recapture(
             "apphost-smoke.json",
             lambda document: document.__setitem__(
@@ -2489,7 +2518,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                 with self.subTest(relative=relative, timestamp=timestamp):
                     shutil.rmtree(self.active_root)
                     shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
-                    shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
+                    shutil.copyfile(CANONICAL_IDENTITY_V3, self.identity_path)
                     self.repin_active_recapture(
                         relative,
                         lambda document, value=timestamp, mutate=mutate: mutate(document, value),
@@ -2504,7 +2533,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         shutil.rmtree(self.active_root)
         shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
-        shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
+        shutil.copyfile(CANONICAL_IDENTITY_V3, self.identity_path)
         self.repin_active_recapture(
             "apphost-smoke.json",
             lambda document: document.__setitem__(
@@ -2531,7 +2560,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             with self.subTest(capture_name=capture_name):
                 shutil.rmtree(self.active_root)
                 shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
-                shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
+                shutil.copyfile(CANONICAL_IDENTITY_V3, self.identity_path)
                 manifest_path = self.active_root / "frontcomposer-runtime-inputs.json"
                 manifest = _read_json(manifest_path)
                 capture = _read_json(self.active_root / "recapture" / capture_name)
@@ -2584,7 +2613,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             with self.subTest(label=label):
                 shutil.rmtree(self.active_root)
                 shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
-                shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
+                shutil.copyfile(CANONICAL_IDENTITY_V3, self.identity_path)
                 source = _read_json(self.active_root / source_name)
                 subject_path = self.active_root / "approval-subject.json"
                 subject = _read_json(subject_path)
@@ -3878,7 +3907,9 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         mutations = (
             lambda document: document.__setitem__("timeoutSeconds", True),
             lambda document: document.__setitem__("timeoutSeconds", 29),
-            lambda document: document.__setitem__("completedAt", "2026-09-13T17:00:32+00:00"),
+            lambda document: document.__setitem__(
+                "completedAt", _offset_timestamp(document["capturedAt"], 602)
+            ),
         )
         for mutate in mutations:
             with self.subTest(mutate=mutate):
@@ -4452,6 +4483,21 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         self.assertIn("locations=$.startup.<dynamic-key>", errors[0])
         self.assertNotIn("private-project", errors[0])
 
+    def test_redaction_ignores_pattern_synthesized_across_compact_json_scalars(self) -> None:
+        path = Path(self._temporary.name) / "compact-json-boundary.json"
+        path.write_text(
+            json.dumps(
+                {"first": "/home", "second": "runner/"},
+                separators=(",", ":"),
+            ),
+            encoding="utf-8",
+        )
+        errors: list[str] = []
+
+        evidence._scan_redaction(path, errors)
+
+        self.assertEqual(errors, [])
+
     def test_evidence_redaction_rejects_a_raw_authorization_header(self) -> None:
         relative = "apphost-smoke/apphost-smoke.json"
 
@@ -4679,7 +4725,7 @@ raise SystemExit(evidence.main())
         text = summary.read_text(encoding="utf-8")
         self.assertIn("Historical Story 11.24 integrity: IMMUTABLE_ARCHIVE_VALID", text)
         self.assertIn("Prior Builds 35c3d1e5 compatibility archive: PRIOR_COMPATIBILITY_ARCHIVE_VALID", text)
-        self.assertIn("Active EventStore identity v2 and sealed evidence: ACTIVE_IDENTITY_AND_EVIDENCE_VALID", text)
+        self.assertIn("Active EventStore identity v3 and sealed evidence: ACTIVE_IDENTITY_AND_EVIDENCE_VALID", text)
         self.assertIn("Migration approval: OPEN: Missing named actor for required role: eventstore-maintainer", text)
         self.assertIn("Current provider verification: CURRENT_PROVIDER_PASSED", text)
         self.assertIn("Current authenticated AppHost smoke: AUTHENTICATED_APPHOST_PASSED", text)
@@ -4731,8 +4777,10 @@ raise SystemExit(evidence.main())
         required = (
             "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v1.json",
             "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v2.json",
+            "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v3.json",
             "_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md",
             "_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md",
+            "_bmad-output/implementation-artifacts/spec-11-25-eventstore-3-106-evidence-reconciliation.md",
             "tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-verification-handoff.md",
             *evidence.RUNTIME_PACT_INPUTS,
         )
@@ -5384,6 +5432,7 @@ class ReviewLoop11RegressionTests(unittest.TestCase):
 
     def test_runtime_scope_includes_root_compiler_configuration(self) -> None:
         self.assertIn(".editorconfig", evidence.RUNTIME_ROOT_INPUTS)
+        self.assertIn("docs/skills/frontcomposer", evidence.RUNTIME_TRACKED_TREES)
         self.assertTrue(evidence.ROOT_BUILD_CONTROL_RE.fullmatch("rules.globalconfig"))
         self.assertIn("Compile", evidence.APPHOST_EVALUATED_INPUT_ITEMS)
         self.assertIn("GlobalAnalyzerConfigFiles", evidence.APPHOST_EVALUATED_INPUT_ITEMS)
@@ -5684,13 +5733,25 @@ class PreservedPacketRejectionTests(unittest.TestCase):
         self.addCleanup(self._temporary.cleanup)
         self.preserved = Path(self._temporary.name) / "preserved"
         shutil.copytree(CANONICAL_ACTIVE_EVIDENCE / "recapture", self.preserved)
+        apphost_path = self.preserved / "apphost-smoke.json"
+        apphost = _read_json(apphost_path)
+        apphost["schema"] = (
+            "hexalith.frontcomposer.pact-provider-reconciliation-apphost-smoke.v2"
+        )
+        apphost.pop("packageLedger")
+        _write_json(apphost_path, apphost)
+        receipt_path = self.preserved / "run-evidence.json"
+        receipt = _read_json(receipt_path)
+        receipt["schema"] = "hexalith.eventstore.provider-verification-run-evidence.v3"
+        receipt.pop("packageLedger")
+        _write_json(receipt_path, receipt)
         self.provenance = {
             "sourceSha": evidence.ACTIVE_SOURCE_SHA,
             "releaseVersion": evidence.ACTIVE_VERSION,
             "buildsSha": evidence.ACTIVE_BUILDS_SHA,
             "releaseInventorySha256": evidence.INVENTORY_SHA256,
-            "frontComposerRevision": "1" * 40,
-            "runtimeInputTreeSha256": "2" * 64,
+            "frontComposerRevision": receipt["frontComposerRevision"],
+            "runtimeInputTreeSha256": receipt["runtimeInputTreeSha256"],
         }
 
     def test_preserved_apphost_packet_requires_package_provenance(self) -> None:

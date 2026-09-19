@@ -1420,7 +1420,9 @@ def _evaluate_source_graph(
             return reject("apphost-assets-closure-changed")
     if package_root is None or dotnet_root is None:
         return {
-            "assetsGraphs": [path.relative_to(ROOT).as_posix() for path in discovered_assets],
+            "assetsGraphs": sorted(
+                path.relative_to(ROOT).as_posix() for path in discovered_assets
+            ),
             "inputs": [],
         }
     evaluations: list[tuple[Path, dict[str, Any]]] = [(APPHOST.resolve(), document)]
@@ -1539,7 +1541,9 @@ def _evaluate_source_graph(
         bound_inputs_by_key[key] = binding
     bound_inputs = [bound_inputs_by_key[key] for key in sorted(bound_inputs_by_key)]
     return {
-        "assetsGraphs": [path.relative_to(ROOT).as_posix() for path in discovered_assets],
+        "assetsGraphs": sorted(
+            path.relative_to(ROOT).as_posix() for path in discovered_assets
+        ),
         "inputs": bound_inputs,
     }
 
