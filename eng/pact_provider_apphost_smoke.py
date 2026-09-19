@@ -62,6 +62,7 @@ START_COMMAND = [
 # from the tail made `_json_from_output` parse a nested fragment and fail closed as
 # `apphost.describe.incomplete` after every resource was already healthy.
 MAX_OUTPUT_CHARS = 1_048_576
+MAX_MSBUILD_OUTPUT_CHARS = 4_194_304
 MAX_HTTP_BODY_BYTES = 1_048_576
 MAX_WEBSOCKET_HEADER_BYTES = 16_384
 MAX_WEBSOCKET_BYTES = 1_048_576
@@ -152,7 +153,16 @@ class SmokeRuntime:
                 text=True,
                 timeout=timeout,
             )
-            return CommandResult(completed.returncode, completed.stdout[-MAX_OUTPUT_CHARS:], completed.stderr[-MAX_OUTPUT_CHARS:])
+            output_limit = (
+                MAX_MSBUILD_OUTPUT_CHARS
+                if arguments[:2] == ["dotnet", "msbuild"]
+                else MAX_OUTPUT_CHARS
+            )
+            return CommandResult(
+                completed.returncode,
+                completed.stdout[-output_limit:],
+                completed.stderr[-output_limit:],
+            )
         except (OSError, subprocess.TimeoutExpired) as exception:
             return CommandResult(124, "", type(exception).__name__)
 

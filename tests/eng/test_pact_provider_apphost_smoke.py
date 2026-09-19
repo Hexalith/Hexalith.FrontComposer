@@ -633,6 +633,7 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         self.assertEqual(result, 1)
         clean = next(command_args for command_args in recorded if command_args[:2] == ["dotnet", "clean"])
         self.assertEqual(clean[2], smoke.APPHOST_RELATIVE)
+
         restore = next(command_args for command_args in recorded if command_args[:2] == ["dotnet", "restore"])
         self.assertEqual(restore[2], smoke.APPHOST_RELATIVE)
         self.assertIn("--force", restore)
@@ -660,6 +661,20 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         start = next(command_args for command_args in recorded if command_args[:2] == ["aspire", "start"])
         self.assertIn("--isolated", start)
         self.assertIn("--no-build", start)
+
+    def test_msbuild_evaluation_has_a_separate_bounded_json_output_budget(self) -> None:
+        payload = "prefix" + ("x" * (smoke.MAX_MSBUILD_OUTPUT_CHARS + 17))
+        completed = mock.Mock(returncode=0, stdout=payload, stderr=payload)
+        runtime = smoke.SmokeRuntime()
+
+        with mock.patch.object(smoke.subprocess, "run", return_value=completed):
+            msbuild = runtime.command(["dotnet", "msbuild"], 30)
+            describe = runtime.command(["aspire", "describe"], 30)
+
+        self.assertEqual(len(msbuild.stdout), smoke.MAX_MSBUILD_OUTPUT_CHARS)
+        self.assertEqual(len(msbuild.stderr), smoke.MAX_MSBUILD_OUTPUT_CHARS)
+        self.assertEqual(len(describe.stdout), smoke.MAX_OUTPUT_CHARS)
+        self.assertEqual(len(describe.stderr), smoke.MAX_OUTPUT_CHARS)
 
     def test_dirty_runtime_preflight_performs_no_lifecycle_or_build_mutation(self) -> None:
         smoke.runtime_evidence.runtime_input_manifest.return_value = (  # type: ignore[attr-defined]
