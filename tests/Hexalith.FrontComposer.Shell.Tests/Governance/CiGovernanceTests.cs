@@ -4162,7 +4162,7 @@ public sealed class CiGovernanceTests {
         appHostSmokeSource.ShouldContain("\"-target:ResolveReferences\"");
         appHostSmokeSource.ShouldContain("\"-p:BuildProjectReferences=false\"");
         appHostSmokeSource.ShouldContain("\"-nodeReuse:false\"");
-        appHostSmokeSource.ShouldContain("\"-getResultOutputFile:\"");
+        appHostSmokeSource.ShouldContain("f\"-getResultOutputFile:{result_path}\"");
         appHostSmokeSource.ShouldContain("max_bytes=MAX_MSBUILD_RESULT_BYTES");
         appHostSmokeSource.ShouldContain("runtime_evidence.APPHOST_EVALUATED_INPUT_ITEMS");
         string runtimeEvidenceSource = File.ReadAllText(Path.Combine(root, "eng/eventstore_runtime_evidence.py"));
