@@ -4851,6 +4851,64 @@ class RestoredProjectTargetFrameworkTests(unittest.TestCase):
         self.assertIn("ambiguous restored targets", errors[0])
 
 
+class AppHostProjectGraphDiscoveryTests(unittest.TestCase):
+    """Independent validation includes conditional projects from the fresh restore."""
+
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.repository = Path(self.temporary.name) / "repository"
+        self.package_root = Path(self.temporary.name) / "fresh-packages"
+        self.package_root.mkdir()
+        (self.repository / "samples" / "Counter").mkdir(parents=True)
+        self.apphost = self.repository / evidence.APPHOST_PROJECT_PATH
+        self.conditional = self.repository / "src" / "Conditional" / "Conditional.csproj"
+        for project in (self.apphost, self.conditional):
+            project.parent.mkdir(parents=True, exist_ok=True)
+            project.write_text("<Project />\n", encoding="utf-8")
+            assets = project.parent / "obj" / "project.assets.json"
+            assets.parent.mkdir()
+            assets.write_text(
+                json.dumps(
+                    {
+                        "packageFolders": {str(self.package_root) + os.sep: {}},
+                        "libraries": {},
+                        "project": {
+                            "restore": {
+                                "projectPath": str(project),
+                                "frameworks": {},
+                            }
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+    def test_fresh_conditionally_restored_project_is_included(self) -> None:
+        errors: list[str] = []
+
+        with mock.patch.object(evidence, "APPHOST_REACHABLE_SOURCE_GITLINKS", ()):
+            projects, assets_paths = evidence._discover_apphost_project_graph(
+                self.repository,
+                errors,
+            )
+
+        self.assertEqual(errors, [])
+        self.assertEqual(
+            projects,
+            sorted([self.apphost.resolve(), self.conditional.resolve()]),
+        )
+        self.assertEqual(
+            assets_paths,
+            sorted(
+                [
+                    (self.apphost.parent / "obj" / "project.assets.json").resolve(),
+                    (self.conditional.parent / "obj" / "project.assets.json").resolve(),
+                ]
+            ),
+        )
+
+
 class DependencyInertToolingTests(unittest.TestCase):
     """The frozen 2026-09-13 scope rejects graph-selected inputs, not inert tooling."""
 

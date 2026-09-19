@@ -4005,6 +4005,68 @@ def _discover_apphost_project_graph(
     }
     seen_roots: set[str] = set()
     pending = [apphost]
+    apphost_assets_path = apphost.parent / "obj" / "project.assets.json"
+    apphost_assets = _load_assets_graph(apphost_assets_path, errors)
+    package_folders = apphost_assets.get("packageFolders")
+    if not isinstance(package_folders, dict) or len(package_folders) != 1:
+        errors.append("AppHost assets graph does not select one package authority root.")
+        return [], []
+    try:
+        selected_package_root = Path(next(iter(package_folders))).resolve(strict=False)
+    except (OSError, RuntimeError, TypeError):
+        errors.append("AppHost assets graph package authority root is malformed.")
+        return [], []
+    # Conditional source references can be restored without appearing in the root assets
+    # graph's project-reference metadata. The package root is fresh per capture, so assets
+    # bound to that same root identify the complete restore closure without accepting stale
+    # obj trees left by an earlier build lane.
+    for authority_root in allowed_roots:
+        if _path_has_symlink_component(authority_root) or not authority_root.is_dir():
+            errors.append(f"AppHost restored source root is unavailable: {authority_root}")
+            continue
+        try:
+            candidates = authority_root.rglob("project.assets.json")
+            for assets_path in candidates:
+                if assets_path.parent.name != "obj":
+                    continue
+                if _path_has_symlink_component(assets_path) or not assets_path.is_file():
+                    errors.append(f"AppHost restored assets graph is not regular: {assets_path}")
+                    continue
+                candidate_assets = _load_assets_graph(assets_path, errors)
+                candidate_folders = candidate_assets.get("packageFolders")
+                if not isinstance(candidate_folders, dict) or len(candidate_folders) != 1:
+                    continue
+                candidate_root = Path(next(iter(candidate_folders))).resolve(strict=False)
+                if candidate_root != selected_package_root:
+                    continue
+                project_metadata = candidate_assets.get("project")
+                restore = (
+                    project_metadata.get("restore")
+                    if isinstance(project_metadata, dict)
+                    else None
+                )
+                project_path = restore.get("projectPath") if isinstance(restore, dict) else None
+                if not isinstance(project_path, str) or not project_path:
+                    errors.append(f"AppHost restored assets graph has no project path: {assets_path}")
+                    continue
+                restored_project = Path(project_path.replace("\\", os.sep))
+                if not restored_project.is_absolute():
+                    restored_project = repository_root / restored_project
+                try:
+                    restored_project = restored_project.resolve(strict=True)
+                    expected_assets = (
+                        restored_project.parent / "obj" / "project.assets.json"
+                    ).resolve(strict=True)
+                    actual_assets = assets_path.resolve(strict=True)
+                except (OSError, RuntimeError):
+                    errors.append(f"AppHost restored project is unavailable: {assets_path}")
+                    continue
+                if expected_assets != actual_assets:
+                    errors.append(f"AppHost restored project path is inconsistent: {assets_path}")
+                    continue
+                pending.append(restored_project)
+        except (OSError, RuntimeError, TypeError):
+            errors.append(f"Unable to enumerate AppHost restored source root: {authority_root}")
     projects: set[Path] = set()
     assets_paths: set[Path] = set()
     while pending:
