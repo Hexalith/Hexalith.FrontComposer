@@ -25,6 +25,8 @@ sys.path.insert(0, str(ROOT / "eng"))
 
 import pact_provider_apphost_smoke as smoke  # noqa: E402
 
+REAL_DISCOVER_ASSETS_GRAPHS = smoke._discover_assets_graphs_from_json
+
 def _synthetic_package_ledger(
     assets_paths: list[Path], captured_at: str | None = None
 ) -> dict[str, Any]:
@@ -48,6 +50,24 @@ def _synthetic_package_ledger(
         "files": files,
         "treeSha256": smoke.runtime_evidence._package_tree_sha256(files),
     }
+    tool_bindings = [
+        {
+            "id": package_id,
+            "version": version,
+            "relativePath": f"{package_id.casefold()}/{version.casefold()}",
+            "contentHashSha512": content_hash,
+        }
+        for package_id, version in smoke.runtime_evidence.APPHOST_TOOL_PACKAGES
+    ]
+    tool_packages = [
+        {
+            **tool_binding,
+            "nupkgSha512": content_hash,
+            "files": files,
+            "treeSha256": smoke.runtime_evidence._package_tree_sha256(files),
+        }
+        for tool_binding in tool_bindings
+    ]
     entries = {
         "assetsGraphs": [
             {
@@ -57,7 +77,11 @@ def _synthetic_package_ledger(
             }
             for path in sorted(assets_paths)
         ],
-        "packages": [package],
+        "toolPackages": tool_bindings,
+        "packages": sorted(
+            [package, *tool_packages],
+            key=lambda item: (item["id"].casefold(), item["version"].casefold()),
+        ),
     }
     return {
         "schema": smoke.runtime_evidence.PACKAGE_LEDGER_SCHEMA,
@@ -312,8 +336,10 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
             *,
             captured_at: str | None = None,
             prune_unselected: bool = False,
+            tool_packages: Any = (),
         ) -> tuple[dict[str, Any], list[str]]:
             del repository_root, package_root, prune_unselected
+            self.assertEqual(tuple(tool_packages), smoke.runtime_evidence.APPHOST_TOOL_PACKAGES)
             return _synthetic_package_ledger(
                 list(assets_paths), captured_at
             ), []
@@ -821,6 +847,44 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
                 failure = json.loads(self.output.read_text(encoding="utf-8"))
                 self.assertIn("apphost.source-graph.not-exact", failure["reasonCodes"])
 
+    def test_assets_discovery_includes_fresh_conditionally_restored_projects(self) -> None:
+        repository = Path(self.temporary.name) / "repository"
+        package_root = Path(self.temporary.name) / "fresh-packages"
+        package_root.mkdir()
+        root_project = repository / "src/AppHost/AppHost.csproj"
+        conditional_project = repository / "src/Conditional/Conditional.csproj"
+        for project in (root_project, conditional_project):
+            project.parent.mkdir(parents=True)
+            project.write_text("<Project />\n", encoding="utf-8")
+            assets = {
+                "packageFolders": {str(package_root) + os.sep: {}},
+                "libraries": {},
+                "project": {"restore": {"projectPath": str(project)}},
+            }
+            assets_path = project.parent / "obj/project.assets.json"
+            assets_path.parent.mkdir()
+            assets_path.write_text(json.dumps(assets), encoding="utf-8")
+        (repository / "samples/Counter").mkdir(parents=True)
+
+        with (
+            mock.patch.object(smoke, "ROOT", repository),
+            mock.patch.object(smoke, "REACHABLE_SOURCE_GITLINKS", ()),
+        ):
+            discovered = REAL_DISCOVER_ASSETS_GRAPHS(root_project)
+
+        self.assertIsNotNone(discovered)
+        projects, assets_paths = discovered or ([], [])
+        self.assertEqual(projects, sorted([root_project, conditional_project]))
+        self.assertEqual(
+            assets_paths,
+            sorted(
+                [
+                    root_project.parent / "obj/project.assets.json",
+                    conditional_project.parent / "obj/project.assets.json",
+                ]
+            ),
+        )
+
     def test_process_diagnostic_redacts_secret_shaped_output(self) -> None:
         diagnostic = smoke._safe_process_diagnostic(
             smoke.CommandResult(
@@ -889,7 +953,11 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
 
     def test_semantically_self_consistent_empty_package_ledger_fails_before_execution(self) -> None:
         runtime = FakeRuntime()
-        empty_entries: dict[str, Any] = {"assetsGraphs": [], "packages": []}
+        empty_entries: dict[str, Any] = {
+            "assetsGraphs": [],
+            "toolPackages": [],
+            "packages": [],
+        }
         empty_ledger = {
             "schema": smoke.runtime_evidence.PACKAGE_LEDGER_SCHEMA,
             "capturedAt": datetime.now(timezone.utc).isoformat(),

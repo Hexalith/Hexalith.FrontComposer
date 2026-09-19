@@ -315,6 +315,7 @@ PROVIDER_PACKAGE_ASSETS = (
 APPHOST_PACKAGE_ASSETS_ROOT = (
     "src/Hexalith.FrontComposer.AppHost/obj/project.assets.json"
 )
+APPHOST_TOOL_PACKAGES = (("Aspire.AppHost.Sdk", "13.5.4"),)
 RAW_AUTHORIZATION_RE = re.compile(
     r"(?:[\"']authorization[\"']|(?<![A-Za-z0-9_])authorization(?![A-Za-z0-9_]))"
     r"\s*:(?!\s*\{)\s*",
@@ -364,7 +365,7 @@ ENCODED_TOKEN_RE = re.compile(r"^[A-Za-z0-9+/_-]{64,}={0,2}$")
 EXACT_AUTHORIZATION_LINE_RE = re.compile(
     r'(?i)["\']authorization["\']\s*:\s*["\']Bearer FC_CONTRACT_TOKEN["\']'
 )
-PACKAGE_LEDGER_SCHEMA = "hexalith.frontcomposer.resolved-package-ledger.v1"
+PACKAGE_LEDGER_SCHEMA = "hexalith.frontcomposer.resolved-package-ledger.v2"
 # AC 117 requires a byte-bound inventory of every extracted file of every restored
 # package. That inventory is hundreds of times larger than a bounded evidence document,
 # so it lives in its own sidecar artifact instead of inside run-evidence.json /
@@ -3323,8 +3324,9 @@ def resolved_package_ledger(
     *,
     captured_at: str | None = None,
     prune_unselected: bool = False,
+    tool_packages: Iterable[tuple[str, str]] = (),
 ) -> tuple[dict[str, Any], list[str]]:
-    """Inventory exactly the restored assets graphs and immutable package bytes they select."""
+    """Inventory restored assets plus explicit build/runtime tool package authorities."""
     issues: list[str] = []
     if _path_has_symlink_component(package_root) or not package_root.is_dir():
         return {}, ["The selected NuGet package root is missing or symlinked."]
@@ -3438,6 +3440,43 @@ def resolved_package_ledger(
     if not graphs:
         issues.append("Resolved-package ledger must bind at least one assets graph.")
 
+    tool_bindings: list[dict[str, str]] = []
+    normalized_tool_coordinates = sorted(
+        {(package_id.casefold(), version.casefold(), package_id, version) for package_id, version in tool_packages},
+        key=lambda item: (item[0], item[1]),
+    )
+    for package_id_lower, version_lower, package_id, version in normalized_tool_coordinates:
+        if (
+            not package_id
+            or not version
+            or "/" in package_id
+            or "\\" in package_id
+            or "/" in version
+            or "\\" in version
+        ):
+            issues.append("Resolved tool package coordinate is malformed.")
+            continue
+        relative_package = f"{package_id_lower}/{version_lower}"
+        package_directory = packages_root / relative_package
+        nupkg_path = package_directory / f"{package_id_lower}.{version_lower}.nupkg"
+        content_hash = _nuget_package_content_sha512(nupkg_path)
+        if content_hash is None:
+            issues.append(f"Resolved tool package nupkg is missing or malformed: {package_id}/{version}")
+            continue
+        binding = {
+            "id": package_id,
+            "version": version,
+            "relativePath": relative_package,
+            "contentHashSha512": content_hash,
+        }
+        key = (package_id_lower, version_lower)
+        previous = packages_by_coordinate.get(key)
+        if previous is not None and not _exact(previous, binding):
+            issues.append(f"Resolved tool package conflicts with assets identity: {package_id}/{version}")
+            continue
+        packages_by_coordinate[key] = binding
+        tool_bindings.append(binding)
+
     packages: list[dict[str, Any]] = []
     declared_directories: set[Path] = set()
     for binding in sorted(
@@ -3521,7 +3560,11 @@ def resolved_package_ledger(
     if actual_version_directories != declared_directories:
         issues.append("NuGet package root contains missing or orphan package directories.")
 
-    ledger_entries = {"assetsGraphs": graphs, "packages": packages}
+    ledger_entries = {
+        "assetsGraphs": graphs,
+        "toolPackages": tool_bindings,
+        "packages": packages,
+    }
     ledger_tree = hashlib.sha256(
         json.dumps(ledger_entries, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
@@ -3542,6 +3585,7 @@ def validate_package_ledger(
     errors: list[str],
     *,
     expected_assets_count: int | None = None,
+    tool_packages: Iterable[tuple[str, str]] = (),
 ) -> datetime | None:
     """Validate ledger semantics and recompute every selected graph and package byte."""
     captured_at = validate_package_ledger_semantics(document, errors)
@@ -3559,6 +3603,7 @@ def validate_package_ledger(
         package_root,
         assets_paths,
         captured_at=document.get("capturedAt") if isinstance(document.get("capturedAt"), str) else None,
+        tool_packages=tool_packages,
     )
     errors.extend(recompute_issues)
     if not _exact(document, recomputed):
@@ -3575,16 +3620,21 @@ def validate_package_ledger_semantics(
         errors.append("Resolved-package ledger is malformed.")
         return None
     if set(document) != {
-        "schema", "capturedAt", "packageRoot", "assetsGraphs", "packages", "treeSha256"
+        "schema", "capturedAt", "packageRoot", "assetsGraphs", "toolPackages", "packages", "treeSha256"
     } or document.get("schema") != PACKAGE_LEDGER_SCHEMA or document.get("packageRoot") != "fresh-external":
         errors.append("Resolved-package ledger schema or exact fields are invalid.")
     captured_at = _parse_timestamp(
         document.get("capturedAt"), "Resolved-package ledger capturedAt", errors
     )
     graphs = document.get("assetsGraphs")
+    tool_packages = document.get("toolPackages")
     packages = document.get("packages")
-    if not isinstance(graphs, list) or not isinstance(packages, list):
-        errors.append("Resolved-package ledger graph/package arrays are malformed.")
+    if (
+        not isinstance(graphs, list)
+        or not isinstance(tool_packages, list)
+        or not isinstance(packages, list)
+    ):
+        errors.append("Resolved-package ledger graph/tool/global package arrays are malformed.")
         return captured_at
     if not graphs:
         errors.append("Resolved-package ledger must bind at least one assets graph.")
@@ -3626,6 +3676,20 @@ def validate_package_ledger_semantics(
     if graph_paths != sorted(set(graph_paths)):
         errors.append("Resolved-package ledger assets graphs must be unique and sorted.")
 
+    tool_union: dict[tuple[str, str], dict[str, str]] = {}
+    tool_keys: list[tuple[str, str]] = []
+    for binding in tool_packages:
+        if not _valid_package_binding(binding):
+            errors.append("Resolved-package ledger tool package is malformed.")
+            continue
+        key = (str(binding.get("id", "")).casefold(), str(binding.get("version", "")).casefold())
+        tool_keys.append(key)
+        if key in graph_union and not _exact(graph_union[key], binding):
+            errors.append("Resolved-package ledger tool package conflicts with assets identity.")
+        tool_union[key] = binding
+    if tool_keys != sorted(set(tool_keys)):
+        errors.append("Resolved-package ledger tool packages must be unique and sorted.")
+
     global_bindings: dict[tuple[str, str], dict[str, str]] = {}
     global_keys: list[tuple[str, str]] = []
     for package in packages:
@@ -3666,9 +3730,16 @@ def validate_package_ledger_semantics(
             errors.append(f"Resolved-package ledger nupkg hash differs from assets: {binding['id']}")
     if global_keys != sorted(set(global_keys)):
         errors.append("Resolved-package ledger global packages must be unique and sorted.")
-    if not _exact(global_bindings, graph_union):
-        errors.append("Resolved-package ledger graph-package union differs from global packages.")
-    entries = {"assetsGraphs": graphs, "packages": packages}
+    selected_bindings = {**graph_union, **tool_union}
+    if not _exact(global_bindings, selected_bindings):
+        errors.append(
+            "Resolved-package ledger graph/tool-package union differs from global packages."
+        )
+    entries = {
+        "assetsGraphs": graphs,
+        "toolPackages": tool_packages,
+        "packages": packages,
+    }
     expected_tree = hashlib.sha256(
         json.dumps(entries, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
@@ -4946,6 +5017,20 @@ def _validate_live_apphost(
         if isinstance(graphs, list)
         else []
     )
+    ledger_tool_packages = (
+        package_ledger.get("toolPackages")
+        if isinstance(package_ledger, dict)
+        else None
+    )
+    ledger_tool_coordinates = (
+        [
+            (item.get("id"), item.get("version"))
+            for item in ledger_tool_packages
+            if isinstance(item, dict)
+        ]
+        if isinstance(ledger_tool_packages, list)
+        else []
+    )
     ledger_paths = [
         repository_root / item["path"]
         for item in graphs
@@ -4966,6 +5051,7 @@ def _validate_live_apphost(
             package_root,
             ledger_paths,
             errors,
+            tool_packages=APPHOST_TOOL_PACKAGES,
         )
     if (
         ledger_graph_paths != sorted(set(ledger_graph_paths))
@@ -4973,6 +5059,10 @@ def _validate_live_apphost(
     ):
         errors.append(
             "Live AppHost package ledger must bind the canonical AppHost assets root."
+        )
+    if ledger_tool_coordinates != list(APPHOST_TOOL_PACKAGES):
+        errors.append(
+            "Live AppHost package ledger must bind the exact AppHost tool package set."
         )
     if (
         runtime_manifest_captured_at is None

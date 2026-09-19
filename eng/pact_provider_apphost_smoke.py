@@ -1050,7 +1050,7 @@ def _resolved_source_graph_is_exact(project_references: list[Path]) -> bool:
 
 
 def _discover_assets_graphs_from_json(start_project: Path) -> tuple[list[Path], list[Path]] | None:
-    """Discover the restored project closure using only project.assets.json documents."""
+    """Discover the fresh restored project closure using only assets JSON documents."""
     pending = [start_project]
     projects: set[Path] = set()
     assets_paths: set[Path] = set()
@@ -1114,6 +1114,59 @@ def _discover_assets_graphs_from_json(start_project: Path) -> tuple[list[Path], 
             if not child.is_absolute():
                 child = project.parent / child
             pending.append(child)
+
+    # Some conditional source references are evaluated by MSBuild but omitted from the
+    # root assets graph's project-reference metadata. Restore still writes their assets
+    # files. The package root is created fresh for this invocation, so it is a stable JSON-
+    # only discriminator between this restore closure and any stale local obj directory.
+    root_assets_path = start_project.parent / "obj" / "project.assets.json"
+    try:
+        root_assets = json.loads(root_assets_path.read_text(encoding="utf-8-sig"))
+        package_folders = root_assets.get("packageFolders")
+        if not isinstance(package_folders, dict) or len(package_folders) != 1:
+            return None
+        selected_package_root = Path(next(iter(package_folders))).resolve(strict=False)
+    except (OSError, RuntimeError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    authority_roots = [
+        ROOT / "src",
+        ROOT / "samples" / "Counter",
+        *(ROOT / relative for relative in REACHABLE_SOURCE_GITLINKS),
+    ]
+    for authority_root in authority_roots:
+        if runtime_evidence._path_has_symlink_component(authority_root) or not authority_root.is_dir():
+            return None
+        try:
+            candidates = authority_root.rglob("project.assets.json")
+            for assets_path in candidates:
+                if assets_path.parent.name != "obj" or assets_path.resolve(strict=False) in assets_paths:
+                    continue
+                if runtime_evidence._path_has_symlink_component(assets_path) or not assets_path.is_file():
+                    return None
+                candidate = json.loads(assets_path.read_text(encoding="utf-8-sig"))
+                candidate_folders = candidate.get("packageFolders")
+                if not isinstance(candidate_folders, dict) or len(candidate_folders) != 1:
+                    continue
+                candidate_root = Path(next(iter(candidate_folders))).resolve(strict=False)
+                if candidate_root != selected_package_root:
+                    continue
+                project_metadata = candidate.get("project")
+                restore = project_metadata.get("restore") if isinstance(project_metadata, dict) else None
+                project_path = restore.get("projectPath") if isinstance(restore, dict) else None
+                if not isinstance(project_path, str) or not project_path:
+                    return None
+                project = Path(project_path.replace("\\", os.sep)).resolve(strict=True)
+                if (
+                    runtime_evidence._path_has_symlink_component(project)
+                    or not project.is_file()
+                    or (project.parent / "obj" / "project.assets.json").resolve(strict=True)
+                    != assets_path.resolve(strict=True)
+                ):
+                    return None
+                projects.add(project)
+                assets_paths.add(assets_path.resolve(strict=True))
+        except (OSError, RuntimeError, UnicodeDecodeError, json.JSONDecodeError):
+            return None
     return sorted(projects), sorted(assets_paths)
 
 
@@ -1824,6 +1877,7 @@ def _capture(
             package_root,
             assets_paths,
             prune_unselected=True,
+            tool_packages=runtime_evidence.APPHOST_TOOL_PACKAGES,
         )
         package_issues = list(package_issues)
         runtime_evidence.validate_package_ledger_semantics(
@@ -2439,6 +2493,7 @@ def _capture(
                 package_root,
                 assets_paths,
                 captured_at=initial_package_ledger.get("capturedAt"),
+                tool_packages=runtime_evidence.APPHOST_TOOL_PACKAGES,
             )
             package_authority_clean = (
                 not package_issues

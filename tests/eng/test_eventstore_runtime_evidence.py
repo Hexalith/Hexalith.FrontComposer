@@ -101,12 +101,38 @@ def _synthetic_package_ledger(
         "files": files,
         "treeSha256": evidence._package_tree_sha256(files),
     }
+    tool_bindings = [
+        {
+            "id": package_id,
+            "version": version,
+            "relativePath": f"{package_id.casefold()}/{version.casefold()}",
+            "contentHashSha512": content_hash,
+        }
+        for package_id, version in (
+            evidence.APPHOST_TOOL_PACKAGES
+            if assets_paths == [evidence.APPHOST_PACKAGE_ASSETS_ROOT]
+            else ()
+        )
+    ]
+    tool_packages = [
+        {
+            **tool_binding,
+            "nupkgSha512": content_hash,
+            "files": files,
+            "treeSha256": evidence._package_tree_sha256(files),
+        }
+        for tool_binding in tool_bindings
+    ]
     entries = {
         "assetsGraphs": [
             {"path": path, "sha256": graph_sha256, "packages": [binding]}
             for path in assets_paths
         ],
-        "packages": [package],
+        "toolPackages": tool_bindings,
+        "packages": sorted(
+            [package, *tool_packages],
+            key=lambda item: (item["id"].casefold(), item["version"].casefold()),
+        ),
     }
     return {
         "schema": evidence.PACKAGE_LEDGER_SCHEMA,
@@ -668,6 +694,49 @@ class ResolvedPackageLedgerTests(unittest.TestCase):
             "Resolved-package ledger must bind at least one global package.",
             package_free_issues,
         )
+
+    def test_tool_package_is_bound_and_survives_unselected_candidate_pruning(self) -> None:
+        runtime = self._package("Runtime.Package", "1.0.0", b"runtime-archive")
+        self._package("Build.Tool.Sdk", "2.0.0", b"tool-archive")
+        orphan = self._package("Unused.Candidate", "9.0.0", b"unused-archive")
+        assets = self._assets(
+            "apphost/obj/project.assets.json",
+            {"Runtime.Package/1.0.0": runtime},
+        )
+
+        ledger, issues = evidence.resolved_package_ledger(
+            self.repository,
+            self.package_root,
+            [assets],
+            prune_unselected=True,
+            tool_packages=[("Build.Tool.Sdk", "2.0.0")],
+        )
+        semantic_issues: list[str] = []
+        evidence.validate_package_ledger_semantics(ledger, semantic_issues)
+
+        self.assertEqual(issues, [])
+        self.assertEqual(semantic_issues, [])
+        self.assertEqual(
+            [(item["id"], item["version"]) for item in ledger["toolPackages"]],
+            [("Build.Tool.Sdk", "2.0.0")],
+        )
+        self.assertEqual(
+            [item["id"] for item in ledger["packages"]],
+            ["Build.Tool.Sdk", "Runtime.Package"],
+        )
+        self.assertFalse(
+            (self.package_root / orphan["path"]).exists(),
+        )
+        validation_errors: list[str] = []
+        evidence.validate_package_ledger(
+            ledger,
+            self.repository,
+            self.package_root,
+            [assets],
+            validation_errors,
+            tool_packages=[("Build.Tool.Sdk", "2.0.0")],
+        )
+        self.assertEqual(validation_errors, [])
 
     def test_package_root_must_start_fresh_external_and_non_symlinked(self) -> None:
         self.assertEqual(
@@ -3610,10 +3679,11 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         def empty_ledger(ledger: dict[str, Any]) -> None:
             ledger["assetsGraphs"] = []
+            ledger["toolPackages"] = []
             ledger["packages"] = []
             ledger["treeSha256"] = hashlib.sha256(
                 json.dumps(
-                    {"assetsGraphs": [], "packages": []},
+                    {"assetsGraphs": [], "toolPackages": [], "packages": []},
                     sort_keys=True,
                     separators=(",", ":"),
                 ).encode("utf-8")
