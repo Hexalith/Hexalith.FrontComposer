@@ -4162,6 +4162,7 @@ public sealed class CiGovernanceTests {
         string appHostCaptureSource = appHostSmokeSource[appHostCaptureSourceStart..appHostCaptureSourceEnd];
         appHostCaptureSource.ShouldContain("restore = runtime.command(");
         appHostCaptureSource.ShouldContain("package_ledger, package_issues = runtime_evidence.resolved_package_ledger(");
+        appHostCaptureSource.ShouldContain("prune_unselected=True");
         appHostCaptureSource.ShouldContain("evidence[\"executionStartedAt\"] = datetime.now(timezone.utc).isoformat()");
         appHostCaptureSource.ShouldContain("source_graph_before = _evaluate_source_graph(");
         appHostCaptureSource.ShouldContain("prebuild = runtime.command(");

@@ -311,8 +311,9 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
             assets_paths: Any,
             *,
             captured_at: str | None = None,
+            prune_unselected: bool = False,
         ) -> tuple[dict[str, Any], list[str]]:
-            del repository_root, package_root
+            del repository_root, package_root, prune_unselected
             return _synthetic_package_ledger(
                 list(assets_paths), captured_at
             ), []

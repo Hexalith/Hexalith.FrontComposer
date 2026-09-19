@@ -1794,6 +1794,7 @@ def _capture(
             ROOT,
             package_root,
             assets_paths,
+            prune_unselected=True,
         )
         package_issues = list(package_issues)
         runtime_evidence.validate_package_ledger_semantics(

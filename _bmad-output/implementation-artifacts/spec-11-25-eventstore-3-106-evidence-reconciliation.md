@@ -60,9 +60,9 @@ manifest, and an explicitly open migration approval state.
   eleven-project restore closure. The retry binds all eleven generated assets graphs.
 - Quality run `35438982460` and an exact local fresh-root reproduction showed four NuGet
   download candidates absent from every final assets graph (`Google.Protobuf 3.31.1` and
-  three `Microsoft.Extensions.Logging*` versions). The writer now explicitly removes only
-  unselected version directories from the validated external root before sealing the
-  ledger; the subsequent no-restore build proves none was an execution input.
+  three `Microsoft.Extensions.Logging*` versions). Provider and AppHost ledger capture now
+  explicitly remove only unselected version directories from the validated external root
+  before sealing; the subsequent no-restore build proves none was an execution input.
 
 ## Review Triage Log
 
