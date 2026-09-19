@@ -9681,3 +9681,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
   summary: Separate the appended product-runtime review headings from preceding Markdown content.
   evidence: The spec's product-runtime review heading and the deferred-work product-runtime heading immediately follow list or record content without blank lines; the spec half of the formatting correction is deferred because the review workflow excludes fixes to the spec under review.
+
+## Deferred from: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-18, groups 1-2)
+
+Reconfirmed existing open items without new ids: DW-1980 (generated `FcPageHeader` does not name `#fc-main-content`), DW-1981 (field `DisplayName` still uses `IsNullOrEmpty`), DW-1964 (Linux visual baselines unused in CI), DW-1959/DW-1968 (`test:route-contract` remains operator-invoked), DW-1962 (fourteen page-wide `Counter` locators).
