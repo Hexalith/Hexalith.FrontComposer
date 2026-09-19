@@ -446,11 +446,11 @@ jobs:
             _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md
             _bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md
             _bmad-output/implementation-artifacts/spec-11-25-eventstore-3-106-evidence-reconciliation.md
-            _bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/**
-            _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/2026-09-08-builds-35c3d1e5/**
-            _bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/**
-            _bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/**
-            _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/**
+            _bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/**/*
+            _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/2026-09-08-builds-35c3d1e5/**/*
+            _bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/**/*
+            _bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/**/*
+            _bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/**/*
             tests/Hexalith.FrontComposer.Shell.Tests/Pact/*.json
             tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-verification-handoff.md
 
