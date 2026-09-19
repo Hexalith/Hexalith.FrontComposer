@@ -19,7 +19,7 @@
   },
   "decision": {
     "path": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/recapture-decision.json",
-    "sha256": "33a9976c13d4b49670f3b1614393a50ebaaa9f2d82cfbea05b4a582dc2be1683"
+    "sha256": "70bbdd4e9068cf900c82533fd57da242c3310fc965764b9080d05c0b9c2b9e71"
   },
   "priorCompatibility": {
     "path": "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/2026-09-08-builds-35c3d1e5",
@@ -80,7 +80,7 @@
     },
     "subject": {
       "path": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/approval-subject.json",
-      "sha256": "e61e36d40187afd603c59e30dc99a1fb79de8e88cf2921b76ecdc2269644b995"
+      "sha256": "2c1677dba4215f76435944f71562b27ccbb013cccb02bb1cc9a0f704ae9c281d"
     },
     "receiptDirectory": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/receipts",
     "effectiveRequiredRoles": [

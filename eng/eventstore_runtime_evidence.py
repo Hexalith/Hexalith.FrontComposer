@@ -6446,7 +6446,7 @@ def _validate_active(
     _scan_redaction(decision_path, errors)
     decision_source = {
         "path": "_bmad-output/implementation-artifacts/spec-11-25-eventstore-3-106-evidence-reconciliation.md",
-        "sha256": "641d9cb975ae62016e2f00032e8355753900ccb6b919070234358bae6edaeeb4",
+        "sha256": "ee6852a4d4593bb2727405e4338b4beea459c139a0c8d9e3231e50da4dc7abac",
     }
     expected_decision = {
         "schema": "hexalith.frontcomposer.eventstore-runtime-recapture-decision.v3",

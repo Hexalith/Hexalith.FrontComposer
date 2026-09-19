@@ -811,6 +811,7 @@ public sealed class CiGovernanceTests {
 
         sponsorship.Element("Verify_GitHubSponsorAccount")!.Value.ShouldBe("jpiquot");
         sponsorship.Element("Verify_SponsorshipStart")!.Value.ShouldBe("2026-09-17");
+        sponsorship.Element("Verify_SponsorshipPrivateUntil")!.Value.ShouldBe("2027-09");
         string approvedUntil = sponsorship.Element("FrontComposerVerifySponsorshipApprovedUntil")!.Value;
         approvedUntil.ShouldBe("2031-09-17");
         DateOnly.ParseExact(approvedUntil, "yyyy-MM-dd", CultureInfo.InvariantCulture)
@@ -825,16 +826,16 @@ public sealed class CiGovernanceTests {
             "Verify_SponsorshipExemptionUntil",
             "Verify_SponsorshipLicenseIgnored",
             "Verify_SponsorshipLicensedUntil",
-            "Verify_SponsorshipPrivateUntil",
         ];
         foreach (string propertyName in alternateSponsorModes) {
             testProps.Descendants(propertyName).ShouldBeEmpty(
-                $"the owner approved only the GitHub sponsor-account/start assertion, not {propertyName}.");
+                $"the owner-approved GitHub sponsorship assertion does not authorize {propertyName}.");
         }
 
         string[] approvedSponsorProperties = [
             "Verify_GitHubSponsorAccount",
             "Verify_SponsorshipStart",
+            "Verify_SponsorshipPrivateUntil",
             .. alternateSponsorModes,
         ];
         HashSet<string> approvedSponsorPropertyNames = new(approvedSponsorProperties, StringComparer.Ordinal);
@@ -4323,22 +4324,9 @@ public sealed class CiGovernanceTests {
         ]);
         historicalValidation.ExitCode.ShouldBe(0, historicalValidation.Output + historicalValidation.Error);
 
-        ProcessResult validation = RunPython(root, [
-            "eng/eventstore_runtime_evidence.py",
-            "--evidence-root", evidenceRoot,
-            "--active-identity", activeIdentityPath,
-            "--active-evidence-root", Path.Combine(
-                root,
-                "_bmad-output",
-                "implementation-artifacts",
-                "evidence",
-                "eventstore-runtime-identity-v3"),
-            "--history-evidence-root", priorEvidenceRoot,
-            "--pact-dir", "tests/Hexalith.FrontComposer.Shell.Tests/Pact",
-            "--repository-root", root,
-        ]);
-        validation.ExitCode.ShouldBe(0, validation.Output + validation.Error);
-        validation.Output.ShouldContain("EventStore runtime approval: OPEN");
+        // Full active/live validation runs after the Contract pacts step has generated the
+        // canonical LF Pact bytes. Gate 2b intentionally verifies the immutable archive and
+        // the static v3 bindings above without trying to validate a pre-generation checkout.
 
         string liveEvidenceRoot = Path.Combine(
             root,

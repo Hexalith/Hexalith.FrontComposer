@@ -1,5 +1,9 @@
 * text=auto eol=crlf
 *.verified.txt text eol=lf
+# Current Pact JSON is runtime evidence input and must have identical bytes on every runner.
+tests/Hexalith.FrontComposer.Shell.Tests/Pact/*.json text eol=lf
+# This capture-bound AppHost source had mixed line endings before recapture; keep it stable.
+src/Hexalith.FrontComposer.AppHost/HexalithTenantsSample.cs text eol=lf
 # Shell scripts and husky hooks require LF on Unix runners (CRLF breaks /bin/sh shebangs).
 *.sh text eol=lf
 .husky/* text eol=lf
@@ -16,5 +20,6 @@ _bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/**
 # Active identity v3 binds the hosted recapture candidate and its decision bytes.
 _bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/** -text
 _bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v3.json -text
+_bmad-output/implementation-artifacts/spec-11-25-eventstore-3-106-evidence-reconciliation.md -text
 # The active decision hash-binds this human-approved proposal's canonical LF bytes.
 _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md -text

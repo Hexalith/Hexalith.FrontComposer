@@ -19,7 +19,7 @@
   },
   "decision": {
     "path": "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/recapture-decision.json",
-    "sha256": "33a9976c13d4b49670f3b1614393a50ebaaa9f2d82cfbea05b4a582dc2be1683"
+    "sha256": "70bbdd4e9068cf900c82533fd57da242c3310fc965764b9080d05c0b9c2b9e71"
   },
   "evidenceFiles": [
     {
