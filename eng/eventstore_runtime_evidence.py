@@ -3953,6 +3953,38 @@ def _load_assets_graph(path: Path, errors: list[str]) -> dict[str, Any]:
     )
 
 
+def _restored_project_target_framework(
+    project: Path,
+    errors: list[str],
+) -> str | None:
+    """Select one deterministic evaluation target from a project's restored graph."""
+    assets_path = project.parent / "obj" / "project.assets.json"
+    if _path_has_symlink_component(assets_path) or not assets_path.is_file():
+        errors.append(f"Project has no regular restored assets graph: {project}")
+        return None
+    assets = _load_assets_graph(assets_path, errors)
+    targets = assets.get("targets")
+    if not isinstance(targets, dict) or not targets:
+        errors.append(f"Project assets graph has no restored targets: {assets_path}")
+        return None
+    frameworks: set[str] = set()
+    for target in targets:
+        if not isinstance(target, str):
+            errors.append(f"Project assets graph has a malformed target: {assets_path}")
+            return None
+        framework = target.split("/", 1)[0]
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.+_-]*", framework):
+            errors.append(f"Project assets graph has an unsafe target: {assets_path}")
+            return None
+        frameworks.add(framework)
+    if APPHOST_EVALUATION_TARGET_FRAMEWORK in frameworks:
+        return APPHOST_EVALUATION_TARGET_FRAMEWORK
+    if len(frameworks) == 1:
+        return next(iter(frameworks))
+    errors.append(f"Project assets graph has ambiguous restored targets: {assets_path}")
+    return None
+
+
 def _discover_apphost_project_graph(
     repository_root: Path,
     errors: list[str],
@@ -4169,8 +4201,11 @@ def _evaluate_apphost_inputs(
     ]
     environment = os.environ.copy()
     environment["NUGET_PACKAGES"] = str(package_root)
-    evaluations: list[tuple[Path, dict[str, Any]]] = []
+    evaluations: list[tuple[Path, str, dict[str, Any]]] = []
     for project in projects:
+        target_framework = _restored_project_target_framework(project, errors)
+        if target_framework is None:
+            continue
         try:
             relative_project = project.relative_to(repository_root)
             completed = subprocess.run(
@@ -4183,7 +4218,7 @@ def _evaluate_apphost_inputs(
                     "-m:1",
                     "-nodeReuse:false",
                     *_apphost_build_property_arguments(repository_root),
-                    f"-p:TargetFramework={APPHOST_EVALUATION_TARGET_FRAMEWORK}",
+                    f"-p:TargetFramework={target_framework}",
                     "-target:ResolveReferences",
                     "-getProperty:" + ",".join(property_names),
                     "-getItem:" + item_names,
@@ -4209,7 +4244,7 @@ def _evaluate_apphost_inputs(
         if not isinstance(evaluation, dict):
             errors.append(f"AppHost project evaluation is malformed: {project}")
             continue
-        evaluations.append((project, evaluation))
+        evaluations.append((project, target_framework, evaluation))
     if len(evaluations) != len(projects):
         return None
     project_set = set(projects)
@@ -4219,18 +4254,20 @@ def _evaluate_apphost_inputs(
         Path(relative).name.casefold() for relative in RUNTIME_DEPENDENCY_GITLINKS
     )
     apphost = (repository_root / APPHOST_PROJECT_PATH).resolve(strict=False)
-    for project, evaluation in evaluations:
+    for project, target_framework, evaluation in evaluations:
         properties = evaluation.get("Properties")
         items = evaluation.get("Items")
         if not isinstance(properties, dict) or not isinstance(items, dict):
             errors.append(f"AppHost project evaluation omits properties or items: {project}")
             continue
+        if properties.get("TargetFramework") != target_framework:
+            errors.append(f"Project evaluated target framework is incorrect: {project}")
         if project == apphost:
             for name, expected in APPHOST_BUILD_PROPERTIES.items():
                 actual = properties.get(name)
                 if not isinstance(actual, str) or actual.casefold() != str(expected).casefold():
                     errors.append(f"AppHost evaluated build property is incorrect: {name}")
-            if properties.get("TargetFramework") != APPHOST_EVALUATION_TARGET_FRAMEWORK:
+            if target_framework != APPHOST_EVALUATION_TARGET_FRAMEWORK:
                 errors.append("AppHost evaluated target framework is incorrect.")
             for name, relative in APPHOST_SOURCE_ROOT_PROPERTIES.items():
                 actual = properties.get(name)

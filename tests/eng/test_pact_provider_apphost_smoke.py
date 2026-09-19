@@ -323,6 +323,13 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         )
         assets_patcher.start()
         self.addCleanup(assets_patcher.stop)
+        target_patcher = mock.patch.object(
+            smoke.runtime_evidence,
+            "_restored_project_target_framework",
+            return_value=smoke.APPHOST_EVALUATION_TARGET_FRAMEWORK,
+        )
+        target_patcher.start()
+        self.addCleanup(target_patcher.stop)
         sdk_patcher = mock.patch.object(
             smoke,
             "_selected_dotnet_root",

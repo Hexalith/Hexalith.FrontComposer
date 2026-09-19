@@ -1235,6 +1235,12 @@ def _evaluate_source_graph(
             issues.append(reason)
         return None
 
+    target_errors: list[str] = []
+    apphost_target = runtime_evidence._restored_project_target_framework(
+        APPHOST, target_errors
+    )
+    if apphost_target != APPHOST_EVALUATION_TARGET_FRAMEWORK:
+        return reject("apphost-restored-target-invalid")
     timeout = _remaining_timeout(deadline, 60)
     if timeout is None:
         return reject("evaluation-deadline-exceeded")
@@ -1255,7 +1261,7 @@ def _evaluate_source_graph(
             "-m:1",
             "-nodeReuse:false",
             *_build_property_arguments(),
-            f"-p:TargetFramework={APPHOST_EVALUATION_TARGET_FRAMEWORK}",
+            f"-p:TargetFramework={apphost_target}",
             "-target:ResolveReferences",
             "-getProperty:" + ",".join(property_names),
             "-getItem:" + item_names,
@@ -1333,6 +1339,12 @@ def _evaluate_source_graph(
     for project in discovered_projects:
         if project == APPHOST.resolve():
             continue
+        project_target_errors: list[str] = []
+        project_target = runtime_evidence._restored_project_target_framework(
+            project, project_target_errors
+        )
+        if project_target is None:
+            return reject("project-restored-target-invalid")
         try:
             project_relative = project.relative_to(ROOT)
         except ValueError:
@@ -1350,7 +1362,7 @@ def _evaluate_source_graph(
                 "-m:1",
                 "-nodeReuse:false",
                 *_build_property_arguments(),
-                f"-p:TargetFramework={APPHOST_EVALUATION_TARGET_FRAMEWORK}",
+                f"-p:TargetFramework={project_target}",
                 "-target:ResolveReferences",
                 "-getProperty:MSBuildAllProjects",
                 "-getItem:" + item_names,
