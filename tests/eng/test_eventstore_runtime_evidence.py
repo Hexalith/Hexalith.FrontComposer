@@ -36,7 +36,7 @@ CANONICAL_LIVE_EVIDENCE = (
     ROOT / "_bmad-output" / "implementation-artifacts" / "evidence" / "pact-provider-reconciliation"
 )
 CANONICAL_ACTIVE_EVIDENCE = (
-    ROOT / "_bmad-output" / "implementation-artifacts" / "evidence" / "eventstore-runtime-identity-v3"
+    ROOT / "_bmad-output" / "implementation-artifacts" / "evidence" / "eventstore-runtime-identity-v2"
 )
 CANONICAL_PRIOR_EVIDENCE = (
     ROOT / "_bmad-output" / "implementation-artifacts" / "evidence"
@@ -44,9 +44,6 @@ CANONICAL_PRIOR_EVIDENCE = (
 )
 CANONICAL_IDENTITY_V2 = (
     ROOT / "_bmad-output" / "contracts" / "frontcomposer-eventstore-approved-runtime-identity-v2.json"
-)
-CANONICAL_IDENTITY_V3 = (
-    ROOT / "_bmad-output" / "contracts" / "frontcomposer-eventstore-approved-runtime-identity-v3.json"
 )
 REAL_RUNTIME_INPUT_SNAPSHOT = evidence._runtime_input_snapshot
 REAL_CANONICAL_ACTIVE_LOCATIONS = evidence._canonical_active_locations
@@ -780,7 +777,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         self.pact_root = self.artifact_root / evidence.CANONICAL_PACT_ROOT
         self.active_root = (
             self.artifact_root / "_bmad-output" / "implementation-artifacts" / "evidence"
-            / "eventstore-runtime-identity-v3"
+            / "eventstore-runtime-identity-v2"
         )
         self.history_root = (
             self.artifact_root / "_bmad-output" / "implementation-artifacts" / "evidence"
@@ -788,7 +785,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         )
         self.identity_path = (
             self.artifact_root / "_bmad-output" / "contracts"
-            / "frontcomposer-eventstore-approved-runtime-identity-v3.json"
+            / "frontcomposer-eventstore-approved-runtime-identity-v2.json"
         )
         shutil.copytree(CANONICAL_EVIDENCE, self.evidence_root)
         shutil.copytree(CANONICAL_LIVE_EVIDENCE, self.live_root)
@@ -825,7 +822,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
         shutil.copytree(CANONICAL_PRIOR_EVIDENCE, self.history_root)
         self.identity_path.parent.mkdir(parents=True)
-        shutil.copyfile(CANONICAL_IDENTITY_V3, self.identity_path)
+        shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
         editorconfig = ROOT / ".editorconfig"
         editorconfig_data = editorconfig.read_bytes()
         manifest_path = self.active_root / "frontcomposer-runtime-inputs.json"
@@ -980,15 +977,18 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         identity["activeEvidence"]["files"] = evidence_files
         identity["approval"]["subject"]["sha256"] = subject_hash
         _write_json(self.identity_path, identity)
-        shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path.parent / CANONICAL_IDENTITY_V2.name)
-        decision_source = (
-            self.artifact_root / "_bmad-output" / "implementation-artifacts"
-            / "spec-11-25-eventstore-3-106-evidence-reconciliation.md"
-        )
-        decision_source.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(
-            ROOT / "_bmad-output/implementation-artifacts/spec-11-25-eventstore-3-106-evidence-reconciliation.md",
-            decision_source,
+            ROOT / "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v1.json",
+            self.identity_path.parent / "frontcomposer-eventstore-approved-runtime-identity-v1.json",
+        )
+        proposal = (
+            self.artifact_root / "_bmad-output" / "planning-artifacts"
+            / "sprint-change-proposal-2026-09-11.md"
+        )
+        proposal.parent.mkdir(parents=True)
+        shutil.copyfile(
+            ROOT / "_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md",
+            proposal,
         )
         for relative in (
             "src/Hexalith.FrontComposer.AppHost/Program.cs",
@@ -1809,7 +1809,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         self.assertEqual(self.validate(), [])
 
-    def test_active_v3_accepts_exact_evidence_while_approval_remains_open(self) -> None:
+    def test_active_v2_accepts_exact_evidence_while_approval_remains_open(self) -> None:
         errors, approval_issues, claimed = self.validate_active()
 
         self.assertEqual(errors, [])
@@ -1820,7 +1820,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                 approval_issues,
             )
 
-    def test_active_v3_rejects_history_tamper_independently(self) -> None:
+    def test_active_v2_rejects_history_tamper_independently(self) -> None:
         (self.history_root / "apphost-smoke.json").write_bytes(
             (self.history_root / "apphost-smoke.json").read_bytes() + b" "
         )
@@ -1829,7 +1829,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         self.assertTrue(any("Prior compatibility archive is not byte-identical" in error for error in errors), errors)
 
-    def test_active_v3_rejects_detached_evidence_and_history_roots(self) -> None:
+    def test_active_v2_rejects_detached_evidence_and_history_roots(self) -> None:
         detached_active = Path(self._temporary.name) / "detached-active"
         detached_history = Path(self._temporary.name) / "detached-history"
         shutil.copytree(self.active_root, detached_active)
@@ -1845,7 +1845,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         self.assertTrue(any("identity's canonical coordinate" in error for error in errors), errors)
 
-    def test_active_v3_rejects_a_detached_pact_directory(self) -> None:
+    def test_active_v2_rejects_a_detached_pact_directory(self) -> None:
         detached_pacts = Path(self._temporary.name) / "detached-pacts"
         shutil.copytree(self.pact_root, detached_pacts)
 
@@ -1866,7 +1866,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         self.assertEqual(
             REAL_CANONICAL_ACTIVE_LOCATIONS(ROOT),
             (
-                CANONICAL_IDENTITY_V3,
+                CANONICAL_IDENTITY_V2,
                 CANONICAL_ACTIVE_EVIDENCE,
                 CANONICAL_PRIOR_EVIDENCE,
                 CANONICAL_PACTS,
@@ -1897,7 +1897,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         self.assertFalse(evidence._same_canonical_path(first, second))
 
-    def test_active_v3_rejects_stale_builds_revision_and_evidence_hash(self) -> None:
+    def test_active_v2_rejects_stale_builds_revision_and_evidence_hash(self) -> None:
         identity = _read_json(self.identity_path)
         identity["activeTuple"]["buildsCatalogGitlink"] = evidence.PRIOR_BUILDS_SHA
         identity["frontComposerRevision"] = "0" * 40
@@ -1918,9 +1918,9 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         errors, _, _ = self.validate_active()
 
-        self.assertTrue(any("immutable identity v2 as its predecessor" in error for error in errors), errors)
+        self.assertTrue(any("immutable identity v1 as its predecessor" in error for error in errors), errors)
 
-    def test_active_v3_rejects_undeclared_or_leaking_evidence(self) -> None:
+    def test_active_v2_rejects_undeclared_or_leaking_evidence(self) -> None:
         unexpected = self.active_root / "unexpected.json"
         unexpected.write_text('{"Authorization": "Bearer header.payload.signature"}\n', encoding="utf-8")
 
@@ -2061,7 +2061,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             with self.subTest(field=field):
                 shutil.rmtree(self.active_root)
                 shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
-                shutil.copyfile(CANONICAL_IDENTITY_V3, self.identity_path)
+                shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
                 self.claim_active_approval(transferred_eventstore_role=True)
                 roster = _read_json(self.active_root / "reviewer-roster.json")
                 binding = roster["oi18"]["productApprovalReceipt"]
@@ -2281,7 +2281,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             with self.subTest(role=role):
                 shutil.rmtree(self.active_root)
                 shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
-                shutil.copyfile(CANONICAL_IDENTITY_V3, self.identity_path)
+                shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
                 self.claim_active_approval(transferred_eventstore_role=True)
                 roster = _read_json(self.active_root / "reviewer-roster.json")
                 roster["oi18"][field] = None
@@ -2301,7 +2301,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             with self.subTest(mutation=mutation):
                 shutil.rmtree(self.active_root)
                 shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
-                shutil.copyfile(CANONICAL_IDENTITY_V3, self.identity_path)
+                shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
                 self.claim_active_approval(transferred_eventstore_role=True)
                 roster = _read_json(self.active_root / "reviewer-roster.json")
                 binding = roster["oi18"]["productApprovalReceipt"]
@@ -2437,7 +2437,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         shutil.rmtree(self.active_root)
         shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
-        shutil.copyfile(CANONICAL_IDENTITY_V3, self.identity_path)
+        shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
         self.repin_active_recapture(
             "apphost-smoke.json",
             lambda document: document.__setitem__(
@@ -2489,7 +2489,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                 with self.subTest(relative=relative, timestamp=timestamp):
                     shutil.rmtree(self.active_root)
                     shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
-                    shutil.copyfile(CANONICAL_IDENTITY_V3, self.identity_path)
+                    shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
                     self.repin_active_recapture(
                         relative,
                         lambda document, value=timestamp, mutate=mutate: mutate(document, value),
@@ -2504,7 +2504,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         shutil.rmtree(self.active_root)
         shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
-        shutil.copyfile(CANONICAL_IDENTITY_V3, self.identity_path)
+        shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
         self.repin_active_recapture(
             "apphost-smoke.json",
             lambda document: document.__setitem__(
@@ -2531,7 +2531,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             with self.subTest(capture_name=capture_name):
                 shutil.rmtree(self.active_root)
                 shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
-                shutil.copyfile(CANONICAL_IDENTITY_V3, self.identity_path)
+                shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
                 manifest_path = self.active_root / "frontcomposer-runtime-inputs.json"
                 manifest = _read_json(manifest_path)
                 capture = _read_json(self.active_root / "recapture" / capture_name)
@@ -2584,7 +2584,7 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             with self.subTest(label=label):
                 shutil.rmtree(self.active_root)
                 shutil.copytree(CANONICAL_ACTIVE_EVIDENCE, self.active_root)
-                shutil.copyfile(CANONICAL_IDENTITY_V3, self.identity_path)
+                shutil.copyfile(CANONICAL_IDENTITY_V2, self.identity_path)
                 source = _read_json(self.active_root / source_name)
                 subject_path = self.active_root / "approval-subject.json"
                 subject = _read_json(subject_path)
@@ -4679,7 +4679,7 @@ raise SystemExit(evidence.main())
         text = summary.read_text(encoding="utf-8")
         self.assertIn("Historical Story 11.24 integrity: IMMUTABLE_ARCHIVE_VALID", text)
         self.assertIn("Prior Builds 35c3d1e5 compatibility archive: PRIOR_COMPATIBILITY_ARCHIVE_VALID", text)
-        self.assertIn("Active EventStore identity v3 and sealed evidence: ACTIVE_IDENTITY_AND_EVIDENCE_VALID", text)
+        self.assertIn("Active EventStore identity v2 and sealed evidence: ACTIVE_IDENTITY_AND_EVIDENCE_VALID", text)
         self.assertIn("Migration approval: OPEN: Missing named actor for required role: eventstore-maintainer", text)
         self.assertIn("Current provider verification: CURRENT_PROVIDER_PASSED", text)
         self.assertIn("Current authenticated AppHost smoke: AUTHENTICATED_APPHOST_PASSED", text)
@@ -4731,10 +4731,8 @@ raise SystemExit(evidence.main())
         required = (
             "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v1.json",
             "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v2.json",
-            "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v3.json",
             "_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md",
             "_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md",
-            "_bmad-output/implementation-artifacts/spec-11-25-eventstore-3-106-evidence-reconciliation.md",
             "tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-verification-handoff.md",
             *evidence.RUNTIME_PACT_INPUTS,
         )

@@ -38,12 +38,9 @@ SUBJECT_FROZEN_AT = "2026-08-10T07:06:11Z"
 CONSUMER_SCOPE = "Hexalith.FrontComposer Story 11.24"
 AUTHORIZED_ACTOR = "github:jpiquot"
 IDENTITY_V1_SHA256 = "80c93e4e865e4cac7532e8c96481aa9205b6e6918d2177352222715e42ff2157"
-IDENTITY_V2_SHA256 = "9167a5e34fc9ed6a913efe54c254817781281bb652e9b5dfaf7cd53eb3d6d661"
-ACTIVE_SOURCE_SHA = "2d680d7d08e00baef63f5b2aca98c6ad6fcc178d"
-ACTIVE_BUILDS_SHA = "87f6f27425666c540fb6db41800a3af1d3767e39"
-ACTIVE_VERSION = "3.106.0"
-PRIOR_SOURCE_SHA = "059f6a8917bfab26b85775be464840a1610dfdeb"
-PRIOR_VERSION = "3.103.0"
+ACTIVE_SOURCE_SHA = "059f6a8917bfab26b85775be464840a1610dfdeb"
+ACTIVE_BUILDS_SHA = "a32cb422749352cce8dec948aa3e78c8f00eb4cf"
+ACTIVE_VERSION = "3.103.0"
 PRIOR_BUILDS_SHA = "35c3d1e5b8a55a74a440b9c2cad4c5e18747b241"
 PRIOR_CAPTURE_SHA256 = {
     "apphost-smoke.json": "98fe33eebe8e69d549be0b188c9f76240284d6f1672a23a9b2891d8caf3fc707",
@@ -59,9 +56,9 @@ ACTIVE_REQUIRED_ROLES = DEFAULT_REQUIRED_ROLES
 OI18_REPLACEMENT_ROLE = "accountable-frontcomposer-maintainer"
 OI18_PREREQUISITE_ROLES = ("product-owner", "architect")
 POLICY_ROLES = (*DEFAULT_REQUIRED_ROLES, OI18_REPLACEMENT_ROLE, *OI18_PREREQUISITE_ROLES)
-ACTIVE_EVIDENCE_ROOT = "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3"
+ACTIVE_EVIDENCE_ROOT = "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2"
 ACTIVE_IDENTITY_PATH = (
-    "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v3.json"
+    "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v2.json"
 )
 ACTIVE_RECAPTURE_ROOT = f"{ACTIVE_EVIDENCE_ROOT}/recapture"
 LIVE_EVIDENCE_ROOT = (
@@ -6275,12 +6272,12 @@ def _validate_active(
         "submodulePointerChangedByApproval",
         "packageVersionChangedByApproval",
     }:
-        errors.append("Active identity does not contain the exact v3 fields.")
-    if identity.get("schema") != "hexalith.frontcomposer.eventstore-approved-runtime-identity.v3":
+        errors.append("Active identity does not contain the exact v2 fields.")
+    if identity.get("schema") != "hexalith.frontcomposer.eventstore-approved-runtime-identity.v2":
         errors.append("Active identity has an unexpected schema.")
     if identity.get("approvalRecord") != (
         "_bmad-output/implementation-artifacts/"
-        "spec-11-25-eventstore-3-106-evidence-reconciliation.md"
+        "spec-11-25-current-eventstore-release-identity-and-evidence.md"
     ):
         errors.append("Active identity does not name Story 11.25 as its traceability record.")
 
@@ -6297,15 +6294,15 @@ def _validate_active(
         errors.append("Active identity must not attribute a package-version change to approval.")
 
     expected_predecessor = {
-        "path": "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v2.json",
-        "sha256": IDENTITY_V2_SHA256,
+        "path": "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v1.json",
+        "sha256": IDENTITY_V1_SHA256,
         "supersededForActiveReleaseSelectionOnly": True,
     }
     if not _exact(identity.get("predecessor"), expected_predecessor):
-        errors.append("Active identity does not bind immutable identity v2 as its predecessor.")
+        errors.append("Active identity does not bind immutable identity v1 as its predecessor.")
     predecessor_path = artifact_root / expected_predecessor["path"]
-    if _sha256(predecessor_path, errors, "identity v2") != IDENTITY_V2_SHA256:
-        errors.append("Identity v2 is not byte-identical to its historical SHA-256.")
+    if _sha256(predecessor_path, errors, "identity v1") != IDENTITY_V1_SHA256:
+        errors.append("Identity v1 is not byte-identical to its historical SHA-256.")
 
     manifest_path = artifact_root / RUNTIME_INPUT_MANIFEST_PATH
     manifest_hash = _sha256(manifest_path, errors, "frontcomposer-runtime-inputs.json")
@@ -6325,8 +6322,8 @@ def _validate_active(
 
     prior = identity.get("priorCompatibility")
     expected_prior_tuple = {
-        "eventStoreSourceGitlink": PRIOR_SOURCE_SHA,
-        "eventStorePackageVersion": PRIOR_VERSION,
+        "eventStoreSourceGitlink": ACTIVE_SOURCE_SHA,
+        "eventStorePackageVersion": ACTIVE_VERSION,
         "buildsCatalogGitlink": PRIOR_BUILDS_SHA,
     }
     if (
@@ -6419,11 +6416,11 @@ def _validate_active(
     decision = _read_json(decision_path, errors, "recapture-decision.json")
     _scan_redaction(decision_path, errors)
     decision_source = {
-        "path": "_bmad-output/implementation-artifacts/spec-11-25-eventstore-3-106-evidence-reconciliation.md",
-        "sha256": "REPLACE_WITH_FINAL_SPEC_SHA256",
+        "path": "_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md",
+        "sha256": "ab84473f53fa80616d1bf3ecb4004889d81f1de5984a7d09d5dd1bb49b85a4aa",
     }
     expected_decision = {
-        "schema": "hexalith.frontcomposer.eventstore-runtime-recapture-decision.v3",
+        "schema": "hexalith.frontcomposer.eventstore-runtime-recapture-decision.v2",
         "source": decision_source,
         "activeTuple": active_tuple,
         "frontComposerRevision": revision,
@@ -6488,7 +6485,7 @@ def _validate_active(
     subject = _read_json(subject_path, errors, "approval-subject.json")
     _scan_redaction(subject_path, errors)
     expected_subject = {
-        "schema": "hexalith.frontcomposer.eventstore-runtime-approval-subject.v3",
+        "schema": "hexalith.frontcomposer.eventstore-runtime-approval-subject.v2",
         "predecessor": expected_predecessor,
         "activeTuple": active_tuple,
         "frontComposerRevision": revision,
@@ -6771,7 +6768,7 @@ def _validate_active(
         key: repository_provenance.get(key) for key in expected_repository
     }
     if not _exact(observed_repository, expected_repository):
-        errors.append("Current repository dependency/runtime provenance differs from active identity v3.")
+        errors.append("Current repository dependency/runtime provenance differs from active identity v2.")
 
     captured_provenance = {
         **expected_repository,
