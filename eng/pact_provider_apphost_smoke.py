@@ -1194,6 +1194,11 @@ def _evaluate_source_graph(
     properties = document.get("Properties") if isinstance(document, dict) else None
     items = document.get("Items") if isinstance(document, dict) else None
     if not isinstance(properties, dict) or not isinstance(items, dict):
+        print(
+            "AppHost MSBuild evaluation diagnostic: "
+            + _safe_process_diagnostic(result),
+            file=sys.stderr,
+        )
         return reject("apphost-msbuild-output-invalid")
     for name, expected in APPHOST_BUILD_PROPERTIES.items():
         actual = properties.get(name)
@@ -1456,6 +1461,24 @@ def _clip(text: str, limit: int = 4000) -> str:
     if len(text) <= limit:
         return text
     return text[-limit:]
+
+
+def _safe_process_diagnostic(result: CommandResult, limit: int = 2000) -> str:
+    """Return a bounded error tail, or hashes only when secret-shaped text is present."""
+    text = "\n".join(part for part in (result.stdout, result.stderr) if part).strip()
+    stdout_sha256 = hashlib.sha256(result.stdout.encode("utf-8")).hexdigest()
+    stderr_sha256 = hashlib.sha256(result.stderr.encode("utf-8")).hexdigest()
+    hashes = (
+        f"returnCode={result.returncode}; stdoutSha256={stdout_sha256}; "
+        f"stderrSha256={stderr_sha256}"
+    )
+    normalized = text.replace("Bearer FC_CONTRACT_TOKEN", "ALLOWLISTED_SYNTHETIC_TOKEN")
+    if any(pattern.search(normalized) for pattern in runtime_evidence.SECRET_PATTERNS):
+        return hashes + "; detail=redacted"
+    normalized = normalized.replace(str(ROOT), "$REPOSITORY")
+    for pattern in runtime_evidence.LOCAL_PATH_PATTERNS:
+        normalized = pattern.sub("$LOCAL/", normalized)
+    return hashes + "; detail=" + _clip(normalized, limit)
 
 
 def _query_provenance(headers: dict[str, str], document: dict[str, Any]) -> str:

@@ -821,6 +821,19 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
                 failure = json.loads(self.output.read_text(encoding="utf-8"))
                 self.assertIn("apphost.source-graph.not-exact", failure["reasonCodes"])
 
+    def test_process_diagnostic_redacts_secret_shaped_output(self) -> None:
+        diagnostic = smoke._safe_process_diagnostic(
+            smoke.CommandResult(
+                1,
+                "ordinary failure beneath /home/runner/work/project",
+                "password=must-not-escape",
+            )
+        )
+
+        self.assertIn("returnCode=1", diagnostic)
+        self.assertIn("detail=redacted", diagnostic)
+        self.assertNotIn("must-not-escape", diagnostic)
+
     def test_target_resolved_external_reference_path_fails_before_start(self) -> None:
         runtime = FakeRuntime()
         original_command = runtime.command
