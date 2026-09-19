@@ -81,7 +81,7 @@ public sealed class FrontComposerUiAppHostTests {
     }
 
     [Fact]
-    public void AppHost_TenantsSampleSuppressesRuntimeBuildAfterTheSealedPrebuild() {
+    public void AppHostTenantsSampleSuppressesRuntimeBuildAfterTheSealedPrebuild() {
         string root = FindRepoRoot();
         string metadata = File.ReadAllText(Path.Combine(
             root,
