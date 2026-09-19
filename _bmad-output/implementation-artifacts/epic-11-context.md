@@ -1,10 +1,10 @@
 # Epic 11 Context: Release Readiness Remediation Program (post-MVP quality hardening)
 
-<!-- Compiled from planning artifacts. Edit freely. Regenerate with compile-epic-context if planning docs change. -->
+<!-- Generated from planning artifacts. Regenerate with compile-epic-context if planning docs change. -->
 
 ## Goal
 
-Epic 11 closes the highest release-readiness blind spots left by the architecture-quality review so adopters and operators receive reliable runtime behavior, secure and diagnosable failure handling, stable package and route contracts, useful testing support, and enforceable maintainability standards before v1.0, without adding new user-facing scope or reopening completed Epics 1–10.
+Epic 11 closes the release-readiness risks identified by the architecture-quality review and subsequent acceptance evidence. It hardens runtime reliability, security, package and route contracts, testing support, maintainability enforcement, release identity, and artifact integrity before final v1.0 acceptance without adding product scope or reopening completed Epics 1–10.
 
 ## Stories
 
@@ -54,39 +54,24 @@ Epic 11 closes the highest release-readiness blind spots left by the architectur
 
 ## Requirements & Constraints
 
-Work is organized into runtime reliability/security, adopter testing/route integrity, contracts/package boundary, and maintainability/enforcement. Changes must preserve existing command, query, projection, public API, schema, generated-output, diagnostic, CLI/MCP wire, and package compatibility contracts unless an intentional migration and baseline update is approved. Release validation uses .NET 10, the `.slnx` solution, centralized dependencies, nullable analysis, and `TreatWarningsAsErrors=true`; changed surfaces must pass their focused tests plus applicable Governance, Contract, snapshot, compatibility, PublicAPI, generated-output, and Release gates.
+Remediation must preserve public API, schema, diagnostic, generated-output, CLI/MCP wire, and package compatibility unless a deliberate migration and baseline update is approved. Runtime changes must recover safely, prevent stale or cross-tenant state, maintain scoped-lifetime discipline, and never treat HTTP acceptance or a projection nudge as confirmed command success. Security, logs, telemetry, MCP responses, evidence, and snapshots must fail closed and exclude tokens, secrets, payloads, stack traces, unrestricted PII, and raw correlation identifiers.
 
-Security and support evidence must fail closed and exclude raw tokens, secrets, payloads, stack traces, unrestricted PII, and unbounded local paths. Runtime blind spots require durable regression coverage, including cross-request lifetimes, unlinked stylesheets, dead scoped CSS, and parameter-splat surfaces. Analyzer remediation must use built-in analyzers only, keep warnings-as-errors unchanged, avoid broad category or repository-wide suppressions, and retain only narrow, owned, reviewable exceptions. Mechanical cleanup must preserve behavior and public API shape.
-
-The remediation extension must restore the analyzer, generated-route, and FC-NIP documentation gates without weakening their assertions or reviving obsolete planning text. Runtime hardening must detect material fallback and view-scope changes, keep Testing and MCP identifiers canonical and evidence formatting non-fatal, use one redaction-safe correlation pseudonym across log families, and make story/sprint evidence contradictions fail closed.
+Build policy remains .NET 10, `.slnx`, centralized dependencies, nullable analysis, `TreatWarningsAsErrors=true`, and `AnalysisMode=Recommended` with built-in analyzers only. Exceptions must be narrow, owned, and reviewable; broad suppressions are forbidden. Changed surfaces require focused tests plus applicable default, Governance, Contract, snapshot, PublicAPI, compatibility, generated-output, accessibility, and release-evidence gates. Every review defect class needs a durable regression guard and verifiable adopter- or operator-visible outcome.
 
 ## Technical Decisions
 
-Generated commands use `/commands/{BoundedContext}/{CommandTypeName}`; module tabs use `/{module}/{tab}`, with projection flyouts remaining secondary navigation. The `Contracts` kernel stays netstandard2.0-clean and UI-neutral, while net10-only `Contracts.UI` owns Blazor/Fluent rendering contracts; SourceTools continues to depend only on the kernel. Shell routing owns pure route and label derivation, Infrastructure owns connection and polling workers, and telemetry remains cross-cutting.
+Generated commands use `/commands/{BoundedContext}/{CommandTypeName}`. Module tabs use `/{module}/{tab}` with one primary module entry and projection flyouts as secondary navigation. The UI-neutral `Contracts` kernel stays netstandard2.0-clean; net10-only `Contracts.UI` owns Blazor and Fluent rendering contracts, and SourceTools depends only on the kernel.
 
-MCP lifecycle state spans requests through a singleton store behind a scoped facade without captive scoped dependencies. EventStore authentication supports interactive circuits, token expiry, and sign-out eviction; projection realtime must recover after the default reconnect ladder and dispose concurrent work safely. Logging ownership is exclusive: security/fail-closed sites first, command-lifecycle/projection/polling hot paths second, and residual warning-or-higher sites last. Recommended analyzer adoption is staged through policy/exception classification, product/generator cleanup, test/sample cleanup, and repository-wide activation.
+MCP lifecycle state must survive request scopes without captive scoped dependencies. EventStore authentication must handle circuit lifetime, expiry, sign-out, and eviction. Projection realtime uses bounded, observable fallback polling and automatic recovery. Fallback comparison must detect material content changes, while view registration must reject or safely replace conflicting scope ownership. Logging uses source-generated sites, sanitized structured values, and one deterministic correlation pseudonymization contract.
 
-EventStore runtime adoption is an identity-alignment change, not a behavioral migration. Story 11.24
-and identity v1 are immutable historical authorization for `bb94d93e… / 3.91.1 / a8a50859…`; the
-2026-09-08 live capture at `059f6a89… / 3.103.0 / 35c3d1e5…` is prior compatibility evidence. The
-active release target is `059f6a89… / 3.103.0 / a32cb422…`. Story 11.25 creates a successor active
-record and recaptures provider-plus-AppHost evidence at that exact tuple. No semantic-compatibility
-exception or rollback is approved. Existing FrontComposer adapters, rollback paths, topology, and
-container ownership remain unchanged.
+The active EventStore release identity is selected by a successor record that binds the exact source, package, Builds catalog, approvals, and live evidence; historical authorization remains immutable and is not projected onto the current target. Artifact validation fails closed on missing, stale, contradictory, or non-resolving evidence.
 
 ## UX & Interaction Patterns
 
-Use Fluent UI Blazor v5 and Fluent 2 tokens, with WCAG 2.2 AA keyboard, focus, naming, live-region, reduced-motion, and forced-colors behavior. Realtime and command experiences must expose reconnecting, fallback, degraded, pending, rejected, and confirmed states without treating HTTP acceptance or a projection nudge as confirmed success. Visual fixes require rendered evidence and Governance guards that prevent dead styles, unlinked CSS, and legacy tokens from returning.
+Use FrontComposer and Fluent UI Blazor v5 with Fluent 2 tokens. Reconnecting, fallback, degraded, pending, rejected, and confirmed states must remain visible and accessible without relying on color, motion, hover, or noisy repeated announcements. Route activation and invalid-route fallback require deterministic focus and unambiguous route-level heading evidence. UI changes retain WCAG 2.2 AA keyboard, reflow, zoom, reduced-motion, and forced-colors behavior.
 
 ## Cross-Story Dependencies
 
-Story 11.0 and the signed-off information-architecture gate precede Story 11.7. Story 11.8 precedes
-Stories 11.11–11.14. Stories 11.17, 11.18, and 11.19 are nonimplementable decomposition parents; only
-their named children carry queue status. Logging children follow the security → hot-path → residual
-ordering. The completed analyzer program was strictly sequential: 11.20 → 11.21 → 11.22 → 11.23.
+The route decision and information-architecture gate precede route implementation; the Contracts split decision precedes its assembly, relocation, migration, and documentation work. Stories 11.17, 11.18, and 11.19 are nonimplementable parents; only their named children carry delivery state. Logging ownership proceeds security/fail-closed, then hot paths, then residual warning-or-higher sites.
 
-The approved retrospective-remediation order is 11.25; then 11.26–11.28; an Epic 11 acceptance
-checkpoint; 11.29–11.31; 11.32; then final Epic 11 acceptance. Stories within each three-story group
-may run in parallel. Story 11.32 runs after the runtime/evidence stories so its validator covers final
-artifacts. The first checkpoint is evidence-based and does not close `epic-11` while remediation
-stories remain open.
+The current remediation sequence is 11.25; then 11.26–11.28; an evidence-based acceptance checkpoint; 11.29–11.31; 11.32; then final acceptance. Stories inside each three-story group may proceed in parallel. Artifact integrity follows runtime and evidence hardening so it validates the final state.
