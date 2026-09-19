@@ -884,12 +884,12 @@
         "caller": {
           "repository": "github.com/hexalith/hexalith.frontcomposer",
           "workflow_path": ".github/workflows/ci.yml",
-          "blob_sha256": "d80d1a8fe7e2f03ede4f4f82a656f26c1b59b1b6b7545dcd65bc0d71d7d350e3"
+          "blob_sha256": "d1b26d5edba483b7b5cf1a087a3b99e7e622df3abfec0605c5c94b24a5b096b2"
         },
         "reusable": {
           "repository": "github.com/hexalith/hexalith.builds",
           "workflow_path": ".github/workflows/domain-ci.yml",
-          "commit": "3f0e3595be693fce56a37648c0bd0f89390f5fd3",
+          "commit": "4eb33928a1d8c7775f97221cf9edc171db0cb5f8",
           "blob_sha256": "2676459284da32132569d3e09ddb77e2f173c9e772df217d617d9bd2e347daf0"
         },
         "actions": [
@@ -932,7 +932,7 @@
           {
             "repository": "github.com/hexalith/hexalith.builds",
             "path": "Github/dapr-init/action.yml",
-            "commit": "3f0e3595be693fce56a37648c0bd0f89390f5fd3",
+            "commit": "4eb33928a1d8c7775f97221cf9edc171db0cb5f8",
             "blob_sha256": "0ca28c2baada41bc46276325be834cf1f404fc184c290927d5649c1090fa87c6"
           },
           {
@@ -944,13 +944,13 @@
           {
             "repository": "github.com/hexalith/hexalith.builds",
             "path": "Github/governed-provenance/action.yml",
-            "commit": "3f0e3595be693fce56a37648c0bd0f89390f5fd3",
+            "commit": "4eb33928a1d8c7775f97221cf9edc171db0cb5f8",
             "blob_sha256": "29ba25ec9bdc0b81a4953d8182dfb5fe7a204ab8cbac062e03c506626b1cf2d1"
           },
           {
             "repository": "github.com/hexalith/hexalith.builds",
             "path": "Github/initialize-build/action.yml",
-            "commit": "3f0e3595be693fce56a37648c0bd0f89390f5fd3",
+            "commit": "4eb33928a1d8c7775f97221cf9edc171db0cb5f8",
             "blob_sha256": "1b249e2dee86cbdc10cb517aea810566903ac7e5a443c348ff2e58fc9686cad0"
           },
           {
@@ -966,7 +966,7 @@
             "blob_sha256": "c96eafd350981ad6ebc4319b11da2ee8baf397b491a247ab918f804970a0ee92"
           }
         ],
-        "closure_digest": "010c68155ab61b7ba21217d6affd199c9fbbaf1c159386ff6278ee4183cf1830"
+        "closure_digest": "b38d68b1556cb765eac9129398f8a5613deac2379e59b95aee15b6b1f8f05934"
       }
     ],
     "release": [
