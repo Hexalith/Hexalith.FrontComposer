@@ -4,7 +4,7 @@ type: 'bugfix'
 created: '2026-09-19'
 status: blocked
 baseline_commit: '257215600ee2cf3c921014d27c07b625fee7c59d'
-baseline_revision: '257215600ee2cf3c921014d27c07b625fee7c59d'
+baseline_revision: 50490798059df61d8ef9617fe8263b9f29ee670f
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -91,8 +91,9 @@ The row helper returns a digest rather than retaining canonical payload. Its exp
 Status: blocked
 Blocking condition: implementation verification failed
 
-- Focused Release Shell test build passed with 0 warnings and 0 errors.
+- The focused Release Shell test build passed with 0 warnings and 0 errors.
 - `ProjectionFallbackRefreshSchedulerTests` passed 22/22 with no skips; every I/O and edge-case matrix row ran and passed.
 - The Release solution build passed with 0 warnings and 0 errors, and staged/unstaged whitespace checks passed.
-- The applicable default Shell lane passed 2,730/2,732. Its only failures were the two mandatory external prerequisites named by the intent contract: `FluentConformanceTests.Generator_emits_v5_Header_attribute_for_accordion_items` against `CommandPageEmitter.cs`, and `CiGovernanceTests.EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval` against `eng/pact_provider_apphost_smoke.py`.
-- Story 11.29 explicitly forbids changing either prerequisite surface, so the full-lane acceptance criterion cannot pass within this story's authorized scope.
+- The applicable default Shell lane passed 2,731/2,733. `CiGovernanceTests.EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval` expected the `Hexalith.Builds` gitlink at `59862a00d72ef8c7b3e3be020fa967ebd89507a0` but the repository pins `410bd595f9e1c0f686e1edde7699517c47c8f126`.
+- `InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds` expected Verify `33.1.0` but the pinned Builds catalog supplies `33.0.2`.
+- Story 11.29 requires these external prerequisites to be repaired before resumption and does not authorize changing their dependency-governance surfaces, so its full-lane acceptance criterion cannot pass within this story.
