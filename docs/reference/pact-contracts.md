@@ -130,12 +130,14 @@ The provider receipt step also writes `provider-package-ledger.json` beside the 
 smoke writes `apphost-package-ledger.json` beside its packet. Both sidecars are part of the evidence set:
 the lane fails closed if either is missing, altered, or unbound.
 
-### Prepare the Builds-successor capture
+### Prepare the current runtime successor capture
 
 Identity v3 is sealed at EventStore source `ba7ac196e60db8820525961791eccfacec24633f`,
 package `3.106.0`, and Builds catalog `4f522a8caa62ad82584bdf56d54e16109b717b1c`.
-The selected successor changes only the Builds catalog to
-`410bd595f9e1c0f686e1edde7699517c47c8f126`. Do not rewrite or relabel identity v3.
+The selected successor advances the EventStore source to
+`2cf9bf49b4858db4b83a05e47b7bd280dc51c826` and the Builds catalog to
+`2fba3497043fe5ffcfe4dc44c51a09eae9b950ab`, while retaining package `3.106.0`.
+Do not rewrite or relabel identity v3.
 After the preparation merge is pushed to `main`, dispatch the target-bound capture with its exact
 40-hex merge revision:
 
@@ -151,9 +153,9 @@ gh workflow run quality.yml \
   --repo Hexalith/Hexalith.FrontComposer \
   --ref main \
   -f frontcomposer_revision="$local_main_revision" \
-  -f eventstore_source_revision=ba7ac196e60db8820525961791eccfacec24633f \
+  -f eventstore_source_revision=2cf9bf49b4858db4b83a05e47b7bd280dc51c826 \
   -f eventstore_package_version=3.106.0 \
-  -f builds_catalog_revision=410bd595f9e1c0f686e1edde7699517c47c8f126
+  -f builds_catalog_revision=2fba3497043fe5ffcfe4dc44c51a09eae9b950ab
 ```
 
 The command refuses to dispatch unless the checked-out local `main` and the hosted `main` resolve to
@@ -169,7 +171,7 @@ This is phase 1 only. Download and review that six-file artifact without copying
 A later phase 2 change may import those exact bytes, record the decision and approval subject after the
 capture timestamps, and create identity v4. Until then, the v4 identity and evidence tree remain absent,
 receipts remain empty, `migrationApprovalClaimed=false`, and identity v3 deliberately fails active
-selection against the successor Builds gitlink.
+selection against the successor tuple.
 
 Re-capture rules:
 
@@ -183,8 +185,9 @@ Re-capture rules:
 
 Identity v3 is sealed historical compatibility for EventStore source
 `ba7ac196e60db8820525961791eccfacec24633f`, package `3.106.0`, and Builds catalog
-`4f522a8caa62ad82584bdf56d54e16109b717b1c`. The current checkout target keeps that EventStore
-source and package but selects Builds catalog `410bd595f9e1c0f686e1edde7699517c47c8f126`.
+`4f522a8caa62ad82584bdf56d54e16109b717b1c`. The current checkout target
+selects EventStore source `2cf9bf49b4858db4b83a05e47b7bd280dc51c826`, package `3.106.0`, and Builds catalog
+`2fba3497043fe5ffcfe4dc44c51a09eae9b950ab`.
 
 Identity v4 remains pending genuine hosted provider and authenticated AppHost evidence for that exact
 target. No v4 identity, evidence tree, decision, approval subject, or receipt is present.

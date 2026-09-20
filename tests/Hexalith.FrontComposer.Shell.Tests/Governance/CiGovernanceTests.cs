@@ -3896,8 +3896,8 @@ public sealed class CiGovernanceTests {
         const string activePacketSourceSha = "ba7ac196e60db8820525961791eccfacec24633f";
         const string activePacketBuildsSha = "4f522a8caa62ad82584bdf56d54e16109b717b1c";
         const string sealedV3IdentitySha = "6dc9aaa586cf35531de112bd68dd4d724a81d7ad76a11930684e8e9fe6c98892";
-        const string currentSourceSha = "ba7ac196e60db8820525961791eccfacec24633f";
-        const string currentBuildsSha = "410bd595f9e1c0f686e1edde7699517c47c8f126";
+        const string currentSourceSha = "2cf9bf49b4858db4b83a05e47b7bd280dc51c826";
+        const string currentBuildsSha = "2fba3497043fe5ffcfe4dc44c51a09eae9b950ab";
         const string currentVersion = "3.106.0";
         // The immutable Story 11.24 owner capture remains historical evidence. Current source,
         // package, and Builds values are compatibility provenance, not migration approval.
@@ -4107,6 +4107,10 @@ public sealed class CiGovernanceTests {
         contractValidator.ShouldContain("$PrepareRuntimeSuccessor");
         contractValidator.ShouldContain("--prepare-runtime-successor");
         contractValidator.ShouldContain("--successor-builds-catalog-revision");
+        string runtimeEvidenceValidator = File.ReadAllText(Path.Combine(root, "eng/eventstore_runtime_evidence.py"));
+        runtimeEvidenceValidator.ShouldContain($"SUCCESSOR_SOURCE_SHA = \"{currentSourceSha}\"");
+        runtimeEvidenceValidator.ShouldContain($"SUCCESSOR_BUILDS_SHA = \"{currentBuildsSha}\"");
+        runtimeEvidenceValidator.ShouldContain($"SUCCESSOR_VERSION = \"{currentVersion}\"");
         liveProviderLane.ShouldContain("export NUGET_PACKAGES=\"$provider_packages\"");
         liveProviderLane.ShouldContain("--write-runtime-input-manifest");
         liveProviderLane.ShouldContain("--runtime-input-manifest-output \"$runtime_manifest\"");
@@ -4335,9 +4339,16 @@ public sealed class CiGovernanceTests {
         string pactContracts = File.ReadAllText(Path.Combine(root, "docs/reference/pact-contracts.md"));
         pactContracts.ShouldContain("--repo Hexalith/Hexalith.FrontComposer");
         pactContracts.ShouldContain("test \"$local_main_revision\" = \"$remote_main_revision\"");
+        pactContracts.ShouldContain($"-f eventstore_source_revision={currentSourceSha}");
+        pactContracts.ShouldContain($"-f eventstore_package_version={currentVersion}");
+        pactContracts.ShouldContain($"-f builds_catalog_revision={currentBuildsSha}");
         pactContracts.ShouldContain($"`{activePacketSourceSha}`, package `{currentVersion}`, and Builds catalog");
         pactContracts.ShouldContain($"`{activePacketBuildsSha}`. The current checkout target");
-        pactContracts.ShouldContain($"selects Builds catalog `{currentBuildsSha}`");
+        Regex.IsMatch(
+                pactContracts,
+                $@"selects EventStore source `{currentSourceSha}`, package `{currentVersion}`, and Builds catalog\s+`{currentBuildsSha}`",
+                RegexOptions.CultureInvariant)
+            .ShouldBeTrue("the operator guide must bind the exact current successor tuple");
         pactContracts.ShouldContain("Identity v4 remains pending genuine hosted provider and authenticated AppHost evidence");
         pactContracts.ShouldContain("Migration approval remains open");
         pactContracts.ShouldNotContain("### Current reconciliation outcome");

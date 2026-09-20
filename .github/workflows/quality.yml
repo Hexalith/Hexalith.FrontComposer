@@ -202,9 +202,9 @@ jobs:
         shell: bash
         env:
           TARGET_FRONTCOMPOSER_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.frontcomposer_revision || github.sha }}
-          TARGET_EVENTSTORE_SOURCE_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.eventstore_source_revision || 'ba7ac196e60db8820525961791eccfacec24633f' }}
+          TARGET_EVENTSTORE_SOURCE_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.eventstore_source_revision || '2cf9bf49b4858db4b83a05e47b7bd280dc51c826' }}
           TARGET_EVENTSTORE_PACKAGE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.eventstore_package_version || '3.106.0' }}
-          TARGET_BUILDS_CATALOG_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.builds_catalog_revision || '410bd595f9e1c0f686e1edde7699517c47c8f126' }}
+          TARGET_BUILDS_CATALOG_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.builds_catalog_revision || '2fba3497043fe5ffcfe4dc44c51a09eae9b950ab' }}
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = "refs/heads/main"
@@ -424,9 +424,9 @@ jobs:
             -RequireProviderVerification `
             -PrepareRuntimeSuccessor `
             -SuccessorFrontComposerRevision "${{ github.sha }}" `
-            -SuccessorEventStoreSourceRevision "ba7ac196e60db8820525961791eccfacec24633f" `
+            -SuccessorEventStoreSourceRevision "2cf9bf49b4858db4b83a05e47b7bd280dc51c826" `
             -SuccessorEventStorePackageVersion "3.106.0" `
-            -SuccessorBuildsCatalogRevision "410bd595f9e1c0f686e1edde7699517c47c8f126" `
+            -SuccessorBuildsCatalogRevision "2fba3497043fe5ffcfe4dc44c51a09eae9b950ab" `
             -AppHostPackageRoot "" `
             -ProviderVerificationReport "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json"
 
