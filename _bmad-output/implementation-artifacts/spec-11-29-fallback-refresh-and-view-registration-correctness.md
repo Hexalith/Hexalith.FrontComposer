@@ -24,7 +24,7 @@ deferred: []
 
 ## Boundaries & Constraints
 
-**Always:** Preserve the public `ProjectionFallbackLane` and scheduler interfaces, scoped circuit lifetime, deterministic lane ordering/budgets, identical-registration refcounting, disposal-safe cache cleanup, tenant isolation, and generated views' existing dispose-before-reregister behavior. Canonicalize object properties ordinally, preserve array order, bound signature work/material, and retain changed-versus-unchanged behavior without logging row or tenant data. Treat the two recorded full-lane failures in `FluentConformanceTests.Generator_emits_v5_Header_attribute_for_accordion_items` and `CiGovernanceTests.EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval` as external prerequisites: they must be repaired outside Story 11.29 before this story is re-armed or resumed, and the applicable default Shell lane must then pass in full.
+**Always:** Preserve the public `ProjectionFallbackLane` and scheduler interfaces, scoped circuit lifetime, deterministic lane ordering/budgets, identical-registration refcounting, disposal-safe cache cleanup, tenant isolation, and generated views' existing dispose-before-reregister behavior. Canonicalize object properties ordinally, preserve array order, bound signature work/material, and retain changed-versus-unchanged behavior without logging row or tenant data. Treat every applicable default-Shell-lane failure outside Story 11.29's authorized surfaces as an external prerequisite, regardless of which test names an earlier run recorded: every such failure must be repaired outside Story 11.29 before this story is re-armed or resumed, and the applicable default Shell lane must then pass in full.
 
 **Never:** Treat row count or reference identity as content equality; let an equal/304 validator suppress rebuilding a required missing `(ViewKey, Skip)` page; mutate an incumbent lane after rejecting a conflicting registration; silently replace a live owner; expose scope/query values in conflict errors; change generator output, public contracts, `sprint-status.yaml`, or unrelated deferred work.
 
@@ -63,11 +63,12 @@ deferred: []
 **Acceptance Criteria:**
 - Given deterministic fixtures for all matrix cases, when the focused scheduler class and applicable default Shell lane run, then equal-count content changes and missing reducer pages dispatch exactly when material, equivalent content and registrations do no duplicate work, and conflicting live scope/query registrations cannot leak across tenants.
 - Given the completed implementation, when the Release solution build runs, then public/API, analyzer, nullable, warnings-as-errors, and generated-output contracts remain green without generator or snapshot drift.
-- Given the two recorded external prerequisite failures, when Story 11.29 is re-armed and verification resumes, then those failures have already been repaired outside this story and the applicable default Shell lane passes in full; neither a baseline waiver nor a Story 11.29 change to `CommandPageEmitter.cs` or `eng/pact_provider_apphost_smoke.py` satisfies this criterion.
+- Given any applicable default-Shell-lane failure outside Story 11.29's authorized surfaces, when Story 11.29 is re-armed and verification resumes, then every such failure has already been repaired outside this story and the applicable default Shell lane passes in full; no historical test-name list limits the prerequisite set, and neither a baseline waiver nor a Story 11.29 change to dependency-governance or other unrelated surfaces satisfies this criterion.
 
 ## Spec Change Log
 
 - 2026-09-19: Clarified that the two pre-existing default-Shell-lane failures are mandatory external prerequisites, not work authorized by Story 11.29 and not waivable baseline failures.
+- 2026-09-20: Generalized the prerequisite rule to every out-of-scope default-Shell-lane failure so changing external failure names cannot stale or narrow the full-lane gate.
 
 ## Review Triage Log
 
