@@ -135,7 +135,7 @@ the lane fails closed if either is missing, altered, or unbound.
 Identity v3 is sealed at EventStore source `ba7ac196e60db8820525961791eccfacec24633f`,
 package `3.106.0`, and Builds catalog `4f522a8caa62ad82584bdf56d54e16109b717b1c`.
 The selected successor changes only the Builds catalog to
-`59862a00d72ef8c7b3e3be020fa967ebd89507a0`. Do not rewrite or relabel identity v3.
+`410bd595f9e1c0f686e1edde7699517c47c8f126`. Do not rewrite or relabel identity v3.
 After the preparation merge is pushed to `main`, dispatch the target-bound capture with its exact
 40-hex merge revision:
 
@@ -153,7 +153,7 @@ gh workflow run quality.yml \
   -f frontcomposer_revision="$local_main_revision" \
   -f eventstore_source_revision=ba7ac196e60db8820525961791eccfacec24633f \
   -f eventstore_package_version=3.106.0 \
-  -f builds_catalog_revision=59862a00d72ef8c7b3e3be020fa967ebd89507a0
+  -f builds_catalog_revision=410bd595f9e1c0f686e1edde7699517c47c8f126
 ```
 
 The command refuses to dispatch unless the checked-out local `main` and the hosted `main` resolve to
@@ -184,7 +184,7 @@ Re-capture rules:
 Identity v3 is sealed historical compatibility for EventStore source
 `ba7ac196e60db8820525961791eccfacec24633f`, package `3.106.0`, and Builds catalog
 `4f522a8caa62ad82584bdf56d54e16109b717b1c`. The current checkout target keeps that EventStore
-source and package but selects Builds catalog `59862a00d72ef8c7b3e3be020fa967ebd89507a0`.
+source and package but selects Builds catalog `410bd595f9e1c0f686e1edde7699517c47c8f126`.
 
 Identity v4 remains pending genuine hosted provider and authenticated AppHost evidence for that exact
 target. No v4 identity, evidence tree, decision, approval subject, or receipt is present.

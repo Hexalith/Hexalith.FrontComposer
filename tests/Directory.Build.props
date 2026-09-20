@@ -4,7 +4,7 @@
 
   <PropertyGroup>
     <!-- The owner-approved five-year Verify sponsorship term ends on 2031-09-17.
-         Verify 33.1 requires a bounded private-sponsor attestation while the owner's account is
+         Verify 33.0.2 requires a bounded private-sponsor attestation while the owner's account is
          absent from the package's bundled public-sponsor snapshot. Renew this at most annually. -->
     <FrontComposerVerifySponsorshipApprovedUntil>2031-09-17</FrontComposerVerifySponsorshipApprovedUntil>
     <Verify_GitHubSponsorAccount>jpiquot</Verify_GitHubSponsorAccount>

@@ -1859,7 +1859,14 @@ def assert_profiles_well_formed(policy: dict[str, Any]) -> None:
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default=".", help="FrontComposer root working directory")
-    parser.add_argument("--policy", default=None, help="Path to dependency-graph-policy.json (default: <root>/eng/dependency-graph-policy.json)")
+    parser.add_argument(
+        "--policy",
+        default=None,
+        help=(
+            "Explicit dependency policy path for graph/validate; validate otherwise reads "
+            "eng/dependency-graph-policy.json from --commit, while graph uses the worktree file"
+        ),
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     graph_cmd = sub.add_parser("graph", help="Collect and emit the canonical v1 graph envelope")
@@ -1993,8 +2000,15 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps({"ok": True, "evidence": evidence}, indent=2, sort_keys=True))
             return 0
 
-        policy = load_policy(policy_path)
         commit = require_commit(args.commit, "--commit")
+        if args.command == "validate" and args.policy is None:
+            policy, _policy_raw, _policy_coordinates = load_policy_at_commit(root_dir, commit)
+        else:
+            policy = load_policy(policy_path)
+        if args.command == "validate" and policy.get("__legacy_registry_migration__") is True:
+            raise GraphError(
+                "validate requires a strict committed policy; legacy policy migration is non-executable"
+            )
         envelope = collect_graph(root_dir, args.root_identity, commit, policy)
         if args.command == "graph":
             print(json.dumps({"ok": True, "envelope": envelope}, indent=2, sort_keys=True))

@@ -2,9 +2,10 @@
 title: 'Repair Builds Governance Prerequisites Blocking Story 11.29'
 type: 'bugfix'
 created: '2026-09-20'
-status: 'ready-for-dev'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
+baseline_commit: '2dd5279639100bb6f6a4154bfbb8e88eba1741ba'
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-eventstore-builds-runtime-compatibility-successor.md'
@@ -52,9 +53,9 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `eng/eventstore_runtime_evidence.py`, `.github/workflows/quality.yml`, `CiGovernanceTests.cs`, and `docs/reference/pact-contracts.md` -- replace the obsolete active successor target with the existing `410bd595...` gitlink while preserving historical tuples and the root submodule pointer.
-- [ ] `eng/dependency-graph-policy.json` and `tests/Directory.Build.props` -- restore Verify and Verify.XunitV3 expectations to Builds-owned `33.0.2` and correct the adjacent active explanatory evidence.
-- [ ] Repository history -- create only the authorized local prerequisite commit needed for committed-object governance; do not include Story 11.29 or unrelated paths, and do not push.
+- [x] `eng/eventstore_runtime_evidence.py`, `.github/workflows/quality.yml`, `CiGovernanceTests.cs`, and `docs/reference/pact-contracts.md` -- replace the obsolete active successor target with the existing `410bd595...` gitlink while preserving historical tuples and the root submodule pointer.
+- [x] `eng/dependency-graph-policy.json` and `tests/Directory.Build.props` -- restore Verify and Verify.XunitV3 expectations to Builds-owned `33.0.2` and correct the adjacent active explanatory evidence.
+- [x] Repository history -- create only the authorized local prerequisite commit needed for committed-object governance; do not include Story 11.29 or unrelated paths, and do not push.
 
 **Acceptance Criteria:**
 - Given the ratified Builds revision and its catalog, when both named governance facts run, then they pass for exact current-provenance and catalog-authority reasons without exclusions.
@@ -64,9 +65,27 @@ context:
 
 ## Implementation Notes
 
+- Aligned the active EventStore successor validator, hosted workflow defaults, exact governance assertion, and operator documentation to the retained root Builds gitlink `410bd595f9e1c0f686e1edde7699517c47c8f126`; the sealed v3 packet remains bound to `4f522a8caa62ad82584bdf56d54e16109b717b1c`.
+- Restored the FrontComposer semantic catalog mirror to the selected Builds catalog's Verify and Verify.XunitV3 `33.0.2` values and corrected the adjacent SponsorCheck explanation.
+- Made the default dependency-graph `validate --commit` path load policy bytes from the selected commit rather than the worktree, with a regression test. This preserves the committed-object boundary: the focused catalog fact remains red before this repair is committed and evaluates the repaired policy only afterward.
+
 ## Spec Change Log
 
+- 2026-09-20: Implemented the scoped Builds governance repair and enforced committed-policy validation for the acceptance path.
+
 ## Review Triage Log
+
+| ID | Layer | Verdict | Route | Evidence |
+|---|---|---|---|---|
+| BH-1 | Blind Hunter | false | reject | The validation caller supplies the exact commit and consumes the response synchronously; unlike sealed `diff` evidence, this response is not a persisted provenance artifact, so omitting a redundant policy coordinate does not produce the claimed governance ambiguity. |
+| BH-2 | Blind Hunter | medium | defer | `graph --commit` still loads the worktree policy, so an old commit can be graphed differently across checkouts. That behavior predates this repair and is not used by either named acceptance fact. |
+| BH-3 | Blind Hunter | low | patch | The global `--policy` help still advertises the worktree file as the unconditional default even though default `validate` now loads the selected commit's blob; this directly misleads CLI users. |
+| BH-4 | Blind Hunter | medium | patch | The new unit test mocks the Git/blob, graph, and semantic boundaries, so it cannot prove the matrix's worktree-versus-commit behavior. A real temporary-repository regression is required. |
+| BH-5 | Blind Hunter | low | reject | The explicit `--policy` escape hatch is uncommon and unchanged in observable behavior; a separate mock-only branch test adds maintenance without addressing the matrix's committed-object risk. |
+| BH-6 | Blind Hunter | false | reject | `## Verification` already contains the focused build, two named facts, complete default Shell lane, solution build, and whitespace commands; the section is not empty. |
+| VG-1 | Verification Gap | medium | patch | Pre-verified review evidence confirms no test keeps Git/blob and semantic boundaries real while committed and worktree policy bytes differ; the current mock test would miss a regression inside `load_policy_at_commit`. |
+| EC-1 | Edge Case Hunter | medium | patch | Running `validate --commit 52f4327ca9ded051750b8ae38f8b8b752148548d` returns `ok: true` after `load_policy_at_commit` invents strict registry and limit fields for that legacy blob. Validation must reject the migration marker. |
+| EC-2 | Edge Case Hunter | low | patch | The parser's default-policy help text is demonstrably stale for `validate` and should state the committed default plus explicit override behavior. |
 
 ## Verification
 

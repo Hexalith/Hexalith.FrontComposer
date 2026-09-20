@@ -163,7 +163,8 @@ python3 -m py_compile eng/dependency_graph.py eng/dependency_handoff.py eng/work
 python3 eng/dependency_graph.py --root . graph --commit "$(git rev-parse HEAD)"
 
 # Collect the graph AND evaluate every selector's semantic profile (what the C# Governance
-# test actually invokes).
+# test actually invokes). By default, validate reads the policy blob from --commit;
+# pass global --policy <path> before validate only as an explicit override.
 python3 eng/dependency_graph.py --root . validate --commit "$(git rev-parse HEAD)"
 
 # Compare one exact push base/candidate pair. Pull requests use --event pull_request and

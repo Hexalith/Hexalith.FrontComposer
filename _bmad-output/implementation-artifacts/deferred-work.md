@@ -9693,3 +9693,7 @@ source_spec: `spec-11-28-fc-nip-semantic-fixture-alignment.md`
 severity: medium
 reason: Both shared-manifest consumers locate only the first exact heading and validate that table. A later conflicting duplicate heading would be ignored, allowing documentation contradiction to escape the governance guard. This behavior predates Story 11.28 and is not caused by its fixture alignment.
 status: open
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-repair-builds-governance-prerequisites-blocking-11-29.md`
+  summary: Make `dependency_graph.py graph --commit` load its default policy from the selected commit instead of the worktree.
+  evidence: The graph command still resolves the default policy from `eng/dependency-graph-policy.json` in the worktree, so identical commit input can yield different envelopes across checkouts; this behavior predates the current validation repair and is not exercised by its acceptance facts.

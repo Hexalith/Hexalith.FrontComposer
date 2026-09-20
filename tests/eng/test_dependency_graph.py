@@ -1638,6 +1638,140 @@ class PolicyShapeTests(unittest.TestCase):
         )
         return copy.deepcopy(policy["profiles"]["frontcomposer-catalog-v1"])
 
+    @staticmethod
+    def _minimal_validate_policy(root_identity: str, builds_identity: str) -> dict:
+        evidence_only = {
+            "disposition": "evidence-only",
+            "solution": None,
+            "builds_contract_source": "none",
+            "restore_argv": None,
+            "build_argv": None,
+        }
+        return {
+            "schema": dg.POLICY_SCHEMA,
+            "builds_identity": builds_identity,
+            "trusted_identities": [
+                {"identity": root_identity, "local_path": "."},
+                {"identity": builds_identity, "local_path": "references/Builds"},
+            ],
+            "semantic_profiles": {
+                root_identity: "root-policy-a",
+                builds_identity: "builds-policy",
+            },
+            "profiles": {
+                "root-policy-a": {
+                    "selected_catalog_required_packages": {"Some.Package": "1.0.0"},
+                },
+                "builds-policy": {},
+            },
+            "module_build_registry": {
+                root_identity: copy.deepcopy(evidence_only),
+                builds_identity: copy.deepcopy(evidence_only),
+            },
+            "resource_limits": {
+                "max_edges": 4096,
+                "max_ls_tree_bytes_per_owner_commit": 67108864,
+                "max_gitmodules_blob_bytes": 1048576,
+                "max_catalog_blob_bytes": 4194304,
+                "max_contract_tree_files": 16384,
+                "max_contract_tree_blob_bytes": 16777216,
+                "max_contract_tree_total_bytes": 268435456,
+                "max_workflow_closure_depth": 16,
+                "max_workflow_closure_sources": 256,
+                "max_workflow_source_blob_bytes": 1048576,
+                "max_workflow_source_total_bytes": 16777216,
+            },
+            "evaluator_authorizations": {"ci": [], "release": [], "post_release": []},
+        }
+
+    def test_validate_uses_policy_from_selected_commit_by_default(self) -> None:
+        root_identity = GraphFixture.identity("Root")
+        builds_identity = GraphFixture.identity("Builds")
+        root = TempGitRepo(self.tmp_path / "Root")
+        root.write_text("Directory.Packages.props", OWNER_SHIM)
+        builds = TempGitRepo(root.root / "references" / "Builds")
+        builds.write_bytes("Props/Directory.Packages.props", BASELINE_CATALOG)
+        builds_commit = builds.commit()
+        root.add_submodule("Builds", "references/Builds", GraphFixture.url("Builds"), builds_commit)
+
+        policy_a = self._minimal_validate_policy(root_identity, builds_identity)
+        root.write_text(dg.POLICY_PATH, json.dumps(policy_a))
+        policy_a_commit = root.commit()
+
+        policy_b = copy.deepcopy(policy_a)
+        policy_b["semantic_profiles"][root_identity] = "root-policy-b"
+        policy_b["profiles"]["root-policy-b"] = {
+            "selected_catalog_required_packages": {"Some.Package": "2.0.0"},
+        }
+        (root.root / dg.POLICY_PATH).write_text(json.dumps(policy_b), encoding="utf-8")
+
+        completed = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "eng" / "dependency_graph.py"),
+                "--root",
+                str(root.root),
+                "validate",
+                "--commit",
+                policy_a_commit,
+                "--root-identity",
+                root_identity,
+            ],
+            cwd=str(root.root),
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+        payload = json.loads(completed.stdout)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["semantics"]["selectors_validated"], 1)
+        self.assertIn("under profile root-policy-a", payload["semantics"]["diagnostics"][0])
+        self.assertNotIn("root-policy-b", payload["semantics"]["diagnostics"][0])
+
+    def test_validate_rejects_legacy_committed_policy_before_graph_collection(self) -> None:
+        root_identity = GraphFixture.identity("Root")
+        builds_identity = GraphFixture.identity("Builds")
+        root = TempGitRepo(self.tmp_path / "Root")
+        legacy_policy = self._minimal_validate_policy(root_identity, builds_identity)
+        for row in legacy_policy["module_build_registry"].values():
+            del row["restore_argv"]
+            del row["build_argv"]
+        for name in (
+            "max_workflow_closure_depth",
+            "max_workflow_closure_sources",
+            "max_workflow_source_blob_bytes",
+            "max_workflow_source_total_bytes",
+        ):
+            del legacy_policy["resource_limits"][name]
+        root.write_text(dg.POLICY_PATH, json.dumps(legacy_policy))
+        legacy_commit = root.commit()
+
+        completed = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "eng" / "dependency_graph.py"),
+                "--root",
+                str(root.root),
+                "validate",
+                "--commit",
+                legacy_commit,
+                "--root-identity",
+                root_identity,
+            ],
+            cwd=str(root.root),
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(completed.returncode, 1, completed.stdout + completed.stderr)
+        payload = json.loads(completed.stdout)
+        self.assertFalse(payload["ok"])
+        self.assertEqual(
+            payload["error"],
+            "validate requires a strict committed policy; legacy policy migration is non-executable",
+        )
+
     def test_known_profile_keys_load(self) -> None:
         policy = self._load({
             "owner_checks": {},
