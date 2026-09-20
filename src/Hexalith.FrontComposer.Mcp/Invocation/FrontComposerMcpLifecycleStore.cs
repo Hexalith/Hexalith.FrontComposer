@@ -1,6 +1,4 @@
 using System.Collections.Concurrent;
-using System.Text;
-using System.Text.RegularExpressions;
 
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
@@ -16,7 +14,6 @@ namespace Hexalith.FrontComposer.Mcp.Invocation;
 public sealed partial class FrontComposerMcpLifecycleStore(
     IOptions<FrontComposerMcpOptions> options,
     TimeProvider? timeProvider = null) : IDisposable {
-    private const int MaxIdentifierLength = 64;
     private readonly ConcurrentDictionary<string, LifecycleEntry> _byCorrelation = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, LifecycleEntry> _byMessage = new(StringComparer.Ordinal);
     private readonly ConcurrentQueue<string> _insertionOrder = new();
@@ -47,9 +44,17 @@ public sealed partial class FrontComposerMcpLifecycleStore(
         ArgumentNullException.ThrowIfNull(result);
         ArgumentNullException.ThrowIfNull(lifecycle);
 
-        string messageId = NormalizeIdentifier(result.MessageId)
-            ?? throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
-        string correlationId = NormalizeIdentifier(result.CorrelationId) ?? messageId;
+        string messageId = RequireCanonicalIdentifier(result.MessageId);
+        string correlationId = result.CorrelationId is null
+            ? messageId
+            : RequireCanonicalIdentifier(result.CorrelationId);
+        (CommandLifecycleState State, string MessageId)[] validatedTransitions = [
+            .. pendingTransitions.Select(transition => (
+                transition.State,
+                transition.MessageId is null
+                    ? messageId
+                    : RequireCanonicalIdentifier(transition.MessageId))),
+        ];
         LifecycleEntry entry = GetOrCreateEntry(descriptor, correlationId, messageId);
         int clampedRetryAfter = ClampRetryAfter(result.RetryAfter);
         entry.SetRetryAfterMs(clampedRetryAfter);
@@ -60,9 +65,9 @@ public sealed partial class FrontComposerMcpLifecycleStore(
             lifecycle.Transition(correlationId, CommandLifecycleState.Acknowledged, messageId);
         }
 
-        foreach ((CommandLifecycleState state, string? transitionMessageId) in pendingTransitions) {
+        foreach ((CommandLifecycleState state, string transitionMessageId) in validatedTransitions) {
             cancellationToken.ThrowIfCancellationRequested();
-            lifecycle.Transition(correlationId, state, NormalizeIdentifier(transitionMessageId) ?? messageId);
+            lifecycle.Transition(correlationId, state, transitionMessageId);
         }
 
         return new McpCommandAcknowledgement(
@@ -84,8 +89,9 @@ public sealed partial class FrontComposerMcpLifecycleStore(
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(transition);
 
-        string? correlationId = NormalizeIdentifier(transition.CorrelationId);
-        if (correlationId is null || !_byCorrelation.TryGetValue(correlationId, out LifecycleEntry? entry)) {
+        if (!FrontComposerMcpUlid.IsCanonical(transition.CorrelationId)
+            || (transition.MessageId is not null && !FrontComposerMcpUlid.IsCanonical(transition.MessageId))
+            || !_byCorrelation.TryGetValue(transition.CorrelationId, out LifecycleEntry? entry)) {
             return false;
         }
 
@@ -107,8 +113,13 @@ public sealed partial class FrontComposerMcpLifecycleStore(
         out McpCommandDescriptor descriptor,
         out McpLifecycleSnapshot snapshot) {
         ThrowIfDisposed();
-        ArgumentException.ThrowIfNullOrWhiteSpace(handle);
         ArgumentNullException.ThrowIfNull(currentOptions);
+
+        if (!FrontComposerMcpUlid.IsCanonical(handle)) {
+            descriptor = null!;
+            snapshot = null!;
+            return false;
+        }
 
         if (!_byCorrelation.TryGetValue(handle, out LifecycleEntry? entry)) {
             _ = _byMessage.TryGetValue(handle, out entry);
@@ -151,38 +162,12 @@ public sealed partial class FrontComposerMcpLifecycleStore(
         }
     }
 
-    /// <summary>
-    /// Normalizes agent-supplied lifecycle handles to canonical ULID strings.
-    /// </summary>
-    /// <param name="value">Raw identifier value.</param>
-    /// <returns>The canonical identifier, or <see langword="null"/> when the value is invalid.</returns>
-    internal static string? NormalizeIdentifier(string? value) {
-        if (string.IsNullOrWhiteSpace(value) || value.Length > MaxIdentifierLength) {
-            return null;
-        }
-
-        for (int i = 0; i < value.Length; i++) {
-            if (value[i] > 0x7F) {
-                return null;
-            }
-        }
-
-        if (value.Length != value.AsSpan().Trim().Length) {
-            return null;
-        }
-
-        string normalized = value.Normalize(NormalizationForm.FormC);
-        if (!CanonicalUlidRegex().IsMatch(normalized)) {
-            return null;
-        }
-
-        return normalized;
-    }
-
     private LifecycleEntry GetOrCreateEntry(
         McpCommandDescriptor descriptor,
         string correlationId,
         string messageId) {
+        _ = RequireCanonicalIdentifier(correlationId);
+        _ = RequireCanonicalIdentifier(messageId);
         if (_byCorrelation.TryGetValue(correlationId, out LifecycleEntry? existing)) {
             return existing;
         }
@@ -293,8 +278,13 @@ public sealed partial class FrontComposerMcpLifecycleStore(
 
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 
-    [GeneratedRegex("^[0-9A-HJKMNP-TV-Z]{26}$", RegexOptions.CultureInvariant)]
-    private static partial Regex CanonicalUlidRegex();
+    private static string RequireCanonicalIdentifier(string? value) {
+        if (!FrontComposerMcpUlid.IsCanonical(value)) {
+            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
+        }
+
+        return value!;
+    }
 
     private sealed class LifecycleEntry : IDisposable {
         private readonly object _gate = new();
@@ -361,6 +351,12 @@ public sealed partial class FrontComposerMcpLifecycleStore(
         }
 
         public void Observe(CommandLifecycleTransition transition) {
+            if (!string.Equals(transition.CorrelationId, CorrelationId, StringComparison.Ordinal)
+                || !FrontComposerMcpUlid.IsCanonical(transition.CorrelationId)
+                || (transition.MessageId is not null && !FrontComposerMcpUlid.IsCanonical(transition.MessageId))) {
+                return;
+            }
+
             bool becameTerminal = false;
             lock (_gate) {
                 bool currentTerminal = _state is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected;
@@ -387,7 +383,7 @@ public sealed partial class FrontComposerMcpLifecycleStore(
                 }
 
                 if (!sameStateRedelivery) {
-                    AppendHistory(transition.NewState, NormalizeIdentifier(transition.MessageId), transition.TimestampUtc, transition.IdempotencyResolved);
+                    AppendHistory(transition.NewState, transition.MessageId, transition.TimestampUtc, transition.IdempotencyResolved);
                 }
 
                 if (_state is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected && !_terminalRecorded) {

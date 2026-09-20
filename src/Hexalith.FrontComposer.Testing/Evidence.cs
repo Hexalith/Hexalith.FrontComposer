@@ -48,8 +48,18 @@ public sealed record FaultEvidence(
 /// Redacts bounded evidence for assertion messages, logs, and serialized artifacts.
 /// </summary>
 public static class RedactedEvidenceFormatter {
+    private const string SerializationUnavailableMarker = "<serialization-unavailable>";
     private static readonly JsonSerializerOptions RedactedJsonOptions = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
-    private static readonly string[] SensitiveKeyFragments = ["token", "secret", "password"];
+    private static readonly string[] SensitiveKeyFragments = [
+        "token",
+        "secret",
+        "password",
+        "authorization",
+        "apikey",
+        "cookie",
+        "privatekey",
+        "connectionstring",
+    ];
 
     /// <summary>
     /// Serializes an object to a bounded, redacted diagnostic string.
@@ -60,9 +70,15 @@ public static class RedactedEvidenceFormatter {
     public static string Format(object? value, FrontComposerTestOptions options) {
         ArgumentNullException.ThrowIfNull(options);
 
-        string redacted = value is null
-            ? "<null>"
-            : RedactNode(JsonSerializer.SerializeToNode(value))?.ToJsonString(RedactedJsonOptions) ?? "null";
+        string redacted;
+        try {
+            redacted = value is null
+                ? "<null>"
+                : RedactNode(JsonSerializer.SerializeToNode(value))?.ToJsonString(RedactedJsonOptions) ?? "null";
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException && !IsFatal(ex)) {
+            return SerializationUnavailableMarker;
+        }
 
         // Replace configured tenant/user identifiers across the whole payload, including JSON
         // property names (for example dictionary keys), so the identifiers cannot leak through
@@ -121,8 +137,20 @@ public static class RedactedEvidenceFormatter {
         return node;
     }
 
-    private static bool IsSensitiveKey(string? key)
-        => key is not null && SensitiveKeyFragments.Any(fragment => key.Contains(fragment, StringComparison.OrdinalIgnoreCase));
+    private static bool IsSensitiveKey(string? key) {
+        if (key is null) {
+            return false;
+        }
+
+        string normalizedKey = string.Concat(key.Where(char.IsLetterOrDigit));
+        return SensitiveKeyFragments.Any(fragment => normalizedKey.Contains(fragment, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsFatal(Exception exception)
+        => exception is OutOfMemoryException
+            or StackOverflowException
+            or System.Threading.ThreadAbortException
+            or AccessViolationException;
 
     private static string RedactConfiguredValues(string value, FrontComposerTestOptions options)
         => value

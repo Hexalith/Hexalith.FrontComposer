@@ -17,6 +17,10 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
 
 public sealed class CommandInvokerTests {
+    private const string CanonicalMaximum = "7ZZZZZZZZZZZZZZZZZZZZZZZZZ";
+    private const string CanonicalMessageId = "01JZ0R5K9N8W4Y7V3Q2P6C1A0C";
+    private const string CanonicalCorrelationId = "01JZ0R5K9N8W4Y7V3Q2P6C1A0D";
+
     [Fact]
     public async Task InvokeAsync_ValidCommand_DispatchesThroughCommandService_WithTenantContext() {
         RecordingCommandService service = new();
@@ -177,6 +181,74 @@ public sealed class CommandInvokerTests {
         ulids.Count.ShouldBe(2);
     }
 
+    [Theory]
+    [InlineData("80000000000000000000000000", 1)]
+    [InlineData("ZZZZZZZZZZZZZZZZZZZZZZZZZZ", 1)]
+    [InlineData("80000000000000000000000000", 2)]
+    [InlineData("ZZZZZZZZZZZZZZZZZZZZZZZZZZ", 2)]
+    public async Task InvokeAsync_OverflowFactoryIdentifier_FailsClosedBeforeDispatchWithoutEcho(
+        string overflow,
+        int allocation) {
+        RecordingCommandService service = new();
+        string[] values = allocation == 1
+            ? [overflow]
+            : [CanonicalMessageId, overflow];
+        ServiceProvider provider = Services(service, new SequenceUlidFactory(values)).BuildServiceProvider();
+        FrontComposerMcpCommandInvoker invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
+
+        FrontComposerMcpResult result = await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeTrue();
+        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnsupportedSchema);
+        result.Text.ShouldNotContain(overflow);
+        result.StructuredContent?.ToJsonString().ShouldNotContain(overflow);
+        service.DispatchCount.ShouldBe(0);
+    }
+
+    [Theory]
+    [InlineData("80000000000000000000000000", CanonicalCorrelationId)]
+    [InlineData(CanonicalMessageId, "ZZZZZZZZZZZZZZZZZZZZZZZZZZ")]
+    public async Task InvokeAsync_OverflowDispatcherIdentifier_FailsClosedWithoutEcho(
+        string messageId,
+        string correlationId) {
+        ResultCommandService service = new(new CommandResult(messageId, CommandResultStatus.Accepted, correlationId));
+        ServiceProvider provider = Services(service, new SequenceUlidFactory(CanonicalMessageId, CanonicalCorrelationId)).BuildServiceProvider();
+        FrontComposerMcpCommandInvoker invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
+
+        FrontComposerMcpResult result = await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeTrue();
+        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnsupportedSchema);
+        result.Text.ShouldNotContain(messageId);
+        result.Text.ShouldNotContain(correlationId);
+        result.StructuredContent?.ToJsonString().ShouldNotContain(messageId);
+        result.StructuredContent?.ToJsonString().ShouldNotContain(correlationId);
+        service.DispatchCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_CanonicalMaximumDispatcherIdentifiers_AreReturnedWithoutNormalization() {
+        ResultCommandService service = new(new CommandResult(CanonicalMaximum, CommandResultStatus.Accepted, CanonicalMaximum));
+        ServiceProvider provider = Services(service, new SequenceUlidFactory(CanonicalMessageId, CanonicalCorrelationId)).BuildServiceProvider();
+        FrontComposerMcpCommandInvoker invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
+
+        FrontComposerMcpResult result = await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeFalse();
+        result.StructuredContent!["messageId"]!.GetValue<string>().ShouldBe(CanonicalMaximum);
+        result.StructuredContent!["correlationId"]!.GetValue<string>().ShouldBe(CanonicalMaximum);
+        service.DispatchCount.ShouldBe(1);
+    }
+
     private static ServiceCollection Services(ICommandService commandService, IUlidFactory? ulidFactory) {
         var services = new ServiceCollection();
         _ = services.AddSingleton(commandService);
@@ -222,8 +294,11 @@ public sealed class CommandInvokerTests {
     private sealed class RecordingCommandService : ICommandServiceWithLifecycle {
         public object? Dispatched { get; private set; }
 
+        public int DispatchCount { get; private set; }
+
         public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
             where TCommand : class {
+            DispatchCount++;
             Dispatched = command;
             string messageId = ReadString(command, nameof(PayInvoiceCommand.MessageId)) ?? "message-a";
             string correlationId = ReadString(command, nameof(PayInvoiceCommand.CorrelationId)) ?? "corr-a";
@@ -250,6 +325,16 @@ public sealed class CommandInvokerTests {
         public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
             where TCommand : class
             => Task.FromException<CommandResult>(exception);
+    }
+
+    private sealed class ResultCommandService(CommandResult result) : ICommandService {
+        public int DispatchCount { get; private set; }
+
+        public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
+            where TCommand : class {
+            DispatchCount++;
+            return Task.FromResult(result);
+        }
     }
 
     private sealed class StaticAgentContextAccessor(string tenantId = "tenant-a", string userId = "agent-a") : IFrontComposerMcpAgentContextAccessor {
@@ -347,6 +432,19 @@ public sealed class CommandInvokerTests {
                 2 => "01JZ0R5K9N8W4Y7V3Q2P6C1A0D",
                 _ => throw new InvalidOperationException("Unexpected ULID allocation."),
             };
+        }
+    }
+
+    private sealed class SequenceUlidFactory(params string[] values) : IUlidFactory {
+        private int _next;
+
+        public string NewUlid() {
+            int index = Interlocked.Increment(ref _next) - 1;
+            if ((uint)index >= (uint)values.Length) {
+                throw new InvalidOperationException("Unexpected ULID allocation.");
+            }
+
+            return values[index];
         }
     }
 }

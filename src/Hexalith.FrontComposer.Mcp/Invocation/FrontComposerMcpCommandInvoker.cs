@@ -85,6 +85,7 @@ public sealed class FrontComposerMcpCommandInvoker(
 
             CommandResult result = await DispatchAsync(commandService, command, commandType, onLifecycleChange, cancellationToken)
                 .ConfigureAwait(false);
+            ValidateDispatchResultIdentifiers(result);
             if (lifecycleTracker is not null) {
                 McpCommandAcknowledgement acknowledgement = lifecycleTracker.TrackAcknowledged(
                     descriptor,
@@ -425,27 +426,18 @@ public sealed class FrontComposerMcpCommandInvoker(
             throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
         }
 
-        if (!IsCanonicalUlid(value)) {
+        if (!FrontComposerMcpUlid.IsCanonical(value)) {
             throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
         }
 
         return value;
     }
 
-    private static bool IsCanonicalUlid(string? value) {
-        if (value is null || value.Length != 26) {
-            return false;
+    private static void ValidateDispatchResultIdentifiers(CommandResult result) {
+        if (!FrontComposerMcpUlid.IsCanonical(result.MessageId)
+            || (result.CorrelationId is not null && !FrontComposerMcpUlid.IsCanonical(result.CorrelationId))) {
+            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
         }
-
-        for (int i = 0; i < value.Length; i++) {
-            char ch = value[i];
-            bool valid = ch is (>= '0' and <= '9') or (>= 'A' and <= 'H') or (>= 'J' and <= 'K') or (>= 'M' and <= 'N') or (>= 'P' and <= 'T') or (>= 'V' and <= 'Z');
-            if (!valid) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     private static void SetIfWritable(object target, Type type, string propertyName, string value) {

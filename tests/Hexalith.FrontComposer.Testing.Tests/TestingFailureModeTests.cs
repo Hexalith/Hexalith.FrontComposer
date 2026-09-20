@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Reflection;
 
 using Bunit;
 
@@ -36,7 +37,120 @@ public sealed class TestingFailureModeTests {
         CommandResult stalled = await host.CommandService.DispatchAsync(new TestCommand(), Xunit.TestContext.Current.CancellationToken).ConfigureAwait(true);
         stalled.Status.ShouldBe(CommandResultStatus.Accepted);
         host.CommandService.Evidence[^1].LifecycleStates.ShouldNotContain(CommandLifecycleState.Confirmed);
-        host.CommandService.Evidence.Select(item => item.MessageId).ShouldBe(["test-message-0001", "test-message-0002", "test-message-0003"]);
+        host.CommandService.Evidence.Select(item => item.MessageId).Distinct(StringComparer.Ordinal).Count().ShouldBe(3);
+    }
+
+    [Theory]
+    [InlineData(TestCommandOutcome.Success)]
+    [InlineData(TestCommandOutcome.Rejected)]
+    [InlineData(TestCommandOutcome.Timeout)]
+    [InlineData(TestCommandOutcome.StallAtSyncing)]
+    public async Task TestCommandService_SerializationFailure_PreservesEveryConfiguredOutcome(TestCommandOutcome outcome) {
+        using BunitContext context = new();
+        using FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(context);
+        ConfigureOutcome(host.CommandService, outcome);
+        CyclicPayload command = new();
+        command.Self = command;
+        CommandResult? commandResult = null;
+
+        Exception? exception = await Record.ExceptionAsync(async () =>
+            commandResult = await host.CommandService.DispatchAsync(command, Xunit.TestContext.Current.CancellationToken).ConfigureAwait(true));
+
+        switch (outcome) {
+            case TestCommandOutcome.Success:
+            case TestCommandOutcome.StallAtSyncing:
+                exception.ShouldBeNull();
+                commandResult.ShouldNotBeNull();
+                commandResult.Status.ShouldBe(CommandResultStatus.Accepted);
+                break;
+            case TestCommandOutcome.Rejected:
+                _ = exception.ShouldBeOfType<CommandRejectedException>();
+                commandResult.ShouldBeNull();
+                break;
+            case TestCommandOutcome.Timeout:
+                _ = exception.ShouldBeOfType<TimeoutException>();
+                commandResult.ShouldBeNull();
+                break;
+            default:
+                throw new InvalidOperationException("Unsupported test outcome.");
+        }
+
+        CommandDispatchEvidence evidence = host.CommandService.Evidence.ShouldHaveSingleItem();
+        evidence.RedactedPayload.ShouldBe("<serialization-unavailable>");
+        evidence.Status.ShouldBe(outcome switch {
+            TestCommandOutcome.Success => CommandResultStatus.Accepted,
+            TestCommandOutcome.Rejected => CommandResultStatus.Rejected,
+            _ => outcome.ToString(),
+        });
+    }
+
+    [Theory]
+    [InlineData("cyclic")]
+    [InlineData("unsupported")]
+    [InlineData("throwing")]
+    public void RedactedEvidenceFormatter_NonFatalSerializationFailures_ReturnStablePayloadFreeMarker(string failureMode) {
+        object payload = failureMode switch {
+            "cyclic" => CreateCyclicPayload(),
+            "unsupported" => new UnsupportedPayload(),
+            "throwing" => new ThrowingPayload(),
+            _ => throw new InvalidOperationException("Unsupported serialization fixture."),
+        };
+
+        string evidence = RedactedEvidenceFormatter.Format(payload, new FrontComposerTestOptions());
+
+        evidence.ShouldBe("<serialization-unavailable>");
+        evidence.ShouldNotContain("payload-secret");
+
+        RedactedEvidenceFormatter.Format(payload, new FrontComposerTestOptions {
+            TestTenantId = "serialization",
+        }).ShouldBe("<serialization-unavailable>");
+        RedactedEvidenceFormatter.Format(payload, new FrontComposerTestOptions {
+            TestUserId = "serialization-unavailable",
+        }).ShouldBe("<serialization-unavailable>");
+        RedactedEvidenceFormatter.Format(payload, new FrontComposerTestOptions {
+            MaxDiagnosticPayloadCharacters = 1,
+        }).ShouldBe("<serialization-unavailable>");
+    }
+
+    [Theory]
+    [InlineData(typeof(OutOfMemoryException))]
+    [InlineData(typeof(StackOverflowException))]
+    [InlineData(typeof(System.Threading.ThreadAbortException))]
+    [InlineData(typeof(AccessViolationException))]
+    public void RedactedEvidenceFormatter_FatalSerializationFailure_Propagates(Type exceptionType) {
+        Exception expected = (Exception)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(exceptionType);
+
+        Exception? actual = Record.Exception(() =>
+            RedactedEvidenceFormatter.Format(new ExceptionalPayload(expected), new FrontComposerTestOptions()));
+
+        actual.ShouldNotBeNull();
+        actual.ShouldBeSameAs(expected);
+        actual.GetType().ShouldBe(exceptionType);
+    }
+
+    [Fact]
+    public void RedactedEvidenceFormatter_OperationCanceledSerializationFailure_Propagates() {
+        OperationCanceledException expected = new("Serialization was canceled.");
+
+        Exception? actual = Record.Exception(() =>
+            RedactedEvidenceFormatter.Format(new ExceptionalPayload(expected), new FrontComposerTestOptions()));
+
+        actual.ShouldBeSameAs(expected);
+    }
+
+    [Fact]
+    public async Task TestCommandService_ExhaustedIdentitySequence_FailsInsteadOfWrapping() {
+        using BunitContext context = new();
+        using FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(context);
+        FieldInfo sequence = typeof(TestCommandService).GetField("_dispatchSequence", BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("Test command sequence field was not found.");
+        sequence.SetValue(host.CommandService, long.MaxValue);
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(() =>
+            host.CommandService.DispatchAsync(new TestCommand(), Xunit.TestContext.Current.CancellationToken)).ConfigureAwait(true);
+
+        exception.Message.ShouldContain("exhausted");
+        host.CommandService.Evidence.ShouldBeEmpty();
     }
 
     [Fact]
@@ -279,6 +393,49 @@ public sealed class TestingFailureModeTests {
     }
 
     private sealed class TestCommand;
+
+    private static void ConfigureOutcome(TestCommandService service, TestCommandOutcome outcome) {
+        switch (outcome) {
+            case TestCommandOutcome.Success:
+                service.Succeed();
+                break;
+            case TestCommandOutcome.Rejected:
+                service.Reject("configured rejection", "correct the command");
+                break;
+            case TestCommandOutcome.Timeout:
+                service.Timeout();
+                break;
+            case TestCommandOutcome.StallAtSyncing:
+                service.StallAtSyncing();
+                break;
+            default:
+                throw new InvalidOperationException("Unsupported test outcome.");
+        }
+    }
+
+    private static CyclicPayload CreateCyclicPayload() {
+        CyclicPayload payload = new();
+        payload.Self = payload;
+        return payload;
+    }
+
+    private sealed class CyclicPayload {
+        public CyclicPayload? Self { get; set; }
+    }
+
+    private sealed class UnsupportedPayload {
+        public Action Callback { get; } = static () => { };
+    }
+
+    private sealed class ThrowingPayload {
+        private readonly string _secret = "payload-secret";
+
+        public string Value => throw new InvalidOperationException(_secret);
+    }
+
+    private sealed class ExceptionalPayload(Exception exception) {
+        public string Value => throw exception;
+    }
 
     private sealed class BuilderModel {
         public string? Name { get; set; }

@@ -7,6 +7,7 @@
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="ModelContextProtocol.AspNetCore" />
+    <PackageReference Include="NUlid" />
     <!-- Story 8-5 P-42: Roslyn symbol-existence validator over fenced C# snippets in the skill
          corpus. Used by SkillCorpusSnippetValidator to detect stale attribute names/types. -->
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />

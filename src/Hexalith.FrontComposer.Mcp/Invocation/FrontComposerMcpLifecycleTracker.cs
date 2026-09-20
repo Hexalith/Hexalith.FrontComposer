@@ -101,8 +101,8 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
             return false;
         }
 
-        handle = FrontComposerMcpLifecycleStore.NormalizeIdentifier(pair.Value.GetString());
-        return handle is not null;
+        handle = pair.Value.GetString();
+        return FrontComposerMcpUlid.IsCanonical(handle);
     }
 
     private static FrontComposerMcpResult HiddenUnknown()

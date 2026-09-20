@@ -62,10 +62,14 @@ public sealed class TestCommandService : ICommandServiceWithLifecycle {
         cancellationToken.ThrowIfCancellationRequested();
 
         long sequence = Interlocked.Increment(ref _dispatchSequence);
+        if (sequence <= 0) {
+            throw new InvalidOperationException("The deterministic test command identity sequence is exhausted.");
+        }
+
         TestCommandConfiguration configuration = Volatile.Read(ref _configuration);
         TestCommandOutcome outcome = configuration.Outcome;
-        string messageId = $"test-message-{sequence:0000}";
-        string correlationId = $"test-correlation-{sequence:0000}";
+        string messageId = DeterministicTestUlid.CreateMessageId(sequence);
+        string correlationId = DeterministicTestUlid.CreateCorrelationId(sequence);
         CommandLifecycleState[] states = outcome switch {
             TestCommandOutcome.Success => [CommandLifecycleState.Acknowledged, CommandLifecycleState.Syncing, CommandLifecycleState.Confirmed],
             TestCommandOutcome.Rejected => [CommandLifecycleState.Rejected],

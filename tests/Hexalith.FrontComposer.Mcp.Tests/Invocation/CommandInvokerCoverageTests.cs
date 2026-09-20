@@ -471,7 +471,10 @@ public sealed class CommandInvokerCoverageTests {
             }
 
             Dispatched = command;
-            return Task.FromResult(new CommandResult("message-a", "Accepted", "corr-a"));
+            return Task.FromResult(new CommandResult(
+                "01JZ0R5K9N8W4Y7V3Q2P6C1A0C",
+                "Accepted",
+                "01JZ0R5K9N8W4Y7V3Q2P6C1A0D"));
         }
     }
 

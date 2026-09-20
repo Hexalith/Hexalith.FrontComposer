@@ -22,6 +22,19 @@ using Xunit;
 namespace Hexalith.FrontComposer.Testing.Tests;
 
 public sealed class FrontComposerTestHostTests {
+    private static readonly string[] CredentialValues = [
+        "credential-a",
+        "credential-b",
+        "credential-c",
+        "credential-d",
+        "credential-e",
+        "credential-f",
+        "credential-g",
+        "credential-h",
+        "credential-i",
+    ];
+    private static readonly string[] CookieCredentialValues = ["credential-c", "credential-d"];
+
     [Fact]
     public async Task FrontComposerTestBase_DefaultSetup_RegistersDeterministicServices() {
         using TestHost host = new();
@@ -159,8 +172,13 @@ public sealed class FrontComposerTestHostTests {
             .ConfigureAwait(true);
 
         CommandDispatchEvidence evidence = host.ExposedCommandService.Evidence.Single();
-        result.MessageId.ShouldBe("test-message-0001");
-        result.CorrelationId.ShouldBe("test-correlation-0001");
+        result.MessageId.ShouldBe(evidence.MessageId);
+        result.CorrelationId.ShouldBe(evidence.CorrelationId);
+        result.MessageId.ShouldNotBe(result.CorrelationId);
+        NUlid.Ulid.TryParse(result.MessageId, out NUlid.Ulid parsedMessageId).ShouldBeTrue();
+        parsedMessageId.ToString().ShouldBe(result.MessageId);
+        NUlid.Ulid.TryParse(result.CorrelationId, out NUlid.Ulid parsedCorrelationId).ShouldBeTrue();
+        parsedCorrelationId.ToString().ShouldBe(result.CorrelationId);
         evidence.BoundedContext.ShouldBe("Test");
         evidence.CommandName.ShouldBe("Test Command");
         evidence.Status.ShouldBe("Accepted");
@@ -169,6 +187,29 @@ public sealed class FrontComposerTestHostTests {
             Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Syncing,
             Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Confirmed,
         ]);
+    }
+
+    [Fact]
+    public async Task TestCommandService_FreshHosts_EmitRepeatableDistinctCanonicalUlids() {
+        static async Task<string[]> DispatchTwiceAsync() {
+            using TestHost host = new();
+            ICommandService commandService = host.Services.GetRequiredService<ICommandService>();
+            _ = await commandService.DispatchAsync(new SensitiveCommand { Amount = 1 }, CancellationToken.None).ConfigureAwait(true);
+            _ = await commandService.DispatchAsync(new SensitiveCommand { Amount = 2 }, CancellationToken.None).ConfigureAwait(true);
+            return [
+                .. host.ExposedCommandService.Evidence.SelectMany(item => new[] { item.MessageId, item.CorrelationId }),
+            ];
+        }
+
+        string[] firstHostIds = await DispatchTwiceAsync().ConfigureAwait(true);
+        string[] secondHostIds = await DispatchTwiceAsync().ConfigureAwait(true);
+
+        firstHostIds.ShouldBe(secondHostIds);
+        firstHostIds.Distinct(StringComparer.Ordinal).Count().ShouldBe(firstHostIds.Length);
+        foreach (string id in firstHostIds) {
+            NUlid.Ulid.TryParse(id, out NUlid.Ulid parsed).ShouldBeTrue();
+            parsed.ToString().ShouldBe(id);
+        }
     }
 
     [Fact]
@@ -475,6 +516,36 @@ public sealed class FrontComposerTestHostTests {
         payload.ShouldNotContain("quoted");
         payload.ShouldNotContain("example.test");
         payload.ShouldContain("punctuation-safe-value");
+    }
+
+    [Fact]
+    public void RedactedEvidenceFormatter_Format_RedactsCommonCredentialKeysAtAnyNesting() {
+        FrontComposerTestOptions options = new() { MaxDiagnosticPayloadCharacters = 2048 };
+
+        string payload = RedactedEvidenceFormatter.Format(
+            new {
+                AUTHORIZATION = "bearer credential-a",
+                ApiKey = new { Value = "credential-b" },
+                Nested = new {
+                    cookie = CookieCredentialValues,
+                    PrivateKey = "credential-e",
+                    CONNECTIONSTRING = "credential-f",
+                    Separated = new Dictionary<string, string> {
+                        ["api_key"] = "credential-g",
+                        ["private-key"] = "credential-h",
+                        ["connection_string"] = "credential-i",
+                    },
+                    Benign = "visible-value",
+                },
+            },
+            options);
+
+        foreach (string secret in CredentialValues) {
+            payload.ShouldNotContain(secret);
+        }
+
+        payload.ShouldContain("<redacted>");
+        payload.ShouldContain("visible-value");
     }
 
     [Fact]

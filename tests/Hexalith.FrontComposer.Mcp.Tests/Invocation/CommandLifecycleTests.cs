@@ -10,6 +10,7 @@ using Hexalith.FrontComposer.Mcp.Invocation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 
 using Shouldly;
@@ -19,6 +20,8 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
 public sealed class CommandLifecycleTests {
     private const string MessageId = "01JZ0R5K9N8W4Y7V3Q2P6C1A0B";
     private const string CorrelationId = "01JZ0R5K9N8W4Y7V3Q2P6C1A0C";
+    private const string CanonicalMaximum = "7ZZZZZZZZZZZZZZZZZZZZZZZZZ";
+    private const string OverflowUlid = "80000000000000000000000000";
 
     [Fact]
     public async Task InvokeAsync_ValidCommand_ReturnsAcknowledgementWithLifecycleReference() {
@@ -39,6 +42,33 @@ public sealed class CommandLifecycleTests {
         result.StructuredContent!.ToJsonString().ShouldNotContain("42");
         result.StructuredContent!.ToJsonString().ShouldNotContain("tenant-a");
         result.StructuredContent!.ToJsonString().ShouldNotContain("agent-a");
+        service.DispatchCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_CanonicalMaximumAtAllLifecycleBoundaries_IsStoredAndReadable() {
+        FrontComposerMcpCommandInvoker invoker = Build(
+            out LifecycleAwareCommandService service,
+            out ServiceProvider provider,
+            ulidFactory: new StaticUlidFactory(CanonicalMaximum));
+
+        FrontComposerMcpResult acknowledgement = await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+        FrontComposerMcpResult snapshot = await tracker.ReadAsync(
+            Args($$"""{"correlationId":"{{CanonicalMaximum}}"}"""),
+            TestContext.Current.CancellationToken);
+
+        acknowledgement.IsError.ShouldBeFalse();
+        acknowledgement.StructuredContent!["messageId"]!.GetValue<string>().ShouldBe(CanonicalMaximum);
+        acknowledgement.StructuredContent!["correlationId"]!.GetValue<string>().ShouldBe(CanonicalMaximum);
+        acknowledgement.StructuredContent!["lifecycle"]!["uri"]!.GetValue<string>().ShouldEndWith(CanonicalMaximum);
+        snapshot.IsError.ShouldBeFalse();
+        snapshot.StructuredContent!["messageId"]!.GetValue<string>().ShouldBe(CanonicalMaximum);
+        snapshot.StructuredContent!["correlationId"]!.GetValue<string>().ShouldBe(CanonicalMaximum);
+        snapshot.StructuredContent!["transitions"]!.ToJsonString().ShouldNotContain(OverflowUlid);
         service.DispatchCount.ShouldBe(1);
     }
 
@@ -424,6 +454,8 @@ public sealed class CommandLifecycleTests {
     [InlineData(" 01JZ0R5K9N8W4Y7V3Q2P6C1A0C")] // leading ASCII space
     [InlineData("01JZ0R5K9N8W4Y7V3Q2P6C1A0C ")] // trailing ASCII space
     [InlineData("01JZ0R5K9N8W4Y7V3Q2P6C1A0C\\t")] // trailing tab (escaped in JSON)
+    [InlineData("80000000000000000000000000")]
+    [InlineData("ZZZZZZZZZZZZZZZZZZZZZZZZZZ")]
     public async Task ReadAsync_MalformedLifecycleHandle_FailsAsHiddenUnknownWithoutStoreLookup(string correlationId) {
         FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
         _ = await invoker.InvokeAsync(
@@ -442,6 +474,9 @@ public sealed class CommandLifecycleTests {
         _ = result.StructuredContent.ShouldNotBeNull();
         result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_tool");
         result.StructuredContent!.ToJsonString().ShouldNotContain(CorrelationId);
+        if (!string.IsNullOrEmpty(correlationId)) {
+            result.StructuredContent!.ToJsonString().ShouldNotContain(correlationId);
+        }
     }
 
     [Fact]
@@ -720,6 +755,102 @@ public sealed class CommandLifecycleTests {
         snapshot.StructuredContent!["retry"]!["retryAfterMs"]!.GetValue<int>().ShouldBe(250);
     }
 
+    [Theory]
+    [InlineData(OverflowUlid, CorrelationId)]
+    [InlineData(MessageId, OverflowUlid)]
+    public void TrackAcknowledged_OverflowDispatcherHandle_RejectsBeforeSubscriptionOrStorage(
+        string messageId,
+        string correlationId) {
+        FrontComposerMcpOptions currentOptions = new();
+        using FrontComposerMcpLifecycleStore store = new(Options.Create(currentOptions));
+        using RecordingLifecycleStateService lifecycle = new();
+
+        FrontComposerMcpException exception = Should.Throw<FrontComposerMcpException>(() => store.TrackAcknowledged(
+            Manifest(policyName: null).Commands.Single(),
+            new CommandResult(messageId, CommandResultStatus.Accepted, correlationId),
+            [],
+            lifecycle,
+            TestContext.Current.CancellationToken));
+
+        exception.Category.ShouldBe(FrontComposerMcpFailureCategory.UnsupportedSchema);
+        exception.Message.ShouldNotContain(OverflowUlid);
+        lifecycle.SubscriptionCount.ShouldBe(0);
+        lifecycle.TransitionCount.ShouldBe(0);
+        store.TryReadSnapshot(MessageId, currentOptions, out _, out _).ShouldBeFalse();
+        store.TryReadSnapshot(CorrelationId, currentOptions, out _, out _).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void TrackAcknowledged_OverflowPendingTransition_RejectsBeforeSubscriptionOrStorage() {
+        FrontComposerMcpOptions currentOptions = new();
+        using FrontComposerMcpLifecycleStore store = new(Options.Create(currentOptions));
+        using RecordingLifecycleStateService lifecycle = new();
+
+        FrontComposerMcpException exception = Should.Throw<FrontComposerMcpException>(() => store.TrackAcknowledged(
+            Manifest(policyName: null).Commands.Single(),
+            new CommandResult(MessageId, CommandResultStatus.Accepted, CorrelationId),
+            [(CommandLifecycleState.Syncing, OverflowUlid)],
+            lifecycle,
+            TestContext.Current.CancellationToken));
+
+        exception.Category.ShouldBe(FrontComposerMcpFailureCategory.UnsupportedSchema);
+        exception.Message.ShouldNotContain(OverflowUlid);
+        lifecycle.SubscriptionCount.ShouldBe(0);
+        lifecycle.TransitionCount.ShouldBe(0);
+        store.TryReadSnapshot(MessageId, currentOptions, out _, out _).ShouldBeFalse();
+        store.TryReadSnapshot(CorrelationId, currentOptions, out _, out _).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void TryRecordObservedTransition_OverflowHandle_IsRejectedWithoutSnapshotMutation() {
+        FrontComposerMcpOptions currentOptions = new();
+        using FrontComposerMcpLifecycleStore store = new(Options.Create(currentOptions));
+        using RecordingLifecycleStateService lifecycle = new();
+        _ = store.TrackAcknowledged(
+            Manifest(policyName: null).Commands.Single(),
+            new CommandResult(MessageId, CommandResultStatus.Accepted, CorrelationId),
+            [],
+            lifecycle,
+            TestContext.Current.CancellationToken);
+        store.TryReadSnapshot(CorrelationId, currentOptions, out _, out McpLifecycleSnapshot before).ShouldBeTrue();
+
+        store.TryRecordObservedTransition(CreateTransition(OverflowUlid, MessageId)).ShouldBeFalse();
+        store.TryRecordObservedTransition(CreateTransition(CorrelationId, OverflowUlid)).ShouldBeFalse();
+
+        store.TryReadSnapshot(CorrelationId, currentOptions, out _, out McpLifecycleSnapshot after).ShouldBeTrue();
+        after.ToJson().ToJsonString().ShouldBe(before.ToJson().ToJsonString());
+        after.ToJson().ToJsonString().ShouldNotContain(OverflowUlid);
+    }
+
+    [Fact]
+    public void TrackAcknowledged_SubscriptionReplayWithOverflowMessageId_DoesNotMutateOrDiscloseSnapshot() {
+        FrontComposerMcpOptions currentOptions = new();
+        using FrontComposerMcpLifecycleStore baselineStore = new(Options.Create(currentOptions));
+        using FrontComposerMcpLifecycleStore replayStore = new(Options.Create(currentOptions));
+        using RecordingLifecycleStateService baselineLifecycle = new();
+        using ReplayingLifecycleStateService replayLifecycle = new(CreateTransition(CorrelationId, OverflowUlid));
+        CommandResult result = new(MessageId, CommandResultStatus.Accepted, CorrelationId);
+        McpCommandDescriptor descriptor = Manifest(policyName: null).Commands.Single();
+        _ = baselineStore.TrackAcknowledged(
+            descriptor,
+            result,
+            [],
+            baselineLifecycle,
+            TestContext.Current.CancellationToken);
+        _ = replayStore.TrackAcknowledged(
+            descriptor,
+            result,
+            [],
+            replayLifecycle,
+            TestContext.Current.CancellationToken);
+        baselineStore.TryReadSnapshot(CorrelationId, currentOptions, out _, out McpLifecycleSnapshot baseline).ShouldBeTrue();
+        replayStore.TryReadSnapshot(CorrelationId, currentOptions, out _, out McpLifecycleSnapshot replayed).ShouldBeTrue();
+
+        replayLifecycle.ReplayCount.ShouldBe(1);
+        replayed.ToJson().ToJsonString().ShouldBe(baseline.ToJson().ToJsonString());
+        replayed.ToJson().ToJsonString().ShouldNotContain(OverflowUlid);
+    }
+
     private static FrontComposerMcpCommandInvoker Build(
         out LifecycleAwareCommandService commandService,
         out ServiceProvider provider,
@@ -800,6 +931,16 @@ public sealed class CommandLifecycleTests {
             idempotencyResolved)).ShouldBeTrue();
     }
 
+    private static CommandLifecycleTransition CreateTransition(string correlationId, string? messageId)
+        => new(
+            correlationId,
+            CommandLifecycleState.Acknowledged,
+            CommandLifecycleState.Syncing,
+            messageId,
+            DateTimeOffset.Parse("2026-05-02T00:00:00Z", System.Globalization.CultureInfo.InvariantCulture),
+            DateTimeOffset.Parse("2026-05-02T00:00:00Z", System.Globalization.CultureInfo.InvariantCulture),
+            IdempotencyResolved: false);
+
     public sealed class PayInvoiceCommand {
         public string MessageId { get; set; } = "";
         public string CorrelationId { get; set; } = "";
@@ -861,7 +1002,12 @@ public sealed class CommandLifecycleTests {
         private readonly Dictionary<string, CommandLifecycleState> _states = new(StringComparer.Ordinal);
         private readonly Dictionary<string, string?> _messages = new(StringComparer.Ordinal);
 
+        public int SubscriptionCount { get; private set; }
+
+        public int TransitionCount { get; private set; }
+
         public IDisposable Subscribe(string correlationId, Action<CommandLifecycleTransition> onTransition) {
+            SubscriptionCount++;
             if (!_subscribers.TryGetValue(correlationId, out List<Action<CommandLifecycleTransition>>? callbacks)) {
                 callbacks = [];
                 _subscribers[correlationId] = callbacks;
@@ -883,6 +1029,7 @@ public sealed class CommandLifecycleTests {
             => Transition(correlationId, newState, messageId, false);
 
         public void Transition(string correlationId, CommandLifecycleState newState, string? messageId, bool idempotencyResolved) {
+            TransitionCount++;
             CommandLifecycleState previous = GetState(correlationId);
             _states[correlationId] = newState;
             if (!string.IsNullOrWhiteSpace(messageId)) {
@@ -913,8 +1060,39 @@ public sealed class CommandLifecycleTests {
         }
     }
 
+    private sealed class ReplayingLifecycleStateService(CommandLifecycleTransition replay) : ILifecycleStateService {
+        private readonly RecordingLifecycleStateService _inner = new();
+
+        public int ReplayCount { get; private set; }
+
+        public IDisposable Subscribe(string correlationId, Action<CommandLifecycleTransition> onTransition) {
+            IDisposable subscription = _inner.Subscribe(correlationId, onTransition);
+            onTransition(replay);
+            ReplayCount++;
+            return subscription;
+        }
+
+        public CommandLifecycleState GetState(string correlationId) => _inner.GetState(correlationId);
+
+        public string? GetMessageId(string correlationId) => _inner.GetMessageId(correlationId);
+
+        public IEnumerable<string> GetActiveCorrelationIds() => _inner.GetActiveCorrelationIds();
+
+        public void Transition(string correlationId, CommandLifecycleState newState, string? messageId = null)
+            => _inner.Transition(correlationId, newState, messageId);
+
+        public void Transition(string correlationId, CommandLifecycleState newState, string? messageId, bool idempotencyResolved)
+            => _inner.Transition(correlationId, newState, messageId, idempotencyResolved);
+
+        public void Dispose() => _inner.Dispose();
+    }
+
     private sealed class FixedUlidFactory : IUlidFactory {
         public string NewUlid() => MessageId;
+    }
+
+    private sealed class StaticUlidFactory(string value) : IUlidFactory {
+        public string NewUlid() => value;
     }
 
     private sealed class CounterUlidFactory : IUlidFactory {

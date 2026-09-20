@@ -9713,3 +9713,27 @@ source_spec: `_bmad-output/implementation-artifacts/spec-11-29-fallback-refresh-
 severity: medium
 reason: The interface has only a type-level summary; none of its four members (including `RegisterLane`, which now throws `InvalidOperationException` on a conflicting registration) carry XML documentation. Pre-existing gap predating Story 11.29 — the file is unchanged by this diff. Settled by documenting all four members, including the new `RegisterLane` exception contract.
 status: open
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
+  summary: Bind every pending and observed lifecycle transition message ID to its owning lifecycle entry.
+  evidence: The pre-existing lifecycle store accepts any canonical transition message ID, so a buggy lifecycle producer can associate another command's handle with the current history; equality against `LifecycleEntry.MessageId` would settle both callback and observed-transition paths.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
+  summary: Enforce a one-to-one correlation/message identity mapping in the MCP lifecycle store.
+  evidence: The pre-existing two-dictionary store returns entries solely by correlation ID and does not reject cross-map collisions, allowing a reused or ambiguous handle to describe the wrong stored command; entry creation must verify both identifiers and descriptor ownership atomically.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
+  summary: Observe cancellation before MCP lifecycle tracking mutates storage or emits transitions.
+  evidence: The pre-existing `TrackAcknowledged` flow creates an entry, subscribes, and emits initial transitions before checking the token, and never checks it when pending transitions are empty; a pre-canceled focused regression would settle the required ordering.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
+  summary: Bound lifecycle callback accumulation before materializing transition arrays.
+  evidence: The pre-existing invoker uses an unbounded callback queue and materializes its full contents before history limits apply, so a misbehaving dispatcher can create unbounded memory pressure; an ingress cap and overflow policy are required.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
+  summary: Bound diagnostic evidence memory while serialization is still in progress.
+  evidence: The pre-existing formatter constructs a complete `JsonNode` and JSON string before truncating output, so large payloads can exhaust memory despite the output character cap; a streaming, depth, or input-size policy is needed.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
+  summary: Define and validate invalid FrontComposer test evidence option values.
+  evidence: Empty tenant/user identifiers and negative payload limits can throw after serialization and replace configured outcomes; this predates Story 11.30, and a policy must decide whether host setup rejects, defaults, or clamps invalid public options.
