@@ -390,6 +390,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
                     _ = _lanes.TryRemove(new KeyValuePair<string, LaneEntry>(viewKey, current));
                     _ = _lastEtagByLane.TryRemove(viewKey, out _);
                     _ = _lastNoEtagSignatureByLane.TryRemove(viewKey, out _);
+                    _ = _pendingRetry.TryRemove(viewKey, out _);
                 }
             }
         }

@@ -65,8 +65,11 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
     private readonly object _unresolvedSync = new();
     private readonly ConcurrentDictionary<Type, IDisposable> _reconciliationRegistrations = new();
 
+    private readonly object _initializeGate = new();
+
     private ImmutableDictionary<Type, int> _counts = ImmutableDictionary<Type, int>.Empty;
     private int _disposedFlag;
+    private Task? _initializeTask;
 
     private bool IsDisposed => Volatile.Read(ref _disposedFlag) != 0;
 
@@ -114,13 +117,36 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
     /// timeout. Per-type exceptions are caught and logged as <c>HFC2112</c>; the offending type is
     /// excluded from <see cref="Counts"/> and the remaining projections publish normally.
     /// </summary>
+    /// <remarks>
+    /// Single-flight (in-flight window only): <see cref="Hexalith.FrontComposer.Shell.State.CapabilityDiscovery.CapabilityDiscoveryEffects.HandleAppInitialized"/>
+    /// and <c>HandleStorageReady</c> can both observe <c>HydrationState == Idle</c> and race into this
+    /// method before either completes (D19 / ADR-049 guards only against a re-hydrate once seeded, not
+    /// against this in-flight window). Concurrent callers while a fetch is running share the same
+    /// underlying task instead of re-entering <see cref="RegisterReconciliationLane"/> for the same
+    /// projection type, which would otherwise register two non-equivalent fallback lanes for an
+    /// identical contract. Once the shared task completes, the guard resets so a later, independent
+    /// call to <see cref="InitializeAsync"/> (e.g. a caller re-polling after a reconnect) still runs a
+    /// fresh fetch rather than replaying the previous result forever.
+    /// </remarks>
     /// <param name="cancellationToken">A token to observe for cancellation.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task InitializeAsync(CancellationToken cancellationToken = default) {
+    public Task InitializeAsync(CancellationToken cancellationToken = default) {
         if (IsDisposed) {
-            return;
+            return Task.CompletedTask;
         }
 
+        lock (_initializeGate) {
+            if (_initializeTask is { IsCompleted: false }) {
+                return _initializeTask;
+            }
+
+            Task task = InitializeCoreAsync(cancellationToken);
+            _initializeTask = task;
+            return task;
+        }
+    }
+
+    private async Task InitializeCoreAsync(CancellationToken cancellationToken) {
         using CancellationTokenSource timeoutCts = new(
             TimeSpan.FromSeconds(InitialFetchTimeoutSeconds),
             _timeProvider);

@@ -169,7 +169,7 @@ public sealed class SecurityLoggingGovernanceTests
 
     private static readonly string[] ExpectedResidualWarningAndAboveLocations =
     [
-        "src/Hexalith.FrontComposer.Shell/Badges/BadgeCountService.cs:InitializeAsync:136:LogWarning",
+        "src/Hexalith.FrontComposer.Shell/Badges/BadgeCountService.cs:InitializeCoreAsync:163:LogWarning",
         "src/Hexalith.FrontComposer.Shell/Badges/BadgeCountService.cs:FetchOneAsync:209:LogWarning",
         "src/Hexalith.FrontComposer.Shell/Badges/BadgeCountService.cs:UpdateCount:223:LogWarning",
         "src/Hexalith.FrontComposer.Shell/Badges/BadgeCountService.cs:OnProjectionChanged:331:LogWarning",

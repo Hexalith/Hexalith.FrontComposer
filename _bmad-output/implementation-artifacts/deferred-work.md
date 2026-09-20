@@ -9703,3 +9703,13 @@ status: open
 - In-flight replay is not bounded to depth 1 (`ProjectionFallbackRefreshScheduler.cs:259`). Pre-existing P1/P24 retry orchestration: `_inFlight` is cleared before the recursive replay, so a nudge during replay can recurse again. Already carried in this story's prior triage as EC-02/RBH-02.
 - `HasReducerPage` can go stale before dispatch (`ProjectionFallbackRefreshScheduler.cs:320`). Unverified: would be medium if a concurrent eviction between the unsynchronized sample and `TryDispatch*` were shown. Settled by a fixture that evicts `(ViewKey, Skip)` after `HasReducerPage` returns and before dispatch, or by re-reading presence under `DispatchGate`.
 - Fallback success completes in-flight grid TCS (`ProjectionFallbackRefreshScheduler.cs:594`). Pre-existing: `LoadPageSucceededAction` is dispatched with null `Completion`, so the reducer `TrySetResult`s any pending TCS for that key. Changing that requires the LoadedPage reducer contract, which this story must not alter.
+
+## Deferred from: code review of spec-11-29-fallback-refresh-and-view-registration-correctness.md (2026-09-20, round 2)
+
+### DW-1983: `IProjectionFallbackRefreshScheduler` has no XML documentation on any member
+origin: code review of spec-11-29-fallback-refresh-and-view-registration-correctness.md (2026-09-20, chunk 2)
+location: src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/IProjectionFallbackRefreshScheduler.cs:1-16
+source_spec: `_bmad-output/implementation-artifacts/spec-11-29-fallback-refresh-and-view-registration-correctness.md`
+severity: medium
+reason: The interface has only a type-level summary; none of its four members (including `RegisterLane`, which now throws `InvalidOperationException` on a conflicting registration) carry XML documentation. Pre-existing gap predating Story 11.29 — the file is unchanged by this diff. Settled by documenting all four members, including the new `RegisterLane` exception contract.
+status: open

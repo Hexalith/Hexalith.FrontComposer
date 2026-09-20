@@ -35,16 +35,18 @@ internal static class ProjectionFallbackRowSignature {
         int itemCount = items?.Count ?? 0;
         AppendInt32(hash, itemCount);
 
-        byte[] serializationBuffer = GC.AllocateUninitializedArray<byte>(MaxSerializedBytesPerRow);
         int rowsToHash = Math.Min(itemCount, MaxRows);
+        byte[]? serializationBuffer = rowsToHash > 0
+            ? GC.AllocateUninitializedArray<byte>(MaxSerializedBytesPerRow)
+            : null;
         for (int index = 0; index < rowsToHash; index++) {
             AppendMarker(hash, 0x02);
             AppendInt32(hash, index);
 
             using MemoryStream stream = new(
-                serializationBuffer,
+                serializationBuffer!,
                 index: 0,
-                count: serializationBuffer.Length,
+                count: serializationBuffer!.Length,
                 writable: true,
                 publiclyVisible: true);
             stream.SetLength(0);
