@@ -395,7 +395,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
             && string.Equals(first.SortColumn, second.SortColumn, StringComparison.Ordinal)
             && first.SortDescending == second.SortDescending
             && string.Equals(first.SearchQuery, second.SearchQuery, StringComparison.Ordinal)
-            && Equals(first.RefreshAsync, second.RefreshAsync);
+            && ReferenceEquals(first.RefreshAsync, second.RefreshAsync);
 
     private static bool FiltersAreEquivalent(
         IImmutableDictionary<string, string> first,

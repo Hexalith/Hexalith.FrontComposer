@@ -627,10 +627,12 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
             Substitute.For<IProjectionPageLoader>(),
             Substitute.For<IDispatcher>(),
             new MutableLoadedPageState(new LoadedPageState()));
-        ProjectionFallbackLane incumbent = DefaultLane(viewKey);
+        Func<CancellationToken, ValueTask<ProjectionFallbackLaneRefreshOutcome>> incumbentCallback = CallbackOutcomeAsync;
+        Func<CancellationToken, ValueTask<ProjectionFallbackLaneRefreshOutcome>> equalButDistinctCallback = CallbackOutcomeAsync;
+        incumbentCallback.ShouldNotBeSameAs(equalButDistinctCallback);
+        incumbentCallback.ShouldBe(equalButDistinctCallback);
+        ProjectionFallbackLane incumbent = DefaultLane(viewKey) with { RefreshAsync = incumbentCallback };
         _ = sut.RegisterLane(incumbent);
-        Func<CancellationToken, ValueTask<ProjectionFallbackLaneRefreshOutcome>> callback =
-            static _ => ValueTask.FromResult(ProjectionFallbackLaneRefreshOutcome.Changed);
         ProjectionFallbackLane[] conflicts = [
             incumbent with { ProjectionType = "CustomersProjection" },
             incumbent with { Skip = 20 },
@@ -639,7 +641,8 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
             incumbent with { SortColumn = "Name" },
             incumbent with { SortDescending = true },
             incumbent with { SearchQuery = "query" },
-            incumbent with { RefreshAsync = callback },
+            incumbent with { RefreshAsync = null },
+            incumbent with { RefreshAsync = equalButDistinctCallback },
         ];
 
         foreach (ProjectionFallbackLane conflict in conflicts) {
@@ -647,6 +650,9 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
             exception.Message.ShouldBe("A conflicting fallback lane contract is already registered for this view.");
         }
     }
+
+    private ValueTask<ProjectionFallbackLaneRefreshOutcome> CallbackOutcomeAsync(CancellationToken cancellationToken)
+        => ValueTask.FromResult(ProjectionFallbackLaneRefreshOutcome.Changed);
 
     [Fact]
     public async Task RegisterLane_AfterFinalDisposal_AllowsNewContractAndClearsSignature() {

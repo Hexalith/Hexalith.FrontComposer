@@ -2,9 +2,9 @@
 title: 'Story 11.29: Fallback Refresh and View Registration Correctness'
 type: 'bugfix'
 created: '2026-09-19'
-status: blocked
+status: in-progress
 baseline_commit: '257215600ee2cf3c921014d27c07b625fee7c59d'
-baseline_revision: 50490798059df61d8ef9617fe8263b9f29ee670f
+baseline_revision: 5213552913b421a26b3f4822f02f0d9b98504ebb
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -86,15 +86,3 @@ The row helper returns a digest rather than retaining canonical payload. Its exp
 - `DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -noLogo -noColor -parallel none -notrait Category=Performance -notrait Category=e2e-palette -notrait Category=NightlyProperty -notrait Category=Quarantined` -- expected: applicable default Shell lane passes.
 - `dotnet build Hexalith.FrontComposer.slnx --configuration Release -m:1 /nr:false -p:NuGetAudit=false -p:MinVerVersionOverride=4.0.0` -- expected: solution build passes with zero warnings and errors.
 - `git diff --check` -- expected: no whitespace errors.
-
-## Auto Run Result
-
-Status: blocked
-Blocking condition: implementation verification failed
-
-- The focused Release Shell test build passed with 0 warnings and 0 errors.
-- `ProjectionFallbackRefreshSchedulerTests` passed 22/22 with no skips; every I/O and edge-case matrix row ran and passed.
-- The Release solution build passed with 0 warnings and 0 errors, and staged/unstaged whitespace checks passed.
-- The applicable default Shell lane passed 2,731/2,733. `CiGovernanceTests.EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval` expected the `Hexalith.Builds` gitlink at `59862a00d72ef8c7b3e3be020fa967ebd89507a0` but the repository pins `410bd595f9e1c0f686e1edde7699517c47c8f126`.
-- `InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds` expected Verify `33.1.0` but the pinned Builds catalog supplies `33.0.2`.
-- Story 11.29 requires these external prerequisites to be repaired before resumption and does not authorize changing their dependency-governance surfaces, so its full-lane acceptance criterion cannot pass within this story.
