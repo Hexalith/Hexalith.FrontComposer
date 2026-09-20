@@ -65,6 +65,31 @@ deferred: []
 - Given the completed implementation, when the Release solution build runs, then public/API, analyzer, nullable, warnings-as-errors, and generated-output contracts remain green without generator or snapshot drift.
 - Given any applicable default-Shell-lane failure outside Story 11.29's authorized surfaces, when Story 11.29 is re-armed and verification resumes, then every such failure has already been repaired outside this story and the applicable default Shell lane passes in full; no historical test-name list limits the prerequisite set, and neither a baseline waiver nor a Story 11.29 change to dependency-governance or other unrelated surfaces satisfies this criterion.
 
+### Review Findings
+
+Chunk 1 review (2026-09-20). Layers: Blind Hunter, Edge Case Hunter. Failed/empty: Acceptance Auditor, Verification Gap Reviewer.
+
+- [x] [Review][Patch] Do not stamp a validator on present-page 304 when the scheduler has none [ProjectionFallbackRefreshScheduler.cs:328] — Keep `TryDispatchPageNotModified` (no flash). Record validator state only after a missing-page 304 success, or when a prior ETag/signature already exists. A successor 304 on leftover rows must not lock in the new owner so a later same-ETag 200 is still a first observation.
+- [x] [Review][Defer] In-flight replay is not bounded to depth 1 [ProjectionFallbackRefreshScheduler.cs:259] — deferred: pre-existing P1/P24 retry orchestration; `_inFlight` is cleared before the recursive replay, so a nudge during replay can recurse again. Story 11.29's prior triage already carried this as EC-02/RBH-02.
+- [x] [Review][Defer] HasReducerPage can go stale before dispatch [ProjectionFallbackRefreshScheduler.cs:320] — deferred: maybe-false; would be medium if a concurrent eviction between the unsynchronized sample and `TryDispatch*` were shown. Settled by a fixture that evicts `(ViewKey, Skip)` after `HasReducerPage` returns and before dispatch, or by re-reading presence under `DispatchGate`.
+- [x] [Review][Defer] Fallback success completes in-flight grid TCS [ProjectionFallbackRefreshScheduler.cs:594] — deferred: pre-existing; `LoadPageSucceededAction` is dispatched with null `Completion`, so the reducer `TrySetResult`s any pending TCS for that key. Changing that requires the LoadedPage reducer contract, which this story must not alter.
+
+#### Rejected
+
+- BH spec Verification uses `dotnet <dll> -class` / `-notrait` and omits `Category=GovernanceBuild` — reject: the fix is to edit this spec; Hexalith fallback validation still documents assembly `-class` invocation.
+- BH `GetActiveLane` is unused — false: the private helper is never invoked and produces no user- or developer-facing defect.
+- BH four-argument constructor always sees an empty `StaticLoadedPageState` — false: production DI uses the primary constructor with Fluxor `IState<LoadedPageState>`; remaining 4-arg callers are tests that either use `RefreshAsync` or do not assert missing-page classification.
+- BH reconciliation `BuildDedupeKey` omits `ViewKey` — false: P28 still coalesces identical query fingerprints on purpose; generated views use one `_viewKey` per type and refcount rather than dual-key the same query.
+- BH intent-contract I/O matrix omits later triage patches — reject: the fix is to edit this spec.
+- BH row-signature markers/`isReliable` lack direct assertions — false: depth-33 fails at `JsonDocument.Parse` (marker 0x03) before the walk fuse; the 11-step fixture already proves fail-safe `Changed` for bound and serialization failures.
+- BH JSON numbers `1` and `1.0` produce different digests — false: same CLR DTOs serialize one number form; conservative mismatch is the specified fail-safe, not a missed material change.
+- BH several facts bundle multiple contracts — false: xUnit still reports the failing assertion line, so a bundled fact does not hide which poll or registration rule failed.
+- BH `review_loop_iteration` remains 0 and the Code Map still cites line 28 — reject: the fix is to edit this spec.
+- BH custom `RefreshAsync` never enters `ClassifyRefreshResult` — false: generated views register without a callback; `MapCustomOutcome` is the adopter-owned bypass and must not double-dispatch loader classification.
+- BH `NotSupportedException` and `IOException` share marker 0x04 — low: both paths are `isReliable=false` and already dispatch `Changed`; splitting markers adds branches with no user-visible miss.
+- EC lane disposed after successful dispatch reports `Skipped` — false: the check uses the starting `LaneEntry`; after final disposal no live owner should be listed in `ChangedViewKeys`, and Fluxor already received the page.
+- EC cancellation drops a pending retry token — low: teardown cancellation should not replay; the next poll or nudge covers a lost in-flight nudge, and persisting retry across cancel adds complexity.
+
 ## Spec Change Log
 
 - 2026-09-19: Clarified that the two pre-existing default-Shell-lane failures are mandatory external prerequisites, not work authorized by Story 11.29 and not waivable baseline failures.
@@ -124,6 +149,29 @@ deferred: []
 | RVG-02 | medium | patch | The contract-difference fixture now uses equal filter keys/counts with a different value and proves conflict rejection. |
 | RVG-03 | medium | patch | The final-disposal fixture now reuses the same ETag under a replacement contract and proves it is treated as the new owner's first observation. |
 | RVG-04 | medium | reject | The AppHost build-suppression regression is source-text based rather than executable metadata coverage, but that cumulative AppHost change is outside the fallback-refresh intent and must not expand Story 11.29 surfaces. |
+| R2-BH-01 | medium | reject | carried: EC-02/RBH-02 already establish that sustained nudges can extend replay recursion; the behavior predates this story and retry-orchestration changes are outside the approved intent. |
+| R2-BH-02 | maybe-false | reject | carried: EC-06/REC-01 already establish that no reachable Fluxor ordering has shown eviction between the synchronous presence sample and dispatch; proving it would require the deterministic interleaving fixture recorded there. |
+| R2-BH-03 | false | reject | carried: BH-07/EC-05 already establish that repeated `Changed` results outside the explicit row, byte, and depth bounds are the specified fail-safe, not a missed material change. |
+| R2-BH-04 | medium | reject | `graph --commit` does load its default policy from the worktree while `validate --commit` loads it from the selected commit, but that independent dependency-governance defect is already recorded outside this story and the intent forbids changing unrelated governance surfaces. |
+| R2-BH-05 | false | reject | carried: RBH-06 already establishes that the quality workflow intentionally performs complementary AppHost-root and provider-root invocations; each validates both packets semantically and the pair recomputes both byte authorities. |
+| R2-BH-06 | medium | reject | Predecessor validation can still invoke live provider and AppHost validation against current inputs when `require_current_match` is false, but that successor-governance behavior is independent committed history explicitly excluded by this fallback-refresh intent. |
+| R2-BH-07 | medium | reject | Parsed JSON is traversed only after the raw serialized form matches a redaction pattern, so JSON escaping can avoid scalar/key scanning; this is real independent release-evidence work that the intent explicitly forbids adding to Story 11.29. |
+| R2-BH-08 | maybe-false | reject | carried: BH-12/EC-04 already note that `_safe_process_diagnostic` omits raw-Authorization checks, but no reachable subprocess output containing Basic or opaque bearer authorization was demonstrated and the affected governance surface is excluded. |
+| R2-BH-09 | false | reject | carried: BH-09 already establishes that `_bounded_read` deliberately fails closed without `O_NOFOLLOW` and the enforcing quality lane runs on Ubuntu; the code does not perform an unsafe Windows read. |
+| R2-BH-10 | medium | reject | Child directory symlinks are skipped by the `is_dir()` branch before the later file-binding checks, but this runtime-evidence closure belongs to independent governance history that the Story 11.29 intent forbids modifying. |
+| R2-BH-11 | medium | reject | carried: RBH-09 already establishes that streaming package/runtime hashes do not revalidate file identity and timestamps after reading; that independent evidence-tooling race is excluded from Story 11.29. |
+| R2-BH-12 | low | reject | carried: RBH-11 already establishes that the published artifact is deliberately named an unapproved successor candidate; moving publication adds workflow complexity without correcting a Story 11.29 user-visible defect. |
+| R2-BH-13 | medium | reject | carried: BH-16 already establishes that workflow-dispatch inputs and the final hard-coded validation target can diverge; the mismatch is an independently landed quality-workflow change excluded by this intent. |
+| R2-EC-01 | medium | patch | A snapshotted prior owner could pass the initial active check, pause, then overwrite an already queued replacement owner's `_pendingRetry` token after ownership changed; the pending write is now guarded by `_laneGate` and rechecks that the exact entry remains active, with the focused and default Shell lanes green. |
+| R2-EC-02 | medium | reject | carried: EC-02/RBH-02 already record the sustained-nudge replay recursion as pre-existing retry orchestration outside this story's approved correctness surfaces. |
+| R2-EC-03 | maybe-false | reject | carried: EC-06/REC-01 already record the unproven eviction-between-sample-and-dispatch interleaving and what deterministic fixture would settle it. |
+| R2-EC-04 | low | reject | carried: REC-04 already establishes that refcount overflow needs more than `Int32.MaxValue` simultaneous equivalent registrations, is not an everyday reachable lifetime, and does not justify another guard branch. |
+| R2-EC-05 | medium | reject | A missing or unreadable active identity leaves `identity_bytes` null and the unconditional redaction scan calls `decode`, escaping as `AttributeError`; this independent evidence-validator defect is explicitly outside the fallback-refresh intent. |
+| R2-EC-06 | false | reject | carried: BH-10/RBH-10 already establish that candidate assembly copies bounded byte snapshots, its documented caller validates live evidence immediately beforehand, and a later gate validates the candidate inputs; the directory itself is never approval. |
+| R2-EC-07 | low | reject | carried: RBH-11 already establishes that the upload is explicitly an unapproved successor candidate and therefore does not represent final-gate approval. |
+| R2-EC-08 | maybe-false | reject | carried: BH-12/EC-04 already record the missing raw-Authorization diagnostic check, the absence of a demonstrated reachable leaking subprocess output, and the explicit exclusion of release-governance work. |
+| R2-EC-09 | low | reject | Transport status zero fails the workflow closed but can receive an imprecise authorization/cutover rejection reason code; that diagnostic-only issue is uncommon, independent governance behavior excluded by this intent, and adding retry-state branches is disproportionate here. |
+| R2-EC-10 | maybe-false | reject | carried: EC-06/REC-01 already record the same missing-page interleaving claim and the deterministic evidence needed to establish it. |
 
 ## Design Notes
 

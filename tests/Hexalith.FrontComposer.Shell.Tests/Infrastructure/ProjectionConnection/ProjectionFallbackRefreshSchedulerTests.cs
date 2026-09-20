@@ -256,6 +256,28 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
         // Second pass: same ETag → NotModified, no false-positive Changed.
         secondPass.ChangedViewKeys.ShouldBeEmpty();
 
+        IDispatcher continuityDispatcher = Substitute.For<IDispatcher>();
+        ProjectionFallbackRefreshScheduler continuitySut = CreateScheduler(
+            LoaderReturning(new Queue<ProjectionPageResult>([
+                new ProjectionPageResult(["order-1"], 1, "\"v1\""),
+                new ProjectionPageResult(["order-1"], 1, "\"v2\"", IsNotModified: true),
+                new ProjectionPageResult(["order-1"], 1, "\"v2\""),
+            ])),
+            continuityDispatcher,
+            new MutableLoadedPageState(PageState(viewKey, ["order-1"], totalCount: 1)));
+        _ = continuitySut.RegisterLane(DefaultLane(viewKey));
+
+        (await continuitySut.TriggerReconciliationOnceAsync(1, TestContext.Current.CancellationToken))
+            .ChangedViewKeys.ShouldBe([viewKey]);
+        (await continuitySut.TriggerReconciliationOnceAsync(2, TestContext.Current.CancellationToken))
+            .ChangedViewKeys.ShouldBeEmpty();
+        (await continuitySut.TriggerReconciliationOnceAsync(3, TestContext.Current.CancellationToken))
+            .ChangedViewKeys.ShouldBeEmpty();
+        continuityDispatcher.Received(1).Dispatch(Arg.Is<LoadPageSucceededAction>(action =>
+            action.ViewKey == viewKey));
+        continuityDispatcher.Received(1).Dispatch(Arg.Is<LoadPageNotModifiedAction>(action =>
+            action.ViewKey == viewKey));
+
         ThrowOnceDispatcher throwingDispatcher = new();
         ProjectionFallbackRefreshScheduler retrySut = CreateScheduler(
             LoaderReturning(new ProjectionPageResult(["order-2"], 1, "\"v2\"")),
@@ -780,6 +802,29 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
         (await etagSut.TriggerReconciliationOnceAsync(2, TestContext.Current.CancellationToken))
             .ChangedViewKeys.ShouldBe([viewKey]);
         etagDispatcher.Received(2).Dispatch(Arg.Is<LoadPageSucceededAction>(action => action.ViewKey == viewKey));
+
+        IDispatcher successorDispatcher = Substitute.For<IDispatcher>();
+        ProjectionFallbackRefreshScheduler successorSut = CreateScheduler(
+            LoaderReturning(new Queue<ProjectionPageResult>([
+                new ProjectionPageResult(["leftover"], 1, "\"successor-etag\"", IsNotModified: true),
+                new ProjectionPageResult(["replacement"], 1, "\"successor-etag\""),
+            ])),
+            successorDispatcher,
+            new MutableLoadedPageState(PageState(viewKey, ["leftover"], totalCount: 1)));
+        IDisposable predecessor = successorSut.RegisterLane(DefaultLane(viewKey));
+        predecessor.Dispose();
+        _ = successorSut.RegisterLane(DefaultLane(viewKey) with { TenantId = "other" });
+
+        (await successorSut.TriggerReconciliationOnceAsync(1, TestContext.Current.CancellationToken))
+            .ChangedViewKeys.ShouldBeEmpty();
+        (await successorSut.TriggerReconciliationOnceAsync(2, TestContext.Current.CancellationToken))
+            .ChangedViewKeys.ShouldBe([viewKey]);
+        successorDispatcher.Received(1).Dispatch(Arg.Is<LoadPageNotModifiedAction>(action =>
+            action.ViewKey == viewKey));
+        successorDispatcher.Received(1).Dispatch(Arg.Is<LoadPageSucceededAction>(action =>
+            action.ViewKey == viewKey
+            && action.Items != null
+            && action.Items.SequenceEqual(new object[] { "replacement" })));
 
         IProjectionPageLoader staleLoader = LoaderReturning(new ProjectionPageResult([], 0, "\"v1\"", IsNotModified: true));
         IDispatcher staleDispatcher = Substitute.For<IDispatcher>();

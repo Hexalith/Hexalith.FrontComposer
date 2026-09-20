@@ -228,7 +228,12 @@ public sealed class ProjectionFallbackRefreshScheduler(
         if (!_inFlight.TryAdd(lane.ViewKey, 0)) {
             // P1 — mark pending so the final nudge gets a replay after the in-flight refresh
             // resolves. The dedupe window must not drop the last nudge after a failure.
-            _pendingRetry[lane.ViewKey] = entry;
+            lock (_laneGate) {
+                if (IsLaneActiveWithoutLock(entry)) {
+                    _pendingRetry[lane.ViewKey] = entry;
+                }
+            }
+
             return ProjectionLaneRefreshResult.Skipped;
         }
 
@@ -579,15 +584,20 @@ public sealed class ProjectionFallbackRefreshScheduler(
 
     private bool TryDispatchPageNotModified(LaneEntry entry, ProjectionPageResult result) {
         lock (entry.DispatchGate) {
+            bool hadValidatorState;
             lock (_laneGate) {
                 if (!IsLaneActiveWithoutLock(entry)) {
                     return false;
                 }
+
+                string laneIdentity = entry.Lane.ViewKey;
+                hadValidatorState = _lastEtagByLane.ContainsKey(laneIdentity)
+                    || _lastNoEtagSignatureByLane.ContainsKey(laneIdentity);
             }
 
             ProjectionFallbackLane lane = entry.Lane;
             dispatcher.Dispatch(new LoadPageNotModifiedAction(lane.ViewKey, lane.Skip, result.Items));
-            return TryRecordValidatorState(entry, result);
+            return !hadValidatorState || TryRecordValidatorState(entry, result);
         }
     }
 

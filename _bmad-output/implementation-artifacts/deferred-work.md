@@ -9697,3 +9697,9 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-repair-builds-governance-prerequisites-blocking-11-29.md`
   summary: Make `dependency_graph.py graph --commit` load its default policy from the selected commit instead of the worktree.
   evidence: The graph command still resolves the default policy from `eng/dependency-graph-policy.json` in the worktree, so identical commit input can yield different envelopes across checkouts; this behavior predates the current validation repair and is not exercised by its acceptance facts.
+
+## Deferred from: code review of spec-11-29-fallback-refresh-and-view-registration-correctness.md (2026-09-20)
+
+- In-flight replay is not bounded to depth 1 (`ProjectionFallbackRefreshScheduler.cs:259`). Pre-existing P1/P24 retry orchestration: `_inFlight` is cleared before the recursive replay, so a nudge during replay can recurse again. Already carried in this story's prior triage as EC-02/RBH-02.
+- `HasReducerPage` can go stale before dispatch (`ProjectionFallbackRefreshScheduler.cs:320`). Unverified: would be medium if a concurrent eviction between the unsynchronized sample and `TryDispatch*` were shown. Settled by a fixture that evicts `(ViewKey, Skip)` after `HasReducerPage` returns and before dispatch, or by re-reading presence under `DispatchGate`.
+- Fallback success completes in-flight grid TCS (`ProjectionFallbackRefreshScheduler.cs:594`). Pre-existing: `LoadPageSucceededAction` is dispatched with null `Completion`, so the reducer `TrySetResult`s any pending TCS for that key. Changing that requires the LoadedPage reducer contract, which this story must not alter.
