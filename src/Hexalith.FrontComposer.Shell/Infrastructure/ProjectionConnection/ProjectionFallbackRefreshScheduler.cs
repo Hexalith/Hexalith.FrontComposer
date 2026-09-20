@@ -27,7 +27,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
     ILogger<ProjectionFallbackRefreshScheduler> logger) : IProjectionFallbackRefreshScheduler {
     private readonly ConcurrentDictionary<string, LaneEntry> _lanes = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, byte> _inFlight = new(StringComparer.Ordinal);
-    private readonly ConcurrentDictionary<string, byte> _pendingRetry = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, LaneEntry> _pendingRetry = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<ProjectionFallbackGroupKey, bool> _activeGroups = new();
     // DN4=b — last-known ETag per lane key. Compared against the response ETag on each refresh
     // to detect a wire-level data change without relying on per-item Equals (which falls back
@@ -228,7 +228,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
         if (!_inFlight.TryAdd(lane.ViewKey, 0)) {
             // P1 — mark pending so the final nudge gets a replay after the in-flight refresh
             // resolves. The dedupe window must not drop the last nudge after a failure.
-            _pendingRetry[lane.ViewKey] = 0;
+            _pendingRetry[lane.ViewKey] = entry;
             return ProjectionLaneRefreshResult.Skipped;
         }
 
@@ -268,14 +268,28 @@ public sealed class ProjectionFallbackRefreshScheduler(
         // cleared before retry so further bursts during the retry can themselves enqueue a
         // single follow-up. P24 — recursion is bounded to depth 1 because _pendingRetry is
         // cleared atomically and only one replay token can be set per lane.
-        if (_pendingRetry.TryRemove(lane.ViewKey, out _) && !cancellationToken.IsCancellationRequested) {
-            LaneEntry? retryEntry = GetActiveLane(lane.ViewKey);
-            if (retryEntry is not null) {
-                return await RefreshLaneAsync(retryEntry, cancellationToken).ConfigureAwait(false);
-            }
+        if (_pendingRetry.TryRemove(lane.ViewKey, out LaneEntry? retryEntry)
+            && !cancellationToken.IsCancellationRequested
+            && IsLaneActive(retryEntry)) {
+            ProjectionLaneRefreshResult replayOutcome = await RefreshLaneAsync(retryEntry, cancellationToken).ConfigureAwait(false);
+            return StrongestOutcome(outcome, replayOutcome);
         }
 
         return outcome;
+    }
+
+    private static ProjectionLaneRefreshResult StrongestOutcome(
+        ProjectionLaneRefreshResult first,
+        ProjectionLaneRefreshResult second) {
+        if (first is ProjectionLaneRefreshResult.Changed || second is ProjectionLaneRefreshResult.Changed) {
+            return ProjectionLaneRefreshResult.Changed;
+        }
+
+        if (first is ProjectionLaneRefreshResult.NotModified || second is ProjectionLaneRefreshResult.NotModified) {
+            return ProjectionLaneRefreshResult.NotModified;
+        }
+
+        return ProjectionLaneRefreshResult.Skipped;
     }
 
     /// <summary>
@@ -290,23 +304,30 @@ public sealed class ProjectionFallbackRefreshScheduler(
             return ProjectionLaneRefreshResult.Skipped;
         }
 
-        bool reducerPageMissing = !HasReducerPage(lane);
-        if (result.IsNotModified) {
-            if (reducerPageMissing) {
-                DispatchPageSuccess(lane, result);
-                return ProjectionLaneRefreshResult.Changed;
-            }
-
-            dispatcher.Dispatch(new LoadPageNotModifiedAction(lane.ViewKey, lane.Skip, result.Items ?? []));
-            return ProjectionLaneRefreshResult.NotModified;
-        }
-
         // P25 — negative TotalCount is a protocol issue, not a Changed signal.
         if (result.TotalCount < 0) {
             FrontComposerHotPathLog.ProjectionRefreshNegativeCount(
                 logger,
                 lane.ViewKey);
             return ProjectionLaneRefreshResult.Skipped;
+        }
+
+        if (result.Items is null) {
+            FrontComposerLog.ProjectionRefreshFailed(logger, lane.ProjectionType, "InvalidItems");
+            return ProjectionLaneRefreshResult.Skipped;
+        }
+
+        bool reducerPageMissing = !HasReducerPage(lane);
+        if (result.IsNotModified) {
+            if (reducerPageMissing) {
+                return TryDispatchPageSuccess(entry, result)
+                    ? ProjectionLaneRefreshResult.Changed
+                    : ProjectionLaneRefreshResult.Skipped;
+            }
+
+            return TryDispatchPageNotModified(entry, result)
+                ? ProjectionLaneRefreshResult.NotModified
+                : ProjectionLaneRefreshResult.Skipped;
         }
 
         string laneIdentity = lane.ViewKey;
@@ -319,16 +340,15 @@ public sealed class ProjectionFallbackRefreshScheduler(
                     return ProjectionLaneRefreshResult.Skipped;
                 }
 
-                _ = _lastEtagByLane.TryRemove(laneIdentity, out _);
                 signatureChanged = !signatureReliable
                     || !_lastNoEtagSignatureByLane.TryGetValue(laneIdentity, out string? previousSignature)
                     || !string.Equals(previousSignature, signature, StringComparison.Ordinal);
-                _lastNoEtagSignatureByLane[laneIdentity] = signature;
             }
 
             if (signatureChanged || reducerPageMissing) {
-                DispatchPageSuccess(lane, result);
-                return ProjectionLaneRefreshResult.Changed;
+                return TryDispatchPageSuccess(entry, result, signature)
+                    ? ProjectionLaneRefreshResult.Changed
+                    : ProjectionLaneRefreshResult.Skipped;
             }
 
             return ProjectionLaneRefreshResult.NotModified;
@@ -342,29 +362,30 @@ public sealed class ProjectionFallbackRefreshScheduler(
 
             bool hadPrevious = _lastEtagByLane.TryGetValue(laneIdentity, out string? previousEtag);
             etagChanged = !hadPrevious || !string.Equals(previousEtag, newEtag, StringComparison.Ordinal);
-            _lastEtagByLane[laneIdentity] = newEtag;
-            _ = _lastNoEtagSignatureByLane.TryRemove(laneIdentity, out _);
         }
 
         if (etagChanged || reducerPageMissing) {
-            DispatchPageSuccess(lane, result);
-            return ProjectionLaneRefreshResult.Changed;
+            return TryDispatchPageSuccess(entry, result)
+                ? ProjectionLaneRefreshResult.Changed
+                : ProjectionLaneRefreshResult.Skipped;
         }
 
         return ProjectionLaneRefreshResult.NotModified;
     }
 
     private void DecrementLane(string viewKey, LaneEntry expected) {
-        lock (_laneGate) {
-            if (!_lanes.TryGetValue(viewKey, out LaneEntry? current) || !ReferenceEquals(current, expected)) {
-                return;
-            }
+        lock (expected.DispatchGate) {
+            lock (_laneGate) {
+                if (!_lanes.TryGetValue(viewKey, out LaneEntry? current) || !ReferenceEquals(current, expected)) {
+                    return;
+                }
 
-            current.RefCount--;
-            if (current.RefCount == 0) {
-                _ = _lanes.TryRemove(new KeyValuePair<string, LaneEntry>(viewKey, current));
-                _ = _lastEtagByLane.TryRemove(viewKey, out _);
-                _ = _lastNoEtagSignatureByLane.TryRemove(viewKey, out _);
+                current.RefCount--;
+                if (current.RefCount == 0) {
+                    _ = _lanes.TryRemove(new KeyValuePair<string, LaneEntry>(viewKey, current));
+                    _ = _lastEtagByLane.TryRemove(viewKey, out _);
+                    _ = _lastNoEtagSignatureByLane.TryRemove(viewKey, out _);
+                }
             }
         }
     }
@@ -513,6 +534,63 @@ public sealed class ProjectionFallbackRefreshScheduler(
         return loadedPages.Value.PagesByKey.ContainsKey(pageKey);
     }
 
+    private bool TryRecordValidatorState(
+        LaneEntry entry,
+        ProjectionPageResult result,
+        string? noEtagSignature = null) {
+        string? newEtag = result.ETag;
+        string? signature = string.IsNullOrEmpty(newEtag)
+            ? noEtagSignature ?? ProjectionFallbackRowSignature.Create(result, out _)
+            : null;
+        lock (_laneGate) {
+            if (!IsLaneActiveWithoutLock(entry)) {
+                return false;
+            }
+
+            string laneIdentity = entry.Lane.ViewKey;
+            if (string.IsNullOrEmpty(newEtag)) {
+                _ = _lastEtagByLane.TryRemove(laneIdentity, out _);
+                _lastNoEtagSignatureByLane[laneIdentity] = signature!;
+            }
+            else {
+                _lastEtagByLane[laneIdentity] = newEtag;
+                _ = _lastNoEtagSignatureByLane.TryRemove(laneIdentity, out _);
+            }
+
+            return true;
+        }
+    }
+
+    private bool TryDispatchPageSuccess(
+        LaneEntry entry,
+        ProjectionPageResult result,
+        string? noEtagSignature = null) {
+        lock (entry.DispatchGate) {
+            lock (_laneGate) {
+                if (!IsLaneActiveWithoutLock(entry)) {
+                    return false;
+                }
+            }
+
+            DispatchPageSuccess(entry.Lane, result);
+            return TryRecordValidatorState(entry, result, noEtagSignature);
+        }
+    }
+
+    private bool TryDispatchPageNotModified(LaneEntry entry, ProjectionPageResult result) {
+        lock (entry.DispatchGate) {
+            lock (_laneGate) {
+                if (!IsLaneActiveWithoutLock(entry)) {
+                    return false;
+                }
+            }
+
+            ProjectionFallbackLane lane = entry.Lane;
+            dispatcher.Dispatch(new LoadPageNotModifiedAction(lane.ViewKey, lane.Skip, result.Items));
+            return TryRecordValidatorState(entry, result);
+        }
+    }
+
     private void DispatchPageSuccess(ProjectionFallbackLane lane, ProjectionPageResult result)
         => dispatcher.Dispatch(new LoadPageSucceededAction(
             lane.ViewKey,
@@ -529,6 +607,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
         };
 
     private sealed class LaneEntry(ProjectionFallbackLane lane) {
+        public object DispatchGate { get; } = new();
         public ProjectionFallbackLane Lane { get; } = lane;
         public int RefCount = 1;
     }

@@ -2,7 +2,7 @@
 title: 'Story 11.29: Fallback Refresh and View Registration Correctness'
 type: 'bugfix'
 created: '2026-09-19'
-status: in-progress
+status: done
 baseline_commit: '257215600ee2cf3c921014d27c07b625fee7c59d'
 baseline_revision: 5213552913b421a26b3f4822f02f0d9b98504ebb
 review_loop_iteration: 0
@@ -71,6 +71,59 @@ deferred: []
 - 2026-09-20: Generalized the prerequisite rule to every out-of-scope default-Shell-lane failure so changing external failure names cannot stale or narrow the full-lane gate.
 
 ## Review Triage Log
+
+| ID | Verdict | Route | Evidence |
+| --- | --- | --- | --- |
+| BH-01 | false | reject | The uploaded artifact is explicitly named and consumed as an unapproved capture candidate; later validation failure cannot turn it into an approved runtime identity. |
+| BH-02 | false | reject | Successful writer activation assigns `eventstore_base` and immediately breaks the health loop, so the code does not post activation again after a successful response. |
+| BH-03 | false | reject | Same-view accepted writes are serialized by the scheduler's in-flight key or rejected by the reducer's matching-completion guard; the review did not identify a reachable stale overwrite that survives those guards. |
+| BH-04 | medium | patch | `IsNotModified` was evaluated before the negative-count protocol guard; classification now rejects a negative total before every validator branch and a regression covers malformed 304 input. |
+| BH-05 | medium | patch | A runtime-null `Items` value could previously dispatch success and report `Changed`; classification now fails closed before dispatch and the malformed-result regression covers this path. |
+| BH-06 | medium | patch | A successful 304 rebuild did not seed scheduler validator state, so the same subsequent 200 looked new; validator/signature state is now recorded after a successful 304 dispatch and the 304-to-200 regression proves de-duplication. |
+| BH-07 | false | reject | Conservative `Changed` for content outside the explicit row/byte/depth bounds is the specified fail-safe behavior; treating a truncated digest as reliable would miss material changes beyond the bound. |
+| BH-08 | medium | patch | Dispatch initially held the global registration gate; dispatch/disposal are now serialized by a per-entry gate while the global gate is held only for the active-owner check. |
+| BH-09 | false | reject | `_bounded_read` deliberately fails closed when no no-follow primitive exists, and the evidence validator runs in the Ubuntu quality job; it does not perform an unsafe Windows read. |
+| BH-10 | false | reject | Candidate assembly is a byte-copy operation whose documented caller validates live evidence immediately before assembly and validates the candidate afterward; the candidate is never treated as approval. |
+| BH-11 | low | reject | A failed write can leave a runner-temp candidate directory, but each CI attempt gets a fresh runner and there is no in-process retry; atomic-directory construction is unrelated complexity for this fallback-refresh intent. |
+| BH-12 | maybe-false | reject | The claim concerns a separate evidence-capture diagnostic; no reachable subprocess output containing Basic or opaque bearer authorization was demonstrated, and this intent explicitly excludes that release-governance surface. |
+| BH-13 | maybe-false | reject | The claimed Story 11.25 tuple-authority mismatch belongs to the independent successor-identity history in the cumulative baseline range, not fallback refresh; this story must not amend that frozen record. |
+| BH-14 | medium | reject | Story 11.25's spec/sprint completion mismatch is visible but belongs to independent release-evidence work in the cumulative baseline range; Story 11.29 explicitly forbids unrelated artifact/deferred-work changes. |
+| BH-15 | false | reject | `sprint-status.yaml` is clean in the active working tree; the baseline-to-HEAD range includes an independently landed status commit, while this implementation did not modify the prohibited file. |
+| BH-16 | medium | reject | The manual-dispatch input mismatch is in an independently landed quality-workflow change and is excluded by the fallback-refresh intent; no workflow edit or unrelated deferred-work mutation is authorized here. |
+| BH-17 | low | reject | The stale `active v2 evidence` comment is cosmetic text in unrelated release governance and has no fallback-refresh runtime effect. |
+| EC-01 | medium | patch | Same root cause as BH-06; 304 validator continuity is now recorded after successful dispatch and tested. |
+| EC-02 | medium | reject | Replay recursion predates this story and requires sustained nudges during every awaited replay; changing retry orchestration is outside the approved correctness surfaces and preservation boundary. |
+| EC-03 | high | reject | The parent-directory symlink race is in independent evidence tooling from the cumulative baseline range; the fallback-refresh intent and Never rules prohibit modifying or recording unrelated governance work here. |
+| EC-04 | maybe-false | reject | Same independent diagnostic-redaction claim as BH-12; no reachable leaking subprocess output was demonstrated for this story. |
+| EC-05 | false | reject | Same specified conservative-bound behavior as BH-07; repeated dispatch is intentional when equality cannot be proven within the bounded signature budget. |
+| EC-06 | maybe-false | reject | The review did not establish Fluxor action ordering that evicts the page between the state sample and queued dispatch; deterministic absent-page cases are covered, and solving cross-queue linearizability would require an unauthorized action/reducer contract change. |
+| VG-01 | medium | patch | No test combined a cached no-ETag signature with later page eviction; the existing no-ETag repeat fixture now evicts the reducer page and proves success dispatch plus `Changed`. |
+| VG-02 | medium | patch | The 16 KiB row and depth-32 JSON bounds lacked execution proof; the bounded-signature fixture now exercises repeated oversized and over-depth rows and proves fail-safe dispatch without exception propagation. |
+| RBH-01 | medium | patch | A refresh that dispatches `Changed` can be followed by a pending replay that returns `NotModified`; `StrongestOutcome` now preserves the material result, and the coordinated ETag fixture proves the reconciliation report remains changed. |
+| RBH-02 | medium | reject | carried: sustained nudges can extend the recursive replay chain beyond the claimed depth-one bound, but EC-02 already records this pre-existing retry-orchestration issue as excluded by the approved intent. |
+| RBH-03 | medium | patch | A pending retry was keyed only by `ViewKey`; retry state now carries its `LaneEntry` generation, rejects a stale owner's token, and retains a request made by the active replacement owner. |
+| RBH-04 | medium | patch | ETag/signature state previously advanced before dispatcher success; dispatch helpers now commit it only after dispatch returns, and a throw-once regression proves the identical retry is not suppressed. |
+| RBH-05 | medium | reject | `SetReconciliationGroupHealth` can expose a partial `ConcurrentDictionary` snapshot during `Clear` plus refill, but that behavior predates Story 11.29 and the intent excludes unrelated scheduler orchestration changes. |
+| RBH-06 | false | reject | The quality workflow deliberately performs complementary AppHost-root and provider-root live-validation invocations; each validates the other packet semantically, and the gate reaches success only after both byte authorities have been recomputed. |
+| RBH-07 | medium | reject | AppHost reevaluation can capture an unbounded MSBuild JSON stream, but this is cumulative release-evidence tooling outside the fallback-refresh intent and its explicit prohibition on dependency-governance changes. |
+| RBH-08 | high | reject | The package-ledger CLI can prune an externally supplied non-fresh package root even though the smoke caller first enforces freshness; this destructive-tooling concern is real but belongs to cumulative release governance explicitly excluded from Story 11.29. |
+| RBH-09 | medium | reject | Streaming package/runtime hashes do not revalidate descriptor identity and timestamps after reading, leaving a same-size mutation race; the affected evidence tooling is explicitly outside this story's intent. |
+| RBH-10 | false | reject | carried: candidate assembly copies bounded snapshots, the documented caller validates the live evidence immediately beforehand, and the later contract-artifact gate validates the candidate inputs; BH-10 already records that the directory itself is never approval. |
+| RBH-11 | low | reject | The workflow publishes a deliberately named unapproved successor candidate before the later approval-preparation gate; the artifact is never represented as approved, so moving upload would not correct a user-visible Story 11.29 defect. |
+| RBH-12 | medium | reject | Writer-protocol invalid-bearer activation is exercised but not added to the durable authorization-control schema; that independent release-evidence enhancement is explicitly excluded from this fallback-refresh story. |
+| RBH-13 | medium | reject | Package inventory traversal lacks incremental file-count and aggregate-work limits before the final ledger-size check, but the cumulative evidence implementation is outside the approved intent. |
+| REC-01 | maybe-false | reject | carried: EC-06 already records that no reachable Fluxor ordering was established for eviction between the synchronous page-state sample and dispatch, and full cross-queue linearization would require an excluded action/reducer contract change. |
+| REC-02 | medium | patch | Same root cause as RBH-03: pending retry state now binds and validates the requested `LaneEntry` generation before replay. |
+| REC-03 | medium | patch | Same root cause as RBH-04: cached validators now advance only after dispatch completion. |
+| REC-04 | low | reject | More than `Int32.MaxValue` simultaneous equivalent registrations could overflow the refcount, but that is not an everyday reachable component lifetime and adding an overflow guard is disproportionate branch complexity. |
+| REC-05 | medium | reject | Deep evidence JSON can escape the current parser as `RecursionError`, but this finding is in independent governance validation explicitly excluded by the Story 11.29 intent. |
+| REC-06 | low | reject | carried: BH-11 already records that a failed candidate write can leave a runner-temporary partial directory, but each CI attempt receives a fresh directory and atomic-directory construction is unrelated to this intent. |
+| REC-07 | medium | reject | The smoke command wrapper bounds retained text only after `capture_output=True` has buffered the full process output; this release-evidence resource bound is outside the fallback-refresh intent. |
+| REC-08 | medium | reject | AppHost capture writes compact evidence without rejecting a payload over the validator's 1 MiB bound, so later validation can fail after capture success; that independent evidence concern is excluded from this story. |
+| RVG-01 | medium | patch | The no-ETag changed-row fixture now keeps visible rows identical while changing only `TotalCount` and proves success dispatch plus `Changed`. |
+| RVG-02 | medium | patch | The contract-difference fixture now uses equal filter keys/counts with a different value and proves conflict rejection. |
+| RVG-03 | medium | patch | The final-disposal fixture now reuses the same ETag under a replacement contract and proves it is treated as the new owner's first observation. |
+| RVG-04 | medium | reject | The AppHost build-suppression regression is source-text based rather than executable metadata coverage, but that cumulative AppHost change is outside the fallback-refresh intent and must not expand Story 11.29 surfaces. |
 
 ## Design Notes
 
