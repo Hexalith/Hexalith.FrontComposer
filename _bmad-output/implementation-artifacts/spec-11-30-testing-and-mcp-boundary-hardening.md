@@ -2,7 +2,7 @@
 title: 'Story 11.30: Testing and MCP Boundary Hardening'
 type: 'bugfix'
 created: '2026-09-20'
-status: 'in-progress'
+status: 'done'
 baseline_commit: 'aaa916bbfea86a58d8bed005e80ae2419458571d'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -65,9 +65,9 @@ context:
 
 - [x] [Review][Decision] Credential-key matching over-redacts benign compound names — Decision (2026-09-21): Option 1 Keep Contains. Over-redaction of compound names is accepted fail-closed behavior for test evidence; equality would regress `AccessToken`/`PasswordHash`. No matcher change.
 
-- [ ] [Review][Patch] Exact NUlid round-trip is unpinned at factory and dispatcher identity checks [tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerTests.cs:184]
-- [ ] [Review][Patch] Production MCP ULID factory is never asserted against the new canonical gate [src/Hexalith.FrontComposer.Mcp/FrontComposerMcpUlidFactory.cs:15]
-- [ ] [Review][Patch] Overflow lifecycle reads are only covered on correlationId [tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandLifecycleTests.cs:445]
+- [x] [Review][Patch] Exact NUlid round-trip is unpinned at factory and dispatcher identity checks [tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerTests.cs:184]
+- [x] [Review][Patch] Production MCP ULID factory is never asserted against the new canonical gate [src/Hexalith.FrontComposer.Mcp/FrontComposerMcpUlidFactory.cs:15]
+- [x] [Review][Patch] Overflow lifecycle reads are only covered on correlationId [tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandLifecycleTests.cs:445]
 
 - [x] [Review][Defer] Pending, observed, and replayed transition message IDs are not bound to the owning entry [src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpLifecycleStore.cs:51] — deferred: pre-existing; already recorded in deferred-work.md from the prior 11.30 review
 - [x] [Review][Defer] Correlation/message maps are not one-to-one [src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpLifecycleStore.cs:165] — deferred: pre-existing; already recorded in deferred-work.md from the prior 11.30 review
@@ -119,6 +119,29 @@ Rejected:
 | BH-12 the spec lists expected rather than actual verification results | low | reject | The observed run has current passing evidence, but the proposed correction edits this build's spec and review rules require rejecting such findings; presentation owns the final evidence record. |
 | BH-13 changed text files have mixed or LF-only working-tree endings | low | patch | `.gitattributes` requires CRLF and `git ls-files --eol` confirms mixed/LF working copies on the changed files; normalization is a direct formatting correction. |
 | BH-14 Testing tests rely on a transitive NUlid reference | low | patch | New test code directly compiles against `NUlid`, but the test project has no direct centrally versioned package reference; adding one is a direct dependency declaration. |
+| BH2-1 release policy and workflow activation share one commit | medium | defer | Commit `81bae1a6a92314e8390db698a7fdbbea716199f8` contains both the policy row and workflow activation even though the separate release spec requires a policy-only push first; this is concurrent release work, not Story 11.30. |
+| BH2-2 status commit also advances EventStore and Tenants gitlinks | medium | defer | Commit `b2a007f8d5e1f307f3a5b0a5ec286d73420b127b` changes both gitlinks in a status-only commit without Story 11.30 ownership or dependency-governance evidence; the Release build passes, but commit scope and compatibility provenance remain unresolved. |
+| BH2-3 pending transitions may carry another canonical message ID | medium | defer | carried: The pre-change normalization path accepted any canonical transition message ID, so ownership binding remains pre-existing deferred work. |
+| BH2-4 observed or replayed transitions may carry another canonical message ID | medium | defer | carried: The pre-change observation path also accepted any normalized message ID; exact validation does not establish entry ownership. |
+| BH2-5 correlation reuse can return an entry with a different message or descriptor | medium | defer | carried: `GetOrCreateEntry` still resolves solely by correlation ID, matching the previously verified pre-existing defect. |
+| BH2-6 correlation and message maps permit cross-map collisions | medium | defer | carried: The unchanged two-map insertion design can make lookup order resolve the wrong entry. |
+| BH2-7 pre-canceled tracking mutates before observing cancellation | medium | defer | carried: With no pending transitions, the existing path creates, subscribes, and transitions without checking the token. |
+| BH2-8 lifecycle callback capture remains unbounded | medium | defer | carried: The unbounded callback queue and materialization predate this story; history limits do not bound ingress memory. |
+| BH2-9 dispatcher-returned overflow is detected after dispatch | false | reject | carried: A dispatcher-returned identifier cannot be validated before dispatch produces it; validation occurs immediately afterward and before MCP tracking, storage, or output. |
+| BH2-10 evidence allocates before applying the output cap | medium | defer | carried: Full `JsonNode` and JSON-string materialization before truncation is the previously verified pre-existing memory-bound gap. |
+| BH2-11 invalid evidence options can still replace outcomes | medium | defer | carried: Empty configured identifiers and negative limits are pre-existing public-option validation gaps requiring a policy decision. |
+| BH2-12 aggregate-wrapped cancellation or fatal serialization failures are swallowed | medium | patch | `JsonSerializer` propagates direct getter exceptions, while the new catch classifies only the outer `AggregateException`; an aggregate containing cancellation or a fatal exception therefore returns the unavailable marker instead of propagating. |
+| BH2-13 fatal ULID-factory exceptions are converted to unsupported-schema failures | medium | defer | `NewCanonicalUlid` already caught every non-cancellation exception at the baseline, including process-fatal exceptions; this is real but pre-existing MCP factory behavior outside Story 11.30. |
+| BH2-14 TryRecordObservedTransition can report a discarded transition as recorded | low | defer | The internal method returns `true` after `Observe`, while terminal-state guards can discard the transition; the behavior predates Story 11.30 and currently has no production caller. |
+| BH2-15 specs list expected rather than recorded verification results | low | reject | carried: Story verification evidence is finalized by the presentation step, and the unrelated release spec remains `in-progress`; editing either spec to satisfy this finding is not a code correction for this review. |
+| EC2-1 aggregate-wrapped cancellation or fatal serialization failures are swallowed | medium | patch | The new catch filter checks only the outer exception, so an `AggregateException` containing `OperationCanceledException` or a fatal exception is converted to the unavailable marker. |
+| EC2-2 pending transition message IDs are not bound to the entry | medium | defer | carried: Canonicality replaced normalization, but the pre-existing path never required equality with the owning message ID. |
+| EC2-3 observed transition message IDs are not bound to the entry | medium | defer | carried: The pre-existing observation path likewise lacked message ownership binding. |
+| EC2-4 reused or cross-map-colliding lifecycle identities can resolve another command | medium | defer | carried: The unchanged dictionary design and correlation-only reuse check are the previously verified one-to-one identity defect. |
+| EC2-5 pre-canceled TrackAcknowledged mutates state | medium | defer | carried: Cancellation is still observed only inside the pending-transition loop after the pre-existing mutations. |
+| EC2-6 undefined lifecycle states can reach snapshots | false | reject | carried: Production replay is constrained by `LifecycleStateService.IsValidTransition`, and `TryRecordObservedTransition` has no production caller. |
+| EC2-7 TryRecordObservedTransition returns success for a discarded terminal transition | low | defer | `LifecycleEntry.Observe` silently rejects a different post-terminal state, but the internal wrapper still returns `true`; this pre-existing contract mismatch has no production caller. |
+| VG-3 null dispatcher correlation fallback lacks MCP lifecycle coverage | medium | patch | The optional-correlation contract is used by `StubCommandService`, but every current MCP lifecycle fake supplies a correlation; a focused lifecycle invocation test must pin fallback to the message ID and readable snapshot behavior. |
 
 ## Verification
 

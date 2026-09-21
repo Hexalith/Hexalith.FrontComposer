@@ -76,7 +76,7 @@ public static class RedactedEvidenceFormatter {
                 ? "<null>"
                 : RedactNode(JsonSerializer.SerializeToNode(value))?.ToJsonString(RedactedJsonOptions) ?? "null";
         }
-        catch (Exception ex) when (ex is not OperationCanceledException && !IsFatal(ex)) {
+        catch (Exception ex) when (!MustPropagate(ex)) {
             return SerializationUnavailableMarker;
         }
 
@@ -151,6 +151,12 @@ public static class RedactedEvidenceFormatter {
             or StackOverflowException
             or System.Threading.ThreadAbortException
             or AccessViolationException;
+
+    private static bool MustPropagate(Exception exception)
+        => exception is OperationCanceledException
+            || IsFatal(exception)
+            || (exception is AggregateException aggregate
+                && aggregate.Flatten().InnerExceptions.Any(MustPropagate));
 
     private static string RedactConfiguredValues(string value, FrontComposerTestOptions options)
         => value

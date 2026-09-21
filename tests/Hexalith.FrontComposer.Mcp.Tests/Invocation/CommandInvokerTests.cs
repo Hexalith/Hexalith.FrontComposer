@@ -22,6 +22,20 @@ public sealed class CommandInvokerTests {
     private const string CanonicalCorrelationId = "01JZ0R5K9N8W4Y7V3Q2P6C1A0D";
 
     [Fact]
+    public void FrontComposerMcpUlidFactory_NewUlids_PassCanonicalGateAndExactRoundTrip() {
+        FrontComposerMcpUlidFactory factory = new();
+
+        string first = factory.NewUlid();
+        string second = factory.NewUlid();
+
+        first.ShouldNotBe(second);
+        FrontComposerMcpUlid.IsCanonical(first).ShouldBeTrue();
+        FrontComposerMcpUlid.IsCanonical(second).ShouldBeTrue();
+        AssertExactCanonicalRoundTrip(first);
+        AssertExactCanonicalRoundTrip(second);
+    }
+
+    [Fact]
     public async Task InvokeAsync_ValidCommand_DispatchesThroughCommandService_WithTenantContext() {
         RecordingCommandService service = new();
         CountingUlidFactory ulids = new();
@@ -184,17 +198,21 @@ public sealed class CommandInvokerTests {
     [Theory]
     [InlineData("80000000000000000000000000", 1)]
     [InlineData("ZZZZZZZZZZZZZZZZZZZZZZZZZZ", 1)]
+    [InlineData("01jz0r5k9n8w4y7v3q2p6c1a0c", 1)]
     [InlineData("80000000000000000000000000", 2)]
     [InlineData("ZZZZZZZZZZZZZZZZZZZZZZZZZZ", 2)]
-    public async Task InvokeAsync_OverflowFactoryIdentifier_FailsClosedBeforeDispatchWithoutEcho(
-        string overflow,
+    [InlineData("01jz0r5k9n8w4y7v3q2p6c1a0d", 2)]
+    public async Task InvokeAsync_NonCanonicalFactoryIdentifier_FailsClosedBeforeDispatchWithoutEcho(
+        string nonCanonical,
         int allocation) {
         RecordingCommandService service = new();
         string[] values = allocation == 1
-            ? [overflow]
-            : [CanonicalMessageId, overflow];
+            ? [nonCanonical]
+            : [CanonicalMessageId, nonCanonical];
         ServiceProvider provider = Services(service, new SequenceUlidFactory(values)).BuildServiceProvider();
         FrontComposerMcpCommandInvoker invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
+
+        AssertExactRoundTripMismatchWhenParseable(nonCanonical);
 
         FrontComposerMcpResult result = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
@@ -203,20 +221,25 @@ public sealed class CommandInvokerTests {
 
         result.IsError.ShouldBeTrue();
         result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnsupportedSchema);
-        result.Text.ShouldNotContain(overflow);
-        result.StructuredContent?.ToJsonString().ShouldNotContain(overflow);
+        result.Text.ShouldNotContain(nonCanonical);
+        result.StructuredContent?.ToJsonString().ShouldNotContain(nonCanonical);
         service.DispatchCount.ShouldBe(0);
     }
 
     [Theory]
     [InlineData("80000000000000000000000000", CanonicalCorrelationId)]
     [InlineData(CanonicalMessageId, "ZZZZZZZZZZZZZZZZZZZZZZZZZZ")]
-    public async Task InvokeAsync_OverflowDispatcherIdentifier_FailsClosedWithoutEcho(
+    [InlineData("01jz0r5k9n8w4y7v3q2p6c1a0c", CanonicalCorrelationId)]
+    [InlineData(CanonicalMessageId, "01jz0r5k9n8w4y7v3q2p6c1a0d")]
+    public async Task InvokeAsync_NonCanonicalDispatcherIdentifier_FailsClosedWithoutEcho(
         string messageId,
         string correlationId) {
         ResultCommandService service = new(new CommandResult(messageId, CommandResultStatus.Accepted, correlationId));
         ServiceProvider provider = Services(service, new SequenceUlidFactory(CanonicalMessageId, CanonicalCorrelationId)).BuildServiceProvider();
         FrontComposerMcpCommandInvoker invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
+
+        AssertExactRoundTripMismatchWhenParseable(
+            string.Equals(messageId, CanonicalMessageId, StringComparison.Ordinal) ? correlationId : messageId);
 
         FrontComposerMcpResult result = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
@@ -281,6 +304,20 @@ public sealed class CommandInvokerTests {
 
     private static Dictionary<string, JsonElement> Args(string json)
         => JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;
+
+    private static void AssertExactCanonicalRoundTrip(string value) {
+        NUlid.Ulid.TryParse(value, out NUlid.Ulid parsed).ShouldBeTrue();
+        parsed.ToString().ShouldBe(value);
+    }
+
+    private static void AssertExactRoundTripMismatchWhenParseable(string value) {
+        if (!value.Any(char.IsLower)) {
+            return;
+        }
+
+        NUlid.Ulid.TryParse(value, out NUlid.Ulid parsed).ShouldBeTrue();
+        parsed.ToString().ShouldNotBe(value);
+    }
 
     public sealed class PayInvoiceCommand {
         public string MessageId { get; set; } = "";

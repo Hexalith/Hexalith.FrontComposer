@@ -88,11 +88,15 @@ public sealed class TestingFailureModeTests {
     [InlineData("cyclic")]
     [InlineData("unsupported")]
     [InlineData("throwing")]
+    [InlineData("aggregate")]
     public void RedactedEvidenceFormatter_NonFatalSerializationFailures_ReturnStablePayloadFreeMarker(string failureMode) {
         object payload = failureMode switch {
             "cyclic" => CreateCyclicPayload(),
             "unsupported" => new UnsupportedPayload(),
             "throwing" => new ThrowingPayload(),
+            "aggregate" => new ExceptionalPayload(new AggregateException(
+                "aggregate-secret",
+                new InvalidOperationException("payload-secret"))),
             _ => throw new InvalidOperationException("Unsupported serialization fixture."),
         };
 
@@ -126,6 +130,14 @@ public sealed class TestingFailureModeTests {
         actual.ShouldNotBeNull();
         actual.ShouldBeSameAs(expected);
         actual.GetType().ShouldBe(exceptionType);
+
+        AggregateException aggregate = new(
+            "Aggregate serialization failure.",
+            new InvalidOperationException("Non-fatal sibling."),
+            expected);
+        Exception? aggregateActual = Record.Exception(() =>
+            RedactedEvidenceFormatter.Format(new ExceptionalPayload(aggregate), new FrontComposerTestOptions()));
+        aggregateActual.ShouldBeSameAs(aggregate);
     }
 
     [Fact]
@@ -136,6 +148,14 @@ public sealed class TestingFailureModeTests {
             RedactedEvidenceFormatter.Format(new ExceptionalPayload(expected), new FrontComposerTestOptions()));
 
         actual.ShouldBeSameAs(expected);
+
+        AggregateException aggregate = new(
+            "Aggregate serialization cancellation.",
+            new InvalidOperationException("Non-fatal sibling."),
+            expected);
+        Exception? aggregateActual = Record.Exception(() =>
+            RedactedEvidenceFormatter.Format(new ExceptionalPayload(aggregate), new FrontComposerTestOptions()));
+        aggregateActual.ShouldBeSameAs(aggregate);
     }
 
     [Fact]

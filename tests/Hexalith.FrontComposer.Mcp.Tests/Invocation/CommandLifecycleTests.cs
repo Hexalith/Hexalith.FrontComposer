@@ -73,6 +73,31 @@ public sealed class CommandLifecycleTests {
     }
 
     [Fact]
+    public async Task InvokeAsync_NullDispatcherCorrelationId_AliasesCanonicalMessageIdAndRemainsReadable() {
+        FrontComposerMcpCommandInvoker invoker = Build(out LifecycleAwareCommandService service, out ServiceProvider provider);
+        service.OmitCorrelationId = true;
+
+        FrontComposerMcpResult acknowledgement = await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+        acknowledgement.IsError.ShouldBeFalse();
+        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+        string messageId = acknowledgement.StructuredContent!["messageId"]!.GetValue<string>();
+        FrontComposerMcpUlid.IsCanonical(messageId).ShouldBeTrue();
+        FrontComposerMcpResult snapshot = await tracker.ReadAsync(
+            Args($$"""{"correlationId":"{{messageId}}"}"""),
+            TestContext.Current.CancellationToken);
+
+        acknowledgement.StructuredContent!["correlationId"]!.GetValue<string>().ShouldBe(messageId);
+        acknowledgement.StructuredContent!["lifecycle"]!["uri"]!.GetValue<string>().ShouldEndWith(messageId);
+        snapshot.IsError.ShouldBeFalse();
+        snapshot.StructuredContent!["messageId"]!.GetValue<string>().ShouldBe(messageId);
+        snapshot.StructuredContent!["correlationId"]!.GetValue<string>().ShouldBe(messageId);
+        service.DispatchCount.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task ReadAsync_KnownLifecycleHandle_ReturnsOrderedTerminalSnapshot() {
         FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
         _ = await invoker.InvokeAsync(
@@ -443,20 +468,24 @@ public sealed class CommandLifecycleTests {
     }
 
     [Theory]
-    [InlineData("")]
-    [InlineData("01jz0r5k9n8w4y7v3q2p6c1a0c")]
-    [InlineData("../01JZ0R5K9N8W4Y7V3Q2P6C1A0C")]
-    [InlineData("01JZ0R5K9N8W4Y7V3Q2P6C1A0C-extra")]
+    [InlineData("correlationId", "")]
+    [InlineData("correlationId", "01jz0r5k9n8w4y7v3q2p6c1a0c")]
+    [InlineData("correlationId", "../01JZ0R5K9N8W4Y7V3Q2P6C1A0C")]
+    [InlineData("correlationId", "01JZ0R5K9N8W4Y7V3Q2P6C1A0C-extra")]
     // P41 + P17: oversized, percent-encoded, near-match (24/25 chars), whitespace-padded.
-    [InlineData("01JZ0R5K9N8W4Y7V3Q2P6C1A0")] // 25 chars (one short)
-    [InlineData("01JZ0R5K9N8W4Y7V3Q2P6C1A")] // 24 chars (two short)
-    [InlineData("%3001JZ0R5K9N8W4Y7V3Q2P6C1A0C")] // percent-encoded prefix
-    [InlineData(" 01JZ0R5K9N8W4Y7V3Q2P6C1A0C")] // leading ASCII space
-    [InlineData("01JZ0R5K9N8W4Y7V3Q2P6C1A0C ")] // trailing ASCII space
-    [InlineData("01JZ0R5K9N8W4Y7V3Q2P6C1A0C\\t")] // trailing tab (escaped in JSON)
-    [InlineData("80000000000000000000000000")]
-    [InlineData("ZZZZZZZZZZZZZZZZZZZZZZZZZZ")]
-    public async Task ReadAsync_MalformedLifecycleHandle_FailsAsHiddenUnknownWithoutStoreLookup(string correlationId) {
+    [InlineData("correlationId", "01JZ0R5K9N8W4Y7V3Q2P6C1A0")] // 25 chars (one short)
+    [InlineData("correlationId", "01JZ0R5K9N8W4Y7V3Q2P6C1A")] // 24 chars (two short)
+    [InlineData("correlationId", "%3001JZ0R5K9N8W4Y7V3Q2P6C1A0C")] // percent-encoded prefix
+    [InlineData("correlationId", " 01JZ0R5K9N8W4Y7V3Q2P6C1A0C")] // leading ASCII space
+    [InlineData("correlationId", "01JZ0R5K9N8W4Y7V3Q2P6C1A0C ")] // trailing ASCII space
+    [InlineData("correlationId", "01JZ0R5K9N8W4Y7V3Q2P6C1A0C\\t")] // trailing tab (escaped in JSON)
+    [InlineData("correlationId", "80000000000000000000000000")]
+    [InlineData("correlationId", "ZZZZZZZZZZZZZZZZZZZZZZZZZZ")]
+    [InlineData("messageId", "80000000000000000000000000")]
+    [InlineData("messageId", "ZZZZZZZZZZZZZZZZZZZZZZZZZZ")]
+    public async Task ReadAsync_MalformedLifecycleHandle_FailsAsHiddenUnknownWithoutStoreLookup(
+        string handleName,
+        string handle) {
         FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
         _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
@@ -465,7 +494,7 @@ public sealed class CommandLifecycleTests {
         FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
 
         FrontComposerMcpResult result = await tracker.ReadAsync(
-            Args($$"""{"correlationId":"{{correlationId}}"}"""),
+            Args($$"""{"{{handleName}}":"{{handle}}"}"""),
             TestContext.Current.CancellationToken);
 
         result.IsError.ShouldBeTrue();
@@ -474,8 +503,8 @@ public sealed class CommandLifecycleTests {
         _ = result.StructuredContent.ShouldNotBeNull();
         result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_tool");
         result.StructuredContent!.ToJsonString().ShouldNotContain(CorrelationId);
-        if (!string.IsNullOrEmpty(correlationId)) {
-            result.StructuredContent!.ToJsonString().ShouldNotContain(correlationId);
+        if (!string.IsNullOrEmpty(handle)) {
+            result.StructuredContent!.ToJsonString().ShouldNotContain(handle);
         }
     }
 
@@ -956,6 +985,7 @@ public sealed class CommandLifecycleTests {
         public bool RejectNext { get; set; }
         public bool ValidateRejectNext { get; set; }
         public bool CompleteSynchronously { get; set; } = true;
+        public bool OmitCorrelationId { get; set; }
         public string LastCorrelationId { get; private set; } = "";
 
         public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
@@ -989,7 +1019,11 @@ public sealed class CommandLifecycleTests {
                 onLifecycleChange?.Invoke(CommandLifecycleState.Confirmed, messageId);
             }
 
-            return Task.FromResult(new CommandResult(messageId, "Accepted", correlationId, RetryAfter: TimeSpan.FromMilliseconds(250)));
+            return Task.FromResult(new CommandResult(
+                messageId,
+                "Accepted",
+                OmitCorrelationId ? null : correlationId,
+                RetryAfter: TimeSpan.FromMilliseconds(250)));
         }
 
         private static string? ReadString<TCommand>(TCommand command, string propertyName)

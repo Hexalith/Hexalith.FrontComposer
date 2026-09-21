@@ -9745,3 +9745,19 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
   summary: Prove whether AggregateException wrapping cancel or fatal serializer errors is swallowed.
   evidence: Unverified medium. `RedactedEvidenceFormatter.Format` does not unwrap `AggregateException` before the cancel/fatal filter. Settle by a serialized getter that throws `AggregateException` containing `OperationCanceledException` or `OutOfMemoryException` and asserting rethrow versus the unavailable marker.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
+  summary: Separate release evaluator-policy authorization from workflow activation before the release change is pushed.
+  evidence: Concurrent commit `81bae1a6a92314e8390db698a7fdbbea716199f8` contains both the new dependency-graph policy row and the workflow activation even though the release spec requires a policy-only push first; this release-governance work is outside Story 11.30.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
+  summary: Reconcile the EventStore and Tenants gitlink advances embedded in the Story 11.30 status-only commit.
+  evidence: Commit `b2a007f8d5e1f307f3a5b0a5ec286d73420b127b` changes both gitlinks without Story 11.30 ownership or dependency-governance evidence; the Release build passes, but the commit-scope and compatibility provenance remain unresolved.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
+  summary: Preserve process-fatal exceptions thrown by the MCP ULID factory.
+  evidence: `NewCanonicalUlid` catches every non-cancellation exception and converts it to `UnsupportedSchema`, including process-fatal exceptions; this behavior existed at the Story 11.30 baseline and needs a separately owned exception-policy change.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
+  summary: Make TryRecordObservedTransition report whether the transition was actually recorded.
+  evidence: The internal wrapper returns `true` after `LifecycleEntry.Observe`, even when terminal-state guards discard the transition; the mismatch predates Story 11.30 and currently has no production caller.
