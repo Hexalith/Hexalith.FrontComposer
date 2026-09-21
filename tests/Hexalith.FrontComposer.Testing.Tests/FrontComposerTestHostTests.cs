@@ -166,9 +166,13 @@ public sealed class FrontComposerTestHostTests {
     public async Task TestCommandService_Dispatch_CapturesDeterministicCommandContext() {
         using TestHost host = new();
         ICommandServiceWithLifecycle commandService = host.Services.GetRequiredService<ICommandServiceWithLifecycle>();
+        List<string?> callbackMessageIds = [];
 
         CommandResult result = await commandService
-            .DispatchAsync(new SensitiveCommand { Amount = 7 }, (_, _) => { }, Xunit.TestContext.Current.CancellationToken)
+            .DispatchAsync(
+                new SensitiveCommand { Amount = 7 },
+                (_, messageId) => callbackMessageIds.Add(messageId),
+                Xunit.TestContext.Current.CancellationToken)
             .ConfigureAwait(true);
 
         CommandDispatchEvidence evidence = host.ExposedCommandService.Evidence.Single();
@@ -187,6 +191,14 @@ public sealed class FrontComposerTestHostTests {
             Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Syncing,
             Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Confirmed,
         ]);
+        callbackMessageIds.Count.ShouldBe(evidence.LifecycleStates.Count);
+        foreach (string? callbackMessageId in callbackMessageIds) {
+            string identifier = callbackMessageId.ShouldNotBeNull();
+            identifier.ShouldBe(result.MessageId);
+            identifier.ShouldBe(evidence.MessageId);
+            NUlid.Ulid.TryParse(identifier, out NUlid.Ulid parsedCallbackMessageId).ShouldBeTrue();
+            parsedCallbackMessageId.ToString().ShouldBe(identifier);
+        }
     }
 
     [Fact]
@@ -204,6 +216,12 @@ public sealed class FrontComposerTestHostTests {
         string[] firstHostIds = await DispatchTwiceAsync().ConfigureAwait(true);
         string[] secondHostIds = await DispatchTwiceAsync().ConfigureAwait(true);
 
+        firstHostIds.ShouldBe([
+            "00000000000000000000000002",
+            "00000000000000000000000003",
+            "00000000000000000000000004",
+            "00000000000000000000000005",
+        ]);
         firstHostIds.ShouldBe(secondHostIds);
         firstHostIds.Distinct(StringComparer.Ordinal).Count().ShouldBe(firstHostIds.Length);
         foreach (string id in firstHostIds) {

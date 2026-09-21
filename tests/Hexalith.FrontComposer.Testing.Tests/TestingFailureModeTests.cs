@@ -138,6 +138,11 @@ public sealed class TestingFailureModeTests {
         Exception? aggregateActual = Record.Exception(() =>
             RedactedEvidenceFormatter.Format(new ExceptionalPayload(aggregate), new FrontComposerTestOptions()));
         aggregateActual.ShouldBeSameAs(aggregate);
+
+        InvalidOperationException wrapper = new("Wrapped fatal serialization failure.", expected);
+        Exception? wrapperActual = Record.Exception(() =>
+            RedactedEvidenceFormatter.Format(new ExceptionalPayload(wrapper), new FrontComposerTestOptions()));
+        wrapperActual.ShouldBeSameAs(wrapper);
     }
 
     [Fact]
@@ -156,6 +161,11 @@ public sealed class TestingFailureModeTests {
         Exception? aggregateActual = Record.Exception(() =>
             RedactedEvidenceFormatter.Format(new ExceptionalPayload(aggregate), new FrontComposerTestOptions()));
         aggregateActual.ShouldBeSameAs(aggregate);
+
+        InvalidOperationException wrapper = new("Wrapped serialization cancellation.", expected);
+        Exception? wrapperActual = Record.Exception(() =>
+            RedactedEvidenceFormatter.Format(new ExceptionalPayload(wrapper), new FrontComposerTestOptions()));
+        wrapperActual.ShouldBeSameAs(wrapper);
     }
 
     [Fact]

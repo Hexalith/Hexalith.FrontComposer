@@ -1,5 +1,5 @@
 # generated: 07-05-2026 17:13
-# last_updated: 2026-09-21 (bmad-code-review: story 11-30 → in-progress)
+# last_updated: 2026-09-21 (bmad-build: story 11-30 → review)
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -170,7 +170,7 @@ development_status:
   11-27-generated-command-route-acceptance-locator: done
   11-28-fc-nip-semantic-fixture-alignment: done
   11-29-fallback-refresh-and-view-registration-correctness: done
-  11-30-testing-and-mcp-boundary-hardening: in-progress
+  11-30-testing-and-mcp-boundary-hardening: review
   11-31-canonical-correlation-pseudonymization: backlog
   11-32-epic-11-artifact-integrity-enforcement: backlog
   epic-11-retrospective: done

@@ -156,7 +156,8 @@ public static class RedactedEvidenceFormatter {
         => exception is OperationCanceledException
             || IsFatal(exception)
             || (exception is AggregateException aggregate
-                && aggregate.Flatten().InnerExceptions.Any(MustPropagate));
+                && aggregate.Flatten().InnerExceptions.Any(MustPropagate))
+            || (exception.InnerException is not null && MustPropagate(exception.InnerException));
 
     private static string RedactConfiguredValues(string value, FrontComposerTestOptions options)
         => value

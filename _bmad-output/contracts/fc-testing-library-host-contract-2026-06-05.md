@@ -63,7 +63,7 @@ Store initialization is explicit by default (`StoreInitializationMode.OnDemand`)
 
 - Never calls EventStore, SignalR, DAPR, network, or browser storage.
 - Honors cancellation before creating evidence.
-- Returns deterministic IDs scoped to the fake instance: `test-message-0001`, `test-correlation-0001`, and so on.
+- Returns deterministic canonical ULIDs scoped to the fake instance: the first message and correlation IDs are `00000000000000000000000002` and `00000000000000000000000003`, followed by `00000000000000000000000004` and `00000000000000000000000005`, and so on; sequence exhaustion fails instead of wrapping.
 - Invokes lifecycle callbacks in this order: `Acknowledged -> Syncing -> Confirmed`.
 - Captures command type, tenant, user, bounded context, command name, message ID, correlation ID, status, lifecycle states, timestamp, and redacted payload.
 - Retains at most `MaxEvidenceRecords` evidence records.

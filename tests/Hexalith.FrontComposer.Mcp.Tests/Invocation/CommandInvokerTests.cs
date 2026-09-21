@@ -20,6 +20,7 @@ public sealed class CommandInvokerTests {
     private const string CanonicalMaximum = "7ZZZZZZZZZZZZZZZZZZZZZZZZZ";
     private const string CanonicalMessageId = "01JZ0R5K9N8W4Y7V3Q2P6C1A0C";
     private const string CanonicalCorrelationId = "01JZ0R5K9N8W4Y7V3Q2P6C1A0D";
+    private const string ProbePathCrockfordLookalike = "7O000000000000000000000000";
 
     [Fact]
     public void FrontComposerMcpUlidFactory_NewUlids_PassCanonicalGateAndExactRoundTrip() {
@@ -199,9 +200,11 @@ public sealed class CommandInvokerTests {
     [InlineData("80000000000000000000000000", 1)]
     [InlineData("ZZZZZZZZZZZZZZZZZZZZZZZZZZ", 1)]
     [InlineData("01jz0r5k9n8w4y7v3q2p6c1a0c", 1)]
+    [InlineData(ProbePathCrockfordLookalike, 1)]
     [InlineData("80000000000000000000000000", 2)]
     [InlineData("ZZZZZZZZZZZZZZZZZZZZZZZZZZ", 2)]
     [InlineData("01jz0r5k9n8w4y7v3q2p6c1a0d", 2)]
+    [InlineData(ProbePathCrockfordLookalike, 2)]
     public async Task InvokeAsync_NonCanonicalFactoryIdentifier_FailsClosedBeforeDispatchWithoutEcho(
         string nonCanonical,
         int allocation) {
