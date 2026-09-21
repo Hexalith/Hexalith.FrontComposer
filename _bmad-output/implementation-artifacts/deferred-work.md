@@ -9778,3 +9778,7 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
   summary: Enforce the selected publication-authority posture at the shared NuGet push boundary.
   evidence: The FrontComposer release caller exports the authority posture through the pinned reusable workflow, but `eng/release_prepublish.py` never consumes it before `dotnet nuget push`; shared Hexalith.Builds enforcement plus an integration regression must prove required authority fails closed while the explicit opt-out proceeds.
+
+## Deferred from: code review of spec-11-30-testing-and-mcp-boundary-hardening.md (2026-09-21, round 4)
+
+Reconfirmed existing open items without new ids: bind transition message IDs to the owning entry, enforce one-to-one correlation/message mapping, observe cancellation before `TrackAcknowledged` mutates, validate invalid FrontComposer test evidence options, redact configured identifiers before JSON escaping, preserve process-fatal MCP ULID-factory exceptions, separate release-policy authorization from workflow activation, reconcile the EventStore/Tenants gitlink advances in the status-only commit, keep the 4.5.1 release spec in-progress until publication verification is complete, and enforce the selected publication-authority posture at the shared NuGet push boundary.

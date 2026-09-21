@@ -2,7 +2,7 @@
 title: 'Story 11.30: Testing and MCP Boundary Hardening'
 type: 'bugfix'
 created: '2026-09-20'
-status: 'done'
+status: 'in-progress'
 baseline_commit: 'aaa916bbfea86a58d8bed005e80ae2419458571d'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -107,6 +107,29 @@ Rejected:
 - low — deferred-work 11.30 rows use absolute paths and a looser schema: rewriting historical ledger entries is not a direct correction of this change.
 - low — README omits sequence exhaustion and AssertExactRoundTripMismatchWhenParseable skips non-lowercase overflow: exhaustion is an internal test-host path already covered by `TestCommandService_ExhaustedIdentitySequence_FailsInsteadOfWrapping`; overflow fail-closed is already asserted.
 - low — TryRecordObservedTransition returns true after a discarded Observe: pre-existing, internal, and currently has no production caller.
+
+- [ ] [Review][Patch] Factory canonical gate has no probe-path Crockford lookalike [tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerTests.cs:198]
+- [ ] [Review][Patch] Testing host contract still specifies `test-message-0001` IDs [_bmad-output/contracts/fc-testing-library-host-contract-2026-06-05.md:66]
+
+- [x] [Review][Defer] Pending and observed transition message IDs are not bound to the owning entry [src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpLifecycleStore.cs:51] — deferred: pre-existing; already recorded in deferred-work.md from prior 11.30 reviews
+- [x] [Review][Defer] Correlation/message maps are not one-to-one [src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpLifecycleStore.cs:165] — deferred: pre-existing; already recorded in deferred-work.md from prior 11.30 reviews
+- [x] [Review][Defer] Pre-canceled TrackAcknowledged still mutates before observing the token [src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpLifecycleStore.cs:47] — deferred: pre-existing; already recorded in deferred-work.md from prior 11.30 reviews
+- [x] [Review][Defer] Invalid public evidence options can still throw after serialization [src/Hexalith.FrontComposer.Testing/Evidence.cs:86] — deferred: pre-existing; already recorded in deferred-work.md from prior 11.30 reviews
+- [x] [Review][Defer] JSON escaping can bypass configured identifier replacement [src/Hexalith.FrontComposer.Testing/Evidence.cs:86] — deferred: pre-existing; already recorded in deferred-work.md from prior 11.30 reviews
+- [x] [Review][Defer] Fatal ULID-factory exceptions are converted to unsupported-schema failures [src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpCommandInvoker.cs:425] — deferred: pre-existing; already recorded in deferred-work.md from prior 11.30 reviews
+- [x] [Review][Defer] Release policy and workflow activation share one commit [.github/workflows/release.yml:1] — deferred: concurrent work outside Story 11.30; already recorded as BH2-1/BH3-12
+- [x] [Review][Defer] Status work also advanced EventStore and Tenants gitlinks [references/Hexalith.EventStore] — deferred: concurrent work outside Story 11.30; already recorded as BH2-2/BH3-13
+- [x] [Review][Defer] 4.5.1 release is claimed complete while its spec remains in-progress [_bmad-output/implementation-artifacts/spec-actions-35569823840-fix-cicd-release.md:5] — deferred: concurrent work outside Story 11.30; already recorded in deferred-work.md
+- [x] [Review][Defer] NuGet publication does not consume the selected authority posture [tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:2308] — deferred: concurrent work outside Story 11.30; already recorded as VG4-1
+
+Rejected:
+- false — SchemaGate `message-a` fakes will fail the MCP suite: `CompatibleAdditive_OnCommand_AdmitsDispatch_AfterRevalidation` sends `Amount=200`, which fails `[Range]` before dispatch; the success branch never runs.
+- false — canonical-maximum fixtures reuse one string for message and correlation: there is only one 128-bit maximum encoding; `InvokeAsync_CanonicalMaximumAtAllLifecycleBoundaries_IsStoredAndReadable` already stores and reads that handle.
+- false — factory overflow tests omit the lifecycle tracker: `NewCanonicalUlid` fails in `ApplyDerivableValues` before dispatch or `TrackAcknowledged`; the tracker is not on that path.
+- false — `DeterministicTestUlid` is a second Crockford encoder: every Testing outcome shares `Create()`, and Success/repeatability tests already pin NUlid exact round-trip on the emitted IDs.
+- false — spec `status: done`, empty Implementation Notes, stale Code Map, or incomplete Verification list: the prescribed fix edits the spec under review.
+- low — deferred-work 11.30 rows omit `status` or use absolute paths: rewriting historical ledger entries is not a direct correction of this change.
+- low — `TryRecordObservedTransition` returns true after a discarded Observe: pre-existing, internal, and currently has no production caller.
 
 ## Implementation Notes
 
