@@ -9782,3 +9782,39 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 ## Deferred from: code review of spec-11-30-testing-and-mcp-boundary-hardening.md (2026-09-21, round 4)
 
 Reconfirmed existing open items without new ids: bind transition message IDs to the owning entry, enforce one-to-one correlation/message mapping, observe cancellation before `TrackAcknowledged` mutates, validate invalid FrontComposer test evidence options, redact configured identifiers before JSON escaping, preserve process-fatal MCP ULID-factory exceptions, separate release-policy authorization from workflow activation, reconcile the EventStore/Tenants gitlink advances in the status-only commit, keep the 4.5.1 release spec in-progress until publication verification is complete, and enforce the selected publication-authority posture at the shared NuGet push boundary.
+
+## Deferred from: code review of spec-11-30-testing-and-mcp-boundary-hardening.md (2026-09-21, round 5)
+
+Reconfirmed existing open items without new ids: bind transition message IDs to the owning entry, enforce one-to-one correlation/message mapping, observe cancellation before `TrackAcknowledged` mutates, make TryRecordObservedTransition report whether the transition was actually recorded, validate invalid FrontComposer test evidence options, redact configured identifiers before JSON escaping, separate release-policy authorization from workflow activation, reconcile the EventStore/Tenants gitlink advances in the status-only commit, keep the 4.5.1 release spec in-progress until publication verification is complete, and enforce the selected publication-authority posture at the shared NuGet push boundary.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
+  summary: Bind every pending and observed lifecycle transition message ID to its owning lifecycle entry.
+  evidence: carried: `TrackAcknowledged` and `LifecycleEntry.Observe` still accept any canonical transition message ID; equality against `LifecycleEntry.MessageId` would settle both callback and observed-transition paths.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
+  summary: Enforce a one-to-one correlation/message identity mapping in the MCP lifecycle store.
+  evidence: carried: `GetOrCreateEntry` still returns an existing entry solely by correlation ID and does not reject cross-map collisions, allowing a reused or ambiguous handle to describe the wrong stored command.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
+  summary: Observe cancellation before MCP lifecycle tracking mutates storage or emits transitions.
+  evidence: carried: With no pending transitions, `TrackAcknowledged` still creates an entry, subscribes, and emits Submitting/Acknowledged before observing the token.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
+  summary: Make TryRecordObservedTransition report whether the transition was actually recorded.
+  evidence: carried: The internal wrapper still returns `true` after `LifecycleEntry.Observe`, even when terminal-state guards discard the transition; no production caller exists.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
+  summary: Define and validate invalid FrontComposer test evidence option values.
+  evidence: carried: Empty tenant/user identifiers and negative payload limits can throw after serialization and replace configured outcomes; a policy must decide whether host setup rejects, defaults, or clamps invalid public options.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
+  summary: Redact configured tenant and user identifiers structurally before JSON escaping.
+  evidence: carried: `RedactConfiguredValues` still runs after JSON encoding, so identifiers containing quotes, backslashes, or control characters can survive as escaped text.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
+  summary: Reconcile concurrent 4.5.1 release-policy, workflow, spec-status, and EventStore/Tenants gitlink work outside Story 11.30.
+  evidence: carried: The baseline-to-HEAD range still contains `require-publication-authority: false`, the delayed-activation policy row, gitlink moves, and `spec-actions-35569823840-fix-cicd-release.md` remaining `in-progress` after commit `6529d77e`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
+  summary: Enforce the selected publication-authority posture at the shared NuGet push boundary.
+  evidence: carried: VG4-1 — the caller exports `require-publication-authority` through the pinned reusable workflow, but `eng/release_prepublish.py` never consumes `HEXALITH_RELEASE_REQUIRE_AUTHORITY` before `dotnet nuget push`.

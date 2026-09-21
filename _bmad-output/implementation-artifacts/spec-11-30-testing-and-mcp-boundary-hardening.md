@@ -131,6 +131,27 @@ Rejected:
 - low — deferred-work 11.30 rows omit `status` or use absolute paths: rewriting historical ledger entries is not a direct correction of this change.
 - low — `TryRecordObservedTransition` returns true after a discarded Observe: pre-existing, internal, and currently has no production caller.
 
+- [x] [Review][Defer] Pending, observed, and replayed transition message IDs are not bound to the owning entry [src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpLifecycleStore.cs:51] — deferred: pre-existing; already recorded in deferred-work.md from prior 11.30 reviews
+- [x] [Review][Defer] Correlation/message maps are not one-to-one [src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpLifecycleStore.cs:171] — deferred: pre-existing; already recorded in deferred-work.md from prior 11.30 reviews
+- [x] [Review][Defer] Pre-canceled TrackAcknowledged still mutates before observing the token [src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpLifecycleStore.cs:58] — deferred: pre-existing; already recorded in deferred-work.md from prior 11.30 reviews
+- [x] [Review][Defer] TryRecordObservedTransition can report a discarded transition as recorded [src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpLifecycleStore.cs:98] — deferred: pre-existing; internal; no production caller; already recorded in deferred-work.md
+- [x] [Review][Defer] Invalid public evidence options can still throw after serialization [src/Hexalith.FrontComposer.Testing/Evidence.cs:86] — deferred: pre-existing; already recorded in deferred-work.md from prior 11.30 reviews
+- [x] [Review][Defer] JSON escaping can bypass configured identifier replacement [src/Hexalith.FrontComposer.Testing/Evidence.cs:162] — deferred: pre-existing; already recorded in deferred-work.md from prior 11.30 reviews
+- [x] [Review][Defer] Baseline-to-HEAD range includes concurrent 4.5.1 release-policy, workflow, spec-status, and EventStore/Tenants gitlink work [.github/workflows/release.yml:334] — deferred: concurrent work outside Story 11.30; already recorded as BH2-1/BH2-2/EC4-13
+- [x] [Review][Defer] NuGet publication does not consume the selected authority posture [tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:2308] — deferred: concurrent work outside Story 11.30; already recorded as VG4-1
+
+Rejected:
+- false — Testing README omits the `test-message-*` migration: the host contract pins the exact canonical sequence, and README already describes the new per-host ULID behavior.
+- false — TestingFailureModeTests only distinct-counts message IDs: `CreateMessageId`/`CreateCorrelationId` run before outcome branching, and `TestCommandService_FreshHosts_EmitRepeatableDistinctCanonicalUlids` pins that encoder with NUlid round-trip.
+- false — Crockford lookalikes are covered only on factory allocation: `FrontComposerMcpUlid.IsCanonical` is shared across factory, dispatcher, acknowledgement, observation, and reads; factory lookalike plus overflow/empty lifecycle tests pin the same helper.
+- low — `AssertExactRoundTripMismatchWhenParseable` no-ops unless the fixture is lowercase: overflow and lookalike rows already assert fail-closed without echo; expanding the helper is not a production correction.
+- false — leftover `partial` on `FrontComposerMcpLifecycleStore`: a one-part partial class is legal after regex removal and has no behavioral effect.
+- false — empty or whitespace dispatcher IDs now fail closed without a caller note: frozen Never-normalize requires fail-closed, and `TrackAcknowledged_OverflowDispatcherHandle_RejectsBeforeSubscriptionOrStorage` already covers `""` and `" "`.
+- false — `DeterministicTestUlid` is a second Crockford encoder: every Testing outcome shares `Create()`, and Success/repeatability tests already pin NUlid exact round-trip on the emitted IDs.
+- false — spec `status: done` vs sprint `review`, empty Implementation Notes, or `review_loop_iteration: 0`: the prescribed fix edits the spec under review.
+- low — deferred-work 11.30 rows omit `id`/`status`/`severity` or use absolute paths: rewriting historical ledger entries is not a direct correction of this change.
+- false — git log subjects still say Story 11.30 is in-progress: `sprint-status.yaml` currently records `review`, and those subjects are historical status commits.
+
 ## Implementation Notes
 
 ## Spec Change Log
@@ -241,6 +262,30 @@ Rejected:
 | EC4-11 invalid evidence options can replace configured outcomes | medium | defer | carried: Empty configured identifiers and negative limits are pre-existing public-option validation gaps requiring a policy decision. |
 | EC4-12 dispatcher-returned overflow is detected after dispatch | false | reject | carried: A dispatcher-returned identifier cannot be validated before dispatch produces it; validation occurs immediately afterward and before MCP tracking, storage, or output. |
 | EC4-13 the baseline range contains unrelated release and gitlink drift | medium | defer | carried: The concurrent release-policy, workflow, and submodule changes are outside Story 11.30 and already recorded for separate ownership and compatibility reconciliation. |
+| BH5-1 Testing README omits the `test-message-*` migration | false | reject | The host contract pins the exact canonical sequence, and README already describes the new per-host ULID behavior. |
+| BH5-2 TestingFailureModeTests only distinct-counts message IDs | false | reject | Identity is generated before outcome branching, and the host repeatability test already pins that encoder with NUlid round-trip. |
+| BH5-3 Crockford lookalikes are covered only on factory allocation | false | reject | Shared `IsCanonical` is used at every MCP identity boundary; factory lookalike plus overflow/empty lifecycle tests pin the helper. |
+| BH5-4 AssertExactRoundTripMismatchWhenParseable no-ops for non-lowercase fixtures | low | reject | Overflow and lookalike rows already assert fail-closed without echo. |
+| BH5-5 leftover `partial` on FrontComposerMcpLifecycleStore | false | reject | A one-part partial class is legal leftover after regex removal. |
+| BH5-6 TryRecordObservedTransition can report a discarded transition as recorded | low | defer | carried: The internal method returns `true` after `Observe` even when terminal-state guards discard the transition; no production caller exists. |
+| BH5-7 pending, observed, and replayed transition message IDs are not bound to the owning entry | medium | defer | carried: Canonicality replaced normalization, but the pre-existing path never required equality with the owning message ID. |
+| BH5-8 pre-canceled TrackAcknowledged still mutates before observing the token | medium | defer | carried: Cancellation is still observed only inside the pending-transition loop after the pre-existing mutations. |
+| BH5-9 empty or whitespace dispatcher IDs now fail closed without a caller note | false | reject | Frozen Never-normalize requires fail-closed, and the overflow dispatcher theory already covers `""` and `" "`. |
+| BH5-10 DeterministicTestUlid is a second Crockford encoder | false | reject | Every Testing outcome shares `Create()`, and Success/repeatability tests already pin NUlid exact round-trip. |
+| BH5-11 baseline-to-HEAD range includes concurrent 4.5.1 release and gitlink work | medium | defer | carried: Concurrent release-policy, workflow, spec-status, and submodule changes are outside Story 11.30. |
+| BH5-12 ReleaseWorkflow authority opt-out is only pinned as workflow source text | medium | defer | carried: VG4-1 — the caller exports the posture, but FrontComposer’s NuGet publisher never reads it. |
+| BH5-13 spec `status: done` vs sprint `review` and empty Implementation Notes | false | reject | The prescribed fix edits the spec under review. |
+| BH5-14 deferred-work 11.30 rows omit ledger fields or use absolute paths | low | reject | Rewriting historical ledger entries is not a direct correction of this change. |
+| EC5-1 pending transition message IDs are not bound to the owning entry | medium | defer | carried: Canonicality replaced normalization, but the pre-existing path never required equality with the owning message ID. |
+| EC5-2 observed transition message IDs are not bound to the owning entry | medium | defer | carried: The pre-existing observation path likewise lacked message ownership binding. |
+| EC5-3 reused or cross-map-colliding lifecycle identities can resolve another command | medium | defer | carried: The unchanged dictionary design and correlation-only reuse check are the previously verified one-to-one identity defect. |
+| EC5-4 pre-canceled TrackAcknowledged mutates lifecycle state | medium | defer | carried: Cancellation is still observed only inside the pending-transition loop after the pre-existing mutations. |
+| EC5-5 TryRecordObservedTransition returns success for a discarded terminal transition | low | defer | carried: `LifecycleEntry.Observe` can silently reject a different post-terminal state while the internal wrapper still returns `true`; no production caller exists. |
+| EC5-6 invalid evidence options can replace configured outcomes | medium | defer | carried: Empty configured identifiers and negative limits are pre-existing public-option validation gaps requiring a policy decision. |
+| EC5-7 JSON escaping can bypass configured identifier replacement | medium | defer | carried: Configured-value replacement still runs after JSON encoding, leaving the previously verified escaped-identifier gap. |
+| EC5-8 git log subjects still say Story 11.30 is in-progress | false | reject | `sprint-status.yaml` currently records `review`; those subjects are historical status commits. |
+| EC5-9 4.5.1 release is claimed complete while its spec remains in-progress | medium | defer | carried: Concurrent commit `6529d77e` vs `spec-actions-35569823840-fix-cicd-release.md` status `in-progress`; outside Story 11.30. |
+| VG6-1 NuGet publication does not consume the selected authority posture | medium | defer | carried: VG4-1 — the caller exports the posture through the pinned reusable workflow, but `eng/release_prepublish.py` never reads it before `dotnet nuget push`. |
 
 ## Verification
 
