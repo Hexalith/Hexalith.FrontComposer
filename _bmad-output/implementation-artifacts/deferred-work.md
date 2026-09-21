@@ -9761,3 +9761,11 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
   summary: Make TryRecordObservedTransition report whether the transition was actually recorded.
   evidence: The internal wrapper returns `true` after `LifecycleEntry.Observe`, even when terminal-state guards discard the transition; the mismatch predates Story 11.30 and currently has no production caller.
+
+## Deferred from: code review of spec-11-30-testing-and-mcp-boundary-hardening.md (2026-09-21, round 3)
+
+Reconfirmed existing open items without new ids: bind transition message IDs to the owning entry, enforce one-to-one correlation/message mapping, observe cancellation before `TrackAcknowledged` mutates, bound diagnostic evidence memory during serialization, validate invalid FrontComposer test evidence options, separate release-policy authorization from workflow activation, and reconcile the EventStore/Tenants gitlink advances in the status-only commit.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
+  summary: Keep the 4.5.1 release spec in-progress until publication verification is actually complete.
+  evidence: Concurrent commit `6529d77e0b0388c72e789e3b42ad5362278b1034` claims to complete the 4.5.1 release process, but `_bmad-output/implementation-artifacts/spec-actions-35569823840-fix-cicd-release.md` remains `in-progress` with publication verification unchecked; this is release work outside Story 11.30.

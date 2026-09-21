@@ -2,7 +2,7 @@
 title: 'Story 11.30: Testing and MCP Boundary Hardening'
 type: 'bugfix'
 created: '2026-09-20'
-status: 'done'
+status: 'in-progress'
 baseline_commit: 'aaa916bbfea86a58d8bed005e80ae2419458571d'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -76,6 +76,13 @@ context:
 - [x] [Review][Defer] Evidence serialization allocates the full payload before the output cap [src/Hexalith.FrontComposer.Testing/Evidence.cs:74] — deferred: pre-existing; already recorded in deferred-work.md from the prior 11.30 review
 - [x] [Review][Defer] AggregateException wrapping cancel or fatal serializer errors is unverified [src/Hexalith.FrontComposer.Testing/Evidence.cs:79] — deferred: unverified medium; settle by throwing AggregateException (inner OperationCanceledException or OutOfMemoryException) from a serialized getter and asserting rethrow versus the unavailable marker
 
+
+- [ ] [Review][Patch] Empty or whitespace dispatcher and pending-transition IDs are untested after NormalizeIdentifier removal [tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandLifecycleTests.cs:787]
+- [ ] [Review][Patch] deferred-work still records AggregateException unwrap as an open unverified gap after MustPropagate and tests landed [_bmad-output/implementation-artifacts/deferred-work.md:9746]
+
+- [x] [Review][Defer] Prior 11.30 lifecycle-identity, cancellation-order, and evidence-bounds deferrals were reconfirmed this review [src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpLifecycleStore.cs:51] — deferred: pre-existing; already recorded in deferred-work.md from prior 11.30 reviews
+- [x] [Review][Defer] Baseline-to-HEAD range includes concurrent release-policy, workflow, 4.5.1-complete, and EventStore/Tenants gitlink work [.github/workflows/release.yml:1] — deferred: concurrent work outside Story 11.30; already recorded as BH2-1/BH2-2
+
 Rejected:
 - rejected — credential-key `Contains` over-redaction: Decision (2026-09-21) Option 1 Keep Contains; fail-closed test evidence is the intended policy.
 - false — spec `status: done` vs sprint `review`: the prescribed fix edits the spec under review.
@@ -87,6 +94,19 @@ Rejected:
 - false — TrackAcknowledged materializes pending transitions before storage: validating overflow IDs before `GetOrCreateEntry` is the required fail-closed-before-side-effects behavior.
 - false — `pendingTransitions` can be null: production always passes a materialized list; no production caller can supply null.
 - false — undefined lifecycle enum values can reach snapshots: production `LifecycleStateService.IsValidTransition` drops unknown `to` values (`_ => false`), and `TryRecordObservedTransition` has no production caller.
+- false — MCP probe accepts `7ZZZZZZZZZZZZZZZZZZZZZZZZZ` without NUlid parse of the original handle: the I/O matrix requires that canonical-maximum fixture, and NUlid 1.7.3 cannot parse timestamps past DateTimeOffset.MaxValue; factory tests already pin exact round-trip on produced IDs.
+- false — canonical-maximum fixtures reuse one string for message and correlation: there is only one 128-bit maximum encoding, and distinctness is pinned by the production factory test.
+- false — Rejected/Timeout/StallAtSyncing paths never assert ULID shape: `DeterministicTestUlid.Create*` runs before outcome branching, and Success/repeatability tests already pin that encoder.
+- false — null dispatcher correlation is omitted on the no-tracker fallback: that path emits raw `CommandResult` fields and has always omitted a missing correlation; lifecycle aliasing is tested on `TrackAcknowledged`.
+- false — analyzer inventory reseal includes a concurrent CiGovernanceTests identifier: the seal is a whole-inventory snapshot required for AnalyzerPolicyGovernanceTests on this tree, and the evidence text records the concurrent delta without relaxing policy.
+- false — leftover `partial` on FrontComposerMcpLifecycleStore / TryReadSnapshot opaque miss for null or whitespace: `partial` with one part is legal leftover after regex removal; opaque miss matches specified read-failure behavior, and `ReadAsync` already rejects non-canonical handles before storage lookup.
+- false — spec status, Code Map, Implementation Notes, and Verification command list are stale: the prescribed fix edits the spec under review.
+- low — no focused IsCanonical suite for Crockford lookalikes or hyphenated factory/ack forms: `ReadAsync_MalformedLifecycleHandle_FailsAsHiddenUnknownWithoutStoreLookup` already covers empty, lowercase, padded, hyphenated, and overflow handles, and factory/dispatcher theories cover overflow plus lowercase.
+- low — lifecycle-enabled InvokeAsync lacks its own overflow dispatcher/callback test: no-tracker `InvokeAsync` and `TrackAcknowledged` independently pin fail-closed before storage.
+- low — Testing copies Shell ExceptionGuard instead of sharing it: `RedactedEvidenceFormatter_FatalSerializationFailure_Propagates` already pins all four CLR fatal types; InternalsVisibleTo/sharing is a larger boundary change than the drift risk.
+- low — deferred-work 11.30 rows use absolute paths and a looser schema: rewriting historical ledger entries is not a direct correction of this change.
+- low — README omits sequence exhaustion and AssertExactRoundTripMismatchWhenParseable skips non-lowercase overflow: exhaustion is an internal test-host path already covered by `TestCommandService_ExhaustedIdentitySequence_FailsInsteadOfWrapping`; overflow fail-closed is already asserted.
+- low — TryRecordObservedTransition returns true after a discarded Observe: pre-existing, internal, and currently has no production caller.
 
 ## Implementation Notes
 
