@@ -2,7 +2,7 @@
 title: 'Story 11.30: Testing and MCP Boundary Hardening'
 type: 'bugfix'
 created: '2026-09-20'
-status: 'done'
+status: 'in-progress'
 baseline_commit: 'aaa916bbfea86a58d8bed005e80ae2419458571d'
 route: 'dispatch'
 review_loop_iteration: 0
