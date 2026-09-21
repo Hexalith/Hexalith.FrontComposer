@@ -61,6 +61,33 @@ context:
 - Given canonical-maximum and overflow fixtures at each MCP identity boundary, when allocation, acknowledgement, transition recording, or lifecycle reading occurs, then valid handles retain existing behavior and overflow handles fail closed before side effects or disclosure.
 - Given the completed change, when the focused Testing and MCP suites, public/package checks, analyzer governance, and Release solution build run, then all pass with zero warnings and no unrelated contract drift.
 
+### Review Findings
+
+- [x] [Review][Decision] Credential-key matching over-redacts benign compound names — Decision (2026-09-21): Option 1 Keep Contains. Over-redaction of compound names is accepted fail-closed behavior for test evidence; equality would regress `AccessToken`/`PasswordHash`. No matcher change.
+
+- [ ] [Review][Patch] Exact NUlid round-trip is unpinned at factory and dispatcher identity checks [tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerTests.cs:184]
+- [ ] [Review][Patch] Production MCP ULID factory is never asserted against the new canonical gate [src/Hexalith.FrontComposer.Mcp/FrontComposerMcpUlidFactory.cs:15]
+- [ ] [Review][Patch] Overflow lifecycle reads are only covered on correlationId [tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandLifecycleTests.cs:445]
+
+- [x] [Review][Defer] Pending, observed, and replayed transition message IDs are not bound to the owning entry [src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpLifecycleStore.cs:51] — deferred: pre-existing; already recorded in deferred-work.md from the prior 11.30 review
+- [x] [Review][Defer] Correlation/message maps are not one-to-one [src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpLifecycleStore.cs:165] — deferred: pre-existing; already recorded in deferred-work.md from the prior 11.30 review
+- [x] [Review][Defer] Pre-canceled TrackAcknowledged still mutates before observing the token [src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpLifecycleStore.cs:47] — deferred: pre-existing; already recorded in deferred-work.md from the prior 11.30 review
+- [x] [Review][Defer] Invalid public evidence options can still throw after serialization [src/Hexalith.FrontComposer.Testing/Evidence.cs:86] — deferred: pre-existing; already recorded in deferred-work.md from the prior 11.30 review
+- [x] [Review][Defer] Evidence serialization allocates the full payload before the output cap [src/Hexalith.FrontComposer.Testing/Evidence.cs:74] — deferred: pre-existing; already recorded in deferred-work.md from the prior 11.30 review
+- [x] [Review][Defer] AggregateException wrapping cancel or fatal serializer errors is unverified [src/Hexalith.FrontComposer.Testing/Evidence.cs:79] — deferred: unverified medium; settle by throwing AggregateException (inner OperationCanceledException or OutOfMemoryException) from a serialized getter and asserting rethrow versus the unavailable marker
+
+Rejected:
+- rejected — credential-key `Contains` over-redaction: Decision (2026-09-21) Option 1 Keep Contains; fail-closed test evidence is the intended policy.
+- false — spec `status: done` vs sprint `review`: the prescribed fix edits the spec under review.
+- false — empty or whitespace dispatcher IDs now fail closed: `null` still aliases to `messageId`; non-canonical strings were never valid handles, and fail-closed matches frozen Never-normalize.
+- false — SchemaGate/SpecGap `message-a` fakes will fail the MCP suite: those tests never complete a successful dispatch after this change (`Amount=200` fails `[Range]` before dispatch; SpecGap cases reject at admission/validation).
+- false — DeterministicTestUlid lacks a production NUlid reference / per-outcome round-trip: every outcome shares `Create()`, and success/repeatability tests already pin NUlid exact round-trip; the test project already references NUlid.
+- false — stale Code Map / empty Implementation Notes / incomplete Verification list: the prescribed fix edits the spec under review.
+- false — BH-13 line endings remain wrong: `git ls-files --eol` on the touched files is `i/lf w/crlf` under `eol=crlf`, which is the required storage/checkout pair.
+- false — TrackAcknowledged materializes pending transitions before storage: validating overflow IDs before `GetOrCreateEntry` is the required fail-closed-before-side-effects behavior.
+- false — `pendingTransitions` can be null: production always passes a materialized list; no production caller can supply null.
+- false — undefined lifecycle enum values can reach snapshots: production `LifecycleStateService.IsValidTransition` drops unknown `to` values (`_ => false`), and `TryRecordObservedTransition` has no production caller.
+
 ## Implementation Notes
 
 ## Spec Change Log

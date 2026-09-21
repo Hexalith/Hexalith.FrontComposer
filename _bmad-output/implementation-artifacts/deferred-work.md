@@ -9737,3 +9737,11 @@ status: open
 - source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
   summary: Define and validate invalid FrontComposer test evidence option values.
   evidence: Empty tenant/user identifiers and negative payload limits can throw after serialization and replace configured outcomes; this predates Story 11.30, and a policy must decide whether host setup rejects, defaults, or clamps invalid public options.
+
+## Deferred from: code review of spec-11-30-testing-and-mcp-boundary-hardening.md (2026-09-21)
+
+Reconfirmed existing open items without new ids: bind transition message IDs to the owning entry, enforce one-to-one correlation/message mapping, observe cancellation before `TrackAcknowledged` mutates, bound diagnostic evidence memory during serialization, and validate invalid FrontComposer test evidence options (already appended under the prior 11.30 review).
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
+  summary: Prove whether AggregateException wrapping cancel or fatal serializer errors is swallowed.
+  evidence: Unverified medium. `RedactedEvidenceFormatter.Format` does not unwrap `AggregateException` before the cancel/fatal filter. Settle by a serialized getter that throws `AggregateException` containing `OperationCanceledException` or `OutOfMemoryException` and asserting rethrow versus the unavailable marker.
