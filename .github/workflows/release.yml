@@ -331,6 +331,10 @@ jobs:
       source-ci-workflow: ci.yml
       package-manifest: tools/release-packages.json
       expected-package-count: 8
+      reserved-version: ''
+      release-authority-issue-url: ''
+      release-authority-owner: ''
+      require-publication-authority: false
     secrets:
       NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
 

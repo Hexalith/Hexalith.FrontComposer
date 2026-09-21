@@ -2305,6 +2305,22 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
+    public void ReleaseWorkflow_UsesProtectedEnvironmentApprovalWithoutIssueReservation()
+    {
+        string root = RepositoryRoot();
+        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
+        string prepareCandidateJob = ExtractJobBlock(workflow, "prepare-candidate");
+        string releaseJob = ExtractJobBlock(workflow, "release");
+
+        prepareCandidateJob.ShouldContain("environment: production");
+        releaseJob.ShouldContain("environment-name: production");
+        releaseJob.ShouldContain("reserved-version: ''");
+        releaseJob.ShouldContain("release-authority-issue-url: ''");
+        releaseJob.ShouldContain("release-authority-owner: ''");
+        releaseJob.ShouldContain("require-publication-authority: false");
+    }
+
+    [Fact]
     public void ReleaseWorkflow_PinsBuildsHostedPublicationFreezeContract() {
         // REL-4 supersession: standing freeze lives in the pinned Builds publisher, not a caller
         // freeze-guard. Load domain-release.yml bytes via `git show {uses-sha}:...` so the tested

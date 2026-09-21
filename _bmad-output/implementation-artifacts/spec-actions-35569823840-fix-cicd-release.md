@@ -2,9 +2,10 @@
 title: 'Actions 35569823840: Repair and complete the 4.5.1 release'
 type: 'bugfix'
 created: '2026-09-21'
-status: 'ready-for-dev'
+status: 'in-progress'
 route: 'dispatch'
 review_loop_iteration: 0
+baseline_commit: 'b2a007f8d5e1f307f3a5b0a5ec286d73420b127b'
 context:
   - '{project-root}/_bmad-output/project-docs/deployment-guide.md'
   - '{project-root}/_bmad-output/planning-artifacts/architecture.md'
