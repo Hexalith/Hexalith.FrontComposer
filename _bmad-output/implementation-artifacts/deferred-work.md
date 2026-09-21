@@ -9743,8 +9743,9 @@ status: open
 Reconfirmed existing open items without new ids: bind transition message IDs to the owning entry, enforce one-to-one correlation/message mapping, observe cancellation before `TrackAcknowledged` mutates, bound diagnostic evidence memory during serialization, and validate invalid FrontComposer test evidence options (already appended under the prior 11.30 review).
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
-  summary: Prove whether AggregateException wrapping cancel or fatal serializer errors is swallowed.
-  evidence: Unverified medium. `RedactedEvidenceFormatter.Format` does not unwrap `AggregateException` before the cancel/fatal filter. Settle by a serialized getter that throws `AggregateException` containing `OperationCanceledException` or `OutOfMemoryException` and asserting rethrow versus the unavailable marker.
+  summary: RESOLVED 2026-09-21 — AggregateException wrapping cancellation or fatal serializer errors preserves propagation.
+  evidence: `RedactedEvidenceFormatter.MustPropagate` recursively inspects flattened aggregate inner exceptions; `RedactedEvidenceFormatter_FatalSerializationFailure_Propagates` covers all four fatal types directly and through an aggregate, and `RedactedEvidenceFormatter_OperationCanceledSerializationFailure_Propagates` covers direct and aggregate-wrapped cancellation.
+  status: done 2026-09-21
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
   summary: Separate release evaluator-policy authorization from workflow activation before the release change is pushed.
@@ -9769,3 +9770,11 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
   summary: Keep the 4.5.1 release spec in-progress until publication verification is actually complete.
   evidence: Concurrent commit `6529d77e0b0388c72e789e3b42ad5362278b1034` claims to complete the 4.5.1 release process, but `_bmad-output/implementation-artifacts/spec-actions-35569823840-fix-cicd-release.md` remains `in-progress` with publication verification unchecked; this is release work outside Story 11.30.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
+  summary: Redact configured tenant and user identifiers structurally before JSON escaping.
+  evidence: `RedactedEvidenceFormatter` replaces configured identifiers only after JSON encoding, so identifiers containing quotes, backslashes, or control characters can survive in escaped form; this behavior predates Story 11.30 and requires a structural configured-value redaction policy.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
+  summary: Enforce the selected publication-authority posture at the shared NuGet push boundary.
+  evidence: The FrontComposer release caller exports the authority posture through the pinned reusable workflow, but `eng/release_prepublish.py` never consumes it before `dotnet nuget push`; shared Hexalith.Builds enforcement plus an integration regression must prove required authority fails closed while the explicit opt-out proceeds.

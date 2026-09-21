@@ -787,6 +787,10 @@ public sealed class CommandLifecycleTests {
     [Theory]
     [InlineData(OverflowUlid, CorrelationId)]
     [InlineData(MessageId, OverflowUlid)]
+    [InlineData("", CorrelationId)]
+    [InlineData(" ", CorrelationId)]
+    [InlineData(MessageId, "")]
+    [InlineData(MessageId, " ")]
     public void TrackAcknowledged_OverflowDispatcherHandle_RejectsBeforeSubscriptionOrStorage(
         string messageId,
         string correlationId) {
@@ -802,15 +806,18 @@ public sealed class CommandLifecycleTests {
             TestContext.Current.CancellationToken));
 
         exception.Category.ShouldBe(FrontComposerMcpFailureCategory.UnsupportedSchema);
-        exception.Message.ShouldNotContain(OverflowUlid);
+        exception.Message.ShouldBe(nameof(FrontComposerMcpFailureCategory.UnsupportedSchema));
         lifecycle.SubscriptionCount.ShouldBe(0);
         lifecycle.TransitionCount.ShouldBe(0);
         store.TryReadSnapshot(MessageId, currentOptions, out _, out _).ShouldBeFalse();
         store.TryReadSnapshot(CorrelationId, currentOptions, out _, out _).ShouldBeFalse();
     }
 
-    [Fact]
-    public void TrackAcknowledged_OverflowPendingTransition_RejectsBeforeSubscriptionOrStorage() {
+    [Theory]
+    [InlineData(OverflowUlid)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void TrackAcknowledged_OverflowPendingTransition_RejectsBeforeSubscriptionOrStorage(string transitionMessageId) {
         FrontComposerMcpOptions currentOptions = new();
         using FrontComposerMcpLifecycleStore store = new(Options.Create(currentOptions));
         using RecordingLifecycleStateService lifecycle = new();
@@ -818,12 +825,12 @@ public sealed class CommandLifecycleTests {
         FrontComposerMcpException exception = Should.Throw<FrontComposerMcpException>(() => store.TrackAcknowledged(
             Manifest(policyName: null).Commands.Single(),
             new CommandResult(MessageId, CommandResultStatus.Accepted, CorrelationId),
-            [(CommandLifecycleState.Syncing, OverflowUlid)],
+            [(CommandLifecycleState.Syncing, transitionMessageId)],
             lifecycle,
             TestContext.Current.CancellationToken));
 
         exception.Category.ShouldBe(FrontComposerMcpFailureCategory.UnsupportedSchema);
-        exception.Message.ShouldNotContain(OverflowUlid);
+        exception.Message.ShouldBe(nameof(FrontComposerMcpFailureCategory.UnsupportedSchema));
         lifecycle.SubscriptionCount.ShouldBe(0);
         lifecycle.TransitionCount.ShouldBe(0);
         store.TryReadSnapshot(MessageId, currentOptions, out _, out _).ShouldBeFalse();
@@ -851,15 +858,21 @@ public sealed class CommandLifecycleTests {
         after.ToJson().ToJsonString().ShouldNotContain(OverflowUlid);
     }
 
-    [Fact]
-    public void TrackAcknowledged_SubscriptionReplayWithOverflowMessageId_DoesNotMutateOrDiscloseSnapshot() {
+    [Theory]
+    [InlineData(CorrelationId, OverflowUlid, OverflowUlid)]
+    [InlineData("01JZ0R5K9N8W4Y7V3Q2P6C1A0D", MessageId, "01JZ0R5K9N8W4Y7V3Q2P6C1A0D")]
+    public void TrackAcknowledged_SubscriptionReplayWithOverflowMessageId_DoesNotMutateOrDiscloseSnapshot(
+        string replayCorrelationId,
+        string replayMessageId,
+        string discardedIdentifier) {
         FrontComposerMcpOptions currentOptions = new();
         using FrontComposerMcpLifecycleStore baselineStore = new(Options.Create(currentOptions));
         using FrontComposerMcpLifecycleStore replayStore = new(Options.Create(currentOptions));
         using RecordingLifecycleStateService baselineLifecycle = new();
-        using ReplayingLifecycleStateService replayLifecycle = new(CreateTransition(CorrelationId, OverflowUlid));
+        using ReplayingLifecycleStateService replayLifecycle = new(CreateTransition(replayCorrelationId, replayMessageId));
         CommandResult result = new(MessageId, CommandResultStatus.Accepted, CorrelationId);
         McpCommandDescriptor descriptor = Manifest(policyName: null).Commands.Single();
+        FrontComposerMcpUlid.IsCanonical(replayCorrelationId).ShouldBeTrue();
         _ = baselineStore.TrackAcknowledged(
             descriptor,
             result,
@@ -877,7 +890,7 @@ public sealed class CommandLifecycleTests {
 
         replayLifecycle.ReplayCount.ShouldBe(1);
         replayed.ToJson().ToJsonString().ShouldBe(baseline.ToJson().ToJsonString());
-        replayed.ToJson().ToJsonString().ShouldNotContain(OverflowUlid);
+        replayed.ToJson().ToJsonString().ShouldNotContain(discardedIdentifier);
     }
 
     private static FrontComposerMcpCommandInvoker Build(

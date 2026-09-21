@@ -2,7 +2,7 @@
 title: 'Story 11.30: Testing and MCP Boundary Hardening'
 type: 'bugfix'
 created: '2026-09-20'
-status: 'in-progress'
+status: 'done'
 baseline_commit: 'aaa916bbfea86a58d8bed005e80ae2419458571d'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -77,8 +77,8 @@ context:
 - [x] [Review][Defer] AggregateException wrapping cancel or fatal serializer errors is unverified [src/Hexalith.FrontComposer.Testing/Evidence.cs:79] — deferred: unverified medium; settle by throwing AggregateException (inner OperationCanceledException or OutOfMemoryException) from a serialized getter and asserting rethrow versus the unavailable marker
 
 
-- [ ] [Review][Patch] Empty or whitespace dispatcher and pending-transition IDs are untested after NormalizeIdentifier removal [tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandLifecycleTests.cs:787]
-- [ ] [Review][Patch] deferred-work still records AggregateException unwrap as an open unverified gap after MustPropagate and tests landed [_bmad-output/implementation-artifacts/deferred-work.md:9746]
+- [x] [Review][Patch] Empty or whitespace dispatcher and pending-transition IDs are untested after NormalizeIdentifier removal [tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandLifecycleTests.cs:787]
+- [x] [Review][Patch] deferred-work still records AggregateException unwrap as an open unverified gap after MustPropagate and tests landed [_bmad-output/implementation-artifacts/deferred-work.md:9746]
 
 - [x] [Review][Defer] Prior 11.30 lifecycle-identity, cancellation-order, and evidence-bounds deferrals were reconfirmed this review [src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpLifecycleStore.cs:51] — deferred: pre-existing; already recorded in deferred-work.md from prior 11.30 reviews
 - [x] [Review][Defer] Baseline-to-HEAD range includes concurrent release-policy, workflow, 4.5.1-complete, and EventStore/Tenants gitlink work [.github/workflows/release.yml:1] — deferred: concurrent work outside Story 11.30; already recorded as BH2-1/BH2-2
@@ -162,6 +162,32 @@ Rejected:
 | EC2-6 undefined lifecycle states can reach snapshots | false | reject | carried: Production replay is constrained by `LifecycleStateService.IsValidTransition`, and `TryRecordObservedTransition` has no production caller. |
 | EC2-7 TryRecordObservedTransition returns success for a discarded terminal transition | low | defer | `LifecycleEntry.Observe` silently rejects a different post-terminal state, but the internal wrapper still returns `true`; this pre-existing contract mismatch has no production caller. |
 | VG-3 null dispatcher correlation fallback lacks MCP lifecycle coverage | medium | patch | The optional-correlation contract is used by `StubCommandService`, but every current MCP lifecycle fake supplies a correlation; a focused lifecycle invocation test must pin fallback to the message ID and readable snapshot behavior. |
+| BH3-1 pending transitions may carry another canonical message ID | medium | defer | carried: The pre-change normalization path accepted any canonical transition message ID, so ownership binding remains pre-existing deferred work. |
+| BH3-2 observed or replayed transitions may carry another canonical message ID | medium | defer | carried: The pre-change observation path also accepted any normalized message ID; exact validation does not establish entry ownership. |
+| BH3-3 correlation reuse can return an entry with a different message or descriptor | medium | defer | carried: `GetOrCreateEntry` still resolves solely by correlation ID, matching the previously verified pre-existing defect. |
+| BH3-4 correlation and message maps permit cross-map collisions | medium | defer | carried: The unchanged two-map insertion design can make lookup order resolve the wrong entry. |
+| BH3-5 pre-canceled tracking mutates before observing cancellation | medium | defer | carried: With no pending transitions, the existing path creates, subscribes, and transitions without checking the token. |
+| BH3-6 lifecycle callback capture remains unbounded | medium | defer | carried: The unbounded callback queue and materialization predate this story; history limits do not bound ingress memory. |
+| BH3-7 evidence allocates before applying the output cap | medium | defer | carried: Full `JsonNode` and JSON-string materialization before truncation is the previously verified pre-existing memory-bound gap. |
+| BH3-8 invalid evidence options can still replace outcomes | medium | defer | carried: Empty configured identifiers and negative limits are pre-existing public-option validation gaps requiring a policy decision. |
+| BH3-9 JSON escaping can bypass configured identifier replacement | medium | defer | `RedactConfiguredValues` still runs after JSON encoding, so configured tenant or user identifiers containing quotes, backslashes, or control characters can survive as escaped text. This behavior predates Story 11.30 and requires structural configured-value redaction. |
+| BH3-10 fatal ULID-factory exceptions are converted to unsupported-schema failures | medium | defer | carried: `NewCanonicalUlid` already caught every non-cancellation exception at the baseline, including process-fatal exceptions. |
+| BH3-11 TryRecordObservedTransition can report a discarded transition as recorded | low | defer | carried: The internal method returns `true` after `LifecycleEntry.Observe`, even when terminal-state guards discard the transition; the behavior predates Story 11.30 and currently has no production caller. |
+| BH3-12 release policy and workflow activation share one commit | medium | defer | carried: Concurrent release-governance commit `81bae1a6a92314e8390db698a7fdbbea716199f8` combined authorization and activation outside Story 11.30. |
+| BH3-13 status work also advanced EventStore and Tenants gitlinks | medium | defer | carried: Commit `b2a007f8d5e1f307f3a5b0a5ec286d73420b127b` advanced both gitlinks without Story 11.30 ownership or compatibility evidence. |
+| BH3-14 deferred-work source paths are absolute | false | reject | The attended-build append format explicitly records `{spec_file}`, which is the absolute runtime path, as provenance rather than as a portable Markdown link; no consumer behavior was shown to resolve or fail on these values. |
+| EC3-1 pending transitions may carry another canonical message ID | medium | defer | carried: Canonicality replaced normalization, but the pre-existing path never required equality with the owning message ID. |
+| EC3-2 observed transitions may carry another canonical message ID | medium | defer | carried: The pre-existing observation path likewise lacked message ownership binding. |
+| EC3-3 reused correlations can retain an older message or descriptor | medium | defer | carried: The unchanged correlation-only lookup is the previously verified one-to-one identity defect. |
+| EC3-4 opposite-map identity collisions can resolve another command | medium | defer | carried: The unchanged two-map insertion design permits ambiguous cross-map handles. |
+| EC3-5 pre-canceled TrackAcknowledged mutates state | medium | defer | carried: Cancellation is still observed only inside the pending-transition loop after the pre-existing mutations. |
+| EC3-6 lifecycle callback capture remains unbounded | medium | defer | carried: The unbounded callback queue and materialization predate this story; history limits do not bound ingress memory. |
+| EC3-7 TryRecordObservedTransition returns success for a discarded terminal transition | low | defer | carried: `LifecycleEntry.Observe` can silently reject a different post-terminal state while the internal wrapper still returns `true`; no production caller exists. |
+| EC3-8 evidence allocates before applying the output cap | medium | defer | carried: Full `JsonNode` and JSON-string materialization before truncation is the previously verified pre-existing memory-bound gap. |
+| EC3-9 invalid evidence options can still replace outcomes | medium | defer | carried: Empty configured identifiers and negative limits are pre-existing public-option validation gaps requiring a policy decision. |
+| EC3-10 dispatcher-returned overflow is detected after dispatch | false | reject | carried: A dispatcher-returned identifier cannot be validated before dispatch produces it; validation occurs immediately afterward and before MCP tracking, storage, or output. |
+| VG4-1 NuGet publication does not consume the selected authority posture | medium | defer | The verification-gap review found that the caller exports the authority posture through the pinned reusable workflow, but FrontComposer's NuGet publisher never reads it; shared Hexalith.Builds enforcement and an integration regression are required. This concurrent release work is outside Story 11.30. |
+| VG4-2 subscription replay correlation ownership guard lacks a regression | medium | patch | The replay fixture covers an overflow message with the owning correlation, while direct overflow lookup stops before `LifecycleEntry.Observe`; removing only the new correlation-equality guard leaves every existing test green. |
 
 ## Verification
 
