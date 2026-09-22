@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -4536,6 +4537,768 @@ class ReviewLoop10HardeningTests(unittest.TestCase):
         """A reviewable report must render the same bytes on every run."""
         self.assertIsInstance(self.validator.DOCUMENTED_UNRELATED_HEADINGS, tuple)
         self.assertIsInstance(self.validator.DOCUMENTED_BLOCKER_HEADINGS, tuple)
+
+
+class RepositoryIntegrityTests(unittest.TestCase):
+    """Git-backed fixtures for the maintained Epic 11 corpus contract."""
+
+    @staticmethod
+    def artifact(story_id: str, status: str = "done", extra: str = "", tasks: str = "- [x] Done") -> str:
+        number = re.match(r"11\.(\d+)", story_id).group(1)
+        return (
+            "---\n"
+            f"title: 'Story {story_id}: Fixture'\nstatus: '{status}'\n{extra}---\n\n"
+            f"# Story {story_id}: Fixture\n\n## Tasks & Acceptance\n\n{tasks}\n\n"
+            f"## Code Map\n\n- `src/story-{number}.txt` -- delivery.\n"
+        )
+
+    def make_fixture(self, root: Path) -> dict[str, object]:
+        baseline = init_repo(root)
+        impl = root / "_bmad-output/implementation-artifacts"
+        planning = root / "_bmad-output/planning-artifacts"
+        rows: list[str] = []
+        children: list[str] = []
+        paths: dict[str, Path] = {}
+        for story_id, filename in VALIDATOR_MODULE.EPIC_11_CHILD_ARTIFACTS.items():
+            key = VALIDATOR_MODULE.EPIC_11_CHILD_QUEUE_KEYS[story_id]
+            rows.append(f"  {key}: done")
+            children.append(f"- **{story_id} — Fixture (`{filename}`, done).**")
+            paths[story_id] = impl / filename
+            write(paths[story_id], self.artifact(story_id))
+        planning_rows: list[str] = []
+        for number in range(25, 33):
+            story_id = f"11.{number}"
+            status = "in-progress" if number == 32 else "done"
+            rows.append(f"  11-{number}-story: {status}")
+            paths[story_id] = impl / f"spec-11-{number}-story.md"
+            write(paths[story_id], self.artifact(story_id, status))
+            write(root / f"src/story-{number}.txt", "delivery\n")
+            planning_rows.extend(
+                [f"### Story {story_id}: Fixture", "", f"**Status:** {status}.", ""]
+            )
+        write(
+            impl / "spec-11-25-eventstore-3-106-evidence-reconciliation.md",
+            "---\ntitle: 'Reconcile successor evidence'\nstatus: 'in-review'\n---\n",
+        )
+        write(impl / "epic-11-retro-2026-09-10.md", "# Historical retrospective\n")
+        actions: list[str] = []
+        for index, (action_id, story_id) in enumerate(
+            VALIDATOR_MODULE.EPIC_11_ACTION_STORIES.items(), start=1
+        ):
+            number = story_id.split(".")[1]
+            status = "open" if index in {1, 8} else "done"
+            actions.extend(
+                [
+                    f'  - id: "{action_id}"',
+                    "    epic: 11",
+                    f"    status: {status}",
+                    *([f'    closed: "2026-09-{14 + index:02d}"'] if status == "done" else []),
+                    f'    implementation_story: "{story_id}"',
+                    '    ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-09-10.md"',
+                    "    evidence:",
+                    f'      - "_bmad-output/implementation-artifacts/spec-11-{number}-story.md"',
+                ]
+            )
+        write(
+            impl / "sprint-status.yaml",
+            "development_status:\n" + "\n".join(rows) + "\naction_items:\n" + "\n".join(actions) + "\n",
+        )
+        write(planning / "epics.md", "# Epics\n\n" + "\n".join(children + planning_rows))
+        git(root, "add", ".")
+        committed = git(root, "commit", "-m", "test: materialize integrity fixture")
+        self.assertEqual(committed.returncode, 0, committed.stdout + committed.stderr)
+        return {
+            "baseline": baseline,
+            "head": git(root, "rev-parse", "HEAD").stdout.strip(),
+            "impl": impl,
+            "planning": planning,
+            "paths": paths,
+        }
+
+    def assert_mutation(self, mutation, expected: str) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            fixture = self.make_fixture(root)
+            mutation(root, fixture)
+            failures = "\n".join(VALIDATOR_MODULE.validate_repository_integrity(root))
+            self.assertIn(expected, failures, failures)
+
+    def test_consistent_fixture_and_live_repository_pass(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.make_fixture(root)
+            self.assertEqual(VALIDATOR_MODULE.validate_repository_integrity(root), [])
+        self.assertEqual(VALIDATOR_MODULE.validate_repository_integrity(REPO_ROOT), [])
+
+    def test_repository_integrity_conflict_makes_global_cli_exit_nonzero(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            fixture = self.make_fixture(root)
+            sprint = fixture["impl"] / "sprint-status.yaml"
+            sprint.write_text(
+                sprint.read_text(encoding="utf-8").replace(
+                    "  11-25-story: done\n",
+                    "  11-25-story: done\n  11-25-story: done\n",
+                ),
+                encoding="utf-8",
+            )
+
+            result = run(
+                [sys.executable, str(VALIDATOR), "--project-root", str(root)],
+                root,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "duplicate development_status key '11-25-story'",
+                result.stderr,
+            )
+
+    def test_missing_required_ledgers_fail_closed(self) -> None:
+        for relative, is_directory, expected in (
+            (
+                "_bmad-output/implementation-artifacts",
+                True,
+                "required implementation-artifacts directory is missing",
+            ),
+            (
+                "_bmad-output/implementation-artifacts/sprint-status.yaml",
+                False,
+                "required sprint-status.yaml is missing",
+            ),
+            (
+                "_bmad-output/planning-artifacts",
+                True,
+                "required planning-artifacts directory is missing",
+            ),
+            (
+                "_bmad-output/planning-artifacts/epics.md",
+                False,
+                "required epics.md is missing",
+            ),
+        ):
+            with self.subTest(relative=relative):
+                def remove(root, _, path=relative, directory=is_directory):
+                    target = root / path
+                    shutil.rmtree(target) if directory else target.unlink()
+
+                self.assert_mutation(remove, expected)
+
+    def test_tracked_implementation_anchor_survives_combined_corpus_deletion(self) -> None:
+        def remove_maintained_corpus(root, fixture):
+            (fixture["impl"] / "sprint-status.yaml").unlink()
+            shutil.rmtree(fixture["planning"])
+            for path in fixture["impl"].glob("*.md"):
+                path.unlink()
+
+        self.assert_mutation(
+            remove_maintained_corpus,
+            "required sprint-status.yaml is missing",
+        )
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            init_repo(root)
+            write(
+                root / "_bmad-output/implementation-artifacts/1-1-sentinel-fixture.md",
+                "# Story 1.1: Sentinel fixture\n",
+            )
+            git(root, "add", ".")
+            git(root, "commit", "-m", "test: add unrelated sentinel fixture")
+            self.assertEqual(VALIDATOR_MODULE.validate_repository_integrity(root), [])
+
+    def test_malformed_duplicate_and_unsupported_sprint_rows_fail_closed(self) -> None:
+        def replace(fixture, old, new):
+            sprint = fixture["impl"] / "sprint-status.yaml"
+            sprint.write_text(
+                sprint.read_text(encoding="utf-8").replace(old, new),
+                encoding="utf-8",
+            )
+
+        cases = (
+            (
+                lambda r, f: replace(
+                    f, "  11-25-story: done\n", "  11-25-story: done\n  11-25-story: done\n"
+                ),
+                "duplicate development_status key '11-25-story'",
+            ),
+            (
+                lambda r, f: replace(f, "  11-25-story: done", "  11-25-story done"),
+                "malformed development_status row",
+            ),
+            (
+                lambda r, f: replace(f, "  11-25-story: done", "  11-25-story: shipped"),
+                "sprint key '11-25-story' has unsupported lifecycle status 'shipped'",
+            ),
+        )
+        for mutation, expected in cases:
+            with self.subTest(expected=expected):
+                self.assert_mutation(mutation, expected)
+
+    def test_independent_child_manifest_rejects_missing_family_parent_and_status_drift(self) -> None:
+        def remove_family(root, fixture):
+            sprint = fixture["impl"] / "sprint-status.yaml"
+            text = sprint.read_text(encoding="utf-8")
+            for story_id in ("11.18a", "11.18b", "11.18c"):
+                fixture["paths"][story_id].unlink()
+                key = VALIDATOR_MODULE.EPIC_11_CHILD_QUEUE_KEYS[story_id]
+                text = re.sub(rf"^  {re.escape(key)}:.*\n", "", text, flags=re.MULTILINE)
+            sprint.write_text(text, encoding="utf-8")
+
+        def add_parent(root, fixture):
+            sprint = fixture["impl"] / "sprint-status.yaml"
+            sprint.write_text(
+                sprint.read_text(encoding="utf-8").replace(
+                    "development_status:\n", "development_status:\n  11-17: done\n"
+                ), encoding="utf-8"
+            )
+
+        def add_suffixed_parent(root, fixture):
+            sprint = fixture["impl"] / "sprint-status.yaml"
+            sprint.write_text(
+                sprint.read_text(encoding="utf-8").replace(
+                    "development_status:\n",
+                    "development_status:\n"
+                    "  11-17-mechanical-one-type-per-file-split: done\n",
+                ),
+                encoding="utf-8",
+            )
+
+        def status_drift(root, fixture):
+            path = fixture["paths"]["11.19d"]
+            path.write_text(path.read_text(encoding="utf-8").replace("'done'", "'review'", 1), encoding="utf-8")
+
+        def remove_child_queue_row(root, fixture):
+            sprint = fixture["impl"] / "sprint-status.yaml"
+            key = VALIDATOR_MODULE.EPIC_11_CHILD_QUEUE_KEYS["11.18b"]
+            sprint.write_text(
+                re.sub(
+                    rf"^  {re.escape(key)}:.*\n",
+                    "",
+                    sprint.read_text(encoding="utf-8"),
+                    flags=re.MULTILINE,
+                ),
+                encoding="utf-8",
+            )
+
+        def add_noncanonical_parent(root, fixture, key):
+            sprint = fixture["impl"] / "sprint-status.yaml"
+            sprint.write_text(
+                sprint.read_text(encoding="utf-8").replace(
+                    "development_status:\n",
+                    f"development_status:\n  {key}: done\n",
+                ),
+                encoding="utf-8",
+            )
+
+        for mutation, expected in (
+            (remove_family, "required materialized child Story 11.18a artifact is missing"),
+            (add_parent, "nonimplementable parent/unknown child queue key"),
+            (add_suffixed_parent, "nonimplementable parent/unknown child queue key"),
+            (
+                lambda r, f: add_noncanonical_parent(r, f, "11.017"),
+                "nonimplementable parent/unknown child queue key is not allowed: 11.017",
+            ),
+            (
+                lambda r, f: add_noncanonical_parent(r, f, "011-018-parent"),
+                "nonimplementable parent/unknown child queue key is not allowed: 011-018-parent",
+            ),
+            (
+                remove_child_queue_row,
+                "required materialized child Story 11.18b queue key is missing",
+            ),
+            (status_drift, "child Story 11.19d status mismatch"),
+        ):
+            with self.subTest(expected=expected):
+                self.assert_mutation(mutation, expected)
+
+    def test_malformed_identity_and_status_metadata_fail_closed(self) -> None:
+        def change(root, fixture, old, new):
+            path = fixture["paths"]["11.25"]
+            path.write_text(path.read_text(encoding="utf-8").replace(old, new), encoding="utf-8")
+
+        cases = (
+            (lambda r, f: change(r, f, "status: 'done'\n", ""), "missing lifecycle status"),
+            (lambda r, f: change(r, f, "status: 'done'", "status: 'donne'"), "unsupported lifecycle status 'donne'"),
+            (lambda r, f: change(r, f, "status: 'done'", "status: 'done'\nstatus: 'done'"), "duplicate frontmatter key 'status'"),
+            (
+                lambda r, f: change(r, f, "status: 'done'", "status: 'done'\nstory_id: ''"),
+                "Story artifact _bmad-output/implementation-artifacts/spec-11-25-story.md "
+                "has invalid story_id ''; expected '<epic>.<story>'",
+            ),
+            (
+                lambda r, f: change(
+                    r,
+                    f,
+                    "title: 'Story 11.25: Fixture'",
+                    "title: 'Story 11.x: Fixture'",
+                ),
+                "Story artifact _bmad-output/implementation-artifacts/spec-11-25-story.md "
+                "has malformed title Story identity 'Story 11.x: Fixture'",
+            ),
+            (
+                lambda r, f: change(
+                    r,
+                    f,
+                    "# Story 11.25: Fixture",
+                    "# Story 11.x: Fixture",
+                ),
+                "Story artifact _bmad-output/implementation-artifacts/spec-11-25-story.md "
+                "has malformed H1 Story identity 'Story 11.x: Fixture'",
+            ),
+            (
+                lambda r, f: change(
+                    r,
+                    f,
+                    "# Story 11.25: Fixture",
+                    "# Story 11.25: Fixture\n\nStatus: done\nStatus: review",
+                ),
+                "repository integrity: Story 11.25 artifact "
+                "_bmad-output/implementation-artifacts/spec-11-25-story.md: "
+                "conflicting lifecycle statuses: done, review",
+            ),
+            (
+                lambda r, f: change(
+                    r,
+                    f,
+                    "Story 11.25: Fixture",
+                    "Story 12.25: Fixture",
+                ),
+                "filename identifies Story 11.25 but document identifies Story 12.25",
+            ),
+            (lambda r, f: change(r, f, "# Story 11.25: Fixture", "# Story 11.26: Fixture"), "conflicting Story identities"),
+        )
+        for mutation, expected in cases:
+            with self.subTest(expected=expected):
+                self.assert_mutation(mutation, expected)
+
+    def test_space_delimited_epic_identity_is_discovered_under_unrelated_slug(self) -> None:
+        def add_space_delimited_artifact(root, fixture):
+            write(
+                fixture["impl"] / "unrelated-slug.md",
+                self.artifact("11.25").replace("Story 11.25:", "Story 11.25"),
+            )
+
+        self.assert_mutation(
+            add_space_delimited_artifact,
+            "Story 11.25 has duplicate active artifacts",
+        )
+
+    def test_duplicate_and_invalid_supersession_records_fail(self) -> None:
+        def duplicate(root, fixture):
+            write(fixture["impl"] / "11-25-story.md", self.artifact("11.25"))
+
+        def supersede(fixture, target):
+            path = fixture["paths"]["11.25"]
+            path.write_text(
+                path.read_text(encoding="utf-8").replace(
+                    "status: 'done'", f"status: 'superseded'\nsuperseded_by: '{target}'"
+                ), encoding="utf-8"
+            )
+
+        cases = (
+            (duplicate, "Story 11.25 has duplicate active artifacts"),
+            (
+                lambda r, f: (
+                    f["paths"]["11.25"].write_text(
+                        f["paths"]["11.25"].read_text(encoding="utf-8").replace(
+                            "status: 'done'",
+                            "status: 'done'\n"
+                            "superseded_by: '_bmad-output/implementation-artifacts/"
+                            "spec-11-26-story.md'",
+                        ),
+                        encoding="utf-8",
+                    )
+                ),
+                "active Story 11.25 artifact "
+                "_bmad-output/implementation-artifacts/spec-11-25-story.md "
+                "declares superseded_by but status is 'done'",
+            ),
+            (lambda r, f: supersede(f, "_bmad-output/implementation-artifacts/missing.md"), "has missing successor"),
+            (lambda r, f: supersede(f, "_bmad-output/implementation-artifacts/spec-11-25-story.md"), "cannot supersede itself"),
+            (lambda r, f: supersede(f, "_bmad-output/implementation-artifacts/spec-11-26-story.md"), "targets different Story 11.26"),
+            (lambda r, f: supersede(f, str(f["paths"]["11.26"])), "must use a repository-relative superseded_by path"),
+        )
+        for mutation, expected in cases:
+            with self.subTest(expected=expected):
+                self.assert_mutation(mutation, expected)
+
+    def test_superseded_artifact_cannot_target_another_superseded_record(self) -> None:
+        def create_chain(root, fixture):
+            original = fixture["paths"]["11.25"]
+            original.write_text(
+                original.read_text(encoding="utf-8").replace(
+                    "status: 'done'",
+                    "status: 'superseded'\n"
+                    "superseded_by: '_bmad-output/implementation-artifacts/11-25-shadow.md'",
+                ),
+                encoding="utf-8",
+            )
+            write(
+                fixture["impl"] / "11-25-shadow.md",
+                self.artifact(
+                    "11.25",
+                    "superseded",
+                    "superseded_by: '_bmad-output/implementation-artifacts/"
+                    "spec-11-25-story.md'\n",
+                ),
+            )
+
+        self.assert_mutation(
+            create_chain,
+            "targets another superseded record",
+        )
+
+    def test_unchecked_disposition_fails_and_peer_heading_ends_review_scope(self) -> None:
+        def unchecked_required(root, fixture):
+            path = fixture["paths"]["11.25"]
+            path.write_text(
+                path.read_text(encoding="utf-8").replace(
+                    "- [x] Done", "- [ ] Required task"
+                ),
+                encoding="utf-8",
+            )
+
+        def unchecked(root, fixture):
+            path = fixture["paths"]["11.25"]
+            path.write_text(
+                path.read_text(encoding="utf-8").replace(
+                    "- [x] Done", "- [x] Done\n\n### Review Findings\n\n- [ ] [Review][Defer] Still unresolved"
+                ), encoding="utf-8"
+            )
+        self.assert_mutation(
+            unchecked_required,
+            "done Story 11.25 has unresolved required/review item",
+        )
+        self.assert_mutation(unchecked, "done Story 11.25 has unresolved required/review item")
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            fixture = self.make_fixture(root)
+            path = fixture["paths"]["11.25"]
+            path.write_text(
+                path.read_text(encoding="utf-8").replace(
+                    "- [x] Done",
+                    "- [x] Done\n\n### Review Findings\n\n- [x] [Review][Patch] Done\n\n"
+                    "### Other checklist\n\n- [ ] Not part of review",
+                ), encoding="utf-8"
+            )
+            self.assertEqual(VALIDATOR_MODULE.validate_repository_integrity(root), [])
+
+    def test_planning_zero_multiple_and_status_mismatch_fail(self) -> None:
+        def sprint_replace(fixture, old, new):
+            sprint = fixture["impl"] / "sprint-status.yaml"
+            sprint.write_text(sprint.read_text(encoding="utf-8").replace(old, new), encoding="utf-8")
+
+        def planning_mismatch(root, fixture):
+            epics = fixture["planning"] / "epics.md"
+            epics.write_text(
+                epics.read_text(encoding="utf-8").replace(
+                    "### Story 11.25: Fixture\n\n**Status:** done.",
+                    "### Story 11.25: Fixture\n\n**Status:** review.",
+                ), encoding="utf-8"
+            )
+
+        def planning_replace(fixture, old, new):
+            epics = fixture["planning"] / "epics.md"
+            epics.write_text(
+                epics.read_text(encoding="utf-8").replace(old, new),
+                encoding="utf-8",
+            )
+
+        def unexpected_child(root, fixture):
+            epics = fixture["planning"] / "epics.md"
+            epics.write_text(
+                epics.read_text(encoding="utf-8")
+                + "\n- **11.18d — Unexpected "
+                "(`11-18-unexpected-child.md`, done).**\n",
+                encoding="utf-8",
+            )
+
+        cases = (
+            (lambda r, f: sprint_replace(f, "  11-25-story: done\n", ""), "planning Story 11.25 maps to 0 sprint rows"),
+            (lambda r, f: sprint_replace(f, "  11-25-story: done\n", "  11-25-story: done\n  11-25-decoy: done\n"), "planning Story 11.25 maps to 2 sprint rows"),
+            (planning_mismatch, "planning Story 11.25 status 'review' disagrees"),
+            (
+                lambda r, f: planning_replace(
+                    f,
+                    "### Story 11.25: Fixture",
+                    "### Story 11.25 Fixture",
+                ),
+                "malformed maintained Story 11 heading",
+            ),
+            (
+                lambda r, f: planning_replace(
+                    f,
+                    "### Story 11.25: Fixture\n\n**Status:** done.",
+                    "### Story 11.25: Fixture\n\n**Status:** done_foo.",
+                ),
+                "planning Story 11.25 has unsupported status 'done_foo'",
+            ),
+            (
+                unexpected_child,
+                "unexpected planning child Story 11.18d",
+            ),
+        )
+        for mutation, expected in cases:
+            with self.subTest(expected=expected):
+                self.assert_mutation(mutation, expected)
+
+    def test_revision_shape_and_delivery_provenance_fail_closed(self) -> None:
+        def set_revision(fixture, revision):
+            path = fixture["paths"]["11.25"]
+            path.write_text(
+                path.read_text(encoding="utf-8").replace(
+                    "status: 'done'\n", f"status: 'done'\nfinal_revision: '{revision}'\n"
+                ), encoding="utf-8"
+            )
+
+        def set_blob_revision(root, fixture):
+            write(root / "blob.txt", "not a commit\n")
+            blob = git(root, "hash-object", "-w", "blob.txt").stdout.strip()
+            set_revision(fixture, blob)
+
+        def set_nonancestor_revision(root, fixture):
+            tree = git(root, "write-tree").stdout.strip()
+            unrelated = git(root, "commit-tree", tree, "-m", "unrelated root").stdout.strip()
+            set_revision(fixture, unrelated)
+
+        for mutation, expected in (
+            (lambda r, f: set_revision(f, f["head"].upper()), "noncanonical final_revision"),
+            (lambda r, f: set_revision(f, "0" * 40), "does not exist"),
+            (set_blob_revision, "is a blob object, not a commit"),
+            (set_nonancestor_revision, "is not an ancestor of HEAD"),
+            (lambda r, f: set_revision(f, f["baseline"]), "has no changed non-artifact delivery path"),
+        ):
+            with self.subTest(expected=expected):
+                self.assert_mutation(mutation, expected)
+
+    def test_root_delivery_commit_changed_paths_are_inspected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            git(root, "init")
+            git(root, "config", "user.email", "test@example.invalid")
+            git(root, "config", "user.name", "Story Validator Test")
+            write(root / "src/story-25.txt", "delivery\n")
+            git(root, "add", ".")
+            git(root, "commit", "-m", "fix(11.25): root delivery")
+            revision = git(root, "rev-parse", "HEAD").stdout.strip()
+            artifact_path = root / "spec-11-25-story.md"
+            write(artifact_path, self.artifact("11.25"))
+            artifact = VALIDATOR_MODULE.RepositoryStoryArtifact(
+                artifact_path, "11.25", "done", "", revision, (), frozenset({"src/story-25.txt"})
+            )
+            self.assertEqual(VALIDATOR_MODULE.validate_final_revisions(root, {"11.25": artifact}), [])
+
+    def test_merge_delivery_commit_changed_paths_are_inspected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            fixture = self.make_fixture(root)
+            original_branch = git(root, "branch", "--show-current").stdout.strip()
+            git(root, "checkout", "-b", "story-delivery")
+            write(root / "src/story-25.txt", "delivery from topic\n")
+            git(root, "add", "src/story-25.txt")
+            git(root, "commit", "-m", "fix(11.25): update delivery")
+            git(root, "checkout", original_branch)
+            write(root / "src/main-only.txt", "main change\n")
+            git(root, "add", "src/main-only.txt")
+            git(root, "commit", "-m", "test: diverge main")
+            merged = git(
+                root,
+                "merge",
+                "--no-ff",
+                "story-delivery",
+                "-m",
+                "fix(11.25): merge delivery",
+            )
+            self.assertEqual(merged.returncode, 0, merged.stdout + merged.stderr)
+            revision = git(root, "rev-parse", "HEAD").stdout.strip()
+            artifact = VALIDATOR_MODULE.RepositoryStoryArtifact(
+                fixture["paths"]["11.25"],
+                "11.25",
+                "done",
+                "",
+                revision,
+                (),
+                frozenset({"src/story-25.txt"}),
+            )
+
+            self.assertEqual(
+                VALIDATOR_MODULE.validate_final_revisions(root, {"11.25": artifact}),
+                [],
+            )
+
+    def test_e11r_duplicate_fields_dates_and_unrelated_evidence_fail(self) -> None:
+        def sprint_replace(fixture, old, new):
+            sprint = fixture["impl"] / "sprint-status.yaml"
+            sprint.write_text(sprint.read_text(encoding="utf-8").replace(old, new), encoding="utf-8")
+
+        def unrelated(root, fixture):
+            write(fixture["impl"] / "generic.md", "generic\n")
+            sprint_replace(
+                fixture,
+                "_bmad-output/implementation-artifacts/spec-11-28-story.md",
+                "_bmad-output/implementation-artifacts/generic.md",
+            )
+
+        def ref_is_not_evidence(root, fixture):
+            sprint_replace(
+                fixture,
+                '    ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-09-10.md"\n'
+                '    evidence:\n'
+                '      - "_bmad-output/implementation-artifacts/spec-11-28-story.md"',
+                '    ref: "_bmad-output/implementation-artifacts/spec-11-28-story.md"',
+            )
+
+        def sibling_field_ends_evidence(root, fixture):
+            sprint_replace(
+                fixture,
+                '    evidence:\n'
+                '      - "_bmad-output/implementation-artifacts/spec-11-28-story.md"',
+                '    evidence:\n'
+                '    notes: "not evidence"\n'
+                '      - "_bmad-output/implementation-artifacts/spec-11-28-story.md"',
+            )
+
+        cases = (
+            (lambda r, f: sprint_replace(f, '  - id: "E11R-AI-4"\n    epic: 11\n    status: done', '  - id: "E11R-AI-4"\n    epic: 11\n    status: done\n    status: open'), "E11R-AI-4 has duplicate field 'status'"),
+            (
+                lambda r, f: sprint_replace(
+                    f,
+                    '  - id: "E11R-AI-4"\n    epic: 11\n    status: done\n'
+                    '    closed: "2026-09-18"',
+                    '  - id: "E11R-AI-4"\n    epic: 11\n    status: open',
+                ),
+                "repository integrity: E11R-AI-4 remains open while its active "
+                "Story 11.28 artifact is done",
+            ),
+            (lambda r, f: sprint_replace(f, 'closed: "2026-09-17"', 'closed: "17-09-2026"'), "done status requires an ISO YYYY-MM-DD closed date"),
+            (lambda r, f: sprint_replace(f, 'closed: "2026-09-17"', 'closed: "2026-02-31"'), "done status requires an ISO YYYY-MM-DD closed date"),
+            (lambda r, f: sprint_replace(f, '  - id: "E11R-AI-4"\n    epic: 11', '  - id: "E11R-AI-4"\n    epic: eleven'), "E11R-AI-4 epic must be 11"),
+            (lambda r, f: sprint_replace(f, 'implementation_story: "11.28"', 'implementation_story: "11.29"'), "E11R-AI-4 implementation_story must be 11.28"),
+            (
+                lambda r, f: sprint_replace(
+                    f,
+                    '  - id: "E11R-AI-5"',
+                    "  - id: E11R-AI-4",
+                ),
+                "duplicate retrospective action E11R-AI-4",
+            ),
+            (
+                ref_is_not_evidence,
+                "E11R-AI-4 is missing required evidence",
+            ),
+            (
+                lambda r, f: sprint_replace(
+                    f,
+                    "spec-11-28-story.md",
+                    "spec-11-28-story.md.bak",
+                ),
+                "E11R-AI-4 evidence does not include the active Story 11.28 artifact",
+            ),
+            (
+                sibling_field_ends_evidence,
+                "E11R-AI-4 evidence does not include the active Story 11.28 artifact",
+            ),
+            (unrelated, "E11R-AI-4 evidence does not include the active Story 11.28 artifact"),
+        )
+        for mutation, expected in cases:
+            with self.subTest(expected=expected):
+                self.assert_mutation(mutation, expected)
+
+    def test_e11r_unquoted_ids_status_transitions_and_successor_are_enforced(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            fixture = self.make_fixture(root)
+            sprint = fixture["impl"] / "sprint-status.yaml"
+            sprint.write_text(
+                sprint.read_text(encoding="utf-8").replace(
+                    '  - id: "E11R-AI-4"',
+                    "  - id: E11R-AI-4",
+                ),
+                encoding="utf-8",
+            )
+            self.assertEqual(VALIDATOR_MODULE.validate_repository_integrity(root), [])
+
+        def done_action_for_open_ai8(root, fixture):
+            sprint = fixture["impl"] / "sprint-status.yaml"
+            sprint.write_text(
+                sprint.read_text(encoding="utf-8").replace(
+                    '  - id: "E11R-AI-8"\n    epic: 11\n    status: open',
+                    '  - id: "E11R-AI-8"\n    epic: 11\n    status: done\n'
+                    '    closed: "2026-09-22"',
+                ),
+                encoding="utf-8",
+            )
+
+        def done_story_for_open_ai8(root, fixture):
+            story = fixture["paths"]["11.32"]
+            story.write_text(
+                story.read_text(encoding="utf-8").replace(
+                    "status: 'in-progress'", "status: 'done'"
+                ),
+                encoding="utf-8",
+            )
+            sprint = fixture["impl"] / "sprint-status.yaml"
+            sprint.write_text(
+                sprint.read_text(encoding="utf-8").replace(
+                    "  11-32-story: in-progress", "  11-32-story: done"
+                ),
+                encoding="utf-8",
+            )
+            epics = fixture["planning"] / "epics.md"
+            epics.write_text(
+                epics.read_text(encoding="utf-8").replace(
+                    "### Story 11.32: Fixture\n\n**Status:** in-progress.",
+                    "### Story 11.32: Fixture\n\n**Status:** done.",
+                ),
+                encoding="utf-8",
+            )
+
+        def done_action_for_open_story(root, fixture):
+            story = fixture["paths"]["11.28"]
+            story.write_text(
+                story.read_text(encoding="utf-8").replace(
+                    "status: 'done'", "status: 'review'"
+                ),
+                encoding="utf-8",
+            )
+            sprint = fixture["impl"] / "sprint-status.yaml"
+            sprint.write_text(
+                sprint.read_text(encoding="utf-8").replace(
+                    "  11-28-story: done", "  11-28-story: review"
+                ),
+                encoding="utf-8",
+            )
+            epics = fixture["planning"] / "epics.md"
+            epics.write_text(
+                epics.read_text(encoding="utf-8").replace(
+                    "### Story 11.28: Fixture\n\n**Status:** done.",
+                    "### Story 11.28: Fixture\n\n**Status:** review.",
+                ),
+                encoding="utf-8",
+            )
+
+        self.assert_mutation(
+            done_action_for_open_ai8,
+            "E11R-AI-8 must remain open until Story 11.32 is done",
+        )
+        self.assert_mutation(
+            done_story_for_open_ai8,
+            "E11R-AI-8 must remain open until Story 11.32 is done",
+        )
+        self.assert_mutation(
+            done_action_for_open_story,
+            "E11R-AI-4 is done while its active Story 11.28 artifact is review; "
+            "expected open",
+        )
+        self.assert_mutation(
+            lambda r, f: (
+                f["impl"]
+                / "spec-11-25-eventstore-3-106-evidence-reconciliation.md"
+            ).unlink(),
+            "required E11R-AI-1 successor evidence is missing",
+        )
 
 
 if __name__ == "__main__":

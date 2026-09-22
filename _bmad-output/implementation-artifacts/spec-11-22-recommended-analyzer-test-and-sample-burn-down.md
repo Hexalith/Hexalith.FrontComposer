@@ -2,7 +2,8 @@
 title: 'Story 11.22 Recommended analyzer test and sample burn-down'
 type: 'refactor'
 created: '2026-08-08'
-status: 'done'
+status: 'superseded'
+superseded_by: '_bmad-output/implementation-artifacts/11-22-recommended-analyzer-test-and-sample-burndown.md'
 review_loop_iteration: 0
 baseline_commit: 'c3154b9b7c2cadf3bb42a8cc83ea7ede278f58a5'
 context:

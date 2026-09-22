@@ -2,7 +2,8 @@
 title: 'Story 11.15: Storage scope and snapshot publisher consolidation'
 type: 'refactor'
 created: '2026-07-12'
-status: 'blocked'
+status: 'superseded'
+superseded_by: '_bmad-output/implementation-artifacts/11-15-storage-scope-and-snapshot-publisher-consolidation.md'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:

@@ -2,7 +2,8 @@
 title: 'Story 11.11: Create Contracts.UI assembly and migrate Blazor rendering surface'
 type: 'refactor'
 created: '2026-07-11T16:00:00+02:00'
-status: 'blocked'
+status: 'superseded'
+superseded_by: '_bmad-output/implementation-artifacts/11-11-create-contracts-ui-assembly-and-migrate-blazor-rendering-surface.md'
 baseline_revision: '522d83573d36fb24b321922356d2b3c627f8e6fd'
 review_loop_iteration: 0
 followup_review_recommended: false

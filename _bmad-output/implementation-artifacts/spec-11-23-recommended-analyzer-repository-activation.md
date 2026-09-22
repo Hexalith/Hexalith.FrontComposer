@@ -2,7 +2,8 @@
 title: 'Story 11.23 Recommended analyzer repository activation'
 type: 'refactor'
 created: '2026-08-08'
-status: 'done'
+status: 'superseded'
+superseded_by: '_bmad-output/implementation-artifacts/11-23-recommended-analyzer-repository-activation.md'
 review_loop_iteration: 0
 baseline_commit: '490447e3be5142c3793019fa5491c19b8910f899'
 context:

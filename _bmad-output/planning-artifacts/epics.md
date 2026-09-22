@@ -2060,15 +2060,15 @@ is enforced, not merely applied.
 - **11.17a — CLI package split (`11-17-cli-package-split.md`, done).** `MigrationCommand.cs` (23 types), `InspectCommand.cs` (14 types) →
   one-type-per-file. Validation lane: CLI in-process xUnit lane + `frontcomposer.cli.inspect.v1` /
   `frontcomposer.cli.migrate.v1` contract pins + CLI `PublicAPI.Shipped.txt` unchanged.
-- **11.17b — SourceTools package split (`11-17-sourcetools-package-split.md`, review).** `DriftDetection.cs` (17 types) → one-type-per-file.
+- **11.17b — SourceTools package split (`11-17-sourcetools-package-split.md`, done).** `DriftDetection.cs` (17 types) → one-type-per-file.
   Validation lane: SourceTools drift lane + HFC parity + generated-output byte stability (P12
   no-`CompilationProvider` isolation preserved).
-- **11.17c — MCP/runtime split + benchmark-harness relocation (`11-17-mcp-runtime-split-and-benchmark-relocation.md`, review).** `SkillCorpus.cs` (~45 types) →
+- **11.17c — MCP/runtime split + benchmark-harness relocation (`11-17-mcp-runtime-split-and-benchmark-relocation.md`, done).** `SkillCorpus.cs` (~45 types) →
   one-type-per-file, and move the LLM benchmark harness out of the runtime package into
   `Shell.Tests.Bench` (`[Trait("Category","Performance")]`). Validation lane: MCP in-process lane +
   Testing package-boundary tests + `Shell.Tests.Bench` builds; the runtime package no longer ships the
   benchmark harness.
-- **11.17d — Shell interface+impl+DTO bundle split (`11-17-shell-bundle-split.md`, review).** Shell multi-type files (interface + impl + DTO
+- **11.17d — Shell interface+impl+DTO bundle split (`11-17-shell-bundle-split.md`, done).** Shell multi-type files (interface + impl + DTO
   bundles) → one-type-per-file, retaining the documented Fluxor action-group exception. Validation
   lane: focused Shell one-type-per-file Governance guard + broad Shell non-Contract lane +
   `PublicAPI.FcTbl.Shipped.txt` unchanged.
@@ -2096,13 +2096,13 @@ So that the codebase matches the documented one-type-per-file convention before 
 Each child preserves the parent's sanitization constraint: no raw token, tenant-secret, payload, stack
 trace, or sensitive identifier is emitted.
 
-- **11.18a — Fail-closed / security log sites (`11-18-fail-closed-security-log-sites.md`, review).** MCP + Shell fail-closed branches →
+- **11.18a — Fail-closed / security log sites (`11-18-fail-closed-security-log-sites.md`, done).** MCP + Shell fail-closed branches →
   `[LoggerMessage]`. Validation lane: MCP + Shell Governance sanitized-logging lane (ties to
   NFR-6/NFR-11); sanitization tests prove no sensitive value is emitted.
-- **11.18b — Residual warning-and-above log sites (`11-18-warning-and-above-log-sites.md`, review).** After 11.18a security and 11.18c hot-path ownership is frozen, all residual Warning/Error/Critical direct sites in the 49-file census →
+- **11.18b — Residual warning-and-above log sites (`11-18-warning-and-above-log-sites.md`, done).** After 11.18a security and 11.18c hot-path ownership is frozen, all residual Warning/Error/Critical direct sites in the 49-file census →
   `[LoggerMessage]`. Validation lane: Shell unit lane + a guard that Warning+ sites use
   source-generated logging.
-- **11.18c — Hot-path log sites (`11-18-hot-path-log-sites.md`, review).** Command-lifecycle, projection-refresh, and polling hot-path sites →
+- **11.18c — Hot-path log sites (`11-18-hot-path-log-sites.md`, done).** Command-lifecycle, projection-refresh, and polling hot-path sites →
   `[LoggerMessage]`. Validation lane: LoggerMessage guard; remaining direct calls are below the
   migration threshold or documented intentional.
 
@@ -2134,17 +2134,17 @@ path → residual Warning+ precedence, and owned sites migrate to `[LoggerMessag
 **Decomposition (correct course 2026-07-05).** Split by defect class. Each child names its validation
 lane and does not disable warnings or analyzer findings globally.
 
-- **11.19a — Doc-comment (CS1591) enforcement realignment (`11-19-doc-comment-enforcement-realignment.md`, review).** Restore documented CS1591 enforcement on
+- **11.19a — Doc-comment (CS1591) enforcement realignment (`11-19-doc-comment-enforcement-realignment.md`, done).** Restore documented CS1591 enforcement on
   the Contracts public API-freeze folders (the `.editorconfig` re-raise is currently dead under the
   src-wide NoWarn). Validation lane: Release build under `TreatWarningsAsErrors=true` + a guard proving
   CS1591 is enforced on the API-freeze surface.
-- **11.19b — AppHost NuGet audit suppression (`11-19-apphost-nuget-audit-suppression.md`, review).** Replace the blanket `NU1902-04` NoWarn with
+- **11.19b — AppHost NuGet audit suppression (`11-19-apphost-nuget-audit-suppression.md`, done).** Replace the blanket `NU1902-04` NoWarn with
   per-advisory `NuGetAuditSuppress` (CI-verifiable). Validation lane: CI audit lane / Governance test.
-- **11.19c — Localization + identifier alignment (`11-19-localization-and-identifier-alignment.md`, review).** Localize the `FcHomeCard` aria-label and the UI
+- **11.19c — Localization + identifier alignment (`11-19-localization-and-identifier-alignment.md`, done).** Localize the `FcHomeCard` aria-label and the UI
   host `lang="en"`/English strings; rename `HFC2106_ThemeHydrationEmpty` (ID string unchanged; obsolete
   alias if the constant is public). Validation lane: Shell localization/Governance lane +
   diagnostic-catalog parity.
-- **11.19d — Analyzer-elevation decision gate (`11-19-analyzer-elevation-decision.md`, review).** Architecture and Product approved staged
+- **11.19d — Analyzer-elevation decision gate (`11-19-analyzer-elevation-decision.md`, done).** Architecture and Product approved staged
   adoption of `AnalysisMode=Recommended` with unchanged TWAE, built-in analyzers only, and narrow
   owner-bound exceptions. The decision is recorded in
   `_bmad-output/contracts/analyzer-elevation-decision-2026-07-16.md` and materialized sequential,
@@ -2171,7 +2171,7 @@ So that readiness claims are verifiable instead of aspirational.
 
 ### Story 11.20: Recommended analyzer policy and exception ledger
 
-**Status:** backlog. **Owner:** Architect + Framework Maintainer. **Due:** 2026-07-24.
+**Status:** done. **Owner:** Architect + Framework Maintainer. **Due:** 2026-07-24.
 **Approval gate:** separate Architecture/Product approval.
 
 As an Architect and Framework Maintainer,
@@ -2204,7 +2204,7 @@ So that `AnalysisMode=Recommended` can be adopted without breaking public compat
 
 ### Story 11.21: Recommended analyzer product and generator burn-down
 
-**Status:** backlog. **Depends on:** 11.20. **Owner:** Framework Maintainer + SourceTools Maintainer.
+**Status:** done. **Depends on:** 11.20. **Owner:** Framework Maintainer + SourceTools Maintainer.
 **Due:** 2026-08-14. **Approval gate:** separate Architecture/Product approval.
 
 As a Framework and SourceTools Maintainer,
@@ -2237,7 +2237,7 @@ So that every shipped package and generated consumer can build cleanly under the
 
 ### Story 11.22: Recommended analyzer test and sample burn-down
 
-**Status:** backlog. **Depends on:** 11.21. **Owner:** Test Architect + Framework Maintainer.
+**Status:** done. **Depends on:** 11.21. **Owner:** Test Architect + Framework Maintainer.
 **Due:** 2026-09-04. **Approval gate:** separate Architecture/Product approval.
 
 As a Test Architect and Framework Maintainer,
@@ -2270,7 +2270,7 @@ So that the complete repository can approach `Recommended` activation with trust
 
 ### Story 11.23: Recommended analyzer repository activation
 
-**Status:** backlog. **Depends on:** 11.22. **Owner:** Architect + Framework Maintainer + Release Owner.
+**Status:** done. **Depends on:** 11.22. **Owner:** Architect + Framework Maintainer + Release Owner.
 **Due:** 2026-09-11. **Approval gate:** separate Architecture/Product approval. **Release gate:** v1.0.
 
 As an Architect, Framework Maintainer, and Release Owner,
@@ -2351,7 +2351,7 @@ EventStore container; any behavioral migration is routed to a separately approve
 
 ### Story 11.25: Current EventStore Release Identity and Evidence
 
-**Status:** backlog. **Owner:** Architect + EventStore Maintainer + FrontComposer Maintainer + Release
+**Status:** done. **Owner:** Architect + EventStore Maintainer + FrontComposer Maintainer + Release
 Owner. **Retrospective action:** E11R-AI-1.
 
 As a Release Owner and framework maintainer,
@@ -2389,7 +2389,7 @@ unreconciled provenance rather than embedding an unexplained historical SHA.
 
 ### Story 11.26: Analyzer Identifier Inventory Reconciliation
 
-**Status:** backlog. **Owner:** Analyzer Policy Owner. **Retrospective action:** E11R-AI-2.
+**Status:** done. **Owner:** Analyzer Policy Owner. **Retrospective action:** E11R-AI-2.
 
 As the analyzer policy owner,
 I want the two-identifier CA1707 scope delta reviewed and intentionally resolved,
@@ -2411,7 +2411,7 @@ ledger exceptions remain unchanged, with no broad suppression.
 
 ### Story 11.27: Generated Command Route Acceptance Locator
 
-**Status:** backlog. **Owner:** QA Engineer. **Retrospective action:** E11R-AI-3.
+**Status:** done. **Owner:** QA Engineer. **Retrospective action:** E11R-AI-3.
 
 As a QA engineer,
 I want route acceptance to target the route-level heading unambiguously,
@@ -2433,7 +2433,7 @@ element without weakening the route assertion.
 
 ### Story 11.28: FC-NIP Semantic Fixture Alignment
 
-**Status:** backlog. **Owner:** Technical Writer + SourceTools Maintainer. **Retrospective action:**
+**Status:** done. **Owner:** Technical Writer + SourceTools Maintainer. **Retrospective action:**
 E11R-AI-4.
 
 As the SourceTools maintainer,
@@ -2456,7 +2456,7 @@ match them.
 
 ### Story 11.29: Fallback Refresh and View Registration Correctness
 
-**Status:** backlog. **Owner:** Shell Maintainer. **Retrospective action:** E11R-AI-5.
+**Status:** done. **Owner:** Shell Maintainer. **Retrospective action:** E11R-AI-5.
 
 As a shell maintainer,
 I want fallback refresh and view registration to detect material scope/data changes,
@@ -2483,7 +2483,7 @@ disposed; it never silently retains the old scope.
 
 ### Story 11.30: Testing and MCP Boundary Hardening
 
-**Status:** backlog. **Owner:** Testing + MCP Maintainers. **Retrospective action:** E11R-AI-6.
+**Status:** done. **Owner:** Testing + MCP Maintainers. **Retrospective action:** E11R-AI-6.
 
 As an adopter and MCP host maintainer,
 I want deterministic identifiers and evidence handling to be canonical, bounded, and fail safe,
@@ -2513,7 +2513,7 @@ values remain useful.
 
 ### Story 11.31: Canonical Correlation Pseudonymization
 
-**Status:** backlog. **Owner:** Shell Observability Owner. **Retrospective action:** E11R-AI-7.
+**Status:** done. **Owner:** Shell Observability Owner. **Retrospective action:** E11R-AI-7.
 
 As an observability owner,
 I want one correlation pseudonymization contract across diagnostic, lifecycle, readiness, and hot-path
@@ -2542,7 +2542,7 @@ paths, and covered by tests.
 
 ### Story 11.32: Epic 11 Artifact Integrity Enforcement
 
-**Status:** backlog. **Owner:** QA Automation Maintainer. **Retrospective action:** E11R-AI-8.
+**Status:** done. **Owner:** QA Automation Maintainer. **Retrospective action:** E11R-AI-8.
 
 As a QA automation maintainer,
 I want story and sprint artifacts validated against repository truth,

@@ -4,7 +4,7 @@ type: 'refactor'
 created: '2026-07-11T00:00:00+02:00'
 status: 'done'
 baseline_revision: 'c5d39c43012e4c349b06e9accc9bf8418e85c18d'
-final_revision: '3c71ebbb213a52731184bf007de0aa6c36871b3d'
+final_revision: 'ff166ac2134b13e839e6e1c9bbab35472ad09019'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:

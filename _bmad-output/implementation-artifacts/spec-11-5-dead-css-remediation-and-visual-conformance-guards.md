@@ -2,7 +2,8 @@
 title: '11.5 Dead-CSS remediation and visual-conformance guards'
 type: 'feature'
 created: '2026-07-06T22:29:05+02:00'
-status: 'done'
+status: 'superseded'
+superseded_by: '_bmad-output/implementation-artifacts/11-5-dead-css-remediation-and-visual-conformance-guards.md'
 baseline_commit: '7100bd52493846e93303b355ea8cae1ae23ea875'
 baseline_revision: '0c7e5c74f18b2a5c11c70a77a727713373720964'
 review_loop_iteration: 1

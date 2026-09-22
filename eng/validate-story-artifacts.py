@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime
 import fnmatch
 import functools
 import json
@@ -180,6 +181,63 @@ NEGATION_PREFIXES = (
     "no longer",
 )
 
+REPOSITORY_ARTIFACT_STATUSES = frozenset(
+    {
+        "backlog",
+        "blocked",
+        "done",
+        "draft",
+        "in-progress",
+        "in-review",
+        "ready-for-dev",
+        "review",
+        "superseded",
+    }
+)
+SPRINT_LIFECYCLE_STATUSES = frozenset(
+    {"backlog", "blocked", "done", "in-progress", "optional", "ready-for-dev", "review"}
+)
+EPIC_11_CHILD_ARTIFACTS = {
+    "11.17a": "11-17-cli-package-split.md",
+    "11.17b": "11-17-sourcetools-package-split.md",
+    "11.17c": "11-17-mcp-runtime-split-and-benchmark-relocation.md",
+    "11.17d": "11-17-shell-bundle-split.md",
+    "11.18a": "11-18-fail-closed-security-log-sites.md",
+    "11.18b": "11-18-warning-and-above-log-sites.md",
+    "11.18c": "11-18-hot-path-log-sites.md",
+    "11.19a": "11-19-doc-comment-enforcement-realignment.md",
+    "11.19b": "11-19-apphost-nuget-audit-suppression.md",
+    "11.19c": "11-19-localization-and-identifier-alignment.md",
+    "11.19d": "11-19-analyzer-elevation-decision.md",
+}
+EPIC_11_CHILD_QUEUE_KEYS = {
+    story_id: filename.removesuffix(".md")
+    for story_id, filename in EPIC_11_CHILD_ARTIFACTS.items()
+}
+EPIC_11_ACTION_STORIES = {
+    "E11R-AI-1": "11.25",
+    "E11R-AI-2": "11.26",
+    "E11R-AI-3": "11.27",
+    "E11R-AI-4": "11.28",
+    "E11R-AI-5": "11.29",
+    "E11R-AI-6": "11.30",
+    "E11R-AI-7": "11.31",
+    "E11R-AI-8": "11.32",
+}
+UNCHECKED_TASK = re.compile(
+    r"^\s*(?:[-*+]|\d{1,9}[.)])\s*\[\s\]\s*(.+)$", re.IGNORECASE
+)
+REPOSITORY_STORY_HEADING = re.compile(
+    r"^(?:Story\s+)?(\d+)[.-](\d+)([a-z]?)(?P<delimiter>\s*:|\s+)",
+    re.IGNORECASE,
+)
+EPIC_11_STORY_CLAIM = re.compile(
+    r"^(?:Story\s+)?0*11(?=\D|$)", re.IGNORECASE
+)
+EPIC_11_QUEUE_FAMILY = re.compile(
+    r"^0*11[.-]0*(17|18|19)(?:[.-].*)?$", re.IGNORECASE
+)
+
 
 # Irregular simple-past / past-participle forms for ACTION_VERBS / CREATION_VERBS.
 # Regular past is derived in verb_alternation; only non-regular stems belong here.
@@ -333,6 +391,984 @@ class CommitScopeEvidence:
     workspace: WorkspaceEvidence
 
 
+@dataclass(frozen=True)
+class RepositoryStoryArtifact:
+    path: Path
+    story_id: str
+    status: str
+    superseded_by: str
+    final_revision: str
+    unresolved_items: tuple[tuple[int, str], ...]
+    delivery_paths: frozenset[str]
+
+
+@dataclass(frozen=True)
+class RetrospectiveAction:
+    action_id: str
+    fields: dict[str, str]
+    evidence_paths: frozenset[str]
+
+
+def normalize_lifecycle_status(value: str) -> str:
+    """Normalize equivalent artifact and sprint lifecycle spellings."""
+    normalized = parse_frontmatter_scalar(value).strip().rstrip(".").lower()
+    return "review" if normalized == "in-review" else normalized
+
+
+def parse_sprint_development_status(path: Path) -> tuple[dict[str, str], list[str]]:
+    """Parse the maintained development_status mapping without a YAML dependency."""
+    failures: list[str] = []
+    statuses: dict[str, str] = {}
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeDecodeError) as exc:
+        return {}, [f"repository integrity: sprint-status.yaml cannot be read: {exc}"]
+    in_mapping = False
+    for line_number, line in enumerate(lines, start=1):
+        if line.rstrip() == "development_status:":
+            if in_mapping:
+                failures.append(
+                    "repository integrity: duplicate development_status mapping in "
+                    f"sprint-status.yaml at line {line_number}"
+                )
+            in_mapping = True
+            continue
+        if not in_mapping:
+            continue
+        if line and not line[0].isspace():
+            break
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        match = re.fullmatch(r" {2}([A-Za-z0-9][A-Za-z0-9._-]*):\s*(\S.*?)\s*", line)
+        if not match:
+            failures.append(
+                "repository integrity: malformed development_status row in "
+                f"sprint-status.yaml:{line_number}: {format_report_value(stripped)}"
+            )
+            continue
+        key = match.group(1)
+        value = normalize_lifecycle_status(match.group(2))
+        if key in statuses:
+            failures.append(
+                f"repository integrity: duplicate development_status key {key!r} "
+                f"in sprint-status.yaml:{line_number}"
+            )
+            continue
+        statuses[key] = value
+        if value not in SPRINT_LIFECYCLE_STATUSES:
+            failures.append(
+                f"repository integrity: sprint key {key!r} has unsupported lifecycle "
+                f"status {value!r}"
+            )
+    if not in_mapping:
+        failures.append(
+            "repository integrity: sprint-status.yaml is missing development_status"
+        )
+    return statuses, failures
+
+
+def sprint_candidates_for_story(statuses: dict[str, str], story_id: str) -> list[str]:
+    """Return numeric Epic 11 queue rows for one ordinary story identity."""
+    match = re.fullmatch(r"11\.(\d+)", story_id)
+    if not match:
+        return []
+    prefix = f"11-{int(match.group(1))}"
+    return sorted(
+        key for key in statuses if key == prefix or key.startswith(prefix + "-")
+    )
+
+
+def story_identity_from_heading(value: str) -> tuple[str, bool] | None:
+    """Return a canonical repository story identity and whether it used a colon."""
+    match = REPOSITORY_STORY_HEADING.match(value.strip())
+    if not match:
+        return None
+    epic, story, suffix = match.group(1), match.group(2), match.group(3).lower()
+    return f"{int(epic)}.{int(story)}{suffix}", ":" in match.group("delimiter")
+
+
+def repository_artifact_status(
+    frontmatter: dict[str, str], text: str
+) -> tuple[str, list[str]]:
+    """Read one unambiguous lifecycle status from frontmatter/body status shadows."""
+    values: list[str] = []
+    if "status" in frontmatter:
+        values.append(normalize_lifecycle_status(frontmatter["status"]))
+    for _, line in scan_semantic_lines(text)[0]:
+        heading = match_structural_heading(line)
+        if heading and len(heading.group(1)) == 2:
+            break
+        if match := re.fullmatch(r"Status:\s*(\S.*?)\s*", line.strip(), re.IGNORECASE):
+            values.append(normalize_lifecycle_status(match.group(1)))
+    distinct = {value for value in values if value}
+    if not distinct:
+        return "", ["missing lifecycle status"]
+    if len(distinct) > 1:
+        return "", ["conflicting lifecycle statuses: " + ", ".join(sorted(distinct))]
+    status = next(iter(distinct))
+    if status not in REPOSITORY_ARTIFACT_STATUSES:
+        return status, [f"unsupported lifecycle status {status!r}"]
+    return status, []
+
+
+def extract_unresolved_repository_items(text: str) -> tuple[tuple[int, str], ...]:
+    """Return unchecked items under a Tasks or Review Findings section.
+
+    Review scope closes at a peer heading as well as a parent heading. This keeps an
+    unrelated checklist under the next ``###`` section out of the prior review.
+    """
+    unresolved: list[tuple[int, str]] = []
+    section_level = 0
+    in_relevant_section = False
+    for line_number, line in scan_semantic_lines(text)[0]:
+        heading = match_structural_heading(line)
+        if heading:
+            level = len(heading.group(1))
+            heading_text = heading.group(2).strip().lower()
+            if in_relevant_section and level <= section_level:
+                in_relevant_section = False
+            if (
+                is_task_heading(heading_text)
+                or heading_text.startswith("review findings")
+            ):
+                in_relevant_section = True
+                section_level = level
+            continue
+        if in_relevant_section and (match := UNCHECKED_TASK.match(line)):
+            unresolved.append((line_number, match.group(1).strip()))
+    return tuple(unresolved)
+
+
+def extract_delivery_paths(text: str) -> frozenset[str]:
+    """Extract deterministic artifact-owned delivery paths from Code Map/File List."""
+    sections = extract_sections(text)
+    paths: set[str] = set()
+    for section_name in ("code map", "file list"):
+        for match in re.finditer(r"`([^`]+)`", sections.get(section_name, "")):
+            value = match.group(1).strip().replace("\\", "/")
+            value = value.removeprefix("{project-root}/").removeprefix("./")
+            value = PATH_COORDINATE.sub("", value)
+            if (
+                "/" not in value
+                or value.startswith(("/", "http://", "https://"))
+                or any(character in value for character in "*?{}")
+                or " " in value
+            ):
+                continue
+            paths.add(value.rstrip("/"))
+    return frozenset(paths)
+
+
+def filename_story_number(path: Path) -> str:
+    stem = path.stem.removeprefix("spec-")
+    match = re.match(r"^11-(\d+)(?:-|$)", stem)
+    return f"11.{int(match.group(1))}" if match else ""
+
+
+def filename_matches_queue(path: Path, queue_keys: list[str]) -> bool:
+    stem = path.stem.removeprefix("spec-")
+    return any(stem.startswith(key) or key.startswith(stem) for key in queue_keys)
+
+
+def parse_repository_story_artifacts(
+    root: Path,
+    implementation_root: Path,
+    sprint_statuses: dict[str, str],
+) -> tuple[list[RepositoryStoryArtifact], list[str]]:
+    """Parse active and superseded Epic 11 artifacts, propagating every parse failure."""
+    artifacts: list[RepositoryStoryArtifact] = []
+    failures: list[str] = []
+    child_paths = {
+        implementation_root / filename: story_id
+        for story_id, filename in EPIC_11_CHILD_ARTIFACTS.items()
+    }
+    for path in sorted(implementation_root.glob("*.md")):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            if filename_story_number(path) or path in child_paths:
+                failures.append(
+                    f"repository integrity: {path.relative_to(root).as_posix()} cannot "
+                    f"be read as UTF-8: {exc}"
+                )
+            continue
+        frontmatter, frontmatter_failures, invalid_keys = extract_frontmatter(text)
+        semantic_lines, semantic_failures = scan_semantic_lines(text)
+        identities: list[tuple[str, bool, str]] = []
+        identity_failures: list[str] = []
+        title = frontmatter.get("title", "").strip()
+        if title:
+            if identity := story_identity_from_heading(title):
+                identities.append((*identity, "title"))
+            elif EPIC_11_STORY_CLAIM.match(title):
+                identity_failures.append(
+                    f"malformed title Story identity {title!r}"
+                )
+        h1_text = ""
+        for _, line in semantic_lines:
+            heading = match_structural_heading(line)
+            if heading and len(heading.group(1)) == 1:
+                h1_text = heading.group(2).strip()
+                if identity := story_identity_from_heading(h1_text):
+                    identities.append((*identity, "H1"))
+                elif EPIC_11_STORY_CLAIM.match(h1_text):
+                    identity_failures.append(
+                        f"malformed H1 Story identity {h1_text!r}"
+                    )
+                break
+        explicit_present = "story_id" in frontmatter
+        explicit = frontmatter.get("story_id", "").strip()
+        if explicit_present:
+            match = re.fullmatch(r"(\d+)[.-](\d+)([a-z]?)", explicit, re.IGNORECASE)
+            if match:
+                identities.append(
+                    (
+                        f"{int(match.group(1))}.{int(match.group(2))}{match.group(3).lower()}",
+                        True,
+                        "story_id",
+                    )
+                )
+            else:
+                identity_failures.append(
+                    f"invalid story_id {explicit!r}; expected '<epic>.<story>'"
+                )
+        document_identities = {identity for identity, _, _ in identities}
+        child_identity = child_paths.get(path)
+        numeric_identity = filename_story_number(path)
+        queue_keys = sprint_candidates_for_story(sprint_statuses, numeric_identity)
+        queue_filename_match = filename_matches_queue(path, queue_keys)
+        body_status_present = False
+        for _, line in semantic_lines:
+            heading = match_structural_heading(line)
+            if heading and len(heading.group(1)) == 2:
+                break
+            if re.fullmatch(r"Status:\s*\S.*", line.strip(), re.IGNORECASE):
+                body_status_present = True
+                break
+        artifact_identity_signal = bool(
+            title or explicit_present or "status" in frontmatter or body_status_present
+        )
+        epic_11_identity = any(
+            identity.startswith("11.") for identity in document_identities
+        )
+        candidate = bool(
+            child_identity
+            or queue_filename_match
+            or (epic_11_identity and artifact_identity_signal)
+            or explicit_present
+            or (
+                artifact_identity_signal
+                and any(
+                    EPIC_11_STORY_CLAIM.match(value)
+                    for value in (title, h1_text, explicit)
+                    if value
+                )
+            )
+        )
+        if not candidate:
+            continue
+        relative = path.relative_to(root).as_posix()
+        for failure in (*frontmatter_failures, *semantic_failures):
+            failures.append(f"repository integrity: {relative}: {failure}")
+        if invalid_keys & {"status", "superseded_by", "final_revision", "story_id", "title"}:
+            failures.append(
+                f"repository integrity: {relative} has ambiguous integrity metadata: "
+                + ", ".join(sorted(invalid_keys))
+            )
+        failures.extend(
+            f"repository integrity: Story artifact {relative} has {failure}"
+            for failure in identity_failures
+        )
+        if child_identity:
+            document_identities.add(child_identity)
+        if not document_identities:
+            failures.append(
+                f"repository integrity: {relative} has no explicit Epic 11 Story identity"
+            )
+            continue
+        if len(document_identities) != 1:
+            evidence = ", ".join(
+                f"{source}={identity}" for identity, _, source in identities
+            )
+            failures.append(
+                f"repository integrity: {relative} has conflicting Story identities: {evidence}"
+            )
+            continue
+        story_id = next(iter(document_identities))
+        if child_identity and story_id != child_identity:
+            failures.append(
+                f"repository integrity: expected child artifact {relative} to identify "
+                f"Story {child_identity}, got Story {story_id}"
+            )
+            continue
+        if not child_identity and numeric_identity and story_id != numeric_identity:
+            failures.append(
+                f"repository integrity: {relative} filename identifies Story "
+                f"{numeric_identity} but document identifies Story {story_id}"
+            )
+            continue
+        if not story_id.startswith("11."):
+            continue
+        status, status_failures = repository_artifact_status(frontmatter, text)
+        failures.extend(
+            f"repository integrity: Story {story_id} artifact {relative}: {failure}"
+            for failure in status_failures
+        )
+        artifacts.append(
+            RepositoryStoryArtifact(
+                path=path,
+                story_id=story_id,
+                status=status,
+                superseded_by=frontmatter.get("superseded_by", "").strip(),
+                final_revision=frontmatter.get("final_revision", "").strip(),
+                unresolved_items=extract_unresolved_repository_items(text),
+                delivery_paths=extract_delivery_paths(text),
+            )
+        )
+    return artifacts, failures
+
+
+def validate_child_topology(
+    root: Path,
+    implementation_root: Path,
+    artifacts: list[RepositoryStoryArtifact],
+    sprint_statuses: dict[str, str],
+) -> list[str]:
+    failures: list[str] = []
+    artifact_by_path = {artifact.path: artifact for artifact in artifacts}
+    expected_keys = set(EPIC_11_CHILD_QUEUE_KEYS.values())
+    for story_id, filename in EPIC_11_CHILD_ARTIFACTS.items():
+        path = implementation_root / filename
+        relative = path.relative_to(root).as_posix()
+        artifact = artifact_by_path.get(path)
+        if artifact is None:
+            failures.append(
+                f"repository integrity: required materialized child Story {story_id} "
+                f"artifact is missing: {relative}"
+            )
+        key = EPIC_11_CHILD_QUEUE_KEYS[story_id]
+        if key not in sprint_statuses:
+            failures.append(
+                f"repository integrity: required materialized child Story {story_id} "
+                f"queue key is missing: {key}"
+            )
+        if artifact and key in sprint_statuses and artifact.status:
+            if normalize_lifecycle_status(artifact.status) != sprint_statuses[key]:
+                failures.append(
+                    f"repository integrity: child Story {story_id} status mismatch: "
+                    f"artifact {artifact.status!r}, queue {key}={sprint_statuses[key]!r}"
+                )
+    for key in sorted(sprint_statuses):
+        if not EPIC_11_QUEUE_FAMILY.fullmatch(key):
+            continue
+        if key not in expected_keys:
+            failures.append(
+                f"repository integrity: nonimplementable parent/unknown child queue key "
+                f"is not allowed: {key}"
+            )
+    return failures
+
+
+def validate_artifact_uniqueness_and_queue(
+    root: Path,
+    implementation_root: Path,
+    artifacts: list[RepositoryStoryArtifact],
+    sprint_statuses: dict[str, str],
+) -> tuple[dict[str, RepositoryStoryArtifact], list[str]]:
+    failures: list[str] = []
+    records_by_path = {artifact.path: artifact for artifact in artifacts}
+    active_by_story: dict[str, list[RepositoryStoryArtifact]] = {}
+    for artifact in artifacts:
+        relative = artifact.path.relative_to(root).as_posix()
+        if artifact.status != "superseded" and artifact.superseded_by:
+            failures.append(
+                f"repository integrity: active Story {artifact.story_id} artifact "
+                f"{relative} declares superseded_by but status is "
+                f"{artifact.status or '(missing)'!r}"
+            )
+        if artifact.status == "superseded":
+            target_text = artifact.superseded_by.replace("\\", "/")
+            if not target_text:
+                failures.append(
+                    f"repository integrity: superseded Story {artifact.story_id} artifact "
+                    f"{relative} is missing superseded_by"
+                )
+                continue
+            if Path(target_text).is_absolute():
+                failures.append(
+                    f"repository integrity: superseded Story {artifact.story_id} artifact "
+                    f"{relative} must use a repository-relative superseded_by path: "
+                    f"{target_text}"
+                )
+                continue
+            target = (root / target_text).resolve()
+            try:
+                target.relative_to(implementation_root.resolve())
+            except ValueError:
+                failures.append(
+                    f"repository integrity: superseded Story {artifact.story_id} artifact "
+                    f"{relative} targets a file outside implementation-artifacts: {target_text}"
+                )
+                continue
+            if target == artifact.path.resolve():
+                failures.append(
+                    f"repository integrity: superseded Story {artifact.story_id} artifact "
+                    f"{relative} cannot supersede itself"
+                )
+                continue
+            successor = records_by_path.get(target)
+            if successor is None:
+                failures.append(
+                    f"repository integrity: superseded Story {artifact.story_id} artifact "
+                    f"{relative} has missing successor {target_text}"
+                )
+            elif successor.story_id != artifact.story_id:
+                failures.append(
+                    f"repository integrity: superseded Story {artifact.story_id} artifact "
+                    f"{relative} targets different Story {successor.story_id}: {target_text}"
+                )
+            elif successor.status == "superseded":
+                failures.append(
+                    f"repository integrity: superseded Story {artifact.story_id} artifact "
+                    f"{relative} targets another superseded record: {target_text}"
+                )
+            continue
+        active_by_story.setdefault(artifact.story_id, []).append(artifact)
+    active: dict[str, RepositoryStoryArtifact] = {}
+    for story_id, records in sorted(active_by_story.items()):
+        if len(records) != 1:
+            failures.append(
+                f"repository integrity: Story {story_id} has duplicate active artifacts: "
+                + ", ".join(record.path.relative_to(root).as_posix() for record in records)
+            )
+            continue
+        artifact = records[0]
+        active[story_id] = artifact
+        if story_id in EPIC_11_CHILD_QUEUE_KEYS:
+            candidates = [EPIC_11_CHILD_QUEUE_KEYS[story_id]]
+        else:
+            candidates = sprint_candidates_for_story(sprint_statuses, story_id)
+        if len(candidates) != 1:
+            failures.append(
+                f"repository integrity: active Story {story_id} artifact "
+                f"{artifact.path.relative_to(root).as_posix()} maps to "
+                f"{len(candidates)} sprint rows: {', '.join(candidates) or '(none)'}"
+            )
+            continue
+        key = candidates[0]
+        if key in sprint_statuses and artifact.status:
+            artifact_status = normalize_lifecycle_status(artifact.status)
+            if artifact_status != sprint_statuses[key]:
+                failures.append(
+                    f"repository integrity: Story {story_id} status mismatch: artifact "
+                    f"{artifact.status!r}, sprint {key}={sprint_statuses[key]!r}"
+                )
+    return active, failures
+
+
+def revision_changed_paths(root: Path, revision: str) -> tuple[list[str], str]:
+    result = run_subprocess(
+        [
+            "git",
+            "diff-tree",
+            "--root",
+            "-m",
+            "--no-commit-id",
+            "--name-only",
+            "-r",
+            revision,
+            "--",
+        ],
+        root,
+    )
+    if result.returncode != 0:
+        return [], result.stderr.strip() or result.stdout.strip() or "git diff-tree failed"
+    return sorted({line.strip() for line in result.stdout.splitlines() if line.strip()}), ""
+
+
+def delivery_path_matches(changed_path: str, declared_path: str) -> bool:
+    return changed_path == declared_path or changed_path.startswith(declared_path + "/")
+
+
+def validate_final_revisions(
+    root: Path, active: dict[str, RepositoryStoryArtifact]
+) -> list[str]:
+    failures: list[str] = []
+    for story_id, artifact in sorted(active.items()):
+        if artifact.status != "done" or not artifact.final_revision:
+            continue
+        revision = artifact.final_revision
+        relative = artifact.path.relative_to(root).as_posix()
+        if not re.fullmatch(r"[0-9a-f]{40}", revision):
+            failures.append(
+                f"repository integrity: Story {story_id} artifact {relative} has "
+                f"noncanonical final_revision {revision!r}; expected 40 lowercase hex characters"
+            )
+            continue
+        object_type = run_subprocess(["git", "cat-file", "-t", revision], root)
+        if object_type.returncode != 0:
+            failures.append(
+                f"repository integrity: Story {story_id} artifact {relative} final_revision "
+                f"{revision} does not exist"
+            )
+            continue
+        if object_type.stdout.strip() != "commit":
+            failures.append(
+                f"repository integrity: Story {story_id} artifact {relative} final_revision "
+                f"{revision} is a {object_type.stdout.strip() or 'non-commit'} object, "
+                "not a commit"
+            )
+            continue
+        ancestry = run_subprocess(
+            ["git", "merge-base", "--is-ancestor", revision, "HEAD"], root
+        )
+        if ancestry.returncode != 0:
+            failures.append(
+                f"repository integrity: Story {story_id} artifact {relative} final_revision "
+                f"{revision} is not an ancestor of HEAD"
+            )
+            continue
+        changed_paths, error = revision_changed_paths(root, revision)
+        if error:
+            failures.append(
+                f"repository integrity: Story {story_id} artifact {relative} "
+                f"final_revision {revision} paths cannot be inspected: {error}"
+            )
+            continue
+        relevant = sorted(
+            path
+            for path in changed_paths
+            if not path.startswith("_bmad-output/")
+            and any(
+                delivery_path_matches(path, declared)
+                for declared in artifact.delivery_paths
+            )
+        )
+        if not relevant:
+            failures.append(
+                f"repository integrity: Story {story_id} artifact {relative} "
+                f"final_revision {revision} has no changed non-artifact delivery path declared "
+                "by that artifact"
+            )
+    return failures
+
+
+def validate_completed_artifact_items(
+    root: Path, active: dict[str, RepositoryStoryArtifact]
+) -> list[str]:
+    failures: list[str] = []
+    for story_id, artifact in sorted(active.items()):
+        if artifact.status != "done":
+            continue
+        relative = artifact.path.relative_to(root).as_posix()
+        for line_number, item in artifact.unresolved_items:
+            failures.append(
+                f"repository integrity: done Story {story_id} has unresolved required/review "
+                f"item in {relative}:{line_number}: {format_report_value(item)}"
+            )
+    return failures
+
+
+def parse_planning_statuses(
+    path: Path,
+) -> tuple[dict[str, list[str]], dict[str, tuple[str, str]], list[str]]:
+    """Parse explicit Story statuses and materialized-child rows from epics.md."""
+    failures: list[str] = []
+    statuses: dict[str, list[str]] = {}
+    children: dict[str, tuple[str, str]] = {}
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        return {}, {}, [f"repository integrity: epics.md cannot be read: {exc}"]
+    current_story = ""
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        heading = re.match(r"^### Story 11\.(\d+):(?:\s|$)", line)
+        if heading:
+            current_story = f"11.{int(heading.group(1))}"
+            continue
+        if re.match(r"^###\s+Story\s+0*11(?:[.\-:\s]|$)", line, re.IGNORECASE):
+            current_story = ""
+            failures.append(
+                f"repository integrity: malformed maintained Story 11 heading "
+                f"at epics.md:{line_number}: {format_report_value(line.strip())}"
+            )
+            continue
+        if line.startswith("### "):
+            current_story = ""
+        status = re.search(
+            r"\*\*Status:\*\*\s*(.*?)(?=\s+\*\*[^*]+:\*\*|$)", line
+        )
+        if current_story and status:
+            value = normalize_lifecycle_status(status.group(1))
+            statuses.setdefault(current_story, []).append(value)
+            if value not in SPRINT_LIFECYCLE_STATUSES:
+                failures.append(
+                    f"repository integrity: planning Story {current_story} has unsupported "
+                    f"status {value!r} at epics.md:{line_number}"
+                )
+        child = re.match(
+            r"^- \*\*(11\.(?:17|18|19)[a-z]+)\s+.*?"
+            r"\(`([^`]+\.md)`,\s*([A-Za-z-]+)\)\.\*\*",
+            line,
+            re.IGNORECASE,
+        )
+        if child:
+            story_id = child.group(1).lower()
+            if story_id not in EPIC_11_CHILD_ARTIFACTS:
+                failures.append(
+                    f"repository integrity: unexpected planning child Story {story_id} "
+                    f"at epics.md:{line_number}"
+                )
+                continue
+            if story_id in children:
+                failures.append(
+                    f"repository integrity: duplicate planning child Story {story_id} "
+                    f"at epics.md:{line_number}"
+                )
+            children[story_id] = (
+                child.group(2),
+                normalize_lifecycle_status(child.group(3)),
+            )
+    return statuses, children, failures
+
+
+def validate_planning_statuses(
+    planning_path: Path,
+    sprint_statuses: dict[str, str],
+) -> list[str]:
+    planning, children, failures = parse_planning_statuses(planning_path)
+    for story_id, values in sorted(planning.items()):
+        if len(values) != 1:
+            failures.append(
+                f"repository integrity: planning Story {story_id} has {len(values)} explicit "
+                "statuses; expected exactly one"
+            )
+            continue
+        candidates = sprint_candidates_for_story(sprint_statuses, story_id)
+        if len(candidates) != 1:
+            failures.append(
+                f"repository integrity: planning Story {story_id} maps to {len(candidates)} "
+                f"sprint rows: {', '.join(candidates) or '(none)'}"
+            )
+            continue
+        key = candidates[0]
+        if sprint_statuses[key] != values[0]:
+            failures.append(
+                f"repository integrity: planning Story {story_id} status {values[0]!r} "
+                f"disagrees with sprint {key}={sprint_statuses[key]!r}"
+            )
+    for story_id, expected_filename in EPIC_11_CHILD_ARTIFACTS.items():
+        if story_id not in children:
+            failures.append(
+                f"repository integrity: planning entry for materialized child Story "
+                f"{story_id} is missing"
+            )
+            continue
+        filename, status = children[story_id]
+        key = EPIC_11_CHILD_QUEUE_KEYS[story_id]
+        if filename != expected_filename:
+            failures.append(
+                f"repository integrity: planning child Story {story_id} names {filename!r}; "
+                f"expected {expected_filename!r}"
+            )
+        if key in sprint_statuses and status != sprint_statuses[key]:
+            failures.append(
+                f"repository integrity: planning child Story {story_id} status {status!r} "
+                f"disagrees with sprint {key}={sprint_statuses[key]!r}"
+            )
+    return failures
+
+
+def parse_retrospective_actions(path: Path) -> tuple[dict[str, RetrospectiveAction], list[str]]:
+    failures: list[str] = []
+    actions: dict[str, RetrospectiveAction] = {}
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeDecodeError) as exc:
+        return {}, [f"repository integrity: sprint-status.yaml cannot be read: {exc}"]
+    id_rows: list[tuple[int, str]] = []
+    for index, line in enumerate(lines):
+        if match := re.fullmatch(r"  - id:\s*(.*?)\s*", line):
+            id_rows.append((index, parse_frontmatter_scalar(match.group(1))))
+    for position, (start, action_id) in enumerate(id_rows):
+        if not re.fullmatch(r"E11R-AI-[1-8]", action_id):
+            continue
+        end = id_rows[position + 1][0] if position + 1 < len(id_rows) else len(lines)
+        block = lines[start:end]
+        if action_id in actions:
+            failures.append(
+                f"repository integrity: duplicate retrospective action {action_id}"
+            )
+            continue
+        fields: dict[str, str] = {}
+        evidence_scalars: list[str] = []
+        evidence_parts: list[str] = []
+        in_evidence = False
+
+        def finish_evidence_item() -> None:
+            if evidence_parts:
+                evidence_scalars.append(" ".join(evidence_parts))
+                evidence_parts.clear()
+
+        for offset, line in enumerate(block[1:], start=start + 2):
+            if in_evidence:
+                if re.fullmatch(r"    evidence:\s*", line):
+                    finish_evidence_item()
+                    failures.append(
+                        f"repository integrity: {action_id} has duplicate field 'evidence' "
+                        f"at sprint-status.yaml:{offset}"
+                    )
+                    continue
+                if re.match(r"^    [A-Za-z_][A-Za-z0-9_-]*:\s*", line):
+                    finish_evidence_item()
+                    in_evidence = False
+                elif item := re.match(r"^      -\s*(.*?)\s*$", line):
+                    finish_evidence_item()
+                    evidence_parts.append(item.group(1))
+                    continue
+                elif evidence_parts and line.startswith("        "):
+                    evidence_parts.append(line.strip())
+                    continue
+                elif not line.strip():
+                    continue
+                else:
+                    finish_evidence_item()
+                    in_evidence = False
+            scalar = re.match(
+                r"^    (epic|status|closed|implementation_story|ref):\s*(.*?)\s*$",
+                line,
+            )
+            if scalar:
+                key, raw = scalar.groups()
+                if key in fields:
+                    failures.append(
+                        f"repository integrity: {action_id} has duplicate field {key!r} "
+                        f"at sprint-status.yaml:{offset}"
+                    )
+                else:
+                    fields[key] = parse_frontmatter_scalar(raw)
+                in_evidence = False
+                continue
+            if re.match(r"^    evidence:\s*$", line):
+                if "evidence" in fields:
+                    failures.append(
+                        f"repository integrity: {action_id} has duplicate field 'evidence' "
+                        f"at sprint-status.yaml:{offset}"
+                    )
+                fields["evidence"] = "present"
+                in_evidence = True
+                continue
+        finish_evidence_item()
+        evidence_paths: set[str] = set()
+        for raw_scalar in evidence_scalars:
+            scalar = parse_frontmatter_scalar(raw_scalar)
+            path_match = re.match(
+                r"^(_bmad-output/implementation-artifacts/"
+                r"[A-Za-z0-9._/-]+\.md)(?=\s|$)",
+                scalar,
+            )
+            if path_match:
+                evidence_paths.add(path_match.group(1))
+        actions[action_id] = RetrospectiveAction(
+            action_id, fields, frozenset(evidence_paths)
+        )
+    for action_id in EPIC_11_ACTION_STORIES:
+        if action_id not in actions:
+            failures.append(
+                f"repository integrity: retrospective action {action_id} is missing"
+            )
+    return actions, failures
+
+
+def validate_retrospective_actions(
+    root: Path,
+    sprint_path: Path,
+    actions: dict[str, RetrospectiveAction],
+    active: dict[str, RepositoryStoryArtifact],
+) -> list[str]:
+    failures: list[str] = []
+    for action_id, expected_story in EPIC_11_ACTION_STORIES.items():
+        action = actions.get(action_id)
+        if action is None:
+            continue
+        fields = action.fields
+        if fields.get("epic") != "11":
+            failures.append(
+                f"repository integrity: {action_id} epic must be 11, got "
+                f"{fields.get('epic', '(missing)')!r}"
+            )
+        if fields.get("implementation_story") != expected_story:
+            failures.append(
+                f"repository integrity: {action_id} implementation_story must be "
+                f"{expected_story}, got {fields.get('implementation_story', '(missing)')!r}"
+            )
+        status = fields.get("status", "")
+        if status not in {"open", "done"}:
+            failures.append(
+                f"repository integrity: {action_id} has unsupported status {status!r}"
+            )
+        closed = fields.get("closed", "")
+        valid_closed_date = False
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", closed):
+            try:
+                valid_closed_date = datetime.date.fromisoformat(closed).isoformat() == closed
+            except ValueError:
+                pass
+        if status == "done" and not valid_closed_date:
+            failures.append(
+                f"repository integrity: {action_id} done status requires an ISO YYYY-MM-DD "
+                f"closed date, got {closed or '(missing)'!r}"
+            )
+        if status == "open" and closed:
+            failures.append(
+                f"repository integrity: {action_id} is open but declares closed={closed!r}"
+            )
+        if fields.get("evidence") != "present":
+            failures.append(
+                f"repository integrity: {action_id} is missing required evidence"
+            )
+        matching_evidence = False
+        for evidence_path in sorted(action.evidence_paths):
+            resolved = (root / evidence_path).resolve()
+            try:
+                resolved.relative_to(root)
+            except ValueError:
+                failures.append(
+                    f"repository integrity: {action_id} evidence path escapes the repository: "
+                    f"{evidence_path}"
+                )
+                continue
+            if not resolved.is_file():
+                failures.append(
+                    f"repository integrity: {action_id} evidence path does not resolve: "
+                    f"{evidence_path}"
+                )
+            artifact = active.get(expected_story)
+            if artifact and resolved == artifact.path.resolve():
+                matching_evidence = True
+        if not matching_evidence:
+            failures.append(
+                f"repository integrity: {action_id} evidence does not include the active "
+                f"Story {expected_story} artifact"
+            )
+        implementation = active.get(expected_story)
+        if action_id not in {"E11R-AI-1", "E11R-AI-8"}:
+            if implementation and implementation.status == "done" and status != "done":
+                failures.append(
+                    f"repository integrity: {action_id} remains {status or '(missing)'} while "
+                    f"its active Story {expected_story} artifact is done"
+                )
+            elif implementation and implementation.status != "done" and status != "open":
+                failures.append(
+                    f"repository integrity: {action_id} is {status or '(missing)'} while "
+                    f"its active Story {expected_story} artifact is "
+                    f"{implementation.status or '(missing)'}; expected open"
+                )
+        if action_id == "E11R-AI-8" and implementation:
+            expected_status = "done" if implementation.status == "done" else "open"
+            if status != expected_status:
+                failures.append(
+                    f"repository integrity: E11R-AI-8 must remain open until Story 11.32 "
+                    f"is done; story status={implementation.status!r}, action status={status!r}"
+                )
+    successor = sprint_path.parent / "spec-11-25-eventstore-3-106-evidence-reconciliation.md"
+    if not successor.is_file():
+        failures.append(
+            "repository integrity: required E11R-AI-1 successor evidence is missing: "
+            "_bmad-output/implementation-artifacts/"
+            "spec-11-25-eventstore-3-106-evidence-reconciliation.md"
+        )
+    elif "E11R-AI-1" in actions:
+        try:
+            text = successor.read_text(encoding="utf-8")
+            frontmatter = extract_frontmatter(text)[0]
+            successor_status = normalize_lifecycle_status(frontmatter.get("status", ""))
+        except (OSError, UnicodeDecodeError):
+            successor_status = ""
+        if successor_status != "done" and actions["E11R-AI-1"].fields.get("status") != "open":
+            failures.append(
+                "repository integrity: E11R-AI-1 must remain open while the active "
+                f"Story 11.25 successor evidence is {successor_status or '(missing)'}"
+            )
+    return failures
+
+
+def repository_integrity_is_active(
+    root: Path, implementation_root: Path, planning_root: Path
+) -> bool:
+    """Distinguish the maintained corpus from isolated sentinel/story fixtures."""
+    if planning_root.exists() or (implementation_root / "sprint-status.yaml").exists():
+        return True
+    if implementation_root.is_dir() and (
+        any(implementation_root.glob("11-*.md"))
+        or any(implementation_root.glob("spec-11-*.md"))
+    ):
+        return True
+    anchors = [
+        "_bmad-output/implementation-artifacts/sprint-status.yaml",
+        "_bmad-output/planning-artifacts/epics.md",
+        *(
+            "_bmad-output/implementation-artifacts/" + filename
+            for filename in EPIC_11_CHILD_ARTIFACTS.values()
+        ),
+    ]
+    tracked = run_subprocess(["git", "ls-files", "--", *anchors], root)
+    return tracked.returncode == 0 and bool(tracked.stdout.strip())
+
+
+def validate_repository_integrity(root: Path) -> list[str]:
+    """Validate maintained planning/implementation truth as one fail-closed corpus."""
+    output_root = root / "_bmad-output"
+    implementation_root = output_root / "implementation-artifacts"
+    planning_root = output_root / "planning-artifacts"
+    # Sentinel-only fixtures may place quoted examples below
+    # implementation-artifacts/tests without materializing the maintained corpus.
+    if not repository_integrity_is_active(root, implementation_root, planning_root):
+        return []
+    failures: list[str] = []
+    required_paths = (
+        (implementation_root, "implementation-artifacts directory"),
+        (implementation_root / "sprint-status.yaml", "sprint-status.yaml"),
+        (planning_root, "planning-artifacts directory"),
+        (planning_root / "epics.md", "epics.md"),
+    )
+    for path, label in required_paths:
+        if not path.exists():
+            failures.append(
+                f"repository integrity: required {label} is missing: "
+                f"{path.relative_to(root).as_posix()}"
+            )
+    if failures:
+        return failures
+    sprint_path = implementation_root / "sprint-status.yaml"
+    planning_path = planning_root / "epics.md"
+    sprint_statuses, sprint_failures = parse_sprint_development_status(sprint_path)
+    failures.extend(sprint_failures)
+    artifacts, artifact_failures = parse_repository_story_artifacts(
+        root, implementation_root, sprint_statuses
+    )
+    failures.extend(artifact_failures)
+    failures.extend(
+        validate_child_topology(
+            root, implementation_root, artifacts, sprint_statuses
+        )
+    )
+    active, uniqueness_failures = validate_artifact_uniqueness_and_queue(
+        root, implementation_root, artifacts, sprint_statuses
+    )
+    failures.extend(uniqueness_failures)
+    failures.extend(validate_completed_artifact_items(root, active))
+    failures.extend(validate_final_revisions(root, active))
+    failures.extend(validate_planning_statuses(planning_path, sprint_statuses))
+    actions, action_parse_failures = parse_retrospective_actions(sprint_path)
+    failures.extend(action_parse_failures)
+    failures.extend(
+        validate_retrospective_actions(root, sprint_path, actions, active)
+    )
+    return failures
+
+
 def main() -> int:
     args = parse_args()
     root = Path(args.project_root).resolve()
@@ -363,6 +1399,12 @@ def main() -> int:
 
     if not args.skip_sentinel:
         failures.extend(scan_sentinels(root, args.sentinel_root, args.exclude))
+
+    # Repository integrity is the global blocking pass. Per-story invocations keep
+    # their established strict/legacy behavior and remain usable in isolated authoring
+    # fixtures that intentionally do not materialize the maintained corpus ledgers.
+    if not args.story:
+        failures.extend(validate_repository_integrity(root))
 
     if args.story:
         story = resolve_under_root(root, args.story)

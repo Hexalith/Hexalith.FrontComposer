@@ -60,6 +60,52 @@ Exit code `0` means validation passed and `1` means it failed. Failures print to
 the evidence report and notices print to stdout. An invalid invocation prints only the
 invocation error and validates nothing.
 
+## Repository integrity mode
+
+Running the validator without `--story` keeps the authoring-sentinel scan and also
+validates the maintained Epic 11 corpus. Once either maintained planning data or an
+Epic 11 implementation artifact is present, these inputs are mandatory:
+
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/planning-artifacts/epics.md`
+- both containing artifact directories
+
+The pass is standard-library-only and fail-closed. It validates the independently
+declared 11.17a-d, 11.18a-c, and 11.19a-d child manifest; rejects implementable parent
+queue rows; and requires child artifact, queue, and planning status to agree. Every
+active Epic 11 artifact needs one supported lifecycle status and exactly one matching
+queue row. Explicit planning statuses must also map to exactly one row and agree.
+Missing inputs, malformed or duplicate rows, unsupported statuses, and ambiguous
+mappings are errors rather than reasons to skip validation.
+
+Done artifacts may not retain unchecked work under `Tasks` or `Review Findings`.
+Disposition labels such as `Defer`, `Dismiss`, `Supersede`, and `Reopen` do not resolve
+an unchecked row; record the disposition and check the row. Review scope ends at a peer
+or higher heading, so an unrelated checklist after the review section is not captured.
+
+Only one active artifact may represent a Story. A historical shadow must use
+`status: superseded` and name a different repository-relative `superseded_by` file
+under `implementation-artifacts`. The successor must be an active artifact for the
+same Story; self-links, missing files, evidence documents, different Story identities,
+and chains to another superseded record fail.
+
+A done artifact's optional `final_revision` must be a canonical lowercase 40-character
+commit SHA, resolve to a commit, and be an ancestor of `HEAD`. The commit must change at
+least one non-artifact delivery path declared by that artifact's `Code Map` or
+`File List`; a Story ID in the subject or an artifact-only bookkeeping commit is not
+delivery evidence. Root commits are inspected with the same rule.
+
+The eight `E11R-AI-*` records are also checked for unique integrity-bearing fields,
+`epic: 11`, their exact implementation-Story mapping, supported `open`/`done` status,
+an ISO close date only when done, resolving evidence, and an evidence link to the
+active matching Story artifact. E11R-AI-1 stays open while its successor evidence is
+not done, and E11R-AI-8 stays open until Story 11.32 itself is done.
+
+Recovery is corrective, not suppressive: restore a missing ledger or child, reconcile
+the artifact/queue/planning status, replace stale revisions with reachable delivery
+commits, explicitly supersede a shadow, or disposition and check unresolved work. The
+repository gate has no per-story exclusion or known-bad bypass.
+
 ## Declaring unrelated workspace state
 
 Dirty paths that are not story output belong under `## Documented Unrelated Changes` or

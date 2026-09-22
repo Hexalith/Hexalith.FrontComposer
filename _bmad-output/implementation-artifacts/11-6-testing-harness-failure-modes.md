@@ -36,52 +36,52 @@ so adopters can genuinely test failure paths and paging, filtering, and sorting 
 
 ## Tasks / Subtasks
 
-- [ ] Reconfirm brownfield state before editing. (AC: 1, 2, 3, 4)
-  - [ ] Read this story, Epic 11 Story 11.6 in `_bmad-output/planning-artifacts/epics.md`, `_bmad-output/project-context.md`, `references/Hexalith.AI.Tools/hexalith-llm-instructions.md`, and the Testing package host contract before changing code.
-  - [ ] Read every file listed in "Current Files To Read Before Editing" completely before editing it.
-  - [ ] Re-run `git status --short` before edits and preserve unrelated user or generated changes.
-  - [ ] Treat existing behavior as partially useful but incomplete: current command/query/page fakes are deterministic and redacted, but the harness is still happy-path biased.
+- [x] Reconfirm brownfield state before editing. (AC: 1, 2, 3, 4)
+  - [x] Read this story, Epic 11 Story 11.6 in `_bmad-output/planning-artifacts/epics.md`, `_bmad-output/project-context.md`, `references/Hexalith.AI.Tools/hexalith-llm-instructions.md`, and the Testing package host contract before changing code.
+  - [x] Read every file listed in "Current Files To Read Before Editing" completely before editing it.
+  - [x] Re-run `git status --short` before edits and preserve unrelated user or generated changes.
+  - [x] Treat existing behavior as partially useful but incomplete: current command/query/page fakes are deterministic and redacted, but the harness is still happy-path biased.
 
-- [ ] Add command-service failure-mode configuration. (AC: 1, 4)
-  - [ ] Preserve the default success behavior: deterministic message/correlation IDs, `Acknowledged -> Syncing -> Confirmed`, `CommandResultStatus.Accepted`, bounded redacted evidence, and cancellation before evidence.
-  - [ ] Add adopter-facing configuration for rejection using the existing `CommandRejectedException` contract and `CommandLifecycleState.Rejected`; do not invent a parallel rejection vocabulary.
-  - [ ] Add deterministic timeout and stall-at-`Syncing` modes that let generated component tests assert "still syncing", timeout action, and unresolved command UX without sleeping on wall-clock time.
-  - [ ] Ensure lifecycle callbacks receive only the states implied by the configured outcome; stall-at-`Syncing` must not emit `Confirmed`, and rejection must not masquerade as accepted success.
-  - [ ] Capture evidence for configured failure modes without leaking command payload identifiers, tokens, secrets, passwords, or raw paths.
+- [x] Add command-service failure-mode configuration. (AC: 1, 4)
+  - [x] Preserve the default success behavior: deterministic message/correlation IDs, `Acknowledged -> Syncing -> Confirmed`, `CommandResultStatus.Accepted`, bounded redacted evidence, and cancellation before evidence.
+  - [x] Add adopter-facing configuration for rejection using the existing `CommandRejectedException` contract and `CommandLifecycleState.Rejected`; do not invent a parallel rejection vocabulary.
+  - [x] Add deterministic timeout and stall-at-`Syncing` modes that let generated component tests assert "still syncing", timeout action, and unresolved command UX without sleeping on wall-clock time.
+  - [x] Ensure lifecycle callbacks receive only the states implied by the configured outcome; stall-at-`Syncing` must not emit `Confirmed`, and rejection must not masquerade as accepted success.
+  - [x] Capture evidence for configured failure modes without leaking command payload identifiers, tokens, secrets, passwords, or raw paths.
 
-- [ ] Add per-request query and projection-page callbacks. (AC: 1, 4)
-  - [ ] Extend `TestQueryService` with `SucceedWith<T>(Func<QueryRequest, QueryResult<T>>)` while preserving existing list-based `SucceedWith<T>(IReadOnlyList<T>, string?)` and `NotModifiedWith<T>(...)` behavior.
-  - [ ] Make callback evidence include the request projection type, skip/take, tenant, and mode while keeping sensitive fields redacted if any new diagnostic payloads are introduced.
-  - [ ] Extend `TestProjectionPageLoader` with a per-request callback that exposes `projectionTypeFqn`, `skip`, `take`, `filters`, `sortColumn`, `sortDescending`, and `searchQuery`; introduce a small Testing-owned request record only if it reduces API ambiguity.
-  - [ ] Prove paging, filtering, sorting, search, not-modified, empty, and cancellation paths directly in Testing tests.
+- [x] Add per-request query and projection-page callbacks. (AC: 1, 4)
+  - [x] Extend `TestQueryService` with `SucceedWith<T>(Func<QueryRequest, QueryResult<T>>)` while preserving existing list-based `SucceedWith<T>(IReadOnlyList<T>, string?)` and `NotModifiedWith<T>(...)` behavior.
+  - [x] Make callback evidence include the request projection type, skip/take, tenant, and mode while keeping sensitive fields redacted if any new diagnostic payloads are introduced.
+  - [x] Extend `TestProjectionPageLoader` with a per-request callback that exposes `projectionTypeFqn`, `skip`, `take`, `filters`, `sortColumn`, `sortDescending`, and `searchQuery`; introduce a small Testing-owned request record only if it reduces API ambiguity.
+  - [x] Prove paging, filtering, sorting, search, not-modified, empty, and cancellation paths directly in Testing tests.
 
-- [ ] Resolve the fault-provider contract honestly. (AC: 1, 3, 4)
-  - [ ] Decide whether `TestFaultInjectionProvider` will actually inject deterministic effects into the command/query/page fakes or be renamed/reframed as an evidence recorder.
-  - [ ] If keeping "Injection" naming, prove at least one configured fault changes fake behavior in a deterministic test.
-  - [ ] If reframing as an evidence recorder, update the type/member names or XML docs, README, how-to, host contract, public API baseline, and tests so adopters are not told it injects when it only records.
-  - [ ] Keep the no live SignalR/EventStore/DAPR/browser-storage guarantee.
+- [x] Resolve the fault-provider contract honestly. (AC: 1, 3, 4)
+  - [x] Decide whether `TestFaultInjectionProvider` will actually inject deterministic effects into the command/query/page fakes or be renamed/reframed as an evidence recorder.
+  - [x] If keeping "Injection" naming, prove at least one configured fault changes fake behavior in a deterministic test.
+  - [x] If reframing as an evidence recorder, update the type/member names or XML docs, README, how-to, host contract, public API baseline, and tests so adopters are not told it injects when it only records.
+  - [x] Keep the no live SignalR/EventStore/DAPR/browser-storage guarantee.
 
-- [ ] Promote authorization-policy states into the Testing harness. (AC: 2, 3, 4)
-  - [ ] Add a deterministic fake or options surface for `ICommandAuthorizationEvaluator` using existing Shell contracts: `CommandAuthorizationDecision.Allowed`, `Denied`, `Pending`, and `Blocked(...)` / failed-closed reasons.
-  - [ ] Wire the fake through `AddFrontComposerTestHost(...)` so generated command renderers and `FcAuthorizedCommandRegion` can test allowed, denied, pending, missing-policy, unauthenticated, and handler-failed states without app-specific setup.
-  - [ ] Use the Counter specimen policy names `Specimens.PolicyAllowed` and `Specimens.PolicyDenied` as behavioral precedent, not as hard-coded Testing defaults.
-  - [ ] Add direct Testing tests that render or exercise policy-gated command behavior through the harness.
+- [x] Promote authorization-policy states into the Testing harness. (AC: 2, 3, 4)
+  - [x] Add a deterministic fake or options surface for `ICommandAuthorizationEvaluator` using existing Shell contracts: `CommandAuthorizationDecision.Allowed`, `Denied`, `Pending`, and `Blocked(...)` / failed-closed reasons.
+  - [x] Wire the fake through `AddFrontComposerTestHost(...)` so generated command renderers and `FcAuthorizedCommandRegion` can test allowed, denied, pending, missing-policy, unauthenticated, and handler-failed states without app-specific setup.
+  - [x] Use the Counter specimen policy names `Specimens.PolicyAllowed` and `Specimens.PolicyDenied` as behavioral precedent, not as hard-coded Testing defaults.
+  - [x] Add direct Testing tests that render or exercise policy-gated command behavior through the harness.
 
-- [ ] Replace sync-over-async host setup with an async factory path. (AC: 2, 3)
-  - [ ] Remove or bypass `GetAwaiter().GetResult()` in Testing package setup code.
-  - [ ] Add an async composition path for `StoreInitializationMode.DuringHostSetup`, such as `AddFrontComposerTestHostAsync(...)`, that initializes Fluxor with `await ...ConfigureAwait(false)`.
-  - [ ] For inheritance-based `FrontComposerTestBase`, keep constructor behavior safe and documented: constructors cannot be async, so default to explicit `InitializeStoreAsync()` or provide a documented async factory/test initialization pattern.
-  - [ ] Update docs and tests so adopters know which setup path to use for during-host store initialization.
+- [x] Replace sync-over-async host setup with an async factory path. (AC: 2, 3)
+  - [x] Remove or bypass `GetAwaiter().GetResult()` in Testing package setup code.
+  - [x] Add an async composition path for `StoreInitializationMode.DuringHostSetup`, such as `AddFrontComposerTestHostAsync(...)`, that initializes Fluxor with `await ...ConfigureAwait(false)`.
+  - [x] For inheritance-based `FrontComposerTestBase`, keep constructor behavior safe and documented: constructors cannot be async, so default to explicit `InitializeStoreAsync()` or provide a documented async factory/test initialization pattern.
+  - [x] Update docs and tests so adopters know which setup path to use for during-host store initialization.
 
-- [ ] Broaden direct Testing package surface tests. (AC: 3, 4)
-  - [ ] Split or add focused tests for `TestCommandService`, `TestQueryService`, `TestProjectionPageLoader`, the fault provider/recorder, authorization fake, builders, assertions, redaction formatter, and async host factory.
-  - [ ] Keep `PackageBoundaryTests.PublicApi_ExportedTypes_MatchIntentionalBaseline` as the public API gate and update `PublicAPI.Shipped.txt` only after reviewing each signature.
-  - [ ] Update package README, `docs/how-to/test-generated-components.md`, and `_bmad-output/contracts/fc-testing-library-host-contract-2026-06-05.md` for behavior/API drift.
+- [x] Broaden direct Testing package surface tests. (AC: 3, 4)
+  - [x] Split or add focused tests for `TestCommandService`, `TestQueryService`, `TestProjectionPageLoader`, the fault provider/recorder, authorization fake, builders, assertions, redaction formatter, and async host factory.
+  - [x] Keep `PackageBoundaryTests.PublicApi_ExportedTypes_MatchIntentionalBaseline` as the public API gate and update `PublicAPI.Shipped.txt` only after reviewing each signature.
+  - [x] Update package README, `docs/how-to/test-generated-components.md`, and `_bmad-output/contracts/fc-testing-library-host-contract-2026-06-05.md` for behavior/API drift.
 
-- [ ] Preserve evidence privacy and package quality gates before review. (AC: 3, 4)
-  - [ ] Keep Story 10.5 redaction matrix coverage for configured tenant/user values, property names, dictionary keys, and token/secret/password keyed values.
-  - [ ] Add path redaction or bounded path tests only if Story 11.6 introduces path-bearing evidence or assertion messages.
-  - [ ] Run the focused Testing package build/test lane, the direct xUnit runner fallback if VSTest sockets are blocked, package/public API tests, broad solution lane when feasible, Release build, `git diff --check`, and story artifact validation.
+- [x] Preserve evidence privacy and package quality gates before review. (AC: 3, 4)
+  - [x] Keep Story 10.5 redaction matrix coverage for configured tenant/user values, property names, dictionary keys, and token/secret/password keyed values.
+  - [x] Add path redaction or bounded path tests only if Story 11.6 introduces path-bearing evidence or assertion messages.
+  - [x] Run the focused Testing package build/test lane, the direct xUnit runner fallback if VSTest sockets are blocked, package/public API tests, broad solution lane when feasible, Release build, `git diff --check`, and story artifact validation.
 
 ## Dev Notes
 

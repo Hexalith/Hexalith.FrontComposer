@@ -9498,7 +9498,8 @@ location: _bmad-output/planning-artifacts/epics.md:2392
 source_spec: `_bmad-output/implementation-artifacts/spec-11-26-analyzer-identifier-inventory-reconciliation.md`
 severity: low
 reason: summary: `epics.md` carries `**Status:** backlog.` for Stories 11.20-11.26 while `sprint-status.yaml` records 11.20-11.25 as `done`, and `epic-11-retro-2026-09-10.md` still lists "analyzer identifier-seal drift" among the findings behind its Rejected acceptance verdict. evidence: a status comparison across Epic 11 shows `epics.md` says `backlog` for every story from 11.20 onward while sprint-status has 11.20-11.25 `done`; stories 11.0-11.19 carry no Status line at all. This is pre-existing repo-wide planning-snapshot staleness that Story 11.26 neither introduced nor worsened - 11.26 is consistent with its five completed predecessors - so `sprint-status.yaml` is the de facto single source of truth. Owned by E11R-AI-8 / Story 11.32 (Epic 11 artifact integrity enforcement), which exists to make exactly this class of metadata contradiction fail closed.
-status: open
+status: done 2026-09-22
+resolution: Story 11.32 synchronized the maintained Epic 11 planning statuses with the sprint ledger while preserving the rejected 2026-09-10 retrospective as immutable historical evidence.
 
 ### DW-1959: The Story 11.7 route-contract acceptance proof runs in no automated lane
 origin: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-16)
@@ -9619,7 +9620,8 @@ location: _bmad-output/implementation-artifacts/spec-11-27-generated-command-rou
 source_spec: `_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md`
 severity: low
 reason: summary: The final Blind Hunter review confirmed the implementation and verification completed the listed patches while their historical checklist remains unchecked. evidence: The review workflow routes fixes to the spec under review to deferred work.
-status: open
+status: done 2026-09-22
+resolution: Story 11.32 checked the delivered Story 11.27 review patches against their recorded completion and verification evidence; no new delivery was claimed.
 
 ## Deferred from: code review of spec-11-27-generated-command-route-acceptance-locator.md (2026-09-18)
 

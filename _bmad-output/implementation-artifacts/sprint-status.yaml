@@ -1,5 +1,5 @@
 # generated: 07-05-2026 17:13
-# last_updated: 2026-09-22 (bmad-code-review: story 11-31 → done)
+# last_updated: 2026-09-22 (bmad-build: Story 11.32 and Epic 11 → done)
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -140,7 +140,7 @@ development_status:
   10-5-testing-evidence-redaction-default-lane-guard: done
   epic-10-retrospective: done
 
-  epic-11: in-progress
+  epic-11: done
   11-0-command-projection-route-contract-decision-gate: done
   11-1-token-lifecycle-and-circuit-safe-eventstore-auth: done
   11-2-projection-realtime-resilience: done
@@ -157,9 +157,17 @@ development_status:
   11-9-shell-layering-declaration-and-route-label-relocation: done
   11-15-storage-scope-and-snapshot-publisher-consolidation: done
   11-16-fatal-hydration-json-and-generated-literal-helper-consolidat: done
-  11-17-mechanical-one-type-per-file-split: done
-  11-18-loggermessage-migration-for-warnings-and-hot-paths: done
-  11-19-enforcement-and-policy-alignment: done
+  11-17-cli-package-split: done
+  11-17-sourcetools-package-split: done
+  11-17-mcp-runtime-split-and-benchmark-relocation: done
+  11-17-shell-bundle-split: done
+  11-18-fail-closed-security-log-sites: done
+  11-18-warning-and-above-log-sites: done
+  11-18-hot-path-log-sites: done
+  11-19-doc-comment-enforcement-realignment: done
+  11-19-apphost-nuget-audit-suppression: done
+  11-19-localization-and-identifier-alignment: done
+  11-19-analyzer-elevation-decision: done
   11-20-recommended-analyzer-policy-and-exception-ledger: done
   11-21-recommended-analyzer-product-and-generator-burn-down: done
   11-22-recommended-analyzer-test-and-sample-burn-down: done
@@ -172,7 +180,7 @@ development_status:
   11-29-fallback-refresh-and-view-registration-correctness: done
   11-30-testing-and-mcp-boundary-hardening: done
   11-31-canonical-correlation-pseudonymization: done
-  11-32-epic-11-artifact-integrity-enforcement: backlog
+  11-32-epic-11-artifact-integrity-enforcement: done
   epic-11-retrospective: done
 action_items:
   - epic: 2
@@ -639,6 +647,11 @@ action_items:
     status: open
     implementation_story: "11.25"
     ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-09-10.md"
+    evidence:
+      - "_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md
+        is the accepted Story 11.25 delivery record. The successor
+        _bmad-output/implementation-artifacts/spec-11-25-eventstore-3-106-evidence-reconciliation.md
+        remains in review, so this action remains open."
   - id: "E11R-AI-2"
     epic: 11
     action: "Review the CA1707 identifier delta and intentionally reseal or correct
@@ -666,7 +679,8 @@ action_items:
     action: "Make the Story 11.7 Playwright heading selector unambiguous and retain
       proof that activation reaches the canonical generated command route"
     owner: "QA Engineer"
-    status: open
+    status: done
+    closed: "2026-09-19"
     implementation_story: "11.27"
     ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-09-10.md"
     evidence:
@@ -685,41 +699,62 @@ action_items:
     action: "Update the FC-NIP semantic fixture to the current PRD contract and restore
       the SourceTools documentation lane without reinstating obsolete Epic 9 wording"
     owner: "Technical Writer + SourceTools maintainer"
-    status: open
+    status: done
+    closed: "2026-09-19"
     implementation_story: "11.28"
     ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-09-10.md"
+    evidence:
+      - "_bmad-output/implementation-artifacts/spec-11-28-fc-nip-semantic-fixture-alignment.md
+        records the restored semantic fixture and SourceTools documentation lane."
   - id: "E11R-AI-5"
     epic: 11
     action: "Correct fallback-refresh change detection and duplicate ViewKey registration
       semantics with deterministic equal-count, equal-ETag missing-page, and changed-scope
       tests"
     owner: "Shell maintainer"
-    status: open
+    status: done
+    closed: "2026-09-20"
     implementation_story: "11.29"
     ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-09-10.md"
+    evidence:
+      - "_bmad-output/implementation-artifacts/spec-11-29-fallback-refresh-and-view-registration-correctness.md
+        records the accepted fallback-refresh and ViewKey registration repairs."
   - id: "E11R-AI-6"
     epic: 11
     action: "Make Testing fakes emit canonical deterministic ULIDs, reject overflow
       ULIDs at the MCP boundary, keep evidence serialization non-fatal, and cover
       common credential-key redaction"
     owner: "Testing + MCP maintainers"
-    status: open
+    status: done
+    closed: "2026-09-21"
     implementation_story: "11.30"
     ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-09-10.md"
+    evidence:
+      - "_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md
+        records the accepted Testing and MCP boundary hardening."
   - id: "E11R-AI-7"
     epic: 11
     action: "Implement approved DW-1769 and DW-1770 through one canonical pseudonymization
       contract and prove joinable tokens with no raw correlation identifiers"
     owner: "Shell observability owner"
-    status: open
+    status: done
+    closed: "2026-09-22"
     implementation_story: "11.31"
     ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-09-10.md"
+    evidence:
+      - "_bmad-output/implementation-artifacts/spec-11-31-canonical-correlation-pseudonymization.md
+        records the accepted canonical correlation pseudonymization contract."
   - id: "E11R-AI-8"
     epic: 11
     action: "Reconcile Epic 11 child queue keys, invalid final_revision values, unchecked
       tasks, and stale shadow-spec states, then make artifact validation fail closed
       on recurrence"
     owner: "QA automation maintainer"
-    status: open
+    status: done
+    closed: "2026-09-22"
     implementation_story: "11.32"
     ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-09-10.md"
+    evidence:
+      - "_bmad-output/implementation-artifacts/spec-11-32-epic-11-artifact-integrity-enforcement.md
+        records the completed integrity-enforcement implementation and independent
+        review evidence."
