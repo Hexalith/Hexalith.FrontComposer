@@ -109,3 +109,19 @@ Story 11.18c is the compatibility anchor: trim, hash the complete UTF-8 identifi
 - Explicitly authorized prerequisite repair verification passed: seven focused successor-validator tests and the exact formerly failing `CiGovernanceTests.EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval` fact (1/1).
 - Post-review default Shell lane passed 2,746/2,746 with zero errors, failures, skips, or tests not run.
 - Immutable EventStore runtime identity v1-v3 contracts and historical evidence retain zero diff from HEAD; the v4 contract and evidence tree remain absent.
+
+### Review Findings
+
+- [x] [Review][Patch] Disabled lifecycle allocation test pins an exact 568-byte baseline [tests/Hexalith.FrontComposer.Shell.Tests/Services/Lifecycle/LifecycleStateServiceTests.cs:307]
+- [x] [Review][Patch] Disabled correlation allocation test requires exact zero on the default lane [tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Telemetry/FrontComposerDiagnosticLogTests.cs:319]
+- [x] [Review][Patch] Canonical-pseudonym remarks still read as a 4096-character digest [src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerDiagnosticLog.cs:33]
+
+#### Rejected
+
+- Spec code map omits the form-abandonment caller — rejected, because the correction edits this spec.
+- Story frontmatter says `done` while sprint status says `review` — rejected, because the correction edits this spec.
+- Verification commands omit the 45-test lane and the successor-validator invocation — rejected, because the correction edits this spec.
+- Analyzer reseal ignores new tests without underscores — `false`: the ledger hashes only underscore-containing public identifiers, and these tests contain none.
+- Oversized-hash ceiling of 32,768 bytes is too loose — `false`: two million-character inputs allocate megabytes when buffered whole, so the ceiling still rejects unbounded temporary storage.
+- SHA-256 length failure skips lifecycle subscribers and readiness dispatch — `false`: a non-32-byte SHA-256 digest is not a reachable input, and the throw is the correct loud failure.
+- Readiness gate has no disabled-logger dispatch test — `false`: `Dispatch` runs after the log wrapper returns, and the disabled return stays inside `ScopeReadinessStorageReadyDispatched`.

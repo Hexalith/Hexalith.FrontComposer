@@ -563,8 +563,9 @@ internal static partial class FrontComposerHotPathLog
     }
 
     /// <summary>
-    /// Digests an identifier to the support-safe <c>sha256:</c> form used by hot-path and
-    /// lifecycle join keys. Null/whitespace becomes <c>absent</c>.
+    /// Converts an identifier to the canonical <c>sha256:</c> join token used by hot-path and
+    /// lifecycle logs. Null or whitespace becomes <c>absent</c>. The token joins log families;
+    /// it does not guarantee anonymity or uniqueness, prove integrity, or convey authorization.
     /// </summary>
     internal static string DigestIdentifier(string? value)
         => FrontComposerLogPseudonymizer.Pseudonymize(value);

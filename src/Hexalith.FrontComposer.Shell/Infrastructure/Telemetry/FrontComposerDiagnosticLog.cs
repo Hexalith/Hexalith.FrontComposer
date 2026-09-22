@@ -30,10 +30,12 @@ namespace Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 /// families without exposing the raw identifier.
 /// </para>
 /// <para>
-/// The digest hashes at most <see cref="MaxDigestCharacters"/> characters of the value. That
-/// pre-hash truncation is a deliberate, stated collision surface: two values that differ only beyond
-/// that prefix produce the same digest when their character counts also match, and the appended
-/// <c>len</c> suffix is the only remaining discriminator. The digest is a support correlation aid,
+/// <see cref="Bounded(string?)"/> hashes at most <see cref="MaxDigestCharacters"/> characters of the
+/// value. That pre-hash truncation is a deliberate, stated collision surface: two values that differ
+/// only beyond that prefix produce the same digest when their character counts also match, and the
+/// appended <c>len</c> suffix is the only remaining discriminator. Events 6004 and 6070 do not use
+/// this truncation. They hash the complete trimmed value and emit <c>sha256:</c> plus sixteen
+/// lowercase hex digits. The <see cref="Bounded(string?)"/> digest is a support correlation aid,
 /// never an integrity or uniqueness proof, and no security decision may be taken on it.
 /// </para>
 /// <para>

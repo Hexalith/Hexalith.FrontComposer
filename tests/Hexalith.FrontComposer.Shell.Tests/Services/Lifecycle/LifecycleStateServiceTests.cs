@@ -284,7 +284,11 @@ public class LifecycleStateServiceTests {
     [Fact]
     public void InformationDisabledOversizedIdentifiersAddNoDigestAllocationsOrEntries() {
         const int MeasuredTransitions = 10_000;
-        const long ExistingTransitionAndActivityAllocationBytes = 568L;
+        // The disabled path currently costs about 568 bytes per transition for the transition
+        // record and Activity tags. 768 leaves that ambient cost room to move, and still fails
+        // when each call also allocates a SHA-256 digest: IncrementalHash plus the UTF-8 encoder
+        // exceed the gap, so 10,000 digest allocations cannot hide inside it.
+        const long PerTransitionCeilingBytes = 768L;
         string correlationId = new string('c', 4096) + "🚀";
         string messageId = new string('m', 4096) + "🚀";
         DisabledLifecycleLogger logger = new();
@@ -304,10 +308,9 @@ public class LifecycleStateServiceTests {
         }
 
         long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-        allocated.ShouldBe(
-            MeasuredTransitions * ExistingTransitionAndActivityAllocationBytes,
-            "the pinned transition-record and Activity-tag baseline remains, but the disabled "
-            + "Information guard must add no digest or rendered-log allocations");
+        allocated.ShouldBeLessThanOrEqualTo(
+            MeasuredTransitions * PerTransitionCeilingBytes,
+            "the disabled Information guard must add no digest or rendered-log allocations");
         logger.EntryCount.ShouldBe(0);
     }
 

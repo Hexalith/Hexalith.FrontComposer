@@ -316,15 +316,18 @@ public sealed class FrontComposerDiagnosticLogTests
         }
 
         long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-        allocated.ShouldBe(0L);
+        allocated.ShouldBeLessThanOrEqualTo(
+            DisabledPathAllocationBudgetBytes,
+            $"The disabled correlation path allocated {allocated} bytes over 20,000 wrapper calls; "
+            + "the guard must not hash when the level is disabled, so allocation must stay within the "
+            + $"{DisabledPathAllocationBudgetBytes}-byte budget.");
     }
 
     /// <summary>
-    /// Advisory allocation budget for the disabled-path measurement below: 60,000 wrapper
-    /// invocations (10,000 iterations x 6 wrappers). A single per-call allocation of the smallest
-    /// possible reference object would already cost ~960 KB here, so the budget still proves the
-    /// disabled path allocates nothing per call while tolerating the JIT/runtime bookkeeping that
-    /// an exact-zero assertion charges to this thread on a shared CI machine.
+    /// Absolute slack for the disabled-path measurements. A single per-call reference allocation
+    /// across either measured loop already costs hundreds of kilobytes, so this budget still proves
+    /// the disabled path allocates nothing per call while tolerating the JIT and runtime bookkeeping
+    /// that an exact-zero assertion charges to this thread on a shared CI machine.
     /// </summary>
     private const long DisabledPathAllocationBudgetBytes = 4096L;
 
