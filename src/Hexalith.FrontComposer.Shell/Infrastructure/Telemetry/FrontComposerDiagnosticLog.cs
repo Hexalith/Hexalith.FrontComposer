@@ -1,7 +1,5 @@
 using System.Collections.Immutable;
 using System.Globalization;
-using System.Security.Cryptography;
-using System.Text;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.DevMode;
@@ -23,11 +21,13 @@ namespace Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 /// (CA1848) and defers argument evaluation behind an <c>IsEnabled</c> check (CA1873).
 /// </para>
 /// <para>
-/// String values flow through <see cref="Bounded(string?)"/>, the same support-safety posture as the
-/// Story 11.18 families: a value that is already bounded and free of line-forging characters is
-/// logged verbatim, and only an oversized value or one carrying a control, line/paragraph separator,
+/// String values generally flow through <see cref="Bounded(string?)"/>, the same support-safety posture
+/// as the Story 11.18 families: a value that is already bounded and free of line-forging characters
+/// is logged verbatim, and only an oversized value or one carrying a control, line/paragraph separator,
 /// or Unicode format character collapses to a salt-free SHA-256 digest so a hostile payload cannot
-/// flood the log stream or forge a log line.
+/// flood the log stream or forge a log line. Correlation values for events 6004 and 6070 deliberately
+/// bypass <see cref="Bounded(string?)"/> and use the canonical pseudonymizer so they join other log
+/// families without exposing the raw identifier.
 /// </para>
 /// <para>
 /// The digest hashes at most <see cref="MaxDigestCharacters"/> characters of the value. That
@@ -112,7 +112,7 @@ internal static partial class FrontComposerDiagnosticLog
         }
 
         string? diagText = Bounded(diag);
-        string? cidText = Bounded(cid);
+        string cidText = FrontComposerLogPseudonymizer.Pseudonymize(cid);
 
         LogAbandonmentGuardSuppressedWhileSubmitting(logger, diagText, cidText);
     }
@@ -1185,7 +1185,7 @@ internal static partial class FrontComposerDiagnosticLog
             return;
         }
 
-        string? correlationIdText = Bounded(correlationId);
+        string correlationIdText = FrontComposerLogPseudonymizer.Pseudonymize(correlationId);
 
         LogScopeReadinessStorageReadyDispatched(logger, correlationIdText);
     }
@@ -1734,23 +1734,7 @@ internal static partial class FrontComposerDiagnosticLog
         ReadOnlySpan<char> characters = truncated
             ? value.AsSpan(0, MaxDigestCharacters)
             : value.AsSpan();
-        byte[] bytes = GC.AllocateUninitializedArray<byte>(Encoding.UTF8.GetByteCount(characters));
-        byte[]? hash = null;
-        try
-        {
-            _ = Encoding.UTF8.GetBytes(characters, bytes);
-            hash = SHA256.HashData(bytes);
-            string digest = "sha256:" + Convert.ToHexString(hash.AsSpan(0, 8)).ToLowerInvariant();
-            return string.Create(CultureInfo.InvariantCulture, $"{digest}:len:{originalCharacterCount}");
-        }
-        finally
-        {
-            if (hash is not null)
-            {
-                CryptographicOperations.ZeroMemory(hash);
-            }
-
-            CryptographicOperations.ZeroMemory(bytes);
-        }
+        string digest = FrontComposerLogPseudonymizer.Hash(characters);
+        return string.Create(CultureInfo.InvariantCulture, $"{digest}:len:{originalCharacterCount}");
     }
 }

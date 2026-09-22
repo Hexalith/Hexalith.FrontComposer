@@ -3,13 +3,16 @@ using Bunit;
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Components.Forms;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Options;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -279,6 +282,32 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
 
         DidPreventNavigation(syncingContext).ShouldBeTrue("Syncing must still protect dirty forms.");
         cut.WaitForAssertion(() => cut.Find("[data-testid='fc-form-abandonment-warning']"));
+    }
+
+    [Fact]
+    public async Task SubmittingComponentPathEmitsCanonicalFullCorrelationToken() {
+        TestModel model = new() { Name = "" };
+        EditContext editContext = new(model);
+        ILifecycleStateService lifecycleService = Substitute.For<ILifecycleStateService>();
+        _ = lifecycleService.GetState(DefaultCorrelationId).Returns(CommandLifecycleState.Submitting);
+        CapturingLogger<FcFormAbandonmentGuard> logger = new();
+        Services.RemoveAll<ILogger<FcFormAbandonmentGuard>>();
+        _ = Services.AddSingleton<ILogger<FcFormAbandonmentGuard>>(logger);
+        (FcFormAbandonmentGuard guard, IRenderedComponent<FcFormAbandonmentGuard> cut) =
+            RenderGuardWithCut(editContext, lifecycleService);
+
+        editContext.NotifyFieldChanged(editContext.Field(nameof(TestModel.Name)));
+        _time.Advance(TimeSpan.FromSeconds(31));
+
+        Microsoft.AspNetCore.Components.Routing.LocationChangingContext context =
+            BuildLocationChangingContext("/submitting");
+        await InvokeNavigationChangingAsync(cut, guard, context);
+
+        CapturedLogEntry observed = logger.Entries.ShouldHaveSingleItem();
+        observed.EventId.Id.ShouldBe(6004);
+        observed.State["Cid"].ShouldBe(FrontComposerHotPathLog.DigestIdentifier(DefaultCorrelationId));
+        observed.State["Cid"].ShouldNotBe(DefaultCorrelationId);
+        observed.Message.ShouldNotContain(DefaultCorrelationId);
     }
 
     [Fact]

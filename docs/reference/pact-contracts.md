@@ -135,7 +135,7 @@ the lane fails closed if either is missing, altered, or unbound.
 Identity v3 is sealed at EventStore source `ba7ac196e60db8820525961791eccfacec24633f`,
 package `3.106.0`, and Builds catalog `4f522a8caa62ad82584bdf56d54e16109b717b1c`.
 The selected successor advances the EventStore source to
-`2cf9bf49b4858db4b83a05e47b7bd280dc51c826` and the Builds catalog to
+`66cb4edaa2b474090f2b4e375d481a4bbcd70a08` and the Builds catalog to
 `2fba3497043fe5ffcfe4dc44c51a09eae9b950ab`, while retaining package `3.106.0`.
 Do not rewrite or relabel identity v3.
 After the preparation merge is pushed to `main`, dispatch the target-bound capture with its exact
@@ -153,7 +153,7 @@ gh workflow run quality.yml \
   --repo Hexalith/Hexalith.FrontComposer \
   --ref main \
   -f frontcomposer_revision="$local_main_revision" \
-  -f eventstore_source_revision=2cf9bf49b4858db4b83a05e47b7bd280dc51c826 \
+  -f eventstore_source_revision=66cb4edaa2b474090f2b4e375d481a4bbcd70a08 \
   -f eventstore_package_version=3.106.0 \
   -f builds_catalog_revision=2fba3497043fe5ffcfe4dc44c51a09eae9b950ab
 ```
@@ -186,7 +186,7 @@ Re-capture rules:
 Identity v3 is sealed historical compatibility for EventStore source
 `ba7ac196e60db8820525961791eccfacec24633f`, package `3.106.0`, and Builds catalog
 `4f522a8caa62ad82584bdf56d54e16109b717b1c`. The current checkout target
-selects EventStore source `2cf9bf49b4858db4b83a05e47b7bd280dc51c826`, package `3.106.0`, and Builds catalog
+selects EventStore source `66cb4edaa2b474090f2b4e375d481a4bbcd70a08`, package `3.106.0`, and Builds catalog
 `2fba3497043fe5ffcfe4dc44c51a09eae9b950ab`.
 
 Identity v4 remains pending genuine hosted provider and authenticated AppHost evidence for that exact

@@ -1,5 +1,9 @@
 using Hexalith.FrontComposer.Contracts.Lifecycle;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
+
+using Microsoft.Extensions.Logging;
 
 using Shouldly;
 
@@ -246,5 +250,84 @@ public class LifecycleStateServiceTests {
         aCount.ShouldBe(1);
         bCount.ShouldBe(1);
         cCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Transition_LoggingPseudonymization_PreservesRuntimeIdentifiers() {
+        const string CorrelationId = "  correlation-α  ";
+        const string MessageId = "message-α";
+        CapturingLogger<LifecycleStateService> logger = new();
+        using LifecycleStateService service = new(
+            Microsoft.Extensions.Options.Options.Create(new LifecycleOptions()),
+            logger: logger);
+        List<CommandLifecycleTransition> captured = [];
+        using IDisposable _ = service.Subscribe(CorrelationId, captured.Add);
+
+        service.Transition(CorrelationId, CommandLifecycleState.Submitting);
+        service.Transition(CorrelationId, CommandLifecycleState.Acknowledged, MessageId);
+
+        captured.ShouldAllBe(static transition => transition.CorrelationId == CorrelationId);
+        captured[^1].MessageId.ShouldBe(MessageId);
+        service.GetMessageId(CorrelationId).ShouldBe(MessageId);
+        CapturedLogEntry observed = logger.Entries.Last(static entry => entry.EventId.Id == 5640);
+        observed.State["CorrelationId"].ShouldBe("sha256:d136298b82b4a556");
+        observed.State["MessageId"].ShouldBe("sha256:97c952d2b948ea27");
+        observed.Message.ShouldNotContain("correlation-α");
+        observed.Message.ShouldNotContain(MessageId);
+
+        CapturingLogger<LifecycleStateServiceTests> hotPathLogger = new();
+        FrontComposerHotPathLog.LifecycleMessageCacheEvicted(hotPathLogger, MessageId);
+        observed.State["MessageId"].ShouldBe(
+            hotPathLogger.Entries.ShouldHaveSingleItem().State["Evicted"]);
+    }
+
+    [Fact]
+    public void InformationDisabledOversizedIdentifiersAddNoDigestAllocationsOrEntries() {
+        const int MeasuredTransitions = 10_000;
+        const long ExistingTransitionAndActivityAllocationBytes = 568L;
+        string correlationId = new string('c', 4096) + "🚀";
+        string messageId = new string('m', 4096) + "🚀";
+        DisabledLifecycleLogger logger = new();
+        using LifecycleStateService service = new(
+            Microsoft.Extensions.Options.Options.Create(new LifecycleOptions()),
+            logger: logger);
+
+        service.Transition(correlationId, CommandLifecycleState.Submitting);
+        service.Transition(correlationId, CommandLifecycleState.Acknowledged, messageId);
+        for (int index = 0; index < 100; index++) {
+            service.Transition(correlationId, CommandLifecycleState.Acknowledged, messageId);
+        }
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int index = 0; index < MeasuredTransitions; index++) {
+            service.Transition(correlationId, CommandLifecycleState.Acknowledged, messageId);
+        }
+
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        allocated.ShouldBe(
+            MeasuredTransitions * ExistingTransitionAndActivityAllocationBytes,
+            "the pinned transition-record and Activity-tag baseline remains, but the disabled "
+            + "Information guard must add no digest or rendered-log allocations");
+        logger.EntryCount.ShouldBe(0);
+    }
+
+    private sealed class DisabledLifecycleLogger : ILogger<LifecycleStateService> {
+        public int EntryCount { get; private set; }
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull
+            => null;
+
+        public bool IsEnabled(LogLevel logLevel) => false;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter) {
+            EntryCount++;
+            throw new InvalidOperationException("A disabled lifecycle logger must not receive a log entry.");
+        }
     }
 }

@@ -144,7 +144,7 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
                 FrontComposerDiagnosticLog.AbandonmentGuardSuppressedWhileSubmitting(
                     Logger,
                     FcDiagnosticIds.HFC2103_AbandonmentDuringSubmitting,
-                    RedactForLog(CorrelationId));
+                    CorrelationId);
                 return;
             }
         }
@@ -229,9 +229,4 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
         UnsubscribeFromEditContext();
         GC.SuppressFinalize(this);
     }
-
-    // Review 2026-04-17 — "hash" is a misnomer: this is a prefix-redaction helper, not a cryptographic hash.
-    // Renamed from HashForLog so the name matches the behavior (first 8 chars + ellipsis).
-    private static string RedactForLog(string correlationId)
-        => correlationId.Length <= 8 ? correlationId : string.Concat(correlationId.AsSpan(0, 8), "…");
 }

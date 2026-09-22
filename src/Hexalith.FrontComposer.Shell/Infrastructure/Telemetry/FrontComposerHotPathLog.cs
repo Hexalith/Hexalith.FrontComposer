@@ -1,6 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
-
 using Microsoft.Extensions.Logging;
 
 namespace Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
@@ -569,7 +566,8 @@ internal static partial class FrontComposerHotPathLog
     /// Digests an identifier to the support-safe <c>sha256:</c> form used by hot-path and
     /// lifecycle join keys. Null/whitespace becomes <c>absent</c>.
     /// </summary>
-    internal static string DigestIdentifier(string? value) => Digest(value);
+    internal static string DigestIdentifier(string? value)
+        => FrontComposerLogPseudonymizer.Pseudonymize(value);
 
     private static string Category<T>(T value)
     {
@@ -592,29 +590,7 @@ internal static partial class FrontComposerHotPathLog
     }
 
     private static string Digest(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return "absent";
-        }
-
-        byte[] bytes = Encoding.UTF8.GetBytes(value.Trim());
-        byte[]? hash = null;
-        try
-        {
-            hash = SHA256.HashData(bytes);
-            return $"sha256:{Convert.ToHexString(hash.AsSpan(0, 8)).ToLowerInvariant()}";
-        }
-        finally
-        {
-            if (hash is not null)
-            {
-                CryptographicOperations.ZeroMemory(hash);
-            }
-
-            CryptographicOperations.ZeroMemory(bytes);
-        }
-    }
+        => FrontComposerLogPseudonymizer.Pseudonymize(value);
 
     [LoggerMessage(EventId = 5700, EventName = "LifecycleUnexpectedCorrelation", Level = LogLevel.Warning,
         Message = "{Diag} — FcLifecycleWrapper received transition for unexpected CorrelationId={Cid}")]

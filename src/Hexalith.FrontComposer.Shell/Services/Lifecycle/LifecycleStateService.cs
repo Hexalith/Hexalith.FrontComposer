@@ -282,8 +282,8 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
         // Join key with HotPath lifecycle events: same opaque sha256 digest (Decision 2).
         // 11.21 — the two sha256 digests are only computed when the Information level is enabled.
         if (_logger.IsEnabled(LogLevel.Information)) {
-            string correlationIdDigest = FrontComposerHotPathLog.DigestIdentifier(correlationId);
-            string messageIdDigest = FrontComposerHotPathLog.DigestIdentifier(transition.MessageId);
+            string correlationIdDigest = FrontComposerLogPseudonymizer.Pseudonymize(correlationId);
+            string messageIdDigest = FrontComposerLogPseudonymizer.Pseudonymize(transition.MessageId);
             string appliedState = applied.ToString();
             FrontComposerLog.LifecycleTransitionObserved(
                 _logger,

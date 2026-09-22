@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 
 using Fluxor;
 
+using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
@@ -140,6 +141,31 @@ public sealed class ScopeReadinessGateTests {
         await Task.WhenAll(concurrent);
 
         dispatcher.Received(1).Dispatch(Arg.Any<StorageReadyAction>());
+    }
+
+    [Fact]
+    public async Task EvaluateAsync_LoggedCorrelationPseudonym_PreservesDispatchedIdentifier() {
+        const string CorrelationId = "  correlation-α  ";
+        IState<FrontComposerNavigationState> state = FakeState(BaseState());
+        string? tenant = null;
+        IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
+        accessor.TenantId.Returns(_ => tenant);
+        accessor.UserId.Returns("alice");
+        IUlidFactory ulidFactory = Substitute.For<IUlidFactory>();
+        ulidFactory.NewUlid().Returns(CorrelationId);
+        CapturingLogger<ScopeReadinessGate> logger = new();
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        var gate = new ScopeReadinessGate(state, accessor, ulidFactory, logger);
+
+        await gate.EvaluateAsync(dispatcher, Xunit.TestContext.Current.CancellationToken);
+        tenant = "acme";
+        await gate.EvaluateAsync(dispatcher, Xunit.TestContext.Current.CancellationToken);
+
+        dispatcher.Received(1).Dispatch(Arg.Is<StorageReadyAction>(static action =>
+            action.CorrelationId == CorrelationId));
+        CapturedLogEntry entry = logger.Entries.ShouldHaveSingleItem();
+        entry.State["CorrelationId"].ShouldBe("sha256:d136298b82b4a556");
+        entry.Message.ShouldNotContain("correlation-α");
     }
 
     [Fact]

@@ -1,5 +1,7 @@
 using System.Collections.Immutable;
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.DevMode;
@@ -120,6 +122,27 @@ public sealed class FrontComposerDiagnosticLogTests
         logger.Entries[0].Message.ShouldNotContain(oversized);
         logger.Entries[1].Message.ShouldNotContain(ControlCharacterPayload);
         logger.Entries[1].Message.ShouldNotContain("injected-log-line");
+    }
+
+    [Fact]
+    public void BoundedDigestMatchesOneShotUtf8AtMultibyteAndSurrogateBoundaries()
+    {
+        (string Name, string Value)[] cases =
+        [
+            ("multibyte", new string('\u00e9', 513)),
+            ("unpaired-surrogate", new string('a', 512) + "\ud800"),
+            ("streaming-boundary", new string('a', 1023) + "\ud83d\ude80" + new string('b', 10)),
+            ("truncation-boundary", new string('a', 4095) + "\ud83d\ude80tail"),
+        ];
+        CapturingLogger<FrontComposerDiagnosticLogTests> logger = new();
+
+        foreach ((string name, string value) in cases)
+        {
+            FrontComposerDiagnosticLog.PaletteCommandTypeUnresolved(logger, value);
+
+            string actual = logger.Entries[^1].State["CommandTypeName"].ShouldBeOfType<string>();
+            actual.ShouldBe(ExpectedBoundedDigest(value), name);
+        }
     }
 
     [Fact]
@@ -275,9 +298,30 @@ public sealed class FrontComposerDiagnosticLogTests
             ViewKey));
     }
 
+    [Fact]
+    public void DisabledCorrelationEventsAfterWarmupAllocateNothing()
+    {
+        DisabledLogger logger = new();
+        string oversized = new string('c', 4096) + "\ud83d\ude80";
+
+        for (int index = 0; index < 100; index++)
+        {
+            InvokeDisabledCorrelationWrappers(logger, oversized);
+        }
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int index = 0; index < 10_000; index++)
+        {
+            InvokeDisabledCorrelationWrappers(logger, oversized);
+        }
+
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        allocated.ShouldBe(0L);
+    }
+
     /// <summary>
-    /// Advisory allocation budget for the disabled-path measurement below: 40,000 wrapper
-    /// invocations (10,000 iterations x 4 wrappers). A single per-call allocation of the smallest
+    /// Advisory allocation budget for the disabled-path measurement below: 60,000 wrapper
+    /// invocations (10,000 iterations x 6 wrappers). A single per-call allocation of the smallest
     /// possible reference object would already cost ~960 KB here, so the budget still proves the
     /// disabled path allocates nothing per call while tolerating the JIT/runtime bookkeeping that
     /// an exact-zero assertion charges to this thread on a shared CI machine.
@@ -308,7 +352,7 @@ public sealed class FrontComposerDiagnosticLogTests
         long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
         allocated.ShouldBeLessThanOrEqualTo(
             DisabledPathAllocationBudgetBytes,
-            $"The disabled low-severity path allocated {allocated} bytes over 40,000 wrapper calls; "
+            $"The disabled low-severity path allocated {allocated} bytes over 60,000 wrapper calls; "
             + "the guard evaluates neither the bounded-value digest nor the message template when the "
             + $"level is disabled, so allocation must stay within the {DisabledPathAllocationBudgetBytes}-byte budget.");
     }
@@ -327,7 +371,28 @@ public sealed class FrontComposerDiagnosticLogTests
             "persist",
             oversized);
         FrontComposerDiagnosticLog.ClipboardCopyFailed(logger, exception);
+        FrontComposerDiagnosticLog.AbandonmentGuardSuppressedWhileSubmitting(
+            logger,
+            FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
+            oversized);
+        FrontComposerDiagnosticLog.ScopeReadinessStorageReadyDispatched(logger, oversized);
         FrontComposerDiagnosticLog.ThemeHydrationCancelled(logger);
+    }
+
+    private static void InvokeDisabledCorrelationWrappers(DisabledLogger logger, string oversized)
+    {
+        FrontComposerDiagnosticLog.AbandonmentGuardSuppressedWhileSubmitting(
+            logger,
+            FcDiagnosticIds.HFC2103_AbandonmentDuringSubmitting,
+            oversized);
+        FrontComposerDiagnosticLog.ScopeReadinessStorageReadyDispatched(logger, oversized);
+    }
+
+    private static string ExpectedBoundedDigest(string value)
+    {
+        string truncated = value[..Math.Min(value.Length, 4096)];
+        byte[] digest = SHA256.HashData(Encoding.UTF8.GetBytes(truncated));
+        return $"sha256:{Convert.ToHexStringLower(digest.AsSpan(0, 8))}:len:{value.Length}";
     }
 
     private sealed class DisabledLogger : ILogger

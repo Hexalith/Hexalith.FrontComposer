@@ -7672,7 +7672,9 @@ origin: migrated from legacy ledger ("Deferred from: build review of 11-20-recom
 location: FrontComposerDiagnosticLog.cs:1181-1190
 source_spec: `_bmad-output/implementation-artifacts/11-21-recommended-analyzer-product-and-generator-burndown.md`
 reason: summary: The new 6000-band `ScopeReadinessStorageReadyDispatched` event logs a correlation id verbatim while the Story 11.18 hot-path family always digests correlation ids, so the two cannot be joined and the raw identifier reaches logs. evidence: `FrontComposerDiagnosticLog.cs:1181-1190` passes `correlationId` through `Bounded()`, which returns any value under 512 chars without line-forging characters verbatim — a 26-char ULID is unchanged. `LifecycleStateService.cs:282` documents "Join key with HotPath lifecycle events: same opaque sha256 digest (Decision 2)" and uses `FrontComposerHotPathLog.DigestIdentifier`, which always returns `sha256:<16 hex>`. Not a regression (the pre-migration direct call also logged it raw), but it leaves the 11.18 digest posture unapplied. Fixing it changes operator-visible output, which trades against Story 11.21's migration-fidelity property that values stay unchanged — a Framework Maintainer decision.
-status: open
+status: done 2026-09-22
+resolution: `ScopeReadinessStorageReadyDispatched` and the diagnostic-correlation event now use the same canonical pseudonymizer as lifecycle-observation and hot-path events; runtime action and transition identifiers remain unchanged.
+closure_evidence: The Story 11.31 focused behavior/security/governance lane passed 21/21, and the diagnostic/hot-path/lifecycle/readiness regression lane passed 45/45. `FrontComposerLogPseudonymizerTests.LogFamilies_SameIdentifier_EmitJoinablePseudonym` proves byte-identical structured tokens and no raw leakage.
 decision: 2026-08-28 Implement requested change — Implement the behavior described by DW-1769 across affected contracts and consumers, and add focused regression evidence.
 decision: 2026-08-28 Implement requested change — Implement the behavior described by DW-1769 across affected contracts and consumers, and add focused regression evidence.
 
@@ -7682,7 +7684,9 @@ origin: migrated from legacy ledger ("Deferred from: build review of 11-20-recom
 location: FrontComposerHotPathLog.cs:588
 source_spec: `_bmad-output/implementation-artifacts/11-21-recommended-analyzer-product-and-generator-burndown.md`
 reason: summary: `FrontComposerDiagnosticLog.Digest` and `FrontComposerHotPathLog.DigestIdentifier` are two independent digest implementations with different token formats. evidence: HotPath emits `sha256:<16 hex>` (`FrontComposerHotPathLog.cs:588`); the new family emits `sha256:<16 hex>:len:<n>` with different null/empty handling and a 4096-character pre-hash truncation (`FrontComposerDiagnosticLog.cs:1711-1712`). The same value therefore hashes to different tokens across the two families.
-status: open
+status: done 2026-09-22
+resolution: `FrontComposerLogPseudonymizer` is the single streaming UTF-8/SHA-256 implementation. Correlation paths use its normalized token while generic diagnostic bounding composes its raw hash core and preserves the existing `:len:` shape and prefix limit.
+closure_evidence: The Story 11.31 focused behavior/security/governance lane passed 21/21, the generic diagnostic and established hot-path token regressions passed in the 45/45 targeted lane, and the Release solution build completed with zero warnings/errors.
 decision: 2026-08-28 Implement requested change — Implement the behavior described by DW-1770 across affected contracts and consumers, and add focused regression evidence.
 decision: 2026-08-28 Implement requested change — Implement the behavior described by DW-1770 across affected contracts and consumers, and add focused regression evidence.
 

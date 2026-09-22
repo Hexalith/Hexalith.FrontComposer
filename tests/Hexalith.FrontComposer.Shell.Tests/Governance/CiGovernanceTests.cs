@@ -3912,7 +3912,7 @@ public sealed class CiGovernanceTests {
         const string activePacketSourceSha = "ba7ac196e60db8820525961791eccfacec24633f";
         const string activePacketBuildsSha = "4f522a8caa62ad82584bdf56d54e16109b717b1c";
         const string sealedV3IdentitySha = "6dc9aaa586cf35531de112bd68dd4d724a81d7ad76a11930684e8e9fe6c98892";
-        const string currentSourceSha = "2cf9bf49b4858db4b83a05e47b7bd280dc51c826";
+        const string currentSourceSha = "66cb4edaa2b474090f2b4e375d481a4bbcd70a08";
         const string currentBuildsSha = "2fba3497043fe5ffcfe4dc44c51a09eae9b950ab";
         const string currentVersion = "3.106.0";
         // The immutable Story 11.24 owner capture remains historical evidence. Current source,
