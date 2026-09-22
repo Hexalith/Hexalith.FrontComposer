@@ -1,6 +1,7 @@
 ---
 stepsCompleted: ['step-01-validate-prerequisites', 'step-02-design-epics', 'step-03-create-stories', 'step-04-final-validation']
 status: 'complete'
+updated: 2026-09-22
 inputDocuments:
   - _bmad-output/project-docs/project-overview.md
   - _bmad-output/project-docs/architecture.md
@@ -13,7 +14,7 @@ sourceNote: >-
   prd.md, architecture.md, ux-design.md, and epics.md. The PRD remains
   brownfield-derived from _bmad-output/project-docs plus the 2026-06-03
   readiness request, and every requirement must retain a source trace.
-  Epics consume those canonical requirements instead of serving as the only
+  Epics consume canonical FR-1 through FR-30 requirements instead of serving as the only
   requirements inventory.
 ---
 
@@ -38,7 +39,7 @@ This document provides the complete epic and story breakdown for Hexalith.FrontC
 
 > These identifiers predate the canonical PRD and are retained only to explain brownfield
 > provenance. They are not planning identifiers. New and corrected traceability uses the canonical
-> `FR-1` through `FR-29` requirements in `prd.md` and the canonical coverage map below.
+> `FR-1` through `FR-30` requirements in `prd.md` and the canonical coverage map below.
 
 **Source generator (`Hexalith.FrontComposer.SourceTools`)**
 
@@ -201,7 +202,8 @@ This is the sole planning coverage map. Requirement semantics and identifiers co
 | FR-26 | Epic 9: remediation Stories 9.3-9.8; Story 9.2 remains historical delivery evidence only |
 | FR-27 | Epic 10: Stories 10.1–10.5 |
 | FR-28 | Epic 11: completed decision records 11.0 and 11.8 |
-| FR-29 | Epic 11: Stories 11.1–11.23, with 11.17–11.19 represented only through their materialized children |
+| FR-29 | Epic 11: Stories 11.1–11.32, with 11.17–11.19 represented only through their materialized children |
+| FR-30 | Proposed TEN-SCOPE-1: end-to-end tenant separation and fail-closed proof across EventStore command, query, subscription, count, and storage paths |
 
 **Release Governance Gate RG-1 (FR-24):** before any NuGet or GitHub package publication, the Release
 Owner must prove that the exact expected package artifacts passed inventory, tests, package-consumer
@@ -258,9 +260,28 @@ mandatory GitHub provenance attestation or approved fallback and NuGet.org repos
 verification remain. The deny-only variable can freeze but never authorize. See
 `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-governed-release-upstream-contract.md`.
 
+**Update (approved correct-course 2026-09-22):** completed Epic 9 and Epic 11 delivery history is
+closed independently of still-open Product or migration approval. Every G-1 through G-8 and OI-1
+through OI-19 obligation is classified in the PRD and the 2026-09-22 sprint change proposal. The
+aliases below are an approved proposed-backlog handoff, not final story numbers;
+create-epics-and-stories owns final epic grouping and numbering.
+
+| Proposed epic | Implementable story aliases | Approval/evidence tasks | Non-sprint external dependencies |
+| --- | --- | --- | --- |
+| Planning Truth and Traceability | PLAN-INT-2; PLAN-INT-1 is completed by this reconciliation | — | — |
+| Runtime Identity, Tenant Safety, and Adoption | EVT-ID-1, TEN-SCOPE-1, ADOPT-KIT-1 | EVT-APP-1; conditional EVT-XFER-1 and ADOPT-APP-1 | EXT-ADOPTER-1 |
+| MCP Production Security | MCP-SEC-1, MCP-SEC-2 | MCP-APP-1 | — |
+| UX Conformance and Documentation Parity | UX-A through UX-F, DOC-A through DOC-C | FLUENT-APP-1, PRD-APP-1 | — |
+| Governed Split Publication | GOV-B through GOV-I, GOV-SRC-1 | GOV-J, GOV-ACCEPT-1, GOV-ACCEPT-2 | EXT-BUILDS-1 |
+| Release Evidence and Decisions | REL-LEDGER-2, REL-BASE-1 | REL-LEDGER-1, REL-A3-APP-1, E9-APP-1 | — |
+
+Each alias has one independently testable boundary in the approved proposal §7. Implementation may
+complete without closing its parent gate; owner approvals and external receipts remain open until
+their named evidence exists.
+
 **Additional-requirement coverage:** AR1–AR5 → Epic 1 · AR6 (FC-CMD) → Epic 3 · AR7 (FC-CNC) → Epic 4 · AR8 (budgets) → Epic 3 + Epic 4 · AR9 (EventStore status) → Epic 3 · AR10 (rich components) → out of scope (fast-follow, tracked, not an epic) · AR11 (FC-NIP) → Epic 9 · AR12 (FC-TOOL-GOV) → Epic 10.
 **Cross-cutting canonical NFRs** apply to every epic as ready-gate constraints, anchored by FC-A11Y (AR2) and FC-DOC (AR4) in Epic 1. Telemetry is owned cross-cutting rather than per-AC — emitting through `FrontComposerActivitySource` on Shell command-lifecycle/projection paths and MCP tool/resource paths.
-**Epic 11 (Release Readiness Remediation Program)** traces canonical FR-7, FR-10, FR-12, FR-19, FR-22, FR-25, FR-28, and FR-29 plus the 2026-07-04 architecture-quality-review findings. Story 11.0 and Story 11.8 are completed decision records. Stories 11.17, 11.18, and 11.19 are decomposition parents, not implementation candidates; their child stories carry delivery status. Story 11.19d approved staged adoption of `AnalysisMode=Recommended` and materialized sequential, separately approval-gated Stories 11.20–11.23; Story 11.23 is a v1.0 publication gate.
+**Epic 11 (Release Readiness Remediation Program)** traces canonical FR-7, FR-10, FR-12, FR-19, FR-22, FR-25, FR-28, and FR-29 plus the 2026-07-04 architecture-quality-review findings. The epic is done through Story 11.32. Story 11.0 and Story 11.8 are completed decision records. Stories 11.17, 11.18, and 11.19 are decomposition parents, not implementation candidates; their child stories carry delivery status. Story 11.19d approved staged adoption of `AnalysisMode=Recommended` and materialized sequential, separately approval-gated Stories 11.20–11.23. Story 11.25 is completed technical capture rather than G-3 approval; residual exact-tuple evidence is proposed EVT-ID-1/EVT-APP-1.
 
 ## Epic List
 
@@ -1324,6 +1345,10 @@ question; warning/info extensions) emitted by the generator (`[ProjectionBadge]`
 
 ## Epic 9: Fresh-Row Producer and Row Identity *(post-MVP follow-up)*
 
+**Delivery status:** done. Stories 9.1–9.8, E9-AI-1 through E9-AI-6, and the retrospective are
+completed delivery history. The live Story 9.8 proof passed 2026-08-27. G-5/E9-APP-1 remains an
+open Product approval task and does not reopen this epic.
+
 > **Source of record:** `sprint-change-proposal-2026-07-01.md` (Correct Course, 2026-07-01). This epic
 > resolves the accepted-deferred Story 2.6 AC1(b) gap by giving the row-level new-item producer a current
 > backlog home. It does not reopen completed Epics 2 or 3, and it must not fabricate row identity from the
@@ -1631,6 +1656,11 @@ and punctuation-heavy string secret values.
 
 ## Epic 11: Release Readiness Remediation Program *(post-MVP quality hardening)*
 
+**Delivery status:** done. All implementable Stories 11.0–11.9 and 11.11–11.32 are completed
+history. Story 11.25 is a completed technical capture, not migration approval; E11R-AI-1 remains
+open under proposed EVT-ID-1/EVT-APP-1. Later tuple or validator drift creates new work and does not
+rewrite this epic.
+
 > **Source of record:** `sprint-change-proposal-2026-07-04.md` (Correct Course, 2026-07-04), triggered by the
 > full-repo architecture/engineering-quality review (`_bmad-output/project-docs/architecture-quality-review-2026-07-04.md`:
 > no Critical, 12 High, ~28 Medium). A Minor-scope quick-win fix batch (UI-host `FcPageHeader` params, orphaned
@@ -1647,7 +1677,7 @@ and punctuation-heavy string secret values.
 > Story 11.19d approved staged adoption of `AnalysisMode=Recommended` and materialized implementable
 > Stories 11.20–11.23 as sequential, separately approval-gated phases; all are done. Story 11.24 is a
 > completed historical EventStore authorization record. The approved 2026-09-12 retrospective-remediation
-> extension adds Stories 11.25–11.32 and keeps Epic 11 in progress until final reacceptance.
+> extension added Stories 11.25–11.32; all eight are completed delivery history as of 2026-09-22.
 >
 > **Decision gates (contract-confirmation DoD, 2026-06-21 amendment - tracked, owned, dated):** **Story 11.0**
 > (command/projection route contract) - owner **Architect + Product**, assigned **2026-07-05**, resolved
@@ -1664,12 +1694,13 @@ and punctuation-heavy string secret values.
 
 ### Epic 11 Workstreams And Current State
 
-| Workstream | Stories | Current state on 2026-09-12 |
+| Workstream | Stories | Current state on 2026-09-22 |
 | --- | --- | --- |
 | Completed delivery history | 11.0–11.9, 11.11–11.24 | Done; 11.24 and identity v1 remain historical authorization, not the current release target. |
-| Current identity and immediate gate recovery | 11.25–11.28 | Approved backlog. Run 11.25 first; 11.26–11.28 may follow in parallel, then rerun Epic 11 acceptance. |
-| Runtime and evidence hardening | 11.29–11.31 | Approved backlog after the first acceptance checkpoint. |
-| Artifact integrity and final acceptance | 11.32 | Approved backlog after 11.29–11.31; final acceptance follows. |
+| Identity capture and immediate gate recovery | 11.25–11.28 | Done. Story 11.25 captured technical identity history only; G-3 approval remains separate. |
+| Runtime and evidence hardening | 11.29–11.31 | Done. |
+| Artifact integrity | 11.32 | Done as accepted delivery history; current validator drift is proposed PLAN-INT-2. |
+| Residual exact-tuple approval | EVT-ID-1, EVT-APP-1 | Proposed new work under G-3/E11R-AI-1; not part of completed Epic 11. |
 
 Within logging remediation, ownership precedence is deterministic: 11.18a security/fail-closed sites
 first, 11.18c command-lifecycle/projection/polling hot paths second, and 11.18b residual
@@ -2354,6 +2385,12 @@ EventStore container; any behavioral migration is routed to a separately approve
 **Status:** done. **Owner:** Architect + EventStore Maintainer + FrontComposer Maintainer + Release
 Owner. **Retrospective action:** E11R-AI-1.
 
+**Completion boundary (reconciled 2026-09-22):** this story delivered the v2 technical capture and
+remains done. It did not obtain migration receipts, set migration approval true, or close G-3. Its
+tuple is historical and must not be projected onto the current EventStore/Builds gitlinks. E11R-AI-1
+therefore points to proposed EVT-ID-1 for a fresh exact-tuple packet and EVT-APP-1 for separate owner
+approval; this story is not reopened or reused.
+
 As a Release Owner and framework maintainer,
 I want one approved identity record and live proof for the EventStore runtime selected by the current
 repository,
@@ -2575,16 +2612,17 @@ bypass is needed for validation.
 
 ### Epic 11 Remediation Sequence and Acceptance
 
-The approved order is 11.25; then 11.26–11.28; an Epic 11 acceptance checkpoint; 11.29–11.31; 11.32;
-then final Epic 11 acceptance. Stories 11.26–11.28 and Stories 11.29–11.31 may run in parallel within
-their respective phase. Story 11.32 follows the runtime/evidence stories so its validator covers their
-final artifacts.
+The approved historical order was 11.25; then 11.26–11.28; the acceptance checkpoint; 11.29–11.31;
+and 11.32. All eight stories are now done and the bounded Epic 11 delivery is closed. This preserves
+the rejected 2026-09-10 retrospective and every later story record without treating later repository
+movement as unfinished Epic 11 work.
 
-The first acceptance checkpoint must cite the rejected 2026-09-10 retrospective, the exact-tuple
-identity/evidence record, the three restored gates, and the approved owned dispositions in
-11.29–11.32. Its verdict is evidence-based and does not automatically close the epic. Final closure
-requires all eight stories, a final green acceptance record, and consistent PRD, epics, architecture,
-context, sprint, identity, evidence, and deferred-work artifacts.
+Two residuals remain explicit outside the epic:
+
+- E11R-AI-1/G-3 is open under EVT-ID-1 and EVT-APP-1 because Story 11.25 did not grant migration
+  approval and the repository moved beyond its exact tuple.
+- The current Story 11.32 validator failure is proposed PLAN-INT-2. It repairs current artifact
+  integrity without retroactively changing the completed status of Story 11.32 or Epic 11.
 
 ## Cross-Cutting Governance Work
 
@@ -2597,6 +2635,28 @@ under its recorded one-story waiver and is not reopened by GOV-1.
 **Decision:** `_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md`.
 **Architecture:** `_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md`.
 **Course correction:** `_bmad-output/planning-artifacts/sprint-change-proposal-2026-08-02.md`.
+
+The approved 2026-09-22 correction decomposes this parent obligation without marking it complete:
+
+| Alias | Class | Independently completable boundary |
+| --- | --- | --- |
+| EXT-BUILDS-1 | External dependency | Hexalith.Builds owner accepts an immutable split-reusable revision before FrontComposer activation. |
+| GOV-B | Implementable | Caller pins the accepted revision and implements the exact two-job topology with delayed activation and rollback proof. |
+| GOV-C | Implementable | Candidate/build execution has no production environment, publication secret, write scope, OIDC/attestation authority, signing material, or equivalent ambient capability. |
+| GOV-D | Implementable | One authenticated run-bound publication candidate passes replay, mutation, and hostile-candidate fixtures. |
+| GOV-E | Implementable | Handoff v3 and a typed append-only attempt ledger reject malformed, duplicate, retroactive, or invalid retry transitions. |
+| GOV-F | Implementable | Candidate-free pinned code performs manifest-v4 classification/publication without checking out or executing candidate source. |
+| GOV-G | Implementable | A pinned post-release evaluator and durable incident/recovery evidence work without ambient or candidate helpers. |
+| GOV-H | Implementable | Duplicate or ambiguous destination asset names fail before publication with redacted diagnostics. |
+| GOV-I | Implementable evidence | The incident runbook and dated tabletop prove acknowledgement, containment, preservation, recovery, and re-enable handling. |
+| GOV-J | Approval/evidence | Deterministic checks and five review lenses pass against one unchanged authenticated candidate with every finding dispositioned. |
+| GOV-SRC-1 | Implementable documentation | Every governance source distinguishes owner revision, execution pin, current gitlink, and evidence provenance. |
+| GOV-ACCEPT-1 | Approval | Product, Architecture, and Release accept D-16, the halt, emergency stop, and no-exception posture. |
+| GOV-ACCEPT-2 | Approval | Product and Release accept exact reconciled source digests without weakening publication invariants. |
+
+GOV-B through GOV-H are the seven FrontComposer-controlled implementation slices paired with
+EXT-BUILDS-1 as the eighth closure bundle. GOV-I/J and the two acceptances are additional gate work.
+No implementation slice may absorb the external dependency or claim an owner approval.
 
 As a framework maintainer and Release Owner,
 I want compatibility validated from the catalogs selected by actual gitlinks while exact identities

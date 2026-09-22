@@ -4,9 +4,10 @@ status: canonical-planning-source
 product_approval: pending-reapproval
 g_4: open
 oi_16: open-implementation-and-evidence-work
+oi_19: open-documentation-parity-work
 created: 2026-07-05
-updated: 2026-09-09
-reconciliation_revision: oi-16-2026-09-09
+updated: 2026-09-22
+reconciliation_revision: readiness-correct-course-2026-09-22
 sourceOfRecord:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/prd-addendum-2026-09-08.md
@@ -23,8 +24,9 @@ artifacts conflict, this file wins. The PRD and addendum own product outcomes, s
 gates, and approval state; this file makes those outcomes implementable and testable. Supplements,
 mockups, wireframes, imports, and historical decisions cannot override this contract.
 
-The 2026-09-09 reconciliation repairs the OI-16 document gaps. It does not claim that the new
-implementation or evidence work is delivered, does not close OI-16 or OI-19, does not close G-4, and
+The 2026-09-09 reconciliation repaired the OI-16 document gaps. The approved 2026-09-22 course
+correction decomposes the remaining work into UX-A through UX-F and DOC-A/DOC-B. It does not claim
+that implementation or evidence is delivered, does not close OI-16 or OI-19, does not close G-4, and
 is not Product approval.
 
 ## Canonical Information Architecture
@@ -333,6 +335,29 @@ assistive-technology or real-device evidence.
 | FR-23 | Component/diagnostic/migration/skill documentation baseline | This chain's names are repaired; full public-surface parity remains the separate OI-19 implementation scope | Source resolution for this chain; OI-19 owns complete catalog/index/migration parity proof | UX-DR4; both supplements |
 | NFR-3 / SM-6 | Existing governance and specimen lanes are supporting historical evidence | Apply any semantic/CSS/component changes required by UX-AE-1 and detailed UX-VC-1/UX-RM-1 | Deterministic WCAG 2.2 AA and matrix-wide bUnit/e2e/manual evidence; current axe tags remain insufficient | UX-AE-1; detailed UX-VC-1 |
 
+## Approved Proposed UX And Documentation Stories
+
+These aliases are the approved handoff to create-epics-and-stories. They are proposed work, not
+delivered status and not final numeric story identifiers.
+
+| Alias | Independently completable boundary | Traces |
+| --- | --- | --- |
+| UX-A | Shell/account/hamburger/search and route/tab/palette/dialog focus behavior passes the canonical keyboard and focus matrices. | FR-8, FR-10 |
+| UX-B | Validation, rejection, FC-CNC, command-dialog, and navigation-guard focus/relationship behavior is deterministic and evidenced. | FR-14, FR-16 |
+| UX-C | Projection and command lifecycle announcements, coalescing, terminal ceilings, retry/poll, and auth/scope-loss states are deterministic. | FR-11, FR-12, FR-15 |
+| UX-D | Fresh-row indicator visual semantics, forced-colors/reduced-motion behavior, duplicate suppression, and silent expiry pass. | FR-13 |
+| UX-E | Responsive accessibility evidence covers 320 CSS px, 400 percent zoom, text spacing, target size, focus not obscured, forced colors, reduced motion, keyboard, and required manual assistive checks. | NFR-3, SM-6 |
+| UX-F | Reusable Testing helpers express the canonical focus, validation, announcement, state, and expiry matrices without app-specific selectors or hidden timing assumptions. | FR-22 |
+| DOC-A | Component, status, public index, page-toolbar, and page-tab documentation matches implemented APIs and evidence. | FR-23, OI-19 |
+| DOC-B | Migration catalog/index classification distinguishes CLI-supported executable guidance from manual-only package/API guidance and proves parity. | FR-23, OI-19 |
+| DOC-C | Fluent v5 contingency documentation resolves the exact catalog-owned identity or points to a dated Product exception with expiry and revisit trigger. | D-13, OI-10 |
+| FLUENT-APP-1 | Product and Architecture decide the exact Fluent v5 catalog identity and RC/GA posture. | D-13, OI-4 |
+
+UX-A through UX-F may complete independently, but OI-16 remains open until every required matrix row
+has its implementation and evidence. DOC-A and DOC-B may complete independently, but OI-19 remains
+open until both parity surfaces pass. FLUENT-APP-1 and final Product re-approval remain separate owner
+decisions and cannot be inferred from green implementation evidence.
+
 ## UX-OI16-1 - OI-16 Evidence Trail
 
 | Artifact or evidence | Disposition on 2026-09-09 |
@@ -377,6 +402,7 @@ FC-NIP, timing budgets, or approval state.
 - `_bmad-output/planning-artifacts/prd-addendum-2026-09-08.md`
 - `_bmad-output/planning-artifacts/architecture.md`
 - `_bmad-output/planning-artifacts/epics.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-22.md`
 - `_bmad-output/planning-artifacts/ux-design-detailed-2026-07-05.md`
 - `_bmad-output/planning-artifacts/ux-experience-2026-07-05.md`
 - `_bmad-output/contracts/fc-ia-1-module-tab-ia-decision-2026-07-05.md`

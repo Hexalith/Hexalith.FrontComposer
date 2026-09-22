@@ -2,7 +2,7 @@
 title: Hexalith.FrontComposer Architecture Planning Source
 status: canonical-planning-source
 created: 2026-07-05
-updated: 2026-09-09
+updated: 2026-09-22
 sourceOfRecord:
   - _bmad-output/project-docs/architecture.md
   - _bmad-output/project-docs/architecture-quality-review-2026-07-04.md
@@ -46,6 +46,9 @@ The Shell source architecture guard enforces namespace/folder agreement, the Sta
 - Shell state follows Fluxor single-writer discipline and scoped-lifetime discipline.
 - MCP security fails closed and requires both tenant tool and resource visibility gates.
 - EventStore command acceptance is not treated as projection-confirmed success.
+- Tenant scope is part of EventStore request identity. Command, query, subscription, count, and storage
+  paths must preserve the same tenant boundary and fail closed when tenant identity is absent or
+  mismatched; TEN-SCOPE-1 owns the FR-30 end-to-end proof.
 - Shared-catalog compatibility is determined from semantic catalog contents and affected-module restore/build behavior at the actual selected gitlinks; hard-coded historical SHAs are not compatibility allowlists.
 - **Approved GOV-1 amendment:** `hexalith.dependency-graph.v1` is bounded to exact root gitlinks (depth 1) and the direct gitlinks
   contained in each exact root-selected commit (depth 2). Those identities are release provenance and
@@ -340,16 +343,19 @@ This delivery architecture does not alter FrontComposer runtime, public product 
 ## Epic 11 Release Readiness Remediation Program
 
 Epic 11 traces to `_bmad-output/project-docs/architecture-quality-review-2026-07-04.md`. Stories
-11.0–11.9 and 11.11–11.24 are completed delivery history. The rejected 2026-09-10 epic acceptance and
-approved 2026-09-12 course correction add Stories 11.25–11.32 as a bounded remediation extension:
+11.0–11.9 and 11.11–11.32 are completed delivery history. The rejected 2026-09-10 epic acceptance and
+approved 2026-09-12 course correction added Stories 11.25–11.32 as a bounded remediation extension,
+and sprint status records the bounded epic as done:
 
-- **Current release identity and immediate gates:** Story 11.25 resolves active EventStore identity;
-  Stories 11.26–11.28 repair analyzer, route-e2e, and FC-NIP documentation gates.
-- **Runtime and evidence hardening:** Stories 11.29–11.31 correct fallback/view registration,
+- **Historical identity capture and immediate gates:** Story 11.25 delivered its technical capture;
+  Stories 11.26–11.28 repaired analyzer, route-e2e, and FC-NIP documentation gates.
+- **Runtime and evidence hardening:** Stories 11.29–11.31 corrected fallback/view registration,
   Testing/MCP boundaries, and shared correlation pseudonymization.
-- **Artifact integrity:** Story 11.32 reconciles queue/story evidence and makes contradictions fail
+- **Artifact integrity:** Story 11.32 reconciled queue/story evidence and made contradictions fail
   closed.
-- **Acceptance:** rerun after 11.25–11.28, then rerun for final closure after 11.29–11.32.
+- **Residual ownership:** Story 11.25 did not grant EventStore migration approval or close G-3.
+  E11R-AI-1 is carried by proposed EVT-ID-1/EVT-APP-1. The current Story 11.32 validator red state is
+  proposed PLAN-INT-2 work and does not rewrite completed Epic 11 history.
 
 Stories 11.17, 11.18, and 11.19 are nonimplementable decomposition parents. Logging ownership follows
 security/fail-closed (11.18a), then command-lifecycle/projection/polling hot paths (11.18c), then
@@ -363,18 +369,41 @@ are immutable historical authorization for `bb94d93e… / 3.91.1 / a8a50859…`.
 provider/AppHost capture at `059f6a89… / 3.103.0 / 35c3d1e5…` is immutable prior compatibility
 evidence. Neither record is projected onto a different Builds revision.
 
-The active release target selected by the 2026-09-12 course correction is EventStore source
-`059f6a8917bfab26b85775be464840a1610dfdeb`, package `3.103.0`, and Builds catalog
-`a32cb422749352cce8dec948aa3e78c8f00eb4cf`. Story 11.25 creates a successor active-identity record
-and captures one provider-plus-AppHost packet at exactly that tuple. A semantic-compatibility exception
-and rollback are not approved. The successor record may claim migration approval only after the
-EventStore maintainer, FrontComposer maintainer, and Release Owner sign, or after OI-18 first transfers
-the EventStore approval role through a dated Product and Architecture decision.
+Story 11.25 created the v2 technical record for EventStore source `059f6a89…`, package `3.103.0`,
+and Builds `a32cb422…`; it is completed history and explicitly did not claim migration approval. The
+in-review v3 candidate targeted package `3.106.0` with earlier EventStore/Builds gitlinks, empty
+approval receipts, and `migrationApprovalClaimed=false`. At the 2026-09-22 reconciliation point,
+FrontComposer HEAD `b61e51e1…` instead selected EventStore `db1e9d73…`, catalog package `3.106.0`,
+and Builds `2fba3497…`. None of the older records is projected onto that later tuple.
+
+EVT-ID-1 therefore freezes the exact FrontComposer HEAD, EventStore gitlink, Builds gitlink, catalog
+package, provider verification, AppHost smoke, and artifact hashes current at its execution. EVT-APP-1
+is a separate approval task. It may claim migration approval only after the EventStore maintainer,
+FrontComposer maintainer, and Release Owner sign the exact EVT-ID-1 tuple, or after EVT-XFER-1/OI-18
+first transfers the EventStore approval role through a dated Product and Architecture decision. A
+semantic-compatibility exception and rollback remain unapproved.
 
 Governance resolves the active identity from the successor record and compares it with candidate
 gitlinks/catalog contents. It fails closed on a missing record, tuple mismatch, stale evidence
 provenance, missing artifact hash, or absent required signature; historical SHAs are not embedded as
 unexplained current compatibility constants.
+
+### Approved Residual Architecture Handoff
+
+The approved 2026-09-22 course correction keeps these boundaries explicit for downstream story
+creation:
+
+| Concern | Proposed work | Architecture boundary |
+| --- | --- | --- |
+| Exact runtime identity | EVT-ID-1, EVT-APP-1, conditional EVT-XFER-1 | Evidence and approval are separate; tuple drift creates new work. |
+| Tenant scope | TEN-SCOPE-1 | Production EventStore seams prove FR-30 end to end. |
+| MCP production security | MCP-SEC-1, MCP-SEC-2, MCP-APP-1 | Implementation and negative evidence precede independent sign-off. |
+| Adopter proof | ADOPT-KIT-1, EXT-ADOPTER-1 | FrontComposer owns the kit; the adopter owns external execution evidence. |
+| Split publication | EXT-BUILDS-1, GOV-B through GOV-J, GOV-ACCEPT-1/2 | Upstream acceptance, implementation, evidence, and owner approval never collapse into one status. |
+| Release evidence | REL-LEDGER-1/2, REL-BASE-1, REL-A3-APP-1 | Append-only release truth and decisions remain Release-owned. |
+
+Aliases are proposed handoff identifiers, not final story numbers. Their accepted boundaries are in
+`sprint-change-proposal-2026-09-22.md`; create-epics-and-stories assigns numeric IDs.
 
 ## Related Planning Artifacts
 
@@ -387,5 +416,6 @@ unexplained current compatibility constants.
 - `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-rel-ai-1-prepublish-enforcement.md`
 - `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19.md`
 - `_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-22.md`
 - `_bmad-output/contracts/fc-contracts-kernel-split-compatibility-plan-2026-07-05.md`
 - `_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md`
