@@ -389,7 +389,7 @@ Release owners can authorize and verify exact package bytes through a privilege-
 - Epics 12–16 may make repository implementation progress independently against the delivered foundation; their acceptance tasks wait for the exact evidence and earlier decisions named above.
 - Epic 17 may begin source reconciliation, ledger, incident-readiness, and other unblocked work, but the caller switch remains blocked on EXT-BUILDS-1 and the final milestone decision remains blocked on the required evidence from Epics 12–16.
 - Architecture requirements follow their owning epic: adoption/shell in Epic 12, tenant-safe operator behavior in Epic 13, MCP security in Epic 14, planning/tooling/documentation integrity in Epic 15, runtime identity in Epic 16, and publication/dependency governance in Epic 17.
-- UX-DR and NFR obligations are allocated to every affected story rather than counted as satisfied by FR mapping. Epic 12 owns adoption, shell, and information architecture; Epic 13 owns projection/command/accessibility behavior and the exact Fluent decision; Epic 14 owns agent-surface security behavior; Epic 15 owns tooling/documentation/testing semantics; Epic 16 owns compatibility evidence; and Epic 17 owns evidence determinism, dependency governance, incident readiness, and release safety.
+- UX-DR and NFR obligations are allocated to every affected story rather than counted as satisfied by FR mapping. Epic 12 owns adoption, the shell frame, and information-architecture structure; Epic 13 owns projection/command/accessibility behavior, shell focus and information-architecture interaction behavior through its UX-A slice (Story 13.2), the UX testing helpers through its UX-F slice (Story 13.7), and the exact Fluent decision; Epic 14 owns agent-surface security behavior; Epic 15 owns tooling/documentation/testing semantics other than the Epic 13 UX-F helpers; Epic 16 owns compatibility evidence; and Epic 17 owns evidence determinism, dependency governance, incident readiness, and release safety.
 - An external dependency, missing receipt, or rejected approval remains visibly open and cannot be converted into repository-owned completion. A green unrelated lane never substitutes for the focused evidence required by an epic.
 - Every materialized item must declare its classification as I, A, or X. Only I items may claim repository implementation completion; A items close only through their named durable decision/evidence receipt, and X items remain controlled by the named external owner.
 - Completed-baseline requirements are acceptance-criteria traceability only unless an approved open alias below explicitly creates new work.
@@ -3300,32 +3300,79 @@ As a keyboard or assistive-technology operator,
 I want shell, account, Module navigation, search, and route focus to behave predictably,
 So that I can move through the application without losing context.
 
+**Canonical rows:** Implements/evidences FM-01, FM-02, FM-03, FM-04, FM-05 (palette/settings), FM-10 (authentication-redirect return only), FM-12; OF-01, OF-02; AM-23, AM-25, AM-28, AM-29, AM-31; SS-01, SS-02, SS-03, SS-04, SS-27, SS-28, SS-29, SS-30, SS-31, SS-32, SS-33, SS-40, SS-41, SS-42, SS-43, SS-46 and SS-47 (palette/settings). Preserves the delivered shell frame, providers, registry navigation, routes, tabs, palette, settings Live-update/Restore-defaults/Done, toolbar keyboard contract, breakpoint watcher, framework sign-out route, and single-accordion page-section baseline. Authority: ux-design.md canonical rows (ux-design.md:394-395); DESIGN.md/EXPERIENCE.md supplement only and lose on conflict. AM-01/AM-02/AM-03/AM-26 channel and coalescing rules are owned by Story 13.4.
+
 **Acceptance Criteria:**
 
-**Given** a successful client-side navigation from shell navigation, a Module tab, the palette, or an authorized CTA
-**When** the destination activates
-**Then** focus moves to its unique route-level h1
-**And** the labelled tabpanel, active Module item, and canonical route agree.
+**Given** a successful client-side navigation, a direct deep link, an authorized CTA, or a palette activation (FM-01)
+**When** the destination view is ready
+**Then** focus moves programmatically to its unique route-level h1, and the labelled tabpanel, active Module item, and canonical route agree
+**And** the heading's bounding box is entirely outside sticky chrome and overlays.
 
-**Given** navigation cannot activate its target
+**Given** navigation from shell navigation, a Module tab, the palette, or a CTA cannot activate a safe destination (FM-01 failure, SS-29)
 **When** the failure is surfaced
-**Then** the current surface retains a usable heading or status focus target and announces the failure once
-**And** no hidden, removed, or unrelated tab receives focus.
+**Then** focus stays on the invoker or the current route heading, and AM-23 "Could not open {safe destination label}. You remain on {current page label}." is announced once per activation attempt through the polite status channel
+**And** no internal route or error detail is exposed and no hidden, removed, or unrelated tab receives focus.
 
-**Given** the shell is rendered with adopter header customization
-**When** an operator uses the header, hamburger, account menu, Ctrl+K, Ctrl+,, conditional page-search shortcut, or Escape
-**Then** the framework account control and hamburger remain reachable and closing transient UI restores focus to its invoker
-**And** account sign-out uses the framework route and evicts token state without exposing token details.
+**Given** a keyboard operator selects a Module tab (FM-02, SS-31)
+**When** the selection changes
+**Then** the selected tab keeps focus, its labelled tabpanel changes, and the change is intentionally silent
+**And** the active tab and its full focus ring stay visible inside the tab-strip scrollport.
+
+**Given** a route names a Module that exists but a tab that is absent or unavailable (FM-02, SS-32)
+**When** the route resolves
+**Then** the default Module tab is shown and exposed as selected, the invalid target is never selected, and AM-31 "That page is unavailable. Showing {default tab label}." is announced once per activation attempt, requested safe route, and resolved default through the polite status channel
+**And** canonicalizing the same valid default route is silent, and a disabled tab (SS-33) stays visibly and programmatically disabled and silent until an external route attempt, which uses AM-31 or AM-26.
+
+**Given** `/` is pressed on an active route outside editable controls, IME composition, and component-owned chord handling (FM-12)
+**When** the route exposes exactly one enabled `FcPageToolbar` page-search input
+**Then** that input receives focus with its value unchanged, fully visible outside sticky chrome and expanded toolbar content
+**And** when the input is absent, disabled, or ambiguous, or the shortcut is disabled, the key does nothing and focus stays where it was; the current first-DataGrid-column-filter targeting is removed.
+
+**Given** the command palette opens from `Ctrl+K` or its visible button, from shell navigation or from page content (OF-01, FM-03, SS-40)
+**When** it opens and later closes
+**Then** the shell has captured the connected, enabled `document.activeElement` (or the visible pointer invoker) as a direct origin handle with its stable evidence locator before activation, and initial focus goes to the query input, or else the first enabled result, or else the close control
+**And** query, results, and close follow the inherited combobox/listbox model, Escape closes without navigation, and close returns focus to the captured origin (FM-04); if that origin was removed, disabled, or disconnected, focus goes to the current route h1 and never to `body`; successful palette navigation uses FM-01 and failure uses AM-23.
+
+**Given** a debounced 150ms authorized palette search yields zero results, or a previously visible result becomes unauthorized or fails to open (SS-41, SS-42)
+**When** the result settles or the activation fails
+**Then** AM-28 "No commands or pages match." is emitted once through the single palette-owned `role="status" aria-live="polite" aria-atomic="true"` node, deduped by palette session, normalized query, and zero-result identity, coalesced by a trailing 250ms window per palette session with stale query results discarded, and any inherited result-count speech is omitted
+**And** a denied result does not open and uses AM-26, a navigation failure uses AM-23, and the query stays editable while the current route remains usable.
+
+**Given** the settings dialog opens from `Ctrl+,` or its visible action (OF-02, FM-05, SS-43)
+**When** the operator changes settings and then closes the dialog with Done, Escape, or close
+**Then** the origin was captured as in OF-01, initial focus goes to the dialog heading (`tabindex="-1"`) and then the first setting in tab order, Tab/Shift+Tab cycle within the modal, and background content is not focusable
+**And** changes apply live and are not rolled back on close, the session makes no announcement, any exposed setting error focuses a complete local summary as in AM-18, preferences persist only under a resolved tenant/user scope, and close returns focus to the captured origin, falling back to the current route h1 when that origin was removed, disabled, or disconnected (SS-46, SS-47).
+
+**Given** application bootstrap and the Home directory (SS-27, SS-28, SS-01, SS-02, SS-03, SS-04)
+**When** the shell starts and Home resolves
+**Then** Bootstrap (SS-27) does not imply that data is ready and resolves to no registrations, Home Loading, or startup failure; no registrations (SS-01) shows and announces AM-25 "No modules are available." once per bootstrap identity and settled state; and startup failure (SS-28) focuses the AM-29 heading "FrontComposer could not start. Review the configuration." with no live attributes and no exception detail
+**And** Home Loading (SS-02) shows a skeleton that matches the directory layout, Empty (SS-03) shows no accessible Modules without an error, and Data (SS-04) orders Module cards by readiness, then descending actionable count, then ordinal Module name.
+
+**Given** an adopter customizes the header, replaces `FrontComposerShell.HeaderStart`, sets `ShowAccountMenu` to false, or omits conditional navigation in the current public baseline
+**When** the shell renders in Desktop, Compact, or Narrow-browser mode
+**Then** the framework-owned account control and the hamburger remain rendered and reachable, and account sign-out uses the framework route and evicts token state without exposing token details (SS-01 permitted actions; ux-design.md:64-71 and :134-142; FR-8 ledger row)
+**And** removing or neutralizing the `ShowAccountMenu`/`HeaderStart`/conditional-navigation opt-outs updates the intentional public API baseline, and closing any transient header UI returns focus to its invoker.
 
 **Given** Desktop, Compact, and Narrow-browser shell modes
 **When** primary navigation is presented
-**Then** each bounded context has exactly one Module entry, projection links remain secondary, and exactly one item is active
+**Then** each bounded context has exactly one Module entry, projection flyouts remain secondary navigation into `/{module}/{tab}`, and exactly one item is current by longest segment-prefix match (ux-design.md:32-42 and :64-71)
 **And** the implementation uses the shared breakpoint watcher without inventing product-contract widths or raw replacement controls.
 
-**Given** the delivered Home, settings, page frame, Module tabs, toolbar, and section patterns
+**Given** authentication redirects away from a replaced surface (FM-10)
+**When** the platform login completes and returns to the application
+**Then** the platform login owns focus during the redirect, and on return focus goes to the destination route h1 as in FM-01
+**And** the replacement-state heading and AM-26 behavior before the redirect stay owned by Story 13.4.
+
+**Given** the delivered settings, page frame, Module tabs, toolbar, and section patterns
 **When** their focused shell regression scenarios run
-**Then** Home exposes No Modules/Hydrating/Partially Ready/Ready states, settings previews and persists only in valid scope, tabs and toolbar retain their keyboard contracts, and unknown routes/tabs fail explicitly
-**And** two or more sibling titled sections use one Fluent accordion while the only primary content region remains visible.
+**Then** tabs and the toolbar keep their keyboard contracts, and two or more sibling titled sections use one Fluent accordion with the primary item expanded, while a single primary content region stays directly visible (ux-design.md:128-132)
+**And** the scenarios reuse the existing focused tests and add only the missing FM/OF/AM/SS row assertions.
+
+**Given** this story's implementation and evidence are complete
+**When** readiness status is evaluated
+**Then** OI-16, G-4, FLUENT-APP-1, and Product approval stay open and are not closed or inferred by this story
+**And** each closes only through its own evidence record and owner decision (ux-design.md:356-359).
 
 ### Story 13.3: [I · UX-B] Preserve Focus and Input Through Command Safety Outcomes
 
@@ -3333,32 +3380,54 @@ As an operator submitting a generated command,
 I want validation, rejection, confirmation, abandonment, and blocked-submit behavior to preserve useful context,
 So that I can correct mistakes safely without duplicate execution.
 
+**Canonical rows:** Implements/evidences VR-01, VR-02, VR-03, VR-04, VR-05, VR-06; FM-05 (destructive confirmation), FM-06, FM-07, FM-08, FM-09, FM-11; OF-03, OF-04; AM-18, AM-19, AM-20, and AM-14 as consumed by VR-03; SS-20, SS-25, SS-36, SS-37, SS-38, SS-39, SS-44, SS-45, SS-46 and SS-47 (destructive confirmation). Preserves core generated validation and retry preservation, authorization enforcement, destructive-confirmation Cancel autofocus and explicit confirm, the in-flow abandonment warning with Stay autofocus and Escape-stays, and the one-at-a-time FC-CNC gate. Authority: ux-design.md canonical rows (ux-design.md:394-395); DESIGN.md/EXPERIENCE.md supplement only and lose on conflict. AM-14 and AM-26 copy, channel, and dedupe are owned by Story 13.4.
+
 **Acceptance Criteria:**
 
-**Given** a generated form has client-validation errors
+**Given** a generated form has client-validation errors (VR-01, FM-06, FM-07, AM-18, SS-37)
 **When** submission is attempted
-**Then** a linked error summary receives focus, each item navigates to its Fluent input, and the first invalid field is keyboard reachable
-**And** correct values remain intact.
+**Then** the complete error summary (`role="group"`, an accessible error-summary label, `tabindex="-1"`, no `aria-live`, no `role="alert"`) is inserted before it receives programmatic focus, and it states AM-18 "Correct the errors before submitting." with the error count, so that focus is its only speech path and there is exactly one speech event
+**And** every declared field group keeps its visible label, programmatic group name and description, declared order, and stable error targets; each Fluent input exposes its invalid state and references its error; summary links appear in declared DOM order and move focus to their target control, or to the next invalid control when the target has disappeared; if the summary cannot render, focus goes to the first invalid Fluent input; the summary and focused control stay clear of sticky chrome; and correct values are preserved.
 
-**Given** the server returns an asynchronous Rejected lifecycle outcome
-**When** no support-safe field mapping exists
-**Then** rejection remains lifecycle feedback through the focused alert/error path rather than being recast as client validation
-**And** raw backend metadata, payloads, stack traces, and unrestricted PII remain hidden.
+**Given** the server rejects a command with a support-safe field map (VR-02, AM-19)
+**When** the rejection renders
+**Then** the lifecycle stays `Rejected` with its identity retained, the mapped errors use the VR-01 relationships, and focus moves to the mapped summary once through the focused-summary path
+**And** AM-14 is cancelled or suppressed for that mapped outcome so that no second live announcement occurs, and values are preserved.
 
-**Given** a destructive command or a form edited for at least 30 seconds
-**When** confirmation or guarded navigation opens and the operator cancels
-**Then** no dispatch or navigation occurs and focus returns to the invoking control or form
-**And** modal depth never exceeds one.
+**Given** the server returns an asynchronous Rejected lifecycle outcome with no support-safe field map (VR-03, FM-08, AM-14, SS-20)
+**When** the rejection renders
+**Then** the lifecycle rejection region shows a support-safe reason and recovery actions without inventing a field error, focus stays in the lifecycle/recovery context and is not moved just because the polite message updated, and the first recovery action follows the message in tab order
+**And** AM-14 "Command rejected. Review the message and try again." is announced once through the polite status channel (not a focused summary or alert); edit-and-retry, return, copy safe support reference, and cancel all work without a pointer; values are preserved where editing or retrying is meaningful; the recovery message and actions are not covered by banners or pending summaries; and raw backend metadata, payloads, stack traces, and unrestricted PII stay hidden.
 
-**Given** one local command is already in flight
+**Given** authorization denies a command (VR-04, SS-38)
+**When** a fail-closed panel replaces the requested surface
+**Then** no field is marked invalid, the panel names the unavailable action without policy internals, and focus moves to the denied-state heading through the AM-26 focus-only path with no live attributes
+**And** return and re-authentication (when offered) work from the keyboard, and no sensitive command payload is kept beyond the owned form lifetime.
+
+**Given** an authorized destructive action requires confirmation (OF-03, FM-05, SS-44)
+**When** the `FcDestructiveConfirmationDialog` modal opens
+**Then** its invoker is captured as the origin, initial focus goes to Cancel, the dialog has a programmatic name from its visible heading and a description from its visible consequence text, Tab/Shift+Tab cycle within the modal, and background content is not focusable
+**And** a validation or policy failure focuses a complete local summary or the denied heading; Escape cancels and never confirms; cancel or close dispatches nothing and returns focus to the captured origin, or to the current route h1 when that origin was removed, disabled, or disconnected (SS-46, SS-47); confirmation dispatches once; and modal depth never exceeds one.
+
+**Given** a form edited for at least 30 seconds, and a close, back, or navigation is intercepted (VR-06, OF-04, FM-11, SS-39, SS-45)
+**When** `FcFormAbandonmentGuard` exposes its in-flow warning
+**Then** the warning is not a dialog, does not trap focus, and has no modal cycle; its actions stay in page order with a programmatic name and description; initial focus goes to "Stay on form"; and the guard session is intentionally silent
+**And** Stay or Escape hides the warning, dispatches no navigation, preserves input, and returns focus to the captured edited control, or to the form heading when that control was removed, disabled, or disconnected; only an explicit "Leave anyway" discards input and proceeds, using FM-01 at the destination; no implicit timeout decides for the operator; and the warning, focused action, and restored control with its focus indicator stay entirely outside sticky chrome and messages.
+
+**Given** one local command is already in flight (VR-05, FM-09, AM-20, SS-25)
 **When** another submit is attempted
-**Then** FC-CNC blocks the later command without queueing, batching, or racing it and announces once that it did not run
-**And** the original command remains the only lifecycle allowed to advance.
+**Then** FC-CNC blocks the later command without queueing, batching, or racing it; the dispatch count stays at one; no validation error is added; and AM-20 "This command did not run. Another command is already in progress." is announced once per blocked attempt through the polite status channel
+**And** focus stays on the attempted submit control, "View active command" explicitly moves focus to the active lifecycle heading, both visible forms are preserved, the original command remains the only lifecycle allowed to advance under its own operation ID, and both the retained control and the optional destination are unobscured.
 
-**Given** a protected generated command contains server-controlled or derived values
+**Given** a protected generated command contains server-controlled or derived values (SS-36, SS-38)
 **When** authorization is Pending, Authorized, or NotAuthorized
 **Then** no protected form flashes before authorization, only editable Fluent inputs render, controlled values are injected server-side, and policy runs before and after BeforeSubmit plus at the service boundary
 **And** unsupported types render a bounded placeholder without leaving broken controls or accepting hidden values as authorization.
+
+**Given** this story's implementation and evidence are complete
+**When** readiness status is evaluated
+**Then** OI-16, G-4, FLUENT-APP-1, and Product approval stay open and are not closed or inferred by this story
+**And** each closes only through its own evidence record and owner decision (ux-design.md:356-359).
 
 ### Story 13.4: [I · UX-C] Announce Projection and Command State Without Noise
 
@@ -3366,37 +3435,79 @@ As an operator monitoring projections and commands,
 I want meaningful state changes announced once with truthful timing,
 So that I understand progress and recovery without hearing retries, polling ticks, or false success.
 
+**Canonical rows:** Implements/evidences AM-01 through AM-17, AM-22, AM-24, AM-26, AM-27, AM-30, and the UX-AM-1 dedupe/coalescing rule; SS-05, SS-06, SS-07 through SS-24, SS-26, SS-34, SS-35, SS-49. Preserves the delivered projection grid, loading/empty placeholders, row detail, status icon/badge, connection-recovery, and core lifecycle truth semantics. Authority: ux-design.md canonical rows (ux-design.md:394-395); DESIGN.md/EXPERIENCE.md supplement only and lose on conflict. AM-18/AM-19/AM-20 are owned by Story 13.3, AM-21 by Story 13.5, and AM-23/AM-25/AM-28/AM-29/AM-31 by Story 13.2.
+
 **Acceptance Criteria:**
 
-**Given** a projection enters Loading, Empty, Data, Stale, Reconnecting, FallbackPolling, SlowQuery, MaxItems, Reconnected, or Query/Permission Error
+**Given** each announcement row this story owns
+**When** it is emitted
+**Then** it uses exactly its canonical AM-row copy (final microcopy), localized and free of support-sensitive values, through its named channel: the polite status channel (one shared `role="status"`/`aria-live="polite"` node per surface) for AM-01 through AM-17, AM-22, AM-24, AM-27, and AM-30, and the focused heading with no live attributes (focus is the only speech path) for AM-26
+**And** no owned row uses `role="alert"`, an assertive region, or both a live region and focus for the same event.
+
+**Given** the UX-AM-1 dedupe and coalescing rules
+**When** events arrive for one group key (lifecycle operation ID; surface plus connection epoch; or surface plus operator-initiated load/filter operation)
+**Then** each row's dedupe key includes its state or result identity, an eligible non-terminal change restarts the group's trailing 250ms timer, stale async results are discarded, and only the last eligible message is announced when the window closes
+**And** a terminal outcome, focused summary, or navigation failure cancels the group's pending intermediate message and announces immediately.
+
+**Given** fake time and operation O, with Submitting at t=0ms and Acknowledged at t=100ms (two different intermediate states in one group)
+**When** time advances to t=349ms and then to t=350ms
+**Then** no message has been announced at t=349ms (249ms after the last change), and at t=350ms (250ms) exactly one message, AM-11 "Command accepted. Waiting for confirmation.", has been announced and AM-10 never was
+**And** when Syncing arrives and Confirmed follows within its 250ms window, the pending AM-12 is cancelled and AM-13 "Command confirmed." is announced immediately, so the exact sequence for O is [AM-11, AM-13] with a count of 2, and equivalent 249ms/250ms assertions cover one connection-epoch group and one load/filter group.
+
+**Given** a projection enters Loading, Empty, Data, Stale, Reconnecting, FallbackPolling, SlowQuery, MaxItems, filter-no-results, query failure, or filter-hidden detail (SS-07 through SS-15, SS-34, SS-49)
 **When** its meaningful state changes
-**Then** the visible state exposes its consequence, permitted action, and recovery classification and announces once through the appropriate channel
-**And** rapid intermediate changes, retries, poll ticks, and repetitive renders are coalesced or silent.
+**Then** the visible state exposes the meaning, permitted actions, recovery, and terminal/non-terminal class of its SS row, and announces once through AM-01, AM-02, AM-03 (only for an operator-initiated load or filter), AM-04, AM-05, AM-06, AM-08, AM-09, AM-27, AM-30 "Data could not be loaded." (with no empty-state substitution), or AM-22
+**And** skeleton frames, retry and backoff attempts, poll ticks, virtualization batches, background refreshes with no meaningful change, and re-renders of the same result stay silent.
 
-**Given** realtime connectivity fails and later recovers
+**Given** a query remains pending (SS-13, AM-08)
+**When** fake time reaches 1,999ms and then 2,000ms
+**Then** SlowQuery is not shown or announced at 1,999ms, and at 2,000ms it shows "slow, not failed" meaning and announces AM-08 "This is taking longer than expected." exactly once for that query
+**And** elapsed-time ticks stay silent and SlowQuery clears when a result or failure settles.
+
+**Given** the browser or network is offline and no current query can complete (SS-35)
+**When** the surface detects offline
+**Then** it shows that data cannot be refreshed, labels any cached or stale content, and announces AM-30 "You are offline. Data cannot be refreshed." once per connection epoch
+**And** retry ticks and repeated identical failures stay silent, and recovery in the same connection epoch starts query reconciliation.
+
+**Given** realtime connectivity fails and later recovers (SS-11, SS-12, AM-05, AM-06, AM-07)
 **When** the resilience path runs
-**Then** retries remain unbounded with jittered backoff capped at 30,000ms, a closed connection restarts within 10 seconds, and fallback polling runs every 15 seconds across at most eight lanes
-**And** successful reconciliation produces one 3,000ms Reconnected notice before returning to silent live operation.
+**Then** retries remain unbounded with jittered backoff capped at 30,000ms, a closed connection restarts within 10 seconds, and fallback polling runs every 15 seconds across at most eight lanes, with each backoff attempt and poll silent
+**And** successful reconciliation announces AM-07 "Connection restored. Data refreshed." once per connection epoch and shows the Reconnected notice for 3,000ms, whose expiry is silent.
 
-**Given** a command advances through Submitting, Acknowledged, Syncing, and a terminal or degraded outcome
+**Given** a command advances through Submitting, Acknowledged, Syncing, and a terminal outcome (SS-16 through SS-23)
 **When** lifecycle feedback renders
-**Then** transport acknowledgement is never styled or announced as Confirmed, progress uses a polite channel, and Rejected uses the focused error path
-**And** each meaningful terminal transition is announced once.
+**Then** Submitting announces AM-10, Acknowledged announces AM-11 and is never styled or announced as Confirmed, Syncing announces AM-12, and Confirmed and IdempotentConfirmed share AM-13 "Command confirmed." while keeping their distinct machine identity under first-terminal-wins, with NeedsReview using AM-15 and Warning AM-16
+**And** Rejected without a safe field map announces AM-14 once through the polite status channel while focus stays in the lifecycle/recovery context (VR-03, FM-08); a safely field-mapped rejection uses the Story 13.3 AM-19 focused summary instead; and later duplicate terminal observations stay silent.
 
-**Given** confirmation has not arrived
-**When** 10,000ms elapses
-**Then** the UI enters Degraded while confirmed-status polling may continue every 1,000ms up to 120,000ms
-**And** the zero pre-accept retry rule and single 250ms same-MessageId transient dispatch retry remain distinct and are verified with deterministic time.
+**Given** confirmation has not arrived (SS-18, SS-24, SS-26)
+**When** fake time reaches 9,999ms and 10,000ms, and later 119,999ms and 120,000ms
+**Then** at 10,000ms the UI enters Degraded with polling active (SS-24) and announces AM-17 once, while confirmed-status polling continues every 1,000ms silently
+**And** at 120,000ms polling stops and the lifecycle enters the terminal Degraded, polling-exhausted state (SS-26), announcing AM-24 "Confirmation was not received. Review status later or continue working." once, immediately, and with no success claim; every later poll or result for that closed local lifecycle is silent, the local lifecycle makes no automatic transition, and later backend evidence appears only as a newly correlated update, never a retroactive mutation.
+
+**Given** dispatch and acknowledgement timing (SS-16, SS-17)
+**When** a transient failure occurs before or after acknowledgement
+**Then** zero pre-accept retries occur, and exactly one transient retry runs 250ms after acknowledgement, verified at the 249ms and 250ms boundaries with deterministic time
+**And** the retry tick is silent (AM-11 silent behavior), and a retryable failure preserves input.
+
+**Given** tenant context is missing or stale, or authorization denies visibility or activation (SS-05, SS-06, AM-26)
+**When** the surface would render
+**Then** an explicit fail-closed context or denied state replaces the surface instead of empty-looking data, focus moves to its exact visible heading with no live attributes once per activation attempt and outcome, and entries hidden by policy stay silent
+**And** the copy exposes no tokens, policy internals, raw EventStore metadata, stack traces, event payloads, or unrestricted PII.
 
 **Given** the delivered projection grid, loading/empty placeholders, row detail, status icon, and badge components
 **When** their focused regression scenarios run
-**Then** filtering is debounced/resettable, column priority activates above 15 columns, virtualization begins at 500 rows, unfiltered results cap at 10,000, expanded detail remains a labelled region, and hidden expanded rows recover focus safely
-**And** skeletons match the expected layout, empty results distinguish no data from no filter matches, and status meaning remains available through icon/shape plus text.
+**Then** filtering is debounced and resettable (SS-15, AM-27); virtualization begins at 500 rows and unfiltered results cap at 10,000 (SS-14, AM-09); expanded detail stays a labelled region and a filter-hidden expanded row recovers focus at a valid grid control (SS-49, AM-22); and column priority above 15 columns is preserved as delivered baseline behavior
+**And** skeletons match the expected layout (SS-07), empty results (SS-08) are distinguished from no filter matches (SS-15), and status meaning stays available through icon or shape plus text (ux-design.md:57-62, AE-07).
 
-**Given** exact presentation or final microcopy remains unresolved for Warning, NeedsReview, Degraded, missing tenant, FallbackPolling, SlowQuery, MaxItems, or fresh-row dismissal
+**Given** the visual treatment of Warning, NeedsReview, Degraded, missing tenant, FallbackPolling, SlowQuery, MaxItems, or fresh-row dismissal is still unresolved
 **When** those states are implemented or documented
-**Then** they inherit the nearest Fluent semantic treatment and preserve the approved meaning and announcement rules
-**And** the unresolved choice receives an explicit disposition without inventing a new visual language or final copy.
+**Then** they use the canonical AM-row copy as final microcopy and inherit the nearest Fluent semantic treatment without inventing a new visual language
+**And** the unresolved question covers visual treatment only, and its disposition is recorded by the UX and Product owners, not by this story.
+
+**Given** this story's implementation and evidence are complete
+**When** readiness status is evaluated
+**Then** OI-16, G-4, FLUENT-APP-1, and Product approval stay open and are not closed or inferred by this story
+**And** each closes only through its own evidence record and owner decision (ux-design.md:356-359).
 
 ### Story 13.5: [I · UX-D] Preserve Fresh-Row Meaning Across Visual and Data Changes
 
@@ -3404,27 +3515,44 @@ As an operator watching a projection after a command,
 I want a fresh-row marker only on the material row my command changed,
 So that I can trust the indicator across filtering, paging, accessibility modes, and expiry.
 
+**Canonical rows:** Implements/evidences AM-21, SS-48, and the fresh-row portions of AE-07 and AE-08. Preserves the FC-NIP live composition baseline (2026-08-27 candidate `7a573763`) and the DW-679 server-allocated-key non-goal. Authority: ux-design.md canonical rows (ux-design.md:394-395); DESIGN.md/EXPERIENCE.md supplement only and lose on conflict.
+
 **Acceptance Criteria:**
 
 **Given** an eligible terminal Material outcome has an immutable pre-dispatch target identity
 **When** the resolver publishes the result
-**Then** an already-rendered scoped grid updates the matching ViewKey/EntityKey using atomic first-wins behavior
-**And** the materialization is announced at most once without moving focus.
+**Then** an already-rendered scoped grid updates the matching ViewKey/EntityKey without an unrelated render, using atomic first-wins behavior
+**And** the appearance announces AM-21 "Updated row: {accessible row label}." through the polite status channel without moving focus.
+
+**Given** the same tenant, user, and entity transition is published or visible in two views (AM-21)
+**When** the operator changes view, or the transition is published again under another ViewKey
+**Then** AM-21 is announced once per tenant plus user plus entity transition, and changing view never re-announces the same transition, even though publication may stay view-keyed
+**And** suppressed duplicate publications, expiry, and removal stay silent, proven by an FC-NIP bUnit/e2e assertion across two views plus a silent-expiry assertion.
 
 **Given** identity or materiality is Unknown, the result is NoOp, delete, Rejected, or NeedsReview, or the key is server allocated
 **When** terminal resolution completes
 **Then** no fresh-row indicator is published
 **And** no SignalR nudge, visible-row diff, aggregate identifier, or untyped result is used as substitute identity.
 
-**Given** a marked row is filtered, paged, requeried, dismissed, expires, or leaves tenant/user scope
+**Given** a marked row is filtered, paged, requeried, dismissed, or expires
 **When** generated consumers invalidate
-**Then** the grid remains consistent and scope safe, provenance is not replaced or extended by a later message, and expiry is silent
+**Then** the grid stays consistent and scope-safe, provenance is neither replaced nor extended by a later message, and expiry is silent
 **And** filter removal does not imply that the entity was deleted.
 
-**Given** forced-colors or reduced-motion mode is active
+**Given** a marked row's tenant or user scope is cleared or changes (SS-48)
+**When** the next scope renders
+**Then** the prior-scope cue and its state are removed before the new scope renders, so no prior-scope marker is ever visible in the new scope
+**And** the removal is silent and does not re-announce in either scope.
+
+**Given** forced-colors or reduced-motion mode is active (AE-07, AE-08)
 **When** the fresh-row state appears
-**Then** shape and text preserve its meaning without color or animation
-**And** the existing ten-second active window is tested using deterministic time rather than a new evidence mechanism.
+**Then** shape and text preserve its meaning without color, background image, or animation, and state changes stay immediate
+**And** the existing ten-second active window is tested with deterministic time rather than a new evidence mechanism.
+
+**Given** this story's implementation and evidence are complete
+**When** readiness status is evaluated
+**Then** OI-16, G-4, FLUENT-APP-1, and Product approval stay open and are not closed or inferred by this story
+**And** each closes only through its own evidence record and owner decision (ux-design.md:356-359).
 
 ### Story 13.6: [I · UX-E] Verify Responsive and Assistive Accessibility
 
@@ -3432,37 +3560,74 @@ As an operator using zoom, text spacing, keyboard navigation, forced colors, red
 I want generated shell workflows to remain perceivable and operable,
 So that accessibility does not depend on a preferred viewport or input mode.
 
+**Canonical rows:** Implements/evidences AE-01 through AE-09 for every changed shell, navigation, tab, toolbar, projection, form, lifecycle, palette, and dialog surface. Preserves the compact `32px` default row metric, the `75rem` constrained measure, the nine `FcTypoToken` mappings with `TypographyMappingVersion = "3.1.0"`, and inherited Fluent component visuals (ux-design.md:49-55, :73-79, :128-132, :386-387). Authority: ux-design.md canonical rows (ux-design.md:394-395); DESIGN.md/EXPERIENCE.md supplement only and lose on conflict.
+
 **Acceptance Criteria:**
 
-**Given** the canonical shell, projection, row-detail, command, palette, settings, tab, and dialog journeys
-**When** they are exercised at 320 CSS pixels and 400 percent zoom
-**Then** meaning and operation remain available without nonessential two-dimensional scrolling
-**And** sticky or transient content does not entirely obscure focus.
+**Given** a 320 CSS-pixel viewport (AE-01)
+**When** every operation and overlay on each changed surface is exercised
+**Then** there is no page-level horizontal scrolling and no content or operation loss, and only a labelled grid region and the tab strip may each own bounded, labelled horizontal scrolling
+**And** reading and focus order stay logical and the selected tab and focus indicator stay visible.
 
-**Given** WCAG text-spacing overrides and 24-by-24 CSS-pixel target-size checks
+**Given** browser zoom at 400% on a 1280 CSS-pixel reference viewport (AE-02)
+**When** the AE-01 flows are repeated
+**Then** the AE-01 outcome holds
+**And** no control is clipped, no overlay is inaccessible, and no fixed-content trap exists.
+
+**Given** WCAG 1.4.12 text-spacing overrides of line height 1.5×, paragraph spacing 2×, letter spacing 0.12×, and word spacing 0.16× the font size (AE-03)
 **When** the same journeys run
-**Then** text remains usable, controls remain operable, and any standards-based target-size exception is explicitly identified
-**And** keyboard behavior remains equivalent.
+**Then** there is no loss, clipping, overlap, or control truncation, and keyboard behavior stays equivalent
+**And** compact grid rows are exactly `32px` only at default text settings, and expand or reflow without loss under AE-02 zoom and AE-03 spacing, so `32px` is never a clipping ceiling.
 
-**Given** forced-colors and reduced-motion preferences
-**When** status, lifecycle, reconnecting, and fresh-row states render
-**Then** borders, focus, icon/text meaning, and timing remain perceivable without color or animation
-**And** no hover-only or motion-only meaning is introduced.
+**Given** every pointer target on every changed surface, including skip, account, settings, and menu controls, Home cards and CTAs, rail, tabs, toolbar, grid and detail, forms, lifecycle and recovery actions, palette, dialogs, and the abandonment guard (AE-04)
+**When** targets are inventoried and measured
+**Then** each target is at least 24 by 24 CSS px or records exactly one Inline, Spacing, Equivalent, User Agent Control, or Essential exception; a Spacing exception proves that a 24 CSS-pixel-diameter circle centered on the undersized target intersects no other target or neighboring circle, and an Equivalent exception names a separate conforming control for the same function
+**And** the evidence records the target, exception, measurement or equivalent control, rationale, and keyboard path.
+
+**Given** keyboard traversal of each surface with sticky chrome, scroll regions, popovers, drawers, messages, and dialogs active (AE-05)
+**When** each focus stop is reached
+**Then** the entire target and its focus indicator are visible within the active viewport or scrollport
+**And** focus is never behind app-owned content; this product floor is stricter than the WCAG 2.4.11 minimum and is asserted by e2e geometry.
+
+**Given** each UX-VC-1 foreground/background pair in both active themes (AE-06)
+**When** contrast is measured
+**Then** normal text meets 4.5:1, large text meets 3:1, and meaningful non-text and focus boundaries meet 3:1 against adjacent colors
+**And** Fluent-inherited pairs cite inheritance plus visual/conformance evidence, while every changed pair has computed-style proof.
+
+**Given** `forced-colors: active` and `prefers-reduced-motion: reduce` emulation (AE-07, AE-08)
+**When** status, lifecycle, navigation, reconnecting, and fresh-row states render
+**Then** system color, text, border, icon, shape, and current-state cues survive without authored color or background images, non-essential transitions, pulse, and smooth scrolling stop, and state text/icon/shape and focus changes stay immediate
+**And** expiry stays silent, and no hover-only or motion-only meaning is introduced.
+
+**Given** the axe helper and the semantic DOM, keyboard, focus, and announcement-count assertions (AE-09)
+**When** they run on each changed surface
+**Then** axe runs with WCAG 2.2 AA tags (`wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, `wcag22aa`) in place of the current WCAG 2.1-only tag set, and product-specific assertions pass
+**And** there are zero critical accessibility findings and no hover-only action.
 
 **Given** the configured accent, typography mappings, rail widths, compact row height, constrained measure, and inherited Fluent component visuals
 **When** light/dark, zoom, text-spacing, and contrast checks run
-**Then** the accent remains a configurable thread rather than chrome fill, load-bearing color pairs meet WCAG 2.2 AA, the nine FcTypoToken mappings and TypographyMappingVersion 3.1.0 remain intact, and the 72px/48px/32px/75rem metrics remain exact
-**And** no legacy token, hard-coded semantic palette, custom type ramp, decorative theme, or fabricated numeric breakpoint is introduced.
+**Then** `--fc-color-accent`, if present, is only an alias of the active Fluent V5 accent role and never owns an independent seed or palette, the accent stays a thread rather than chrome fill, and the nine `FcTypoToken` mappings and `TypographyMappingVersion` 3.1.0 remain intact
+**And** the 72px/48px rail widths and the `75rem` measure stay exact at default settings, and no legacy token, hard-coded semantic palette, custom type ramp, decorative theme, or fabricated numeric breakpoint is introduced.
+
+**Given** behavior that automation cannot establish, such as actual screen-reader speech of focus-only and live-region paths and real-device zoom and reflow
+**When** evidence is assembled for each changed surface
+**Then** a manual assistive-technology and real-device pass is recorded naming the assistive technology, browser, and device combination, the surfaces and journeys covered, and each outcome
+**And** automated evidence supplements but never replaces this required manual evidence, and missing manual evidence leaves this story incomplete.
 
 **Given** existing bUnit/e2e accessibility lanes can deterministically prove a requirement
 **When** evidence is assembled
-**Then** those focused results are reused and manual assistive-technology checks are limited to behavior automation cannot establish
+**Then** those focused results are reused, and manual checks are limited to behavior that automation cannot establish
 **And** one candidate-bound result references the evidence instead of duplicating it into new reports or workflows.
 
-**Given** UX-A through UX-F and their source-owned gaps have results
+**Given** this story's AE-01 through AE-09 evidence exists
 **When** the opt-in UX reviewer gate is reached
-**Then** the gate runs or an explicit authorized skip is recorded, and every Critical/High finding or unresolved source gap receives a disposition
-**And** the paired UX contract remains draft until the required findings and decisions are closed.
+**Then** the gate runs on this story's evidence without waiting for results from UX-A through UX-F, or an explicit authorized skip is recorded, and every Critical/High finding receives a disposition
+**And** owner decisions, including FLUENT-APP-1, Product approval, and G-4, are excluded from the reviewer disposition and stay with their named owners.
+
+**Given** this story's implementation and evidence are complete
+**When** readiness status is evaluated
+**Then** OI-16, G-4, FLUENT-APP-1, and Product approval stay open and are not closed or inferred by this story
+**And** each closes only through its own evidence record and owner decision (ux-design.md:356-359).
 
 ### Story 13.7: [I · UX-F] Provide Reusable UX Assertions for Adopters
 
@@ -3470,27 +3635,64 @@ As an adopter test engineer,
 I want deterministic FrontComposer Testing helpers for the canonical interaction and accessibility matrices,
 So that downstream modules can verify generated failure and recovery UX without app-specific selectors or hidden timing.
 
+**Canonical rows:** Expresses assertions for UX-AM-1 (AM-01 through AM-31 and the dedupe/coalescing rule), UX-VR-1 (VR-01 through VR-06), UX-FM-1 (FM-01 through FM-12), UX-OF-1 (OF-01 through OF-04 and origin capture), UX-SS-1 (SS-01 through SS-49), and UX-AE-1 (AE-01 through AE-09), and satisfies the FR-22 ledger row (ux-design.md:334). Preserves the delivered core failure-state Testing package harness. Authority: ux-design.md canonical rows (ux-design.md:394-395); DESIGN.md/EXPERIENCE.md supplement only and lose on conflict.
+
 **Acceptance Criteria:**
 
 **Given** the FrontComposer Testing host and deterministic fakes
-**When** an adopter configures validation, rejection, timeout/stall, authorization denial, paging, filtering, sorting, or lifecycle scenarios
-**Then** helpers can assert linked summaries, input preservation, state truth, blocked-submit feedback, and deduplicated announcements
-**And** deterministic time controls lifecycle, retry, reconnect, and silent-expiry behavior.
+**When** an adopter configures validation, rejection, timeout/stall, authorization denial, offline, paging, filtering, sorting, or lifecycle scenarios
+**Then** helpers can assert linked summaries and field relationships (VR-01, VR-02), input preservation, state truth per SS row, blocked-submit feedback (VR-05, AM-20), and deduplicated announcements
+**And** stable `data-testid` selectors supplement rather than replace accessible roles and names.
+
+**Given** a surface emits announcements
+**When** a message-sequence helper runs
+**Then** it asserts the exact ordered message sequence and exact count per channel and coalescing group (for example [AM-11, AM-13] with a count of 2 for one operation), identified by AM row ID and canonical copy
+**And** it fails on any extra, missing, reordered, or duplicate message, including silent-behavior rows that emit.
+
+**Given** fake time and a coalescing group
+**When** a coalescing-boundary helper advances time to 249ms and then 250ms after the last eligible change
+**Then** it asserts that no message has been emitted at 249ms and exactly the last eligible message at 250ms, with stale async results discarded
+**And** it asserts that a terminal outcome, focused summary, or navigation failure cancels the pending intermediate message and announces immediately.
+
+**Given** an announcement or focus event
+**When** a channel-distinction helper runs
+**Then** it distinguishes the polite status channel, the palette's polite combobox status (single `aria-atomic` owner with inherited result-count speech omitted), the focused summary (`role="group"`, accessible label, `tabindex="-1"`, no `aria-live` or `role="alert"`), and the focused heading with no live attributes
+**And** it fails when one event reaches both a live region and focus, or reaches the wrong channel for its AM row.
+
+**Given** a palette, settings dialog, destructive dialog, or abandonment guard opened from shell navigation or from page content
+**When** an origin-capture helper runs
+**Then** it records the captured origin as a direct handle plus its stable evidence locator before activation, and asserts return to that origin on close
+**And** it can remove, disable, or disconnect the origin before close and assert the FM-04/FM-05 route-h1 fallback (or the FM-11 form-heading fallback), never `body`.
+
+**Given** a focused element under sticky chrome, scroll regions, popovers, drawers, messages, or dialogs
+**When** an unobscured-focus geometry helper runs
+**Then** it asserts that the focused target's bounding box and its full focus indicator lie within the active viewport or scrollport and intersect no app-owned sticky, overlay, or message content (AE-05 and the FM-row unobscured-focus column)
+**And** it reports the measured geometry in redacted evidence.
+
+**Given** lifecycle, retry, reconnect, SlowQuery, and expiry behavior
+**When** helpers control time
+**Then** deterministic time drives the 250ms coalescing and post-acknowledgement retry, the 2,000ms SlowQuery threshold, the 3,000ms Reconnected notice, the 10,000ms Degraded entry, the 1,000ms and 15s polls, the 30,000ms backoff cap, the 120,000ms polling ceiling, and the ten-second fresh-row window, with N-1/N boundary assertions at 1,999/2,000ms and 119,999/120,000ms
+**And** no downstream app-specific selector or machine-dependent wait is required.
 
 **Given** route, tab, palette, dialog, row-detail, and fresh-row journeys
 **When** helpers assert focus and accessibility behavior
-**Then** they support keyboard recovery, invoker restoration, removed-content avoidance, first-wins scope, and silent expiry
-**And** stable data-testid selectors supplement rather than replace accessible roles and names.
+**Then** they support keyboard recovery, invoker restoration, removed-content avoidance, first-wins scope, cross-view single announcement (AM-21), and silent expiry
+**And** they express reflow/zoom, text-spacing, target-size (including exception records), focus-not-obscured, forced-colors, reduced-motion, and WCAG 2.2 AA axe outcomes (AE-01 through AE-09), with output redacted by default.
 
-**Given** responsive and accessibility verification
-**When** the helper surface records evidence
-**Then** it can express reflow/zoom, text-spacing, target-size, focus-not-obscured, forced-colors, and reduced-motion outcomes
-**And** output is redacted by default.
+**Given** each public or internal helper added or extended by this story
+**When** its consumer test runs
+**Then** the test exercises the helper against a realistic failure or policy state (for example an unmapped server rejection, an authorization denial, offline, or polling exhaustion) rather than a synthetic happy path
+**And** the recorded evidence is redacted, containing no token, JWT, tenant payload, stack trace, raw backend metadata, or unrestricted PII.
 
 **Given** equivalent deterministic helpers or evidence recorders already exist
 **When** this story is implemented
-**Then** they are extended rather than duplicated and any public API change updates its intentional baseline
+**Then** they are extended rather than duplicated, and any public API change updates its intentional baseline
 **And** no downstream app-specific selector or machine-dependent wait is required.
+
+**Given** this story's implementation and evidence are complete
+**When** readiness status is evaluated
+**Then** OI-16, G-4, FLUENT-APP-1, and Product approval stay open and are not closed or inferred by this story
+**And** each closes only through its own evidence record and owner decision (ux-design.md:356-359).
 
 ### Story 13.8: [A · E9-APP-1] Accept the Completed Fresh-Row Live Proof
 

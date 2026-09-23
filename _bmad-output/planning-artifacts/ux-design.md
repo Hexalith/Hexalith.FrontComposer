@@ -76,7 +76,7 @@ growth, rows expand or content reflows without loss. Grid headers remain sticky 
 its scroll. At 320 CSS pixels and 400% browser zoom, all operations remain available without
 page-level horizontal scrolling. Intrinsically two-dimensional grids and the tab strip may each own
 bounded, labelled horizontal scrolling while reading order and keyboard access remain intact and the
-selected tab/focus indicator stays visible.
+selected tab/focus indicator stays visible. Preserved baseline metrics: the Desktop navigation rail is `72px` wide in labelled mode and `48px` in icon-only mode, and projections with more than 15 columns activate column prioritization (PRD FR-11), which determines responsive column retention while the labelled grid region stays operable. These record delivered runtime behavior; they are not numeric responsive breakpoints.
 
 ### UX-DR4 - Reusable Interaction Components
 
@@ -108,8 +108,8 @@ UX-DR4. Lifecycle UX distinguishes HTTP acceptance from projection/status confir
 `NeedsReview`, `Warning`, and `Degraded`.
 
 Default timing budgets transition to `Degraded` at `10_000` ms, poll every `1_000` ms for at most
-`120_000` ms, allow zero pre-accept retries, and allow one transient retry `250` ms after
-acknowledgement. Projection recovery retries indefinitely with jittered delays capped at `30_000` ms,
+`120_000` ms, allow zero pre-accept retries, and allow one transient dispatch retry `250` ms after
+acknowledgement that reuses the same `MessageId`, so it cannot duplicate the command. Projection recovery retries indefinitely with jittered delays capped at `30_000` ms,
 restarts a closed connection within `10` s, falls back to polling every `15` s over at most eight
 lanes, and shows a reconnected notice for `3_000` ms.
 
@@ -268,7 +268,7 @@ observed system evidence. It does not mean the overall surface is permanently cl
 | SS-14 | Projection / MaxItems | Unfiltered result reaches 10,000 item cap; virtualization from 500 rows | Result is intentionally limited | Filter, sort, page, inspect visible rows | New query below cap clears state | AM-09 | Terminal | Delivered baseline; reflow/keyboard evidence open |
 | SS-15 | Projection / filter-no-results | Active filters yield zero rows while data exists | No matches; filters remain visible | Reset/edit filters | Next filter result | AM-27 | Terminal | Delivered baseline; detail-hidden evidence open |
 | SS-16 | Command lifecycle / Submitting | Valid form accepted locally, dispatch not acknowledged | Command is being sent | Cancel only if contract supports it; do not resubmit | Zero pre-accept retries; retryable failure preserves input | AM-10 | Non-terminal | Delivered core state; complete evidence open |
-| SS-17 | Command lifecycle / Acknowledged | HTTP/backend acknowledgement exists | Transport accepted; outcome unconfirmed | Continue work; inspect status | One transient retry after 250 ms; then Syncing/terminal/degraded | AM-11 | Non-terminal | Delivered core state; wording/dedupe evidence open |
+| SS-17 | Command lifecycle / Acknowledged | HTTP/backend acknowledgement exists | Transport accepted; outcome unconfirmed | Continue work; inspect status | One transient dispatch retry 250 ms after acknowledgement, reusing the same MessageId so it cannot duplicate the command; then Syncing/terminal/degraded | AM-11 | Non-terminal | Delivered core state; wording/dedupe evidence open |
 | SS-18 | Command lifecycle / Syncing | Awaiting projection/status confirmation | View is updating; not yet Confirmed | Continue work; inspect status | Poll every 1,000 ms, Degraded at 10,000 ms, stop at 120,000 ms | AM-12 | Non-terminal | Delivered core state; coalescing/budget evidence open |
 | SS-19 | Command lifecycle / Confirmed | Projection or confirmed status evidence matches operation | Requested material outcome confirmed | Close, inspect affected surface, start another command | None | AM-13 | Terminal | Delivered baseline; terminal-once evidence open |
 | SS-20 | Command lifecycle / Rejected | Authoritative rejection evidence | Command did not apply; safe reason/recovery | Edit/retry when allowed, close, support path | New submit is a new operation | AM-14 or AM-19 | Terminal | Delivered core state; accessible recovery evidence open |
@@ -357,6 +357,11 @@ UX-A through UX-F may complete independently, but OI-16 remains open until every
 has its implementation and evidence. DOC-A and DOC-B may complete independently, but OI-19 remains
 open until both parity surfaces pass. FLUENT-APP-1 and final Product re-approval remain separate owner
 decisions and cannot be inferred from green implementation evidence.
+
+User-visible auth/scope-loss and oracle behavior (SS-05, SS-06, SS-38, SS-42, AM-26, VR-04)
+cross-references MCP-SEC-2 (Story 14.2) for MCP leak and unauthorized-versus-not-found oracle
+resistance. The cross-reference covers only that user-visible behavior; this file is not independent
+security approval.
 
 ## UX-OI16-1 - OI-16 Evidence Trail
 

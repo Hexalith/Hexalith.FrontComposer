@@ -2,7 +2,7 @@
 name: Hexalith Common Application UX
 description: Visual identity contract for operational web applications composed with FrontComposer and Blazor Fluent UI V5.
 status: draft
-updated: 2026-09-09
+updated: 2026-09-23
 sources:
   - _bmad-output/planning-artifacts/ux-design.md
   - _bmad-output/planning-artifacts/ux-design-detailed-2026-07-05.md
@@ -13,7 +13,8 @@ sources:
   - _bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md
   - _bmad-output/planning-artifacts/epics.md
 colors:
-  accent-thread: '#0097A7'
+  accent-thread:
+    note: 'Inherited active Fluent V5 accent role; no hard-coded default or independent seed. Adopters override it through Fluent theming.'
 typography:
   page-title:
     note: 'Inherited FluentText Size700 and Semibold; rendered as, or inside, the route-level h1.'
@@ -60,7 +61,7 @@ components:
 
 # Hexalith Common Application Design
 
-This file owns **how FrontComposer surfaces look**. `EXPERIENCE.md` is its peer and owns information architecture, behavior, states, interactions, accessibility behavior, and journeys. Together they supersede the legacy single-file UX precedence chain. Within their respective domains, both spines win over mockups, wireframes, imports, historical supplements, and implementation examples.
+This file owns **how FrontComposer surfaces look**. `EXPERIENCE.md` is its peer and owns information architecture, behavior, states, interactions, accessibility behavior, and journeys. `ux-design.md` is canonical; this file is a supplement to it and loses on any conflict. It may add visual detail but never overrides a canonical matrix row. Within its domain, this file still wins over mockups, wireframes, imports, historical supplements, and implementation examples.
 
 ## Brand & Style
 
@@ -72,7 +73,7 @@ Neutral chrome frames the product. Data and task state carry hierarchy. The conf
 
 ## Colors
 
-`{colors.accent-thread}` is the default value of configurable `FcShellOptions.AccentColor`. It is a default, not a fixed product palette: adopters may configure it, while the shell preserves the accent-as-thread rule.
+`{colors.accent-thread}` is the active Fluent V5 accent role. FrontComposer defines no hard-coded accent default and no independent seed or palette; adopters change the accent through Fluent theming, while the shell preserves the accent-as-thread rule. The current public baseline still seeds `FcShellOptions.AccentColor` with a hard-coded default; removing that seed is an open implementation delta, not contract.
 
 All other roles—including canvas, chrome, raised surfaces, borders, foregrounds, focus, success, warning, error, information, disabled, hover, and selected states—inherit the active Fluent theme and Fluent 2 tokens. Light, dark, reduced-motion, and forced-colors presentations remain theme-owned.
 
@@ -80,8 +81,6 @@ All other roles—including canvas, chrome, raised surfaces, borders, foreground
 - Keep header, navigation, footer, page bodies, tab panels, and grouped surfaces on Fluent neutral roles.
 - Render semantic state with icon or shape plus text; color is supplemental.
 - Validate the configured accent and every load-bearing foreground/background combination to WCAG 2.2 AA in each supported theme. If the accent does not meet the needed contrast in a placement, use the inherited Fluent semantic role and retain another non-color cue.
-
-[NOTE FOR UX] The exact inherited Fluent token/API role that replaces the legacy `--fc-color-accent` alias has not been approved against the selected Fluent V5 pin. Do not encode an additional alias or hard-coded substitute in this spine.
 
 ## Typography
 
@@ -122,7 +121,7 @@ Every entry below has behavioral peer coverage in `EXPERIENCE.md`. Fluent implem
 | **account-control — `FcAccountMenu`** | Always-present account affordance in header chrome, using inherited avatar/menu styling. The user display name belongs inside the menu, not as duplicated header text. |
 | **home-directory — `FcHomeDirectory` + `FcHomeCard`** | Neutral directory surface with skeletons that preserve card geometry. Ready/actionable modules receive hierarchy through ordering, text, counts, and inherited surface emphasis—not saturated fills. “Other areas” uses the inherited accordion treatment. |
 | **command-palette — `FcCommandPalette`** | Inherited dialog/combobox/search/result visuals. Keyboard highlight and focus use the active Fluent selected/focus roles; no custom palette color ramp. |
-| **settings — `FcSettingsDialog`** | Inherited dialog, radio, toggle, preview, and action visuals. Density preview demonstrates the selected density without inventing a second token system. |
+| **settings — `FcSettingsDialog`** | Inherited dialog, radio, toggle, and action visuals. Theme and density changes apply live to the page behind the dialog without inventing a second token system. |
 | **page-frame — `FcPageHeader` + `FcPageLayout`** | A clear route title using `{typography.page-title}` above full-width or constrained content. No accent title band. |
 | **module-tabs — `FcPageTabs` / inherited Fluent tabs** | Route-backed module views use the inherited selected-tab indicator below the page header or toolbar. Tabs never mimic primary shell navigation. |
 | **page-toolbar — `FcPageToolbar`** | One coherent inherited toolbar strip: leading search/filter/view affordances and end-aligned actions. Its internal Fluent composition is implementation-owned and must not be promoted into a new visual API accidentally. |
@@ -144,7 +143,7 @@ Every entry below has behavioral peer coverage in `EXPERIENCE.md`. Fluent implem
 | Do | Don't |
 |---|---|
 | Inherit FrontComposer and Fluent UI V5 for all design-system-owned visuals | Redefine the Fluent theme, its typography, spacing, semantic palette, focus, or component anatomy |
-| Keep `FcShellOptions.AccentColor` configurable with default `{colors.accent-thread}` | Hard-code other Fluent theme roles or use the accent as header, navigation, footer, dashboard, or panel fill |
+| Inherit `{colors.accent-thread}` from the active Fluent V5 theme and let adopters override it through Fluent theming | Hard-code an accent seed or other Fluent theme roles, or use the accent as header, navigation, footer, dashboard, or panel fill |
 | Use Fluent 2 roles and component parameters | Use legacy Fluent V4/FAST tokens or one-off module palettes |
 | Use semantic icon/shape plus text and accessible naming | Communicate status through color, motion, tooltip, or hover alone |
 | Preserve `{spacing.navigation-rail-labeled}` / `{spacing.navigation-rail-icon-only}` rails, `{spacing.projection-row-compact}` rows, sticky headers, and `{spacing.constrained-content-max}` constrained measure | Invent new dimensions or numeric responsive breakpoints |
@@ -153,6 +152,6 @@ Every entry below has behavioral peer coverage in `EXPERIENCE.md`. Fluent implem
 
 ### Open visual questions
 
-- [NOTE FOR UX] Warning, NeedsReview, Degraded, missing-tenant, FallbackPolling, SlowQuery, MaxItems, and fresh-row dismissal/forced-colors treatments have behavioral contracts but no approved exact presentation or microcopy. Until decided, inherit the nearest Fluent semantic treatment, preserve the stated meaning, and do not create a new visual language.
+- [NOTE FOR UX] Warning, NeedsReview, Degraded, missing-tenant, FallbackPolling, SlowQuery, MaxItems, and fresh-row dismissal/forced-colors states have final copy: the canonical `ux-design.md` UX-AM-1 row copy. Only their visual treatment is unresolved, and UX/Product own that disposition. Until decided, inherit the nearest Fluent semantic treatment, preserve the stated meaning, and do not create a new visual language.
 - [NOTE FOR UX] Numeric responsive breakpoints remain unspecified.
-- [NOTE FOR UX] The selected Fluent V5 catalog pin and the approved exact token/API role for the configurable accent must be reconciled before the visual contract can be marked final.
+- [NOTE FOR UX] The selected Fluent V5 catalog pin (FLUENT-APP-1) and the exact API name of the active accent role under that pin must be confirmed before the visual contract can be marked final.

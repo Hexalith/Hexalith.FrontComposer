@@ -1,7 +1,7 @@
 ---
 name: Hexalith Common Application UX
 status: draft
-updated: 2026-09-09
+updated: 2026-09-23
 sources:
   - _bmad-output/planning-artifacts/ux-design.md
   - _bmad-output/planning-artifacts/ux-design-detailed-2026-07-05.md
@@ -15,13 +15,13 @@ sources:
 
 # Hexalith Common Application Experience
 
-This file owns **how FrontComposer works**: information architecture, behavior, state, interaction, accessibility, and journeys. `DESIGN.md` is its peer and owns appearance. Together they supersede the legacy single-file UX precedence chain. Within their respective domains, both spines win over mockups, wireframes, imports, historical supplements, and implementation examples.
+This file owns **how FrontComposer works**: information architecture, behavior, state, interaction, accessibility, and journeys. `DESIGN.md` is its peer and owns appearance. `ux-design.md` is canonical; this file is a supplement to it and loses on any conflict. It may add behavioral detail but never overrides a canonical matrix row. Within its domain, this file still wins over mockups, wireframes, imports, historical supplements, and implementation examples.
 
 ## Foundation
 
 The primary human form factor is desktop-first responsive web. The shared shell also serves compact and narrow browser viewports; it is not a native mobile or desktop product. Nonvisual peer surfaces are part of the same product experience: generated C# output, the `frontcomposer` CLI, the MCP protocol, and the Testing package.
 
-The UI system is **FrontComposer + Blazor Fluent UI V5**. It inherits Fluent behavior unless this spine defines a FrontComposer delta. `DESIGN.md` is the sole visual identity reference and exposes the configurable default accent as `{colors.accent-thread}` without redefining Fluent.
+The UI system is **FrontComposer + Blazor Fluent UI V5**. It inherits Fluent behavior unless this spine defines a FrontComposer delta. `DESIGN.md` is the sole visual identity reference and exposes the inherited Fluent V5 accent role as `{colors.accent-thread}` without redefining Fluent.
 
 The audience is operational: adopter developers, authenticated operators, AI-agent integrators, framework maintainers, and release owners. Bespoke consumer marketing or transactional UX is outside this contract. Hexalith.Tenants is the obligated first adopter; Hexalith.Parties is only a dated Product-selected D-7 fallback and inherits the identical evidence obligation.
 
@@ -40,7 +40,7 @@ Every human surface is tenant- and user-scoped. Missing or stale tenant context 
 | Projection row detail | Expand action from a projection row | Inspect one entity in an accessible nested region and launch allowed commands | UJ-2, UJ-3 |
 | Generated command form | Inline or CompactInline host; FullPage at `/commands/{BoundedContext}/{CommandTypeName}`; palette or authorized CTA | Validate and submit one domain command | UJ-3 |
 | Command lifecycle | Attached to the active generated command | Separate transport acknowledgement from confirmed/rejected/review/degraded outcome | UJ-3 |
-| Settings | Header control or `Ctrl+,` | Theme and density selection, preview, reset, persistence | UJ-2, UJ-3 |
+| Settings | Header control or `Ctrl+,` | Theme and density selection applied live, Restore defaults, persistence | UJ-2, UJ-3 |
 | Account control | Always-present header control | Sign-in/sign-out and account access through `/authentication/challenge` and `/authentication/sign-out` | UJ-2, UJ-3 |
 | Customization diagnostics | Development-only override host | Explain customization-contract mismatches without exposing operator data | UJ-5 |
 | MCP tool catalog/call | `tools/list`; `tools/call` | Discover and execute visible generated command tools | UJ-4 |
@@ -77,14 +77,16 @@ Microcopy is direct, localized, evidence-based, and support-safe. Brand posture 
 
 | Do | Don't |
 |---|---|
-| “Command accepted. Waiting for projection confirmation.” | “Saved successfully” on HTTP acceptance |
+| “Command accepted. Waiting for confirmation.” (AM-11) | “Saved successfully” on HTTP acceptance |
 | “No parties match these filters.” Preserve the filters and offer reset. | “Nothing here!” or an unexplained blank grid |
-| “This data may be stale. Refresh or wait for reconnect.” | Report “Realtime disconnected” without consequence or recovery |
+| “Data may be out of date.” (AM-04), with refresh or wait-for-reconnect recovery visible | Report “Realtime disconnected” without consequence or recovery |
 | Name the domain action: “Create party”, “Edit party” | Generic “Submit” when the action is known |
 | Explain rejection using support-safe error code, category, suggested action, and docs code | Expose raw EventStore metadata, event payloads, tokens, JWT claims, stack traces, or unrestricted PII |
 | Announce meaningful state once; coalesce progress | Announce every retry, poll tick, render, or row expiry |
 
-[NOTE FOR UX] Exact copy for Warning, NeedsReview, Degraded, missing tenant, FallbackPolling, SlowQuery, MaxItems, and fresh-row dismissal is not approved. Preserve the meanings and announcement rules below; do not invent final microcopy.
+Announcement copy is final and owned by the canonical `ux-design.md` UX-AM-1 rows, including Warning (AM-16), NeedsReview (AM-15), Degraded (AM-17, AM-24), missing tenant (AM-26), FallbackPolling (AM-06), SlowQuery (AM-08), MaxItems (AM-09), and fresh-row appearance (AM-21; expiry and dismissal are silent). This file does not restate or vary that copy.
+
+[NOTE FOR UX] Only the visual treatment of those states is unresolved; UX/Product own that disposition.
 
 ## Component Patterns
 
@@ -95,9 +97,9 @@ Visual specifications for every row live in `DESIGN.md` Components.
 | **shell-frame — `FrontComposerShell`** | Hosts one main landmark, skip links, providers, header, navigation, route content, footer, shortcuts, and the always-present account control. Successful client navigation focuses the route `h1`; failed navigation preserves usable focus and announces failure. |
 | **navigation-rail — `FrontComposerNavigation` + `FcHamburgerToggle`** | Shows exactly one primary entry per Module and one active item. Hamburger is always available; Desktop toggles labeled/icon-only rail, while compact/narrow behavior reveals the same Module list without promoting subpages. |
 | **account-control — `FcAccountMenu`** | Always renders despite adopter header customization. Exposes sign-in/sign-out routes and returns focus to the invoker when its menu closes. Host/server security owns generic authentication wiring. |
-| **home-directory — `FcHomeDirectory` + `FcHomeCard`** | Implements No Modules, Hydrating, Partially Ready, and Ready outcomes. Ready items sort by the canonical urgency rule; activation enters the Module/default tab. Missing tenant overrides all data-like states with fail-closed feedback. |
+| **home-directory — `FcHomeDirectory` + `FcHomeCard`** | Implements No Modules (SS-01), Hydrating (SS-02), Empty (SS-03), and Ready (SS-04) outcomes. Ready items sort by the canonical urgency rule; activation enters the Module/default tab. Missing tenant overrides all data-like states with fail-closed feedback. |
 | **command-palette — `FcCommandPalette`** | Opens with `Ctrl+K` as an ARIA combobox, searches authorization-visible registry entries after a `150ms` debounce, supports keyboard result navigation, and routes commands/pages through canonical routes. Close returns focus to invoker; navigation focuses destination `h1`. |
-| **settings — `FcSettingsDialog`** | Opens from header or `Ctrl+,`, supports theme/density selection, preview, reset, and confirmation. Preferences persist only with resolved tenant/user scope; changes update the body density attribute and are announced once. |
+| **settings — `FcSettingsDialog`** | Opens from header or `Ctrl+,`, supports theme/density selection, Restore defaults, and Done/close. Changes apply live and update the body density attribute; closing never rolls them back, and the dialog session is intentionally silent (OF-02, SS-43). Preferences persist only with resolved tenant/user scope. |
 | **page-frame — `FcPageHeader` + `FcPageLayout`** | Provides the route `h1` and full-width default or opt-in `{spacing.constrained-content-max}` content. Failed route activation leaves focus on a stable heading/status target. |
 | **module-tabs — `FcPageTabs` / inherited Fluent tabs** | Encodes selection in `/{module}/{tab}`, is deep-linkable, and preserves Fluent arrow-key behavior. Keyboard selection keeps focus on the active tab while its labelled tabpanel changes. |
 | **page-toolbar — `FcPageToolbar`** | Presents leading search, filter, view/overflow controls, and end-aligned authorized actions. `/` focuses page search only when enabled. Its public behavior is stable; internal Fluent composition is implementation-owned. |
@@ -110,7 +112,7 @@ Visual specifications for every row live in `DESIGN.md` Components.
 | **command-form — generated form + `FcFieldPlaceholder`** | Density uses non-derivable property count: 0–1 Inline, 2–4 CompactInline, 5+ FullPage. Server-controlled/derived fields are hidden and injected later. Unsupported field types show a placeholder. Validation links summary items to controls, focuses the summary on failed submit, preserves useful input, and lets keyboard users reach the first invalid field. |
 | **command-authorization — `FcAuthorizedCommandRegion`** | Resolves Pending, Authorized, or NotAuthorized before revealing/activating protected commands. `[RequiresPolicy]` runs before `BeforeSubmit` and again afterward for protected commands; the service boundary also authorizes. |
 | **command-safety — `FcDestructiveConfirmationDialog` + `FcFormAbandonmentGuard`** | Destructive commands require explicit confirmation. Dirty-form navigation after `30s` of edits is guarded; cancel restores the form/focus. Dialog close returns focus to invoker; modal depth stays one. |
-| **lifecycle-feedback — `FcLifecycleWrapper` + `FcPendingCommandSummary`** | Shows the exact lifecycle vocabulary and never calls transport acceptance confirmed success. Progress is polite; focused validation/rejection uses the error summary/alert path. FC-CNC permits one in-flight local command and blocks—never queues/batches—a later local submit with one accessible announcement. |
+| **lifecycle-feedback — `FcLifecycleWrapper` + `FcPendingCommandSummary`** | Shows the exact lifecycle vocabulary and never calls transport acceptance confirmed success. Progress is polite. Client validation (AM-18) and field-mapped server rejection (AM-19, VR-02) use the focused summary; an unmapped rejection uses polite AM-14 and keeps focus in the lifecycle/recovery context (VR-03, FM-08). No lifecycle state uses a focused alert. FC-CNC permits one in-flight local command and blocks—never queues/batches—a later local submit with one accessible announcement. |
 | **fresh-row-indicator — `FcNewItemIndicator`** | Publishes only from resolver-owned eligible terminal outcomes using immutable pre-dispatch target identity and Material disposition. Updates an already-rendered grid live, scopes before read/render, announces a newly material row at most once, and expires silently after the existing ten-second active window. |
 | **customization-diagnostic — `FcCustomizationDiagnosticPanel`** | Development-only. Appears for override contract mismatch or render fault, gives bounded corrective guidance, and never leaks raw payload, tenant/user values, tokens, or stack traces. |
 
@@ -120,10 +122,10 @@ Visual specifications for every row live in `DESIGN.md` Components.
 
 | State | Entry evidence | Meaning and actions | Recovery / announcement |
 |---|---|---|---|
-| No Modules | Registry has no domain manifests | Valid empty shell; link to getting started | Terminal for current registry; route heading identifies Home |
-| Hydrating | Manifests exist; capability hydration not started/resolved | Geometry-matched skeletons; shell remains operable | Non-terminal; busy state, no noisy per-card announcements |
-| Partially Ready | Some Module counts ready, others loading | Ready Modules work; pending Modules remain skeletons | Non-terminal; one useful aggregate update, not one per count |
-| Ready | Hydration seeded | Actionable Modules ordered first; zero-action Modules follow by name/secondary grouping | Stable until live count change; reordering preserves focus |
+| No Modules (SS-01) | Registry has no domain manifests | Valid empty shell; link to getting started | Terminal for current registry; route heading identifies Home |
+| Hydrating (SS-02 Loading) | Manifest/count query pending | Geometry-matched skeletons; shell remains operable | Non-terminal; resolves to Empty or Ready; AM-01 once, no per-card announcements |
+| Empty (SS-03) | Query succeeds with no visible Modules | No accessible Modules; not an error | Terminal; new registration/access or refresh; AM-02 once |
+| Ready (SS-04 Data) | One or more visible Modules | Actionable Modules ordered first; zero-action Modules follow by name/secondary grouping | Stable until live count change; reordering preserves focus |
 | Route failure | Client navigation cannot activate target | Current surface remains usable; failure status offers retry/back | Announce once; focus remains on stable heading/status |
 | No Module access | Policy hides entry or direct route denies | Hidden when policy requires; otherwise support-safe denied surface | Terminal until auth changes; alert/heading is focus target |
 | Missing/stale tenant | Tenant resolution absent, invalid, or changes under a live surface | Explicit blocked state; never render stale/empty-looking data | Clear prior scope before render; announce once as blocking |
@@ -135,10 +137,10 @@ Home is reachable through both `/` and `/home`. Settings preference hydration an
 
 | Surface | Required states | Contract |
 |---|---|---|
-| Module workspace / Module Tab | Loading, Available, No Access, Missing Tenant, Unknown Tab | Loading preserves shell geometry; Available selects exactly one route-backed tab; denied/tenant failures are explicit; an unknown tab produces a route failure rather than silently selecting unrelated content. |
+| Module workspace / Module Tab | Loading, Available, No Access, Missing Tenant, Invalid Tab Fallback | Loading preserves shell geometry; Available selects exactly one route-backed tab; denied/tenant failures are explicit; an absent or unavailable tab falls back to the default tab, which becomes the selected tab, and announces AM-31 once (FM-02, SS-32); the invalid target is never selected. |
 | Projection flyout | Closed, Open, No Projections, Authorization-filtered, Navigation Failure | Open is keyboard navigable; no-projection Modules retain their workspace/default tab; hidden projections are not teased; close/failure returns or preserves useful focus. |
-| Command palette | Closed, Hydrating, Results, No Matches, Authorization-filtered, Navigation Failure | Search results update after `150ms`, announce useful result-count changes without per-keystroke noise, exclude unauthorized actions, and keep query/focus on a recoverable target after failure. |
-| Settings | Hydrating, Ready, Dirty Preview, Persisted, Persistence Skipped/Failed | Preview does not commit. Confirm updates theme/density and announces once; missing scope skips storage without inventing a default tenant; failure preserves the selected value in-session and gives support-safe feedback. |
+| Command palette | Closed, Hydrating, Results, No Matches, Authorization-filtered, Navigation Failure | Search results update after `150ms`; only a zero-result query speaks, as AM-28 through the single palette-owned status node, and no result-count speech is emitted; results exclude unauthorized actions and keep query/focus on a recoverable target after failure. |
+| Settings | Hydrating, Open, Persisted, Persistence Skipped/Failed | Theme/density changes apply live; closing does not roll them back, and the dialog session is intentionally silent (OF-02, SS-43). An exposed setting error focuses a complete local summary (AM-18); missing scope skips storage without inventing a default tenant; failure preserves the selected value in-session and gives support-safe feedback. |
 | Account control | Signed Out, Challenge Pending, Signed In, Sign-out Pending/Failed | Menu is always reachable. Challenge/sign-out use framework routes; sign-out invalidates/evicts token state; failure exposes no token or claim detail and leaves a stable retry route. |
 | Projection row detail | Collapsed, Expanded, Hidden by Filter, Query/Permission Error | Expanded region is labelled; hiding moves/preserves focus at the grid and announces once; detail errors retain row context and do not expose backend internals. |
 | Generated command form | Initial, Authorization Pending/Denied, Dirty, Invalid, Dispatching, Retryable Failure, Lifecycle Outcome | Only editable fields render; dirty navigation is guarded; invalid submission focuses the linked summary; dispatch locks the local lane; input survives meaningful correction/retry. |
@@ -178,13 +180,14 @@ Client validation runs before dispatch. A failed submit focuses a linked error s
 | Acknowledged | HTTP/EventStore accepted the command | Wait for status/projection evidence | Polite once; non-terminal; never success |
 | Syncing | Accepted command awaits confirmed status/projection | Wait; polling continues; start-over only where provided | Coalesced polite progress; non-terminal |
 | Confirmed | Approved status/projection evidence proves outcome | Return to refreshed list/detail | Polite once; terminal success |
-| Rejected | Structured domain rejection | Review support-safe reason; correct/retry when meaningful | Focused alert/error summary once; terminal |
+| Rejected | Structured domain rejection | Review support-safe reason; correct/retry when meaningful | Unmapped (VR-03): polite AM-14 once; focus stays in the lifecycle/recovery context (FM-08). Field-mapped (VR-02): AM-19 focused summary once; AM-14 suppressed. Terminal |
 | IdempotentConfirmed | Evidence proves requested material result was already confirmed | No repeat dispatch required | Polite once; terminal success; fresh marker only if terminal materiality is Material |
 | NeedsReview | Outcome requires human review; not confirmed success | Follow named support/review action when supplied | Once; terminal for automated lifecycle |
 | Warning | Outcome succeeded or progressed with a qualifying warning; not equivalent to Confirmed unless evidence says so | Follow support-safe action; retain context | Once; terminal/non-terminal only as supplied by lifecycle evidence |
-| Degraded | Confirmation exceeds `10,000ms` or retryable dispatch path exhausts its budget | Continue status polling, start over where safe, or follow support guidance | Once on entry; non-terminal until terminal evidence or `120,000ms` polling ceiling |
+| Degraded, polling active (SS-24) | Confirmation reaches `10,000ms` while the status budget remains; outcome unconfirmed, no false success | Review status, continue working, or close; polling continues every `1,000ms` | AM-17 once; non-terminal until confirmation/other terminal evidence or the `120,000ms` ceiling |
+| Degraded, polling exhausted (SS-26) | The operation remains unconfirmed when total polling reaches `120,000ms`; local polling has ended | Review status later, continue working, close, or start a separately identified recovery operation; later backend evidence is a newly correlated update, never a retroactive mutation | AM-24 once, immediately; terminal |
 
-Lifecycle polling uses the confirmed status endpoint every `1,000ms` for at most `120,000ms`. The lifecycle coordinator has zero pre-accept lifecycle retries. Separately, the transient **dispatch** retry is exactly once after `250ms` with the same `MessageId`; it is not a lifecycle-poll retry. FC-CNC keeps exactly one in-flight local command; later submits do not run.
+Lifecycle polling uses the confirmed status endpoint every `1,000ms` for at most `120,000ms`. The lifecycle coordinator has zero pre-accept lifecycle retries. Separately, one transient **dispatch** retry runs `250ms` after acknowledgement, reusing the same `MessageId` so it cannot duplicate the command; it is not a lifecycle-poll retry. FC-CNC keeps exactly one in-flight local command; later submits do not run.
 
 ### Fresh-row state
 
@@ -242,7 +245,7 @@ Behavioral accessibility is mandatory; visual contrast/focus styling lives in `D
 - Preserve one main landmark, skip links to content, unique route `h1`, semantic navigation, labelled tablist/tab/tabpanel relationships, combobox/listbox semantics for palette, dialog semantics, grid semantics, and `role="region"` for row detail.
 - Every interactive element has an accessible name. Status icons have `aria-label` and focusable tooltip access; count badges include textual context.
 - Focus order follows reading order. Route/tab/palette/dialog behavior is deterministic; focus never lands in removed, hidden, or obscured content.
-- Progress and non-blocking transitions use a polite status channel. Submit-blocking validation and Rejected outcomes use the focused linked error summary/alert path. Each meaningful transition is announced once.
+- Progress and non-blocking transitions use a polite status channel. Submit-blocking validation (AM-18) and field-mapped server rejection (AM-19) use the focused linked error summary without live attributes; an unmapped Rejected outcome uses polite AM-14 and keeps focus in the lifecycle/recovery context. No focused alert is used. Each meaningful transition is announced once.
 - At `320 CSS px` reflow and `400%` zoom, meaning and operation remain available without two-dimensional scrolling except content with an essential two-dimensional layout.
 - Text remains operable when tested with WCAG text-spacing overrides: line height `1.5` times font size, paragraph spacing `2` times font size, letter spacing `0.12` times font size, and word spacing `0.16` times font size.
 - Pointer targets meet WCAG 2.2 AA `24×24 CSS px` minimum or a documented exception; keyboard operation remains equivalent.
@@ -312,10 +315,10 @@ Failure: tenant context is missing or goes stale. The prior scope clears before 
 3. A destructive command requires confirmation. Client validation links a focused summary to invalid fields and preserves input.
 4. Marc submits. FC-CNC makes this the only in-flight local command; a rapid second submit is blocked and announced as not run.
 5. The lifecycle moves through Submitting, Acknowledged, and Syncing. Acknowledged explicitly means transport acceptance, not success.
-6. The status poll supplies Confirmed, Rejected, IdempotentConfirmed, NeedsReview, Warning, or Degraded evidence; `10,000ms` produces Degraded while `1,000ms` polling may continue to `120,000ms`.
+6. The status poll supplies Confirmed, Rejected, IdempotentConfirmed, NeedsReview, Warning, or Degraded evidence; `10,000ms` produces non-terminal Degraded (AM-17) while `1,000ms` polling may continue; reaching `120,000ms` unconfirmed ends the local lifecycle as terminal Degraded (AM-24).
 7. **Climax:** Confirmed projection/status evidence refreshes the row/list and the lifecycle becomes Confirmed; Marc trusts the visible outcome rather than the HTTP response.
 
-Failure: Rejected focuses a support-safe error path and preserves correctable input. A transient dispatch fault may retry exactly once after `250ms` with the same `MessageId`; another failure degrades without a duplicate command.
+Failure: an unmapped Rejected outcome announces politely (AM-14) and keeps focus in the lifecycle/recovery context; a field-mapped rejection focuses the mapped summary (AM-19). Correctable input is preserved either way. A transient dispatch fault may retry exactly once, `250ms` after acknowledgement, reusing the same `MessageId`; another failure degrades without a duplicate command.
 
 ### UJ-4. Ravi exposes the domain surface to an AI agent.
 
@@ -352,7 +355,7 @@ Failure: a regression or unredacted value fails the focused/default lane. The ev
 
 ## Open Questions
 
-- [NOTE FOR UX] Exact visual treatment and final microcopy remain unresolved for Warning, NeedsReview, Degraded, missing tenant, FallbackPolling, SlowQuery, MaxItems, and fresh-row dismissal/forced-colors states.
+- [NOTE FOR UX] Exact visual treatment remains unresolved for Warning, NeedsReview, Degraded, missing tenant, FallbackPolling, SlowQuery, MaxItems, and fresh-row dismissal/forced-colors states; UX/Product own that disposition. Their copy is final in the canonical UX-AM-1 rows.
 - [NOTE FOR UX] Numeric responsive breakpoints remain unresolved; only semantic Desktop, Compact, and Narrow-browser behavior is committed.
 - [NOTE FOR UX] Product/Architecture must confirm the selected Fluent V5 pin and exact supported token/API names before final handoff.
 - The spine remains `draft` until the opt-in reviewer gate runs or is explicitly skipped and these source-owned gaps receive a disposition.
