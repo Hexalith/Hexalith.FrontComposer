@@ -1,26 +1,458 @@
 ---
-stepsCompleted: ['step-01-validate-prerequisites', 'step-02-design-epics', 'step-03-create-stories', 'step-04-final-validation']
-status: 'complete'
-updated: 2026-09-22
+stepsCompleted:
+  - step-01-validate-prerequisites
+  - step-02-design-epics
+  - step-03-create-stories
+  - step-04-final-validation
 inputDocuments:
-  - _bmad-output/project-docs/project-overview.md
-  - _bmad-output/project-docs/architecture.md
-  - _bmad-output/project-docs/api-contracts.md
-  - _bmad-output/project-docs/data-models.md
-  - _bmad-output/project-docs/component-inventory.md
-  - _bmad-output/planning-artifacts/frontcomposer-readiness-request-2026-06-03.md
-sourceNote: >-
-  Canonical planning sources now exist under _bmad-output/planning-artifacts:
-  prd.md, architecture.md, ux-design.md, and epics.md. The PRD remains
-  brownfield-derived from _bmad-output/project-docs plus the 2026-06-03
-  readiness request, and every requirement must retain a source trace.
-  Epics consume canonical FR-1 through FR-30 requirements instead of serving as the only
-  requirements inventory.
+  - _bmad-output/planning-artifacts/prd.md
+  - _bmad-output/planning-artifacts/architecture.md
+  - _bmad-output/planning-artifacts/ux-design.md
+  - _bmad-output/planning-artifacts/ux-designs/ux-frontcomposer-2026-09-09/DESIGN.md
+  - _bmad-output/planning-artifacts/ux-designs/ux-frontcomposer-2026-09-09/EXPERIENCE.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-22.md
+updated: 2026-09-23
+numberingNote: >-
+  Epics 1-11 are completed delivery history restored from epics.md at commit
+  aeff9f83 with the approved 2026-09-22 section 9.4 annotations. The 2026-09-22
+  sprint-change-proposal backlog is numbered after the current sequence as
+  Epics 12-17. ux-design.md is the canonical UX authority; the 2026-09-09
+  DESIGN.md/EXPERIENCE.md pair is supplementary.
 ---
 
-# Hexalith.FrontComposer - Epic Breakdown
+# frontcomposer - Epic Breakdown
 
 ## Overview
+
+This document provides the complete epic and story breakdown for frontcomposer, decomposing the requirements from the PRD, UX Design if it exists, and Architecture requirements into implementable stories.
+
+> **Numbering and delivered history (2026-09-23).** Epics 1–11 are completed delivery history and
+> keep their original numbers, stories, and acceptance criteria in the Delivered History sections
+> below, before Epic 12. New work from `sprint-change-proposal-2026-09-22.md` §7 is numbered after
+> the current sequence as Epics 12–17 (Stories 12.1–17.16). Requirement, NFR, UX-DR, and AR
+> identifiers used inside Epics 1–11 refer to the Historical inventory in the Delivered History
+> section; identifiers used in Epics 12–17 refer to the Requirements Inventory below. The canonical
+> UX authority for Epics 12–17 is `ux-design.md`; the 2026-09-09 `DESIGN.md`/`EXPERIENCE.md` pair
+> supplements it.
+
+## Requirements Inventory
+
+### Functional Requirements
+
+FR1: For each valid projection type, generate the projection view, Fluxor feature/actions/reducers, and registration artifacts; emit the governed diagnostic for invalid declarations and render Loading, Empty, and Data by ProjectionRole.
+
+FR2: For each valid command type, generate its form, lifecycle, renderer, registration, subscriber, bridge, and optional FullPage route artifacts; fail invalid constructor, MessageId, or CommandTarget declarations with the governed diagnostics.
+
+FR3: Support the documented attribute vocabulary for projection roles, bounded contexts, badges, column priority, field groups, empty-state actions, confirmation, policies, derived fields, icons, relative time, currency, display metadata, defaults, templates, and command targets, with synchronized behavior, diagnostics, snapshots, and documentation.
+
+FR4: Select command density from the non-derivable property count: Inline for 0–1, CompactInline for 2–4, and FullPage for 5 or more, with generator tests and snapshots.
+
+FR5: Resolve projection customization deterministically as Level 4 full-view override, Level 2 template, then generated default; compose Level 3 slots only through delegated generated renderers and surface governed accessibility/mismatch diagnostics.
+
+FR6: Detect structural and metadata drift by comparing deterministic, bounded schema/generated material with opt-in checked-in baselines and emit the governed HFC1060–HFC1069 diagnostics.
+
+FR7: Provide the validated AddHexalithFrontComposerQuickstart(), optional AddHexalithDomain<TMarker>(), and AddHexalithEventStore(...) bootstrap path; fail missing or misordered stages at startup, allow an empty shell, and preserve scoped lifetimes.
+
+FR8: Render the complete Fluent shell frame with skip links, providers, header, one Module navigation entry per bounded context, content, footer, account access, keyboard shortcuts, deterministic route focus, and WCAG 2.2 AA reflow/zoom behavior.
+
+FR9: Provide full-width and constrained FC-LYT modes, persisted theme/density preferences scoped through IStorageService, the exact 32px compact-grid metric, and correctly owned localized shell/domain strings.
+
+FR10: Drive Module discovery, home cards, tabs, projection flyouts, routes, badges, counts, and authorization-aware command-palette entries from Domain Manifest data, using canonical routes, urgency ordering, one active navigation item, and deterministic tab/palette/dialog focus.
+
+FR11: Render accessible projection grids with debounced/resettable filters, loading/empty/data and health states, expandable row details, column prioritization, virtualization, slow-query and max-item notices, semantic status cues, and deduplicated announcements.
+
+FR12: Query EventStore over HTTP, subscribe over SignalR, expose reconnect/fallback/recovery state, never treat a nudge as command success, and recover automatically within the defined reconnect, restart, polling-lane, polling-interval, and notice-duration bounds.
+
+FR13: Publish fresh-row indicators only through FC-NIP from an immutable pre-dispatch target identity and independently Material terminal result; suppress unknown, non-material, delete, rejected, review, or server-allocated-key outcomes; enforce tenant/user scope, first-wins identity, live invalidation, silent expiry, and observable resolution outcomes.
+
+FR14: Validate, parse, and dispatch generated command forms; preserve useful input on retryable pre-accept failures; generate and reuse a ULID MessageId; link and focus client-validation summaries while keeping asynchronous server rejection as lifecycle feedback unless safely field-mapped.
+
+FR15: Surface Submitting, Acknowledged, Syncing, Confirmed, Rejected, IdempotentConfirmed, NeedsReview, Warning, and Degraded without presenting transport acceptance as success, using the specified 10,000ms degradation, 1,000ms/120,000ms polling, zero pre-accept retry, and one 250ms transient-retry budgets.
+
+FR16: Enforce policy authorization before and after BeforeSubmit plus at the service boundary, destructive confirmation, the 30-second form-abandonment guard, and FC-CNC one-at-a-time local execution with accessible blocked-submit feedback.
+
+FR17: Expose every visible generated command as a dynamically listed MCP tool with descriptor-derived JSON schema, canonical naming, bounded acknowledgement output, and server-side injection of tenant, user, message, and correlation fields.
+
+FR18: Expose descriptor-exact tenant-scoped projection resources and validated framework-global skill resources; serve only validated skill sections and fail oversized content closed rather than truncating it.
+
+FR19: Require MCP tenant-tool and resource-visibility gates, compatible schema negotiation, host authentication, non-Development prohibition of AllowAll gates, exact opaque failure/disclosure shapes, and response/log redaction as defined by the request-class matrix.
+
+FR19a: Preserve command lifecycle across MCP requests and DI scopes through singleton lifecycle state with a scoped tracker, including the opaque unknown-tool behavior for hidden or unknown lifecycle lookups.
+
+FR20: Provide deterministic frontcomposer inspect text and frontcomposer.cli.inspect.v1 JSON output covering generated forms, grids, registrations, manifests, warnings, and errors, with filtering, fail flags, stable ordering, and relative paths.
+
+FR21: Provide dry-run-by-default frontcomposer migrate planning and atomic apply for allowlisted Roslyn migration edges, refusing generated, submodule, symlinked, or out-of-root targets and emitting frontcomposer.cli.migrate.v1 JSON.
+
+FR22: Provide a FrontComposer Testing package with a bUnit host, deterministic command/query/projection fakes, redacted evidence, builders, and assertions for success, failure, authorization, query variants, validation, announcements, focus, blocked submits, and fresh-row expiry.
+
+FR23: Keep component, diagnostic, migration, and skill-corpus documentation synchronized with executable inventories, generated/runtime surfaces, the selected Fluent catalog, DocFX validation, and content-level parity checks.
+
+FR24: Publish only an inventory-, consumer-, checksum-, SBOM-, symbols-, provenance-, and policy-validated exact package set through a secretless/read-only builder and a distinct protected candidate-free publisher; require a sealed publish_authorized manifest before side effects and append-only, attempt-total verification afterward.
+
+FR25: Evolve public APIs, schemas, CLI JSON, generated-output paths, diagnostics, and analyzer policy intentionally through baselines, documentation, and migration/deprecation plans; keep AnalysisMode=Recommended and TreatWarningsAsErrors enabled.
+
+FR26: Preserve completed FC-NIP producer/consumer composition through the approved base and successor contracts; never infer row identity from SignalR nudges or EventStore lifecycle data, while retaining the server-allocated-key case as an explicit non-goal.
+
+FR27: Preserve the closed Epic 10 tooling-governance outcomes as regression traceability through FR20–FR23, NFR6, NFR10, synthetic/manual-only HFCM9002 evidence, and Testing redaction; create no new implementation work solely for FR27.
+
+FR28: Preserve the closed generated-command-route and Contracts-kernel split decisions as regression traceability through FR2, FR10, NFR2, D-3, and D-5; create no new implementation work solely for FR28.
+
+FR29: Maintain an operator- or adopter-visible outcome, fail-closed rule, and verification artifact for every architecture-review defect class, without reopening completed remediation rows.
+
+FR29.1: Preserve completed sign-out token invalidation/eviction and prevent singleton capture of scoped authentication.
+
+FR29.2: Preserve completed projection realtime recovery within FR12/NFR8 bounds so a circuit does not remain degraded after backend recovery.
+
+FR29.3: Preserve completed MCP cross-request lifecycle behavior defined by FR19a.
+
+FR29.4: Preserve completed direct coverage of ReturnPathValidator and the single StorageKeys builder.
+
+FR29.5: Preserve completed generated-code hygiene through one literal-escaping implementation, one slug algorithm, linked stylesheets, and compiling nullable numeric fields.
+
+FR29.6: Preserve the completed netstandard2.0-clean Contracts boundary, Contracts.UI split, analyzer activation, narrow audit exceptions, and exclusive logging ownership.
+
+FR29.7: Bind the release candidate to one exact owner-approved FrontComposer/EventStore/Builds/package tuple with live Pact provider/AppHost evidence and separate named migration approval; prior identity records remain immutable history.
+
+FR30: Scope every operator-facing query, subscription, count, pending state, and persisted preference to the resolved tenant and user; clear stale scope and present an explicit fail-closed state rather than querying or rendering empty-looking data.
+
+### NonFunctional Requirements
+
+NFR1: Build with .NET SDK 10.0.400 using latestPatch roll-forward, C# latest, the .slnx solution only, nullable and centralized package versions, TreatWarningsAsErrors=true, and AnalysisMode=Recommended with built-in analyzers only.
+
+NFR2: Enforce dependency direction toward Contracts; SourceTools may reference only the UI-clean Contracts kernel, and net10/Fluent-only code in multi-targeted projects must be guarded.
+
+NFR3: Meet WCAG 2.2 AA across generated and hand-authored UI, including names/roles, keyboard operation, deterministic focus, linked validation, deduplicated live regions, 320 CSS-pixel reflow, 400% zoom, resilient text spacing, target size, unobscured focus, reduced motion, and forced-colors meaning.
+
+NFR4: Use FrontComposer and Blazor Fluent UI V5 components plus Fluent 2 tokens; forbid raw interactive controls and legacy Fluent V4/FAST tokens except documented carve-outs.
+
+NFR5: Fail Shell and MCP security closed within FR19/FR30 guarantees; never accept server-controlled fields from clients and directly test return paths, storage keys, tenant/user scope, authentication state, and API-key handling.
+
+NFR6: Prevent UI, logs, telemetry, MCP responses, evidence, and snapshots from exposing raw tokens, JWT payloads, EventStore metadata, raw event payloads, stack traces, or unrestricted PII.
+
+NFR7: Treat canonical schema/evidence material, fingerprint algorithms, baseline identity, and provenance validation as byte-unique public contracts backed by cross-language hostile and golden vectors.
+
+NFR8: Enforce FR15 command lifecycle budgets and FR12 realtime recovery bounds; expose and recover degraded/reconnecting/fallback states without turning transport or nudges into confirmation.
+
+NFR9: Keep palette scoring, generated rendering, and cache-backed hot paths within the named benchmark suites and FcShellOptions caps; threshold changes require benchmark evidence and Release Owner approval.
+
+NFR10: Use FrontComposerActivitySource, source-generated LoggerMessage sites gated after IsEnabled, and sanitized structured logs for operator-relevant failures, with proof that sensitive values are absent.
+
+NFR11: Run the mandatory default, Governance, Contract, snapshot, PublicAPI, ApiCompat, Pact consumer/provider, property, semantic documentation, Epic 9 live-proof, and accessibility/e2e lanes; execute test projects individually and use .slnx only for restore/build.
+
+NFR12: Permit only the protected candidate-free publisher to authenticate the candidate, establish provenance, seal and classify hexalith.release-evidence.v4, and authorize exact-byte publication; classify every attempt and keep append-only post-release evidence immutable.
+
+NFR13: Establish shared-catalog compatibility from versioned semantic profiles and affected-module standalone Release/NuGet restore/build evidence over the exact depth-1/2 dependency graph; never use historical commit/fingerprint allowlists or recursively initialize nested submodules.
+
+### Additional Requirements
+
+- **Starter template:** Architecture specifies no greenfield starter template. This is a brownfield framework and remediation program, so Epic 12 Story 12.1 must not introduce a starter project unless a later approved requirement does so.
+- Keep the UI-clean Contracts kernel on net10.0/netstandard2.0, place Blazor/Fluent rendering contracts in the net10-only Contracts.UI assembly, keep SourceTools netstandard2.0-clean, and preserve the documented consumer dependency direction.
+- Enforce Shell folder/namespace architecture: Components may render, Routing stays pure, State never depends on Components, and concrete polling/background workers remain in Infrastructure; only the documented legacy ProjectionSchemaMismatchException exception is allowed.
+- Keep Roslyn symbols inside the SourceTools parse stage and emit only pure equatable intermediate representation into transform/emit stages.
+- Preserve the public generated-output path and byte-deterministic schema canonicalization using the pinned encoder, sentinel, source-generation context, and ordinal comparer.
+- Preserve QueryRequest/ProjectionQuery ownership plus HFC0001/CS0618 flattened source and JSON compatibility through 2.x, with removal targeted only for 3.0.0.
+- Use only root-declared external submodules and never recursively initialize, update, or execute nested submodules while collecting dependency evidence.
+- Prove FR30 end to end through TEN-SCOPE-1 across production EventStore queries, subscriptions, counts, storage, pending state, and fresh-row rendering; stale or missing tenant identity must fail closed before old-scope data renders.
+- Keep IPendingCommandOutcomeResolver as the single terminal pending-command owner and the only eligible fresh-row publisher; generated callbacks and infrastructure adapters may emit observations but may not mutate terminal state.
+- Resolve command target identity only from explicit generated command-to-projection metadata with a typed target provider or declared SameAsSource snapshot; ambient rows, nudges, aggregate IDs, visible diffs, and untyped payloads are forbidden identity sources.
+- Capture and validate exactly one immutable target snapshot before asynchronous dispatch, associate MessageId only after acceptance, and never overwrite capture time with terminal observation time.
+- Keep terminal materiality independent and closed to Material, NoOp, or Unknown; suppress indicators for NoOp, Unknown, delete, Rejected, NeedsReview, and unknown identity, while retaining eligible material idempotent confirmation.
+- Make every effective fresh-indicator add, dismiss, expiry, clear, filter/requery, and scope mutation observable to subscribed generated consumers; enforce scoped disposal and atomic first-wins identity by ViewKey/EntityKey.
+- Preserve the Module/default-tab/projection-flyout information architecture and canonical generated-command route family across shell, palette, empty-state CTA, and direct navigation.
+- Preserve the exact command timing contract: 10,000ms to Degraded, 1,000ms status polling for at most 120,000ms, zero pre-accept lifecycle retries, and one transient dispatch retry after 250ms.
+- Collect hexalith.dependency-graph.v1 as the exact root gitlinks at depth 1 plus direct gitlinks from each root-selected commit at depth 2; record every edge before deduplication and reject deeper/unbounded interpretations.
+- Resolve graph repositories through the root .gitmodules closed world, read explicit committed objects offline, acquire exact base/candidate objects into isolated temporary bare stores, and never clone or run candidate-supplied commands during graph collection.
+- Treat eng/dependency-graph-policy.json from the active base/before revision as immutable executable authority; candidate policy changes activate only in a later change, and missing base policy fails closed with no bootstrap fallback.
+- Require every Builds-selector owner to map to exactly one semantic profile and every target to exact standalone restore/build argv or an explicit evidence-only disposition; missing or ambiguous mappings fail closed.
+- Materialize only the bounded safe regular-file Builds contract tree for edge-bound consumers, verify its graph hash, enforce the file/blob/total-size ceilings, and run affected-module restore/build in isolated Release/NuGet mode.
+- Enforce the closed dependency-graph envelope, ordinal edge ordering, lowercase SHA-1 identities, strict duplicate/unknown-member rejection, canonical ASCII JSON encoding, bounded reads, and offline plus live digest verification.
+- Implement FR24 as a secretless/read-only candidate builder followed by a distinct protected candidate-free publisher and an independent post-release verifier; pre-publication authorization and post-publication verification remain separate.
+- Give the builder no environment, publication credentials, OIDC/attestation authority, or write scope; it may execute only the authenticated candidate to create and validate one closed publication-candidate artifact.
+- Let only the protected publisher mutate NuGet or GitHub Release state; it must execute pinned active-policy-authorized owner code, treat candidate packages as non-executable data, independently validate provenance/fallback, and require publish_authorized=true before the first side effect.
+- Keep GitHub package assets byte-identical to sealed candidates; for NuGet downloads allow only the valid root repository signature entry and require every other normalized ZIP member to remain byte-equivalent.
+- Emit an always-uploaded authenticated release-verification handoff and a total attempt classification covering gate-frozen, no-releasable, rejected, compliant, deferred, missing-artifact, partial-publish, and other non-compliant outcomes.
+- Keep release-ledger observations append-only and attempt-keyed; a rerun or later verification may append evidence but may never replace, weaken, or relabel an incident.
+- Keep production releases halted while the legacy publication-capable path is selected; HEXALITH_RELEASE_PUBLISH_ENABLED=false is a deny-only emergency stop and cannot authorize publication.
+- Close the GOV-1 split implementation gate only with the canonical conformance JSON, authenticated live checks, five review lenses, a closed nonconformance register, an unchanged evidence PR, and a distinct approval-projection PR; stale or mixed evidence, direct push, squash, or rebase fails the gate.
+- Freeze each EventStore successor identity as an exact tuple of FrontComposer HEAD, EventStore gitlink, Builds gitlink, catalog package, provider/AppHost evidence, and artifact hashes; tuple drift creates a new record rather than rewriting history.
+- Separate EVT-ID-1 evidence capture from EVT-APP-1 migration approval; require EventStore maintainer, FrontComposer maintainer, and Release Owner signatures, or first record an explicit Product/Architecture EVT-XFER-1 ownership transfer.
+- Preserve the approved residual work boundaries: implementation precedes independent acceptance for MCP security; FrontComposer owns the adopter kit while the selected adopter owns external proof; upstream Builds acceptance, GOV implementation, evidence, and owner approval remain separate statuses.
+- Treat the approved Section 7 aliases as stable handoff identifiers rather than final story numbers; numeric epic/story identifiers are assigned only by this workflow.
+- Classify every residual as implementable repository work (I), explicit approval/evidence (A), or a documented non-sprint external dependency (X); mapping work to an epic never closes its gate.
+- Preserve completed Epic 9 and Epic 11 delivery history. E9-APP-1 remains a separate Product acceptance task, Story 11.25 remains historical technical capture only, and later drift creates new work rather than reopening accepted stories.
+- Deliver PLAN-INT-2 as new current-state artifact-integrity work: repair the declared Story 11.32 validation scope, make the current validator pass, and prove an intentional stale-status/missing-File-List fixture fails without rewriting historical acceptance.
+- Keep PLAN-INT-1 closed as the approved 2026-09-22 canonical-artifact reconciliation; do not recreate it as implementation work.
+- Sequence EVT-APP-1 after EVT-ID-1 and create EVT-XFER-1 only when the conditional ownership-transfer path is invoked; missing receipts leave G-3 open.
+- Sequence EXT-ADOPTER-1 after ADOPT-KIT-1. FrontComposer may track the external dependency but cannot complete it for Tenants or a Product-selected Parties substitute.
+- Sequence MCP-APP-1 only after MCP-SEC-1 and MCP-SEC-2 produce one immutable negative-evidence packet reviewed by an independent security reviewer.
+- Keep UX-A through UX-F independently completable, but require all applicable UX, documentation, Fluent, and accessibility rows before PRD-APP-1 can approve product readiness.
+- Sequence GOV-B after EXT-BUILDS-1, GOV-J after GOV-B through GOV-I, and GOV-ACCEPT-2 after GOV-SRC-1; unavailable upstream evidence remains external/open rather than being inferred.
+- Sequence REL-LEDGER-2 after REL-LEDGER-1 and preserve visibly missing evidence for v4.1.1 through v4.5.0 and any later discovered release rather than inferring or relabelling it.
+- Treat PRD-APP-1 as a digest-bound final Product readiness decision after every Product-owned G-1 through G-8 prerequisite; it never grants publication authority.
+- Follow the approved order: planning integrity and external starts, independent implementation, evidence convergence, then owner decisions after their exact evidence dependencies exist.
+
+### UX Design Requirements
+
+UX-DR1: Use FrontComposer plus Blazor Fluent UI V5 for every design-system-owned visual and interaction; inherit Fluent theme, anatomy, type, spacing, focus, elevation, and semantic states instead of redefining them.
+
+UX-DR2: Keep FcShellOptions.AccentColor configurable with default #0097A7 and use it only as a thread for active navigation, focus emphasis, primary actions, links, selected emphasis, and fresh rows; validate every load-bearing placement to WCAG 2.2 AA and fall back to inherited semantic roles when contrast fails.
+
+UX-DR3: Use Fluent component parameters, Fluent 2 tokens, and the nine existing FcTypoToken mappings for page title, section title, body, and caption; preserve TypographyMappingVersion 3.1.0 and do not recreate typography or foreground roles in CSS.
+
+UX-DR4: Preserve the confirmed layout metrics: 72px labelled rail, 48px icon-only rail, 32px compact projection rows, sticky projection headers, full-width default pages, 75rem constrained pages, and no invented numeric responsive breakpoints.
+
+UX-DR5: Restrict custom CSS to layout/browser behavior Fluent does not own; forbid legacy Fluent V4/FAST tokens, custom module themes, hard-coded semantic palettes, decorative gradients, bespoke shadows, nested card stacks, and custom interactive controls when a FrontComposer/Fluent equivalent exists.
+
+UX-DR6: Group two or more sibling titled regions in one Fluent accordion, expand a primary item by default when included, and never hide the only primary content region; keep titles, breadcrumbs, toolbars, navigation chrome, and a single primary region outside.
+
+UX-DR7: Implement FrontComposerShell as one main landmark with skip links, providers, neutral header/footer, route content, shortcuts, and an always-present account control; successful navigation focuses the real route h1 and failed navigation preserves stable focus and announces once.
+
+UX-DR8: Implement FrontComposerNavigation and FcHamburgerToggle with exactly one primary entry per Module and one active item; keep the hamburger available in all modes, use labelled/icon-only desktop rails, and expose the same Module list in compact/narrow navigation without promoting subpages.
+
+UX-DR9: Implement FcAccountMenu as an always-present header affordance unaffected by adopter header customization; provide challenge/sign-out routes, keep the display name inside the menu, evict token state on sign-out, expose support-safe failure, and restore focus on close.
+
+UX-DR10: Implement FcHomeDirectory and FcHomeCard for No Modules, Hydrating, Partially Ready, Ready, and Missing Tenant states with geometry-preserving skeletons, deterministic urgency ordering, stable focus during reordering, and entry into each Module's default tab.
+
+UX-DR11: Implement FcCommandPalette as an ARIA combobox/dialog opened by Ctrl+K, with a 150ms authorization-aware search debounce, keyboard result navigation, useful non-noisy result announcements, canonical route activation, invoker-focus restoration on close, and destination-h1 focus on navigation.
+
+UX-DR12: Implement FcSettingsDialog from the header and Ctrl+, with tenant/user-scoped theme and density hydration, preview, reset, confirm, body density update, one change announcement, skipped persistence without scope, and in-session preservation plus safe feedback when persistence fails.
+
+UX-DR13: Implement FcPageHeader and FcPageLayout with a unique focusable route h1, full-width default/constrained opt-in content, neutral hierarchy without an accent title band, and a stable focus/status target on route failure.
+
+UX-DR14: Implement FcPageTabs as deep-linkable route-backed Module Tabs using /{module}/{tab}; retain inherited arrow-key behavior, keep focus on the active tab as its labelled tabpanel changes, and never style tabs as primary navigation.
+
+UX-DR15: Implement FcPageToolbar with leading search/filter/view/overflow affordances, end-aligned authorized actions, optional / shortcut to page search, a stable public behavior contract, and implementation-owned internal Fluent composition.
+
+UX-DR16: Implement generated Fluent projection grids with debounced/resettable filtering, sorting, keyboard row expansion/actions, sticky headers, column prioritization above 15 columns, server virtualization from 500 rows, a 10,000-row unfiltered cap, and one labelled grid context.
+
+UX-DR17: Implement FcProjectionLoadingSkeleton and FcProjectionEmptyPlaceholder so skeleton geometry matches Card/Timeline/Grid and is marked busy; distinguish no data from no filter matches, preserve filter context, and show an authorized create CTA only when available.
+
+UX-DR18: Implement FcProjectionConnectionStatus, FcSlowQueryNotice, and FcMaxItemsCapNotice for Stale, Reconnecting, FallbackPolling, Reconnected, SlowQuery after 2,000ms, and MaxItems at 10,000; preserve safe reads, announce meaningful entry/recovery once, and keep retries/poll ticks silent.
+
+UX-DR19: Implement FcExpandInRowDetail and FcExpandedRowHiddenBanner as labelled nested regions; when filtering hides expanded content, announce once and move or preserve focus on a valid grid control without implying deletion.
+
+UX-DR20: Implement FcStatusIcon plus an inherited icon/tooltip and FcDesaturatedBadge plus an inherited badge so status always has icon/shape, accessible name, keyboard-focusable tooltip, and text; keep counts contextual and never rely on color or hover.
+
+UX-DR21: Implement generated command forms and FcFieldPlaceholder with Fluent inputs only, density derived from editable property count, no gaps for server-controlled/derived fields, neutral bounded placeholders for unsupported types, and named domain actions instead of generic Submit where known.
+
+UX-DR22: Implement client validation with a focused linked error summary, navigation from every item to its Fluent input, preserved useful values, keyboard access to the first invalid field, and a distinction between client validation and asynchronous server Rejected lifecycle outcomes.
+
+UX-DR23: Implement FcAuthorizedCommandRegion with stable Pending, Authorized, and NotAuthorized geometry; never flash or enable protected content before authorization, evaluate policy before and after BeforeSubmit, and enforce the same authorization at the service boundary.
+
+UX-DR24: Implement FcDestructiveConfirmationDialog and FcFormAbandonmentGuard with explicit confirm/cancel behavior, no dispatch on cancel, a 30-second dirty-form guard, one modal layer, semantic destructive styling, and focus restoration to the invoker/form.
+
+UX-DR25: Implement FcLifecycleWrapper and FcPendingCommandSummary for the exact lifecycle vocabulary; keep Acknowledged distinct from success, use polite/coalesced progress, focus Rejected validation/error paths, block rather than queue a second local command, and announce each meaningful state once.
+
+UX-DR26: Present Degraded after 10,000ms while status polling may continue every 1,000ms to 120,000ms; keep the single 250ms same-MessageId transient dispatch retry distinct from lifecycle polling and preserve correctable form state.
+
+UX-DR27: Implement FcNewItemIndicator only for resolver-owned eligible Material outcomes with immutable pre-dispatch identity; update already-rendered grids, scope before read/render, enforce first-wins ViewKey/EntityKey identity, announce materialization at most once, and expire silently after ten seconds.
+
+UX-DR28: Suppress fresh-row presentation for unknown identity/materiality, NoOp, delete, Rejected, NeedsReview, and server-allocated keys; never infer identity from SignalR nudges, row diffs, aggregate IDs, or untyped results, and retain meaning in reduced motion and forced colors.
+
+UX-DR29: Implement FcCustomizationDiagnosticPanel only in Development for override mismatch/render fault, with bounded corrective guidance and no raw payload, tenant/user value, token, stack trace, or unsafe replacement of operator data.
+
+UX-DR30: Preserve the information architecture of one Module per bounded context, exactly one primary entry, one required default Module Tab, /{module} as its alias, secondary projection flyouts, canonical /commands/{BoundedContext}/{CommandTypeName} routes, and no top-level projection/command explosion.
+
+UX-DR31: Implement explicit accessible shell/home states for No Modules, Hydrating, Partially Ready, Ready, Route Failure, No Module Access, Missing/Stale Tenant, and Signed Out/In, with terminal/non-terminal meaning, recovery, focus, and non-noisy announcements as specified.
+
+UX-DR32: Implement supporting state matrices for Module tabs, projection flyouts, palette, settings, account, row detail, generated commands, customization diagnostics, MCP, inspect/migrate, and the adopter test harness; unknown tabs and unsafe actions must fail explicitly rather than silently select or write.
+
+UX-DR33: Implement projection Loading, Empty, Data, Stale, Reconnecting, FallbackPolling, SlowQuery, MaxItems, Reconnected, and Query/Permission Error as combinable accessible states with entry evidence, permitted actions, recovery/terminal classification, and deduplicated announcements.
+
+UX-DR34: Preserve visible usable data during Stale/Reconnecting/FallbackPolling where safe; retry SignalR with unbounded jittered exponential backoff capped at 30,000ms, restart closed connections within 10 seconds, poll every 15 seconds across at most eight lanes, and show Reconnected for 3,000ms.
+
+UX-DR35: Preserve MCP UX/protocol shapes exactly: caller-relative hidden/absent tool equivalence, the disclosed static resource catalog, registered-hidden unknown_resource behavior, SDK unregistered-resource distinction, schema-mismatch side-effect blocking, bounded skill failures, and cross-request lifecycle polling.
+
+UX-DR36: Keep inspect/migrate/generated-output interactions deterministic: repository-relative/redacted inspect output, dry-run migration by default, atomic apply, and fail-closed refusal of generated, submodule, symlink, out-of-root, bin, obj, or .git targets.
+
+UX-DR37: Support Ctrl+K, Ctrl+,, conditional / search focus, and Esc close/restore behavior; ensure no projection or command action is hover-only, keep one modal layer, and prefer route/tab/detail/full-page surfaces over nested dialogs.
+
+UX-DR38: Provide one main landmark, skip links, unique h1, semantic navigation, labelled tab relationships, combobox/listbox/dialog/grid semantics, labelled row-detail regions, accessible names for every control, and reading-order focus that never lands in removed, hidden, or obscured content.
+
+UX-DR39: Use polite live status for progress/non-blocking changes and a focused linked summary/alert for submit-blocking validation and Rejected outcomes; deduplicate by operation/entity/state, coalesce intermediate progress, and suppress retry, polling, rerender, and expiry noise.
+
+UX-DR40: Verify 320 CSS-pixel reflow and 400% zoom without nonessential two-dimensional scrolling; apply WCAG text-spacing overrides, 24×24 CSS-pixel pointer targets or documented exceptions, keyboard equivalence, focus-not-obscured behavior, reduced motion, and forced-colors preservation.
+
+UX-DR41: Resolve tenant/user scope before every query, subscription, count, preference, pending-state, or fresh-row operation; clear old scope before new rendering, block stale SignalR groups, use scoped storage keys, and never invent a default tenant.
+
+UX-DR42: Keep TenantId, UserId, MessageId, CorrelationId, timestamps, and derived values out of editable UI and inject them server-side; treat hidden controls as presentation only, not authorization.
+
+UX-DR43: Keep UI, MCP, logs, telemetry, snapshots, diagnostics, and evidence support-safe by excluding raw tokens, JWTs, EventStore metadata/payloads, stack traces, unrestricted PII, and hidden identifiers.
+
+UX-DR44: Implement semantic Desktop, Compact, and Narrow-browser behavior through the shared breakpoint watcher: desktop labelled/icon-only rail, compact reachable tabs/palette/settings/actions, and narrow one-entry-per-Module drawer plus single reading order and bounded table scrolling only where essential.
+
+UX-DR45: Expand the Testing package and bUnit/e2e evidence to cover deterministic command success/rejection/stall/auth denial/query variants, linked validation, lifecycle truth, blocked submit, fresh-row scope/first-wins/silent expiry, route/tab/palette/dialog focus, keyboard recovery, announcements, reflow/zoom, text spacing, target size, unobscured focus, forced colors, and reduced motion.
+
+UX-DR46: Keep stable data-testid selectors on behavior governed by automated evidence while retaining accessible semantics as the primary contract; redact tenant/user values, secrets, tokens, raw paths, payloads, and stack traces from evidence.
+
+UX-DR47: Resolve and approve the exact Fluent V5 catalog identity and supported accent token/API role before final UX handoff; do not introduce a replacement alias or hard-coded token while the decision remains open.
+
+UX-DR48: Obtain explicit dispositions for the unresolved exact visual treatment and final microcopy of Warning, NeedsReview, Degraded, missing tenant, FallbackPolling, SlowQuery, MaxItems, and fresh-row dismissal/forced-colors states; until then inherit the nearest Fluent semantic treatment without inventing final copy.
+
+UX-DR49: Keep numeric responsive breakpoints out of the product contract until approved; implementations must preserve the semantic viewport behaviors without fabricating contract widths.
+
+UX-DR50: Run the opt-in UX reviewer gate, or record an explicit skip, and close or disposition all source-owned gaps before changing the paired UX contract status from draft.
+
+### FR Coverage Map
+
+FR1: Epic 12 - Generate projection artifacts for adopter domain types.
+FR2: Epic 12 - Generate command artifacts and canonical routes.
+FR3: Epic 12 - Honor the documented attribute vocabulary.
+FR4: Epic 12 - Apply command density from editable-property count.
+FR5: Epic 15 - Support deterministic, diagnosable customization levels.
+FR6: Epic 15 - Detect schema and generated-output drift.
+FR7: Epic 12 - Provide validated three-call domain-shell bootstrap.
+FR8: Epic 12 - Render the accessible Fluent application shell.
+FR9: Epic 12 - Manage layout, theme, density, persistence, and localization.
+FR10: Epic 12 - Provide registry-driven Module discovery and navigation.
+FR11: Epic 13 - Render accessible projection grids and complete state feedback.
+FR12: Epic 13 - Maintain projection freshness and realtime recovery.
+FR13: Epic 13 - Mark fresh rows only through eligible FC-NIP outcomes.
+FR14: Epic 13 - Validate and submit commands through generated forms.
+FR15: Epic 13 - Surface truthful command lifecycle states and budgets.
+FR16: Epic 13 - Enforce command authorization, confirmation, abandonment, and concurrency safety.
+FR17: Epic 14 - Expose visible generated commands as secure MCP tools.
+FR18: Epic 14 - Expose projection and skill resources under their defined boundaries.
+FR19: Epic 14 - Enforce fail-closed MCP admission, compatibility, disclosure, and redaction.
+FR19a: Epic 14 - Preserve MCP command lifecycle across requests and scopes.
+FR20: Epic 15 - Provide deterministic generated-output inspection.
+FR21: Epic 15 - Provide safe, dry-run-first migration tooling.
+FR22: Epic 15 - Provide deterministic adopter testing and redacted evidence support.
+FR23: Epic 15 - Keep component, diagnostic, migration, and skill documentation synchronized.
+FR24: Epic 17 - Publish only exact, evidence-classified artifacts through privilege separation.
+FR25: Epic 15 - Preserve public contracts, baselines, analyzer policy, and migration paths.
+FR26: Epic 13 - Preserve the completed FC-NIP producer/consumer composition.
+FR27: Epic 15 - Preserve closed tooling-governance outcomes as regression traceability.
+FR28: Epic 15 - Preserve closed route and Contracts-boundary decisions as regression traceability.
+FR29: Epic 15 - Maintain verified closure of architecture-review defect classes.
+FR29.1: Epic 12 - Preserve authentication token lifecycle and scoped-lifetime safety.
+FR29.2: Epic 13 - Preserve projection realtime resilience.
+FR29.3: Epic 14 - Preserve MCP cross-request lifecycle behavior.
+FR29.4: Epic 13 - Preserve return-path and storage-key safety.
+FR29.5: Epic 15 - Preserve generated-code hygiene.
+FR29.6: Epic 15 - Preserve Contracts boundaries and enforcement.
+FR29.7: Epic 16 - Reconcile and approve the exact EventStore runtime identity.
+FR30: Epic 13 - Enforce tenant/user scope across every operator-facing surface.
+
+## Epic List
+
+### Epic 12: Adopters Launch an Operations-Ready Domain Shell
+
+Adopter developers can turn annotated domain types into a coherent, accessible FrontComposer shell and prove a named domain-module adoption without bespoke framework plumbing.
+
+**FRs covered:** FR1, FR2, FR3, FR4, FR7, FR8, FR9, FR10, FR29.1
+
+**Implementation notes:** Preserve the delivered generator, bootstrap, shell, account, and information-architecture baseline. Deliver ADOPT-KIT-1 before tracking EXT-ADOPTER-1; keep the latter external and require optional ADOPT-APP-1 only for a D-7 substitute. Adoption work uses the current pinned Fluent identity but does not own its final approval. Completed behavior is regression traceability rather than reimplementation.
+
+### Epic 13: Operators Trust Tenant-Scoped Data and Command Outcomes
+
+Operators can browse projections, execute commands, recover from transport failures, and understand lifecycle and fresh-row state without stale-tenant leakage or false success.
+
+**FRs covered:** FR11, FR12, FR13, FR14, FR15, FR16, FR26, FR29.2, FR29.4, FR30
+
+**Implementation notes:** Complete TEN-SCOPE-1 through real production seams, UX-A through UX-F, the required Testing assertions and accessibility evidence, E9-APP-1, and then FLUENT-APP-1 by the Product Owner and Architect against the exact tested catalog identity while preserving the delivered projection, lifecycle, and FC-NIP runtime baseline. This orders accessibility evidence before the Fluent decision and removes a cross-epic acceptance cycle.
+
+### Epic 14: AI Integrators Expose Domain Operations Safely
+
+AI integrators can expose generated commands, projections, skills, and lifecycle polling through a host-authenticated MCP surface with tested disclosure boundaries.
+
+**FRs covered:** FR17, FR18, FR19, FR19a, FR29.3
+
+**Implementation notes:** Deliver MCP-SEC-1 and MCP-SEC-2, the named SM-4 audit evidence, and independent MCP-APP-1 acceptance. Implementation and negative evidence must precede security sign-off.
+
+### Epic 15: Maintainers Evolve FrontComposer Without Contract Drift
+
+Framework maintainers can customize, inspect, migrate, document, test, and upgrade FrontComposer while preserving public contracts and exact runtime identity.
+
+**FRs covered:** FR5, FR6, FR20, FR21, FR22, FR23, FR25, FR27, FR28, FR29, FR29.5, FR29.6
+
+**Implementation notes:** Complete PLAN-INT-2, DOC-A/DOC-B/DOC-C parity, REL-BASE-1, and Testing/documentation gaps without reopening completed Epic 9–11 decisions. PLAN-INT-1 remains closed. Delivered baselines remain regression traceability rather than reimplementation.
+
+### Epic 16: Maintainers Verify and Approve Exact Runtime Compatibility
+
+FrontComposer, EventStore, and Release maintainers can bind one exact runtime tuple to live compatibility evidence and named approval without rewriting historical identities.
+
+**FRs covered:** FR29.7
+
+**Implementation notes:** Complete EVT-ID-1 and obtain EVT-APP-1 from the EventStore maintainer, FrontComposer maintainer, and Release Owner, with conditional EVT-XFER-1 before approval when EventStore ownership must transfer. Exact-tuple capture, live Pact/AppHost evidence, artifact hashes, and named approval remain separate outcomes; tuple drift creates new work.
+
+### Epic 17: Release Owners Establish Safe Publication and Trustworthy Release Records
+
+Release owners can authorize and verify exact package bytes through a privilege-separated pipeline, maintain truthful append-only attempt records, preserve incidents, and support an independent evidence-backed Product readiness decision.
+
+**FRs covered:** FR24
+
+**Implementation notes:** Track two independently visible completion streams. The publication-boundary stream contains EXT-BUILDS-1, GOV-B through GOV-H, GOV-J, GOV-SRC-1, and GOV-ACCEPT-1/2. The release-evidence/decision stream contains GOV-I, REL-LEDGER-1/2, REL-A3-APP-1 owned by the Release Owner, and PRD-APP-1. Upstream acceptance, implementation, deterministic evidence, independent approval, publication authorization, post-publication verification, and milestone reapproval remain separate statuses; Product reapproval never authorizes publication.
+
+### Epic Allocation and Closure Guardrails
+
+- Epics 12–16 may make repository implementation progress independently against the delivered foundation; their acceptance tasks wait for the exact evidence and earlier decisions named above.
+- Epic 17 may begin source reconciliation, ledger, incident-readiness, and other unblocked work, but the caller switch remains blocked on EXT-BUILDS-1 and the final milestone decision remains blocked on the required evidence from Epics 12–16.
+- Architecture requirements follow their owning epic: adoption/shell in Epic 12, tenant-safe operator behavior in Epic 13, MCP security in Epic 14, planning/tooling/documentation integrity in Epic 15, runtime identity in Epic 16, and publication/dependency governance in Epic 17.
+- UX-DR and NFR obligations are allocated to every affected story rather than counted as satisfied by FR mapping. Epic 12 owns adoption, shell, and information architecture; Epic 13 owns projection/command/accessibility behavior and the exact Fluent decision; Epic 14 owns agent-surface security behavior; Epic 15 owns tooling/documentation/testing semantics; Epic 16 owns compatibility evidence; and Epic 17 owns evidence determinism, dependency governance, incident readiness, and release safety.
+- An external dependency, missing receipt, or rejected approval remains visibly open and cannot be converted into repository-owned completion. A green unrelated lane never substitutes for the focused evidence required by an epic.
+- Every materialized item must declare its classification as I, A, or X. Only I items may claim repository implementation completion; A items close only through their named durable decision/evidence receipt, and X items remain controlled by the named external owner.
+- Completed-baseline requirements are acceptance-criteria traceability only unless an approved open alias below explicitly creates new work.
+- Evidence must be minimum-sufficient and risk-proportionate. Reuse an existing focused test result, immutable artifact, or lane output whenever it proves the exact acceptance boundary; one artifact may satisfy multiple criteria when its provenance and scope are explicit.
+- Do not create duplicate evidence packets, wrapper reports, schemas, validators, workflows, or test lanes merely to restate proof that already exists. Add a new evidence mechanism only when no existing artifact can prove a named requirement, and use manual evidence only for behavior that cannot be established deterministically through automation.
+- Approval records cite the immutable evidence they reviewed rather than reproducing it. Lean evidence never permits inference of a missing receipt or relaxation of the exact security, runtime-identity, accessibility, or publication-boundary guarantees required by the source documents.
+- Materialize exactly one item for each approved alias below. Do not add generic evidence, integration, coordination, or sign-off stories unless a source requirement identifies a distinct unowned acceptance boundary; extend the owning alias's acceptance criteria and reuse its focused proof instead.
+- A rejected approval leaves its gate open and creates a new bounded residual item only when corrective work is required. Rejection never rewrites completed implementation, invalidates immutable evidence history, or reopens a delivered epic by itself.
+
+### Approved Alias Allocation
+
+| Epic | Implementable repository work (I) | Approval/evidence work (A) | External dependencies (X) |
+|---|---|---|---|
+| Epic 12 | ADOPT-KIT-1 | ADOPT-APP-1 (conditional) | EXT-ADOPTER-1 |
+| Epic 13 | TEN-SCOPE-1; UX-A; UX-B; UX-C; UX-D; UX-E; UX-F | E9-APP-1; FLUENT-APP-1 | — |
+| Epic 14 | MCP-SEC-1; MCP-SEC-2 | MCP-APP-1 | — |
+| Epic 15 | PLAN-INT-2; DOC-A; DOC-B; DOC-C; REL-BASE-1 | — | — |
+| Epic 16 | EVT-ID-1 | EVT-APP-1; EVT-XFER-1 (conditional) | — |
+| Epic 17 | GOV-B; GOV-C; GOV-D; GOV-E; GOV-F; GOV-G; GOV-H; GOV-I; GOV-SRC-1; REL-LEDGER-2 | GOV-J; GOV-ACCEPT-1; GOV-ACCEPT-2; REL-LEDGER-1; REL-A3-APP-1; PRD-APP-1 | EXT-BUILDS-1 |
+
+PLAN-INT-1 remains closed reconciliation history and is not materialized as a new story.
+
+## Delivered History
+
+> **Delivered history (restored 2026-09-23).** The sections from here through Cross-Cutting
+> Governance Work are the completed Epics 1–11 delivery record, restored from `epics.md` at commit
+> `aeff9f83` after the 2026-09-23 sprint-planning readiness gate found that the new backlog reused
+> their numbers. Stories, titles, acceptance criteria, and the Epic 11 workstream and sequence
+> sections are unchanged; only the annotations below, the story cross-references they name, and the
+> parser-compatibility headings described below were added. The historical inventory in this
+> section keeps its own identifiers (legacy FR/NFR, AR1–AR12, UX-DR1–UX-DR8, canonical FR-1–FR-30)
+> and does not redefine the Epic 12–17 inventory above.
+>
+> **Approved 2026-09-22 annotations** (`sprint-change-proposal-2026-09-22.md` §3 and §9.4):
+>
+> - **Epic 9 — delivery done.** Stories 9.1–9.8, E9-AI-1 through E9-AI-6, and the retrospective are
+>   completed delivery history. E9-APP-1 (G-5/OI-1 Product acceptance of the Story 9.8 live proof) is
+>   separate approval work, materialized as Story 13.8, and does not reopen Epic 9.
+> - **Epic 11 — delivery done** through Story 11.32. Later tuple or validator drift is new work:
+>   current artifact-integrity repair is PLAN-INT-2 (Story 15.1).
+> - **Story 11.25 — technical capture only.** It stays done, neither approves migration nor closes
+>   G-3, and is not reused for later repository tuples.
+> - **E11R-AI-1 — carried forward** to EVT-ID-1 (Story 16.1, exact-tuple capture) and EVT-APP-1
+>   (Story 16.3, owner approval), with conditional EVT-XFER-1 (Story 16.2) before approval.
+> - **GOV-1 — open parent obligation** (Cross-Cutting Governance Work below). It closes only through
+>   EXT-BUILDS-1 and the Epic 17 slices and approvals, never by bookkeeping alone.
+>
+> **Parser compatibility (2026-09-23).** The nonimplementable decomposition parents 11.17, 11.18, and
+> 11.19 are headed "Decomposition Parent" so that sprint planning never queues them, and each of their
+> 11 materialized children carries a `#### Story 11.1x:` heading whose title matches its existing
+> sprint-status key (the letter suffix stays in the unchanged child bullet, for example 11.17a). The
+> child bullets, parent text, and acceptance criteria are unchanged.
+>
+> Aliases that the historical text below calls *proposed* are materialized as: ADOPT-KIT-1 → 12.1;
+> ADOPT-APP-1 → 12.2 (conditional); EXT-ADOPTER-1 → Epic 12 external dependency; TEN-SCOPE-1 → 13.1;
+> UX-A–UX-F → 13.2–13.7; E9-APP-1 → 13.8; FLUENT-APP-1 → 13.9; MCP-SEC-1 → 14.1; MCP-SEC-2 → 14.2;
+> MCP-APP-1 → 14.3; PLAN-INT-2 → 15.1; DOC-A–DOC-C → 15.2–15.4; REL-BASE-1 → 15.5; EVT-ID-1 → 16.1;
+> EVT-XFER-1 → 16.2 (conditional); EVT-APP-1 → 16.3; GOV-SRC-1 → 17.1; GOV-I → 17.2; GOV-B–GOV-H →
+> 17.3–17.9; GOV-J → 17.10; GOV-ACCEPT-1 → 17.11; GOV-ACCEPT-2 → 17.12; REL-LEDGER-1 → 17.13;
+> REL-LEDGER-2 → 17.14; REL-A3-APP-1 → 17.15; PRD-APP-1 → 17.16; EXT-BUILDS-1 → Epic 17 external
+> dependency. PLAN-INT-1 remains closed reconciliation history.
+
+### Historical Source Note
 
 This document provides the complete epic and story breakdown for Hexalith.FrontComposer, decomposing the requirements from the available inputs into implementable stories.
 
@@ -33,7 +465,6 @@ This document provides the complete epic and story breakdown for Hexalith.FrontC
 > around. Requirements must retain source traceability back to the PRD and
 > brownfield source artifacts.
 
-## Requirements Inventory
 
 ### Legacy Functional Requirements (Provenance Only)
 
@@ -98,7 +529,7 @@ This document provides the complete epic and story breakdown for Hexalith.FrontC
 - LEGACY-NFR-13: **Confirmed (2026-06-21)** Trim/AOT readiness — `PublishTrimmed`/`PublishAot` enable the HFC1070 advisory; reflection projection catalog needs an `IActionQueueProjectionCatalog` override.
 - LEGACY-NFR-14: Root-declared Hexalith submodules live under `references/Hexalith.*`; initialize only those root `.gitmodules` entries, never recurse into nested submodules, and never modify submodule files without explicit approval. Debug/source builds consume Hexalith libraries through local `ProjectReference`s, while Release/package builds consume published NuGet packages.
 
-### Additional Requirements
+### Historical Additional Requirements
 
 > **This is the forward roadmap** — drawn from `frontcomposer-readiness-request-2026-06-03.md`.
 > Priorities: 🔴 1 = blocks read-only MVP / bootstrap · 🟠 2 = blocks command epics (3–5) ·
@@ -135,7 +566,7 @@ This document provides the complete epic and story breakdown for Hexalith.FrontC
 > and routes visual/manual release sign-off to Product/UX + Release Owner, due before v1.0 RC readiness
 > classification.
 
-### UX Design Requirements
+### Historical UX Design Requirements
 
 > **Confirmed 2026-06-21** (sprint-change-proposal-2026-06-21). Originally reverse-engineered from the
 > implemented component catalog (`component-inventory.md`) + readiness request, these UX contracts are now
@@ -167,7 +598,7 @@ This document provides the complete epic and story breakdown for Hexalith.FrontC
 >   `sprint-change-proposal-2026-06-14-shell-security-helper`. It has **no dedicated numbered story**;
 >   this note is its sole story-level traceability link.
 
-### FR Coverage Map
+### Historical FR Coverage Map
 
 This is the sole planning coverage map. Requirement semantics and identifiers come from canonical
 `prd.md`; the legacy inventory above is provenance only.
@@ -281,9 +712,9 @@ their named evidence exists.
 
 **Additional-requirement coverage:** AR1–AR5 → Epic 1 · AR6 (FC-CMD) → Epic 3 · AR7 (FC-CNC) → Epic 4 · AR8 (budgets) → Epic 3 + Epic 4 · AR9 (EventStore status) → Epic 3 · AR10 (rich components) → out of scope (fast-follow, tracked, not an epic) · AR11 (FC-NIP) → Epic 9 · AR12 (FC-TOOL-GOV) → Epic 10.
 **Cross-cutting canonical NFRs** apply to every epic as ready-gate constraints, anchored by FC-A11Y (AR2) and FC-DOC (AR4) in Epic 1. Telemetry is owned cross-cutting rather than per-AC — emitting through `FrontComposerActivitySource` on Shell command-lifecycle/projection paths and MCP tool/resource paths.
-**Epic 11 (Release Readiness Remediation Program)** traces canonical FR-7, FR-10, FR-12, FR-19, FR-22, FR-25, FR-28, and FR-29 plus the 2026-07-04 architecture-quality-review findings. The epic is done through Story 11.32. Story 11.0 and Story 11.8 are completed decision records. Stories 11.17, 11.18, and 11.19 are decomposition parents, not implementation candidates; their child stories carry delivery status. Story 11.19d approved staged adoption of `AnalysisMode=Recommended` and materialized sequential, separately approval-gated Stories 11.20–11.23. Story 11.25 is completed technical capture rather than G-3 approval; residual exact-tuple evidence is proposed EVT-ID-1/EVT-APP-1.
+**Epic 11 (Release Readiness Remediation Program)** traces canonical FR-7, FR-10, FR-12, FR-19, FR-22, FR-25, FR-28, and FR-29 plus the 2026-07-04 architecture-quality-review findings. The epic is done through Story 11.32. Story 11.0 and Story 11.8 are completed decision records. Stories 11.17, 11.18, and 11.19 are decomposition parents, not implementation candidates; their child stories carry delivery status. Story 11.19d approved staged adoption of `AnalysisMode=Recommended` and materialized sequential, separately approval-gated Stories 11.20–11.23. Story 11.25 is completed technical capture rather than G-3 approval; residual exact-tuple evidence is carried forward to EVT-ID-1 (Story 16.1) and EVT-APP-1 (Story 16.3).
 
-## Epic List
+## Delivered History List
 
 ### Epic 1: Shell Foundation & Bootstrap
 An **adopter developer** can stand up a FrontComposer admin shell that boots through the
@@ -369,10 +800,10 @@ framework-controlled row identity payload and the confirmed `FcNewItemIndicator`
 **ARs:** AR11 (FC-NIP)
 **Standalone:** post-MVP enhancement; builds on Epics 2 and 3, and does not reopen the projection nudge seam.
 **Source of record:** `sprint-change-proposal-2026-07-01.md` (Correct Course, 2026-07-01).
-**Current state:** in progress after the 2026-08-11 retrospective rejected composed acceptance. Stories
-9.1 and 9.2 remain done historical records. Stories 9.3-9.8 own remediation; the epic closes only after
-Story 9.8 records composed and live acceptance evidence. Remediation source:
-`sprint-change-proposal-2026-08-12.md`.
+**Delivery status:** done (reconciled 2026-09-22). The 2026-08-11 retrospective rejected composed
+acceptance; Stories 9.3-9.8 delivered the remediation and the live Story 9.8 proof passed 2026-08-27.
+Stories 9.1 and 9.2 remain done historical records. E9-APP-1 (Story 13.8) is separate Product
+acceptance and does not reopen this epic. Remediation source: `sprint-change-proposal-2026-08-12.md`.
 
 ### Epic 10: Tooling Governance Follow-Through *(post-MVP quality hardening)*
 An **adopter developer** can trust FrontComposer's authoring-tooling evidence because story file
@@ -393,6 +824,7 @@ unblock), a unified command/projection route contract (so palette command activa
 that exists), a leaner Contracts kernel, and consolidated shell layering + convention alignment.
 Remediation-framed, but each story is justified by operator/adopter/security impact and organized into bounded release workstreams.
 **Canonical FRs covered:** FR-7, FR-10, FR-12, FR-19, FR-22, FR-25, FR-28, FR-29 · **Introduces:** architecture-review-finding requirements H1–H12 / M-series · **no net-new user-facing FRs**
+**Delivery status:** done through Story 11.32 (reconciled 2026-09-22). Story 11.25 is technical capture only; E11R-AI-1 is carried forward to EVT-ID-1 (Story 16.1) and EVT-APP-1 (Story 16.3).
 **Delivery model:** Stories 11.0–11.24 are completed history. Stories 11.17, 11.18, and 11.19 are nonimplementable decomposition parents; only their named children enter the queue. The approved 2026-09-12 retrospective-remediation extension adds Stories 11.25–11.32 in the order current identity, immediate gates, acceptance checkpoint, runtime/evidence hardening, artifact integrity, and final acceptance. Epic 11 consumes completed Epic 10 evidence where referenced and does not reopen completed Epics 1–10.
 **Source of record:** `sprint-change-proposal-2026-07-04.md` (Correct Course, 2026-07-04), amended by `sprint-change-proposal-2026-09-11.md` (approved 2026-09-12) after `_bmad-output/implementation-artifacts/epic-11-retro-2026-09-10.md` rejected acceptance. A Minor-scope quick-win fix batch was applied in-tree under the original proposal (PR #48).
 **Decisions (contract-confirmation DoD — tracked, owned, dated blocking gates):** **11.0** route-contract decision → **Architect + Product**, assigned 2026-07-05, resolved 2026-07-05 with `/commands/{BoundedContext}/{CommandTypeName}`; **11.8** Contracts kernel split decision and compatibility plan → **Architect + PM**, assigned 2026-07-04, resolved 2026-07-05 with the approved `Contracts` kernel + `Contracts.UI` target. Stories 11.11–11.14 are completed delivery records for that package-boundary change.
@@ -1658,7 +2090,7 @@ and punctuation-heavy string secret values.
 
 **Delivery status:** done. All implementable Stories 11.0–11.9 and 11.11–11.32 are completed
 history. Story 11.25 is a completed technical capture, not migration approval; E11R-AI-1 remains
-open under proposed EVT-ID-1/EVT-APP-1. Later tuple or validator drift creates new work and does not
+open under EVT-ID-1 (Story 16.1) and EVT-APP-1 (Story 16.3). Later tuple or validator drift creates new work and does not
 rewrite this epic.
 
 > **Source of record:** `sprint-change-proposal-2026-07-04.md` (Correct Course, 2026-07-04), triggered by the
@@ -1700,7 +2132,7 @@ rewrite this epic.
 | Identity capture and immediate gate recovery | 11.25–11.28 | Done. Story 11.25 captured technical identity history only; G-3 approval remains separate. |
 | Runtime and evidence hardening | 11.29–11.31 | Done. |
 | Artifact integrity | 11.32 | Done as accepted delivery history; current validator drift is proposed PLAN-INT-2. |
-| Residual exact-tuple approval | EVT-ID-1, EVT-APP-1 | Proposed new work under G-3/E11R-AI-1; not part of completed Epic 11. |
+| Residual exact-tuple approval | EVT-ID-1, EVT-APP-1 | New work under G-3/E11R-AI-1, materialized as Stories 16.1 and 16.3; not part of completed Epic 11. |
 
 Within logging remediation, ownership precedence is deterministic: 11.18a security/fail-closed sites
 first, 11.18c command-lifecycle/projection/polling hot paths second, and 11.18b residual
@@ -2077,7 +2509,7 @@ So that hardening fixes do not depend on remembering every copy.
 **When** generated literal escaping is consolidated,
 **Then** it delegates to the shared `GeneratedLiteral` path without regressing generated-source parsing.
 
-### Story 11.17: Mechanical one-type-per-file split
+### Decomposition Parent 11.17: Mechanical one-type-per-file split
 
 > **Nonimplementable decomposition parent.** Queue state belongs only to 11.17a–d; this parent must
 > never move to backlog, ready-for-dev, or review.
@@ -2088,17 +2520,25 @@ except intentional file organization and any documented API-baseline update. A d
 Governance guard (the "multi-type file" blind-spot guard class) is added or extended so the convention
 is enforced, not merely applied.
 
+#### Story 11.17: CLI package split
+
 - **11.17a — CLI package split (`11-17-cli-package-split.md`, done).** `MigrationCommand.cs` (23 types), `InspectCommand.cs` (14 types) →
   one-type-per-file. Validation lane: CLI in-process xUnit lane + `frontcomposer.cli.inspect.v1` /
   `frontcomposer.cli.migrate.v1` contract pins + CLI `PublicAPI.Shipped.txt` unchanged.
+#### Story 11.17: SourceTools package split
+
 - **11.17b — SourceTools package split (`11-17-sourcetools-package-split.md`, done).** `DriftDetection.cs` (17 types) → one-type-per-file.
   Validation lane: SourceTools drift lane + HFC parity + generated-output byte stability (P12
   no-`CompilationProvider` isolation preserved).
+#### Story 11.17: MCP/runtime split and benchmark relocation
+
 - **11.17c — MCP/runtime split + benchmark-harness relocation (`11-17-mcp-runtime-split-and-benchmark-relocation.md`, done).** `SkillCorpus.cs` (~45 types) →
   one-type-per-file, and move the LLM benchmark harness out of the runtime package into
   `Shell.Tests.Bench` (`[Trait("Category","Performance")]`). Validation lane: MCP in-process lane +
   Testing package-boundary tests + `Shell.Tests.Bench` builds; the runtime package no longer ships the
   benchmark harness.
+#### Story 11.17: Shell bundle split
+
 - **11.17d — Shell interface+impl+DTO bundle split (`11-17-shell-bundle-split.md`, done).** Shell multi-type files (interface + impl + DTO
   bundles) → one-type-per-file, retaining the documented Fluxor action-group exception. Validation
   lane: focused Shell one-type-per-file Governance guard + broad Shell non-Contract lane +
@@ -2118,7 +2558,7 @@ So that the codebase matches the documented one-type-per-file convention before 
 **When** tests and generated-output checks run,
 **Then** behavior and public API shape remain unchanged except for intentional file organization and any documented API baseline updates.
 
-### Story 11.18: LoggerMessage migration for warnings and hot paths
+### Decomposition Parent 11.18: LoggerMessage migration for warnings and hot paths
 
 > **Nonimplementable decomposition parent.** Queue state belongs only to 11.18a–c; this parent must
 > never move to backlog, ready-for-dev, or review.
@@ -2127,12 +2567,18 @@ So that the codebase matches the documented one-type-per-file convention before 
 Each child preserves the parent's sanitization constraint: no raw token, tenant-secret, payload, stack
 trace, or sensitive identifier is emitted.
 
+#### Story 11.18: Fail-closed security log sites
+
 - **11.18a — Fail-closed / security log sites (`11-18-fail-closed-security-log-sites.md`, done).** MCP + Shell fail-closed branches →
   `[LoggerMessage]`. Validation lane: MCP + Shell Governance sanitized-logging lane (ties to
   NFR-6/NFR-11); sanitization tests prove no sensitive value is emitted.
+#### Story 11.18: Warning-and-above log sites
+
 - **11.18b — Residual warning-and-above log sites (`11-18-warning-and-above-log-sites.md`, done).** After 11.18a security and 11.18c hot-path ownership is frozen, all residual Warning/Error/Critical direct sites in the 49-file census →
   `[LoggerMessage]`. Validation lane: Shell unit lane + a guard that Warning+ sites use
   source-generated logging.
+#### Story 11.18: Hot-path log sites
+
 - **11.18c — Hot-path log sites (`11-18-hot-path-log-sites.md`, done).** Command-lifecycle, projection-refresh, and polling hot-path sites →
   `[LoggerMessage]`. Validation lane: LoggerMessage guard; remaining direct calls are below the
   migration threshold or documented intentional.
@@ -2157,7 +2603,7 @@ path → residual Warning+ precedence, and owned sites migrate to `[LoggerMessag
 **When** review checks run,
 **Then** remaining direct calls are either below the migration threshold or documented as intentional.
 
-### Story 11.19: Enforcement and policy alignment
+### Decomposition Parent 11.19: Enforcement and policy alignment
 
 > **Nonimplementable decomposition parent.** Queue state belongs only to 11.19a–d; this parent must
 > never move to backlog, ready-for-dev, or review.
@@ -2165,16 +2611,24 @@ path → residual Warning+ precedence, and owned sites migrate to `[LoggerMessag
 **Decomposition (correct course 2026-07-05).** Split by defect class. Each child names its validation
 lane and does not disable warnings or analyzer findings globally.
 
+#### Story 11.19: Doc-comment enforcement realignment
+
 - **11.19a — Doc-comment (CS1591) enforcement realignment (`11-19-doc-comment-enforcement-realignment.md`, done).** Restore documented CS1591 enforcement on
   the Contracts public API-freeze folders (the `.editorconfig` re-raise is currently dead under the
   src-wide NoWarn). Validation lane: Release build under `TreatWarningsAsErrors=true` + a guard proving
   CS1591 is enforced on the API-freeze surface.
+#### Story 11.19: AppHost NuGet audit suppression
+
 - **11.19b — AppHost NuGet audit suppression (`11-19-apphost-nuget-audit-suppression.md`, done).** Replace the blanket `NU1902-04` NoWarn with
   per-advisory `NuGetAuditSuppress` (CI-verifiable). Validation lane: CI audit lane / Governance test.
+#### Story 11.19: Localization and identifier alignment
+
 - **11.19c — Localization + identifier alignment (`11-19-localization-and-identifier-alignment.md`, done).** Localize the `FcHomeCard` aria-label and the UI
   host `lang="en"`/English strings; rename `HFC2106_ThemeHydrationEmpty` (ID string unchanged; obsolete
   alias if the constant is public). Validation lane: Shell localization/Governance lane +
   diagnostic-catalog parity.
+#### Story 11.19: Analyzer-elevation decision
+
 - **11.19d — Analyzer-elevation decision gate (`11-19-analyzer-elevation-decision.md`, done).** Architecture and Product approved staged
   adoption of `AnalysisMode=Recommended` with unchanged TWAE, built-in analyzers only, and narrow
   owner-bound exceptions. The decision is recorded in
@@ -2388,7 +2842,7 @@ Owner. **Retrospective action:** E11R-AI-1.
 **Completion boundary (reconciled 2026-09-22):** this story delivered the v2 technical capture and
 remains done. It did not obtain migration receipts, set migration approval true, or close G-3. Its
 tuple is historical and must not be projected onto the current EventStore/Builds gitlinks. E11R-AI-1
-therefore points to proposed EVT-ID-1 for a fresh exact-tuple packet and EVT-APP-1 for separate owner
+therefore points to EVT-ID-1 (Story 16.1) for a fresh exact-tuple packet and EVT-APP-1 (Story 16.3) for separate owner
 approval; this story is not reopened or reused.
 
 As a Release Owner and framework maintainer,
@@ -2619,7 +3073,7 @@ movement as unfinished Epic 11 work.
 
 Two residuals remain explicit outside the epic:
 
-- E11R-AI-1/G-3 is open under EVT-ID-1 and EVT-APP-1 because Story 11.25 did not grant migration
+- E11R-AI-1/G-3 is open under EVT-ID-1 (Story 16.1) and EVT-APP-1 (Story 16.3) because Story 11.25 did not grant migration
   approval and the repository moved beyond its exact tuple.
 - The current Story 11.32 validator failure is proposed PLAN-INT-2. It repairs current artifact
   integrity without retroactively changing the completed status of Story 11.32 or Epic 11.
@@ -2739,3 +3193,1116 @@ deny-only variable can block but never authorize, and no current exception exist
 **When** GOV-1 is handed off,
 **Then** BUILD-CAT-1 is routed upstream; FrontComposer validates semantic contents during migration and
 does not use an exact catalog fingerprint allowlist as a replacement compatibility test.
+
+
+## Epic 12: Adopters Launch an Operations-Ready Domain Shell
+
+Adopter developers can turn annotated domain types into a coherent, accessible FrontComposer shell and prove a named domain-module adoption without bespoke framework plumbing.
+
+### Story 12.1: [I · ADOPT-KIT-1] Publish a Deterministic Three-Call Adopter Proof Kit
+
+As an adopter developer,
+I want a versioned, candidate-bound bootstrap proof kit,
+So that I can demonstrate a generated projection and command without repository-private knowledge or bespoke framework plumbing.
+
+**Acceptance Criteria:**
+
+**Given** a clean consumer fixture and an exact FrontComposer candidate identity
+**When** the documented AddHexalithFrontComposerQuickstart(), AddHexalithDomain<TMarker>(), and AddHexalithEventStore(...) sequence is applied
+**Then** the consumer starts through the supported bootstrap path and renders at least one generated projection and one generated command
+**And** the procedure requires no FrontComposer-repository-private paths, unpublished assumptions, or hand-authored replacement UI.
+
+**Given** a required bootstrap stage is absent or misordered
+**When** the consumer starts
+**Then** startup fails before first render with the named missing or misordered stage
+**And** an empty domain registry remains a valid shell state.
+
+**Given** proof is captured for an external adopter
+**When** the kit records its result
+**Then** it binds the candidate SHA, relevant package/runtime identity, generated projection assertion, generated command assertion, execution date, and pass/fail result
+**And** it redacts tenant/user data, tokens, payloads, stack traces, and machine-specific paths.
+
+**Given** existing focused generator, bootstrap, Shell, and authentication regression tests already prove delivered FR1–FR4, FR7–FR10, and FR29.1 behavior
+**When** the kit is validated
+**Then** those existing results are referenced where applicable rather than duplicated into a new evidence framework
+**And** no completed baseline behavior is reimplemented solely for this story.
+
+**Given** FrontComposer and Fluent UI V5 already provide the required shell components
+**When** the consumer fixture renders the proof surface
+**Then** it uses the current pinned components and theme roles
+**And** it introduces no raw replacement controls, custom theme, legacy Fluent tokens, or new responsive breakpoints.
+
+### Story 12.2: [A · ADOPT-APP-1 · Conditional] Select a Substitute Adopter
+
+As the Product Owner,
+I want to record a dated decision when the obligated adopter cannot supply bootstrap proof,
+So that any substitute adopter inherits the same evidence obligation without silently weakening the readiness milestone.
+
+**Acceptance Criteria:**
+
+**Given** Hexalith.Tenants cannot produce EXT-ADOPTER-1 proof and the D-7 fallback is invoked
+**When** the Product Owner evaluates the fallback
+**Then** the decision explicitly selects Hexalith.Parties or holds the readiness milestone
+**And** it records the rationale, date, accountable adopter maintainer, and unchanged proof obligation.
+
+**Given** Hexalith.Parties is selected
+**When** EXT-ADOPTER-1 is transferred to the Parties maintainer
+**Then** the dependency still requires dated, candidate-bound three-call bootstrap, generated-projection, and generated-command proof
+**And** the selection itself does not satisfy G-6 or claim that the external proof exists.
+
+**Given** no dated substitute decision exists
+**When** readiness is evaluated
+**Then** Hexalith.Tenants remains the obligated adopter
+**And** G-6 remains open without an inferred fallback.
+
+**Given** the decision cites the approved adopter kit and existing milestone sources
+**When** its durable record is created
+**Then** it references those artifacts rather than copying their evidence
+**And** no additional evidence schema, test lane, or wrapper report is introduced.
+
+**External dependency — [X · EXT-ADOPTER-1]:** After Story 12.1—and after Story 12.2 only when Parties is selected—the named external adopter maintainer executes the kit and publishes dated, candidate-bound proof. FrontComposer records the dependency state but cannot complete it on the adopter's behalf.
+
+## Epic 13: Operators Trust Tenant-Scoped Data and Command Outcomes
+
+Operators can browse projections, execute commands, recover from transport failures, and understand lifecycle and fresh-row state without stale-tenant leakage or false success.
+
+### Story 13.1: [I · TEN-SCOPE-1] Prove Tenant-Safe Operator State End to End
+
+As an authenticated operator,
+I want every projection, subscription, count, preference, pending command, and fresh-row state scoped to my resolved tenant and user,
+So that I never observe another tenant's data or mistake missing context for an empty result.
+
+**Acceptance Criteria:**
+
+**Given** two tenants have distinguishable projection data and counts
+**When** each tenant uses the production query, subscription, count, and storage adapters
+**Then** each receives only its own scoped state
+**And** the focused integration proof exercises the real EventStore seams rather than unit-only substitutes.
+
+**Given** tenant identity is absent, invalid, mismatched, or becomes stale under a live surface
+**When** a query, subscription, count, preference, pending-state, or fresh-row operation would run
+**Then** the operation fails closed before prior-scope data can render
+**And** the operator sees an explicit blocking state rather than an empty-looking result.
+
+**Given** a SignalR projection group or persisted preference belongs to a prior scope
+**When** tenant or user context changes
+**Then** the old group is blocked and old state is cleared before the next scope renders
+**And** storage uses the tenant/user/feature key or is skipped with the governed diagnostic when scope is unavailable.
+
+**Given** focused tenant, storage-key, return-path, and auth-state tests already exist
+**When** this story is verified
+**Then** they are reused with the minimum additional production-seam scenario needed for FR30
+**And** output contains no tenant payload, token, JWT, stack trace, or unrestricted PII.
+
+### Story 13.2: [I · UX-A] Make Shell Navigation and Route Focus Deterministic
+
+As a keyboard or assistive-technology operator,
+I want shell, account, Module navigation, search, and route focus to behave predictably,
+So that I can move through the application without losing context.
+
+**Acceptance Criteria:**
+
+**Given** a successful client-side navigation from shell navigation, a Module tab, the palette, or an authorized CTA
+**When** the destination activates
+**Then** focus moves to its unique route-level h1
+**And** the labelled tabpanel, active Module item, and canonical route agree.
+
+**Given** navigation cannot activate its target
+**When** the failure is surfaced
+**Then** the current surface retains a usable heading or status focus target and announces the failure once
+**And** no hidden, removed, or unrelated tab receives focus.
+
+**Given** the shell is rendered with adopter header customization
+**When** an operator uses the header, hamburger, account menu, Ctrl+K, Ctrl+,, conditional page-search shortcut, or Escape
+**Then** the framework account control and hamburger remain reachable and closing transient UI restores focus to its invoker
+**And** account sign-out uses the framework route and evicts token state without exposing token details.
+
+**Given** Desktop, Compact, and Narrow-browser shell modes
+**When** primary navigation is presented
+**Then** each bounded context has exactly one Module entry, projection links remain secondary, and exactly one item is active
+**And** the implementation uses the shared breakpoint watcher without inventing product-contract widths or raw replacement controls.
+
+**Given** the delivered Home, settings, page frame, Module tabs, toolbar, and section patterns
+**When** their focused shell regression scenarios run
+**Then** Home exposes No Modules/Hydrating/Partially Ready/Ready states, settings previews and persists only in valid scope, tabs and toolbar retain their keyboard contracts, and unknown routes/tabs fail explicitly
+**And** two or more sibling titled sections use one Fluent accordion while the only primary content region remains visible.
+
+### Story 13.3: [I · UX-B] Preserve Focus and Input Through Command Safety Outcomes
+
+As an operator submitting a generated command,
+I want validation, rejection, confirmation, abandonment, and blocked-submit behavior to preserve useful context,
+So that I can correct mistakes safely without duplicate execution.
+
+**Acceptance Criteria:**
+
+**Given** a generated form has client-validation errors
+**When** submission is attempted
+**Then** a linked error summary receives focus, each item navigates to its Fluent input, and the first invalid field is keyboard reachable
+**And** correct values remain intact.
+
+**Given** the server returns an asynchronous Rejected lifecycle outcome
+**When** no support-safe field mapping exists
+**Then** rejection remains lifecycle feedback through the focused alert/error path rather than being recast as client validation
+**And** raw backend metadata, payloads, stack traces, and unrestricted PII remain hidden.
+
+**Given** a destructive command or a form edited for at least 30 seconds
+**When** confirmation or guarded navigation opens and the operator cancels
+**Then** no dispatch or navigation occurs and focus returns to the invoking control or form
+**And** modal depth never exceeds one.
+
+**Given** one local command is already in flight
+**When** another submit is attempted
+**Then** FC-CNC blocks the later command without queueing, batching, or racing it and announces once that it did not run
+**And** the original command remains the only lifecycle allowed to advance.
+
+**Given** a protected generated command contains server-controlled or derived values
+**When** authorization is Pending, Authorized, or NotAuthorized
+**Then** no protected form flashes before authorization, only editable Fluent inputs render, controlled values are injected server-side, and policy runs before and after BeforeSubmit plus at the service boundary
+**And** unsupported types render a bounded placeholder without leaving broken controls or accepting hidden values as authorization.
+
+### Story 13.4: [I · UX-C] Announce Projection and Command State Without Noise
+
+As an operator monitoring projections and commands,
+I want meaningful state changes announced once with truthful timing,
+So that I understand progress and recovery without hearing retries, polling ticks, or false success.
+
+**Acceptance Criteria:**
+
+**Given** a projection enters Loading, Empty, Data, Stale, Reconnecting, FallbackPolling, SlowQuery, MaxItems, Reconnected, or Query/Permission Error
+**When** its meaningful state changes
+**Then** the visible state exposes its consequence, permitted action, and recovery classification and announces once through the appropriate channel
+**And** rapid intermediate changes, retries, poll ticks, and repetitive renders are coalesced or silent.
+
+**Given** realtime connectivity fails and later recovers
+**When** the resilience path runs
+**Then** retries remain unbounded with jittered backoff capped at 30,000ms, a closed connection restarts within 10 seconds, and fallback polling runs every 15 seconds across at most eight lanes
+**And** successful reconciliation produces one 3,000ms Reconnected notice before returning to silent live operation.
+
+**Given** a command advances through Submitting, Acknowledged, Syncing, and a terminal or degraded outcome
+**When** lifecycle feedback renders
+**Then** transport acknowledgement is never styled or announced as Confirmed, progress uses a polite channel, and Rejected uses the focused error path
+**And** each meaningful terminal transition is announced once.
+
+**Given** confirmation has not arrived
+**When** 10,000ms elapses
+**Then** the UI enters Degraded while confirmed-status polling may continue every 1,000ms up to 120,000ms
+**And** the zero pre-accept retry rule and single 250ms same-MessageId transient dispatch retry remain distinct and are verified with deterministic time.
+
+**Given** the delivered projection grid, loading/empty placeholders, row detail, status icon, and badge components
+**When** their focused regression scenarios run
+**Then** filtering is debounced/resettable, column priority activates above 15 columns, virtualization begins at 500 rows, unfiltered results cap at 10,000, expanded detail remains a labelled region, and hidden expanded rows recover focus safely
+**And** skeletons match the expected layout, empty results distinguish no data from no filter matches, and status meaning remains available through icon/shape plus text.
+
+**Given** exact presentation or final microcopy remains unresolved for Warning, NeedsReview, Degraded, missing tenant, FallbackPolling, SlowQuery, MaxItems, or fresh-row dismissal
+**When** those states are implemented or documented
+**Then** they inherit the nearest Fluent semantic treatment and preserve the approved meaning and announcement rules
+**And** the unresolved choice receives an explicit disposition without inventing a new visual language or final copy.
+
+### Story 13.5: [I · UX-D] Preserve Fresh-Row Meaning Across Visual and Data Changes
+
+As an operator watching a projection after a command,
+I want a fresh-row marker only on the material row my command changed,
+So that I can trust the indicator across filtering, paging, accessibility modes, and expiry.
+
+**Acceptance Criteria:**
+
+**Given** an eligible terminal Material outcome has an immutable pre-dispatch target identity
+**When** the resolver publishes the result
+**Then** an already-rendered scoped grid updates the matching ViewKey/EntityKey using atomic first-wins behavior
+**And** the materialization is announced at most once without moving focus.
+
+**Given** identity or materiality is Unknown, the result is NoOp, delete, Rejected, or NeedsReview, or the key is server allocated
+**When** terminal resolution completes
+**Then** no fresh-row indicator is published
+**And** no SignalR nudge, visible-row diff, aggregate identifier, or untyped result is used as substitute identity.
+
+**Given** a marked row is filtered, paged, requeried, dismissed, expires, or leaves tenant/user scope
+**When** generated consumers invalidate
+**Then** the grid remains consistent and scope safe, provenance is not replaced or extended by a later message, and expiry is silent
+**And** filter removal does not imply that the entity was deleted.
+
+**Given** forced-colors or reduced-motion mode is active
+**When** the fresh-row state appears
+**Then** shape and text preserve its meaning without color or animation
+**And** the existing ten-second active window is tested using deterministic time rather than a new evidence mechanism.
+
+### Story 13.6: [I · UX-E] Verify Responsive and Assistive Accessibility
+
+As an operator using zoom, text spacing, keyboard navigation, forced colors, reduced motion, or assistive technology,
+I want generated shell workflows to remain perceivable and operable,
+So that accessibility does not depend on a preferred viewport or input mode.
+
+**Acceptance Criteria:**
+
+**Given** the canonical shell, projection, row-detail, command, palette, settings, tab, and dialog journeys
+**When** they are exercised at 320 CSS pixels and 400 percent zoom
+**Then** meaning and operation remain available without nonessential two-dimensional scrolling
+**And** sticky or transient content does not entirely obscure focus.
+
+**Given** WCAG text-spacing overrides and 24-by-24 CSS-pixel target-size checks
+**When** the same journeys run
+**Then** text remains usable, controls remain operable, and any standards-based target-size exception is explicitly identified
+**And** keyboard behavior remains equivalent.
+
+**Given** forced-colors and reduced-motion preferences
+**When** status, lifecycle, reconnecting, and fresh-row states render
+**Then** borders, focus, icon/text meaning, and timing remain perceivable without color or animation
+**And** no hover-only or motion-only meaning is introduced.
+
+**Given** the configured accent, typography mappings, rail widths, compact row height, constrained measure, and inherited Fluent component visuals
+**When** light/dark, zoom, text-spacing, and contrast checks run
+**Then** the accent remains a configurable thread rather than chrome fill, load-bearing color pairs meet WCAG 2.2 AA, the nine FcTypoToken mappings and TypographyMappingVersion 3.1.0 remain intact, and the 72px/48px/32px/75rem metrics remain exact
+**And** no legacy token, hard-coded semantic palette, custom type ramp, decorative theme, or fabricated numeric breakpoint is introduced.
+
+**Given** existing bUnit/e2e accessibility lanes can deterministically prove a requirement
+**When** evidence is assembled
+**Then** those focused results are reused and manual assistive-technology checks are limited to behavior automation cannot establish
+**And** one candidate-bound result references the evidence instead of duplicating it into new reports or workflows.
+
+**Given** UX-A through UX-F and their source-owned gaps have results
+**When** the opt-in UX reviewer gate is reached
+**Then** the gate runs or an explicit authorized skip is recorded, and every Critical/High finding or unresolved source gap receives a disposition
+**And** the paired UX contract remains draft until the required findings and decisions are closed.
+
+### Story 13.7: [I · UX-F] Provide Reusable UX Assertions for Adopters
+
+As an adopter test engineer,
+I want deterministic FrontComposer Testing helpers for the canonical interaction and accessibility matrices,
+So that downstream modules can verify generated failure and recovery UX without app-specific selectors or hidden timing.
+
+**Acceptance Criteria:**
+
+**Given** the FrontComposer Testing host and deterministic fakes
+**When** an adopter configures validation, rejection, timeout/stall, authorization denial, paging, filtering, sorting, or lifecycle scenarios
+**Then** helpers can assert linked summaries, input preservation, state truth, blocked-submit feedback, and deduplicated announcements
+**And** deterministic time controls lifecycle, retry, reconnect, and silent-expiry behavior.
+
+**Given** route, tab, palette, dialog, row-detail, and fresh-row journeys
+**When** helpers assert focus and accessibility behavior
+**Then** they support keyboard recovery, invoker restoration, removed-content avoidance, first-wins scope, and silent expiry
+**And** stable data-testid selectors supplement rather than replace accessible roles and names.
+
+**Given** responsive and accessibility verification
+**When** the helper surface records evidence
+**Then** it can express reflow/zoom, text-spacing, target-size, focus-not-obscured, forced-colors, and reduced-motion outcomes
+**And** output is redacted by default.
+
+**Given** equivalent deterministic helpers or evidence recorders already exist
+**When** this story is implemented
+**Then** they are extended rather than duplicated and any public API change updates its intentional baseline
+**And** no downstream app-specific selector or machine-dependent wait is required.
+
+### Story 13.8: [A · E9-APP-1] Accept the Completed Fresh-Row Live Proof
+
+As the Product Owner,
+I want to accept or reject the completed Story 9.8 live proof explicitly,
+So that Epic 9 delivery history remains distinct from Product acceptance.
+
+**Acceptance Criteria:**
+
+**Given** the immutable Story 9.8 live record and its candidate identity
+**When** the Product Owner reviews the proof
+**Then** a dated decision cites the exact record and states accept or reject
+**And** absence of the decision leaves G-5 open.
+
+**Given** the proof is accepted
+**When** readiness status is evaluated
+**Then** E9-APP-1 closes without changing the completed status of Stories 9.1 through 9.8
+**And** the decision does not claim coverage for server-allocated-key commands or other accepted non-goals.
+
+**Given** the proof is rejected
+**When** corrective work is required
+**Then** a new bounded residual item identifies the specific deficiency
+**And** completed Epic 9 implementation and immutable evidence history are not rewritten.
+
+### Story 13.9: [A · FLUENT-APP-1] Decide the Exact Fluent UI V5 Posture
+
+As the Product Owner and Architect,
+I want to accept an exact catalog-owned Fluent UI V5 identity and upgrade posture,
+So that UX readiness is tied to the components and tokens actually tested.
+
+**Acceptance Criteria:**
+
+**Given** UX-A through UX-F evidence for one exact catalog identity
+**When** the Product Owner and Architect review the Fluent posture
+**Then** a dated decision identifies the exact package/catalog revision, RC or GA status, and supported token/API names
+**And** no floating label, legacy token, or unverified component name substitutes for that identity.
+
+**Given** the selected identity is accepted
+**When** its lifecycle rules are recorded
+**Then** the decision defines the breaking-change rule, GA re-decision trigger, and accessibility/visual revalidation trigger
+**And** documentation may cite the decision rather than reproduce its evidence.
+
+**Given** the identity is rejected or cannot be approved
+**When** the decision is recorded
+**Then** G-4 remains open and any corrective implementation is captured as a new bounded residual
+**And** completed UX evidence remains immutable history rather than being relabelled.
+
+## Epic 14: AI Integrators Expose Domain Operations Safely
+
+AI integrators can expose generated commands, projections, skills, and lifecycle polling through a host-authenticated MCP surface with tested disclosure boundaries.
+
+### Story 14.1: [I · MCP-SEC-1] Enforce Production MCP Authorization Composition
+
+As an AI-agent integrator,
+I want production MCP hosting to reject permissive or incomplete authorization composition,
+So that generated tools and resources cannot be exposed without tenant gates and host authentication.
+
+**Acceptance Criteria:**
+
+**Given** a non-Development host registers AllowAllMcpTenantToolGate, AllowAllResourceVisibilityGate, or an equivalent permissive escape hatch
+**When** FrontComposer MCP startup validation runs
+**Then** startup fails closed with a support-safe error naming the invalid gate type
+**And** no MCP endpoint becomes available.
+
+**Given** either IFrontComposerMcpTenantToolGate or IFrontComposerMcpResourceVisibilityGate is missing
+**When** the host starts
+**Then** startup throws the documented InvalidOperationException naming the missing registration
+**And** the error exposes no tenant, tool, fingerprint, token, or internal exception detail.
+
+**Given** MapFrontComposerMcp is mapped in a production-like host
+**When** endpoint metadata and unauthenticated access are inspected
+**Then** host authorization is required through RequireAuthorization() or an equivalent policy before dispatch
+**And** an unprotected mapping fails the focused production-composition assertion.
+
+**Given** valid host authentication, both restrictive gates, a visible generated command, and a compatible schema class
+**When** the caller lists and invokes the tool
+**Then** the normal operation succeeds and TenantId, UserId, MessageId, and CorrelationId are injected server-side
+**And** Exact, CompatibleAdditive, and CompatibleWarning are the only negotiation classes permitted to reach a side effect.
+
+### Story 14.2: [I · MCP-SEC-2] Prove MCP Leak and Oracle Resistance
+
+As a security QA maintainer,
+I want one focused MCP audit to exercise every documented disclosure boundary,
+So that hidden tools, tenant data, lifecycle state, and internal diagnostics do not leak through inconsistent public shapes.
+
+**Acceptance Criteria:**
+
+**Given** the same caller requests an absent, hidden, unauthorized, tenant-less, or policy-denied tool
+**When** the named SM-4 audit class captures tools/call results
+**Then** the hidden and absent shapes are byte-identical and use unknown_tool, HFC-MCP-UNKNOWN-TOOL, the bounded caller-visible tool list, and Request failed.
+**And** the response does not echo the requested name, tenant, fingerprint, token, or internal exception.
+
+**Given** unauthenticated, missing-tenant, and authenticated callers
+**When** tools/list, resources/list, and resources/read are compared
+**Then** tools/list fails closed to the documented empty collection, resources/list exposes only the intentionally static generated catalog, and registered hidden projection reads return unknown_resource
+**And** the audit does not falsely claim that the disclosed catalog or credential-validity signal is secret.
+
+**Given** a registered hidden resource, an unregistered URI dispatched through the SDK, a skill resource, and a visible incompatible projection
+**When** each resource is read
+**Then** registered hidden reads, SDK not-found behavior, bounded skill failures, and schema-mismatch behavior match their distinct documented contracts
+**And** hidden-resource admission is evaluated before schema detail where required.
+
+**Given** two tenants, two users, and command lifecycle state created in one request scope
+**When** later scopes query tools, projections, or frontcomposer.lifecycle.subscribe
+**Then** lifecycle remains available only to its authorized scope, cross-tenant and cross-user access fails through the opaque public shape, and normal same-scope polling still works
+**And** singleton lifecycle storage with a scoped tracker remains covered as regression behavior.
+
+**Given** existing ToolAdmissionTests, ProjectionReaderTaxonomyTests, SchemaNegotiationPrecedenceMatrixTests, and AuthRedactionStressTests already prove part of the matrix
+**When** MCP-SEC-2 is implemented
+**Then** the named audit reuses those focused results and adds only missing endpoint-authentication, allow-all, SDK-dispatch, isolation, and oracle cases
+**And** one candidate-bound test result is referenced rather than copied into duplicate security packets or workflows.
+
+### Story 14.3: [A · MCP-APP-1] Record Independent MCP Security Acceptance
+
+As an independent security reviewer,
+I want to accept or reject the immutable MCP production-security result,
+So that G-7 closes only after its remaining disclosure and oracle risks receive an explicit disposition.
+
+**Acceptance Criteria:**
+
+**Given** MCP-SEC-1 and MCP-SEC-2 are complete for one immutable candidate
+**When** a reviewer who did not implement MCP-SEC-1 evaluates the focused results
+**Then** the dated decision cites the exact candidate and test artifacts and records accept or reject
+**And** an unsigned or non-independent review leaves G-7 open.
+
+**Given** the documented tools/list credential-validity signal, static resources/list catalog, SDK unregistered-URI distinction, and host-authentication responsibility
+**When** residual risks are reviewed
+**Then** each receives an explicit accept, reject, or bounded-follow-up disposition
+**And** timing side channels remain the stated out-of-scope item rather than being silently claimed as tested.
+
+**Given** acceptance is granted
+**When** readiness is evaluated
+**Then** MCP-APP-1 closes without expanding the exact FR19 guarantees
+**And** the approval references existing immutable proof instead of reproducing it.
+
+**Given** acceptance is rejected
+**When** corrective work is required
+**Then** a new bounded residual item identifies the failed guarantee
+**And** completed implementation and prior evidence history remain unchanged.
+
+## Epic 15: Maintainers Evolve FrontComposer Without Contract Drift
+
+Framework maintainers can customize, inspect, migrate, document, test, and upgrade FrontComposer while preserving public contracts and exact runtime identity.
+
+### Story 15.1: [I · PLAN-INT-2] Restore Current Artifact-Integrity Validation
+
+As a planning and QA maintainer,
+I want the existing story-artifact validator to detect current contradictions and incomplete File Lists,
+So that new planning drift fails closed without rewriting accepted delivery history.
+
+**Acceptance Criteria:**
+
+**Given** the current Story 11.32 validation scope and repository state
+**When** the existing validation command runs
+**Then** its declared story-owned files and current changed artifacts reconcile and the command passes
+**And** the repair does not change the completed status or historical acceptance of Story 11.32.
+
+**Given** a fixture with stale epic/story/action status or a missing or empty File List
+**When** the validator evaluates it
+**Then** validation fails with a deterministic support-safe diagnostic identifying the contradiction class
+**And** the failure does not depend on machine-specific paths or unrelated working-tree changes.
+
+**Given** completed Epic 9–11 outcomes, closed FR27/FR28 decisions, and FR29.5/FR29.6 regression gates
+**When** planning integrity is checked
+**Then** completed history remains closed and points to its existing focused regression coverage
+**And** only current residual aliases remain represented as open work.
+
+**Given** the repository already contains the validator and its focused tests
+**When** this story is implemented
+**Then** those sources are corrected and extended rather than replaced by a second validator, schema, or report
+**And** the exact command and focused result are recorded as the minimum-sufficient proof.
+
+### Story 15.2: [I · DOC-A] Reconcile Component and Page-Pattern Documentation
+
+As an adopter and framework maintainer,
+I want component, index, status, toolbar, and tab documentation to match the implemented public surface,
+So that customization and Testing guidance does not describe stale or internal-only APIs.
+
+**Acceptance Criteria:**
+
+**Given** the implemented public component surface and docs/reference/components inventory
+**When** documentation parity is evaluated
+**Then** every in-scope public component page is indexed and names the implemented API, state behavior, accessibility contract, and current status
+**And** stale, missing, or unclassified entries fail the existing documentation-conformance check.
+
+**Given** FcPageToolbar and FcPageTabs documentation
+**When** their contracts are described
+**Then** public behavior, routing, focus, and supported customization seams are explicit
+**And** implementation-owned internal Fluent composition is not promoted into a public API.
+
+**Given** projection status, lifecycle, customization, and Testing documentation
+**When** pages are reconciled
+**Then** they describe the canonical state vocabulary, development-only diagnostic behavior, and deterministic/redacted adopter assertions
+**And** they do not expose raw payloads, tenant/user values, tokens, stack traces, or app-specific selectors.
+
+**Given** a projection override mismatch or render fault
+**When** customization diagnostic behavior is documented and regression-tested
+**Then** FcCustomizationDiagnosticPanel appears only in Development with bounded corrective guidance and deterministic Level 4, Level 2, then generated-default resolution
+**And** it does not replace operator data with raw payload, tenant/user values, tokens, or stack traces.
+
+**Given** existing DocFX, inventory, and component-documentation tests
+**When** this story is verified
+**Then** those checks are extended only for missing semantic parity
+**And** no duplicate documentation registry or evidence report is created.
+
+### Story 15.3: [I · DOC-B] Align Migration and Classification Guidance
+
+As a framework maintainer upgrading a consumer,
+I want migration documentation and classification to agree with executable tooling,
+So that I can distinguish supported automatic migrations from manual-only changes before writing files.
+
+**Acceptance Criteria:**
+
+**Given** MigrationCatalog and the published migration index
+**When** executable and documented version edges are compared
+**Then** every executable edge has matching guidance and every manual-only package/API edge is explicitly classified
+**And** an unclassified or falsely executable edge fails the existing parity check.
+
+**Given** frontcomposer migrate is invoked for a supported edge
+**When** dry-run and apply behavior are documented
+**Then** dry-run remains the default, apply remains atomic, and generated, submodule, symlinked, out-of-root, bin, obj, and .git targets are refused
+**And** frontcomposer.cli.migrate.v1 remains the named machine-readable contract.
+
+**Given** frontcomposer inspect documentation
+**When** maintainers compare generated forms, grids, registrations, manifests, warnings, and errors
+**Then** text/JSON ordering, severity/fail behavior, relative path rewriting, and frontcomposer.cli.inspect.v1 are accurately described
+**And** machine-specific paths and sensitive values remain redacted.
+
+**Given** existing CLI behavior and documentation tests already establish most of the contract
+**When** this story is completed
+**Then** only missing classification/parity assertions and documents are changed
+**And** the CLI or generated output is not reimplemented solely for documentation evidence.
+
+### Story 15.4: [I · DOC-C] Correct the Fluent UI V5 Contingency Identity
+
+As an adopter evaluating FrontComposer's Fluent dependency,
+I want contingency documentation to identify the exact catalog-owned Fluent UI V5 version currently selected,
+So that I do not follow guidance written for a stale release candidate.
+
+**Acceptance Criteria:**
+
+**Given** the selected Hexalith.Builds catalog and docs/fluent-ui-v5-contingency.md
+**When** the documented Fluent identity is resolved
+**Then** the document names the exact catalog-owned package identity and supported API/token posture
+**And** it does not retain the stale rc.2 label when the selected catalog resolves another identity.
+
+**Given** FLUENT-APP-1 is pending, accepted, or rejected
+**When** contingency status is documented
+**Then** the page reports that actual decision state without implying approval from package selection alone
+**And** it cites the dated decision when one exists.
+
+**Given** a future catalog change
+**When** existing documentation validation runs
+**Then** a focused mechanical drift check detects identity mismatch
+**And** the check reuses the catalog/document validation path instead of introducing a second package-version registry.
+
+**Given** an exact update cannot be made and Product grants a bounded exception
+**When** the exception is recorded outside story completion
+**Then** it names owner, rationale, expiry, and revisit trigger
+**And** absence of either an updated document or valid exception leaves DOC-C open.
+
+### Story 15.5: [I · REL-BASE-1] Reconcile the Published Compatibility Baseline
+
+As a package maintainer,
+I want ApiCompat to compare against the latest evidence-backed published release or an explicitly approved bounded lag,
+So that breaking-change detection reflects the public package history consumers actually depend on.
+
+**Acceptance Criteria:**
+
+**Given** the release ledger and available published-package evidence
+**When** the latest evidence-backed release is identified
+**Then** PUBLISHED_BASELINE_VERSION advances from 4.4.0 to that release, currently expected to be v4.5.0
+**And** the baseline is not advanced from a tag or version label without the required package evidence.
+
+**Given** the baseline advances
+**When** ApiCompat and affected public-surface checks run
+**Then** intentional differences are handled through existing baseline, documentation, and migration/deprecation mechanisms
+**And** schema canonicalization, diagnostic bands, CLI JSON, generated-output paths, analyzer policy, and Contracts boundaries remain governed public contracts.
+
+**Given** evidence does not support advancement
+**When** the Release Owner chooses a temporary lag
+**Then** a dated decision records the reason, owner, expiry, and blocking evidence
+**And** the story remains open until either the baseline advances or that bounded decision exists.
+
+**Given** existing PublicAPI, ApiCompat, drift, snapshot, and migration lanes already prove contract behavior
+**When** this story is verified
+**Then** those focused results are reused
+**And** no duplicate compatibility scanner, package reconstruction, or evidence bundle is introduced.
+
+## Epic 16: Maintainers Verify and Approve Exact Runtime Compatibility
+
+FrontComposer, EventStore, and Release maintainers can bind one exact runtime tuple to live compatibility evidence and named approval without rewriting historical identities.
+
+### Story 16.1: [I · EVT-ID-1] Capture the Current EventStore Runtime Tuple
+
+As a FrontComposer runtime maintainer,
+I want one immutable record of the exact FrontComposer, EventStore, Builds, and package tuple tested for release,
+So that compatibility evidence cannot be projected onto a later repository identity.
+
+**Acceptance Criteria:**
+
+**Given** the repository state at story execution
+**When** the successor identity is captured
+**Then** it binds the exact FrontComposer HEAD, EventStore source gitlink, Builds gitlink, catalog-owned EventStore package version, and schema/version identity
+**And** every repository identity is recorded as the exact lowercase commit selected at execution.
+
+**Given** the exact tuple is frozen
+**When** provider and AppHost verification run
+**Then** live Pact provider evidence and the AppHost smoke result execute against that same tuple and their artifact hashes are recorded
+**And** a result from Story 11.24, Story 11.25, v3, or any other prior tuple is retained as history but cannot satisfy the successor.
+
+**Given** the successor record is created before owner approval
+**When** its initial state is inspected
+**Then** migrationApprovalClaimed remains false and required approval receipts remain absent
+**And** technical capture alone does not close G-3.
+
+**Given** FrontComposer HEAD, either gitlink, the catalog package, provider evidence, AppHost evidence, or an artifact hash changes
+**When** governance compares the active identity with the candidate
+**Then** validation fails closed and requires a new successor record
+**And** no existing immutable identity or evidence packet is edited to describe the new tuple.
+
+**Given** existing identity, Pact, AppHost, hashing, and governance mechanisms can produce the required proof
+**When** this story is implemented
+**Then** those mechanisms are reused for one candidate-bound packet
+**And** no parallel identity schema, duplicate compatibility suite, or reconstructed evidence bundle is introduced.
+
+### Story 16.2: [A · EVT-XFER-1 · Conditional] Transfer Migration-Approval Ownership Explicitly
+
+As the Product Owner, Architect, and Release Owner,
+I want to record an explicit ownership transfer if no distinct EventStore maintainer can approve migration,
+So that role equivalence is decided rather than inferred.
+
+**Acceptance Criteria:**
+
+**Given** the required EventStore maintainer role is unavailable or proposed to move
+**When** the conditional transfer path is invoked
+**Then** a dated decision names the receiving role and accountable person or group
+**And** it identifies the exact trigger, required evidence, due condition, and milestone effect.
+
+**Given** EVT-ID-1 exists for an exact tuple
+**When** ownership is transferred
+**Then** the receiving owner inherits the same evidence-review and durable-receipt obligation
+**And** the transfer itself does not approve migration or close G-3.
+
+**Given** no valid transfer record exists
+**When** EVT-APP-1 is evaluated without the original EventStore maintainer receipt
+**Then** approval fails closed
+**And** FrontComposer or Release ownership is not treated as implicit EventStore authority.
+
+**Given** the original ownership remains available
+**When** no transfer is necessary
+**Then** EVT-XFER-1 is recorded as not invoked rather than fabricated
+**And** no additional approval artifact is required.
+
+### Story 16.3: [A · EVT-APP-1] Approve or Reject the Exact Runtime Migration
+
+As the EventStore maintainer, FrontComposer maintainer, and Release Owner,
+I want to approve or reject the exact EVT-ID-1 tuple through durable receipts,
+So that migration readiness reflects named owner judgment over the evidence actually tested.
+
+**Acceptance Criteria:**
+
+**Given** EVT-ID-1 contains a complete immutable tuple and live provider/AppHost results
+**When** each required owner reviews it
+**Then** each durable receipt cites the exact record digest and states approve or reject
+**And** a missing, stale, role-inferred, or tuple-mismatched receipt leaves G-3 open.
+
+**Given** a valid EVT-XFER-1 exists
+**When** approval receipts are evaluated
+**Then** the named receiving owner substitutes only for the transferred role and all other required owners still sign
+**And** the transfer record is cited without being treated as migration approval.
+
+**Given** all required receipts approve the same current tuple
+**When** the successor record is finalized
+**Then** migrationApprovalClaimed may become true and governance can recognize that exact tuple as approved
+**And** later tuple drift immediately requires new evidence and approval rather than inheriting this decision.
+
+**Given** any owner rejects the tuple
+**When** corrective work is required
+**Then** a new bounded residual identifies the compatibility or evidence deficiency
+**And** EVT-ID-1, prior identity records, and completed historical stories remain immutable.
+
+**Given** the owners review the existing candidate-bound packet
+**When** the decision is recorded
+**Then** receipts reference its artifacts and hashes rather than reproducing them
+**And** no additional evidence workflow is created solely for approval.
+
+## Epic 17: Release Owners Establish Safe Publication and Trustworthy Release Records
+
+Release owners can authorize and verify exact package bytes through a privilege-separated pipeline, maintain truthful append-only attempt records, preserve incidents, and support an independent evidence-backed Product readiness decision.
+
+### Story 17.1: [I · GOV-SRC-1] Reconcile Publication-Governance Sources
+
+As an architect,
+I want every governance source to distinguish current execution, dependency, lineage, and evidence identities,
+So that release decisions cannot substitute labels or stale commits for exact provenance.
+
+**Acceptance Criteria:**
+
+**Given** the PRD, architecture, FC-DEP-1, G2 request, GOV-1 spine/story, identity register, workflow caller, and current root gitlinks
+**When** their publication-governance claims are compared
+**Then** they consistently distinguish the owner-accepted lineage anchor, workflow execution pin, current Builds gitlink, future split revision, and evidence-bound candidate identities
+**And** no source describes the active legacy caller as G-8 conformant.
+
+**Given** one source changes a governed identity, trust boundary, halt posture, or evidence contract
+**When** the existing source-consistency validation runs
+**Then** incompatible projections fail with the specific source and field identified
+**And** a descriptive label cannot satisfy an exact digest or commit comparison.
+
+**Given** production releases remain halted
+**When** the reconciled sources describe HEXALITH_RELEASE_PUBLISH_ENABLED
+**Then** they identify literal false as a deny-only emergency stop that cannot authorize publication
+**And** they record that no bounded risk exception is currently approved.
+
+**Given** existing planning, governance, and source-reconciliation checks can prove alignment
+**When** this story is verified
+**Then** those checks and exact source digests are reused
+**And** no duplicate governance catalog, source mirror, or evidence packet is created.
+
+### Story 17.2: [I · GOV-I] Publish and Exercise the Release Incident Runbook
+
+As a Release Owner,
+I want an approved incident runbook exercised through a focused tabletop,
+So that partial publication or credential exposure can be contained without destroying evidence.
+
+**Acceptance Criteria:**
+
+**Given** a suspected credential exposure, unauthorized capability, package mismatch, or partial publication
+**When** the runbook is followed
+**Then** it assigns acknowledgement and containment targets plus stop/revoke, evidence preservation, external-effect inventory, credential rotation when plausible, recovery, communication, and re-enable actions
+**And** it prefers unlisting and a new corrected version over rewriting an existing release.
+
+**Given** the deny-only emergency stop and protected publisher controls
+**When** containment begins
+**Then** the authoritative stop mechanism is identified and publication authority is removed without executing candidate code
+**And** immutable candidate, run, manifest, handoff, asset, and ledger evidence is preserved.
+
+**Given** a dated tabletop scenario
+**When** Release, Security, and the required operational participants execute it
+**Then** one support-safe record captures timestamps, decisions, observed gaps, owners, and bounded follow-up items
+**And** unresolved containment-critical findings keep GOV-I open.
+
+**Given** existing incident, ledger, and release artifacts can record the exercise
+**When** the tabletop result is retained
+**Then** those mechanisms are referenced rather than wrapped in a second evidence system
+**And** no live publication, real credential exposure, or package mutation is required.
+
+**External dependency — [X · EXT-BUILDS-1]:** The Hexalith.Builds owner must publish and accept one immutable revision implementing the split-publication reusable contract in the approved lineage. FrontComposer may reconcile sources and perform other unblocked work, but Story 17.3 and caller activation remain blocked until this external revision and its owner acceptance exist.
+
+### Story 17.3: [I · GOV-B] Select the Accepted Split Publication Topology
+
+As a Release Owner,
+I want the FrontComposer caller pinned to the accepted immutable two-job Builds revision,
+So that candidate construction and protected publication execute under structurally separate authority.
+
+**Acceptance Criteria:**
+
+**Given** EXT-BUILDS-1 supplies an owner-accepted immutable split revision
+**When** the FrontComposer release caller is updated
+**Then** it pins that exact revision and selects the fixed build-publication-candidate and publish-publication-candidate topology
+**And** no branch, tag, floating label, ambient checkout, or unaccepted revision can replace it.
+
+**Given** release is dispatched
+**When** the unprotected gate selects a candidate
+**Then** it requires refs/heads/main, a lowercase 40-hex commit matching the live main ref, exactly one successful push CI run, and one successful quality run for that SHA
+**And** it fetches only the authenticated run/attempt-named handoff through read-only APIs.
+
+**Given** the new mode is not fully accepted or validation fails
+**When** activation is evaluated
+**Then** the caller remains on the halted deny-only posture and no product-publication side effect occurs
+**And** delayed activation and rollback to the prior non-publishing state are tested.
+
+**Given** missing, duplicated, truncated, paginated, malformed, or mismatched run data
+**When** candidate selection runs
+**Then** the gate fails before the protected publisher
+**And** no later workflow-run value or default-branch helper can repair the failed selection.
+
+### Story 17.4: [I · GOV-C] Remove Publication Authority from Candidate Execution
+
+As a security-conscious Release Owner,
+I want candidate/build execution to have no publication capability,
+So that candidate-controlled code cannot obtain credentials or mutate release state.
+
+**Acceptance Criteria:**
+
+**Given** the build-publication-candidate job and every candidate-executing child process
+**When** permissions, environment, credentials, tokens, and capabilities are inspected
+**Then** they have no production environment, publication secret, write scope, OIDC/attestation authority, signing material, or equivalent ambient capability
+**And** the job is limited to the minimum read-only operations required to build and validate the candidate.
+
+**Given** hostile candidate code probes environment variables, token endpoints, filesystem mounts, workflow outputs, caches, artifacts, and network-accessible identity services
+**When** the focused security fixtures run
+**Then** no publication or attestation authority is available
+**And** support-safe diagnostics contain no credential or internal-token content.
+
+**Given** candidate validation succeeds
+**When** builder-side manifests, plans, or classifications are produced
+**Then** they remain diagnostic denial evidence only
+**And** none can authorize publication or be treated as a publisher seal.
+
+### Story 17.5: [I · GOV-D] Produce an Authenticated Run-Bound Publication Candidate
+
+As a Release Owner,
+I want one closed publication-candidate artifact bound to the selected run and exact bytes,
+So that the protected publisher can authenticate data without rebuilding or executing candidate source.
+
+**Acceptance Criteria:**
+
+**Given** the authenticated candidate, CI handoff, active policy, and builder run/attempt
+**When** the secretless builder prepares packages
+**Then** it packs once and runs the existing inventory, package, consumer, checksum, SBOM, symbols, and early-denial checks against that one set
+**And** it uploads exactly one publication-candidate-<run_id>-<run_attempt> artifact using the closed hexalith.publication-candidate.v1 descriptor.
+
+**Given** the publication-candidate archive is downloaded
+**When** its raw ZIP, descriptor, policy coordinates, evaluator identity, plan, inventory, and declared files are authenticated
+**Then** every byte, path, run coordinate, and digest matches the selected handoff
+**And** mutation, replay, extra/missing members, unsafe paths, duplicate names, or a different run/attempt fail closed.
+
+**Given** dependency evidence is included
+**When** hexalith.dependency-graph.v1 is verified
+**Then** it contains the exact depth-1 root gitlinks and depth-2 direct gitlinks from selected commits under the active immutable policy
+**And** collection uses committed objects without recursively initializing or executing nested submodules.
+
+**Given** existing pack, inventory, consumer, graph, and checksum tooling supplies the required values
+**When** this story is implemented
+**Then** those outputs are bound into the candidate rather than regenerated in a parallel evidence pipeline
+**And** the builder artifact remains evidence data, not authorization.
+
+### Story 17.6: [I · GOV-E] Validate Handoff V3 and Typed Append-Only Attempt State
+
+As a Release Owner,
+I want every release attempt represented by a total authenticated handoff and typed append-only state,
+So that failures, retries, deferrals, and partial effects cannot disappear or be relabelled.
+
+**Acceptance Criteria:**
+
+**Given** any authenticated Release run, including failure, cancellation, rejection, no-releasable, or publication paths
+**When** the workflow completes or terminates
+**Then** it uploads hexalith.release-verification-handoff.v3 under an always-run condition
+**And** the handoff records selected quality/CI coordinates, candidate and policy identity, publication-candidate coordinates, release state, denial reason, evaluator, and available manifest/asset data.
+
+**Given** a valid or malformed handoff
+**When** the total classifier evaluates it
+**Then** it assigns exactly one permitted state such as gate-frozen, no-releasable, rejected, compliant, deferred, missing-artifact, partial-publish, or other non-compliant
+**And** a missing, duplicate, malformed, or unauthenticated artifact becomes missing-artifact rather than deferred.
+
+**Given** publication is about to mutate NuGet or GitHub Release state
+**When** the first product-publication action begins
+**Then** publication_started is recorded immediately beforehand
+**And** attestation registration or protected-job start alone does not set it.
+
+**Given** a retry or later verification observes the same attempt
+**When** ledger state is appended
+**Then** the observation cannot delete, replace, weaken, or relabel an earlier incident
+**And** the existing frontcomposer.release-ledger-record.v2 contract is extended rather than replaced.
+
+### Story 17.7: [I · GOV-F] Publish with Candidate-Free Pinned Code
+
+As a Release Owner,
+I want only the protected candidate-free publisher to authorize and publish the authenticated package data,
+So that candidate source never executes while publication authority is present.
+
+**Acceptance Criteria:**
+
+**Given** the protected publisher receives an authenticated publication-candidate archive
+**When** it processes the candidate
+**Then** it executes only active-policy-authorized owner-controlled pinned code, never checks out or executes candidate source, and treats all candidate files as non-executable data
+**And** it independently validates the descriptor, policy, evaluator, inventory, plan, and every declared byte before extraction or use.
+
+**Given** GitHub provenance attestation is supported or the approved unsupported fallback applies
+**When** provenance is established
+**Then** the publisher mints and verifies the attestation or validates the run-bound fallback against the same candidate, handoff, policy, run/attempt, and package digests
+**And** attestation alone does not authorize publication.
+
+**Given** manifest preparation completes
+**When** hexalith.release-evidence.v4 is sealed and verified offline/live
+**Then** it binds exact assets, inventory, consumers, symbols, SBOM, dependency graph/policy, selected runs, evaluator identities, and provenance result
+**And** publish_authorized=true is required before the first NuGet, GitHub Release, tag, changelog, or equivalent product-publication side effect.
+
+**Given** authorized candidate bytes are published
+**When** GitHub and NuGet artifacts are compared
+**Then** GitHub assets remain byte-identical and NuGet downloads may add only a valid root .signature.p7s while every other normalized ZIP member remains byte-equivalent
+**And** rebuilding or repacking is never accepted as equivalent evidence.
+
+### Story 17.8: [I · GOV-G] Pin Post-Release Verification and Preserve Incident Evidence
+
+As a Release Owner,
+I want post-release verification to use immutable owner-controlled code and durable evidence,
+So that later branch changes cannot rewrite the truth of an earlier attempt.
+
+**Acceptance Criteria:**
+
+**Given** publication completes or partially starts
+**When** independent post-release verification runs
+**Then** it uses the exact active-policy-authorized evaluator closure and original authenticated candidate rather than ambient, candidate, or later-default-branch helpers
+**And** it verifies GitHub assets, NuGet repository signatures, normalized package members, attempt disposition, and mandatory release assets.
+
+**Given** a missing asset, signature failure, content mismatch, or external effect inconsistent with publication_started
+**When** verification classifies the attempt
+**Then** it appends an incident observation and preserves the failed state
+**And** post-publication evidence cannot authorize retroactively or relabel the attempt green.
+
+**Given** publication started without a complete immutable product Release
+**When** incident recovery is required
+**Then** only the separately authorized candidate-free recovery stage preserves authenticated quarantined evidence in the reserved namespace
+**And** run artifacts remain supplemental replay material rather than durable authorization.
+
+**Given** durable GitHub Release and ledger artifacts already hold the required evidence
+**When** verification completes
+**Then** those artifacts are referenced and appended
+**And** no duplicate archive or secondary truth store is introduced.
+
+### Story 17.9: [I · GOV-H] Reject Ambiguous Publication Asset Names
+
+As a Release Owner,
+I want duplicate or ambiguous destination asset names rejected before publication,
+So that one manifest entry cannot overwrite or masquerade as another package or evidence asset.
+
+**Acceptance Criteria:**
+
+**Given** candidate packages, symbols, SBOM, manifests, or evidence files resolve to the same destination name
+**When** the publication plan is validated
+**Then** validation fails before attestation or product-publication side effects
+**And** the diagnostic identifies the conflicting normalized destination without exposing unsafe paths or sensitive values.
+
+**Given** names differ only through case, separator, normalization, escaping, or another destination-equivalent representation
+**When** collision detection runs
+**Then** they are treated as ambiguous under the destination's canonical comparison
+**And** traversal, encoded aliasing, and duplicate JSON members cannot bypass the check.
+
+**Given** all destination names are unique
+**When** the plan is serialized and consumed
+**Then** assets retain deterministic ordinal ordering and their sealed path/digest bindings
+**And** existing inventory and manifest validation are extended rather than duplicated.
+
+### Story 17.10: [A · GOV-J] Revalidate GOV-1 on One Unchanged Candidate
+
+As the Architect, Release Owner, and Security reviewer,
+I want deterministic checks and all required review lenses applied to one unchanged authenticated candidate,
+So that publication conformance cannot be assembled from mixed revisions or selectively refreshed evidence.
+
+**Acceptance Criteria:**
+
+**Given** GOV-B through GOV-I are complete for one candidate and policy/evaluator set
+**When** the canonical frontcomposer.gov1-split-conformance.v1 check runs
+**Then** its source digests, authenticated runs, handoffs, candidate archive, manifest, incident result, and closure rows all bind the same immutable candidate
+**And** stale spine hashes, mixed candidates, unavailable source evidence, or open rows fail the gate.
+
+**Given** the deterministic result is available
+**When** adversarial, edge-case, verification-gap, acceptance, and structure/prose reviews run
+**Then** each review cites that same candidate and every finding receives a recorded disposition
+**And** any unresolved Critical or High finding blocks acceptance.
+
+**Given** the evidence candidate is submitted through the protected-main protocol
+**When** the evidence and approval projection are reviewed
+**Then** the evidence PR remains unchanged after Release Owner approval and a distinct approval-projection PR records the outcome
+**And** direct push, squash, rebase, or candidate mutation fails the gate.
+
+**Given** the focused checks and five reviews already produce their own durable outputs
+**When** GOV-J is recorded
+**Then** it cites those outputs rather than copying them into another review packet
+**And** no separate sixth review or wrapper report is required.
+
+### Story 17.11: [A · GOV-ACCEPT-1] Accept the Publication Boundary and Incident Posture
+
+As the Product Owner, Release Owner, and Architect,
+I want to accept or reject the adopted publication boundary and interim halt explicitly,
+So that implementation does not infer authority from architecture prose or environment approval.
+
+**Acceptance Criteria:**
+
+**Given** AD-19, D-16, the legacy caller state, and the approved incident runbook
+**When** the named owners review the posture
+**Then** a dated decision addresses the secretless builder, candidate-free publisher, production halt, deny-only emergency stop, no-exception posture, and incident acknowledgement/containment target
+**And** it states accept or reject for the exact source identities reviewed.
+
+**Given** the posture is accepted
+**When** governance evaluates GOV-ACCEPT-1
+**Then** the approval satisfies only its named architecture/incident decision
+**And** it does not activate the caller, authorize publication, replace EXT-BUILDS-1, or close implementation/evidence rows.
+
+**Given** the posture is rejected or any owner receipt is absent
+**When** G-8 is evaluated
+**Then** the gate remains open and production remains halted
+**And** any corrective work is created as a bounded residual without rewriting completed evidence.
+
+### Story 17.12: [A · GOV-ACCEPT-2] Accept Reconciled Governance Sources
+
+As the Product Owner and Release Owner,
+I want to accept the exact reconciled governance-source digests,
+So that future execution begins from one agreed publication-safety contract.
+
+**Acceptance Criteria:**
+
+**Given** GOV-SRC-1 has reconciled all canonical publication sources
+**When** the owners review them
+**Then** a dated decision cites each exact source path and digest and states accept or reject
+**And** labels, summaries, or later branch content cannot substitute for the reviewed bytes.
+
+**Given** the sources are accepted
+**When** downstream GOV stories use them
+**Then** every secretless-builder, candidate-free-publisher, exact-byte, policy, provenance, halt, incident, and append-only invariant remains intact
+**And** acceptance cannot weaken a requirement to make existing implementation pass.
+
+**Given** any source digest changes after acceptance
+**When** governance re-evaluates the source set
+**Then** GOV-ACCEPT-2 becomes stale and requires a new decision
+**And** the prior decision remains immutable history.
+
+### Story 17.13: [A · REL-LEDGER-1] Accept the Release-Ledger State Model
+
+As the Release Owner and Architect,
+I want to accept the typed release-ledger schema and total classifier,
+So that every publication-capable attempt has one durable state model before historical rows are completed.
+
+**Acceptance Criteria:**
+
+**Given** the implemented handoff and frontcomposer.release-ledger-record.v2 behavior
+**When** the schema and classifier are reviewed
+**Then** the decision identifies their exact versions, evaluator identity, permitted states/transitions, immutable attempt key, append-only rule, and evidence required by each disposition
+**And** every failed, cancelled, deferred, no-releasable, partial-publication, blocked, and successful path has a total outcome.
+
+**Given** deferred-no-ci-handoff
+**When** the accepted classifier evaluates it
+**Then** it is valid only as the sole deferred sentinel and remains terminal, incident-bearing, and permanent
+**And** missing, duplicated, malformed, or unauthenticated handoffs classify as missing-artifact instead.
+
+**Given** an incident or partial publication has been recorded
+**When** a rerun or later verification succeeds
+**Then** the accepted transitions allow only an appended observation
+**And** they forbid replacement, weakening, or relabelling of the incident.
+
+**Given** the state model is accepted or rejected
+**When** the decision is stored
+**Then** it cites the existing schema, classifier tests, and exact implementation rather than copying them
+**And** REL-LEDGER-2 remains blocked until acceptance exists.
+
+### Story 17.14: [I · REL-LEDGER-2] Complete Evidence-Backed Release Ledger Rows
+
+As a Release Owner,
+I want every release from v4.1.1 onward represented by downloaded-byte evidence and a permanent disposition,
+So that published tags cannot outrun or rewrite the release ledger.
+
+**Acceptance Criteria:**
+
+**Given** REL-LEDGER-1 is accepted and the v4.1.1 row already exists
+**When** ledger reconciliation runs
+**Then** v4.1.1 receives its pending owner hash/sign-off without replacing its earlier observations
+**And** the row retains its original immutable attempt identity.
+
+**Given** v4.2.0, v4.3.0, v4.4.0, v4.5.0, and any later release present at execution
+**When** each release is reconciled
+**Then** an append-only row or observation records downloaded GitHub/NuGet bytes, valid repository signature status, normalized non-signature member equivalence, external effects, and a classifier disposition
+**And** a tag without sufficient evidence remains visibly missing or non-compliant rather than inferred green.
+
+**Given** historical wording conflicts with verified current release truth
+**When** a correction is necessary
+**Then** a new observation explains the correction while preserving prior bytes and incident history
+**And** no release is retroactively described as FR24-compliant without its required authorization evidence.
+
+**Given** existing release downloads, verification commands, manifests, and ledger tooling can supply the result
+**When** the rows are completed
+**Then** those artifacts are referenced directly
+**And** packages are not rebuilt, repacked, or copied into a new evidence archive.
+
+### Story 17.15: [A · REL-A3-APP-1] Decide the Sample-Host Container Boundary
+
+As the Release Owner,
+I want to accept, revise, or reject the sample-host container assumption,
+So that local end-to-end use cannot be mistaken for a published FrontComposer product image.
+
+**Acceptance Criteria:**
+
+**Given** the Hexalith.FrontComposer.UI sample host, AppHost, package inventory, and current product-form statement
+**When** the Release Owner reviews assumption A3
+**Then** a dated decision states accept, revise, or reject and identifies the exact sample-host/container boundary
+**And** it records any impact on PRD §4, package inventory, public documentation, CI, and release policy.
+
+**Given** local/e2e-only use is accepted
+**When** release artifacts are classified
+**Then** no FrontComposer-owned container image is published to a registry
+**And** local SDK-built images remain non-product test assets.
+
+**Given** the assumption is revised or rejected
+**When** corrective work is required
+**Then** a bounded residual updates the affected product and release contracts
+**And** the approval decision itself does not silently mutate package or publication behavior.
+
+### Story 17.16: [A · PRD-APP-1] Record Final Product Readiness
+
+As the Product Owner,
+I want one digest-bound decision over every readiness gate and prerequisite,
+So that document approval, milestone status, and publication authorization cannot be confused.
+
+**Acceptance Criteria:**
+
+**Given** the exact PRD and addendum digests plus every Product-owned prerequisite across G-1 through G-8
+**When** final readiness is reviewed
+**Then** the dated record names each satisfied, rejected, and still-open gate and cites its minimum-sufficient immutable evidence or approval
+**And** a missing external receipt, owner decision, focused proof, or unresolved Critical/High reviewer finding remains visibly open.
+
+**Given** OI-4, OI-10, OI-16, OI-19, the required UX/documentation decisions, and the digest-bound reviewer gate are complete
+**When** the Product Owner approves the exact document pair
+**Then** product_approval may change to approved for those digests
+**And** any later digest change requires a new decision.
+
+**Given** every readiness gate is closed
+**When** milestone status is evaluated
+**Then** v1_readiness_milestone_reached may become true
+**And** the milestone remains false while any gate is open, rejected, stale, or unsupported.
+
+**Given** PRD-APP-1 is approved
+**When** release execution is considered
+**Then** the decision grants no publication permission and cannot replace publish_authorized=true, protected publisher controls, or release-owner authorization
+**And** it cites existing gate artifacts rather than assembling a duplicate readiness evidence bundle.
