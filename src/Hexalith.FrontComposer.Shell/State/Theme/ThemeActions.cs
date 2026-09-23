@@ -5,7 +5,9 @@ namespace Hexalith.FrontComposer.Shell.State.Theme;
 /// </summary>
 /// <param name="CorrelationId">Correlation identifier for tracing.</param>
 /// <param name="NewTheme">The new theme value to apply.</param>
-public record ThemeChangedAction(string CorrelationId, ThemeValue NewTheme);
+public record ThemeChangedAction(string CorrelationId, ThemeValue NewTheme) {
+    internal long? HydrationScopeVersion { get; init; }
+}
 
 /// <summary>
 /// Dispatched by <c>ThemeEffects.HandleAppInitialized</c> / <c>HandleStorageReady</c> at the start
@@ -13,7 +15,9 @@ public record ThemeChangedAction(string CorrelationId, ThemeValue NewTheme);
 /// <see cref="FrontComposerThemeState.HydrationState"/> from <see cref="HydrationState.Idle"/>
 /// to <see cref="HydrationState.Hydrating"/>. NEVER persisted.
 /// </summary>
-public sealed record ThemeHydratingAction;
+public sealed record ThemeHydratingAction {
+    internal long? HydrationScopeVersion { get; init; }
+}
 
 /// <summary>
 /// Dispatched by <c>ThemeEffects.HandleAppInitialized</c> / <c>HandleStorageReady</c> as the final
@@ -21,4 +25,6 @@ public sealed record ThemeHydratingAction;
 /// <see cref="FrontComposerThemeState.HydrationState"/> to <see cref="HydrationState.Hydrated"/>.
 /// Called on BOTH happy path AND fail-closed path.
 /// </summary>
-public sealed record ThemeHydratedCompletedAction;
+public sealed record ThemeHydratedCompletedAction {
+    internal long? HydrationScopeVersion { get; init; }
+}

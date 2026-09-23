@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.Infrastructure.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
@@ -115,7 +116,14 @@ public sealed class NudgeToSchedulerLaneRefreshIntegrationTests {
             new TestProjectionConnectionState(),
             scheduler,
             new TestNotifier(),
-            NullLogger<ProjectionSubscriptionService>.Instance);
+            NullLogger<ProjectionSubscriptionService>.Instance,
+            userContextAccessor: new FixedUserContext());
+    }
+
+    private sealed class FixedUserContext : IUserContextAccessor {
+        public string TenantId => "acme";
+
+        public string UserId => "user-1";
     }
 
     private sealed class TestNotifier : IProjectionChangeNotifier {

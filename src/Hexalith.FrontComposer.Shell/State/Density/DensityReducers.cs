@@ -1,4 +1,5 @@
 using Fluxor;
+using Hexalith.FrontComposer.Shell.State.Navigation;
 
 namespace Hexalith.FrontComposer.Shell.State.Density;
 
@@ -9,6 +10,13 @@ namespace Hexalith.FrontComposer.Shell.State.Density;
 /// <c>DensityReducerPurityTest</c>).
 /// </summary>
 public static class DensityReducers {
+    /// <summary>Clears the prior user's persisted density preference.</summary>
+    [ReducerMethod]
+    public static FrontComposerDensityState ReduceScopeChanged(FrontComposerDensityState state, ScopeChangedAction action) {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        return state with { UserPreference = null, HydrationState = HydrationState.Idle };
+    }
     /// <summary>
     /// Assigns both fields from the payload (Story 3-3 D3 / AC1). Action producer pre-resolved
     /// <c>NewEffective</c> from current options + viewport + surface.

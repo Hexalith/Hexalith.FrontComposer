@@ -26,4 +26,8 @@ public sealed record PendingCommandRegistrationResult(
 
     public static PendingCommandRegistrationResult Disposed() =>
         new(PendingCommandRegistrationStatus.Disposed);
+
+    /// <summary>Returns a sanitized rejection for an unavailable scope.</summary>
+    public static PendingCommandRegistrationResult ScopeUnavailable() =>
+        new(PendingCommandRegistrationStatus.ScopeUnavailable);
 }

@@ -95,10 +95,15 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
 
     private void SetCommandInProgressWarning(global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason reason)
     {
-        string title = ResolveShellLocalized("CommandAlreadyInProgressTitle", "Command already in progress");
-        string detail = reason == global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.PendingCommandAlreadyExists
-            ? ResolveShellLocalized("CommandAlreadyInProgressPendingMessage", "A command is still waiting for confirmation. Wait for it to finish before submitting another command.")
-            : ResolveShellLocalized("CommandAlreadyInProgressAdmissionMessage", "A command is already being submitted. Wait for it to finish before submitting another command.");
+        bool scopeUnavailable = reason == global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.ScopeUnavailable;
+        string title = scopeUnavailable
+            ? ResolveShellLocalized("ScopeBlockedHeading", "Workspace unavailable")
+            : ResolveShellLocalized("CommandAlreadyInProgressTitle", "Command already in progress");
+        string detail = scopeUnavailable
+            ? ResolveShellLocalized("ScopeBlockedMessage", "Your workspace identity could not be verified. Sign in again or contact support.")
+            : reason == global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.PendingCommandAlreadyExists
+                ? ResolveShellLocalized("CommandAlreadyInProgressPendingMessage", "A command is still waiting for confirmation. Wait for it to finish before submitting another command.")
+                : ResolveShellLocalized("CommandAlreadyInProgressAdmissionMessage", "A command is already being submitted. Wait for it to finish before submitting another command.");
         _serverWarning = new global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning(
             global::Hexalith.FrontComposer.Contracts.Communication.CommandWarningKind.Pending,
             title,

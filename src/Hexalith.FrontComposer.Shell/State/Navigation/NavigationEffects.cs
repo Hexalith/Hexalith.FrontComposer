@@ -219,6 +219,11 @@ public sealed class NavigationEffects(
         ImmutableDictionary<string, bool> groups;
         try {
             blob = await storage.GetAsync<NavigationPersistenceBlob>(key).ConfigureAwait(false);
+            if (!_scopeResolver.TryResolveScope(out string currentTenant, out string currentUser, "Navigation", "hydrate")
+                || !string.Equals(currentTenant, tenantId, StringComparison.Ordinal)
+                || !string.Equals(currentUser, userId, StringComparison.Ordinal)) {
+                return;
+            }
             if (blob is null) {
                 FrontComposerDiagnosticLog.NavigationHydrationEmpty(
                     logger,

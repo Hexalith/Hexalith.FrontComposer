@@ -149,9 +149,16 @@
                 <div id="fc-main-content" tabindex="-1" role="main" @ref="_mainContent"
                      aria-labelledby="@ContentLabelledByValue" aria-label="@ContentLabelValue"
                      data-fc-page-layout="@PageLayoutAttribute" class="@PageLayoutCssClass">
-                    <FcProjectionConnectionStatus />
-                    <FcPendingCommandSummary />
-                    @ChildContent
+                    @if (ScopeBoundary.IsCurrent)
+                    {
+                        <FcProjectionConnectionStatus />
+                        <FcPendingCommandSummary />
+                        @ChildContent
+                    }
+                    else
+                    {
+                        <Hexalith.FrontComposer.Shell.Components.Rendering.FcScopeBlocked />
+                    }
                 </div>
             </FluentLayoutItem>
 

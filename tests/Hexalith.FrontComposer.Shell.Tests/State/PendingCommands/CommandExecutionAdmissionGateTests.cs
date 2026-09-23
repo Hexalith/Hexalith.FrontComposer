@@ -111,10 +111,13 @@ public sealed class CommandExecutionAdmissionGateTests {
             .Do(call => values[call.ArgAt<string>(0)] = (
                 call.ArgAt<CommandLifecycleState>(1),
                 call.ArgAt<string?>(2)));
+        IUserContextAccessor user = Substitute.For<IUserContextAccessor>();
+        user.TenantId.Returns("tenant-a");
+        user.UserId.Returns("user-a");
         return new PendingCommandStateService(
             global::Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
             lifecycle,
-            Substitute.For<IUserContextAccessor>(),
+            user,
             new FakeTimeProvider(new DateTimeOffset(2026, 6, 4, 12, 0, 0, TimeSpan.Zero)),
             NullLogger<PendingCommandStateService>.Instance);
     }

@@ -220,7 +220,11 @@ public sealed class CapabilityDiscoveryEffects : IDisposable {
                 ex);
         }
 
-        dispatcher.Dispatch(new SeenCapabilitiesHydratedAction(hydrated));
+        if (ScopeResolver.TryResolveScope(out string currentTenant, out string currentUser, "Capability", DirectionHydrate)
+            && string.Equals(currentTenant, tenantId, StringComparison.Ordinal)
+            && string.Equals(currentUser, userId, StringComparison.Ordinal)) {
+            dispatcher.Dispatch(new SeenCapabilitiesHydratedAction(hydrated));
+        }
     }
 
     private async Task SeedBadgeCountsAsync(IDispatcher dispatcher) {

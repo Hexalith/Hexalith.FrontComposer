@@ -4,6 +4,7 @@ using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Badges;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.Routing;
 using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
@@ -35,6 +36,10 @@ public partial class FcHomeDirectory {
 
     [Inject] private NavigationManager Nav { get; set; } = default!;
 
+    [Inject] private IFrontComposerTenantContextAccessor TenantContext { get; set; } = default!;
+
+    private bool ScopeIsReady => TenantContext.TryGetContext(operationKind: "home-render").Succeeded;
+
     /// <summary>
     /// Optional cascading authentication state — null for adopters that have not wired
     /// <c>AuthorizeRouteView</c>. Story 3-5 D19 — when the identity name is null/empty/whitespace
@@ -55,10 +60,14 @@ public partial class FcHomeDirectory {
             + "preserves both invariants.")]
     protected override async Task OnInitializedAsync() {
         await base.OnInitializedAsync();
+    }
 
+    /// <inheritdoc />
+    protected override async Task OnParametersSetAsync() {
+        _resolvedUserName = null;
         if (AuthenticationStateTask is not null) {
             try {
-                AuthenticationState authState = await AuthenticationStateTask;
+                AuthenticationState authState = await AuthenticationStateTask.ConfigureAwait(true);
                 _resolvedUserName = authState.User?.Identity?.Name;
             }
             catch (Exception) {

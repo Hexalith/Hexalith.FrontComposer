@@ -5,4 +5,5 @@ public enum CommandExecutionAdmissionDenialReason {
     None,
     AdmissionAlreadyInProgress,
     PendingCommandAlreadyExists,
+    ScopeUnavailable,
 }

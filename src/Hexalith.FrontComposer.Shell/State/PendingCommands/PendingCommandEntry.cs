@@ -20,6 +20,8 @@ public sealed record PendingCommandEntry(
     /// <summary>Gets the explicit pre-dispatch target snapshot associated with acceptance.</summary>
     public CommandTargetSnapshot? TargetSnapshot { get; init; }
 
+    internal (string TenantId, string UserId)? RegistrationScope { get; init; }
+
     internal bool HasSameFrameworkMetadata(PendingCommandRegistration registration) =>
         string.Equals(CorrelationId, registration.CorrelationId, StringComparison.Ordinal)
         && string.Equals(CommandTypeName, registration.CommandTypeName, StringComparison.Ordinal)

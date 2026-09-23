@@ -93,6 +93,24 @@ _ = builder.AddProject<HexalithTenantsSample>("sample")
         daprPlacementHostAddress: daprPlacementHostAddress,
         daprSchedulerHostAddress: daprSchedulerHostAddress);
 
+// Opt-in tenant-scope proof fixture. Keep the ordinary Tenants sample resource intact.
+if (string.Equals(builder.Configuration["TenantScopeFixture:Enabled"], "true", StringComparison.OrdinalIgnoreCase)) {
+    _ = eventStore
+        .WithEnvironment("EventStore__DomainServices__Registrations__*|counter|v1__AppId", "counter-scope-fixture")
+        .WithEnvironment("EventStore__DomainServices__Registrations__*|counter|v1__MethodName", "process")
+        .WithEnvironment("EventStore__DomainServices__Registrations__*|counter|v1__TenantId", "*")
+        .WithEnvironment("EventStore__DomainServices__Registrations__*|counter|v1__Domain", "counter")
+        .WithEnvironment("EventStore__DomainServices__Registrations__*|counter|v1__Version", "v1");
+    _ = builder.AddProject<Projects.Hexalith_FrontComposer_CounterFixture>("counter-scope-fixture")
+        .AddEventStoreDomainModule(
+            eventStoreResources,
+            "counter-scope-fixture",
+            sampleAccessControlConfigPath,
+            isolatedDaprResourcesPath: emptyDaprResourcesPath,
+            daprPlacementHostAddress: daprPlacementHostAddress,
+            daprSchedulerHostAddress: daprSchedulerHostAddress);
+}
+
 // Wire Admin.UI to Admin.Server + EventStore SignalR (domain-agnostic composition kept in the AppHost).
 EndpointReference adminServerHttps = adminServer.GetEndpoint("https");
 EndpointReference eventStoreHttps = eventStore.GetEndpoint("https");

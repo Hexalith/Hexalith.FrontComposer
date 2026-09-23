@@ -1,5 +1,7 @@
 using Hexalith.FrontComposer.Contracts.Badges;
 using Hexalith.FrontComposer.Shell.Badges;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Tenancy;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -20,6 +22,7 @@ public class BadgeCountServiceNoChurnTests {
         FixedReader reader = new();
         StaticCatalog catalog = new(typeof(SampleProjection));
         ServiceCollection services = new();
+        _ = services.AddSingleton<IFrontComposerTenantContextAccessor>(new TestTenantContextAccessor());
         using ServiceProvider provider = services.BuildServiceProvider();
         using BadgeCountService sut = new(catalog, reader, provider, NullLogger<BadgeCountService>.Instance, TimeProvider.System);
 
@@ -43,6 +46,7 @@ public class BadgeCountServiceNoChurnTests {
         DynamicReader reader = new(initialCount: 3);
         StaticCatalog catalog = new(typeof(SampleProjection));
         ServiceCollection services = new();
+        _ = services.AddSingleton<IFrontComposerTenantContextAccessor>(new TestTenantContextAccessor());
         using ServiceProvider provider = services.BuildServiceProvider();
         using BadgeCountService sut = new(catalog, reader, provider, NullLogger<BadgeCountService>.Instance, TimeProvider.System);
 

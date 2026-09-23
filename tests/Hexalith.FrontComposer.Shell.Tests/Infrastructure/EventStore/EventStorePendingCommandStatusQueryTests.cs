@@ -5,7 +5,9 @@ using System.Text.Json;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Tenancy;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -17,6 +19,19 @@ namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 public sealed class EventStorePendingCommandStatusQueryTests {
     private const string MessageId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
     private const string CorrelationId = "01CPZ3NDEKTSV4RRFFQ69G5FAV";
+
+    [Fact]
+    public async Task QueryAsync_EntryRegisteredUnderPriorTenant_RejectsBeforeHttp() {
+        RecordingHandler handler = new(_ => JsonResponse("Completed", 4));
+        TestTenantContextAccessor scope = new() { TenantId = "tenant-b", UserId = "user-b" };
+        EventStorePendingCommandStatusQuery sut = CreateSut(handler, scope: scope);
+
+        TenantContextException error = await Should.ThrowAsync<TenantContextException>(
+            async () => await sut.QueryAsync(Pending(), TestContext.Current.CancellationToken).ConfigureAwait(true));
+
+        error.FailureCategory.ShouldBe(TenantContextFailureCategory.StaleTenantContext);
+        handler.Requests.ShouldBeEmpty();
+    }
 
     public static TheoryData<string, int, PendingCommandTerminalOutcome?> StatusCases => new() {
         { "Received", 0, null },
@@ -182,12 +197,14 @@ public sealed class EventStorePendingCommandStatusQueryTests {
             async () => await sut.QueryAsync(Pending(), cts.Token).ConfigureAwait(true)).ConfigureAwait(true);
     }
 
-    private static EventStorePendingCommandStatusQuery CreateSut(HttpMessageHandler handler, int? maxResponseBytes = null)
+    private static EventStorePendingCommandStatusQuery CreateSut(
+        HttpMessageHandler handler, int? maxResponseBytes = null, TestTenantContextAccessor? scope = null)
         => new(
             new SingleClientFactory(handler),
             Options(maxResponseBytes),
             EventStoreTestSupport.CreateClassifier(),
-            NullLogger<EventStorePendingCommandStatusQuery>.Instance);
+            NullLogger<EventStorePendingCommandStatusQuery>.Instance,
+            scope ?? new TestTenantContextAccessor());
 
     private static IOptions<EventStoreOptions> Options(int? maxResponseBytes)
         => Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
@@ -207,7 +224,9 @@ public sealed class EventStorePendingCommandStatusQueryTests {
             "Approved",
             "Draft",
             new DateTimeOffset(2026, 6, 4, 12, 0, 0, TimeSpan.Zero),
-            PendingCommandStatus.Pending);
+            PendingCommandStatus.Pending) {
+            RegistrationScope = ("tenant-a", "user-a"),
+        };
 
     private static HttpResponseMessage JsonResponse(
         string status,

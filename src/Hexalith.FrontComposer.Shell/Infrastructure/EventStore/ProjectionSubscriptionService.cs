@@ -113,6 +113,50 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
     public Task SubscribeAsync(string projectionType, string tenantId, CancellationToken cancellationToken = default)
         => SubscribeAsync(projectionType, tenantId, scope: null, cancellationToken);
 
+    internal void BlockStaleGroups() {
+        foreach (KeyValuePair<GroupKey, GroupState> group in _activeGroups) {
+            if (group.Value.Health == GroupHealth.Pending) {
+                continue;
+            }
+            _ = IsGroupContextCurrent(group.Key, group.Value, "projection-scope-change");
+        }
+    }
+
+    internal bool HasBlockedGroup(string projectionType, string tenantId)
+        => _activeGroups.Any(group => string.Equals(group.Key.ProjectionType, projectionType, StringComparison.Ordinal)
+            && string.Equals(group.Key.TenantId, tenantId, StringComparison.Ordinal)
+            && group.Value.Health == GroupHealth.Blocked);
+
+    internal async Task BlockStaleGroupsAsync() {
+        BlockStaleGroups();
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try {
+            foreach (KeyValuePair<GroupKey, GroupState> group in _activeGroups) {
+                bool wasPending = group.Value.Health == GroupHealth.Pending;
+                if (IsGroupContextCurrent(group.Key, group.Value, "projection-scope-change")) {
+                    continue;
+                }
+
+                if (wasPending) {
+                    _ = _activeGroups.TryRemove(group.Key, out _);
+                    continue;
+                }
+
+                try {
+                    await _connection.LeaveGroupAsync(group.Key.ProjectionType, group.Key.TenantId, group.Key.Scope, _disposalCts.Token).ConfigureAwait(false);
+                    _ = _activeGroups.TryRemove(group.Key, out _);
+                }
+                catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+                    // The Blocked entry remains in memory so neither nudge nor detail can forward.
+                    FrontComposerHotPathLog.ProjectionChangeSubscriberFailed(_logger, ex.GetType().Name);
+                }
+            }
+        }
+        finally {
+            _ = _gate.Release();
+        }
+    }
+
     public async Task SubscribeAsync(string projectionType, string tenantId, string? scope, CancellationToken cancellationToken = default) {
         TenantContextSnapshot? context = ResolveTenantContext(tenantId, "projection-subscribe");
         GroupKey key = ValidateGroup(projectionType, context?.TenantId ?? tenantId, scope);
@@ -372,14 +416,21 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         // only delivers detail messages to groups this client actually joined, so the payload is
         // surfaced opaquely — FrontComposer adds no AI/domain interpretation (it does NOT trigger
         // the scheduler refresh or pending-command poll; the detail subscriber owns that decision).
+        GroupKey key;
         try {
-            _ = ValidateGroup(detail.ProjectionType, detail.TenantId, detail.GroupScope);
+            key = ValidateGroup(detail.ProjectionType, detail.TenantId, detail.GroupScope);
         }
         catch (ArgumentException) {
             return;
         }
 
         if (_notifier is not IProjectionChangeDetailNotifier detailNotifier) {
+            return;
+        }
+
+        if (!_activeGroups.TryGetValue(key, out GroupState state)
+            || state.Health != GroupHealth.Active
+            || !IsGroupContextCurrent(key, state, "projection-detail")) {
             return;
         }
 
@@ -791,9 +842,9 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
             ? null
             : EventStoreValidation.RequireNonColonSegment(scope, nameof(scope));
 
-    private TenantContextSnapshot? ResolveTenantContext(string? requestedTenant, string operationKind) {
+    private TenantContextSnapshot ResolveTenantContext(string? requestedTenant, string operationKind) {
         if (_userContextAccessor is null) {
-            return null;
+            throw new TenantContextException(TenantContextFailureCategory.TenantMissing, Guid.NewGuid().ToString("N"));
         }
 
         return FrontComposerTenantContextAccessor
@@ -808,7 +859,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
 
     private bool IsGroupContextCurrent(GroupKey key, GroupState state, string operationKind) {
         if (_userContextAccessor is null || state.TenantContext is null) {
-            return true;
+            _ = _activeGroups.TryUpdate(key, state with { Health = GroupHealth.Blocked }, state);
+            return false;
         }
 
         // P5 — explicitly compare BOTH tenant and user against the original snapshot, do NOT

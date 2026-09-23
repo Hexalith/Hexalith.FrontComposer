@@ -577,4 +577,10 @@
   <data name="CommandAlreadyInProgressPendingMessage" xml:space="preserve">
     <value>Une commande attend encore sa confirmation. Attendez qu'elle se termine avant d'envoyer une autre commande.</value>
   </data>
+  <data name="ScopeBlockedHeading" xml:space="preserve">
+    <value>Espace de travail indisponible</value>
+  </data>
+  <data name="ScopeBlockedMessage" xml:space="preserve">
+    <value>Votre identité ne peut pas être vérifiée. Reconnectez-vous ou contactez l’assistance.</value>
+  </data>
 </root>

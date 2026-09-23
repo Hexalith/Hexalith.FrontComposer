@@ -1,8 +1,10 @@
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Hexalith.FrontComposer.Shell.Services;
 
@@ -26,6 +28,7 @@ namespace Hexalith.FrontComposer.Shell.Services;
 /// </remarks>
 internal sealed class StorageScopeResolver : IStorageScopeResolver {
     private readonly IUserContextAccessor? _accessor;
+    private readonly IFrontComposerTenantContextAccessor? _validatedAccessor;
     private readonly ILogger _logger;
 
     /// <summary>
@@ -36,9 +39,13 @@ internal sealed class StorageScopeResolver : IStorageScopeResolver {
     /// unit-test fixtures that bypass accessor registration (it then fails closed).
     /// </param>
     /// <param name="logger">Logger for the HFC2105 fail-closed diagnostic.</param>
-    public StorageScopeResolver(IUserContextAccessor? accessor, ILogger logger) {
+    public StorageScopeResolver(
+        IUserContextAccessor? accessor,
+        ILogger logger,
+        IFrontComposerTenantContextAccessor? validatedAccessor = null) {
         ArgumentNullException.ThrowIfNull(logger);
         _accessor = accessor;
+        _validatedAccessor = validatedAccessor;
         _logger = logger;
     }
 
@@ -47,11 +54,14 @@ internal sealed class StorageScopeResolver : IStorageScopeResolver {
         // The accessor property getters may throw (claims principal disposed, JWT parse error in an
         // adopter implementation). Wrap the reads so the fail-closed branch fires consistently with
         // HFC2105 instead of bubbling an unhandled effect exception into Fluxor's pipeline.
-        string? rawTenant;
-        string? rawUser;
+        TenantContextSnapshot? scope;
         try {
-            rawTenant = _accessor?.TenantId;
-            rawUser = _accessor?.UserId;
+            scope = _validatedAccessor is not null
+                ? _validatedAccessor.TryGetContext(operationKind: "storage-scope").Context
+                : _accessor is null
+                    ? null
+                    : FrontComposerTenantContextAccessor.Resolve(
+                        _accessor, new FcShellOptions(), NullLogger.Instance, operationKind: "storage-scope").Context;
         }
         catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             FrontComposerSecurityLog.StorageAccessorFailed(
@@ -64,15 +74,15 @@ internal sealed class StorageScopeResolver : IStorageScopeResolver {
             return false;
         }
 
-        if (string.IsNullOrWhiteSpace(rawTenant) || string.IsNullOrWhiteSpace(rawUser)) {
+        if (scope is null) {
             FrontComposerSecurityLog.StorageScopeMissing(_logger, feature, direction);
             tenantId = string.Empty;
             userId = string.Empty;
             return false;
         }
 
-        tenantId = rawTenant;
-        userId = rawUser;
+        tenantId = scope.TenantId;
+        userId = scope.UserId;
         return true;
     }
 }

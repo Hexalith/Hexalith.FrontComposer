@@ -64,6 +64,39 @@ public sealed class QueryAndCacheTenantIsolationTests {
         tenantA.ShouldNotBe(tenantUpper);
     }
 
+    [Fact]
+    public async Task QueryAsync_LateFreshResponseAfterScopeSwitch_IsDiscarded() {
+        DelayedHandler handler = new();
+        CountingCache cache = new();
+        TestUserContextAccessor identity = new("tenant-a", "user-a");
+        EventStoreQueryClient sut = NewClient(handler, cache, "tenant-a", "user-a", context: identity);
+
+        Task<QueryResult<Row>> query = sut.QueryAsync<Row>(Request("tenant-a"), TestContext.Current.CancellationToken);
+        await handler.Received.Task.WaitAsync(TestContext.Current.CancellationToken);
+        identity.TenantId = "tenant-b";
+        identity.UserId = "user-b";
+        handler.Release.SetResult();
+
+        TenantContextException error = await Should.ThrowAsync<TenantContextException>(query);
+        error.FailureCategory.ShouldBe(TenantContextFailureCategory.StaleTenantContext);
+        cache.SetCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task QueryAsync_LateCachelessNotModifiedAfterScopeSwitch_IsDiscarded() {
+        DelayedHandler handler = new(HttpStatusCode.NotModified);
+        TestUserContextAccessor identity = new("tenant-a", "user-a");
+        EventStoreQueryClient sut = NewClient(handler, new CountingCache(), "tenant-a", "user-a", context: identity);
+
+        Task<QueryResult<Row>> query = sut.QueryAsync<Row>(Request("tenant-a"), TestContext.Current.CancellationToken);
+        await handler.Received.Task.WaitAsync(TestContext.Current.CancellationToken);
+        identity.TenantId = "tenant-b";
+        handler.Release.SetResult();
+
+        TenantContextException error = await Should.ThrowAsync<TenantContextException>(query);
+        error.FailureCategory.ShouldBe(TenantContextFailureCategory.StaleTenantContext);
+    }
+
     private static QueryRequest Request(string? tenantId, string? cacheDiscriminator = null)
         => QueryRequest.Create(
             Criteria: new ProjectionQuery("Orders.Row"),
@@ -78,7 +111,8 @@ public sealed class QueryAndCacheTenantIsolationTests {
         IETagCache cache,
         string tenant,
         string user,
-        Action? onToken = null) {
+        Action? onToken = null,
+        IUserContextAccessor? context = null) {
         EventStoreOptions options = new() {
             BaseAddress = new Uri("https://eventstore.test"),
             AccessTokenProvider = _ => {
@@ -90,7 +124,7 @@ public sealed class QueryAndCacheTenantIsolationTests {
         return new EventStoreQueryClient(
             new SingleClientFactory(handler),
             MsOptions.Create(options),
-            new TestUserContextAccessor(tenant, user),
+            context ?? new TestUserContextAccessor(tenant, user),
             EventStoreTestSupport.CreateClassifier(),
             cache,
             new EventStoreTestSupport.RecordingAuthRedirector(),
@@ -101,8 +135,21 @@ public sealed class QueryAndCacheTenantIsolationTests {
     private sealed record Row(string Id);
 
     private sealed class TestUserContextAccessor(string? tenantId, string? userId) : IUserContextAccessor {
-        public string? TenantId { get; } = tenantId;
-        public string? UserId { get; } = userId;
+        public string? TenantId { get; set; } = tenantId;
+        public string? UserId { get; set; } = userId;
+    }
+
+    private sealed class DelayedHandler(HttpStatusCode statusCode = HttpStatusCode.OK) : HttpMessageHandler {
+        public TaskCompletionSource Received { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
+            Received.SetResult();
+            await Release.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+            return new HttpResponseMessage(statusCode) {
+                Content = new StringContent("""{"payload":[{"id":"row-a"}]}""", Encoding.UTF8, "application/json"),
+            };
+        }
     }
 
     private sealed class SingleClientFactory(HttpMessageHandler handler) : IHttpClientFactory {

@@ -702,4 +702,10 @@
     <value>A command is still waiting for confirmation. Wait for it to finish before submitting another command.</value>
     <comment>Story 4.3 FC-CNC — warning body when an accepted pending command blocks a later local submit. Do not mention queuing or retry.</comment>
   </data>
+  <data name="ScopeBlockedHeading" xml:space="preserve">
+    <value>Workspace unavailable</value>
+  </data>
+  <data name="ScopeBlockedMessage" xml:space="preserve">
+    <value>Your workspace identity could not be verified. Sign in again or contact support.</value>
+  </data>
 </root>

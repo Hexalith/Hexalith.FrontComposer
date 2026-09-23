@@ -49,6 +49,9 @@
     </Project>
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Hexalith.FrontComposer.CounterFixture/Hexalith.FrontComposer.CounterFixture.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
     <Project Path="tests/Hexalith.FrontComposer.Cli.Tests/Hexalith.FrontComposer.Cli.Tests.csproj" />
     <Project Path="tests/Hexalith.FrontComposer.Contracts.Tests/Hexalith.FrontComposer.Contracts.Tests.csproj" />
     <Project Path="tests/Hexalith.FrontComposer.Contracts.UI.Tests/Hexalith.FrontComposer.Contracts.UI.Tests.csproj" />

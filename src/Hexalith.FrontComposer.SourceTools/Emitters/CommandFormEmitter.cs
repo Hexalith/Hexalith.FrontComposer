@@ -313,10 +313,15 @@ public static class CommandFormEmitter {
         }
         _ = sb.AppendLine("    private void SetCommandInProgressWarning(global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason reason)");
         _ = sb.AppendLine("    {");
-        _ = sb.AppendLine("        string title = ResolveShellLocalized(\"CommandAlreadyInProgressTitle\", \"Command already in progress\");");
-        _ = sb.AppendLine("        string detail = reason == global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.PendingCommandAlreadyExists");
-        _ = sb.AppendLine("            ? ResolveShellLocalized(\"CommandAlreadyInProgressPendingMessage\", \"A command is still waiting for confirmation. Wait for it to finish before submitting another command.\")");
-        _ = sb.AppendLine("            : ResolveShellLocalized(\"CommandAlreadyInProgressAdmissionMessage\", \"A command is already being submitted. Wait for it to finish before submitting another command.\");");
+        _ = sb.AppendLine("        bool scopeUnavailable = reason == global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.ScopeUnavailable;");
+        _ = sb.AppendLine("        string title = scopeUnavailable");
+        _ = sb.AppendLine("            ? ResolveShellLocalized(\"ScopeBlockedHeading\", \"Workspace unavailable\")");
+        _ = sb.AppendLine("            : ResolveShellLocalized(\"CommandAlreadyInProgressTitle\", \"Command already in progress\");");
+        _ = sb.AppendLine("        string detail = scopeUnavailable");
+        _ = sb.AppendLine("            ? ResolveShellLocalized(\"ScopeBlockedMessage\", \"Your workspace identity could not be verified. Sign in again or contact support.\")");
+        _ = sb.AppendLine("            : reason == global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.PendingCommandAlreadyExists");
+        _ = sb.AppendLine("                ? ResolveShellLocalized(\"CommandAlreadyInProgressPendingMessage\", \"A command is still waiting for confirmation. Wait for it to finish before submitting another command.\")");
+        _ = sb.AppendLine("                : ResolveShellLocalized(\"CommandAlreadyInProgressAdmissionMessage\", \"A command is already being submitted. Wait for it to finish before submitting another command.\");");
         _ = sb.AppendLine("        _serverWarning = new global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning(");
         _ = sb.AppendLine("            global::Hexalith.FrontComposer.Contracts.Communication.CommandWarningKind.Pending,");
         _ = sb.AppendLine("            title,");

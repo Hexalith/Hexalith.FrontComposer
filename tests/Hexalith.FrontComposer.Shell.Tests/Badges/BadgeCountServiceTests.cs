@@ -5,7 +5,10 @@ using System.Reactive.Subjects;
 using Hexalith.FrontComposer.Contracts.Badges;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Shell.Badges;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -46,17 +49,59 @@ public sealed class BadgeCountServiceTests {
         public void NotifyChanged(string projectionType) => ProjectionChanged?.Invoke(projectionType);
     }
 
-    private static ServiceProvider EmptyProvider() => new ServiceCollection().BuildServiceProvider();
+    private static ServiceProvider EmptyProvider() => new ServiceCollection()
+        .AddSingleton<IFrontComposerTenantContextAccessor>(new TestTenantContextAccessor())
+        .BuildServiceProvider();
 
     private static ServiceProvider WithNotifier(IProjectionChangeNotifier notifier) {
         ServiceCollection services = new();
         _ = services.AddSingleton(notifier);
+        _ = services.AddSingleton<IFrontComposerTenantContextAccessor>(new TestTenantContextAccessor());
         return services.BuildServiceProvider();
     }
 
     private sealed class ProjectionAlpha { }
     private sealed class ProjectionBeta { }
     private sealed class ProjectionGamma { }
+
+    [Fact]
+    public async Task ScopeSwitch_ReplacesInFlightFetchAndRegistersNewTenantLane() {
+        TestTenantContextAccessor scope = new();
+        TaskCompletionSource<int> delayedA = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        StubReader reader = new((_, _) => scope.TenantId == "tenant-a"
+            ? new ValueTask<int>(delayedA.Task)
+            : new ValueTask<int>(7));
+        IProjectionFallbackRefreshScheduler scheduler = Substitute.For<IProjectionFallbackRefreshScheduler>();
+        List<ProjectionFallbackLane> lanes = [];
+        List<IDisposable> registrations = [];
+        _ = scheduler.RegisterLane(Arg.Any<ProjectionFallbackLane>()).Returns(call => {
+            lanes.Add(call.Arg<ProjectionFallbackLane>());
+            IDisposable registration = Substitute.For<IDisposable>();
+            registrations.Add(registration);
+            return registration;
+        });
+        using ServiceProvider provider = new ServiceCollection()
+            .AddSingleton<IFrontComposerTenantContextAccessor>(scope)
+            .AddSingleton(scheduler)
+            .BuildServiceProvider();
+        using BadgeCountService sut = new(new StubCatalog(typeof(ProjectionAlpha)), reader, provider,
+            EnabledLoggerSubstitute.Create<BadgeCountService>(), new FakeTimeProvider());
+
+        Task fetchA = sut.InitializeAsync(Ct);
+        lanes.Single().TenantId.ShouldBe("tenant-a");
+        scope.TenantId = "tenant-b";
+        scope.UserId = "user-b";
+        sut.ResetScope();
+        sut.Counts.ShouldBeEmpty();
+        await sut.InitializeAsync(Ct);
+        lanes.Select(x => x.TenantId).ShouldBe(["tenant-a", "tenant-b"]);
+        registrations[0].Received(1).Dispose();
+        sut.Counts[typeof(ProjectionAlpha)].ShouldBe(7);
+
+        delayedA.SetResult(99);
+        await fetchA;
+        sut.Counts[typeof(ProjectionAlpha)].ShouldBe(7);
+    }
 
     [Fact]
     public async Task InitializeAsync_SeedsAllCatalogTypes_ViaReader() {

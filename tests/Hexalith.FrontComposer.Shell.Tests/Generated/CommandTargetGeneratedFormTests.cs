@@ -831,7 +831,7 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
     }
 
     [Fact]
-    public async Task ThrowingUserContextTargetResolution_PreservesAcceptedLifecycleWithoutTarget() {
+    public async Task ThrowingUserContextTargetResolution_BlocksCommandWithoutScope() {
         EarlyTerminalCommandService service = new(AcceptedMessageId);
         Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
         Services.Replace(ServiceDescriptor.Scoped<IUserContextAccessor>(_ => new ThrowingUserContextAccessor()));
@@ -843,12 +843,10 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
 
         cut.Find("form").Submit();
 
-        cut.WaitForAssertion(() => {
-            service.DispatchCount.ShouldBe(1);
-            PendingCommandEntry entry = pending.GetByMessageId(AcceptedMessageId).ShouldNotBeNull();
-            entry.Status.ShouldBe(PendingCommandStatus.Confirmed);
-            entry.TargetSnapshot.ShouldBeNull();
-        });
+        service.DispatchCount.ShouldBe(0);
+        cut.Markup.ShouldContain("Workspace unavailable");
+        cut.Markup.ShouldNotContain("Command already in progress");
+        pending.Snapshot().ShouldBeEmpty();
         indicators.Snapshot("Counter:Counter.Domain.CounterProjection").ShouldBeEmpty();
     }
 

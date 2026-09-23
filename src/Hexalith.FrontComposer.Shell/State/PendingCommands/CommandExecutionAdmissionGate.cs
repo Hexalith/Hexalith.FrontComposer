@@ -5,16 +5,25 @@ namespace Hexalith.FrontComposer.Shell.State.PendingCommands;
 /// </summary>
 public sealed class CommandExecutionAdmissionGate(
     IPendingCommandStateService pendingCommandState,
-    TimeProvider? timeProvider = null) : ICommandExecutionAdmissionGate {
+    TimeProvider? timeProvider = null,
+    IValidatedPendingScope? validatedScope = null) : ICommandExecutionAdmissionGate {
     private readonly object _sync = new();
     private readonly IPendingCommandStateService _pendingCommandState = pendingCommandState ?? throw new ArgumentNullException(nameof(pendingCommandState));
     private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
+    private readonly IValidatedPendingScope? _validatedScope = validatedScope;
     private CommandExecutionAdmissionMetadata? _currentAdmission;
     private long _nextAdmissionId;
 
     /// <inheritdoc />
     public CommandExecutionAdmission TryAcquire(CommandExecutionAdmissionRequest request) {
         ArgumentNullException.ThrowIfNull(request);
+
+        bool scopeAvailable = _validatedScope is not null
+            ? _validatedScope.Current() is not null
+            : _pendingCommandState is PendingCommandStateService concrete && concrete.IsScopeAvailable;
+        if (!scopeAvailable) {
+            return CommandExecutionAdmission.Denied(CommandExecutionAdmissionDenialReason.ScopeUnavailable, null, null);
+        }
 
         lock (_sync) {
             if (_currentAdmission is not null) {
@@ -43,6 +52,12 @@ public sealed class CommandExecutionAdmissionGate(
                 _timeProvider.GetUtcNow());
 
             return CommandExecutionAdmission.Admitted(admissionId, this);
+        }
+    }
+
+    internal void ResetScope() {
+        lock (_sync) {
+            _currentAdmission = null;
         }
     }
 

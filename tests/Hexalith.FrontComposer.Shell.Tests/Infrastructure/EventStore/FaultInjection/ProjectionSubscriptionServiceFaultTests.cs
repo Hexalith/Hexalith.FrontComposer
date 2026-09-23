@@ -1,6 +1,7 @@
 #pragma warning disable CA2007 // ConfigureAwait — test code (matches project convention)
 
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
@@ -262,7 +263,14 @@ public sealed class ProjectionSubscriptionServiceFaultTests {
             state ?? new TestProjectionConnectionState(),
             scheduler ?? new TestRefreshScheduler(),
             notifier ?? new TestNotifier(),
-            logger ?? NullLogger<ProjectionSubscriptionService>.Instance);
+            logger ?? NullLogger<ProjectionSubscriptionService>.Instance,
+            userContextAccessor: new FixedUserContext());
+    }
+
+    private sealed class FixedUserContext : IUserContextAccessor {
+        public string TenantId => "acme";
+
+        public string UserId => "user-1";
     }
 
     private sealed class TestProjectionConnectionState : IProjectionConnectionState {

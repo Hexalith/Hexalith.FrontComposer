@@ -1,6 +1,7 @@
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Services;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 
 using Microsoft.Extensions.Logging;
 
@@ -33,6 +34,30 @@ public sealed class StorageScopeResolverTests {
         tenantId.ShouldBe(Tenant);
         userId.ShouldBe(User);
         logger.Entries.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void TryResolveScope_NonblankMalformedTenant_FailsCanonicalValidation() {
+        CapturingLogger logger = new();
+        StorageScopeResolver sut = new(Accessor("tenant:malformed", "user-a"), logger);
+
+        sut.TryResolveScope(out string tenant, out string user, "Theme", "hydrate").ShouldBeFalse();
+        tenant.ShouldBeEmpty();
+        user.ShouldBeEmpty();
+        logger.ShouldHaveInformation(FcDiagnosticIds.HFC2105_StoragePersistenceSkipped, "hydrate");
+    }
+
+    [Fact]
+    public void TryResolveScope_RegisteredValidatorRejectsValidLookingRawIdentity() {
+        CapturingLogger logger = new();
+        IFrontComposerTenantContextAccessor canonical = Substitute.For<IFrontComposerTenantContextAccessor>();
+        canonical.TryGetContext(Arg.Any<string?>(), Arg.Any<string>())
+            .Returns(TenantContextResult.Failure(TenantContextFailureCategory.MalformedSegment, "test-correlation"));
+        StorageScopeResolver sut = new(Accessor(Tenant, User), logger, canonical);
+
+        sut.TryResolveScope(out string tenant, out string user, "Theme", "hydrate").ShouldBeFalse();
+        tenant.ShouldBeEmpty();
+        user.ShouldBeEmpty();
     }
 
     [Fact]

@@ -112,6 +112,9 @@ public static class RazorEmitter {
         _ = sb.AppendLine("    [Inject]");
         _ = sb.AppendLine("    private NavigationManager Navigation { get; set; } = default!;");
         _ = sb.AppendLine();
+        _ = sb.AppendLine("    [Inject]");
+        _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.IFrontComposerTenantContextAccessor TenantContextAccessor { get; set; } = default!;");
+        _ = sb.AppendLine();
 
         // Story 4-2 RF3 + Story 4-5 T2.5 — views that render any badge-annotated enum column
         // OR emit expand-in-row machinery (chevron aria-label, detail panel ARIA, banner copy,
@@ -1722,6 +1725,13 @@ public static class RazorEmitter {
         _ = sb.AppendLine("    /// <inheritdoc />");
         _ = sb.AppendLine("    protected override void BuildRenderTree(RenderTreeBuilder builder)");
         _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        var __scope = TenantContextAccessor.TryGetContext(RenderContext?.TenantId, \"projection-render\");");
+        _ = sb.AppendLine("        if (!__scope.Succeeded || __scope.Context is null || (RenderContext is not null && !string.Equals(__scope.Context.UserId, RenderContext.UserId, StringComparison.Ordinal)))");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcScopeBlocked>(0);");
+        _ = sb.AppendLine("            builder.CloseComponent();");
+        _ = sb.AppendLine("            return;");
+        _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        var state = " + model.TypeName + "State.Value;");
         _ = sb.AppendLine("        int seq = 0;");
         EmitDevModeAnnotation(

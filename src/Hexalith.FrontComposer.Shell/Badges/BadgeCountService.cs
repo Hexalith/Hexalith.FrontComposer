@@ -3,11 +3,13 @@ using System.Collections.Immutable;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 
+using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Badges;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -56,6 +58,7 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
     private readonly IProjectionChangeNotifier? _notifier;
     private readonly IProjectionFallbackRefreshScheduler? _reconciliationScheduler;
     private readonly IUserContextAccessor? _userContextAccessor;
+    private readonly IFrontComposerTenantContextAccessor? _tenantContextAccessor;
     private readonly ILogger<BadgeCountService> _logger;
     private readonly TimeProvider _timeProvider;
     private readonly Subject<BadgeCountChangedArgs> _subject = new();
@@ -68,8 +71,11 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
     private readonly object _initializeGate = new();
 
     private ImmutableDictionary<Type, int> _counts = ImmutableDictionary<Type, int>.Empty;
+    private TenantContextSnapshot? _scopeSnapshot;
+    private readonly object _scopeGate = new();
     private int _disposedFlag;
     private Task? _initializeTask;
+    private TenantContextSnapshot? _initializeScope;
 
     private bool IsDisposed => Volatile.Read(ref _disposedFlag) != 0;
 
@@ -100,17 +106,61 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
         _notifier = serviceProvider.GetService<IProjectionChangeNotifier>();
         _reconciliationScheduler = serviceProvider.GetService<IProjectionFallbackRefreshScheduler>();
         _userContextAccessor = serviceProvider.GetService<IUserContextAccessor>();
+        _tenantContextAccessor = serviceProvider.GetService<IFrontComposerTenantContextAccessor>();
         _notifier?.ProjectionChanged += OnProjectionChanged;
     }
 
     /// <inheritdoc />
-    public IReadOnlyDictionary<Type, int> Counts => _counts;
+    public IReadOnlyDictionary<Type, int> Counts => CurrentScope() is null ? ImmutableDictionary<Type, int>.Empty : _counts;
 
     /// <inheritdoc />
     public IObservable<BadgeCountChangedArgs> CountChanged => _subject.AsObservable();
 
     /// <inheritdoc />
-    public int TotalActionableItems => _counts.Values.Sum();
+    public int TotalActionableItems => CurrentScope() is null ? 0 : _counts.Values.Sum();
+
+    internal void ResetScope() {
+        lock (_scopeGate) {
+            _scopeSnapshot = null;
+            _ = Interlocked.Exchange(ref _counts, ImmutableDictionary<Type, int>.Empty);
+            foreach (IDisposable registration in _reconciliationRegistrations.Values) {
+                registration.Dispose();
+            }
+
+            _reconciliationRegistrations.Clear();
+        }
+    }
+
+    private TenantContextSnapshot? CurrentScope() {
+        TenantContextSnapshot? current = _tenantContextAccessor is not null
+            ? _tenantContextAccessor.TryGetContext(operationKind: "badge-count").Context
+            : (_userContextAccessor is null ? null : FrontComposerTenantContextAccessor.Resolve(
+                _userContextAccessor, new FcShellOptions(), _logger, operationKind: "badge-count").Context);
+        lock (_scopeGate) {
+            if (current is null) {
+                ResetScope();
+                return null;
+            }
+
+            if (_scopeSnapshot is not null
+                && (!string.Equals(_scopeSnapshot.TenantId, current.TenantId, StringComparison.Ordinal)
+                    || !string.Equals(_scopeSnapshot.UserId, current.UserId, StringComparison.Ordinal))) {
+                ResetScope();
+            }
+
+            _scopeSnapshot = current;
+            return current;
+        }
+    }
+
+    private bool IsCurrent(TenantContextSnapshot scope) {
+        TenantContextSnapshot? current = CurrentScope();
+        return current is not null && SameScope(current, scope);
+    }
+
+    private static bool SameScope(TenantContextSnapshot left, TenantContextSnapshot right)
+        => string.Equals(left.TenantId, right.TenantId, StringComparison.Ordinal)
+            && string.Equals(left.UserId, right.UserId, StringComparison.Ordinal);
 
     /// <summary>
     /// Fans out an initial parallel fetch across every catalog entry under a 5-second umbrella
@@ -135,18 +185,26 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
             return Task.CompletedTask;
         }
 
+        TenantContextSnapshot? scope = CurrentScope();
+        if (scope is null) {
+            return Task.CompletedTask;
+        }
+
         lock (_initializeGate) {
-            if (_initializeTask is { IsCompleted: false }) {
+            if (_initializeTask is { IsCompleted: false }
+                && _initializeScope is not null
+                && SameScope(_initializeScope, scope)) {
                 return _initializeTask;
             }
 
-            Task task = InitializeCoreAsync(cancellationToken);
+            Task task = InitializeCoreAsync(scope, cancellationToken);
+            _initializeScope = scope;
             _initializeTask = task;
             return task;
         }
     }
 
-    private async Task InitializeCoreAsync(CancellationToken cancellationToken) {
+    private async Task InitializeCoreAsync(TenantContextSnapshot scope, CancellationToken cancellationToken) {
         using CancellationTokenSource timeoutCts = new(
             TimeSpan.FromSeconds(InitialFetchTimeoutSeconds),
             _timeProvider);
@@ -173,8 +231,8 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
 
         var tasks = new Task[types.Count];
         for (int i = 0; i < types.Count; i++) {
-            RegisterReconciliationLane(types[i]);
-            tasks[i] = FetchOneAsync(types[i], cts.Token);
+            RegisterReconciliationLane(types[i], scope);
+            tasks[i] = FetchOneAsync(types[i], scope, cts.Token);
         }
 
         try {
@@ -218,14 +276,14 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
         _subject.Dispose();
     }
 
-    private async Task FetchOneAsync(Type projectionType, CancellationToken cancellationToken) {
+    private async Task FetchOneAsync(Type projectionType, TenantContextSnapshot scope, CancellationToken cancellationToken) {
         try {
             int count = await _reader.GetCountAsync(projectionType, cancellationToken).ConfigureAwait(false);
-            if (IsDisposed) {
+            if (IsDisposed || !IsCurrent(scope)) {
                 return;
             }
 
-            _ = UpdateCount(projectionType, count);
+            _ = UpdateCount(projectionType, count, scope);
         }
         catch (OperationCanceledException) {
             // Expected on dispose or 5-second umbrella timeout; no log.
@@ -239,7 +297,11 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
         }
     }
 
-    private bool UpdateCount(Type projectionType, int newCount) {
+    private bool UpdateCount(Type projectionType, int newCount, TenantContextSnapshot scope) {
+        lock (_scopeGate) {
+        if (!IsCurrent(scope)) {
+            return false;
+        }
         if (newCount < 0) {
             // Reader contract implies non-negative counts; drop and log rather than publish
             // negative values through CountChanged (would skew TotalActionableItems sums).
@@ -280,10 +342,11 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
         }
 
         return true;
+        }
     }
 
-    private void RegisterReconciliationLane(Type projectionType) {
-        if (_reconciliationScheduler is null || _userContextAccessor is null || string.IsNullOrWhiteSpace(_userContextAccessor.TenantId)) {
+    private void RegisterReconciliationLane(Type projectionType, TenantContextSnapshot scope) {
+        if (_reconciliationScheduler is null || !IsCurrent(scope)) {
             return;
         }
 
@@ -295,7 +358,7 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
             new ProjectionFallbackLane(
                 ViewKey: string.Concat("action-queue-count:", type.FullName),
                 ProjectionType: type.FullName!,
-                TenantId: _userContextAccessor.TenantId,
+                TenantId: scope.TenantId,
                 Skip: 0,
                 Take: 1,
                 Filters: ImmutableDictionary<string, string>.Empty,
@@ -306,12 +369,16 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
     }
 
     private async ValueTask<ProjectionFallbackLaneRefreshOutcome> RefreshCountLaneAsync(Type projectionType, CancellationToken cancellationToken) {
+        TenantContextSnapshot? scope = CurrentScope();
+        if (scope is null) {
+            return ProjectionFallbackLaneRefreshOutcome.Skipped;
+        }
         int count = await _reader.GetCountAsync(projectionType, cancellationToken).ConfigureAwait(false);
-        if (IsDisposed) {
+        if (IsDisposed || !IsCurrent(scope)) {
             return ProjectionFallbackLaneRefreshOutcome.Skipped;
         }
 
-        return UpdateCount(projectionType, count)
+        return UpdateCount(projectionType, count, scope)
             ? ProjectionFallbackLaneRefreshOutcome.Changed
             : ProjectionFallbackLaneRefreshOutcome.NotModified;
     }
@@ -340,12 +407,16 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
                 return;
             }
 
+            TenantContextSnapshot? scope = CurrentScope();
+            if (scope is null) {
+                return;
+            }
             int count = await _reader.GetCountAsync(resolved, _lifetimeCts.Token).ConfigureAwait(false);
-            if (IsDisposed) {
+            if (IsDisposed || !IsCurrent(scope)) {
                 return;
             }
 
-            _ = UpdateCount(resolved, count);
+            _ = UpdateCount(resolved, count, scope);
         }
         catch (OperationCanceledException) {
             // Expected on dispose; no log.

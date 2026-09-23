@@ -9,6 +9,7 @@ using Fluxor;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Components.EventStore;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.Infrastructure.ProjectionConnection;
@@ -194,7 +195,14 @@ public sealed class ReconnectReconcileSubscriptionIntegrationTests : BunitContex
             new TestNotifier(),
             NullLogger<ProjectionSubscriptionService>.Instance,
             fallbackDriver: null,
-            reconciliationCoordinator: coordinator);
+            reconciliationCoordinator: coordinator,
+            userContextAccessor: new FixedUserContext());
+    }
+
+    private sealed class FixedUserContext : IUserContextAccessor {
+        public string TenantId => "acme";
+
+        public string UserId => "user-1";
     }
 
     private sealed class TestNotifier : IProjectionChangeNotifier {

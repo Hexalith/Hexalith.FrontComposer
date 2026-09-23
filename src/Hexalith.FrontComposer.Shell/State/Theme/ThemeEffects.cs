@@ -99,14 +99,21 @@ public class ThemeEffects(
             return;
         }
 
-        dispatcher.Dispatch(new ThemeHydratingAction());
+        long? scopeVersion = state?.Value.ScopeVersion;
+        dispatcher.Dispatch(new ThemeHydratingAction { HydrationScopeVersion = scopeVersion });
 
         try {
             string key = StorageKeys.BuildKey(tenantId, userId, FeatureSegment);
             // Retrieve as nullable enum so missing keys remain null while stored values hydrate strongly typed.
             ThemeValue? stored = await storage.GetAsync<ThemeValue?>(key).ConfigureAwait(false);
+            if (!IsScopeVersionCurrent(scopeVersion)
+                || !ScopeResolver.TryResolveScope(out string currentTenant, out string currentUser, "Theme", DirectionHydrate)
+                || !string.Equals(currentTenant, tenantId, StringComparison.Ordinal)
+                || !string.Equals(currentUser, userId, StringComparison.Ordinal)) {
+                return;
+            }
             if (stored is ThemeValue theme) {
-                dispatcher.Dispatch(new ThemeChangedAction(correlationId, theme));
+                dispatcher.Dispatch(new ThemeChangedAction(correlationId, theme) { HydrationScopeVersion = scopeVersion });
             }
             else {
                 FrontComposerDiagnosticLog.ThemeHydrationEmpty(
@@ -119,16 +126,16 @@ public class ThemeEffects(
             // Consistent with NavigationEffects / DensityEffects / DataGridNavigationEffects — every
             // terminal path dispatches Completed so HydrationState leaves Hydrating. Prevents the
             // re-hydrate StorageReady gate from blocking forever on a transient cancellation.
-            dispatcher.Dispatch(new ThemeHydratedCompletedAction());
+            dispatcher.Dispatch(new ThemeHydratedCompletedAction { HydrationScopeVersion = scopeVersion });
             return;
         }
         catch (Exception ex) {
             FrontComposerWarningLog.ThemeHydrationFailed(logger, ex);
-            dispatcher.Dispatch(new ThemeHydratedCompletedAction());
+            dispatcher.Dispatch(new ThemeHydratedCompletedAction { HydrationScopeVersion = scopeVersion });
             return;
         }
 
-        dispatcher.Dispatch(new ThemeHydratedCompletedAction());
+        dispatcher.Dispatch(new ThemeHydratedCompletedAction { HydrationScopeVersion = scopeVersion });
     }
 
     /// <summary>
@@ -140,6 +147,9 @@ public class ThemeEffects(
     [EffectMethod]
     public async Task HandleThemeChanged(ThemeChangedAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
+        if (!IsScopeVersionCurrent(action.HydrationScopeVersion)) {
+            return;
+        }
         ThemeMode mode = action.NewTheme switch {
             ThemeValue.Light => ThemeMode.Light,
             ThemeValue.Dark => ThemeMode.Dark,
@@ -153,6 +163,12 @@ public class ThemeEffects(
 
         try {
             await ApplyThemeAsync(mode).ConfigureAwait(false);
+            if (!IsScopeVersionCurrent(action.HydrationScopeVersion)
+                || !ScopeResolver.TryResolveScope(out string currentTenant, out string currentUser, "Theme", DirectionPersist)
+                || !string.Equals(currentTenant, tenantId, StringComparison.Ordinal)
+                || !string.Equals(currentUser, userId, StringComparison.Ordinal)) {
+                return;
+            }
             string key = StorageKeys.BuildKey(tenantId, userId, FeatureSegment);
             await storage.SetAsync(key, action.NewTheme).ConfigureAwait(false);
         }
@@ -165,4 +181,7 @@ public class ThemeEffects(
         => themeService is null
             ? Task.CompletedTask
             : themeService.SetThemeAsync(new ThemeSettings(options.Value.AccentColor, 0, 0, mode, false));
+
+    private bool IsScopeVersionCurrent(long? scopeVersion)
+        => scopeVersion is null || state?.Value.ScopeVersion == scopeVersion;
 }

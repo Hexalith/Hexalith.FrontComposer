@@ -28,6 +28,8 @@ public class EventStoreActionQueueCountReaderTests {
         count.ShouldBe(7);
         queryService.LastRequest.ShouldNotBeNull();
         queryService.LastRequest!.Criteria.Take.ShouldBe(0);
+        queryService.LastRequest.Criteria.ProjectionType.ShouldBe("sample-projection");
+        queryService.LastRequest.QueryType.ShouldBe(typeof(SampleProjection).FullName);
         queryService.LastRequest.CacheDiscriminator.ShouldStartWith("action-queue-count:");
     }
 

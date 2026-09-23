@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.State.Navigation;
 
 namespace Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 
@@ -13,6 +14,16 @@ namespace Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 /// reducers remain pure — no mutable process-static (Group D code review W1 resolution).
 /// </summary>
 public static class DataGridNavigationReducers {
+    /// <summary>Removes cached view preferences on a circuit scope transition.</summary>
+    [ReducerMethod]
+    public static DataGridNavigationState ReduceScopeChanged(DataGridNavigationState state, ScopeChangedAction action) {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        return state with {
+            ViewStates = System.Collections.Immutable.ImmutableDictionary<string, GridViewSnapshot>.Empty,
+            HydrationState = HydrationState.Idle,
+        };
+    }
     [ReducerMethod]
     public static DataGridNavigationState ReduceCapture(DataGridNavigationState state, CaptureGridStateAction action) {
         ArgumentNullException.ThrowIfNull(state);

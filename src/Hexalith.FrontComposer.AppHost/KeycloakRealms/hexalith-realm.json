@@ -380,7 +380,7 @@
       ],
       "attributes": {
         "tenants": ["tenant-a"],
-        "domains": ["tenants", "orders"],
+        "domains": ["tenants", "orders", "counter"],
         "permissions": ["command:submit", "command:query"],
         "current-tenant": ["tenant-a"]
       }
@@ -403,8 +403,8 @@
       ],
       "attributes": {
         "tenants": ["tenant-b"],
-        "domains": ["tenants", "inventory"],
-        "permissions": ["command:submit"],
+        "domains": ["tenants", "inventory", "counter"],
+        "permissions": ["command:submit", "command:query"],
         "current-tenant": ["tenant-b"]
       }
     },

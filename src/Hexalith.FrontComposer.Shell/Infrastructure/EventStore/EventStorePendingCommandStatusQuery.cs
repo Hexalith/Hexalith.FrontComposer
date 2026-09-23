@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 
 using Hexalith.FrontComposer.Contracts.Lifecycle;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 
@@ -18,7 +19,8 @@ public sealed class EventStorePendingCommandStatusQuery(
     IHttpClientFactory httpClientFactory,
     IOptions<EventStoreOptions> options,
     EventStoreResponseClassifier classifier,
-    ILogger<EventStorePendingCommandStatusQuery> logger) : IPendingCommandStatusQuery {
+    ILogger<EventStorePendingCommandStatusQuery> logger,
+    IFrontComposerTenantContextAccessor? tenantContextAccessor = null) : IPendingCommandStatusQuery {
     private const string StatusEndpointPrefix = "/api/v1/commands/status/";
     private const int MaxStatusTextLength = 512;
 
@@ -27,6 +29,15 @@ public sealed class EventStorePendingCommandStatusQuery(
         PendingCommandEntry pendingCommand,
         CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(pendingCommand);
+        TenantContextSnapshot scope = (tenantContextAccessor?
+            .TryGetContext(operationKind: "pending-status-query")
+            ?? TenantContextResult.Failure(TenantContextFailureCategory.TenantMissing, Guid.NewGuid().ToString("N")))
+            .EnsureSuccess();
+        if (pendingCommand.RegistrationScope is not { } registered
+            || !string.Equals(registered.TenantId, scope.TenantId, StringComparison.Ordinal)
+            || !string.Equals(registered.UserId, scope.UserId, StringComparison.Ordinal)) {
+            throw new TenantContextException(TenantContextFailureCategory.StaleTenantContext, scope.CorrelationId);
+        }
 
         EventStoreOptions current = options.Value;
         using HttpRequestMessage request = new(
@@ -55,6 +66,7 @@ public sealed class EventStorePendingCommandStatusQuery(
             cancellationToken).ConfigureAwait(false);
 
         EventStoreCommandStatus parsed = ParseStatus(status, pendingCommand.MessageId);
+        _ = tenantContextAccessor!.Revalidate(scope, "pending-status-response").EnsureSuccess();
         return parsed switch {
             EventStoreCommandStatus.Received
                 or EventStoreCommandStatus.Processing

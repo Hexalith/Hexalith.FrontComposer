@@ -17,6 +17,7 @@ namespace Hexalith.FrontComposer.Shell.State.PendingCommands;
 /// resolves terminal observations exactly once per ULID MessageId.
 /// </summary>
 public sealed class PendingCommandStateService : IPendingCommandStateService {
+    internal bool IsScopeAvailable => EnforceScopeBoundary();
     private readonly object _gate = new();
     private readonly Dictionary<string, PendingCommandEntry> _byMessageId = new(StringComparer.Ordinal);
     private readonly Queue<string> _insertionOrder = new();
@@ -25,6 +26,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
     private readonly FcShellOptions _options;
     private readonly ILifecycleStateService _lifecycle;
     private readonly IUserContextAccessor? _userContext;
+    private readonly IValidatedPendingScope? _validatedScope;
     private readonly TimeProvider _time;
     private readonly ILogger<PendingCommandStateService> _logger;
     private (string? Tenant, string? User)? _scopeSnapshot;
@@ -45,10 +47,12 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
         ILifecycleStateService lifecycle,
         IUserContextAccessor? userContext,
         TimeProvider? time = null,
-        ILogger<PendingCommandStateService>? logger = null) {
+        ILogger<PendingCommandStateService>? logger = null,
+        IValidatedPendingScope? validatedScope = null) {
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _lifecycle = lifecycle ?? throw new ArgumentNullException(nameof(lifecycle));
         _userContext = userContext;
+        _validatedScope = validatedScope;
         _time = time ?? TimeProvider.System;
         _logger = logger ?? NullLogger<PendingCommandStateService>.Instance;
     }
@@ -74,7 +78,9 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
 
         // DN3 — fail-closed on tenant/user transitions. Detected before mutation so the new
         // registration belongs to the new scope, not a leaked previous one.
-        EnforceScopeBoundary();
+        if (!EnforceScopeBoundary()) {
+            return PendingCommandRegistrationResult.ScopeUnavailable();
+        }
 
         PendingCommandEntry registered;
         PendingCommandEntry? evicted;
@@ -112,6 +118,9 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
                 SubmittedAt: normalized.SubmittedAt ?? _time.GetUtcNow(),
                 Status: PendingCommandStatus.Pending) {
                 TargetSnapshot = normalized.TargetSnapshot,
+                RegistrationScope = _scopeSnapshot is { } registrationScope
+                    ? (registrationScope.Tenant!, registrationScope.User!)
+                    : null,
             };
 
             _byMessageId.Add(entry.MessageId, entry);
@@ -146,7 +155,9 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             return PendingCommandResolutionResult.InvalidMessageId();
         }
 
-        EnforceScopeBoundary();
+        if (!EnforceScopeBoundary()) {
+            return PendingCommandResolutionResult.UnknownMessageId();
+        }
 
         PendingCommandEntry terminal;
         bool duplicate;
@@ -221,6 +232,9 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
 
     /// <inheritdoc />
     public PendingCommandEntry? GetByMessageId(string messageId) {
+        if (!EnforceScopeBoundary()) {
+            return null;
+        }
         // P14 — validate at the boundary; the dictionary throws on null but returns silently on
         // empty/whitespace which previously hid bugs.
         ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
@@ -240,6 +254,9 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
 
     /// <inheritdoc />
     public IReadOnlyList<PendingCommandEntry> Snapshot() {
+        if (!EnforceScopeBoundary()) {
+            return [];
+        }
         lock (_gate) {
             if (_disposed) {
                 return [];
@@ -630,22 +647,23 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
         }
     }
 
-    private void EnforceScopeBoundary() {
-        if (_userContext is null) {
-            return;
-        }
+    private bool EnforceScopeBoundary() {
 
         List<PendingCommandEntry>? outstanding = null;
         lock (_gate) {
             if (_disposed) {
-                return;
+                return false;
             }
 
             // P2-P8 — read tenant/user inside the lock so a concurrent transition cannot mutate
             // the values between the read and the snapshot comparison.
             (string? Tenant, string? User) current;
             try {
-                current = (_userContext.TenantId, _userContext.UserId);
+                current = _validatedScope is null
+                    ? (_userContext?.TenantId, _userContext?.UserId)
+                    : _validatedScope.Current() is { } validated
+                        ? (validated.TenantId, validated.UserId)
+                        : (null, null);
             }
             catch (Exception) {
                 // Scope access is an FC-NIP eligibility seam, not a transport/lifecycle gate.
@@ -669,7 +687,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             }
             else if (_scopeSnapshot is null) {
                 _scopeSnapshot = current;
-                return;
+                return true;
             }
             else {
                 bool needsClear = !ScopeMatches(_scopeSnapshot.Value, current);
@@ -684,6 +702,8 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             FrontComposerHotPathLog.PendingScopeTransition(_logger);
             CompleteClear(outstanding, "TenantOrUserTransition");
         }
+
+        return _scopeSnapshot is not null;
     }
 
     private List<PendingCommandEntry> ClearLocked() {

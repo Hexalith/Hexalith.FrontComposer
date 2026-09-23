@@ -3,6 +3,8 @@ using Fluxor;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.Services;
+using Hexalith.FrontComposer.Shell.State.PendingCommands;
 
 using Microsoft.Extensions.Logging;
 
@@ -27,10 +29,16 @@ namespace Hexalith.FrontComposer.Shell.State.Navigation;
 public sealed class ScopeReadinessGate : IScopeReadinessGate {
     private readonly IState<FrontComposerNavigationState> _state;
     private readonly IUserContextAccessor _userContextAccessor;
+    private readonly IValidatedPendingScope? _validatedScope;
     private readonly IUlidFactory? _ulidFactory;
     private readonly ILogger<ScopeReadinessGate> _logger;
     private int _lastObservedScopeReady = -1;
     private int _dispatched;
+
+    internal void ResetForScopeChange() {
+        _ = Interlocked.Exchange(ref _lastObservedScopeReady, 0);
+        _ = Interlocked.Exchange(ref _dispatched, 0);
+    }
 
     /// <summary>Initializes a new instance of the <see cref="ScopeReadinessGate"/> class.</summary>
     /// <param name="state">Navigation state carrying the transient <c>StorageReady</c> flag.</param>
@@ -41,12 +49,22 @@ public sealed class ScopeReadinessGate : IScopeReadinessGate {
         IState<FrontComposerNavigationState> state,
         IUserContextAccessor userContextAccessor,
         IUlidFactory? ulidFactory,
-        ILogger<ScopeReadinessGate> logger) {
+        ILogger<ScopeReadinessGate> logger)
+        : this(state, userContextAccessor, ulidFactory, logger, validatedScope: null) {
+    }
+
+    internal ScopeReadinessGate(
+        IState<FrontComposerNavigationState> state,
+        IUserContextAccessor userContextAccessor,
+        IUlidFactory? ulidFactory,
+        ILogger<ScopeReadinessGate> logger,
+        IValidatedPendingScope? validatedScope) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(userContextAccessor);
         ArgumentNullException.ThrowIfNull(logger);
         _state = state;
         _userContextAccessor = userContextAccessor;
+        _validatedScope = validatedScope;
         _ulidFactory = ulidFactory;
         _logger = logger;
     }
@@ -63,9 +81,17 @@ public sealed class ScopeReadinessGate : IScopeReadinessGate {
             return Task.CompletedTask;
         }
 
-        string? tenant = _userContextAccessor.TenantId;
-        string? user = _userContextAccessor.UserId;
-        if (string.IsNullOrWhiteSpace(tenant) || string.IsNullOrWhiteSpace(user)) {
+        bool scopeAvailable;
+        try {
+            scopeAvailable = _validatedScope is not null
+                ? _validatedScope.Current() is not null
+                : IsUsableSegment(_userContextAccessor.TenantId)
+                    && IsUsableSegment(_userContextAccessor.UserId);
+        }
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+            scopeAvailable = false;
+        }
+        if (!scopeAvailable) {
             _ = Interlocked.Exchange(ref _lastObservedScopeReady, 0);
             return Task.CompletedTask;
         }
@@ -88,4 +114,9 @@ public sealed class ScopeReadinessGate : IScopeReadinessGate {
 
     private string NewCorrelationId()
         => _ulidFactory?.NewUlid() ?? Guid.NewGuid().ToString("N");
+
+    private static bool IsUsableSegment(string? value)
+        => !string.IsNullOrWhiteSpace(value)
+            && !value.Contains(':', StringComparison.Ordinal)
+            && !value.Any(char.IsControl);
 }

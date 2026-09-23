@@ -5,6 +5,7 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.State;
 using Hexalith.FrontComposer.Shell.State.Theme;
+using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
@@ -25,6 +26,24 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.Theme;
 /// non-null AND non-whitespace → persist and use the tenant-scoped key.
 /// </summary>
 public sealed class ThemeEffectsScopeTests {
+    [Fact]
+    public async Task HandleThemeChanged_PriorHydrationScope_DoesNotApplyOrPersistUnderB() {
+        IStorageService storage = Substitute.For<IStorageService>();
+        IThemeService themeService = Substitute.For<IThemeService>();
+        FrontComposerThemeState current = new(ThemeValue.Dark);
+        IState<FrontComposerThemeState> state = Substitute.For<IState<FrontComposerThemeState>>();
+        state.Value.Returns(_ => current);
+        IUserContextAccessor accessor = MakeAccessor("tenant-b", "user-b");
+        ThemeEffects sut = new(storage, MsOptions.Create(new Hexalith.FrontComposer.Shell.Options.FcShellOptions()),
+            accessor, EnabledLoggerSubstitute.Create<ThemeEffects>(), themeService, state);
+        ThemeChangedAction lateA = new("a", ThemeValue.Dark) { HydrationScopeVersion = current.ScopeVersion };
+        current = ThemeReducers.ReduceScopeChanged(current, new ScopeChangedAction());
+
+        await sut.HandleThemeChanged(lateA, Substitute.For<IDispatcher>());
+
+        _ = storage.DidNotReceiveWithAnyArgs().SetAsync(default!, default(ThemeValue), Arg.Any<CancellationToken>());
+        await themeService.DidNotReceive().SetThemeAsync(Arg.Any<ThemeSettings>());
+    }
     [Fact]
     public async Task HandleThemeChanged_NullTenant_SkipsPersistenceAndLogsHFC2105() {
         IStorageService storage = Substitute.For<IStorageService>();

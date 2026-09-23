@@ -2,7 +2,7 @@
 title: 'Story 13.1: [I · TEN-SCOPE-1] Prove Tenant-Safe Operator State End to End'
 type: 'feature'
 created: '2026-09-23'
-status: 'ready-for-dev'
+status: 'done'
 route: 'dispatch'
 story_id: '13.1'
 baseline_commit: '3008cf194f859219e2fb64c67bc04fc1441c5e87'
@@ -63,14 +63,14 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `src/Hexalith.FrontComposer.Shell/State/Navigation/` (new scope-boundary effect/service) -- subscribe to `AuthenticationStateChanged`, compare the resolved (tenant, user) with the last snapshot, and on change or loss dispatch one scope-changed action (and the existing `PaletteScopeChangedAction`) before re-render -- single owner of the in-circuit boundary.
-- [ ] `src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationReducers.cs`, `ScopeReadinessGate.cs` -- reset `StorageReady` on scope change and re-arm hydration under the new scope; never persist old state under the new key -- closes the preference leak.
-- [ ] `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/` reducers, `src/Hexalith.FrontComposer.Shell/Badges/BadgeCountService.cs` -- clear loaded pages and counts, and re-register the reconciliation lane for the new tenant -- closes the page/count leak.
-- [ ] `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandStateService.cs`, `CommandExecutionAdmissionGate.cs` -- enforce the boundary on every read, and reject `Register` without scope -- closes the pending/FC-CNC leak.
-- [ ] `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs`, `ProjectionSubscriptionService.cs`, `EventStorePendingCommandStatusQuery.cs` -- revalidate before returning a fresh 200 or forwarding a detail; leave Blocked groups; fail closed when no accessor is registered; scope the status query -- closes the adapter leaks.
-- [ ] `src/Hexalith.FrontComposer.Shell/Components/` (new Fluent V5 blocking-state component, wired into `Components/Home/FcHomeDirectory.razor`, the generated projection host, and badge surfaces) -- render the explicit support-safe blocked meaning when scope is missing or stale; no live region or programmatic focus (13.4 adds AM-26) -- closes the empty-looking-data path.
-- [ ] `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/` (new live two-tenant class) -- env-gated; provision tenants A and B with distinguishable data; assert query, subscription, and count isolation through the production adapters; skip explicitly when no endpoint is set; run `AssertRedacted` on the output. Use an existing trait convention, or register any new category in the governance trait inventory; keep it out of the default lane -- production-seam proof for AC 1.
-- [ ] Shell.Tests -- add only the missing assertions: live A→B switch per store, late-response drop, `GroupHealth.Blocked`, no-accessor fail-closed, and blocking-state render. Run `AssertRedacted` on the new evidence.
+- [x] `src/Hexalith.FrontComposer.Shell/State/Navigation/` (new scope-boundary effect/service) -- subscribe to `AuthenticationStateChanged`, compare the resolved (tenant, user) with the last snapshot, and on change or loss dispatch one scope-changed action (and the existing `PaletteScopeChangedAction`) before re-render -- single owner of the in-circuit boundary.
+- [x] `src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationReducers.cs`, `ScopeReadinessGate.cs` -- reset `StorageReady` on scope change and re-arm hydration under the new scope; never persist old state under the new key -- closes the preference leak.
+- [x] `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/` reducers, `src/Hexalith.FrontComposer.Shell/Badges/BadgeCountService.cs` -- clear loaded pages and counts, and re-register the reconciliation lane for the new tenant -- closes the page/count leak.
+- [x] `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandStateService.cs`, `CommandExecutionAdmissionGate.cs` -- enforce the boundary on every read, and reject `Register` without scope -- closes the pending/FC-CNC leak.
+- [x] `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs`, `ProjectionSubscriptionService.cs`, `EventStorePendingCommandStatusQuery.cs` -- revalidate before returning a fresh 200 or forwarding a detail; leave Blocked groups; fail closed when no accessor is registered; scope the status query -- closes the adapter leaks.
+- [x] `src/Hexalith.FrontComposer.Shell/Components/` (new Fluent V5 blocking-state component, wired into `Components/Home/FcHomeDirectory.razor`, the generated projection host, and badge surfaces) -- render the explicit support-safe blocked meaning when scope is missing or stale; no live region or programmatic focus (13.4 adds AM-26) -- closes the empty-looking-data path.
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/` (new live two-tenant class) -- env-gated; provision tenants A and B with distinguishable data; assert query, subscription, and count isolation through the production adapters; skip explicitly when no endpoint is set; run `AssertRedacted` on the output. Use an existing trait convention, or register any new category in the governance trait inventory; keep it out of the default lane -- production-seam proof for AC 1.
+- [x] Shell.Tests -- add only the missing assertions: live A→B switch per store, late-response drop, `GroupHealth.Blocked`, no-accessor fail-closed, and blocking-state render. Run `AssertRedacted` on the new evidence.
 
 **Acceptance Criteria:**
 - Given tenants A and B with distinguishable data, when each uses the production query, subscription, count, and storage adapters, then each receives only its own state, proven by the production-seam scenario rather than unit substitutes.
@@ -80,15 +80,52 @@ context:
 
 ## Implementation Notes
 
+- The in-circuit owner is `Services/ScopeBoundaryService.cs`; scoped reducers, pending state, badge lanes, and subscription groups clear or block on an A→B or A→none transition. The rendering guard stays closed during the clear. Focused tests cover the switch, late response, blocked group, readiness re-arm, and blocking component.
+- The opt-in production-adapter test passed against the local AppHost with separate `tenant-a-user` and `tenant-b-user` Keycloak identities. The new opt-in Counter fixture receives genuine EventStore commands, projects distinct A/B rows, and publishes the canonical `counter-projection` SignalR change. The test seeds its own rows and verifies query, count, and notification isolation, plus distinct production storage scope/key resolution for A/B. The fixture's query snapshot is ephemeral and rebuilt from the test's commands; it is not a deployment resource. The production count reader now sends a kebab-case EventStore projection route while preserving the CLR query type, because the gateway rejects CLR names in `projectionType`.
+- Review fixes keep canonical rejection closed across pending state, storage, and readiness; bind pending status polls to their registration scope; revalidate cacheless 304 responses; remove stale pending SignalR groups; and version theme hydration actions so late A actions cannot alter B. A real Fluxor dispatch test checks page clearing and pending-provider cancellation. The generated form uses the blocking-state text for a scope-unavailable admission.
+- The full Shell suite has one unrelated baseline governance failure: `CiGovernanceTests.EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval` expects EventStore gitlink `66cb4edaa2b474090f2b4e375d481a4bbcd70a08`; current HEAD `d0481fb005d1e4ca81564b5daf8f0a9d53215f4e` records `04e74fc0a443d538cd1af4473bd8d1760e8f59ba`. No submodule pointer or approval evidence was changed for this story.
+
 ## Spec Change Log
 
 ## Review Triage Log
+
+| Finding | Verdict / route | Evidence |
+|---|---|---|
+| Blind 1: scope change without auth event | false / reject | The production `ServerCircuitUserContextAccessor` reads the circuit `AuthenticationStateProvider`; its principal changes through the auth-state event observed by `ScopeBoundaryService`. No independent production mutation path was found. |
+| Blind 2: pending validated-scope fallback | high / patch | `EnforceScopeBoundary` uses raw nonblank values when `IValidatedPendingScope.Current()` rejects them, so `Register` and `Snapshot` can accept a malformed scope. |
+| Blind 3: storage resolver trusts raw values | high / patch | `StorageScopeResolver.TryResolveScope` tests only whitespace; preference effects can act on an identity that canonical tenant validation rejects. |
+| Blind 4: readiness gate trusts raw values | medium / patch | `ScopeReadinessGate.EvaluateAsync` tests only whitespace and can dispatch `StorageReadyAction` on an invalid but nonblank identity after reset. |
+| Blind 5: cacheless 304 is not revalidated | medium / patch | The `NotModified` branch returns to a caller-managed cache without calling `RevalidateSnapshot`, unlike the cached 304 and fresh 200 paths. |
+| Blind 6: status poll loses registration scope | high / patch | `PendingCommandEntry` has no mandatory origin scope; after `GetByMessageId` returns an A entry, a switch to B before `QueryAsync` can authorize a status request for A's message under B. |
+| Blind 7: scope denial says command in progress | low / patch | The generated warning maps every denial except `PendingCommandAlreadyExists` to an admission-in-progress message, including new `ScopeUnavailable`. |
+| Blind 8: registration scope loss lacks terminal UI | false / reject | The accepted command remains unconfirmed, while `ScopeBoundaryService` blocks and removes the old generated form on scope loss. Creating a terminal success or failure from an unresolved accepted command would be inaccurate. |
+| Blind 9: hydrated theme action crosses scopes | medium / patch | Hydration dispatches an unscoped `ThemeChangedAction`; its persistence effect resolves the later current scope, so an A preference can be written under B. |
+| Blind 10: live proof omits storage and switch | medium / patch | The live class exercises query, count, and SignalR adapters but no production storage scope/key path. Focused boundary tests cover the in-circuit switch; the frozen production-seam decision requires only those three EventStore adapters live. |
+| Verification gap 1: reducer registration untested | medium / patch | Tests call `LoadedPageReducers.ReduceScopeChanged` directly and mock the dispatcher; removing `[ReducerMethod]` would pass them while leaving the real store uncleared. |
+| Verification gap 2: live proof is not a CI gate | medium / defer | The test is opt-in and excluded from the blocking lane by the frozen production-seam decision. A maintained two-tenant CI environment and blocking lane are separate work. |
+| Verification other: pending validated-scope fallback | high / patch | Same bypass as Blind 2; the new missing-tenant test has raw nulls and does not exercise nonblank malformed identity. |
+| Edge 1: pending validated-scope fallback | high / patch | Same reachable bypass as Blind 2. |
+| Edge 2: pending SignalR group stranded | medium / patch | `BlockStaleGroupsAsync` marks pending groups Blocked before checking for Pending, then a failed leave retains a Blocked key that `SubscribeAsync` treats as already subscribed. |
+| Edge 3: scope change without auth event | false / reject | Same production principal/event path as Blind 1; custom mutable accessors are outside the observed production circuit path. |
+| Edge 4: throwing scope accessor crashes blocking surface | medium / patch | `ScopeBoundaryService.Start` and `IsCurrent` call `TryGetContext` without a nonfatal catch; an accessor exception reaches rendering instead of the blocked view. |
+| Edge 5: live storage proof missing | medium / patch | Same omission as Blind 10; the live scenario has fixed A/B EventStore identities and no storage scope/key assertion. |
 
 ## Design Notes
 
 `NewItemIndicatorStateService.ApplyScopeBoundaryLocked` is the golden pattern: check scope before every read and write, and clear everything on change or loss. The new owner adds the missing eager trigger. The lazy per-service checks stay as defense in depth, because the auth event can race an in-flight response.
 
 ## Verification
+
+**Executed (2026-09-23):**
+- `dotnet build Hexalith.FrontComposer.slnx -c Debug --no-restore -m:1 -v:q` — passed, 0 warnings, 0 errors.
+- `DiffEngine_Disabled=true tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests -notrait Category=Quarantined -notrait Category=Performance` — final broad run: 2,776 total, 2 failed. One is the pre-existing EventStore gitlink assertion above. The other was a test identifier inventory hash after the final readiness test rename; the ledger was resealed to 3,388 declarations and SHA-256 `4411e16313abd622201eb3c53902fbdd7038a636b4c8142d6f8945e994e6a99b`, and its targeted governance test then passed 1/1. No other Shell test failed.
+- `TenantScopeFixture__Enabled=true aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive`; `aspire wait security`, `aspire wait eventstore`, and `aspire wait counter-scope-fixture` — all healthy. The AppHost was stopped after verification.
+- `DiffEngine_Disabled=true tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests -class '*LiveTwoTenantProductionAdapterTests'` with local A/B user tokens supplied in process — final run 1 passed, 0 skipped, 0 failed. Test data was seeded through EventStore commands; no token file was written. The AppHost was stopped afterward.
+- Focused `EventStoreActionQueueCountReaderTests` (3), `StorageScopeResolverTests` (11), `ScopeReadinessGateTests` (8), and `StorageKeysTests` (17) — all passed.
+- `DiffEngine_Disabled=true tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests -method '*AnalyzerPolicy_IdentifierInventory_MatchesSeal'` — passed after the final reseal; `-method '*AnalyzerPolicy_GovernanceContract_FailsClosed'` — passed earlier after staging the new test files and updating the pragma ledger.
+- Edited focused Shell suites passed: status query 26, subscriptions 39, query isolation 5, pending state 40, storage resolver 13, readiness 10, scope owner 4, Fluxor dispatch 1, and theme effect/scope/reducer 17. `ShellLayeringTests` passed after the readiness gate was changed to consume the State-level validated-scope seam. `CommandFormEmitterTests` passed 49/49 after updating two affected snapshots. `ReturnPathValidatorTests` passed 73/73.
+- `python3 eng/validate-story-artifacts.py --skip-sentinel` — exits 1 only for the pre-existing E11R-AI-1 `implementation_story` omission.
+- `git -c core.safecrlf=false diff --cached --check` — passed.
 
 **Commands:**
 - `dotnet build Hexalith.FrontComposer.slnx -c Debug` -- expected: 0 warnings, 0 errors (TreatWarningsAsErrors).

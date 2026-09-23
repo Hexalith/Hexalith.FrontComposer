@@ -8,6 +8,7 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Tenancy;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
@@ -19,6 +20,11 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.State.PendingCommands;
 
 public sealed class PendingCommandPollingCoordinatorTests {
+    private sealed class FixedUserContext : IUserContextAccessor {
+        public string TenantId => "tenant-a";
+        public string UserId => "user-a";
+    }
+
     private const string CorrelationId = "01CPZ3NDEKTSV4RRFFQ69G5FAV";
     private const string SecondCorrelationId = "01DPZ3NDEKTSV4RRFFQ69G5FAV";
 
@@ -29,6 +35,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
         PendingCommandStateService state = new(
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxPendingCommandPollingPerTick = 1 }),
             lifecycle,
+            new FixedUserContext(),
             time,
             NullLogger<PendingCommandStateService>.Instance);
         state.Register(Registration(CorrelationId, "01ARZ3NDEKTSV4RRFFQ69G5FAV", time.GetUtcNow()));
@@ -68,6 +75,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
         PendingCommandStateService state = new(
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxPendingCommandPollingPerTick = 0 }),
             CreateLifecycle(),
+            new FixedUserContext(),
             new FakeTimeProvider(),
             NullLogger<PendingCommandStateService>.Instance);
         state.Register(Registration(CorrelationId, "01ARZ3NDEKTSV4RRFFQ69G5FAV", DateTimeOffset.UtcNow));
@@ -110,6 +118,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
         PendingCommandStateService state = new(
             Microsoft.Extensions.Options.Options.Create(options),
             lifecycle,
+            new FixedUserContext(),
             time,
             NullLogger<PendingCommandStateService>.Instance);
         state.Register(Registration(CorrelationId, "01ARZ3NDEKTSV4RRFFQ69G5FAV", time.GetUtcNow()));
@@ -156,6 +165,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
         PendingCommandStateService state = new(
             Microsoft.Extensions.Options.Options.Create(options),
             lifecycle,
+            new FixedUserContext(),
             time,
             NullLogger<PendingCommandStateService>.Instance);
         state.Register(Registration(CorrelationId, failedMessageId, time.GetUtcNow()));
@@ -202,6 +212,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
         PendingCommandStateService state = new(
             Microsoft.Extensions.Options.Options.Create(options),
             lifecycle,
+            new FixedUserContext(),
             time,
             NullLogger<PendingCommandStateService>.Instance);
         state.Register(Registration(CorrelationId, failedMessageId, time.GetUtcNow()));
@@ -251,6 +262,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
         PendingCommandStateService state = new(
             Microsoft.Extensions.Options.Options.Create(options),
             lifecycle,
+            new FixedUserContext(),
             time,
             NullLogger<PendingCommandStateService>.Instance);
         state.Register(Registration(CorrelationId, expiredMessageId, time.GetUtcNow()));
@@ -284,6 +296,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
         PendingCommandStateService state = new(
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxPendingCommandPollingPerTick = 5 }),
             lifecycle,
+            new FixedUserContext(),
             time,
             NullLogger<PendingCommandStateService>.Instance);
         state.Register(Registration(CorrelationId, "01ARZ3NDEKTSV4RRFFQ69G5FAV", time.GetUtcNow()));
@@ -315,6 +328,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
         PendingCommandStateService state = new(
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxPendingCommandPollingPerTick = 5 }),
             lifecycle,
+            new FixedUserContext(),
             time,
             NullLogger<PendingCommandStateService>.Instance);
         state.Register(Registration(CorrelationId, "01ARZ3NDEKTSV4RRFFQ69G5FAV", time.GetUtcNow()));
@@ -357,6 +371,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
         PendingCommandStateService state = new(
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxPendingCommandPollingPerTick = 5 }),
             lifecycle,
+            new FixedUserContext(),
             time,
             NullLogger<PendingCommandStateService>.Instance);
         state.Register(Registration(CorrelationId, "01ARZ3NDEKTSV4RRFFQ69G5FAV", time.GetUtcNow()));
@@ -386,7 +401,8 @@ public sealed class PendingCommandPollingCoordinatorTests {
                 RequireAccessToken = false,
             }),
             EventStoreTestSupport.CreateClassifier(),
-            NullLogger<EventStorePendingCommandStatusQuery>.Instance);
+            NullLogger<EventStorePendingCommandStatusQuery>.Instance,
+            new TestTenantContextAccessor());
         PendingCommandPollingCoordinator sut = new(
             state,
             new PendingCommandOutcomeResolver(state),
@@ -416,6 +432,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
         PendingCommandStateService state = new(
             Microsoft.Extensions.Options.Options.Create(options),
             lifecycle,
+            new FixedUserContext(),
             time,
             NullLogger<PendingCommandStateService>.Instance);
         CommandTargetSnapshot target = new(
@@ -458,7 +475,8 @@ public sealed class PendingCommandPollingCoordinatorTests {
                 RequireAccessToken = false,
             }),
             EventStoreTestSupport.CreateClassifier(),
-            NullLogger<EventStorePendingCommandStatusQuery>.Instance);
+            NullLogger<EventStorePendingCommandStatusQuery>.Instance,
+            new TestTenantContextAccessor());
         using NewItemIndicatorStateService indicators = new(time);
         IUserContextAccessor userContext = Substitute.For<IUserContextAccessor>();
         _ = userContext.TenantId.Returns("tenant-1");
@@ -502,6 +520,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
         PendingCommandStateService state = new(
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
             lifecycle,
+            new FixedUserContext(),
             time,
             NullLogger<PendingCommandStateService>.Instance);
         state.Register(Registration(CorrelationId, "01ARZ3NDEKTSV4RRFFQ69G5FAV", time.GetUtcNow()));
@@ -534,6 +553,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
         PendingCommandStateService state = new(
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
             CreateLifecycle(),
+            new FixedUserContext(),
             time,
             NullLogger<PendingCommandStateService>.Instance);
         state.Register(Registration(CorrelationId, "01ARZ3NDEKTSV4RRFFQ69G5FAV", time.GetUtcNow()));

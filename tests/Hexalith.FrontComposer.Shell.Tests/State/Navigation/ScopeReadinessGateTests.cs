@@ -4,9 +4,14 @@ using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Extensions;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.State.Navigation;
+using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 
 using NSubstitute;
@@ -178,6 +183,75 @@ public sealed class ScopeReadinessGateTests {
 
         await gate.EvaluateAsync(dispatcher, Xunit.TestContext.Current.CancellationToken);
 
+        dispatcher.DidNotReceiveWithAnyArgs().Dispatch(default!);
+    }
+
+    [Fact]
+    public async Task ScopeChange_RearmsStorageReadyForNextTenant() {
+        FrontComposerNavigationState current = BaseState();
+        IState<FrontComposerNavigationState> state = Substitute.For<IState<FrontComposerNavigationState>>();
+        state.Value.Returns(_ => current);
+        string? tenant = null;
+        string? user = "user-a";
+        IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
+        accessor.TenantId.Returns(_ => tenant);
+        accessor.UserId.Returns(_ => user);
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        ScopeReadinessGate gate = new(state, accessor, null, EnabledLoggerSubstitute.Create<ScopeReadinessGate>());
+
+        await gate.EvaluateAsync(dispatcher, Xunit.TestContext.Current.CancellationToken);
+        tenant = "tenant-a";
+        await gate.EvaluateAsync(dispatcher, Xunit.TestContext.Current.CancellationToken);
+        dispatcher.Received(1).Dispatch(Arg.Any<StorageReadyAction>());
+        current = current with { StorageReady = true, HydrationState = HydrationState.Hydrated };
+
+        tenant = "tenant-b";
+        user = "user-b";
+        current = NavigationReducers.ReduceScopeChanged(current, new ScopeChangedAction());
+        gate.ResetForScopeChange();
+        await gate.EvaluateAsync(dispatcher, Xunit.TestContext.Current.CancellationToken);
+
+        dispatcher.Received(2).Dispatch(Arg.Any<StorageReadyAction>());
+        current.StorageReady.ShouldBeFalse();
+        current.HydrationState.ShouldBe(HydrationState.Idle);
+    }
+
+    [Fact]
+    public async Task EvaluateAsync_NonblankMalformedTenant_DoesNotDispatch() {
+        string? tenant = null;
+        IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
+        accessor.TenantId.Returns(_ => tenant);
+        accessor.UserId.Returns("user-a");
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        ScopeReadinessGate gate = new(FakeState(BaseState()), accessor, null,
+            EnabledLoggerSubstitute.Create<ScopeReadinessGate>());
+
+        await gate.EvaluateAsync(dispatcher, Xunit.TestContext.Current.CancellationToken);
+        tenant = "tenant:malformed";
+        await gate.EvaluateAsync(dispatcher, Xunit.TestContext.Current.CancellationToken);
+
+        dispatcher.DidNotReceiveWithAnyArgs().Dispatch(default!);
+    }
+
+    [Fact]
+    public async Task EvaluateAsync_ProductionRegistrationRejectsRawScope_WhenValidatorRejects() {
+        IValidatedPendingScope canonical = Substitute.For<IValidatedPendingScope>();
+        canonical.Current().Returns(((string TenantId, string UserId)?)null);
+        ServiceCollection services = new();
+        _ = services.AddHexalithFrontComposer();
+        services.Single(static descriptor => descriptor.ServiceType == typeof(IValidatedPendingScope))
+            .ImplementationType.ShouldBe(typeof(ValidatedPendingScope));
+        services.Replace(ServiceDescriptor.Scoped<IValidatedPendingScope>(_ => canonical));
+        services.Replace(ServiceDescriptor.Scoped<IUserContextAccessor>(_ => MakeAccessor("tenant-a", "user-a")));
+        _ = services.AddScoped<IState<FrontComposerNavigationState>>(_ => FakeState(BaseState()));
+        using ServiceProvider provider = services.BuildServiceProvider();
+        using IServiceScope scope = provider.CreateScope();
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        IScopeReadinessGate gate = scope.ServiceProvider.GetRequiredService<IScopeReadinessGate>();
+
+        await gate.EvaluateAsync(dispatcher, Xunit.TestContext.Current.CancellationToken);
+
+        _ = canonical.Received(1).Current();
         dispatcher.DidNotReceiveWithAnyArgs().Dispatch(default!);
     }
 }

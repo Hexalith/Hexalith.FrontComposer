@@ -8,6 +8,7 @@ using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Diagnostics;
 using Hexalith.FrontComposer.Shell.Shortcuts;
 using Hexalith.FrontComposer.Shell.State.Navigation;
@@ -220,6 +221,8 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     /// <summary>Injected Fluxor navigation state (for responsive shell width calculation).</summary>
     [Inject] private IState<FrontComposerNavigationState> NavigationState { get; set; } = default!;
 
+    [Inject] private ScopeBoundaryService ScopeBoundary { get; set; } = default!;
+
     /// <summary>Injected storage service whose drain is flushed on beforeunload.</summary>
     [Inject] private IStorageService Storage { get; set; } = default!;
 
@@ -324,7 +327,7 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     /// framework auto-navigation appears when at least one manifest has projections OR a domain has
     /// registered explicit navigation entries.
     /// </summary>
-    protected bool HasNavigation => Navigation is not null || HasRenderableManifest();
+    protected bool HasNavigation => ScopeBoundary.IsCurrent && (Navigation is not null || HasRenderableManifest());
 
     /// <summary>
     /// Whether the current viewport is Tablet or Phone. The Navigation <c>FluentLayoutItem</c> is
@@ -468,6 +471,8 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     /// <inheritdoc />
     protected override void OnInitialized() {
         base.OnInitialized();
+        ScopeBoundary.Start();
+        ScopeBoundary.Changed += OnScopeChanged;
         // FC-LYT (Story 1.2) — re-render #fc-main-content's mode attribute/class when a child
         // <FcPageLayout> flips the coordinator (it registers in its OnAfterRender, after the shell's
         // first paint). SetMode no-ops on an unchanged mode, so this cannot loop the render cycle.
@@ -478,6 +483,8 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     }
 
     private void OnPageLayoutChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private void OnScopeChanged(object? sender, EventArgs args) => _ = InvokeAsync(StateHasChanged);
 
     private void OnContentLabelChanged() => _ = InvokeAsync(StateHasChanged);
 
@@ -624,6 +631,7 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
         // FC-LYT (Story 1.2) — drop the coordinator subscription so the shell is not rooted by it.
         _pageLayoutCoordinator.Changed -= OnPageLayoutChanged;
         _contentLabelCoordinator.Changed -= OnContentLabelChanged;
+        ScopeBoundary.Changed -= OnScopeChanged;
 
         if (_beforeUnloadSubscription is not null && _beforeUnloadModule is not null) {
             try {

@@ -207,6 +207,7 @@ public sealed class EventStoreQueryClient(
                         // they own their own cache lifecycle. Surface the explicit no-change signal so
                         // their existing handler can take its own path.
                         if (cacheKey is null) {
+                            RevalidateSnapshot(tenantContext);
                             return QueryResult<T>.NotModified(classification.ETag);
                         }
 
@@ -282,6 +283,7 @@ public sealed class EventStoreQueryClient(
                             _ = PersistCacheEntryAsync(cacheKey, entry, tenantContext);
                         }
 
+                        RevalidateSnapshot(tenantContext);
                         return new QueryResult<T>(items, totalCount, eTag);
                     }
 

@@ -299,16 +299,19 @@ public sealed class PendingCommandOutcomeResolverTests {
     public void BufferBeforeAccepted_DirectTenantOrUserSwitch_ClearsBeforeAssociation(bool switchTenant) {
         ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
         FakeTimeProvider time = new(s_observedAt);
-        PendingCommandStateService state = new(
-            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
-            lifecycle,
-            time,
-            NullLogger<PendingCommandStateService>.Instance);
+        PendingCommandStateService state;
+
         string tenant = "tenant-1";
         string user = "user-1";
         IUserContextAccessor userContext = Substitute.For<IUserContextAccessor>();
         _ = userContext.TenantId.Returns(_ => tenant);
         _ = userContext.UserId.Returns(_ => user);
+        state = new(
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            lifecycle,
+            userContext,
+            time,
+            NullLogger<PendingCommandStateService>.Instance);
         PendingCommandOutcomeResolver sut = new(
             state,
             NullLogger<PendingCommandOutcomeResolver>.Instance,
@@ -376,19 +379,22 @@ public sealed class PendingCommandOutcomeResolverTests {
     }
 
     [Fact]
-    public void BufferBeforeAccepted_InitialMissingUserContext_ReplaysWhileScopeRemainsUnknown() {
+    public void BufferBeforeAccepted_InitialMissingUserContext_RejectsWhileScopeRemainsUnknown() {
         ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
         FakeTimeProvider time = new(s_observedAt);
-        PendingCommandStateService state = new(
-            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
-            lifecycle,
-            time,
-            NullLogger<PendingCommandStateService>.Instance);
+        PendingCommandStateService state;
+
         string? tenant = null;
         string? user = null;
         IUserContextAccessor userContext = Substitute.For<IUserContextAccessor>();
         _ = userContext.TenantId.Returns(_ => tenant!);
         _ = userContext.UserId.Returns(_ => user!);
+        state = new(
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            lifecycle,
+            userContext,
+            time,
+            NullLogger<PendingCommandStateService>.Instance);
         PendingCommandOutcomeResolver sut = new(
             state,
             NullLogger<PendingCommandOutcomeResolver>.Instance,
@@ -402,24 +408,27 @@ public sealed class PendingCommandOutcomeResolverTests {
 
         PendingCommandRegistrationResult result = sut.AssociateAccepted(Registration());
 
-        result.Status.ShouldBe(PendingCommandRegistrationStatus.MergedTerminal);
-        state.GetByMessageId(MessageId)!.Status.ShouldBe(PendingCommandStatus.Confirmed);
+        result.Status.ShouldBe(PendingCommandRegistrationStatus.ScopeUnavailable);
+        state.Snapshot().ShouldBeEmpty();
     }
 
     [Fact]
     public void BufferBeforeAccepted_InitialUnknownScopeBecomingKnown_DiscardsBeforeAssociation() {
         ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
         FakeTimeProvider time = new(s_observedAt);
-        PendingCommandStateService state = new(
-            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
-            lifecycle,
-            time,
-            NullLogger<PendingCommandStateService>.Instance);
+        PendingCommandStateService state;
+
         string? tenant = null;
         string? user = null;
         IUserContextAccessor userContext = Substitute.For<IUserContextAccessor>();
         _ = userContext.TenantId.Returns(_ => tenant!);
         _ = userContext.UserId.Returns(_ => user!);
+        state = new(
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            lifecycle,
+            userContext,
+            time,
+            NullLogger<PendingCommandStateService>.Instance);
         PendingCommandOutcomeResolver sut = new(
             state,
             NullLogger<PendingCommandOutcomeResolver>.Instance,
@@ -838,15 +847,18 @@ public sealed class PendingCommandOutcomeResolverTests {
         ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
         ConfigureLifecycleReadback(lifecycle);
         FakeTimeProvider stateTime = new(s_observedAt);
-        PendingCommandStateService state = new(
-            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
-            lifecycle,
-            stateTime,
-            NullLogger<PendingCommandStateService>.Instance);
+        PendingCommandStateService state;
+
         INewItemIndicatorStateService indicators = Substitute.For<INewItemIndicatorStateService>();
         IUserContextAccessor userContext = Substitute.For<IUserContextAccessor>();
         _ = userContext.TenantId.Returns("tenant-1");
         _ = userContext.UserId.Returns("user-1");
+        state = new(
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            lifecycle,
+            userContext,
+            stateTime,
+            NullLogger<PendingCommandStateService>.Instance);
         PendingCommandOutcomeResolver sut = new(
             state,
             NullLogger<PendingCommandOutcomeResolver>.Instance,
@@ -867,16 +879,19 @@ public sealed class PendingCommandOutcomeResolverTests {
     public void BufferBeforeAccepted_KnownScopeLost_ClearsAndRefusesUntilReacquired() {
         ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
         FakeTimeProvider time = new(s_observedAt);
-        PendingCommandStateService state = new(
-            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
-            lifecycle,
-            time,
-            NullLogger<PendingCommandStateService>.Instance);
+        PendingCommandStateService state;
+
         string? tenant = "tenant-1";
         string? user = "user-1";
         IUserContextAccessor userContext = Substitute.For<IUserContextAccessor>();
         _ = userContext.TenantId.Returns(_ => tenant!);
         _ = userContext.UserId.Returns(_ => user!);
+        state = new(
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            lifecycle,
+            userContext,
+            time,
+            NullLogger<PendingCommandStateService>.Instance);
         PendingCommandOutcomeResolver sut = new(
             state,
             NullLogger<PendingCommandOutcomeResolver>.Instance,
@@ -1389,15 +1404,16 @@ public sealed class PendingCommandOutcomeResolverTests {
         ConfigureLifecycleReadback(lifecycle);
         TimeProvider stateTime = resolverTime ?? new FakeTimeProvider(new DateTimeOffset(2026, 4, 26, 12, 0, 0, TimeSpan.Zero));
         FcShellOptions effectiveOptions = options ?? new FcShellOptions();
-        state = new PendingCommandStateService(
-            Microsoft.Extensions.Options.Options.Create(effectiveOptions),
-            lifecycle,
-            stateTime,
-            NullLogger<PendingCommandStateService>.Instance);
-
         IUserContextAccessor userContext = Substitute.For<IUserContextAccessor>();
         _ = userContext.TenantId.Returns(tenantId);
         _ = userContext.UserId.Returns(userId);
+
+        state = new PendingCommandStateService(
+            Microsoft.Extensions.Options.Options.Create(effectiveOptions),
+            lifecycle,
+            userContext,
+            stateTime,
+            NullLogger<PendingCommandStateService>.Instance);
 
         return new PendingCommandOutcomeResolver(
             state,

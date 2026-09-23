@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using Fluxor;
 
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -19,6 +20,17 @@ namespace Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 /// logger must be injected — Fluxor supports DI-backed reducer classes via its reducer discovery.
 /// </remarks>
 public sealed class LoadedPageReducers {
+    /// <summary>Cancels pending providers and removes every page from the previous scope.</summary>
+    [ReducerMethod]
+    public static LoadedPageState ReduceScopeChanged(LoadedPageState state, ScopeChangedAction action) {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        foreach (TaskCompletionSource<object> completion in state.PendingCompletionsByKey.Values) {
+            _ = completion.TrySetCanceled();
+        }
+
+        return new LoadedPageState();
+    }
     private readonly IOptionsMonitor<FcShellOptions> _options;
     private readonly ILogger<LoadedPageReducers> _logger;
 

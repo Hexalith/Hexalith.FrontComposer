@@ -1,11 +1,21 @@
 
 using Fluxor;
+using Hexalith.FrontComposer.Shell.State.Navigation;
 
 namespace Hexalith.FrontComposer.Shell.State.Theme;
 /// <summary>
 /// Pure reducers for <see cref="FrontComposerThemeState"/>.
 /// </summary>
 public static class ThemeReducers {
+    /// <summary>Clears the prior user's persisted theme preference.</summary>
+    [ReducerMethod]
+    public static FrontComposerThemeState ReduceScopeChanged(FrontComposerThemeState state, ScopeChangedAction action) {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        return new FrontComposerThemeState(ThemeValue.Light, HydrationState.Idle) {
+            ScopeVersion = state.ScopeVersion + 1,
+        };
+    }
     /// <summary>
     /// Applies a theme change to the state.
     /// </summary>
@@ -16,7 +26,9 @@ public static class ThemeReducers {
     public static FrontComposerThemeState ReduceThemeChanged(FrontComposerThemeState state, ThemeChangedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
-        return state with { CurrentTheme = action.NewTheme };
+        return action.HydrationScopeVersion is { } version && version != state.ScopeVersion
+            ? state
+            : state with { CurrentTheme = action.NewTheme };
     }
 
     /// <summary>
@@ -33,7 +45,8 @@ public static class ThemeReducers {
         ThemeHydratingAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
-        return state.HydrationState == HydrationState.Hydrated
+        return (action.HydrationScopeVersion is { } version && version != state.ScopeVersion)
+            || state.HydrationState == HydrationState.Hydrated
             ? state
             : state with { HydrationState = HydrationState.Hydrating };
     }
@@ -51,7 +64,8 @@ public static class ThemeReducers {
         ThemeHydratedCompletedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
-        return state.HydrationState == HydrationState.Hydrated
+        return (action.HydrationScopeVersion is { } version && version != state.ScopeVersion)
+            || state.HydrationState == HydrationState.Hydrated
             ? state
             : state with { HydrationState = HydrationState.Hydrated };
     }

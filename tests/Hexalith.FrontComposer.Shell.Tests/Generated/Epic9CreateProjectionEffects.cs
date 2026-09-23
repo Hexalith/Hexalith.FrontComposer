@@ -4,7 +4,7 @@ using Fluxor;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 
-internal sealed class Epic9CreateProjectionEffects
+internal sealed class Epic9CreateProjectionEffects(Epic9ProjectionReleaseGate? releaseGate = null)
 {
     private readonly Dictionary<string, (string CounterId, int InitialValue)> _pending = new(StringComparer.Ordinal);
 
@@ -23,7 +23,14 @@ internal sealed class Epic9CreateProjectionEffects
             return;
         }
 
-        await Task.Delay(TimeSpan.FromMilliseconds(100)).ConfigureAwait(true);
+        if (releaseGate is null)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(100)).ConfigureAwait(true);
+        }
+        else
+        {
+            await releaseGate.WaitAsync().ConfigureAwait(true);
+        }
         CounterProjection created = new()
         {
             Id = submitted.CounterId,

@@ -138,7 +138,8 @@ public sealed class ProjectionSubscriptionServiceTests {
             notifier,
             NullLogger<ProjectionSubscriptionService>.Instance,
             fallbackDriver: fallbackDriver,
-            shellOptions: global::Microsoft.Extensions.Options.Options.Create(shellOptions));
+            shellOptions: global::Microsoft.Extensions.Options.Options.Create(shellOptions),
+            userContextAccessor: new MutableUserContextAccessor("acme", "user-1"));
 
         try {
             await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
@@ -180,7 +181,8 @@ public sealed class ProjectionSubscriptionServiceTests {
             new TestNotifier(),
             NullLogger<ProjectionSubscriptionService>.Instance,
             fallbackDriver: fallbackDriver,
-            shellOptions: global::Microsoft.Extensions.Options.Options.Create(shellOptions));
+            shellOptions: global::Microsoft.Extensions.Options.Options.Create(shellOptions),
+            userContextAccessor: new MutableUserContextAccessor("acme", "user-1"));
         connection.JoinCompleted = () => {
             connection.JoinCompleted = null;
             return connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Closed));
@@ -269,7 +271,8 @@ public sealed class ProjectionSubscriptionServiceTests {
             NullLogger<ProjectionSubscriptionService>.Instance,
             fallbackDriver: fallbackDriver,
             shellOptions: global::Microsoft.Extensions.Options.Options.Create(shellOptions),
-            timeProvider: time);
+            timeProvider: time,
+            userContextAccessor: new MutableUserContextAccessor("acme", "user-1"));
         await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
         TaskCompletionSource failedAttempt = new(TaskCreationOptions.RunContinuationsAsynchronously);
         connection.StartOverride = async token => {
@@ -306,7 +309,8 @@ public sealed class ProjectionSubscriptionServiceTests {
             state,
             refresh,
             notifier,
-            NullLogger<ProjectionSubscriptionService>.Instance);
+            NullLogger<ProjectionSubscriptionService>.Instance,
+            userContextAccessor: new MutableUserContextAccessor("acme", "user-1"));
 
         try {
             // SignalR owns an automatic reconnect, so the group is retained without a wire join.
@@ -349,7 +353,8 @@ public sealed class ProjectionSubscriptionServiceTests {
             state,
             refresh,
             notifier,
-            NullLogger<ProjectionSubscriptionService>.Instance);
+            NullLogger<ProjectionSubscriptionService>.Instance,
+            userContextAccessor: new MutableUserContextAccessor("acme", "user-1"));
 
         try {
             await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(
@@ -396,7 +401,8 @@ public sealed class ProjectionSubscriptionServiceTests {
             notifier,
             NullLogger<ProjectionSubscriptionService>.Instance,
             fallbackDriver: fallbackDriver,
-            shellOptions: global::Microsoft.Extensions.Options.Options.Create(shellOptions));
+            shellOptions: global::Microsoft.Extensions.Options.Options.Create(shellOptions),
+            userContextAccessor: new MutableUserContextAccessor("acme", "user-1"));
 
         try {
             await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
@@ -448,7 +454,8 @@ public sealed class ProjectionSubscriptionServiceTests {
             new TestRefreshScheduler(),
             new TestNotifier(),
             NullLogger<ProjectionSubscriptionService>.Instance,
-            frontComposerAccessTokenProvider: tokenProvider);
+            frontComposerAccessTokenProvider: tokenProvider,
+            userContextAccessor: new MutableUserContextAccessor("acme", "user-1"));
 
         await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
         circuitServices.Services = null;
@@ -518,6 +525,78 @@ public sealed class ProjectionSubscriptionServiceTests {
         connection.JoinedGroups.ShouldBeEmpty();
         await connection.RaiseAsync("orders", "tenant-b");
         notifier.Changed.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Subscribe_WithoutIdentityAccessor_FailsBeforeConnectionStarts() {
+        FakeProjectionHubConnection connection = new();
+        ProjectionSubscriptionService sut = new(
+            Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
+                BaseAddress = new Uri("https://eventstore.test"),
+                RequireAccessToken = false,
+            }),
+            new FakeProjectionHubConnectionFactory(connection, "https://eventstore.test/hubs/projection-changes"),
+            new TestProjectionConnectionState(), new TestRefreshScheduler(), new TestNotifier(),
+            NullLogger<ProjectionSubscriptionService>.Instance);
+
+        _ = await Should.ThrowAsync<TenantContextException>(
+            async () => await sut.SubscribeAsync("orders", "tenant-a", TestContext.Current.CancellationToken).ConfigureAwait(true)).ConfigureAwait(true);
+        connection.StartCount.ShouldBe(0);
+        connection.JoinedGroups.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ScopeSwitch_BlocksOldGroupEvenWhenLeaveFails() {
+        FakeProjectionHubConnection connection = new();
+        DetailCapturingNotifier notifier = new();
+        MutableUserContextAccessor identity = new("tenant-a", "user-a");
+        ProjectionSubscriptionService sut = new(
+            Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
+                BaseAddress = new Uri("https://eventstore.test"),
+                RequireAccessToken = false,
+            }),
+            new FakeProjectionHubConnectionFactory(connection, "https://eventstore.test/hubs/projection-changes"),
+            new TestProjectionConnectionState(), new TestRefreshScheduler(), notifier,
+            NullLogger<ProjectionSubscriptionService>.Instance,
+            userContextAccessor: identity);
+        await sut.SubscribeAsync("orders", "tenant-a", TestContext.Current.CancellationToken);
+
+        identity.TenantId = "tenant-b";
+        identity.UserId = "user-b";
+        connection.LeaveException = new InvalidOperationException("leave unavailable");
+        sut.BlockStaleGroups();
+        sut.HasBlockedGroup("orders", "tenant-a").ShouldBeTrue();
+        await sut.BlockStaleGroupsAsync();
+        await connection.RaiseAsync("orders", "tenant-a");
+        await connection.RaiseDetailAsync(new ProjectionChangedDetail(
+            "orders", "tenant-a", null, new Dictionary<string, string>()));
+        notifier.Changed.ShouldBeEmpty();
+        notifier.Details.ShouldBeEmpty();
+        sut.HasBlockedGroup("orders", "tenant-a").ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ScopeSwitch_RemovesStalePendingGroupWithoutLeavingItBlocked() {
+        FakeProjectionHubConnection connection = new();
+        MutableUserContextAccessor identity = new("tenant-a", "user-a");
+        ProjectionSubscriptionService sut = new(
+            Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
+                BaseAddress = new Uri("https://eventstore.test"), RequireAccessToken = false,
+            }),
+            new FakeProjectionHubConnectionFactory(connection, "https://eventstore.test/hubs/projection-changes"),
+            new TestProjectionConnectionState(), new TestRefreshScheduler(), new TestNotifier(),
+            NullLogger<ProjectionSubscriptionService>.Instance, userContextAccessor: identity);
+        await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Reconnecting));
+        await sut.SubscribeAsync("orders", "tenant-a", TestContext.Current.CancellationToken);
+
+        identity.TenantId = "tenant-b";
+        sut.BlockStaleGroups();
+        sut.HasBlockedGroup("orders", "tenant-a").ShouldBeFalse();
+        await sut.BlockStaleGroupsAsync();
+
+        sut.HasBlockedGroup("orders", "tenant-a").ShouldBeFalse();
+        connection.JoinedGroups.ShouldBeEmpty();
+        connection.LeftGroups.ShouldBeEmpty();
     }
 
     [Fact]
@@ -596,7 +675,8 @@ public sealed class ProjectionSubscriptionServiceTests {
             notifier,
             NullLogger<ProjectionSubscriptionService>.Instance,
             fallbackDriver: null,
-            reconciliation);
+            reconciliation,
+            userContextAccessor: new MutableUserContextAccessor("acme", "user-1"));
 
         await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
         connection.JoinedGroups.Clear();
@@ -629,7 +709,8 @@ public sealed class ProjectionSubscriptionServiceTests {
             notifier,
             NullLogger<ProjectionSubscriptionService>.Instance,
             fallbackDriver: null,
-            reconciliation);
+            reconciliation,
+            userContextAccessor: new MutableUserContextAccessor("acme", "user-1"));
 
         await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
         await sut.SubscribeAsync("billing", "acme", TestContext.Current.CancellationToken);
@@ -677,7 +758,8 @@ public sealed class ProjectionSubscriptionServiceTests {
             new TestProjectionConnectionState(),
             new TestRefreshScheduler(),
             notifier,
-            NullLogger<ProjectionSubscriptionService>.Instance);
+            NullLogger<ProjectionSubscriptionService>.Instance,
+            userContextAccessor: new MutableUserContextAccessor("acme", "user-1"));
 
         _ = await Should.ThrowAsync<InvalidOperationException>(
             async () => await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken).ConfigureAwait(true)).ConfigureAwait(true);
@@ -706,7 +788,8 @@ public sealed class ProjectionSubscriptionServiceTests {
             new TestProjectionConnectionState(),
             new TestRefreshScheduler(),
             notifier,
-            NullLogger<ProjectionSubscriptionService>.Instance);
+            NullLogger<ProjectionSubscriptionService>.Instance,
+            userContextAccessor: new MutableUserContextAccessor("acme", "user-1"));
 
         _ = await Should.ThrowAsync<OperationCanceledException>(
             async () => await sut.SubscribeAsync("orders", "acme", cts.Token).ConfigureAwait(true)).ConfigureAwait(true);
@@ -864,7 +947,8 @@ public sealed class ProjectionSubscriptionServiceTests {
             new TestProjectionConnectionState(),
             new TestRefreshScheduler(),
             notifier,
-            logger);
+            logger,
+            userContextAccessor: new MutableUserContextAccessor("acme", "user-1"));
 
         connection.JoinException = null;
         await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
@@ -906,7 +990,8 @@ public sealed class ProjectionSubscriptionServiceTests {
             connectionState,
             refreshScheduler ?? new TestRefreshScheduler(),
             notifier,
-            NullLogger<ProjectionSubscriptionService>.Instance);
+            NullLogger<ProjectionSubscriptionService>.Instance,
+            userContextAccessor: new MutableUserContextAccessor("acme", "user-1"));
 
     private sealed class FakeProjectionHubConnectionFactory(FakeProjectionHubConnection connection, string expectedHubUrl) : IProjectionHubConnectionFactory {
         public IProjectionHubConnection Create(Uri hubUri, Func<CancellationToken, ValueTask<string?>>? accessTokenProvider) {
@@ -1056,9 +1141,13 @@ public sealed class ProjectionSubscriptionServiceTests {
     private sealed class DetailCapturingNotifier : IProjectionChangeNotifier, IProjectionChangeDetailNotifier {
         public event Action<string>? ProjectionChanged;
         public event Func<ProjectionChangedDetail, Task>? ProjectionChangedDetail;
+        public List<string> Changed { get; } = [];
         public List<ProjectionChangedDetail> Details { get; } = [];
 
-        public void NotifyChanged(string projectionType) => ProjectionChanged?.Invoke(projectionType);
+        public void NotifyChanged(string projectionType) {
+            Changed.Add(projectionType);
+            ProjectionChanged?.Invoke(projectionType);
+        }
 
         public Task NotifyDetailAsync(ProjectionChangedDetail detail, CancellationToken cancellationToken = default) {
             Details.Add(detail);

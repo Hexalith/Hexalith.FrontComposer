@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 
 using Fluxor;
+using Hexalith.FrontComposer.Shell.State.Navigation;
 
 namespace Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 
@@ -8,6 +9,15 @@ namespace Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 /// Pure reducers for <see cref="FrontComposerCapabilityDiscoveryState"/> (Story 3-5 D8 / ADR-046).
 /// </summary>
 public static class CapabilityDiscoveryReducers {
+    /// <summary>Removes old counts and seen preferences before the next scope renders.</summary>
+    [ReducerMethod]
+    public static FrontComposerCapabilityDiscoveryState ReduceScopeChanged(
+        FrontComposerCapabilityDiscoveryState state,
+        ScopeChangedAction action) {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        return FrontComposerCapabilityDiscoveryState.Empty;
+    }
     /// <summary>
     /// Publishes the seeded counts snapshot and flips
     /// <see cref="FrontComposerCapabilityDiscoveryState.HydrationState"/> to

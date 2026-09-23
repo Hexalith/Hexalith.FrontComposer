@@ -1,0 +1,12 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Rendering
+@using Hexalith.FrontComposer.Shell.Resources
+@using Microsoft.Extensions.Localization
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject IStringLocalizer<FcShellResources> Localizer
+
+<FluentCard data-testid="fc-scope-blocked">
+    <FluentStack Orientation="Orientation.Vertical">
+        <h1>@Localizer["ScopeBlockedHeading"].Value</h1>
+        <FluentText>@Localizer["ScopeBlockedMessage"].Value</FluentText>
+    </FluentStack>
+</FluentCard>

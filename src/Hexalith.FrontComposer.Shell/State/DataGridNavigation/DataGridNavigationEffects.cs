@@ -322,6 +322,10 @@ public sealed class DataGridNavigationEffects : IDisposable {
             return;
         }
 
+        if (!IsHydrationScopeCurrent(tenantId, userId)) {
+            return;
+        }
+
         if (blob is null) {
             FrontComposerDiagnosticLog.DataGridOnDemandHydrateEmpty(
                 _logger,
@@ -374,9 +378,13 @@ public sealed class DataGridNavigationEffects : IDisposable {
             return;
         }
 
+        if (!IsHydrationScopeCurrent(tenantId, userId)) {
+            return;
+        }
+
         HashSet<string> registeredBcs = ResolveRegisteredBoundedContexts(out bool registryFailed);
         foreach (string key in keys) {
-            if (IsDisposed()) {
+            if (IsDisposed() || !IsHydrationScopeCurrent(tenantId, userId)) {
                 break;
             }
 
@@ -472,11 +480,22 @@ public sealed class DataGridNavigationEffects : IDisposable {
                 continue;
             }
 
+            if (!IsHydrationScopeCurrent(tenantId, userId)) {
+                return;
+            }
+
             dispatcher.Dispatch(new GridViewHydratedAction(viewKey, snapshot));
         }
 
-        dispatcher.Dispatch(new DataGridNavigationHydratedCompletedAction());
+        if (IsHydrationScopeCurrent(tenantId, userId)) {
+            dispatcher.Dispatch(new DataGridNavigationHydratedCompletedAction());
+        }
     }
+
+    private bool IsHydrationScopeCurrent(string tenantId, string userId)
+        => ScopeResolver.TryResolveScope(out string currentTenant, out string currentUser, "DataGrid", "hydrate")
+            && string.Equals(currentTenant, tenantId, StringComparison.Ordinal)
+            && string.Equals(currentUser, userId, StringComparison.Ordinal);
 
     private HashSet<string> ResolveRegisteredBoundedContexts(out bool registryFailed) {
         registryFailed = false;

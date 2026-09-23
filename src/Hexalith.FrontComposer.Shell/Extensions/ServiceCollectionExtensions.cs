@@ -267,6 +267,7 @@ public static class ServiceCollectionExtensions {
         // this with a real accessor (HTTP-claims / AuthenticationStateProvider / demo stub).
         services.TryAddScoped<IUserContextAccessor, NullUserContextAccessor>();
         services.TryAddScoped<IFrontComposerTenantContextAccessor, FrontComposerTenantContextAccessor>();
+        services.TryAddScoped<IValidatedPendingScope, ValidatedPendingScope>();
         services.TryAddScoped<ITenantScopedManifestGate, TenantScopedManifestGate>();
         services.TryAddScoped<AuthenticationStateProvider, NullAuthenticationStateProvider>();
         services.TryAddScoped<ICommandAuthorizationEvaluator, CommandAuthorizationEvaluator>();
@@ -344,8 +345,14 @@ public static class ServiceCollectionExtensions {
         // Story 3-6 D20 / ADR-049 — IScopeReadinessGate + ScopeFlipObserverEffect (per-circuit
         // scoped so the Interlocked tiebreaker observes the same "already-dispatched" state
         // across Fluxor's concurrent effect-handler invocations).
-        services.TryAddScoped<IScopeReadinessGate, ScopeReadinessGate>();
+        services.TryAddScoped<IScopeReadinessGate>(sp => new ScopeReadinessGate(
+            sp.GetRequiredService<IState<FrontComposerNavigationState>>(),
+            sp.GetRequiredService<IUserContextAccessor>(),
+            sp.GetService<IUlidFactory>(),
+            sp.GetRequiredService<ILogger<ScopeReadinessGate>>(),
+            sp.GetRequiredService<IValidatedPendingScope>()));
         services.TryAddScoped<ScopeFlipObserverEffect>();
+        services.TryAddScoped<ScopeBoundaryService>();
 
         // Story 3-6 ADR-050 — DataGrid per-view persistence effects (Scoped; concrete instance
         // held for IDisposable cleanup of debounce CTSes on circuit teardown).
@@ -381,7 +388,8 @@ public static class ServiceCollectionExtensions {
         // effects are registered only on the Quickstart path.
         services.TryAddScoped<IStorageScopeResolver>(sp => new StorageScopeResolver(
             sp.GetService<IUserContextAccessor>(),
-            sp.GetRequiredService<ILogger<StorageScopeResolver>>()));
+            sp.GetRequiredService<ILogger<StorageScopeResolver>>(),
+            sp.GetService<IFrontComposerTenantContextAccessor>()));
 
         // Keep the published effect constructors binary-compatible while production instances consume
         // the exact registered Scoped resolver. Fluxor's assembly scan registers these concrete effect

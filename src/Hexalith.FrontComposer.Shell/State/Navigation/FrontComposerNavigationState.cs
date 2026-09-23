@@ -23,8 +23,8 @@ namespace Hexalith.FrontComposer.Shell.State.Navigation;
 /// <param name="StorageReady">
 /// Transient flag flipped once per circuit by <see cref="StorageReadyAction"/> when the scope
 /// becomes available post-prerender (Story 3-6 D13 / ADR-049). NEVER persisted — explicitly
-/// excluded from <c>NavigationPersistenceBlob</c> serialisation. Sign-out mid-circuit does NOT
-/// reset the flag; future writes fail-closed on the L03 scope guard (ADR-049 load-bearing invariant).
+/// excluded from <c>NavigationPersistenceBlob</c> serialisation. A tenant/user change resets the
+/// flag so the new scope rehydrates its own preferences.
 /// </param>
 /// <param name="HydrationState">
 /// Transient three-state hydration marker (Story 3-6 D19). Initial value <see cref="HydrationState.Idle"/>;

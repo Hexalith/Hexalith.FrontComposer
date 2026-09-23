@@ -10,4 +10,6 @@ public enum PendingCommandRegistrationStatus {
     InvalidMessageId,
     ConflictingMetadata,
     Disposed,
+    /// <summary>The authenticated tenant or user was unavailable.</summary>
+    ScopeUnavailable,
 }

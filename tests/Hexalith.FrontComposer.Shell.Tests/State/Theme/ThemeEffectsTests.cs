@@ -58,15 +58,19 @@ public class ThemeEffectsTests {
         await storage.SetAsync(key, ThemeValue.Dark, ct);
         ILogger<ThemeEffects> logger = EnabledLoggerSubstitute.Create<ThemeEffects>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
-        var sut = new ThemeEffects(storage, MsOptions.Create(new FcShellOptions()), StubAccessor(TestTenant, TestUser), logger, themeService);
+        IState<FrontComposerThemeState> state = Substitute.For<IState<FrontComposerThemeState>>();
+        state.Value.Returns(new FrontComposerThemeState(ThemeValue.Light));
+        var sut = new ThemeEffects(storage, MsOptions.Create(new FcShellOptions()), StubAccessor(TestTenant, TestUser), logger, themeService, state);
         var action = new AppInitializedAction("corr-init");
 
         // Act
         await sut.HandleAppInitialized(action, dispatcher);
 
         // Assert
+        dispatcher.Received(1).Dispatch(ArgEx.Is<ThemeHydratingAction>(a => a.HydrationScopeVersion == 0));
         dispatcher.Received(1).Dispatch(
-            ArgEx.Is<ThemeChangedAction>(a => a.NewTheme == ThemeValue.Dark && a.CorrelationId == "corr-init"));
+            ArgEx.Is<ThemeChangedAction>(a => a.NewTheme == ThemeValue.Dark
+                && a.CorrelationId == "corr-init" && a.HydrationScopeVersion == 0));
     }
 
     [Fact]

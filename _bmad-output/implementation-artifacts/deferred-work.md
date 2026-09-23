@@ -9824,3 +9824,7 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-30-testing-and-mcp-boundary-hardening.md`
   summary: Enforce the selected publication-authority posture at the shared NuGet push boundary.
   evidence: carried: VG4-1 — the caller exports `require-publication-authority` through the pinned reusable workflow, but `eng/release_prepublish.py` never consumes `HEXALITH_RELEASE_REQUIRE_AUTHORITY` before `dotnet nuget push`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-1-ten-scope-1-prove-tenant-safe-operator-state-end-to-end.md`
+  summary: Run the live two-tenant EventStore adapter proof in a blocking CI lane backed by a maintained two-tenant fixture.
+  evidence: The test intentionally skips without seven environment values, the blocking quality lane excludes its Performance trait, and the Performance lane is advisory; a later adapter regression would not fail normal CI.

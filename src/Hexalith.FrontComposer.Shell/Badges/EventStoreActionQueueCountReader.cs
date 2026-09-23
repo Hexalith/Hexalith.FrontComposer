@@ -1,10 +1,13 @@
 using System.Reflection;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
+using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Badges;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.State.ETagCache;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
+using Hexalith.FrontComposer.Shell.Routing;
 
 using Microsoft.Extensions.Logging;
 
@@ -39,6 +42,7 @@ public sealed class EventStoreActionQueueCountReader : IActionQueueCountReader {
     private readonly IQueryService _queryService;
     private readonly IUserContextAccessor _userContext;
     private readonly ILogger<EventStoreActionQueueCountReader> _logger;
+    private readonly IFrontComposerTenantContextAccessor? _tenantContext;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EventStoreActionQueueCountReader"/> class.
@@ -46,13 +50,15 @@ public sealed class EventStoreActionQueueCountReader : IActionQueueCountReader {
     public EventStoreActionQueueCountReader(
         IQueryService queryService,
         IUserContextAccessor userContext,
-        ILogger<EventStoreActionQueueCountReader> logger) {
+        ILogger<EventStoreActionQueueCountReader> logger,
+        IFrontComposerTenantContextAccessor? tenantContext = null) {
         ArgumentNullException.ThrowIfNull(queryService);
         ArgumentNullException.ThrowIfNull(userContext);
         ArgumentNullException.ThrowIfNull(logger);
         _queryService = queryService;
         _userContext = userContext;
         _logger = logger;
+        _tenantContext = tenantContext;
     }
 
     /// <inheritdoc />
@@ -60,8 +66,11 @@ public sealed class EventStoreActionQueueCountReader : IActionQueueCountReader {
         ArgumentNullException.ThrowIfNull(projectionType);
 
         string projectionTypeName = projectionType.FullName ?? projectionType.Name;
-        string? tenant = _userContext.TenantId;
-        if (string.IsNullOrWhiteSpace(tenant)) {
+        string eventStoreProjectionType = CommandRouteBuilder.KebabCase(projectionType.Name);
+        TenantContextSnapshot? scope = _tenantContext is not null
+            ? _tenantContext.TryGetContext(operationKind: "badge-count-read").Context
+            : FrontComposerTenantContextAccessor.Resolve(_userContext, new FcShellOptions(), _logger, operationKind: "badge-count-read").Context;
+        if (scope is null) {
             // Fail-closed: no authenticated tenant context, no count. The Null reader's
             // contract is "0 means caught up"; preserving that here avoids leaking a stale
             // visible count from a different tenant context.
@@ -70,8 +79,8 @@ public sealed class EventStoreActionQueueCountReader : IActionQueueCountReader {
 
         string? domain = projectionType.GetCustomAttribute<BoundedContextAttribute>()?.Name;
         QueryRequest request = QueryRequest.Create(
-            Criteria: new ProjectionQuery(projectionTypeName, Take: 0),
-            TenantId: tenant!,
+            Criteria: new ProjectionQuery(eventStoreProjectionType, Take: 0),
+            TenantId: scope.TenantId,
             Domain: domain,
             AggregateId: projectionTypeName,
             QueryType: projectionTypeName,
@@ -80,6 +89,17 @@ public sealed class EventStoreActionQueueCountReader : IActionQueueCountReader {
         QueryResult<object> result = await _queryService
             .QueryAsync<object>(request, cancellationToken)
             .ConfigureAwait(false);
+        if (_tenantContext is not null) {
+            _ = _tenantContext.Revalidate(scope, "badge-count-response").EnsureSuccess();
+        }
+        else {
+            TenantContextSnapshot current = FrontComposerTenantContextAccessor.Resolve(
+                _userContext, new FcShellOptions(), _logger, operationKind: "badge-count-response").EnsureSuccess();
+            if (!string.Equals(current.TenantId, scope.TenantId, StringComparison.Ordinal)
+                || !string.Equals(current.UserId, scope.UserId, StringComparison.Ordinal)) {
+                throw new TenantContextException(TenantContextFailureCategory.StaleTenantContext, Guid.NewGuid().ToString("N"));
+            }
+        }
         return result.TotalCount;
     }
 }

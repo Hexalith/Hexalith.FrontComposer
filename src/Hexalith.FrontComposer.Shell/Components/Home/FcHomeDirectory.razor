@@ -3,6 +3,7 @@
 @using Hexalith.FrontComposer.Shell.Badges
 @using Hexalith.FrontComposer.Shell.Components.Layout
 @using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery
+@using Hexalith.FrontComposer.Shell.Components.Rendering
 @using Microsoft.FluentUI.AspNetCore.Components
 @inherits Fluxor.Blazor.Web.Components.FluxorComponent
 
@@ -10,6 +11,12 @@
    Renders one of four states based on (manifest count, hydration, total urgency, seen-set size). *@
 
 @* The shell's #fc-main-content now owns the single page `main` landmark (role="main"); this page must not declare a second one. *@
+@if (!ScopeIsReady)
+{
+    <FcScopeBlocked />
+}
+else
+{
 <FluentStack Orientation="Orientation.Vertical" VerticalGap="calc(var(--fc-spacing-unit, 4px) * 4)" Class="fc-home-directory" Style="padding: calc(var(--fc-spacing-unit, 4px) * 4);" aria-label="@Localizer["AppTitle"].Value" data-testid="fc-home-directory">
     @{
         IReadOnlyList<DomainManifest> manifests = Registry.GetManifests();
@@ -160,4 +167,5 @@
         }
     }
 </FluentStack>
+}
 

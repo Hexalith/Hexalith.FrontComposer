@@ -48,6 +48,8 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
     [Fact]
     public async Task GeneratedCommands_CallbackAndPolling_ReachAlreadyRenderedGridWithExpectedDisposition()
     {
+        Epic9ProjectionReleaseGate projectionRelease = new();
+        Services.AddSingleton(projectionRelease);
         FakeTimeProvider time = ConfigureFakeTime();
         Epic9ScriptedCommandService commands = ConfigureCommandService(time);
         ConfigureProviders();
@@ -95,6 +97,8 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
             .OfType<CreateCounterCommand>()
             .Single();
         dispatchedCreate.CounterId.ShouldBe(CreatedKey);
+
+        projectionRelease.Release();
 
         await grid.WaitForAssertionAsync(() =>
         {

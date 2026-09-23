@@ -6,6 +6,21 @@ namespace Hexalith.FrontComposer.Shell.State.Navigation;
 /// Pure reducers for <see cref="FrontComposerNavigationState"/> (Story 3-2 D3, D11, D13, D14, D15).
 /// </summary>
 public static class NavigationReducers {
+    /// <summary>Clears the prior scope's preferences before the next scope is hydrated.</summary>
+    [ReducerMethod]
+    public static FrontComposerNavigationState ReduceScopeChanged(
+        FrontComposerNavigationState state,
+        ScopeChangedAction action) {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        return state with {
+            SidebarCollapsed = false,
+            CollapsedGroups = System.Collections.Immutable.ImmutableDictionary<string, bool>.Empty.WithComparers(StringComparer.Ordinal),
+            LastActiveRoute = null,
+            StorageReady = false,
+            HydrationState = HydrationState.Idle,
+        };
+    }
     /// <summary>
     /// Flips <see cref="FrontComposerNavigationState.SidebarCollapsed"/> (Story 3-2 D9).
     /// </summary>
@@ -155,8 +170,8 @@ public static class NavigationReducers {
 
     /// <summary>
     /// Flips <see cref="FrontComposerNavigationState.StorageReady"/> to <see langword="true"/>
-    /// (Story 3-6 D13 / ADR-049). Idempotent — always safe to set true again. NEVER reset within
-    /// a circuit (ADR-049 load-bearing invariant).
+    /// (Story 3-6 D13 / ADR-049). Idempotent — always safe to set true again. ScopeChangedAction
+    /// resets the flag before the next tenant/user hydrates preferences.
     /// </summary>
     /// <param name="state">The current navigation state.</param>
     /// <param name="action">The storage-ready action.</param>

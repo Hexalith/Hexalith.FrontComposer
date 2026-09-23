@@ -128,6 +128,11 @@ public sealed class DensityEffects(
         DensityLevel? stored = null;
         try {
             HydratedDensityPreference hydrated = await ReadStoredPreferenceAsync(key).ConfigureAwait(false);
+            if (!ScopeResolver.TryResolveScope(out string currentTenant, out string currentUser, "Density", DirectionHydrate)
+                || !string.Equals(currentTenant, tenantId, StringComparison.Ordinal)
+                || !string.Equals(currentUser, userId, StringComparison.Ordinal)) {
+                return;
+            }
             stored = hydrated.UserPreference;
             if (!hydrated.KeyExists) {
                 FrontComposerDiagnosticLog.DensityHydrationEmpty(

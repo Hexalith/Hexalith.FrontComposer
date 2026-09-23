@@ -185,6 +185,11 @@ public sealed class CommandPaletteEffects : IDisposable {
         string[]? stored;
         try {
             stored = await storage.GetAsync<string[]>(key).ConfigureAwait(false);
+            if (!ScopeResolver.TryResolveScope(out string currentTenant, out string currentUser, "Palette", DirectionHydrate)
+                || !string.Equals(currentTenant, tenantId, StringComparison.Ordinal)
+                || !string.Equals(currentUser, userId, StringComparison.Ordinal)) {
+                return;
+            }
         }
         catch (OperationCanceledException) {
             FrontComposerDiagnosticLog.PaletteHydrationCancelled(_logger);

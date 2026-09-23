@@ -8,6 +8,8 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 using Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
@@ -137,6 +139,10 @@ public abstract class GeneratedComponentTestBase : BunitContext {
         _ = userContext.TenantId.Returns("test-tenant");
         _ = userContext.UserId.Returns("test-user");
         _ = Services.AddSingleton(userContext);
+        _ = Services.AddSingleton<IFrontComposerTenantContextAccessor>(new TestTenantContextAccessor {
+            TenantId = "test-tenant",
+            UserId = "test-user",
+        });
 
         // Story 6-2 T4 — generated views inject IProjectionTemplateRegistry; bUnit tests use the
         // empty registry by default so DefaultBody is always selected.

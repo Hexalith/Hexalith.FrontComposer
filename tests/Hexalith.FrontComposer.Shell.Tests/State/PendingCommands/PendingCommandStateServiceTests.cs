@@ -3,6 +3,7 @@ using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -18,6 +19,23 @@ public sealed class PendingCommandStateServiceTests {
     private const string MessageId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
     private const string CorrelationId = "01CPZ3NDEKTSV4RRFFQ69G5FAV";
     private const string SecondCorrelationId = "01DPZ3NDEKTSV4RRFFQ69G5FAV";
+
+    [Fact]
+    public void Register_CanonicalValidatorRejectsMalformedNonblankIdentity() {
+        IUserContextAccessor raw = Substitute.For<IUserContextAccessor>();
+        raw.TenantId.Returns("tenant:malformed");
+        raw.UserId.Returns("user-a");
+        FrontComposerTenantContextAccessor canonical = new(raw,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            NullLogger<FrontComposerTenantContextAccessor>.Instance);
+        PendingCommandStateService sut = new(
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            CreateLifecycle(), raw, validatedScope: new ValidatedPendingScope(canonical));
+
+        sut.Register(Registration()).Status.ShouldBe(PendingCommandRegistrationStatus.ScopeUnavailable);
+        sut.Snapshot().ShouldBeEmpty();
+        sut.GetByMessageId(MessageId).ShouldBeNull();
+    }
 
     [Fact]
     public void Register_AcceptedCommand_StoresOnlyFrameworkMetadata() {
@@ -233,7 +251,7 @@ public sealed class PendingCommandStateServiceTests {
         PendingCommandStateService sut = new(
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
             lifecycle,
-            userContext: null,
+            userContext: ScopedUser(),
             time,
             NullLogger<PendingCommandStateService>.Instance);
         sut.Register(Registration()).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
@@ -298,6 +316,7 @@ public sealed class PendingCommandStateServiceTests {
                 MaxPendingCommandPollingDurationMs = 120_000,
             }),
             lifecycle,
+            ScopedUser(),
             time,
             NullLogger<PendingCommandStateService>.Instance);
         sut.Register(Registration()).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
@@ -493,9 +512,16 @@ public sealed class PendingCommandStateServiceTests {
         new(
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxPendingCommandEntries = maxEntries }),
             lifecycle ?? CreateLifecycle(),
-            userContext: null,
+            userContext: ScopedUser(),
             new FakeTimeProvider(new DateTimeOffset(2026, 4, 26, 12, 0, 0, TimeSpan.Zero)),
             NullLogger<PendingCommandStateService>.Instance);
+
+    private static IUserContextAccessor ScopedUser() {
+        IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
+        accessor.TenantId.Returns("tenant-a");
+        accessor.UserId.Returns("user-a");
+        return accessor;
+    }
 
     private static ILifecycleStateService CreateLifecycle() {
         Dictionary<string, (CommandLifecycleState State, string? MessageId)> values = new(StringComparer.Ordinal);
