@@ -46,7 +46,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 2026-09-22
+last_updated: 09-23-2026 09:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -187,6 +187,62 @@ development_status:
   11-31-canonical-correlation-pseudonymization: done
   11-32-epic-11-artifact-integrity-enforcement: done
   epic-11-retrospective: done
+
+  epic-12: backlog
+  12-1-i-adopt-kit-1-publish-a-deterministic-three-call-adopter-pro: backlog
+  12-2-a-adopt-app-1-conditional-select-a-substitute-adopter: backlog
+  epic-12-retrospective: optional
+
+  epic-13: backlog
+  13-1-i-ten-scope-1-prove-tenant-safe-operator-state-end-to-end: backlog
+  13-2-i-ux-a-make-shell-navigation-and-route-focus-deterministic: backlog
+  13-3-i-ux-b-preserve-focus-and-input-through-command-safety-outco: backlog
+  13-4-i-ux-c-announce-projection-and-command-state-without-noise: backlog
+  13-5-i-ux-d-preserve-fresh-row-meaning-across-visual-and-data-cha: backlog
+  13-6-i-ux-e-verify-responsive-and-assistive-accessibility: backlog
+  13-7-i-ux-f-provide-reusable-ux-assertions-for-adopters: backlog
+  13-8-a-e9-app-1-accept-the-completed-fresh-row-live-proof: backlog
+  13-9-a-fluent-app-1-decide-the-exact-fluent-ui-v5-posture: backlog
+  epic-13-retrospective: optional
+
+  epic-14: backlog
+  14-1-i-mcp-sec-1-enforce-production-mcp-authorization-composition: backlog
+  14-2-i-mcp-sec-2-prove-mcp-leak-and-oracle-resistance: backlog
+  14-3-a-mcp-app-1-record-independent-mcp-security-acceptance: backlog
+  epic-14-retrospective: optional
+
+  epic-15: backlog
+  15-1-i-plan-int-2-restore-current-artifact-integrity-validation: backlog
+  15-2-i-doc-a-reconcile-component-and-page-pattern-documentation: backlog
+  15-3-i-doc-b-align-migration-and-classification-guidance: backlog
+  15-4-i-doc-c-correct-the-fluent-ui-v5-contingency-identity: backlog
+  15-5-i-rel-base-1-reconcile-the-published-compatibility-baseline: backlog
+  epic-15-retrospective: optional
+
+  epic-16: backlog
+  16-1-i-evt-id-1-capture-the-current-eventstore-runtime-tuple: backlog
+  16-2-a-evt-xfer-1-conditional-transfer-migration-approval-ownersh: backlog
+  16-3-a-evt-app-1-approve-or-reject-the-exact-runtime-migration: backlog
+  epic-16-retrospective: optional
+
+  epic-17: backlog
+  17-1-i-gov-src-1-reconcile-publication-governance-sources: backlog
+  17-2-i-gov-i-publish-and-exercise-the-release-incident-runbook: backlog
+  17-3-i-gov-b-select-the-accepted-split-publication-topology: backlog
+  17-4-i-gov-c-remove-publication-authority-from-candidate-executio: backlog
+  17-5-i-gov-d-produce-an-authenticated-run-bound-publication-candi: backlog
+  17-6-i-gov-e-validate-handoff-v3-and-typed-append-only-attempt-st: backlog
+  17-7-i-gov-f-publish-with-candidate-free-pinned-code: backlog
+  17-8-i-gov-g-pin-post-release-verification-and-preserve-incident: backlog
+  17-9-i-gov-h-reject-ambiguous-publication-asset-names: backlog
+  17-10-a-gov-j-revalidate-gov-1-on-one-unchanged-candidate: backlog
+  17-11-a-gov-accept-1-accept-the-publication-boundary-and-incident: backlog
+  17-12-a-gov-accept-2-accept-reconciled-governance-sources: backlog
+  17-13-a-rel-ledger-1-accept-the-release-ledger-state-model: backlog
+  17-14-i-rel-ledger-2-complete-evidence-backed-release-ledger-rows: backlog
+  17-15-a-rel-a3-app-1-decide-the-sample-host-container-boundary: backlog
+  17-16-a-prd-app-1-record-final-product-readiness: backlog
+  epic-17-retrospective: optional
 action_items:
   - epic: 2
     action: "Normalize accepted-deferred new-item references to the Epic 9 FC-NIP
@@ -392,11 +448,9 @@ action_items:
         Release runs 30743463963, 30757806987, 30757835682, 30757956331, 30758637451,
         30760188983, and 30785942090; no partial GitHub/NuGet publication observed"
       - "v4.1.0 runs: CI 31082846751, Release 31107597159, Evidence 31108951693 failed;
-        source/tag ac6a9ae82eb94f72fa71280a216def7f971399aa; Builds
-        3ac633386faa2dc4c785bc1ffa06487974906d79"
+        source/tag ac6a9ae82eb94f72fa71280a216def7f971399aa; Builds 3ac633386faa2dc4c785bc1ffa06487974906d79"
       - "v4.1.1 runs: CI 31113655691, Release 31116045352, Evidence 31119445480 failed;
-        source/tag 4a3e44f08308d9147ea797849451414af369551d; Builds
-        3ac633386faa2dc4c785bc1ffa06487974906d79"
+        source/tag 4a3e44f08308d9147ea797849451414af369551d; Builds 3ac633386faa2dc4c785bc1ffa06487974906d79"
     evidence_required:
       - "exact expected package inventory (8 packable + 2 explicit non-packable)"
       - "tests and package-consumer validation against the release candidates"
@@ -675,9 +729,9 @@ action_items:
       is not approval."
   - id: "E11R-AI-1"
     epic: 11
-    action: "Capture one passing provider-plus-AppHost record for the exact
-      FrontComposer/EventStore/package/Builds tuple current at execution, then obtain
-      the required migration-approval receipts without rewriting Story 11.25 history"
+    action: "Capture one passing provider-plus-AppHost record for the exact FrontComposer/EventStore/package/Builds
+      tuple current at execution, then obtain the required migration-approval receipts
+      without rewriting Story 11.25 history"
     owner: "Architect + Release Owner"
     status: open
     gate: "G-3"
@@ -689,18 +743,17 @@ action_items:
     ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-09-10.md"
     evidence:
       - "_bmad-output/implementation-artifacts/spec-11-25-current-eventstore-release-identity-and-evidence.md
-        is the accepted technical Story 11.25 delivery record and does not claim
-        migration approval."
+        is the accepted technical Story 11.25 delivery record and does not claim migration
+        approval."
       - "_bmad-output/implementation-artifacts/spec-11-25-eventstore-3-106-evidence-reconciliation.md
-        remains in review and its v3 identity has empty receipts and
-        migrationApprovalClaimed=false."
-      - "At reconciliation HEAD b61e51e13b9d7a39b22d6463a23532bdc696610f
-        selected EventStore db1e9d735b8c7186d51682725f08085cda98fe67,
-        package 3.106.0, and Builds 2fba3497043fe5ffcfe4dc44c51a09eae9b950ab,
-        so prior tuple evidence is not current approval."
-    closure_rule: "EVT-ID-1 must bind one exact current tuple and EVT-APP-1 must
-      contain every required durable receipt; missing evidence or approval leaves
-      this action open."
+        remains in review and its v3 identity has empty receipts and migrationApprovalClaimed=false."
+      - "At reconciliation HEAD b61e51e13b9d7a39b22d6463a23532bdc696610f selected
+        EventStore db1e9d735b8c7186d51682725f08085cda98fe67, package 3.106.0, and
+        Builds 2fba3497043fe5ffcfe4dc44c51a09eae9b950ab, so prior tuple evidence is
+        not current approval."
+    closure_rule: "EVT-ID-1 must bind one exact current tuple and EVT-APP-1 must contain
+      every required durable receipt; missing evidence or approval leaves this action
+      open."
   - id: "E11R-AI-2"
     epic: 11
     action: "Review the CA1707 identifier delta and intentionally reseal or correct
@@ -712,15 +765,13 @@ action_items:
     ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-09-10.md"
     evidence:
       - "_bmad-output/implementation-artifacts/spec-11-26-analyzer-identifier-inventory-reconciliation.md
-        records the exact declarations, owning commits, approved scope, seal
-        transition, and green verification."
+        records the exact declarations, owning commits, approved scope, seal transition,
+        and green verification."
       - "Commit 1be6b3778b04dd321d5db314c3b0bbcc6979a593 added the two intentional
         logging-governance declarations; commit 2cd0496a9bcd3c01e03aa0850a08d67d95999e77
-        resealed the test inventory to 3327 /
-        e33cb6e8c92dea244db0cebde30721da208a5a569a7a7cf9c1e41b7d77ee270f."
+        resealed the test inventory to 3327 / e33cb6e8c92dea244db0cebde30721da208a5a569a7a7cf9c1e41b7d77ee270f."
       - "Closure followed Story 11.26 acceptance, not preceded it: the 2026-09-15
-        code review resolved its findings and moved
-        development_status['11-26-analyzer-identifier-inventory-reconciliation']
+        code review resolved its findings and moved development_status['11-26-analyzer-identifier-inventory-reconciliation']
         to done, and only then was this item closed. Reopen it if that acceptance
         is revisited."
   - id: "E11R-AI-3"
@@ -736,13 +787,13 @@ action_items:
       - "_bmad-output/implementation-artifacts/spec-11-27-generated-command-route-acceptance-locator.md
         records the unambiguous route locator, canonical generated command route proof,
         approved review patches, and focused verification."
-      - "Commit 1732b9415d13bec1b419017d271a86b6b8c1bae7 scoped the Story 11.7
-        acceptance locator to route content; commit
-        1b2240bd00998da0b2f0f20f55dda492c5f7d2ab applied the owner-approved shared
-        page-object, shell-heading, visual-baseline, and focused-verification patches."
+      - "Commit 1732b9415d13bec1b419017d271a86b6b8c1bae7 scoped the Story 11.7 acceptance
+        locator to route content; commit 1b2240bd00998da0b2f0f20f55dda492c5f7d2ab
+        applied the owner-approved shared page-object, shell-heading, visual-baseline,
+        and focused-verification patches."
       - "The repaired route-contract proof remains operator-invoked rather than CI-enforced;
-        DW-1959 assigns that pre-existing automation gap to Story 11.30 and records why the
-        current specimen-enabled accessibility job cannot host it unchanged."
+        DW-1959 assigns that pre-existing automation gap to Story 11.30 and records
+        why the current specimen-enabled accessibility job cannot host it unchanged."
   - id: "E11R-AI-4"
     epic: 11
     action: "Update the FC-NIP semantic fixture to the current PRD contract and restore
@@ -824,53 +875,53 @@ approved_change_backlog:
   groups:
     - name: "Planning Truth and Traceability"
       items:
-        - { id: "PLAN-INT-2", kind: "implementation", status: "proposed" }
+        - {id: "PLAN-INT-2", kind: "implementation", status: "proposed"}
     - name: "Runtime Identity, Tenant Safety, and Adoption"
       items:
-        - { id: "EVT-ID-1", kind: "implementation", status: "proposed" }
-        - { id: "EVT-APP-1", kind: "approval-evidence", status: "open" }
-        - { id: "EVT-XFER-1", kind: "conditional-approval", status: "open" }
-        - { id: "TEN-SCOPE-1", kind: "implementation", status: "proposed" }
-        - { id: "ADOPT-KIT-1", kind: "implementation", status: "proposed" }
-        - { id: "EXT-ADOPTER-1", kind: "external-dependency", status: "external" }
-        - { id: "ADOPT-APP-1", kind: "conditional-approval", status: "open" }
+        - {id: "EVT-ID-1", kind: "implementation", status: "proposed"}
+        - {id: "EVT-APP-1", kind: "approval-evidence", status: "open"}
+        - {id: "EVT-XFER-1", kind: "conditional-approval", status: "open"}
+        - {id: "TEN-SCOPE-1", kind: "implementation", status: "proposed"}
+        - {id: "ADOPT-KIT-1", kind: "implementation", status: "proposed"}
+        - {id: "EXT-ADOPTER-1", kind: "external-dependency", status: "external"}
+        - {id: "ADOPT-APP-1", kind: "conditional-approval", status: "open"}
     - name: "MCP Production Security"
       items:
-        - { id: "MCP-SEC-1", kind: "implementation", status: "proposed" }
-        - { id: "MCP-SEC-2", kind: "implementation", status: "proposed" }
-        - { id: "MCP-APP-1", kind: "approval-evidence", status: "open" }
+        - {id: "MCP-SEC-1", kind: "implementation", status: "proposed"}
+        - {id: "MCP-SEC-2", kind: "implementation", status: "proposed"}
+        - {id: "MCP-APP-1", kind: "approval-evidence", status: "open"}
     - name: "UX Conformance and Documentation Parity"
       items:
-        - { id: "UX-A", kind: "implementation", status: "proposed" }
-        - { id: "UX-B", kind: "implementation", status: "proposed" }
-        - { id: "UX-C", kind: "implementation", status: "proposed" }
-        - { id: "UX-D", kind: "implementation", status: "proposed" }
-        - { id: "UX-E", kind: "implementation", status: "proposed" }
-        - { id: "UX-F", kind: "implementation", status: "proposed" }
-        - { id: "DOC-A", kind: "implementation", status: "proposed" }
-        - { id: "DOC-B", kind: "implementation", status: "proposed" }
-        - { id: "DOC-C", kind: "implementation", status: "proposed" }
-        - { id: "FLUENT-APP-1", kind: "approval", status: "open" }
-        - { id: "PRD-APP-1", kind: "approval", status: "open" }
+        - {id: "UX-A", kind: "implementation", status: "proposed"}
+        - {id: "UX-B", kind: "implementation", status: "proposed"}
+        - {id: "UX-C", kind: "implementation", status: "proposed"}
+        - {id: "UX-D", kind: "implementation", status: "proposed"}
+        - {id: "UX-E", kind: "implementation", status: "proposed"}
+        - {id: "UX-F", kind: "implementation", status: "proposed"}
+        - {id: "DOC-A", kind: "implementation", status: "proposed"}
+        - {id: "DOC-B", kind: "implementation", status: "proposed"}
+        - {id: "DOC-C", kind: "implementation", status: "proposed"}
+        - {id: "FLUENT-APP-1", kind: "approval", status: "open"}
+        - {id: "PRD-APP-1", kind: "approval", status: "open"}
     - name: "Governed Split Publication"
       items:
-        - { id: "EXT-BUILDS-1", kind: "external-dependency", status: "external" }
-        - { id: "GOV-B", kind: "implementation", status: "proposed" }
-        - { id: "GOV-C", kind: "implementation", status: "proposed" }
-        - { id: "GOV-D", kind: "implementation", status: "proposed" }
-        - { id: "GOV-E", kind: "implementation", status: "proposed" }
-        - { id: "GOV-F", kind: "implementation", status: "proposed" }
-        - { id: "GOV-G", kind: "implementation", status: "proposed" }
-        - { id: "GOV-H", kind: "implementation", status: "proposed" }
-        - { id: "GOV-I", kind: "implementation-evidence", status: "proposed" }
-        - { id: "GOV-J", kind: "approval-evidence", status: "open" }
-        - { id: "GOV-SRC-1", kind: "documentation-traceability", status: "proposed" }
-        - { id: "GOV-ACCEPT-1", kind: "approval", status: "open" }
-        - { id: "GOV-ACCEPT-2", kind: "approval", status: "open" }
+        - {id: "EXT-BUILDS-1", kind: "external-dependency", status: "external"}
+        - {id: "GOV-B", kind: "implementation", status: "proposed"}
+        - {id: "GOV-C", kind: "implementation", status: "proposed"}
+        - {id: "GOV-D", kind: "implementation", status: "proposed"}
+        - {id: "GOV-E", kind: "implementation", status: "proposed"}
+        - {id: "GOV-F", kind: "implementation", status: "proposed"}
+        - {id: "GOV-G", kind: "implementation", status: "proposed"}
+        - {id: "GOV-H", kind: "implementation", status: "proposed"}
+        - {id: "GOV-I", kind: "implementation-evidence", status: "proposed"}
+        - {id: "GOV-J", kind: "approval-evidence", status: "open"}
+        - {id: "GOV-SRC-1", kind: "documentation-traceability", status: "proposed"}
+        - {id: "GOV-ACCEPT-1", kind: "approval", status: "open"}
+        - {id: "GOV-ACCEPT-2", kind: "approval", status: "open"}
     - name: "Release Evidence and Decisions"
       items:
-        - { id: "REL-LEDGER-1", kind: "approval-evidence", status: "open" }
-        - { id: "REL-LEDGER-2", kind: "implementation-evidence", status: "proposed" }
-        - { id: "REL-BASE-1", kind: "implementation", status: "proposed" }
-        - { id: "REL-A3-APP-1", kind: "approval", status: "open" }
-        - { id: "E9-APP-1", kind: "approval", status: "open" }
+        - {id: "REL-LEDGER-1", kind: "approval-evidence", status: "open"}
+        - {id: "REL-LEDGER-2", kind: "implementation-evidence", status: "proposed"}
+        - {id: "REL-BASE-1", kind: "implementation", status: "proposed"}
+        - {id: "REL-A3-APP-1", kind: "approval", status: "open"}
+        - {id: "E9-APP-1", kind: "approval", status: "open"}
