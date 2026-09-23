@@ -14,5 +14,6 @@ slug: how-to/
 
 - [Customize a relative-time field at four levels](customization-gradient-cookbook.md)
 - [Test generated components](test-generated-components.md)
+- [Prove the three-call adopter bootstrap](adopter-bootstrap-proof.md)
 - [Apply migration guidance](migration-guides.md)
 - [Debug generated output](generated-output-debugging.md)

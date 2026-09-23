@@ -1,0 +1,16 @@
+@page "/"
+@page "/proof/proof-projection"
+@inject IFrontComposerRegistry Registry
+@using Hexalith.FrontComposer.Shell.Components.Layout
+
+@if (Registry.GetManifests().Any())
+{
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="16px">
+        <FcPageHeader PageTitle="Proof projection" Heading="Proof projection" HeadingTabIndex="-1" />
+        <ProofProjectionView />
+    </FluentStack>
+}
+else
+{
+    <Hexalith.FrontComposer.Shell.Components.Home.FcHomeDirectory />
+}
