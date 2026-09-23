@@ -2551,7 +2551,6 @@ location: src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs
 reason: **`FrontComposerRegistry` constructor throw on `HFC1601` — latent, tied to Story 9-4** — `ValidateManifests()` runs in the ctor and can throw `InvalidOperationException` on a DI-resolved singleton, which would cascade-fail circuit startup rather than degrade gracefully. Inert today because `HasFullPageRoute` is tautological (see decision DN6). Revisit when Story 9-4 implements real routing-metadata enforcement; consider moving validation to `OnStart` to avoid DI-time fatals. `src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs:~1325` Reconciliation: Row: DW-0310; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.2; AC coverage: AC14-AC16, AC30; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.2.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Related: Story 11.2; Evidence: section: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts (2026-04-21).
 status: open
 decision: 2026-09-06 Hosted startup gate — Move HFC1601 validation to an idempotent hosted startup gate with DI-resolution and host-start tests.
-decision: 2026-09-06 Hosted startup gate — Move HFC1601 validation to an idempotent hosted startup gate with DI-resolution and host-start tests.
 
 ### DW-1042: AC2/AC5/D11 bUnit matrix deferred
 
@@ -3229,7 +3228,6 @@ location: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md
 severity: low
 reason: **[LOW] `FrontComposerStorageKey.Build` has no key-length cap** — deeply-nested generic FQN + long email could exceed backend key-length limits (~5KB browser localStorage). **Defer target:** Story 5-2 (ETag caching + storage contract). Reconciliation: Row: DW-0411; Final classification 2026-05-13: split-to-named-story; Decision owner: Story 11.3; AC coverage: AC1-AC4, AC24-AC25, AC36; Score: impact=variable; risk=variable; cost=medium/high; adjacency=split; Rationale: Outside Story 11.6 bounded Shell/sample release-readiness scope; routed to Story 11.3.; Validation/evidence: not impacted in Story 11.6; historical source row preserved; Matrix: _bmad-output/implementation-artifacts/11-6-row-evidence-matrix.md; Previous owner was Story 11.6; Evidence: section: code review of 2-2-action-density-rules-and-rendering-modes (2026-04-16) — Group D (Shell services + Fluxor state + JS module) chunk.
 status: open
-decision: 2026-09-06 Versioned bounded hash — Define a maximum and versioned format that hashes oversized variable segments, retain legacy fallback reads, and add boundary and collision tests.
 decision: 2026-09-06 Versioned bounded hash — Define a maximum and versioned format that hashes oversized variable segments, retain legacy fallback reads, and add boundary and collision tests.
 
 ### DW-1143: [LOW] `LastUsedSubscriberRegistry` scope-resolution ordering
@@ -5121,6 +5119,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-6-shell-u
 location: FcDevModeToggleButton.razor.cs
 reason: **W3 — AC18 `FcDevModeToggleButton.razor.css` missing forced-colors and reduced-motion guards:** No `@media (forced-colors: active)` block to restore FluentIcon visibility in High Contrast mode; no `@media (prefers-reduced-motion: reduce)` guard. Accepted per D16 (representative evidence only). Owner: UX accessibility roadmap.
 status: open
+decision: 2026-09-05 Add media guards — Add Fluent-token-compatible forced-colors and reduced-motion rules plus computed-style regression coverage.
+decision: 2026-09-05 Add media guards — Add Fluent-token-compatible forced-colors and reduced-motion rules plus computed-style regression coverage.
 
 ### DW-1424: AC28 WASM/Blazor Auto `IHostEnvironment` ImplementationType registration gap: `FindRegisteredEnvironment` checks `ImplementationInstance` and `ImplementationFactory` but not `ImplementationType`. A standard `AddSingleton<IHostEnvironment, BlazorWebAssemblyEnvironment>()` registration is silently skipped. Owner: Blazor Auto hosting story.
 
@@ -6145,6 +6145,8 @@ origin: migrated from legacy ledger ("Deferred from: code review of 11-1-token-l
 location: src/Hexalith.FrontComposer.Shell/Extensions/FrontComposerAuthenticationServiceExtensions.cs:254
 reason: **CR-11-1-Def01 — Token relay hook still targets the hard-coded default OIDC scheme:** `AddHexalithFrontComposerAuthentication` registers OIDC using `options.OpenIdConnect.ChallengeScheme`, but `AddHexalithFrontComposerTokenRelay` configures only `FrontComposerTokenRelayServiceExtensions.OidcChallengeScheme`. A host that customizes the OIDC challenge scheme can sign in successfully while token capture attaches to an unused options instance. Deferred because the hard-coded scheme binding pre-existed Story 11.1; pick up in an owned auth-configuration compatibility story. Owner: Shell/auth maintainer. Evidence: `src/Hexalith.FrontComposer.Shell/Extensions/FrontComposerAuthenticationServiceExtensions.cs:254`, `src/Hexalith.FrontComposer.Shell/Extensions/FrontComposerTokenRelayServiceExtensions.cs:26`, `src/Hexalith.FrontComposer.Shell/Extensions/FrontComposerTokenRelayServiceExtensions.cs:47`.
 status: open
+decision: 2026-09-05 Use configured scheme — Bind token relay to FrontComposerAuthenticationOptions.OpenIdConnect.ChallengeScheme while preserving the default and add customized-scheme integration tests.
+decision: 2026-09-05 Use configured scheme — Bind token relay to FrontComposerAuthenticationOptions.OpenIdConnect.ChallengeScheme while preserving the default and add customized-scheme integration tests.
 
 ### DW-1576: `ProjectionSubscriptionService.DisposeAsync` leaks the SignalR `HubConnection` (and its unbounded auto-reconnect loop) plus the disposal `CancellationTokenSource` when the operation gate cannot be acquired within the 2s bounded wait.
 
@@ -6163,6 +6165,8 @@ location: src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/ProjectionS
 source_spec: `_bmad-output/implementation-artifacts/spec-11-2-projection-realtime-resilience.md`
 reason: summary: A SignalR `Reconnected` event whose rejoin cannot acquire the operation gate within the 2s `GateWaitTimeout` applies `Disconnected`/`RejoinSkipped` and gives up with no retry, so a connection that is actually up can stay reported `Disconnected` with active groups never rejoined server-side (realtime nudges never resume; only slow fallback polling continues) until an unrelated next reconnect event — which is not guaranteed to arrive. evidence: `RejoinActiveGroupsAsync` (`src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/ProjectionSubscriptionService.cs`) now bounds the previously-unbounded gate wait to `GateWaitTimeout` (2s) and returns `false` on timeout; `HandleReconnectedEpochAsync` then applies `Disconnected`/`RejoinSkipped` and returns without any retry loop — unlike the closed-restart path which loops. Because the underlying transport is up, no further `Closed`/`Reconnected` fires to drive recovery. The clobber is aggravated by `ProjectionConnectionStateService.Apply` being unconditional last-writer-wins with no epoch/sequence guard (a pre-existing design characteristic): a late `RejoinSkipped` Apply can land after a concurrent restart's `Connected` Apply and strand the snapshot at `Disconnected`. Real but narrow (requires >2s gate contention coinciding with a `Reconnected`), and fallback polling provides graceful degradation, so a design fix (retry the reconnected rejoin like the closed path, and/or add an epoch/sequence guard to `Apply`) is deferred for focused attention rather than an inline unattended patch.
 status: open
+decision: 2026-09-05 Retry bounded rejoin — Schedule bounded disposal-aware rejoin retries using the established closed-restart policy and add prolonged-contention tests.
+decision: 2026-09-05 Retry bounded rejoin — Schedule bounded disposal-aware rejoin retries using the established closed-restart policy and add prolonged-contention tests.
 
 ### DW-1578: A genuinely corrupt / permanently-unreadable persisted `:etag:` entry makes ETag LRU seeding re-run the full `GetKeysAsync` enumeration plus a per-key `GetAsync` on every subsequent `SetAsync`/invalidate forever, because the skip-one-bad-key patch keeps `_lruSeeded = 0` whenever any key read fails, with no cap, backoff, or give-up-after-N.
 
@@ -6171,6 +6175,8 @@ location: src/Hexalith.FrontComposer.Shell/State/ETagCache/ETagCacheService.cs:3
 source_spec: `_bmad-output/implementation-artifacts/spec-11-2-projection-realtime-resilience.md`
 reason: summary: A genuinely corrupt / permanently-unreadable persisted `:etag:` entry makes ETag LRU seeding re-run the full `GetKeysAsync` enumeration plus a per-key `GetAsync` on every subsequent `SetAsync`/invalidate forever, because the skip-one-bad-key patch keeps `_lruSeeded = 0` whenever any key read fails, with no cap, backoff, or give-up-after-N. evidence: `TrySeedPersistedLruAsync` (`src/Hexalith.FrontComposer.Shell/State/ETagCache/ETagCacheService.cs:340-371`) returns `!anyFailed`, and `EnsurePersistedLruSeededAsync` writes `_lruSeeded = seeded ? 1 : 0`, so a permanent per-key fault never latches seeded and re-scans on every cache write (called at the top of `SetAsync`:179 and invalidate:259). The retry-on-failure itself is intended per the spec I/O matrix ("later caller retries seeding instead of treating the cache as permanently seeded"), but the spec did not distinguish a transient fault (should retry) from a permanent one (should give up), so the fix that honors the transient case regressed the permanent case relative to the pre-story one-way `_lruSeeded` flag. Bounded by `MaxETagCacheEntries` and only triggered by an unusual storage-corruption fault, so it is a low-consequence performance regression; a proper fix (per-key failure accounting / bounded seed attempts) is deferred for focused attention.
 status: open
+decision: 2026-09-05 Quarantine bad keys — Track bounded per-key failures, quarantine persistently unreadable entries, and complete seeding after the healthy set is loaded.
+decision: 2026-09-05 Quarantine bad keys — Track bounded per-key failures, quarantine persistently unreadable entries, and complete seeding after the healthy set is loaded.
 
 ### DW-1579: `CommandResult.RetryAfter` golden-pins the .NET-specific `TimeSpan` "c" JSON format (`"retryAfter":"00:00:03"`), freezing a non-portable duration encoding into the pre-v1.0 HTTP/SignalR wire contract that non-.NET consumers (JS shell hosts, agents) must custom-parse.
 
@@ -6434,6 +6440,8 @@ location: .github/workflows/release.yml
 source_spec: `_bmad-output/implementation-artifacts/spec-actions-29319125606-fix-release-breaking-parser.md`
 reason: summary: Make Release wait for both Commitlint and Quality so malformed commit metadata or a failing release-parser governance check cannot race publication. evidence: `.github/workflows/release.yml` starts after successful `CI` only; direct push `d9d2656e` demonstrated that Release still ran while the separate Commitlint and Quality workflows failed. The v3 compatibility package guard prevents the observed wrong-line publication, so changing workflow dependencies is broader pre-existing hardening and is explicitly outside this fix's approved trigger scope.
 status: open
+decision: 2026-09-05 Require all three — Authenticate successful CI, Commitlint, and Quality runs for the exact candidate SHA before any production release job starts.
+decision: 2026-09-05 Require all three — Authenticate successful CI, Commitlint, and Quality runs for the exact candidate SHA before any production release job starts.
 
 ### DW-1612: Semantically bind obsolete API migration before replacing matching identifiers.
 

@@ -440,6 +440,15 @@
     "label": "Implement change",
     "resolution": ""
   },
+  "DW-1423": {
+    "answered_at": "2026-09-05",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Add Fluent-token-compatible forced-colors and reduced-motion rules plus computed-style regression coverage.",
+    "key": "1",
+    "label": "Add media guards",
+    "resolution": ""
+  },
   "DW-1430": {
     "answered_at": "2026-08-28",
     "bundle_name": "",
@@ -593,6 +602,15 @@
     "label": "Implement change",
     "resolution": ""
   },
+  "DW-1575": {
+    "answered_at": "2026-09-05",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Bind token relay to FrontComposerAuthenticationOptions.OpenIdConnect.ChallengeScheme while preserving the default and add customized-scheme integration tests.",
+    "key": "1",
+    "label": "Use configured scheme",
+    "resolution": ""
+  },
   "DW-1576": {
     "answered_at": "2026-09-05",
     "bundle_name": "",
@@ -600,6 +618,24 @@
     "intent": "Implement the behavior described by DW-1576 at tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/ProjectionSubscriptionServiceFaultTests.cs, update affected contracts and consumers, and add focused compatibility and regression evidence.",
     "key": "1",
     "label": "Implement bounded change",
+    "resolution": ""
+  },
+  "DW-1577": {
+    "answered_at": "2026-09-05",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Schedule bounded disposal-aware rejoin retries using the established closed-restart policy and add prolonged-contention tests.",
+    "key": "1",
+    "label": "Retry bounded rejoin",
+    "resolution": ""
+  },
+  "DW-1578": {
+    "answered_at": "2026-09-05",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Track bounded per-key failures, quarantine persistently unreadable entries, and complete seeding after the healthy set is loaded.",
+    "key": "1",
+    "label": "Quarantine bad keys",
     "resolution": ""
   },
   "DW-1579": {
@@ -672,6 +708,15 @@
     "intent": "Implement the behavior requested by DW-1601, update affected contracts and consumers, and add focused regression evidence.",
     "key": "1",
     "label": "Implement change",
+    "resolution": ""
+  },
+  "DW-1611": {
+    "answered_at": "2026-09-05",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Authenticate successful CI, Commitlint, and Quality runs for the exact candidate SHA before any production release job starts.",
+    "key": "1",
+    "label": "Require all three",
     "resolution": ""
   },
   "DW-1619": {
