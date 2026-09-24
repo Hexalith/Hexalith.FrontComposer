@@ -20,6 +20,7 @@ import sys
 import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from zipfile import BadZipFile, ZipFile
@@ -36,6 +37,7 @@ SHA = re.compile(r"[0-9a-f]{40}\Z")
 VERSION = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?\Z")
 RUNTIME = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+\Z")
 FIXTURE = Path(__file__).resolve().parents[1] / "samples" / "AdopterProofKit" / "v1"
+SDK_POLICY = {"sdk": {"version": "10.0.100", "rollForward": "latestFeature", "allowPrerelease": False}}
 NEGATIVE_DIAGNOSTICS = {
     "missing-quickstart": "FrontComposer bootstrap is incomplete: AddHexalithEventStore(...) was called but AddHexalithFrontComposerQuickstart()",
     "misordered": "FrontComposer bootstrap is mis-ordered: AddHexalithEventStore(...) was called before AddHexalithFrontComposerQuickstart().",
@@ -119,6 +121,8 @@ def verify_runtime(dotnet: str, selected: str, cwd: Path) -> dict[str, str]:
         raise ProofError("runtime-unavailable") from None
     if not RUNTIME.fullmatch(sdk):
         raise ProofError("runtime-identity-invalid")
+    if not sdk.startswith("10."):
+        raise ProofError("runtime-identity-mismatch")
     for name in ("Microsoft.NETCore.App", "Microsoft.AspNetCore.App"):
         if not re.search(rf"^{re.escape(name)} {re.escape(selected)} \[", listing, re.MULTILINE):
             raise ProofError("runtime-identity-mismatch")
@@ -149,13 +153,22 @@ def _port() -> int:
         return listener.getsockname()[1]
 
 
+def _valid_endpoint(value: str) -> bool:
+    """Mirror the host's absolute http(s) URI requirement so a bad endpoint is named up front."""
+    try:
+        parts = urllib.parse.urlsplit(value)
+        return parts.scheme.lower() in ("http", "https") and bool(parts.hostname)
+    except ValueError:
+        return False
+
+
 def _get(url: str) -> str | None:
     try:
         with urllib.request.urlopen(url, timeout=2) as response:
             if response.status != 200:
                 return None
             return response.read(2_000_000).decode("utf-8", errors="replace")
-    except (OSError, urllib.error.URLError, http.client.IncompleteRead):
+    except (OSError, urllib.error.URLError, http.client.HTTPException):
         return None
 
 
@@ -227,12 +240,15 @@ def execute(args: argparse.Namespace) -> dict:
     }
     try:
         archive_hashes = verify_packages(Path(args.package_source), candidate, version)
-        if not args.eventstore_endpoint.startswith(("https://", "http://")):
+        if not _valid_endpoint(args.eventstore_endpoint):
             raise ProofError("eventstore-endpoint-invalid")
         with tempfile.TemporaryDirectory(prefix="frontcomposer-adopter-proof-") as temp:
             root = Path(temp)
             fixture = root / "fixture"
             shutil.copytree(FIXTURE, fixture, ignore=shutil.ignore_patterns("bin", "obj"))
+            # The copy sits outside any consumer global.json, so pin the .NET 10 SDK band here
+            # instead of letting the machine's newest (possibly preview or 11.x) SDK build it.
+            (root / "global.json").write_text(json.dumps(SDK_POLICY, indent=2) + "\n", encoding="utf-8")
             result["runtime_identity"] = verify_runtime(args.dotnet, args.runtime_version, fixture)
             config = root / "nuget.config"
             import xml.sax.saxutils as xml

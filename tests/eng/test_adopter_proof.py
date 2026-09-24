@@ -32,10 +32,11 @@ def args(source: str, result: str = "result.json") -> argparse.Namespace:
                               result=result, dotnet="dotnet")
 
 
-def packages(path: Path, commit: str = CANDIDATE) -> None:
+def packages(path: Path, commit: str = CANDIDATE, id_suffix: str = "", version: str = VERSION,
+             url: str = proof.REPOSITORY) -> None:
     for package_id in proof.PACKAGE_IDS:
-        nuspec = (f'<package><metadata><id>{package_id}</id><version>{VERSION}</version>'
-                  f'<repository url="{proof.REPOSITORY}" commit="{commit}" />'
+        nuspec = (f'<package><metadata><id>{package_id}{id_suffix}</id><version>{version}</version>'
+                  f'<repository url="{url}" commit="{commit}" />'
                   '</metadata></package>')
         with ZipFile(path / f"{package_id}.{VERSION}.nupkg", "w") as archive:
             archive.writestr(package_id + ".nuspec", nuspec)
@@ -57,6 +58,57 @@ class AdopterProofTests(unittest.TestCase):
             self.assertEqual({}, result["package_identity"]["archive_sha512"])
             self.assertFalse(result["package_identity"]["verified"])
             runtime.assert_not_called()
+
+    def test_package_metadata_mismatch_fails_closed(self):
+        cases = {"id": {"id_suffix": ".Forged"}, "version": {"version": "12.1.1-proof"},
+                 "repository": {"url": "https://github.com/example/Hexalith.FrontComposer"}}
+        for name, overrides in cases.items():
+            with self.subTest(field=name), tempfile.TemporaryDirectory() as temporary:
+                packages(Path(temporary), **overrides)
+                with self.assertRaises(proof.ProofError) as error:
+                    proof.verify_packages(Path(temporary), CANDIDATE, VERSION)
+                self.assertEqual("package-candidate-mismatch", error.exception.code)
+
+    def test_missing_package_or_invalid_inputs_fail_without_echoing_input(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            missing = proof.execute(args(temporary))
+            self.assertEqual("package-missing", missing["failure"])
+            bad_sha = args(temporary)
+            bad_sha.candidate_sha = "abc123-private"
+            result = proof.execute(bad_sha)
+            self.assertEqual(("invalid-candidate-sha", "invalid"), (result["failure"], result["candidate_sha"]))
+            bad_version = args(temporary)
+            bad_version.package_version = "latest-private"
+            result = proof.execute(bad_version)
+            self.assertEqual(("invalid-package-version", "invalid"),
+                             (result["failure"], result["package_identity"]["version"]))
+
+    def test_runtime_identity_failures_are_named(self):
+        fixture = Path("/tmp/fixture")
+        listing = "Microsoft.NETCore.App 10.0.12 [/runtime]\nMicrosoft.AspNetCore.App 10.0.11 [/runtime]\n"
+        full = "Microsoft.NETCore.App 10.0.12 [/runtime]\nMicrosoft.AspNetCore.App 10.0.12 [/runtime]\n"
+        cases = [
+            (["10.0.401\n", listing], "runtime-identity-mismatch"),
+            (["11.0.100\n", full], "runtime-identity-mismatch"),
+            (["11.0.100-rc.1.26\n", full], "runtime-identity-invalid"),
+            (proof.subprocess.CalledProcessError(1, ["dotnet"]), "runtime-unavailable"),
+            (FileNotFoundError("dotnet"), "runtime-unavailable"),
+        ]
+        for outputs, code in cases:
+            with self.subTest(code=code, outputs=outputs), \
+                    mock.patch.object(proof.subprocess, "check_output", side_effect=outputs):
+                with self.assertRaises(proof.ProofError) as error:
+                    proof.verify_runtime("dotnet", "10.0.12", fixture)
+                self.assertEqual(code, error.exception.code)
+
+    def test_eventstore_endpoint_matches_host_absolute_uri_rule(self):
+        for endpoint in ("HTTPS://EventStore.example.test", "http://127.0.0.1:1"):
+            self.assertTrue(proof._valid_endpoint(endpoint), endpoint)
+        for endpoint in ("http://", "https://:443", "ftp://eventstore.example.test", "http://[bad", "relative"):
+            with self.subTest(endpoint=endpoint):
+                result, calls, runs = self._run_simulated([], eventstore_endpoint=endpoint)
+                self.assertEqual("eventstore-endpoint-invalid", result["failure"])
+                self.assertEqual(([], []), (calls, runs))
 
     def test_restored_archive_must_match_checked_candidate(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -137,6 +189,12 @@ class AdopterProofTests(unittest.TestCase):
         with mock.patch.object(proof.urllib.request, "urlopen", return_value=response):
             self.assertIsNone(proof._get("http://127.0.0.1:1/"))
 
+    def test_malformed_http_response_is_failed_probe(self):
+        for error in (http.client.BadStatusLine("garbage"), http.client.LineTooLong("header")):
+            with self.subTest(error=type(error).__name__), \
+                    mock.patch.object(proof.urllib.request, "urlopen", side_effect=error):
+                self.assertIsNone(proof._get("http://127.0.0.1:1/"))
+
     def test_projection_fragments_require_generated_view_and_navigation(self):
         process = mock.Mock()
         process.poll.return_value = None
@@ -193,6 +251,47 @@ class AdopterProofTests(unittest.TestCase):
                                        "http://127.0.0.1:1", "missing-quickstart", "/")
             self.assertEqual("bootstrap-diagnostic-missing", error.exception.code)
 
+    def test_misordered_host_requires_the_eventstore_before_quickstart_diagnostic(self):
+        process = mock.Mock()
+        process.poll.return_value = 1
+        domain_misordered = ("FrontComposer bootstrap is mis-ordered: AddHexalithDomain<TMarker>() was called "
+                             "before AddHexalithFrontComposerQuickstart().")
+        cases = [(proof.NEGATIVE_DIAGNOSTICS["misordered"], None),
+                 (proof.NEGATIVE_DIAGNOSTICS["missing-quickstart"], "bootstrap-diagnostic-missing"),
+                 (domain_misordered, "bootstrap-diagnostic-missing")]
+        for diagnostic, code in cases:
+            def launch(*_args, **kwargs):
+                kwargs["stdout"].write(diagnostic)
+                kwargs["stdout"].flush()
+                return process
+
+            with self.subTest(code=code, diagnostic=diagnostic), \
+                    mock.patch.object(proof, "_port", return_value=52345), \
+                    mock.patch.object(proof, "_get", return_value=None), \
+                    mock.patch.object(proof.subprocess, "Popen", side_effect=launch):
+                if code is None:
+                    self.assertTrue(proof._start_and_probe("dotnet", Path("/tmp/host.dll"), "10.0.12",
+                                                           "http://127.0.0.1:1", "misordered", "/"))
+                    continue
+                with self.assertRaises(proof.ProofError) as error:
+                    proof._start_and_probe("dotnet", Path("/tmp/host.dll"), "10.0.12",
+                                           "http://127.0.0.1:1", "misordered", "/")
+                self.assertEqual(code, error.exception.code)
+
+    def test_negative_host_that_renders_a_page_is_rejected(self):
+        for mode in ("missing-quickstart", "misordered"):
+            process = mock.Mock()
+            process.poll.return_value = None
+            with self.subTest(mode=mode), \
+                    mock.patch.object(proof, "_port", return_value=52345), \
+                    mock.patch.object(proof, "_get", return_value="<html>fc-home-empty-no-microservices</html>"), \
+                    mock.patch.object(proof.subprocess, "Popen", return_value=process):
+                with self.assertRaises(proof.ProofError) as error:
+                    proof._start_and_probe("dotnet", Path("/tmp/host.dll"), "10.0.12",
+                                           "http://127.0.0.1:1", mode, "/")
+                self.assertEqual("bootstrap-unexpected-render", error.exception.code)
+                process.terminate.assert_called_once()
+
     def test_negative_host_still_running_at_deadline_fails(self):
         process = mock.Mock()
         process.poll.return_value = None
@@ -206,19 +305,39 @@ class AdopterProofTests(unittest.TestCase):
             self.assertEqual("bootstrap-did-not-exit", error.exception.code)
             process.terminate.assert_called_once()
 
+    def _simulate(self, stack: ExitStack, responses: list[bool | Exception],
+                  restored_error: Exception | None = None, run_error: Exception | None = None):
+        sdk_policies = []
+
+        def runtime(_dotnet, _selected, cwd):
+            sdk_policies.append(json.loads((cwd.parent / "global.json").read_text(encoding="utf-8")))
+            return {"dotnet_sdk": "10.0.401", "netcore": "10.0.12", "aspnetcore": "10.0.12"}
+
+        stack.enter_context(mock.patch.object(proof, "verify_packages", return_value=fake_hashes()))
+        stack.enter_context(mock.patch.object(proof, "verify_restored_packages", side_effect=restored_error))
+        stack.enter_context(mock.patch.object(proof, "verify_runtime", side_effect=runtime))
+        stack.enter_context(mock.patch.object(proof, "pin_host_runtime"))
+        run = stack.enter_context(mock.patch.object(proof.subprocess, "run", return_value=mock.Mock(returncode=0),
+                                                    side_effect=run_error))
+        launch = stack.enter_context(mock.patch.object(proof, "_start_and_probe", side_effect=responses))
+        return launch, run, sdk_policies
+
     def _run_simulated(self, responses: list[bool | Exception], restored_error: Exception | None = None,
-                       run_error: Exception | None = None):
+                       run_error: Exception | None = None, **overrides):
         with tempfile.TemporaryDirectory() as temporary, ExitStack() as stack:
-            stack.enter_context(mock.patch.object(proof, "verify_packages", return_value=fake_hashes()))
-            stack.enter_context(mock.patch.object(proof, "verify_restored_packages", side_effect=restored_error))
-            stack.enter_context(mock.patch.object(proof, "verify_runtime", return_value={
-                "dotnet_sdk": "10.0.401", "netcore": "10.0.12", "aspnetcore": "10.0.12"}))
-            stack.enter_context(mock.patch.object(proof, "pin_host_runtime"))
-            run = stack.enter_context(mock.patch.object(proof.subprocess, "run", return_value=mock.Mock(returncode=0),
-                                                        side_effect=run_error))
-            launch = stack.enter_context(mock.patch.object(proof, "_start_and_probe", side_effect=responses))
-            result = proof.execute(args(temporary))
+            launch, run, _ = self._simulate(stack, responses, restored_error, run_error)
+            namespace = args(temporary)
+            vars(namespace).update(overrides)
+            result = proof.execute(namespace)
             return result, launch.call_args_list, run.call_args_list
+
+    def test_copied_fixture_is_pinned_to_the_stable_net10_sdk_band(self):
+        with tempfile.TemporaryDirectory() as temporary, ExitStack() as stack:
+            _, _, sdk_policies = self._simulate(stack, [True] * 5)
+            self.assertEqual("pass", proof.execute(args(temporary))["result"])
+        self.assertEqual([proof.SDK_POLICY], sdk_policies)
+        self.assertEqual({"version": "10.0.100", "rollForward": "latestFeature", "allowPrerelease": False},
+                         sdk_policies[0]["sdk"])
 
     def test_restored_mismatch_publishes_no_archive_hashes(self):
         result, calls, _ = self._run_simulated([], proof.ProofError("restored-package-mismatch"))
@@ -241,6 +360,13 @@ class AdopterProofTests(unittest.TestCase):
         self.assertFalse(result["assertions"]["projection_rendered"])
         self.assertEqual(2, len(calls))
 
+    def test_missing_command_render_assertion_fails(self):
+        result, calls, _ = self._run_simulated([True, False])
+        self.assertEqual("render-assertion-missing", result["failure"])
+        self.assertTrue(result["assertions"]["projection_rendered"])
+        self.assertFalse(result["assertions"]["command_rendered"])
+        self.assertEqual(2, len(calls))
+
     def test_bootstrap_failure_is_not_recorded_as_pass(self):
         result, calls, _ = self._run_simulated([True, True, proof.ProofError("bootstrap-diagnostic-missing")])
         self.assertEqual("bootstrap-diagnostic-missing", result["failure"])
@@ -252,32 +378,44 @@ class AdopterProofTests(unittest.TestCase):
         self.assertEqual("empty-registry-render-missing", result["failure"])
         self.assertFalse(result["assertions"]["empty_registry_rendered"])
         self.assertEqual("empty", calls[-1].args[4])
-        passed, _, _ = self._run_simulated([True, True, True, True, True])
+        passed, calls, _ = self._run_simulated([True, True, True, True, True])
         self.assertEqual("pass", passed["result"])
         self.assertTrue(all(passed["assertions"].values()))
+        self.assertEqual([
+            ("three-call", "/proof/proof-projection", proof.PROJECTION_FRAGMENTS),
+            ("three-call", "/commands/Proof/CreateProofCommand", ("fc-command-form", "Proof label")),
+            ("missing-quickstart", "/", ()),
+            ("misordered", "/", ()),
+            ("empty", "/", ("fc-home-empty-no-microservices",)),
+        ], [(call.args[4], call.args[5], call.args[6] if len(call.args) > 6 else ()) for call in calls])
 
     def test_result_is_allowlisted_and_redacted(self):
-        with tempfile.TemporaryDirectory() as temporary:
+        with tempfile.TemporaryDirectory() as temporary, ExitStack() as stack:
+            self._simulate(stack, [True, True, True, True, True])
             output = Path(temporary) / "result.json"
-            expected, _, _ = self._run_simulated([True, True, True, True, True])
-            with mock.patch.object(proof, "execute", return_value=expected):
-                self.assertEqual(0, proof.main([
-                    "--candidate-sha", CANDIDATE, "--package-version", VERSION,
-                    "--package-source", temporary, "--runtime-version", "10.0.12",
-                    "--eventstore-endpoint", "https://token-secret.example.invalid/tenant-private",
-                    "--result", str(output)]))
+            source = Path(temporary) / "private-machine-feed"
+            self.assertEqual(0, proof.main([
+                "--candidate-sha", CANDIDATE, "--package-version", VERSION,
+                "--package-source", str(source), "--runtime-version", "10.0.12",
+                "--eventstore-endpoint", "https://token-secret.example.invalid/tenant-private",
+                "--result", str(output)]))
             serialized = output.read_text(encoding="utf-8")
+            result = json.loads(serialized)
             self.assertEqual({"schema", "execution_date", "candidate_sha", "package_identity",
-                              "runtime_identity", "surfaces", "assertions", "result", "failure"},
-                             set(json.loads(serialized)))
-            self.assertEqual("ProofProjectionView@/proof/proof-projection",
-                             json.loads(serialized)["surfaces"]["projection"])
-            identity = json.loads(serialized)["package_identity"]
+                              "runtime_identity", "surfaces", "assertions", "result", "failure"}, set(result))
+            self.assertEqual({"version", "ids", "archive_sha512", "verified"}, set(result["package_identity"]))
+            self.assertEqual({"dotnet_sdk", "netcore", "aspnetcore"}, set(result["runtime_identity"]))
+            self.assertEqual({"projection", "command"}, set(result["surfaces"]))
+            self.assertEqual({"projection_rendered", "command_rendered", "bootstrap_rejected",
+                              "empty_registry_rendered"}, set(result["assertions"]))
+            self.assertEqual("ProofProjectionView@/proof/proof-projection", result["surfaces"]["projection"])
+            identity = result["package_identity"]
             self.assertTrue(identity["verified"])
             self.assertEqual(fake_hashes(), identity["archive_sha512"])
             for encoded in identity["archive_sha512"].values():
                 self.assertEqual(64, len(base64.b64decode(encoded, validate=True)))
-            for private in (temporary, "token-secret", "tenant-private", "Traceback", "payload"):
+            for private in (temporary, "private-machine-feed", "token-secret", "tenant-private",
+                            "Traceback", "payload"):
                 self.assertNotIn(private, serialized)
 
 

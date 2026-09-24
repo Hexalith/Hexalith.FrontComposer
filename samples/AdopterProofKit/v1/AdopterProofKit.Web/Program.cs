@@ -1,10 +1,13 @@
 using AdopterProofKit.Domain;
+using AdopterProofKit.Web;
 
+using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services;
 
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -56,6 +59,9 @@ if (mode == "three-call"
         "Adopter proof requires AddHexalithEventStore(...) to register real command and query services before host build.");
 }
 
+// The Shell renders nothing without a validated tenant and user scope. Replace the fail-closed
+// default through the adopter seam with a fixed, non-synthetic identity; demo tenants stay refused.
+builder.Services.Replace(ServiceDescriptor.Scoped<IUserContextAccessor, ProofUserContextAccessor>());
 builder.Services.Configure<FcShellOptions>(options => options.AllowDemoTenantContext = false);
 
 WebApplication app = builder.Build();

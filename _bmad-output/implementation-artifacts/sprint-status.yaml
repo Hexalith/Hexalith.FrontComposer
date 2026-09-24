@@ -1,5 +1,5 @@
 # generated: 07-05-2026 17:13
-# last_updated: 2026-09-24 (Story 12.1 review)
+# last_updated: 2026-09-24 (Story 12.1 code review done)
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -46,7 +46,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 09-24-2026 00:19
+last_updated: 09-24-2026 11:57
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -189,7 +189,7 @@ development_status:
   epic-11-retrospective: done
 
   epic-12: in-progress
-  12-1-i-adopt-kit-1-publish-a-deterministic-three-call-adopter-pro: review
+  12-1-i-adopt-kit-1-publish-a-deterministic-three-call-adopter-pro: done
   12-2-a-adopt-app-1-conditional-select-a-substitute-adopter: backlog
   epic-12-retrospective: optional
 

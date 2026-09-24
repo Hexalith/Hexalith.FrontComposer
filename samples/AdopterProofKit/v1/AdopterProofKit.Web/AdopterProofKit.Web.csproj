@@ -8,7 +8,5 @@
   <ItemGroup>
     <ProjectReference Include="../AdopterProofKit.Domain/AdopterProofKit.Domain.csproj" />
     <PackageReference Include="Hexalith.FrontComposer.Shell" Version="$(FrontComposerPackageVersion)" />
-    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" Version="5.0.0-rc.5-26219.1" />
-    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="5.0.0-rc.5-26219.1" />
   </ItemGroup>
 </Project>

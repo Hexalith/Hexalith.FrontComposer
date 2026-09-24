@@ -9836,3 +9836,13 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-1-ten-scope-1-prove-tenant-safe-operator-state-end-to-end.md`
   summary: Run the live two-tenant EventStore adapter proof in a blocking CI lane backed by a maintained two-tenant fixture.
   evidence: The test intentionally skips without seven environment values, the blocking quality lane excludes its Performance trait, and the Performance lane is advisory; a later adapter regression would not fail normal CI.
+
+## Deferred from: code review of spec-12-1-i-adopter-proof-kit.md (2026-09-24, round 2)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-1-ten-scope-1-prove-tenant-safe-operator-state-end-to-end.md`
+  summary: Add an XML summary for `FcScopeBlocked` (or baseline it) so docs validation passes.
+  evidence: `pwsh eng/validate-docs.ps1` on 2026-09-24 fails with 1 issue: API reference item `Hexalith.FrontComposer.Shell.Components.Rendering.FcScopeBlocked` is missing a summary and is not in `docs/validation/api-summary-baseline.txt`; the component was introduced by `fc680685` (Story 13.1).
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-1-ten-scope-1-prove-tenant-safe-operator-state-end-to-end.md`
+  summary: Document that Quickstart hosts must supply a tenant and user through `IUserContextAccessor` or the authentication bridge, or every page shows the scope-blocked state.
+  evidence: Since `fc680685`, `FrontComposerShell.razor` renders `@ChildContent` only while `ScopeBoundary.IsCurrent`; the default `NullUserContextAccessor` blocks all Shell content, including the empty-registry home. The Story 12.1 adopter kit needed `ProofUserContextAccessor` to pass; the Shell reference docs still present bare `AddHexalithFrontComposerQuickstart()` as sufficient.
