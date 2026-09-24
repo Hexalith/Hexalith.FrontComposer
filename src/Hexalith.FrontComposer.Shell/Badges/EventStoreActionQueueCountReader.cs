@@ -45,6 +45,21 @@ public sealed class EventStoreActionQueueCountReader : IActionQueueCountReader {
     private readonly IFrontComposerTenantContextAccessor? _tenantContext;
 
     /// <summary>
+    /// Initializes a new instance of the <see cref="EventStoreActionQueueCountReader"/> class without a
+    /// tenant context accessor. Kept for binary compatibility with 4.4 callers; scope then resolves
+    /// from <paramref name="userContext"/> with demo tenants refused, so a missing scope still fails closed.
+    /// </summary>
+    /// <param name="queryService">The EventStore query service.</param>
+    /// <param name="userContext">The current user context.</param>
+    /// <param name="logger">The logger.</param>
+    public EventStoreActionQueueCountReader(
+        IQueryService queryService,
+        IUserContextAccessor userContext,
+        ILogger<EventStoreActionQueueCountReader> logger)
+        : this(queryService, userContext, logger, tenantContext: null) {
+    }
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="EventStoreActionQueueCountReader"/> class.
     /// </summary>
     public EventStoreActionQueueCountReader(

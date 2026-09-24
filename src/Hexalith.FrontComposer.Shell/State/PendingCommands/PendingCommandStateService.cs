@@ -42,6 +42,25 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
         : this(options, lifecycle, userContext: null, time, logger) {
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="PendingCommandStateService"/> class without a validated
+    /// pending scope. Kept for binary compatibility with 4.4 callers; the scope boundary then uses
+    /// <paramref name="userContext"/> and still fails closed when it is missing.
+    /// </summary>
+    /// <param name="options">The Shell options.</param>
+    /// <param name="lifecycle">The lifecycle state service.</param>
+    /// <param name="userContext">The current user context, if any.</param>
+    /// <param name="time">The time provider, or <see langword="null"/> for the system clock.</param>
+    /// <param name="logger">The logger, if any.</param>
+    public PendingCommandStateService(
+        IOptions<FcShellOptions> options,
+        ILifecycleStateService lifecycle,
+        IUserContextAccessor? userContext,
+        TimeProvider? time,
+        ILogger<PendingCommandStateService>? logger)
+        : this(options, lifecycle, userContext, time, logger, validatedScope: null) {
+    }
+
     public PendingCommandStateService(
         IOptions<FcShellOptions> options,
         ILifecycleStateService lifecycle,

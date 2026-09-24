@@ -14,6 +14,17 @@ public sealed class CommandExecutionAdmissionGate(
     private CommandExecutionAdmissionMetadata? _currentAdmission;
     private long _nextAdmissionId;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CommandExecutionAdmissionGate"/> class without a
+    /// validated pending scope. Kept for binary compatibility with 4.4 callers; admission then requires
+    /// the pending-command state service to report an available scope, so it still fails closed.
+    /// </summary>
+    /// <param name="pendingCommandState">The pending-command state service.</param>
+    /// <param name="timeProvider">The time provider, or <see langword="null"/> for the system clock.</param>
+    public CommandExecutionAdmissionGate(IPendingCommandStateService pendingCommandState, TimeProvider? timeProvider)
+        : this(pendingCommandState, timeProvider, validatedScope: null) {
+    }
+
     /// <inheritdoc />
     public CommandExecutionAdmission TryAcquire(CommandExecutionAdmissionRequest request) {
         ArgumentNullException.ThrowIfNull(request);

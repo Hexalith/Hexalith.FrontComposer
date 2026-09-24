@@ -24,6 +24,23 @@ public sealed class EventStorePendingCommandStatusQuery(
     private const string StatusEndpointPrefix = "/api/v1/commands/status/";
     private const int MaxStatusTextLength = 512;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="EventStorePendingCommandStatusQuery"/> class without a
+    /// tenant context accessor. Kept for binary compatibility with 4.4 callers; every status query then
+    /// fails closed as a missing tenant.
+    /// </summary>
+    /// <param name="httpClientFactory">The HTTP client factory.</param>
+    /// <param name="options">The EventStore options.</param>
+    /// <param name="classifier">The EventStore response classifier.</param>
+    /// <param name="logger">The logger.</param>
+    public EventStorePendingCommandStatusQuery(
+        IHttpClientFactory httpClientFactory,
+        IOptions<EventStoreOptions> options,
+        EventStoreResponseClassifier classifier,
+        ILogger<EventStorePendingCommandStatusQuery> logger)
+        : this(httpClientFactory, options, classifier, logger, tenantContextAccessor: null) {
+    }
+
     /// <inheritdoc />
     public async ValueTask<PendingCommandOutcomeObservation?> QueryAsync(
         PendingCommandEntry pendingCommand,
