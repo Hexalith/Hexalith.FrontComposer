@@ -2,7 +2,7 @@
 title: 'Story 13.1: [I · TEN-SCOPE-1] Prove Tenant-Safe Operator State End to End'
 type: 'feature'
 created: '2026-09-23'
-status: 'done'
+status: 'in-progress'
 route: 'dispatch'
 story_id: '13.1'
 baseline_commit: '3008cf194f859219e2fb64c67bc04fc1441c5e87'
@@ -149,6 +149,59 @@ Code review 2026-09-26 (pass 2; diff `fc680685` + `85acdf6d` on the same paths; 
 - low — `TenantContextBlocked` logged on every blocked render: few renders happen while blocked.
 - low — the Epic9 release-gate harness and the `FatalExceptionGuard` count 45→48 without itemization.
 - rejected (spec edit) — AC4 "existing tests pass unchanged" contradicted by the Register-without-scope inversion that task 4 mandates.
+
+### Review Findings (pass 6)
+
+Code review 2026-09-26 (pass 6; diff `65fe7301` without `_bmad-output`: 67 files, +1358/−150; layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor; all four completed).
+
+- [ ] [Review][Patch] (high) The generated form reads `dispatchScope` only after the admission awaits (`InvokeAsync(StateHasChanged)`, target resolution). An A→B switch in that window dispatches A's model under B, and `Register` accepts it because `OriginScope` is B. Capture the validated scope before `TryAcquire`, compare it with the scope at dispatch, and cancel with the scope-unavailable warning on mismatch [src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs:1159]
+- [ ] [Review][Patch] (medium) `PendingCommandStateService` now runs lifecycle subscribers under `_gate`. `Register` calls `EnforceScopeBoundary()` inside the lock, which reaches `CompleteClear` (NeedsReview transitions and `NotifyChanged`). `TryDispatchTerminalLifecycle` calls `_lifecycle.Transition`, and so the generated bridge's `Dispatcher.Dispatch`, inside the lock. Both break `CompleteClear`'s "OUTSIDE the gate" rule. Enforce the boundary before taking the lock and re-check the snapshot inside it. For the terminal, check currency under the lock but transition outside it, guarded by a lifecycle scope generation captured under the lock, so the pass-4 Edge 3 race stays closed [src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandStateService.cs:101]
+- [ ] [Review][Patch] (medium) The generated `On{Type}Loaded`/`LoadFailed` reducers drop any direct result whose correlation differs from the last `LoadRequested`, even with no scope change, because `ActiveCorrelationId` is never cleared. Task 9 says "Keep direct pre-transition loads working". Enforce correlation matching only after a `ScopeChangedAction` (for example, set `ActiveCorrelationId` only while in post-transition mode) [src/Hexalith.FrontComposer.SourceTools/Emitters/FluxorActionsEmitter.cs:100]
+- [ ] [Review][Patch] (medium) The post-transition contract for generated projections is undocumented. After `ScopeChangedAction`, a `LoadedAction` is ignored until a `LoadRequestedAction` is dispatched first, so a Loaded-only adopter silently shows an empty grid after the first tenant switch. Document it in the generated action/reducer XML docs and in `docs/how-to/test-generated-components.md` [src/Hexalith.FrontComposer.SourceTools/Emitters/FluxorActionsEmitter.cs:100]
+- [ ] [Review][Patch] (medium) The generated-view missing-scope, `RenderContext` user-mismatch, and same-user wrong-tenant render tests do not exist, although pass-2 patch 6 and loop-1 task 10 are ticked. The only generated `fc-scope-blocked` assertion is the throwing-accessor case. Add the three cases and assert that seeded rows stay hidden [tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs:100]
+- [ ] [Review][Patch] (medium) Task 14 requires a test that the catch-up producer works after reset. Only the page producer (`CounterPage_AfterScopeReset_CurrentTenantCanSeedAgain`) and the delayed-A drop are covered. Add a B catch-up after `ScopeChangedAction` that asserts rows materialize [tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs:237]
+- [ ] [Review][Patch] (medium) `CounterCatchUp_DelayedPriorTenantCreate_IsDroppedAfterSwitch` waits a real 5.2 s against a 5 s delay, then asserts `Items` is null. On a slow runner it passes before the materialize step runs, which breaks the Epic 13 fake-time rule. Make `ProjectionDelay` deterministic, or wait on a signal that the step completed [tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs:79]
+- [ ] [Review][Patch] (medium) The `ScopeBoundaryService` → `LifecycleStateService.ResetScope()` wiring is untested: every boundary test uses an empty provider, so the `is LifecycleStateService` branch never runs. Add an A→B case with a real lifecycle service that asserts `GetActiveCorrelationIds()` is empty and the old ID is `Idle` [src/Hexalith.FrontComposer.Shell/Services/ScopeBoundaryService.cs:94]
+- [ ] [Review][Patch] (medium) `BadgeCountService.ResetScope` clearing `_initializeTask`/`_initializeScope` is unpinned for a same-scope return. With A's fetch in flight, run `ResetScope()` and then `InitializeAsync()` under A, and assert the lane is registered a second time and a fresh task is returned [src/Hexalith.FrontComposer.Shell/Badges/BadgeCountService.cs:121]
+- [ ] [Review][Patch] (medium) The `OriginScopeGeneration` guard on `LoadPageNotModifiedAction` is untested; only the success path is covered. Add a reducer case, and a scheduler stamp case, where a prior-generation 304 leaves B's pending completion unresolved [src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadedPageReducers.cs:185]
+- [ ] [Review][Patch] (medium) The generated form's dispatch-scope capture and `OriginScope`/`RequireOriginScope` are covered only by snapshots. Add a held scripted `ICommandService` test: submit under A, switch to B, release acceptance, then assert no pending entry and that the skip path was logged [src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs:1158]
+- [ ] [Review][Patch] (medium) There is no test for a held terminal dispatch across A→B (task 11). Add a `Changed` handler that clears during `ResolveTerminal` and asserts no lifecycle transition for the cleared entry [src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandStateService.cs:613]
+- [ ] [Review][Patch] (medium) The generated `LoadFailed` guard is checked only as source text. Extend `CounterProjectionReducer_LatePriorScopeResultIsDiscarded` with a late A `LoadFailed` after scope change, and a mismatched-correlation `LoadFailed` after B's request [src/Hexalith.FrontComposer.SourceTools/Emitters/FluxorActionsEmitter.cs:108]
+- [ ] [Review][Patch] (low) `TryDispatchTerminalLifecycle` uses `ReferenceEquals`. A concurrent duplicate terminal observation replaces the record (it bumps `DuplicateTerminalObservations`), so the first resolver returns a spurious `LifecycleDispatchFailed` and waits for polling convergence. Compare `MessageId` and `Status` instead [src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandStateService.cs:615]
+- [ ] [Review][Patch] (low) `ThemeEffects.HandleScopeChanged` has no catch, so a `SetThemeAsync` interop failure during a scope change becomes an unhandled Fluxor effect exception. Catch nonfatal exceptions and log `ThemePersistenceFailed` [src/Hexalith.FrontComposer.Shell/State/Theme/ThemeEffects.cs:46]
+- [ ] [Review][Patch] (low) `HandleScopeChanged` hard-codes `ThemeMode.Light`, a second copy of the `ReduceScopeChanged` default. Map from the reduced state instead [src/Hexalith.FrontComposer.Shell/State/Theme/ThemeEffects.cs:49]
+- [ ] [Review][Patch] (low) `FrontComposerShell.OnScopeChanged` writes `_sessionRestoreAttempted` and `_initialRenderUri` on the auth-callback thread, racing `TryRestoreSession`. Move both assignments into the `InvokeAsync` callback [src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor.cs:487]
+- [ ] [Review][Patch] (low) A stale comment in `DispatchProjection` says dispatching a load request "would also trigger the demo seed effect", but the code now dispatches one and no such effect exists [samples/Counter/Counter.Web/Components/Pages/CounterCommandProjectionCatchUp.razor:136]
+- [ ] [Review][Patch] (low; triage spot-check) Pass-2 patches 14 and 15 are ticked but absent from HEAD. The "accepted command can still be registered" comment remains [src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandStateService.cs:704], and so does the empty `OnInitializedAsync` override with its CA2007 suppression [src/Hexalith.FrontComposer.Shell/Components/Home/FcHomeDirectory.razor.cs:62]
+- [x] [Review][Defer] Late prior-scope `LoadRequestedAction` after `ScopeChangedAction` clears `RequiresScopedRequest`, so its matching `Loaded` repopulates B [src/Hexalith.FrontComposer.SourceTools/Emitters/FluxorActionsEmitter.cs:91] — deferred: maybe-false, high if true. Carried from pass-5 Blind 5 (already in deferred-work). A generated adopter that emits a delayed prior-scope request/result pair after B's reset would settle it.
+- [x] [Review][Defer] The async Light apply in `ThemeEffects.HandleScopeChanged` can finish after B's hydrated `ThemeChangedAction` apply, leaving Light on screen while B's state is Dark [src/Hexalith.FrontComposer.Shell/State/Theme/ThemeEffects.cs:46] — deferred: maybe-false, medium if true. Carried from pass-4 Edge 4. A controlled out-of-order `SetThemeAsync` completion with the production Fluent theme service would settle it.
+
+**Rejected (pass 6):**
+- false — Blind 8, unused `ScopeGeneration` cascade: the `CascadingValue` is the markup-free keyed wrapper that carries `@key`, and the name is incidental.
+- false — Blind 9a / Edge 9, custom `RefreshAsync` lanes bypass the generation: custom lanes (badges) dispatch no page actions, and their counts are scope-checked by `BadgeCountService`.
+- false — Edge 8, A lane refreshed after `ScopeChanged` takes B's generation: the lane carries `RenderContext.TenantId` (A), so `EventStoreQueryClient` rejects the requested-A-under-current-B mismatch before HTTP.
+- false — Blind 11a / Edge 17, scope-null `OperationCanceledException` gives no feedback: scope loss renders `FcScopeBlocked` in place of the keyed form subtree.
+- false — Edge 11, Counter `IsLoading` stuck when revalidation fails between request and result: a failed revalidation means the accessor changed, and the boundary's following `ScopeChangedAction` resets `IsLoading`.
+- false — Blind 13a, emitted fatal filter diverges from `ExceptionGuard`: the emitted list is identical, `ExceptionGuard` is internal to Shell, and the bridge emitter already uses the same list.
+- false — Blind 14, snapshots were stale: this commit is the refresh, and the snapshots now match the emitter.
+- false — Edge 4, a pending newer auth event leaves prior content rendering: `IsCurrent` compares the live accessor with the snapshot, so a changed principal renders blocked.
+- maybe-false/low — Blind 9b, a stale-generation result still records validator ETag state: it matters only for a same-tenant user switch with overlapping lane registrations, and at worst skips one fallback refresh.
+- low — Blind 4, `UpdateCount` holds both badge locks during accessor/observer calls: observers marshal via `InvokeAsync`, so the cost is performance only and the fix is a restructure.
+- low — Blind 5, the deadlock test only checks for no hang: that is its purpose, and isolation is covered by `ScopeSwitch_ReplacesInFlightFetchAndRegistersNewTenantLane`.
+- low — Blind 7b, `Generation` is a non-volatile `int`: a stale read delays the remount only until the `Changed`-driven render.
+- low — Blind 10, the scope-currency check is duplicated across effects: a refactor with no observed divergence.
+- low — Blind 12a / Edge 13, Counter pending dictionaries leak on rejection: sample-only, and the pattern is pre-existing for increment/batch.
+- low — Blind 12b / Edge 14, Counter confirmations without a pending entry are dropped: admission denies submission without scope, and other circuits' confirmations never reach this effects instance.
+- low — Edge 12, the Counter sample accessor throws: the Shell accessor's `TryGetContext` is a try-pattern, so this needs an adopter fault.
+- low — Blind 13b / Auditor 10, the render guards swallow accessor exceptions without logging: fixing it needs logger injection into generated components.
+- low — Blind 15c, the queued-subscribe test doesn't assert that no Pending entry remains: test tightening only.
+- low — Blind 15d, no test proves B hydration completes after A's drop: the B path is exercised by the existing hydration tests.
+- low — Auditor 3, late non-terminal bridge observations add A correlation IDs to B's lifecycle index: only IDs of the disposed A form, and nothing in B binds them.
+- low — Auditor 8, the registration test is sequential rather than interleaved: the scenario is covered, and the atomicity is a single lock scope.
+- low — Auditor 11, the shell re-arms restore on A→none and none→A: harmless because `ScopeChangedAction` resets route hydration (the thread-safety part is patched above).
+- low — Edge 18, an old-scope `PaletteHydratingAction` lands after the reset: this needs a scope change between two synchronous statements, and the fix needs versioning.
+- low — Edge 19, the stale badge fetch is not cancelled on A→none→A: the stale fetch has the same tenant/user, so at worst an older same-scope count is shown.
+- low — Edge 20, lifecycle `Subscribe` races `ResetScope`: the only affected subscriber is the old-scope component that owns the correlation.
 
 ## Implementation Notes
 

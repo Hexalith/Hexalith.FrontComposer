@@ -9872,3 +9872,9 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-1-ten-scope-1-prove-tenant-safe-operator-state-end-to-end.md`
   summary: Counter MCP sample authorization may reject its API-key-only requests.
   evidence: MapFrontComposerMcp requires ASP.NET authorization, while the Development sample configures an MCP API key without an ASP.NET authentication scheme; this is intervening MCP work excluded from Story 13.1.
+
+## Deferred from: code review of spec-13-1-ten-scope-1-prove-tenant-safe-operator-state-end-to-end.md (2026-09-26, pass 6)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-1-ten-scope-1-prove-tenant-safe-operator-state-end-to-end.md`
+  summary: Confirm whether the Light theme applied on `ScopeChangedAction` can finish after the new scope's hydrated theme apply and override it on screen.
+  evidence: unverified (medium if true). `ThemeEffects.HandleScopeChanged` (`ThemeEffects.cs:46`) and the hydrated `HandleThemeChanged` both call `IThemeService.SetThemeAsync` without ordering, so overlapping calls could leave Light on screen while B's state and stored preference are Dark. Carried from pass-4 Edge 4. Settle it with a controlled out-of-order `SetThemeAsync` completion against the production Fluent theme service.
