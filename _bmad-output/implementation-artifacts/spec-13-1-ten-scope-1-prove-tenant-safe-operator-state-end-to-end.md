@@ -2,7 +2,7 @@
 title: 'Story 13.1: [I · TEN-SCOPE-1] Prove Tenant-Safe Operator State End to End'
 type: 'feature'
 created: '2026-09-23'
-status: 'done'
+status: 'in-progress'
 route: 'dispatch'
 story_id: '13.1'
 baseline_commit: '3008cf194f859219e2fb64c67bc04fc1441c5e87'
@@ -77,6 +77,57 @@ context:
 - Given absent, invalid, mismatched, or stale identity, when any scoped operation would run, then it fails closed before prior-scope data can render and the operator sees an explicit blocking state.
 - Given a prior-scope SignalR group or persisted preference, when tenant or user changes, then the group is left or Blocked and old state is cleared before the next scope renders; storage uses `StorageKeys` or is skipped with HFC2105.
 - Given the existing focused tests, when this story is verified, then they pass unchanged plus the minimum new scenarios, and no output contains tenant payloads, tokens, JWTs, stack traces, or PII.
+
+### Review Findings
+
+Code review 2026-09-26 (pass 2; diff `fc680685` + `85acdf6d` on the same paths; layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor).
+
+- [ ] [Review][Patch] Generated projection `{Type}State.Items` survives an A→B switch (high; decision resolved 2026-09-26: reset only). Emit an `On{Type}ScopeChanged` reducer on `ScopeChangedAction` returning `new(IsLoading: false, Items: null, Error: null)`. Do not auto-dispatch `LoadRequested`: adopters own loading, and an unhandled request would leave the view loading forever. Grids reload through the D2 remount [src/Hexalith.FrontComposer.SourceTools/Emitters/FluxorActionsEmitter.cs:80]
+- [ ] [Review][Patch] Component-local prior-scope state (the `FcProjectionSubtitle` count, connection and pending summaries, adopter components) survives A→B because the shell never unmounts `ChildContent` (medium; decision resolved 2026-09-26: `@key` remount). Add an `internal int Generation` to `ScopeBoundaryService`, incremented on every transition, and wrap the current-scope branch in a markup-free internal component keyed by it, so the subtree is rebuilt in the same render. No `IBadgeCountService` contract change [src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor:152]
+- [ ] [Review][Patch] RazorEmitter Verify snapshots were not refreshed for the new tenant-accessor inject and scope guard, so 6/17 `RazorEmitterTests` and 8/16 `RoleSpecificProjectionApprovalTests` fail (re-run locally by the Verification Gap layer; no `*.verified.txt` contains `TenantContextAccessor`). This is currently masked because main's Quality run fails earlier at Gate 2b [src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs:116]
+- [ ] [Review][Patch] Theme preference stays visually applied after a scope change: `ReduceScopeChanged` resets the state to Light, but the theme is pushed to `IThemeService` only on the shell's first render and in `HandleThemeChanged`. On A→none, or A→B where B has no stored theme, A's Dark theme remains on screen. Add an effect on `ScopeChangedAction` that applies the reset theme [src/Hexalith.FrontComposer.Shell/State/Theme/ThemeReducers.cs:10]
+- [ ] [Review][Patch] The live proof's SignalR isolation assertions can't catch a wrong-group join: the handler increments `_nudgeCount` only when `observedTenant == _tenant`, so an A-scoped service that joined B's group raises `ProjectionChangedForTenant(…, B)` and is silently dropped. Count every `counter-projection` nudge and assert its tenant separately [tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/LiveTwoTenantProductionAdapterTests.cs:143]
+- [ ] [Review][Patch] Generated projection scope guard has no behavioral test: `GeneratedComponentTestBase` always registers a succeeding `TestTenantContextAccessor`. Add missing-scope and `RenderContext`-user-mismatch cases that assert `fc-scope-blocked` and no rows [tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedComponentTestBase.cs:142]
+- [ ] [Review][Patch] The `ScopeBoundaryService` orchestration never runs against real collaborators: the tests use substitutes and an empty provider, so the `is ScopeReadinessGate` / `is CommandExecutionAdmissionGate` / `is BadgeCountService` / `GetService<ProjectionSubscriptionService>` branches are unexercised. Add a DI-resolved A→B case that asserts `StorageReadyAction` is re-dispatched, admission is released, counts reset and re-seed, and the A group is blocked or left [src/Hexalith.FrontComposer.Shell/Services/ScopeBoundaryService.cs:83]
+- [ ] [Review][Patch] Shell re-render on an in-circuit scope change is untested: only the always-null first render is covered. Add a valid→cleared + `AuthenticationStateChanged` bUnit case asserting `ChildContent` is replaced by `fc-scope-blocked` [src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor.cs:475]
+- [ ] [Review][Patch] Late-hydration scope re-checks in the Density, Navigation, CommandPalette, CapabilityDiscovery, and DataGridNavigation effects are untested: no test switches scope during `GetAsync`. Mirror `ThemeEffectsScopeTests.HandleThemeChanged_PriorHydrationScope_DoesNotApplyOrPersistUnderB` [src/Hexalith.FrontComposer.Shell/State/Density/DensityEffects.cs:131]
+- [ ] [Review][Patch] `ScopeChangedAction` reducers for Density, CapabilityDiscovery, and DataGridNavigation have no tests. Add reducer cases or extend `ScopeBoundaryFluxorDispatchTests` [src/Hexalith.FrontComposer.Shell/State/Density/DensityReducers.cs:14]
+- [ ] [Review][Patch] `BlockStaleGroupsAsync` promotes a matching Pending or Degraded group to Active via `IsGroupContextCurrent`, so a group never joined on the wire makes later `SubscribeAsync` calls short-circuit. Check `wasPending` and handle the Pending case before calling `IsGroupContextCurrent` [src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/ProjectionSubscriptionService.cs:134]
+- [ ] [Review][Patch] `BadgeCountService.ResetScope` keeps `_initializeTask`/`_initializeScope`, so after B→none→B with B's first fetch still running, `InitializeAsync` returns the stale task and the disposed fallback lanes are never re-registered. Clear both under `_initializeGate` [src/Hexalith.FrontComposer.Shell/Badges/BadgeCountService.cs:122]
+- [ ] [Review][Patch] Generated forms silently drop an accepted command whose `AssociateAccepted` returns `ScopeUnavailable`: it matches neither the registered branch nor the `LogPendingRegistrationSkipped` list [src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs:1285]
+- [ ] [Review][Patch] A stale comment contradicts the fail-closed behavior: the catch says an accepted command "can still be registered", but `EnforceScopeBoundary` now returns false and `Register` returns `ScopeUnavailable` [src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandStateService.cs:689]
+- [ ] [Review][Patch] `FcHomeDirectory.OnInitializedAsync` is now an empty `base` call that still carries the CA2007 suppression justifying logic that moved to `OnParametersSetAsync`. Delete the override [src/Hexalith.FrontComposer.Shell/Components/Home/FcHomeDirectory.razor.cs:61]
+- [x] [Review][Defer] `ScopeBoundaryService` has no recovery if `Start()` captures a null scope or the scope changes without an auth event (the shell stays blocked until reload) [src/Hexalith.FrontComposer.Shell/Services/ScopeBoundaryService.cs:55] — deferred: maybe-false, medium if true. Pass 1 rejected the auth-event variant for the production `ServerCircuitUserContextAccessor`. To settle it, check whether the interactive circuit's first `OnInitialized` can observe an unresolved principal (`CircuitServicesAccessor.Services` unset or a pending auth task) in a real Blazor Server host.
+- [x] [Review][Defer] The `BadgeCountService.Counts`/`TotalActionableItems` getters call `ResetScope()` on a null read, disposing fallback lanes that nothing re-registers when the same scope returns [src/Hexalith.FrontComposer.Shell/Badges/BadgeCountService.cs:134] — deferred: maybe-false, medium if true. To settle it, show a production path where `TryGetContext` returns null transiently while the circuit scope is unchanged (for example a getter read outside the circuit's AsyncLocal flow).
+
+**Rejected (pass 2):**
+- false — the generated-form "existing handlers keyed on full CLR name" deletion claim: the implementation notes record that the gateway rejects CLR names in `projectionType`, so the kebab route is the fix.
+- false — `CounterFixture` breaking NuGet-mode builds: `EventStorePath` comes from `deps.local.props`, and the AppHost, a Debug-only source project, already references `$(EventStorePath)` the same way.
+- false — `LoadedPageReducers.ReduceScopeChanged` purity: `TrySetCanceled` inside reducers is the existing pattern in the same file (lines 69, 232, 250).
+- false — missing PublicAPI baseline: the Shell has only `PublicAPI.FcTbl.Shipped.txt`, and binary compatibility was restored by `85acdf6d`. The `FcScopeBlocked` summary and Quickstart identity docs are already deferred (deferred-work, 12.1 round 2).
+- false — Density `EffectiveDensity` leak on A→B: B's hydrate always dispatches `DensityHydratedAction(stored, resolvedEffective)`. A→none shows the blocked surface.
+- false — `85acdf6d` contradicting "no submodule pointer or approval evidence was changed for this story": that note covers `fc680685`, and `85acdf6d` is a separate commit.
+- false — `aria-live`/focus missing from `FcScopeBlocked`: the frozen spec assigns AM-26 to Story 13.4.
+- false — the live test not being a CI gate: already deferred in pass 1.
+- low — concrete-type resets skipped for adopter-replaced gate, badge, or admission services: a rare replacement, and the fix adds interface surface.
+- low — fire-and-forget tasks and the unfiltered `async void` catch: the inner calls catch their own faults, and a second `SynchronizeCore(null)` is a no-op once `_snapshot` is null.
+- low — fallback paths using `new FcShellOptions()`: reached only when `IFrontComposerTenantContextAccessor` is not registered, and production DI registers it.
+- low — compatibility constructors that fail closed ("binary compat" but inert): deliberate fail-closed defaults for direct 4.4 construction, which is rare.
+- low — kebab `projectionType` collisions for same-named or generic types within one domain.
+- low — the live test's `Category=Performance` trait, integer-only `AssertRedacted` payload, and storage key-only proof: they match the frozen vehicle decision, and the storage key proof was accepted in pass 1.
+- low — test assertion weaknesses (`DispatchCount` checked right after `Submit`, case-insensitive `Contact support`, the vacuous `tenant-a` check, first-render-only surface tests).
+- low — raw `<h1>` inside `FluentCard` and a possible double h1 on a projection-level block.
+- low — realm grants to `tenant-b-user`, fixture `TenantId "*"`, and the AppHost-to-tests `ProjectReference`: local dev topology only.
+- low — `BlockStaleGroupsAsync` duplicating the sync pass, the wrong log event, the `_gate` wait without a token, and disposal-time `ObjectDisposedException` (unobserved, harmless).
+- low — the dead `context?.TenantId ?? tenantId`, per-key HFC2105 noise, the literal `"hydrate"`, the magic reason string, and `using` ordering.
+- low — the `RegisterReconciliationLane` TOCTOU and `ResetScope` disposing while holding `_scopeGate`: a sub-microsecond window, and the lane refresh re-reads the current scope anyway.
+- low — the `Register` TOCTOU with `EnforceScopeBoundary` and `_scopeSnapshot` returned outside the lock: the next enforcement flushes a mis-scoped entry.
+- low — the same-tenant user switch with a failed leave stranding a Blocked group: needs a leave failure during the switch.
+- low — a blocked generated view still registering a fallback lane: the query client rejects it downstream.
+- low — scope denial rendered with `CommandWarningKind.Pending`: pass 1 already patched the text to the blocking message.
+- low — `TenantContextBlocked` logged on every blocked render: few renders happen while blocked.
+- low — the Epic9 release-gate harness and the `FatalExceptionGuard` count 45→48 without itemization.
+- rejected (spec edit) — AC4 "existing tests pass unchanged" contradicted by the Register-without-scope inversion that task 4 mandates.
 
 ## Implementation Notes
 

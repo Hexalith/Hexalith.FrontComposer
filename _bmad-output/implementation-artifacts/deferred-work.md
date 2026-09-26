@@ -9846,3 +9846,13 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-1-ten-scope-1-prove-tenant-safe-operator-state-end-to-end.md`
   summary: Document that Quickstart hosts must supply a tenant and user through `IUserContextAccessor` or the authentication bridge, or every page shows the scope-blocked state.
   evidence: Since `fc680685`, `FrontComposerShell.razor` renders `@ChildContent` only while `ScopeBoundary.IsCurrent`; the default `NullUserContextAccessor` blocks all Shell content, including the empty-registry home. The Story 12.1 adopter kit needed `ProofUserContextAccessor` to pass; the Shell reference docs still present bare `AddHexalithFrontComposerQuickstart()` as sufficient.
+
+## Deferred from: code review of spec-13-1-ten-scope-1-prove-tenant-safe-operator-state-end-to-end.md (2026-09-26, round 2)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-1-ten-scope-1-prove-tenant-safe-operator-state-end-to-end.md`
+  summary: Give `ScopeBoundaryService` a recovery path when `Start()` captures a null scope or the scope changes without an `AuthenticationStateChanged` event; today `IsCurrent` stays false and the shell renders only `fc-scope-blocked` until reload.
+  evidence: unverified (medium if true). `ScopeBoundaryService.cs:55` snapshots once in `Start()` and re-syncs only from the auth event. Round 1 rejected the auth-event variant for `ServerCircuitUserContextAccessor`. Settle it by checking whether the interactive circuit's first `OnInitialized` can see an unresolved principal (unset `CircuitServicesAccessor.Services` or a pending auth task) in a real Blazor Server host.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-1-ten-scope-1-prove-tenant-safe-operator-state-end-to-end.md`
+  summary: Stop the `BadgeCountService.Counts`/`TotalActionableItems` getters from disposing fallback lanes on a transient null scope read, or re-arm `InitializeAsync` when the same scope returns.
+  evidence: unverified (medium if true). `BadgeCountService.cs:134` calls `ResetScope()` from `CurrentScope()` on any null read, and nothing re-registers lanes afterwards. Settle it by showing a production path where `TryGetContext` returns null transiently while the circuit scope is unchanged (for example a read outside the circuit AsyncLocal flow).
