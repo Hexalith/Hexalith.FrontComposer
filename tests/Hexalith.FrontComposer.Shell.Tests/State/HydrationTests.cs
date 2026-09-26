@@ -132,6 +132,94 @@ public sealed class HydrationScopeGenerationRaceTests {
     }
 
     [Fact]
+    public void NavigationHydrated_PriorGeneration_IsIgnoredAfterScopeChange() {
+        FrontComposerNavigationState b = NavigationReducers.ReduceScopeChanged(
+            new FrontComposerNavigationState(false, ImmutableDictionary<string, bool>.Empty, ViewportTier.Desktop),
+            new ScopeChangedAction());
+        NavigationHydratedAction stale = new(true, ImmutableDictionary<string, bool>.Empty.Add("Orders", true)) {
+            OriginScopeGeneration = b.ScopeGeneration - 1,
+        };
+
+        NavigationReducers.ReduceNavigationHydrated(b, stale).ShouldBeSameAs(b);
+        NavigationReducers.ReduceNavigationHydrated(b, stale with { OriginScopeGeneration = null }).ShouldBeSameAs(b);
+        NavigationReducers.ReduceNavigationHydrated(b, stale with { OriginScopeGeneration = b.ScopeGeneration })
+            .SidebarCollapsed.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void LastActiveRouteHydrated_PriorGeneration_IsIgnoredAfterScopeChange() {
+        FrontComposerNavigationState b = NavigationReducers.ReduceScopeChanged(
+            new FrontComposerNavigationState(false, ImmutableDictionary<string, bool>.Empty, ViewportTier.Desktop),
+            new ScopeChangedAction());
+        LastActiveRouteHydratedAction stale = new("/tenant-a/orders") { OriginScopeGeneration = b.ScopeGeneration - 1 };
+
+        NavigationReducers.ReduceLastActiveRouteHydrated(b, stale).ShouldBeSameAs(b);
+        NavigationReducers.ReduceLastActiveRouteHydrated(b, stale with { OriginScopeGeneration = null }).ShouldBeSameAs(b);
+        NavigationReducers.ReduceLastActiveRouteHydrated(b, stale with { OriginScopeGeneration = b.ScopeGeneration })
+            .LastActiveRoute.ShouldBe("/tenant-a/orders");
+    }
+
+    [Fact]
+    public void DensityHydrated_PriorGeneration_IsIgnoredAfterScopeChange() {
+        FrontComposerDensityState b = DensityReducers.ReduceScopeChanged(
+            new FrontComposerDensityState(null, DensityLevel.Comfortable),
+            new ScopeChangedAction());
+        DensityHydratedAction stale = new(DensityLevel.Compact, DensityLevel.Compact) { OriginScopeGeneration = b.ScopeGeneration - 1 };
+
+        DensityReducers.ReduceDensityHydrated(b, stale).ShouldBeSameAs(b);
+        DensityReducers.ReduceDensityHydrated(b, stale with { OriginScopeGeneration = null }).ShouldBeSameAs(b);
+        DensityReducers.ReduceDensityHydrated(b, stale with { OriginScopeGeneration = b.ScopeGeneration })
+            .UserPreference.ShouldBe(DensityLevel.Compact);
+    }
+
+    [Fact]
+    public void GridViewHydrated_PriorGeneration_IsIgnoredAfterScopeChange() {
+        DataGridNavigationState b = DataGridNavigationReducers.ReduceScopeChanged(
+            new DataGridNavigationState(ImmutableDictionary<string, GridViewSnapshot>.Empty, Cap: 50),
+            new ScopeChangedAction());
+        GridViewSnapshot snapshot = new(
+            scrollTop: 0,
+            filters: ImmutableDictionary<string, string>.Empty.Add("Status", "tenant-a"),
+            sortColumn: null, sortDescending: false,
+            expandedRowId: null, selectedRowId: null,
+            capturedAt: DateTimeOffset.UtcNow);
+        GridViewHydratedAction stale = new("Orders.Row", snapshot) { OriginScopeGeneration = b.ScopeGeneration - 1 };
+
+        DataGridNavigationReducers.ReduceGridViewHydrated(b, stale).ShouldBeSameAs(b);
+        DataGridNavigationReducers.ReduceGridViewHydrated(b, stale with { OriginScopeGeneration = null }).ShouldBeSameAs(b);
+        DataGridNavigationReducers.ReduceGridViewHydrated(b, stale with { OriginScopeGeneration = b.ScopeGeneration })
+            .ViewStates.ShouldContainKey("Orders.Row");
+    }
+
+    [Fact]
+    public void PaletteHydrated_PriorGeneration_IsIgnoredAfterScopeChange() {
+        FrontComposerCommandPaletteState b = CommandPaletteReducers.ReduceScopeChanged(
+            new FrontComposerCommandPaletteState(false, string.Empty, [], [], 0, PaletteLoadState.Idle),
+            new ScopeChangedAction());
+        PaletteHydratedAction stale = new(["/tenant-a/orders"]) { OriginScopeGeneration = b.ScopeGeneration - 1 };
+
+        CommandPaletteReducers.ReducePaletteHydrated(b, stale).ShouldBeSameAs(b);
+        CommandPaletteReducers.ReducePaletteHydrated(b, stale with { OriginScopeGeneration = null }).ShouldBeSameAs(b);
+        CommandPaletteReducers.ReducePaletteHydrated(b, stale with { OriginScopeGeneration = b.ScopeGeneration })
+            .RecentRouteUrls.ShouldBe(["/tenant-a/orders"]);
+    }
+
+    [Fact]
+    public void BadgeCountsSeeded_PriorGeneration_IsIgnoredAfterScopeChange() {
+        FrontComposerCapabilityDiscoveryState b = CapabilityDiscoveryReducers.ReduceScopeChanged(
+            FrontComposerCapabilityDiscoveryState.Empty,
+            new ScopeChangedAction());
+        BadgeCountsSeededAction stale = new(ImmutableDictionary<Type, int>.Empty.Add(typeof(EmptyCatalog), 7)) {
+            OriginScopeGeneration = b.ScopeGeneration - 1,
+        };
+
+        CapabilityDiscoveryReducers.ReduceBadgeCountsSeeded(b, stale).ShouldBeSameAs(b);
+        CapabilityDiscoveryReducers.ReduceBadgeCountsSeeded(b, stale with { OriginScopeGeneration = null }).ShouldBeSameAs(b);
+        CapabilityDiscoveryReducers.ReduceBadgeCountsSeeded(b, stale with { OriginScopeGeneration = b.ScopeGeneration })
+            .Counts[typeof(EmptyCatalog)].ShouldBe(7);
+    }
+
+    [Fact]
     public async Task CapabilityDiscovery_BoundaryAtHydratedDispatch_DropsAAndAcceptsB() {
         string tenant = "a";
         InMemoryStorageService storage = new();

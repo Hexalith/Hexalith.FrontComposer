@@ -122,6 +122,32 @@ public sealed class ScopeTransitionShellTests : LayoutComponentTestBase {
         cut.WaitForAssertion(() => cut.Find("#fc-main-content [data-testid='fc-scope-blocked']"));
     }
 
+    [Fact]
+    public void ScopeLoss_WithManifests_HidesNavigation() {
+        string? tenant = "tenant-a";
+        string? user = "user-a";
+        IUserContextAccessor identity = Substitute.For<IUserContextAccessor>();
+        identity.TenantId.Returns(_ => tenant);
+        identity.UserId.Returns(_ => user);
+        Services.Replace(ServiceDescriptor.Scoped<IUserContextAccessor>(_ => identity));
+        IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
+        registry.GetManifests().Returns([
+            new DomainManifest("Counter", "counter", ["Counter.Domain.Projections.CounterView"], Commands: []),
+        ]);
+        Services.Replace(ServiceDescriptor.Singleton(registry));
+        EnsureStoreInitialized();
+
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p.AddChildContent("<p>Body</p>"));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("data-testid=\"fc-shell-navigation\"", Case.Sensitive));
+
+        tenant = null;
+        Authorization.SetNotAuthorized();
+        cut.WaitForAssertion(() => {
+            _ = cut.Find("#fc-main-content [data-testid='fc-scope-blocked']");
+            cut.Markup.ShouldNotContain("data-testid=\"fc-shell-navigation\"", Case.Sensitive);
+        });
+    }
+
     private sealed class MountProbe : ComponentBase {
         [Parameter]
         public Action? OnMount { get; set; }

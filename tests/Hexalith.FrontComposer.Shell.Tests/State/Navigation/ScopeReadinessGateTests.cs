@@ -217,6 +217,27 @@ public sealed class ScopeReadinessGateTests {
     }
 
     [Fact]
+    public async Task ScopeChange_QueuedBehindConcurrentDispatch_ObserverRearmsAfterReducer() {
+        FrontComposerNavigationState current = BaseState(storageReady: true) with { HydrationState = HydrationState.Hydrated };
+        IState<FrontComposerNavigationState> state = Substitute.For<IState<FrontComposerNavigationState>>();
+        state.Value.Returns(_ => current);
+        IUserContextAccessor accessor = MakeAccessor("tenant-b", "user-b");
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        ScopeReadinessGate gate = new(state, accessor, null, EnabledLoggerSubstitute.Create<ScopeReadinessGate>());
+        ScopeFlipObserverEffect observer = new(gate);
+
+        // Fluxor only enqueued ScopeChangedAction, so the boundary's evaluation still sees A's ready flag.
+        gate.ResetForScopeChange();
+        await gate.EvaluateAsync(dispatcher, Xunit.TestContext.Current.CancellationToken);
+        dispatcher.DidNotReceiveWithAnyArgs().Dispatch(default!);
+
+        current = NavigationReducers.ReduceScopeChanged(current, new ScopeChangedAction());
+        await observer.HandleScopeChanged(new ScopeChangedAction(), dispatcher);
+
+        dispatcher.Received(1).Dispatch(Arg.Any<StorageReadyAction>());
+    }
+
+    [Fact]
     public async Task EvaluateAsync_NonblankMalformedTenant_DoesNotDispatch() {
         string? tenant = null;
         IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();

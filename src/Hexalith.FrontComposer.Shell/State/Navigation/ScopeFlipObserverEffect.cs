@@ -109,4 +109,17 @@ public sealed class ScopeFlipObserverEffect {
     [EffectMethod]
     public Task HandleAppInitialized(AppInitializedAction action, IDispatcher dispatcher)
         => _gate.EvaluateAsync(dispatcher);
+
+    /// <summary>
+    /// Observer for <see cref="ScopeChangedAction"/> — re-arms storage readiness after the reducer has
+    /// cleared <c>StorageReady</c>. The scope-boundary owner also evaluates the gate, but Fluxor queues
+    /// its dispatch when another thread is mid-dispatch, so that evaluation can still see the prior
+    /// scope's ready flag.
+    /// </summary>
+    /// <param name="action">The observed action (unused).</param>
+    /// <param name="dispatcher">The Fluxor dispatcher.</param>
+    /// <returns>A task representing the gate evaluation.</returns>
+    [EffectMethod]
+    public Task HandleScopeChanged(ScopeChangedAction action, IDispatcher dispatcher)
+        => _gate.EvaluateAsync(dispatcher);
 }

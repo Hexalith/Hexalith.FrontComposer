@@ -144,6 +144,31 @@ public sealed class DataGridNavigationEffectsTests {
     }
 
     [Fact]
+    public async Task HandleRestoreGridState_TenantFlipsDuringStorageRead_DoesNotDispatch() {
+        ILogger<DataGridNavigationEffects> logger = EnabledLoggerSubstitute.Create<DataGridNavigationEffects>();
+        string tenant = Tenant;
+        IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
+        accessor.TenantId.Returns(_ => tenant);
+        accessor.UserId.Returns(User);
+        IStorageService storage = Substitute.For<IStorageService>();
+        storage.GetAsync<GridViewPersistenceBlob>(
+                StorageKeys.BuildKey(Tenant, User, "datagrid", ViewKey),
+                Arg.Any<CancellationToken>())
+            .Returns(_ => {
+                // The prior tenant's blob resolves only after the next tenant became current.
+                tenant = "other-tenant";
+                return Task.FromResult<GridViewPersistenceBlob?>(GridViewPersistenceBlob.FromSnapshot(Snap()));
+            });
+        var sut = new DataGridNavigationEffects(storage, accessor, logger, FakeState(), EmptyRegistry());
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+
+        await sut.HandleRestoreGridState(new RestoreGridStateAction(ViewKey), dispatcher);
+
+        _ = storage.Received(1).GetAsync<GridViewPersistenceBlob>(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        dispatcher.DidNotReceiveWithAnyArgs().Dispatch(Arg.Any<GridViewHydratedAction>());
+    }
+
+    [Fact]
     public async Task HandleRestoreGridState_NoBlob_DoesNotDispatch() {
         ILogger<DataGridNavigationEffects> logger = EnabledLoggerSubstitute.Create<DataGridNavigationEffects>();
         var storage = new InMemoryStorageService();

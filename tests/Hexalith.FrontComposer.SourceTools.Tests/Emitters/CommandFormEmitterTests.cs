@@ -442,9 +442,12 @@ public class CommandFormEmitterTests {
             StringComparison.Ordinal);
         assignedTarget.ShouldBeGreaterThan(0);
         dispatchCall.ShouldBeGreaterThan(assignedTarget);
-        source[assignedTarget..dispatchCall].ShouldContain("if (!IsAdmissionScopeCurrent())", Case.Sensitive);
-        int dispatchScope = source.IndexOf("var dispatchScope =", assignedTarget, StringComparison.Ordinal);
-        source[dispatchScope..dispatchCall].ShouldNotContain("return;", Case.Sensitive);
+        // One scope read both validates and binds the dispatch; a second read could observe the next scope.
+        string dispatchWindow = source[assignedTarget..dispatchCall];
+        dispatchWindow.ShouldContain("var dispatchScope = validatedScope?.Current();", Case.Sensitive);
+        dispatchWindow.ShouldContain("dispatchOrigin == dispatchCurrent", Case.Sensitive);
+        dispatchWindow.ShouldNotContain("IsAdmissionScopeCurrent()", Case.Sensitive);
+        dispatchWindow.ShouldNotContain("throw new OperationCanceledException();", Case.Sensitive);
 
         string[] actualCategories = Regex.Matches(
                 source + statusMoveSource + sameSource,

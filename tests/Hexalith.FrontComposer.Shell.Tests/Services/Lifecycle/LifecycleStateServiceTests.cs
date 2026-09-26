@@ -53,6 +53,36 @@ public class LifecycleStateServiceTests {
         replay.ShouldBeEmpty();
     }
 
+    [Fact]
+    public void TryTransitionForScope_StaleGeneration_IsRejected() {
+        using LifecycleStateService service = Create();
+        long priorGeneration = service.ScopeGeneration;
+        service.ResetScope();
+        List<CommandLifecycleTransition> observed = [];
+        using IDisposable _ = service.Subscribe("old", observed.Add);
+
+        bool applied = service.TryTransitionForScope(
+            priorGeneration,
+            "old",
+            CommandLifecycleState.Confirmed,
+            "message-old",
+            idempotencyResolved: false);
+
+        applied.ShouldBeFalse();
+        service.GetState("old").ShouldBe(CommandLifecycleState.Idle);
+        service.GetMessageId("old").ShouldBeNull();
+        service.GetActiveCorrelationIds().ShouldBeEmpty();
+        observed.ShouldBeEmpty();
+
+        service.TryTransitionForScope(
+            service.ScopeGeneration,
+            "old",
+            CommandLifecycleState.Submitting,
+            "message-current",
+            idempotencyResolved: false).ShouldBeTrue();
+        service.GetState("old").ShouldBe(CommandLifecycleState.Submitting);
+    }
+
     private static LifecycleStateService Create(int cacheCap = 1024) => new(
             Microsoft.Extensions.Options.Options.Create(new LifecycleOptions { MessageIdCacheCapacity = cacheCap }));
 

@@ -2,6 +2,7 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Badges;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Tenancy;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -91,6 +92,45 @@ public class EventStoreActionQueueCountReaderTests {
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
             queryService.LastRequest.ShouldNotBeNull().TenantId.ShouldBe("tenant-a");
             tenant = "tenant-b";
+        }
+        finally {
+            release.Set();
+        }
+
+        TenantContextException stale = await Should.ThrowAsync<TenantContextException>(
+            async () => await old.ConfigureAwait(true));
+        stale.FailureCategory.ShouldBe(TenantContextFailureCategory.StaleTenantContext);
+        (await reader.GetCountAsync(typeof(SampleProjection), TestContext.Current.CancellationToken).ConfigureAwait(true)).ShouldBe(7);
+        queryService.LastRequest.ShouldNotBeNull().TenantId.ShouldBe("tenant-b");
+    }
+
+    [Fact]
+    public async Task GetCountAsync_WithTenantAccessor_HeldRequest_ThrowsStale() {
+        // The raw user context never changes, so only the registered accessor can detect the switch.
+        TestTenantContextAccessor tenantAccessor = new() { TenantId = "tenant-a", UserId = "user-a" };
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim release = new();
+        RecordingQueryService queryService = new(request => {
+            if (request.TenantId == "tenant-a") {
+                entered.TrySetResult();
+                release.Wait(TestContext.Current.CancellationToken);
+            }
+
+            return new QueryResult<object>([], 7, null);
+        });
+        EventStoreActionQueueCountReader reader = new(
+            queryService,
+            new TestUserContext("raw-tenant", "raw-user"),
+            NullLogger<EventStoreActionQueueCountReader>.Instance,
+            tenantAccessor);
+
+        Task<int> old = Task.Run(async () => await reader.GetCountAsync(
+            typeof(SampleProjection), TestContext.Current.CancellationToken).ConfigureAwait(true), TestContext.Current.CancellationToken);
+        try {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+            queryService.LastRequest.ShouldNotBeNull().TenantId.ShouldBe("tenant-a");
+            tenantAccessor.TenantId = "tenant-b";
+            tenantAccessor.UserId = "user-b";
         }
         finally {
             release.Set();

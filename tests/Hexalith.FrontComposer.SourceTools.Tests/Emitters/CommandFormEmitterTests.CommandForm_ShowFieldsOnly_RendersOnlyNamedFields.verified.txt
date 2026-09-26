@@ -361,15 +361,16 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             var commandForDispatch = _model;
             global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandTargetSnapshot? commandTarget = null;
             cts.Token.ThrowIfCancellationRequested();
-            if (!IsAdmissionScopeCurrent())
+            // Read the dispatch scope once and compare it with the admission scope, so a switch
+            // between the check and the capture cannot bind this model to the next scope.
+            var dispatchScope = validatedScope?.Current();
+            if (validatedScope is not null && !(admissionScope is { } dispatchOrigin && dispatchScope is { } dispatchCurrent && dispatchOrigin == dispatchCurrent))
             {
                 SetCommandInProgressWarning(global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.ScopeUnavailable);
                 if (_serverWarning is not null) CommandFeedbackPublisher.PublishWarning(_serverWarning);
                 await InvokeAsync(StateHasChanged);
                 return;
             }
-            var dispatchScope = validatedScope?.Current();
-            if (validatedScope is not null && dispatchScope is null) throw new OperationCanceledException();
             var result = await CommandService.DispatchWithLifecycleObservationsAsync(
                 commandForDispatch,
                 onLifecycleObservation: observation =>

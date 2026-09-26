@@ -1165,15 +1165,16 @@ public static class CommandFormEmitter {
         }
 
         _ = sb.AppendLine("            cts.Token.ThrowIfCancellationRequested();");
-        _ = sb.AppendLine("            if (!IsAdmissionScopeCurrent())");
+        _ = sb.AppendLine("            // Read the dispatch scope once and compare it with the admission scope, so a switch");
+        _ = sb.AppendLine("            // between the check and the capture cannot bind this model to the next scope.");
+        _ = sb.AppendLine("            var dispatchScope = validatedScope?.Current();");
+        _ = sb.AppendLine("            if (validatedScope is not null && !(admissionScope is { } dispatchOrigin && dispatchScope is { } dispatchCurrent && dispatchOrigin == dispatchCurrent))");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                SetCommandInProgressWarning(global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.ScopeUnavailable);");
         _ = sb.AppendLine("                if (_serverWarning is not null) CommandFeedbackPublisher.PublishWarning(_serverWarning);");
         _ = sb.AppendLine("                await InvokeAsync(StateHasChanged);");
         _ = sb.AppendLine("                return;");
         _ = sb.AppendLine("            }");
-        _ = sb.AppendLine("            var dispatchScope = validatedScope?.Current();");
-        _ = sb.AppendLine("            if (validatedScope is not null && dispatchScope is null) throw new OperationCanceledException();");
         _ = sb.AppendLine("            var result = await CommandService.DispatchWithLifecycleObservationsAsync(");
         _ = sb.AppendLine("                commandForDispatch,");
         _ = sb.AppendLine("                onLifecycleObservation: observation =>");

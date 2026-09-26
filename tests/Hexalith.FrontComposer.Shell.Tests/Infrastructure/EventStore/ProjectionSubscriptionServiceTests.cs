@@ -1,13 +1,19 @@
 using System.Security.Claims;
 
+using Fluxor;
+
 using Hexalith.FrontComposer.Contracts;
+using Hexalith.FrontComposer.Contracts.Badges;
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.Infrastructure.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Options;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Auth;
+using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
@@ -19,6 +25,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
+
+using NSubstitute;
 
 using Shouldly;
 
@@ -628,6 +636,52 @@ public sealed class ProjectionSubscriptionServiceTests {
         sut.HasBlockedGroup("orders", "tenant-a").ShouldBeFalse();
         connection.JoinedGroups.ShouldBeEmpty();
         connection.LeftGroups.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ScopeBoundary_AuthChange_ResetsRealAdmissionGateAndLeavesStaleGroup() {
+        FakeProjectionHubConnection connection = new();
+        MutableUserContextAccessor identity = new("tenant-a", "user-a");
+        ProjectionSubscriptionService subscriptions = new(
+            Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
+                BaseAddress = new Uri("https://eventstore.test"), RequireAccessToken = false,
+            }),
+            new FakeProjectionHubConnectionFactory(connection, "https://eventstore.test/hubs/projection-changes"),
+            new TestProjectionConnectionState(), new TestRefreshScheduler(), new TestNotifier(),
+            NullLogger<ProjectionSubscriptionService>.Instance, userContextAccessor: identity);
+        await subscriptions.SubscribeAsync("orders", "tenant-a", TestContext.Current.CancellationToken);
+        connection.JoinedGroups.ShouldBe(["orders:tenant-a"]);
+
+        FrontComposerTenantContextAccessor tenantAccessor = new(
+            identity,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            NullLogger<FrontComposerTenantContextAccessor>.Instance);
+        ValidatedPendingScope validated = new(tenantAccessor);
+        PendingCommandStateService pending = new(
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            Substitute.For<ILifecycleStateService>(), identity, validatedScope: validated);
+        CommandExecutionAdmissionGate admissionGate = new(pending, validatedScope: validated);
+        using CommandExecutionAdmission heldA = admissionGate.TryAcquire(new CommandExecutionAdmissionRequest("Counter.Create", "Create"));
+        heldA.IsAdmitted.ShouldBeTrue();
+
+        using ServiceProvider services = new ServiceCollection().AddSingleton(subscriptions).BuildServiceProvider();
+        RaisableAuthenticationStateProvider auth = new();
+        using ScopeBoundaryService boundary = new(
+            auth, tenantAccessor, Substitute.For<IDispatcher>(), Substitute.For<IScopeReadinessGate>(), pending,
+            Substitute.For<INewItemIndicatorStateService>(), Substitute.For<IBadgeCountService>(), admissionGate, services);
+        boundary.Start();
+
+        identity.TenantId = "tenant-b";
+        identity.UserId = "user-b";
+        auth.Raise();
+
+        boundary.Generation.ShouldBe(1);
+        boundary.IsCurrent.ShouldBeTrue();
+        // A's admission is still held by its form, yet B must not be blocked by it.
+        using CommandExecutionAdmission admissionB = admissionGate.TryAcquire(new CommandExecutionAdmissionRequest("Counter.Create", "Create"));
+        admissionB.IsAdmitted.ShouldBeTrue();
+        connection.LeftGroups.ShouldBe(["orders:tenant-a"]);
+        subscriptions.HasBlockedGroup("orders", "tenant-a").ShouldBeFalse();
     }
 
     [Fact]
@@ -1281,6 +1335,14 @@ public sealed class ProjectionSubscriptionServiceTests {
         public FcShellOptions Get(string? name) => value;
 
         public IDisposable? OnChange(Action<FcShellOptions, string?> listener) => new Registration(() => { });
+    }
+
+    private sealed class RaisableAuthenticationStateProvider : AuthenticationStateProvider {
+        private readonly Task<AuthenticationState> _state = Task.FromResult(new AuthenticationState(new ClaimsPrincipal()));
+
+        public override Task<AuthenticationState> GetAuthenticationStateAsync() => _state;
+
+        public void Raise() => NotifyAuthenticationStateChanged(_state);
     }
 
     private sealed class MutableUserContextAccessor(string? tenantId, string? userId) : IUserContextAccessor {

@@ -205,6 +205,70 @@ Code review 2026-09-26 (pass 6; diff `65fe7301` without `_bmad-output`: 67 files
 - low — Edge 19, the stale badge fetch is not cancelled on A→none→A: the stale fetch has the same tenant/user, so at worst an older same-scope count is shown.
 - low — Edge 20, lifecycle `Subscribe` races `ResetScope`: the only affected subscriber is the old-scope component that owns the correlation.
 
+### Review Findings (production chunk, 2026-09-26)
+
+Code review 2026-09-26. The diff runs from `3008cf19` to HEAD over the files touched by `fc680685`, `65fe7301` and `e9473a4a`. It is limited to production code (src/, samples/, generated snapshots and config: 71 files, about 3,960 diff lines), and the tests/ chunk is left for a later run. Layers: Blind Hunter, Edge Case Hunter, Verification Gap and Acceptance Auditor, and all four completed. 47 findings were raised: 7 patch, 0 decision-needed, 0 new defer and 40 rejected, including 8 already covered by existing deferrals.
+
+- [x] [Review][Patch] (medium) The `ScopeBoundaryService` admission-gate reset and stale-group block run only with stand-ins. Every boundary test passes `Substitute.For<ICommandExecutionAdmissionGate>()`, and no boundary test registers `ProjectionSubscriptionService`, so deleting line 104 or lines 106-109 leaves every test green. Add `AuthChange_ResetsRealAdmissionGateAndLeavesStaleProjectionGroups`, using a real gate and a real subscription service. It should assert that an A admission held across the switch does not block B's `TryAcquire`, and that the A group is left or Blocked. The pass-2 patch 7 is ticked but does not reach these branches [src/Hexalith.FrontComposer.Shell/Services/ScopeBoundaryService.cs:103]
+- [x] [Review][Patch] (medium) The hydration generation gates have no stale-generation test.
+  - Gates: `NavigationReducers.cs:110,172`, `DensityReducers.cs:72`, `DataGridNavigationReducers.cs:124`, `CommandPaletteReducers.cs:226` and `CapabilityDiscoveryReducers.cs:36`. Also the post-read recheck in `DataGridNavigationEffects.HandleRestoreGridState`.
+  - Existing tests use the legacy null origin at generation 0, so removing any of these gates leaves the suite green.
+  - Add one stamped-N, then `ReduceScopeChanged`, then same-reference case per reducer to `HydrationScopeGenerationRaceTests`, plus a restore case where the tenant flips while the storage read is held [src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationReducers.cs:110]
+- [x] [Review][Patch] (medium) The lifecycle generation guard is never tested with a stale generation. No test calls `TryTransitionForScope`, and `PendingCommandStateServiceTests` uses a stand-in lifecycle. Add `TryTransitionForScope_StaleGeneration_IsRejected`: capture a generation, call `ResetScope()`, then transition with the old generation. It should return `false`, leave the state `Idle` and notify no subscriber [src/Hexalith.FrontComposer.Shell/Services/Lifecycle/LifecycleStateService.cs:184]
+- [x] [Review][Patch] (medium) The generated form's scope recheck between admission and dispatch is checked only as source text. `CommandFormEmitterTests.cs:445` asserts the emitted text. The rendered tests switch scope either after `DispatchStarted` or at admission, never during target resolution. Add `ScopeSwitchDuringTargetResolution_DoesNotDispatch`: a held target-identity provider flips the tenant and then releases. Assert that nothing is dispatched, the form shows the unavailable warning and no pending entry exists [src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs:1168]
+- [x] [Review][Patch] (medium) Two production paths have no tests.
+  - Count reader: DI resolves `EventStoreActionQueueCountReader` through its tenant-accessor constructor, but all of its tests use the three-argument fallback. Add `GetCountAsync_WithTenantAccessor_HeldRequest_ThrowsStale`.
+  - Shell navigation: `FrontComposerShell.HasNavigation` gates on `ScopeBoundary.IsCurrent`, but no test asserts the rail is hidden under a missing scope when manifests are registered. Add `MissingScope_WithManifests_HidesNavigation`.
+  - [src/Hexalith.FrontComposer.Shell/Badges/EventStoreActionQueueCountReader.cs:108]
+- [x] [Review][Patch] (low) The readiness re-arm is lost when Fluxor queues `ScopeChangedAction`.
+  - `SynchronizeCore` runs on the auth-callback thread-pool continuation. Fluxor 6.11 `Store.ActionDispatched` only enqueues the action while another thread `IsDispatching`, for example a fallback-refresh completion.
+  - So `readinessGate.EvaluateAsync` still sees the prior scope's `StorageReady == true` and short-circuits, and B's preferences do not hydrate until the next observed navigation or palette action.
+  - Fix: add a `ScopeChangedAction` handler to `ScopeFlipObserverEffect` that calls `EvaluateAsync`, like the other one-line handlers. It runs after the reducer, and `_dispatched` keeps it exactly-once [src/Hexalith.FrontComposer.Shell/State/Navigation/ScopeFlipObserverEffect.cs:41]
+- [x] [Review][Patch] (low) The emitted form reads `validatedScope.Current()` twice: once in `IsAdmissionScopeCurrent()` and again for `dispatchScope`. A flip between the two reads captures B as `OriginScope` for a model filled under A. Read the scope once, and require it to be non-null and equal to `admissionScope` before dispatch, falling back to the ScopeUnavailable warning. Refresh the emitter snapshots [src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs:1175]
+
+Applied 2026-09-27, all 7 patches:
+- Code: `ScopeFlipObserverEffect.HandleScopeChanged` now re-arms readiness after the reducer, and the generated form reads the dispatch scope once and compares it with the admission scope (two `CommandFormEmitterTests` snapshots refreshed).
+- Tests: 13 new regressions — `ScopeReadinessGateTests`, `LifecycleStateServiceTests`, `ProjectionSubscriptionServiceTests` (real admission gate plus real subscription service through `ScopeBoundaryService`), `EventStoreActionQueueCountReaderTests`, `ScopeTransitionShellTests`, `CommandTargetGeneratedFormTests`, six `HydrationScopeGenerationRaceTests` reducers and `DataGridNavigationEffectsTests`.
+- CA1707 identifier inventory resealed 3439 → 3452 (`d2e4d344…`).
+- Evidence: SourceTools.Tests 1276/1276 passed. Shell.Tests broad lane (Performance, e2e-palette, NightlyProperty and Quarantined excluded) ran 2834 tests with 1 failure after the reseal: the pre-existing `CiGovernanceTests.EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval`, where the committed EventStore gitlink `818e28a8` is not the expected `bf03d57c`. That failure is unrelated to this change.
+
+**Rejected (production chunk, 2026-09-26):**
+- false — Blind 1, `TrySetCanceled` in `LoadedPageReducers.ReduceScopeChanged`: carried from the pass-2 rejection; this is the existing pattern in the same file.
+- false — Blind 2, inconsistent stale-result rules: carried from the pass-7 disposition. The asynchronous page producers carry a completion or an origin generation, and only direct compatibility construction omits both. The naming difference names no caller that diverges.
+- false — Blind 6b / Auditor-adjacent, `ResetScope` does not emit `CountChanged`: `FcProjectionSubtitle` is inside the keyed remount, and `FcPaletteResultList` keeps no cached copy; it reads `Counts` on each render.
+- false — Blind 7, the ETag cache is written before revalidation: `PersistCacheEntryAsync` revalidates the snapshot inside its body before `SetAsync` (`EventStoreQueryClient.cs:372`), and the key is scoped to A anyway.
+- false — Blind 12, `LifecycleStateService.ResetScope` drops subscribers: the subscribers are components of the old scope, disposed by the keyed remount (carried from pass 6, Edge 20). The public `Transition` was `void` before the change, so discarding the bool loses nothing.
+- false — Blind 13, `HasChangedScope` never resets: this is the documented post-transition contract from the pass-2 "reset only" decision and the pass-6 patch.
+- false — Blind 14b, the theme reset hard-codes Light: `FrontComposerThemeFeature.GetInitialState` is Light, so the reset matches the feature default, and no configured default exists.
+- false — Blind 14a / Edge 9, density `EffectiveDensity` survives: carried from pass 2; B's hydrate always dispatches the resolved effective density, and A→none renders blocked.
+- false — Blind 16 (emitter parts): the fatal filter and the bare `OperationCanceledException` are carried from the pass-6 rejections.
+- false — Edge 15, an empty `RenderContext.UserId` blocks generated views: blocking a cascaded user that differs from the resolved user is the intended fail-closed guard. The empty sentinel is a local slot context, never cascaded.
+- false — Edge 16, unstamped hydration actions are dropped after the first transition: task 21 requires exactly this.
+- low — Blind 3 / Edge 4 / Edge 21, resets apply only to concrete types that adopters might replace: carried from the pass-2 and pass-3 rejections; the fix adds public interface surface.
+- low — Blind 4, fire-and-forget tasks, the untyped `async void` catch and missing telemetry: carried from pass 2. `TenantContextBlocked` is already logged on blocked renders.
+- low — Blind 5b, `FcScopeBlocked` has no sign-in link, `role="alert"` or h1 guard: Story 13.4 owns AM-26, and the raw `<h1>` is carried from pass 2.
+- low — Blind 6a / Edge 5, badge getter side effects and the stale concurrent read resetting B: carried alongside the pass-2 getter deferral. The window is between an accessor read and the lock, and the outcome fails safe (B counts empty, never A's).
+- low — Blind 6c, `OnNext` under both badge locks: carried from pass 6, Blind 4.
+- low — Blind 8 / Edge 18 / Auditor 3, fallbacks use `new FcShellOptions()` or `NullLogger`: carried from pass 2. Production DI registers the accessor, and `ThemeEffects` uses the factory registration (`ServiceCollectionExtensions.cs:397`).
+- low — Blind 9 / Edge 13, compatibility constructors are inert or fail closed: carried from pass 2.
+- low — Blind 10 / Edge 14, a null `RegistrationScope` fails every poll: `Register` now rejects an unscoped registration, and there is no other in-repo `IPendingCommandStateService` implementation.
+- low — Blind 11, kebab criteria collisions: carried from pass 2.
+- low — Blind 15, AppHost and realm changes are always on: carried from pass 2 (local dev topology only).
+- low — Blind 16 (sample and resx parts): `UtcNow` for `LastUpdated` in a sample, `InvokeAsync` in `finally` after disposal (unobserved and harmless), leaking pending dictionaries (carried from pass 6, Blind 12a), and missing resx comments, wording or apostrophe style.
+- low — Edge 7, the `RegisterReconciliationLane` TOCTOU: carried from pass 2.
+- low — Edge 8, the theme post-read check fails without a following `ScopeChangedAction`: this needs a throwing accessor with no scope change, the same unproven path as the carried accessor-throw deferrals.
+- low — Edge 17 / Edge 19, Counter configure-scope leak and dropped scopeless confirmations: carried from pass 6, Blind 12a/12b (sample only).
+- low — Edge 20, theme apply failure logged as `ThemePersistenceFailed`: a diagnostic label on a rare interop failure.
+- low — Auditor 1, palette badges vanish instead of showing a blocked meaning: the main region shows `FcScopeBlocked` and the rail is hidden, so no prior-scope count leaks. The palette treatment needs a UX choice that is disproportionate for a rare state.
+- low — Auditor 2, the subscription service validates through static `Resolve` rather than the injected accessor: the two diverge only with an adopter-replaced accessor (same class as Blind 3).
+- low — Auditor 4, the emitted form fails open without `IValidatedPendingScope`: `AddHexalithFrontComposer` always registers it, and generated forms need the Shell registration anyway.
+- duplicate of existing deferral — Blind 5a / Edge 1 / Edge 21: no recovery when `Start()` captures null or the scope changes without an auth event (pass-2 defer).
+- duplicate of existing deferral — Edge 2: a collaborator exception during `SynchronizeCore` (pass-4 Blind 6 and pass-5 Blind 3 defers).
+- duplicate of existing deferral — Edge 6: the getter's null read disposes lanes (pass-2 defer).
+- duplicate of existing deferral — Edge 10: a ScopeUnavailable result leaves the generated form Submitting (pass-8 Edge 6 defer).
+- duplicate of existing deferral — Edge 12: a throwing validated accessor during submission (pass-3 Edge 6 and pass-5 Edge 4 defers).
+- duplicate of existing deferral — Verification 6: the live two-tenant proof is not an automated gate (pass-1 defer).
+
 ## Implementation Notes
 
 - The in-circuit owner is `Services/ScopeBoundaryService.cs`; scoped reducers, pending state, badge lanes, and subscription groups clear or block on an A→B or A→none transition. The rendering guard stays closed during the clear. Focused tests cover the switch, late response, blocked group, readiness re-arm, and blocking component.

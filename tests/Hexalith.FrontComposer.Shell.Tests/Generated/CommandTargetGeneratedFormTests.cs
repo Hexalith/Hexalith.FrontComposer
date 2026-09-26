@@ -7,6 +7,7 @@ using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
@@ -848,6 +849,37 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
         cut.Markup.ShouldNotContain("Command already in progress");
         pending.Snapshot().ShouldBeEmpty();
         indicators.Snapshot("Counter:Counter.Domain.CounterProjection").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ScopeSwitchDuringTargetResolution_DoesNotDispatch() {
+        EarlyTerminalCommandService service = new(AcceptedMessageId, emitTerminal: false);
+        BlockingProvider provider = new();
+        UserContext.TenantId = "tenant-a";
+        UserContext.UserId = "user-a";
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        Services.Replace(ServiceDescriptor.Scoped<IFrontComposerTenantContextAccessor, FrontComposerTenantContextAccessor>());
+        Services.Replace(ServiceDescriptor.Scoped<IValidatedPendingScope, ValidatedPendingScope>());
+        Services.AddScoped<ICommandTargetIdentityProvider<ProviderTargetCommand>>(_ => provider);
+        Services.Configure<FcShellOptions>(options => options.CommandTargetResolutionTimeoutMs = 10_000);
+        await InitializeStoreAsync();
+        IPendingCommandStateService pending = Services.GetRequiredService<IPendingCommandStateService>();
+        IRenderedComponent<ProviderTargetCommandForm> cut = Render<ProviderTargetCommandForm>();
+
+        cut.Find("form").Submit();
+        await provider.Started.Task.WaitAsync(
+            TimeSpan.FromSeconds(2),
+            Xunit.TestContext.Current.CancellationToken);
+
+        // Admission captured tenant A; the model must not be dispatched once B is current.
+        UserContext.TenantId = "tenant-b";
+        UserContext.UserId = "user-b";
+        provider.Release();
+
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Workspace unavailable"));
+        SpinWait.SpinUntil(() => service.DispatchCount != 0, TimeSpan.FromMilliseconds(200)).ShouldBeFalse();
+        service.DispatchCount.ShouldBe(0);
+        pending.Snapshot().ShouldBeEmpty();
     }
 
     [Fact]
