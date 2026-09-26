@@ -2,7 +2,7 @@
 title: 'Story 12.2: Select a Substitute Adopter'
 type: 'feature'
 created: '2026-09-24'
-status: 'draft'
+status: 'ready-for-dev'
 baseline_commit: '1b5b6353532c0c6f3c3ff8b04ac3a3804b8dccc4'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -26,23 +26,25 @@ context:
 
 **Current direction (reaffirmed 2026-09-24):** Keep Tenants as the obligated adopter. Its maintainer confirmed kit feasibility and passed the clean-consumer fixture. Pursue dated proof of Tenants-generated projection and command surfaces. D-7 is not invoked; Story 12.2 stays in backlog, and G-6, SM-1, and EXT-ADOPTER-1 stay open until independent proof is reviewed. This direction is not a D-7 fallback decision or G-6 evidence.
 
+**Reaffirmed 2026-09-25 (confirmed for this build):** Keep Tenants. Request named-module proof or a concrete blocker and ETA by proposed 2026-09-29. D-7 remains uninvoked; Story 12.2 remains in backlog.
+
 </frozen-after-approval>
 
 ## Code Map
 
-- `_bmad-output/planning-artifacts/epics.md`, `_bmad-output/planning-artifacts/prd.md` -- 12.2, G-6, SM-1, D-7, OI-5; require a dated Product choice and unchanged external proof.
-- `_bmad-output/implementation-artifacts/spec-12-1-i-adopter-proof-kit.md` and `docs/how-to/adopter-bootstrap-proof.md` -- completed kit and proof instructions.
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` -- 12.2 backlog, ADOPT-APP-1 open, EXT-ADOPTER-1 external; change only after a dated choice.
-- `references/Hexalith.Tenants/_bmad-output/implementation-artifacts/tests/tenants-adopter-kit-run-2026-09-24.md` -- kit fixture passed; pinned Tenants lacks `tests/tenants-bootstrap-acceptance.md` proof.
-- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Composition/` -- `TenantSummaryProjection` and `CreateTenantCommand` in Tenants `origin/main` commit `ecec9586c7dece7f092011a3737d89b2d7009ef3` adds generated surfaces; proof remains outstanding.
+- `_bmad-output/planning-artifacts/{epics,prd}.md` -- Story 12.2, D-7, G-6, and SM-1 require dated Product choice and unchanged proof.
+- `_bmad-output/implementation-artifacts/spec-12-1-i-adopter-proof-kit.md`; `docs/how-to/adopter-bootstrap-proof.md` -- completed kit and external procedure; preserve its proof requirements.
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` -- 12.2 backlog; ADOPT-APP-1 open; EXT-ADOPTER-1 external.
+- `references/Hexalith.Tenants/_bmad-output/implementation-artifacts/tests/tenants-adopter-kit-run-2026-09-24.md` -- internal kit pass, not named-module acceptance.
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Composition/` -- generated surfaces exist; proof is due.
 
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `_bmad-output/contracts/adopt-app-1-adopter-fallback-decision.md` -- if D-7 is invoked, file the dated choice, Tenants inability reason, accountable maintainer, unchanged proof obligation, and links to Story 12.1, guide, PRD gates, and EXT-ADOPTER-1.
-- [ ] `docs/how-to/adopter-bootstrap-proof.md` -- identify the selected maintainer and evidence repository; retain the proof procedure and open gate.
-- [ ] `_bmad-output/implementation-artifacts/sprint-status.yaml` -- reflect the decision; leave EXT-ADOPTER-1 external.
-- [ ] `_bmad-output/planning-artifacts/prd.md` -- link the decision at D-7/G-6 and identify the owner; retain G-6/SM-1 as open.
+- [ ] `_bmad-output/contracts/adopt-app-1-adopter-fallback-decision.md` -- if invoked, record date, choice, Tenants inability, owner, unchanged proof, and source links.
+- [ ] `docs/how-to/adopter-bootstrap-proof.md` -- name selected maintainer and evidence repository; preserve procedure.
+- [ ] `_bmad-output/implementation-artifacts/sprint-status.yaml` -- reflect choice; keep EXT-ADOPTER-1 external.
+- [ ] `_bmad-output/planning-artifacts/prd.md` -- link decision at D-7/G-6; keep G-6/SM-1 open.
 
 **Acceptance Criteria:**
 - Given Tenants cannot supply named-module proof and Product invokes D-7, when the record is filed, then it dates and explains Parties selection or a hold and names the accountable maintainer.
@@ -58,6 +60,7 @@ context:
 - 2026-09-24: The candidate-bound clean-consumer kit passed all four assertions; see `references/Hexalith.Tenants/_bmad-output/implementation-artifacts/tests/tenants-adopter-kit-run-2026-09-24.md` and the issue update `https://github.com/Hexalith/Hexalith.Tenants/issues/48#issuecomment-5817818115`. It renders the kit's `Proof` domain, not Tenants-generated surfaces, so G-6 and EXT-ADOPTER-1 remain open and D-7 stays uninvoked.
 
 - 2026-09-24: Kept Tenants; no D-7. Source preflight 8/8; named proof requested in Tenants #48. G-6 open.
+- 2026-09-25: User kept Tenants. Proposed 2026-09-29 for proof or blocker/ETA in `https://github.com/Hexalith/Hexalith.Tenants/issues/48#issuecomment-5828423445`. No D-7.
 
 ## Spec Change Log
 
