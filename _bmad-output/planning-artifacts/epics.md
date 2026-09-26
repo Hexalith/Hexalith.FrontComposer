@@ -342,7 +342,7 @@ Adopter developers can turn annotated domain types into a coherent, accessible F
 
 **FRs covered:** FR1, FR2, FR3, FR4, FR7, FR8, FR9, FR10, FR29.1
 
-**Implementation notes:** Preserve the delivered generator, bootstrap, shell, account, and information-architecture baseline. Deliver ADOPT-KIT-1 before tracking EXT-ADOPTER-1; keep the latter external and require optional ADOPT-APP-1 only for a D-7 substitute. Adoption work uses the current pinned Fluent identity but does not own its final approval. Completed behavior is regression traceability rather than reimplementation.
+**Implementation notes:** Preserve the delivered generator, bootstrap, shell, account, and information-architecture baseline. Deliver ADOPT-KIT-1 before tracking EXT-ADOPTER-1; the latter is owned by the selected external adopter and was accepted on 2026-09-26 (record below). Require optional ADOPT-APP-1 only for a D-7 substitute. Adoption work uses the current pinned Fluent identity but does not own its final approval. Completed behavior is regression traceability rather than reimplementation.
 
 ### Epic 13: Operators Trust Tenant-Scoped Data and Command Outcomes
 
@@ -3260,7 +3260,7 @@ So that any substitute adopter inherits the same evidence obligation without sil
 **Then** it references those artifacts rather than copying their evidence
 **And** no additional evidence schema, test lane, or wrapper report is introduced.
 
-**External dependency — [X · EXT-ADOPTER-1]:** After Story 12.1—and after Story 12.2 only when Parties is selected—the named external adopter maintainer executes the kit and publishes dated, candidate-bound proof. FrontComposer records the dependency state but cannot complete it on the adopter's behalf.
+**External dependency — [X · EXT-ADOPTER-1]:** After Story 12.1—and after Story 12.2 only when Parties is selected—the named external adopter maintainer executes the kit and publishes dated, candidate-bound proof. FrontComposer records the dependency state but cannot complete it on the adopter's behalf. **Accepted 2026-09-26:** Tenants supplied the independent evidence at `references/Hexalith.Tenants/_bmad-output/implementation-artifacts/tests/tenants-bootstrap-acceptance.md` and `references/Hexalith.Tenants/_bmad-output/implementation-artifacts/tests/tenants-bootstrap-acceptance.json`; the explicit Product decision is `_bmad-output/implementation-artifacts/tests/tenants-g6-product-decision-2026-09-26.md`. D-7 was not invoked, so Story 12.2 remains conditional.
 
 ## Epic 13: Operators Trust Tenant-Scoped Data and Command Outcomes
 

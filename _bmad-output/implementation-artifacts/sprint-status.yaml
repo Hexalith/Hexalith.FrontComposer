@@ -882,8 +882,8 @@ approved_change_backlog:
         - {id: "EVT-APP-1", kind: "approval-evidence", status: "open"}
         - {id: "EVT-XFER-1", kind: "conditional-approval", status: "open"}
         - {id: "TEN-SCOPE-1", kind: "implementation", status: "proposed"}
-        - {id: "ADOPT-KIT-1", kind: "implementation", status: "proposed"}
-        - {id: "EXT-ADOPTER-1", kind: "external-dependency", status: "external"}
+        - {id: "ADOPT-KIT-1", kind: "implementation", status: "done"}
+        - {id: "EXT-ADOPTER-1", kind: "external-dependency", status: "done"}
         - {id: "ADOPT-APP-1", kind: "conditional-approval", status: "open"}
     - name: "MCP Production Security"
       items:

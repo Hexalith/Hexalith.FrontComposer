@@ -34,9 +34,10 @@ context:
 
 - `_bmad-output/planning-artifacts/{epics,prd}.md` -- Story 12.2, D-7, G-6, and SM-1 require dated Product choice and unchanged proof.
 - `_bmad-output/implementation-artifacts/spec-12-1-i-adopter-proof-kit.md`; `docs/how-to/adopter-bootstrap-proof.md` -- completed kit and external procedure; preserve its proof requirements.
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` -- 12.2 backlog; ADOPT-APP-1 open; EXT-ADOPTER-1 external.
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` -- 12.2 backlog; ADOPT-APP-1 conditional/open; EXT-ADOPTER-1 accepted 2026-09-26.
 - `references/Hexalith.Tenants/_bmad-output/implementation-artifacts/tests/tenants-adopter-kit-run-2026-09-24.md` -- internal kit pass, not named-module acceptance.
-- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Composition/` -- generated surfaces exist; proof is due.
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Composition/` -- generated surfaces exercised by the 2026-09-25 independent proof.
+- `references/Hexalith.Tenants/_bmad-output/implementation-artifacts/tests/tenants-bootstrap-acceptance.md` and `references/Hexalith.Tenants/_bmad-output/implementation-artifacts/tests/tenants-bootstrap-acceptance.json` -- dated Tenants evidence received and accepted for G-6 on 2026-09-26.
 
 ## Tasks & Acceptance
 
@@ -61,6 +62,8 @@ context:
 
 - 2026-09-24: Kept Tenants; no D-7. Source preflight 8/8; named proof requested in Tenants #48. G-6 open.
 - 2026-09-25: User kept Tenants. Proposed 2026-09-29 for proof or blocker/ETA in `https://github.com/Hexalith/Hexalith.Tenants/issues/48#issuecomment-5828423445`. No D-7.
+- 2026-09-26: Inspected the pinned Tenants acceptance Markdown and JSON. They report a passing 2026-09-25 independent run against FrontComposer `05d122005d328ec8f15ecd276058be29730288c2`, with verified package identity and generated Tenants projection/command, invalid-bootstrap, and empty-registry assertions. This was evidence receipt, not itself Product acceptance.
+- 2026-09-26: Explicit Product Owner review accepted the Tenants proof for G-6 and SM-1 in `_bmad-output/implementation-artifacts/tests/tenants-g6-product-decision-2026-09-26.md`; OI-5 and EXT-ADOPTER-1 closed. D-7 was not invoked and Story 12.2 / ADOPT-APP-1 remains conditional in the backlog.
 
 ## Spec Change Log
 
