@@ -5,12 +5,15 @@
 @inject IState<CounterProjectionState> CounterState
 @inject CounterCommandProjectionCatchUpChannel CatchUpChannel
 @inject Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.IFrontComposerTenantContextAccessor TenantContext
+@inject TimeProvider Clock
 
 <span hidden
       data-testid="epic-9-catch-up"
       data-captured="@CatchUpChannel.CapturedCount"
       data-published="@CatchUpChannel.PublishedCount"
-      data-received="@_receivedCount"></span>
+      data-received="@_receivedCount"
+      data-create-started="@_createStarted"
+      data-create-completed="@_createCompleted"></span>
 
 @code {
     // Keep the sample catch-up window long enough for a second browser dispatch to overlap the
@@ -19,6 +22,8 @@
     private static readonly TimeSpan ProjectionDelay = TimeSpan.FromSeconds(5);
     private readonly CancellationTokenSource _dispose = new();
     private long _receivedCount;
+    private long _createStarted;
+    private long _createCompleted;
 
     protected override void OnInitialized()
     {
@@ -47,32 +52,38 @@
         CreateCounterCommand command,
         CancellationToken cancellationToken)
     {
+        _ = Interlocked.Increment(ref _createStarted);
+        _ = InvokeAsync(StateHasChanged);
         try
         {
-            await Task.Delay(ProjectionDelay, cancellationToken);
+            await Task.Delay(ProjectionDelay, Clock, cancellationToken);
+            if (!IsCurrentScope(tenantId, userId))
+            {
+                return;
+            }
+
+            CounterProjection created = new()
+            {
+                Id = command.CounterId,
+                Count = command.InitialValue,
+                LastUpdated = DateTimeOffset.UtcNow,
+            };
+            CounterProjection[] rows =
+            [
+                .. CurrentRows().Where(row => !string.Equals(row.Id, command.CounterId, StringComparison.Ordinal)),
+                created,
+            ];
+            DispatchProjection(tenantId, userId, correlationId, rows);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             return;
         }
-
-        if (!IsCurrentScope(tenantId, userId))
+        finally
         {
-            return;
+            _ = Interlocked.Increment(ref _createCompleted);
+            await InvokeAsync(StateHasChanged);
         }
-
-        CounterProjection created = new()
-        {
-            Id = command.CounterId,
-            Count = command.InitialValue,
-            LastUpdated = DateTimeOffset.UtcNow,
-        };
-        CounterProjection[] rows =
-        [
-            .. CurrentRows().Where(row => !string.Equals(row.Id, command.CounterId, StringComparison.Ordinal)),
-            created,
-        ];
-        DispatchProjection(tenantId, userId, correlationId, rows);
     }
 
     private void OnUpdateConfirmed(
@@ -98,7 +109,7 @@
     {
         try
         {
-            await Task.Delay(ProjectionDelay, cancellationToken);
+            await Task.Delay(ProjectionDelay, Clock, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -133,8 +144,7 @@
 
     private void DispatchProjection(string tenantId, string userId, string correlationId, IReadOnlyList<CounterProjection> rows)
     {
-        // This bridge already owns the simulated catch-up result. Dispatching a new load request
-        // here would also trigger the demo seed effect and race the exact accepted-key snapshot.
+        // This bridge owns both the load request and its simulated catch-up result.
         if (!IsCurrentScope(tenantId, userId))
         {
             return;

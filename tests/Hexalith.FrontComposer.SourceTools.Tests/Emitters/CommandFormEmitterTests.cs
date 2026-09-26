@@ -442,7 +442,9 @@ public class CommandFormEmitterTests {
             StringComparison.Ordinal);
         assignedTarget.ShouldBeGreaterThan(0);
         dispatchCall.ShouldBeGreaterThan(assignedTarget);
-        source[assignedTarget..dispatchCall].ShouldNotContain("return;", Case.Sensitive);
+        source[assignedTarget..dispatchCall].ShouldContain("if (!IsAdmissionScopeCurrent())", Case.Sensitive);
+        int dispatchScope = source.IndexOf("var dispatchScope =", assignedTarget, StringComparison.Ordinal);
+        source[dispatchScope..dispatchCall].ShouldNotContain("return;", Case.Sensitive);
 
         string[] actualCategories = Regex.Matches(
                 source + statusMoveSource + sameSource,

@@ -57,6 +57,50 @@ public sealed class PendingCommandStateServiceTests {
     }
 
     [Fact]
+    public void PendingReads_RecheckScopeInsideReadGate() {
+        IValidatedPendingScope scope = Substitute.For<IValidatedPendingScope>();
+        bool flipDuringRead = false;
+        int reads = 0;
+        scope.Current().Returns(_ => flipDuringRead && Interlocked.Increment(ref reads) == 2
+            ? ("tenant-b", "user-1")
+            : ("tenant-a", "user-1"));
+        PendingCommandStateService sut = new(
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            CreateLifecycle(), userContext: ScopedUser(), validatedScope: scope);
+        sut.Register(Registration()).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
+
+        flipDuringRead = true;
+        reads = 0;
+        sut.Snapshot().ShouldBeEmpty();
+        reads = 0;
+        sut.GetByMessageId(MessageId).ShouldBeNull();
+    }
+
+    [Fact]
+    public void ResolveTerminal_ScopeFlipsAfterBoundaryCheck_DoesNotMutateEntry() {
+        IValidatedPendingScope scope = Substitute.For<IValidatedPendingScope>();
+        bool flipDuringResolution = false;
+        int reads = 0;
+        scope.Current().Returns(_ => flipDuringResolution && Interlocked.Increment(ref reads) == 2
+            ? ("tenant-b", "user-1")
+            : ("tenant-a", "user-1"));
+        ILifecycleStateService lifecycle = CreateLifecycle();
+        PendingCommandStateService sut = new(
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            lifecycle, ScopedUser(), validatedScope: scope);
+        sut.Register(Registration()).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
+
+        flipDuringResolution = true;
+        reads = 0;
+        sut.ResolveTerminal(PendingCommandTerminalObservation.Confirmed(MessageId)).Status
+            .ShouldBe(PendingCommandResolutionStatus.UnknownMessageId);
+
+        flipDuringResolution = false;
+        sut.GetByMessageId(MessageId).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.Pending);
+        lifecycle.DidNotReceive().Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId, false);
+    }
+
+    [Fact]
     public void Register_AcceptedCommand_StoresOnlyFrameworkMetadata() {
         PendingCommandStateService sut = Create();
 
@@ -489,6 +533,31 @@ public sealed class PendingCommandStateServiceTests {
 
         sut.GetByMessageId(MessageId).ShouldBeNull();
         lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.Rejected, MessageId);
+    }
+
+    [Fact]
+    public void ResolveTerminal_ScopeClearsFromChangedHandler_DoesNotDispatchOldTerminal() {
+        string tenant = "tenant-a";
+        IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
+        accessor.TenantId.Returns(_ => tenant);
+        accessor.UserId.Returns("user-1");
+        ILifecycleStateService lifecycle = CreateLifecycle();
+        PendingCommandStateService sut = new(
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()), lifecycle, accessor);
+        sut.Register(Registration()).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
+        EventHandler? clearOnTerminal = null;
+        clearOnTerminal = (_, _) => {
+            sut.Changed -= clearOnTerminal;
+            tenant = "tenant-b";
+            sut.Clear("TenantOrUserTransition");
+        };
+        sut.Changed += clearOnTerminal;
+
+        sut.ResolveTerminal(PendingCommandTerminalObservation.Confirmed(MessageId)).Status
+            .ShouldBe(PendingCommandResolutionStatus.LifecycleDispatchFailed);
+
+        sut.Snapshot().ShouldBeEmpty();
+        lifecycle.DidNotReceive().Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId, false);
     }
 
     [Fact]

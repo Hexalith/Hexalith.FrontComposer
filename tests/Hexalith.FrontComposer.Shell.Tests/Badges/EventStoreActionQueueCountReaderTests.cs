@@ -1,8 +1,11 @@
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Badges;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 
 using Microsoft.Extensions.Logging.Abstractions;
+
+using NSubstitute;
 
 using Shouldly;
 
@@ -27,6 +30,7 @@ public class EventStoreActionQueueCountReaderTests {
 
         count.ShouldBe(7);
         queryService.LastRequest.ShouldNotBeNull();
+        queryService.LastRequest!.TenantId.ShouldBe("acme");
         queryService.LastRequest!.Criteria.Take.ShouldBe(0);
         queryService.LastRequest.Criteria.ProjectionType.ShouldBe("sample-projection");
         queryService.LastRequest.QueryType.ShouldBe(typeof(SampleProjection).FullName);
@@ -60,6 +64,43 @@ public class EventStoreActionQueueCountReaderTests {
             .ConfigureAwait(true);
 
         ex.Kind.ShouldBe(QueryFailureKind.RateLimited);
+    }
+
+    [Fact]
+    public async Task GetCountAsync_HeldTenantARequest_UsesExplicitTenantAndNextRequestUsesB() {
+        string tenant = "tenant-a";
+        IUserContextAccessor context = Substitute.For<IUserContextAccessor>();
+        context.TenantId.Returns(_ => tenant);
+        context.UserId.Returns("user-1");
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim release = new();
+        RecordingQueryService queryService = new(request => {
+            if (request.TenantId == "tenant-a") {
+                entered.TrySetResult();
+                release.Wait(TestContext.Current.CancellationToken);
+            }
+
+            return new QueryResult<object>([], 7, null);
+        });
+        EventStoreActionQueueCountReader reader = new(queryService, context,
+            NullLogger<EventStoreActionQueueCountReader>.Instance);
+
+        Task<int> old = Task.Run(async () => await reader.GetCountAsync(
+            typeof(SampleProjection), TestContext.Current.CancellationToken).ConfigureAwait(true), TestContext.Current.CancellationToken);
+        try {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+            queryService.LastRequest.ShouldNotBeNull().TenantId.ShouldBe("tenant-a");
+            tenant = "tenant-b";
+        }
+        finally {
+            release.Set();
+        }
+
+        TenantContextException stale = await Should.ThrowAsync<TenantContextException>(
+            async () => await old.ConfigureAwait(true));
+        stale.FailureCategory.ShouldBe(TenantContextFailureCategory.StaleTenantContext);
+        (await reader.GetCountAsync(typeof(SampleProjection), TestContext.Current.CancellationToken).ConfigureAwait(true)).ShouldBe(7);
+        queryService.LastRequest.ShouldNotBeNull().TenantId.ShouldBe("tenant-b");
     }
 
     private sealed class SampleProjection { }

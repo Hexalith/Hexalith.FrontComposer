@@ -43,7 +43,9 @@ public sealed record SidebarExpandedAction(string CorrelationId);
 /// <param name="CollapsedGroups">The hydrated per-bounded-context collapsed flags.</param>
 public sealed record NavigationHydratedAction(
     bool SidebarCollapsed,
-    ImmutableDictionary<string, bool> CollapsedGroups);
+    ImmutableDictionary<string, bool> CollapsedGroups) {
+    internal long? OriginScopeGeneration { get; init; }
+}
 
 /// <summary>
 /// Dispatched by <c>NavigationEffects.HandleBoundedContextChanged</c> whenever a non-null bounded
@@ -63,7 +65,9 @@ public sealed record LastActiveRouteChangedAction(string CorrelationId, string? 
 /// does NOT trigger re-persistence (ADR-038 mirror).
 /// </summary>
 /// <param name="Route">The hydrated last-active route, or <see langword="null"/> when absent.</param>
-public sealed record LastActiveRouteHydratedAction(string? Route);
+public sealed record LastActiveRouteHydratedAction(string? Route) {
+    internal long? OriginScopeGeneration { get; init; }
+}
 
 /// <summary>
 /// Dispatched exactly once per circuit by <c>ScopeFlipObserverEffect</c> via <c>IScopeReadinessGate</c>
@@ -82,7 +86,9 @@ public sealed record StorageReadyAction(string CorrelationId);
 /// <see cref="FrontComposerNavigationState.HydrationState"/> from <see cref="HydrationState.Idle"/>
 /// to <see cref="HydrationState.Hydrating"/>. NEVER persisted.
 /// </summary>
-public sealed record NavigationHydratingAction;
+public sealed record NavigationHydratingAction {
+    internal long? OriginScopeGeneration { get; init; }
+}
 
 /// <summary>
 /// Dispatched by <c>NavigationEffects.HandleAppInitialized</c> / <c>HandleStorageReady</c> as the
@@ -91,4 +97,6 @@ public sealed record NavigationHydratingAction;
 /// Called on BOTH happy path AND fail-closed path so subsequent <c>StorageReadyAction</c>
 /// re-triggers hydrate only when the state is still <c>Idle</c>. NEVER persisted.
 /// </summary>
-public sealed record NavigationHydratedCompletedAction;
+public sealed record NavigationHydratedCompletedAction {
+    internal long? OriginScopeGeneration { get; init; }
+}

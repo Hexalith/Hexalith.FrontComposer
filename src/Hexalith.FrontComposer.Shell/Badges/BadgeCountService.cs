@@ -10,6 +10,7 @@ using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -76,6 +77,7 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
     private int _disposedFlag;
     private Task? _initializeTask;
     private TenantContextSnapshot? _initializeScope;
+    private long _scopeGeneration;
 
     private bool IsDisposed => Volatile.Read(ref _disposedFlag) != 0;
 
@@ -125,6 +127,7 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
                 _ = Interlocked.Exchange(ref _initializeTask, null);
                 _initializeScope = null;
                 _scopeSnapshot = null;
+                _scopeGeneration++;
                 _ = Interlocked.Exchange(ref _counts, ImmutableDictionary<Type, int>.Empty);
                 foreach (IDisposable registration in _reconciliationRegistrations.Values) {
                     registration.Dispose();
@@ -136,10 +139,16 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
     }
 
     private TenantContextSnapshot? CurrentScope() {
-        TenantContextSnapshot? current = _tenantContextAccessor is not null
-            ? _tenantContextAccessor.TryGetContext(operationKind: "badge-count").Context
-            : (_userContextAccessor is null ? null : FrontComposerTenantContextAccessor.Resolve(
-                _userContextAccessor, new FcShellOptions(), _logger, operationKind: "badge-count").Context);
+        TenantContextSnapshot? current;
+        try {
+            current = _tenantContextAccessor is not null
+                ? _tenantContextAccessor.TryGetContext(operationKind: "badge-count").Context
+                : (_userContextAccessor is null ? null : FrontComposerTenantContextAccessor.Resolve(
+                    _userContextAccessor, new FcShellOptions(), _logger, operationKind: "badge-count").Context);
+        }
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+            current = null;
+        }
         lock (_initializeGate) {
             lock (_scopeGate) {
                 if (current is null) {
@@ -208,14 +217,14 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
                 return _initializeTask;
             }
 
-            Task task = InitializeCoreAsync(scope, cancellationToken);
+            Task task = InitializeCoreAsync(scope, _scopeGeneration, cancellationToken);
             _initializeScope = scope;
             _initializeTask = task;
             return task;
         }
     }
 
-    private async Task InitializeCoreAsync(TenantContextSnapshot scope, CancellationToken cancellationToken) {
+    private async Task InitializeCoreAsync(TenantContextSnapshot scope, long scopeGeneration, CancellationToken cancellationToken) {
         using CancellationTokenSource timeoutCts = new(
             TimeSpan.FromSeconds(InitialFetchTimeoutSeconds),
             _timeProvider);
@@ -243,7 +252,7 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
         var tasks = new Task[types.Count];
         for (int i = 0; i < types.Count; i++) {
             RegisterReconciliationLane(types[i], scope);
-            tasks[i] = FetchOneAsync(types[i], scope, cts.Token);
+            tasks[i] = FetchOneAsync(types[i], scope, scopeGeneration, cts.Token);
         }
 
         try {
@@ -287,14 +296,14 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
         _subject.Dispose();
     }
 
-    private async Task FetchOneAsync(Type projectionType, TenantContextSnapshot scope, CancellationToken cancellationToken) {
+    private async Task FetchOneAsync(Type projectionType, TenantContextSnapshot scope, long scopeGeneration, CancellationToken cancellationToken) {
         try {
             int count = await _reader.GetCountAsync(projectionType, cancellationToken).ConfigureAwait(false);
             if (IsDisposed || !IsCurrent(scope)) {
                 return;
             }
 
-            _ = UpdateCount(projectionType, count, scope);
+            _ = UpdateCount(projectionType, count, scope, scopeGeneration);
         }
         catch (OperationCanceledException) {
             // Expected on dispose or 5-second umbrella timeout; no log.
@@ -308,10 +317,10 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
         }
     }
 
-    private bool UpdateCount(Type projectionType, int newCount, TenantContextSnapshot scope) {
+    private bool UpdateCount(Type projectionType, int newCount, TenantContextSnapshot scope, long scopeGeneration) {
         lock (_initializeGate) {
             lock (_scopeGate) {
-                if (!IsCurrent(scope)) {
+                if (scopeGeneration != _scopeGeneration || !IsCurrent(scope)) {
                     return false;
                 }
                 if (newCount < 0) {
@@ -386,12 +395,13 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
         if (scope is null) {
             return ProjectionFallbackLaneRefreshOutcome.Skipped;
         }
+        long scopeGeneration = Volatile.Read(ref _scopeGeneration);
         int count = await _reader.GetCountAsync(projectionType, cancellationToken).ConfigureAwait(false);
         if (IsDisposed || !IsCurrent(scope)) {
             return ProjectionFallbackLaneRefreshOutcome.Skipped;
         }
 
-        return UpdateCount(projectionType, count, scope)
+        return UpdateCount(projectionType, count, scope, scopeGeneration)
             ? ProjectionFallbackLaneRefreshOutcome.Changed
             : ProjectionFallbackLaneRefreshOutcome.NotModified;
     }
@@ -424,12 +434,13 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
             if (scope is null) {
                 return;
             }
+            long scopeGeneration = Volatile.Read(ref _scopeGeneration);
             int count = await _reader.GetCountAsync(resolved, _lifetimeCts.Token).ConfigureAwait(false);
             if (IsDisposed || !IsCurrent(scope)) {
                 return;
             }
 
-            _ = UpdateCount(resolved, count, scope);
+            _ = UpdateCount(resolved, count, scope, scopeGeneration);
         }
         catch (OperationCanceledException) {
             // Expected on dispose; no log.

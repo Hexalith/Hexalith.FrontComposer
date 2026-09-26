@@ -9,11 +9,16 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Services.Feedback;
+using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+
+using NSubstitute;
 
 using Shouldly;
 
@@ -194,6 +199,32 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
 
         service.AllowDispatch.SetResult();
         first.WaitForAssertion(() => pending.Snapshot().Count.ShouldBe(1));
+    }
+
+    [Fact]
+    public async Task GeneratedForm_AcceptanceAfterScopeSwitch_SkipsPendingRegistrationAndLogs() {
+        BlockingCommandService service = new();
+        ILogger<TwoFieldCompactCommandForm> logger = EnabledLoggerSubstitute.Create<TwoFieldCompactCommandForm>();
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        Services.Replace(ServiceDescriptor.Scoped<ILogger<TwoFieldCompactCommandForm>>(_ => logger));
+        Services.AddScoped<IValidatedPendingScope>(_ => new TestValidatedScope(() =>
+            (UserContext.TenantId!, UserContext.UserId!)));
+        await InitializeStoreAsync();
+        IPendingCommandStateService pending = Services.GetRequiredService<IPendingCommandStateService>();
+        IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new TwoFieldCompactCommand { Name = "old-scope", Amount = 1 }));
+
+        cut.Find("form").Submit();
+        await service.DispatchStarted.Task.WaitAsync(TimeSpan.FromSeconds(2), Xunit.TestContext.Current.CancellationToken);
+        UserContext.TenantId = "new-tenant";
+        Services.GetRequiredService<IDispatcher>().Dispatch(new ScopeChangedAction());
+        service.AllowDispatch.SetResult();
+
+        cut.WaitForAssertion(() => {
+            pending.Snapshot().ShouldBeEmpty();
+            logger.ReceivedCalls().ShouldContain(call => call.GetArguments().OfType<EventId>()
+                .Any(id => id.Id == 5905));
+        });
     }
 
     [Fact]
@@ -470,5 +501,9 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
 
         public override Task<AuthenticationState> GetAuthenticationStateAsync()
             => Task.FromResult(State);
+    }
+
+    private sealed class TestValidatedScope(Func<(string TenantId, string UserId)?> current) : IValidatedPendingScope {
+        public (string TenantId, string UserId)? Current() => current();
     }
 }

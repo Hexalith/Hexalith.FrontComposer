@@ -37,7 +37,9 @@ public sealed record PaletteScopeChangedAction;
 /// </summary>
 /// <param name="Query">The user's original query (not the alias-canonicalised form).</param>
 /// <param name="Results">The pre-computed ranked result set.</param>
-public sealed record PaletteResultsComputedAction(string Query, ImmutableArray<PaletteResult> Results);
+public sealed record PaletteResultsComputedAction(string Query, ImmutableArray<PaletteResult> Results) {
+    internal long? OriginScopeGeneration { get; init; }
+}
 
 /// <summary>
 /// Dispatched on Arrow Up / Arrow Down inside the palette dialog (Story 3-4 D11 / AC5).
@@ -63,7 +65,9 @@ public sealed record RecentRouteVisitedAction(string Url);
 /// recent-route ring buffer (Story 3-4 D10). Hydrate is read-only — does NOT trigger re-persistence.
 /// </summary>
 /// <param name="RecentRouteUrls">The persisted (and route-safety-filtered) recent-route list.</param>
-public sealed record PaletteHydratedAction(ImmutableArray<string> RecentRouteUrls);
+public sealed record PaletteHydratedAction(ImmutableArray<string> RecentRouteUrls) {
+    internal long? OriginScopeGeneration { get; init; }
+}
 
 /// <summary>
 /// Dispatched by <c>CommandPaletteEffects.HandleAppInitialized</c> / <c>HandleStorageReady</c> at
@@ -71,7 +75,9 @@ public sealed record PaletteHydratedAction(ImmutableArray<string> RecentRouteUrl
 /// <see cref="FrontComposerCommandPaletteState.HydrationState"/> from <see cref="HydrationState.Idle"/>
 /// to <see cref="HydrationState.Hydrating"/>. NEVER persisted.
 /// </summary>
-public sealed record PaletteHydratingAction;
+public sealed record PaletteHydratingAction {
+    internal long? OriginScopeGeneration { get; init; }
+}
 
 /// <summary>
 /// Dispatched by <c>CommandPaletteEffects.HandleAppInitialized</c> / <c>HandleStorageReady</c> as
@@ -79,4 +85,6 @@ public sealed record PaletteHydratingAction;
 /// <see cref="FrontComposerCommandPaletteState.HydrationState"/> to <see cref="HydrationState.Hydrated"/>.
 /// Called on BOTH happy path AND fail-closed path.
 /// </summary>
-public sealed record PaletteHydratedCompletedAction;
+public sealed record PaletteHydratedCompletedAction {
+    internal long? OriginScopeGeneration { get; init; }
+}

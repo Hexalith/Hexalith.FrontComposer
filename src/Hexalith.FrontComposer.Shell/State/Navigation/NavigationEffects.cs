@@ -208,11 +208,12 @@ public sealed class NavigationEffects(
     }
 
     private async Task HydrateAsync(IDispatcher dispatcher) {
+        long scopeGeneration = state.Value.ScopeGeneration;
         if (!_scopeResolver.TryResolveScope(out string tenantId, out string userId, "Navigation", "hydrate")) {
             return;
         }
 
-        dispatcher.Dispatch(new NavigationHydratingAction());
+        dispatcher.Dispatch(new NavigationHydratingAction { OriginScopeGeneration = scopeGeneration });
 
         string key = StorageKeys.BuildKey(tenantId, userId, FeatureSegment);
         NavigationPersistenceBlob? blob;
@@ -234,9 +235,9 @@ public sealed class NavigationEffects(
                 // across scope flips within the same circuit.
                 dispatcher.Dispatch(new NavigationHydratedAction(
                     SidebarCollapsed: false,
-                    CollapsedGroups: ImmutableDictionary<string, bool>.Empty.WithComparers(StringComparer.Ordinal)));
-                dispatcher.Dispatch(new LastActiveRouteHydratedAction(null));
-                dispatcher.Dispatch(new NavigationHydratedCompletedAction());
+                    CollapsedGroups: ImmutableDictionary<string, bool>.Empty.WithComparers(StringComparer.Ordinal)) { OriginScopeGeneration = scopeGeneration });
+                dispatcher.Dispatch(new LastActiveRouteHydratedAction(null) { OriginScopeGeneration = scopeGeneration });
+                dispatcher.Dispatch(new NavigationHydratedCompletedAction { OriginScopeGeneration = scopeGeneration });
                 return;
             }
 
@@ -249,7 +250,7 @@ public sealed class NavigationEffects(
         catch (OperationCanceledException) {
             FrontComposerDiagnosticLog.NavigationHydrationCancelled(logger);
             if (IsHydrationScopeCurrent(tenantId, userId)) {
-                dispatcher.Dispatch(new NavigationHydratedCompletedAction());
+                dispatcher.Dispatch(new NavigationHydratedCompletedAction { OriginScopeGeneration = scopeGeneration });
             }
             return;
         }
@@ -260,7 +261,7 @@ public sealed class NavigationEffects(
                 FcDiagnosticIds.HFC2107_NavigationHydrationEmpty,
                 "Corrupt");
             if (IsHydrationScopeCurrent(tenantId, userId)) {
-                dispatcher.Dispatch(new NavigationHydratedCompletedAction());
+                dispatcher.Dispatch(new NavigationHydratedCompletedAction { OriginScopeGeneration = scopeGeneration });
             }
             return;
         }
@@ -269,7 +270,7 @@ public sealed class NavigationEffects(
             return;
         }
 
-        dispatcher.Dispatch(new NavigationHydratedAction(blob.SidebarCollapsed, groups));
+        dispatcher.Dispatch(new NavigationHydratedAction(blob.SidebarCollapsed, groups) { OriginScopeGeneration = scopeGeneration });
 
         NavigationManager? navigation = ResolveNavigationManager();
         string? hydratedRoute = null;
@@ -305,8 +306,8 @@ public sealed class NavigationEffects(
             return;
         }
 
-        dispatcher.Dispatch(new LastActiveRouteHydratedAction(hydratedRoute));
-        dispatcher.Dispatch(new NavigationHydratedCompletedAction());
+        dispatcher.Dispatch(new LastActiveRouteHydratedAction(hydratedRoute) { OriginScopeGeneration = scopeGeneration });
+        dispatcher.Dispatch(new NavigationHydratedCompletedAction { OriginScopeGeneration = scopeGeneration });
 
         if (prunePersistRequired) {
             await WriteBlobAsync(tenantId, userId, blob.SidebarCollapsed, groups, hydratedRoute).ConfigureAwait(false);

@@ -14,7 +14,9 @@ namespace Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 /// </remarks>
 /// <param name="ViewKey">The <c>"{boundedContext}:{projectionTypeFqn}"</c> Story 2-2 per-view key.</param>
 /// <param name="Snapshot">The hydrated snapshot (converted from <c>GridViewPersistenceBlob</c>).</param>
-public sealed record GridViewHydratedAction(string ViewKey, GridViewSnapshot Snapshot);
+public sealed record GridViewHydratedAction(string ViewKey, GridViewSnapshot Snapshot) {
+    internal long? OriginScopeGeneration { get; init; }
+}
 
 /// <summary>
 /// Dispatched by <c>DataGridNavigationEffects.HandleAppInitialized</c> / <c>HandleStorageReady</c>
@@ -22,7 +24,9 @@ public sealed record GridViewHydratedAction(string ViewKey, GridViewSnapshot Sna
 /// <see cref="DataGridNavigationState.HydrationState"/> from <see cref="HydrationState.Idle"/>
 /// to <see cref="HydrationState.Hydrating"/>. NEVER persisted.
 /// </summary>
-public sealed record DataGridNavigationHydratingAction;
+public sealed record DataGridNavigationHydratingAction {
+    internal long? OriginScopeGeneration { get; init; }
+}
 
 /// <summary>
 /// Dispatched by <c>DataGridNavigationEffects.HandleAppInitialized</c> / <c>HandleStorageReady</c>
@@ -30,4 +34,6 @@ public sealed record DataGridNavigationHydratingAction;
 /// <see cref="DataGridNavigationState.HydrationState"/> to <see cref="HydrationState.Hydrated"/>.
 /// Called on BOTH happy path AND fail-closed path.
 /// </summary>
-public sealed record DataGridNavigationHydratedCompletedAction;
+public sealed record DataGridNavigationHydratedCompletedAction {
+    internal long? OriginScopeGeneration { get; init; }
+}

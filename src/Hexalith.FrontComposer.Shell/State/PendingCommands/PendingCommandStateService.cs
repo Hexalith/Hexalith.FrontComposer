@@ -98,9 +98,13 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
         PendingCommandEntry registered;
         PendingCommandEntry? evicted;
         List<PendingCommandEntry> evictionList;
+        if (!EnforceScopeBoundary()) {
+            return PendingCommandRegistrationResult.ScopeUnavailable();
+        }
+
         lock (_gate) {
             // Validate and insert under one gate; an A acceptance cannot acquire B's snapshot.
-            if (!EnforceScopeBoundary()
+            if (!IsScopeCurrentLocked()
                 || (normalized.RequireOriginScope
                     && (normalized.OriginScope is null
                         || _scopeSnapshot is null
@@ -186,6 +190,10 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
         bool duplicate;
 
         lock (_gate) {
+            if (!IsScopeCurrentLocked()) {
+                return PendingCommandResolutionResult.UnknownMessageId();
+            }
+
             if (_disposed) {
                 return PendingCommandResolutionResult.Disposed();
             }
@@ -267,7 +275,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
         }
 
         lock (_gate) {
-            if (_disposed) {
+            if (_disposed || !IsScopeCurrentLocked()) {
                 return null;
             }
 
@@ -281,7 +289,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             return [];
         }
         lock (_gate) {
-            if (_disposed) {
+            if (_disposed || !IsScopeCurrentLocked()) {
                 return [];
             }
 
@@ -611,17 +619,21 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
     }
 
     private bool TryDispatchTerminalLifecycle(PendingCommandEntry terminal, Activity? activity) {
+        long? lifecycleGeneration;
         lock (_gate) {
             if (_disposed || !_byMessageId.TryGetValue(terminal.MessageId, out PendingCommandEntry? current)
-                || !ReferenceEquals(current, terminal)) {
+                || current.Status != terminal.Status
+                || !IsScopeCurrentLocked()) {
                 return false;
             }
 
-            return TryDispatchCurrentTerminalLifecycle(terminal, activity);
+            lifecycleGeneration = (_lifecycle as global::Hexalith.FrontComposer.Shell.Services.Lifecycle.LifecycleStateService)?.ScopeGeneration;
         }
+
+        return TryDispatchCurrentTerminalLifecycle(terminal, activity, lifecycleGeneration);
     }
 
-    private bool TryDispatchCurrentTerminalLifecycle(PendingCommandEntry terminal, Activity? activity) {
+    private bool TryDispatchCurrentTerminalLifecycle(PendingCommandEntry terminal, Activity? activity, long? lifecycleGeneration) {
         CommandLifecycleState lifecycleState = terminal.Status is PendingCommandStatus.Rejected or PendingCommandStatus.NeedsReview
             ? CommandLifecycleState.Rejected
             : CommandLifecycleState.Confirmed;
@@ -631,7 +643,14 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
                 return true;
             }
 
-            _lifecycle.Transition(terminal.CorrelationId, lifecycleState, terminal.MessageId, idempotencyResolved);
+            if (_lifecycle is global::Hexalith.FrontComposer.Shell.Services.Lifecycle.LifecycleStateService concrete && lifecycleGeneration is { } generation) {
+                if (!concrete.TryTransitionForScope(generation, terminal.CorrelationId, lifecycleState, terminal.MessageId, idempotencyResolved)) {
+                    return false;
+                }
+            }
+            else {
+                _lifecycle.Transition(terminal.CorrelationId, lifecycleState, terminal.MessageId, idempotencyResolved);
+            }
             if (LifecycleMatches(terminal, lifecycleState)) {
                 return true;
             }
@@ -700,9 +719,8 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
                         : (null, null);
             }
             catch (Exception) {
-                // Scope access is an FC-NIP eligibility seam, not a transport/lifecycle gate.
-                // Treat an unavailable accessor like an unknown scope so an accepted command can
-                // still be registered and resolved without carrying a target into publication.
+                // An unavailable accessor is an unknown scope. Fail closed and clear any
+                // prior-scope entries before another read or registration can proceed.
                 current = (null, null);
             }
 
@@ -769,6 +787,25 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
     private static bool ScopeMatches((string? Tenant, string? User) a, (string? Tenant, string? User) b)
         => string.Equals(a.Tenant, b.Tenant, StringComparison.Ordinal)
             && string.Equals(a.User, b.User, StringComparison.Ordinal);
+
+    // Call only while holding _gate, after EnforceScopeBoundary has run outside it.
+    private bool IsScopeCurrentLocked() {
+        if (_scopeSnapshot is not { } snapshot) {
+            return false;
+        }
+
+        try {
+            (string? Tenant, string? User) current = _validatedScope is null
+                ? (_userContext?.TenantId, _userContext?.UserId)
+                : _validatedScope.Current() is { } validated
+                    ? (validated.TenantId, validated.UserId)
+                    : (null, null);
+            return ScopeMatches(snapshot, current);
+        }
+        catch (Exception ex) when (!global::Hexalith.FrontComposer.Shell.Services.ExceptionGuard.IsFatal(ex)) {
+            return false;
+        }
+    }
 
     /// <summary>P2-P6 — must be invoked while holding <see cref="_gate"/>; the queue rebuild and the terminal-status write must be in the same critical section.</summary>
     private void PurgeFromInsertionOrderLocked(string messageId) {

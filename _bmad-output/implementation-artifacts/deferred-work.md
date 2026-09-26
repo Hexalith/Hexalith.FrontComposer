@@ -9878,3 +9878,15 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-1-ten-scope-1-prove-tenant-safe-operator-state-end-to-end.md`
   summary: Confirm whether the Light theme applied on `ScopeChangedAction` can finish after the new scope's hydrated theme apply and override it on screen.
   evidence: unverified (medium if true). `ThemeEffects.HandleScopeChanged` (`ThemeEffects.cs:46`) and the hydrated `HandleThemeChanged` both call `IThemeService.SetThemeAsync` without ordering, so overlapping calls could leave Light on screen while B's state and stored preference are Dark. Carried from pass-4 Edge 4. Settle it with a controlled out-of-order `SetThemeAsync` completion against the production Fluent theme service.
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-1-ten-scope-1-prove-tenant-safe-operator-state-end-to-end.md`
+  summary: Unverified medium: queued prior-scope visit actions could restore route or capability preferences after the new-scope reset.
+  evidence: The in-repository UI producers dispatch synchronously and remount on scope change; a reproducible queued event that processes after the reset would settle the exposure.
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-1-ten-scope-1-prove-tenant-safe-operator-state-end-to-end.md`
+  summary: Unverified medium: a Counter SubmittedAction first processed after an A-to-B switch could capture B as its origin.
+  evidence: The generated form checks scope before transport and association, so a confirmed A submission reaching the B effect must be demonstrated.
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-1-ten-scope-1-prove-tenant-safe-operator-state-end-to-end.md`
+  summary: Unverified high: a generated projection view mounted outside FrontComposerShell could retain prior rows through a live identity switch.
+  evidence: The production Counter view is owned by the Shell boundary; a concrete direct-view adopter with a live auth transition would settle whether state remains visible.
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-1-ten-scope-1-prove-tenant-safe-operator-state-end-to-end.md`
+  summary: Unverified medium: a generated form could remain pending after ScopeUnavailable if the accessor recovers without remount.
+  evidence: Boundary-driven scope loss remounts the form; a production transient unavailable accessor returning to the same mounted form would settle the stuck-state claim.

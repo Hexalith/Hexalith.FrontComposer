@@ -22,6 +22,7 @@ public static class DataGridNavigationReducers {
         return state with {
             ViewStates = System.Collections.Immutable.ImmutableDictionary<string, GridViewSnapshot>.Empty,
             HydrationState = HydrationState.Idle,
+            ScopeGeneration = state.ScopeGeneration + 1,
         };
     }
     [ReducerMethod]
@@ -120,6 +121,10 @@ public static class DataGridNavigationReducers {
         GridViewHydratedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
+        if (!HydrationScopeGeneration.IsCurrent(state.ScopeGeneration, action.OriginScopeGeneration)) {
+            return state;
+        }
+
         if (state.ViewStates.ContainsKey(action.ViewKey)) {
             return state;
         }
@@ -144,6 +149,10 @@ public static class DataGridNavigationReducers {
         DataGridNavigationHydratingAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
+        if (!HydrationScopeGeneration.IsCurrent(state.ScopeGeneration, action.OriginScopeGeneration)) {
+            return state;
+        }
+
         return state.HydrationState == HydrationState.Hydrated
             ? state
             : state with { HydrationState = HydrationState.Hydrating };
@@ -163,6 +172,10 @@ public static class DataGridNavigationReducers {
         DataGridNavigationHydratedCompletedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
+        if (!HydrationScopeGeneration.IsCurrent(state.ScopeGeneration, action.OriginScopeGeneration)) {
+            return state;
+        }
+
         return state.HydrationState == HydrationState.Hydrated
             ? state
             : state with { HydrationState = HydrationState.Hydrated };

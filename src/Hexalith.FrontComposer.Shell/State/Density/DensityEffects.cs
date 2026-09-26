@@ -118,11 +118,12 @@ public sealed class DensityEffects(
     }
 
     private async Task HydrateAsync(IDispatcher dispatcher, bool useBootstrapTierCap) {
+        long scopeGeneration = densityState.Value.ScopeGeneration;
         if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "Density", DirectionHydrate)) {
             return;
         }
 
-        dispatcher.Dispatch(new DensityHydratingAction());
+        dispatcher.Dispatch(new DensityHydratingAction { OriginScopeGeneration = scopeGeneration });
 
         string key = StorageKeys.BuildKey(tenantId, userId, FeatureSegment);
         DensityLevel? stored = null;
@@ -174,8 +175,8 @@ public sealed class DensityEffects(
             DensitySurface.Default,
             GetHydrationTier(useBootstrapTierCap));
 
-        dispatcher.Dispatch(new DensityHydratedAction(stored, resolvedEffective));
-        dispatcher.Dispatch(new DensityHydratedCompletedAction());
+        dispatcher.Dispatch(new DensityHydratedAction(stored, resolvedEffective) { OriginScopeGeneration = scopeGeneration });
+        dispatcher.Dispatch(new DensityHydratedCompletedAction { OriginScopeGeneration = scopeGeneration });
     }
 
     /// <summary>

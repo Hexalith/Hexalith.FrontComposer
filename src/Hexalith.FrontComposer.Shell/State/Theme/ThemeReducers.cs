@@ -12,7 +12,7 @@ public static class ThemeReducers {
     public static FrontComposerThemeState ReduceScopeChanged(FrontComposerThemeState state, ScopeChangedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
-        return new FrontComposerThemeState(ThemeValue.Light, HydrationState.Idle) {
+        return new FrontComposerThemeState(FrontComposerThemeState.DefaultTheme, HydrationState.Idle) {
             ScopeVersion = state.ScopeVersion + 1,
         };
     }

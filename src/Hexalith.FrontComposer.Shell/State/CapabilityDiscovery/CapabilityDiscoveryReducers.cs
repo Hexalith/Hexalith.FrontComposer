@@ -16,7 +16,7 @@ public static class CapabilityDiscoveryReducers {
         ScopeChangedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
-        return FrontComposerCapabilityDiscoveryState.Empty;
+        return FrontComposerCapabilityDiscoveryState.Empty with { ScopeGeneration = state.ScopeGeneration + 1 };
     }
     /// <summary>
     /// Publishes the seeded counts snapshot and flips
@@ -33,6 +33,10 @@ public static class CapabilityDiscoveryReducers {
         BadgeCountsSeededAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
+        if (!HydrationScopeGeneration.IsCurrent(state.ScopeGeneration, action.OriginScopeGeneration)) {
+            return state;
+        }
+
         ImmutableDictionary<Type, int> mergedCounts = action.Counts;
         if (!state.Counts.IsEmpty) {
             mergedCounts = action.Counts.SetItems(state.Counts);
@@ -97,6 +101,10 @@ public static class CapabilityDiscoveryReducers {
         SeenCapabilitiesHydratedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
+        if (!HydrationScopeGeneration.IsCurrent(state.ScopeGeneration, action.OriginScopeGeneration)) {
+            return state;
+        }
+
         return state with { SeenCapabilities = action.SeenCapabilities };
     }
 }

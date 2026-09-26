@@ -169,16 +169,17 @@ public sealed class CommandPaletteEffects : IDisposable {
     }
 
     private async Task HydrateRecentRoutesAsync(IDispatcher dispatcher) {
+        long scopeGeneration = _paletteState.Value.ScopeGeneration;
         if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "Palette", DirectionHydrate)) {
             return;
         }
 
-        dispatcher.Dispatch(new PaletteHydratingAction());
+        dispatcher.Dispatch(new PaletteHydratingAction { OriginScopeGeneration = scopeGeneration });
 
         IStorageService? storage = Storage;
         if (storage is null) {
             if (IsHydrationScopeCurrent(tenantId, userId)) {
-                dispatcher.Dispatch(new PaletteHydratedCompletedAction());
+                dispatcher.Dispatch(new PaletteHydratedCompletedAction { OriginScopeGeneration = scopeGeneration });
             }
             return;
         }
@@ -196,7 +197,7 @@ public sealed class CommandPaletteEffects : IDisposable {
         catch (OperationCanceledException) {
             FrontComposerDiagnosticLog.PaletteHydrationCancelled(_logger);
             if (IsHydrationScopeCurrent(tenantId, userId)) {
-                dispatcher.Dispatch(new PaletteHydratedCompletedAction());
+                dispatcher.Dispatch(new PaletteHydratedCompletedAction { OriginScopeGeneration = scopeGeneration });
             }
             return;
         }
@@ -221,7 +222,7 @@ public sealed class CommandPaletteEffects : IDisposable {
                 FcDiagnosticIds.HFC2111_PaletteHydrationEmpty,
                 reason);
             if (IsHydrationScopeCurrent(tenantId, userId)) {
-                dispatcher.Dispatch(new PaletteHydratedCompletedAction());
+                dispatcher.Dispatch(new PaletteHydratedCompletedAction { OriginScopeGeneration = scopeGeneration });
             }
             return;
         }
@@ -231,7 +232,7 @@ public sealed class CommandPaletteEffects : IDisposable {
                 _logger,
                 FcDiagnosticIds.HFC2111_PaletteHydrationEmpty,
                 "Empty");
-            dispatcher.Dispatch(new PaletteHydratedCompletedAction());
+            dispatcher.Dispatch(new PaletteHydratedCompletedAction { OriginScopeGeneration = scopeGeneration });
             return;
         }
 
@@ -257,10 +258,10 @@ public sealed class CommandPaletteEffects : IDisposable {
         }
 
         if (filtered.Length > 0) {
-            dispatcher.Dispatch(new PaletteHydratedAction(filtered));
+            dispatcher.Dispatch(new PaletteHydratedAction(filtered) { OriginScopeGeneration = scopeGeneration });
         }
 
-        dispatcher.Dispatch(new PaletteHydratedCompletedAction());
+        dispatcher.Dispatch(new PaletteHydratedCompletedAction { OriginScopeGeneration = scopeGeneration });
     }
 
     private bool IsHydrationScopeCurrent(string tenantId, string userId)
@@ -290,7 +291,8 @@ public sealed class CommandPaletteEffects : IDisposable {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
 
-        dispatcher.Dispatch(new PaletteResultsComputedAction(string.Empty, BuildDefaultResults()));
+        long scopeGeneration = _paletteState.Value.ScopeGeneration;
+        dispatcher.Dispatch(new PaletteResultsComputedAction(string.Empty, BuildDefaultResults()) { OriginScopeGeneration = scopeGeneration });
         return Task.CompletedTask;
     }
 
@@ -320,6 +322,7 @@ public sealed class CommandPaletteEffects : IDisposable {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
 
+        long scopeGeneration = _paletteState.Value.ScopeGeneration;
         CancellationTokenSource cts = ReplaceQueryCts();
 
         try {
@@ -332,7 +335,7 @@ public sealed class CommandPaletteEffects : IDisposable {
         string canonical = ResolveShortcutAliasQuery(action.Query).Trim();
 
         if (string.IsNullOrWhiteSpace(canonical)) {
-            dispatcher.Dispatch(new PaletteResultsComputedAction(action.Query, BuildDefaultResults()));
+            dispatcher.Dispatch(new PaletteResultsComputedAction(action.Query, BuildDefaultResults()) { OriginScopeGeneration = scopeGeneration });
             return;
         }
 
@@ -345,7 +348,7 @@ public sealed class CommandPaletteEffects : IDisposable {
                 FrontComposerWarningLog.PaletteShortcutServiceMissing(
                     _logger,
                     FcDiagnosticIds.HFC2110_PaletteScoringFault);
-                dispatcher.Dispatch(new PaletteResultsComputedAction(action.Query, ImmutableArray<PaletteResult>.Empty));
+                dispatcher.Dispatch(new PaletteResultsComputedAction(action.Query, ImmutableArray<PaletteResult>.Empty) { OriginScopeGeneration = scopeGeneration });
                 return;
             }
 
@@ -360,7 +363,7 @@ public sealed class CommandPaletteEffects : IDisposable {
                     IsInCurrentContext: false,
                     ProjectionType: null,
                     DescriptionKey: r.DescriptionKey))];
-            dispatcher.Dispatch(new PaletteResultsComputedAction(action.Query, shortcutResults));
+            dispatcher.Dispatch(new PaletteResultsComputedAction(action.Query, shortcutResults) { OriginScopeGeneration = scopeGeneration });
             return;
         }
 
@@ -379,7 +382,7 @@ public sealed class CommandPaletteEffects : IDisposable {
                 _logger,
                 FcDiagnosticIds.HFC2110_PaletteScoringFault,
                 ex);
-            dispatcher.Dispatch(new PaletteResultsComputedAction(action.Query, ImmutableArray<PaletteResult>.Empty));
+            dispatcher.Dispatch(new PaletteResultsComputedAction(action.Query, ImmutableArray<PaletteResult>.Empty) { OriginScopeGeneration = scopeGeneration });
             return;
         }
 
@@ -470,7 +473,7 @@ public sealed class CommandPaletteEffects : IDisposable {
         }
 
         try {
-            dispatcher.Dispatch(new PaletteResultsComputedAction(action.Query, ranked));
+            dispatcher.Dispatch(new PaletteResultsComputedAction(action.Query, ranked) { OriginScopeGeneration = scopeGeneration });
         }
         catch (ObjectDisposedException) {
             // Circuit disposed between stale-guard and dispatch — Fluxor store is gone, safe to ignore.

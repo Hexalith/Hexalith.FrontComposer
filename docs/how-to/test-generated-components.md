@@ -63,6 +63,8 @@ public sealed class CounterViewTests : FrontComposerTestBase
 }
 ```
 
+Generated projection reducers accept direct `LoadedAction` results before the first scope transition, as in the example above. After `ScopeChangedAction`, dispatch a new `LoadRequestedAction` with a fresh correlation ID before `LoadedAction` or `LoadFailedAction` with that same ID. A result without a new matching request is discarded so a late response from the prior tenant cannot refill the view. The adopter owns the request and its result; a scope change does not start a load automatically.
+
 ## Compose the host directly
 
 ```csharp compile

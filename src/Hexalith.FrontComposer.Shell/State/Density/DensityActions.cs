@@ -47,7 +47,9 @@ public sealed record UserPreferenceClearedAction(
 /// <param name="NewEffective">Pre-resolved effective density at the current viewport.</param>
 public sealed record DensityHydratedAction(
     DensityLevel? UserPreference,
-    DensityLevel NewEffective);
+    DensityLevel NewEffective) {
+    internal long? OriginScopeGeneration { get; init; }
+}
 
 /// <summary>
 /// Dispatched by <c>DensityEffects.HandleViewportTierChanged</c> when a viewport transition causes
@@ -64,7 +66,9 @@ public sealed record EffectiveDensityRecomputedAction(DensityLevel NewEffective)
 /// <see cref="FrontComposerDensityState.HydrationState"/> from <see cref="HydrationState.Idle"/>
 /// to <see cref="HydrationState.Hydrating"/>. NEVER persisted.
 /// </summary>
-public sealed record DensityHydratingAction;
+public sealed record DensityHydratingAction {
+    internal long? OriginScopeGeneration { get; init; }
+}
 
 /// <summary>
 /// Dispatched by <c>DensityEffects.HandleAppInitialized</c> / <c>HandleStorageReady</c> as the final
@@ -72,4 +76,6 @@ public sealed record DensityHydratingAction;
 /// <see cref="FrontComposerDensityState.HydrationState"/> to <see cref="HydrationState.Hydrated"/>.
 /// Called on BOTH happy path AND fail-closed path.
 /// </summary>
-public sealed record DensityHydratedCompletedAction;
+public sealed record DensityHydratedCompletedAction {
+    internal long? OriginScopeGeneration { get; init; }
+}

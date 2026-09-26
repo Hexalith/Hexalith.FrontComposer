@@ -13,5 +13,6 @@ namespace Hexalith.FrontComposer.Shell.State.Theme;
 public record FrontComposerThemeState(
     ThemeValue CurrentTheme,
     HydrationState HydrationState = HydrationState.Idle) {
+    internal const ThemeValue DefaultTheme = ThemeValue.Light;
     internal long ScopeVersion { get; init; }
 }

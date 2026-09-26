@@ -27,4 +27,6 @@ namespace Hexalith.FrontComposer.Shell.State.Density;
 public record FrontComposerDensityState(
     DensityLevel? UserPreference,
     DensityLevel EffectiveDensity,
-    HydrationState HydrationState = HydrationState.Idle);
+    HydrationState HydrationState = HydrationState.Idle) {
+    internal long ScopeGeneration { get; init; }
+}

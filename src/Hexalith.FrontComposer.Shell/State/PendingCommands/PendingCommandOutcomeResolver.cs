@@ -183,6 +183,7 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
             if (result.Status is PendingCommandRegistrationStatus.InvalidMessageId
                 or PendingCommandRegistrationStatus.InvalidCorrelationId
                 or PendingCommandRegistrationStatus.ConflictingMetadata
+                or PendingCommandRegistrationStatus.ScopeUnavailable
                 or PendingCommandRegistrationStatus.Disposed) {
                 if (hasBufferKey) {
                     _ = _earlyByOwner.Remove(key!);

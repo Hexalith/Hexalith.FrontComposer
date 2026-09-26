@@ -33,6 +33,33 @@ public sealed class EventStorePendingCommandStatusQueryTests {
         handler.Requests.ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task QueryAsync_ScopeSwitchDuringTokenWait_DoesNotSendOldMessageWithNewToken() {
+        RecordingHandler handler = new(_ => JsonResponse("Completed", 4));
+        TaskCompletionSource<string?> token = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TestTenantContextAccessor scope = new();
+        EventStorePendingCommandStatusQuery sut = new(
+            new SingleClientFactory(handler),
+            Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
+                BaseAddress = new Uri("https://eventstore.test"),
+                AccessTokenProvider = _ => new ValueTask<string?>(token.Task),
+            }),
+            EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStorePendingCommandStatusQuery>.Instance,
+            scope);
+        Task<PendingCommandOutcomeObservation?> query = sut.QueryAsync(
+            Pending(), TestContext.Current.CancellationToken).AsTask();
+
+        scope.TenantId = "tenant-b";
+        scope.UserId = "user-b";
+        token.SetResult("new-token");
+
+        TenantContextException error = await Should.ThrowAsync<TenantContextException>(
+            async () => await query.ConfigureAwait(true));
+        error.FailureCategory.ShouldBe(TenantContextFailureCategory.StaleTenantContext);
+        handler.Requests.ShouldBeEmpty();
+    }
+
     public static TheoryData<string, int, PendingCommandTerminalOutcome?> StatusCases => new() {
         { "Received", 0, null },
         { "Processing", 1, null },

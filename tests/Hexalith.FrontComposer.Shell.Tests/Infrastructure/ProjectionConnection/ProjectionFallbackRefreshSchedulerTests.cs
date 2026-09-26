@@ -57,6 +57,48 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
     }
 
     [Fact]
+    public async Task HeldNotModified_AfterScopeClear_CannotCompleteNewScopePage() {
+        const string viewKey = "acme:OrdersProjection";
+        TaskCompletionSource<ProjectionPageResult> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
+        loader.LoadPageAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<int>(),
+            Arg.Any<IImmutableDictionary<string, string>>(), Arg.Any<string?>(),
+            Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(_ => {
+                started.TrySetResult();
+                return held.Task;
+            });
+        MutableLoadedPageState pages = new(PageState(viewKey, ["old"], 1));
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        LoadPageNotModifiedAction? dispatched = null;
+        dispatcher.When(x => x.Dispatch(Arg.Any<LoadPageNotModifiedAction>()))
+            .Do(call => dispatched = call.Arg<LoadPageNotModifiedAction>());
+        ProjectionFallbackRefreshScheduler scheduler = CreateScheduler(loader, dispatcher, pages);
+        _ = scheduler.RegisterLane(DefaultLane(viewKey));
+
+        Task<int> refresh = scheduler.TriggerNudgeRefreshAsync("OrdersProjection", "acme", TestContext.Current.CancellationToken);
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken).ConfigureAwait(true);
+        LoadedPageState cleared = LoadedPageReducers.ReduceScopeChanged(pages.Value, new ScopeChangedAction());
+        TaskCompletionSource<object> pendingB = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        pages.Value = cleared with {
+            PagesByKey = ImmutableDictionary<(string ViewKey, int Skip), IReadOnlyList<object>>.Empty.Add((viewKey, 0), ["current"]),
+            PendingCompletionsByKey = ImmutableDictionary<(string ViewKey, int Skip), TaskCompletionSource<object>>.Empty.Add((viewKey, 0), pendingB),
+        };
+        held.TrySetResult(new ProjectionPageResult(["old"], 1, "v1", IsNotModified: true));
+        _ = await refresh.ConfigureAwait(true);
+
+        dispatched.ShouldNotBeNull();
+        dispatched.OriginScopeGeneration.ShouldBe(0);
+        LoadedPageReducers.ReduceLoadPageNotModified(pages.Value, dispatched).ShouldBeSameAs(pages.Value);
+        pendingB.Task.IsCompleted.ShouldBeFalse();
+        LoadedPageReducers.ReduceLoadPageNotModified(pages.Value,
+            new LoadPageNotModifiedAction(viewKey, 0, ["current"]) { OriginScopeGeneration = 1 })
+            .PendingCompletionsByKey.ShouldBeEmpty();
+        pendingB.Task.IsCompletedSuccessfully.ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task TriggerFallbackOnce_PollsOnlyWhenDisconnected_AndBoundsLaneCount() {
         TestConnectionState state = new(new ProjectionConnectionSnapshot(
             ProjectionConnectionStatus.Disconnected,

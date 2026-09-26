@@ -46,7 +46,13 @@ public class ThemeEffects(
     public Task HandleScopeChanged(Navigation.ScopeChangedAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
-        return ApplyThemeAsync(ThemeMode.Light);
+        ThemeValue resetTheme = state?.Value.CurrentTheme ?? FrontComposerThemeState.DefaultTheme;
+        ThemeMode mode = resetTheme switch {
+            ThemeValue.Light => ThemeMode.Light,
+            ThemeValue.Dark => ThemeMode.Dark,
+            _ => ThemeMode.System,
+        };
+        return ApplyThemeAndMaybePersistAsync(mode, null, null, null);
     }
 
     /// <summary>Initializes a production instance that consumes the registered scoped resolver.</summary>
@@ -153,10 +159,10 @@ public class ThemeEffects(
     /// <param name="dispatcher">The Fluxor dispatcher (unused but required by Fluxor).</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     [EffectMethod]
-    public async Task HandleThemeChanged(ThemeChangedAction action, IDispatcher dispatcher) {
+    public Task HandleThemeChanged(ThemeChangedAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
         if (!IsScopeVersionCurrent(action.HydrationScopeVersion)) {
-            return;
+            return Task.CompletedTask;
         }
         ThemeMode mode = action.NewTheme switch {
             ThemeValue.Light => ThemeMode.Light,
@@ -165,12 +171,23 @@ public class ThemeEffects(
         };
 
         if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "Theme", DirectionPersist)) {
-            await ApplyThemeAsync(mode).ConfigureAwait(false);
-            return;
+            return ApplyThemeAndMaybePersistAsync(mode, null, null, null);
         }
 
+        return ApplyThemeAndMaybePersistAsync(mode, action, tenantId, userId);
+    }
+
+    private async Task ApplyThemeAndMaybePersistAsync(
+        ThemeMode mode,
+        ThemeChangedAction? action,
+        string? tenantId,
+        string? userId) {
         try {
             await ApplyThemeAsync(mode).ConfigureAwait(false);
+            if (action is null || tenantId is null || userId is null) {
+                return;
+            }
+
             if (!IsScopeVersionCurrent(action.HydrationScopeVersion)
                 || !ScopeResolver.TryResolveScope(out string currentTenant, out string currentUser, "Theme", DirectionPersist)
                 || !string.Equals(currentTenant, tenantId, StringComparison.Ordinal)
@@ -180,7 +197,7 @@ public class ThemeEffects(
             string key = StorageKeys.BuildKey(tenantId, userId, FeatureSegment);
             await storage.SetAsync(key, action.NewTheme).ConfigureAwait(false);
         }
-        catch (Exception ex) {
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             FrontComposerWarningLog.ThemePersistenceFailed(logger, ex);
         }
     }

@@ -485,9 +485,11 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     private void OnPageLayoutChanged() => _ = InvokeAsync(StateHasChanged);
 
     private void OnScopeChanged(object? sender, EventArgs args) {
-        _sessionRestoreAttempted = false;
-        _initialRenderUri = NavigationManager.Uri;
-        _ = InvokeAsync(StateHasChanged);
+        _ = InvokeAsync(() => {
+            _sessionRestoreAttempted = false;
+            _initialRenderUri = NavigationManager.Uri;
+            StateHasChanged();
+        });
     }
 
     private void OnContentLabelChanged() => _ = InvokeAsync(StateHasChanged);

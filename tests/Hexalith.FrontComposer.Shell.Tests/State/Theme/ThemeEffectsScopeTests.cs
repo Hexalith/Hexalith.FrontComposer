@@ -48,6 +48,24 @@ public sealed class ThemeEffectsScopeTests {
     }
 
     [Fact]
+    public async Task ScopeChanged_ThemeInteropFailure_LogsAndDoesNotEscape() {
+        IThemeService themeService = Substitute.For<IThemeService>();
+        _ = themeService.SetThemeAsync(Arg.Any<ThemeSettings>())
+            .Returns(Task.FromException(new InvalidOperationException("interop unavailable")));
+        ILogger<ThemeEffects> logger = EnabledLoggerSubstitute.Create<ThemeEffects>();
+        IState<FrontComposerThemeState> state = Substitute.For<IState<FrontComposerThemeState>>();
+        state.Value.Returns(new FrontComposerThemeState(ThemeValue.Dark));
+        ThemeEffects sut = new(Substitute.For<IStorageService>(),
+            MsOptions.Create(new Hexalith.FrontComposer.Shell.Options.FcShellOptions()),
+            MakeAccessor("tenant-b", "user-b"), logger, themeService, state);
+
+        await Should.NotThrowAsync(() => sut.HandleScopeChanged(new ScopeChangedAction(), Substitute.For<IDispatcher>()));
+        await themeService.Received(1).SetThemeAsync(ArgEx.Is<ThemeSettings>(settings => settings.Mode == ThemeMode.Dark));
+        logger.ReceivedCalls().Any(call => call.GetArguments().Any(arg => arg is EventId eventId && eventId.Id == 5853))
+            .ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task HandleThemeChanged_PriorHydrationScope_DoesNotApplyOrPersistUnderB() {
         IStorageService storage = Substitute.For<IStorageService>();
         IThemeService themeService = Substitute.For<IThemeService>();

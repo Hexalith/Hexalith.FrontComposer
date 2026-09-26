@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Reactive.Linq;
 using System.Security.Claims;
 
 using Fluxor;
@@ -6,18 +7,22 @@ using Fluxor;
 using Hexalith.FrontComposer.Contracts.Badges;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Badges;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Services;
+using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Tenancy;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Tests;
 
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 
 using NSubstitute;
 
@@ -93,6 +98,82 @@ public sealed class ScopeBoundaryServiceTests {
     }
 
     [Fact]
+    public async Task OlderSuccessfulAuthRead_DoesNotCommitAfterNewerEvent() {
+        BlockingScopeAccessor scope = new() { HoldFirstChange = true };
+        TestAuthProvider auth = new();
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        using ServiceProvider services = new ServiceCollection().BuildServiceProvider();
+        using ScopeBoundaryService sut = new(auth, scope, dispatcher,
+            Substitute.For<IScopeReadinessGate>(), Substitute.For<IPendingCommandStateService>(),
+            Substitute.For<INewItemIndicatorStateService>(), Substitute.For<IBadgeCountService>(),
+            Substitute.For<ICommandExecutionAdmissionGate>(), services);
+        sut.Start();
+
+        Task older = Task.Run(auth.Raise, Xunit.TestContext.Current.CancellationToken);
+        try {
+            await scope.FirstChangeEntered.Task.WaitAsync(TimeSpan.FromSeconds(2), Xunit.TestContext.Current.CancellationToken);
+            scope.TenantId = "tenant-b";
+            scope.UserId = "user-b";
+            auth.Raise();
+            sut.IsCurrent.ShouldBeTrue();
+            sut.Generation.ShouldBe(1);
+        }
+        finally {
+            scope.ReleaseFirstChange.Set();
+        }
+
+        await older.ConfigureAwait(true);
+        sut.IsCurrent.ShouldBeTrue();
+        sut.Generation.ShouldBe(1);
+        dispatcher.Received(1).Dispatch(Arg.Any<ScopeChangedAction>());
+    }
+
+    [Fact]
+    public async Task HeldBadgeNotification_CompletesBeforeScopeChangeDispatch() {
+        BlockingScopeAccessor scope = new();
+        TestAuthProvider auth = new();
+        IActionQueueProjectionCatalog catalog = Substitute.For<IActionQueueProjectionCatalog>();
+        catalog.ActionQueueTypes.Returns([typeof(BadgeProjection)]);
+        IActionQueueCountReader reader = new StaticCountReader(() => scope.TenantId == "tenant-a" ? 5 : 7);
+        using ServiceProvider services = new ServiceCollection()
+            .AddSingleton<IFrontComposerTenantContextAccessor>(scope)
+            .BuildServiceProvider();
+        using BadgeCountService badges = new(catalog, reader, services,
+            EnabledLoggerSubstitute.Create<BadgeCountService>(), new FakeTimeProvider());
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        using ScopeBoundaryService sut = new(auth, scope, dispatcher,
+            Substitute.For<IScopeReadinessGate>(), Substitute.For<IPendingCommandStateService>(),
+            Substitute.For<INewItemIndicatorStateService>(), badges,
+            Substitute.For<ICommandExecutionAdmissionGate>(), services);
+        sut.Start();
+        TaskCompletionSource notificationEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim releaseNotification = new();
+        using IDisposable subscription = badges.CountChanged.Subscribe(_ => {
+            notificationEntered.TrySetResult();
+            releaseNotification.Wait(Xunit.TestContext.Current.CancellationToken);
+        });
+        Task initialization = Task.Run(() => badges.InitializeAsync(Xunit.TestContext.Current.CancellationToken),
+            Xunit.TestContext.Current.CancellationToken);
+        try {
+            await notificationEntered.Task.WaitAsync(TimeSpan.FromSeconds(2), Xunit.TestContext.Current.CancellationToken);
+            scope.TenantId = "tenant-b";
+            scope.UserId = "user-b";
+            Task boundary = Task.Run(auth.Raise, Xunit.TestContext.Current.CancellationToken);
+            await scope.FirstChangeEntered.Task.WaitAsync(TimeSpan.FromSeconds(2), Xunit.TestContext.Current.CancellationToken);
+            await Task.Delay(50, Xunit.TestContext.Current.CancellationToken);
+            dispatcher.DidNotReceive().Dispatch(Arg.Any<ScopeChangedAction>());
+            releaseNotification.Set();
+            await Task.WhenAll(initialization, boundary);
+        }
+        finally {
+            releaseNotification.Set();
+        }
+
+        dispatcher.Received(1).Dispatch(Arg.Any<ScopeChangedAction>());
+        badges.Counts[typeof(BadgeProjection)].ShouldBe(7);
+    }
+
+    [Fact]
     public void OwnerRearmsRealReadinessGate_OnTenantSwitch() {
         TestTenantContextAccessor scope = new() { TenantId = null };
         TestAuthProvider auth = new();
@@ -119,6 +200,32 @@ public sealed class ScopeBoundaryServiceTests {
         auth.Raise();
         dispatcher.Received(2).Dispatch(Arg.Any<StorageReadyAction>());
         sut.IsCurrent.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void AuthChange_ResetsRealLifecycleCorrelationIndexAndReplay() {
+        TestTenantContextAccessor scope = new();
+        TestAuthProvider auth = new();
+        LifecycleStateService lifecycle = new(Microsoft.Extensions.Options.Options.Create(new LifecycleOptions()));
+        const string correlation = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        lifecycle.Transition(correlation, CommandLifecycleState.Submitting);
+        lifecycle.GetActiveCorrelationIds().ShouldContain(correlation);
+        using ServiceProvider services = new ServiceCollection()
+            .AddSingleton<ILifecycleStateService>(lifecycle)
+            .BuildServiceProvider();
+        using ScopeBoundaryService sut = new(auth, scope, Substitute.For<IDispatcher>(),
+            Substitute.For<IScopeReadinessGate>(), Substitute.For<IPendingCommandStateService>(),
+            Substitute.For<INewItemIndicatorStateService>(), Substitute.For<IBadgeCountService>(),
+            Substitute.For<ICommandExecutionAdmissionGate>(), services);
+        sut.Start();
+
+        scope.TenantId = "tenant-b";
+        scope.UserId = "user-b";
+        auth.Raise();
+
+        lifecycle.GetActiveCorrelationIds().ShouldBeEmpty();
+        lifecycle.GetState(correlation).ShouldBe(CommandLifecycleState.Idle);
+        using IDisposable replay = lifecycle.Subscribe(correlation, _ => throw new InvalidOperationException("old replay"));
     }
 
     [Fact]
@@ -223,6 +330,44 @@ public sealed class ScopeBoundaryServiceTests {
 
         public TenantContextResult Revalidate(TenantContextSnapshot snapshot, string operationKind = "tenant-scoped")
             => throw new InvalidOperationException("scope unavailable");
+    }
+
+    private sealed class BadgeProjection { }
+
+    private sealed class StaticCountReader(Func<int> currentCount) : IActionQueueCountReader {
+        public ValueTask<int> GetCountAsync(Type projectionType, CancellationToken cancellationToken)
+            => new(currentCount());
+    }
+
+    private sealed class BlockingScopeAccessor : IFrontComposerTenantContextAccessor {
+        private int _changeReads;
+
+        public string TenantId { get; set; } = "tenant-a";
+
+        public string UserId { get; set; } = "user-a";
+
+        public bool HoldFirstChange { get; set; }
+
+        public TaskCompletionSource FirstChangeEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public ManualResetEventSlim ReleaseFirstChange { get; } = new();
+
+        public TenantContextResult TryGetContext(string? requestedTenant = null, string operationKind = "tenant-scoped") {
+            TenantContextSnapshot snapshot = new(TenantId, UserId, true, "test-correlation");
+            if (operationKind == "scope-change" && Interlocked.Increment(ref _changeReads) == 1) {
+                FirstChangeEntered.TrySetResult();
+                if (HoldFirstChange) {
+                    ReleaseFirstChange.Wait(Xunit.TestContext.Current.CancellationToken);
+                }
+            }
+
+            return requestedTenant is null || requestedTenant == snapshot.TenantId
+                ? TenantContextResult.Success(snapshot)
+                : TenantContextResult.Failure(TenantContextFailureCategory.TenantMismatch, "test-correlation");
+        }
+
+        public TenantContextResult Revalidate(TenantContextSnapshot snapshot, string operationKind = "tenant-scoped")
+            => TryGetContext(snapshot.TenantId, operationKind);
     }
 }
 

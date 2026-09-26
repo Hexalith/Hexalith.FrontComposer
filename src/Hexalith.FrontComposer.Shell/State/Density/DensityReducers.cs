@@ -15,7 +15,7 @@ public static class DensityReducers {
     public static FrontComposerDensityState ReduceScopeChanged(FrontComposerDensityState state, ScopeChangedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
-        return state with { UserPreference = null, HydrationState = HydrationState.Idle };
+        return state with { UserPreference = null, HydrationState = HydrationState.Idle, ScopeGeneration = state.ScopeGeneration + 1 };
     }
     /// <summary>
     /// Assigns both fields from the payload (Story 3-3 D3 / AC1). Action producer pre-resolved
@@ -69,6 +69,10 @@ public static class DensityReducers {
         DensityHydratedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
+        if (!HydrationScopeGeneration.IsCurrent(state.ScopeGeneration, action.OriginScopeGeneration)) {
+            return state;
+        }
+
         return state with {
             UserPreference = action.UserPreference,
             EffectiveDensity = action.NewEffective,
@@ -126,6 +130,10 @@ public static class DensityReducers {
         DensityHydratingAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
+        if (!HydrationScopeGeneration.IsCurrent(state.ScopeGeneration, action.OriginScopeGeneration)) {
+            return state;
+        }
+
         return state.HydrationState == HydrationState.Hydrated
             ? state
             : state with { HydrationState = HydrationState.Hydrating };
@@ -144,6 +152,10 @@ public static class DensityReducers {
         DensityHydratedCompletedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
+        if (!HydrationScopeGeneration.IsCurrent(state.ScopeGeneration, action.OriginScopeGeneration)) {
+            return state;
+        }
+
         return state.HydrationState == HydrationState.Hydrated
             ? state
             : state with { HydrationState = HydrationState.Hydrated };

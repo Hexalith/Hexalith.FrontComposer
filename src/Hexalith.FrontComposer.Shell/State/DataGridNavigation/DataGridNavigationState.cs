@@ -24,4 +24,6 @@ namespace Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 public sealed record DataGridNavigationState(
     ImmutableDictionary<string, GridViewSnapshot> ViewStates,
     int Cap = 50,
-    HydrationState HydrationState = HydrationState.Idle);
+    HydrationState HydrationState = HydrationState.Idle) {
+    internal long ScopeGeneration { get; init; }
+}

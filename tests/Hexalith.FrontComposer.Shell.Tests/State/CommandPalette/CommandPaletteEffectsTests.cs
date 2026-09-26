@@ -434,6 +434,61 @@ public class CommandPaletteEffectsTests {
             Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task SameQuery_AuthorizationCompletesAfterScopeSwitch_OldResultsAreRejected() {
+        string commandTypeName = typeof(PaletteProtectedCommand).FullName!;
+        TaskCompletionSource<CommandAuthorizationDecision> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        int evaluations = 0;
+        ICommandAuthorizationEvaluator evaluator = Substitute.For<ICommandAuthorizationEvaluator>();
+        evaluator.EvaluateAsync(Arg.Any<CommandAuthorizationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(_ => {
+                if (Interlocked.Increment(ref evaluations) == 1) {
+                    entered.TrySetResult();
+                    return held.Task;
+                }
+
+                return Task.FromResult(CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Denied, "b"));
+            });
+        FakeTimeProvider time = new();
+        ServiceCollection services = [];
+        services.AddSingleton<TimeProvider>(time);
+        services.AddSingleton(CreateRegistry([
+            new DomainManifest("Orders", "Orders", [], [commandTypeName],
+                CommandPolicies: new Dictionary<string, string>(StringComparer.Ordinal) {
+                    [commandTypeName] = "OrderApprover",
+                }),
+        ]));
+        services.AddSingleton(evaluator);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        FrontComposerCommandPaletteState current = new(true, "Protected", [], [], 0, PaletteLoadState.Searching);
+        IState<FrontComposerCommandPaletteState> palette = Substitute.For<IState<FrontComposerCommandPaletteState>>();
+        palette.Value.Returns(_ => current);
+        IState<FrontComposerNavigationState> navigation = Substitute.For<IState<FrontComposerNavigationState>>();
+        navigation.Value.Returns(new FrontComposerNavigationState(false, ImmutableDictionary<string, bool>.Empty, ViewportTier.Desktop));
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        dispatcher.When(d => d.Dispatch(Arg.Any<PaletteResultsComputedAction>())).Do(call =>
+            current = CommandPaletteReducers.ReducePaletteResultsComputed(current, call.Arg<PaletteResultsComputedAction>()));
+        using CommandPaletteEffects effect = new(navigation, palette,
+            EnabledLoggerSubstitute.Create<CommandPaletteEffects>(), provider);
+
+        Task oldQuery = effect.HandlePaletteQueryChanged(new PaletteQueryChangedAction("a", "Protected"), dispatcher);
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(2), Xunit.TestContext.Current.CancellationToken);
+        current = CommandPaletteReducers.ReduceScopeChanged(current, new ScopeChangedAction());
+        current = CommandPaletteReducers.ReducePaletteOpened(current, new PaletteOpenedAction("b"));
+        current = CommandPaletteReducers.ReducePaletteQueryChanged(current, new PaletteQueryChangedAction("b", "Protected"));
+
+        Task newQuery = effect.HandlePaletteQueryChanged(new PaletteQueryChangedAction("b", "Protected"), dispatcher);
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        await newQuery;
+        current.Results.ShouldBeEmpty();
+        held.SetResult(CommandAuthorizationDecision.Allowed("a"));
+        await oldQuery;
+        current.Results.ShouldBeEmpty();
+        current.ScopeGeneration.ShouldBe(1);
+    }
+
     // Story 2.7 Task 2 (AC2) — the durable DEFAULT-LANE integration pin: drive live registry
     // filtering end-to-end through the REAL PaletteScorer + effect across a MULTI-manifest registry
     // and assert the dispatched results surface EXACTLY the matching projections, ranked by score

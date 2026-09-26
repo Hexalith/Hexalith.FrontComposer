@@ -299,6 +299,7 @@ public sealed class DataGridNavigationEffects : IDisposable {
     public async Task HandleRestoreGridState(RestoreGridStateAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
+        long scopeGeneration = _state.Value.ScopeGeneration;
         if (IsDisposed()) {
             return;
         }
@@ -343,7 +344,7 @@ public sealed class DataGridNavigationEffects : IDisposable {
             return;
         }
 
-        dispatcher.Dispatch(new GridViewHydratedAction(action.ViewKey, blob.ToSnapshot()));
+        dispatcher.Dispatch(new GridViewHydratedAction(action.ViewKey, blob.ToSnapshot()) { OriginScopeGeneration = scopeGeneration });
     }
 
     /// <inheritdoc />
@@ -360,11 +361,12 @@ public sealed class DataGridNavigationEffects : IDisposable {
     }
 
     private async Task HydrateAsync(IDispatcher dispatcher) {
+        long scopeGeneration = _state.Value.ScopeGeneration;
         if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "DataGrid", "hydrate")) {
             return;
         }
 
-        dispatcher.Dispatch(new DataGridNavigationHydratingAction());
+        dispatcher.Dispatch(new DataGridNavigationHydratingAction { OriginScopeGeneration = scopeGeneration });
 
         string prefix = StorageKeys.BuildKey(tenantId, userId, FeatureSegment) + ":";
         IReadOnlyList<string> keys;
@@ -373,7 +375,7 @@ public sealed class DataGridNavigationEffects : IDisposable {
         }
         catch (OperationCanceledException) {
             FrontComposerDiagnosticLog.DataGridHydrateCancelled(_logger);
-            dispatcher.Dispatch(new DataGridNavigationHydratedCompletedAction());
+            dispatcher.Dispatch(new DataGridNavigationHydratedCompletedAction { OriginScopeGeneration = scopeGeneration });
             return;
         }
         catch (Exception ex) {
@@ -382,7 +384,7 @@ public sealed class DataGridNavigationEffects : IDisposable {
                 ex,
                 FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
                 "hydrate");
-            dispatcher.Dispatch(new DataGridNavigationHydratedCompletedAction());
+            dispatcher.Dispatch(new DataGridNavigationHydratedCompletedAction { OriginScopeGeneration = scopeGeneration });
             return;
         }
 
@@ -492,11 +494,11 @@ public sealed class DataGridNavigationEffects : IDisposable {
                 return;
             }
 
-            dispatcher.Dispatch(new GridViewHydratedAction(viewKey, snapshot));
+            dispatcher.Dispatch(new GridViewHydratedAction(viewKey, snapshot) { OriginScopeGeneration = scopeGeneration });
         }
 
         if (IsHydrationScopeCurrent(tenantId, userId)) {
-            dispatcher.Dispatch(new DataGridNavigationHydratedCompletedAction());
+            dispatcher.Dispatch(new DataGridNavigationHydratedCompletedAction { OriginScopeGeneration = scopeGeneration });
         }
     }
 

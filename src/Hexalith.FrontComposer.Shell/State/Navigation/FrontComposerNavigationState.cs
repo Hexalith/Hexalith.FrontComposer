@@ -38,4 +38,6 @@ public record FrontComposerNavigationState(
     string? CurrentBoundedContext = null,
     string? LastActiveRoute = null,
     bool StorageReady = false,
-    HydrationState HydrationState = HydrationState.Idle);
+    HydrationState HydrationState = HydrationState.Idle) {
+    internal long ScopeGeneration { get; init; }
+}

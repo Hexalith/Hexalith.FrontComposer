@@ -61,6 +61,7 @@ public sealed class EventStorePendingCommandStatusQuery(
             HttpMethod.Get,
             StatusEndpointPrefix + Uri.EscapeDataString(pendingCommand.MessageId));
         await EventStoreHttp.ApplyAuthorizationAsync(request, current, cancellationToken).ConfigureAwait(false);
+        _ = tenantContextAccessor!.Revalidate(scope, "pending-status-send").EnsureSuccess();
 
         HttpClient client = httpClientFactory.CreateClient(EventStoreQueryClient.HttpClientName);
         using HttpResponseMessage response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);

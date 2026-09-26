@@ -19,6 +19,7 @@ public static class NavigationReducers {
             LastActiveRoute = null,
             StorageReady = false,
             HydrationState = HydrationState.Idle,
+            ScopeGeneration = state.ScopeGeneration + 1,
         };
     }
     /// <summary>
@@ -106,6 +107,10 @@ public static class NavigationReducers {
         NavigationHydratedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
+        if (!HydrationScopeGeneration.IsCurrent(state.ScopeGeneration, action.OriginScopeGeneration)) {
+            return state;
+        }
+
         return state with {
             SidebarCollapsed = action.SidebarCollapsed,
             CollapsedGroups = action.CollapsedGroups,
@@ -164,6 +169,10 @@ public static class NavigationReducers {
         LastActiveRouteHydratedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
+        if (!HydrationScopeGeneration.IsCurrent(state.ScopeGeneration, action.OriginScopeGeneration)) {
+            return state;
+        }
+
         string? normalised = string.IsNullOrWhiteSpace(action.Route) ? null : action.Route;
         return state with { LastActiveRoute = normalised };
     }
@@ -202,6 +211,10 @@ public static class NavigationReducers {
         NavigationHydratingAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
+        if (!HydrationScopeGeneration.IsCurrent(state.ScopeGeneration, action.OriginScopeGeneration)) {
+            return state;
+        }
+
         return state.HydrationState == HydrationState.Hydrated
             ? state
             : state with { HydrationState = HydrationState.Hydrating };
@@ -222,6 +235,10 @@ public static class NavigationReducers {
         NavigationHydratedCompletedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
+        if (!HydrationScopeGeneration.IsCurrent(state.ScopeGeneration, action.OriginScopeGeneration)) {
+            return state;
+        }
+
         return state.HydrationState == HydrationState.Hydrated
             ? state
             : state with { HydrationState = HydrationState.Hydrated };

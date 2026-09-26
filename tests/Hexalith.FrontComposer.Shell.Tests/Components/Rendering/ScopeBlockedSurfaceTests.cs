@@ -86,8 +86,9 @@ public sealed class ScopeTransitionShellTests : LayoutComponentTestBase {
             navigation.NavigateTo("/settings");
         }
 
-        dispatcher.Dispatch(new LastActiveRouteHydratedAction("domain/counter/counter-view"));
-        dispatcher.Dispatch(new NavigationHydratedCompletedAction());
+        long generation = Services.GetRequiredService<IState<FrontComposerNavigationState>>().Value.ScopeGeneration;
+        dispatcher.Dispatch(new LastActiveRouteHydratedAction("domain/counter/counter-view") { OriginScopeGeneration = generation });
+        dispatcher.Dispatch(new NavigationHydratedCompletedAction { OriginScopeGeneration = generation });
         cut.WaitForAssertion(() => navigation.Uri.ShouldEndWith(
             navigateAfterSwitch ? "/settings" : "/domain/counter/counter-view"));
     }

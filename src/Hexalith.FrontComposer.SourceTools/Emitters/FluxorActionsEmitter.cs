@@ -32,14 +32,14 @@ public static class FluxorActionsEmitter {
 
         // Actions (past-tense naming convention, CorrelationId carries the per-dispatch trace id -- ADR-008)
         _ = sb.AppendLine("/// <summary>");
-        _ = sb.AppendLine("/// Triggers data fetch for <see cref=\"" + model.TypeName + "\"/>.");
+        _ = sb.AppendLine("/// Triggers data fetch for <see cref=\"" + model.TypeName + "\"/>. After a scope change, dispatch this request before its result.");
         _ = sb.AppendLine("/// </summary>");
         _ = sb.AppendLine("/// <param name=\"CorrelationId\">Trace identifier shared by all actions in this load cycle.</param>");
         _ = sb.AppendLine("public record " + model.TypeName + "LoadRequestedAction(string CorrelationId);");
         _ = sb.AppendLine();
 
         _ = sb.AppendLine("/// <summary>");
-        _ = sb.AppendLine("/// Data arrived for <see cref=\"" + model.TypeName + "\"/>.");
+        _ = sb.AppendLine("/// Data arrived for <see cref=\"" + model.TypeName + "\"/>. After a scope change, only a result matching a new load request is accepted.");
         _ = sb.AppendLine("/// </summary>");
         _ = sb.AppendLine("/// <param name=\"CorrelationId\">Trace identifier shared with the originating <see cref=\"" + model.TypeName + "LoadRequestedAction\"/>.</param>");
         _ = sb.AppendLine("/// <param name=\"Items\">The loaded projection items.</param>");
@@ -47,7 +47,7 @@ public static class FluxorActionsEmitter {
         _ = sb.AppendLine();
 
         _ = sb.AppendLine("/// <summary>");
-        _ = sb.AppendLine("/// Data fetch failed for <see cref=\"" + model.TypeName + "\"/>.");
+        _ = sb.AppendLine("/// Data fetch failed for <see cref=\"" + model.TypeName + "\"/>. After a scope change, only a failure matching a new load request is accepted.");
         _ = sb.AppendLine("/// </summary>");
         _ = sb.AppendLine("/// <param name=\"CorrelationId\">Trace identifier shared with the originating <see cref=\"" + model.TypeName + "LoadRequestedAction\"/>.</param>");
         _ = sb.AppendLine("/// <param name=\"Error\">The failure reason.</param>");
@@ -84,16 +84,16 @@ public static class FluxorActionsEmitter {
 
         // LoadRequested reducer
         _ = sb.AppendLine("    /// <summary>");
-        _ = sb.AppendLine("    /// Handles <see cref=\"" + model.TypeName + "LoadRequestedAction\"/>.");
+        _ = sb.AppendLine("    /// Handles <see cref=\"" + model.TypeName + "LoadRequestedAction\"/>. Post-transition results require this request's correlation.");
         _ = sb.AppendLine("    /// </summary>");
         _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
         _ = sb.AppendLine("    public static " + model.StateName + " On" + model.TypeName + "LoadRequested(" + model.StateName + " state, " + model.TypeName + "LoadRequestedAction action)");
-        _ = sb.AppendLine("        => state with { IsLoading = true, Error = null, RequiresScopedRequest = false, ActiveCorrelationId = action.CorrelationId };");
+        _ = sb.AppendLine("        => state with { IsLoading = true, Error = null, RequiresScopedRequest = false, ActiveCorrelationId = state.HasChangedScope ? action.CorrelationId : null };");
         _ = sb.AppendLine();
 
         // Loaded reducer
         _ = sb.AppendLine("    /// <summary>");
-        _ = sb.AppendLine("    /// Handles <see cref=\"" + model.TypeName + "LoadedAction\"/>.");
+        _ = sb.AppendLine("    /// Handles <see cref=\"" + model.TypeName + "LoadedAction\"/>. A post-transition result needs a matching request first; direct initial results remain supported.");
         _ = sb.AppendLine("    /// </summary>");
         _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
         _ = sb.AppendLine("    public static " + model.StateName + " On" + model.TypeName + "Loaded(" + model.StateName + " state, " + model.TypeName + "LoadedAction action)");
@@ -103,7 +103,7 @@ public static class FluxorActionsEmitter {
 
         // LoadFailed reducer
         _ = sb.AppendLine("    /// <summary>");
-        _ = sb.AppendLine("    /// Handles <see cref=\"" + model.TypeName + "LoadFailedAction\"/>.");
+        _ = sb.AppendLine("    /// Handles <see cref=\"" + model.TypeName + "LoadFailedAction\"/>. A post-transition failure needs a matching request first; direct initial failures remain supported.");
         _ = sb.AppendLine("    /// </summary>");
         _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
         _ = sb.AppendLine("    public static " + model.StateName + " On" + model.TypeName + "LoadFailed(" + model.StateName + " state, " + model.TypeName + "LoadFailedAction action)");
@@ -114,7 +114,7 @@ public static class FluxorActionsEmitter {
         _ = sb.AppendLine("    /// <summary>Clears prior-scope projection rows and load provenance.</summary>");
         _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
         _ = sb.AppendLine("    public static " + model.StateName + " On" + model.TypeName + "ScopeChanged(" + model.StateName + " state, global::Hexalith.FrontComposer.Shell.State.Navigation.ScopeChangedAction action)");
-        _ = sb.AppendLine("        => new(IsLoading: false, Items: null, Error: null) { RequiresScopedRequest = true };");
+        _ = sb.AppendLine("        => new(IsLoading: false, Items: null, Error: null) { RequiresScopedRequest = true, HasChangedScope = true };");
 
         _ = sb.AppendLine("}");
 

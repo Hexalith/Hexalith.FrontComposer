@@ -13,6 +13,7 @@ namespace TestDomain;
 public record OrderProjectionState(bool IsLoading, IReadOnlyList<OrderProjection>? Items, string? Error)
 {
     internal bool RequiresScopedRequest { get; init; }
+    internal bool HasChangedScope { get; init; }
     internal string? ActiveCorrelationId { get; init; }
 }
 

@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 
 using Fluxor;
+using Hexalith.FrontComposer.Shell.State.Navigation;
 
 namespace Hexalith.FrontComposer.Shell.State.CommandPalette;
 
@@ -13,6 +14,25 @@ namespace Hexalith.FrontComposer.Shell.State.CommandPalette;
 /// ADR-039 purity invariant).
 /// </remarks>
 public static class CommandPaletteReducers {
+    /// <summary>Invalidates prior-scope hydration before the palette-specific reload starts.</summary>
+    [ReducerMethod]
+    public static FrontComposerCommandPaletteState ReduceScopeChanged(
+        FrontComposerCommandPaletteState state,
+        ScopeChangedAction action) {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        return state with {
+            IsOpen = false,
+            Query = string.Empty,
+            Results = ImmutableArray<PaletteResult>.Empty,
+            RecentRouteUrls = ImmutableArray<string>.Empty,
+            SelectedIndex = 0,
+            LoadState = PaletteLoadState.Idle,
+            HydrationState = HydrationState.Idle,
+            ScopeGeneration = state.ScopeGeneration + 1,
+        };
+    }
+
     /// <summary>
     /// Sets <see cref="FrontComposerCommandPaletteState.IsOpen"/> = <see langword="true"/> while
     /// preserving every other field (queries / results pre-population happen via the effect).
@@ -98,7 +118,7 @@ public static class CommandPaletteReducers {
         PaletteResultsComputedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
-        if (!state.IsOpen) {
+        if (!state.IsOpen || !HydrationScopeGeneration.IsCurrent(state.ScopeGeneration, action.OriginScopeGeneration)) {
             // D20 — refuse assignments after close so a re-open does not flash stale results.
             return state;
         }
@@ -203,6 +223,9 @@ public static class CommandPaletteReducers {
         PaletteHydratedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
+        if (!HydrationScopeGeneration.IsCurrent(state.ScopeGeneration, action.OriginScopeGeneration)) {
+            return state;
+        }
 
         // Hydrate-vs-first-visit race: if the user activated a palette result before storage
         // completed, that route is already in state. Do NOT overwrite with the (now-stale)
@@ -265,6 +288,10 @@ public static class CommandPaletteReducers {
         PaletteHydratingAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
+        if (!HydrationScopeGeneration.IsCurrent(state.ScopeGeneration, action.OriginScopeGeneration)) {
+            return state;
+        }
+
         return state.HydrationState == HydrationState.Hydrated
             ? state
             : state with { HydrationState = HydrationState.Hydrating };
@@ -284,6 +311,10 @@ public static class CommandPaletteReducers {
         PaletteHydratedCompletedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
+        if (!HydrationScopeGeneration.IsCurrent(state.ScopeGeneration, action.OriginScopeGeneration)) {
+            return state;
+        }
+
         return state.HydrationState == HydrationState.Hydrated
             ? state
             : state with { HydrationState = HydrationState.Hydrated };

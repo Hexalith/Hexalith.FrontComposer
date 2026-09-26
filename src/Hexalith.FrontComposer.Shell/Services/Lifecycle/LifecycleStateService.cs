@@ -31,6 +31,7 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
     private readonly ConcurrentDictionary<string, LifecycleEntry> _entries = new(StringComparer.Ordinal);
     private readonly object _scopeGate = new();
     private long _scopeGeneration;
+    internal long ScopeGeneration => Volatile.Read(ref _scopeGeneration);
 
     /// <summary>
     /// Per-correlation subscriber lists (Decision D6). Mutated only via
@@ -168,12 +169,20 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
         bool idempotencyResolved) {
         ArgumentNullException.ThrowIfNull(correlationId);
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, typeof(LifecycleStateService));
+        _ = TryTransitionForScope(ScopeGeneration, correlationId, newState, messageId, idempotencyResolved);
+    }
 
-        long originatingGeneration = Volatile.Read(ref _scopeGeneration);
+    /// <summary>Transitions only while the scope captured by the caller is still current.</summary>
+    internal bool TryTransitionForScope(
+        long originatingGeneration,
+        string correlationId,
+        CommandLifecycleState newState,
+        string? messageId,
+        bool idempotencyResolved) {
         CommandLifecycleTransition? transition;
         lock (_scopeGate) {
             if (originatingGeneration != _scopeGeneration) {
-                return;
+                return false;
             }
 
             transition = TransitionInScope(correlationId, newState, messageId, idempotencyResolved);
@@ -182,6 +191,8 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
         if (transition is not null && Volatile.Read(ref _scopeGeneration) == originatingGeneration) {
             PublishTransition(transition, originatingGeneration);
         }
+
+        return true;
     }
 
     /// <summary>Clears the correlation index and replay when the circuit scope changes.</summary>

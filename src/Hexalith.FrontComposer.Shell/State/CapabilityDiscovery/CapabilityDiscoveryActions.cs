@@ -9,7 +9,9 @@ namespace Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 /// <see cref="FrontComposerCapabilityDiscoveryState.HydrationState"/> to <c>Seeded</c>.
 /// </summary>
 /// <param name="Counts">The seeded per-projection-type counts.</param>
-public sealed record BadgeCountsSeededAction(ImmutableDictionary<Type, int> Counts);
+public sealed record BadgeCountsSeededAction(ImmutableDictionary<Type, int> Counts) {
+    internal long? OriginScopeGeneration { get; init; }
+}
 
 /// <summary>
 /// Dispatched by <c>CapabilityDiscoveryEffects</c> when an individual badge count is published
@@ -37,4 +39,6 @@ public sealed record CapabilityVisitedAction(string CapabilityId);
 /// <see cref="ImmutableHashSet{T}.Empty"/> so the rendering pipeline unblocks.
 /// </summary>
 /// <param name="SeenCapabilities">The hydrated seen-set (or empty).</param>
-public sealed record SeenCapabilitiesHydratedAction(ImmutableHashSet<string> SeenCapabilities);
+public sealed record SeenCapabilitiesHydratedAction(ImmutableHashSet<string> SeenCapabilities) {
+    internal long? OriginScopeGeneration { get; init; }
+}

@@ -52,7 +52,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         IRenderedComponent<CounterPage> prior = Render<CounterPage>();
         prior.WaitForAssertion(() => Services.GetRequiredService<IState<CounterProjectionState>>()
             .Value.Items.ShouldNotBeNull().Single().Id.ShouldBe("counter-1"));
-        string oldCorrelation = ActiveLoadCorrelation();
+        const string oldCorrelation = "prior-scope-result";
         prior.Dispose();
 
         scope.TenantId = "tenant-b";
@@ -77,6 +77,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
 
     [Fact]
     public async Task CounterCatchUp_DelayedPriorTenantCreate_IsDroppedAfterSwitch() {
+        FakeTimeProvider clock = UseFakeTime(s_fixedNow);
         Services.AddScoped<CounterCommandProjectionCatchUpChannel>();
         await InitializeStoreAsync();
         TestTenantContextAccessor scope = (TestTenantContextAccessor)Services.GetRequiredService<IFrontComposerTenantContextAccessor>();
@@ -87,13 +88,28 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         }, "test-tenant", "test-user").ShouldNotBeNull();
 
         await cut.InvokeAsync(() => confirmed("old-correlation"));
+        cut.WaitForAssertion(() => cut.Find("[data-testid='epic-9-catch-up']")
+            .GetAttribute("data-create-started").ShouldBe("1"));
         scope.TenantId = "tenant-b";
         Services.GetRequiredService<IDispatcher>().Dispatch(new ScopeChangedAction());
-        await Task.Delay(TimeSpan.FromSeconds(5.2), Xunit.TestContext.Current.CancellationToken);
+        clock.Advance(TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(() => cut.Find("[data-testid='epic-9-catch-up']")
+            .GetAttribute("data-create-completed").ShouldBe("1"));
 
         IState<CounterProjectionState> state = Services.GetRequiredService<IState<CounterProjectionState>>();
         state.Value.Items.ShouldBeNull();
         state.Value.IsLoading.ShouldBeFalse();
+
+        Action<string?> confirmedB = channel.Capture(new CreateCounterCommand {
+            MessageId = "new-message", TenantId = "tenant-b", CounterId = "current-row", InitialValue = 4,
+        }, "tenant-b", "test-user").ShouldNotBeNull();
+        await cut.InvokeAsync(() => confirmedB("new-correlation"));
+        cut.WaitForAssertion(() => cut.Find("[data-testid='epic-9-catch-up']")
+            .GetAttribute("data-create-started").ShouldBe("2"));
+        clock.Advance(TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(() => cut.Find("[data-testid='epic-9-catch-up']")
+            .GetAttribute("data-create-completed").ShouldBe("2"));
+        state.Value.Items.ShouldNotBeNull().Single().Id.ShouldBe("current-row");
     }
 
     [Fact]
@@ -111,6 +127,36 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         cut.Markup.ShouldNotContain("old");
     }
 
+    [Theory]
+    [InlineData(null, null, null)]
+    [InlineData("test-tenant", "wrong-user", "user")]
+    [InlineData("wrong-tenant", "test-user", "tenant")]
+    public async Task CounterProjectionView_InvalidOrMismatchedScope_HidesSeededRows(
+        string? renderTenant, string? renderUser, string? mismatch) {
+        await InitializeStoreAsync();
+        Services.GetRequiredService<IDispatcher>().Dispatch(new CounterProjectionLoadedAction(
+            "seed", [new CounterProjection { Id = "prior-scope-row", Count = 10 }]));
+        TestTenantContextAccessor scope = (TestTenantContextAccessor)Services.GetRequiredService<IFrontComposerTenantContextAccessor>();
+        if (mismatch is null) {
+            scope.TenantId = null;
+        }
+
+        IRenderedComponent<CounterProjectionView> cut;
+        if (renderTenant is null) {
+            cut = Render<CounterProjectionView>();
+        }
+        else {
+            RenderContext context = new(renderTenant, renderUser!, FcRenderMode.Server, DensityLevel.Comfortable, IsReadOnly: false);
+            cut = Render<CascadingValue<RenderContext>>(parameters => parameters
+                .Add(component => component.Value, context)
+                .Add(component => component.IsFixed, true)
+                .AddChildContent<CounterProjectionView>()).FindComponent<CounterProjectionView>();
+        }
+
+        cut.Find("[data-testid='fc-scope-blocked'] h1").TextContent.ShouldBe("Workspace unavailable");
+        cut.Markup.ShouldNotContain("prior-scope-row");
+    }
+
     [Fact]
     public void CounterProjectionReducer_LatePriorScopeResultIsDiscarded() {
         CounterProjectionState state = new(false, [new CounterProjection { Id = "prior", Count = 1 }], null);
@@ -120,12 +166,22 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         CounterProjectionState late = CounterProjectionReducers.OnCounterProjectionLoaded(
             cleared, new CounterProjectionLoadedAction("old", [new CounterProjection { Id = "prior", Count = 2 }]));
         late.ShouldBeSameAs(cleared);
+        CounterProjectionReducers.OnCounterProjectionLoadFailed(cleared,
+            new CounterProjectionLoadFailedAction("old", "prior failure")).ShouldBeSameAs(cleared);
 
         CounterProjectionState requested = CounterProjectionReducers.OnCounterProjectionLoadRequested(
             cleared, new CounterProjectionLoadRequestedAction("new"));
+        CounterProjectionReducers.OnCounterProjectionLoadFailed(requested,
+            new CounterProjectionLoadFailedAction("old", "prior failure")).ShouldBeSameAs(requested);
         CounterProjectionState current = CounterProjectionReducers.OnCounterProjectionLoaded(
             requested, new CounterProjectionLoadedAction("new", [new CounterProjection { Id = "current", Count = 3 }]));
         current.Items.ShouldNotBeNull().Single().Id.ShouldBe("current");
+
+        CounterProjectionState initial = CounterProjectionReducers.OnCounterProjectionLoadRequested(
+            state, new CounterProjectionLoadRequestedAction("initial-request"));
+        CounterProjectionReducers.OnCounterProjectionLoaded(initial,
+            new CounterProjectionLoadedAction("direct-initial-result", [new CounterProjection { Id = "direct" }]))
+            .Items.ShouldNotBeNull().Single().Id.ShouldBe("direct");
     }
 
     [Fact]
@@ -235,6 +291,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
 
     [Fact]
     public async Task CounterCommandProjectionCatchUp_CurrentCircuitCreate_MaterializesCreatedRow() {
+        FakeTimeProvider clock = UseFakeTime(s_fixedNow);
         Services.AddScoped<CounterCommandProjectionCatchUpChannel>();
         await InitializeStoreAsync();
         IRenderedComponent<CounterCommandProjectionCatchUp> cut = Render<CounterCommandProjectionCatchUp>();
@@ -260,6 +317,9 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
 
         try {
             await cut.InvokeAsync(() => publishConfirmed("create-correlation"));
+            cut.WaitForAssertion(() => cut.Find("[data-testid='epic-9-catch-up']")
+                .GetAttribute("data-create-started").ShouldBe("1"));
+            clock.Advance(TimeSpan.FromSeconds(5));
             ObserveCreatedRow(null, EventArgs.Empty);
             await created.Task.WaitAsync(
                 TimeSpan.FromSeconds(10),
@@ -271,6 +331,36 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         finally {
             state.StateChanged -= ObserveCreatedRow;
         }
+    }
+
+    [Fact]
+    public async Task CounterCommandProjectionCatchUp_OverlappingCreates_MaterializeBothRows() {
+        FakeTimeProvider clock = UseFakeTime(s_fixedNow);
+        Services.AddScoped<CounterCommandProjectionCatchUpChannel>();
+        await InitializeStoreAsync();
+        IRenderedComponent<CounterCommandProjectionCatchUp> cut = Render<CounterCommandProjectionCatchUp>();
+        CounterCommandProjectionCatchUpChannel channel = Services.GetRequiredService<CounterCommandProjectionCatchUpChannel>();
+        Action<string?> first = channel.Capture(new CreateCounterCommand {
+            MessageId = "first-message", TenantId = "test-tenant", CounterId = "first-row", InitialValue = 1,
+        }, "test-tenant", "test-user").ShouldNotBeNull();
+        Action<string?> second = channel.Capture(new CreateCounterCommand {
+            MessageId = "second-message", TenantId = "test-tenant", CounterId = "second-row", InitialValue = 2,
+        }, "test-tenant", "test-user").ShouldNotBeNull();
+
+        await cut.InvokeAsync(() => {
+            first("first-correlation");
+            second("second-correlation");
+        });
+        cut.WaitForAssertion(() => cut.Find("[data-testid='epic-9-catch-up']")
+            .GetAttribute("data-create-started").ShouldBe("2"));
+        clock.Advance(TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(() => cut.Find("[data-testid='epic-9-catch-up']")
+            .GetAttribute("data-create-completed").ShouldBe("2"));
+        IReadOnlyList<CounterProjection> rows = Services.GetRequiredService<IState<CounterProjectionState>>()
+            .Value.Items.ShouldNotBeNull();
+        rows.Count.ShouldBe(2);
+        rows.ShouldContain(row => row.Id == "first-row" && row.Count == 1);
+        rows.ShouldContain(row => row.Id == "second-row" && row.Count == 2);
     }
 
     [Fact]

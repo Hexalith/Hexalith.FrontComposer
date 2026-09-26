@@ -64,9 +64,11 @@ public sealed class ScopeBoundaryService(
     }
 
     /// <summary>Reconciles a change before the next scope is allowed to render.</summary>
-    public void Synchronize() {
+    public void Synchronize() => Synchronize(null);
+
+    private void Synchronize(long? authEventNumber) {
         TenantContextSnapshot? next = ReadScope("scope-change");
-        SynchronizeCore(next);
+        SynchronizeCore(next, authEventNumber);
     }
 
     private void SynchronizeCore(TenantContextSnapshot? next, long? authEventNumber = null) {
@@ -85,6 +87,9 @@ public sealed class ScopeBoundaryService(
 
             // Keep render guards closed until every prior-scope store is cleared.
             _snapshot = null;
+            if (badgeCounts is BadgeCountService concreteBadges) {
+                concreteBadges.ResetScope();
+            }
             dispatcher.Dispatch(new ScopeChangedAction());
             dispatcher.Dispatch(new PaletteScopeChangedAction());
             if (readinessGate is ScopeReadinessGate concreteReadinessGate) {
@@ -98,10 +103,6 @@ public sealed class ScopeBoundaryService(
             if (admissionGate is CommandExecutionAdmissionGate concreteAdmissionGate) {
                 concreteAdmissionGate.ResetScope();
             }
-            if (badgeCounts is BadgeCountService concrete) {
-                concrete.ResetScope();
-            }
-
             if (services.GetService<ProjectionSubscriptionService>() is { } subscriptions) {
                 subscriptions.BlockStaleGroups();
                 _ = subscriptions.BlockStaleGroupsAsync();
@@ -150,7 +151,7 @@ public sealed class ScopeBoundaryService(
         try {
             _ = await authenticationStateTask.ConfigureAwait(false);
             if (Volatile.Read(ref _latestAuthEvent) == eventNumber) {
-                Synchronize();
+                Synchronize(eventNumber);
             }
         }
         catch (ObjectDisposedException) {

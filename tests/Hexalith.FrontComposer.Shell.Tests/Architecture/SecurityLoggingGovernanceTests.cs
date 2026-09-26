@@ -223,7 +223,7 @@ public sealed class SecurityLoggingGovernanceTests
         "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadPageEffects.cs:HandleLoadPageAsync:168:LogWarning",
         "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadedPageReducers.cs:ReduceLoadPageSucceeded:102:LogWarning",
         "src/Hexalith.FrontComposer.Shell/State/Theme/ThemeEffects.cs:HydrateAsync:125:LogWarning",
-        "src/Hexalith.FrontComposer.Shell/State/Theme/ThemeEffects.cs:HandleThemeChanged:159:LogWarning",
+        "src/Hexalith.FrontComposer.Shell/State/Theme/ThemeEffects.cs:ApplyThemeAndMaybePersistAsync:159:LogWarning",
     ];
 
     private static readonly HashSet<string> ExpectedHotPathMemberKeys = new(

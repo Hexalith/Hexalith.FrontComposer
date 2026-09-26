@@ -304,6 +304,9 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             if (_disposed || _cts.IsCancellationRequested) return;
         }
 
+        var validatedScope = ScopeServices.GetService(typeof(global::Hexalith.FrontComposer.Shell.State.PendingCommands.IValidatedPendingScope)) as global::Hexalith.FrontComposer.Shell.State.PendingCommands.IValidatedPendingScope;
+        var admissionScope = validatedScope?.Current();
+        bool IsAdmissionScopeCurrent() => validatedScope is null || (admissionScope is { } origin && validatedScope.Current() is { } current && origin == current);
         var admission = CommandExecutionAdmissionGate.TryAcquire(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionRequest(
             typeof(Counter.Domain.IncrementCommand).FullName ?? nameof(Counter.Domain.IncrementCommand),
             "Send IncrementCommand"));
@@ -332,6 +335,13 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         // Story 2-2 D35 — lazily activate the generated subscriber before the first SubmittedAction dispatch.
         LastUsedSubscriberRegistry.Ensure<IncrementCommandLastUsedSubscriber>();
 
+        if (!IsAdmissionScopeCurrent())
+        {
+            SetCommandInProgressWarning(global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.ScopeUnavailable);
+            if (_serverWarning is not null) CommandFeedbackPublisher.PublishWarning(_serverWarning);
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
         Dispatcher.Dispatch(new IncrementCommandActions.SubmittedAction(correlationId, _model));
         await InvokeAsync(StateHasChanged);
         if (Logger is not null) { LogCommandSubmitted(Logger, correlationId); }
@@ -351,7 +361,13 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             var commandForDispatch = _model;
             global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandTargetSnapshot? commandTarget = null;
             cts.Token.ThrowIfCancellationRequested();
-            var validatedScope = ScopeServices.GetService(typeof(global::Hexalith.FrontComposer.Shell.State.PendingCommands.IValidatedPendingScope)) as global::Hexalith.FrontComposer.Shell.State.PendingCommands.IValidatedPendingScope;
+            if (!IsAdmissionScopeCurrent())
+            {
+                SetCommandInProgressWarning(global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.ScopeUnavailable);
+                if (_serverWarning is not null) CommandFeedbackPublisher.PublishWarning(_serverWarning);
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
             var dispatchScope = validatedScope?.Current();
             if (validatedScope is not null && dispatchScope is null) throw new OperationCanceledException();
             var result = await CommandService.DispatchWithLifecycleObservationsAsync(

@@ -1099,6 +1099,9 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine();
         }
 
+        _ = sb.AppendLine("        var validatedScope = ScopeServices.GetService(typeof(global::Hexalith.FrontComposer.Shell.State.PendingCommands.IValidatedPendingScope)) as global::Hexalith.FrontComposer.Shell.State.PendingCommands.IValidatedPendingScope;");
+        _ = sb.AppendLine("        var admissionScope = validatedScope?.Current();");
+        _ = sb.AppendLine("        bool IsAdmissionScopeCurrent() => validatedScope is null || (admissionScope is { } origin && validatedScope.Current() is { } current && origin == current);");
         _ = sb.AppendLine("        var admission = CommandExecutionAdmissionGate.TryAcquire(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionRequest(");
         _ = sb.AppendLine("            typeof(" + commandFqn + ").FullName ?? nameof(" + commandFqn + "),");
         _ = sb.AppendLine("            \"" + escapedButtonLabel + "\"));");
@@ -1127,6 +1130,13 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        // Story 2-2 D35 — lazily activate the generated subscriber before the first SubmittedAction dispatch.");
         _ = sb.AppendLine("        LastUsedSubscriberRegistry.Ensure<" + form.TypeName + "LastUsedSubscriber>();");
         _ = sb.AppendLine();
+        _ = sb.AppendLine("        if (!IsAdmissionScopeCurrent())");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            SetCommandInProgressWarning(global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.ScopeUnavailable);");
+        _ = sb.AppendLine("            if (_serverWarning is not null) CommandFeedbackPublisher.PublishWarning(_serverWarning);");
+        _ = sb.AppendLine("            await InvokeAsync(StateHasChanged);");
+        _ = sb.AppendLine("            return;");
+        _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".SubmittedAction(correlationId, _model));");
         _ = sb.AppendLine("        await InvokeAsync(StateHasChanged);");
         _ = sb.AppendLine("        if (Logger is not null) { LogCommandSubmitted(Logger, correlationId); }");
@@ -1155,7 +1165,13 @@ public static class CommandFormEmitter {
         }
 
         _ = sb.AppendLine("            cts.Token.ThrowIfCancellationRequested();");
-        _ = sb.AppendLine("            var validatedScope = ScopeServices.GetService(typeof(global::Hexalith.FrontComposer.Shell.State.PendingCommands.IValidatedPendingScope)) as global::Hexalith.FrontComposer.Shell.State.PendingCommands.IValidatedPendingScope;");
+        _ = sb.AppendLine("            if (!IsAdmissionScopeCurrent())");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                SetCommandInProgressWarning(global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.ScopeUnavailable);");
+        _ = sb.AppendLine("                if (_serverWarning is not null) CommandFeedbackPublisher.PublishWarning(_serverWarning);");
+        _ = sb.AppendLine("                await InvokeAsync(StateHasChanged);");
+        _ = sb.AppendLine("                return;");
+        _ = sb.AppendLine("            }");
         _ = sb.AppendLine("            var dispatchScope = validatedScope?.Current();");
         _ = sb.AppendLine("            if (validatedScope is not null && dispatchScope is null) throw new OperationCanceledException();");
         _ = sb.AppendLine("            var result = await CommandService.DispatchWithLifecycleObservationsAsync(");

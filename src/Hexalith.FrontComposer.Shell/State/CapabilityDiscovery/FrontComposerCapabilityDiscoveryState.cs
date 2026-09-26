@@ -20,6 +20,8 @@ public sealed record FrontComposerCapabilityDiscoveryState(
     ImmutableDictionary<Type, int> Counts,
     ImmutableHashSet<string> SeenCapabilities,
     CapabilityDiscoveryHydrationState HydrationState) {
+    internal long ScopeGeneration { get; init; }
+
     /// <summary>
     /// Gets the empty initial state — empty counts, empty seen-set, <c>Idle</c> hydration.
     /// </summary>

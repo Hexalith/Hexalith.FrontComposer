@@ -197,9 +197,10 @@ public sealed class CapabilityDiscoveryEffects : IDisposable {
     }
 
     private async Task HydrateSeenSetAsync(IDispatcher dispatcher) {
+        long scopeGeneration = _state.Value.ScopeGeneration;
         if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "Capability", DirectionHydrate)) {
             dispatcher.Dispatch(new SeenCapabilitiesHydratedAction(
-                ImmutableHashSet<string>.Empty.WithComparer(StringComparer.Ordinal)));
+                ImmutableHashSet<string>.Empty.WithComparer(StringComparer.Ordinal)) { OriginScopeGeneration = scopeGeneration });
             return;
         }
 
@@ -229,11 +230,12 @@ public sealed class CapabilityDiscoveryEffects : IDisposable {
         if (ScopeResolver.TryResolveScope(out string currentTenant, out string currentUser, "Capability", DirectionHydrate)
             && string.Equals(currentTenant, tenantId, StringComparison.Ordinal)
             && string.Equals(currentUser, userId, StringComparison.Ordinal)) {
-            dispatcher.Dispatch(new SeenCapabilitiesHydratedAction(hydrated));
+            dispatcher.Dispatch(new SeenCapabilitiesHydratedAction(hydrated) { OriginScopeGeneration = scopeGeneration });
         }
     }
 
     private async Task SeedBadgeCountsAsync(IDispatcher dispatcher) {
+        long scopeGeneration = _state.Value.ScopeGeneration;
         if (_badgeCountService is BadgeCountService concrete) {
             await concrete.InitializeAsync(CancellationToken.None).ConfigureAwait(false);
         }
@@ -251,7 +253,7 @@ public sealed class CapabilityDiscoveryEffects : IDisposable {
             snapshot = ImmutableDictionary<Type, int>.Empty;
         }
 
-        dispatcher.Dispatch(new BadgeCountsSeededAction(snapshot));
+        dispatcher.Dispatch(new BadgeCountsSeededAction(snapshot) { OriginScopeGeneration = scopeGeneration });
     }
 
     private void SafeDispatchCountChanged(BadgeCountChangedArgs args) {

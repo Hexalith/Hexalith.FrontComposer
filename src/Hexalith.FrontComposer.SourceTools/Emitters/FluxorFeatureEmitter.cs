@@ -37,6 +37,7 @@ public static class FluxorFeatureEmitter {
         _ = sb.AppendLine("public record " + model.StateName + "(bool IsLoading, IReadOnlyList<" + model.TypeName + ">? Items, string? Error)");
         _ = sb.AppendLine("{");
         _ = sb.AppendLine("    internal bool RequiresScopedRequest { get; init; }");
+        _ = sb.AppendLine("    internal bool HasChangedScope { get; init; }");
         _ = sb.AppendLine("    internal string? ActiveCorrelationId { get; init; }");
         _ = sb.AppendLine("}");
         _ = sb.AppendLine();

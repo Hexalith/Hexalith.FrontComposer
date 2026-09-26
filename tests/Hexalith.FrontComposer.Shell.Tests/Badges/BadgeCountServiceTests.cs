@@ -104,6 +104,69 @@ public sealed class BadgeCountServiceTests {
     }
 
     [Fact]
+    public async Task ResetScope_SameScopeReturn_ReplacesInFlightInitializationAndLane() {
+        TestTenantContextAccessor scope = new();
+        TaskCompletionSource<int> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        int reads = 0;
+        StubReader reader = new((_, _) => Interlocked.Increment(ref reads) == 1
+            ? new ValueTask<int>(held.Task)
+            : new ValueTask<int>(7));
+        IProjectionFallbackRefreshScheduler scheduler = Substitute.For<IProjectionFallbackRefreshScheduler>();
+        List<ProjectionFallbackLane> lanes = [];
+        _ = scheduler.RegisterLane(Arg.Any<ProjectionFallbackLane>()).Returns(call => {
+            lanes.Add(call.Arg<ProjectionFallbackLane>());
+            return Substitute.For<IDisposable>();
+        });
+        using ServiceProvider provider = new ServiceCollection()
+            .AddSingleton<IFrontComposerTenantContextAccessor>(scope)
+            .AddSingleton(scheduler)
+            .BuildServiceProvider();
+        using BadgeCountService sut = new(new StubCatalog(typeof(ProjectionAlpha)), reader, provider,
+            EnabledLoggerSubstitute.Create<BadgeCountService>(), new FakeTimeProvider());
+
+        Task first = sut.InitializeAsync(Ct);
+        lanes.Count.ShouldBe(1);
+        sut.ResetScope();
+        Task second = sut.InitializeAsync(Ct);
+        second.ShouldNotBeSameAs(first);
+        lanes.Count.ShouldBe(2);
+        await second;
+        sut.Counts[typeof(ProjectionAlpha)].ShouldBe(7);
+        held.SetResult(99);
+        await first;
+        sut.Counts[typeof(ProjectionAlpha)].ShouldBe(7);
+    }
+
+    [Fact]
+    public async Task Counts_AutomaticallyHidePriorScopeOnIdentityChangeOrAccessorFailure() {
+        TestTenantContextAccessor scope = new();
+        using ServiceProvider provider = new ServiceCollection()
+            .AddSingleton<IFrontComposerTenantContextAccessor>(scope)
+            .BuildServiceProvider();
+        using BadgeCountService sut = new(new StubCatalog(typeof(ProjectionAlpha)),
+            new StubReader((_, _) => new ValueTask<int>(3)), provider,
+            EnabledLoggerSubstitute.Create<BadgeCountService>(), new FakeTimeProvider());
+        await sut.InitializeAsync(Ct);
+        sut.TotalActionableItems.ShouldBe(3);
+
+        scope.TenantId = "tenant-b";
+        sut.Counts.ShouldBeEmpty();
+        sut.TotalActionableItems.ShouldBe(0);
+
+        IFrontComposerTenantContextAccessor throwing = Substitute.For<IFrontComposerTenantContextAccessor>();
+        _ = throwing.TryGetContext(Arg.Any<string?>(), Arg.Any<string>())
+            .Returns(_ => throw new InvalidOperationException("unavailable"));
+        using ServiceProvider failingProvider = new ServiceCollection()
+            .AddSingleton(throwing)
+            .BuildServiceProvider();
+        using BadgeCountService failing = new(new StubCatalog(typeof(ProjectionAlpha)),
+            new StubReader((_, _) => new ValueTask<int>(1)), failingProvider,
+            EnabledLoggerSubstitute.Create<BadgeCountService>(), new FakeTimeProvider());
+        failing.Counts.ShouldBeEmpty();
+        failing.TotalActionableItems.ShouldBe(0);
+    }
+
+    [Fact]
     public async Task CountCompletion_OverlappingResetScope_DoesNotDeadlock() {
         TaskCompletionSource<int> count = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource<bool> insideUpdate = new(TaskCreationOptions.RunContinuationsAsynchronously);

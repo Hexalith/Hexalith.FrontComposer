@@ -36,6 +36,8 @@ public sealed record FrontComposerCommandPaletteState(
     int SelectedIndex,
     PaletteLoadState LoadState,
     HydrationState HydrationState = HydrationState.Idle) {
+    internal long ScopeGeneration { get; init; }
+
     /// <summary>Maximum size of the recent-route ring buffer (Story 3-4 D10).</summary>
     public const int RingBufferCap = 5;
 }

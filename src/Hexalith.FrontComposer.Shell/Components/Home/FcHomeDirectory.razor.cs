@@ -60,19 +60,6 @@ public partial class FcHomeDirectory {
     private string? _resolvedUserName;
 
     /// <inheritdoc />
-    [System.Diagnostics.CodeAnalysis.SuppressMessage(
-        "Reliability",
-        "CA2007:Consider calling ConfigureAwait on the awaited task",
-        Justification =
-            "Fluxor's FLXW01 analyzer requires the bare `await base.OnInitializedAsync()` syntax "
-            + "(no ConfigureAwait); CA2007 then flags every other awaited Task in this method. "
-            + "Blazor lifecycle methods always run on the dispatcher thread, so suppressing here "
-            + "preserves both invariants.")]
-    protected override async Task OnInitializedAsync() {
-        await base.OnInitializedAsync();
-    }
-
-    /// <inheritdoc />
     protected override async Task OnParametersSetAsync() {
         _resolvedUserName = null;
         if (AuthenticationStateTask is not null) {
