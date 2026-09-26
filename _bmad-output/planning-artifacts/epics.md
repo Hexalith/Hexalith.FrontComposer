@@ -3752,10 +3752,10 @@ So that generated tools and resources cannot be exposed without tenant gates and
 
 **Acceptance Criteria:**
 
-**Given** a non-Development host registers AllowAllMcpTenantToolGate, AllowAllResourceVisibilityGate, or an equivalent permissive escape hatch
+**Given** a non-Development host registers either shipped `AllowAllMcpTenantToolGate` or `AllowAllResourceVisibilityGate`
 **When** FrontComposer MCP startup validation runs
 **Then** startup fails closed with a support-safe error naming the invalid gate type
-**And** no MCP endpoint becomes available.
+**And** no MCP endpoint becomes available. Custom host-supplied gate semantics remain the host's responsibility under FR-19.
 
 **Given** either IFrontComposerMcpTenantToolGate or IFrontComposerMcpResourceVisibilityGate is missing
 **When** the host starts

@@ -205,10 +205,10 @@ development_status:
   13-9-a-fluent-app-1-decide-the-exact-fluent-ui-v5-posture: backlog
   epic-13-retrospective: optional
 
-  epic-14: backlog
-  14-1-i-mcp-sec-1-enforce-production-mcp-authorization-composition: backlog
-  14-2-i-mcp-sec-2-prove-mcp-leak-and-oracle-resistance: backlog
-  14-3-a-mcp-app-1-record-independent-mcp-security-acceptance: backlog
+  epic-14: done
+  14-1-i-mcp-sec-1-enforce-production-mcp-authorization-composition: done
+  14-2-i-mcp-sec-2-prove-mcp-leak-and-oracle-resistance: done
+  14-3-a-mcp-app-1-record-independent-mcp-security-acceptance: done
   epic-14-retrospective: optional
 
   epic-15: backlog
@@ -887,9 +887,9 @@ approved_change_backlog:
         - {id: "ADOPT-APP-1", kind: "conditional-approval", status: "open"}
     - name: "MCP Production Security"
       items:
-        - {id: "MCP-SEC-1", kind: "implementation", status: "proposed"}
-        - {id: "MCP-SEC-2", kind: "implementation", status: "proposed"}
-        - {id: "MCP-APP-1", kind: "approval-evidence", status: "open"}
+        - {id: "MCP-SEC-1", kind: "implementation", status: "done"}
+        - {id: "MCP-SEC-2", kind: "implementation", status: "done"}
+        - {id: "MCP-APP-1", kind: "approval-evidence", status: "done"}
     - name: "UX Conformance and Documentation Parity"
       items:
         - {id: "UX-A", kind: "implementation", status: "proposed"}
