@@ -34,7 +34,11 @@ public static class FluxorFeatureEmitter {
         _ = sb.AppendLine("/// <summary>");
         _ = sb.AppendLine("/// Fluxor state for <see cref=\"" + model.TypeName + "\"/> projection list view.");
         _ = sb.AppendLine("/// </summary>");
-        _ = sb.AppendLine("public record " + model.StateName + "(bool IsLoading, IReadOnlyList<" + model.TypeName + ">? Items, string? Error);");
+        _ = sb.AppendLine("public record " + model.StateName + "(bool IsLoading, IReadOnlyList<" + model.TypeName + ">? Items, string? Error)");
+        _ = sb.AppendLine("{");
+        _ = sb.AppendLine("    internal bool RequiresScopedRequest { get; init; }");
+        _ = sb.AppendLine("    internal string? ActiveCorrelationId { get; init; }");
+        _ = sb.AppendLine("}");
         _ = sb.AppendLine();
 
         // Feature class

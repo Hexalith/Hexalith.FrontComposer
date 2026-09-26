@@ -20,7 +20,7 @@ internal static class CompilationHelper {
 
         // Add runtime assemblies needed for netcoreapp compilation
         string runtimeDir = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
-        string[] additionalDlls = ["System.Runtime.dll", "netstandard.dll", "System.Collections.dll", "System.Collections.Concurrent.dll", "System.Collections.Immutable.dll", "System.Linq.dll", "System.Linq.Queryable.dll", "System.Linq.Expressions.dll", "System.Private.Uri.dll"];
+        string[] additionalDlls = ["System.Runtime.dll", "netstandard.dll", "System.ComponentModel.dll", "System.Collections.dll", "System.Collections.Concurrent.dll", "System.Collections.Immutable.dll", "System.Linq.dll", "System.Linq.Queryable.dll", "System.Linq.Expressions.dll", "System.Private.Uri.dll"];
         foreach (string dll in additionalDlls) {
             string path = Path.Combine(runtimeDir, dll);
             if (File.Exists(path)) {

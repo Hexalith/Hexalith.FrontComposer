@@ -9856,3 +9856,19 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-1-ten-scope-1-prove-tenant-safe-operator-state-end-to-end.md`
   summary: Stop the `BadgeCountService.Counts`/`TotalActionableItems` getters from disposing fallback lanes on a transient null scope read, or re-arm `InitializeAsync` when the same scope returns.
   evidence: unverified (medium if true). `BadgeCountService.cs:134` calls `ResetScope()` from `CurrentScope()` on any null read, and nothing re-registers lanes afterwards. Settle it by showing a production path where `TryGetContext` returns null transiently while the circuit scope is unchanged (for example a read outside the circuit AsyncLocal flow).
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-1-ten-scope-1-prove-tenant-safe-operator-state-end-to-end.md`
+  summary: Generated adopter load provenance remains producer-owned after a scope change.
+  evidence: Current in-repository direct producers revalidate captured scope; a future generated adopter that dispatches a delayed prior-scope LoadRequested/Loaded pair after B resets would establish whether the generic action needs an origin token.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-1-ten-scope-1-prove-tenant-safe-operator-state-end-to-end.md`
+  summary: Verify whether a queued theme user action can cross an in-circuit scope switch.
+  evidence: Theme toggle dispatch is synchronous and current actions have no origin version; reproduce an A browser event processed after B transitions to determine whether it applies or persists A choice under B.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-1-ten-scope-1-prove-tenant-safe-operator-state-end-to-end.md`
+  summary: Counter MCP sample Test host uses gates rejected by MCP endpoint mapping.
+  evidence: The Test host enables MCP with allow-all gates, while MapFrontComposerMcp rejects those gates outside Development; this is intervening MCP work excluded from Story 13.1.
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-1-ten-scope-1-prove-tenant-safe-operator-state-end-to-end.md`
+  summary: Counter MCP sample authorization may reject its API-key-only requests.
+  evidence: MapFrontComposerMcp requires ASP.NET authorization, while the Development sample configures an MCP API key without an ASP.NET authentication scheme; this is intervening MCP work excluded from Story 13.1.

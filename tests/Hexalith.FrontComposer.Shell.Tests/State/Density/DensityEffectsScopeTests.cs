@@ -38,6 +38,30 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.Density;
 /// </summary>
 public sealed class DensityEffectsScopeTests {
     [Fact]
+    public async Task Hydrate_FailingOldReadAfterScopeSwitch_DoesNotDispatchFallback() {
+        TaskCompletionSource<IReadOnlyList<string>> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        IStorageService storage = Substitute.For<IStorageService>();
+        storage.GetKeysAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ => held.Task);
+        string tenant = "tenant-a";
+        string user = "user-a";
+        IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
+        accessor.TenantId.Returns(_ => tenant);
+        accessor.UserId.Returns(_ => user);
+        DensityEffects sut = MakeSut(storage, accessor, EnabledLoggerSubstitute.Create<DensityEffects>());
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+
+        Task hydration = sut.HandleAppInitialized(new AppInitializedAction("old"), dispatcher);
+        tenant = "tenant-b";
+        user = "user-b";
+        held.SetException(new InvalidOperationException("read failed"));
+        await hydration.ConfigureAwait(true);
+
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<DensityHydratedAction>());
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<DensityHydratedCompletedAction>());
+    }
+
+    [Fact]
     public async Task PersistsOnValidScope_UserPreferenceChanged() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         InMemoryStorageService storage = new();

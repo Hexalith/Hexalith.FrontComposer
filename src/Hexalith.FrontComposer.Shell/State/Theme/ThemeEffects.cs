@@ -41,6 +41,14 @@ public class ThemeEffects(
     private IStorageScopeResolver ScopeResolver =>
         _scopeResolver ??= new StorageScopeResolver(userContextAccessor, logger);
 
+    /// <summary>Applies the cleared visual theme when the active scope changes.</summary>
+    [EffectMethod]
+    public Task HandleScopeChanged(Navigation.ScopeChangedAction action, IDispatcher dispatcher) {
+        ArgumentNullException.ThrowIfNull(action);
+        ArgumentNullException.ThrowIfNull(dispatcher);
+        return ApplyThemeAsync(ThemeMode.Light);
+    }
+
     /// <summary>Initializes a production instance that consumes the registered scoped resolver.</summary>
     /// <param name="storage">The storage service for persisting theme preferences.</param>
     /// <param name="options">Shell options providing the accent color for ThemeSettings.</param>

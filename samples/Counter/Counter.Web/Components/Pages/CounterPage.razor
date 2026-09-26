@@ -7,6 +7,7 @@
 <PageTitle>Counter sample</PageTitle>
 @inject IState<Counter.Domain.CounterProjectionState> CounterState
 @inject IDispatcher Dispatcher
+@inject Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.IFrontComposerTenantContextAccessor TenantContext
 
 <h1>Counter</h1>
 
@@ -73,18 +74,29 @@
     protected override void OnInitialized()
     {
         CounterState.StateChanged += OnStateChanged;
-        if (CounterState.Value.Items?.Count is not > 0)
+        if (CounterState.Value.Items?.Count is not > 0
+            && TenantContext.TryGetContext(operationKind: "counter-page-seed").Context is { } scope)
         {
-            Dispatcher.Dispatch(new CounterProjectionLoadedAction(
-                "counter-page-initial",
-                [
-                    new CounterProjection
-                    {
-                        Id = "counter-1",
-                        Count = 0,
-                        LastUpdated = DateTimeOffset.UtcNow,
-                    },
-                ]));
+            if (!TenantContext.Revalidate(scope, operationKind: "counter-page-request").Succeeded)
+            {
+                return;
+            }
+
+            string correlationId = Guid.NewGuid().ToString("N");
+            Dispatcher.Dispatch(new CounterProjectionLoadRequestedAction(correlationId));
+            if (TenantContext.Revalidate(scope, operationKind: "counter-page-result").Succeeded)
+            {
+                Dispatcher.Dispatch(new CounterProjectionLoadedAction(
+                    correlationId,
+                    [
+                        new CounterProjection
+                        {
+                            Id = "counter-1",
+                            Count = 0,
+                            LastUpdated = DateTimeOffset.UtcNow,
+                        },
+                    ]));
+            }
         }
     }
 

@@ -7,6 +7,7 @@ using Hexalith.FrontComposer.Shell.Badges;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.Routing;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
 
@@ -38,7 +39,16 @@ public partial class FcHomeDirectory {
 
     [Inject] private IFrontComposerTenantContextAccessor TenantContext { get; set; } = default!;
 
-    private bool ScopeIsReady => TenantContext.TryGetContext(operationKind: "home-render").Succeeded;
+    private bool ScopeIsReady {
+        get {
+            try {
+                return TenantContext.TryGetContext(operationKind: "home-render").Succeeded;
+            }
+            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+                return false;
+            }
+        }
+    }
 
     /// <summary>
     /// Optional cascading authentication state — null for adopters that have not wired

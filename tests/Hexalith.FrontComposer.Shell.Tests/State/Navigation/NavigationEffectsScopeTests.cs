@@ -30,6 +30,30 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.Navigation;
 /// </summary>
 public sealed class NavigationEffectsScopeTests {
     [Fact]
+    public async Task Hydrate_FailingOldReadAfterScopeSwitch_DoesNotCompleteNewHydration() {
+        TaskCompletionSource<NavigationPersistenceBlob?> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        IStorageService storage = Substitute.For<IStorageService>();
+        storage.GetAsync<NavigationPersistenceBlob>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ => held.Task);
+        string tenant = "tenant-a";
+        string user = "user-a";
+        IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
+        accessor.TenantId.Returns(_ => tenant);
+        accessor.UserId.Returns(_ => user);
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        NavigationEffects sut = new(storage, accessor, EnabledLoggerSubstitute.Create<NavigationEffects>(), FakeState(DefaultState()));
+
+        Task hydration = sut.HandleAppInitialized(new AppInitializedAction("old"), dispatcher);
+        tenant = "tenant-b";
+        user = "user-b";
+        held.SetException(new InvalidOperationException("read failed"));
+        await hydration.ConfigureAwait(true);
+
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<NavigationHydratedAction>());
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<NavigationHydratedCompletedAction>());
+    }
+
+    [Fact]
     public async Task PersistsOnValidScope() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         var storage = new InMemoryStorageService();

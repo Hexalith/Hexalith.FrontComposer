@@ -30,6 +30,9 @@ namespace Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 /// </para>
 /// </remarks>
 public sealed record LoadedPageState {
+    /// <summary>Gets the circuit-scope generation for page completion provenance.</summary>
+    internal long ScopeGeneration { get; init; }
+
     /// <summary>Gets the cached pages keyed by <c>(viewKey, skip)</c>.</summary>
     public ImmutableDictionary<(string ViewKey, int Skip), IReadOnlyList<object>> PagesByKey { get; init; }
         = ImmutableDictionary<(string ViewKey, int Skip), IReadOnlyList<object>>.Empty;

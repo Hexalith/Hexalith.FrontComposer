@@ -151,9 +151,11 @@
                      data-fc-page-layout="@PageLayoutAttribute" class="@PageLayoutCssClass">
                     @if (ScopeBoundary.IsCurrent)
                     {
-                        <FcProjectionConnectionStatus />
-                        <FcPendingCommandSummary />
-                        @ChildContent
+                        <CascadingValue Value="ScopeBoundary.Generation" Name="ScopeGeneration" IsFixed="true" @key="ScopeBoundary.Generation">
+                            <FcProjectionConnectionStatus />
+                            <FcPendingCommandSummary />
+                            @ChildContent
+                        </CascadingValue>
                     }
                     else
                     {

@@ -120,14 +120,18 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
     public int TotalActionableItems => CurrentScope() is null ? 0 : _counts.Values.Sum();
 
     internal void ResetScope() {
-        lock (_scopeGate) {
-            _scopeSnapshot = null;
-            _ = Interlocked.Exchange(ref _counts, ImmutableDictionary<Type, int>.Empty);
-            foreach (IDisposable registration in _reconciliationRegistrations.Values) {
-                registration.Dispose();
-            }
+        lock (_initializeGate) {
+            lock (_scopeGate) {
+                _ = Interlocked.Exchange(ref _initializeTask, null);
+                _initializeScope = null;
+                _scopeSnapshot = null;
+                _ = Interlocked.Exchange(ref _counts, ImmutableDictionary<Type, int>.Empty);
+                foreach (IDisposable registration in _reconciliationRegistrations.Values) {
+                    registration.Dispose();
+                }
 
-            _reconciliationRegistrations.Clear();
+                _reconciliationRegistrations.Clear();
+            }
         }
     }
 
@@ -136,20 +140,22 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
             ? _tenantContextAccessor.TryGetContext(operationKind: "badge-count").Context
             : (_userContextAccessor is null ? null : FrontComposerTenantContextAccessor.Resolve(
                 _userContextAccessor, new FcShellOptions(), _logger, operationKind: "badge-count").Context);
-        lock (_scopeGate) {
-            if (current is null) {
-                ResetScope();
-                return null;
-            }
+        lock (_initializeGate) {
+            lock (_scopeGate) {
+                if (current is null) {
+                    ResetScope();
+                    return null;
+                }
 
-            if (_scopeSnapshot is not null
-                && (!string.Equals(_scopeSnapshot.TenantId, current.TenantId, StringComparison.Ordinal)
-                    || !string.Equals(_scopeSnapshot.UserId, current.UserId, StringComparison.Ordinal))) {
-                ResetScope();
-            }
+                if (_scopeSnapshot is not null
+                    && (!string.Equals(_scopeSnapshot.TenantId, current.TenantId, StringComparison.Ordinal)
+                        || !string.Equals(_scopeSnapshot.UserId, current.UserId, StringComparison.Ordinal))) {
+                    ResetScope();
+                }
 
-            _scopeSnapshot = current;
-            return current;
+                _scopeSnapshot = current;
+                return current;
+            }
         }
     }
 
@@ -191,6 +197,11 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
         }
 
         lock (_initializeGate) {
+            TenantContextSnapshot? verifiedScope = CurrentScope();
+            if (verifiedScope is null || !SameScope(scope, verifiedScope)) {
+                return Task.CompletedTask;
+            }
+
             if (_initializeTask is { IsCompleted: false }
                 && _initializeScope is not null
                 && SameScope(_initializeScope, scope)) {
@@ -298,50 +309,52 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
     }
 
     private bool UpdateCount(Type projectionType, int newCount, TenantContextSnapshot scope) {
-        lock (_scopeGate) {
-        if (!IsCurrent(scope)) {
-            return false;
-        }
-        if (newCount < 0) {
-            // Reader contract implies non-negative counts; drop and log rather than publish
-            // negative values through CountChanged (would skew TotalActionableItems sums).
-            FrontComposerWarningLog.BadgeNegativeCount(
-                _logger,
-                FcDiagnosticIds.HFC2112_BadgeInitialFetchFault,
-                newCount,
-                projectionType);
-            return false;
-        }
+        lock (_initializeGate) {
+            lock (_scopeGate) {
+                if (!IsCurrent(scope)) {
+                    return false;
+                }
+                if (newCount < 0) {
+                    // Reader contract implies non-negative counts; drop and log rather than publish
+                    // negative values through CountChanged (would skew TotalActionableItems sums).
+                    FrontComposerWarningLog.BadgeNegativeCount(
+                        _logger,
+                        FcDiagnosticIds.HFC2112_BadgeInitialFetchFault,
+                        newCount,
+                        projectionType);
+                    return false;
+                }
 
-        ImmutableDictionary<Type, int> current;
-        ImmutableDictionary<Type, int> next;
-        while (true) {
-            current = _counts;
-            // Story 5-2 AC7 — suppress duplicate emissions when the value did not change.
-            // 304 Not Modified responses (and 429 preserve-prior-count flows) MUST NOT emit
-            // a CountChanged notification or trigger a badge animation.
-            if (current.TryGetValue(projectionType, out int previous) && previous == newCount) {
-                return false;
+                ImmutableDictionary<Type, int> current;
+                ImmutableDictionary<Type, int> next;
+                while (true) {
+                    current = _counts;
+                    // Story 5-2 AC7 — suppress duplicate emissions when the value did not change.
+                    // 304 Not Modified responses (and 429 preserve-prior-count flows) MUST NOT emit
+                    // a CountChanged notification or trigger a badge animation.
+                    if (current.TryGetValue(projectionType, out int previous) && previous == newCount) {
+                        return false;
+                    }
+
+                    next = current.SetItem(projectionType, newCount);
+                    if (Interlocked.CompareExchange(ref _counts, next, current) == current) {
+                        break;
+                    }
+                }
+
+                if (IsDisposed) {
+                    return false;
+                }
+
+                try {
+                    _subject.OnNext(new BadgeCountChangedArgs(projectionType, newCount));
+                }
+                catch (ObjectDisposedException) {
+                    // Race with DisposeAsync — safe to drop the emission.
+                }
+
+                return true;
             }
-
-            next = current.SetItem(projectionType, newCount);
-            if (Interlocked.CompareExchange(ref _counts, next, current) == current) {
-                break;
-            }
-        }
-
-        if (IsDisposed) {
-            return false;
-        }
-
-        try {
-            _subject.OnNext(new BadgeCountChangedArgs(projectionType, newCount));
-        }
-        catch (ObjectDisposedException) {
-            // Race with DisposeAsync — safe to drop the emission.
-        }
-
-        return true;
         }
     }
 

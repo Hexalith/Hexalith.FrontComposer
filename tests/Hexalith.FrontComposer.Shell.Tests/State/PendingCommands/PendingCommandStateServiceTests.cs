@@ -21,6 +21,25 @@ public sealed class PendingCommandStateServiceTests {
     private const string SecondCorrelationId = "01DPZ3NDEKTSV4RRFFQ69G5FAV";
 
     [Fact]
+    public void Register_AcceptedUnderPriorScope_RejectsAfterSwitch() {
+        IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
+        accessor.TenantId.Returns("tenant-a");
+        accessor.UserId.Returns("user-1");
+        PendingCommandStateService sut = new(
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            CreateLifecycle(), accessor);
+        PendingCommandRegistration acceptedUnderA = Registration() with {
+            OriginScope = ("tenant-a", "user-1"),
+            RequireOriginScope = true,
+        };
+
+        accessor.TenantId.Returns("tenant-b");
+
+        sut.Register(acceptedUnderA).Status.ShouldBe(PendingCommandRegistrationStatus.ScopeUnavailable);
+        sut.Snapshot().ShouldBeEmpty();
+    }
+
+    [Fact]
     public void Register_CanonicalValidatorRejectsMalformedNonblankIdentity() {
         IUserContextAccessor raw = Substitute.For<IUserContextAccessor>();
         raw.TenantId.Returns("tenant:malformed");

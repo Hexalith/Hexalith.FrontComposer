@@ -209,11 +209,19 @@ public sealed class DataGridNavigationEffects : IDisposable {
             return;
         }
 
-        if (!ScopeResolver.TryResolveScope(out tenantId, out userId, "DataGrid", "persist")) {
+        if (!ScopeResolver.TryResolveScope(out string currentTenant, out string currentUser, "DataGrid", "persist")
+            || !string.Equals(currentTenant, tenantId, StringComparison.Ordinal)
+            || !string.Equals(currentUser, userId, StringComparison.Ordinal)) {
             return;
         }
 
         if (!_state.Value.ViewStates.TryGetValue(viewKey, out GridViewSnapshot? snapshot)) {
+            return;
+        }
+
+        if (!ScopeResolver.TryResolveScope(out currentTenant, out currentUser, "DataGrid", "persist")
+            || !string.Equals(currentTenant, tenantId, StringComparison.Ordinal)
+            || !string.Equals(currentUser, userId, StringComparison.Ordinal)) {
             return;
         }
 

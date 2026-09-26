@@ -10,7 +10,11 @@ namespace TestDomain;
 /// <summary>
 /// Fluxor state for <see cref="OrderProjection"/> projection list view.
 /// </summary>
-public record OrderProjectionState(bool IsLoading, IReadOnlyList<OrderProjection>? Items, string? Error);
+public record OrderProjectionState(bool IsLoading, IReadOnlyList<OrderProjection>? Items, string? Error)
+{
+    internal bool RequiresScopedRequest { get; init; }
+    internal string? ActiveCorrelationId { get; init; }
+}
 
 /// <summary>
 /// Fluxor feature for <see cref="OrderProjection"/> state management.

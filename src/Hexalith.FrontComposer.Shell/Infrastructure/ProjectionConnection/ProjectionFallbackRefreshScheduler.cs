@@ -237,6 +237,8 @@ public sealed class ProjectionFallbackRefreshScheduler(
             return ProjectionLaneRefreshResult.Skipped;
         }
 
+        entry.OriginScopeGeneration = loadedPages.Value.ScopeGeneration;
+
         ProjectionLaneRefreshResult outcome;
         try {
             if (lane.RefreshAsync is not null) {
@@ -578,7 +580,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
                 }
             }
 
-            DispatchPageSuccess(entry.Lane, result);
+            DispatchPageSuccess(entry, result);
             return TryRecordValidatorState(entry, result, noEtagSignature);
         }
     }
@@ -597,18 +599,20 @@ public sealed class ProjectionFallbackRefreshScheduler(
             }
 
             ProjectionFallbackLane lane = entry.Lane;
-            dispatcher.Dispatch(new LoadPageNotModifiedAction(lane.ViewKey, lane.Skip, result.Items));
+            dispatcher.Dispatch(new LoadPageNotModifiedAction(lane.ViewKey, lane.Skip, result.Items) {
+                OriginScopeGeneration = entry.OriginScopeGeneration,
+            });
             return !hadValidatorState || TryRecordValidatorState(entry, result);
         }
     }
 
-    private void DispatchPageSuccess(ProjectionFallbackLane lane, ProjectionPageResult result)
+    private void DispatchPageSuccess(LaneEntry entry, ProjectionPageResult result)
         => dispatcher.Dispatch(new LoadPageSucceededAction(
-            lane.ViewKey,
-            lane.Skip,
+            entry.Lane.ViewKey,
+            entry.Lane.Skip,
             result.Items,
             result.TotalCount,
-            elapsedMs: 0));
+            elapsedMs: 0) { OriginScopeGeneration = entry.OriginScopeGeneration });
 
     private static ProjectionLaneRefreshResult MapCustomOutcome(ProjectionFallbackLaneRefreshOutcome outcome)
         => outcome switch {
@@ -620,6 +624,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
     private sealed class LaneEntry(ProjectionFallbackLane lane) {
         public object DispatchGate { get; } = new();
         public ProjectionFallbackLane Lane { get; } = lane;
+        public long OriginScopeGeneration { get; set; }
         public int RefCount = 1;
     }
 

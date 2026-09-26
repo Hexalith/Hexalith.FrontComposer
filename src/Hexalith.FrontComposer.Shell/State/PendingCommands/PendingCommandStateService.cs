@@ -95,16 +95,20 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             MessageId = canonicalMessageId,
         };
 
-        // DN3 — fail-closed on tenant/user transitions. Detected before mutation so the new
-        // registration belongs to the new scope, not a leaked previous one.
-        if (!EnforceScopeBoundary()) {
-            return PendingCommandRegistrationResult.ScopeUnavailable();
-        }
-
         PendingCommandEntry registered;
         PendingCommandEntry? evicted;
         List<PendingCommandEntry> evictionList;
         lock (_gate) {
+            // Validate and insert under one gate; an A acceptance cannot acquire B's snapshot.
+            if (!EnforceScopeBoundary()
+                || (normalized.RequireOriginScope
+                    && (normalized.OriginScope is null
+                        || _scopeSnapshot is null
+                        || !ScopeMatches(_scopeSnapshot.Value,
+                            (normalized.OriginScope.Value.TenantId, normalized.OriginScope.Value.UserId))))) {
+                return PendingCommandRegistrationResult.ScopeUnavailable();
+            }
+
             if (_disposed) {
                 return PendingCommandRegistrationResult.Disposed();
             }
@@ -607,6 +611,17 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
     }
 
     private bool TryDispatchTerminalLifecycle(PendingCommandEntry terminal, Activity? activity) {
+        lock (_gate) {
+            if (_disposed || !_byMessageId.TryGetValue(terminal.MessageId, out PendingCommandEntry? current)
+                || !ReferenceEquals(current, terminal)) {
+                return false;
+            }
+
+            return TryDispatchCurrentTerminalLifecycle(terminal, activity);
+        }
+    }
+
+    private bool TryDispatchCurrentTerminalLifecycle(PendingCommandEntry terminal, Activity? activity) {
         CommandLifecycleState lifecycleState = terminal.Status is PendingCommandStatus.Rejected or PendingCommandStatus.NeedsReview
             ? CommandLifecycleState.Rejected
             : CommandLifecycleState.Confirmed;

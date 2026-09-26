@@ -177,7 +177,9 @@ public sealed class CommandPaletteEffects : IDisposable {
 
         IStorageService? storage = Storage;
         if (storage is null) {
-            dispatcher.Dispatch(new PaletteHydratedCompletedAction());
+            if (IsHydrationScopeCurrent(tenantId, userId)) {
+                dispatcher.Dispatch(new PaletteHydratedCompletedAction());
+            }
             return;
         }
 
@@ -193,7 +195,9 @@ public sealed class CommandPaletteEffects : IDisposable {
         }
         catch (OperationCanceledException) {
             FrontComposerDiagnosticLog.PaletteHydrationCancelled(_logger);
-            dispatcher.Dispatch(new PaletteHydratedCompletedAction());
+            if (IsHydrationScopeCurrent(tenantId, userId)) {
+                dispatcher.Dispatch(new PaletteHydratedCompletedAction());
+            }
             return;
         }
         catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
@@ -216,7 +220,9 @@ public sealed class CommandPaletteEffects : IDisposable {
                 ex,
                 FcDiagnosticIds.HFC2111_PaletteHydrationEmpty,
                 reason);
-            dispatcher.Dispatch(new PaletteHydratedCompletedAction());
+            if (IsHydrationScopeCurrent(tenantId, userId)) {
+                dispatcher.Dispatch(new PaletteHydratedCompletedAction());
+            }
             return;
         }
 
@@ -256,6 +262,11 @@ public sealed class CommandPaletteEffects : IDisposable {
 
         dispatcher.Dispatch(new PaletteHydratedCompletedAction());
     }
+
+    private bool IsHydrationScopeCurrent(string tenantId, string userId)
+        => ScopeResolver.TryResolveScope(out string currentTenant, out string currentUser, "Palette", DirectionHydrate)
+            && string.Equals(currentTenant, tenantId, StringComparison.Ordinal)
+            && string.Equals(currentUser, userId, StringComparison.Ordinal);
 
     private static bool IsAdvertisableRecentRoute(string route) {
         if (!CommandRouteBuilder.IsInternalRoute(route)) {

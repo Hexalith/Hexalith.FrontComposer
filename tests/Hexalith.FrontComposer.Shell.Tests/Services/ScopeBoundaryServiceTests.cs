@@ -45,22 +45,80 @@ public sealed class ScopeBoundaryServiceTests {
         newItems.When(x => x.Clear(Arg.Any<string>())).Do(_ => blockedDuringClear.Add(!sut.IsCurrent));
         sut.Start();
         sut.IsCurrent.ShouldBeTrue();
+        sut.Generation.ShouldBe(0);
 
         scope.TenantId = "tenant-b";
         scope.UserId = "user-b";
         auth.Raise();
         blockedDuringClear.ShouldBe([true, true]);
         sut.IsCurrent.ShouldBeTrue();
+        sut.Generation.ShouldBe(1);
 
         scope.TenantId = null;
         auth.Raise();
         blockedDuringClear.ShouldBe([true, true, true, true]);
         sut.IsCurrent.ShouldBeFalse();
+        sut.Generation.ShouldBe(2);
         pending.Received(2).Clear("TenantOrUserTransition");
         newItems.Received(2).Clear("TenantOrUserTransition");
         dispatcher.Received(2).Dispatch(Arg.Any<ScopeChangedAction>());
         dispatcher.Received(2).Dispatch(Arg.Any<PaletteScopeChangedAction>());
         _ = readiness.Received(1).EvaluateAsync(dispatcher, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public void OlderFaultingAuthEvent_DoesNotBlockNewerValidScope() {
+        TestTenantContextAccessor scope = new();
+        TestAuthProvider auth = new();
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        IScopeReadinessGate readiness = Substitute.For<IScopeReadinessGate>();
+        using ServiceProvider services = new ServiceCollection().BuildServiceProvider();
+        using ScopeBoundaryService sut = new(auth, scope, dispatcher, readiness,
+            Substitute.For<IPendingCommandStateService>(), Substitute.For<INewItemIndicatorStateService>(),
+            Substitute.For<IBadgeCountService>(), Substitute.For<ICommandExecutionAdmissionGate>(), services);
+        sut.Start();
+        TaskCompletionSource<AuthenticationState> old = new();
+        auth.Raise(old.Task);
+
+        scope.TenantId = "tenant-b";
+        scope.UserId = "user-b";
+        auth.Raise();
+        sut.IsCurrent.ShouldBeTrue();
+        sut.Generation.ShouldBe(1);
+
+        old.SetException(new InvalidOperationException("old event failed"));
+        sut.IsCurrent.ShouldBeTrue();
+        sut.Generation.ShouldBe(1);
+        dispatcher.Received(1).Dispatch(Arg.Any<ScopeChangedAction>());
+    }
+
+    [Fact]
+    public void OwnerRearmsRealReadinessGate_OnTenantSwitch() {
+        TestTenantContextAccessor scope = new() { TenantId = null };
+        TestAuthProvider auth = new();
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        IUserContextAccessor user = Substitute.For<IUserContextAccessor>();
+        user.TenantId.Returns(_ => scope.TenantId);
+        user.UserId.Returns(_ => scope.UserId);
+        IState<FrontComposerNavigationState> navigation = Substitute.For<IState<FrontComposerNavigationState>>();
+        navigation.Value.Returns(new FrontComposerNavigationState(
+            false, ImmutableDictionary<string, bool>.Empty, ViewportTier.Desktop, StorageReady: false));
+        ScopeReadinessGate readiness = new(navigation, user, null, NullLogger<ScopeReadinessGate>.Instance);
+        using ServiceProvider services = new ServiceCollection().BuildServiceProvider();
+        using ScopeBoundaryService sut = new(auth, scope, dispatcher, readiness,
+            Substitute.For<IPendingCommandStateService>(), Substitute.For<INewItemIndicatorStateService>(),
+            Substitute.For<IBadgeCountService>(), Substitute.For<ICommandExecutionAdmissionGate>(), services);
+        sut.Start();
+
+        scope.TenantId = "tenant-a";
+        auth.Raise();
+        dispatcher.Received(1).Dispatch(Arg.Any<StorageReadyAction>());
+
+        scope.TenantId = "tenant-b";
+        scope.UserId = "user-b";
+        auth.Raise();
+        dispatcher.Received(2).Dispatch(Arg.Any<StorageReadyAction>());
+        sut.IsCurrent.ShouldBeTrue();
     }
 
     [Fact]
@@ -154,7 +212,9 @@ public sealed class ScopeBoundaryServiceTests {
 
         public override Task<AuthenticationState> GetAuthenticationStateAsync() => Task.FromResult(_state);
 
-        public void Raise() => NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+        public void Raise() => Raise(GetAuthenticationStateAsync());
+
+        public void Raise(Task<AuthenticationState> state) => NotifyAuthenticationStateChanged(state);
     }
 
     private sealed class ThrowingScopeAccessor : IFrontComposerTenantContextAccessor {

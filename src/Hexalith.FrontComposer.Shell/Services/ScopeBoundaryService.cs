@@ -1,6 +1,7 @@
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Badges;
+using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Badges;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
@@ -8,6 +9,7 @@ using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
+using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,6 +31,10 @@ public sealed class ScopeBoundaryService(
     private TenantContextSnapshot? _snapshot;
     private bool _started;
     private bool _disposed;
+    private long _latestAuthEvent;
+
+    /// <summary>Changes whenever a new scope replaces the rendered subtree.</summary>
+    internal int Generation { get; private set; }
 
     /// <summary>Raised after a scope transition has cleared circuit state.</summary>
     public event EventHandler? Changed;
@@ -52,8 +58,8 @@ public sealed class ScopeBoundaryService(
             }
 
             _started = true;
-            _snapshot = ReadScope("scope-start");
             authenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+            _snapshot = ReadScope("scope-start");
         }
     }
 
@@ -63,10 +69,11 @@ public sealed class ScopeBoundaryService(
         SynchronizeCore(next);
     }
 
-    private void SynchronizeCore(TenantContextSnapshot? next) {
+    private void SynchronizeCore(TenantContextSnapshot? next, long? authEventNumber = null) {
         bool changed;
         lock (_gate) {
-            if (_disposed || !_started) {
+            if (_disposed || !_started
+                || (authEventNumber is not null && Volatile.Read(ref _latestAuthEvent) != authEventNumber)) {
                 return;
             }
 
@@ -84,6 +91,9 @@ public sealed class ScopeBoundaryService(
                 concreteReadinessGate.ResetForScopeChange();
             }
             pendingCommands.Clear("TenantOrUserTransition");
+            if (services.GetService<ILifecycleStateService>() is LifecycleStateService lifecycle) {
+                lifecycle.ResetScope();
+            }
             newItems.Clear("TenantOrUserTransition");
             if (admissionGate is CommandExecutionAdmissionGate concreteAdmissionGate) {
                 concreteAdmissionGate.ResetScope();
@@ -97,6 +107,7 @@ public sealed class ScopeBoundaryService(
                 _ = subscriptions.BlockStaleGroupsAsync();
             }
 
+            Generation++;
             _snapshot = next;
             if (next is not null) {
                 if (badgeCounts is BadgeCountService scopedBadges) {
@@ -135,16 +146,19 @@ public sealed class ScopeBoundaryService(
     }
 
     private async void OnAuthenticationStateChanged(Task<AuthenticationState> authenticationStateTask) {
+        long eventNumber = Interlocked.Increment(ref _latestAuthEvent);
         try {
             _ = await authenticationStateTask.ConfigureAwait(false);
-            Synchronize();
+            if (Volatile.Read(ref _latestAuthEvent) == eventNumber) {
+                Synchronize();
+            }
         }
         catch (ObjectDisposedException) {
             // Circuit teardown won the race with the authentication event.
         }
         catch (Exception) {
             // An unavailable authentication state is a blocked scope, never a reason to render old data.
-            SynchronizeCore(null);
+            SynchronizeCore(null, eventNumber);
         }
     }
 }

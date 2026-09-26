@@ -167,6 +167,31 @@ public sealed class CapabilityDiscoveryEffectsScopeTests {
     }
 
     [Fact]
+    public async Task PersistEffect_ScopeChangesWhileSelectingSnapshot_DoesNotWriteOldKey() {
+        string? tenant = "tenant-a";
+        string? user = "user-a";
+        IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
+        accessor.TenantId.Returns(_ => tenant);
+        accessor.UserId.Returns(_ => user);
+        IState<FrontComposerCapabilityDiscoveryState> state = FakeState(FrontComposerCapabilityDiscoveryState.Empty);
+        state.Value.Returns(_ => {
+            tenant = "tenant-b";
+            user = "user-b";
+            return FrontComposerCapabilityDiscoveryState.Empty with {
+                SeenCapabilities = ImmutableHashSet<string>.Empty.Add("bc:B"),
+            };
+        });
+        IStorageService storage = Substitute.For<IStorageService>();
+        using CapabilityDiscoveryEffects sut = new(Substitute.For<IDispatcher>(), storage, accessor,
+            MakeBadgeService(), state, EnabledLoggerSubstitute.Create<CapabilityDiscoveryEffects>());
+
+        await sut.HandleCapabilityVisited(new CapabilityVisitedAction("bc:Counter"), Substitute.For<IDispatcher>());
+
+        await storage.DidNotReceiveWithAnyArgs().SetAsync<ImmutableHashSet<string>>(
+            default!, default!, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task HydrateEffect_ValidScopeEmptyStorage_DispatchesEmptySeenSet() {
         InMemoryStorageService storage = new();
         ILogger<CapabilityDiscoveryEffects> logger = EnabledLoggerSubstitute.Create<CapabilityDiscoveryEffects>();

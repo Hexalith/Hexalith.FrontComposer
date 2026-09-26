@@ -29,7 +29,7 @@ public sealed class LoadedPageReducers {
             _ = completion.TrySetCanceled();
         }
 
-        return new LoadedPageState();
+        return new LoadedPageState { ScopeGeneration = state.ScopeGeneration + 1 };
     }
     private readonly IOptionsMonitor<FcShellOptions> _options;
     private readonly ILogger<LoadedPageReducers> _logger;
@@ -104,6 +104,10 @@ public sealed class LoadedPageReducers {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
 
+        if (action.OriginScopeGeneration is { } origin && origin != state.ScopeGeneration) {
+            return state;
+        }
+
         (string viewKey, int skip) key = (action.ViewKey, action.Skip);
         if (action.Completion is not null) {
             if (!state.PendingCompletionsByKey.TryGetValue(key, out TaskCompletionSource<object>? pending)
@@ -177,6 +181,10 @@ public sealed class LoadedPageReducers {
     public static LoadedPageState ReduceLoadPageNotModified(LoadedPageState state, LoadPageNotModifiedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
+
+        if (action.OriginScopeGeneration is { } origin && origin != state.ScopeGeneration) {
+            return state;
+        }
 
         (string viewKey, int skip) key = (action.ViewKey, action.Skip);
         if (!state.PendingCompletionsByKey.TryGetValue(key, out TaskCompletionSource<object>? tcs)) {

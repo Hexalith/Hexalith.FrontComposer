@@ -101,6 +101,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    [Inject] private IUlidFactory UlidFactory { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.IPendingCommandOutcomeCoordinator PendingCommandOutcomeResolver { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.ICommandExecutionAdmissionGate CommandExecutionAdmissionGate { get; set; } = default!;");
+        _ = sb.AppendLine("    [Inject] private global::System.IServiceProvider ScopeServices { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private global::Microsoft.Extensions.Options.IOptions<global::Hexalith.FrontComposer.Shell.Options.FcShellOptions> ShellOptions { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private IStringLocalizer<" + commandFqn + "> Localizer { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> ShellLocalizer { get; set; } = default!;");
@@ -1154,6 +1155,9 @@ public static class CommandFormEmitter {
         }
 
         _ = sb.AppendLine("            cts.Token.ThrowIfCancellationRequested();");
+        _ = sb.AppendLine("            var validatedScope = ScopeServices.GetService(typeof(global::Hexalith.FrontComposer.Shell.State.PendingCommands.IValidatedPendingScope)) as global::Hexalith.FrontComposer.Shell.State.PendingCommands.IValidatedPendingScope;");
+        _ = sb.AppendLine("            var dispatchScope = validatedScope?.Current();");
+        _ = sb.AppendLine("            if (validatedScope is not null && dispatchScope is null) throw new OperationCanceledException();");
         _ = sb.AppendLine("            var result = await CommandService.DispatchWithLifecycleObservationsAsync(");
         _ = sb.AppendLine("                commandForDispatch,");
         _ = sb.AppendLine("                onLifecycleObservation: observation =>");
@@ -1236,6 +1240,8 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                lock (lifecycleCallbackGate)");
         _ = sb.AppendLine("                {");
+        _ = sb.AppendLine("                    // The server can accept before disposal while the response is still in flight.");
+        _ = sb.AppendLine("                    // Associate that result for lifecycle delivery; OriginScope rejects a boundary switch.");
         _ = sb.AppendLine("                    try");
         _ = sb.AppendLine("                    {");
         _ = sb.AppendLine("                        pendingRegistration = PendingCommandOutcomeResolver.AssociateAccepted(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistration(");
@@ -1249,6 +1255,8 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                            ExpectedStatusSlot = commandTarget?.ExpectedStatus,");
         _ = sb.AppendLine("                            PriorStatusSlot = commandTarget?.PriorStatus,");
         _ = sb.AppendLine("                            TargetSnapshot = commandTarget,");
+        _ = sb.AppendLine("                            OriginScope = dispatchScope,");
+        _ = sb.AppendLine("                            RequireOriginScope = validatedScope is not null,");
         _ = sb.AppendLine("                        });");
         _ = sb.AppendLine("                    }");
         _ = sb.AppendLine("                    catch (Exception ex) when (!IsFatalCommandCleanupException(ex))");
@@ -1285,6 +1293,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                if (pendingRegistration?.Status is global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.InvalidMessageId");
         _ = sb.AppendLine("                    or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.InvalidCorrelationId");
         _ = sb.AppendLine("                    or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.ConflictingMetadata");
+        _ = sb.AppendLine("                    or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.ScopeUnavailable");
         _ = sb.AppendLine("                    or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.Disposed)");
         _ = sb.AppendLine("                {");
         _ = sb.AppendLine("                    if (Logger is not null) { LogPendingRegistrationSkipped(Logger, correlationId, pendingRegistration.Status); }");

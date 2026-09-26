@@ -104,6 +104,49 @@ public sealed class BadgeCountServiceTests {
     }
 
     [Fact]
+    public async Task CountCompletion_OverlappingResetScope_DoesNotDeadlock() {
+        TaskCompletionSource<int> count = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<bool> insideUpdate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim releaseUpdate = new(false);
+        int armed = 0;
+        int scopeReads = 0;
+        IFrontComposerTenantContextAccessor scope = Substitute.For<IFrontComposerTenantContextAccessor>();
+        _ = scope.TryGetContext(Arg.Any<string?>(), Arg.Any<string>()).Returns(_ => {
+            if (Volatile.Read(ref armed) != 0 && Interlocked.Increment(ref scopeReads) == 2) {
+                insideUpdate.TrySetResult(true);
+                releaseUpdate.Wait(TimeSpan.FromSeconds(5));
+            }
+
+            return TenantContextResult.Success(new TenantContextSnapshot("tenant-a", "user-a", true, "test"));
+        });
+        using ServiceProvider provider = new ServiceCollection()
+            .AddSingleton(scope)
+            .BuildServiceProvider();
+        using BadgeCountService sut = new(new StubCatalog(typeof(ProjectionAlpha)),
+            new StubReader((_, _) => new ValueTask<int>(count.Task)), provider,
+            EnabledLoggerSubstitute.Create<BadgeCountService>(), new FakeTimeProvider());
+
+        Task fetch = sut.InitializeAsync(Ct);
+        Volatile.Write(ref armed, 1);
+        count.SetResult(4);
+        await insideUpdate.Task.WaitAsync(TimeSpan.FromSeconds(5), Ct);
+        TaskCompletionSource<bool> resetStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task reset = Task.Run(() => {
+            resetStarted.TrySetResult(true);
+            sut.ResetScope();
+        }, Ct);
+        try {
+            await resetStarted.Task.WaitAsync(TimeSpan.FromSeconds(5), Ct);
+            await Task.Delay(50, Ct);
+        }
+        finally {
+            releaseUpdate.Set();
+        }
+
+        await Task.WhenAll(fetch, reset).WaitAsync(TimeSpan.FromSeconds(5), Ct);
+    }
+
+    [Fact]
     public async Task InitializeAsync_SeedsAllCatalogTypes_ViaReader() {
         StubCatalog catalog = new(typeof(ProjectionAlpha), typeof(ProjectionBeta));
         StubReader reader = new((type, _) => new ValueTask<int>(type == typeof(ProjectionAlpha) ? 3 : 5));

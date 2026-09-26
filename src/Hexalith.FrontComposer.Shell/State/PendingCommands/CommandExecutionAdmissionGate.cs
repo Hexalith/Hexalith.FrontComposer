@@ -13,6 +13,7 @@ public sealed class CommandExecutionAdmissionGate(
     private readonly IValidatedPendingScope? _validatedScope = validatedScope;
     private CommandExecutionAdmissionMetadata? _currentAdmission;
     private long _nextAdmissionId;
+    private long _scopeGeneration;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CommandExecutionAdmissionGate"/> class without a
@@ -29,14 +30,24 @@ public sealed class CommandExecutionAdmissionGate(
     public CommandExecutionAdmission TryAcquire(CommandExecutionAdmissionRequest request) {
         ArgumentNullException.ThrowIfNull(request);
 
+        long originatingGeneration = Volatile.Read(ref _scopeGeneration);
+        (string TenantId, string UserId)? originatingScope = _validatedScope?.Current();
         bool scopeAvailable = _validatedScope is not null
-            ? _validatedScope.Current() is not null
+            ? originatingScope is not null
             : _pendingCommandState is PendingCommandStateService concrete && concrete.IsScopeAvailable;
         if (!scopeAvailable) {
             return CommandExecutionAdmission.Denied(CommandExecutionAdmissionDenialReason.ScopeUnavailable, null, null);
         }
 
         lock (_sync) {
+            if (originatingGeneration != _scopeGeneration
+                || (_validatedScope is not null && _validatedScope.Current() != originatingScope)
+                || (_validatedScope is null
+                    && _pendingCommandState is PendingCommandStateService currentState
+                    && !currentState.IsScopeAvailable)) {
+                return CommandExecutionAdmission.Denied(CommandExecutionAdmissionDenialReason.ScopeUnavailable, null, null);
+            }
+
             if (_currentAdmission is not null) {
                 return CommandExecutionAdmission.Denied(
                     CommandExecutionAdmissionDenialReason.AdmissionAlreadyInProgress,
@@ -68,6 +79,7 @@ public sealed class CommandExecutionAdmissionGate(
 
     internal void ResetScope() {
         lock (_sync) {
+            _scopeGeneration++;
             _currentAdmission = null;
         }
     }

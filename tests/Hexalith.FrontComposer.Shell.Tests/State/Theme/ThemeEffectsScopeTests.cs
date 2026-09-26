@@ -6,9 +6,12 @@ using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.State;
 using Hexalith.FrontComposer.Shell.State.Theme;
 using Hexalith.FrontComposer.Shell.State.Navigation;
+using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 using NSubstitute;
@@ -26,6 +29,24 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.Theme;
 /// non-null AND non-whitespace → persist and use the tenant-scoped key.
 /// </summary>
 public sealed class ThemeEffectsScopeTests {
+    [Fact]
+    public async Task ScopeChanged_FluxorDispatch_AppliesLightTheme() {
+        ServiceCollection services = [];
+        _ = services.AddLogging();
+        _ = services.AddHexalithFrontComposer(o => o.ScanAssemblies(typeof(ThemeEffects).Assembly));
+        services.Replace(ServiceDescriptor.Scoped<IStorageService, InMemoryStorageService>());
+        IThemeService themeService = Substitute.For<IThemeService>();
+        services.AddSingleton(themeService);
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IStore store = provider.GetRequiredService<IStore>();
+        await store.InitializeAsync();
+        provider.GetRequiredService<IDispatcher>().Dispatch(new ScopeChangedAction());
+
+        await themeService.Received(1).SetThemeAsync(ArgEx.Is<ThemeSettings>(
+            settings => settings.Mode == ThemeMode.Light));
+    }
+
     [Fact]
     public async Task HandleThemeChanged_PriorHydrationScope_DoesNotApplyOrPersistUnderB() {
         IStorageService storage = Substitute.For<IStorageService>();

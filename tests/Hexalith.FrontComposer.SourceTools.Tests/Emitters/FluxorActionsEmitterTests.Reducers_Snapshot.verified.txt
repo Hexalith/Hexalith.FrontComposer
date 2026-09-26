@@ -15,19 +15,26 @@ public static class OrderProjectionReducers
     /// </summary>
     [Fluxor.ReducerMethod]
     public static OrderProjectionState OnOrderProjectionLoadRequested(OrderProjectionState state, OrderProjectionLoadRequestedAction action)
-        => state with { IsLoading = true, Error = null };
+        => state with { IsLoading = true, Error = null, RequiresScopedRequest = false, ActiveCorrelationId = action.CorrelationId };
 
     /// <summary>
     /// Handles <see cref="OrderProjectionLoadedAction"/>.
     /// </summary>
     [Fluxor.ReducerMethod]
     public static OrderProjectionState OnOrderProjectionLoaded(OrderProjectionState state, OrderProjectionLoadedAction action)
-        => state with { IsLoading = false, Items = action.Items, Error = null };
+        => state.RequiresScopedRequest || (state.ActiveCorrelationId is not null && state.ActiveCorrelationId != action.CorrelationId)
+            ? state : state with { IsLoading = false, Items = action.Items, Error = null };
 
     /// <summary>
     /// Handles <see cref="OrderProjectionLoadFailedAction"/>.
     /// </summary>
     [Fluxor.ReducerMethod]
     public static OrderProjectionState OnOrderProjectionLoadFailed(OrderProjectionState state, OrderProjectionLoadFailedAction action)
-        => state with { IsLoading = false, Error = action.Error };
+        => state.RequiresScopedRequest || (state.ActiveCorrelationId is not null && state.ActiveCorrelationId != action.CorrelationId)
+            ? state : state with { IsLoading = false, Error = action.Error };
+
+    /// <summary>Clears prior-scope projection rows and load provenance.</summary>
+    [Fluxor.ReducerMethod]
+    public static OrderProjectionState OnOrderProjectionScopeChanged(OrderProjectionState state, global::Hexalith.FrontComposer.Shell.State.Navigation.ScopeChangedAction action)
+        => new(IsLoading: false, Items: null, Error: null) { RequiresScopedRequest = true };
 }

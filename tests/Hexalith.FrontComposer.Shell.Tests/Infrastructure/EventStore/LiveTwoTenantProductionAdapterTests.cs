@@ -66,6 +66,7 @@ public sealed class LiveTwoTenantProductionAdapterTests {
         await a.WaitForNudgeAsync(TestContext.Current.CancellationToken);
         await Task.Delay(TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken);
         b.NudgeCount.ShouldBe(0);
+        a.OnlyObservedOwnTenant.ShouldBeTrue();
         int countAfterA = a.NudgeCount;
         await b.TriggerAsync(aggregateId, rowB1, TestContext.Current.CancellationToken);
         await b.WaitForNudgeAsync(TestContext.Current.CancellationToken);
@@ -88,6 +89,8 @@ public sealed class LiveTwoTenantProductionAdapterTests {
         countB.ShouldBe(2);
         await Task.Delay(TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken);
         a.NudgeCount.ShouldBe(countAfterA);
+        a.OnlyObservedOwnTenant.ShouldBeTrue();
+        b.OnlyObservedOwnTenant.ShouldBeTrue();
 
         CommandEvidenceAssertions.AssertRedacted(
             new CommandDispatchEvidence(
@@ -113,9 +116,12 @@ public sealed class LiveTwoTenantProductionAdapterTests {
         private readonly string _token;
         private readonly StorageScopeResolver _storageScope;
         private readonly TaskCompletionSource _nudge = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly System.Collections.Concurrent.ConcurrentQueue<string> _observedTenants = new();
         private int _nudgeCount;
 
         public int NudgeCount => Volatile.Read(ref _nudgeCount);
+        public bool OnlyObservedOwnTenant => _observedTenants.All(
+            tenant => string.Equals(tenant, _tenant, StringComparison.Ordinal));
 
         public LiveScope(Uri baseAddress, string tenant, string user, string token) {
             _tenant = tenant;
@@ -141,8 +147,8 @@ public sealed class LiveTwoTenantProductionAdapterTests {
                 TimeProvider.System, NullLogger<ProjectionConnectionStateService>.Instance);
             ProjectionChangeNotifier notifier = new();
             notifier.ProjectionChangedForTenant += (projection, observedTenant) => {
-                if (string.Equals(projection, "counter-projection", StringComparison.Ordinal)
-                    && string.Equals(observedTenant, _tenant, StringComparison.Ordinal)) {
+                if (string.Equals(projection, "counter-projection", StringComparison.Ordinal)) {
+                    _observedTenants.Enqueue(observedTenant);
                     _ = Interlocked.Increment(ref _nudgeCount);
                     _nudge.TrySetResult();
                 }

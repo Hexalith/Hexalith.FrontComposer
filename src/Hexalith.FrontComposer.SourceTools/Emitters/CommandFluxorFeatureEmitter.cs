@@ -104,6 +104,11 @@ public static class CommandFluxorFeatureEmitter {
         _ = sb.AppendLine("        => state.CorrelationId != action.CorrelationId");
         _ = sb.AppendLine("            ? state");
         _ = sb.AppendLine("            : new(CommandLifecycleState.Idle, null, null, null, null, null, null, null, null);");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    /// <summary>Clears all lifecycle details when the circuit scope changes.</summary>");
+        _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
+        _ = sb.AppendLine("    public static " + state + " OnScopeChanged(" + state + " state, global::Hexalith.FrontComposer.Shell.State.Navigation.ScopeChangedAction action)");
+        _ = sb.AppendLine("        => new(CommandLifecycleState.Idle, null, null, null, null, null, null, null, null);");
         _ = sb.AppendLine("}");
 
         return sb.ToString();

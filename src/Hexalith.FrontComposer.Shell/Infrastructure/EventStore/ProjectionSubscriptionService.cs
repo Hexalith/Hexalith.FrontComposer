@@ -118,7 +118,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
             if (group.Value.Health == GroupHealth.Pending) {
                 continue;
             }
-            _ = IsGroupContextCurrent(group.Key, group.Value, "projection-scope-change");
+            _ = IsGroupContextCurrent(group.Key, group.Value, "projection-scope-change", promoteActive: false);
         }
     }
 
@@ -133,7 +133,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         try {
             foreach (KeyValuePair<GroupKey, GroupState> group in _activeGroups) {
                 bool wasPending = group.Value.Health == GroupHealth.Pending;
-                if (IsGroupContextCurrent(group.Key, group.Value, "projection-scope-change")) {
+                if (IsGroupContextCurrent(group.Key, group.Value, "projection-scope-change", promoteActive: false)) {
                     continue;
                 }
 
@@ -164,6 +164,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         bool added = false;
         try {
             ThrowIfDisposed();
+            EnsureCapturedContextCurrent(context, "projection-subscribe");
             if (_activeGroups.TryGetValue(key, out GroupState existing)) {
                 if (existing.Health != GroupHealth.Pending) {
                     return;
@@ -200,6 +201,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
             }
 
             ThrowIfDisposed();
+            EnsureCapturedContextCurrent(context, "projection-subscribe-join");
             await _connection.JoinGroupAsync(key.ProjectionType, key.TenantId, key.Scope, cancellationToken).ConfigureAwait(false);
             ThrowIfDisposed();
             if (_activeGroups.TryGetValue(key, out GroupState pending)) {
@@ -857,7 +859,21 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
             .EnsureSuccess();
     }
 
-    private bool IsGroupContextCurrent(GroupKey key, GroupState state, string operationKind) {
+    private void EnsureCapturedContextCurrent(TenantContextSnapshot? origin, string operationKind) {
+        if (origin is null || _userContextAccessor is null) {
+            throw new TenantContextException(TenantContextFailureCategory.TenantMissing, Guid.NewGuid().ToString("N"));
+        }
+
+        TenantContextResult current = FrontComposerTenantContextAccessor.Resolve(
+            _userContextAccessor, CurrentShellOptions(), _logger, requestedTenant: null, operationKind);
+        if (!current.Succeeded || current.Context is null
+            || !string.Equals(current.Context.TenantId, origin.TenantId, StringComparison.Ordinal)
+            || !string.Equals(current.Context.UserId, origin.UserId, StringComparison.Ordinal)) {
+            throw new TenantContextException(TenantContextFailureCategory.StaleTenantContext, origin.CorrelationId);
+        }
+    }
+
+    private bool IsGroupContextCurrent(GroupKey key, GroupState state, string operationKind, bool promoteActive = true) {
         if (_userContextAccessor is null || state.TenantContext is null) {
             _ = _activeGroups.TryUpdate(key, state with { Health = GroupHealth.Blocked }, state);
             return false;
@@ -886,7 +902,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
             // with the matching context and a subsequent rejoin loop re-evaluates.
             _ = _activeGroups.TryUpdate(key, state with { Health = GroupHealth.Blocked }, state);
         }
-        else if (state.Health != GroupHealth.Active) {
+        else if (promoteActive && state.Health != GroupHealth.Active) {
             // P3 — context still matches and the group is currently Blocked/Degraded; restore
             // Active so live nudges resume after a transient validation failure.
             _ = _activeGroups.TryUpdate(key, state with { Health = GroupHealth.Active }, state);

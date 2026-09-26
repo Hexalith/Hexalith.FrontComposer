@@ -4,7 +4,7 @@
 @inject IDispatcher Dispatcher
 @inject IState<CounterProjectionState> CounterState
 @inject CounterCommandProjectionCatchUpChannel CatchUpChannel
-@inject Hexalith.FrontComposer.Contracts.Rendering.IUserContextAccessor UserContext
+@inject Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.IFrontComposerTenantContextAccessor TenantContext
 
 <span hidden
       data-testid="epic-9-catch-up"
@@ -36,11 +36,13 @@
         _ = InvokeAsync(StateHasChanged);
         if (IsCurrentScope(tenantId, userId))
         {
-            _ = InvokeAsync(() => MaterializeCreateAsync(correlationId, command, _dispose.Token));
+            _ = InvokeAsync(() => MaterializeCreateAsync(tenantId, userId, correlationId, command, _dispose.Token));
         }
     }
 
     private async Task MaterializeCreateAsync(
+        string tenantId,
+        string userId,
         string correlationId,
         CreateCounterCommand command,
         CancellationToken cancellationToken)
@@ -50,6 +52,11 @@
             await Task.Delay(ProjectionDelay, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+
+        if (!IsCurrentScope(tenantId, userId))
         {
             return;
         }
@@ -65,7 +72,7 @@
             .. CurrentRows().Where(row => !string.Equals(row.Id, command.CounterId, StringComparison.Ordinal)),
             created,
         ];
-        DispatchProjection(correlationId, rows);
+        DispatchProjection(tenantId, userId, correlationId, rows);
     }
 
     private void OnUpdateConfirmed(
@@ -78,11 +85,13 @@
         _ = InvokeAsync(StateHasChanged);
         if (IsCurrentScope(tenantId, userId))
         {
-            _ = InvokeAsync(() => MaterializeUpdateAsync(correlationId, command, _dispose.Token));
+            _ = InvokeAsync(() => MaterializeUpdateAsync(tenantId, userId, correlationId, command, _dispose.Token));
         }
     }
 
     private async Task MaterializeUpdateAsync(
+        string tenantId,
+        string userId,
         string correlationId,
         UpdateCounterCommand command,
         CancellationToken cancellationToken)
@@ -92,6 +101,11 @@
             await Task.Delay(ProjectionDelay, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+
+        if (!IsCurrentScope(tenantId, userId))
         {
             return;
         }
@@ -106,20 +120,31 @@
                     Metadata = row.Metadata,
                 }
                 : row)];
-        DispatchProjection(correlationId, rows);
+        DispatchProjection(tenantId, userId, correlationId, rows);
     }
 
     private IReadOnlyList<CounterProjection> CurrentRows() => CounterState.Value.Items ?? [];
 
     private bool IsCurrentScope(string tenantId, string userId)
-        => string.Equals(tenantId, UserContext.TenantId, StringComparison.Ordinal)
-            && string.Equals(userId, UserContext.UserId, StringComparison.Ordinal);
+    {
+        var current = TenantContext.TryGetContext(requestedTenant: tenantId, operationKind: "counter-catch-up");
+        return current.Succeeded && string.Equals(userId, current.Context?.UserId, StringComparison.Ordinal);
+    }
 
-    private void DispatchProjection(string correlationId, IReadOnlyList<CounterProjection> rows)
+    private void DispatchProjection(string tenantId, string userId, string correlationId, IReadOnlyList<CounterProjection> rows)
     {
         // This bridge already owns the simulated catch-up result. Dispatching a new load request
         // here would also trigger the demo seed effect and race the exact accepted-key snapshot.
-        Dispatcher.Dispatch(new CounterProjectionLoadedAction(correlationId, rows));
+        if (!IsCurrentScope(tenantId, userId))
+        {
+            return;
+        }
+
+        Dispatcher.Dispatch(new CounterProjectionLoadRequestedAction(correlationId));
+        if (IsCurrentScope(tenantId, userId))
+        {
+            Dispatcher.Dispatch(new CounterProjectionLoadedAction(correlationId, rows));
+        }
     }
 
     public void Dispose()

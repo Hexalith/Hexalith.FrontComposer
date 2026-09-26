@@ -14,6 +14,45 @@ namespace Hexalith.FrontComposer.Shell.Tests.Services.Lifecycle;
 /// <see cref="LifecycleStateService"/>.
 /// </summary>
 public class LifecycleStateServiceTests {
+    [Fact]
+    public async Task ResetScope_WhilePriorSubscriberIsHeld_ClearsWithoutWaitingForCallback() {
+        using LifecycleStateService service = Create();
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using IDisposable subscription = service.Subscribe("old", _ => {
+            entered.TrySetResult();
+            release.Task.GetAwaiter().GetResult();
+        });
+        Task transition = Task.Run(() => service.Transition("old", CommandLifecycleState.Submitting), TestContext.Current.CancellationToken);
+        try {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken).ConfigureAwait(true);
+            await Task.Run(service.ResetScope, TestContext.Current.CancellationToken)
+                .WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken).ConfigureAwait(true);
+            service.GetActiveCorrelationIds().ShouldBeEmpty();
+            service.GetState("old").ShouldBe(CommandLifecycleState.Idle);
+        }
+        finally {
+            release.TrySetResult();
+            await transition.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken).ConfigureAwait(true);
+        }
+    }
+
+    [Fact]
+    public void ResetScope_ClearsActiveIdsMessageAndReplay() {
+        using LifecycleStateService service = Create();
+        service.Transition("old", CommandLifecycleState.Submitting, "message-old");
+        service.GetActiveCorrelationIds().ShouldContain("old");
+
+        service.ResetScope();
+
+        service.GetActiveCorrelationIds().ShouldBeEmpty();
+        service.GetState("old").ShouldBe(CommandLifecycleState.Idle);
+        service.GetMessageId("old").ShouldBeNull();
+        List<CommandLifecycleTransition> replay = [];
+        using IDisposable _ = service.Subscribe("old", replay.Add);
+        replay.ShouldBeEmpty();
+    }
+
     private static LifecycleStateService Create(int cacheCap = 1024) => new(
             Microsoft.Extensions.Options.Options.Create(new LifecycleOptions { MessageIdCacheCapacity = cacheCap }));
 

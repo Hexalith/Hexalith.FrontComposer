@@ -198,12 +198,46 @@ public sealed class DataGridNavigationEffectsTests {
             new CaptureGridStateAction(ViewKey, seeded),
             Substitute.For<IDispatcher>());
 
-        tenant = null;
+        tenant = "tenant-b";
+        user = "user-b";
         time.Advance(TimeSpan.FromMilliseconds(250));
         await pending.ConfigureAwait(true);
 
         string key = StorageKeys.BuildKey(Tenant, User, "datagrid", ViewKey);
         (await storage.GetAsync<GridViewPersistenceBlob>(key, ct)).ShouldBeNull();
+        string nextKey = StorageKeys.BuildKey("tenant-b", "user-b", "datagrid", ViewKey);
+        (await storage.GetAsync<GridViewPersistenceBlob>(nextKey, ct)).ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task HandleCaptureGridState_ScopeChangesWhileSelectingSnapshot_DoesNotWriteOldKey() {
+        CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
+        string? tenant = Tenant;
+        string? user = User;
+        IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
+        accessor.TenantId.Returns(_ => tenant);
+        accessor.UserId.Returns(_ => user);
+        IState<DataGridNavigationState> state = FakeState();
+        state.Value.Returns(_ => {
+            tenant = "tenant-b";
+            user = "user-b";
+            return new DataGridNavigationState(
+                ImmutableDictionary<string, GridViewSnapshot>.Empty.Add(ViewKey, Snap(scroll: 999)), Cap: 50);
+        });
+        InMemoryStorageService storage = new();
+        FakeTimeProvider time = new();
+        DataGridNavigationEffects sut = new(storage, accessor,
+            EnabledLoggerSubstitute.Create<DataGridNavigationEffects>(), state, EmptyRegistry(), time);
+
+        Task pending = sut.HandleCaptureGridState(
+            new CaptureGridStateAction(ViewKey, Snap()), Substitute.For<IDispatcher>());
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        await pending.ConfigureAwait(true);
+
+        (await storage.GetAsync<GridViewPersistenceBlob>(StorageKeys.BuildKey(Tenant, User, "datagrid", ViewKey), ct))
+            .ShouldBeNull();
+        (await storage.GetAsync<GridViewPersistenceBlob>(StorageKeys.BuildKey("tenant-b", "user-b", "datagrid", ViewKey), ct))
+            .ShouldBeNull();
     }
 
     [Fact]

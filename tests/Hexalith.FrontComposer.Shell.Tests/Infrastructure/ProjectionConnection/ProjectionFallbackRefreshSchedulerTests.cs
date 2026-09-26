@@ -8,6 +8,7 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Shell.Infrastructure.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
+using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -19,6 +20,42 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.ProjectionConnection;
 
 public sealed class ProjectionFallbackRefreshSchedulerTests {
+    [Fact]
+    public async Task HeldRefresh_AfterScopeClear_DispatchesOldOriginThatReducerDrops() {
+        TaskCompletionSource<ProjectionPageResult> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
+        loader.LoadPageAsync(
+            Arg.Any<string>(), Arg.Any<int>(), Arg.Any<int>(),
+            Arg.Any<IImmutableDictionary<string, string>>(), Arg.Any<string?>(),
+            Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(_ => {
+                started.TrySetResult();
+                return held.Task;
+            });
+
+        MutableLoadedPageState pages = new(new LoadedPageState());
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        LoadPageSucceededAction? dispatched = null;
+        dispatcher.When(x => x.Dispatch(Arg.Any<LoadPageSucceededAction>()))
+            .Do(call => dispatched = call.Arg<LoadPageSucceededAction>());
+        ProjectionFallbackRefreshScheduler scheduler = CreateScheduler(loader, dispatcher, pages);
+        _ = scheduler.RegisterLane(DefaultLane("acme:OrdersProjection"));
+
+        Task<int> refresh = scheduler.TriggerNudgeRefreshAsync("OrdersProjection", "acme", TestContext.Current.CancellationToken);
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken).ConfigureAwait(true);
+        pages.Value = LoadedPageReducers.ReduceScopeChanged(pages.Value, new ScopeChangedAction());
+        held.TrySetResult(new ProjectionPageResult(["old"], 1, "v1"));
+        _ = await refresh.ConfigureAwait(true);
+
+        dispatched.ShouldNotBeNull();
+        dispatched.OriginScopeGeneration.ShouldBe(0);
+        LoadedPageReducers reducers = new(
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()).ToMonitor(),
+            NullLogger<LoadedPageReducers>.Instance);
+        reducers.ReduceLoadPageSucceeded(pages.Value, dispatched).ShouldBeSameAs(pages.Value);
+    }
+
     [Fact]
     public async Task TriggerFallbackOnce_PollsOnlyWhenDisconnected_AndBoundsLaneCount() {
         TestConnectionState state = new(new ProjectionConnectionSnapshot(

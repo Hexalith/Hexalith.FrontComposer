@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
+using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -20,6 +21,20 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.DataGridNavigation;
 /// dispatches: reducers never dispatch (persistence effects do).
 /// </summary>
 public sealed class LoadPageReducerTests {
+    [Fact]
+    public void ReduceFallbackSuccess_PriorScopeGeneration_DoesNotRefillPage() {
+        LoadedPageReducers reducers = MakeReducers();
+        LoadedPageState cleared = LoadedPageReducers.ReduceScopeChanged(new LoadedPageState(), new ScopeChangedAction());
+        LoadPageSucceededAction old = new("view", 0, ["old"], 1, 0) { OriginScopeGeneration = 0 };
+        reducers.ReduceLoadPageSucceeded(cleared, old).ShouldBeSameAs(cleared);
+
+        LoadPageSucceededAction current = new("view", 0, ["current"], 1, 0) {
+            OriginScopeGeneration = cleared.ScopeGeneration,
+        };
+        LoadedPageState populated = reducers.ReduceLoadPageSucceeded(cleared, current);
+        populated.PagesByKey[("view", 0)].Single().ShouldBe("current");
+    }
+
     private const string ViewKey = "acme:OrdersProjection";
 
     private static LoadedPageReducers MakeReducers(int maxCachedPages = 200) {

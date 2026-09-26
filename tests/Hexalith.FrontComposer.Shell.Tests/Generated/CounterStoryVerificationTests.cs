@@ -12,6 +12,7 @@ using Counter.Web.Components.Slots;
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Registration;
+using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Extensions;
@@ -22,6 +23,9 @@ using Hexalith.FrontComposer.Shell.Services.ProjectionViewOverrides;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 using Hexalith.FrontComposer.Shell.State.ExpandedRow;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
+using Hexalith.FrontComposer.Shell.State.Navigation;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Tenancy;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
@@ -38,6 +42,116 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 
 public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
+    [Fact]
+    public async Task CounterPage_AfterScopeReset_CurrentTenantCanSeedAgain() {
+        Services.AddScoped<CounterCommandProjectionCatchUpChannel>();
+        await InitializeStoreAsync();
+        TestTenantContextAccessor scope = (TestTenantContextAccessor)Services.GetRequiredService<IFrontComposerTenantContextAccessor>();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+
+        IRenderedComponent<CounterPage> prior = Render<CounterPage>();
+        prior.WaitForAssertion(() => Services.GetRequiredService<IState<CounterProjectionState>>()
+            .Value.Items.ShouldNotBeNull().Single().Id.ShouldBe("counter-1"));
+        string oldCorrelation = ActiveLoadCorrelation();
+        prior.Dispose();
+
+        scope.TenantId = "tenant-b";
+        dispatcher.Dispatch(new ScopeChangedAction());
+        Services.GetRequiredService<IState<CounterProjectionState>>().Value.Items.ShouldBeNull();
+        IRenderedComponent<CounterPage> current = Render<CounterPage>();
+        current.WaitForAssertion(() => Services.GetRequiredService<IState<CounterProjectionState>>()
+            .Value.Items.ShouldNotBeNull().Single().Id.ShouldBe("counter-1"));
+        ActiveLoadCorrelation().ShouldNotBe(oldCorrelation);
+        dispatcher.Dispatch(new CounterProjectionLoadedAction(oldCorrelation, [new CounterProjection { Id = "old-row" }]));
+        Services.GetRequiredService<IState<CounterProjectionState>>().Value.Items
+            .ShouldNotBeNull().Single().Id.ShouldBe("counter-1");
+    }
+
+    private string ActiveLoadCorrelation() {
+        CounterProjectionState state = Services.GetRequiredService<IState<CounterProjectionState>>().Value;
+        object? value = typeof(CounterProjectionState)
+            .GetProperty("ActiveCorrelationId", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            ?.GetValue(state);
+        return value.ShouldBeOfType<string>();
+    }
+
+    [Fact]
+    public async Task CounterCatchUp_DelayedPriorTenantCreate_IsDroppedAfterSwitch() {
+        Services.AddScoped<CounterCommandProjectionCatchUpChannel>();
+        await InitializeStoreAsync();
+        TestTenantContextAccessor scope = (TestTenantContextAccessor)Services.GetRequiredService<IFrontComposerTenantContextAccessor>();
+        IRenderedComponent<CounterCommandProjectionCatchUp> cut = Render<CounterCommandProjectionCatchUp>();
+        CounterCommandProjectionCatchUpChannel channel = Services.GetRequiredService<CounterCommandProjectionCatchUpChannel>();
+        Action<string?> confirmed = channel.Capture(new CreateCounterCommand {
+            MessageId = "old-message", TenantId = "test-tenant", CounterId = "old-row", InitialValue = 3,
+        }, "test-tenant", "test-user").ShouldNotBeNull();
+
+        await cut.InvokeAsync(() => confirmed("old-correlation"));
+        scope.TenantId = "tenant-b";
+        Services.GetRequiredService<IDispatcher>().Dispatch(new ScopeChangedAction());
+        await Task.Delay(TimeSpan.FromSeconds(5.2), Xunit.TestContext.Current.CancellationToken);
+
+        IState<CounterProjectionState> state = Services.GetRequiredService<IState<CounterProjectionState>>();
+        state.Value.Items.ShouldBeNull();
+        state.Value.IsLoading.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task CounterProjectionView_ThrowingTenantAccessor_BlocksSeededRows() {
+        IFrontComposerTenantContextAccessor accessor = Substitute.For<IFrontComposerTenantContextAccessor>();
+        accessor.TryGetContext(Arg.Any<string?>(), Arg.Any<string>())
+            .Returns(_ => throw new InvalidOperationException("unavailable"));
+        Services.Replace(ServiceDescriptor.Singleton(accessor));
+        await InitializeStoreAsync();
+        Services.GetRequiredService<IDispatcher>().Dispatch(new CounterProjectionLoadedAction(
+            "seed", [new CounterProjection { Id = "old", Count = 10 }]));
+
+        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+        cut.Find("[data-testid='fc-scope-blocked'] h1").TextContent.ShouldBe("Workspace unavailable");
+        cut.Markup.ShouldNotContain("old");
+    }
+
+    [Fact]
+    public void CounterProjectionReducer_LatePriorScopeResultIsDiscarded() {
+        CounterProjectionState state = new(false, [new CounterProjection { Id = "prior", Count = 1 }], null);
+        CounterProjectionState cleared = CounterProjectionReducers.OnCounterProjectionScopeChanged(state, new ScopeChangedAction());
+        cleared.Items.ShouldBeNull();
+
+        CounterProjectionState late = CounterProjectionReducers.OnCounterProjectionLoaded(
+            cleared, new CounterProjectionLoadedAction("old", [new CounterProjection { Id = "prior", Count = 2 }]));
+        late.ShouldBeSameAs(cleared);
+
+        CounterProjectionState requested = CounterProjectionReducers.OnCounterProjectionLoadRequested(
+            cleared, new CounterProjectionLoadRequestedAction("new"));
+        CounterProjectionState current = CounterProjectionReducers.OnCounterProjectionLoaded(
+            requested, new CounterProjectionLoadedAction("new", [new CounterProjection { Id = "current", Count = 3 }]));
+        current.Items.ShouldNotBeNull().Single().Id.ShouldBe("current");
+    }
+
+    [Fact]
+    public async Task GeneratedCommandReducer_ScopeChangeClearsAcceptedRejection() {
+        await InitializeStoreAsync();
+        IncrementCommandLifecycleState rejected = new(
+            CommandLifecycleState.Rejected, "old-correlation", "old-message",
+            "old-reason", "old-resolution", "old-code", "old-category", "old-action", "old-docs");
+        Services.GetRequiredService<IncrementCommandLifecycleFeature>().RestoreState(rejected);
+        IState<IncrementCommandLifecycleState> state = Services.GetRequiredService<IState<IncrementCommandLifecycleState>>();
+        state.Value.RejectionReason.ShouldBe("old-reason");
+
+        Services.GetRequiredService<IDispatcher>().Dispatch(new ScopeChangedAction());
+        IncrementCommandLifecycleState current = state.Value;
+
+        current.State.ShouldBe(CommandLifecycleState.Idle);
+        current.CorrelationId.ShouldBeNull();
+        current.MessageId.ShouldBeNull();
+        current.RejectionReason.ShouldBeNull();
+        current.RejectionResolution.ShouldBeNull();
+        current.RejectionErrorCode.ShouldBeNull();
+        current.RejectionReasonCategory.ShouldBeNull();
+        current.RejectionSuggestedAction.ShouldBeNull();
+        current.RejectionDocsCode.ShouldBeNull();
+    }
+
     // GC-P5 — pin TimeProvider to a deterministic instant well outside the [RelativeTime]
     // 7-day window relative to LastUpdated = 2026-04-14 so the formatter falls back to absolute
     // date format ("04/14/2026") regardless of the wall clock when the test runs.

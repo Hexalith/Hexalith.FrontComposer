@@ -30,6 +30,9 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
     private NavigationManager Navigation { get; set; } = default!;
 
     [Inject]
+    private global::Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.IFrontComposerTenantContextAccessor TenantContextAccessor { get; set; } = default!;
+
+    [Inject]
     private IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> FcShellLocalizer { get; set; } = default!;
 
     [Inject]
@@ -917,6 +920,15 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
     /// <inheritdoc />
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
+        global::Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.TenantContextResult __scope;
+        try { __scope = TenantContextAccessor.TryGetContext(RenderContext?.TenantId, "projection-render"); }
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException and not System.Threading.ThreadAbortException and not AccessViolationException) { __scope = global::Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.TenantContextResult.Failure(global::Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.TenantContextFailureCategory.TenantMissing, string.Empty); }
+        if (!__scope.Succeeded || __scope.Context is null || (RenderContext is not null && !string.Equals(__scope.Context.UserId, RenderContext.UserId, StringComparison.Ordinal)))
+        {
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcScopeBlocked>(0);
+            builder.CloseComponent();
+            return;
+        }
         var state = WhenStateTypoProjectionState.Value;
         #if DEBUG
         if (DevModeServices.GetService(typeof(global::Hexalith.FrontComposer.Shell.Services.DevMode.IDevModeOverlayController)) is global::Hexalith.FrontComposer.Shell.Services.DevMode.IDevModeOverlayController)

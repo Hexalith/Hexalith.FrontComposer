@@ -55,4 +55,10 @@ public sealed record PendingCommandRegistration {
 
     /// <summary>Gets the explicit pre-dispatch target snapshot associated with acceptance.</summary>
     public CommandTargetSnapshot? TargetSnapshot { get; init; }
+
+    /// <summary>Gets the validated scope captured before the command was dispatched.</summary>
+    public (string TenantId, string UserId)? OriginScope { get; init; }
+
+    /// <summary>Gets whether registration requires a captured origin scope.</summary>
+    public bool RequireOriginScope { get; init; }
 }

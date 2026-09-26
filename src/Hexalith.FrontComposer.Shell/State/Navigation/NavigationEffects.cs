@@ -248,7 +248,9 @@ public sealed class NavigationEffects(
         }
         catch (OperationCanceledException) {
             FrontComposerDiagnosticLog.NavigationHydrationCancelled(logger);
-            dispatcher.Dispatch(new NavigationHydratedCompletedAction());
+            if (IsHydrationScopeCurrent(tenantId, userId)) {
+                dispatcher.Dispatch(new NavigationHydratedCompletedAction());
+            }
             return;
         }
         catch (Exception ex) {
@@ -257,7 +259,13 @@ public sealed class NavigationEffects(
                 ex,
                 FcDiagnosticIds.HFC2107_NavigationHydrationEmpty,
                 "Corrupt");
-            dispatcher.Dispatch(new NavigationHydratedCompletedAction());
+            if (IsHydrationScopeCurrent(tenantId, userId)) {
+                dispatcher.Dispatch(new NavigationHydratedCompletedAction());
+            }
+            return;
+        }
+
+        if (!IsHydrationScopeCurrent(tenantId, userId)) {
             return;
         }
 
@@ -293,6 +301,10 @@ public sealed class NavigationEffects(
             }
         }
 
+        if (!IsHydrationScopeCurrent(tenantId, userId)) {
+            return;
+        }
+
         dispatcher.Dispatch(new LastActiveRouteHydratedAction(hydratedRoute));
         dispatcher.Dispatch(new NavigationHydratedCompletedAction());
 
@@ -300,6 +312,11 @@ public sealed class NavigationEffects(
             await WriteBlobAsync(tenantId, userId, blob.SidebarCollapsed, groups, hydratedRoute).ConfigureAwait(false);
         }
     }
+
+    private bool IsHydrationScopeCurrent(string tenantId, string userId)
+        => _scopeResolver.TryResolveScope(out string currentTenant, out string currentUser, "Navigation", "hydrate")
+            && string.Equals(currentTenant, tenantId, StringComparison.Ordinal)
+            && string.Equals(currentUser, userId, StringComparison.Ordinal);
 
     private bool IsUnregisteredBoundedContext(string boundedContext) {
         if (registry is null) {

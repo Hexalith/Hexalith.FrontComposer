@@ -13,6 +13,29 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.State.PendingCommands;
 
 public sealed class CommandExecutionAdmissionGateTests {
+    [Fact]
+    public void TryAcquire_ScopeResetDuringValidation_DeniesOldAdmission() {
+        IValidatedPendingScope scope = Substitute.For<IValidatedPendingScope>();
+        CommandExecutionAdmissionGate? gate = null;
+        int reads = 0;
+        scope.Current().Returns(_ => {
+            if (Interlocked.Increment(ref reads) == 1) {
+                gate!.ResetScope();
+                return ("tenant-a", "user-a");
+            }
+
+            return ("tenant-b", "user-a");
+        });
+        gate = new CommandExecutionAdmissionGate(CreatePendingState(), TimeProvider.System, scope);
+
+        using CommandExecutionAdmission old = gate.TryAcquire(Request());
+        old.IsAdmitted.ShouldBeFalse();
+        old.DenialReason.ShouldBe(CommandExecutionAdmissionDenialReason.ScopeUnavailable);
+
+        using CommandExecutionAdmission current = gate.TryAcquire(Request());
+        current.IsAdmitted.ShouldBeTrue();
+    }
+
     private const string CommandTypeName = "Counter.Increment";
     private const string MessageId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
     private const string CorrelationId = "01CPZ3NDEKTSV4RRFFQ69G5FAV";

@@ -56,6 +56,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     [Inject] private IUlidFactory UlidFactory { get; set; } = default!;
     [Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.IPendingCommandOutcomeCoordinator PendingCommandOutcomeResolver { get; set; } = default!;
     [Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.ICommandExecutionAdmissionGate CommandExecutionAdmissionGate { get; set; } = default!;
+    [Inject] private global::System.IServiceProvider ScopeServices { get; set; } = default!;
     [Inject] private global::Microsoft.Extensions.Options.IOptions<global::Hexalith.FrontComposer.Shell.Options.FcShellOptions> ShellOptions { get; set; } = default!;
     [Inject] private IStringLocalizer<Counter.Domain.IncrementCommand> Localizer { get; set; } = default!;
     [Inject] private IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> ShellLocalizer { get; set; } = default!;
@@ -350,6 +351,9 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             var commandForDispatch = _model;
             global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandTargetSnapshot? commandTarget = null;
             cts.Token.ThrowIfCancellationRequested();
+            var validatedScope = ScopeServices.GetService(typeof(global::Hexalith.FrontComposer.Shell.State.PendingCommands.IValidatedPendingScope)) as global::Hexalith.FrontComposer.Shell.State.PendingCommands.IValidatedPendingScope;
+            var dispatchScope = validatedScope?.Current();
+            if (validatedScope is not null && dispatchScope is null) throw new OperationCanceledException();
             var result = await CommandService.DispatchWithLifecycleObservationsAsync(
                 commandForDispatch,
                 onLifecycleObservation: observation =>
@@ -432,6 +436,8 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             {
                 lock (lifecycleCallbackGate)
                 {
+                    // The server can accept before disposal while the response is still in flight.
+                    // Associate that result for lifecycle delivery; OriginScope rejects a boundary switch.
                     try
                     {
                         pendingRegistration = PendingCommandOutcomeResolver.AssociateAccepted(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistration(
@@ -445,6 +451,8 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                             ExpectedStatusSlot = commandTarget?.ExpectedStatus,
                             PriorStatusSlot = commandTarget?.PriorStatus,
                             TargetSnapshot = commandTarget,
+                            OriginScope = dispatchScope,
+                            RequireOriginScope = validatedScope is not null,
                         });
                     }
                     catch (Exception ex) when (!IsFatalCommandCleanupException(ex))
@@ -481,6 +489,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                 if (pendingRegistration?.Status is global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.InvalidMessageId
                     or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.InvalidCorrelationId
                     or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.ConflictingMetadata
+                    or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.ScopeUnavailable
                     or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.Disposed)
                 {
                     if (Logger is not null) { LogPendingRegistrationSkipped(Logger, correlationId, pendingRegistration.Status); }

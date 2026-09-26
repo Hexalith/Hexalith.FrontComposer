@@ -546,6 +546,37 @@ public sealed class ProjectionSubscriptionServiceTests {
     }
 
     [Fact]
+    public async Task Subscribe_QueuedAndStartingUnderOldScope_NeverJoinsAfterSwitch() {
+        TaskCompletionSource started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        FakeProjectionHubConnection connection = new() {
+            StartOverride = async _ => {
+                started.TrySetResult();
+                await release.Task.ConfigureAwait(true);
+            },
+        };
+        MutableUserContextAccessor identity = new("tenant-a", "user-a");
+        ProjectionSubscriptionService sut = new(
+            Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
+                BaseAddress = new Uri("https://eventstore.test"), RequireAccessToken = false,
+            }),
+            new FakeProjectionHubConnectionFactory(connection, "https://eventstore.test/hubs/projection-changes"),
+            new TestProjectionConnectionState(), new TestRefreshScheduler(), new TestNotifier(),
+            NullLogger<ProjectionSubscriptionService>.Instance, userContextAccessor: identity);
+
+        Task first = sut.SubscribeAsync("orders", "tenant-a", TestContext.Current.CancellationToken);
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken).ConfigureAwait(true);
+        Task queued = sut.SubscribeAsync("customers", "tenant-a", TestContext.Current.CancellationToken);
+        identity.TenantId = "tenant-b";
+        identity.UserId = "user-b";
+        release.TrySetResult();
+
+        _ = await Should.ThrowAsync<TenantContextException>(async () => await first.ConfigureAwait(true)).ConfigureAwait(true);
+        _ = await Should.ThrowAsync<TenantContextException>(async () => await queued.ConfigureAwait(true)).ConfigureAwait(true);
+        connection.JoinedGroups.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task ScopeSwitch_BlocksOldGroupEvenWhenLeaveFails() {
         FakeProjectionHubConnection connection = new();
         DetailCapturingNotifier notifier = new();

@@ -5,6 +5,9 @@ using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Extensions;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
+using Hexalith.FrontComposer.Shell.State.Navigation;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Tenancy;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -22,6 +25,7 @@ public sealed class CounterProjectionEffectsTests {
             o => o.ScanAssemblies(typeof(CounterProjection).Assembly, typeof(CounterProjectionEffects).Assembly));
         _ = services.AddHexalithDomain<CounterDomain>();
         services.Replace(ServiceDescriptor.Scoped<IStorageService, InMemoryStorageService>());
+        services.Replace(ServiceDescriptor.Singleton<IFrontComposerTenantContextAccessor>(new TestTenantContextAccessor()));
 
         using ServiceProvider provider = services.BuildServiceProvider();
         IStore store = provider.GetRequiredService<IStore>();
@@ -66,6 +70,7 @@ public sealed class CounterProjectionEffectsTests {
             o => o.ScanAssemblies(typeof(CounterProjection).Assembly, typeof(CounterProjectionEffects).Assembly));
         _ = services.AddHexalithDomain<CounterDomain>();
         services.Replace(ServiceDescriptor.Scoped<IStorageService, InMemoryStorageService>());
+        services.Replace(ServiceDescriptor.Singleton<IFrontComposerTenantContextAccessor>(new TestTenantContextAccessor()));
 
         using ServiceProvider provider = services.BuildServiceProvider();
         IStore store = provider.GetRequiredService<IStore>();
@@ -87,5 +92,63 @@ public sealed class CounterProjectionEffectsTests {
         SpinWait.SpinUntil(
             () => state.Value.Items?.SingleOrDefault()?.Count == 5,
             TimeSpan.FromSeconds(1)).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task IncrementConfirmed_AfterScopeSwitch_DoesNotRequestOrLoadProjection() {
+        ServiceCollection services = [];
+        _ = services.AddLogging();
+        _ = services.AddHexalithFrontComposer(
+            o => o.ScanAssemblies(typeof(CounterProjection).Assembly, typeof(CounterProjectionEffects).Assembly));
+        _ = services.AddHexalithDomain<CounterDomain>();
+        services.Replace(ServiceDescriptor.Scoped<IStorageService, InMemoryStorageService>());
+        TestTenantContextAccessor scope = new();
+        services.Replace(ServiceDescriptor.Singleton<IFrontComposerTenantContextAccessor>(scope));
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IStore store = provider.GetRequiredService<IStore>();
+        await store.InitializeAsync();
+        IDispatcher dispatcher = provider.GetRequiredService<IDispatcher>();
+        IState<CounterProjectionState> state = provider.GetRequiredService<IState<CounterProjectionState>>();
+
+        string correlationId = Guid.NewGuid().ToString();
+        dispatcher.Dispatch(new IncrementCommandActions.SubmittedAction(
+            correlationId,
+            new IncrementCommand { MessageId = "inc-1", TenantId = "tenant-a", Amount = 5 }));
+        scope.TenantId = "tenant-b";
+        dispatcher.Dispatch(new ScopeChangedAction());
+        dispatcher.Dispatch(new IncrementCommandActions.ConfirmedAction(correlationId));
+
+        state.Value.Items.ShouldBeNull();
+        state.Value.IsLoading.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task ConfigureConfirmed_AfterScopeSwitch_DoesNotRequestOrLoadProjection() {
+        ServiceCollection services = [];
+        _ = services.AddLogging();
+        _ = services.AddHexalithFrontComposer(
+            o => o.ScanAssemblies(typeof(CounterProjection).Assembly, typeof(CounterProjectionEffects).Assembly));
+        _ = services.AddHexalithDomain<CounterDomain>();
+        services.Replace(ServiceDescriptor.Scoped<IStorageService, InMemoryStorageService>());
+        TestTenantContextAccessor scope = new();
+        services.Replace(ServiceDescriptor.Singleton<IFrontComposerTenantContextAccessor>(scope));
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IStore store = provider.GetRequiredService<IStore>();
+        await store.InitializeAsync();
+        IDispatcher dispatcher = provider.GetRequiredService<IDispatcher>();
+        IState<CounterProjectionState> state = provider.GetRequiredService<IState<CounterProjectionState>>();
+
+        string correlationId = Guid.NewGuid().ToString();
+        dispatcher.Dispatch(new ConfigureCounterCommandActions.SubmittedAction(
+            correlationId,
+            new ConfigureCounterCommand { MessageId = "configure-1", TenantId = "tenant-a" }));
+        scope.TenantId = "tenant-b";
+        dispatcher.Dispatch(new ScopeChangedAction());
+        dispatcher.Dispatch(new ConfigureCounterCommandActions.ConfirmedAction(correlationId));
+
+        state.Value.Items.ShouldBeNull();
+        state.Value.IsLoading.ShouldBeFalse();
     }
 }

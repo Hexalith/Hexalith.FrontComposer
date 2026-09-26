@@ -166,6 +166,12 @@ public sealed class CapabilityDiscoveryEffects : IDisposable {
         try {
             string key = StorageKeys.BuildKey(tenantId, userId, FeatureSegment);
             ImmutableHashSet<string> snapshot = _state.Value.SeenCapabilities;
+            if (!ScopeResolver.TryResolveScope(out string currentTenant, out string currentUser, "Capability", DirectionPersist)
+                || !string.Equals(currentTenant, tenantId, StringComparison.Ordinal)
+                || !string.Equals(currentUser, userId, StringComparison.Ordinal)) {
+                return;
+            }
+
             await _storage.SetAsync(key, snapshot, CancellationToken.None).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {

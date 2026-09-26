@@ -29,6 +29,8 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
     private static readonly ConditionalWeakTable<IServiceProvider, LifecycleStateService> _perScope = [];
 
     private readonly ConcurrentDictionary<string, LifecycleEntry> _entries = new(StringComparer.Ordinal);
+    private readonly object _scopeGate = new();
+    private long _scopeGeneration;
 
     /// <summary>
     /// Per-correlation subscriber lists (Decision D6). Mutated only via
@@ -167,6 +169,38 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
         ArgumentNullException.ThrowIfNull(correlationId);
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, typeof(LifecycleStateService));
 
+        long originatingGeneration = Volatile.Read(ref _scopeGeneration);
+        CommandLifecycleTransition? transition;
+        lock (_scopeGate) {
+            if (originatingGeneration != _scopeGeneration) {
+                return;
+            }
+
+            transition = TransitionInScope(correlationId, newState, messageId, idempotencyResolved);
+        }
+
+        if (transition is not null && Volatile.Read(ref _scopeGeneration) == originatingGeneration) {
+            PublishTransition(transition, originatingGeneration);
+        }
+    }
+
+    /// <summary>Clears the correlation index and replay when the circuit scope changes.</summary>
+    internal void ResetScope() {
+        lock (_scopeGate) {
+            _scopeGeneration++;
+            _entries.Clear();
+            _subs = ImmutableDictionary<string, ImmutableList<Subscription>>.Empty.WithComparers(StringComparer.Ordinal);
+            _seenMessageIds.Clear();
+            while (_seenOrder.TryDequeue(out _)) { }
+        }
+    }
+
+    private CommandLifecycleTransition? TransitionInScope(
+        string correlationId,
+        CommandLifecycleState newState,
+        string? messageId,
+        bool idempotencyResolved) {
+
         DateTimeOffset now = _time.GetUtcNow();
         bool entryExistedBefore = _entries.TryGetValue(correlationId, out _);
         bool crossCorrelationCollision = messageId is not null
@@ -206,7 +240,7 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
                     previous,
                     newState,
                     messageId);
-                return;
+                return null;
             }
 
             if (!entryExistedBefore && previous == CommandLifecycleState.Idle
@@ -248,7 +282,7 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
         }
 
         if (dropped) {
-            return;
+            return null;
         }
 
         if (messageId is not null) {
@@ -260,7 +294,7 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
         // on the first observed terminal for this correlation.
         bool effectiveIdempotencyResolved = computedIdempotencyResolved || idempotencyResolved;
 
-        CommandLifecycleTransition transition = new(
+        return new CommandLifecycleTransition(
             CorrelationId: correlationId,
             PreviousState: previous,
             NewState: applied,
@@ -268,6 +302,12 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             TimestampUtc: now,
             LastTransitionAt: originalAt,
             IdempotencyResolved: effectiveIdempotencyResolved);
+    }
+
+    private void PublishTransition(CommandLifecycleTransition transition, long originatingGeneration) {
+        CommandLifecycleState applied = transition.NewState;
+        string correlationId = transition.CorrelationId;
+        bool effectiveIdempotencyResolved = transition.IdempotencyResolved;
         // F33 — InvokeSubscribers must run INSIDE the lifecycle activity scope so any
         // subscriber-initiated work (DOM dispatch, follow-on queries, etc.) nests correctly
         // under Activity.Current. The previous layout disposed the activity at method exit
@@ -293,17 +333,17 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
                 effectiveIdempotencyResolved);
         }
 
-        InvokeSubscribers(correlationId, transition);
+        InvokeSubscribers(correlationId, transition, originatingGeneration);
     }
 
-    private void InvokeSubscribers(string correlationId, CommandLifecycleTransition transition) {
+    private void InvokeSubscribers(string correlationId, CommandLifecycleTransition transition, long originatingGeneration) {
         ImmutableDictionary<string, ImmutableList<Subscription>> subs = _subs;
         if (!subs.TryGetValue(correlationId, out ImmutableList<Subscription>? snapshot) || snapshot.Count == 0) {
             return;
         }
 
         foreach (Subscription sub in snapshot) {
-            if (Volatile.Read(ref sub.Disposed) != 0) {
+            if (Volatile.Read(ref sub.Disposed) != 0 || Volatile.Read(ref _scopeGeneration) != originatingGeneration) {
                 continue;
             }
 

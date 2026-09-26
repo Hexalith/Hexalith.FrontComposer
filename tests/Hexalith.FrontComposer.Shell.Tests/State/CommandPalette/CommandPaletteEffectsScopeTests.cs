@@ -52,16 +52,42 @@ public class CommandPaletteEffectsScopeTests {
             Arg.Any<string[]>());
     }
 
+    [Fact]
+    public async Task HandleAppInitialized_HeldStorageFailureAfterScopeSwitch_DoesNotCompleteOldHydration() {
+        string? tenant = "tenant-a";
+        string? user = "user-a";
+        IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
+        accessor.TenantId.Returns(_ => tenant);
+        accessor.UserId.Returns(_ => user);
+        TaskCompletionSource<string[]?> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        IStorageService storage = Substitute.For<IStorageService>();
+        _ = storage.GetAsync<string[]>(Arg.Any<string>()).Returns(held.Task);
+        CommandPaletteEffects sut = Build(accessor, storage, out IDispatcher dispatcher);
+
+        Task pending = sut.HandleAppInitialized(new AppInitializedAction("c1"), dispatcher);
+        tenant = "tenant-b";
+        user = "user-b";
+        held.SetException(new IOException("old read failed"));
+        await pending;
+
+        dispatcher.Received(1).Dispatch(Arg.Any<PaletteHydratingAction>());
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteHydratedCompletedAction>());
+    }
+
     private static CommandPaletteEffects Build(string? tenant, string? user, IStorageService storage, out IDispatcher dispatcher) {
+        IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
+        accessor.TenantId.Returns(tenant);
+        accessor.UserId.Returns(user);
+        return Build(accessor, storage, out dispatcher);
+    }
+
+    private static CommandPaletteEffects Build(IUserContextAccessor accessor, IStorageService storage, out IDispatcher dispatcher) {
         dispatcher = Substitute.For<IDispatcher>();
         IServiceCollection services = new ServiceCollection();
         services.AddLogging();
         FakeTimeProvider time = new();
         services.AddSingleton<TimeProvider>(time);
 
-        IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
-        accessor.TenantId.Returns(tenant);
-        accessor.UserId.Returns(user);
         services.AddSingleton(accessor);
         services.AddSingleton(storage);
 

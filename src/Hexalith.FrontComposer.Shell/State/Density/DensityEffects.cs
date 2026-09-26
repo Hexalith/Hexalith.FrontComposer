@@ -162,6 +162,12 @@ public sealed class DensityEffects(
                 "Corrupt");
         }
 
+        if (!ScopeResolver.TryResolveScope(out string finalTenant, out string finalUser, "Density", DirectionHydrate)
+            || !string.Equals(finalTenant, tenantId, StringComparison.Ordinal)
+            || !string.Equals(finalUser, userId, StringComparison.Ordinal)) {
+            return;
+        }
+
         DensityLevel resolvedEffective = DensityPrecedence.Resolve(
             stored,
             options.Value.DefaultDensity,

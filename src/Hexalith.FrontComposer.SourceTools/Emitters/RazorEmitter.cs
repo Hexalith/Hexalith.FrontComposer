@@ -1725,7 +1725,9 @@ public static class RazorEmitter {
         _ = sb.AppendLine("    /// <inheritdoc />");
         _ = sb.AppendLine("    protected override void BuildRenderTree(RenderTreeBuilder builder)");
         _ = sb.AppendLine("    {");
-        _ = sb.AppendLine("        var __scope = TenantContextAccessor.TryGetContext(RenderContext?.TenantId, \"projection-render\");");
+        _ = sb.AppendLine("        global::Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.TenantContextResult __scope;");
+        _ = sb.AppendLine("        try { __scope = TenantContextAccessor.TryGetContext(RenderContext?.TenantId, \"projection-render\"); }");
+        _ = sb.AppendLine("        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException and not System.Threading.ThreadAbortException and not AccessViolationException) { __scope = global::Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.TenantContextResult.Failure(global::Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.TenantContextFailureCategory.TenantMissing, string.Empty); }");
         _ = sb.AppendLine("        if (!__scope.Succeeded || __scope.Context is null || (RenderContext is not null && !string.Equals(__scope.Context.UserId, RenderContext.UserId, StringComparison.Ordinal)))");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcScopeBlocked>(0);");
