@@ -153,6 +153,8 @@ public sealed class ToolAdmissionTests {
         string[] absentKeys = [.. absent.StructuredContent!.Select(kvp => kvp.Key).Order(StringComparer.Ordinal)];
         hiddenKeys.ShouldBe(absentKeys);
         hiddenKeys.ShouldNotContain("requestedToolName");
+        hidden.Text.ShouldBe(absent.Text);
+        hidden.StructuredContent!.ToJsonString().ShouldBe(absent.StructuredContent!.ToJsonString());
     }
 
     [Fact]

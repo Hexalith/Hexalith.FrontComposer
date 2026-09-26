@@ -203,6 +203,7 @@ public sealed class HostingTests {
     [Fact]
     public void MapFrontComposerMcp_MaterializesSdkResourcesAndRejectsReservedSkillUriCollisionAtStartup() {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.Environment.EnvironmentName = "Development";
         _ = builder.Services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
         _ = builder.Services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         _ = builder.Services.AddFrontComposerMcp(options => options.Manifests.Add(CreateManifest(

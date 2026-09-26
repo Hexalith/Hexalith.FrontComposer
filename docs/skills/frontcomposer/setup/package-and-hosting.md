@@ -36,6 +36,9 @@ Choose packages by responsibility:
 
 Register host-supplied `IFrontComposerMcpTenantToolGate` and
 `IFrontComposerMcpResourceVisibilityGate` implementations before `AddFrontComposerMcp`; startup
-fails closed when either is absent. Map endpoints with `MapFrontComposerMcp`. Skill resources are
-packaged with `.Mcp`; do not create a separate skills package.
+fails closed when either is absent. Configure host authentication and authorization middleware,
+then map endpoints with `MapFrontComposerMcp`, which requires authorization on every mapped MCP
+endpoint. Outside Development, mapping rejects the shipped `AllowAllMcpTenantToolGate` and
+`AllowAllResourceVisibilityGate` sample gates. Hosts must also keep custom gates restrictive.
+Skill resources are packaged with `.Mcp`; do not create a separate skills package.
 <!-- /frontcomposer:section -->

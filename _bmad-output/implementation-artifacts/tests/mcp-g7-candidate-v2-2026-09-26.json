@@ -1,0 +1,16 @@
+{
+  "base_commit": "4dcf1c6f5c8b0577f437468cc09b23bb3a3a28c0",
+  "date": "2026-09-26",
+  "worktree_files_sha256": {
+    "_bmad-output/implementation-artifacts/tests/mcp-g7-build-test-v2-2026-09-26.txt": "a30481f806e4767214b41e037f4a510538f6da55704ffebcee345ab03875b4d0",
+    "_bmad-output/planning-artifacts/prd.md": "cd1f82bb20f78ded3a2bdb67ee6664287b9fea814731ee5fe1d655f8b5040363",
+    "docs/skills/frontcomposer/setup/package-and-hosting.md": "c509964b3c22ddfd23f75b15ea0bf9706e0681f2a69ff2a842960da0dc144632",
+    "src/Hexalith.FrontComposer.Mcp/Extensions/FrontComposerMcpEndpointRouteBuilderExtensions.cs": "2aee3672c0a06e0bbee67e9079a44a15d325934151703b6c51d974597daf147d",
+    "tests/Hexalith.FrontComposer.Mcp.Tests/Governance/McpAuditLogger.cs": "e2e230a4c7fc85c5db1ac87c905fa103edc59700ea9319d7f09bf1c8b1adacaa",
+    "tests/Hexalith.FrontComposer.Mcp.Tests/Governance/McpAuditLoggerProvider.cs": "082f1a9d998d889375f8ed5a29a1ee10feea4f15a5096992abd4b117dbda406b",
+    "tests/Hexalith.FrontComposer.Mcp.Tests/Governance/McpSecurityGovernanceTests.cs": "c62b8636cfe578d4a18cb05ac83c89860a0e3ee4cc981edf97acf07ea39d88b9",
+    "tests/Hexalith.FrontComposer.Mcp.Tests/Governance/ThrowingAuditTenantToolGate.cs": "1505a046e55340eb491076756efc996aaa6e10bcd0b6022cb5383ccaf9c6a6f3",
+    "tests/Hexalith.FrontComposer.Mcp.Tests/HostingTests.cs": "e736c856db17f06f1cb80cac2cb6538f187f96be4de8429f80ffc33981f4d049",
+    "tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ToolAdmissionTests.cs": "0ee8bc0c431614734f395707adf1756cf6a368a6198d9d63442eb12eb2f6cb97"
+  }
+}
