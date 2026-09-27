@@ -1,6 +1,7 @@
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.Routing;
 
 using Microsoft.Extensions.Logging;
 
@@ -165,6 +166,11 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
         lock (_sync) {
             int existingIndex = _manifests.FindIndex(m => string.Equals(m.BoundedContext, incoming.BoundedContext, StringComparison.Ordinal));
             if (existingIndex < 0) {
+                if (_manifests.Any(m => string.Equals(m.BoundedContext, incoming.BoundedContext, StringComparison.OrdinalIgnoreCase))) {
+                    throw new InvalidOperationException(
+                        $"{FcDiagnosticIds.HFC1601_ManifestInvalid}: Module aliases must be unique regardless of case.");
+                }
+
                 _manifests.Add(incoming);
                 return;
             }
@@ -258,6 +264,21 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
     }
 
     private static void ValidateManifest(DomainManifest manifest) {
+        if (!ModuleRouteCatalog.IsValidSegment(manifest.BoundedContext)) {
+            throw new InvalidOperationException(
+                $"{FcDiagnosticIds.HFC1601_ManifestInvalid}: a route-safe bounded context is required for a Module route.");
+        }
+
+        // Generic Module landings use /{module}. These paths already belong to host
+        // routes or route families, so accepting them would make a registered tile
+        // lead to an unrelated page instead of its Overview tab.
+        string alias = manifest.BoundedContext.ToLowerInvariant();
+        if (alias is "home" or "admin" or "me" or "commands" or "no-party-binding"
+            or "global-administrators" or "__frontcomposer") {
+            throw new InvalidOperationException(
+                $"{FcDiagnosticIds.HFC1601_ManifestInvalid}: bounded context '{manifest.BoundedContext}' collides with a host route.");
+        }
+
         if (manifest.FullPageCommands is null) {
             return;
         }

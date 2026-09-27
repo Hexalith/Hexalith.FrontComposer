@@ -5,6 +5,7 @@ using Bunit;
 using Hexalith.FrontComposer.Shell.Components.Layout;
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 using Shouldly;
@@ -23,7 +24,7 @@ public sealed class FcPageTabsTests : LayoutComponentTestBase
             .Add(tabs => tabs.ActiveTabId, "summary")
             .Add(tabs => tabs.AriaLabel, "Order sections")
             .Add(tabs => tabs.TestId, "orders-page-tabs")
-            .AddChildContent(PageTabs(deferredLoading: false)));
+            .AddChildContent(PageTabs(deferredLoading: false, disableActivity: false)));
 
         IRenderedComponent<FluentTabs> fluentTabs = cut.FindComponent<FluentTabs>();
         fluentTabs.Instance.ActiveTabId.ShouldBe("summary");
@@ -50,11 +51,182 @@ public sealed class FcPageTabsTests : LayoutComponentTestBase
         IRenderedComponent<FcPageTabs> cut = Render<FcPageTabs>(parameters => parameters
             .Add(tabs => tabs.ActiveTabId, "summary")
             .Add(tabs => tabs.ActiveTabIdChanged, EventCallback.Factory.Create<string?>(this, value => observed = value))
-            .AddChildContent(PageTabs(deferredLoading: false)));
+            .AddChildContent(PageTabs(deferredLoading: false, disableActivity: false)));
 
         await cut.InvokeAsync(() => cut.FindComponent<FluentTabs>().Instance.ActiveTabIdChanged.InvokeAsync("activity"));
 
         observed.ShouldBe("activity");
+    }
+
+    [Fact]
+    public void FcPageTabs_RouteAlias_SelectsDeclaredDefault()
+    {
+        Services.GetRequiredService<NavigationManager>().NavigateTo("/orders");
+        IRenderedComponent<FcPageTabs> cut = Render<FcPageTabs>(parameters => parameters
+            .Add(tabs => tabs.ModuleRoute, "/orders")
+            .Add(tabs => tabs.DefaultTabId, "summary")
+            .AddChildContent(PageTabs(deferredLoading: false, disableActivity: false)));
+
+        cut.FindComponent<FluentTabs>().Instance.ActiveTabId.ShouldBe("summary");
+    }
+
+    [Fact]
+    public void FcPageTabs_RouteSelection_SelectsMatchingEnabledTab()
+    {
+        Services.GetRequiredService<NavigationManager>().NavigateTo("/orders/activity");
+        IRenderedComponent<FcPageTabs> cut = Render<FcPageTabs>(parameters => parameters
+            .Add(tabs => tabs.ModuleRoute, "/orders")
+            .Add(tabs => tabs.DefaultTabId, "summary")
+            .AddChildContent(PageTabs(deferredLoading: false, disableActivity: false)));
+
+        cut.FindComponent<FluentTabs>().Instance.ActiveTabId.ShouldBe("activity");
+    }
+
+    [Theory]
+    [InlineData("bad/segment")]
+    [InlineData("bad?query")]
+    [InlineData("bad#fragment")]
+    [InlineData("bad%2Fsegment")]
+    [InlineData("..")]
+    public void FcPageTabs_RouteBackedTabRejectsUnsafePathSegment(string id)
+    {
+        Should.Throw<InvalidOperationException>(() => Render<FcPageTabs>(parameters => parameters
+            .Add(tabs => tabs.ModuleRoute, "/orders")
+            .Add(tabs => tabs.DefaultTabId, "summary")
+            .AddChildContent(SingleTab(id))));
+    }
+
+    [Fact]
+    public void FcPageTabs_NonRouteBackedTabPreservesLegacyId()
+    {
+        IRenderedComponent<FcPageTabs> cut = Render<FcPageTabs>(parameters => parameters
+            .Add(tabs => tabs.ActiveTabId, "legacy/section")
+            .AddChildContent(SingleTab("legacy/section")));
+
+        cut.FindComponent<FluentTab>().Instance.Id.ShouldBe("legacy/section");
+    }
+
+    [Theory]
+    [InlineData("/orders/ACTIVITY")]
+    [InlineData("/orders/activity/")]
+    public void FcPageTabs_MixedCaseOrTrailingSlash_SelectsTabWithoutFallback(string route)
+    {
+        Services.GetRequiredService<NavigationManager>().NavigateTo(route);
+        IRenderedComponent<FcPageTabs> cut = Render<FcPageTabs>(parameters => parameters
+            .Add(tabs => tabs.ModuleRoute, "/orders")
+            .Add(tabs => tabs.DefaultTabId, "summary")
+            .AddChildContent(PageTabs(deferredLoading: false, disableActivity: false)));
+
+        cut.FindComponent<FluentTabs>().Instance.ActiveTabId.ShouldBe("activity");
+        cut.FindAll("[data-testid='fc-module-tab-fallback']").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task FcPageTabs_AdopterNavigation_PreservesPanelQuery()
+    {
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/orders/summary");
+        IRenderedComponent<FcPageTabs> cut = Render<FcPageTabs>(parameters => parameters
+            .Add(tabs => tabs.ModuleRoute, "/orders")
+            .Add(tabs => tabs.DefaultTabId, "summary")
+            .Add(tabs => tabs.ActiveTabIdChanged, EventCallback.Factory.Create<string?>(this,
+                _ => navigation.NavigateTo("/orders/activity?filter=retained")))
+            .AddChildContent(PageTabs(deferredLoading: false, disableActivity: false)));
+
+        await cut.InvokeAsync(() => cut.FindComponent<FluentTabs>().Instance.ActiveTabIdChanged.InvokeAsync("activity"));
+
+        navigation.Uri.ShouldEndWith("/orders/activity?filter=retained");
+    }
+
+    [Fact]
+    public async Task FcPageTabs_RouteDepartureDuringFocusInteropDoesNotInvokeOldCallback()
+    {
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/orders/summary");
+        bool callbackInvoked = false;
+        var pendingFocus = FocusModule.SetupVoid("prepareTabNavigation", _ => true);
+        IRenderedComponent<FcPageTabs> cut = Render<FcPageTabs>(parameters => parameters
+            .Add(tabs => tabs.ModuleRoute, "/orders")
+            .Add(tabs => tabs.DefaultTabId, "summary")
+            .Add(tabs => tabs.ActiveTabIdChanged, EventCallback.Factory.Create<string?>(this,
+                _ => callbackInvoked = true))
+            .AddChildContent(PageTabs(deferredLoading: false, disableActivity: false)));
+
+        Task change = cut.InvokeAsync(() => cut.FindComponent<FluentTabs>().Instance.ActiveTabIdChanged.InvokeAsync("activity"));
+        cut.WaitForAssertion(() => FocusModule.Invocations.Any(invocation => invocation.Identifier == "prepareTabNavigation").ShouldBeTrue());
+        navigation.NavigateTo("/home");
+        pendingFocus.SetVoidResult();
+        await change.ConfigureAwait(true);
+
+        callbackInvoked.ShouldBeFalse();
+        navigation.Uri.ShouldEndWith("/home");
+    }
+
+    [Theory]
+    [InlineData("/orders/missing")]
+    [InlineData("/orders/activity")]
+    public void FcPageTabs_InvalidOrDisabledRoute_SelectsDefaultWithOnePersistentStatus(string route)
+    {
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo(route);
+        IRenderedComponent<FcPageTabs> cut = Render<FcPageTabs>(parameters => parameters
+            .Add(tabs => tabs.ModuleRoute, "/orders")
+            .Add(tabs => tabs.DefaultTabId, "summary")
+            .AddChildContent(PageTabs(deferredLoading: false)));
+
+        cut.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/orders/summary"));
+        cut.FindComponent<FluentTabs>().Instance.ActiveTabId.ShouldBe("summary");
+        cut.FindAll("[data-testid='fc-module-tab-fallback']").Count.ShouldBe(1);
+        cut.Find("[data-testid='fc-module-tab-fallback']").TextContent.ShouldContain("Summary");
+    }
+
+    [Fact]
+    public void FcPageTabs_RouteDepartureDuringPanelInteropCancelsInvalidTabFallback()
+    {
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/orders/missing");
+        var pendingLabels = FocusModule.SetupVoid("labelTabPanels", _ => true);
+        IRenderedComponent<FcPageTabs> cut = Render<FcPageTabs>(parameters => parameters
+            .Add(tabs => tabs.ModuleRoute, "/orders")
+            .Add(tabs => tabs.DefaultTabId, "summary")
+            .AddChildContent(PageTabs(deferredLoading: false, disableActivity: false)));
+        cut.WaitForAssertion(() => FocusModule.Invocations.Any(invocation => invocation.Identifier == "labelTabPanels").ShouldBeTrue());
+
+        navigation.NavigateTo("/home");
+        pendingLabels.SetVoidResult();
+
+        cut.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/home"));
+    }
+
+    [Fact]
+    public void FcPageTabs_RevisitedInvalidRoute_AnnouncesFallbackAgain()
+    {
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/orders/missing");
+        IRenderedComponent<FcPageTabs> cut = Render<FcPageTabs>(parameters => parameters
+            .Add(tabs => tabs.ModuleRoute, "/orders")
+            .Add(tabs => tabs.DefaultTabId, "summary")
+            .AddChildContent(PageTabs(deferredLoading: false, disableActivity: false)));
+
+        cut.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/orders/summary"));
+        navigation.NavigateTo("/orders/activity");
+        cut.WaitForAssertion(() => cut.FindComponent<FluentTabs>().Instance.ActiveTabId.ShouldBe("activity"));
+        navigation.NavigateTo("/orders/missing");
+
+        cut.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/orders/summary"));
+        cut.FindAll("[data-testid='fc-module-tab-fallback']").Count.ShouldBe(1);
+        cut.Find("[data-testid='fc-module-tab-fallback']").TextContent.ShouldContain("Summary");
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("activity")]
+    public void FcPageTabs_AbsentOrDisabledDefaultIsRejected(string defaultTabId)
+    {
+        Should.Throw<InvalidOperationException>(() => Render<FcPageTabs>(parameters => parameters
+            .Add(tabs => tabs.ModuleRoute, "/orders")
+            .Add(tabs => tabs.DefaultTabId, defaultTabId)
+            .AddChildContent(PageTabs(deferredLoading: false))));
     }
 
     [Fact]
@@ -108,6 +280,16 @@ public sealed class FcPageTabsTests : LayoutComponentTestBase
             builder.AddAttribute(8, nameof(FcPageTab.Disabled), disableActivity);
             builder.AddAttribute(9, nameof(FcPageTab.DeferredLoading), deferredLoading);
             builder.AddAttribute(10, nameof(FcPageTab.ChildContent), Markup("activity-content", "Activity body"));
+            builder.CloseComponent();
+        };
+
+    private static RenderFragment SingleTab(string id)
+        => builder =>
+        {
+            builder.OpenComponent<FcPageTab>(0);
+            builder.AddAttribute(1, nameof(FcPageTab.Id), id);
+            builder.AddAttribute(2, nameof(FcPageTab.Header), "Legacy");
+            builder.AddAttribute(3, nameof(FcPageTab.ChildContent), Markup("legacy-content", "Legacy body"));
             builder.CloseComponent();
         };
 

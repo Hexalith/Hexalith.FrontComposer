@@ -1,0 +1,15 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using Hexalith.FrontComposer.Contracts.Rendering
+@using Hexalith.FrontComposer.Shell.Resources
+@using Microsoft.Extensions.Localization
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject IStringLocalizer<FcShellResources> Localizer
+
+<div data-fc-route-unavailable="true">
+    <FcPageLayout Mode="FcPageLayoutMode.Constrained">
+        <FcPageHeader Heading="@Localizer["RouteUnavailableHeading"]"
+                      HeadingId="fc-route-unavailable-heading"
+                      HeadingTabIndex="-1" />
+        <FluentText As="TextTag.Paragraph">@Localizer["RouteUnavailableDescription"]</FluentText>
+    </FcPageLayout>
+</div>

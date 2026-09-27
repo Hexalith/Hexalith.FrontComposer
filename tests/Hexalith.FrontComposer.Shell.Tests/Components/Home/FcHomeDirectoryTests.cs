@@ -70,6 +70,9 @@ public sealed class FcHomeDirectoryTests : LayoutComponentTestBase {
             cut.Markup.ShouldContain("data-testid=\"fc-home-empty-no-microservices\"");
             cut.Markup.ShouldContain("No microservices registered.");
             cut.Markup.ShouldContain($"href=\"{FcHomeDirectory.GettingStartedGuideUrl}\"");
+            cut.FindAll("[data-testid='fc-home-no-modules-status']").Count.ShouldBe(1);
+            cut.Find("[data-testid='fc-home-no-modules-status']").TextContent.ShouldContain("No modules");
+            cut.Markup.ShouldNotContain("fc-home-skeletons");
         });
     }
 
@@ -86,6 +89,8 @@ public sealed class FcHomeDirectoryTests : LayoutComponentTestBase {
             cut.Markup.ShouldContain("data-testid=\"fc-home-skeletons\"");
             cut.Markup.ShouldContain("data-testid=\"fc-home-skeleton-Counter\"");
             cut.Markup.ShouldContain("aria-busy=\"true\"");
+            cut.Markup.ShouldNotContain("fc-home-first-visit");
+            cut.Markup.ShouldNotContain("fc-home-no-modules-status");
         });
     }
 
@@ -347,7 +352,7 @@ public sealed class FcHomeDirectoryTests : LayoutComponentTestBase {
         state.Value.SeenCapabilities.ShouldContain("bc:Counter");
 
         NavigationManager nav = Services.GetRequiredService<NavigationManager>();
-        nav.Uri.ShouldEndWith("/counter/counter-projection");
+        nav.Uri.ShouldEndWith("/counter");
     }
 
     [Theory]

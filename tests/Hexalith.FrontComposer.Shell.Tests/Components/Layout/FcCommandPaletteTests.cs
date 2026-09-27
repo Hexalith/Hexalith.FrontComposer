@@ -5,11 +5,15 @@ using Bunit;
 using Fluxor;
 
 using Hexalith.FrontComposer.Shell.Components.Layout;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Time.Testing;
+using Microsoft.FluentUI.AspNetCore.Components;
 
 using Shouldly;
 
@@ -63,6 +67,52 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
     }
 
     [Fact]
+    public async Task DeniedActivation_KeepsDialogQueryEditableAndReusesExistingDenialHeading() {
+        EnsureStoreInitialized();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        dispatcher.Dispatch(new PaletteOpenedAction("open"));
+        IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
+
+        dispatcher.Dispatch(new PaletteActivationDeniedAction(PaletteActivationDenialKind.Permission));
+        cut.WaitForAssertion(() => {
+            cut.Find("[data-testid='fc-palette-denied-heading']").TextContent.ShouldBe("Permission required");
+            cut.Find("[data-testid='fc-palette-search']").ShouldNotBeNull();
+        });
+
+        await cut.InvokeAsync(() => cut.FindComponent<FluentTextInput>().Instance.ValueChanged.InvokeAsync("retry"));
+        IState<FrontComposerCommandPaletteState> state = Services.GetRequiredService<IState<FrontComposerCommandPaletteState>>();
+        state.Value.IsOpen.ShouldBeTrue();
+        state.Value.Query.ShouldBe("retry");
+        state.Value.ActivationDenial.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task FailedRenderedActivationKeepsTheOpenEditableQueryAndItsEntryFocus()
+    {
+        EnsureStoreInitialized();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        IState<FrontComposerCommandPaletteState> state = Services.GetRequiredService<IState<FrontComposerCommandPaletteState>>();
+        dispatcher.Dispatch(new PaletteOpenedAction("open"));
+        IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
+        await cut.InvokeAsync(() => cut.FindComponent<FluentTextInput>().Instance.ValueChanged.InvokeAsync("missing"));
+        dispatcher.Dispatch(new PaletteResultsComputedAction(
+            "missing", [new PaletteResult(PaletteResultCategory.Recent, "Missing", "", "/missing/page", null, 1, false)]));
+        cut.WaitForElement("[data-testid='fc-palette-option']");
+
+        await cut.InvokeAsync(() => cut.Find("[data-testid='fc-palette-option']").Click());
+        Services.GetRequiredService<NavigationFailureNotifier>().ReportFailure();
+
+        cut.WaitForAssertion(() =>
+        {
+            state.Value.IsOpen.ShouldBeTrue();
+            state.Value.Query.ShouldBe("missing");
+            cut.Find("[data-testid='fc-palette-search']").GetAttribute("value").ShouldBe("missing");
+        });
+        KeyboardModule.Invocations.Count(invocation => invocation.Identifier == "focusElement").ShouldBeGreaterThan(0);
+        FocusModule.Invocations.Any(invocation => invocation.Identifier == "restoreOverlayOrigin").ShouldBeFalse();
+    }
+
+    [Fact]
     public void SearchInput_AriaExpandedTrue_WhenResultsPopulated() {
         // Pass-5 P1 companion — verifies the true branch of the dynamic aria-expanded.
         EnsureStoreInitialized();
@@ -86,7 +136,7 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
     }
 
     [Fact]
-    public void LiveRegion_UpdatesWhenResultsChange() {
+    public void LiveRegion_DoesNotAnnouncePositiveResultCount() {
         EnsureStoreInitialized();
         IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
@@ -105,14 +155,62 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
                 typeof(CounterProjectionStub))]));
 
         cut.WaitForAssertion(() =>
-            cut.Find("[data-testid='fc-palette-live']").TextContent.ShouldBe("1 results"));
+            cut.Find("[data-testid='fc-palette-live']").TextContent.ShouldBe(string.Empty));
     }
 
     [Fact]
-    public async Task SamePageActivation_PrimesBodyFocusFallbackOnDispose() {
+    public void ZeroResults_AnnouncesOnceAtTrailing250Milliseconds() {
+        FakeTimeProvider time = new();
+        Services.Replace(ServiceDescriptor.Singleton<TimeProvider>(time));
+        EnsureStoreInitialized();
+        IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+
+        dispatcher.Dispatch(new PaletteOpenedAction("open-1"));
+        dispatcher.Dispatch(new PaletteQueryChangedAction("query-1", "impossible-query"));
+        dispatcher.Dispatch(new PaletteResultsComputedAction("impossible-query", []));
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-palette-search']").ShouldNotBeNull());
+
+        time.Advance(TimeSpan.FromMilliseconds(249));
+        cut.Find("[data-testid='fc-palette-live']").TextContent.ShouldBe(string.Empty);
+        time.Advance(TimeSpan.FromMilliseconds(1));
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-palette-live']").TextContent.ShouldBe("No commands or pages match."));
+    }
+
+    [Fact]
+    public void ZeroResults_NewQuerySupersedesPendingStatusAndGetsItsOwnTrailingWindow() {
+        FakeTimeProvider time = new();
+        Services.Replace(ServiceDescriptor.Singleton<TimeProvider>(time));
+        EnsureStoreInitialized();
+        IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+
+        dispatcher.Dispatch(new PaletteOpenedAction("open-1"));
+        dispatcher.Dispatch(new PaletteQueryChangedAction("query-1", "first"));
+        dispatcher.Dispatch(new PaletteResultsComputedAction("first", []));
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-palette-search']").ShouldNotBeNull());
+        time.Advance(TimeSpan.FromMilliseconds(100));
+
+        dispatcher.Dispatch(new PaletteQueryChangedAction("query-2", "second"));
+        dispatcher.Dispatch(new PaletteResultsComputedAction("second", []));
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-palette-live']").TextContent.ShouldBe(string.Empty));
+        time.Advance(TimeSpan.FromMilliseconds(249));
+        cut.Find("[data-testid='fc-palette-live']").TextContent.ShouldBe(string.Empty);
+        time.Advance(TimeSpan.FromMilliseconds(1));
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-palette-live']").TextContent.ShouldBe("No commands or pages match."));
+
+        dispatcher.Dispatch(new PaletteQueryChangedAction("query-3", "third"));
+        dispatcher.Dispatch(new PaletteResultsComputedAction("third", []));
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-palette-live']").TextContent.ShouldBe(string.Empty));
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-palette-live']").TextContent.ShouldBe("No commands or pages match."));
+    }
+
+    [Fact]
+    public async Task SamePageActivation_RestoresCapturedOriginOnDispose() {
         // Pass-5 P16 — record the focus-invocation baseline BEFORE the activation so the
         // assertion can prove the same-page Enter keypress specifically triggered the fallback
-        // (not an unrelated earlier focusBodyIfNeeded invocation).
+        // (not an unrelated earlier restoreOverlayOrigin invocation).
         EnsureStoreInitialized();
         NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
         navigation.NavigateTo("/counter/counter-view");
@@ -132,17 +230,17 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
                 typeof(CounterProjectionStub))]));
 
         IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
-        int focusInvocationsBefore = FocusModule.Invocations.Count(i => i.Identifier == "focusBodyIfNeeded");
+        int focusInvocationsBefore = FocusModule.Invocations.Count(i => i.Identifier == "restoreOverlayOrigin");
 
         await cut.InvokeAsync(() =>
             cut.Find("[data-testid='fc-palette-root']").KeyDown(new KeyboardEventArgs { Key = "Enter" }));
         await cut.Instance.DisposeAsync();
 
-        FocusModule.Invocations.Count(i => i.Identifier == "focusBodyIfNeeded").ShouldBeGreaterThan(focusInvocationsBefore);
+        FocusModule.Invocations.Count(i => i.Identifier == "restoreOverlayOrigin").ShouldBeGreaterThan(focusInvocationsBefore);
     }
 
     [Fact]
-    public async Task SameGeneratedCommandPageActivation_UsesCanonicalRouteForFocusFallback() {
+    public async Task SameGeneratedCommandPageActivation_RestoresCapturedOrigin() {
         EnsureStoreInitialized();
         NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
         navigation.NavigateTo("/commands/Counter/ConfigureCounterCommand");
@@ -161,19 +259,19 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
                 false)]));
 
         IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
-        int focusInvocationsBefore = FocusModule.Invocations.Count(i => i.Identifier == "focusBodyIfNeeded");
+        int focusInvocationsBefore = FocusModule.Invocations.Count(i => i.Identifier == "restoreOverlayOrigin");
 
         await cut.InvokeAsync(() =>
             cut.Find("[data-testid='fc-palette-root']").KeyDown(new KeyboardEventArgs { Key = "Enter" }));
         await cut.Instance.DisposeAsync();
 
-        FocusModule.Invocations.Count(i => i.Identifier == "focusBodyIfNeeded").ShouldBeGreaterThan(focusInvocationsBefore);
+        FocusModule.Invocations.Count(i => i.Identifier == "restoreOverlayOrigin").ShouldBeGreaterThan(focusInvocationsBefore);
     }
 
     [Fact]
-    public async Task DifferentPageActivation_DoesNotPrimeBodyFocusFallback() {
+    public async Task DifferentPageActivation_DoesNotRestoreOrigin() {
         // Pass-5 P16 — complements SamePageActivation to prove the fallback is scoped to
-        // same-page activations; a navigation to a different URL must NOT trigger focusBodyIfNeeded.
+        // same-page activations; a navigation to a different URL must NOT trigger restoreOverlayOrigin.
         EnsureStoreInitialized();
         NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
         navigation.NavigateTo("/");
@@ -193,13 +291,13 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
                 typeof(CounterProjectionStub))]));
 
         IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
-        int focusInvocationsBefore = FocusModule.Invocations.Count(i => i.Identifier == "focusBodyIfNeeded");
+        int focusInvocationsBefore = FocusModule.Invocations.Count(i => i.Identifier == "restoreOverlayOrigin");
 
         await cut.InvokeAsync(() =>
             cut.Find("[data-testid='fc-palette-root']").KeyDown(new KeyboardEventArgs { Key = "Enter" }));
         await cut.Instance.DisposeAsync();
 
-        FocusModule.Invocations.Count(i => i.Identifier == "focusBodyIfNeeded").ShouldBe(focusInvocationsBefore);
+        FocusModule.Invocations.Count(i => i.Identifier == "restoreOverlayOrigin").ShouldBe(focusInvocationsBefore);
     }
 
     [Fact]

@@ -34,22 +34,26 @@ test.describe('Story 8.5: navigation rail responsive behavior @p0 @smoke', () =>
     await expect(shell.fullNav).toBeVisible();
     await expect(shell.collapsedRail).toBeHidden();
     await expect(shell.hamburgerToggle).toBeVisible();
+    await expect(page.getByTestId('fc-account-menu')).toBeVisible();
 
     // --- CompactDesktop (1024–1365) — AC4 ---
     await shell.resizeTo(1200);
     await expect(shell.collapsedRail).toBeVisible();
     await expect(shell.fullNav).toBeHidden();
     await expect(shell.hamburgerToggle).toBeVisible();
+    await expect(page.getByTestId('fc-account-menu')).toBeVisible();
 
     // --- Tablet (768–1023) — AC5 ---
     await shell.resizeTo(900);
     await expect(shell.navigationPane).toBeHidden();
     await expect(shell.hamburgerToggle).toBeVisible();
+    await expect(page.getByTestId('fc-account-menu')).toBeVisible();
 
     // --- Phone (<768) — AC5 ---
     await shell.resizeTo(600);
     await expect(shell.navigationPane).toBeHidden();
     await expect(shell.hamburgerToggle).toBeVisible();
+    await expect(page.getByTestId('fc-account-menu')).toBeVisible();
   });
 
   // F11 — boundary coverage. Catches off-by-one in `matchMedia` queries (e.g., `(min-width: 1366px)`
@@ -119,7 +123,7 @@ test.describe('Story 8.5: navigation rail responsive behavior @p0 @smoke', () =>
     await shell.resizeTo(1920);
 
     await expect(shell.counterCategory).toBeVisible();
-    await shell.counterCategory.click();
+    await shell.counterFlyoutTrigger.click();
     await expect(shell.counterFlyout).toHaveAttribute('role', 'menu');
     await expect(shell.counterProjectionItem).toBeVisible();
     await expect(shell.counterProjectionItem).toHaveCount(1);
@@ -142,7 +146,7 @@ test.describe('Story 8.5: navigation rail responsive behavior @p0 @smoke', () =>
     await page.keyboard.press('Escape');
 
     await expect(shell.counterProjectionItem).toBeHidden();
-    await expect(page.locator(':focus')).toHaveAttribute('data-testid', 'fc-nav-context-Counter');
+    await expect(page.locator(':focus')).toHaveAttribute('data-testid', 'fc-nav-flyout-trigger-Counter');
   });
 
   test('Counter projection menu item activates from keyboard and marks one active route (AC3 + AC4) @p0', async ({
@@ -160,8 +164,8 @@ test.describe('Story 8.5: navigation rail responsive behavior @p0 @smoke', () =>
 
     await expect(page).toHaveURL(/\/counter\/counter-projection$/);
     await expect(shell.counterCategory).toHaveAttribute('aria-current', 'page');
-    await expect(shell.counterProjectionItem).toHaveAttribute('aria-current', 'page');
-    await expect(page.locator('[data-href][aria-current="page"]')).toHaveCount(1);
+    await expect(shell.counterProjectionItem).not.toHaveAttribute('aria-current', 'page');
+    await expect(page.locator('[data-testid^="fc-nav-context-"][aria-current="page"]')).toHaveCount(1);
   });
 
   for (const theme of ['Light', 'Dark'] as const satisfies readonly ThemeLabel[]) {
@@ -181,7 +185,7 @@ test.describe('Story 8.5: navigation rail responsive behavior @p0 @smoke', () =>
 
       await page.goto('/counter/counter-projection');
       await shell.shellRoot.waitFor();
-      await shell.counterCategory.click();
+      await shell.counterFlyoutTrigger.click();
       await expect(shell.counterProjectionItem).toBeVisible();
 
       await assertActiveRailUsesAccentThreadOnly(shell);

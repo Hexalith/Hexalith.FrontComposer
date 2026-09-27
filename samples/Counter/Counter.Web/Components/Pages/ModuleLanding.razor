@@ -1,0 +1,14 @@
+@page "/{Module}"
+@page "/{Module}/overview"
+@page "/{Module}/{Tab}"
+@using Hexalith.FrontComposer.Shell.Components.Layout
+
+<FcModuleLandingPage Module="@Module" />
+
+@code {
+    /// <summary>The bounded context selected by the route.</summary>
+    [Parameter] public string? Module { get; set; }
+
+    /// <summary>The requested child tab, when present.</summary>
+    [Parameter] public string? Tab { get; set; }
+}

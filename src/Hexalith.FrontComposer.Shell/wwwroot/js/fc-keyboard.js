@@ -1,3 +1,22 @@
+// Capture focus intent before a Blazor callback can await a module import.
+if (!window.__fcFocusIntentTrackerInstalled) {
+    window.__fcFocusIntentTrackerInstalled = true;
+    window.__fcFocusIntentEpoch = 0;
+    const record = (event) => {
+        window.__fcFocusIntentEpoch += 1;
+        const trigger = (typeof event.composedPath === 'function' ? event.composedPath() : [event.target])
+            .filter((node) => node instanceof Element)
+            .map((node) => node.closest('[data-testid="fc-settings-button"], [data-testid="fc-palette-trigger"]'))
+            .find((node) => node instanceof HTMLElement);
+        if (trigger instanceof HTMLElement) {
+            window.__fcOverlayOrigin = trigger;
+            window.__fcOverlayOpenIntent = window.__fcFocusIntentEpoch;
+        }
+    };
+    document.addEventListener('pointerdown', record, true);
+    document.addEventListener('keydown', record, true);
+}
+
 function isEditableElement(element) {
     if (!element || !(element instanceof HTMLElement)) {
         return false;
@@ -76,9 +95,29 @@ function registerFilter(element, marker, predicate) {
 }
 
 export function focusElement(element) {
-    if (element && typeof element.focus === "function") {
-        element.focus();
+    const focus = () => {
+        if (element?.isConnected && typeof element.focus === "function") {
+            element.focus();
+        }
+    };
+    let userMovedFocus = false;
+    const markUserMove = () => { userMovedFocus = true; };
+    document.addEventListener("pointerdown", markUserMove, true);
+    document.addEventListener("keydown", markUserMove, true);
+    const isPaletteEntry = element?.getAttribute?.('data-testid') === 'fc-palette-search';
+    if (isPaletteEntry && window.__fcOverlayOpenIntent !== undefined
+        && window.__fcFocusIntentEpoch !== window.__fcOverlayOpenIntent) {
+        return;
     }
+    focus();
+    const focused = document.activeElement === element;
+    setTimeout(() => {
+        document.removeEventListener("pointerdown", markUserMove, true);
+        document.removeEventListener("keydown", markUserMove, true);
+        if (!userMovedFocus && !focused) {
+            focus();
+        }
+    }, 150);
 }
 
 export function focusVisibleElementById(id) {
@@ -121,8 +160,14 @@ export function registerShellKeyFilter(element) {
 
     const handler = (event) => {
         const key = (event.key ?? "").toLowerCase();
+        const active = document.activeElement;
         const hasModifier =
             event.ctrlKey || event.metaKey || event.shiftKey || event.altKey;
+
+        if (key === "/" && (event.isComposing || event.keyCode === 229 || (!hasModifier && isEditableInComposedPath(event)))) {
+            event.stopPropagation();
+            return;
+        }
 
         // Modifier-bearing framework shortcuts: prevent browser default AND let Blazor route them.
         // Accept Ctrl+K/, on Windows+Linux AND Cmd+K/, on macOS — `meta+k` is registered as a
@@ -136,6 +181,11 @@ export function registerShellKeyFilter(element) {
             !event.altKey &&
             (key === "k" || key === ",")
         ) {
+            const active = document.activeElement;
+            window.__fcOverlayOrigin = active instanceof HTMLElement && active.isConnected && !active.disabled
+                ? active
+                : null;
+            window.__fcOverlayOpenIntent = window.__fcFocusIntentEpoch;
             event.preventDefault();
             return;
         }
@@ -250,4 +300,40 @@ export function activeDataGridViewKey() {
     }
     const container = active.closest("[data-fc-datagrid]");
     return container ? container.getAttribute("data-fc-datagrid") : null;
+}
+
+export function focusSolePageSearch() {
+    if (isEditableElement(document.activeElement)) {
+        return false;
+    }
+
+    const currentRoute = Array.from(document.querySelectorAll('[data-fc-route-content]'))
+        .find((container) => {
+            const rendered = new URL(container.getAttribute('data-fc-route-content'), document.baseURI);
+            return rendered.pathname === window.location.pathname && rendered.search === window.location.search;
+        });
+    if (!currentRoute || currentRoute.querySelector('[data-fc-route-authorizing="true"]')) {
+        return false;
+    }
+
+    const candidates = Array.from(currentRoute.querySelectorAll('#fc-main-content [data-fc-page-search], [data-fc-page-search]'))
+        .map((host) => ({ host, input: host.shadowRoot?.querySelector('input') ?? host.querySelector('input') }))
+        .filter(({ host, input }) => {
+            if (!(input instanceof HTMLInputElement) || input.disabled || input.hidden || host.hasAttribute('disabled')) {
+                return false;
+            }
+            const toolbar = host.closest('[data-fc-page-toolbar]');
+            if (!toolbar) {
+                return false;
+            }
+            const style = getComputedStyle(host);
+            return style.display !== 'none' && style.visibility !== 'hidden' && host.getClientRects().length > 0;
+        });
+    if (candidates.length !== 1) {
+        return false;
+    }
+
+    candidates[0].input.focus({ preventScroll: true });
+    candidates[0].host.scrollIntoView({ block: 'nearest' });
+    return true;
 }

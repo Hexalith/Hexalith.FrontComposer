@@ -54,7 +54,11 @@ public abstract class LayoutComponentTestBase : BunitContext {
         _ = KeyboardModule.Setup<bool>("isEditableElementActive", _ => true).SetResult(false);
 
         FocusModule = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
-        _ = FocusModule.SetupVoid("focusBodyIfNeeded", _ => true).SetVoidResult();
+        _ = FocusModule.SetupVoid("restoreOverlayOrigin", _ => true).SetVoidResult();
+        _ = FocusModule.SetupVoid("focusOverlayEntry", _ => true).SetVoidResult();
+        _ = FocusModule.SetupVoid("captureOverlayOrigin", _ => true).SetVoidResult();
+        _ = FocusModule.SetupVoid("focusRouteHeading", _ => true).SetVoidResult();
+        _ = FocusModule.SetupVoid("labelTabPanels", _ => true).SetVoidResult();
 
         // The framework header's FcAccountMenu reads AuthenticationStateProvider, so every shell render
         // needs a bUnit authorization context (bUnit's placeholder provider throws otherwise). The

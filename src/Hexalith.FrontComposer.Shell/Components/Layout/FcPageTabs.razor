@@ -7,14 +7,15 @@
 
 @if (Tabs.Count > 0)
 {
-    <FluentTabs ActiveTabId="@ActiveTabId"
+    <FluentTabs ActiveTabId="@SelectedTabId"
                 ActiveTabIdChanged="@OnActiveTabIdChangedAsync"
                 Appearance="@Appearance"
                 Disabled="@Disabled"
                 Orientation="@Orientation"
                 Width="@Width"
                 aria-label="@AriaLabel"
-                data-testid="@TestId">
+                data-testid="@TestId"
+                data-fc-module-route="@ModuleRoute">
         @foreach (FcPageTab tab in Tabs)
         {
             <FluentTab @key="tab"
@@ -23,12 +24,17 @@
                        Disabled="@tab.Disabled"
                        IconStart="@tab.IconStart"
                        DeferredLoading="false"
+                       data-fc-module-tab="@(!string.IsNullOrWhiteSpace(ModuleRoute) ? "true" : null)"
                        Tooltip="@tab.Tooltip">
-                @if (tab.ShouldRenderContent(ActiveTabId))
+                @if (tab.ShouldRenderContent(SelectedTabId))
                 {
                     @tab.ChildContent
                 }
             </FluentTab>
         }
     </FluentTabs>
+    @if (FallbackMessage is { } message)
+    {
+        <div @key="(_pendingFallback ?? _announcedFallback)" class="fc-sr-only" role="status" aria-live="polite" aria-atomic="true" data-testid="fc-module-tab-fallback">@message</div>
+    }
 }

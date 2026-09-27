@@ -12,6 +12,77 @@ test.describe('Story 8.6: reusable page toolbar @p1 @smoke', () => {
     await page.setViewportSize({ width: 1280, height: 900 });
   });
 
+  test('slash focuses the sole enabled page search without replacing its value', async ({ page, tenant }) => {
+    expect(tenant.tenantId).toBeTruthy();
+    const specimen = new PageToolbarSpecimenPage(page);
+    await specimen.goto();
+    await expect(specimen.searchInput).toHaveValue('open');
+
+    await specimen.refreshButton.focus();
+    await page.keyboard.press('/');
+    await expect(specimen.searchInput).toBeFocused();
+    await expect(specimen.searchInput).toHaveValue('open');
+
+    await specimen.searchInput.press('End');
+    await specimen.searchInput.press('/');
+    await expect(specimen.searchInput).toHaveValue('open/');
+  });
+
+  test('slash ignores an outgoing toolbar until current route content is rendered', async ({ page, tenant }) => {
+    expect(tenant.tenantId).toBeTruthy();
+    const specimen = new PageToolbarSpecimenPage(page);
+    await specimen.goto();
+
+    await page.locator('[data-fc-route-content]').evaluate((route) => {
+      route.setAttribute('data-fc-route-content', new URL('/previous', document.baseURI).href);
+    });
+    await specimen.refreshButton.focus();
+    await page.keyboard.press('/');
+
+    await expect(specimen.refreshButton).toBeFocused();
+    await expect(specimen.searchInput).toHaveValue('open');
+  });
+
+  test('slash ignores disabled, ambiguous, composing, and absent page searches', async ({ page, tenant }) => {
+    expect(tenant.tenantId).toBeTruthy();
+    const specimen = new PageToolbarSpecimenPage(page);
+    await specimen.goto();
+
+    await page.getByTestId('fc-page-toolbar-search').evaluate((host) => host.setAttribute('disabled', ''));
+    await specimen.refreshButton.focus();
+    await page.keyboard.press('/');
+    await expect(specimen.refreshButton).toBeFocused();
+    await expect(specimen.searchInput).toHaveValue('open');
+
+    await page.getByTestId('fc-page-toolbar-search').evaluate((host) => host.removeAttribute('disabled'));
+    await specimen.toolbar.evaluate((toolbar) => {
+      const duplicate = document.createElement('span');
+      duplicate.setAttribute('data-fc-page-search', '');
+      duplicate.id = 'duplicate-page-search';
+      duplicate.innerHTML = '<input aria-label="Duplicate search">';
+      toolbar.appendChild(duplicate);
+    });
+    await specimen.refreshButton.focus();
+    await page.keyboard.press('/');
+    await expect(specimen.refreshButton).toBeFocused();
+    await expect(specimen.searchInput).toHaveValue('open');
+
+    await page.locator('#duplicate-page-search').evaluate((element) => element.remove());
+    await specimen.refreshButton.evaluate((button) => button.dispatchEvent(new KeyboardEvent('keydown', {
+      key: '/', bubbles: true, composed: true, isComposing: true,
+    })));
+    await expect(specimen.refreshButton).toBeFocused();
+    await expect(specimen.searchInput).toHaveValue('open');
+
+    await page.goto('/counter');
+    await expect(page.getByRole('main').getByRole('heading', { level: 1, name: 'Counter' })).toBeFocused();
+    const trigger = page.getByTestId('fc-palette-trigger');
+    await trigger.focus();
+    await page.keyboard.press('/');
+    await expect(trigger).toBeFocused();
+    await expect(page.getByRole('searchbox')).toHaveCount(0);
+  });
+
   test('search, filters, view menu, actions, and tabs are reachable end-to-end', async ({ page, tenant }) => {
     expect(tenant.tenantId).toBeTruthy();
 

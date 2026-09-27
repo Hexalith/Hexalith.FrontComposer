@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.JSInterop;
 
 // Blazor component: awaited tasks must resume on the component's sync context, so ConfigureAwait(false) is the wrong choice here.
 #pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
@@ -13,6 +14,8 @@ namespace Hexalith.FrontComposer.Shell.Components.Layout;
 /// action for "is dialog open?" would double the source of truth (D11 rationale).
 /// </summary>
 public partial class FcSettingsButton : ComponentBase {
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
     /// <summary>Injected Fluent UI dialog service.</summary>
     [Inject] private IDialogService DialogService { get; set; } = default!;
 
@@ -22,6 +25,16 @@ public partial class FcSettingsButton : ComponentBase {
     /// stay in lockstep.
     /// </summary>
     /// <returns>A task representing the async dialog presentation.</returns>
-    private async Task OpenDialogAsync() => _ = await FcSettingsDialogLauncher
-            .ShowAsync(DialogService, Localizer["SettingsDialogTitle"].Value);
+    private async Task OpenDialogAsync() {
+        try {
+            IJSObjectReference module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
+            await module.InvokeVoidAsync("captureOverlayOrigin", "fc-settings-button", true);
+            await module.DisposeAsync();
+        }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException or OperationCanceledException or InvalidOperationException) {
+            // Dialog activation remains available if focus interop is unavailable.
+        }
+
+        _ = await FcSettingsDialogLauncher.ShowAsync(DialogService, Localizer["SettingsDialogTitle"].Value);
+    }
 }

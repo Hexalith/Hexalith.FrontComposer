@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.JSInterop;
 
 namespace Hexalith.FrontComposer.Shell.Shortcuts;
 
@@ -28,7 +29,7 @@ namespace Hexalith.FrontComposer.Shell.Shortcuts;
 /// <list type="bullet">
 ///   <item><description><c>ctrl+k</c> and <c>meta+k</c> → opens the palette via <c>IDialogService.ShowDialogAsync&lt;FcCommandPalette&gt;</c> after dispatching <see cref="PaletteOpenedAction"/>; idempotent (D12 — no-op when palette already open). <c>meta+*</c> covers macOS (D25).</description></item>
 ///   <item><description><c>ctrl+,</c> and <c>meta+,</c> → opens settings via <see cref="FcSettingsDialogLauncher"/> (MIGRATES Story 3-3 D16 inline binding per AC8). <c>meta+*</c> covers macOS (D25).</description></item>
-///   <item><description><c>g h</c> → navigates to <c>/</c> via <see cref="NavigationManager"/>.</description></item>
+///   <item><description><c>g h</c> → navigates to <c>/home</c> via <see cref="NavigationManager"/>.</description></item>
 /// </list>
 /// <para>
 /// <b>D24 idempotency:</b> the <see cref="_registered"/> flag guards against repeated invocation
@@ -98,15 +99,13 @@ public sealed class FrontComposerShortcutRegistrar(
                 "g h",
                 "HomeShortcutDescription",
                 NavigateHomeAsync,
-                routeUrl: "/");
+                routeUrl: "/home");
 
-            // Story 4-3 D10 / AC1 — `/` focuses the first column filter inside the active DataGrid.
-            // Scope-gated via DataGridFocusScope — outside the grid the handler is a no-op (returns
-            // without focusing, so the native `/` key behaviour in other contexts is unaffected).
+            // The route's sole enabled toolbar search owns `/`.
             _ = shortcuts.Register(
                 "/",
-                "SlashFocusFilterShortcutDescription",
-                FocusFirstColumnFilterAsync);
+                "SlashFocusPageSearchShortcutDescription",
+                FocusSolePageSearchAsync);
 
 #if DEBUG
             // Defense-in-depth (AC2): #if DEBUG compile-time gate AND IDevModeOverlayController
@@ -140,7 +139,11 @@ public sealed class FrontComposerShortcutRegistrar(
     /// below for failure paths).
     /// </summary>
     /// <returns>A task representing the dialog presentation.</returns>
-    public async Task OpenPaletteAsync() {
+    public Task OpenPaletteAsync() => OpenPaletteCoreAsync(captureKeyboardOrigin: true);
+
+    internal Task OpenPaletteFromPointerAsync() => OpenPaletteCoreAsync(captureKeyboardOrigin: false);
+
+    private async Task OpenPaletteCoreAsync(bool captureKeyboardOrigin) {
         if (paletteState.Value.IsOpen) {
             return;
         }
@@ -152,6 +155,9 @@ public sealed class FrontComposerShortcutRegistrar(
         }
 
         try {
+            if (captureKeyboardOrigin) {
+                await CaptureKeyboardOriginAsync().ConfigureAwait(false);
+            }
             // P5 (2026-04-21 pass-4): moved dispatch inside the try so a synchronous throw from
             // ulidFactory.NewUlid() or dispatcher.Dispatch() is caught by the rollback path below.
             // Previously only the await could throw into the catch; an earlier sync throw would
@@ -192,16 +198,39 @@ public sealed class FrontComposerShortcutRegistrar(
     /// Opens the settings dialog via the shared launcher (Story 3-3 D11 / Story 3-4 AC8).
     /// </summary>
     /// <returns>A task representing the dialog presentation.</returns>
-    public async Task OpenSettingsAsync() => _ = await FcSettingsDialogLauncher
+    public async Task OpenSettingsAsync() {
+        await CaptureKeyboardOriginAsync().ConfigureAwait(false);
+        _ = await FcSettingsDialogLauncher
             .ShowAsync(dialogService, localizer["SettingsDialogTitle"].Value)
             .ConfigureAwait(false);
+    }
+
+    private async Task CaptureKeyboardOriginAsync() {
+        IJSRuntime? js = services?.GetService<IJSRuntime>();
+        if (js is null) {
+            return;
+        }
+        try {
+            IJSObjectReference module = await js.InvokeAsync<IJSObjectReference>(
+                "import", "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js").ConfigureAwait(false);
+            try {
+                await module.InvokeVoidAsync("captureOverlayOrigin", null, true).ConfigureAwait(false);
+            }
+            finally {
+                await module.DisposeAsync().ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException or OperationCanceledException or InvalidOperationException) {
+            // The dialog remains available if origin capture is unavailable.
+        }
+    }
 
     /// <summary>
     /// Navigates to the application home via <see cref="NavigationManager.NavigateTo(string)"/>.
     /// </summary>
     /// <returns>A completed task.</returns>
     public Task NavigateHomeAsync() {
-        navigation.NavigateTo("/");
+        navigation.NavigateTo("/home");
         return Task.CompletedTask;
     }
 
@@ -211,19 +240,8 @@ public sealed class FrontComposerShortcutRegistrar(
     /// container so the shortcut stays transparent in non-DataGrid contexts.
     /// </summary>
     /// <returns>A task that resolves when the focus attempt completes.</returns>
-    public async Task FocusFirstColumnFilterAsync() {
-        bool inGrid = await dataGridFocusScope.IsFocusWithinDataGridAsync().ConfigureAwait(false);
-        if (!inGrid) {
-            return;
-        }
-
-        string? viewKey = await dataGridFocusScope.GetActiveViewKeyAsync().ConfigureAwait(false);
-        if (string.IsNullOrWhiteSpace(viewKey)) {
-            return;
-        }
-
-        _ = await dataGridFocusScope.FocusFirstColumnFilterAsync(viewKey!).ConfigureAwait(false);
-    }
+    public async Task FocusSolePageSearchAsync()
+        => _ = await dataGridFocusScope.FocusSolePageSearchAsync().ConfigureAwait(false);
 
 #if DEBUG
     private Task ToggleDevModeOverlayAsync() {

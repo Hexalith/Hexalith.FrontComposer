@@ -9890,3 +9890,9 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-1-ten-scope-1-prove-tenant-safe-operator-state-end-to-end.md`
   summary: Unverified medium: a generated form could remain pending after ScopeUnavailable if the accessor recovers without remount.
   evidence: Boundary-driven scope loss remounts the form; a production transient unavailable accessor returning to the same mounted form would settle the stuck-state claim.
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-2-make-shell-navigation-and-route-focus-deterministic.md`
+  summary: Supply a working sign-in challenge route for the Counter sample when its account menu is visible.
+  evidence: Counter.Web has no authentication challenge endpoint, so the existing account menu sign-in link to `/authentication/challenge` fails in that sample; the link and sample authentication setup predate Story 13.2.
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-2-make-shell-navigation-and-route-focus-deterministic.md`
+  summary: Hide an orphan navigation context's flyout when all registered entries are policy-hidden.
+  evidence: The pre-existing orphan branch in `FrontComposerNavigation.razor` renders a flyout trigger without checking whether any of its entries pass authorization; a policy-only orphan context can open an empty menu.

@@ -15,6 +15,7 @@
                  Style="min-width: 0;"
                  role="toolbar"
                  aria-label="@AriaLabel"
+                 data-fc-page-toolbar
                  data-testid="@TestId">
         <FluentTextInput Id="@SearchInputId"
                          Value="@SearchValue"
@@ -22,9 +23,11 @@
                          TextInputType="TextInputType.Search"
                          Placeholder="@SearchPlaceholder"
                          AriaLabel="@SearchAriaLabel"
+                         Disabled="@SearchDisabled"
                          Class="fc-page-toolbar-search"
                          Style="flex: 1 1 18rem; min-width: min(100%, 14rem); max-width: 32rem;"
-                         data-testid="fc-page-toolbar-search" />
+                         data-testid="fc-page-toolbar-search"
+                         data-fc-page-search />
 
         @if (FilterContent is not null)
         {

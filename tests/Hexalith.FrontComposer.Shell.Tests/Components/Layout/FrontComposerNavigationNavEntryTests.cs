@@ -99,7 +99,7 @@ public sealed class FrontComposerNavigationNavEntryTests : LayoutComponentTestBa
     }
 
     [Fact]
-    public void DisabledNavEntry_RendersReason_AndDoesNotRenderItsRouteAsALink() {
+    public void DisabledNavEntry_DoesNotCreateAnEmptyMoreMenu() {
         _registry.GetManifests().Returns([
             new DomainManifest("Tenants", "tenants", Projections: [], Commands: []),
         ]);
@@ -114,12 +114,8 @@ public sealed class FrontComposerNavigationNavEntryTests : LayoutComponentTestBa
 
         IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
 
-        cut.WaitForAssertion(() => {
-            cut.Markup.ShouldContain("data-testid=\"fc-nav-entry-tenants-audit-reason\"");
-            cut.Markup.ShouldContain("Pick a tenant first.");
-            // disabled entries carry no navigable href
-            cut.Markup.ShouldNotContain("href=\"/should-not-link\"");
-        });
+        cut.Markup.ShouldNotContain("fc-nav-flyout-trigger-tenants");
+        cut.Markup.ShouldNotContain("href=\"/should-not-link\"");
     }
 
     [Fact]
@@ -137,6 +133,7 @@ public sealed class FrontComposerNavigationNavEntryTests : LayoutComponentTestBa
         cut.WaitForAssertion(() => {
             cut.Markup.ShouldNotContain("data-testid=\"fc-nav-entry-tenants-global-administrators\"");
             cut.Markup.ShouldNotContain("/global-administrators");
+            cut.FindAll("[data-testid='fc-nav-flyout-trigger-tenants']").ShouldBeEmpty();
         });
     }
 
@@ -156,7 +153,30 @@ public sealed class FrontComposerNavigationNavEntryTests : LayoutComponentTestBa
         cut.WaitForAssertion(() => {
             cut.Markup.ShouldContain("data-testid=\"fc-nav-entry-tenants-global-administrators\"");
             cut.Markup.ShouldContain("data-href=\"/global-administrators\"");
+            cut.Find("[data-testid='fc-nav-flyout-trigger-tenants']").ShouldNotBeNull();
         });
+    }
+
+    [Theory]
+    [InlineData("/admin/parties")]
+    [InlineData("/me")]
+    public void NonPrefixPartyDestinationKeepsOnlyItsOwningModuleActive(string route) {
+        _auth.SetAuthorized("operator");
+        _registry.GetManifests().Returns([
+            new DomainManifest("Parties", "Parties", [], []),
+            new DomainManifest("Tenants", "Tenants", [], []),
+        ]);
+        _navRegistry.GetNavEntries().Returns([
+            new FrontComposerNavEntry("Parties", "Admin Parties", "/admin/parties"),
+            new FrontComposerNavEntry("Parties", "My profile", "/me"),
+        ]);
+        Services.GetRequiredService<NavigationManager>().NavigateTo(route);
+
+        IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
+
+        cut.Find("[data-testid='fc-nav-context-Parties']").GetAttribute("data-active").ShouldBe("true");
+        cut.Find("[data-testid='fc-nav-context-Tenants']").GetAttribute("data-active").ShouldBe("false");
+        cut.FindAll("[data-testid^='fc-nav-context-'][data-active='true']").Count.ShouldBe(1);
     }
 
     [Fact]
@@ -181,13 +201,11 @@ public sealed class FrontComposerNavigationNavEntryTests : LayoutComponentTestBa
     }
 
     // ── Single-active highlighting (correct-course 2026-06-19) ───────────────────────────────────
-    // Before the fix, FluentNavItem's default NavLinkMatch.Prefix lit BOTH "/tenants" (a prefix of
-    // every sub-route) AND the exact sub-route — two active bars. The shell now gives only the
-    // longest-prefix match (the current route) NavLinkMatch.Prefix and every other item
-    // NavLinkMatch.All, so at most one item is ever active.
+    // The Module entry owns the active marker for its subroutes. Secondary destinations remain
+    // discoverable in the flyout without competing with the Module's one current item.
 
     [Fact]
-    public void ActiveHighlight_MostSpecificWins_OnlyTheCurrentRouteIsActive() {
+    public void ActiveHighlight_ModuleOwnsCurrentRoute_SecondaryEntryIsNotPromoted() {
         _registry.GetManifests().Returns([
             new DomainManifest("Tenants", "tenants", Projections: [], Commands: []),
         ]);
@@ -200,10 +218,8 @@ public sealed class FrontComposerNavigationNavEntryTests : LayoutComponentTestBa
         cut.WaitForAssertion(() => {
             IReadOnlyList<IElement> active = ActiveItems(cut);
             active.Count.ShouldBe(1, "exactly one nav item may carry the active (Prefix) match");
-            active[0].GetAttribute("data-href").ShouldBe("/tenants/users");
-
-            // The container route must no longer prefix-match its sub-routes.
-            cut.Find("[data-href=\"/tenants\"]").HasAttribute("aria-current").ShouldBeFalse();
+            active[0].GetAttribute("data-href").ShouldBe("/tenants");
+            cut.Find("[data-href=\"/tenants/users\"]").HasAttribute("aria-current").ShouldBeFalse();
         });
     }
 

@@ -30,6 +30,7 @@ public static class CommandPaletteReducers {
             LoadState = PaletteLoadState.Idle,
             HydrationState = HydrationState.Idle,
             ScopeGeneration = state.ScopeGeneration + 1,
+            ActivationDenial = null,
         };
     }
 
@@ -55,6 +56,7 @@ public static class CommandPaletteReducers {
             Results = ImmutableArray<PaletteResult>.Empty,
             SelectedIndex = 0,
             LoadState = PaletteLoadState.Idle,
+            ActivationDenial = null,
         };
     }
 
@@ -77,6 +79,7 @@ public static class CommandPaletteReducers {
             Results = ImmutableArray<PaletteResult>.Empty,
             SelectedIndex = 0,
             LoadState = PaletteLoadState.Idle,
+            ActivationDenial = null,
         };
     }
 
@@ -101,7 +104,33 @@ public static class CommandPaletteReducers {
             return state;
         }
 
-        return state with { Query = action.Query, LoadState = PaletteLoadState.Searching };
+        return state with { Query = action.Query, LoadState = PaletteLoadState.Searching, ActivationDenial = null };
+    }
+
+    /// <summary>Displays the existing denial heading without closing or clearing the query.</summary>
+    [ReducerMethod]
+    public static FrontComposerCommandPaletteState ReduceActivationDenied(
+        FrontComposerCommandPaletteState state,
+        PaletteActivationDeniedAction action)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        return state.IsOpen
+            ? state with { ActivationDenial = action.Kind, ActivationDenialVersion = state.ActivationDenialVersion + 1 }
+            : state;
+    }
+
+    /// <summary>Records a failed navigation while keeping the current palette query editable.</summary>
+    [ReducerMethod]
+    public static FrontComposerCommandPaletteState ReduceActivationFailed(
+        FrontComposerCommandPaletteState state,
+        PaletteActivationFailedAction action)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        return state.IsOpen
+            ? state with { ActivationFailureVersion = state.ActivationFailureVersion + 1 }
+            : state;
     }
 
     /// <summary>

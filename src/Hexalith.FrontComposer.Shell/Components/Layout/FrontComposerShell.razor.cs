@@ -100,6 +100,9 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     private DotNetObjectReference<FrontComposerShell>? _selfRef;
     private bool _themeBootstrapped;
     private bool _interactiveReady;
+    private bool _startupFailure;
+    private bool _startupFailureFocused;
+    private ElementReference _startupFailureHeading;
     private bool _locationTrackingRegistered;
     private readonly object _locationTrackingSync = new();
     private bool _sessionRestoreAttempted;
@@ -199,10 +202,8 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     [Parameter] public bool ShowDefaultHeaderLogo { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether the shell renders its authentication account menu.
-    /// The default is <see langword="true"/> for backward compatibility. Adopters without working
-    /// login and logout endpoints should set this to <see langword="false"/> so the frame does not
-    /// expose a nonfunctional authentication control.
+    /// Legacy compatibility parameter. The framework account menu is always rendered so a
+    /// header customization cannot remove the sign-in and sign-out path.
     /// </summary>
     [Parameter] public bool ShowAccountMenu { get; set; } = true;
 
@@ -222,6 +223,8 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     [Inject] private IState<FrontComposerNavigationState> NavigationState { get; set; } = default!;
 
     [Inject] private ScopeBoundaryService ScopeBoundary { get; set; } = default!;
+
+    [Inject] private NavigationFailureNotifier NavigationFailure { get; set; } = default!;
 
     /// <summary>Injected storage service whose drain is flushed on beforeunload.</summary>
     [Inject] private IStorageService Storage { get; set; } = default!;
@@ -327,7 +330,23 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     /// framework auto-navigation appears when at least one manifest has projections OR a domain has
     /// registered explicit navigation entries.
     /// </summary>
-    protected bool HasNavigation => ScopeBoundary.IsCurrent && (Navigation is not null || HasRenderableManifest());
+    protected bool HasNavigation {
+        get {
+            if (_startupFailure) {
+                return false;
+            }
+
+            try {
+                return ScopeBoundary.IsCurrent && (Navigation is not null || HasRenderableManifest());
+            }
+            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+                _startupFailure = true;
+                return false;
+            }
+        }
+    }
+
+    protected bool StartupFailure => _startupFailure;
 
     /// <summary>
     /// Whether the current viewport is Tablet or Phone. The Navigation <c>FluentLayoutItem</c> is
@@ -471,8 +490,13 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     /// <inheritdoc />
     protected override void OnInitialized() {
         base.OnInitialized();
-        ScopeBoundary.Start();
-        ScopeBoundary.Changed += OnScopeChanged;
+        try {
+            ScopeBoundary.Start();
+            ScopeBoundary.Changed += OnScopeChanged;
+        }
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+            _startupFailure = true;
+        }
         // FC-LYT (Story 1.2) — re-render #fc-main-content's mode attribute/class when a child
         // <FcPageLayout> flips the coordinator (it registers in its OnAfterRender, after the shell's
         // first paint). SetMode no-ops on an unchanged mode, so this cannot loop the render cycle.
@@ -480,12 +504,14 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
         // Handoff outcome 1/2 — re-render #fc-main-content's accessible name when a child
         // <FcContentLabel> declares/clears it (same render-cycle safety as the page-layout coordinator).
         _contentLabelCoordinator.Changed += OnContentLabelChanged;
+        NavigationFailure.Changed += OnNavigationFailureChanged;
     }
 
     private void OnPageLayoutChanged() => _ = InvokeAsync(StateHasChanged);
 
     private void OnScopeChanged(object? sender, EventArgs args) {
         _ = InvokeAsync(() => {
+            NavigationFailure.ResetForScopeChange();
             _sessionRestoreAttempted = false;
             _initialRenderUri = NavigationManager.Uri;
             StateHasChanged();
@@ -493,6 +519,8 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     }
 
     private void OnContentLabelChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private void OnNavigationFailureChanged() => _ = InvokeAsync(StateHasChanged);
 
     private string GetCurrentRouteFragmentHref(string fragment)
     {
@@ -509,17 +537,32 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
 
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_startupFailure) {
+            if (!_startupFailureFocused) {
+                _startupFailureFocused = true;
+                await _startupFailureHeading.FocusAsync().ConfigureAwait(false);
+            }
+            return;
+        }
+
         if (firstRender) {
-            await ApplyThemeAsync().ConfigureAwait(false);
-            await RegisterBeforeUnloadAsync().ConfigureAwait(false);
-            await RegisterKeyboardInteropAsync().ConfigureAwait(false);
-            RegisterLocationTracking();
-            DispatchStorageReadyIfScopeAvailable();
-            SyncCurrentBoundedContext(NavigationManager.Uri);
-            await Registrar.RegisterShellDefaultsAsync().ConfigureAwait(false);
-            _initialRenderUri = NavigationManager.Uri;
-            _interactiveReady = true;
-            _ = InvokeAsync(StateHasChanged);
+            try {
+                await ApplyThemeAsync().ConfigureAwait(false);
+                await RegisterBeforeUnloadAsync().ConfigureAwait(false);
+                await RegisterKeyboardInteropAsync().ConfigureAwait(false);
+                RegisterLocationTracking();
+                DispatchStorageReadyIfScopeAvailable();
+                SyncCurrentBoundedContext(NavigationManager.Uri);
+                await Registrar.RegisterShellDefaultsAsync().ConfigureAwait(false);
+                _initialRenderUri = NavigationManager.Uri;
+                _interactiveReady = true;
+                _ = InvokeAsync(StateHasChanged);
+            }
+            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+                _startupFailure = true;
+                _ = InvokeAsync(StateHasChanged);
+                return;
+            }
         }
 
         TryRestoreSession();
@@ -638,6 +681,7 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
         _pageLayoutCoordinator.Changed -= OnPageLayoutChanged;
         _contentLabelCoordinator.Changed -= OnContentLabelChanged;
         ScopeBoundary.Changed -= OnScopeChanged;
+        NavigationFailure.Changed -= OnNavigationFailureChanged;
 
         if (_beforeUnloadSubscription is not null && _beforeUnloadModule is not null) {
             try {
@@ -767,6 +811,7 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
 
     private void HandleLocationChanged(object? sender, LocationChangedEventArgs e) {
         try {
+            NavigationFailure.ObserveLocation(e.Location);
             SyncCurrentBoundedContext(e.Location);
         }
         catch (Exception ex) when (ex is ObjectDisposedException or InvalidOperationException) {
@@ -785,9 +830,7 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
 
     private bool HasRenderableManifest() {
         foreach (DomainManifest manifest in Registry.GetManifests()) {
-            if (manifest.Projections.Count > 0) {
-                return true;
-            }
+            return true;
         }
 
         // A domain that declares only explicit navigation entries (e.g. bespoke pages rather than

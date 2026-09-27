@@ -38,7 +38,7 @@ public class FrontComposerShortcutRegistrarTests {
         shortcuts.Received(1).Register("meta+k", "PaletteShortcutDescription", Arg.Any<Func<Task>>(), Arg.Is<string?>(x => x == null), Arg.Any<string>(), Arg.Any<int>());
         shortcuts.Received(1).Register("ctrl+,", "SettingsShortcutDescription", Arg.Any<Func<Task>>(), Arg.Is<string?>(x => x == null), Arg.Any<string>(), Arg.Any<int>());
         shortcuts.Received(1).Register("meta+,", "SettingsShortcutDescription", Arg.Any<Func<Task>>(), Arg.Is<string?>(x => x == null), Arg.Any<string>(), Arg.Any<int>());
-        shortcuts.Received(1).Register("g h", "HomeShortcutDescription", Arg.Any<Func<Task>>(), Arg.Is("/"), Arg.Any<string>(), Arg.Any<int>());
+        shortcuts.Received(1).Register("g h", "HomeShortcutDescription", Arg.Any<Func<Task>>(), Arg.Is("/home"), Arg.Any<string>(), Arg.Any<int>());
     }
 
     [Fact]
@@ -54,7 +54,7 @@ public class FrontComposerShortcutRegistrarTests {
         shortcuts.Received(1).Register("meta+k", "PaletteShortcutDescription", Arg.Any<Func<Task>>(), Arg.Is<string?>(x => x == null), Arg.Any<string>(), Arg.Any<int>());
         shortcuts.Received(1).Register("ctrl+,", "SettingsShortcutDescription", Arg.Any<Func<Task>>(), Arg.Is<string?>(x => x == null), Arg.Any<string>(), Arg.Any<int>());
         shortcuts.Received(1).Register("meta+,", "SettingsShortcutDescription", Arg.Any<Func<Task>>(), Arg.Is<string?>(x => x == null), Arg.Any<string>(), Arg.Any<int>());
-        shortcuts.Received(1).Register("g h", "HomeShortcutDescription", Arg.Any<Func<Task>>(), Arg.Is("/"), Arg.Any<string>(), Arg.Any<int>());
+        shortcuts.Received(1).Register("g h", "HomeShortcutDescription", Arg.Any<Func<Task>>(), Arg.Is("/home"), Arg.Any<string>(), Arg.Any<int>());
     }
 
     [Fact]

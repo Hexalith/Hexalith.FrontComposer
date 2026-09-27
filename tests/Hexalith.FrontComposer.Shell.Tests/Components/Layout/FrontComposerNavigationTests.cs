@@ -14,6 +14,7 @@ using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Components.Layout;
 using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.Routing;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
@@ -121,7 +122,7 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
 
         cut.WaitForAssertion(() => {
             IRenderedComponent<FluentMenu> menu = cut.FindComponents<FluentMenu>()
-                .Single(m => m.Markup.Contains("id=\"fc-rail-Counter\"", StringComparison.Ordinal));
+                .Single(m => m.Markup.Contains("id=\"fc-rail-more-Counter\"", StringComparison.Ordinal));
             IElement flyout = menu.Find("[data-testid=\"fc-nav-flyout-Counter\"]");
             flyout.LocalName.ShouldBe("fluent-menu-list");
             flyout.GetAttribute("role").ShouldBe("menu");
@@ -212,6 +213,23 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
     }
 
     [Fact]
+    public void SingleDestinationContext_RejectedUriReportsSafeNavigationFailure() {
+        _registry.GetManifests().Returns([]);
+        _navRegistry.GetNavEntries().Returns([
+            new FrontComposerNavEntry("Tenants", "Broken destination", "http://["),
+        ]);
+
+        IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        string originalUri = navigation.Uri;
+
+        cut.Find("[data-testid=\"fc-nav-context-Tenants\"]").Click();
+
+        navigation.Uri.ShouldBe(originalUri);
+        Services.GetRequiredService<NavigationFailureNotifier>().Message.ShouldNotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
     public void MultiDestinationContext_StillRendersFlyout_WrappedInMenuList() {
         // A 2+ destination context keeps the flyout, now correctly wrapped in FluentMenuList — the missing
         // wrapper (items placed directly in FluentMenu) was why the single item rendered as a bare,
@@ -227,7 +245,7 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
 
         cut.WaitForAssertion(() => {
             IRenderedComponent<FluentMenu> menu = cut.FindComponents<FluentMenu>()
-                .Single(m => m.Markup.Contains("id=\"fc-rail-Counter\"", StringComparison.Ordinal));
+                .Single(m => m.Markup.Contains("id=\"fc-rail-more-Counter\"", StringComparison.Ordinal));
             _ = menu.FindComponent<FluentMenuList>();
         });
     }
@@ -308,9 +326,7 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
     }
 
     [Fact]
-    public void HidesCategoryWhenProjectionsEmpty() {
-        // D1 clarification (2026-04-18): a manifest with commands-only (empty Projections)
-        // produces NO FluentNavCategory. Empty category shells are noise-without-signal.
+    public void RendersModuleWhenProjectionsEmpty() {
         _registry.GetManifests().Returns([
             new DomainManifest(
                 Name: "CommandsOnly",
@@ -322,8 +338,8 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
         IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
 
         cut.WaitForAssertion(() => {
-            cut.Markup.ShouldNotContain("id=\"CommandsOnly\"");
-            cut.Markup.ShouldNotContain("CommandsOnly");
+            cut.Markup.ShouldContain("fc-nav-context-CommandsOnly");
+            cut.Markup.ShouldContain("CommandsOnly");
         });
     }
 

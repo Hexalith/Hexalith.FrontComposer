@@ -60,6 +60,9 @@
     <Project Path="tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj" />
     <Project Path="tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj" />
     <Project Path="tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj" />
+    <Project Path="tests/Hexalith.FrontComposer.UI.Tests/Hexalith.FrontComposer.UI.Tests.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
   </Folder>
   <Folder Name="/references/" />
   <Folder Name="/references/Hexalith.AI.Tools/">

@@ -60,6 +60,7 @@ public sealed class CommandPaletteEffects : IDisposable {
     private readonly object _ctsSync = new();
     private readonly SemaphoreSlim _persistGate = new(1, 1);
     private CancellationTokenSource? _queryCts;
+    private long _activationAttemptVersion;
     private bool _disposed;
     private int _evaluatorMissingLogged;
 
@@ -487,6 +488,9 @@ public sealed class CommandPaletteEffects : IDisposable {
         catch (ObjectDisposedException) {
             // Circuit torn down — nothing to close.
         }
+        catch (InvalidOperationException) {
+            // Fluxor can reject dispatch after synchronous circuit disposal.
+        }
     }
 
     /// <summary>
@@ -498,19 +502,33 @@ public sealed class CommandPaletteEffects : IDisposable {
     /// <param name="dispatcher">The Fluxor dispatcher.</param>
     /// <returns>A completed task.</returns>
     [EffectMethod]
-    public Task HandlePaletteResultActivated(PaletteResultActivatedAction action, IDispatcher dispatcher) {
+    public async Task HandlePaletteResultActivated(PaletteResultActivatedAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
+        long activationAttempt = Interlocked.Increment(ref _activationAttemptVersion);
 
         FrontComposerCommandPaletteState snapshot = _paletteState.Value;
+        if (!snapshot.IsOpen) {
+            return;
+        }
         if (action.SelectedIndex < 0 || action.SelectedIndex >= snapshot.Results.Length) {
-            return Task.CompletedTask;
+            if (action.ExpectedResult is not null) {
+                dispatcher.Dispatch(new PaletteActivationDeniedAction(PaletteActivationDenialKind.Unavailable));
+            }
+            return;
         }
 
         PaletteResult result = snapshot.Results[action.SelectedIndex];
+        if (action.ExpectedQuery is not null && !string.Equals(action.ExpectedQuery, snapshot.Query, StringComparison.Ordinal)) {
+            return;
+        }
+        if (action.ExpectedResult is not null && action.ExpectedResult != result) {
+            dispatcher.Dispatch(new PaletteActivationDeniedAction(PaletteActivationDenialKind.Unavailable));
+            return;
+        }
 
         if (result.Category == PaletteResultCategory.Shortcut && string.IsNullOrEmpty(result.RouteUrl)) {
-            return Task.CompletedTask;
+            return;
         }
 
         // D23 sentinel — refill instead of navigating.
@@ -520,11 +538,11 @@ public sealed class CommandPaletteEffects : IDisposable {
             // PaletteQueryChangedAction would be no-op'd by the reducer's IsOpen guard (P1)
             // anyway, but bailing early avoids the dispatch round-trip.
             if (!snapshot.IsOpen) {
-                return Task.CompletedTask;
+                return;
             }
 
             dispatcher.Dispatch(new PaletteQueryChangedAction(NewCorrelationId(), ShortcutsCanonicalQuery));
-            return Task.CompletedTask;
+            return;
         }
 
         // Re-check reachability at activation so a result computed before a late manifest merge
@@ -536,8 +554,49 @@ public sealed class CommandPaletteEffects : IDisposable {
             FrontComposerDiagnosticLog.PaletteCommandRouteMissing(
                 _logger,
                 FcDiagnosticIds.HFC2111_PaletteHydrationEmpty);
-            SafeDispatchClose(dispatcher);
-            return Task.CompletedTask;
+            dispatcher.Dispatch(new PaletteActivationDeniedAction(PaletteActivationDenialKind.Unavailable));
+            return;
+        }
+
+        if (result.Category == PaletteResultCategory.Command) {
+            IFrontComposerRegistry? authorizationRegistry = Registry;
+            DomainManifest? manifest = authorizationRegistry?.GetManifests().FirstOrDefault(m =>
+                string.Equals(m.BoundedContext, result.BoundedContext, StringComparison.Ordinal)
+                && m.Commands.Contains(result.CommandTypeName!, StringComparer.Ordinal));
+            if (manifest is null) {
+                dispatcher.Dispatch(new PaletteActivationDeniedAction(PaletteActivationDenialKind.Unavailable));
+                return;
+            }
+
+            bool authorized;
+            try {
+                authorized = await CanSurfaceCommandAsync(manifest, result.CommandTypeName!, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+                if (IsActivationCurrent(snapshot, action, result, activationAttempt)) {
+                    dispatcher.Dispatch(new PaletteActivationDeniedAction(PaletteActivationDenialKind.Unavailable));
+                }
+                return;
+            }
+
+            // Authorization can complete after a query, selection, close, or tenant change.
+            // A result from the old snapshot must never navigate or announce in the new state.
+            if (!IsActivationCurrent(snapshot, action, result, activationAttempt)) {
+                return;
+            }
+            if (!authorized) {
+                dispatcher.Dispatch(new PaletteActivationDeniedAction(PaletteActivationDenialKind.Permission));
+                return;
+            }
+            IFrontComposerRegistry? currentRegistry = Registry;
+            if (currentRegistry is null
+                || !currentRegistry.HasFullPageRoute(result.CommandTypeName!)
+                || !currentRegistry.GetManifests().Any(currentManifest =>
+                    string.Equals(currentManifest.BoundedContext, result.BoundedContext, StringComparison.Ordinal)
+                    && currentManifest.Commands.Contains(result.CommandTypeName!, StringComparer.Ordinal))) {
+                dispatcher.Dispatch(new PaletteActivationDeniedAction(PaletteActivationDenialKind.Unavailable));
+                return;
+            }
         }
 
         string? targetUrl = result.Category switch {
@@ -551,6 +610,19 @@ public sealed class CommandPaletteEffects : IDisposable {
         };
 
         if (!string.IsNullOrEmpty(targetUrl)) {
+            // A previously visited generated command can outlive the manifest that owned its
+            // page. Reject that ordinary missing-route case before NavigateTo changes the URI.
+            if (result.Category == PaletteResultCategory.Recent
+                && targetUrl.StartsWith("/commands/", StringComparison.OrdinalIgnoreCase)
+                && Registry is { } recentRegistry
+                && !recentRegistry.GetManifests().Any(manifest => manifest.Commands.Any(command =>
+                    recentRegistry.HasFullPageRoute(command)
+                    && string.Equals(CommandRouteBuilder.BuildRoute(manifest.BoundedContext, command), targetUrl.Split('?', '#')[0], StringComparison.OrdinalIgnoreCase)))) {
+                dispatcher.Dispatch(new PaletteActivationFailedAction());
+                TryGetService<NavigationFailureNotifier>()?.ReportFailure(result.DisplayLabel);
+                return;
+            }
+
             // DN5 (2026-04-21 pass-3): re-validate Recent-category URLs against the open-redirect
             // filter at activation time. IsInternalRoute otherwise runs only at hydrate; any future
             // code path inserting directly into state (bypassing hydrate) would slip past the D10
@@ -566,8 +638,8 @@ public sealed class CommandPaletteEffects : IDisposable {
                     FcDiagnosticIds.HFC2111_PaletteHydrationEmpty,
                     result.Category,
                     "Tampered");
-                SafeDispatchClose(dispatcher);
-                return Task.CompletedTask;
+                dispatcher.Dispatch(new PaletteActivationDeniedAction(PaletteActivationDenialKind.Unavailable));
+                return;
             }
 
             NavigationManager? navigation;
@@ -576,7 +648,7 @@ public sealed class CommandPaletteEffects : IDisposable {
             }
             catch (ObjectDisposedException) {
                 // Scoped provider torn down mid-dispatch — circuit is gone, nothing to do.
-                return Task.CompletedTask;
+                return;
             }
 
             if (navigation is null) {
@@ -585,19 +657,22 @@ public sealed class CommandPaletteEffects : IDisposable {
                 FrontComposerWarningLog.PaletteNavigationServiceMissing(
                     _logger,
                     FcDiagnosticIds.HFC2110_PaletteScoringFault);
-                SafeDispatchClose(dispatcher);
-                return Task.CompletedTask;
+                dispatcher.Dispatch(new PaletteActivationFailedAction());
+                TryGetService<NavigationFailureNotifier>()?.ReportFailure();
+                return;
             }
 
-            // Dispatch close BEFORE navigation so the dispatcher is guaranteed live. Blazor Server
-            // `NavigateTo` can synchronously unwind the current render tree; any dispatch afterwards
-            // may land on a disposed dispatcher and throw `ObjectDisposedException`.
-            SafeDispatchClose(dispatcher);
-
+            NavigationFailureNotifier? navigationFailure = TryGetService<NavigationFailureNotifier>();
+            string destinationUri;
+            Task<bool>? routeConfirmation;
             try {
+                destinationUri = navigation.ToAbsoluteUri(targetUrl).ToString();
+                bool alreadyConfirmed = string.Equals(navigationFailure?.LastConfirmedUri, destinationUri, StringComparison.OrdinalIgnoreCase);
+                navigationFailure?.BeginAttempt(result.DisplayLabel, destinationUri);
+                routeConfirmation = alreadyConfirmed ? null : navigationFailure?.PrepareRouteConfirmation(destinationUri);
                 navigation.NavigateTo(targetUrl);
             }
-            catch (InvalidOperationException ex) {
+            catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or UriFormatException) {
                 // P6: NavigateTo throws on invalid / forced-external URLs with hostile shapes. Log
                 // and let the RecentRouteVisitedAction dispatch below be skipped — the user sees the
                 // palette close without navigating, which is the correct behaviour for a rejected URL.
@@ -605,8 +680,32 @@ public sealed class CommandPaletteEffects : IDisposable {
                     _logger,
                     FcDiagnosticIds.HFC2110_PaletteScoringFault,
                     ex);
-                return Task.CompletedTask;
+                dispatcher.Dispatch(new PaletteActivationFailedAction());
+                TryGetService<NavigationFailureNotifier>()?.ReportFailure();
+                return;
             }
+
+            if (routeConfirmation is not null) {
+                // FcRouteFocus owns the rendered-heading deadline and extends it while
+                // authorization is pending. A separate timer here can announce a false
+                // failure during a valid, long authorization transition.
+                bool confirmed = await routeConfirmation.ConfigureAwait(false);
+                if (!confirmed) {
+                    if (IsActivationCurrent(snapshot, action, result, activationAttempt)) {
+                        dispatcher.Dispatch(new PaletteActivationFailedAction());
+                        if (navigationFailure?.Message is null
+                            && string.Equals(navigation.Uri, destinationUri, StringComparison.OrdinalIgnoreCase)) {
+                            navigationFailure?.ReportFailure();
+                        }
+                    }
+                    return;
+                }
+            }
+            if (!IsActivationCurrent(snapshot, action, result, activationAttempt)) {
+                return;
+            }
+
+            SafeDispatchClose(dispatcher);
 
             // Shortcut-category rows are reference entries — never record them in the recent-route
             // ring buffer, even when they carry a RouteUrl (e.g., g-h with RouteUrl="/").
@@ -616,6 +715,9 @@ public sealed class CommandPaletteEffects : IDisposable {
                 }
                 catch (ObjectDisposedException) {
                     // Navigation tore down the circuit synchronously; nothing to persist.
+                }
+                catch (InvalidOperationException) {
+                    // Fluxor store disposed before the confirmation completed.
                 }
             }
         }
@@ -631,10 +733,24 @@ public sealed class CommandPaletteEffects : IDisposable {
                 result.Category,
                 result.BoundedContext ?? "<null>",
                 result.CommandTypeName ?? "<null>");
-            SafeDispatchClose(dispatcher);
+            dispatcher.Dispatch(new PaletteActivationDeniedAction(PaletteActivationDenialKind.Unavailable));
         }
+    }
 
-        return Task.CompletedTask;
+    private bool IsActivationCurrent(
+        FrontComposerCommandPaletteState original,
+        PaletteResultActivatedAction action,
+        PaletteResult result,
+        long activationAttempt) {
+        FrontComposerCommandPaletteState current = _paletteState.Value;
+        return Volatile.Read(ref _activationAttemptVersion) == activationAttempt
+            && current.IsOpen
+            && current.ScopeGeneration == original.ScopeGeneration
+            && string.Equals(current.Query, original.Query, StringComparison.Ordinal)
+            && action.SelectedIndex >= 0
+            && action.SelectedIndex < current.Results.Length
+            && current.Results[action.SelectedIndex] == result
+            && current.SelectedIndex == original.SelectedIndex;
     }
 
     /// <summary>

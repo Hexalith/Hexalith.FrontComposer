@@ -1,5 +1,3 @@
-using System.Globalization;
-
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Lifecycle;
@@ -10,6 +8,7 @@ using Hexalith.FrontComposer.Shell.State.CommandPalette;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.JSInterop;
 
@@ -47,7 +46,14 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
     private string _localQuery = string.Empty;
     private string _liveRegionText = string.Empty;
     private bool _explicitlyClosed;
-    private bool _restoreBodyFocusOnDispose;
+    private bool _navigatesToOtherRoute;
+    private bool _activationPending;
+    private long _lastDenialVersion;
+    private long _lastFailureVersion;
+    private string? _openedRoute;
+    private string? _announcedZeroQuery;
+    private string? _pendingZeroQuery;
+    private CancellationTokenSource? _zeroStatusDelay;
     private bool _disposed;
     private ElementReference _paletteRoot;
     private IJSObjectReference? _focusModule;
@@ -80,6 +86,8 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
     /// <summary>Injected navigation manager used to detect same-route activations.</summary>
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
 
+    [Inject] private IServiceProvider Services { get; set; } = default!;
+
     private string? ActiveDescendantId
         => PaletteState.Value.SelectedIndex >= 0 && PaletteState.Value.SelectedIndex < PaletteState.Value.Results.Length
             ? $"fc-palette-result-{PaletteState.Value.SelectedIndex}"
@@ -88,33 +96,42 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
+            _openedRoute = NavigationManager.Uri;
             await RegisterKeyboardInteropAsync();
             await FocusSearchAsync();
+        }
 
-            // D15 empty-then-populate live-region choreography. DO NOT refactor — see anti-regression
-            // comment in FcCommandPalette.razor for the full rationale.
-            await Task.Yield();
-            if (_disposed || _explicitlyClosed) {
-                return;
+        FrontComposerCommandPaletteState state = PaletteState.Value;
+        if (state.ActivationDenialVersion != _lastDenialVersion) {
+            _lastDenialVersion = state.ActivationDenialVersion;
+            _activationPending = false;
+            _navigatesToOtherRoute = false;
+            IJSObjectReference? focus = await EnsureFocusModuleAsync();
+            if (focus is not null) {
+                try { await focus.InvokeVoidAsync("focusOverlayEntry", "fc-palette-denied-heading"); }
+                catch (Exception ex) when (ex is JSException or JSDisconnectedException or OperationCanceledException) { }
             }
-
-            _liveRegionText = ComputeLiveRegionText(PaletteState.Value);
-            StateHasChanged();
-            return;
+        }
+        if (state.ActivationFailureVersion != _lastFailureVersion) {
+            _lastFailureVersion = state.ActivationFailureVersion;
+            _activationPending = false;
+            _navigatesToOtherRoute = false;
+        }
+        if (_activationPending && !state.IsOpen && Dialog is not null) {
+            _activationPending = false;
+            _explicitlyClosed = true;
+            await Dialog.CloseAsync();
         }
 
-        // Refresh aria-live text on every later render (results changed, query changed, etc.).
-        string nextText = ComputeLiveRegionText(PaletteState.Value);
-        if (!string.Equals(_liveRegionText, nextText, StringComparison.Ordinal)) {
-            _liveRegionText = nextText;
-            StateHasChanged();
-        }
+        ScheduleZeroResultStatus();
     }
 
     /// <summary>Disposes the component, dispatching a catch-all <see cref="PaletteClosedAction"/> per D11.</summary>
     /// <returns>A value task that completes when disposal finishes.</returns>
     public new async ValueTask DisposeAsync() {
         _disposed = true;
+        _zeroStatusDelay?.Cancel();
+        _zeroStatusDelay?.Dispose();
 
         // D11 dismiss-path catch-all — if the dialog was dismissed without going through Escape /
         // activation (X-button, backdrop click, circuit disconnect), make sure Fluxor still sees a
@@ -133,8 +150,18 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
             }
         }
 
-        if (_restoreBodyFocusOnDispose) {
-            await RestoreBodyFocusFallbackAsync().ConfigureAwait(false);
+        if (_navigatesToOtherRoute && _openedRoute is not null && _focusModule is not null) {
+            try {
+                await _focusModule.InvokeVoidAsync("preserveRouteFocusAfterOverlay", _openedRoute);
+            }
+            catch (Exception ex) when (ex is JSDisconnectedException or JSException or OperationCanceledException) {
+                // The circuit can close while the navigation is completing.
+            }
+        }
+
+        if (!_navigatesToOtherRoute && _openedRoute is not null
+            && string.Equals(new Uri(_openedRoute).AbsolutePath, new Uri(NavigationManager.Uri).AbsolutePath, StringComparison.OrdinalIgnoreCase)) {
+            await RestoreOriginFocusAsync().ConfigureAwait(false);
         }
 
         if (_focusModule is not null) {
@@ -159,21 +186,23 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
 
     private Task OnQueryChangedAsync(string newQuery) {
         _localQuery = newQuery ?? string.Empty;
+        _activationPending = false;
+        _navigatesToOtherRoute = false;
         Dispatcher.Dispatch(new PaletteQueryChangedAction(UlidFactory.NewUlid(), _localQuery));
         return Task.CompletedTask;
     }
 
-    private async Task OnSelectionClickedAsync(int flatIndex) {
+    private Task OnSelectionClickedAsync(int flatIndex) {
         // P7: snapshot Results once — the debounced results effect can replace PaletteState.Value.Results
         // between the bounds check and index read, so a second read could return a different row.
         System.Collections.Immutable.ImmutableArray<PaletteResult> results = PaletteState.Value.Results;
         if (flatIndex < 0 || flatIndex >= results.Length) {
-            return;
+            return Task.CompletedTask;
         }
 
         PaletteResult result = results[flatIndex];
         if (IsInformationalShortcut(result)) {
-            return;
+            return Task.CompletedTask;
         }
 
         bool isSentinel = string.Equals(
@@ -181,19 +210,10 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
             CommandPaletteEffects.KeyboardShortcutsSentinel,
             StringComparison.Ordinal);
 
-        // Compute the body-focus verdict BEFORE dispatch so the navigation effect can't racily
-        // advance NavigationManager.Uri past the pre-dispatch value we want to compare against.
-        bool restoreFocus = !isSentinel && ShouldRestoreBodyFocusOnDispose(result);
-
-        Dispatcher.Dispatch(new PaletteResultActivatedAction(flatIndex));
-
-        if (!isSentinel) {
-            _restoreBodyFocusOnDispose = restoreFocus;
-            _explicitlyClosed = true;
-            if (Dialog is not null) {
-                await Dialog.CloseAsync();
-            }
-        }
+        _activationPending = !isSentinel;
+        _navigatesToOtherRoute = !isSentinel && ActivatesOtherRoute(result);
+        Dispatcher.Dispatch(new PaletteResultActivatedAction(flatIndex, result, PaletteState.Value.Query));
+        return Task.CompletedTask;
     }
 
     private async Task HandleKeyDownAsync(KeyboardEventArgs e) {
@@ -209,6 +229,8 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
         switch (e.Key) {
             case "Escape":
                 _explicitlyClosed = true;
+                _activationPending = false;
+                _navigatesToOtherRoute = false;
                 Dispatcher.Dispatch(new PaletteClosedAction(UlidFactory.NewUlid()));
                 if (Dialog is not null) {
                     await Dialog.CloseAsync();
@@ -217,10 +239,14 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
                 break;
 
             case "ArrowDown":
+                _activationPending = false;
+                _navigatesToOtherRoute = false;
                 Dispatcher.Dispatch(new PaletteSelectionMovedAction(+1));
                 break;
 
             case "ArrowUp":
+                _activationPending = false;
+                _navigatesToOtherRoute = false;
                 Dispatcher.Dispatch(new PaletteSelectionMovedAction(-1));
                 break;
 
@@ -242,17 +268,9 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
                     CommandPaletteEffects.KeyboardShortcutsSentinel,
                     StringComparison.Ordinal);
 
-                // Compute body-focus verdict BEFORE dispatch (see OnSelectionClickedAsync rationale).
-                bool restoreFocus = !isSentinel && ShouldRestoreBodyFocusOnDispose(result);
-
-                Dispatcher.Dispatch(new PaletteResultActivatedAction(selected));
-                if (!isSentinel) {
-                    _restoreBodyFocusOnDispose = restoreFocus;
-                    _explicitlyClosed = true;
-                    if (Dialog is not null) {
-                        await Dialog.CloseAsync();
-                    }
-                }
+                _activationPending = !isSentinel;
+                _navigatesToOtherRoute = !isSentinel && ActivatesOtherRoute(result);
+                Dispatcher.Dispatch(new PaletteResultActivatedAction(selected, result, PaletteState.Value.Query));
 
                 break;
 
@@ -261,14 +279,14 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
         }
     }
 
-    private async Task RestoreBodyFocusFallbackAsync() {
+    private async Task RestoreOriginFocusAsync() {
         IJSObjectReference? focusModule = await EnsureFocusModuleAsync().ConfigureAwait(false);
         if (focusModule is null) {
             return;
         }
 
         try {
-            await focusModule.InvokeVoidAsync("focusBodyIfNeeded").ConfigureAwait(false);
+            await focusModule.InvokeVoidAsync("restoreOverlayOrigin").ConfigureAwait(false);
         }
         catch (OperationCanceledException) { }
         catch (JSDisconnectedException) { }
@@ -367,35 +385,95 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
     private static bool IsInformationalShortcut(PaletteResult result)
         => result.Category == PaletteResultCategory.Shortcut && string.IsNullOrEmpty(result.RouteUrl);
 
-    private bool ShouldRestoreBodyFocusOnDispose(PaletteResult result) {
-        string? targetUrl = result.Category switch {
-            PaletteResultCategory.Projection or PaletteResultCategory.Recent or PaletteResultCategory.Shortcut => result.RouteUrl,
-            PaletteResultCategory.Command => string.IsNullOrWhiteSpace(result.CommandTypeName)
-                    || string.IsNullOrWhiteSpace(result.BoundedContext)
-                ? null
-                : CommandRouteBuilder.BuildRoute(result.BoundedContext, result.CommandTypeName),
-            _ => null,
-        };
-
-        if (string.IsNullOrWhiteSpace(targetUrl)) {
+    private bool ActivatesOtherRoute(PaletteResult result) {
+        string? destination = result.Category == PaletteResultCategory.Command
+            && !string.IsNullOrWhiteSpace(result.BoundedContext)
+            && !string.IsNullOrWhiteSpace(result.CommandTypeName)
+                ? CommandRouteBuilder.BuildRoute(result.BoundedContext, result.CommandTypeName)
+                : result.RouteUrl;
+        if (string.IsNullOrWhiteSpace(destination) || _openedRoute is null) {
             return false;
         }
 
-        Uri current = new(NavigationManager.Uri, UriKind.Absolute);
-        Uri target = NavigationManager.ToAbsoluteUri(targetUrl);
-        return Uri.Compare(
-            current,
-            target,
-            UriComponents.PathAndQuery | UriComponents.Fragment,
-            UriFormat.SafeUnescaped,
-            StringComparison.OrdinalIgnoreCase) == 0;
+        try {
+            return !string.Equals(
+                NavigationManager.ToAbsoluteUri(destination).AbsolutePath,
+                new Uri(_openedRoute).AbsolutePath,
+                StringComparison.OrdinalIgnoreCase);
+        }
+        catch (UriFormatException) {
+            return false;
+        }
     }
 
-    private string ComputeLiveRegionText(FrontComposerCommandPaletteState state)
-        => state.Results.IsEmpty
-            ? Localizer["PaletteNoResultsText"].Value
-            : string.Format(
-                CultureInfo.CurrentCulture,
-                Localizer["PaletteResultCountTemplate"].Value,
-                state.Results.Length);
+    private void ScheduleZeroResultStatus() {
+        FrontComposerCommandPaletteState state = PaletteState.Value;
+        string query = state.Query.Trim().ToLowerInvariant();
+        bool zero = state.IsOpen && query.Length > 0 && state.LoadState == PaletteLoadState.Ready && state.Results.IsEmpty;
+        if (!zero) {
+            if (state.Results.Length > 0) {
+                _announcedZeroQuery = null;
+            }
+            _zeroStatusDelay?.Cancel();
+            _zeroStatusDelay?.Dispose();
+            _zeroStatusDelay = null;
+            _pendingZeroQuery = null;
+            if (_liveRegionText.Length > 0) {
+                _liveRegionText = string.Empty;
+                StateHasChanged();
+            }
+            return;
+        }
+
+        if (string.Equals(_pendingZeroQuery, query, StringComparison.Ordinal)) {
+            return;
+        }
+
+        _zeroStatusDelay?.Cancel();
+        _zeroStatusDelay?.Dispose();
+        _zeroStatusDelay = null;
+        _pendingZeroQuery = null;
+        if (_liveRegionText.Length > 0 && !string.Equals(_announcedZeroQuery, query, StringComparison.Ordinal)) {
+            _liveRegionText = string.Empty;
+            StateHasChanged();
+        }
+        if (string.Equals(_announcedZeroQuery, query, StringComparison.Ordinal)) {
+            return;
+        }
+
+        CancellationTokenSource delay = new();
+        _zeroStatusDelay = delay;
+        _pendingZeroQuery = query;
+        _ = AnnounceZeroAfterDelayAsync(query, delay);
+    }
+
+    private async Task AnnounceZeroAfterDelayAsync(string query, CancellationTokenSource delay) {
+        try {
+            TimeProvider clock = Services.GetService<TimeProvider>() ?? TimeProvider.System;
+            await Task.Delay(TimeSpan.FromMilliseconds(250), clock, delay.Token);
+            if (_disposed || delay.IsCancellationRequested) {
+                return;
+            }
+
+            await InvokeAsync(() => {
+                FrontComposerCommandPaletteState current = PaletteState.Value;
+                if (current.IsOpen && current.LoadState == PaletteLoadState.Ready && current.Results.IsEmpty
+                    && string.Equals(current.Query.Trim(), query, StringComparison.OrdinalIgnoreCase)) {
+                    _announcedZeroQuery = query;
+                    _liveRegionText = Localizer["PaletteNoCommandsOrPagesText"].Value;
+                    StateHasChanged();
+                }
+            });
+        }
+        catch (OperationCanceledException) {
+            // A later query or close superseded this status.
+        }
+        finally {
+            if (ReferenceEquals(_zeroStatusDelay, delay)) {
+                _zeroStatusDelay = null;
+                _pendingZeroQuery = null;
+            }
+            delay.Dispose();
+        }
+    }
 }

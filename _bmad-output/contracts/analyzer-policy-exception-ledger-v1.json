@@ -97,8 +97,8 @@
   },
   "identifierInventory": {
     "algorithm": "SHA-256 over sorted repo-relative path, declaration kind, and underscore-containing identifier for CA1707-relevant public/protected declarations; source line numbers are excluded",
-    "testPublicDeclarationIdentifiers": 3452,
-    "testInventorySha256": "d2e4d344afd2f0bb6bf323fade3384d0ba1449e313ef146e202a4be7dc9fbe9f",
+    "testPublicDeclarationIdentifiers": 3470,
+    "testInventorySha256": "169ec44168dd4228fefa78cd103283bf2c14bab87dce193159d0aa5aeb81b290",
     "contractsPublicDeclarationIdentifiers": 89,
     "contractsInventorySha256": "9b81beacad8c65e481b2239b6054ba483dd8e9b6e6af2a0e51ca7065deb3210a"
   },
@@ -706,7 +706,10 @@
         "src/Hexalith.FrontComposer.Shell/Components/Forms/FcFormAbandonmentGuard.razor.cs",
         "src/Hexalith.FrontComposer.Shell/Components/Layout/FcAccountMenu.razor.cs",
         "src/Hexalith.FrontComposer.Shell/Components/Layout/FcCommandPalette.razor.cs",
+        "src/Hexalith.FrontComposer.Shell/Components/Layout/FcPageTabs.razor.cs",
+        "src/Hexalith.FrontComposer.Shell/Components/Layout/FcPaletteTriggerButton.razor.cs",
         "src/Hexalith.FrontComposer.Shell/Components/Layout/FcSettingsButton.razor.cs",
+        "src/Hexalith.FrontComposer.Shell/Components/Layout/FcSettingsDialog.razor.cs",
         "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs",
         "src/Hexalith.FrontComposer.Shell/Infrastructure/ProjectionConnection/ProjectionFallbackRefreshScheduler.cs",
         "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/FilterEffects.cs",
@@ -747,7 +750,7 @@
         "tests/Hexalith.FrontComposer.Shell.Tests/State/ReconnectionReconciliation/ReconnectReconcileStatusIntegrationTests.cs",
         "tests/Hexalith.FrontComposer.Shell.Tests/State/ReconnectionReconciliation/ReconnectionReconciliationCoordinatorTests.cs"
       ],
-      "entryCount": 78,
+      "entryCount": 81,
       "diagnosticIds": [
         "BL0001",
         "CA1062",

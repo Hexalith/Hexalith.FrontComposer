@@ -95,6 +95,21 @@ public sealed class DataGridFocusScope : IAsyncDisposable {
         }
     }
 
+    /// <summary>Focuses the route's sole enabled page toolbar search when one exists.</summary>
+    public async ValueTask<bool> FocusSolePageSearchAsync(CancellationToken cancellationToken = default) {
+        IJSObjectReference? module = await GetModuleAsync(cancellationToken).ConfigureAwait(false);
+        if (module is null) {
+            return false;
+        }
+
+        try {
+            return await module.InvokeAsync<bool>("focusSolePageSearch", cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is JSDisconnectedException or JSException or OperationCanceledException) {
+            return false;
+        }
+    }
+
     /// <inheritdoc />
     public async ValueTask DisposeAsync() {
         Task<IJSObjectReference>? snapshot;

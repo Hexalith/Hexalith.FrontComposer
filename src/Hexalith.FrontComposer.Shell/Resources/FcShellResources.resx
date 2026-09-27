@@ -708,4 +708,42 @@
   <data name="ScopeBlockedMessage" xml:space="preserve">
     <value>Your workspace identity could not be verified. Sign in again or contact support.</value>
   </data>
+  <data name="ModuleTabUnavailableTemplate" xml:space="preserve">
+    <value>That page is unavailable. Showing {0}.</value>
+  </data>
+  <data name="ModuleMoreOptionsLabel" xml:space="preserve">
+    <value>More {0} pages</value>
+  </data>
+  <data name="SlashFocusPageSearchShortcutDescription" xml:space="preserve">
+    <value>Focus the page search</value>
+  </data>
+  <data name="PaletteNoCommandsOrPagesText" xml:space="preserve">
+    <value>No commands or pages match.</value>
+  </data>
+  <data name="ShellNoModulesText" xml:space="preserve">
+    <value>No modules are available.</value>
+  </data>
+  <data name="StartupFailureText" xml:space="preserve">
+    <value>FrontComposer could not start. Review the configuration.</value>
+  </data>
+  <data name="RouteNavigationFailedText" xml:space="preserve">
+    <value>Could not open that page. Choose another page or return Home.</value>
+  </data>
+  <data name="RouteNavigationFailedNamedText" xml:space="preserve">
+    <value>Could not open that page. Choose another page or return Home.</value>
+  </data>
+  <data name="RouteNavigationUnknownDestinationLabel" xml:space="preserve">
+    <value>that page</value>
+  </data>
+  <data name="RouteNavigationCurrentPageFallbackLabel" xml:space="preserve">
+    <value>this page</value>
+  </data>
+  <data name="RouteUnavailableHeading" xml:space="preserve"><value>Page unavailable</value></data>
+  <data name="RouteUnavailableDescription" xml:space="preserve"><value>Choose another page or return Home.</value></data>
+  <data name="RouteForbiddenHeading" xml:space="preserve"><value>Forbidden</value></data>
+  <data name="RouteForbiddenDescription" xml:space="preserve"><value>You are not authorized to view this area.</value></data>
+  <data name="RouteForbiddenAdminDescription" xml:space="preserve"><value>An administrator role is required to view this area.</value></data>
+  <data name="ModuleTabsLabel" xml:space="preserve"><value>Module pages</value></data>
+  <data name="ModuleOverviewLabel" xml:space="preserve"><value>Overview</value></data>
+  <data name="ModuleOverviewDescription" xml:space="preserve"><value>Choose a destination from the navigation menu or use the command palette.</value></data>
 </root>

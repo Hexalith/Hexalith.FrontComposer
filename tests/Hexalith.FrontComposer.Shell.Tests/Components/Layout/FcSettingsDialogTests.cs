@@ -16,6 +16,7 @@ using Hexalith.FrontComposer.Shell.State.Theme;
 using Hexalith.FrontComposer.Shell.Tests.Components;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Components;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 using Shouldly;
@@ -30,6 +31,19 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 /// </summary>
 public sealed class FcSettingsDialogTests : LayoutComponentTestBase {
     public FcSettingsDialogTests() => EnsureStoreInitialized();
+
+    [Fact]
+    public async Task RouteChangeBeforeCloseReturnsFocusToNewHeading() {
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/counter");
+        IRenderedComponent<FcSettingsDialog> cut = Render<FcSettingsDialog>();
+
+        navigation.NavigateTo("/home");
+        await cut.Instance.DisposeAsync();
+
+        FocusModule.Invocations.Last(invocation => invocation.Identifier == "restoreOverlayOrigin")
+            .Arguments[0].ShouldBe(true);
+    }
 
     [Fact]
     public void RendersDensityRadioThemeAndPreview() {

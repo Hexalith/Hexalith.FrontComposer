@@ -24,6 +24,7 @@
            preserves the e2e theme-section anchor; the radio group keeps its accessible name via
            aria-label now that the heading is owned by the accordion item. *@
         <div class="fc-settings-body" data-testid="fc-settings-dialog">
+            <FluentText Id="fc-settings-heading" As="TextTag.H2" Size="TextSize.Size500" Weight="TextWeight.Semibold" tabindex="-1">@Localizer["SettingsDialogTitle"].Value</FluentText>
             <FluentAccordion>
                 <FluentAccordionItem Header="@Localizer["DensitySectionLabel"].Value" Expanded="true">
                     <FluentRadioGroup Value="@SelectedDensity"

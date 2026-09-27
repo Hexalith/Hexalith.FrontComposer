@@ -38,6 +38,15 @@ public sealed record FrontComposerCommandPaletteState(
     HydrationState HydrationState = HydrationState.Idle) {
     internal long ScopeGeneration { get; init; }
 
+    /// <summary>The current support-safe denial heading kind, if activation was refused.</summary>
+    public PaletteActivationDenialKind? ActivationDenial { get; init; }
+
+    /// <summary>Changes once for each denied activation so its focused heading can be refocused.</summary>
+    public long ActivationDenialVersion { get; init; }
+
+    /// <summary>Changes once for each navigation failure while the palette stays open.</summary>
+    public long ActivationFailureVersion { get; init; }
+
     /// <summary>Maximum size of the recent-route ring buffer (Story 3-4 D10).</summary>
     public const int RingBufferCap = 5;
 }

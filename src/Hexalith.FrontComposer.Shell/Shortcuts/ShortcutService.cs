@@ -136,6 +136,7 @@ public sealed class ShortcutService : IShortcutService, IDisposable {
 
         // Bare-letter path: chord FSM.
         string? completed = null;
+        bool chordMismatch = false;
         lock (_chordSync) {
             // Re-check disposed inside the lock — circuit-teardown that flips `_disposed` between
             // the early guard and here must not be able to allocate a timer on a cleared service.
@@ -153,6 +154,7 @@ public sealed class ShortcutService : IShortcutService, IDisposable {
                 else {
                     DisposeTimerLocked();
                     _pendingFirstKey = null;
+                    chordMismatch = true;
 
                     // Re-evaluate the new key as a fresh single-key lookup. Bare letters cannot be
                     // single-key bindings (Normalize forbids them), so this only fires if a future
@@ -187,7 +189,12 @@ public sealed class ShortcutService : IShortcutService, IDisposable {
             return await TryInvokeBindingAsync(completed).ConfigureAwait(false);
         }
 
-        return false;
+        if (chordMismatch) {
+            return false;
+        }
+
+        // Non-letter single-key bindings such as `/` do not participate in chords.
+        return await TryInvokeBindingAsync(binding).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

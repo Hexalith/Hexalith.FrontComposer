@@ -2,20 +2,41 @@
 @using Counter.Specimens
 @using System.Reflection
 @using Hexalith.FrontComposer.Shell.Components.Specimens
+@using Hexalith.FrontComposer.Shell.Components.Layout
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.Extensions.Configuration
 @using Microsoft.Extensions.Hosting
 @inject IConfiguration Configuration
 @inject IHostEnvironment Environment
+@inject NavigationManager Nav
 
 @* Source-generated command pages (e.g. ConfigureCounterCommandPage) live in Counter.Domain — include them in route discovery. *@
 <CascadingAuthenticationState>
     <Router AppAssembly="typeof(Program).Assembly"
             AdditionalAssemblies="AdditionalRouteAssemblies">
         <Found Context="routeData">
-            <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
-            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+            @if (Attribute.IsDefined(routeData.PageType, typeof(LayoutAttribute)))
+            {
+                <div data-fc-route-content="@Nav.Uri">
+                <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+                </div>
+                <FcRouteFocus RouteKey="@Nav.Uri" />
+            }
+            else
+            {
+                <LayoutView Layout="typeof(Layout.MainLayout)">
+                    <div data-fc-route-content="@Nav.Uri">
+                    <RouteView @key="RouteBodyKey(routeData)" RouteData="routeData" DefaultLayout="typeof(FcRouteBodyLayout)" />
+                    </div>
+                    <FcRouteFocus RouteKey="@Nav.Uri" />
+                </LayoutView>
+            }
         </Found>
+        <NotFound>
+            <LayoutView Layout="typeof(Layout.MainLayout)">
+                <FcRouteUnavailable @key="Nav.Uri" />
+            </LayoutView>
+        </NotFound>
     </Router>
 </CascadingAuthenticationState>
 
@@ -24,4 +45,8 @@
         FrontComposerSpecimenRoutes.IsEnabled(Configuration, Environment)
             ? [typeof(IncrementCommand).Assembly, typeof(FrontComposerTypeSpecimen).Assembly]
             : [typeof(IncrementCommand).Assembly];
+
+    private object RouteBodyKey(RouteData routeData) => routeData.PageType.Name == "CounterPage"
+        ? routeData.PageType
+        : new Uri(Nav.Uri).AbsolutePath;
 }

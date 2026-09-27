@@ -26,6 +26,10 @@ else
     @if (manifests.Count == 0)
     {
         <section class="fc-home-empty" data-testid="fc-home-empty-no-microservices">
+            <h1 tabindex="-1">@WelcomeText()</h1>
+            <div role="status" aria-live="polite" aria-atomic="true" data-testid="fc-home-no-modules-status">
+                @(_noRegistrationsAnnounced ? Localizer["ShellNoModulesText"].Value : string.Empty)
+            </div>
             <p>@Localizer["HomeNoMicroservicesText"].Value</p>
             <p>
                 <a href="@GettingStartedGuideUrl" target="_blank" rel="noreferrer">@Localizer["HomeGettingStartedLinkText"].Value</a>
@@ -35,6 +39,7 @@ else
     else if (discovery.HydrationState == CapabilityDiscoveryHydrationState.Idle)
     {
         <section class="fc-home-skeletons" data-testid="fc-home-skeletons">
+            <h1 tabindex="-1">@WelcomeText()</h1>
             @foreach (DomainManifest manifest in manifests)
             {
                 <FluentSkeleton Width="100%" Height="120px"
@@ -59,7 +64,7 @@ else
         }
 
         <header class="fc-home-header" data-testid="fc-home-header">
-            <h1>@WelcomeText()</h1>
+            <h1 tabindex="-1">@WelcomeText()</h1>
             @if (totalActionable > 0)
             {
                 <p class="fc-home-subtitle" data-testid="fc-home-subtitle">

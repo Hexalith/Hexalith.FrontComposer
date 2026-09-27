@@ -57,14 +57,8 @@
                              Style="height: 48px; padding: 0 12px; background: var(--colorNeutralBackground2); color: var(--colorNeutralForeground1); border-block-end: 1px solid var(--colorNeutralStroke2);">
                     <FluentStack Horizontal="true" VerticalAlignment="VerticalAlignment.Center"
                                  HorizontalGap="@HeaderStartHorizontalGap">
-                        @if (HeaderStart is not null)
-                        {
-                            @HeaderStart
-                        }
-                        else
-                        {
-                            <FcHamburgerToggle />
-                        }
+                        <FcHamburgerToggle />
+                        @HeaderStart
                         @if (ShouldRenderHeaderLogo)
                         {
                             <span data-testid="fc-shell-brand-logo" aria-hidden="@HeaderLogoAriaHidden">
@@ -108,12 +102,7 @@
                             <FcPaletteTriggerButton />
                             <FcSettingsButton />
                         }
-                        @if (ShowAccountMenu)
-                        {
-                            @* Account avatar (sign in / sign out) — rendered as the right-most header
-                               action when the adopter has a working authentication endpoint. *@
-                            <FcAccountMenu />
-                        }
+                        <FcAccountMenu />
                     </FluentStack>
                 </FluentStack>
             </FluentLayoutItem>
@@ -149,7 +138,12 @@
                 <div id="fc-main-content" tabindex="-1" role="main" @ref="_mainContent"
                      aria-labelledby="@ContentLabelledByValue" aria-label="@ContentLabelValue"
                      data-fc-page-layout="@PageLayoutAttribute" class="@PageLayoutCssClass">
-                    @if (ScopeBoundary.IsCurrent)
+                    <div class="fc-sr-only" role="status" aria-live="polite" aria-atomic="true" data-testid="fc-route-navigation-status">@NavigationFailure.Message</div>
+                    @if (StartupFailure)
+                    {
+                        <h1 id="fc-startup-failure-heading" tabindex="-1" @ref="_startupFailureHeading">@Localizer["StartupFailureText"].Value</h1>
+                    }
+                    else if (ScopeBoundary.IsCurrent)
                     {
                         <CascadingValue Value="ScopeBoundary.Generation" Name="ScopeGeneration" IsFixed="true" @key="ScopeBoundary.Generation">
                             <FcProjectionConnectionStatus />

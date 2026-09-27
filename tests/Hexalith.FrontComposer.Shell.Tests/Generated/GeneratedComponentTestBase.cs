@@ -36,6 +36,7 @@ public abstract class GeneratedComponentTestBase : BunitContext {
         Services.Replace(ServiceDescriptor.Scoped<IThemeService>(_ => Substitute.For<IThemeService>()));
         _ = Services.AddLogging();
         _ = Services.AddLocalization();
+        _ = Services.AddScoped<NavigationFailureNotifier>();
         _ = Services.AddFluxor(o => {
             foreach (Assembly assembly in scanAssemblies) {
                 _ = o.ScanAssemblies(assembly);

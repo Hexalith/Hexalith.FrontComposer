@@ -1,6 +1,7 @@
 @namespace Hexalith.FrontComposer.Shell.Components.Layout
 @using Hexalith.FrontComposer.Contracts.Registration
 @using Hexalith.FrontComposer.Shell.Badges
+@using Hexalith.FrontComposer.Shell.Components.Icons
 @using Hexalith.FrontComposer.Shell.Resources
 @using Hexalith.FrontComposer.Shell.Routing
 @using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery
@@ -72,25 +73,17 @@
     {
         List<string> projections = VisibleProjections(manifest, discovery.Counts);
         List<FrontComposerNavEntry> entries = EntriesForContext(navEntries, manifest.BoundedContext);
-        @if (projections.Count == 0 && entries.Count == 0)
-        {
-            continue;
-        }
-
         string anchorId = RailAnchorId(manifest.BoundedContext);
         string bcCapabilityId = CapabilityIds.ForBoundedContext(manifest.BoundedContext);
         int aggregateCount = AggregateBoundedContextCount(manifest, discovery.Counts);
         bool bcShowsNew = !discovery.SeenCapabilities.Contains(bcCapabilityId) && aggregateCount > 0;
         bool activeContext = IsContextActive(manifest.BoundedContext, projections, entries);
         string menuId = FlyoutMenuId(manifest.BoundedContext);
-        string? soleHref = SoleDestinationHref(projections, entries);
+        string? soleHref = null;
 
         @if (soleHref is null)
         {
-            <FluentMenu @key="@($"fc-nav-flyout-{manifest.BoundedContext}")"
-                        id="@menuId"
-                        PersistOnItemClick="false">
-                <FluentMenuButton @key="@($"fc-nav-tile-{manifest.BoundedContext}")"
+                <FluentButton @key="@($"fc-nav-tile-{manifest.BoundedContext}")"
                                   id="@anchorId"
                                   Appearance="@ButtonAppearance.Subtle"
                                   Class="@ContextTileClass(activeContext)"
@@ -101,7 +94,7 @@
                                   data-active="@(activeContext ? "true" : "false")"
                                   role="button"
                                   tabindex="0"
-                                  OnClick="@(_ => OpenContextFlyoutAsync(menuId, anchorId))">
+                                  OnClick="@ContextTileClickCallback(manifest.BoundedContext, ModuleRouteCatalog.BuildRoute(manifest))">
                     <FluentStack Class="fc-navigation-rail__tile-content"
                                  Orientation="Orientation.Vertical"
                                  HorizontalAlignment="HorizontalAlignment.Center"
@@ -137,6 +130,21 @@
                             }
                         </FluentStack>
                     }
+                </FluentButton>
+            @if (projections.Count > 0 || entries.Any(entry => entry.Enabled && !string.IsNullOrWhiteSpace(entry.Href)))
+            {
+            <FcAnyAuthorized HasPublicDestination="@(projections.Count > 0 || entries.Any(entry => entry.Enabled && !string.IsNullOrWhiteSpace(entry.Href) && string.IsNullOrWhiteSpace(entry.RequiredPolicy)))"
+                             Policies="@(entries.Where(entry => entry.Enabled && !string.IsNullOrWhiteSpace(entry.Href) && !string.IsNullOrWhiteSpace(entry.RequiredPolicy)).Select(entry => entry.RequiredPolicy!).ToArray())">
+            <FluentMenu @key="@($"fc-nav-flyout-{manifest.BoundedContext}")"
+                        id="@menuId"
+                        PersistOnItemClick="false">
+
+                <FluentMenuButton id="@RailFlyoutAnchorId(manifest.BoundedContext)"
+                                  Appearance="@ButtonAppearance.Subtle"
+                                  aria-label="@Localizer["ModuleMoreOptionsLabel", LocalizeManifestName(manifest)].Value"
+                                  data-testid="@($"fc-nav-flyout-trigger-{manifest.BoundedContext}")"
+                                  OnClick="@(_ => OpenContextFlyoutAsync(menuId, RailFlyoutAnchorId(manifest.BoundedContext)))">
+                    <FluentIcon Value="@FcFluentIcons.Apps20()" Color="Color.Default" />
                 </FluentMenuButton>
                 <FluentMenuList data-testid="@($"fc-nav-flyout-{manifest.BoundedContext}")"
                                 role="menu"
@@ -178,12 +186,14 @@
                             </FluentStack>
                         </FluentMenuItem>
                     }
-                    @foreach (FrontComposerNavEntry entry in entries)
+                    @foreach (FrontComposerNavEntry entry in entries.Where(entry => entry.Enabled && !string.IsNullOrWhiteSpace(entry.Href)))
                     {
                         @navEntry(entry)
                     }
                 </FluentMenuList>
             </FluentMenu>
+            </FcAnyAuthorized>
+            }
             <FluentTooltip @key="@($"fc-nav-tooltip-{manifest.BoundedContext}")" Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
                 @LocalizeManifestName(manifest)
             </FluentTooltip>
@@ -200,7 +210,7 @@
                           data-testid="@($"fc-nav-context-{manifest.BoundedContext}")"
                           data-active="@(activeContext ? "true" : "false")"
                           tabindex="0"
-                          OnClick="@ContextTileClickCallback(manifest.BoundedContext, soleHref)">
+                          OnClick="@ContextTileClickCallback(manifest.BoundedContext, ModuleRouteCatalog.BuildRoute(manifest))">
                 <FluentStack Class="fc-navigation-rail__tile-content"
                              Orientation="Orientation.Vertical"
                              HorizontalAlignment="HorizontalAlignment.Center"

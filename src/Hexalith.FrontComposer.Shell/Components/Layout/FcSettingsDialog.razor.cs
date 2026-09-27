@@ -9,6 +9,9 @@ using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Options;
+using Microsoft.JSInterop;
+
+#pragma warning disable CA2007
 
 namespace Hexalith.FrontComposer.Shell.Components.Layout;
 
@@ -26,7 +29,53 @@ namespace Hexalith.FrontComposer.Shell.Components.Layout;
 /// <see cref="DensityPrecedence.Resolve(DensityLevel?, DensityLevel?, DensitySurface, ViewportTier)"/>
 /// BEFORE dispatching — reducers stay pure (ADR-039).
 /// </remarks>
-public partial class FcSettingsDialog : Fluxor.Blazor.Web.Components.FluxorComponent {
+public partial class FcSettingsDialog : Fluxor.Blazor.Web.Components.FluxorComponent, IAsyncDisposable {
+    private const string FocusModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js";
+    private IJSObjectReference? _focusModule;
+    private string? _openedRoute;
+
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
+    /// <inheritdoc />
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        _openedRoute = Navigation.Uri;
+    }
+
+    /// <inheritdoc />
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender) {
+            return;
+        }
+
+        try {
+            _focusModule = await JS.InvokeAsync<IJSObjectReference>("import", FocusModulePath);
+            await _focusModule.InvokeVoidAsync("focusOverlayEntry", "fc-settings-heading", true);
+        }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException or OperationCanceledException or InvalidOperationException) {
+            // Fluent keeps its own modal focus containment if entry focus interop is unavailable.
+        }
+    }
+
+    /// <inheritdoc />
+    public new async ValueTask DisposeAsync() {
+        if (_focusModule is not null) {
+            try {
+                bool routeChanged = _openedRoute is not null
+                    && !string.Equals(_openedRoute, Navigation.Uri, StringComparison.OrdinalIgnoreCase);
+                await _focusModule.InvokeVoidAsync("restoreOverlayOrigin", routeChanged);
+                await _focusModule.DisposeAsync();
+            }
+            catch (Exception ex) when (ex is JSException or JSDisconnectedException or OperationCanceledException) {
+                // Circuit teardown can interrupt focus restoration.
+            }
+        }
+
+        await base.DisposeAsync();
+        GC.SuppressFinalize(this);
+    }
     /// <summary>
     /// Gets or sets the dialog instance cascaded by <see cref="Microsoft.FluentUI.AspNetCore.Components.IDialogService"/>.
     /// Null when the component is rendered standalone (tests).

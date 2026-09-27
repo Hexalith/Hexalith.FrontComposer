@@ -32,6 +32,7 @@ export class ShellPage {
   readonly collapsedRail: Locator;
   readonly hamburgerToggle: Locator;
   readonly counterCategory: Locator;
+  readonly counterFlyoutTrigger: Locator;
   readonly counterFlyout: Locator;
   readonly counterProjectionItem: Locator;
 
@@ -43,6 +44,7 @@ export class ShellPage {
     this.collapsedRail = this.navigationPane.locator('[data-testid="fc-navigation-rail"][data-rail-width="48"]');
     this.hamburgerToggle = page.getByTestId('fc-hamburger-toggle');
     this.counterCategory = this.navigationPane.getByTestId('fc-nav-context-Counter');
+    this.counterFlyoutTrigger = this.navigationPane.getByTestId('fc-nav-flyout-trigger-Counter');
     this.counterFlyout = this.navigationPane.getByTestId('fc-nav-flyout-Counter');
     this.counterProjectionItem = this.navigationPane.getByTestId('fc-nav-flyout-projection-Counter-CounterProjection');
   }
@@ -79,7 +81,7 @@ export class ShellPage {
   }
 
   async openCounterFlyoutWithKeyboard(key: 'Enter' | 'Space'): Promise<void> {
-    await this.counterCategory.focus();
+    await this.counterFlyoutTrigger.focus();
     await this.page.keyboard.press(key);
     await this.counterProjectionItem.waitFor({ state: 'visible' });
   }

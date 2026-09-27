@@ -21,6 +21,37 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 /// </summary>
 public sealed class FrontComposerShellParameterSurfaceTests {
     [Fact]
+    public void Route_backed_tab_parameter_surface_is_intentional() {
+        string[] actual = [..
+            typeof(FcPageTabs)
+                .GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+                .Where(p => p.GetCustomAttribute<ParameterAttribute>() is not null)
+                .OrderBy(p => p.MetadataToken)
+                .Select(p => $"{p.Name}:{p.PropertyType.Name}")];
+
+        actual.ShouldBe([
+            "ActiveTabId:String",
+            "ModuleRoute:String",
+            "DefaultTabId:String",
+            "ActiveTabIdChanged:EventCallback`1",
+            "AriaLabel:String",
+            "TestId:String",
+            "Appearance:Nullable`1",
+            "Disabled:Boolean",
+            "Orientation:Nullable`1",
+            "Width:String",
+            "ChildContent:RenderFragment",
+        ]);
+    }
+
+    [Fact]
+    public void Toolbar_search_disabled_parameter_is_public() {
+        PropertyInfo searchDisabled = typeof(FcPageToolbar).GetProperty(nameof(FcPageToolbar.SearchDisabled))!;
+        searchDisabled.PropertyType.ShouldBe(typeof(bool));
+        searchDisabled.GetCustomAttribute<ParameterAttribute>().ShouldNotBeNull();
+    }
+
+    [Fact]
     public void Parameter_surface_matches_story_3_2_contract() {
         string[] actual = [..
             typeof(FrontComposerShell)

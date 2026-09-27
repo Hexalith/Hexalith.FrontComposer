@@ -13,6 +13,7 @@ using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Shell.Components.Layout;
 using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Resources;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Customization;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.Tests.Services.Diagnostics;
@@ -38,6 +39,49 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 /// adopter-supplied override path.
 /// </summary>
 public sealed class FrontComposerShellTests : LayoutComponentTestBase {
+    [Fact]
+    public void Route_failure_renders_one_safe_shell_status_and_clears_after_rendered_success() {
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<h1>Counter</h1>"));
+        NavigationFailureNotifier failure = Services.GetRequiredService<NavigationFailureNotifier>();
+        failure.RememberSuccessfulRoute("Counter");
+        failure.BeginAttempt("Orders");
+        failure.ReportFailure();
+
+        cut.WaitForAssertion(() => {
+            IElement status = cut.Find("[data-testid='fc-route-navigation-status']");
+            status.GetAttribute("role").ShouldBe("status");
+            status.GetAttribute("aria-live").ShouldBe("polite");
+            status.TextContent.ShouldContain("Could not open that page");
+            status.TextContent.ShouldNotContain("Orders");
+            status.TextContent.ShouldNotContain("Counter");
+            cut.FindAll("[data-testid='fc-route-navigation-status']").Count.ShouldBe(1);
+        });
+
+        failure.RememberSuccessfulRoute("Orders");
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-route-navigation-status']").TextContent.ShouldBeEmpty());
+    }
+
+    [Fact]
+    public void StartupFailure_FocusesSafeHeadingWithoutLiveOrExceptionDetail() {
+        ThemeService.SetThemeAsync(Arg.Any<ThemeSettings>())
+            .Returns(_ => throw new InvalidOperationException("secret-token-opaque"));
+
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Old route body</p>"));
+
+        cut.WaitForAssertion(() => {
+            IElement heading = cut.Find("#fc-startup-failure-heading");
+            heading.GetAttribute("tabindex").ShouldBe("-1");
+            heading.TextContent.ShouldContain("could not start");
+            heading.HasAttribute("role").ShouldBeFalse();
+            heading.HasAttribute("aria-live").ShouldBeFalse();
+            cut.Markup.ShouldNotContain("secret-token-opaque");
+            cut.Markup.ShouldNotContain("Old route body");
+            JSInterop.Invocations.Count(invocation => invocation.Identifier.Contains("focus", StringComparison.OrdinalIgnoreCase)).ShouldBeGreaterThan(0);
+        });
+    }
+
 #if DEBUG
     [Fact]
     public void ContractMismatchDiagnostics_WhenDebugDevelopmentProviderRegistered_RendersExistingDiagnosticPanel() {
@@ -118,13 +162,12 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
     }
 
     [Fact]
-    public void AccountMenu_Disabled_DoesNotRender() {
+    public void AccountMenu_OptOut_RemainsReachable() {
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
             .Add(c => c.ShowAccountMenu, false)
             .AddChildContent("<p>Body</p>"));
 
-        cut.WaitForAssertion(() =>
-            Should.Throw<Bunit.Rendering.ComponentNotFoundException>(() => cut.FindComponent<FcAccountMenu>()));
+        cut.WaitForAssertion(() => _ = cut.FindComponent<FcAccountMenu>());
     }
 
     [Fact]
@@ -253,6 +296,8 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
         cut.WaitForAssertion(() => {
             cut.Markup.ShouldContain("data-testid=\"fc-shell-brand-logo\"", Case.Sensitive);
             cut.Markup.ShouldContain("data-testid=\"adopter-logo\"", Case.Sensitive);
+            _ = cut.FindComponent<FcHamburgerToggle>();
+            _ = cut.FindComponent<FcAccountMenu>();
             cut.Markup.ShouldNotContain("M 4 4 h 5 v 5 H 4 V 4 Z", Case.Sensitive);
 
             // An adopter-supplied logo is meaningful content, not the framework's decorative default,
@@ -397,7 +442,7 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
     }
 
     [Fact]
-    public void NoNavigationRendersWhenRegistryContainsOnlyCommands() {
+    public void ModuleNavigationRendersWhenRegistryContainsOnlyCommands() {
         IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
         registry.GetManifests().Returns([
             new DomainManifest(
@@ -412,7 +457,7 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
             .AddChildContent("<p>Body</p>"));
 
         cut.WaitForAssertion(() => {
-            cut.Markup.ShouldNotContain("data-testid=\"fc-shell-navigation\"", Case.Sensitive);
+            cut.Markup.ShouldContain("data-testid=\"fc-shell-navigation\"", Case.Sensitive);
             cut.Markup.ShouldNotContain("220px", Case.Sensitive);
             cut.Markup.ShouldContain("id=\"fc-main-content\" tabindex=\"-1\"", Case.Sensitive);
         });
@@ -652,7 +697,7 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
             "onkeydown",
             new KeyboardEventArgs { Key = "h" });
 
-        cut.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/"));
+        cut.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/home"));
     }
 
     [Fact]

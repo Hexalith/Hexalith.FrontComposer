@@ -8,6 +8,7 @@ using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Badges;
 using Hexalith.FrontComposer.Shell.Components.Icons;
 using Hexalith.FrontComposer.Shell.Routing;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
 using Hexalith.FrontComposer.Shell.State.Navigation;
@@ -43,6 +44,8 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
     [Inject] private IDispatcher Dispatcher { get; set; } = default!;
 
     [Inject] private NavigationManager Navigation { get; set; } = default!;
+
+    [Inject] private NavigationFailureNotifier NavigationFailure { get; set; } = default!;
 
     [Inject] private IJSRuntime JS { get; set; } = default!;
 
@@ -108,10 +111,11 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
         IReadOnlyList<FrontComposerNavEntry> navEntries) {
         ArgumentNullException.ThrowIfNull(navEntries);
         List<string> hrefs = [];
+        Dictionary<string, string> manifestRoutes = new(StringComparer.OrdinalIgnoreCase);
         foreach (DomainManifest manifest in Registry.GetManifests()) {
-            foreach (string projectionFqn in VisibleProjections(manifest, discovery.Counts)) {
-                hrefs.Add(NormalizeHref(ProjectionRouteBuilder.BuildRoute(manifest.BoundedContext, projectionFqn)));
-            }
+            string moduleRoute = NormalizeHref(ModuleRouteCatalog.BuildRoute(manifest));
+            manifestRoutes[manifest.BoundedContext] = moduleRoute;
+            hrefs.Add(moduleRoute);
         }
 
         foreach (FrontComposerNavEntry entry in navEntries) {
@@ -120,7 +124,13 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
             }
         }
 
-        _activeNavHref = LongestNavPrefix(NormalizeHref(Navigation.ToBaseRelativePath(Navigation.Uri)), hrefs);
+        string? matchedHref = LongestNavPrefix(NormalizeHref(Navigation.ToBaseRelativePath(Navigation.Uri)), hrefs);
+        FrontComposerNavEntry? owningEntry = navEntries.FirstOrDefault(entry =>
+            entry.Enabled && !string.IsNullOrWhiteSpace(entry.Href)
+            && string.Equals(NormalizeHref(entry.Href), matchedHref, StringComparison.Ordinal));
+        _activeNavHref = owningEntry is not null && manifestRoutes.TryGetValue(owningEntry.BoundedContext, out string? moduleHref)
+            ? moduleHref
+            : matchedHref;
     }
 
     /// <summary>
@@ -422,6 +432,9 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
     private static string RailAnchorId(string boundedContext)
         => $"fc-rail-{boundedContext}";
 
+    private static string RailFlyoutAnchorId(string boundedContext)
+        => $"fc-rail-more-{boundedContext}";
+
     private static string FlyoutMenuId(string boundedContext)
         => $"fc-nav-flyout-menu-{Slug(boundedContext)}";
 
@@ -445,10 +458,8 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
             return false;
         }
 
-        foreach (string projection in projections) {
-            if (IsHrefActive(BuildRoute(boundedContext, projection))) {
-                return true;
-            }
+        if (IsHrefActive(ModuleRouteCatalog.BuildRoute(boundedContext))) {
+            return true;
         }
 
         foreach (FrontComposerNavEntry entry in entries) {
@@ -508,7 +519,7 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
     private void HandleContextTileActivated(string boundedContext, string? soleDestinationHref) {
         Dispatcher.Dispatch(new CapabilityVisitedAction(CapabilityIds.ForBoundedContext(boundedContext)));
         if (!string.IsNullOrWhiteSpace(soleDestinationHref)) {
-            Navigation.NavigateTo(soleDestinationHref);
+            NavigateSafely(soleDestinationHref, boundedContext);
         }
     }
 
@@ -538,7 +549,7 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
 
     private void HandleProjectionMenuItemClicked(string boundedContext, string projectionFqn, string route) {
         HandleNavItemClicked(boundedContext, CapabilityIds.ForProjection(boundedContext, projectionFqn));
-        Navigation.NavigateTo(route);
+        NavigateSafely(route, ProjectionRouteBuilder.ProjectionLabel(projectionFqn));
     }
 
     private void HandleNavEntryMenuItemClicked(FrontComposerNavEntry entry) {
@@ -548,7 +559,17 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
         }
 
         Dispatcher.Dispatch(new CapabilityVisitedAction(CapabilityIds.ForBoundedContext(entry.BoundedContext)));
-        Navigation.NavigateTo(entry.Href);
+        NavigateSafely(entry.Href, LocalizeEntryTitle(entry));
+    }
+
+    private void NavigateSafely(string route, string? destinationLabel) {
+        try {
+            NavigationFailure.BeginAttempt(destinationLabel, Navigation.ToAbsoluteUri(route).ToString());
+            Navigation.NavigateTo(route);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or UriFormatException) {
+            NavigationFailure.ReportFailure();
+        }
     }
 
 }

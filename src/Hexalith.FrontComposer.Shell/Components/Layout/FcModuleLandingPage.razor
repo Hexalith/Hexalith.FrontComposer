@@ -1,0 +1,35 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using Hexalith.FrontComposer.Contracts.Registration
+@using Hexalith.FrontComposer.Contracts.Rendering
+@using Hexalith.FrontComposer.Shell.Resources
+@using Microsoft.Extensions.Localization
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject IFrontComposerRegistry Registry
+@inject IStringLocalizer<FcShellResources> Localizer
+@inject IStringLocalizerFactory LocalizerFactory
+
+@if (RegisteredModule is { } manifest)
+{
+    <FcPageLayout Mode="FcPageLayoutMode.Constrained">
+        <FcPageHeader Heading="@FcNavLocalization.Resolve(LocalizerFactory, manifest.Resource, manifest.NameKey, manifest.Name)" HeadingTabIndex="-1" />
+        <FcPageTabs ModuleRoute="@($"/{Module!.ToLowerInvariant()}")"
+                    DefaultTabId="overview"
+                    AriaLabel="@Localizer["ModuleTabsLabel"]">
+            <FcPageTab Id="overview" Header="@Localizer["ModuleOverviewLabel"]">
+                <FluentText As="TextTag.Paragraph">@Localizer["ModuleOverviewDescription"]</FluentText>
+            </FcPageTab>
+        </FcPageTabs>
+    </FcPageLayout>
+}
+else
+{
+    <FcRouteUnavailable />
+}
+
+@code {
+    /// <summary>The registered bounded context selected by the route.</summary>
+    [Parameter] public string? Module { get; set; }
+
+    private DomainManifest? RegisteredModule => Registry.GetManifests().FirstOrDefault(
+        manifest => string.Equals(manifest.BoundedContext, Module, StringComparison.OrdinalIgnoreCase));
+}

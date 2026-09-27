@@ -1,33 +1,44 @@
 @inject NavigationManager Nav
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Hexalith.FrontComposer.Shell.Resources.FcShellResources> Localizer
 
 <CascadingAuthenticationState>
-    <Router AppAssembly="typeof(Hexalith.FrontComposer.UI.Components.App).Assembly"
-            AdditionalAssemblies="RouteAssemblies">
-        <Found Context="routeData">
-            <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
-                <NotAuthorized Context="authState">
-                    @if (authState.User.Identity?.IsAuthenticated != true)
-                    {
-                        <RedirectToChallenge />
-                    }
-                    else
-                    {
-                        <FcPageLayout Mode="FcPageLayoutMode.Constrained">
-                            <FcPageHeader Heading="Forbidden"
-                                          Description="@ForbiddenMessage" />
-                        </FcPageLayout>
-                    }
-                </NotAuthorized>
-                <Authorizing>
-                    <FluentText role="status" aria-live="polite">Authorizing...</FluentText>
-                </Authorizing>
-            </AuthorizeRouteView>
-            <FocusOnNavigate RouteData="routeData" Selector="h1" />
-        </Found>
-    </Router>
+    <LayoutView Layout="typeof(Layout.MainLayout)">
+        <Router AppAssembly="typeof(Hexalith.FrontComposer.UI.Components.App).Assembly"
+                AdditionalAssemblies="RouteAssemblies">
+            <Found Context="routeData">
+                <div @key="RouteIdentity" data-fc-route-content="@Nav.Uri">
+                <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(FcRouteBodyLayout)">
+                    <NotAuthorized Context="authState">
+                        @if (authState.User.Identity?.IsAuthenticated != true)
+                        {
+                            <RedirectToChallenge />
+                        }
+                        else
+                        {
+                            <div data-fc-route-denied="true"><FcPageLayout Mode="FcPageLayoutMode.Constrained">
+                                <FcPageHeader Heading="@Localizer["RouteForbiddenHeading"]"
+                                              Description="@ForbiddenMessage" />
+                            </FcPageLayout></div>
+                        }
+                    </NotAuthorized>
+                    <Authorizing>
+                        <FluentText role="status" aria-live="polite" data-fc-route-authorizing="true">Authorizing...</FluentText>
+                    </Authorizing>
+                </AuthorizeRouteView>
+                </div>
+                <FcRouteFocus RouteKey="@Nav.Uri" />
+            </Found>
+            <NotFound>
+                <FcRouteUnavailable @key="Nav.Uri" />
+            </NotFound>
+        </Router>
+    </LayoutView>
 </CascadingAuthenticationState>
 
 @code {
+    // Query changes update a mounted workspace without discarding its component state.
+    private string RouteIdentity => new Uri(Nav.Uri).AbsolutePath;
+
     private static readonly System.Reflection.Assembly[] RouteAssemblies =
     [
         typeof(Hexalith.Tenants.UI.Composition.TenantsFrontComposerDomain).Assembly,
@@ -44,8 +55,8 @@
             string path = queryStart >= 0 ? relativePath[..queryStart] : relativePath;
             path = "/" + path.TrimStart('/');
             return path.StartsWith("/admin", StringComparison.OrdinalIgnoreCase)
-                ? "An administrator role is required to view this area."
-                : "You are not authorized to view this area.";
+                ? Localizer["RouteForbiddenAdminDescription"].Value
+                : Localizer["RouteForbiddenDescription"].Value;
         }
     }
 }

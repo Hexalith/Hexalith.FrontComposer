@@ -284,6 +284,41 @@ public class FrontComposerRegistryTests {
         registry.GetManifests().ShouldBeEmpty();
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("home")]
+    [InlineData("ADMIN")]
+    [InlineData("me")]
+    [InlineData("commands")]
+    [InlineData("no-party-binding")]
+    [InlineData("global-administrators")]
+    [InlineData("sales reports")]
+    [InlineData("sales/reports")]
+    [InlineData("sales%2Freports")]
+    [InlineData(".hidden")]
+    public void RegisterDomain_RejectsMissingOrHostOwnedModuleAlias(string boundedContext) {
+        FrontComposerRegistry registry = new([], [], NullLogger<FrontComposerRegistry>.Instance);
+
+        InvalidOperationException exception = Should.Throw<InvalidOperationException>(() =>
+            registry.RegisterDomain(new DomainManifest("Invalid", boundedContext, [], [])));
+
+        exception.Message.ShouldContain("HFC1601");
+        registry.GetManifests().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void RegisterDomain_RejectsCaseCollidingModuleAliases() {
+        FrontComposerRegistry registry = new([], [], NullLogger<FrontComposerRegistry>.Instance);
+        registry.RegisterDomain(new DomainManifest("Sales", "Sales", [], []));
+
+        InvalidOperationException exception = Should.Throw<InvalidOperationException>(() =>
+            registry.RegisterDomain(new DomainManifest("Sales", "sales", [], [])));
+
+        exception.Message.ShouldContain("HFC1601");
+        registry.GetManifests().Count.ShouldBe(1);
+    }
+
     private sealed class CollectingLoggerProvider : ILoggerProvider {
         private readonly List<string> _messages = [];
         private readonly List<EventId> _eventIds = [];

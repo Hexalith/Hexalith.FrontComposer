@@ -1,18 +1,21 @@
 @page "/counter"
-@page "/counter/counter-projection"
+@page "/counter/{RouteTab}"
 @implements IDisposable
 @using Counter.Domain
 @using System.Collections.Immutable
+@using Hexalith.FrontComposer.Shell.Components.Layout
 
 <PageTitle>Counter sample</PageTitle>
 @inject IState<Counter.Domain.CounterProjectionState> CounterState
 @inject IDispatcher Dispatcher
 @inject Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.IFrontComposerTenantContextAccessor TenantContext
 
-<h1>Counter</h1>
+<h1 tabindex="-1">Counter</h1>
 
 <CascadingValue Value="_demoContext">
     <CounterCommandProjectionCatchUp />
+    <FcPageTabs ModuleRoute="/counter" DefaultTabId="overview" AriaLabel="Counter pages">
+        <FcPageTab Id="overview" Header="Overview">
     <div class="page-container" style="display: flex; flex-direction: column; gap: 24px;">
         @* §4.2 — the three titled command-density specimen sections are grouped in one
            FluentAccordion. ExpandMode=Multi with every item Expanded keeps all three densities
@@ -41,6 +44,10 @@
                 <a href="/commands/Counter/ConfigureCounterCommand?returnPath=%2Fcounter&amp;projectionTypeFqn=Counter.Domain.CounterProjection">Configure Counter</a>
             </FluentAccordionItem>
         </FluentAccordion>
+    </div>
+        </FcPageTab>
+        <FcPageTab Id="counter-projection" Header="Projection">
+    <div class="page-container" style="display: flex; flex-direction: column; gap: 24px;">
         <section class="data-section">
             @if (CounterState.Value.IsLoading || CounterState.Value.Items?.Count > 0)
             {
@@ -59,9 +66,14 @@
             }
         </section>
     </div>
+        </FcPageTab>
+    </FcPageTabs>
 </CascadingValue>
 
 @code {
+    [Parameter]
+    public string? RouteTab { get; set; }
+
     // Story 2-2 Decision D27 — manual CascadingValue to exercise ProjectionContextProvider
     // pre-fill without Epic 4's DataGrid row cascade. Demo-only.
     private readonly Hexalith.FrontComposer.Contracts.Rendering.ProjectionContext _demoContext = new(

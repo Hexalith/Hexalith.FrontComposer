@@ -1,0 +1,28 @@
+@page "/specimens"
+@page "/specimens/overview"
+@namespace Counter.Specimens
+@using Hexalith.FrontComposer.Contracts.Rendering
+@using Hexalith.FrontComposer.Shell.Components.Layout
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<PageTitle>Specimens overview</PageTitle>
+
+<FcPageLayout Mode="FcPageLayoutMode.Constrained">
+    <FcPageHeader Heading="Specimens" HeadingTabIndex="-1" />
+    <FcPageTabs ModuleRoute="/specimens" DefaultTabId="overview" AriaLabel="Specimen pages" TestId="specimens-overview-tabs">
+        <FcPageTab Id="overview" Header="Overview">
+            <FluentStack Orientation="Orientation.Vertical" VerticalGap="12px" data-testid="specimens-overview-links">
+                <FluentAnchorButton Href="/__frontcomposer/specimens/type" Appearance="ButtonAppearance.Outline" data-testid="specimens-overview-type">
+                    Type and theme specimen
+                </FluentAnchorButton>
+                <FluentAnchorButton Href="/__frontcomposer/specimens/page-toolbar" Appearance="ButtonAppearance.Outline" data-testid="specimens-overview-toolbar">
+                    Page toolbar specimen
+                </FluentAnchorButton>
+                <FluentAnchorButton Href="/__frontcomposer/specimens/data-formatting" Appearance="ButtonAppearance.Outline" data-testid="specimens-overview-formatting">
+                    Data formatting specimen
+                </FluentAnchorButton>
+            </FluentStack>
+        </FcPageTab>
+    </FcPageTabs>
+</FcPageLayout>

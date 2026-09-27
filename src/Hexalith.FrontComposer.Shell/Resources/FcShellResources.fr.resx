@@ -583,4 +583,42 @@
   <data name="ScopeBlockedMessage" xml:space="preserve">
     <value>Votre identité ne peut pas être vérifiée. Reconnectez-vous ou contactez l’assistance.</value>
   </data>
+  <data name="ModuleTabUnavailableTemplate" xml:space="preserve">
+    <value>Cette page est indisponible. Affichage de {0}.</value>
+  </data>
+  <data name="ModuleMoreOptionsLabel" xml:space="preserve">
+    <value>Autres pages de {0}</value>
+  </data>
+  <data name="SlashFocusPageSearchShortcutDescription" xml:space="preserve">
+    <value>Atteindre la recherche de la page</value>
+  </data>
+  <data name="PaletteNoCommandsOrPagesText" xml:space="preserve">
+    <value>Aucune commande ni page ne correspond.</value>
+  </data>
+  <data name="ShellNoModulesText" xml:space="preserve">
+    <value>Aucun module n'est disponible.</value>
+  </data>
+  <data name="StartupFailureText" xml:space="preserve">
+    <value>FrontComposer n'a pas pu démarrer. Vérifiez la configuration.</value>
+  </data>
+  <data name="RouteNavigationFailedText" xml:space="preserve">
+    <value>Impossible d'ouvrir cette page. Choisissez une autre page ou revenez à l'accueil.</value>
+  </data>
+  <data name="RouteNavigationFailedNamedText" xml:space="preserve">
+    <value>Impossible d'ouvrir cette page. Choisissez une autre page ou revenez à l'accueil.</value>
+  </data>
+  <data name="RouteNavigationUnknownDestinationLabel" xml:space="preserve">
+    <value>cette page</value>
+  </data>
+  <data name="RouteNavigationCurrentPageFallbackLabel" xml:space="preserve">
+    <value>la page actuelle</value>
+  </data>
+  <data name="RouteUnavailableHeading" xml:space="preserve"><value>Page indisponible</value></data>
+  <data name="RouteUnavailableDescription" xml:space="preserve"><value>Choisissez une autre page ou revenez à l'accueil.</value></data>
+  <data name="RouteForbiddenHeading" xml:space="preserve"><value>Accès interdit</value></data>
+  <data name="RouteForbiddenDescription" xml:space="preserve"><value>Vous n'êtes pas autorisé à accéder à cette section.</value></data>
+  <data name="RouteForbiddenAdminDescription" xml:space="preserve"><value>Un rôle administrateur est nécessaire pour accéder à cette section.</value></data>
+  <data name="ModuleTabsLabel" xml:space="preserve"><value>Pages du module</value></data>
+  <data name="ModuleOverviewLabel" xml:space="preserve"><value>Vue d'ensemble</value></data>
+  <data name="ModuleOverviewDescription" xml:space="preserve"><value>Choisissez une destination dans le menu de navigation ou utilisez la palette de commandes.</value></data>
 </root>

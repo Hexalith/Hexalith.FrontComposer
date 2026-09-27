@@ -323,6 +323,7 @@ public static class ServiceCollectionExtensions {
         // for one circuit's lifetime.
         services.TryAddScoped<IShortcutService, ShortcutService>();
         services.TryAddScoped<FrontComposerShortcutRegistrar>();
+        services.TryAddScoped<Services.NavigationFailureNotifier>();
 
         // Story 3-4 — CommandPaletteEffects must be discoverable by Fluxor's effect scan AND
         // available as a concrete instance for IDisposable cleanup on circuit teardown. Scoped per

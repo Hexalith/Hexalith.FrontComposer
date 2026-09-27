@@ -11,6 +11,8 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Registration;
+using Hexalith.FrontComposer.Shell.Extensions;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Shortcuts;
 using Hexalith.FrontComposer.Shell.State;
@@ -233,12 +235,106 @@ public class CommandPaletteEffectsTests {
     [Fact]
     public async Task HandlePaletteResultActivated_Command_NavigatesToCanonicalGeneratedRoute() {
         CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out _,
+            manifests: [new DomainManifest("Commerce", "Commerce", [], ["Commerce.SubmitOrderCommand"])],
             paletteResults: [new PaletteResult(PaletteResultCategory.Command, "SubmitOrder", "Commerce", null, "Commerce.SubmitOrderCommand", 100, false)]);
 
         await sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0), dispatcher);
 
         dispatcher.Received(1).Dispatch(Arg.Any<PaletteClosedAction>());
         dispatcher.Received(1).Dispatch(ArgEx.Is<RecentRouteVisitedAction>(r => r.Url == "/commands/Commerce/SubmitOrderCommand"));
+    }
+
+    [Fact]
+    public async Task HandlePaletteResultActivated_WaitsForRenderedRouteBeforeClosingOrRecordingRecent() {
+        PaletteResult result = new(PaletteResultCategory.Recent, "Orders", "", "/orders", null, 1, false);
+        TestNavigationManager navigation = new();
+        CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out IServiceProvider services,
+            paletteResults: [result], navigationManager: navigation);
+        navigation.OnNavigate = null;
+
+        Task activation = sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0, result, string.Empty), dispatcher);
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteClosedAction>());
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<RecentRouteVisitedAction>());
+
+        services.GetRequiredService<NavigationFailureNotifier>().ConfirmRoute("https://localhost/orders");
+        await activation;
+        dispatcher.Received(1).Dispatch(Arg.Any<PaletteClosedAction>());
+        dispatcher.Received(1).Dispatch(ArgEx.Is<RecentRouteVisitedAction>(visit => visit.Url == "/orders"));
+    }
+
+    [Fact]
+    public async Task HandlePaletteResultActivated_CanonicalRedirectWaitsForTheFinalRenderedHeading() {
+        PaletteResult result = new(PaletteResultCategory.Recent, "Tenants", "", "/tenants?tab=users", null, 1, false);
+        TestNavigationManager navigation = new();
+        CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out IServiceProvider services,
+            paletteResults: [result], navigationManager: navigation);
+        navigation.OnNavigate = null;
+
+        Task activation = sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0, result, string.Empty), dispatcher);
+        navigation.NavigateTo("/tenants/workspace-users", replace: true);
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteClosedAction>());
+        services.GetRequiredService<NavigationFailureNotifier>().ConfirmRoute(navigation.Uri);
+        await activation;
+
+        dispatcher.Received(1).Dispatch(Arg.Any<PaletteClosedAction>());
+        dispatcher.Received(1).Dispatch(ArgEx.Is<RecentRouteVisitedAction>(visit => visit.Url == "/tenants?tab=users"));
+    }
+
+    [Fact]
+    public async Task HandlePaletteResultActivated_LongRouteAuthorizationWaitDoesNotFailEarly() {
+        PaletteResult result = new(PaletteResultCategory.Recent, "Orders", "", "/orders", null, 1, false);
+        TestNavigationManager navigation = new();
+        CommandPaletteEffects sut = BuildEffects(out FakeTimeProvider time, out IDispatcher dispatcher, out IServiceProvider services,
+            paletteResults: [result], navigationManager: navigation);
+        navigation.OnNavigate = null;
+
+        Task activation = sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0, result, string.Empty), dispatcher);
+        time.Advance(TimeSpan.FromSeconds(6));
+        activation.IsCompleted.ShouldBeFalse();
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteActivationFailedAction>());
+
+        services.GetRequiredService<NavigationFailureNotifier>().ConfirmRoute("https://localhost/orders");
+        await activation;
+        dispatcher.Received(1).Dispatch(Arg.Any<PaletteClosedAction>());
+    }
+
+    [Fact]
+    public async Task HandlePaletteResultActivated_SecondClickedResultOwnsConfirmationWithoutFirstFailure() {
+        PaletteResult firstResult = new(PaletteResultCategory.Recent, "Orders", "", "/orders", null, 1, false);
+        PaletteResult secondResult = new(PaletteResultCategory.Recent, "Parties", "", "/parties", null, 1, false);
+        TestNavigationManager navigation = new();
+        CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out IServiceProvider services,
+            paletteResults: [firstResult, secondResult], navigationManager: navigation);
+        navigation.OnNavigate = null;
+
+        Task first = sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0, firstResult, string.Empty), dispatcher);
+        Task second = sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(1, secondResult, string.Empty), dispatcher);
+        await first;
+
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteActivationFailedAction>());
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteClosedAction>());
+        services.GetRequiredService<NavigationFailureNotifier>().ConfirmRoute("https://localhost/parties");
+        await second;
+
+        dispatcher.Received(1).Dispatch(Arg.Any<PaletteClosedAction>());
+        dispatcher.Received(1).Dispatch(ArgEx.Is<RecentRouteVisitedAction>(visit => visit.Url == "/parties"));
+        dispatcher.DidNotReceive().Dispatch(ArgEx.Is<RecentRouteVisitedAction>(visit => visit.Url == "/orders"));
+    }
+
+    [Fact]
+    public async Task HandlePaletteResultActivated_RenderFailurePreservesPaletteAndQuery() {
+        PaletteResult result = new(PaletteResultCategory.Recent, "Orders", "", "/orders", null, 1, false);
+        TestNavigationManager navigation = new();
+        CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out IServiceProvider services,
+            paletteResults: [result], navigationManager: navigation);
+        navigation.OnNavigate = null;
+
+        Task activation = sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0, result, string.Empty), dispatcher);
+        services.GetRequiredService<NavigationFailureNotifier>().ReportFailure();
+        await activation;
+        dispatcher.Received(1).Dispatch(Arg.Any<PaletteActivationFailedAction>());
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteClosedAction>());
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<RecentRouteVisitedAction>());
     }
 
     [Fact]
@@ -256,8 +352,149 @@ public class CommandPaletteEffectsTests {
 
         await sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0), dispatcher);
 
-        dispatcher.Received(1).Dispatch(Arg.Any<PaletteClosedAction>());
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteClosedAction>());
+        dispatcher.Received(1).Dispatch(ArgEx.Is<PaletteActivationDeniedAction>(a => a.Kind == PaletteActivationDenialKind.Unavailable));
         dispatcher.DidNotReceive().Dispatch(Arg.Any<RecentRouteVisitedAction>());
+    }
+
+    [Fact]
+    public async Task HandlePaletteResultActivated_CommandWithNoCurrentOwningManifest_DeniesWithoutNavigation() {
+        CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out _,
+            manifests: [],
+            paletteResults: [new PaletteResult(PaletteResultCategory.Command, "SubmitOrder", "Commerce", null, "Commerce.SubmitOrderCommand", 100, false)]);
+
+        await sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0), dispatcher);
+
+        dispatcher.Received(1).Dispatch(ArgEx.Is<PaletteActivationDeniedAction>(a => a.Kind == PaletteActivationDenialKind.Unavailable));
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteClosedAction>());
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<RecentRouteVisitedAction>());
+    }
+
+    [Theory]
+    [InlineData("closed")]
+    [InlineData("query")]
+    [InlineData("selection")]
+    [InlineData("scope")]
+    public async Task HandlePaletteResultActivated_AuthorizationCompletesAfterPaletteChanges_DiscardsStaleActivation(string change) {
+        string command = typeof(PaletteProtectedCommand).FullName!;
+        PaletteResult result = new(PaletteResultCategory.Command, "Protected command", "Orders", null, command, 1, false);
+        PaletteResult other = new(PaletteResultCategory.Recent, "Other", "", "/other", null, 1, false);
+        TaskCompletionSource<CommandAuthorizationDecision> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        ICommandAuthorizationEvaluator evaluator = Substitute.For<ICommandAuthorizationEvaluator>();
+        evaluator.EvaluateAsync(Arg.Any<CommandAuthorizationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(_ => { entered.TrySetResult(); return held.Task; });
+        ServiceCollection services = [];
+        services.AddSingleton(CreateRegistry([new DomainManifest("Orders", "Orders", [], [command],
+            CommandPolicies: new Dictionary<string, string> { [command] = "Approve" })]));
+        services.AddSingleton(evaluator);
+        services.AddSingleton<NavigationManager>(new TestNavigationManager());
+        using ServiceProvider provider = services.BuildServiceProvider();
+        FrontComposerCommandPaletteState current = new(true, "protected", [result, other], [], 0, PaletteLoadState.Idle);
+        IState<FrontComposerCommandPaletteState> palette = Substitute.For<IState<FrontComposerCommandPaletteState>>();
+        palette.Value.Returns(_ => current);
+        IState<FrontComposerNavigationState> navigation = Substitute.For<IState<FrontComposerNavigationState>>();
+        navigation.Value.Returns(new FrontComposerNavigationState(false, ImmutableDictionary<string, bool>.Empty, ViewportTier.Desktop));
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        using CommandPaletteEffects sut = new(navigation, palette, EnabledLoggerSubstitute.Create<CommandPaletteEffects>(), provider);
+
+        Task activation = sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0, result, "protected"), dispatcher);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(2), Xunit.TestContext.Current.CancellationToken);
+        current = change switch {
+            "closed" => current with { IsOpen = false },
+            "query" => current with { Query = "different" },
+            "selection" => current with { SelectedIndex = 1 },
+            "scope" => CommandPaletteReducers.ReduceScopeChanged(current, new ScopeChangedAction()),
+            _ => throw new ArgumentOutOfRangeException(nameof(change)),
+        };
+        held.SetResult(CommandAuthorizationDecision.Allowed("approved"));
+        await activation;
+
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteClosedAction>());
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<RecentRouteVisitedAction>());
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteActivationDeniedAction>());
+    }
+
+    [Fact]
+    public async Task HandlePaletteResultActivated_ReplacedResult_KeepsPaletteOpenAndQueryEditable() {
+        PaletteResult stale = new(PaletteResultCategory.Recent, "Old page", "", "/old", null, 1, false);
+        PaletteResult current = new(PaletteResultCategory.Recent, "Current page", "", "/current", null, 1, false);
+        CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out _, paletteResults: [current]);
+
+        await sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0, stale, string.Empty), dispatcher);
+
+        dispatcher.Received(1).Dispatch(ArgEx.Is<PaletteActivationDeniedAction>(a => a.Kind == PaletteActivationDenialKind.Unavailable));
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteClosedAction>());
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<RecentRouteVisitedAction>());
+        FrontComposerCommandPaletteState initial = new(true, "old", [current], [], 0, PaletteLoadState.Idle);
+        FrontComposerCommandPaletteState denied = CommandPaletteReducers.ReduceActivationDenied(initial, new PaletteActivationDeniedAction(PaletteActivationDenialKind.Unavailable));
+        FrontComposerCommandPaletteState edited = CommandPaletteReducers.ReducePaletteQueryChanged(denied, new PaletteQueryChangedAction("next", "new"));
+        denied.IsOpen.ShouldBeTrue();
+        edited.Query.ShouldBe("new");
+    }
+
+    [Fact]
+    public async Task HandlePaletteResultActivated_PermissionRevoked_KeepsPaletteOpen() {
+        string command = typeof(PaletteProtectedCommand).FullName!;
+        ICommandAuthorizationEvaluator evaluator = Substitute.For<ICommandAuthorizationEvaluator>();
+        evaluator.EvaluateAsync(Arg.Any<CommandAuthorizationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Denied, "denied")));
+        PaletteResult result = new(PaletteResultCategory.Command, "Protected command", "Orders", null, command, 1, false);
+        CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out _,
+            manifests: [new DomainManifest("Orders", "Orders", [], [command],
+                CommandPolicies: new Dictionary<string, string> { [command] = "Approve" })],
+            paletteResults: [result], authorizationEvaluator: evaluator);
+
+        await sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0, result, string.Empty), dispatcher);
+
+        dispatcher.Received(1).Dispatch(ArgEx.Is<PaletteActivationDeniedAction>(a => a.Kind == PaletteActivationDenialKind.Permission));
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteClosedAction>());
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<RecentRouteVisitedAction>());
+    }
+
+    [Fact]
+    public async Task HandlePaletteResultActivated_RemovedRecentCommandRoute_ReportsOneSafeFailureAndRetainsQuery() {
+        PaletteResult result = new(PaletteResultCategory.Recent, "/commands/Counter/RemovedCommand?secret=opaque-token", "Counter",
+            "/commands/Counter/RemovedCommand?secret=opaque-token", null, 1, false);
+        CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out IServiceProvider services,
+            manifests: [new DomainManifest("Counter", "Counter", [], [])], paletteResults: [result]);
+        NavigationFailureNotifier failure = services.GetRequiredService<NavigationFailureNotifier>();
+        failure.RememberSuccessfulRoute("Counter");
+
+        await sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0, result, string.Empty), dispatcher);
+
+        dispatcher.Received(1).Dispatch(Arg.Any<PaletteActivationFailedAction>());
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteClosedAction>());
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<RecentRouteVisitedAction>());
+        string message = failure.Message.ShouldNotBeNull();
+        message.ShouldContain("that page");
+        message.ShouldNotContain("Counter");
+        message.ShouldNotContain("opaque-token");
+        FrontComposerCommandPaletteState initial = new(true, "archived", [result], [], 0, PaletteLoadState.Idle);
+        FrontComposerCommandPaletteState failed = CommandPaletteReducers.ReduceActivationFailed(initial, new PaletteActivationFailedAction());
+        failed.IsOpen.ShouldBeTrue();
+        failed.Query.ShouldBe("archived");
+    }
+
+    [Fact]
+    public async Task HandlePaletteResultActivated_NavigateToThrows_ReportsSafeDestinationAndCurrentPage() {
+        PaletteResult result = new(PaletteResultCategory.Projection, "Counter projection", "Counter",
+            "/counter/counter-projection", null, 1, false);
+        CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out IServiceProvider services,
+            paletteResults: [result], navigationManager: new ThrowingNavigationManager());
+        NavigationFailureNotifier failure = services.GetRequiredService<NavigationFailureNotifier>();
+        failure.RememberSuccessfulRoute("Counter");
+
+        await sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0, result, string.Empty), dispatcher);
+
+        dispatcher.Received(1).Dispatch(Arg.Any<PaletteActivationFailedAction>());
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteClosedAction>());
+        string message = failure.Message.ShouldNotBeNull();
+        message.ShouldContain("Could not open that page");
+        message.ShouldNotContain("Counter projection");
+        message.ShouldNotContain("Counter");
+        message.ShouldNotContain("secret-token-opaque");
+        message.ShouldNotContain("/counter/");
     }
 
     [Fact]
@@ -555,12 +792,16 @@ public class CommandPaletteEffectsTests {
         IReadOnlyList<PaletteResult>? paletteResults = null,
         IReadOnlyList<string>? recentRoutes = null,
         string? currentContext = null,
-        ICommandAuthorizationEvaluator? authorizationEvaluator = null) {
+        ICommandAuthorizationEvaluator? authorizationEvaluator = null,
+        NavigationManager? navigationManager = null) {
         time = new FakeTimeProvider();
         dispatcher = Substitute.For<IDispatcher>();
 
         IServiceCollection services = new ServiceCollection();
         services.AddLogging();
+        services.AddLocalization();
+        services.AddHexalithShellLocalization();
+        services.AddSingleton<NavigationFailureNotifier>();
 
         IFrontComposerRegistry effectiveRegistry = registry ?? CreateRegistry(manifests);
         services.AddSingleton(effectiveRegistry);
@@ -589,9 +830,14 @@ public class CommandPaletteEffectsTests {
         // can observe the expected RecentRouteVisitedAction dispatch. The new effect contract logs
         // and early-returns (no RecentRouteVisited) when NavigationManager is unresolvable; that
         // failure path is covered by its own test.
-        services.AddSingleton<NavigationManager>(new TestNavigationManager());
+        NavigationManager effectiveNavigation = navigationManager ?? new TestNavigationManager();
+        services.AddSingleton(effectiveNavigation);
 
         serviceProvider = services.BuildServiceProvider();
+        if (effectiveNavigation is TestNavigationManager testNavigation) {
+            NavigationFailureNotifier confirmation = serviceProvider.GetRequiredService<NavigationFailureNotifier>();
+            testNavigation.OnNavigate = uri => confirmation.ConfirmRoute(uri);
+        }
 
         IState<FrontComposerCommandPaletteState> paletteState = Substitute.For<IState<FrontComposerCommandPaletteState>>();
         ImmutableArray<PaletteResult> results = paletteResults is null
@@ -632,7 +878,22 @@ public class CommandPaletteEffectsTests {
     private sealed class TestNavigationManager : NavigationManager {
         public TestNavigationManager() => Initialize("https://localhost/", "https://localhost/");
 
-        protected override void NavigateToCore(string uri, bool forceLoad) { }
+        public Action<string>? OnNavigate { get; set; }
+
+        protected override void NavigateToCore(string uri, bool forceLoad) {
+            Uri = ToAbsoluteUri(uri).ToString();
+            OnNavigate?.Invoke(Uri);
+        }
+
+        protected override void NavigateToCore(string uri, NavigationOptions options)
+            => NavigateToCore(uri, options.ForceLoad);
+    }
+
+    private sealed class ThrowingNavigationManager : NavigationManager {
+        public ThrowingNavigationManager() => Initialize("https://localhost/", "https://localhost/");
+
+        protected override void NavigateToCore(string uri, bool forceLoad)
+            => throw new InvalidOperationException("secret-token-opaque");
     }
 }
 

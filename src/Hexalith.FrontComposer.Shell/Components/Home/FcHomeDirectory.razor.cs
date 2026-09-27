@@ -58,6 +58,25 @@ public partial class FcHomeDirectory {
     [CascadingParameter] public Task<AuthenticationState>? AuthenticationStateTask { get; set; }
 
     private string? _resolvedUserName;
+    private bool _noRegistrationsAnnounced;
+
+    /// <inheritdoc />
+    protected override Task OnAfterRenderAsync(bool firstRender) {
+        if (!ScopeIsReady) {
+            _noRegistrationsAnnounced = false;
+            return Task.CompletedTask;
+        }
+
+        if (Registry.GetManifests().Count != 0) {
+            _noRegistrationsAnnounced = false;
+        }
+        else if (!_noRegistrationsAnnounced) {
+            _noRegistrationsAnnounced = true;
+            _ = InvokeAsync(StateHasChanged);
+        }
+
+        return Task.CompletedTask;
+    }
 
     /// <inheritdoc />
     protected override async Task OnParametersSetAsync() {
@@ -90,15 +109,7 @@ public partial class FcHomeDirectory {
         // D13 — synchronous dispatch BEFORE navigation so the reducer update lands first.
         Dispatcher.Dispatch(new CapabilityVisitedAction(CapabilityIds.ForBoundedContext(manifest.BoundedContext)));
 
-        // Navigate to the first renderable projection (Story 3-2 nav convention). Bounded contexts
-        // with no projections only get the badge dismissal — no navigation occurs.
-        foreach (string projection in manifest.Projections) {
-            if (!string.IsNullOrWhiteSpace(projection)) {
-                string url = ProjectionRouteBuilder.BuildRoute(manifest.BoundedContext, projection);
-                Nav.NavigateTo(url);
-                break;
-            }
-        }
+        Nav.NavigateTo(ModuleRouteCatalog.BuildRoute(manifest));
 
         return Task.CompletedTask;
     }
