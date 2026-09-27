@@ -47,7 +47,6 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
     private string _liveRegionText = string.Empty;
     private bool _explicitlyClosed;
     private bool _navigatesToOtherRoute;
-    private bool _activationPending;
     private long _lastDenialVersion;
     private long _lastFailureVersion;
     private string? _openedRoute;
@@ -77,7 +76,7 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
     /// <summary>Injected ULID factory — correlates every dispatched action.</summary>
     [Inject] private IUlidFactory UlidFactory { get; set; } = default!;
 
-    /// <summary>Injected localizer — resolves the "X results" template at announce time.</summary>
+    /// <summary>Injected localizer for palette labels and status messages.</summary>
     [Inject] private IStringLocalizer<FcShellResources> Localizer { get; set; } = default!;
 
     /// <summary>Injected JS runtime for focus + browser-default suppression interop.</summary>
@@ -104,7 +103,6 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
         FrontComposerCommandPaletteState state = PaletteState.Value;
         if (state.ActivationDenialVersion != _lastDenialVersion) {
             _lastDenialVersion = state.ActivationDenialVersion;
-            _activationPending = false;
             _navigatesToOtherRoute = false;
             IJSObjectReference? focus = await EnsureFocusModuleAsync();
             if (focus is not null) {
@@ -114,11 +112,11 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
         }
         if (state.ActivationFailureVersion != _lastFailureVersion) {
             _lastFailureVersion = state.ActivationFailureVersion;
-            _activationPending = false;
             _navigatesToOtherRoute = false;
         }
-        if (_activationPending && !state.IsOpen && Dialog is not null) {
-            _activationPending = false;
+        if (!_explicitlyClosed && !state.IsOpen && Dialog is not null) {
+            _navigatesToOtherRoute = _openedRoute is not null
+                && !string.Equals(new Uri(_openedRoute).AbsolutePath, new Uri(NavigationManager.Uri).AbsolutePath, StringComparison.OrdinalIgnoreCase);
             _explicitlyClosed = true;
             await Dialog.CloseAsync();
         }
@@ -186,7 +184,6 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
 
     private Task OnQueryChangedAsync(string newQuery) {
         _localQuery = newQuery ?? string.Empty;
-        _activationPending = false;
         _navigatesToOtherRoute = false;
         Dispatcher.Dispatch(new PaletteQueryChangedAction(UlidFactory.NewUlid(), _localQuery));
         return Task.CompletedTask;
@@ -209,8 +206,6 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
             result.CommandTypeName,
             CommandPaletteEffects.KeyboardShortcutsSentinel,
             StringComparison.Ordinal);
-
-        _activationPending = !isSentinel;
         _navigatesToOtherRoute = !isSentinel && ActivatesOtherRoute(result);
         Dispatcher.Dispatch(new PaletteResultActivatedAction(flatIndex, result, PaletteState.Value.Query));
         return Task.CompletedTask;
@@ -229,7 +224,6 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
         switch (e.Key) {
             case "Escape":
                 _explicitlyClosed = true;
-                _activationPending = false;
                 _navigatesToOtherRoute = false;
                 Dispatcher.Dispatch(new PaletteClosedAction(UlidFactory.NewUlid()));
                 if (Dialog is not null) {
@@ -239,13 +233,11 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
                 break;
 
             case "ArrowDown":
-                _activationPending = false;
                 _navigatesToOtherRoute = false;
                 Dispatcher.Dispatch(new PaletteSelectionMovedAction(+1));
                 break;
 
             case "ArrowUp":
-                _activationPending = false;
                 _navigatesToOtherRoute = false;
                 Dispatcher.Dispatch(new PaletteSelectionMovedAction(-1));
                 break;
@@ -267,8 +259,6 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
                     result.CommandTypeName,
                     CommandPaletteEffects.KeyboardShortcutsSentinel,
                     StringComparison.Ordinal);
-
-                _activationPending = !isSentinel;
                 _navigatesToOtherRoute = !isSentinel && ActivatesOtherRoute(result);
                 Dispatcher.Dispatch(new PaletteResultActivatedAction(selected, result, PaletteState.Value.Query));
 

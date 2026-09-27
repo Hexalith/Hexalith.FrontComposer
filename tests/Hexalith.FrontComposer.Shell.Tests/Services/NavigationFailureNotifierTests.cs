@@ -1,4 +1,6 @@
 using Hexalith.FrontComposer.Shell.Resources;
+using Hexalith.FrontComposer.Contracts.Registration;
+using NSubstitute;
 using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -26,11 +28,15 @@ public sealed class NavigationFailureNotifierTests
         notifier.Message.ShouldBeNull();
     }
 
-    [Fact]
-    public async Task QueryBackedModuleAliasConfirmsAfterCanonicalChildRenders()
+    [Theory]
+    [InlineData("tab=users")]
+    [InlineData("tab=%75sers")]
+    [InlineData("%74ab=users")]
+    [InlineData("%74ab=%75sers")]
+    public async Task QueryBackedModuleAliasConfirmsAfterCanonicalChildRenders(string query)
     {
         NavigationFailureNotifier notifier = CreateNotifier();
-        Task<bool> confirmation = notifier.PrepareRouteConfirmation("https://localhost/tenants?tab=users");
+        Task<bool> confirmation = notifier.PrepareRouteConfirmation($"https://localhost/tenants?{query}");
 
         notifier.ConfirmRoute("https://localhost/tenants/workspace-users");
 
@@ -119,12 +125,27 @@ public sealed class NavigationFailureNotifierTests
         notifier.ReturnUriForActivatedUnmatched("https://localhost/parties").ShouldBeNull();
     }
 
+    [Fact]
+    public async Task HostWithoutFocusOwnerSettlesMatchingLocation()
+    {
+        NavigationFailureNotifier notifier = CreateNotifier();
+        notifier.BeginAttempt("Counter", "https://localhost/counter");
+        Task<bool> pending = notifier.PrepareRouteConfirmation("https://localhost/counter");
+        notifier.ObserveLocation("https://localhost/counter");
+        (await pending.ConfigureAwait(true)).ShouldBeTrue();
+    }
+
     private static NavigationFailureNotifier CreateNotifier()
     {
         ServiceCollection services = new();
         services.AddLogging();
         services.AddLocalization();
-        using ServiceProvider provider = services.BuildServiceProvider();
-        return new NavigationFailureNotifier(provider.GetRequiredService<IStringLocalizer<FcShellResources>>());
+        IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
+        registry.GetManifests().Returns([new DomainManifest("Tenants", "tenants", [], []) {
+            CanonicalRouteAliases = new Dictionary<string, string> { ["/tenants?tab=users"] = "/tenants/workspace-users" },
+        }]);
+        services.AddSingleton(registry);
+        ServiceProvider provider = services.BuildServiceProvider();
+        return new NavigationFailureNotifier(provider.GetRequiredService<IStringLocalizer<FcShellResources>>(), provider);
     }
 }

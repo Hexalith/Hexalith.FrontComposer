@@ -39,6 +39,48 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 /// adopter-supplied override path.
 /// </summary>
 public sealed class FrontComposerShellTests : LayoutComponentTestBase {
+    [Theory]
+    [InlineData(ViewportTier.Desktop)]
+    [InlineData(ViewportTier.CompactDesktop)]
+    [InlineData(ViewportTier.Tablet)]
+    [InlineData(ViewportTier.Phone)]
+    public void HeaderOverrideKeepsRequiredControlsAtEveryTier(ViewportTier tier)
+    {
+        EnsureStoreInitialized();
+        Services.GetRequiredService<IDispatcher>().Dispatch(new ViewportTierChangedAction(tier));
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(parameters => parameters
+            .Add(shell => shell.HeaderStart, builder => builder.AddContent(0, "Custom header"))
+            .Add(shell => shell.ShowAccountMenu, false));
+        cut.FindComponent<FcHamburgerToggle>().ShouldNotBeNull();
+        cut.FindComponent<FcAccountMenu>().ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task ShellLocationTrackingRetiresSupersededConfirmation()
+    {
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>();
+        NavigationFailureNotifier failure = Services.GetRequiredService<NavigationFailureNotifier>();
+        failure.BeginAttempt("Counter", "http://localhost/counter");
+        Task<bool> pending = failure.PrepareRouteConfirmation("http://localhost/counter");
+        await cut.InvokeAsync(() => Services.GetRequiredService<NavigationManager>().NavigateTo("/elsewhere"));
+        (await pending.ConfigureAwait(true)).ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ShellScopeChangeClearsPreviouslyConfirmedRoute(bool tenantChange)
+    {
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>();
+        NavigationFailureNotifier failure = Services.GetRequiredService<NavigationFailureNotifier>();
+        failure.ConfirmRoute("http://localhost/counter");
+        Hexalith.FrontComposer.Contracts.Rendering.IUserContextAccessor context = Services.GetRequiredService<Hexalith.FrontComposer.Contracts.Rendering.IUserContextAccessor>();
+        if (tenantChange) context.TenantId.Returns("new-tenant");
+        else context.UserId.Returns("new-user");
+        Services.GetRequiredService<ScopeBoundaryService>().Synchronize();
+        cut.WaitForAssertion(() => failure.LastConfirmedUri.ShouldBeNull());
+    }
+
     [Fact]
     public void Route_failure_renders_one_safe_shell_status_and_clears_after_rendered_success() {
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
@@ -78,7 +120,8 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
             heading.HasAttribute("aria-live").ShouldBeFalse();
             cut.Markup.ShouldNotContain("secret-token-opaque");
             cut.Markup.ShouldNotContain("Old route body");
-            JSInterop.Invocations.Count(invocation => invocation.Identifier.Contains("focus", StringComparison.OrdinalIgnoreCase)).ShouldBeGreaterThan(0);
+            JSRuntimeInvocation focus = JSInterop.VerifyFocusAsyncInvoke();
+            focus.Arguments[0].ShouldBeElementReferenceTo(heading);
         });
     }
 

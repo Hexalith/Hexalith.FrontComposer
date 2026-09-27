@@ -1,12 +1,42 @@
 using Hexalith.FrontComposer.Shell.Resources;
 
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.WebUtilities;
+using Hexalith.FrontComposer.Contracts.Registration;
 
 namespace Hexalith.FrontComposer.Shell.Services;
 
 /// <summary>Publishes one support-safe navigation failure message per failed activation.</summary>
-public sealed class NavigationFailureNotifier(IStringLocalizer<FcShellResources> localizer)
+public sealed class NavigationFailureNotifier
 {
+    private readonly IStringLocalizer<FcShellResources> localizer;
+    private readonly IServiceProvider? _services;
+    private int _focusOwners;
+
+    /// <summary>Creates a notifier without host route metadata.</summary>
+    public NavigationFailureNotifier(IStringLocalizer<FcShellResources> localizer) : this(localizer, null) { }
+
+    /// <summary>Creates a notifier with the host's registered route and localization metadata.</summary>
+    public NavigationFailureNotifier(IStringLocalizer<FcShellResources> localizer, IServiceProvider? services)
+    {
+        this.localizer = localizer;
+        _services = services;
+    }
+
+    /// <summary>Registers the component which confirms rendered route headings.</summary>
+    internal void RegisterFocusOwner() => _focusOwners++;
+
+    /// <summary>Releases a mounted route-focus owner.</summary>
+    internal void UnregisterFocusOwner() => _focusOwners = Math.Max(0, _focusOwners - 1);
+
+    /// <summary>The destination retaining a tab-fallback announcement across a page change.</summary>
+    internal string? TabFallbackDestination { get; set; }
+
+    /// <summary>The support-safe tab-fallback announcement.</summary>
+    internal string? TabFallbackMessage { get; set; }
+
     private readonly List<(string Uri, TaskCompletionSource<bool> Completion)> _pendingConfirmations = [];
     private string? _failedReturnUri;
     private string? _activeAttemptUri;
@@ -46,6 +76,8 @@ public sealed class NavigationFailureNotifier(IStringLocalizer<FcShellResources>
         _activeAttemptUri = null;
         _failedReturnUri = null;
         LastConfirmedUri = null;
+        TabFallbackDestination = null;
+        TabFallbackMessage = null;
         CurrentPageLabel = null;
         DestinationLabel = null;
         Clear();
@@ -56,7 +88,7 @@ public sealed class NavigationFailureNotifier(IStringLocalizer<FcShellResources>
     {
         // Route headings can contain customer names or identifiers. Keep only fixed copy in
         // navigation status, even when a caller supplies a rendered heading.
-        CurrentPageLabel = localizer["RouteNavigationCurrentPageFallbackLabel"].Value;
+        CurrentPageLabel = SafeLabel(LastConfirmedUri, "RouteNavigationCurrentPageFallbackLabel");
         DestinationLabel = null;
         Clear();
     }
@@ -110,7 +142,7 @@ public sealed class NavigationFailureNotifier(IStringLocalizer<FcShellResources>
         AttemptVersion++;
         _activeAttemptUri = routeUri;
         _failedReturnUri = null;
-        DestinationLabel = localizer["RouteNavigationUnknownDestinationLabel"].Value;
+        DestinationLabel = SafeLabel(routeUri, "RouteNavigationUnknownDestinationLabel");
         // A repeated failure must insert fresh live-region text for this attempt.
         Clear();
     }
@@ -119,6 +151,12 @@ public sealed class NavigationFailureNotifier(IStringLocalizer<FcShellResources>
     public void ObserveLocation(string routeUri)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(routeUri);
+        if (TabFallbackDestination is not null && Uri.TryCreate(routeUri, UriKind.Absolute, out Uri? location)
+            && !string.Equals(location.AbsolutePath.TrimEnd('/'), TabFallbackDestination.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
+        {
+            TabFallbackDestination = null;
+            TabFallbackMessage = null;
+        }
         if (_activeAttemptUri is not null
             && !MatchesAttempt(_activeAttemptUri, routeUri))
         {
@@ -134,6 +172,11 @@ public sealed class NavigationFailureNotifier(IStringLocalizer<FcShellResources>
 
             completion.TrySetResult(false);
             _pendingConfirmations.Remove((requestedUri, completion));
+        }
+
+        if (_focusOwners == 0 && OwnsAttempt(routeUri))
+        {
+            ConfirmRoute(routeUri);
         }
     }
 
@@ -163,7 +206,12 @@ public sealed class NavigationFailureNotifier(IStringLocalizer<FcShellResources>
     {
         _activeAttemptUri = null;
         _failedReturnUri = null;
-        Message = localizer["RouteNavigationFailedText"].Value;
+        string destination = DestinationLabel ?? localizer["RouteNavigationUnknownDestinationLabel"].Value;
+        string? currentUri = _services?.GetService<NavigationManager>()?.Uri;
+        bool remainsOnPage = LastConfirmedUri is not null && string.Equals(currentUri, LastConfirmedUri, StringComparison.OrdinalIgnoreCase);
+        Message = remainsOnPage
+            ? localizer["RouteNavigationFailedNamedText", destination, CurrentPageLabel ?? localizer["RouteNavigationCurrentPageFallbackLabel"].Value].Value
+            : localizer["RouteNavigationFailedText", destination].Value;
         DestinationLabel = null;
         foreach ((string requestedUri, TaskCompletionSource<bool> completion) in _pendingConfirmations)
         {
@@ -173,40 +221,73 @@ public sealed class NavigationFailureNotifier(IStringLocalizer<FcShellResources>
         Changed?.Invoke();
     }
 
-    private static bool IsCanonicalChildRoute(string requestedUri, string renderedUri)
+    /// <summary>Whether this URI declares a canonical child route which must finish rendering.</summary>
+    internal bool IsCanonicalAlias(string routeUri) => CanonicalPath(routeUri) is not null;
+
+    private string? CanonicalPath(string requestedUri)
     {
-        if (!Uri.TryCreate(requestedUri, UriKind.Absolute, out Uri? requested)
-            || !Uri.TryCreate(renderedUri, UriKind.Absolute, out Uri? rendered)
-            || !string.Equals(requested.Scheme, rendered.Scheme, StringComparison.OrdinalIgnoreCase)
-            || !string.Equals(requested.Authority, rendered.Authority, StringComparison.OrdinalIgnoreCase))
+        if (!Uri.TryCreate(requestedUri, UriKind.Absolute, out Uri? requested))
         {
-            return false;
+            return null;
         }
-
-        // Only the legacy Tenants workspace alias has a trusted query-to-tab
-        // canonicalization. Opaque /tenants/{TenantId} detail URLs must never
-        // complete a pending workspace activation.
-        if (!string.Equals(requested.AbsolutePath.TrimEnd('/'), "/tenants", StringComparison.OrdinalIgnoreCase)
-            && requested.AbsolutePath != "/")
-        {
-            return false;
-        }
-
-        string? tab = requested.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries)
-            .Select(part => part.Split('=', 2))
-            .Where(parts => string.Equals(Uri.UnescapeDataString(parts[0]), "tab", StringComparison.OrdinalIgnoreCase))
-            .Select(parts => parts.Length > 1 ? Uri.UnescapeDataString(parts[1]) : string.Empty)
+        return (_services?.GetService<IFrontComposerRegistry>()?.GetManifests() ?? [])
+            .SelectMany(manifest => manifest.CanonicalRouteAliases)
+            .OrderByDescending(pair => pair.Key.Length)
+            .Where(pair => {
+                string[] alias = pair.Key.Split('?', 2);
+                return string.Equals(alias[0].TrimEnd('/'), requested.AbsolutePath.TrimEnd('/'), StringComparison.OrdinalIgnoreCase)
+                    && (alias.Length == 1 || QuerySelectorsMatch(alias[1], requested.Query));
+            })
+            .Select(pair => pair.Value)
             .FirstOrDefault();
-        string expectedPath = string.Equals(tab, "users", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(tab, "workspace-users", StringComparison.OrdinalIgnoreCase)
-            ? "/tenants/workspace-users"
-            : "/tenants/tenants";
-        return string.Equals(rendered.AbsolutePath, expectedPath, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool MatchesAttempt(string requestedUri, string routeUri)
+    private static bool QuerySelectorsMatch(string selectors, string requestedQuery)
+    {
+        Dictionary<string, Microsoft.Extensions.Primitives.StringValues> query = QueryHelpers.ParseQuery(requestedQuery);
+        return QueryHelpers.ParseQuery(selectors).All(selector =>
+            query.TryGetValue(selector.Key, out Microsoft.Extensions.Primitives.StringValues values)
+            && selector.Value.All(value => values.Contains(value, StringComparer.OrdinalIgnoreCase)));
+    }
+
+    private bool IsCanonicalChildRoute(string requestedUri, string renderedUri)
+        => Uri.TryCreate(requestedUri, UriKind.Absolute, out Uri? requested)
+            && Uri.TryCreate(renderedUri, UriKind.Absolute, out Uri? rendered)
+            && string.Equals(requested.Scheme, rendered.Scheme, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(requested.Authority, rendered.Authority, StringComparison.OrdinalIgnoreCase)
+            && CanonicalPath(requestedUri) is { } canonical
+            && string.Equals(rendered.AbsolutePath, canonical, StringComparison.OrdinalIgnoreCase);
+
+    private bool MatchesAttempt(string requestedUri, string routeUri)
         => string.Equals(requestedUri, routeUri, StringComparison.OrdinalIgnoreCase)
             || IsCanonicalChildRoute(requestedUri, routeUri);
+
+    private string SafeLabel(string? routeUri, string fallback)
+    {
+        IFrontComposerRegistry? registry = _services?.GetService<IFrontComposerRegistry>();
+        IStringLocalizerFactory? factory = _services?.GetService<IStringLocalizerFactory>();
+        if (registry is not null && Uri.TryCreate(routeUri, UriKind.Absolute, out Uri? route))
+        {
+            string path = route.AbsolutePath.TrimEnd('/');
+            FrontComposerNavEntry? entry = registry.GetNavEntries().FirstOrDefault(candidate =>
+                string.Equals(candidate.Href?.Split('?', '#')[0].TrimEnd('/'), path, StringComparison.OrdinalIgnoreCase));
+            if (entry is not null)
+            {
+                return factory is not null && entry.Resource is not null && entry.TitleKey is not null
+                    ? factory.Create(entry.Resource)[entry.TitleKey].Value : entry.Title;
+            }
+            DomainManifest? manifest = registry.GetManifests().FirstOrDefault(candidate =>
+                path.Equals("/" + candidate.BoundedContext, StringComparison.OrdinalIgnoreCase)
+                || path.StartsWith("/" + candidate.BoundedContext + "/", StringComparison.OrdinalIgnoreCase)
+                || path.StartsWith("/commands/" + candidate.BoundedContext + "/", StringComparison.OrdinalIgnoreCase));
+            if (manifest is not null)
+            {
+                return factory is not null && manifest.Resource is not null && manifest.NameKey is not null
+                    ? factory.Create(manifest.Resource)[manifest.NameKey].Value : manifest.Name;
+            }
+        }
+        return localizer[fallback].Value;
+    }
 
     /// <summary>Clears the message after successful navigation.</summary>
     public void Clear()

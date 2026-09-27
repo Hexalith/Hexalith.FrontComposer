@@ -27,9 +27,8 @@ public partial class FcSettingsButton : ComponentBase {
     /// <returns>A task representing the async dialog presentation.</returns>
     private async Task OpenDialogAsync() {
         try {
-            IJSObjectReference module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
+            await using IJSObjectReference module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
             await module.InvokeVoidAsync("captureOverlayOrigin", "fc-settings-button", true);
-            await module.DisposeAsync();
         }
         catch (Exception ex) when (ex is JSException or JSDisconnectedException or OperationCanceledException or InvalidOperationException) {
             // Dialog activation remains available if focus interop is unavailable.

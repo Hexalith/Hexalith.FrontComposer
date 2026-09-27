@@ -102,6 +102,7 @@ public static class ShortcutBinding {
     /// <see langword="false"/> when the event is a modifier-only press (Shift / Ctrl / Alt / Meta
     /// alone) or a key the framework cannot map (e.g., <c>"Unidentified"</c>).
     /// </summary>
+    /// <remarks>Shift used to type a single non-letter character is normalized away; for example, shift+/ becomes /.</remarks>
     /// <param name="e">The keyboard event to convert.</param>
     /// <param name="binding">The normalised binding string when the conversion succeeds.</param>
     /// <returns><see langword="true"/> when a non-empty binding was produced; otherwise <see langword="false"/>.</returns>
@@ -135,7 +136,7 @@ public static class ShortcutBinding {
             parts.Add("ctrl");
         }
 
-        if (e.ShiftKey) {
+        if (e.ShiftKey && (key.Length != 1 || char.IsLetter(key[0]))) {
             parts.Add("shift");
         }
 

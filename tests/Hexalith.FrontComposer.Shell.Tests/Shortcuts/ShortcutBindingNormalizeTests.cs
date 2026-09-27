@@ -43,6 +43,17 @@ public class ShortcutBindingNormalizeTests {
     [InlineData("ctrl+shift+ctrl")] // last token is a modifier — invalid.
     public void Normalize_RejectsUnknownModifiersOrInvalidTrailingTokens(string input) => Should.Throw<ArgumentException>(() => ShortcutBinding.Normalize(input));
 
+    [Theory]
+    [InlineData("/", "/")]
+    [InlineData("?", "?")]
+    [InlineData("K", "shift+k")]
+    [InlineData("ArrowRight", "shift+arrowright")]
+    public void ShiftNeededToTypePunctuationIsNotABindingModifier(string key, string expected)
+    {
+        ShortcutBinding.TryFromKeyboardEvent(new KeyboardEventArgs { Key = key, ShiftKey = true }, out string binding).ShouldBeTrue();
+        binding.ShouldBe(expected);
+    }
+
     [Fact]
     public void TryFromKeyboardEvent_BuildsCanonicalLowercaseBinding() {
         ShortcutBinding.TryFromKeyboardEvent(new KeyboardEventArgs { Key = "K", CtrlKey = true }, out string b)

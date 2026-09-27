@@ -570,7 +570,7 @@ public sealed class CommandPaletteEffects : IDisposable {
 
             bool authorized;
             try {
-                authorized = await CanSurfaceCommandAsync(manifest, result.CommandTypeName!, CancellationToken.None).ConfigureAwait(false);
+                authorized = await CanSurfaceCommandAsync(manifest, result.CommandTypeName!, CancellationToken.None).ConfigureAwait(true);
             }
             catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
                 if (IsActivationCurrent(snapshot, action, result, activationAttempt)) {
@@ -666,7 +666,7 @@ public sealed class CommandPaletteEffects : IDisposable {
             string destinationUri;
             Task<bool>? routeConfirmation;
             try {
-                destinationUri = navigation.ToAbsoluteUri(targetUrl).ToString();
+                destinationUri = navigation.ToAbsoluteUri(targetUrl).AbsoluteUri;
                 bool alreadyConfirmed = string.Equals(navigationFailure?.LastConfirmedUri, destinationUri, StringComparison.OrdinalIgnoreCase);
                 navigationFailure?.BeginAttempt(result.DisplayLabel, destinationUri);
                 routeConfirmation = alreadyConfirmed ? null : navigationFailure?.PrepareRouteConfirmation(destinationUri);
@@ -689,7 +689,7 @@ public sealed class CommandPaletteEffects : IDisposable {
                 // FcRouteFocus owns the rendered-heading deadline and extends it while
                 // authorization is pending. A separate timer here can announce a false
                 // failure during a valid, long authorization transition.
-                bool confirmed = await routeConfirmation.ConfigureAwait(false);
+                bool confirmed = await routeConfirmation.ConfigureAwait(true);
                 if (!confirmed) {
                     if (IsActivationCurrent(snapshot, action, result, activationAttempt)) {
                         dispatcher.Dispatch(new PaletteActivationFailedAction());
@@ -701,10 +701,9 @@ public sealed class CommandPaletteEffects : IDisposable {
                     return;
                 }
             }
-            if (!IsActivationCurrent(snapshot, action, result, activationAttempt)) {
-                return;
-            }
-
+            // Scope boundaries still retire work; query and selection changes do not undo navigation.
+            if (_paletteState.Value.ScopeGeneration != snapshot.ScopeGeneration) return;
+            // Once issued, rendered navigation settles independently of later query edits.
             SafeDispatchClose(dispatcher);
 
             // Shortcut-category rows are reference entries — never record them in the recent-route

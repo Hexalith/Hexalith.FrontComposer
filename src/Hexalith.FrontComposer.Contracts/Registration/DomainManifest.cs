@@ -59,4 +59,8 @@ public record DomainManifest(
     /// constructor and deconstruction contract remain source and binary compatible.
     /// </remarks>
     public IReadOnlyList<string>? FullPageCommands { get; init; }
+
+    /// <summary>Maps legacy route aliases to canonical child paths for rendered-route confirmation.</summary>
+    /// <remarks>Keys may include query selectors; the most specific matching selector wins.</remarks>
+    public IReadOnlyDictionary<string, string> CanonicalRouteAliases { get; init; } = new Dictionary<string, string>();
 }

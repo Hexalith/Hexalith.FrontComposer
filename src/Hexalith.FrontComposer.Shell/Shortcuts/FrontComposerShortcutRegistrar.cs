@@ -240,6 +240,17 @@ public sealed class FrontComposerShortcutRegistrar(
     /// container so the shortcut stays transparent in non-DataGrid contexts.
     /// </summary>
     /// <returns>A task that resolves when the focus attempt completes.</returns>
+    [Obsolete("Use FocusSolePageSearchAsync for the page-search shortcut.")]
+    public async Task FocusFirstColumnFilterAsync()
+    {
+        string? viewKey = await dataGridFocusScope.GetActiveViewKeyAsync().ConfigureAwait(false);
+        if (viewKey is not null)
+        {
+            _ = await dataGridFocusScope.FocusFirstColumnFilterAsync(viewKey).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Focuses the sole enabled search in the current route.</summary>
     public async Task FocusSolePageSearchAsync()
         => _ = await dataGridFocusScope.FocusSolePageSearchAsync().ConfigureAwait(false);
 

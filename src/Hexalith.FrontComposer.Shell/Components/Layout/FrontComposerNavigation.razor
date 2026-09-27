@@ -79,10 +79,6 @@
         bool bcShowsNew = !discovery.SeenCapabilities.Contains(bcCapabilityId) && aggregateCount > 0;
         bool activeContext = IsContextActive(manifest.BoundedContext, projections, entries);
         string menuId = FlyoutMenuId(manifest.BoundedContext);
-        string? soleHref = null;
-
-        @if (soleHref is null)
-        {
                 <FluentButton @key="@($"fc-nav-tile-{manifest.BoundedContext}")"
                                   id="@anchorId"
                                   Appearance="@ButtonAppearance.Subtle"
@@ -197,60 +193,6 @@
             <FluentTooltip @key="@($"fc-nav-tooltip-{manifest.BoundedContext}")" Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
                 @LocalizeManifestName(manifest)
             </FluentTooltip>
-        }
-        else
-        {
-            <FluentButton @key="@($"fc-nav-tile-{manifest.BoundedContext}")"
-                          id="@anchorId"
-                          Appearance="@ButtonAppearance.Subtle"
-                          Class="@ContextTileClass(activeContext)"
-                          Title="@(iconOnly ? LocalizeManifestName(manifest) : null)"
-                          aria-label="@(iconOnly ? LocalizeManifestName(manifest) : null)"
-                          aria-current="@(activeContext ? "page" : null)"
-                          data-testid="@($"fc-nav-context-{manifest.BoundedContext}")"
-                          data-active="@(activeContext ? "true" : "false")"
-                          tabindex="0"
-                          OnClick="@ContextTileClickCallback(manifest.BoundedContext, ModuleRouteCatalog.BuildRoute(manifest))">
-                <FluentStack Class="fc-navigation-rail__tile-content"
-                             Orientation="Orientation.Vertical"
-                             HorizontalAlignment="HorizontalAlignment.Center"
-                             VerticalAlignment="VerticalAlignment.Center"
-                             VerticalGap="2px"
-                             Width="100%">
-                    <FluentIcon Value="@ResolveNavEntryIcon(manifest.Icon, activeContext)" Color="Color.Primary" />
-                    @if (!iconOnly)
-                    {
-                        <FluentText Class="fc-navigation-rail__label"
-                                    Size="TextSize.Size200"
-                                    Weight="@(activeContext ? TextWeight.Semibold : TextWeight.Regular)">@LocalizeManifestName(manifest)</FluentText>
-                    }
-                </FluentStack>
-                @if (aggregateCount > 0 || bcShowsNew)
-                {
-                    <FluentStack Class="fc-navigation-rail__tile-badges"
-                                 Horizontal="true"
-                                 HorizontalAlignment="HorizontalAlignment.End"
-                                 VerticalAlignment="VerticalAlignment.Center"
-                                 HorizontalGap="2px">
-                        @if (aggregateCount > 0)
-                        {
-                            <FluentBadge Appearance="@BadgeAppearance.Filled"
-                                         Color="@BadgeColor.Brand"
-                                         data-testid="@($"fc-rail-badge-{manifest.BoundedContext}")">@aggregateCount</FluentBadge>
-                        }
-                        @if (bcShowsNew)
-                        {
-                            <FluentBadge Appearance="@BadgeAppearance.Tint"
-                                         Color="@BadgeColor.Informative"
-                                         data-testid="@($"fc-rail-new-{manifest.BoundedContext}")">@Localizer["NewCapabilityBadgeText"].Value</FluentBadge>
-                        }
-                    </FluentStack>
-                }
-            </FluentButton>
-            <FluentTooltip @key="@($"fc-nav-tooltip-{manifest.BoundedContext}")" Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
-                @LocalizeManifestName(manifest)
-            </FluentTooltip>
-        }
     }
     @foreach (string orphanBc in OrphanEntryContexts(navEntries))
     {

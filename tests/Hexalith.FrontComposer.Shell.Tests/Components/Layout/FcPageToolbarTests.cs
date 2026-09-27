@@ -16,6 +16,14 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 /// </summary>
 public sealed class FcPageToolbarTests : LayoutComponentTestBase {
     [Fact]
+    public void DisabledSearchKeepsMarkerAndEmitsDisabledFlag()
+    {
+        IRenderedComponent<FcPageToolbar> cut = Render<FcPageToolbar>(parameters => parameters.Add(toolbar => toolbar.SearchDisabled, true));
+        cut.Find("[data-fc-page-search]").HasAttribute("disabled").ShouldBeTrue();
+        cut.FindComponent<FluentTextInput>().Instance.Disabled.ShouldBe(true);
+    }
+
+    [Fact]
     public void FcPageToolbar_DefaultRendering_RendersSearchToolbarAndNoEmptyOptionalRegions() {
         IRenderedComponent<FcPageToolbar> cut = Render<FcPageToolbar>(parameters => parameters
             .Add(toolbar => toolbar.SearchValue, "orders")
@@ -24,6 +32,7 @@ public sealed class FcPageToolbarTests : LayoutComponentTestBase {
 
         IElement toolbar = cut.Find("[data-testid='fc-page-toolbar']");
         toolbar.GetAttribute("role").ShouldBe("toolbar");
+        toolbar.HasAttribute("data-fc-page-toolbar").ShouldBeTrue();
         toolbar.GetAttribute("aria-label").ShouldBe("Page tools");
 
         IRenderedComponent<FluentTextInput> search = cut.FindComponent<FluentTextInput>();
@@ -34,6 +43,7 @@ public sealed class FcPageToolbarTests : LayoutComponentTestBase {
         search.Instance.AriaLabel.ShouldBe("Search orders");
         search.Instance.AdditionalAttributes.ShouldNotBeNull();
         search.Instance.AdditionalAttributes!["data-testid"].ShouldBe("fc-page-toolbar-search");
+        search.Instance.AdditionalAttributes.ContainsKey("data-fc-page-search").ShouldBeTrue();
         cut.FindAll("label[for='fc-page-toolbar-search-input']").ShouldBeEmpty();
 
         cut.FindAll("[data-testid='fc-page-toolbar-filter-trigger']").ShouldBeEmpty();
@@ -132,7 +142,7 @@ public sealed class FcPageToolbarTests : LayoutComponentTestBase {
         renderedTabs[0].Instance.Id.ShouldBe("summary");
         renderedTabs[0].Instance.Header.ShouldBe("Summary");
         renderedTabs[1].Instance.Id.ShouldBe("activity");
-        renderedTabs[1].Instance.Disabled.ShouldBeTrue();
+        renderedTabs[1].Instance.Disabled.ShouldBe(true);
 
         await cut.InvokeAsync(() => fluentTabs.Instance.ActiveTabIdChanged.InvokeAsync("activity"));
 

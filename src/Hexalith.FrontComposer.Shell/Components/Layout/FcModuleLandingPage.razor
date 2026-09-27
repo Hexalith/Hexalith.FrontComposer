@@ -1,3 +1,6 @@
+@page "/{Module}"
+@page "/{Module}/overview"
+@page "/{Module}/{Tab}"
 @namespace Hexalith.FrontComposer.Shell.Components.Layout
 @using Hexalith.FrontComposer.Contracts.Registration
 @using Hexalith.FrontComposer.Contracts.Rendering
@@ -29,6 +32,9 @@ else
 @code {
     /// <summary>The registered bounded context selected by the route.</summary>
     [Parameter] public string? Module { get; set; }
+
+    /// <summary>The requested child tab.</summary>
+    [Parameter] public string? Tab { get; set; }
 
     private DomainManifest? RegisteredModule => Registry.GetManifests().FirstOrDefault(
         manifest => string.Equals(manifest.BoundedContext, Module, StringComparison.OrdinalIgnoreCase));

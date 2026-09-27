@@ -47,13 +47,14 @@ public sealed partial class FcRouteUnavailable : ComponentBase
             }
         }
 
-        NavigationFailure.BeginAttempt(null);
-        NavigationFailure.ReportFailure();
+        if (NavigationFailure.OwnsAttempt(routeUri))
+        {
+            NavigationFailure.ReportFailure();
+        }
         try
         {
-            IJSObjectReference module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
+            await using IJSObjectReference module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
             await module.InvokeVoidAsync("focusOverlayEntry", "fc-route-unavailable-heading");
-            await module.DisposeAsync();
         }
         catch (Exception ex) when (ex is JSDisconnectedException or JSException or OperationCanceledException or InvalidOperationException)
         {

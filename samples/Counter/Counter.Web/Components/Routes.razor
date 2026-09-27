@@ -26,7 +26,7 @@
             {
                 <LayoutView Layout="typeof(Layout.MainLayout)">
                     <div data-fc-route-content="@Nav.Uri">
-                    <RouteView @key="RouteBodyKey(routeData)" RouteData="routeData" DefaultLayout="typeof(FcRouteBodyLayout)" />
+                    <RouteView @key="Hexalith.FrontComposer.Shell.Routing.RouteComponentIdentity.For(routeData)" RouteData="routeData" DefaultLayout="typeof(FcRouteBodyLayout)" />
                     </div>
                     <FcRouteFocus RouteKey="@Nav.Uri" />
                 </LayoutView>
@@ -35,6 +35,7 @@
         <NotFound>
             <LayoutView Layout="typeof(Layout.MainLayout)">
                 <FcRouteUnavailable @key="Nav.Uri" />
+                <FcRouteFocus RouteKey="@Nav.Uri" FocusHeading="false" />
             </LayoutView>
         </NotFound>
     </Router>
@@ -43,10 +44,7 @@
 @code {
     private Assembly[] AdditionalRouteAssemblies =>
         FrontComposerSpecimenRoutes.IsEnabled(Configuration, Environment)
-            ? [typeof(IncrementCommand).Assembly, typeof(FrontComposerTypeSpecimen).Assembly]
-            : [typeof(IncrementCommand).Assembly];
+            ? [typeof(FcModuleLandingPage).Assembly, typeof(IncrementCommand).Assembly, typeof(FrontComposerTypeSpecimen).Assembly]
+            : [typeof(FcModuleLandingPage).Assembly, typeof(IncrementCommand).Assembly];
 
-    private object RouteBodyKey(RouteData routeData) => routeData.PageType.Name == "CounterPage"
-        ? routeData.PageType
-        : new Uri(Nav.Uri).AbsolutePath;
 }

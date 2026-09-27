@@ -22,9 +22,8 @@ public partial class FcPaletteTriggerButton : ComponentBase {
 
     private async Task OpenAsync() {
         try {
-            IJSObjectReference module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
+            await using IJSObjectReference module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
             await module.InvokeVoidAsync("captureOverlayOrigin", "fc-palette-trigger", true);
-            await module.DisposeAsync();
         }
         catch (Exception ex) when (ex is JSException or JSDisconnectedException or OperationCanceledException or InvalidOperationException) {
             // Fluent still opens the dialog when focus interop is unavailable.

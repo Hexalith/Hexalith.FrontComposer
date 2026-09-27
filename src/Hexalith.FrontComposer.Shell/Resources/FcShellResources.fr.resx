@@ -182,9 +182,6 @@
   <data name="PaletteCategoryRecent" xml:space="preserve">
     <value>Récents</value>
   </data>
-  <data name="PaletteResultCountTemplate" xml:space="preserve">
-    <value>{0} résultats</value>
-  </data>
   <data name="PaletteNoResultsText" xml:space="preserve">
     <value>Aucun résultat trouvé</value>
   </data>
@@ -376,9 +373,6 @@
   </data>
   <data name="EmptyFilteredStateTemplate" xml:space="preserve">
     <value>Aucun {0} ne correspond aux filtres. Réinitialiser les filtres pour voir les {1} {0}.</value>
-  </data>
-  <data name="SlashFocusFilterShortcutDescription" xml:space="preserve">
-    <value>Placer le focus sur le premier filtre de colonne du DataGrid actif</value>
   </data>
   <data name="PrioritizerMoreColumnsButtonLabelTemplate" xml:space="preserve">
     <value>Autres colonnes ({0} masquées)</value>
@@ -602,10 +596,10 @@
     <value>FrontComposer n'a pas pu démarrer. Vérifiez la configuration.</value>
   </data>
   <data name="RouteNavigationFailedText" xml:space="preserve">
-    <value>Impossible d'ouvrir cette page. Choisissez une autre page ou revenez à l'accueil.</value>
+    <value>Impossible d’ouvrir {0}.</value>
   </data>
   <data name="RouteNavigationFailedNamedText" xml:space="preserve">
-    <value>Impossible d'ouvrir cette page. Choisissez une autre page ou revenez à l'accueil.</value>
+    <value>Impossible d’ouvrir {0}. Vous restez sur {1}.</value>
   </data>
   <data name="RouteNavigationUnknownDestinationLabel" xml:space="preserve">
     <value>cette page</value>

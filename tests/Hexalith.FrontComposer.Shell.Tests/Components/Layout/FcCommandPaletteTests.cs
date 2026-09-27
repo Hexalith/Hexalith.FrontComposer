@@ -1,6 +1,8 @@
 // Story 3-4 Task 10.7 / 10.7b (D11 / D15 / D17 — AC2 / AC5).
 #pragma warning disable CA2007
 using Bunit;
+using System.Reflection;
+using System.Collections.Concurrent;
 
 using Fluxor;
 
@@ -21,6 +23,35 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 
 public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
     public FcCommandPaletteTests() => System.Globalization.CultureInfo.CurrentUICulture = new System.Globalization.CultureInfo("en");
+
+    [Theory]
+    [InlineData(true, "none")]
+    [InlineData(false, "none")]
+    [InlineData(true, "query")]
+    [InlineData(true, "selection")]
+    public async Task DialogClosesOnlyAfterSuccessfulRenderedConfirmation(bool success, string laterInput)
+    {
+        EnsureStoreInitialized();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        NavigationFailureNotifier failure = Services.GetRequiredService<NavigationFailureNotifier>();
+        using IRenderedComponent<FcRouteFocus> focus = Render<FcRouteFocus>(parameters => parameters.Add(owner => owner.RouteKey, navigation.Uri));
+        dispatcher.Dispatch(new PaletteOpenedAction("open"));
+        dispatcher.Dispatch(new PaletteResultsComputedAction(string.Empty,
+            [new PaletteResult(PaletteResultCategory.Recent, "Counter", "", "/counter", null, 1, false)]));
+        IDialogInstance dialog = CreateRegisteredDialogInstance();
+        IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>(parameters => parameters.Add(palette => palette.Dialog, dialog));
+        await cut.InvokeAsync(() => cut.Find("[data-testid='fc-palette-option']").Click());
+        dialog.Result.IsCompleted.ShouldBeFalse();
+        if (laterInput == "query")
+            await cut.InvokeAsync(() => cut.FindComponent<FluentTextInput>().Instance.ValueChanged.InvokeAsync("later query"));
+        else if (laterInput == "selection")
+            await cut.InvokeAsync(() => cut.Find("[data-testid='fc-palette-root']").KeyDown(new KeyboardEventArgs { Key = "ArrowDown" }));
+        dialog.Result.IsCompleted.ShouldBeFalse();
+        if (success) failure.ConfirmRoute(navigation.Uri);
+        else failure.ReportFailure();
+        cut.WaitForAssertion(() => dialog.Result.IsCompleted.ShouldBe(success));
+    }
 
     [Fact]
     public void RendersDialogBodyWithSearchAndResultRoot() {
@@ -71,12 +102,14 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
         EnsureStoreInitialized();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
         dispatcher.Dispatch(new PaletteOpenedAction("open"));
-        IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
+        IDialogInstance dialog = CreateRegisteredDialogInstance();
+        IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>(parameters => parameters.Add(palette => palette.Dialog, dialog));
 
         dispatcher.Dispatch(new PaletteActivationDeniedAction(PaletteActivationDenialKind.Permission));
         cut.WaitForAssertion(() => {
             cut.Find("[data-testid='fc-palette-denied-heading']").TextContent.ShouldBe("Permission required");
             cut.Find("[data-testid='fc-palette-search']").ShouldNotBeNull();
+            FocusModule.Invocations.Count(call => call.Identifier == "focusOverlayEntry" && Equals(call.Arguments[0], "fc-palette-denied-heading")).ShouldBe(1);
         });
 
         await cut.InvokeAsync(() => cut.FindComponent<FluentTextInput>().Instance.ValueChanged.InvokeAsync("retry"));
@@ -84,6 +117,7 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
         state.Value.IsOpen.ShouldBeTrue();
         state.Value.Query.ShouldBe("retry");
         state.Value.ActivationDenial.ShouldBeNull();
+        dialog.Result.IsCompleted.ShouldBeFalse();
     }
 
     [Fact]
@@ -413,4 +447,25 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
     }
 
     private sealed class CounterProjectionStub { }
+    private IDialogInstance CreateRegisteredDialogInstance() {
+        IDialogService dialogService = Services.GetRequiredService<IDialogService>();
+        ConstructorInfo constructor = typeof(DialogInstance).GetConstructor(
+            BindingFlags.Instance | BindingFlags.NonPublic,
+            binder: null,
+            [typeof(IDialogService), typeof(Type), typeof(DialogOptions)],
+            modifiers: null) ?? throw new InvalidOperationException("Fluent UI DialogInstance constructor was not found.");
+
+        var dialog = (IDialogInstance)constructor.Invoke(
+            [dialogService, typeof(FcCommandPalette), new DialogOptions()]);
+
+        FieldInfo itemsField = typeof(DialogService).BaseType?.GetField(
+            "_list",
+            BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("Fluent UI dialog registry was not found.");
+
+        var items =
+            (ConcurrentDictionary<string, IDialogInstance>)itemsField.GetValue(dialogService)!;
+        items.TryAdd(dialog.Id, dialog).ShouldBeTrue();
+        return dialog;
+    }
 }

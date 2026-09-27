@@ -102,6 +102,11 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     private bool _interactiveReady;
     private bool _startupFailure;
     private bool _startupFailureFocused;
+    [Inject] private Microsoft.Extensions.Logging.ILogger<FrontComposerShell> Logger { get; set; } = default!;
+
+    [Microsoft.Extensions.Logging.LoggerMessage(EventId = 13200, Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "FrontComposer shell startup failed.")]
+    private static partial void LogStartupFailure(Microsoft.Extensions.Logging.ILogger logger, Exception exception);
+
     private ElementReference _startupFailureHeading;
     private bool _locationTrackingRegistered;
     private readonly object _locationTrackingSync = new();
@@ -124,8 +129,8 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     private readonly FcContentLabelCoordinator _contentLabelCoordinator = new();
 
     /// <summary>
-    /// Header content rendered BEFORE the application title (left-aligned). When <see langword="null"/>
-    /// the shell auto-populates <see cref="FcHamburgerToggle"/> (Story 3-2 D8 / D18).
+    /// Header content rendered after the framework-owned hamburger and before the application title.
+    /// The hamburger remains reachable in every viewport when this slot is supplied.
     /// </summary>
     [Parameter] public RenderFragment? HeaderStart { get; set; }
 
@@ -340,6 +345,7 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
                 return ScopeBoundary.IsCurrent && (Navigation is not null || HasRenderableManifest());
             }
             catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+                LogStartupFailure(Logger, ex);
                 _startupFailure = true;
                 return false;
             }
@@ -495,7 +501,8 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
             ScopeBoundary.Changed += OnScopeChanged;
         }
         catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-            _startupFailure = true;
+            LogStartupFailure(Logger, ex);
+                _startupFailure = true;
         }
         // FC-LYT (Story 1.2) — re-render #fc-main-content's mode attribute/class when a child
         // <FcPageLayout> flips the coordinator (it registers in its OnAfterRender, after the shell's
@@ -540,7 +547,12 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
         if (_startupFailure) {
             if (!_startupFailureFocused) {
                 _startupFailureFocused = true;
-                await _startupFailureHeading.FocusAsync().ConfigureAwait(false);
+                try {
+                    await _startupFailureHeading.FocusAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is JSException or OperationCanceledException or InvalidOperationException) {
+                    // The safe heading stays visible when the browser circuit has ended.
+                }
             }
             return;
         }
@@ -559,6 +571,7 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
                 _ = InvokeAsync(StateHasChanged);
             }
             catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+                LogStartupFailure(Logger, ex);
                 _startupFailure = true;
                 _ = InvokeAsync(StateHasChanged);
                 return;

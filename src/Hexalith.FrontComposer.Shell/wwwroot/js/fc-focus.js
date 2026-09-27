@@ -30,8 +30,9 @@ export function labelTabPanels(testId) {
 }
 
 export function captureOverlayOrigin(testId = null, preserveExisting = false) {
+    if (document.activeElement?.closest('[role="dialog"], fluent-dialog')) return;
     if (preserveExisting && window.__fcOverlayOrigin instanceof HTMLElement
-        && window.__fcOverlayOrigin.isConnected) {
+        && window.__fcOverlayOrigin.isConnected && window.__fcOverlayOpenIntent) {
         return;
     }
     const candidate = testId
@@ -40,11 +41,13 @@ export function captureOverlayOrigin(testId = null, preserveExisting = false) {
     window.__fcOverlayOrigin = candidate instanceof HTMLElement && candidate.isConnected && !candidate.disabled
         ? candidate
         : null;
+    window.__fcOverlayOpenIntent = { origin: window.__fcOverlayOrigin, moved: false, watchFocus: false };
 }
 
 export function restoreOverlayOrigin(forceRouteHeading = false) {
     const origin = window.__fcOverlayOrigin;
     window.__fcOverlayOrigin = null;
+    window.__fcOverlayOpenIntent = null;
     let userMovedFocus = false;
     const markUserMove = () => { userMovedFocus = true; };
     document.addEventListener('pointerdown', markUserMove, true);
@@ -70,31 +73,29 @@ export function restoreOverlayOrigin(forceRouteHeading = false) {
 }
 
 export function focusOverlayEntry(id, respectOpeningIntent = false) {
-    if (respectOpeningIntent && window.__fcOverlayOpenIntent !== undefined
-        && window.__fcFocusIntentEpoch !== window.__fcOverlayOpenIntent) {
-        return false;
-    }
-    let userMovedFocus = false;
-    const markUserMove = () => { userMovedFocus = true; };
-    document.addEventListener('pointerdown', markUserMove, true);
-    document.addEventListener('keydown', markUserMove, true);
+    const intent = respectOpeningIntent ? window.__fcOverlayOpenIntent : null;
+    if (respectOpeningIntent) window.__fcOverlayOpenIntent = null;
+    if (intent?.moved) return false;
+    const guard = new AbortController();
+    let inputOrigin = null;
+    let moved = false;
+    const recordInput = () => { inputOrigin = document.activeElement; };
+    document.addEventListener('keydown', recordInput, { capture: true, signal: guard.signal });
+    document.addEventListener('pointerdown', recordInput, { capture: true, signal: guard.signal });
+    document.addEventListener('focusin', () => {
+        if (inputOrigin && document.activeElement !== inputOrigin) moved = true;
+    }, { capture: true, signal: guard.signal });
     const focus = () => {
         const target = document.getElementById(id);
-        if (!(target instanceof HTMLElement) || !target.isConnected || target.hasAttribute('disabled')) {
-            return false;
-        }
+        if (!(target instanceof HTMLElement) || !target.isConnected || target.hasAttribute('disabled')) return false;
         target.scrollIntoView({ block: 'nearest' });
         target.focus({ preventScroll: true });
         return true;
     };
     focus();
     setTimeout(() => {
-        document.removeEventListener('pointerdown', markUserMove, true);
-        document.removeEventListener('keydown', markUserMove, true);
-        if (!userMovedFocus && document.activeElement !== document.getElementById(id)
-            && (!respectOpeningIntent || window.__fcFocusIntentEpoch === window.__fcOverlayOpenIntent)) {
-            focus();
-        }
+        guard.abort();
+        if (!moved) focus();
     }, 150);
     return document.activeElement === document.getElementById(id);
 }
@@ -102,6 +103,8 @@ export function focusOverlayEntry(id, respectOpeningIntent = false) {
 export function preserveRouteFocusAfterOverlay(openedRoute) {
     const openedPath = new URL(openedRoute, document.baseURI).pathname;
     const origin = window.__fcOverlayOrigin;
+    window.__fcOverlayOrigin = null;
+    window.__fcOverlayOpenIntent = null;
     const focusHeadingIfNeeded = () => {
         if (window.location.pathname === openedPath) {
             return;
@@ -141,7 +144,7 @@ export function preserveRouteFocusAfterOverlay(openedRoute) {
     setTimeout(() => document.removeEventListener('focusin', onFocus, true), 3000);
 }
 
-export function focusRouteHeading(routeKey, routeFocusOwner, preservePaletteFocus = false) {
+export function focusRouteHeading(routeKey, routeFocusOwner, preservePaletteFocus = false, ownedActivation = false, canonicalAlias = false) {
     const path = normalizePath(new URL(routeKey, document.baseURI).pathname);
     if (pendingTabFocus && pendingTabFocus.path !== path) {
         pendingTabFocus = null;
@@ -165,9 +168,8 @@ export function focusRouteHeading(routeKey, routeFocusOwner, preservePaletteFocu
         if (pendingRoutePath !== routeKey || normalizePath(window.location.pathname) !== path) {
             return false;
         }
-        if (path.toLowerCase() === '/tenants') {
-            // The Tenants workspace rewrites this legacy alias to a route-backed
-            // child. Its intermediate heading is not the final destination.
+        if (canonicalAlias) {
+            // Manifest-declared aliases confirm only their canonical child.
             return false;
         }
         // AuthorizeRouteView can leave the outgoing heading mounted while the
@@ -191,7 +193,7 @@ export function focusRouteHeading(routeKey, routeFocusOwner, preservePaletteFocu
             if (!(deniedHeading instanceof HTMLElement)) {
                 return false;
             }
-            if (lastFocusedRoute !== routeKey || lastFocusedHeading !== deniedHeading) {
+            if (!ownedActivation && (lastFocusedRoute !== routeKey || lastFocusedHeading !== deniedHeading)) {
                 if (!deniedHeading.hasAttribute('tabindex')) {
                     deniedHeading.setAttribute('tabindex', '-1');
                 }
@@ -263,7 +265,11 @@ export function focusRouteHeading(routeKey, routeFocusOwner, preservePaletteFocu
         const samePageQueryUpdate = lastFocusedRoute !== null
             && normalizePath(new URL(lastFocusedRoute, document.baseURI).pathname) === path
             && lastFocusedHeading === heading;
-        if (!tabRetainsFocus && !samePageQueryUpdate
+        const replacementOnConfirmedRoute = lastFocusedRoute === routeKey && lastFocusedHeading !== heading;
+        const canFocusReplacement = !replacementOnConfirmedRoute || active === document.body
+            || !(active instanceof HTMLElement) || !active.isConnected
+            || (active === lastFocusedHeading && !lastFocusedHeading?.isConnected);
+        if (!tabRetainsFocus && !samePageQueryUpdate && canFocusReplacement
             && (lastFocusedRoute !== routeKey || lastFocusedHeading !== heading)) {
             if (!heading.hasAttribute('tabindex')) {
                 heading.setAttribute('tabindex', '-1');
@@ -307,11 +313,6 @@ export function focusRouteHeading(routeKey, routeFocusOwner, preservePaletteFocu
             .catch(() => {});
     };
     routeFocusTimer = setTimeout(expire, 5000);
-}
-
-export function getRouteHeadingLabel() {
-    const heading = document.querySelector('#fc-main-content h1, main h1');
-    return heading instanceof HTMLElement ? heading.textContent?.trim() ?? null : null;
 }
 
 function runAfterDismiss(callback) {

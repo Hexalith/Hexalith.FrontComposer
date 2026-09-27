@@ -51,7 +51,14 @@ public sealed record PaletteSelectionMovedAction(int Delta);
 /// Dispatched when the user activates the currently-selected result (Enter or click) (Story 3-4 D13 / D23).
 /// </summary>
 /// <param name="SelectedIndex">The flat index into <see cref="FrontComposerCommandPaletteState.Results"/>.</param>
-public sealed record PaletteResultActivatedAction(int SelectedIndex, PaletteResult? ExpectedResult = null, string? ExpectedQuery = null);
+public sealed record PaletteResultActivatedAction(int SelectedIndex, PaletteResult? ExpectedResult = null, string? ExpectedQuery = null)
+{
+    /// <summary>Activates the selected result using the original binary contract.</summary>
+    public PaletteResultActivatedAction(int selectedIndex) : this(selectedIndex, null, null) { }
+
+    /// <summary>Deconstructs the original single-index activation contract.</summary>
+    public void Deconstruct(out int selectedIndex) => selectedIndex = SelectedIndex;
+}
 
 /// <summary>
 /// Dispatched after a successful palette activation lands a navigation (Story 3-4 D10 / D13).

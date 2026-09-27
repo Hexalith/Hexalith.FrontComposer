@@ -29,6 +29,12 @@ public sealed partial class FcRouteFocus : ComponentBase, IAsyncDisposable
     /// <summary>The current route URI, used to rerun focus after route changes.</summary>
     [Parameter] public string RouteKey { get; set; } = string.Empty;
 
+    /// <summary>Whether this owner focuses a route heading. Disable when an unavailable-route component owns focus.</summary>
+    [Parameter] public bool FocusHeading { get; set; } = true;
+
+    /// <inheritdoc />
+    protected override void OnInitialized() => NavigationFailure.RegisterFocusOwner();
+
     /// <inheritdoc />
     protected override void OnParametersSet()
     {
@@ -43,6 +49,8 @@ public sealed partial class FcRouteFocus : ComponentBase, IAsyncDisposable
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (!FocusHeading) return;
+
         try
         {
             _focusModule ??= await JS.InvokeAsync<IJSObjectReference>("import", FocusModulePath);
@@ -58,7 +66,7 @@ public sealed partial class FcRouteFocus : ComponentBase, IAsyncDisposable
             }
 
             _selfReference ??= DotNetObjectReference.Create(this);
-            await _focusModule.InvokeVoidAsync("focusRouteHeading", RouteKey, _selfReference, NavigationFailure.IsFailedReturn(RouteKey));
+            await _focusModule.InvokeVoidAsync("focusRouteHeading", RouteKey, _selfReference, NavigationFailure.IsFailedReturn(RouteKey), NavigationFailure.OwnsAttempt(RouteKey), NavigationFailure.IsCanonicalAlias(RouteKey));
         }
         catch (Exception ex) when (ex is JSDisconnectedException or JSException or OperationCanceledException or InvalidOperationException)
         {
@@ -130,7 +138,7 @@ public sealed partial class FcRouteFocus : ComponentBase, IAsyncDisposable
                 NavigationFailure.CancelFailedReturn();
             }
         }
-        else
+        else if (NavigationFailure.OwnsAttempt(routeKey))
         {
             NavigationFailure.ReportFailure();
         }
@@ -146,6 +154,7 @@ public sealed partial class FcRouteFocus : ComponentBase, IAsyncDisposable
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
+        NavigationFailure.UnregisterFocusOwner();
         _selfReference?.Dispose();
         if (_focusModule is not null)
         {

@@ -20,9 +20,8 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Pages;
 
 /// <summary>
 /// Story 2.2 QA gap-pin (AC2) — <see cref="FcHomeRouteView"/> is the pure routing shim that mounts
-/// the home directory at the framework "/" and "/home" routes (Story 3-5 D16). Task 2 says to
-/// "re-confirm" this mapping, but no test covered it. This file pins both the declared <c>@page</c>
-/// routes (so the deep-link contract can't silently regress) and the <see cref="FcHomeDirectory"/>
+/// the home directory at the shared "/home" route while leaving the root to the host.
+/// This file pins the declared <c>@page</c> route and the <see cref="FcHomeDirectory"/>
 /// mount (so the shim can't be hollowed out).
 /// </summary>
 public sealed class FcHomeRouteViewTests : LayoutComponentTestBase {
@@ -43,15 +42,14 @@ public sealed class FcHomeRouteViewTests : LayoutComponentTestBase {
     }
 
     [Fact]
-    public void DeclaresRootAndHomeRoutes() {
-        // AC2 — @page "/" + @page "/home". Adopters override by registering their own @page "/" in a
-        // later-scanned assembly (Blazor's route table takes the last matching exact route).
+    public void DeclaresHomeRouteAndLeavesRootToHost() {
+        // Shared routes must not collide with a host-owned exact root route.
         IReadOnlyList<string> templates = [.. typeof(FcHomeRouteView)
             .GetCustomAttributes(typeof(RouteAttribute), inherit: false)
             .Cast<RouteAttribute>()
             .Select(static r => r.Template)];
 
-        templates.ShouldContain("/");
+        templates.ShouldNotContain("/");
         templates.ShouldContain("/home");
     }
 

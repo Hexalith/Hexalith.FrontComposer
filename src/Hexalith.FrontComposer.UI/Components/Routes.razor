@@ -6,7 +6,7 @@
         <Router AppAssembly="typeof(Hexalith.FrontComposer.UI.Components.App).Assembly"
                 AdditionalAssemblies="RouteAssemblies">
             <Found Context="routeData">
-                <div @key="RouteIdentity" data-fc-route-content="@Nav.Uri">
+                <div @key="Hexalith.FrontComposer.Shell.Routing.RouteComponentIdentity.For(routeData)" data-fc-route-content="@Nav.Uri">
                 <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(FcRouteBodyLayout)">
                     <NotAuthorized Context="authState">
                         @if (authState.User.Identity?.IsAuthenticated != true)
@@ -30,17 +30,17 @@
             </Found>
             <NotFound>
                 <FcRouteUnavailable @key="Nav.Uri" />
+                <FcRouteFocus RouteKey="@Nav.Uri" FocusHeading="false" />
             </NotFound>
         </Router>
     </LayoutView>
 </CascadingAuthenticationState>
 
 @code {
-    // Query changes update a mounted workspace without discarding its component state.
-    private string RouteIdentity => new Uri(Nav.Uri).AbsolutePath;
 
     private static readonly System.Reflection.Assembly[] RouteAssemblies =
     [
+        typeof(FcModuleLandingPage).Assembly,
         typeof(Hexalith.Tenants.UI.Composition.TenantsFrontComposerDomain).Assembly,
         typeof(Hexalith.Parties.AdminPortal.Components.PartiesAdminPortal).Assembly,
         typeof(Hexalith.Parties.ConsumerPortal.Components.MyProfilePage).Assembly,

@@ -68,6 +68,6 @@ WebApplication app = builder.Build();
 app.UseStaticFiles();
 app.UseAntiforgery();
 app.MapRazorComponents<AdopterProofKit.Web.Components.App>()
-    .AddAdditionalAssemblies(typeof(ProofDomain).Assembly)
+    .AddAdditionalAssemblies(typeof(ProofDomain).Assembly, typeof(Hexalith.FrontComposer.Shell.Components.Layout.FcModuleLandingPage).Assembly)
     .AddInteractiveServerRenderMode();
 app.Run();

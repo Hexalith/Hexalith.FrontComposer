@@ -1,5 +1,6 @@
 #pragma warning disable CA2007
 using Hexalith.FrontComposer.Shell.Services;
+using Bunit;
 
 using Microsoft.JSInterop;
 
@@ -10,6 +11,17 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.Services;
 
 public sealed class DataGridFocusScopeTests {
+    [Fact]
+    public async Task SoleSearchForwardsToCurrentRouteInterop()
+    {
+        using Bunit.BunitContext context = new();
+        Bunit.BunitJSModuleInterop module = context.JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-keyboard.js");
+        module.Setup<bool>("focusSolePageSearch").SetResult(true);
+        await using DataGridFocusScope scope = new(context.JSInterop.JSRuntime);
+        (await scope.FocusSolePageSearchAsync(Xunit.TestContext.Current.CancellationToken)).ShouldBeTrue();
+        module.Invocations.Count(call => call.Identifier == "focusSolePageSearch").ShouldBe(1);
+    }
+
     [Fact]
     public async Task MethodsReuseImportedKeyboardModule_AndDisposeItOnce() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;

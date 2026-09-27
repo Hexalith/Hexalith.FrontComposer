@@ -16,6 +16,23 @@ namespace Hexalith.FrontComposer.Shell.Tests.Registration;
 public class FrontComposerRegistryTests {
 
     [Fact]
+    public void HostsCanUseNamesWhichBelongToOtherDomainHosts()
+    {
+        FrontComposerRegistry registry = new([], [], NullLogger<FrontComposerRegistry>.Instance);
+        registry.RegisterDomain(new DomainManifest("Admin", "Admin", [], []));
+        registry.RegisterDomain(new DomainManifest("Me", "Me", [], []));
+        registry.GetManifests().Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public void UnsafeOrphanNavigationContextFailsAtRegistration()
+    {
+        FrontComposerRegistry registry = new([], [], NullLogger<FrontComposerRegistry>.Instance);
+        Should.Throw<InvalidOperationException>(() => registry.AddNavEntry(new FrontComposerNavEntry("Tenant Admin", "Tenants", "/admin")))
+            .Message.ShouldContain("HFC1601");
+    }
+
+    [Fact]
     public void AddHexalithDomain_CounterAssembly_UsesGeneratedBoundedContextFallback() {
         ServiceCollection services = new();
         _ = services.AddHexalithFrontComposer();
@@ -298,7 +315,10 @@ public class FrontComposerRegistryTests {
     [InlineData("sales%2Freports")]
     [InlineData(".hidden")]
     public void RegisterDomain_RejectsMissingOrHostOwnedModuleAlias(string boundedContext) {
-        FrontComposerRegistry registry = new([], [], NullLogger<FrontComposerRegistry>.Instance);
+        Hexalith.FrontComposer.Shell.Options.FrontComposerRouteOptions routes = new();
+        routes.ReservedSegments.UnionWith(["admin", "me", "no-party-binding", "global-administrators"]);
+        FrontComposerRegistry registry = new([], [], NullLogger<FrontComposerRegistry>.Instance,
+            Microsoft.Extensions.Options.Options.Create(routes));
 
         InvalidOperationException exception = Should.Throw<InvalidOperationException>(() =>
             registry.RegisterDomain(new DomainManifest("Invalid", boundedContext, [], [])));

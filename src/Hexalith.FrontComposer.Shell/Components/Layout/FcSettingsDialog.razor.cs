@@ -41,7 +41,7 @@ public partial class FcSettingsDialog : Fluxor.Blazor.Web.Components.FluxorCompo
     /// <inheritdoc />
     protected override void OnInitialized() {
         base.OnInitialized();
-        _openedRoute = Navigation.Uri;
+        _openedRoute = new Uri(Navigation.Uri).AbsolutePath;
     }
 
     /// <inheritdoc />
@@ -64,7 +64,7 @@ public partial class FcSettingsDialog : Fluxor.Blazor.Web.Components.FluxorCompo
         if (_focusModule is not null) {
             try {
                 bool routeChanged = _openedRoute is not null
-                    && !string.Equals(_openedRoute, Navigation.Uri, StringComparison.OrdinalIgnoreCase);
+                    && !string.Equals(_openedRoute, new Uri(Navigation.Uri).AbsolutePath, StringComparison.OrdinalIgnoreCase);
                 await _focusModule.InvokeVoidAsync("restoreOverlayOrigin", routeChanged);
                 await _focusModule.DisposeAsync();
             }

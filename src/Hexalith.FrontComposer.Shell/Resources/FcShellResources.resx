@@ -202,10 +202,6 @@
   <data name="PaletteCategoryRecent" xml:space="preserve">
     <value>Recent</value>
   </data>
-  <data name="PaletteResultCountTemplate" xml:space="preserve">
-    <value>{0} results</value>
-    <comment>Story 3-4 D15 — aria-live region template; {0} is the result count.</comment>
-  </data>
   <data name="PaletteNoResultsText" xml:space="preserve">
     <value>No matches found</value>
     <comment>Story 3-4 D15 — empty-state copy AND aria-live announce text on zero results.</comment>
@@ -434,10 +430,6 @@
   <data name="EmptyFilteredStateTemplate" xml:space="preserve">
     <value>No {0} match the current filters. Reset filters to see all {1} {0}.</value>
     <comment>Story 4-3 D19 / AC6 — FcFilterEmptyState body copy. {0}=entity plural, {1}=total count.</comment>
-  </data>
-  <data name="SlashFocusFilterShortcutDescription" xml:space="preserve">
-    <value>Focus the first column filter in the current DataGrid</value>
-    <comment>Story 4-3 Review pass 2 — description column for the `/` shortcut row in the shortcut reference view (replaces the copy-pasted PaletteShortcutDescription).</comment>
   </data>
   <data name="PrioritizerMoreColumnsButtonLabelTemplate" xml:space="preserve">
     <value>More columns ({0} hidden)</value>
@@ -727,10 +719,10 @@
     <value>FrontComposer could not start. Review the configuration.</value>
   </data>
   <data name="RouteNavigationFailedText" xml:space="preserve">
-    <value>Could not open that page. Choose another page or return Home.</value>
+    <value>Could not open {0}.</value>
   </data>
   <data name="RouteNavigationFailedNamedText" xml:space="preserve">
-    <value>Could not open that page. Choose another page or return Home.</value>
+    <value>Could not open {0}. You remain on {1}.</value>
   </data>
   <data name="RouteNavigationUnknownDestinationLabel" xml:space="preserve">
     <value>that page</value>

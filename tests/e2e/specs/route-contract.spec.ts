@@ -278,3 +278,91 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await expect(page.getByRole('main').getByRole('heading', { level: 1, name: 'Counter' })).toBeFocused();
   });
 });
+
+test('later route heading replacement preserves an operator control focus', async ({ page }) => {
+  await new CounterPage(page).goto();
+  const trigger = page.getByTestId('fc-palette-trigger');
+  await trigger.focus();
+  await page.evaluate(() => {
+    const old = document.querySelector('[data-fc-route-content] h1')!;
+    const replacement = old.cloneNode(true);
+    old.replaceWith(replacement);
+  });
+  await expect(trigger).toBeFocused();
+});
+
+test('repeated palette shortcut preserves the original invoker', async ({ page }) => {
+  await new CounterPage(page).goto();
+  const trigger = page.getByTestId('fc-palette-trigger');
+  await trigger.focus();
+  await page.keyboard.press('Control+k');
+  await expect(page.getByRole('searchbox')).toBeFocused();
+  await page.keyboard.press('Control+k');
+  await page.keyboard.press('Escape');
+  await expect(trigger).toBeFocused();
+});
+
+test('typing before delayed overlay entry does not cancel focus', async ({ page }) => {
+  await new CounterPage(page).goto();
+  await page.evaluate(async () => {
+    const modulePath = '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js';
+    const focus = await import(modulePath);
+    const origin = document.querySelector('[data-testid="fc-palette-trigger"]') as HTMLElement;
+    origin.focus();
+    focus.captureOverlayOrigin();
+    origin.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+    const heading = document.querySelector('#fc-main-content h1') as HTMLElement;
+    heading.id = 'delayed-overlay-entry';
+    focus.focusOverlayEntry(heading.id, true);
+  });
+  await expect(page.getByRole('main').getByRole('heading', { level: 1 })).toBeFocused();
+});
+
+test('owned denied route suppresses the denied heading focus', async ({ page }) => {
+  await new CounterPage(page).goto();
+  const trigger = page.getByTestId('fc-palette-trigger');
+  await trigger.focus();
+  await page.evaluate(async () => {
+    const modulePath = '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js';
+    const focus = await import(modulePath);
+    const heading = document.querySelector('[data-fc-route-content] h1')!;
+    const denied = document.createElement('div');
+    denied.setAttribute('data-fc-route-denied', 'true');
+    heading.replaceWith(denied);
+    denied.append(heading);
+    focus.focusRouteHeading(location.href, { invokeMethodAsync: () => Promise.resolve() }, false, true);
+  });
+  await expect(trigger).toBeFocused();
+});
+
+
+test('later keyboard focus movement suppresses delayed overlay entry', async ({ page }) => {
+  await new CounterPage(page).goto();
+  await page.evaluate(async () => {
+    const modulePath = '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js';
+    const focus = await import(modulePath);
+    const origin = document.querySelector('[data-testid="fc-palette-trigger"]') as HTMLElement;
+    origin.focus();
+    focus.captureOverlayOrigin();
+    origin.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    (document.querySelector('[data-testid="fc-settings-button"]') as HTMLElement).focus();
+    const heading = document.querySelector('#fc-main-content h1') as HTMLElement;
+    heading.id = 'delayed-overlay-entry';
+    focus.focusOverlayEntry(heading.id, true);
+  });
+  await expect(page.getByTestId('fc-settings-button')).toBeFocused();
+});
+
+
+for (const [route, heading] of [
+  ['/__frontcomposer/specimens/header-logo/default', 'Default header logo'],
+  ['/__frontcomposer/specimens/header-logo/custom', 'Custom header logo'],
+]) {
+  test(`header specimen has a focused route heading: ${heading}`, async ({ page }) => {
+    await page.goto(route);
+    await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+    const routeHeading = page.getByRole('main').getByRole('heading', { level: 1, name: heading });
+    await expect(routeHeading).toHaveCount(1);
+    await expect(routeHeading).toBeFocused();
+  });
+}

@@ -37,6 +37,40 @@ public class CommandPaletteEffectsTests {
     private const string TestUser = "user-1";
 
     [Fact]
+    public async Task ConfirmedNavigationSettlesAfterQueryAndResultsChange()
+    {
+        PaletteResult result = new(PaletteResultCategory.Recent, "Orders", "", "/orders", null, 1, false);
+        IState<FrontComposerCommandPaletteState> palette = Substitute.For<IState<FrontComposerCommandPaletteState>>();
+        TestNavigationManager navigation = new();
+        CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out IServiceProvider services,
+            paletteResults: [result], navigationManager: navigation, suppliedPaletteState: palette);
+        navigation.OnNavigate = null;
+        Task activation = sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0, result, string.Empty), dispatcher);
+        palette.Value.Returns(palette.Value with { Query = "changed", Results = [] });
+        services.GetRequiredService<NavigationFailureNotifier>().ConfirmRoute("https://localhost/orders");
+        await activation;
+        dispatcher.Received(1).Dispatch(Arg.Any<PaletteClosedAction>());
+        dispatcher.Received(1).Dispatch(Arg.Any<RecentRouteVisitedAction>());
+    }
+
+    [Theory]
+    [InlineData("/orders/Cr%C3%A9er")]
+    [InlineData("/orders/a%20b")]
+    public async Task EncodedRouteConfirmationClosesAndRecordsRecent(string route)
+    {
+        PaletteResult result = new(PaletteResultCategory.Recent, "Orders", "", route, null, 1, false);
+        TestNavigationManager navigation = new();
+        CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out IServiceProvider services,
+            paletteResults: [result], navigationManager: navigation);
+        navigation.OnNavigate = null;
+        Task activation = sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0, result, string.Empty), dispatcher);
+        services.GetRequiredService<NavigationFailureNotifier>().ConfirmRoute(new Uri(new Uri("https://localhost"), route).AbsoluteUri);
+        await activation;
+        dispatcher.Received(1).Dispatch(Arg.Any<PaletteClosedAction>());
+        dispatcher.Received(1).Dispatch(Arg.Any<RecentRouteVisitedAction>());
+    }
+
+    [Fact]
     public async Task ResolveShortcutAliasQuery_AliasesMapToCanonicalShortcuts() {
         foreach (string alias in new[] { "?", "help", "keys", "kb", "shortcut", "shortcuts", "Help", "KB" }) {
             CommandPaletteEffects.ResolveShortcutAliasQuery(alias).ShouldBe("shortcuts");
@@ -267,7 +301,8 @@ public class CommandPaletteEffectsTests {
         PaletteResult result = new(PaletteResultCategory.Recent, "Tenants", "", "/tenants?tab=users", null, 1, false);
         TestNavigationManager navigation = new();
         CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out IServiceProvider services,
-            paletteResults: [result], navigationManager: navigation);
+            paletteResults: [result], navigationManager: navigation,
+            manifests: [new DomainManifest("Tenants", "tenants", [], []) { CanonicalRouteAliases = new Dictionary<string, string> { ["/tenants?tab=users"] = "/tenants/workspace-users" } }]);
         navigation.OnNavigate = null;
 
         Task activation = sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0, result, string.Empty), dispatcher);
@@ -793,7 +828,8 @@ public class CommandPaletteEffectsTests {
         IReadOnlyList<string>? recentRoutes = null,
         string? currentContext = null,
         ICommandAuthorizationEvaluator? authorizationEvaluator = null,
-        NavigationManager? navigationManager = null) {
+        NavigationManager? navigationManager = null,
+        IState<FrontComposerCommandPaletteState>? suppliedPaletteState = null) {
         time = new FakeTimeProvider();
         dispatcher = Substitute.For<IDispatcher>();
 
@@ -839,7 +875,7 @@ public class CommandPaletteEffectsTests {
             testNavigation.OnNavigate = uri => confirmation.ConfirmRoute(uri);
         }
 
-        IState<FrontComposerCommandPaletteState> paletteState = Substitute.For<IState<FrontComposerCommandPaletteState>>();
+        IState<FrontComposerCommandPaletteState> paletteState = suppliedPaletteState ?? Substitute.For<IState<FrontComposerCommandPaletteState>>();
         ImmutableArray<PaletteResult> results = paletteResults is null
             ? ImmutableArray<PaletteResult>.Empty
             : [.. paletteResults];

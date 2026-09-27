@@ -202,10 +202,10 @@ app.UseAntiforgery();
 
 RazorComponentsEndpointConventionBuilder razorComponents = app.MapRazorComponents<Counter.Web.Components.App>();
 if (specimensEnabled) {
-    _ = razorComponents.AddAdditionalAssemblies(typeof(IncrementCommand).Assembly, typeof(FrontComposerTypeSpecimen).Assembly);
+    _ = razorComponents.AddAdditionalAssemblies(typeof(Hexalith.FrontComposer.Shell.Components.Layout.FcModuleLandingPage).Assembly, typeof(IncrementCommand).Assembly, typeof(FrontComposerTypeSpecimen).Assembly);
 }
 else {
-    _ = razorComponents.AddAdditionalAssemblies(typeof(IncrementCommand).Assembly);
+    _ = razorComponents.AddAdditionalAssemblies(typeof(Hexalith.FrontComposer.Shell.Components.Layout.FcModuleLandingPage).Assembly, typeof(IncrementCommand).Assembly);
 }
 
 razorComponents

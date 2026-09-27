@@ -564,7 +564,7 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
 
     private void NavigateSafely(string route, string? destinationLabel) {
         try {
-            NavigationFailure.BeginAttempt(destinationLabel, Navigation.ToAbsoluteUri(route).ToString());
+            NavigationFailure.BeginAttempt(destinationLabel, Navigation.ToAbsoluteUri(route).AbsoluteUri);
             Navigation.NavigateTo(route);
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or UriFormatException) {

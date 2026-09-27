@@ -34,6 +34,7 @@ public class FrontComposerShortcutRegistrarTests {
 
         await sut.RegisterShellDefaultsAsync();
 
+        shortcuts.Received(1).Register("/", "SlashFocusPageSearchShortcutDescription", Arg.Is<Func<Task>>(handler => handler.Method.Name == nameof(FrontComposerShortcutRegistrar.FocusSolePageSearchAsync)), Arg.Is<string?>(x => x == null), Arg.Any<string>(), Arg.Any<int>());
         shortcuts.Received(1).Register("ctrl+k", "PaletteShortcutDescription", Arg.Any<Func<Task>>(), Arg.Is<string?>(x => x == null), Arg.Any<string>(), Arg.Any<int>());
         shortcuts.Received(1).Register("meta+k", "PaletteShortcutDescription", Arg.Any<Func<Task>>(), Arg.Is<string?>(x => x == null), Arg.Any<string>(), Arg.Any<int>());
         shortcuts.Received(1).Register("ctrl+,", "SettingsShortcutDescription", Arg.Any<Func<Task>>(), Arg.Is<string?>(x => x == null), Arg.Any<string>(), Arg.Any<int>());

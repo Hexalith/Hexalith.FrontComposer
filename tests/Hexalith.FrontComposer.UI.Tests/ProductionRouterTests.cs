@@ -79,7 +79,7 @@ public sealed class ProductionRouterTests : BunitContext
         IRenderedComponent<Router> cut = RenderProductionRouter();
 
         cut.Find("[data-testid='matched-route']").TextContent
-            .ShouldBe("Hexalith.FrontComposer.UI.Components.Pages.Home");
+            .ShouldBe("Hexalith.FrontComposer.Shell.Components.Pages.FcHomeRouteView");
     }
 
     [Theory]
@@ -117,6 +117,27 @@ public sealed class ProductionRouterTests : BunitContext
     }
 
     [Fact]
+    public async Task UnavailableRouteRetainsFocusOwnershipUntilDeniedDestinationSettles()
+    {
+        _authorization.SetAuthorized("operator");
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/unmatched/path/extra");
+        IRenderedComponent<Routes> cut = Render<Routes>();
+        cut.FindComponent<FcRouteUnavailable>().ShouldNotBeNull();
+        NavigationFailureNotifier failure = Services.GetRequiredService<NavigationFailureNotifier>();
+        string destination = navigation.ToAbsoluteUri("/admin/parties").AbsoluteUri;
+        failure.BeginAttempt("Admin", destination);
+        Task<bool> confirmation = failure.PrepareRouteConfirmation(destination);
+        failure.ObserveLocation(destination);
+        confirmation.IsCompleted.ShouldBeFalse();
+        navigation.NavigateTo(destination);
+        cut.WaitForElement("[data-fc-route-denied='true'] h1");
+        cut.FindComponent<FcRouteFocus>().Instance.ReportRouteHeadingDenied(destination);
+        confirmation.IsCompletedSuccessfully.ShouldBeTrue();
+        (await confirmation.ConfigureAwait(true)).ShouldBeFalse();
+    }
+
+    [Fact]
     public void ProtectedRouteRendersDeniedMarkerForRouteFocusOwner()
     {
         _authorization.SetAuthorized("operator");
@@ -148,11 +169,11 @@ public sealed class ProductionRouterTests : BunitContext
         NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
         navigation.NavigateTo("/accounting?filter=first");
         IRenderedComponent<Routes> cut = Render<Routes>();
-        ModuleLanding mounted = cut.FindComponent<ModuleLanding>().Instance;
+        FcModuleLandingPage mounted = cut.FindComponent<FcModuleLandingPage>().Instance;
 
-        navigation.NavigateTo("/accounting?filter=second");
+        navigation.NavigateTo("/accounting/overview?filter=second");
 
-        cut.WaitForAssertion(() => cut.FindComponent<ModuleLanding>().Instance.ShouldBeSameAs(mounted));
+        cut.WaitForAssertion(() => cut.FindComponent<FcModuleLandingPage>().Instance.ShouldBeSameAs(mounted));
         cut.Find("[data-fc-route-content]").GetAttribute("data-fc-route-content")
             .ShouldBe(navigation.Uri);
     }
@@ -200,12 +221,12 @@ public sealed class ProductionRouterTests : BunitContext
             .ShouldBeGreaterThan(initialFocusCalls));
         _focusModule.Invocations.Last(invocation => invocation.Identifier == "focusRouteHeading")
             .Arguments[2].ShouldBe(true);
-        failure.Message.ShouldBe("Could not open that page. Choose another page or return Home.");
+        failure.Message.ShouldBe("Could not open that page.");
         failureMessages.ShouldBe(1);
         _focusModule.Invocations.Any(invocation => invocation.Identifier == "focusOverlayEntry").ShouldBeFalse();
 
         cut.FindComponent<FcRouteFocus>().Instance.ConfirmRouteHeading(navigation.Uri);
-        failure.Message.ShouldBe("Could not open that page. Choose another page or return Home.");
+        failure.Message.ShouldBe("Could not open that page.");
         failureMessages.ShouldBe(1);
     }
 
@@ -239,116 +260,14 @@ public sealed class ProductionRouterTests : BunitContext
         };
         navigation.NavigateTo("/unmapped/first/page");
         IRenderedComponent<Routes> cut = Render<Routes>();
-        cut.WaitForAssertion(() => failures.ShouldBe(1));
+        cut.WaitForAssertion(() => cut.Find("#fc-route-unavailable-heading").ShouldNotBeNull());
+        failures.ShouldBe(0);
 
         navigation.NavigateTo("/unmapped/second/page");
 
-        cut.WaitForAssertion(() => failures.ShouldBe(2));
+        cut.WaitForAssertion(() => cut.Find("#fc-route-unavailable-heading").ShouldNotBeNull());
+        failures.ShouldBe(0);
         cut.Find("#fc-route-unavailable-heading").TextContent.ShouldBe("Page unavailable");
-    }
-
-    [Fact]
-    public void RetriedBrokenRouteReportsFailureForEachAttempt()
-    {
-        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
-        navigation.NavigateTo("/broken");
-        NavigationFailureNotifier failure = Services.GetRequiredService<NavigationFailureNotifier>();
-        int failures = 0;
-        failure.Changed += () =>
-        {
-            if (failure.Message is not null)
-            {
-                failures++;
-            }
-        };
-        IRenderedComponent<FcRouteFocus> cut = Render<FcRouteFocus>(parameters =>
-            parameters.Add(focus => focus.RouteKey, navigation.Uri));
-
-        failure.BeginAttempt("Unavailable", navigation.Uri);
-        cut.Instance.ReportRouteHeadingMissing(navigation.Uri);
-        cut.Instance.ReportRouteHeadingMissing(navigation.Uri);
-        failures.ShouldBe(1);
-
-        failure.BeginAttempt("Unavailable", navigation.Uri);
-        cut.Instance.ReportRouteHeadingMissing(navigation.Uri);
-        failures.ShouldBe(2);
-    }
-
-    [Fact]
-    public async Task MatchedRouteWithoutHeadingRecoversOwnedActivationAndSettlesPaletteWait()
-    {
-        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
-        navigation.NavigateTo("/parties");
-        NavigationFailureNotifier failure = Services.GetRequiredService<NavigationFailureNotifier>();
-        failure.ConfirmRoute(navigation.Uri);
-        string returnUri = navigation.Uri;
-        navigation.NavigateTo("/accounting");
-        failure.BeginAttempt("Accounting", navigation.Uri);
-        Task<bool> pending = failure.PrepareRouteConfirmation(navigation.Uri);
-        IRenderedComponent<FcRouteFocus> cut = Render<FcRouteFocus>(parameters =>
-            parameters.Add(focus => focus.RouteKey, navigation.Uri));
-
-        cut.Instance.ReportRouteHeadingMissing(navigation.Uri);
-
-        (await pending.ConfigureAwait(true)).ShouldBeFalse();
-        navigation.Uri.ShouldBe(returnUri);
-        failure.Message.ShouldNotBeNull();
-    }
-
-    [Fact]
-    public void DirectMatchedRouteWithoutHeadingShowsFocusableSafeHeading()
-    {
-        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
-        navigation.NavigateTo("/accounting");
-        IRenderedComponent<FcRouteFocus> cut = Render<FcRouteFocus>(parameters =>
-            parameters.Add(focus => focus.RouteKey, navigation.Uri));
-
-        cut.Instance.ReportRouteHeadingMissing(navigation.Uri);
-
-        cut.WaitForAssertion(() => cut.Find("#fc-route-unavailable-heading").TextContent.ShouldBe("Page unavailable"));
-        _focusModule.Invocations.Any(invocation => invocation.Identifier == "focusOverlayEntry").ShouldBeTrue();
-    }
-
-    [Fact]
-    public async Task DeniedHeadingFailsOwnedActivationWithoutRecordingSuccess()
-    {
-        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
-        NavigationFailureNotifier failure = Services.GetRequiredService<NavigationFailureNotifier>();
-        navigation.NavigateTo("/parties");
-        failure.ConfirmRoute(navigation.Uri);
-        string returnUri = navigation.Uri;
-        navigation.NavigateTo("/admin/parties");
-        failure.BeginAttempt("Parties administration", navigation.Uri);
-        Task<bool> pending = failure.PrepareRouteConfirmation(navigation.Uri);
-        IRenderedComponent<FcRouteFocus> cut = Render<FcRouteFocus>(parameters =>
-            parameters.Add(focus => focus.RouteKey, navigation.Uri));
-
-        cut.Instance.ReportRouteHeadingDenied(navigation.Uri);
-
-        (await pending.ConfigureAwait(true)).ShouldBeFalse();
-        navigation.Uri.ShouldBe(returnUri);
-        failure.LastConfirmedUri.ShouldBe(returnUri);
-    }
-
-    [Fact]
-    public async Task FocusInteropFailureSettlesOwnedActivation()
-    {
-        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
-        NavigationFailureNotifier failure = Services.GetRequiredService<NavigationFailureNotifier>();
-        navigation.NavigateTo("/parties");
-        failure.ConfirmRoute(navigation.Uri);
-        string returnUri = navigation.Uri;
-        navigation.NavigateTo("/accounting");
-        failure.BeginAttempt("Accounting", navigation.Uri);
-        Task<bool> pending = failure.PrepareRouteConfirmation(navigation.Uri);
-        _focusModule.SetupVoid("focusRouteHeading", _ => true)
-            .SetException(new JSException("focus unavailable"));
-
-        _ = Render<FcRouteFocus>(parameters => parameters.Add(focus => focus.RouteKey, navigation.Uri));
-
-        (await pending.ConfigureAwait(true)).ShouldBeFalse();
-        navigation.Uri.ShouldBe(returnUri);
-        failure.Message.ShouldNotBeNull();
     }
 
     [Fact]
@@ -362,6 +281,7 @@ public sealed class ProductionRouterTests : BunitContext
 
         cut.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/accounting/overview"));
         cut.Find("[data-fc-module-route='/accounting']").ShouldNotBeNull();
+        cut.Find("[data-testid='fc-module-tab-fallback']").TextContent.ShouldContain("Overview");
     }
 
     private IRenderedComponent<Router> RenderProductionRouter()

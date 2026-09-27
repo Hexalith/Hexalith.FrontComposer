@@ -17,8 +17,7 @@
    <FrontComposerShell>@Body</FrontComposerShell> in their MainLayout.razor. Story 3-2 additions
    (D10 / D18 / Task 8.3 / Task 8.3a): HeaderCenter slot for breadcrumbs (Story 3-5 fills content),
    Navigation slot auto-populates <FrontComposerNavigation /> when the adopter leaves it null AND
-   the registry has ≥1 renderable manifest (ADR-035), FcHamburgerToggle auto-populates HeaderStart
-   symmetrically, FcLayoutBreakpointWatcher mounts alongside FcSystemThemeWatcher, skip-to-navigation
+   the registry has ≥1 renderable manifest (ADR-035), FcHamburgerToggle always precedes optional HeaderStart content, FcLayoutBreakpointWatcher mounts alongside FcSystemThemeWatcher, skip-to-navigation
    link renders immediately after Story 3-1's SkipToContent link (AC6 / D16). *@
 
 <HeadContent>

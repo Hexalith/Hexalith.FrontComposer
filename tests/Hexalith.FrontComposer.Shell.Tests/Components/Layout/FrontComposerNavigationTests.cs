@@ -55,6 +55,16 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
     }
 
     [Fact]
+    public void RegisteredModuleTileNavigatesToAliasWithoutOpeningFlyout()
+    {
+        _registry.GetManifests().Returns([new DomainManifest("Counter", "Counter", ["Counter.Domain.Projections.CounterView"], [])]);
+        IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
+        cut.Find("[data-testid='fc-nav-context-Counter']").Click();
+        Services.GetRequiredService<NavigationManager>().Uri.ShouldEndWith("/counter");
+        JSInterop.Invocations.Any(call => call.Identifier == "openMenu").ShouldBeFalse();
+    }
+
+    [Fact]
     public void DesktopExpanded_RendersUnifiedLabeledRail_WithoutLegacyFluentNavTree() {
         _registry.GetManifests().Returns([
             new DomainManifest("Counter", "Counter", ["Counter.Domain.Projections.CounterView"], Commands: []),

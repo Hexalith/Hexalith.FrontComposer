@@ -1,20 +1,29 @@
-// Capture focus intent before a Blazor callback can await a module import.
+// Capture each open before an asynchronous Blazor callback. Only a real focus move
+// following later user input suppresses entry focus; typing alone does not.
 if (!window.__fcFocusIntentTrackerInstalled) {
     window.__fcFocusIntentTrackerInstalled = true;
-    window.__fcFocusIntentEpoch = 0;
     const record = (event) => {
-        window.__fcFocusIntentEpoch += 1;
+        const intent = window.__fcOverlayOpenIntent;
+        if (intent) intent.watchFocus = true;
         const trigger = (typeof event.composedPath === 'function' ? event.composedPath() : [event.target])
             .filter((node) => node instanceof Element)
             .map((node) => node.closest('[data-testid="fc-settings-button"], [data-testid="fc-palette-trigger"]'))
             .find((node) => node instanceof HTMLElement);
-        if (trigger instanceof HTMLElement) {
+        const opensTrigger = event.type === 'pointerdown' || event.key === 'Enter' || event.key === ' ';
+        if (opensTrigger && trigger instanceof HTMLElement && !document.activeElement?.closest('[role="dialog"], fluent-dialog')) {
             window.__fcOverlayOrigin = trigger;
-            window.__fcOverlayOpenIntent = window.__fcFocusIntentEpoch;
+            window.__fcOverlayOpenIntent = { origin: trigger, moved: false, watchFocus: false };
         }
     };
     document.addEventListener('pointerdown', record, true);
     document.addEventListener('keydown', record, true);
+    document.addEventListener('focusin', (event) => {
+        const intent = window.__fcOverlayOpenIntent;
+        if (intent?.watchFocus && event.target !== intent.origin
+            && !event.target?.matches?.('[role="dialog"], fluent-dialog, [data-testid="fc-palette-search"], #fc-settings-heading')) {
+            intent.moved = true;
+        }
+    }, true);
 }
 
 function isEditableElement(element) {
@@ -95,28 +104,26 @@ function registerFilter(element, marker, predicate) {
 }
 
 export function focusElement(element) {
-    const focus = () => {
-        if (element?.isConnected && typeof element.focus === "function") {
-            element.focus();
-        }
-    };
-    let userMovedFocus = false;
-    const markUserMove = () => { userMovedFocus = true; };
-    document.addEventListener("pointerdown", markUserMove, true);
-    document.addEventListener("keydown", markUserMove, true);
     const isPaletteEntry = element?.getAttribute?.('data-testid') === 'fc-palette-search';
-    if (isPaletteEntry && window.__fcOverlayOpenIntent !== undefined
-        && window.__fcFocusIntentEpoch !== window.__fcOverlayOpenIntent) {
-        return;
-    }
+    const intent = isPaletteEntry ? window.__fcOverlayOpenIntent : null;
+    if (isPaletteEntry) window.__fcOverlayOpenIntent = null;
+    if (intent?.moved) return;
+    const guard = new AbortController();
+    let inputOrigin = null;
+    let moved = false;
+    const recordInput = () => { inputOrigin = document.activeElement; };
+    document.addEventListener('keydown', recordInput, { capture: true, signal: guard.signal });
+    document.addEventListener('pointerdown', recordInput, { capture: true, signal: guard.signal });
+    document.addEventListener('focusin', () => {
+        if (inputOrigin && document.activeElement !== inputOrigin) moved = true;
+    }, { capture: true, signal: guard.signal });
+    const focus = () => {
+        if (element?.isConnected && typeof element.focus === "function") element.focus();
+    };
     focus();
-    const focused = document.activeElement === element;
     setTimeout(() => {
-        document.removeEventListener("pointerdown", markUserMove, true);
-        document.removeEventListener("keydown", markUserMove, true);
-        if (!userMovedFocus && !focused) {
-            focus();
-        }
+        guard.abort();
+        if (!moved) focus();
     }, 150);
 }
 
@@ -162,7 +169,7 @@ export function registerShellKeyFilter(element) {
         const key = (event.key ?? "").toLowerCase();
         const active = document.activeElement;
         const hasModifier =
-            event.ctrlKey || event.metaKey || event.shiftKey || event.altKey;
+            event.ctrlKey || event.metaKey || (event.shiftKey && (key.length !== 1 || /\p{L}/u.test(key))) || event.altKey;
 
         if (key === "/" && (event.isComposing || event.keyCode === 229 || (!hasModifier && isEditableInComposedPath(event)))) {
             event.stopPropagation();
@@ -182,10 +189,10 @@ export function registerShellKeyFilter(element) {
             (key === "k" || key === ",")
         ) {
             const active = document.activeElement;
-            window.__fcOverlayOrigin = active instanceof HTMLElement && active.isConnected && !active.disabled
-                ? active
-                : null;
-            window.__fcOverlayOpenIntent = window.__fcFocusIntentEpoch;
+            if (!active?.closest('[role="dialog"], fluent-dialog')) {
+                window.__fcOverlayOrigin = active instanceof HTMLElement && active.isConnected && !active.disabled ? active : null;
+                window.__fcOverlayOpenIntent = { origin: active, moved: false, watchFocus: false };
+            }
             event.preventDefault();
             return;
         }

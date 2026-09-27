@@ -4,6 +4,8 @@ using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Routing;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Hexalith.FrontComposer.Shell.Options;
 
 namespace Hexalith.FrontComposer.Shell.Registration;
 /// <summary>
@@ -12,6 +14,7 @@ namespace Hexalith.FrontComposer.Shell.Registration;
 /// Domain registrations from <see cref="DomainRegistrationAction"/> are applied on construction.
 /// </summary>
 internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComposerNavEntryRegistry, IFrontComposerFullPageRouteRegistry, IFrontComposerCommandWriteAccessRegistry, IFrontComposerCommandPolicyRegistry {
+    private readonly FrontComposerRouteOptions _routeOptions;
     private readonly object _sync = new();
     private readonly List<DomainManifest> _manifests = [];
     private readonly List<(string Name, string BoundedContext)> _navGroups = [];
@@ -21,7 +24,9 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
     public FrontComposerRegistry(
         IEnumerable<DomainRegistrationAction> registrationActions,
         IEnumerable<DomainRegistrationWarning> warnings,
-        ILogger<FrontComposerRegistry> logger) {
+        ILogger<FrontComposerRegistry> logger,
+        IOptions<FrontComposerRouteOptions>? routeOptions = null) {
+        _routeOptions = routeOptions?.Value ?? new();
         _logger = logger;
         foreach (DomainRegistrationWarning warning in warnings) {
             FrontComposerWarningLog.RegistryRegistrationSkipped(
@@ -64,6 +69,9 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
     /// <inheritdoc />
     public void AddNavEntry(FrontComposerNavEntry entry) {
         ArgumentNullException.ThrowIfNull(entry);
+        if (!ModuleRouteCatalog.IsValidSegment(entry.BoundedContext)) {
+            throw new InvalidOperationException($"{FcDiagnosticIds.HFC1601_ManifestInvalid}: a navigation entry requires a route-safe bounded context.");
+        }
         lock (_sync) {
             _navEntries.Add(entry);
         }
@@ -191,6 +199,7 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
                 Commands = [.. existing.Commands.Concat(incoming.Commands).Distinct(StringComparer.Ordinal)],
                 CommandPolicies = MergeCommandPolicies(existing.CommandPolicies, incoming.CommandPolicies),
                 FullPageCommands = MergeFullPageCommands(existing, incoming),
+                CanonicalRouteAliases = existing.CanonicalRouteAliases.Concat(incoming.CanonicalRouteAliases).GroupBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase).ToDictionary(group => group.Key, group => group.Last().Value, StringComparer.OrdinalIgnoreCase),
                 Icon = existing.Icon ?? incoming.Icon,
                 NameKey = existing.NameKey ?? incoming.NameKey,
                 Resource = existing.Resource ?? incoming.Resource,
@@ -220,6 +229,7 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
                 ? new Dictionary<string, string>(StringComparer.Ordinal)
                 : new Dictionary<string, string>(manifest.CommandPolicies, StringComparer.Ordinal),
             FullPageCommands = manifest.FullPageCommands is null ? null : [.. manifest.FullPageCommands],
+            CanonicalRouteAliases = new Dictionary<string, string>(manifest.CanonicalRouteAliases, StringComparer.OrdinalIgnoreCase),
         };
 
     private static IReadOnlyList<string>? MergeFullPageCommands(DomainManifest existing, DomainManifest incoming) {
@@ -263,7 +273,7 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
         legacyCommands.UnionWith(manifest.Commands);
     }
 
-    private static void ValidateManifest(DomainManifest manifest) {
+    private void ValidateManifest(DomainManifest manifest) {
         if (!ModuleRouteCatalog.IsValidSegment(manifest.BoundedContext)) {
             throw new InvalidOperationException(
                 $"{FcDiagnosticIds.HFC1601_ManifestInvalid}: a route-safe bounded context is required for a Module route.");
@@ -273,10 +283,20 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
         // routes or route families, so accepting them would make a registered tile
         // lead to an unrelated page instead of its Overview tab.
         string alias = manifest.BoundedContext.ToLowerInvariant();
-        if (alias is "home" or "admin" or "me" or "commands" or "no-party-binding"
-            or "global-administrators" or "__frontcomposer") {
+        if (alias is "home" or "commands" or "__frontcomposer"
+            || _routeOptions.ReservedSegments.Contains(alias)) {
             throw new InvalidOperationException(
                 $"{FcDiagnosticIds.HFC1601_ManifestInvalid}: bounded context '{manifest.BoundedContext}' collides with a host route.");
+        }
+
+        foreach (KeyValuePair<string, string> routeAlias in manifest.CanonicalRouteAliases) {
+            string source = routeAlias.Key.Split('?', 2)[0].TrimEnd('/');
+            string target = routeAlias.Value;
+            if ((source.Length != 0 && !source.Equals("/" + alias, StringComparison.OrdinalIgnoreCase))
+                || !target.StartsWith("/" + alias + "/", StringComparison.OrdinalIgnoreCase)
+                || !ModuleRouteCatalog.IsValidSegment(target[(alias.Length + 2)..])) {
+                throw new InvalidOperationException($"{FcDiagnosticIds.HFC1601_ManifestInvalid}: canonical aliases must resolve to a child of their Module.");
+            }
         }
 
         if (manifest.FullPageCommands is null) {

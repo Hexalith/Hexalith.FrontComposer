@@ -32,17 +32,19 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 public sealed class FcSettingsDialogTests : LayoutComponentTestBase {
     public FcSettingsDialogTests() => EnsureStoreInitialized();
 
-    [Fact]
-    public async Task RouteChangeBeforeCloseReturnsFocusToNewHeading() {
+    [Theory]
+    [InlineData("/home", true)]
+    [InlineData("/counter?search=changed", false)]
+    public async Task RouteChangeBeforeCloseReturnsFocusToNewHeading(string destination, bool routeChanged) {
         NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
         navigation.NavigateTo("/counter");
         IRenderedComponent<FcSettingsDialog> cut = Render<FcSettingsDialog>();
 
-        navigation.NavigateTo("/home");
+        navigation.NavigateTo(destination);
         await cut.Instance.DisposeAsync();
 
         FocusModule.Invocations.Last(invocation => invocation.Identifier == "restoreOverlayOrigin")
-            .Arguments[0].ShouldBe(true);
+            .Arguments[0].ShouldBe(routeChanged);
     }
 
     [Fact]

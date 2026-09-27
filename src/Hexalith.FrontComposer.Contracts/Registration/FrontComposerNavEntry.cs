@@ -23,10 +23,10 @@ namespace Hexalith.FrontComposer.Contracts.Registration;
 /// satisfy the named policy (evaluated via <c>AuthorizeView</c>); otherwise the entry is always shown.
 /// </param>
 /// <param name="Enabled">
-/// When <see langword="false"/>, the entry renders as a non-navigable, disabled affordance (e.g. a
-/// capability that is not yet reachable) rather than a link.
+/// When <see langword="false"/>, Module More menus omit the destination. Other navigation
+/// surfaces may show it as a non-navigable affordance with its disabled reason.
 /// </param>
-/// <param name="DisabledReason">Optional explanation shown beneath a disabled (<c>Enabled = false</c>) entry.</param>
+/// <param name="DisabledReason">Optional explanation for surfaces which render disabled entries. Module More menus omit disabled destinations.</param>
 /// <param name="TitleKey">
 /// Optional resource key for the displayed label. When set together with <paramref name="Resource"/>,
 /// the shell resolves the visible title (and <see cref="DisabledReason"/>) per the request culture via

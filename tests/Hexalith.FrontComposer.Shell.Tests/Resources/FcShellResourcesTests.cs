@@ -167,7 +167,6 @@ public sealed class FcShellResourcesTests {
     [InlineData("PaletteCategoryProjections", "Projections", "Projections")]
     [InlineData("PaletteCategoryCommands", "Commands", "Commandes")]
     [InlineData("PaletteCategoryRecent", "Recent", "Récents")]
-    [InlineData("PaletteResultCountTemplate", "{0} results", "{0} résultats")]
     [InlineData("PaletteNoResultsText", "No matches found", "Aucun résultat trouvé")]
     [InlineData("PaletteInCurrentContextSuffix", "(in current context)", "(dans le contexte actuel)")]
     [InlineData("ShortcutsCategoryLabel", "Keyboard shortcuts", "Raccourcis clavier")]
@@ -249,9 +248,6 @@ public sealed class FcShellResourcesTests {
     [InlineData("SortDirectionAscending", "ascending", "croissant")]
     [InlineData("SortDirectionDescending", "descending", "décroissant")]
     [InlineData("FilterSummaryOrConjunction", " or ", " ou ")]
-    [InlineData("SlashFocusFilterShortcutDescription",
-        "Focus the first column filter in the current DataGrid",
-        "Placer le focus sur le premier filtre de colonne du DataGrid actif")]
     public void FilterSurfaceKeysResolveInBothLocales(string key, string enValue, string frValue) {
         ServiceProvider provider = BuildLocalizedProvider();
         using IServiceScope scope = provider.CreateScope();

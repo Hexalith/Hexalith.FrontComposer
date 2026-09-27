@@ -23,8 +23,16 @@ public sealed partial class FcPageTabs : ComponentBase, IAsyncDisposable
     private IJSObjectReference? _focusModule;
     private string? _announcedFallback;
     private string? _pendingFallback;
-    private string? _fallbackDestination;
-    private string? _fallbackStatus;
+    private string? FallbackDestination
+    {
+        get => NavigationFailure.TabFallbackDestination;
+        set => NavigationFailure.TabFallbackDestination = value;
+    }
+    private string? FallbackStatus
+    {
+        get => NavigationFailure.TabFallbackMessage;
+        set => NavigationFailure.TabFallbackMessage = value;
+    }
     private bool _disposed;
 
     [Inject] private NavigationManager Navigation { get; set; } = default!;
@@ -112,8 +120,8 @@ public sealed partial class FcPageTabs : ComponentBase, IAsyncDisposable
             {
                 _pendingFallback = null;
                 _announcedFallback = null;
-                _fallbackStatus = null;
-                _fallbackDestination = null;
+                FallbackStatus = null;
+                FallbackDestination = null;
                 return declaredDefault.Id;
             }
 
@@ -128,10 +136,10 @@ public sealed partial class FcPageTabs : ComponentBase, IAsyncDisposable
             {
                 _pendingFallback = null;
                 _announcedFallback = null;
-                if (!string.Equals("/" + path, _fallbackDestination, StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals("/" + path, FallbackDestination, StringComparison.OrdinalIgnoreCase))
                 {
-                    _fallbackStatus = null;
-                    _fallbackDestination = null;
+                    FallbackStatus = null;
+                    FallbackDestination = null;
                 }
                 return matching.Id;
             }
@@ -139,15 +147,15 @@ public sealed partial class FcPageTabs : ComponentBase, IAsyncDisposable
             _pendingFallback = path;
             if (!string.Equals(_announcedFallback, path, StringComparison.Ordinal))
             {
-                _fallbackDestination = $"/{prefix}/{declaredDefault.Id}";
-                _fallbackStatus = string.Format(System.Globalization.CultureInfo.CurrentCulture,
+                FallbackDestination = $"/{prefix}/{declaredDefault.Id}";
+                FallbackStatus = string.Format(System.Globalization.CultureInfo.CurrentCulture,
                     Localizer["ModuleTabUnavailableTemplate"].Value, declaredDefault.Header);
             }
             return declaredDefault.Id;
         }
     }
 
-    private string? FallbackMessage => _fallbackStatus;
+    private string? FallbackMessage => FallbackStatus;
 
     /// <inheritdoc />
     protected override void OnInitialized()
@@ -213,7 +221,7 @@ public sealed partial class FcPageTabs : ComponentBase, IAsyncDisposable
         try
         {
             NavigationFailure.BeginAttempt(_tabs.FirstOrDefault(t => string.Equals(t.Id, DefaultTabId, StringComparison.Ordinal))?.Header,
-                Navigation.ToAbsoluteUri(destination).ToString());
+                Navigation.ToAbsoluteUri(destination).AbsoluteUri);
             Navigation.NavigateTo(destination, replace: true);
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
@@ -307,8 +315,8 @@ public sealed partial class FcPageTabs : ComponentBase, IAsyncDisposable
             }
 
             await ActiveTabIdChanged.InvokeAsync(selected.Id);
-            _fallbackStatus = null;
-            _fallbackDestination = null;
+            FallbackStatus = null;
+            FallbackDestination = null;
 
             // An adopter may navigate with panel-owned query state. Do not replace that
             // destination with the bare tab URL after its callback completes.
@@ -325,7 +333,7 @@ public sealed partial class FcPageTabs : ComponentBase, IAsyncDisposable
             {
                 try
                 {
-                    NavigationFailure.BeginAttempt(selected.Header, Navigation.ToAbsoluteUri(desired).ToString());
+                    NavigationFailure.BeginAttempt(selected.Header, Navigation.ToAbsoluteUri(desired).AbsoluteUri);
                     Navigation.NavigateTo(desired);
                 }
                 catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)

@@ -60,7 +60,7 @@ leaving a slot `null` triggers the documented default.
 
 | Parameter | Type | Default when `null` |
 |---|---|---|
-| `HeaderStart` | `RenderFragment?` | Auto-populates `FcHamburgerToggle` (left of the app title). |
+| `HeaderStart` | `RenderFragment?` | Optional content after the always-present `FcHamburgerToggle` and before the app title. |
 | `HeaderCenter` | `RenderFragment?` | Slot omitted (breadcrumb slot; filled by later stories). |
 | `HeaderEnd` | `RenderFragment?` | Auto-populates the command-palette trigger + settings button. |
 | `Navigation` | `RenderFragment?` | Auto-renders `FrontComposerNavigation` when the registry has ≥ 1 renderable manifest; the Navigation area is omitted entirely when the registry is empty. |
@@ -69,12 +69,11 @@ leaving a slot `null` triggers the documented default.
 | `AppTitle` | `string?` | Resolves `FcShellOptions.AppTitle`, then the framework-owned `FcShellResources.AppTitle` product-name string. |
 | `ContentLabel` | `string?` | Optional accessible name for the `#fc-main-content` landmark when no visible heading labels it. |
 | `ContentLabelledBy` | `string?` | Optional id reference that names the `#fc-main-content` landmark; takes precedence over `ContentLabel`. |
-| `HeaderLogo` | `RenderFragment?` | Optional adopter-supplied logo rendered between `HeaderStart` or the default hamburger and `AppTitle`. |
+| `HeaderLogo` | `RenderFragment?` | Optional adopter-supplied logo rendered between `HeaderStart` and `AppTitle`. |
 | `ShowDefaultHeaderLogo` | `bool` | Opts into the framework default decorative logo when `HeaderLogo` is not supplied; default is `false`. |
-| `ShowAccountMenu` | `bool` | Renders the framework account menu; default is `true`. Set to `false` when the host has no working login/logout endpoints. |
+| `ShowAccountMenu` | `bool` | Compatibility parameter; the framework account menu remains visible regardless of its value. |
 
-The header also always renders the theme toggle, renders the account menu when `ShowAccountMenu` is
-`true`, and renders the dev-mode toggle in DEBUG + `IsDevelopment()` only. An adopter-supplied
+The header always renders the hamburger, theme toggle, and account menu, and renders the dev-mode toggle in DEBUG + `IsDevelopment()` only. An adopter-supplied
 fragment always wins over the framework default; to render **no**
 sidebar even with registered domains, pass an empty fragment to `Navigation`.
 
@@ -157,3 +156,22 @@ satellite — no code change required.
 - [Navigation](navigation.md) — the registry-driven navigation rail the shell auto-populates.
 - [Components](index.md) — the component reference index.
 - [Reference](../index.md) — the full reference index.
+
+## Routing and keyboard integration
+
+Include `typeof(FrontComposerShell).Assembly` in both the router's `AdditionalAssemblies` and
+`MapRazorComponents(...).AddAdditionalAssemblies(...)`. The Shell supplies `/home` and the generic
+`/{Module}`, `/{Module}/overview`, and `/{Module}/{Tab}` routes. Hosts own `/` and must not redeclare
+these shared routes. Specific Module pages take precedence over the generic routes.
+
+Mount `FcRouteFocus` after routed content to confirm successful navigation only after its heading
+renders. Keep it mounted in the router's unavailable branch with `FocusHeading="false"` when
+`FcRouteUnavailable` owns that heading. Use `RouteComponentIdentity.For(routeData)` to preserve page
+instances across `Tab`/`RouteTab` selection and query changes while separating entity parameters.
+Hosts retaining `FocusOnNavigate` use matching location changes to settle palette activation.
+Declare host-owned top-level names in `FrontComposerRouteOptions.ReservedSegments`; Shell always
+reserves `home`, `commands`, and `__frontcomposer`. Modules may declare `DomainManifest.CanonicalRouteAliases`
+for legacy redirects to their child routes, with optional query selectors.
+
+`ShortcutBinding.TryFromKeyboardEvent` normalizes Shift away for single-character non-letter keys.
+Register `/` rather than `shift+/` so the page-search shortcut works on layouts that require Shift.
