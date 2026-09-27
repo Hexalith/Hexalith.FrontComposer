@@ -9902,3 +9902,18 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-12-2-select-a-substitute-adopter.md`
   summary: Decide whether to move `epic-12` to `done` or run its optional retrospective, now that Stories 12.1 and 12.2 are both `done`.
   evidence: The sprint-status legend moves an epic to `done` manually once all of its stories are `done`. `epic-12` stays `in-progress`, with no owner or date for closing it.
+
+## Deferred from: code review of spec-13-2-make-shell-navigation-and-route-focus-deterministic.md (2026-09-27)
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-2-make-shell-navigation-and-route-focus-deterministic.md`
+  summary: Enroll the Story 13.2 route-contract, page-toolbar, and sidebar-responsive Playwright specs in the CI browser lane.
+  evidence: The quality.yml a11y lane already serves the same Counter.Web Test host but runs only `test:a11y`; that host throws in `MapFrontComposerMcp` outside Development since `e5666650`, and the job currently fails earlier at submodule initialization. Add `test:route-contract`, `test:fc-page-toolbar`, and sidebar-responsive once the lane is healthy.
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-2-make-shell-navigation-and-route-focus-deterministic.md`
+  summary: Give AdopterProofKit a working sign-in challenge or an explicit anonymous account state now that the account menu is always present.
+  evidence: Story 13.2 makes the account menu mandatory, so the kit's `ShowAccountMenu="false"` no longer hides the sign-in link to `/authentication/challenge`, which returns 404 in that host; same class as the deferred Counter sign-in entry (BH3.5).
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-2-make-shell-navigation-and-route-focus-deterministic.md`
+  summary: Unverified medium: Firefox Quick Find may open on `/` and compete with the sole page-search focus.
+  evidence: No code calls `preventDefault` on the handled `/` press (`fc-keyboard.js:167`, `focusSolePageSearch`), and focus arrives after a server round trip; e2e runs Chromium only. A Firefox check of which element holds focus after `/` would settle it.
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-2-make-shell-navigation-and-route-focus-deterministic.md`
+  summary: Localize the FrontComposer UI host's polite "Authorizing..." route status text.
+  evidence: `src/Hexalith.FrontComposer.UI/Components/Routes.razor` renders a hard-coded English `Authorizing...` live region during protected navigation; the literal predates Story 13.2, which only added the `data-fc-route-authorizing` marker.

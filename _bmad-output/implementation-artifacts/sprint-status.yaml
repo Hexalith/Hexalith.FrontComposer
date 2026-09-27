@@ -48,7 +48,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 09-27-2026 17:58
+last_updated: 09-27-2026 21:29
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -190,15 +190,16 @@ development_status:
   11-32-epic-11-artifact-integrity-enforcement: done
   epic-11-retrospective: done
 
-  epic-12: in-progress
+  # epic-12 moved in-progress -> done on 2026-09-27 (all stories done; retrospective epic-12-retro-2026-09-27.md accepted-with-open-items)
+  epic-12: done
   12-1-i-adopt-kit-1-publish-a-deterministic-three-call-adopter-pro: done
   # 12-2 closed as not required on 2026-09-27: Tenants G-6 proof accepted 2026-09-26, D-7 never invoked (spec-12-2-select-a-substitute-adopter.md)
   12-2-a-adopt-app-1-conditional-select-a-substitute-adopter: done
-  epic-12-retrospective: optional
+  epic-12-retrospective: done
 
   epic-13: in-progress
   13-1-i-ten-scope-1-prove-tenant-safe-operator-state-end-to-end: done
-  13-2-i-ux-a-make-shell-navigation-and-route-focus-deterministic: review
+  13-2-i-ux-a-make-shell-navigation-and-route-focus-deterministic: in-progress
   13-3-i-ux-b-preserve-focus-and-input-through-command-safety-outco: backlog
   13-4-i-ux-c-announce-projection-and-command-state-without-noise: backlog
   13-5-i-ux-d-preserve-fresh-row-meaning-across-visual-and-data-cha: backlog
@@ -862,6 +863,63 @@ action_items:
         records the completed integrity-enforcement implementation and independent
         review evidence."
 
+  - id: "E12R-AI-1"
+    epic: 12
+    action: "Make the adopter-proof gates run and block: move 'Gate 2b: Adopter proof
+      runner tests' and Gate 4a (with its pack step) out from behind unrelated Gate
+      2b failures, upload the result JSON on failure, select a runtime patch present
+      for both frameworks, pin both steps as blocking in CiGovernanceTests, add a
+      main() nonzero-exit test, and record one green Gate 4a run URL in spec-12-1."
+    owner: "CI maintainer"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-12-retro-2026-09-27.md"
+  - id: "E12R-AI-2"
+    epic: 12
+    action: "Return quality.yml to green without weakening the G-3 pin: realign references/Hexalith.EventStore
+      to the evidence-bound SHA or advance the evidence through EVT-ID-1 (see E11R-AI-1),
+      and stop bundling pinned-submodule gitlink bumps into story or spec commits."
+    owner: "Architect + Release Owner"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-12-retro-2026-09-27.md"
+  - id: "E12R-AI-3"
+    epic: 12
+    action: "Ship adopter kit v2 before any G-6 re-proof or D-7 substitution: parameterize
+      the adopter domain through a committed surface manifest, bind kit identity (runner
+      and fixture digests) in the result, document the substitution procedure and
+      required host/build settings, and require the adopter's consumer layout to be
+      committed with its evidence."
+    owner: "FrontComposer maintainer (Developer)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-12-retro-2026-09-27.md"
+  - id: "E12R-AI-4"
+    epic: 12
+    action: "Reconcile the three-call path with the Story 13.1 identity requirement:
+      document the required tenant/user source in the front-composer-shell.md Quickstart
+      section (closes deferred-work.md:9847), propose PRD G-6/SM-1 wording of three
+      calls plus an identity source, and rename or document the kit's identity-backed
+      empty_registry_rendered assertion."
+    owner: "Technical Writer + Product Owner"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-12-retro-2026-09-27.md"
+  - id: "E12R-AI-5"
+    epic: 12
+    action: "Append a dated addendum to the G-6 record: state when a later readiness
+      candidate needs fresh adopter proof, record the role overlap behind the independent
+      Tenants evidence, and cite the Tenants evidence at commit 04f68c60 in PRD G-6,
+      SM-1, and OI-5."
+    owner: "Product Owner"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-12-retro-2026-09-27.md"
+  - id: "E12R-AI-6"
+    epic: 12
+    action: "Harden the adopter runner and fixture as one bundle: catch zlib.error/EOFError,
+      align _valid_endpoint with Uri.TryCreate, replace asserts in the guide's hash
+      snippet, reject non-10.x runtimes, bypass proxies for loopback probes, resolve
+      --dotnet, pin the two exact bootstrap diagnostics in a Shell fact, and gate
+      ProofUserContextAccessor behind a proof-only switch or make it internal."
+    owner: "Developer"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-12-retro-2026-09-27.md"
 approved_change_backlog:
   source: "_bmad-output/planning-artifacts/sprint-change-proposal-2026-09-22.md"
   approved: "2026-09-22"
