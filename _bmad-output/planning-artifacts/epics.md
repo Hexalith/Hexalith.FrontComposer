@@ -11,7 +11,7 @@ inputDocuments:
   - _bmad-output/planning-artifacts/ux-designs/ux-frontcomposer-2026-09-09/DESIGN.md
   - _bmad-output/planning-artifacts/ux-designs/ux-frontcomposer-2026-09-09/EXPERIENCE.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-22.md
-updated: 2026-09-23
+updated: 2026-09-27
 numberingNote: >-
   Epics 1-11 are completed delivery history restored from epics.md at commit
   aeff9f83 with the approved 2026-09-22 section 9.4 annotations. The 2026-09-22
@@ -342,7 +342,7 @@ Adopter developers can turn annotated domain types into a coherent, accessible F
 
 **FRs covered:** FR1, FR2, FR3, FR4, FR7, FR8, FR9, FR10, FR29.1
 
-**Implementation notes:** Preserve the delivered generator, bootstrap, shell, account, and information-architecture baseline. Deliver ADOPT-KIT-1 before tracking EXT-ADOPTER-1; the latter is owned by the selected external adopter and was accepted on 2026-09-26 (record below). Require optional ADOPT-APP-1 only for a D-7 substitute. Adoption work uses the current pinned Fluent identity but does not own its final approval. Completed behavior is regression traceability rather than reimplementation.
+**Implementation notes:** Preserve the delivered generator, bootstrap, shell, account, and information-architecture baseline. Deliver ADOPT-KIT-1 before tracking EXT-ADOPTER-1; the latter is owned by the selected external adopter and was accepted on 2026-09-26 (record below). Optional ADOPT-APP-1 applied only to a D-7 substitute; because D-7 was never invoked, it was closed as not required on 2026-09-27. Adoption work uses the current pinned Fluent identity but does not own its final approval. Completed behavior is regression traceability rather than reimplementation.
 
 ### Epic 13: Operators Trust Tenant-Scoped Data and Command Outcomes
 
@@ -403,7 +403,7 @@ Release owners can authorize and verify exact package bytes through a privilege-
 
 | Epic | Implementable repository work (I) | Approval/evidence work (A) | External dependencies (X) |
 |---|---|---|---|
-| Epic 12 | ADOPT-KIT-1 | ADOPT-APP-1 (conditional) | EXT-ADOPTER-1 |
+| Epic 12 | ADOPT-KIT-1 | ADOPT-APP-1 (conditional; not required, closed 2026-09-27) | EXT-ADOPTER-1 |
 | Epic 13 | TEN-SCOPE-1; UX-A; UX-B; UX-C; UX-D; UX-E; UX-F | E9-APP-1; FLUENT-APP-1 | — |
 | Epic 14 | MCP-SEC-1; MCP-SEC-2 | MCP-APP-1 | — |
 | Epic 15 | PLAN-INT-2; DOC-A; DOC-B; DOC-C; REL-BASE-1 | — | — |
@@ -3260,7 +3260,9 @@ So that any substitute adopter inherits the same evidence obligation without sil
 **Then** it references those artifacts rather than copying their evidence
 **And** no additional evidence schema, test lane, or wrapper report is introduced.
 
-**External dependency — [X · EXT-ADOPTER-1]:** After Story 12.1—and after Story 12.2 only when Parties is selected—the named external adopter maintainer executes the kit and publishes dated, candidate-bound proof. FrontComposer records the dependency state but cannot complete it on the adopter's behalf. **Accepted 2026-09-26:** Tenants supplied the independent evidence at `references/Hexalith.Tenants/_bmad-output/implementation-artifacts/tests/tenants-bootstrap-acceptance.md` and `references/Hexalith.Tenants/_bmad-output/implementation-artifacts/tests/tenants-bootstrap-acceptance.json`; the explicit Product decision is `_bmad-output/implementation-artifacts/tests/tenants-g6-product-decision-2026-09-26.md`. D-7 was not invoked, so Story 12.2 remains conditional.
+**Disposition — closed as not required (2026-09-27):** The trigger never occurred. Tenants supplied the EXT-ADOPTER-1 proof, the Product Owner accepted it for G-6 on 2026-09-26, and D-7 was never invoked. The acceptance criteria above were not exercised. No Parties selection, hold, or fallback decision record exists. The decision is recorded in `_bmad-output/implementation-artifacts/spec-12-2-select-a-substitute-adopter.md`. D-7 remains PRD policy, and a future invocation would need a new dated Product decision and a new story.
+
+**External dependency — [X · EXT-ADOPTER-1]:** After Story 12.1—and after Story 12.2 only when Parties is selected—the named external adopter maintainer executes the kit and publishes dated, candidate-bound proof. FrontComposer records the dependency state but cannot complete it on the adopter's behalf. **Accepted 2026-09-26:** Tenants supplied the independent evidence at `references/Hexalith.Tenants/_bmad-output/implementation-artifacts/tests/tenants-bootstrap-acceptance.md` and `references/Hexalith.Tenants/_bmad-output/implementation-artifacts/tests/tenants-bootstrap-acceptance.json`; the explicit Product decision is `_bmad-output/implementation-artifacts/tests/tenants-g6-product-decision-2026-09-26.md`. D-7 was not invoked; see the Story 12.2 disposition above.
 
 ## Epic 13: Operators Trust Tenant-Scoped Data and Command Outcomes
 

@@ -1,5 +1,5 @@
 # generated: 07-05-2026 17:13
-# last_updated: 2026-09-27 (Story 13.2 implementation ready for review)
+# last_updated: 2026-09-27 (Story 12.2 closed as not required; D-7 never invoked)
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -36,6 +36,8 @@
 #   - proposed: Approved alias awaiting create-epics-and-stories numbering
 #   - open: Approval/evidence task without its required receipt
 #   - external: Non-sprint dependency owned outside FrontComposer
+#   - done: Implemented, delivered, or approved, with its receipt recorded
+#   - not-required: Conditional item whose trigger never occurred; closed without action
 #
 # WORKFLOW NOTES:
 # ===============
@@ -46,7 +48,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 09-27-2026 00:12
+last_updated: 09-27-2026 17:58
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -190,7 +192,8 @@ development_status:
 
   epic-12: in-progress
   12-1-i-adopt-kit-1-publish-a-deterministic-three-call-adopter-pro: done
-  12-2-a-adopt-app-1-conditional-select-a-substitute-adopter: backlog
+  # 12-2 closed as not required on 2026-09-27: Tenants G-6 proof accepted 2026-09-26, D-7 never invoked (spec-12-2-select-a-substitute-adopter.md)
+  12-2-a-adopt-app-1-conditional-select-a-substitute-adopter: done
   epic-12-retrospective: optional
 
   epic-13: in-progress
@@ -884,7 +887,7 @@ approved_change_backlog:
         - {id: "TEN-SCOPE-1", kind: "implementation", status: "proposed"}
         - {id: "ADOPT-KIT-1", kind: "implementation", status: "done"}
         - {id: "EXT-ADOPTER-1", kind: "external-dependency", status: "done"}
-        - {id: "ADOPT-APP-1", kind: "conditional-approval", status: "open"}
+        - {id: "ADOPT-APP-1", kind: "conditional-approval", status: "not-required"}
     - name: "MCP Production Security"
       items:
         - {id: "MCP-SEC-1", kind: "implementation", status: "done"}

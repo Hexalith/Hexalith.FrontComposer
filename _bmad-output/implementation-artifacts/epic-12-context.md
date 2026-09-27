@@ -35,4 +35,4 @@ Enable an adopter to start a FrontComposer operations shell from annotated domai
 ## Cross-Story Dependencies
 
 - Story 12.1 delivers the kit before the selected external adopter maintainer executes it and publishes dated, candidate-bound evidence. FrontComposer records this external dependency but cannot satisfy it on the maintainer's behalf.
-- Story 12.2 applies only if Tenants cannot supply proof and the Product Owner invokes the fallback. A dated decision can select Parties or hold the milestone; selection alone does not close the adopter proof gate.
+- Story 12.2 applied only if Tenants could not supply proof and the Product Owner invoked the fallback. Tenants' proof was accepted for G-6 on 2026-09-26 without invoking D-7, so Story 12.2 was closed as not required on 2026-09-27. Any future D-7 invocation needs a new dated Product decision and a new story.

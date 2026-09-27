@@ -9896,3 +9896,9 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-2-make-shell-navigation-and-route-focus-deterministic.md`
   summary: Hide an orphan navigation context's flyout when all registered entries are policy-hidden.
   evidence: The pre-existing orphan branch in `FrontComposerNavigation.razor` renders a flyout trigger without checking whether any of its entries pass authorization; a policy-only orphan context can open an empty menu.
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-12-2-select-a-substitute-adopter.md`
+  summary: Restate PRD section 8.2 (Readiness Program Status) from `sprint-status.yaml`, including Epic 12 and the later epics it omits.
+  evidence: The PRD section 10 risk mitigation says section 8.2 "is restated from `sprint-status.yaml` on every update", but section 8.2 still carries its 2026-09-22 snapshot and has no Epic 12 line. The 2026-09-26 and 2026-09-27 PRD updates did not restate it.
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-12-2-select-a-substitute-adopter.md`
+  summary: Decide whether to move `epic-12` to `done` or run its optional retrospective, now that Stories 12.1 and 12.2 are both `done`.
+  evidence: The sprint-status legend moves an epic to `done` manually once all of its stories are `done`. `epic-12` stays `in-progress`, with no owner or date for closing it.
