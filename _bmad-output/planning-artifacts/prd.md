@@ -9,6 +9,9 @@ updated: 2026-09-27
 
 # PRD: Hexalith.FrontComposer
 
+**Approved McpCli course correction (2026-09-27):** `Hexalith.McpCli` owns the target Hexalith CLI/MCP presentation. FrontComposer retains its UI and descriptor semantics; `Hexalith.FrontComposer.Cli` and `.Mcp`, including inspect/migrate, resources, skill corpus, and lifecycle calls, are obsolete migration sources. Their replacement or approved withdrawal needs a generic McpCli contract and owner-approved parity evidence before package removal. Descriptions below of proprietary transports are compatibility and historical requirements.
+
+
 ## 0. Document Purpose
 
 This PRD is for Product, Architecture, UX, developer agents, and downstream BMAD story workflows preparing Hexalith.FrontComposer for the v1.0 readiness milestone. It consolidates the delivered product baseline, the completed post-MVP remediation program, and the remaining milestone gates into one product requirements source of record.
@@ -43,7 +46,7 @@ This table is the only authority on what still separates the product from the re
 
 ## 1. Vision
 
-Hexalith.FrontComposer is the Hexalith Blazor Front Shell: a .NET framework that turns annotated domain read models and commands into an operations-ready Blazor UI, an MCP tool/resource surface for AI agents, and developer tooling for inspection, migration, and testing.
+Hexalith.FrontComposer is the Hexalith Blazor Front Shell: a .NET framework that turns annotated domain read models and commands into an operations-ready Blazor UI and provides descriptors and developer tooling for inspection, migration, and testing. Its existing MCP tool/resource host and CLI are obsolete compatibility; `Hexalith.McpCli` owns the target Hexalith MCP/CLI presentation.
 
 The product bet is that domain teams should describe their operational surface once, in code, then get consistent human and AI access paths without hand-building every admin shell. FrontComposer makes the domain type the source of truth and uses source generation, schema fingerprints, and strict governance tests to keep UI, lifecycle state, MCP descriptors, and tooling aligned.
 
@@ -358,11 +361,13 @@ Command execution must respect authorization, destructive confirmation, form-aba
 
 ### 5.5 MCP Agent Surface
 
-**Description:** The MCP server exposes generated commands and projections to agents using the same domain descriptors while enforcing fail-closed security and schema compatibility.
+**Migration status:** `Hexalith.FrontComposer.Mcp` is an obsolete compatibility server. `Hexalith.McpCli` is the target Hexalith MCP surface. Generated command, projection-resource, skill-resource, admission, and lifecycle semantics below remain migration requirements; each needs an approved McpCli replacement or explicit withdrawal before the old package is removed. McpCli v1 does not itself satisfy the resource and lifecycle contracts.
+
+**Historical compatibility description:** The MCP server exposes generated commands and projections to agents using the same domain descriptors while enforcing fail-closed security and schema compatibility.
 
 #### FR-17: Expose generated command tools
 
-Each visible generated command must appear as an MCP tool with descriptor-derived JSON schema and bounded acknowledgement output.
+In the legacy FrontComposer MCP host, each visible generated command appears as a tool with descriptor-derived JSON schema and bounded acknowledgement output. The `Hexalith.McpCli` replacement uses its generic tool set and must preserve approved command schema and acknowledgement semantics before this host retires.
 
 **Consequences:**
 - Tools are built dynamically at each `tools/list` and named `{BoundedContext}.{CommandType}.Execute` (namespace-qualified when ambiguous).
@@ -371,7 +376,7 @@ Each visible generated command must appear as an MCP tool with descriptor-derive
 
 #### FR-18: Expose projection and skill resources
 
-The MCP Surface must expose tenant-scoped projection resources and the embedded FrontComposer skill corpus.
+The legacy FrontComposer MCP surface exposes tenant-scoped projection resources and the embedded FrontComposer skill corpus. These resource capabilities require an approved generic `Hexalith.McpCli` representation or owner-approved withdrawal before the legacy host retires; McpCli v1 does not claim them.
 
 **Consequences:**
 - Projection resource URIs are `frontcomposer://{bounded-context}/projections/{projection-name}` and match generated descriptors exactly.
@@ -380,7 +385,7 @@ The MCP Surface must expose tenant-scoped projection resources and the embedded 
 
 #### FR-19: Enforce MCP fail-closed admission and compatibility
 
-MCP hosts must register tenant tool and resource visibility gates, negotiate schema fingerprints, and collapse admission failures to the opaque public shapes below. The guarantee is exact but limited. **For tools, hidden and absent are indistinguishable for the same caller. For resources, reads of registered-but-hidden resources are indistinguishable from unauthorized reads. The resource catalog itself is disclosed, and the SDK answers unregistered URIs.**
+The legacy MCP host must retain tenant tool and resource visibility gates, schema fingerprint negotiation, and opaque admission failures until retirement. The `Hexalith.McpCli` replacement must pass equivalent authorization and disclosure evidence for each approved capability. The compatibility guarantee is specified below. The guarantee is exact but limited. **For tools, hidden and absent are indistinguishable for the same caller. For resources, reads of registered-but-hidden resources are indistinguishable from unauthorized reads. The resource catalog itself is disclosed, and the SDK answers unregistered URIs.**
 
 | Request class | Public shape | Guarantee |
 | --- | --- | --- |
@@ -411,11 +416,13 @@ The lifecycle tool `frontcomposer.lifecycle.subscribe` is a polling read contrac
 
 ### 5.6 CLI, Testing, And Adopter Tooling
 
-**Description:** FrontComposer includes developer tooling that makes generated artifacts inspectable, migratable, and testable by downstream packages.
+**Migration status:** FrontComposer retains generator, UI, and Testing ownership; `Hexalith.FrontComposer.Cli` is an obsolete compatibility tool. `inspect` and `migrate` need a generic `Hexalith.McpCli` administration or diagnostics contract, or an owner-approved withdrawal, before the old tool is retired. The requirements below define behavior to preserve during migration.
+
+**Historical compatibility description:** FrontComposer includes developer tooling that makes generated artifacts inspectable, migratable, and testable by downstream packages.
 
 #### FR-20: Provide `frontcomposer inspect`
 
-The CLI must inspect generated output and diagnostics sidecars and report forms, grids, registrations, manifest entries, warnings, and errors.
+The legacy `frontcomposer` CLI must inspect generated output and diagnostics sidecars and report forms, grids, registrations, manifest entries, warnings, and errors until cutover. A generic `Hexalith.McpCli` diagnostics contract must preserve approved behavior before the old CLI retires.
 
 **Consequences:**
 - Output supports text and JSON using `frontcomposer.cli.inspect.v1`.
@@ -424,7 +431,7 @@ The CLI must inspect generated output and diagnostics sidecars and report forms,
 
 #### FR-21: Provide `frontcomposer migrate`
 
-The CLI must plan and apply allowlisted Roslyn migrations across supported version edges.
+The legacy `frontcomposer` CLI must plan and apply allowlisted Roslyn migrations across supported version edges until cutover. A generic `Hexalith.McpCli` administration or migration contract must preserve approved behavior before the old CLI retires.
 
 **Consequences:**
 - Dry-run is default.
@@ -652,9 +659,9 @@ Each metric names its evidence and its state. "Tests exist" or "workflow green" 
 | `Hexalith.FrontComposer.Schema` | yes | `net10.0;netstandard2.0` | ApiCompat | Canonicalization changes invalidate baselines (NFR-7) |
 | `Hexalith.FrontComposer.SourceTools` | yes | `netstandard2.0` | ApiCompat; generated-output snapshots | Diagnostic/emit changes need snapshot + docs update |
 | `Hexalith.FrontComposer.Shell` | yes | `net10.0` | ApiCompat; `PublicAPI.FcTbl.Shipped.txt` for the table contract | Major bump + migration notes |
-| `Hexalith.FrontComposer.Mcp` | yes | `net10.0` | ApiCompat | Wire tokens and tool names in this section are frozen for v1 |
+| `Hexalith.FrontComposer.Mcp` | yes, migration compatibility only | `net10.0` | ApiCompat | Retire after approved `Hexalith.McpCli` replacement or withdrawal evidence |
 | `Hexalith.FrontComposer.Testing` | yes | `net10.0` | `PublicAPI.Shipped.txt` | Major bump + migration notes |
-| `Hexalith.FrontComposer.Cli` | yes (tool) | `net10.0` | JSON schemas below; excluded from library ApiCompat | Schema version suffix bump |
+| `Hexalith.FrontComposer.Cli` | yes (legacy tool, migration compatibility only) | `net10.0` | JSON schemas below; excluded from library ApiCompat | Retire after approved `Hexalith.McpCli` replacement or withdrawal evidence |
 | `Hexalith.FrontComposer.UI` | no | `net10.0` | — | Sample host; never published (A3) |
 | `Hexalith.FrontComposer.AppHost` | no | `net10.0` | — | Aspire reference host; never published |
 

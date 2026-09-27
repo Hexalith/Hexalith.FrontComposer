@@ -10,6 +10,9 @@ sourceOfRecord:
 
 # Hexalith.FrontComposer Architecture Planning Source
 
+**Approved McpCli course correction (2026-09-27):** `Hexalith.McpCli` owns the target Hexalith CLI/MCP presentation. FrontComposer retains its UI and descriptor semantics; `Hexalith.FrontComposer.Cli` and `.Mcp`, including inspect/migrate, resources, skill corpus, and lifecycle calls, are obsolete migration sources. Their replacement or approved withdrawal needs a generic McpCli contract and owner-approved parity evidence before package removal. Descriptions below of proprietary transports are compatibility and historical requirements.
+
+
 This document makes the architecture discoverable to implementation-readiness workflows. The detailed brownfield architecture source remains `_bmad-output/project-docs/architecture.md`; this file is the planning artifact that readiness checks should load.
 
 ## Architecture Summary

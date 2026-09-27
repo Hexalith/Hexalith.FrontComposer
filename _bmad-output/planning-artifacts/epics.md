@@ -22,6 +22,9 @@ numberingNote: >-
 
 # frontcomposer - Epic Breakdown
 
+**Approved McpCli course correction (2026-09-27).** Stories 5.1, 10.3, 11.3, and 14.1–14.3 describe an obsolete FrontComposer MCP/CLI compatibility implementation. Their security, disclosure, lifecycle, text-output, and accessibility behavior remains migration evidence. `Hexalith.McpCli` is the target; resources, skill corpus, inspect/migrate, and lifecycle polling need owner-approved generic replacement or withdrawal before old packages retire. McpCli Epic 5 owns the migration gate.
+
+
 ## Overview
 
 This document provides the complete epic and story breakdown for frontcomposer, decomposing the requirements from the PRD, UX Design if it exists, and Architecture requirements into implementable stories.

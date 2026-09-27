@@ -37,6 +37,9 @@ companions:
 
 # Architecture Spine — GOV-1 Dependency Provenance
 
+**Approved McpCli course correction (2026-09-27):** `Hexalith.McpCli` owns the target Hexalith CLI/MCP presentation. FrontComposer retains its UI and descriptor semantics; `Hexalith.FrontComposer.Cli` and `.Mcp`, including inspect/migrate, resources, skill corpus, and lifecycle calls, are obsolete migration sources. Their replacement or approved withdrawal needs a generic McpCli contract and owner-approved parity evidence before package removal. Descriptions below of proprietary transports are compatibility and historical requirements.
+
+
 ## Design Paradigm
 
 **Bounded committed-object graph.** GOV-1 models dependency provenance from an explicit FrontComposer

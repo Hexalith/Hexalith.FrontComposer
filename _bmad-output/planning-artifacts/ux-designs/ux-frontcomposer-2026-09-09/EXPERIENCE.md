@@ -15,6 +15,9 @@ sources:
 
 # Hexalith Common Application Experience
 
+**Approved McpCli experience correction (2026-09-27):** `Hexalith.McpCli` is the target Hexalith-owned CLI and MCP entry point. The FrontComposer MCP endpoint, projection/skill resources, lifecycle tool, and `frontcomposer inspect/migrate` CLI flows below describe legacy compatibility behavior. Each requires an owner-approved generic McpCli replacement or explicit withdrawal before retirement; do not claim that the five v1 generic tools already implement these flows.
+
+
 This file owns **how FrontComposer works**: information architecture, behavior, state, interaction, accessibility, and journeys. `DESIGN.md` is its peer and owns appearance. `ux-design.md` is canonical; this file is a supplement to it and loses on any conflict. It may add behavioral detail but never overrides a canonical matrix row. Within its domain, this file still wins over mockups, wireframes, imports, historical supplements, and implementation examples.
 
 ## Foundation
