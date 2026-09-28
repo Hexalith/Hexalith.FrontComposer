@@ -618,8 +618,9 @@ public sealed class CommandPaletteEffects : IDisposable {
                 && !recentRegistry.GetManifests().Any(manifest => manifest.Commands.Any(command =>
                     recentRegistry.HasFullPageRoute(command)
                     && string.Equals(CommandRouteBuilder.BuildRoute(manifest.BoundedContext, command), targetUrl.Split('?', '#')[0], StringComparison.OrdinalIgnoreCase)))) {
+                // Report before dispatching so the open palette can voice this AM-23.
+                TryGetService<NavigationFailureNotifier>()?.ReportFailure();
                 dispatcher.Dispatch(new PaletteActivationFailedAction());
-                TryGetService<NavigationFailureNotifier>()?.ReportFailure(result.DisplayLabel);
                 return;
             }
 
@@ -657,8 +658,8 @@ public sealed class CommandPaletteEffects : IDisposable {
                 FrontComposerWarningLog.PaletteNavigationServiceMissing(
                     _logger,
                     FcDiagnosticIds.HFC2110_PaletteScoringFault);
-                dispatcher.Dispatch(new PaletteActivationFailedAction());
                 TryGetService<NavigationFailureNotifier>()?.ReportFailure();
+                dispatcher.Dispatch(new PaletteActivationFailedAction());
                 return;
             }
 
@@ -667,8 +668,11 @@ public sealed class CommandPaletteEffects : IDisposable {
             Task<bool>? routeConfirmation;
             try {
                 destinationUri = navigation.ToAbsoluteUri(targetUrl).AbsoluteUri;
-                bool alreadyConfirmed = string.Equals(navigationFailure?.LastConfirmedUri, destinationUri, StringComparison.OrdinalIgnoreCase);
-                navigationFailure?.BeginAttempt(result.DisplayLabel, destinationUri);
+                // Only the rendered current route is already confirmed. A historical confirmation
+                // must not exempt a new transition from waiting for its heading.
+                bool alreadyConfirmed = string.Equals(navigationFailure?.LastConfirmedUri, destinationUri, StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(navigation.Uri, destinationUri, StringComparison.OrdinalIgnoreCase);
+                navigationFailure?.BeginAttempt(destinationUri);
                 routeConfirmation = alreadyConfirmed ? null : navigationFailure?.PrepareRouteConfirmation(destinationUri);
                 navigation.NavigateTo(targetUrl);
             }
@@ -680,8 +684,8 @@ public sealed class CommandPaletteEffects : IDisposable {
                     _logger,
                     FcDiagnosticIds.HFC2110_PaletteScoringFault,
                     ex);
-                dispatcher.Dispatch(new PaletteActivationFailedAction());
                 TryGetService<NavigationFailureNotifier>()?.ReportFailure();
+                dispatcher.Dispatch(new PaletteActivationFailedAction());
                 return;
             }
 
@@ -691,12 +695,24 @@ public sealed class CommandPaletteEffects : IDisposable {
                 // failure during a valid, long authorization transition.
                 bool confirmed = await routeConfirmation.ConfigureAwait(true);
                 if (!confirmed) {
+                    if (navigationFailure?.ConsumeCancellation(routeConfirmation) == true) {
+                        // A navigation lock such as the form-abandonment guard held the route. Close
+                        // without Recent or AM-23 so the lock's own prompt is reachable.
+                        FrontComposerCommandPaletteState current = _paletteState.Value;
+                        if (Volatile.Read(ref _activationAttemptVersion) == activationAttempt
+                            && current.IsOpen
+                            && current.ScopeGeneration == snapshot.ScopeGeneration) {
+                            SafeDispatchClose(dispatcher);
+                        }
+                        return;
+                    }
+
                     if (IsActivationCurrent(snapshot, action, result, activationAttempt)) {
-                        dispatcher.Dispatch(new PaletteActivationFailedAction());
                         if (navigationFailure?.Message is null
                             && string.Equals(navigation.Uri, destinationUri, StringComparison.OrdinalIgnoreCase)) {
                             navigationFailure?.ReportFailure();
                         }
+                        dispatcher.Dispatch(new PaletteActivationFailedAction());
                     }
                     return;
                 }

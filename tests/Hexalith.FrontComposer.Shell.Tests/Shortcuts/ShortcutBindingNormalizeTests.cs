@@ -44,6 +44,14 @@ public class ShortcutBindingNormalizeTests {
     public void Normalize_RejectsUnknownModifiersOrInvalidTrailingTokens(string input) => Should.Throw<ArgumentException>(() => ShortcutBinding.Normalize(input));
 
     [Theory]
+    [InlineData("shift+/", "/")]
+    [InlineData("ctrl+shift+?", "ctrl+?")]
+    [InlineData("shift+k", "shift+k")]
+    [InlineData("shift+arrowright", "shift+arrowright")]
+    public void Normalize_DropsShiftOnlyForSingleNonLetterKeys(string input, string expected)
+        => ShortcutBinding.Normalize(input).ShouldBe(expected);
+
+    [Theory]
     [InlineData("/", "/")]
     [InlineData("?", "?")]
     [InlineData("K", "shift+k")]

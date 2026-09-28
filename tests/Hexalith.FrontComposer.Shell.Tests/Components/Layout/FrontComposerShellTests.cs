@@ -60,7 +60,7 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
     {
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>();
         NavigationFailureNotifier failure = Services.GetRequiredService<NavigationFailureNotifier>();
-        failure.BeginAttempt("Counter", "http://localhost/counter");
+        failure.BeginAttempt("http://localhost/counter");
         Task<bool> pending = failure.PrepareRouteConfirmation("http://localhost/counter");
         await cut.InvokeAsync(() => Services.GetRequiredService<NavigationManager>().NavigateTo("/elsewhere"));
         (await pending.ConfigureAwait(true)).ShouldBeFalse();
@@ -86,8 +86,8 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
             .AddChildContent("<h1>Counter</h1>"));
         NavigationFailureNotifier failure = Services.GetRequiredService<NavigationFailureNotifier>();
-        failure.RememberSuccessfulRoute("Counter");
-        failure.BeginAttempt("Orders");
+        failure.RememberSuccessfulRoute();
+        failure.BeginAttempt(null);
         failure.ReportFailure();
 
         cut.WaitForAssertion(() => {
@@ -100,7 +100,7 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
             cut.FindAll("[data-testid='fc-route-navigation-status']").Count.ShouldBe(1);
         });
 
-        failure.RememberSuccessfulRoute("Orders");
+        failure.RememberSuccessfulRoute();
         cut.WaitForAssertion(() => cut.Find("[data-testid='fc-route-navigation-status']").TextContent.ShouldBeEmpty());
     }
 

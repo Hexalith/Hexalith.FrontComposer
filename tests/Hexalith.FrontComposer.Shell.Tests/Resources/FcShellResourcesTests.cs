@@ -167,7 +167,7 @@ public sealed class FcShellResourcesTests {
     [InlineData("PaletteCategoryProjections", "Projections", "Projections")]
     [InlineData("PaletteCategoryCommands", "Commands", "Commandes")]
     [InlineData("PaletteCategoryRecent", "Recent", "Récents")]
-    [InlineData("PaletteNoResultsText", "No matches found", "Aucun résultat trouvé")]
+    [InlineData("PaletteNoCommandsOrPagesText", "No commands or pages match.", "Aucune commande ni page ne correspond.")]
     [InlineData("PaletteInCurrentContextSuffix", "(in current context)", "(dans le contexte actuel)")]
     [InlineData("ShortcutsCategoryLabel", "Keyboard shortcuts", "Raccourcis clavier")]
     [InlineData("PaletteShortcutDescription", "Open command palette", "Ouvrir la palette de commandes")]

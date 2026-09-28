@@ -72,7 +72,7 @@ public sealed class NavigationFailureNotifierTests
     public async Task BrowserNavigationRetiresPendingConfirmation()
     {
         NavigationFailureNotifier notifier = CreateNotifier();
-        notifier.BeginAttempt("Counter", "https://localhost/counter");
+        notifier.BeginAttempt("https://localhost/counter");
         Task<bool> confirmation = notifier.PrepareRouteConfirmation("https://localhost/counter");
 
         notifier.ObserveLocation("https://localhost/home");
@@ -87,7 +87,7 @@ public sealed class NavigationFailureNotifierTests
     {
         NavigationFailureNotifier notifier = CreateNotifier();
         notifier.ConfirmRoute("https://localhost/parties");
-        notifier.BeginAttempt("Missing", "https://localhost/missing");
+        notifier.BeginAttempt("https://localhost/missing");
 
         notifier.ReturnUriForActivatedUnmatched("https://localhost/missing")
             .ShouldBe("https://localhost/parties");
@@ -99,11 +99,11 @@ public sealed class NavigationFailureNotifierTests
     public void RepeatedFailureHasDistinctAttemptIdentity()
     {
         NavigationFailureNotifier notifier = CreateNotifier();
-        notifier.BeginAttempt("Missing", "https://localhost/missing");
+        notifier.BeginAttempt("https://localhost/missing");
         long first = notifier.AttemptVersion;
         notifier.ReportFailure();
 
-        notifier.BeginAttempt("Missing", "https://localhost/missing");
+        notifier.BeginAttempt("https://localhost/missing");
 
         notifier.AttemptVersion.ShouldBe(first + 1);
         notifier.Message.ShouldBeNull();
@@ -114,7 +114,7 @@ public sealed class NavigationFailureNotifierTests
     {
         NavigationFailureNotifier notifier = CreateNotifier();
         notifier.ConfirmRoute("https://localhost/tenants/workspace-users");
-        notifier.BeginAttempt("Parties", "https://localhost/parties");
+        notifier.BeginAttempt("https://localhost/parties");
         Task<bool> pending = notifier.PrepareRouteConfirmation("https://localhost/parties");
 
         notifier.ResetForScopeChange();
@@ -129,20 +129,85 @@ public sealed class NavigationFailureNotifierTests
     public async Task HostWithoutFocusOwnerSettlesMatchingLocation()
     {
         NavigationFailureNotifier notifier = CreateNotifier();
-        notifier.BeginAttempt("Counter", "https://localhost/counter");
+        notifier.BeginAttempt("https://localhost/counter");
         Task<bool> pending = notifier.PrepareRouteConfirmation("https://localhost/counter");
         notifier.ObserveLocation("https://localhost/counter");
         (await pending.ConfigureAwait(true)).ShouldBeTrue();
     }
 
+    [Fact]
+    public void LeavingTheFallbackDestinationClearsTheTabStatus()
+    {
+        NavigationFailureNotifier notifier = CreateNotifier();
+        notifier.TabFallbackDestination = "/accounting/overview";
+        notifier.TabFallbackMessage = "That page is unavailable. Showing Overview.";
+
+        notifier.ObserveLocation("https://localhost/accounting/overview/");
+        notifier.TabFallbackDestination.ShouldBe("/accounting/overview");
+        notifier.TabFallbackMessage.ShouldNotBeNull();
+
+        notifier.ObserveLocation("https://localhost/home");
+        notifier.TabFallbackDestination.ShouldBeNull();
+        notifier.TabFallbackMessage.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task PreventedNavigationSettlesAsCancelledWithoutFailureMessage()
+    {
+        NavigationFailureNotifier notifier = CreateNotifier();
+        notifier.BeginAttempt("https://localhost/tenants?tab=users");
+        Task<bool> pending = notifier.PrepareRouteConfirmation("https://localhost/tenants?tab=users");
+
+        notifier.CancelAttempt("https://localhost/tenants?tab=users");
+
+        (await pending.ConfigureAwait(true)).ShouldBeFalse();
+        notifier.ConsumeCancellation(pending).ShouldBeTrue();
+        notifier.ConsumeCancellation(pending).ShouldBeFalse();
+        notifier.Message.ShouldBeNull();
+        notifier.OwnsAttempt("https://localhost/tenants?tab=users").ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task FailedNavigationIsNotReportedAsCancelled()
+    {
+        NavigationFailureNotifier notifier = CreateNotifier();
+        notifier.BeginAttempt("https://localhost/counter");
+        Task<bool> pending = notifier.PrepareRouteConfirmation("https://localhost/counter");
+
+        notifier.ReportFailure();
+
+        (await pending.ConfigureAwait(true)).ShouldBeFalse();
+        notifier.ConsumeCancellation(pending).ShouldBeFalse();
+        notifier.Message.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task AliasMatchingMoreSelectorsWinsOverALongerKey()
+    {
+        NavigationFailureNotifier notifier = CreateNotifier(new Dictionary<string, string>
+        {
+            ["/tenants?workspace-tab-selector=users"] = "/tenants/long",
+            ["/tenants?a=1&b=2"] = "/tenants/specific",
+        });
+        Task<bool> pending = notifier.PrepareRouteConfirmation("https://localhost/tenants?a=1&b=2&workspace-tab-selector=users");
+
+        notifier.ConfirmRoute("https://localhost/tenants/specific");
+
+        pending.IsCompleted.ShouldBeTrue();
+        (await pending.ConfigureAwait(true)).ShouldBeTrue();
+    }
+
     private static NavigationFailureNotifier CreateNotifier()
+        => CreateNotifier(new Dictionary<string, string> { ["/tenants?tab=users"] = "/tenants/workspace-users" });
+
+    private static NavigationFailureNotifier CreateNotifier(Dictionary<string, string> aliases)
     {
         ServiceCollection services = new();
         services.AddLogging();
         services.AddLocalization();
         IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
         registry.GetManifests().Returns([new DomainManifest("Tenants", "tenants", [], []) {
-            CanonicalRouteAliases = new Dictionary<string, string> { ["/tenants?tab=users"] = "/tenants/workspace-users" },
+            CanonicalRouteAliases = aliases,
         }]);
         services.AddSingleton(registry);
         ServiceProvider provider = services.BuildServiceProvider();

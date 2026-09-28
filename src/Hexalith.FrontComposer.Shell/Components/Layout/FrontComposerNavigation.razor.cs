@@ -519,7 +519,7 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
     private void HandleContextTileActivated(string boundedContext, string? soleDestinationHref) {
         Dispatcher.Dispatch(new CapabilityVisitedAction(CapabilityIds.ForBoundedContext(boundedContext)));
         if (!string.IsNullOrWhiteSpace(soleDestinationHref)) {
-            NavigateSafely(soleDestinationHref, boundedContext);
+            NavigateSafely(soleDestinationHref);
         }
     }
 
@@ -549,7 +549,7 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
 
     private void HandleProjectionMenuItemClicked(string boundedContext, string projectionFqn, string route) {
         HandleNavItemClicked(boundedContext, CapabilityIds.ForProjection(boundedContext, projectionFqn));
-        NavigateSafely(route, ProjectionRouteBuilder.ProjectionLabel(projectionFqn));
+        NavigateSafely(route);
     }
 
     private void HandleNavEntryMenuItemClicked(FrontComposerNavEntry entry) {
@@ -559,12 +559,12 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
         }
 
         Dispatcher.Dispatch(new CapabilityVisitedAction(CapabilityIds.ForBoundedContext(entry.BoundedContext)));
-        NavigateSafely(entry.Href, LocalizeEntryTitle(entry));
+        NavigateSafely(entry.Href);
     }
 
-    private void NavigateSafely(string route, string? destinationLabel) {
+    private void NavigateSafely(string route) {
         try {
-            NavigationFailure.BeginAttempt(destinationLabel, Navigation.ToAbsoluteUri(route).AbsoluteUri);
+            NavigationFailure.BeginAttempt(Navigation.ToAbsoluteUri(route).AbsoluteUri);
             Navigation.NavigateTo(route);
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or UriFormatException) {

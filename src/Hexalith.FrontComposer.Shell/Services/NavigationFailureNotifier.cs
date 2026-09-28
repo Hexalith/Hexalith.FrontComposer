@@ -38,6 +38,7 @@ public sealed class NavigationFailureNotifier
     internal string? TabFallbackMessage { get; set; }
 
     private readonly List<(string Uri, TaskCompletionSource<bool> Completion)> _pendingConfirmations = [];
+    private readonly HashSet<Task<bool>> _cancelledConfirmations = [];
     private string? _failedReturnUri;
     private string? _activeAttemptUri;
 
@@ -73,6 +74,7 @@ public sealed class NavigationFailureNotifier
         }
 
         _pendingConfirmations.Clear();
+        _cancelledConfirmations.Clear();
         _activeAttemptUri = null;
         _failedReturnUri = null;
         LastConfirmedUri = null;
@@ -84,10 +86,12 @@ public sealed class NavigationFailureNotifier
     }
 
     /// <summary>Records a rendered route for recovery if a later route has no match.</summary>
-    public void RememberSuccessfulRoute(string? pageLabel)
+    /// <remarks>
+    /// The current page label comes from registry-owned navigation metadata, never from a rendered
+    /// heading, because route headings can contain customer names or identifiers.
+    /// </remarks>
+    public void RememberSuccessfulRoute()
     {
-        // Route headings can contain customer names or identifiers. Keep only fixed copy in
-        // navigation status, even when a caller supplies a rendered heading.
         CurrentPageLabel = SafeLabel(LastConfirmedUri, "RouteNavigationCurrentPageFallbackLabel");
         DestinationLabel = null;
         Clear();
@@ -112,7 +116,7 @@ public sealed class NavigationFailureNotifier
         if (!string.Equals(_failedReturnUri, routeUri, StringComparison.OrdinalIgnoreCase))
         {
             _failedReturnUri = null;
-            RememberSuccessfulRoute(null);
+            RememberSuccessfulRoute();
         }
     }
 
@@ -136,8 +140,12 @@ public sealed class NavigationFailureNotifier
         return pending.Task;
     }
 
-    /// <summary>Records a caller-owned visible destination label without storing a route in a message.</summary>
-    public void BeginAttempt(string? destinationLabel, string? routeUri = null)
+    /// <summary>Starts a shell-owned navigation attempt for the supplied absolute route URI.</summary>
+    /// <remarks>
+    /// The destination label comes from registry-owned navigation metadata for the route; the URI
+    /// itself never appears in a message.
+    /// </remarks>
+    public void BeginAttempt(string? routeUri)
     {
         AttemptVersion++;
         _activeAttemptUri = routeUri;
@@ -146,6 +154,37 @@ public sealed class NavigationFailureNotifier
         // A repeated failure must insert fresh live-region text for this attempt.
         Clear();
     }
+
+    /// <summary>Settles a shell-owned attempt whose navigation another handler prevented.</summary>
+    /// <remarks>
+    /// A navigation lock such as the form-abandonment guard cancels the location change, so no
+    /// route renders. The attempt ends without a failure message; the caller that prepared the
+    /// confirmation can tell the cancellation apart through <see cref="ConsumeCancellation"/>.
+    /// </remarks>
+    internal void CancelAttempt(string routeUri)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(routeUri);
+        if (_activeAttemptUri is not null && MatchesAttempt(_activeAttemptUri, routeUri))
+        {
+            _activeAttemptUri = null;
+            DestinationLabel = null;
+        }
+
+        foreach ((string requestedUri, TaskCompletionSource<bool> completion) in _pendingConfirmations.ToArray())
+        {
+            if (!MatchesAttempt(requestedUri, routeUri))
+            {
+                continue;
+            }
+
+            _cancelledConfirmations.Add(completion.Task);
+            completion.TrySetResult(false);
+            _pendingConfirmations.Remove((requestedUri, completion));
+        }
+    }
+
+    /// <summary>Whether the confirmation settled because its navigation was prevented; consumes that record.</summary>
+    internal bool ConsumeCancellation(Task<bool> confirmation) => _cancelledConfirmations.Remove(confirmation);
 
     /// <summary>Retires confirmations when another browser or app navigation supersedes them.</summary>
     public void ObserveLocation(string routeUri)
@@ -202,7 +241,7 @@ public sealed class NavigationFailureNotifier
     public void CancelFailedReturn() => _failedReturnUri = null;
 
     /// <summary>Reports a failed route activation without exposing its URL or exception.</summary>
-    public void ReportFailure(string? destinationLabel = null)
+    public void ReportFailure()
     {
         _activeAttemptUri = null;
         _failedReturnUri = null;
@@ -232,7 +271,9 @@ public sealed class NavigationFailureNotifier
         }
         return (_services?.GetService<IFrontComposerRegistry>()?.GetManifests() ?? [])
             .SelectMany(manifest => manifest.CanonicalRouteAliases)
-            .OrderByDescending(pair => pair.Key.Length)
+            // The alias matching the most query selectors is the most specific one.
+            .OrderByDescending(pair => SelectorCount(pair.Key))
+            .ThenByDescending(pair => pair.Key.Length)
             .Where(pair => {
                 string[] alias = pair.Key.Split('?', 2);
                 return string.Equals(alias[0].TrimEnd('/'), requested.AbsolutePath.TrimEnd('/'), StringComparison.OrdinalIgnoreCase)
@@ -241,6 +282,11 @@ public sealed class NavigationFailureNotifier
             .Select(pair => pair.Value)
             .FirstOrDefault();
     }
+
+    private static int SelectorCount(string alias)
+        => alias.Split('?', 2) is [_, string selectors]
+            ? QueryHelpers.ParseQuery(selectors).Sum(selector => selector.Value.Count)
+            : 0;
 
     private static bool QuerySelectorsMatch(string selectors, string requestedQuery)
     {

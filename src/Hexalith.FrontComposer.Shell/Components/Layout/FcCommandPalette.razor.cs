@@ -3,6 +3,7 @@ using Fluxor;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.Routing;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
 
 using Microsoft.AspNetCore.Components;
@@ -52,6 +53,8 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
     private string? _openedRoute;
     private string? _announcedZeroQuery;
     private string? _pendingZeroQuery;
+    private string? _pendingFailureText;
+    private bool _liveRegionHoldsFailure;
     private CancellationTokenSource? _zeroStatusDelay;
     private bool _disposed;
     private ElementReference _paletteRoot;
@@ -96,6 +99,8 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             _openedRoute = NavigationManager.Uri;
+            // A failure from an earlier palette session must not speak in this one.
+            _lastFailureVersion = PaletteState.Value.ActivationFailureVersion;
             await RegisterKeyboardInteropAsync();
             await FocusSearchAsync();
         }
@@ -113,6 +118,12 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
         if (state.ActivationFailureVersion != _lastFailureVersion) {
             _lastFailureVersion = state.ActivationFailureVersion;
             _navigatesToOtherRoute = false;
+            QueueActivationFailureStatus();
+        }
+        else if (_pendingFailureText is { } failureText) {
+            _pendingFailureText = null;
+            _liveRegionText = failureText;
+            StateHasChanged();
         }
         if (!_explicitlyClosed && !state.IsOpen && Dialog is not null) {
             _navigatesToOtherRoute = _openedRoute is not null
@@ -185,6 +196,8 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
     private Task OnQueryChangedAsync(string newQuery) {
         _localQuery = newQuery ?? string.Empty;
         _navigatesToOtherRoute = false;
+        _liveRegionHoldsFailure = false;
+        _pendingFailureText = null;
         Dispatcher.Dispatch(new PaletteQueryChangedAction(UlidFactory.NewUlid(), _localQuery));
         return Task.CompletedTask;
     }
@@ -396,6 +409,24 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
         }
     }
 
+    // The modal palette makes the shell's status region inert, so an activation failure (AM-23)
+    // speaks through this palette-owned region while the palette stays open.
+    private void QueueActivationFailureStatus() {
+        string text = Services.GetService<NavigationFailureNotifier>()?.Message
+            ?? Localizer["RouteNavigationFailedText", Localizer["RouteNavigationUnknownDestinationLabel"].Value].Value;
+        _liveRegionHoldsFailure = true;
+        if (_liveRegionText.Length > 0) {
+            // Clear first so the next render inserts fresh text into the existing live region.
+            _liveRegionText = string.Empty;
+            _pendingFailureText = text;
+        }
+        else {
+            _liveRegionText = text;
+        }
+
+        StateHasChanged();
+    }
+
     private void ScheduleZeroResultStatus() {
         FrontComposerCommandPaletteState state = PaletteState.Value;
         string query = state.Query.Trim().ToLowerInvariant();
@@ -408,7 +439,7 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
             _zeroStatusDelay?.Dispose();
             _zeroStatusDelay = null;
             _pendingZeroQuery = null;
-            if (_liveRegionText.Length > 0) {
+            if (_liveRegionText.Length > 0 && !_liveRegionHoldsFailure) {
                 _liveRegionText = string.Empty;
                 StateHasChanged();
             }
@@ -450,6 +481,8 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
                 if (current.IsOpen && current.LoadState == PaletteLoadState.Ready && current.Results.IsEmpty
                     && string.Equals(current.Query.Trim(), query, StringComparison.OrdinalIgnoreCase)) {
                     _announcedZeroQuery = query;
+                    _liveRegionHoldsFailure = false;
+                    _pendingFailureText = null;
                     _liveRegionText = Localizer["PaletteNoCommandsOrPagesText"].Value;
                     StateHasChanged();
                 }

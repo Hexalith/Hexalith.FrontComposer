@@ -34,6 +34,7 @@ public sealed partial class FcPageTabs : ComponentBase, IAsyncDisposable
         set => NavigationFailure.TabFallbackMessage = value;
     }
     private bool _disposed;
+    private bool _fallbackRegionRendered;
 
     [Inject] private NavigationManager Navigation { get; set; } = default!;
 
@@ -157,6 +158,22 @@ public sealed partial class FcPageTabs : ComponentBase, IAsyncDisposable
 
     private string? FallbackMessage => FallbackStatus;
 
+    // The retained message speaks only once the route has settled on its fallback destination,
+    // after this instance has rendered its empty live region.
+    private string? AnnouncedFallbackMessage
+    {
+        get
+        {
+            if (!_fallbackRegionRendered || FallbackMessage is not { } message || FallbackDestination is not { } destination)
+            {
+                return null;
+            }
+
+            string current = Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0].Trim('/');
+            return string.Equals(current, destination.Trim('/'), StringComparison.OrdinalIgnoreCase) ? message : null;
+        }
+    }
+
     /// <inheritdoc />
     protected override void OnInitialized()
     {
@@ -185,9 +202,20 @@ public sealed partial class FcPageTabs : ComponentBase, IAsyncDisposable
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         string renderUri = Navigation.Uri;
-        if (!string.IsNullOrWhiteSpace(ModuleRoute) && !_tabs.Any(tab => string.Equals(tab.Id, DefaultTabId, StringComparison.OrdinalIgnoreCase) && !tab.Disabled))
+        // Tab children can register after the first render; validate the default once any exist.
+        if (!string.IsNullOrWhiteSpace(ModuleRoute) && _tabs.Count > 0
+            && !_tabs.Any(tab => string.Equals(tab.Id, DefaultTabId, StringComparison.OrdinalIgnoreCase) && !tab.Disabled))
         {
             throw new InvalidOperationException($"An enabled {nameof(DefaultTabId)} tab must be declared for route-backed tabs.");
+        }
+
+        if (!_fallbackRegionRendered && _tabs.Count > 0 && !string.IsNullOrWhiteSpace(ModuleRoute))
+        {
+            _fallbackRegionRendered = true;
+            if (FallbackMessage is not null)
+            {
+                StateHasChanged();
+            }
         }
 
         if (_tabs.Count > 0)
@@ -220,8 +248,7 @@ public sealed partial class FcPageTabs : ComponentBase, IAsyncDisposable
         string destination = $"/{ModuleRoute!.Trim('/')}/{DefaultTabId}";
         try
         {
-            NavigationFailure.BeginAttempt(_tabs.FirstOrDefault(t => string.Equals(t.Id, DefaultTabId, StringComparison.Ordinal))?.Header,
-                Navigation.ToAbsoluteUri(destination).AbsoluteUri);
+            NavigationFailure.BeginAttempt(Navigation.ToAbsoluteUri(destination).AbsoluteUri);
             Navigation.NavigateTo(destination, replace: true);
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
@@ -333,7 +360,7 @@ public sealed partial class FcPageTabs : ComponentBase, IAsyncDisposable
             {
                 try
                 {
-                    NavigationFailure.BeginAttempt(selected.Header, Navigation.ToAbsoluteUri(desired).AbsoluteUri);
+                    NavigationFailure.BeginAttempt(Navigation.ToAbsoluteUri(desired).AbsoluteUri);
                     Navigation.NavigateTo(desired);
                 }
                 catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)

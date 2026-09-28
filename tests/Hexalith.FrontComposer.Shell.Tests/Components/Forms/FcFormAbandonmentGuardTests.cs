@@ -5,6 +5,7 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Components.Forms;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Options;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.AspNetCore.Components;
@@ -58,6 +59,29 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
 
         DidPreventNavigation(context).ShouldBeTrue();
         cut.WaitForAssertion(() => cut.Find("[data-testid='fc-form-abandonment-warning']"));
+    }
+
+    [Fact]
+    public async Task Prevented_navigation_settles_a_pending_shell_activation_as_cancelled() {
+        _ = Services.AddLocalization();
+        _ = Services.AddScoped<NavigationFailureNotifier>();
+        TestModel model = new() { Name = "" };
+        EditContext editContext = new(model);
+        (FcFormAbandonmentGuard guard, IRenderedComponent<FcFormAbandonmentGuard> cut) = RenderGuardWithCut(editContext);
+        NavigationFailureNotifier failure = Services.GetRequiredService<NavigationFailureNotifier>();
+        failure.BeginAttempt("https://localhost/leave");
+        Task<bool> pending = failure.PrepareRouteConfirmation("https://localhost/leave");
+
+        editContext.NotifyFieldChanged(editContext.Field(nameof(TestModel.Name)));
+        _time.Advance(TimeSpan.FromSeconds(31));
+        Microsoft.AspNetCore.Components.Routing.LocationChangingContext context = BuildLocationChangingContext("https://localhost/leave");
+        await InvokeNavigationChangingAsync(cut, guard, context);
+
+        DidPreventNavigation(context).ShouldBeTrue();
+        pending.IsCompleted.ShouldBeTrue();
+        (await pending.ConfigureAwait(true)).ShouldBeFalse();
+        failure.ConsumeCancellation(pending).ShouldBeTrue();
+        failure.Message.ShouldBeNull();
     }
 
     [Fact]
@@ -420,7 +444,13 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
                 args[i] = pars[i].HasDefaultValue ? pars[i].DefaultValue! : null!;
             }
         }
-        return (Microsoft.AspNetCore.Components.Routing.LocationChangingContext)ctor.Invoke(args);
+        var context = (Microsoft.AspNetCore.Components.Routing.LocationChangingContext)ctor.Invoke(args);
+        // .NET 10 exposes TargetLocation as a required init property rather than a constructor argument.
+        if (context.TargetLocation is null) {
+            type.GetProperty(nameof(context.TargetLocation))!.SetValue(context, target);
+        }
+
+        return context;
     }
 
     private static bool DidPreventNavigation(Microsoft.AspNetCore.Components.Routing.LocationChangingContext context) {

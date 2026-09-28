@@ -162,7 +162,12 @@ export function focusRouteHeading(routeKey, routeFocusOwner, preservePaletteFocu
     const stopRouteFocusRestore = () => { allowRouteFocusRestore = false; };
     document.addEventListener('pointerdown', stopRouteFocusRestore, { capture: true, once: true, signal: focusGuard.signal });
     document.addEventListener('keydown', stopRouteFocusRestore, { capture: true, once: true, signal: focusGuard.signal });
-    setTimeout(() => focusGuard.abort(), 3000);
+    // Restoration only recovers focus dropped by the navigation itself; once the guard window
+    // closes, a later deliberate move to the page body must not be pulled back to the heading.
+    setTimeout(() => {
+        focusGuard.abort();
+        allowRouteFocusRestore = false;
+    }, 3000);
 
     const confirm = () => {
         if (pendingRoutePath !== routeKey || normalizePath(window.location.pathname) !== path) {

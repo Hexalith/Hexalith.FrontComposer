@@ -68,7 +68,7 @@ public sealed class FcHomeDirectoryTests : LayoutComponentTestBase {
 
         cut.WaitForAssertion(() => {
             cut.Markup.ShouldContain("data-testid=\"fc-home-empty-no-microservices\"");
-            cut.Markup.ShouldContain("No microservices registered.");
+            cut.Find("[data-testid='fc-home-empty-no-microservices'] p").TextContent.ShouldBe("No modules are available.");
             cut.Markup.ShouldContain($"href=\"{FcHomeDirectory.GettingStartedGuideUrl}\"");
             cut.FindAll("[data-testid='fc-home-no-modules-status']").Count.ShouldBe(1);
             cut.Find("[data-testid='fc-home-no-modules-status']").TextContent.ShouldContain("No modules");
@@ -353,6 +353,9 @@ public sealed class FcHomeDirectoryTests : LayoutComponentTestBase {
 
         NavigationManager nav = Services.GetRequiredService<NavigationManager>();
         nav.Uri.ShouldEndWith("/counter");
+        // The card owns its activation like the rail tile, so a failed landing recovers to Home.
+        Services.GetRequiredService<Hexalith.FrontComposer.Shell.Services.NavigationFailureNotifier>()
+            .OwnsAttempt(nav.Uri).ShouldBeTrue();
     }
 
     [Theory]

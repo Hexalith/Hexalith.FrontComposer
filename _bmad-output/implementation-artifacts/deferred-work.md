@@ -9917,3 +9917,12 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-2-make-shell-navigation-and-route-focus-deterministic.md`
   summary: Localize the FrontComposer UI host's polite "Authorizing..." route status text.
   evidence: `src/Hexalith.FrontComposer.UI/Components/Routes.razor` renders a hard-coded English `Authorizing...` live region during protected navigation; the literal predates Story 13.2, which only added the `data-fc-route-authorizing` marker.
+
+## Deferred from: code review of spec-13-2-make-shell-navigation-and-route-focus-deterministic.md (2026-09-28)
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-2-make-shell-navigation-and-route-focus-deterministic.md`
+  summary: Run the FrontComposer UI host-router suite (`tests/Hexalith.FrontComposer.UI.Tests/ProductionRouterTests.cs`) in a CI lane.
+  evidence: The project is `Build Solution="Release|*" Project="false"` in `Hexalith.FrontComposer.slnx` under the package boundary (BH3.9), `quality.yml` tests Release only, and no workflow names the project, so the mounted-router "close only after the heading renders" contract has no CI check. The Story 13.2 Playwright specs are tracked by the 2026-09-27 entry above; add a Debug/source lane once the browser Test host is healthy.
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-2-make-shell-navigation-and-route-focus-deterministic.md`
+  summary: Remove the nested-interactive axe violation from `FcHamburgerToggle` below the Desktop tier.
+  evidence: Found while verifying the 2026-09-28 review patches. `tests/e2e/specs/smoke.spec.ts` axe reports `nested-interactive` (serious) on `div.fluent-layout-hamburger[role="button"][data-testid="fc-hamburger-toggle"]`, which wraps a focusable `fluent-button` at the 1280px Playwright viewport. `FcHamburgerToggle.razor` passes `role="button"` to `FluentLayoutHamburger` and is unchanged from baseline; Story 13.6 owns the accessibility verification.

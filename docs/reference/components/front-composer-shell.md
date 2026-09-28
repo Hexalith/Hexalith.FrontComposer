@@ -173,5 +173,52 @@ Declare host-owned top-level names in `FrontComposerRouteOptions.ReservedSegment
 reserves `home`, `commands`, and `__frontcomposer`. Modules may declare `DomainManifest.CanonicalRouteAliases`
 for legacy redirects to their child routes, with optional query selectors.
 
-`ShortcutBinding.TryFromKeyboardEvent` normalizes Shift away for single-character non-letter keys.
-Register `/` rather than `shift+/` so the page-search shortcut works on layouts that require Shift.
+The route-focus and page-search scripts read markers that the host router renders:
+
+- `data-fc-route-content="@Nav.Uri"` wraps the routed page. The `/` page-search shortcut only
+  targets a search inside the container for the current URL, and route focus waits for that
+  container's heading. Without it, `/` does nothing.
+- `data-fc-route-denied="true"` wraps the forbidden view, so a shell-owned activation that reaches
+  a denied page settles as a failed navigation instead of a success.
+- `data-fc-route-authorizing="true"` marks the authorizing view, so route focus extends its
+  heading deadline while authorization is pending.
+
+A minimal router that satisfies this contract:
+
+```razor
+@inject NavigationManager Nav
+
+<CascadingAuthenticationState>
+    <LayoutView Layout="typeof(MainLayout)">
+        <Router AppAssembly="typeof(App).Assembly"
+                AdditionalAssemblies="new[] { typeof(FrontComposerShell).Assembly }">
+            <Found Context="routeData">
+                <div @key="RouteComponentIdentity.For(routeData)" data-fc-route-content="@Nav.Uri">
+                    <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(FcRouteBodyLayout)">
+                        <NotAuthorized>
+                            <div data-fc-route-denied="true">
+                                <FcPageHeader Heading="Forbidden" />
+                            </div>
+                        </NotAuthorized>
+                        <Authorizing>
+                            <FluentText role="status" aria-live="polite" data-fc-route-authorizing="true">Authorizing...</FluentText>
+                        </Authorizing>
+                    </AuthorizeRouteView>
+                </div>
+                <FcRouteFocus RouteKey="@Nav.Uri" />
+            </Found>
+            <NotFound>
+                <FcRouteUnavailable @key="Nav.Uri" />
+                <FcRouteFocus RouteKey="@Nav.Uri" FocusHeading="false" />
+            </NotFound>
+        </Router>
+    </LayoutView>
+</CascadingAuthenticationState>
+```
+
+The shell layout is applied once through `LayoutView`, and routed pages use `FcRouteBodyLayout` so
+that `FcRouteFocus` stays inside the shell's single `main` landmark.
+
+`ShortcutBinding.TryFromKeyboardEvent` and `ShortcutBinding.Normalize` both drop Shift for
+single-character non-letter keys, so a `shift+/` registration becomes `/` and works on layouts that
+require Shift to type it.

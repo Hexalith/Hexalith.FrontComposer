@@ -100,7 +100,7 @@ public sealed class CommandPaletteE2ETests {
         harness.AdvanceDebounce();
         await harness.SettleAsync();
 
-        // The shell renders FcShellResources["PaletteNoResultsText"] when Results is empty
+        // The shell renders FcShellResources["PaletteNoCommandsOrPagesText"] when Results is empty
         // and Query is non-empty (FcCommandPalette.razor); the post-debounce state contract
         // is what AC2 actually gates.
         harness.State.Results.ShouldBeEmpty();

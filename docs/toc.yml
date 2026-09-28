@@ -10,6 +10,8 @@
       href: migrations/1.12-to-2.0.md
     - name: 9.1 to 9.2
       href: migrations/9.1-to-9.2.md
+    - name: 4.5 to 4.6
+      href: migrations/4.5-to-4.6.md
 - name: Reference
   href: reference/index.md
   items:

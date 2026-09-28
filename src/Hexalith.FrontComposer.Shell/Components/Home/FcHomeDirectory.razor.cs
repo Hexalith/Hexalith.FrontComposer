@@ -37,6 +37,8 @@ public partial class FcHomeDirectory {
 
     [Inject] private NavigationManager Nav { get; set; } = default!;
 
+    [Inject] private NavigationFailureNotifier NavigationFailure { get; set; } = default!;
+
     [Inject] private IFrontComposerTenantContextAccessor TenantContext { get; set; } = default!;
 
     private bool ScopeIsReady {
@@ -109,7 +111,16 @@ public partial class FcHomeDirectory {
         // D13 — synchronous dispatch BEFORE navigation so the reducer update lands first.
         Dispatcher.Dispatch(new CapabilityVisitedAction(CapabilityIds.ForBoundedContext(manifest.BoundedContext)));
 
-        Nav.NavigateTo(ModuleRouteCatalog.BuildRoute(manifest));
+        // The card owns this activation, like the rail tile, so a denied or unavailable Module
+        // recovers to Home with one AM-23 instead of being treated as direct entry.
+        try {
+            string route = ModuleRouteCatalog.BuildRoute(manifest);
+            NavigationFailure.BeginAttempt(Nav.ToAbsoluteUri(route).AbsoluteUri);
+            Nav.NavigateTo(route);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or UriFormatException) {
+            NavigationFailure.ReportFailure();
+        }
 
         return Task.CompletedTask;
     }

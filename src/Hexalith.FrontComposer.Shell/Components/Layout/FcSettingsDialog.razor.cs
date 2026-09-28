@@ -66,10 +66,17 @@ public partial class FcSettingsDialog : Fluxor.Blazor.Web.Components.FluxorCompo
                 bool routeChanged = _openedRoute is not null
                     && !string.Equals(_openedRoute, new Uri(Navigation.Uri).AbsolutePath, StringComparison.OrdinalIgnoreCase);
                 await _focusModule.InvokeVoidAsync("restoreOverlayOrigin", routeChanged);
-                await _focusModule.DisposeAsync();
             }
             catch (Exception ex) when (ex is JSException or JSDisconnectedException or OperationCanceledException) {
                 // Circuit teardown can interrupt focus restoration.
+            }
+            finally {
+                try {
+                    await _focusModule.DisposeAsync();
+                }
+                catch (Exception ex) when (ex is JSException or JSDisconnectedException or OperationCanceledException) {
+                    // The browser circuit can end before disposal.
+                }
             }
         }
 

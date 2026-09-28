@@ -10,7 +10,9 @@ export class CounterPage {
   constructor(page: Page) {
     this.page = page;
     this.heading = page.getByRole('main').getByRole('heading', { name: 'Counter', exact: true, level: 1 });
-    this.currentValue = page.locator("[data-fc-field='Count']").first();
+    // The generated grid exposes the Count field; the sample's custom full view renders the same
+    // value in a counter-count-slot. Either rendering satisfies the pipeline smoke.
+    this.currentValue = page.locator("[data-fc-field='Count'], .counter-count-slot strong").first();
     this.incrementButton = page.locator('#fc-trigger-Counter-Domain-IncrementCommand');
     this.configureLink = page.getByRole('link', { name: 'Configure Counter' });
   }

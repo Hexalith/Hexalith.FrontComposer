@@ -133,6 +133,8 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
             "missing", [new PaletteResult(PaletteResultCategory.Recent, "Missing", "", "/missing/page", null, 1, false)]));
         cut.WaitForElement("[data-testid='fc-palette-option']");
 
+        int entryFocusBeforeActivation = KeyboardModule.Invocations.Count(invocation => invocation.Identifier == "focusElement");
+        entryFocusBeforeActivation.ShouldBeGreaterThan(0);
         await cut.InvokeAsync(() => cut.Find("[data-testid='fc-palette-option']").Click());
         Services.GetRequiredService<NavigationFailureNotifier>().ReportFailure();
 
@@ -141,8 +143,12 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
             state.Value.IsOpen.ShouldBeTrue();
             state.Value.Query.ShouldBe("missing");
             cut.Find("[data-testid='fc-palette-search']").GetAttribute("value").ShouldBe("missing");
+            // The modal makes the shell status inert, so AM-23 speaks through the palette-owned region.
+            cut.Find("[data-testid='fc-palette-live']").TextContent.ShouldContain("Could not open");
         });
-        KeyboardModule.Invocations.Count(invocation => invocation.Identifier == "focusElement").ShouldBeGreaterThan(0);
+        // Failure leaves the search entry focused: nothing moves focus after activation.
+        KeyboardModule.Invocations.Count(invocation => invocation.Identifier == "focusElement").ShouldBe(entryFocusBeforeActivation);
+        FocusModule.Invocations.Any(invocation => invocation.Identifier == "focusOverlayEntry").ShouldBeFalse();
         FocusModule.Invocations.Any(invocation => invocation.Identifier == "restoreOverlayOrigin").ShouldBeFalse();
     }
 

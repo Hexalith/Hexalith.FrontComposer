@@ -15,6 +15,10 @@ test.describe('smoke: attribute -> generator -> render pipeline', () => {
     await expect(counter.heading).toBeVisible();
     await expect(counter.incrementButton).toBeVisible();
     await expect(counter.configureLink).toBeVisible();
+
+    // And the projection data renders on the route-backed Projection tab
+    await page.getByRole('tab', { name: 'Projection' }).click();
+    await expect(page).toHaveURL(/\/counter\/counter-projection$/);
     await expect(counter.currentValue).toBeVisible();
   });
 

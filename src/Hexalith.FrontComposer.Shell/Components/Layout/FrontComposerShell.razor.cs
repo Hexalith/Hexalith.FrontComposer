@@ -332,8 +332,8 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
 
     /// <summary>
     /// Whether the shell should render the Navigation area. Adopter-supplied content always wins;
-    /// framework auto-navigation appears when at least one manifest has projections OR a domain has
-    /// registered explicit navigation entries.
+    /// framework auto-navigation appears when at least one manifest is registered (every Module has a
+    /// routable landing) OR a domain has registered explicit navigation entries.
     /// </summary>
     protected bool HasNavigation {
         get {
@@ -550,7 +550,7 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
                 try {
                     await _startupFailureHeading.FocusAsync().ConfigureAwait(false);
                 }
-                catch (Exception ex) when (ex is JSException or OperationCanceledException or InvalidOperationException) {
+                catch (Exception ex) when (ex is JSException or JSDisconnectedException or OperationCanceledException or InvalidOperationException) {
                     // The safe heading stays visible when the browser circuit has ended.
                 }
             }
@@ -842,7 +842,8 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
         => Dispatcher.Dispatch(new BoundedContextChangedAction(BoundedContextRouteParser.Parse(uri)));
 
     private bool HasRenderableManifest() {
-        foreach (DomainManifest manifest in Registry.GetManifests()) {
+        // Every registered manifest has a routable Module landing, even without projections.
+        if (Registry.GetManifests().Count > 0) {
             return true;
         }
 

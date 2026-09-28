@@ -357,6 +357,26 @@ public class CommandPaletteEffectsTests {
     }
 
     [Fact]
+    public async Task HandlePaletteResultActivated_PreventedNavigationClosesWithoutRecentOrFailure() {
+        PaletteResult result = new(PaletteResultCategory.Recent, "Orders", "", "/orders", null, 1, false);
+        TestNavigationManager navigation = new();
+        CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out IServiceProvider services,
+            paletteResults: [result], navigationManager: navigation);
+        navigation.OnNavigate = null;
+
+        Task activation = sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0, result, string.Empty), dispatcher);
+        NavigationFailureNotifier failure = services.GetRequiredService<NavigationFailureNotifier>();
+        // A navigation lock (the form-abandonment guard) prevents the location change.
+        failure.CancelAttempt("https://localhost/orders");
+        await activation;
+
+        dispatcher.Received(1).Dispatch(Arg.Any<PaletteClosedAction>());
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteActivationFailedAction>());
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<RecentRouteVisitedAction>());
+        failure.Message.ShouldBeNull();
+    }
+
+    [Fact]
     public async Task HandlePaletteResultActivated_RenderFailurePreservesPaletteAndQuery() {
         PaletteResult result = new(PaletteResultCategory.Recent, "Orders", "", "/orders", null, 1, false);
         TestNavigationManager navigation = new();
@@ -494,7 +514,7 @@ public class CommandPaletteEffectsTests {
         CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out IServiceProvider services,
             manifests: [new DomainManifest("Counter", "Counter", [], [])], paletteResults: [result]);
         NavigationFailureNotifier failure = services.GetRequiredService<NavigationFailureNotifier>();
-        failure.RememberSuccessfulRoute("Counter");
+        failure.RememberSuccessfulRoute();
 
         await sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0, result, string.Empty), dispatcher);
 
@@ -518,7 +538,7 @@ public class CommandPaletteEffectsTests {
         CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out IServiceProvider services,
             paletteResults: [result], navigationManager: new ThrowingNavigationManager());
         NavigationFailureNotifier failure = services.GetRequiredService<NavigationFailureNotifier>();
-        failure.RememberSuccessfulRoute("Counter");
+        failure.RememberSuccessfulRoute();
 
         await sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0, result, string.Empty), dispatcher);
 

@@ -230,7 +230,15 @@ public sealed class FrontComposerShortcutRegistrar(
     /// </summary>
     /// <returns>A completed task.</returns>
     public Task NavigateHomeAsync() {
-        navigation.NavigateTo("/home");
+        NavigationFailureNotifier? navigationFailure = services?.GetService<NavigationFailureNotifier>();
+        try {
+            navigationFailure?.BeginAttempt(navigation.ToAbsoluteUri("/home").AbsoluteUri);
+            navigation.NavigateTo("/home");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or UriFormatException) {
+            navigationFailure?.ReportFailure();
+        }
+
         return Task.CompletedTask;
     }
 
@@ -241,13 +249,18 @@ public sealed class FrontComposerShortcutRegistrar(
     /// </summary>
     /// <returns>A task that resolves when the focus attempt completes.</returns>
     [Obsolete("Use FocusSolePageSearchAsync for the page-search shortcut.")]
-    public async Task FocusFirstColumnFilterAsync()
-    {
-        string? viewKey = await dataGridFocusScope.GetActiveViewKeyAsync().ConfigureAwait(false);
-        if (viewKey is not null)
-        {
-            _ = await dataGridFocusScope.FocusFirstColumnFilterAsync(viewKey).ConfigureAwait(false);
+    public async Task FocusFirstColumnFilterAsync() {
+        bool inGrid = await dataGridFocusScope.IsFocusWithinDataGridAsync().ConfigureAwait(false);
+        if (!inGrid) {
+            return;
         }
+
+        string? viewKey = await dataGridFocusScope.GetActiveViewKeyAsync().ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(viewKey)) {
+            return;
+        }
+
+        _ = await dataGridFocusScope.FocusFirstColumnFilterAsync(viewKey).ConfigureAwait(false);
     }
 
     /// <summary>Focuses the sole enabled search in the current route.</summary>

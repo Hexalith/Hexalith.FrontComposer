@@ -191,7 +191,7 @@ public sealed class FcPaletteResultListTests : LayoutComponentTestBase {
             .Add(c => c.SelectedIndex, 0)
             .Add(c => c.OnSelectionChanged, _ => { }));
 
-        cut.Markup.ShouldContain("No matches found");
+        cut.Markup.ShouldContain("No commands or pages match.");
     }
 
     [Fact]

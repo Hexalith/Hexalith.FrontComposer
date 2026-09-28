@@ -36,9 +36,9 @@ public sealed class FcRouteFocusTests : LayoutComponentTestBase
         navigation.NavigateTo("/accounting");
         NavigationFailureNotifier failure = Services.GetRequiredService<NavigationFailureNotifier>();
         failure.ConfirmRoute(navigation.Uri);
-        failure.BeginAttempt("sensitive caller label", navigation.ToAbsoluteUri("/sales").AbsoluteUri);
+        failure.BeginAttempt(navigation.ToAbsoluteUri("/sales").AbsoluteUri);
         if (alreadyMoved) navigation.NavigateTo("/sales");
-        failure.ReportFailure("sensitive heading");
+        failure.ReportFailure();
         failure.Message.ShouldBe(expected);
     }
 
@@ -59,12 +59,12 @@ public sealed class FcRouteFocusTests : LayoutComponentTestBase
         IRenderedComponent<FcRouteFocus> cut = Render<FcRouteFocus>(parameters =>
             parameters.Add(focus => focus.RouteKey, navigation.Uri));
 
-        failure.BeginAttempt("Unavailable", navigation.Uri);
+        failure.BeginAttempt(navigation.Uri);
         cut.Instance.ReportRouteHeadingMissing(navigation.Uri);
         cut.Instance.ReportRouteHeadingMissing(navigation.Uri);
         failures.ShouldBe(1);
 
-        failure.BeginAttempt("Unavailable", navigation.Uri);
+        failure.BeginAttempt(navigation.Uri);
         cut.Instance.ReportRouteHeadingMissing(navigation.Uri);
         failures.ShouldBe(2);
     }
@@ -78,7 +78,7 @@ public sealed class FcRouteFocusTests : LayoutComponentTestBase
         failure.ConfirmRoute(navigation.Uri);
         string returnUri = navigation.Uri;
         navigation.NavigateTo("/accounting");
-        failure.BeginAttempt("Accounting", navigation.Uri);
+        failure.BeginAttempt(navigation.Uri);
         Task<bool> pending = failure.PrepareRouteConfirmation(navigation.Uri);
         IRenderedComponent<FcRouteFocus> cut = Render<FcRouteFocus>(parameters =>
             parameters.Add(focus => focus.RouteKey, navigation.Uri));
@@ -113,7 +113,7 @@ public sealed class FcRouteFocusTests : LayoutComponentTestBase
         failure.ConfirmRoute(navigation.Uri);
         string returnUri = navigation.Uri;
         navigation.NavigateTo("/admin/parties");
-        failure.BeginAttempt("Parties administration", navigation.Uri);
+        failure.BeginAttempt(navigation.Uri);
         Task<bool> pending = failure.PrepareRouteConfirmation(navigation.Uri);
         IRenderedComponent<FcRouteFocus> cut = Render<FcRouteFocus>(parameters =>
             parameters.Add(focus => focus.RouteKey, navigation.Uri));
@@ -134,7 +134,7 @@ public sealed class FcRouteFocusTests : LayoutComponentTestBase
         failure.ConfirmRoute(navigation.Uri);
         string returnUri = navigation.Uri;
         navigation.NavigateTo("/accounting");
-        failure.BeginAttempt("Accounting", navigation.Uri);
+        failure.BeginAttempt(navigation.Uri);
         Task<bool> pending = failure.PrepareRouteConfirmation(navigation.Uri);
         FocusModule.SetupVoid("focusRouteHeading", _ => true)
             .SetException(new JSException("focus unavailable"));
@@ -152,12 +152,38 @@ public sealed class FcRouteFocusTests : LayoutComponentTestBase
         NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
         NavigationFailureNotifier failure = Services.GetRequiredService<NavigationFailureNotifier>();
         IRenderedComponent<FcRouteFocus> cut = Render<FcRouteFocus>(parameters => parameters.Add(focus => focus.RouteKey, navigation.Uri));
-        failure.BeginAttempt("Home", navigation.Uri);
+        failure.BeginAttempt(navigation.Uri);
         Task<bool> pending = failure.PrepareRouteConfirmation(navigation.Uri);
         failure.ObserveLocation(navigation.Uri);
         pending.IsCompleted.ShouldBeFalse();
         cut.Instance.ConfirmRouteHeading(navigation.Uri);
         (await pending.ConfigureAwait(true)).ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("direct", false, false, false)]
+    [InlineData("owned", false, true, false)]
+    [InlineData("failed-return", true, false, false)]
+    [InlineData("alias", false, false, true)]
+    public void RouteFocusPassesRecoveryOwnershipAndAliasFlagsToTheScript(string scenario, bool failedReturn, bool owned, bool alias)
+    {
+        IFrontComposerRegistry registry = Services.GetRequiredService<IFrontComposerRegistry>();
+        registry.RegisterDomain(new DomainManifest("Sales", "sales", [], []) {
+            CanonicalRouteAliases = new Dictionary<string, string> { ["/sales"] = "/sales/summary" },
+        });
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        NavigationFailureNotifier failure = Services.GetRequiredService<NavigationFailureNotifier>();
+        navigation.NavigateTo(scenario == "alias" ? "/sales" : "/sales/summary");
+        if (scenario == "owned") failure.BeginAttempt(navigation.Uri);
+        if (scenario == "failed-return") failure.ReportFailureAndPreserveReturn(navigation.Uri);
+
+        _ = Render<FcRouteFocus>(parameters => parameters.Add(focus => focus.RouteKey, navigation.Uri));
+
+        JSRuntimeInvocation call = FocusModule.Invocations.Single(invocation => invocation.Identifier == "focusRouteHeading");
+        call.Arguments[0].ShouldBe(navigation.Uri);
+        call.Arguments[2].ShouldBe(failedReturn);
+        call.Arguments[3].ShouldBe(owned);
+        call.Arguments[4].ShouldBe(alias);
     }
 
     [Fact]
@@ -182,6 +208,7 @@ public sealed class FcRouteFocusTests : LayoutComponentTestBase
         first.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/accounting/overview"));
         first.Dispose();
         IRenderedComponent<FcModuleLandingPage> next = Render<FcModuleLandingPage>(parameters => parameters.Add(page => page.Module, "Accounting"));
-        next.Find("[data-testid='fc-module-tab-fallback']").TextContent.ShouldContain("Overview");
+        // The new page instance renders its live region empty first, then the retained AM-31 text.
+        next.WaitForAssertion(() => next.Find("[data-testid='fc-module-tab-fallback']").TextContent.ShouldContain("Overview"));
     }
 }

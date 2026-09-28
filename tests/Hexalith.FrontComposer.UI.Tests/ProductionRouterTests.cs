@@ -126,7 +126,7 @@ public sealed class ProductionRouterTests : BunitContext
         cut.FindComponent<FcRouteUnavailable>().ShouldNotBeNull();
         NavigationFailureNotifier failure = Services.GetRequiredService<NavigationFailureNotifier>();
         string destination = navigation.ToAbsoluteUri("/admin/parties").AbsoluteUri;
-        failure.BeginAttempt("Admin", destination);
+        failure.BeginAttempt(destination);
         Task<bool> confirmation = failure.PrepareRouteConfirmation(destination);
         failure.ObserveLocation(destination);
         confirmation.IsCompleted.ShouldBeFalse();
@@ -210,7 +210,7 @@ public sealed class ProductionRouterTests : BunitContext
             }
         };
 
-        failure.BeginAttempt("Missing", navigation.ToAbsoluteUri("/no-such-workspace/page/extra").ToString());
+        failure.BeginAttempt(navigation.ToAbsoluteUri("/no-such-workspace/page/extra").ToString());
         navigation.NavigateTo("/no-such-workspace/page/extra");
 
         cut.WaitForAssertion(() => navigation.Uri.ShouldBe(confirmedUri));
@@ -281,7 +281,7 @@ public sealed class ProductionRouterTests : BunitContext
 
         cut.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/accounting/overview"));
         cut.Find("[data-fc-module-route='/accounting']").ShouldNotBeNull();
-        cut.Find("[data-testid='fc-module-tab-fallback']").TextContent.ShouldContain("Overview");
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-module-tab-fallback']").TextContent.ShouldContain("Overview"));
     }
 
     private IRenderedComponent<Router> RenderProductionRouter()

@@ -132,7 +132,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await new ShellPage(page).shellRoot.waitFor();
 
     await expect(page.getByRole('tab', { name: 'Projection' })).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByTestId('fc-module-tab-fallback')).toHaveCount(0);
+    await expect(page.getByTestId('fc-module-tab-fallback')).toHaveText('');
   });
 
   test('failed-route focus confirmation leaves an open palette query and focus intact', async ({ page, tenant }) => {

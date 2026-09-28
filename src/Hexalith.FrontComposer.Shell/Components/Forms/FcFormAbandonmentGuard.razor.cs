@@ -2,11 +2,13 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -73,6 +75,9 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
 
     [Inject]
     private TimeProvider Time { get; set; } = default!;
+
+    [Inject]
+    private IServiceProvider ServiceProvider { get; set; } = default!;
 
     /// <inheritdoc />
     protected override void OnParametersSet() {
@@ -151,6 +156,9 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
 
         _pendingTarget = context.TargetLocation;
         _showingWarning = true;
+        // A shell activation waiting for this route must settle as cancelled, so an open command
+        // palette closes and this warning stays reachable.
+        ServiceProvider.GetService<NavigationFailureNotifier>()?.CancelAttempt(context.TargetLocation);
         context.PreventNavigation();
         // Review 2026-04-17 P5 — NavigationLock callbacks can run on a background thread in
         // Blazor Server; marshal back via InvokeAsync so StateHasChanged hits the render context.

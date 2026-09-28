@@ -384,11 +384,19 @@ async function main() {
       });
     };
 
+    // Story 13.2 route-backed tabs: command sections live on the default Overview tab
+    // (/counter) and the projection data section on the Projection tab.
     await runAxeScenario(
       'A11Y Inline page',
       `${baseUrl}/counter`,
       'Counter sample',
-      ['fluent-accordion-item.inline-section', 'fluent-accordion-item.command-section', 'section.data-section']);
+      ['fluent-accordion-item.inline-section', 'fluent-accordion-item.command-section']);
+
+    await runAxeScenario(
+      'A11Y Projection tab',
+      `${baseUrl}/counter/counter-projection`,
+      'Counter sample',
+      ['section.data-section']);
 
     await runAxeScenario(
       'A11Y Compact page',

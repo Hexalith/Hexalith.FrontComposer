@@ -128,7 +128,9 @@ public sealed class ShortcutService : IShortcutService, IDisposable {
         }
 
         // Fast-path: modifier-bearing combos NEVER form chord continuations (D4 sub-decision d).
-        bool hasModifier = e.CtrlKey || e.ShiftKey || e.AltKey || e.MetaKey;
+        // Shift that only typed a non-letter character was normalised out of the binding, so a
+        // shifted '/' follows the same chord rules as a bare '/'.
+        bool hasModifier = e.CtrlKey || e.AltKey || e.MetaKey || binding.Contains("shift+", StringComparison.Ordinal);
         if (hasModifier) {
             ClearPending();
             return await TryInvokeBindingAsync(binding).ConfigureAwait(false);

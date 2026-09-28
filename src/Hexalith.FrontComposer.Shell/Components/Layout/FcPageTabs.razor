@@ -33,8 +33,10 @@
             </FluentTab>
         }
     </FluentTabs>
-    @if (FallbackMessage is { } message)
+    @if (!string.IsNullOrWhiteSpace(ModuleRoute))
     {
-        <div @key="(_pendingFallback ?? _announcedFallback)" class="fc-sr-only" role="status" aria-live="polite" aria-atomic="true" data-testid="fc-module-tab-fallback">@message</div>
+        @* AM-31 — the live region exists before its text arrives; screen readers announce text
+           changes in an existing region, not a region inserted with its content. *@
+        <div class="fc-sr-only" role="status" aria-live="polite" aria-atomic="true" data-testid="fc-module-tab-fallback">@AnnouncedFallbackMessage</div>
     }
 }

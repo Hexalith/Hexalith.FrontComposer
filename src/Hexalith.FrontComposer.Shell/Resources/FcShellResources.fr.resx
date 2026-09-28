@@ -182,9 +182,6 @@
   <data name="PaletteCategoryRecent" xml:space="preserve">
     <value>Récents</value>
   </data>
-  <data name="PaletteNoResultsText" xml:space="preserve">
-    <value>Aucun résultat trouvé</value>
-  </data>
   <data name="PaletteInCurrentContextSuffix" xml:space="preserve">
     <value>(dans le contexte actuel)</value>
   </data>
@@ -222,9 +219,6 @@
   </data>
   <data name="HomeAllCaughtUpText" xml:space="preserve">
     <value>Tout est à jour. Aucun élément ne nécessite votre attention.</value>
-  </data>
-  <data name="HomeNoMicroservicesText" xml:space="preserve">
-    <value>Aucun microservice enregistré.</value>
   </data>
   <data name="HomeGettingStartedLinkText" xml:space="preserve">
     <value>Consulter le guide de démarrage.</value>

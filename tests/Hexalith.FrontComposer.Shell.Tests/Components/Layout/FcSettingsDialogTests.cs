@@ -48,6 +48,14 @@ public sealed class FcSettingsDialogTests : LayoutComponentTestBase {
     }
 
     [Fact]
+    public void DialogTitleIsTheSingleFocusableSettingsHeading() {
+        IRenderedComponent<FcSettingsDialog> cut = Render<FcSettingsDialog>();
+
+        cut.Find("[slot='title'] #fc-settings-heading").GetAttribute("tabindex").ShouldBe("-1");
+        cut.FindAll("h2").Count(heading => heading.TextContent.Trim() == "Settings").ShouldBe(1);
+    }
+
+    [Fact]
     public void RendersDensityRadioThemeAndPreview() {
         IRenderedComponent<FcSettingsDialog> cut = Render<FcSettingsDialog>();
 

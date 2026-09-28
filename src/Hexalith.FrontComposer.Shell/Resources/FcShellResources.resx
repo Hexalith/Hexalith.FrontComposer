@@ -202,10 +202,6 @@
   <data name="PaletteCategoryRecent" xml:space="preserve">
     <value>Recent</value>
   </data>
-  <data name="PaletteNoResultsText" xml:space="preserve">
-    <value>No matches found</value>
-    <comment>Story 3-4 D15 — empty-state copy AND aria-live announce text on zero results.</comment>
-  </data>
   <data name="PaletteInCurrentContextSuffix" xml:space="preserve">
     <value>(in current context)</value>
     <comment>Story 3-4 AC4 — secondary label appended to palette rows in the user's current bounded context. Pass-5 P4 — extracted from markup literal.</comment>
@@ -255,13 +251,9 @@
     <value>All caught up. No items need your attention.</value>
     <comment>Story 3-5 AC4a / D19 — returning user with zero urgency. Pre-merge native French review per D19.</comment>
   </data>
-  <data name="HomeNoMicroservicesText" xml:space="preserve">
-    <value>No microservices registered.</value>
-    <comment>Story 3-5 AC5 / D19 — empty state when GetManifests().Count == 0.</comment>
-  </data>
   <data name="HomeGettingStartedLinkText" xml:space="preserve">
     <value>See the getting-started guide.</value>
-    <comment>Story 3-5 AC5 / D19 — link text under HomeNoMicroservicesText.</comment>
+    <comment>Story 3-5 AC5 / D19 — link text under the no-modules empty state (ShellNoModulesText).</comment>
   </data>
   <data name="HomeOtherAreasHeading" xml:space="preserve">
     <value>Other areas</value>

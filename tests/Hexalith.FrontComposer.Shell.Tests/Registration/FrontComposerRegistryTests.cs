@@ -339,6 +339,39 @@ public class FrontComposerRegistryTests {
         registry.GetManifests().Count.ShouldBe(1);
     }
 
+    [Theory]
+    [InlineData("/sales", "/admin/users")]
+    [InlineData("/sales", "/sales/a/b")]
+    [InlineData("/sales", "/sales/")]
+    [InlineData("/orders", "/sales/summary")]
+    public void RegisterDomain_RejectsCanonicalAliasesOutsideTheirModule(string source, string target) {
+        FrontComposerRegistry registry = new([], [], NullLogger<FrontComposerRegistry>.Instance);
+
+        InvalidOperationException exception = Should.Throw<InvalidOperationException>(() =>
+            registry.RegisterDomain(new DomainManifest("Sales", "sales", [], []) {
+                CanonicalRouteAliases = new Dictionary<string, string> { [source] = target },
+            }));
+
+        exception.Message.ShouldContain("HFC1601");
+        registry.GetManifests().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void RegisterDomain_AcceptsRootAndQueryAliasesAndKeepsBothWhenRegistrationsMerge() {
+        FrontComposerRegistry registry = new([], [], NullLogger<FrontComposerRegistry>.Instance);
+        registry.RegisterDomain(new DomainManifest("Sales", "sales", [], []) {
+            CanonicalRouteAliases = new Dictionary<string, string> { ["/"] = "/sales/summary" },
+        });
+        registry.RegisterDomain(new DomainManifest("Sales", "sales", [], []) {
+            CanonicalRouteAliases = new Dictionary<string, string> { ["/sales?tab=history"] = "/sales/history" },
+        });
+
+        IReadOnlyDictionary<string, string> aliases = registry.GetManifests().ShouldHaveSingleItem().CanonicalRouteAliases;
+        aliases.Count.ShouldBe(2);
+        aliases["/"].ShouldBe("/sales/summary");
+        aliases["/SALES?tab=history"].ShouldBe("/sales/history");
+    }
+
     private sealed class CollectingLoggerProvider : ILoggerProvider {
         private readonly List<string> _messages = [];
         private readonly List<EventId> _eventIds = [];

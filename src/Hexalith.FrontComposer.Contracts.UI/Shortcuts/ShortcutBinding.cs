@@ -46,6 +46,7 @@ public static class ShortcutBinding {
     /// </summary>
     /// <param name="binding">The raw binding string supplied by an adopter or framework call site.</param>
     /// <returns>The normalised lowercase binding.</returns>
+    /// <remarks>Shift before a single non-letter key is dropped, as in <see cref="TryFromKeyboardEvent"/>; for example, shift+/ becomes /.</remarks>
     /// <exception cref="ArgumentException">Thrown when <paramref name="binding"/> is null / empty / whitespace, an unknown modifier, or a single bare letter without a modifier.</exception>
     public static string Normalize(string binding) {
         if (string.IsNullOrWhiteSpace(binding)) {
@@ -211,6 +212,12 @@ public static class ShortcutBinding {
             }
 
             hasModifier[modIndex] = true;
+        }
+
+        // Shift used to type a single non-letter character is not a binding modifier, matching
+        // TryFromKeyboardEvent: "shift+/" registers as "/" so it works on every keyboard layout.
+        if (keyToken.Length == 1 && !char.IsLetter(keyToken[0])) {
+            hasModifier[Array.IndexOf(_modifierOrder, "shift")] = false;
         }
 
         List<string> rebuilt = new(parts.Length);

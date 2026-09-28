@@ -159,6 +159,23 @@ public class ShortcutServiceTests {
     }
 
     [Fact]
+    public async Task ShiftedSlashDuringPendingChordFollowsTheSameChordGuard()
+    {
+        // On AZERTY and QWERTZ layouts '/' needs Shift; that Shift is not a binding modifier.
+        ShortcutService sut = BuildService(out _, out _);
+        int slashHits = 0;
+        sut.Register("g h", "HomeShortcutDescription", () => Task.CompletedTask);
+        sut.Register("/", "SlashFocusPageSearchShortcutDescription", () => { slashHits++; return Task.CompletedTask; });
+
+        await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "g" });
+        await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "/", ShiftKey = true });
+        slashHits.ShouldBe(0);
+
+        await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "/", ShiftKey = true });
+        slashHits.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task Chord_RepeatPrefix_OverwritesPending_NewWindowStarts() {
         ShortcutService sut = BuildService(out FakeTimeProvider time, out _);
         int hits = 0;

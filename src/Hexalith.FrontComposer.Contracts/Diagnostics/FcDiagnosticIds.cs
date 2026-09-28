@@ -440,7 +440,7 @@ public static class FcDiagnosticIds {
 
     /// <summary>
     /// <c>IFrontComposerRegistry.GetManifests()</c> threw inside the palette debounced scoring path
-    /// (Story 3-4 ADR-043). Warning severity — palette renders "No matches found" instead of stalling
+    /// (Story 3-4 ADR-043). Warning severity — palette renders "No commands or pages match." instead of stalling
     /// in a "Searching…" state. Runtime-only (no analyzer emission).
     /// </summary>
     public const string HFC2110_PaletteScoringFault = "HFC2110";

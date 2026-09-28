@@ -118,7 +118,9 @@ public sealed class FcPageTabsTests : LayoutComponentTestBase
             .AddChildContent(PageTabs(deferredLoading: false, disableActivity: false)));
 
         cut.FindComponent<FluentTabs>().Instance.ActiveTabId.ShouldBe("activity");
-        cut.FindAll("[data-testid='fc-module-tab-fallback']").ShouldBeEmpty();
+        // The AM-31 live region always exists for route-backed tabs, so a later fallback is a text change.
+        cut.FindAll("[data-testid='fc-module-tab-fallback']").Count.ShouldBe(1);
+        cut.Find("[data-testid='fc-module-tab-fallback']").TextContent.Trim().ShouldBeEmpty();
     }
 
     [Fact]
@@ -176,8 +178,11 @@ public sealed class FcPageTabsTests : LayoutComponentTestBase
 
         cut.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/orders/summary"));
         cut.FindComponent<FluentTabs>().Instance.ActiveTabId.ShouldBe("summary");
-        cut.FindAll("[data-testid='fc-module-tab-fallback']").Count.ShouldBe(1);
-        cut.Find("[data-testid='fc-module-tab-fallback']").TextContent.ShouldContain("Summary");
+        cut.WaitForAssertion(() =>
+        {
+            cut.FindAll("[data-testid='fc-module-tab-fallback']").Count.ShouldBe(1);
+            cut.Find("[data-testid='fc-module-tab-fallback']").TextContent.ShouldContain("Summary");
+        });
     }
 
     [Fact]
@@ -214,8 +219,11 @@ public sealed class FcPageTabsTests : LayoutComponentTestBase
         navigation.NavigateTo("/orders/missing");
 
         cut.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/orders/summary"));
-        cut.FindAll("[data-testid='fc-module-tab-fallback']").Count.ShouldBe(1);
-        cut.Find("[data-testid='fc-module-tab-fallback']").TextContent.ShouldContain("Summary");
+        cut.WaitForAssertion(() =>
+        {
+            cut.FindAll("[data-testid='fc-module-tab-fallback']").Count.ShouldBe(1);
+            cut.Find("[data-testid='fc-module-tab-fallback']").TextContent.ShouldContain("Summary");
+        });
     }
 
     [Theory]

@@ -34,7 +34,7 @@ public sealed partial class FcPageToolbar : ComponentBase
     /// <summary>Stable id used to bind the hidden search label to the Fluent input host.</summary>
     [Parameter] public string SearchInputId { get; set; } = "fc-page-toolbar-search-input";
 
-    /// <summary>Whether this toolbar search is unavailable to page search shortcuts.</summary>
+    /// <summary>Disables the toolbar search input; a disabled search is also ignored by the <c>/</c> page-search shortcut.</summary>
     [Parameter] public bool SearchDisabled { get; set; }
 
     /// <summary>Visible label and accessible name for the filter trigger.</summary>
