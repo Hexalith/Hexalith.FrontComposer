@@ -73,6 +73,32 @@ public sealed class FcCommandBlockedOutcomeTests : BunitContext {
     }
 
     [Fact]
+    public async Task OverlappingBlockedAttemptsEachGetTheirOwnClearAndSetCycle() {
+        _ = FocusModule.Setup<bool>("hasActiveLifecycle", _ => true).SetResult(false);
+        IRenderedComponent<FcCommandBlockedOutcome> cut = RenderOutcome();
+        List<string> texts = [];
+        cut.OnMarkupUpdated += (_, _) => {
+            string text = StatusText(cut);
+            if (texts.Count == 0 || !string.Equals(texts[^1], text, StringComparison.Ordinal)) {
+                texts.Add(text);
+            }
+        };
+
+        // BH5-16 — the second attempt starts before the first one's re-announce delay has elapsed, so
+        // only the serialized presentation keeps two separate clear-then-set cycles.
+        Task first = cut.InvokeAsync(() => cut.Instance.PresentAsync());
+        Task second = cut.InvokeAsync(() => cut.Instance.PresentAsync());
+        first.IsCompleted.ShouldBeFalse();
+        second.IsCompleted.ShouldBeFalse();
+        await AdvanceUntilAsync(() => first.IsCompleted && second.IsCompleted);
+        cut.WaitForAssertion(() => StatusText(cut).ShouldBe(BlockedMessage));
+
+        texts.ShouldBe([string.Empty, BlockedMessage, string.Empty, BlockedMessage]);
+        FocusModule.Invocations.Count(invocation => invocation.Identifier == "focusAttemptedControl").ShouldBe(2);
+        cut.FindAll("[role='status']").Count.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task ViewActiveCommandIsOfferedOnlyWhileTheActiveLifecycleIsMounted() {
         _ = FocusModule.Setup<bool>("hasActiveLifecycle", _ => true).SetResult(true);
         _ = FocusModule.Setup<bool>("focusActiveLifecycle", _ => true).SetResult(false);

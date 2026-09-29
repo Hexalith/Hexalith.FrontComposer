@@ -557,7 +557,7 @@
     <value>Vérification de votre autorisation à {0}. Cela ne prend qu'un instant.</value>
   </data>
   <data name="ValidationSummaryTitle" xml:space="preserve"><value>Échec de la validation</value></data>
-  <data name="ValidationSummaryMessageSingle" xml:space="preserve"><value>Corrigez l'erreur avant l'envoi. Une erreur.</value></data>
+  <data name="ValidationSummaryMessageSingle" xml:space="preserve"><value>Corrigez les erreurs avant l'envoi. Une erreur.</value></data>
   <data name="ValidationSummaryMessage" xml:space="preserve"><value>Corrigez les erreurs avant l'envoi. {0} erreurs.</value></data>
   <data name="MappedRejectionSummaryTitle" xml:space="preserve"><value>Commande rejetée</value></data>
   <data name="MappedRejectionSummaryMessageSingle" xml:space="preserve"><value>La commande a été rejetée. Corrigez l'erreur associée avant un nouvel envoi. Une erreur.</value></data>
@@ -567,11 +567,16 @@
   <data name="FormAbandonmentStay" xml:space="preserve"><value>Rester sur le formulaire</value></data>
   <data name="FormAbandonmentLeave" xml:space="preserve"><value>Quitter quand même</value></data>
   <data name="DestructiveConfirmationCancel" xml:space="preserve"><value>Annuler</value></data>
-  <data name="DestructiveConfirmationTitleTemplate" xml:space="preserve"><value>Confirmer {0} ?</value></data>
+  <data name="DestructiveConfirmationTitleTemplate" xml:space="preserve"><value>{0} ?</value></data>
   <data name="DestructiveConfirmationDefaultBody" xml:space="preserve"><value>Cette action est irréversible.</value></data>
   <data name="ActiveCommandLifecycleHeading" xml:space="preserve"><value>État de la commande {0}</value></data>
   <data name="CommandGenericLabel" xml:space="preserve"><value>Commande</value></data>
   <data name="RejectionEditRetry" xml:space="preserve"><value>Modifier et réessayer</value></data>
+  <data name="RejectionReturn" xml:space="preserve"><value>Retour</value></data>
+  <data name="RejectionCopySupportReference" xml:space="preserve"><value>Copier la référence de support</value></data>
+  <data name="RejectionSupportReferenceCopied" xml:space="preserve"><value>Référence de support copiée</value></data>
+  <data name="RejectionSupportReferenceCopyFailed" xml:space="preserve"><value>Échec de la copie. Utilisez les codes affichés.</value></data>
+  <data name="RejectionSupportReferenceTemplate" xml:space="preserve"><value>Code d'erreur : {0}, code de documentation : {1}</value></data>
   <data name="MappedRejectionRecoveryMessage" xml:space="preserve"><value>La commande a été rejetée. Corrigez les champs liés puis réessayez.</value></data>
   <data name="RejectionErrorCodeLabel" xml:space="preserve"><value>Code d'erreur</value></data>
   <data name="RejectionReasonCategoryLabel" xml:space="preserve"><value>Catégorie du motif</value></data>

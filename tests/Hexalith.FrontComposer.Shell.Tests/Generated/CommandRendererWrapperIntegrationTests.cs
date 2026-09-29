@@ -239,6 +239,10 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             summary.GetAttribute("role").ShouldNotBe("alert");
             summary.HasAttribute("aria-live").ShouldBeFalse();
             cut.FindAll("[data-fc-phase='rejected']").ShouldBeEmpty();
+            // VG5-01 — the generic AM-14 rejection bar and its recovery actions are absent, not merely silent.
+            cut.FindAll("[data-testid='fc-rejected']").ShouldBeEmpty();
+            cut.FindAll("[data-testid='fc-rejection-edit-retry']").ShouldBeEmpty();
+            _ = cut.Find("[data-testid='fc-rejected-mapped']");
             cut.Find("[data-fc-validation-target]").GetAttribute("href").ShouldNotBeNull().ShouldContain("-Name");
             cut.Markup.ShouldContain("preserved name");
             cut.Markup.ShouldContain("value=\"7\"", Case.Insensitive);
@@ -589,6 +593,11 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             AngleSharp.Dom.IElement heading = cut.Find("[id$='-authorization-heading']");
             heading.GetAttribute("tabindex").ShouldBe("-1");
             heading.TextContent.ShouldBe("Not allowed");
+            // The form denial card is a named group, not a region landmark, alert, or status.
+            AngleSharp.Dom.IElement card = cut.Find("section[data-fc-authorization-denied='true']");
+            card.GetAttribute("role").ShouldBe("group");
+            card.GetAttribute("aria-labelledby").ShouldBe(heading.Id);
+            card.HasAttribute("aria-live").ShouldBeFalse();
             cut.FindAll("[data-fc-validation-field='true']").ShouldBeEmpty();
             cut.FindAll("[data-fc-invalid='true']").ShouldBeEmpty();
             cut.FindAll("[data-testid='fc-validation-summary']").ShouldBeEmpty();
@@ -695,8 +704,14 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         await service.DispatchStarted.Task.WaitAsync(TimeSpan.FromSeconds(2), Xunit.TestContext.Current.CancellationToken);
         string correlationId = state.Value.CorrelationId.ShouldNotBeNull();
 
+        // VG5-03 — the submit control is not lifecycle-disabled while its own command is in flight, so a
+        // real press reaches SubmitAsync (bUnit's form.Submit() would bypass a disabled button).
+        cut.WaitForAssertion(() => state.Value.State.ShouldNotBe(CommandLifecycleState.Idle));
+        cut.Find("[id$='-submit']").HasAttribute("disabled").ShouldBeFalse();
+
         // VG2-05 — every blocked re-press of the same form clears and re-sets AM-20 once.
         for (int attempt = 1; attempt <= 2; attempt++) {
+            cut.Find("[id$='-submit']").HasAttribute("disabled").ShouldBeFalse();
             cut.Find("form").Submit();
             cut.WaitForAssertion(() => BlockedStatus(cut).ShouldBeEmpty());
             await AdvanceUntilAsync(time, () => BlockedStatus(cut).Length > 0);
@@ -856,6 +871,137 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
     }
 
     [Fact]
+    public async Task GeneratedFormUnchangedRetryAfterAMappedRejectionDispatchesAgain() {
+        MappedThenAcceptingCommandService service = new();
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new TwoFieldCompactCommand { Name = "unchanged name", Amount = 7 }));
+
+        cut.Find("form").Submit();
+        cut.WaitForAssertion(() => {
+            _ = cut.Find("[data-fc-validation-kind='mapped-server-rejection']");
+            cut.Find("[name='Name']").GetAttribute("data-fc-invalid").ShouldBe("true");
+        });
+
+        cut.Find("form").Submit();
+
+        // VG5-O1 / E5-06 — the mapped messages answered the previous attempt only: an unchanged retry
+        // is admitted, dispatches, and is never relabeled as client validation (VR-02 "retry").
+        cut.WaitForAssertion(() => {
+            service.DispatchCount.ShouldBe(2);
+            cut.FindAll("[data-testid='fc-validation-summary']").ShouldBeEmpty();
+            cut.Find("[name='Name']").GetAttribute("data-fc-invalid").ShouldBe("false");
+        });
+        cut.Markup.ShouldNotContain("Validation failed");
+        cut.Markup.ShouldContain("unchanged name");
+    }
+
+    [Fact]
+    public async Task GeneratedFormServerValidationStillBlocksAnUnchangedRetry() {
+        RecordingServerValidationCommandService service = new();
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new TwoFieldCompactCommand { Name = "server name", Amount = 5 }));
+
+        cut.Find("form").Submit();
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-validation-summary']").TextContent.ShouldContain("The name is already taken."));
+
+        cut.Find("form").Submit();
+
+        // The 400 validation store is unchanged by the mapped-rejection store: its field message still
+        // blocks an unchanged retry until the operator edits the field.
+        cut.WaitForAssertion(() => {
+            AngleSharp.Dom.IElement summary = cut.Find("[data-testid='fc-validation-summary']");
+            summary.TextContent.ShouldContain("The name is already taken.");
+            FcFocusModule.Invocations.Count(invocation => invocation.Identifier == "focusValidationOutcome").ShouldBe(2);
+        });
+        service.DispatchCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task GeneratedFormMessagesOnHiddenFieldsRenderAsUnlinkedSummaryEntries() {
+        await InitializeStoreAsync();
+        IRenderedComponent<GroupedFieldsCommandForm> cut = Render<GroupedFieldsCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new GroupedFieldsCommand { RecordId = string.Empty, Reason = "kept reason" })
+            .Add(p => p.ShowFieldsOnly, new[] { nameof(GroupedFieldsCommand.Reason) }));
+        cut.FindAll("[name='RecordId']").ShouldBeEmpty();
+
+        cut.Find("form").Submit();
+
+        // BH5-05 — RecordId is not rendered on this surface, so its error is listed without a link to an
+        // absent control, and it still counts toward the summary total.
+        cut.WaitForAssertion(() => {
+            AngleSharp.Dom.IElement summary = cut.Find("[data-testid='fc-validation-summary']");
+            AngleSharp.Dom.IElement entry = summary.QuerySelectorAll("li").ShouldHaveSingleItem();
+            entry.QuerySelector("a").ShouldBeNull();
+            entry.TextContent.ShouldContain("Record ID");
+            summary.QuerySelectorAll("[data-fc-validation-target]").ShouldBeEmpty();
+            summary.TextContent.ShouldContain("One error.");
+        });
+        cut.Markup.ShouldContain("value=\"kept reason\"", Case.Insensitive);
+    }
+
+    [Fact]
+    public async Task GeneratedFormMappedRejectionOnAHiddenFieldKeepsItsMessageUnlinked() {
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => new MappedRejectingCommandService()));
+        await InitializeStoreAsync();
+        IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new TwoFieldCompactCommand { Name = "hidden name", Amount = 7 })
+            .Add(p => p.ShowFieldsOnly, new[] { nameof(TwoFieldCompactCommand.Amount) }));
+
+        cut.Find("form").Submit();
+
+        // BH5-05 / E3-06 — a mapped error on a field this surface hides stays readable in the focused
+        // summary, never as a link to an unrendered control.
+        cut.WaitForAssertion(() => {
+            AngleSharp.Dom.IElement summary = cut.Find("[data-fc-validation-kind='mapped-server-rejection']");
+            AngleSharp.Dom.IElement entry = summary.QuerySelectorAll("li").ShouldHaveSingleItem();
+            entry.QuerySelector("a").ShouldBeNull();
+            entry.TextContent.Trim().ShouldBe("Name conflicts with current state.");
+        });
+    }
+
+    [Fact]
+    public async Task ProtectedRendererPendingRefreshThenDenialKeepsTheArmedHeadingFocus() {
+        MutableAuthorizationEvaluator evaluator = new(CommandAuthorizationDecision.Allowed("corr-allowed"));
+        NotifyingAuthenticationStateProvider authentication = new();
+        Services.Replace(ServiceDescriptor.Singleton<AuthenticationStateProvider>(authentication));
+        Services.Replace(ServiceDescriptor.Scoped<ICommandAuthorizationEvaluator>(_ => evaluator));
+        await InitializeStoreAsync();
+
+        IRenderedComponent<ProtectedTwoFieldCompactCommandRenderer> cut = Render<ProtectedTwoFieldCompactCommandRenderer>();
+        cut.WaitForAssertion(() => _ = cut.Find("form"));
+
+        evaluator.Decision = CommandAuthorizationDecision.Pending("corr-pending");
+        await cut.InvokeAsync(authentication.Notify);
+
+        // E5-24 / AA5-03 — the pending check replaces the form with its checking card, which is not a denial.
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("Checking permission", Case.Insensitive);
+            cut.FindAll("[data-fc-authorization-denied]").ShouldBeEmpty();
+        });
+        FcFocusModule.Invocations.Count(invocation => invocation.Identifier == "captureFocusBeforeReplacement").ShouldBe(1);
+
+        evaluator.Decision = CommandAuthorizationDecision.Denied("corr-revoked");
+
+        // E5-08 — the scheduled retry carries the armed replacement, so the final denial of the form the
+        // operator was using still reaches the capture-then-verify heading focus. The focus request runs
+        // after the denial's last render, so it is polled rather than awaited through a render.
+        string headingId = string.Empty;
+        cut.WaitForAssertion(
+            () => headingId = cut.Find("section[data-fc-authorization-denied='true'] h2[tabindex='-1']").Id.ShouldNotBeNull(),
+            TimeSpan.FromSeconds(5));
+        SpinWait.SpinUntil(
+            () => FcFocusModule.Invocations.Any(invocation => invocation.Identifier == "focusReplacementHeading"),
+            TimeSpan.FromSeconds(5)).ShouldBeTrue();
+        FcFocusModule.Invocations.Single(invocation => invocation.Identifier == "focusReplacementHeading")
+            .Arguments.ShouldBe([headingId, headingId]);
+        FcFocusModule.Invocations.Count(invocation => invocation.Identifier == "captureFocusBeforeReplacement").ShouldBe(1);
+    }
+
+    [Fact]
     public async Task SameGeneratedFormAndProtectedRendererInstancesUseDistinctIds() {
         RegisterAuthorization(new FixedAuthorizationEvaluator(CommandAuthorizationDecision.Denied("corr-denied")));
         await InitializeStoreAsync();
@@ -926,6 +1072,10 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
 
         // BH2-04 — an initially denied renderer renders its replacement silently (FM-01).
         cut.WaitForAssertion(() => _ = cut.Find("section[aria-labelledby] h2[tabindex='-1']"));
+        // The renderer denial card is a named group, not a region landmark per denied row.
+        AngleSharp.Dom.IElement card = cut.Find("section[data-fc-authorization-denied='true']");
+        card.GetAttribute("role").ShouldBe("group");
+        card.HasAttribute("aria-live").ShouldBeFalse();
         FcFocusModule.Invocations.ShouldNotContain(invocation => invocation.Identifier == "captureFocusBeforeReplacement");
         FcFocusModule.Invocations.ShouldNotContain(invocation => invocation.Identifier == "focusReplacementHeading");
         FcFocusModule.Invocations.ShouldNotContain(invocation => invocation.Identifier == "focusOverlayEntry");
@@ -1105,6 +1255,67 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
                         ["Name"] = NameErrors,
                     },
                     globalErrors));
+    }
+
+    private sealed class MappedThenAcceptingCommandService : ICommandServiceWithLifecycle {
+        private static readonly string[] NameErrors = ["Name conflicts with current state."];
+
+        public int DispatchCount { get; private set; }
+
+        public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
+            where TCommand : class
+            => DispatchAsync(command, onLifecycleChange: null, cancellationToken);
+
+        public Task<CommandResult> DispatchAsync<TCommand>(
+            TCommand command,
+            Action<CommandLifecycleState, string?>? onLifecycleChange,
+            CancellationToken cancellationToken = default)
+            where TCommand : class {
+            DispatchCount++;
+            if (DispatchCount == 1) {
+                throw CommandRejectedException.FromProblem(
+                    "Name rejected",
+                    "Correct the linked field and retry.",
+                    new ProblemDetailsPayload(
+                        "Name rejected",
+                        "Correct the linked field and retry.",
+                        409,
+                        null,
+                        new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal) {
+                            ["Name"] = NameErrors,
+                        },
+                        Array.Empty<string>()));
+            }
+
+            return Task.FromResult(new CommandResult("01DRZ3NDEKTSV4RRFFQ69G5FAV", "Accepted"));
+        }
+    }
+
+    private sealed class RecordingServerValidationCommandService : ICommandServiceWithLifecycle {
+        private static readonly string[] NameErrors = ["The name is already taken."];
+
+        public int DispatchCount { get; private set; }
+
+        public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
+            where TCommand : class
+            => DispatchAsync(command, onLifecycleChange: null, cancellationToken);
+
+        public Task<CommandResult> DispatchAsync<TCommand>(
+            TCommand command,
+            Action<CommandLifecycleState, string?>? onLifecycleChange,
+            CancellationToken cancellationToken = default)
+            where TCommand : class {
+            DispatchCount++;
+            throw new CommandValidationException(new ProblemDetailsPayload(
+                "Validation failed",
+                null,
+                400,
+                null,
+                new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal) {
+                    ["Name"] = NameErrors,
+                },
+                Array.Empty<string>()));
+        }
     }
 
     private sealed class ForbiddenCommandService : ICommandServiceWithLifecycle {

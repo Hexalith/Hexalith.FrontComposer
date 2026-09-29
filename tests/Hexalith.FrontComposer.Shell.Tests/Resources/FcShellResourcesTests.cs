@@ -309,6 +309,40 @@ public sealed class FcShellResourcesTests {
         precedingChar.ShouldBe(' ', $"Expected U+00A0 NBSP before colon in French StatusBadgeAriaLabelTemplate; got U+{(int)precedingChar:X4}");
     }
 
+    [Fact]
+    public void Story133PatchedCopyKeepsCanonicalWordingInBothLocales() {
+        ResourceManager manager = new(typeof(FcShellResources));
+        CultureInfo en = new("en");
+        CultureInfo fr = new("fr");
+
+        // E5-23 / BH4-08 — the default destructive title keeps the baseline "{DisplayLabel}?" copy; French
+        // keeps U+00A0 before "?" so the mark never wraps alone.
+        manager.GetString("DestructiveConfirmationTitleTemplate", en).ShouldBe("{0}?");
+        manager.GetString("DestructiveConfirmationTitleTemplate", fr).ShouldBe("{0}\u00A0?");
+
+        // AA5-06 — a single error keeps the canonical AM-18 sentence; only the count is singular.
+        manager.GetString("ValidationSummaryMessageSingle", en).ShouldBe("Correct the errors before submitting. One error.");
+        manager.GetString("ValidationSummaryMessage", en).ShouldStartWith("Correct the errors before submitting. ");
+        manager.GetString("ValidationSummaryMessageSingle", fr).ShouldBe("Corrigez les erreurs avant l'envoi. Une erreur.");
+        manager.GetString("ValidationSummaryMessage", fr).ShouldStartWith("Corrigez les erreurs avant l'envoi. ");
+    }
+
+    [Theory]
+    [InlineData("RejectionEditRetry", "Edit and retry", "Modifier et réessayer")]
+    [InlineData("RejectionReturn", "Return", "Retour")]
+    [InlineData("RejectionCopySupportReference", "Copy support reference", "Copier la référence de support")]
+    [InlineData("RejectionSupportReferenceCopied", "Support reference copied", "Référence de support copiée")]
+    [InlineData("RejectionSupportReferenceTemplate", "Error code: {0}, documentation code: {1}", "Code d'erreur\u00A0: {0}, code de documentation\u00A0: {1}")]
+    public void UnmappedRejectionRecoveryKeysResolveInBothLocales(string key, string enValue, string frValue) {
+        // Story 13.3 VR-03 — every keyboard recovery action and the copied support reference are localized.
+        ResourceManager manager = new(typeof(FcShellResources));
+        string en = manager.GetString(key, new CultureInfo("en")).ShouldNotBeNull();
+        string fr = manager.GetString(key, new CultureInfo("fr")).ShouldNotBeNull();
+        en.ShouldBe(enValue);
+        fr.ShouldBe(frValue);
+        ExtractFormatPlaceholderIndices(fr).SetEquals(ExtractFormatPlaceholderIndices(en)).ShouldBeTrue();
+    }
+
     // Story 7-3 Pass 3 / Pass-2 P35 — placeholder count parity across EN/FR for new authorization
     // resource keys. If EN later adds {1} and FR is missed, runtime IndexOutOfRange at warning render.
     [Theory]

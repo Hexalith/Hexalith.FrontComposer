@@ -255,9 +255,12 @@ export function observeFieldAccessibility(rootId) {
         });
     };
     const observer = new MutationObserver(schedule);
+    // characterData — an error message whose text changes in place must refresh the aria-description
+    // fallback of engines without ARIA element reflection, not keep announcing the previous error.
     observer.observe(root, {
         subtree: true,
         childList: true,
+        characterData: true,
         attributes: true,
         attributeFilter: ['data-fc-invalid'],
     });

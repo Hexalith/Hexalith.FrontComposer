@@ -4,6 +4,9 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Components.Lifecycle;
 
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
+
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Components.Lifecycle;
@@ -63,7 +66,7 @@ public sealed class FcLifecycleWrapperRejectionTests : LifecycleWrapperTestBase 
         cut.Markup.ShouldContain("Inventory");
         cut.Markup.ShouldContain("Suggested action");
         cut.Markup.ShouldContain("Lower quantity");
-        cut.Markup.ShouldContain("Docs code");
+        cut.Markup.ShouldContain("Documentation code");
         cut.Markup.ShouldContain("FC-CMD-409");
         cut.Markup.ShouldNotContain("<E409>", Case.Sensitive);
     }
@@ -119,12 +122,111 @@ public sealed class FcLifecycleWrapperRejectionTests : LifecycleWrapperTestBase 
         push(RejectedNow());
 
         cut.FindAll("[data-fc-phase='rejected']").ShouldBeEmpty();
+        // VG5-01 — the mapped outcome suppresses the generic AM-14 rejection bar and its recovery actions.
+        cut.FindAll("[data-testid='fc-rejected']").ShouldBeEmpty();
+        cut.FindAll("[data-testid='fc-rejection-edit-retry']").ShouldBeEmpty();
+        cut.FindAll("[data-testid='fc-rejection-return']").ShouldBeEmpty();
+        cut.FindAll("[data-testid='fc-rejection-copy-reference']").ShouldBeEmpty();
         AngleSharp.Dom.IElement mapped = cut.Find("[data-testid='fc-rejected-mapped']");
         mapped.GetAttribute("role").ShouldNotBe("alert");
         mapped.GetAttribute("role").ShouldNotBe("status");
         mapped.HasAttribute("aria-live").ShouldBeFalse();
         mapped.TextContent.ShouldContain("Correct Quantity and retry.");
     }
+
+    [Fact]
+    public void UnmappedRejectionOffersEveryKeyboardRecoveryActionAfterTheMessage() {
+        (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push) = RenderWrapperWithLiveService(
+            rejectionMessage: "Order locked.",
+            rejectionDetails: SupportDetails);
+
+        push(RejectedNow());
+
+        // VR-03 / AA5-02 — edit and retry, return, and copy the support reference follow the message in
+        // tab order as native buttons; the bar's own dismiss control is the cancel path.
+        AngleSharp.Dom.IElement bar = cut.Find("[data-testid='fc-rejected']");
+        string[] actions = [.. bar.QuerySelectorAll("fluent-button[data-testid]").Select(button => button.GetAttribute("data-testid")!)];
+        actions.ShouldBe(["fc-rejection-edit-retry", "fc-rejection-return", "fc-rejection-copy-reference"]);
+        bar.QuerySelector("[data-testid='fc-rejection-return']")!.TextContent.Trim().ShouldBe("Return");
+        bar.QuerySelector("[data-testid='fc-rejection-copy-reference']")!.TextContent.Trim().ShouldBe("Copy support reference");
+        bar.QuerySelectorAll("fluent-button[disabled]").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void UnmappedRejectionWithoutDetailsOffersNoCopyAction() {
+        (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push) = RenderWrapperWithLiveService(rejectionMessage: "Rejected.");
+
+        push(RejectedNow());
+
+        _ = cut.Find("[data-testid='fc-rejection-return']");
+        cut.FindAll("[data-testid='fc-rejection-copy-reference']").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void ReturnGoesBackInTheBrowserHistoryWithoutNavigatingThroughTheWrapper() {
+        (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push) = RenderWrapperWithLiveService(rejectionMessage: "Rejected.");
+        push(RejectedNow());
+
+        cut.Find("[data-testid='fc-rejection-return']").Click();
+
+        // VR-03 — Return is a plain history navigation, so unsaved-input protection still applies.
+        cut.WaitForAssertion(() => JSInterop.VerifyInvoke("history.back", 1));
+        ((TestNavigationManager)Services.GetRequiredService<NavigationManager>()).LastNavigateCall.ShouldBeNull();
+    }
+
+    [Fact]
+    public void CopySupportReferenceCopiesOnlyTheSupportSafeCodes() {
+        BunitJSModuleInterop clipboard = JSInterop.SetupModule(ClipboardModulePath);
+        _ = clipboard.Setup<string>("copyToClipboard", _ => true).SetResult("Success");
+        (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push) = RenderWrapperWithLiveService(
+            rejectionMessage: "Order locked. Payload detail must never be copied.",
+            rejectionDetails: SupportDetails);
+        push(RejectedNow());
+
+        cut.Find("[data-testid='fc-rejection-copy-reference']").Click();
+
+        // VR-03 — the copied reference is exactly the error and documentation codes shown in the details.
+        cut.WaitForAssertion(() => {
+            JSRuntimeInvocation copy = clipboard.VerifyInvoke("copyToClipboard", 1).Single();
+            copy.Arguments.ShouldBe(["Error code: ORDER_LOCKED, documentation code: FC-CMD-409"]);
+            AngleSharp.Dom.IElement action = cut.Find("[data-testid='fc-rejection-copy-reference']");
+            action.TextContent.Trim().ShouldBe("Support reference copied");
+            action.GetAttribute("data-fc-copy-outcome").ShouldBe("copied");
+        });
+    }
+
+    [Fact]
+    public void CopySupportReferenceReportsARefusedCopyAndResetsOnTheNextRejection() {
+        BunitJSModuleInterop clipboard = JSInterop.SetupModule(ClipboardModulePath);
+        _ = clipboard.Setup<string>("copyToClipboard", _ => true).SetResult("Denied");
+        (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push) = RenderWrapperWithLiveService(
+            rejectionMessage: "Rejected.",
+            rejectionDetails: SupportDetails);
+        push(RejectedNow());
+
+        cut.Find("[data-testid='fc-rejection-copy-reference']").Click();
+
+        cut.WaitForAssertion(() => {
+            AngleSharp.Dom.IElement action = cut.Find("[data-testid='fc-rejection-copy-reference']");
+            action.TextContent.Trim().ShouldBe("Copy failed. Use the codes shown.");
+            action.GetAttribute("data-fc-copy-outcome").ShouldBe("failed");
+        });
+
+        push(TransitionAt(CommandLifecycleState.Idle, CommandLifecycleState.Submitting, FakeTime.GetUtcNow()));
+        push(RejectedNow());
+
+        AngleSharp.Dom.IElement reset = cut.Find("[data-testid='fc-rejection-copy-reference']");
+        reset.TextContent.Trim().ShouldBe("Copy support reference");
+        reset.GetAttribute("data-fc-copy-outcome").ShouldBe("none");
+    }
+
+    private const string ClipboardModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-devmode-clipboard.js";
+
+    private static readonly CommandRejectionDetails SupportDetails = new(
+        ErrorCode: "ORDER_LOCKED",
+        ReasonCategory: "Concurrency",
+        SuggestedAction: "Reload before retrying",
+        DocsCode: "FC-CMD-409");
 
     private CommandLifecycleTransition RejectedNow()
         => TransitionAt(CommandLifecycleState.Syncing, CommandLifecycleState.Rejected, FakeTime.GetUtcNow());

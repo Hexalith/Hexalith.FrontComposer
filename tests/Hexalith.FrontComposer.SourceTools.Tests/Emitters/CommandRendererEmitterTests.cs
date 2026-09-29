@@ -328,8 +328,24 @@ public class CommandRendererEmitterTests {
         source.ShouldNotContain("_authorizationFocusPending = _authorizationPresentationReady && !_authorizationPresentationAllowed;");
         source.ShouldContain("bool replacesShownForm = _authorizationPresentationReady && _authorizationPresentationAllowed;");
         source.ShouldContain("\"captureFocusBeforeReplacement\", _authorizationHeadingId");
-        source.ShouldContain("bool replacementArmed = replacesShownForm && await CaptureFocusBeforeReplacementAsync().ConfigureAwait(false);");
+        source.ShouldContain("bool replacementArmed = (replacesShownForm && await CaptureFocusBeforeReplacementAsync().ConfigureAwait(false))");
+        source.ShouldContain("            || carriedReplacementArmed;");
         source.ShouldContain("_authorizationFocusPending = !_authorizationPresentationAllowed && replacementArmed;");
+
+        // E5-08 — a Pending result's scheduled retry carries the armed replacement into the retried
+        // refresh, which reuses the stored capture instead of re-capturing over the checking card.
+        source.ShouldContain("_ = ScheduleAuthorizationRetryAsync(sequence, replacementArmed);");
+        source.ShouldContain("private async Task ScheduleAuthorizationRetryAsync(long observedSequence, bool replacementArmed)");
+        source.ShouldContain("await InvokeAsync(() => RefreshPresentationAuthorizationAsync(replacementArmed)).ConfigureAwait(false);");
+        source.ShouldContain("=> RefreshPresentationAuthorizationAsync(carriedReplacementArmed: false);");
+
+        // E5-24 / AA5-03 — the checking card is not a denial: only a settled denial carries the marker.
+        source.ShouldContain("\"data-fc-authorization-denied\", _authorizationPresentationReady && !_authorizationPresentationAllowed ? \"true\" : null);");
+        source.ShouldNotContain("\"data-fc-authorization-denied\", \"true\");");
+        // The denial card is a named group, not a region landmark per denied row.
+        int deniedCard = source.IndexOf("__message.OpenElement(", StringComparison.Ordinal);
+        int deniedMarker = source.IndexOf("\"data-fc-authorization-denied\"", deniedCard, StringComparison.Ordinal);
+        source.IndexOf("\"role\", \"group\");", deniedCard, StringComparison.Ordinal).ShouldBeInRange(deniedCard, deniedMarker);
 
         // E4-11 — the armed state is local to one refresh; no field lets a superseded refresh arm a
         // later unrelated background denial.
@@ -337,7 +353,8 @@ public class CommandRendererEmitterTests {
         source.ShouldContain("\"focusReplacementHeading\", _authorizationHeadingId, _authorizationHeadingId");
 
         // BH3-01 — Ready=false and the refresh stamp precede the capture round trip.
-        int refresh = source.IndexOf("private async Task RefreshPresentationAuthorizationAsync()", StringComparison.Ordinal);
+        int refresh = source.IndexOf("private async Task RefreshPresentationAuthorizationAsync(bool carriedReplacementArmed)", StringComparison.Ordinal);
+        refresh.ShouldBeGreaterThanOrEqualTo(0);
         int notReady = source.IndexOf("_authorizationPresentationReady = false;", refresh, StringComparison.Ordinal);
         int stamp = source.IndexOf("Interlocked.Increment(ref _authorizationRefreshSequence)", refresh, StringComparison.Ordinal);
         int capture = source.IndexOf("CaptureFocusBeforeReplacementAsync()", refresh, StringComparison.Ordinal);

@@ -234,6 +234,56 @@ test.describe('Story 13.3: unmapped rejection recovery focus', () => {
     await expect(fieldEditorByLabel(form, 'Amount')).toBeFocused();
   });
 
+  test('unmapped rejection recovery actions work from the keyboard alone', async ({ page, context, lifecycle }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+      window.sessionStorage.clear();
+    });
+    // A prior in-app page gives Return a browser-history entry to go back to.
+    await page.goto('/');
+    await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+    const previousUrl = page.url();
+    await page.goto('/counter');
+    await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+    const form = policyForm(page, REJECTION_FORM_LABEL);
+    await expect(form).toBeVisible();
+    await fillField(form, 'Amount', '4');
+    await fillField(form, 'Note', 'QA keyboard recovery');
+    const submit = form.getByRole('button', { name: REJECTION_ACTION_LABEL, exact: true });
+    await submit.focus();
+    await page.keyboard.press('Enter');
+
+    await lifecycle.expectState(REJECTION_COMMAND_ID, 'rejected');
+
+    // Story 13.3 VR-03 / AA5-02 — edit and retry, return, and copy the support-safe reference follow
+    // the rejection message in tab order and work without a pointer.
+    const editAndRetry = form.getByTestId('fc-rejection-edit-retry');
+    const returnAction = form.getByTestId('fc-rejection-return');
+    const copyReference = form.getByTestId('fc-rejection-copy-reference');
+    await expect(returnAction).toHaveText('Return');
+    await expect(copyReference).toHaveText('Copy support reference');
+    await editAndRetry.focus();
+    await page.keyboard.press('Tab');
+    await expect(returnAction).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(copyReference).toBeFocused();
+
+    await page.keyboard.press('Enter');
+    await expect(copyReference).toHaveText('Support reference copied');
+    await expect(copyReference).toBeFocused();
+    const copied = await page.evaluate(async () => navigator.clipboard.readText());
+    expect(copied).toMatch(/^Error code: \S.*, documentation code: \S.*$/u);
+    expect(copied).not.toContain('QA keyboard recovery');
+    expect(copied).not.toContain('The specimen change was rejected.');
+    await expectFieldValue(form, 'Amount', '4');
+    await expectFieldValue(form, 'Note', 'QA keyboard recovery');
+
+    await returnAction.focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(previousUrl);
+  });
+
   const appendServerOutput = (chunk: Buffer): void => {
     serverOutput = `${serverOutput}${chunk.toString('utf8')}`.slice(-8_000);
   };

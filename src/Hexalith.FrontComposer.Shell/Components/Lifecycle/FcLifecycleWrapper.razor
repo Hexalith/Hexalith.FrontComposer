@@ -13,14 +13,16 @@
      data-testid="@LifecycleTestId"
      data-lifecycle-state="@LifecycleStateAttribute"
     data-fc-active-lifecycle="@(IsActiveLifecycle ? "true" : "false")">
+    @* Story 13.3 BH5-02 — the heading exists only as the "View active command" focus target: it stays
+       rendered but visually hidden, so a submit never shifts the form, and shows while it holds focus. *@
     @if (IsActiveLifecycle) {
         <div class="fc-lifecycle-heading">
-            <FluentText As="TextTag.H2"
+            @* FluentText supplies the Fluent typography; the focus target is the h2 itself, because
+               FluentText puts extra attributes on its role-less host rather than on the heading. *@
+            <FluentText Block="true"
                         Size="TextSize.Size400"
-                        Weight="TextWeight.Semibold"
-                        tabindex="-1"
-                        data-fc-lifecycle-heading>
-                @LifecycleHeading
+                        Weight="TextWeight.Semibold">
+                <h2 class="fc-lifecycle-heading-text" tabindex="-1" data-fc-lifecycle-heading>@LifecycleHeading</h2>
             </FluentText>
         </div>
     }
@@ -102,28 +104,39 @@
                 @if (RejectionDetails is not null) {
                     <dl class="fc-rejection-details">
                         <div>
-                            <dt>Error code</dt>
+                            <dt>@Localizer["RejectionErrorCodeLabel"]</dt>
                             <dd>@RejectionDetails.ErrorCode</dd>
                         </div>
                         <div>
-                            <dt>Reason category</dt>
+                            <dt>@Localizer["RejectionReasonCategoryLabel"]</dt>
                             <dd>@RejectionDetails.ReasonCategory</dd>
                         </div>
                         <div>
-                            <dt>Suggested action</dt>
+                            <dt>@Localizer["RejectionSuggestedActionLabel"]</dt>
                             <dd>@RejectionDetails.SuggestedAction</dd>
                         </div>
                         <div>
-                            <dt>Docs code</dt>
+                            <dt>@Localizer["RejectionDocsCodeLabel"]</dt>
                             <dd>@RejectionDetails.DocsCode</dd>
                         </div>
                     </dl>
                 }
             </ChildContent>
             <ActionsTemplate>
+                @* Story 13.3 VR-03 — keyboard recovery follows the message in tab order: edit and retry,
+                   return, and copy the support-safe reference; the bar's dismiss control cancels. *@
                 <FluentButton Appearance="ButtonAppearance.Outline"
                               OnClick="FocusEditableFormAsync"
                               data-testid="fc-rejection-edit-retry">@Localizer["RejectionEditRetry"]</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Outline"
+                              OnClick="ReturnToPreviousPageAsync"
+                              data-testid="fc-rejection-return">@Localizer["RejectionReturn"]</FluentButton>
+                @if (RejectionDetails is not null) {
+                    <FluentButton Appearance="ButtonAppearance.Outline"
+                                  OnClick="CopySupportReferenceAsync"
+                                  data-testid="fc-rejection-copy-reference"
+                                  data-fc-copy-outcome="@SupportReferenceCopyOutcomeAttribute">@SupportReferenceCopyLabel</FluentButton>
+                }
             </ActionsTemplate>
         </FluentMessageBar>
     }
@@ -151,6 +164,18 @@
     private string ResolveRejectionTitle()
         // Review 2026-04-17 P14 — IsNullOrEmpty already narrows to non-null; no `!` needed.
         => string.IsNullOrEmpty(RejectionTitle) ? "Submission rejected" : RejectionTitle;
+
+    private string SupportReferenceCopyLabel => _supportReferenceCopied switch {
+        true => Localizer["RejectionSupportReferenceCopied"],
+        false => Localizer["RejectionSupportReferenceCopyFailed"],
+        null => Localizer["RejectionCopySupportReference"],
+    };
+
+    private string SupportReferenceCopyOutcomeAttribute => _supportReferenceCopied switch {
+        true => "copied",
+        false => "failed",
+        null => "none",
+    };
 
     private string? LifecycleTestId =>
         string.IsNullOrWhiteSpace(CommandId) ? null : $"fc-lifecycle-{CommandId}";

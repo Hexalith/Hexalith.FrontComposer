@@ -47,8 +47,14 @@ public sealed class FcValidationSummaryTests : BunitContext {
         await cut.InvokeAsync(() => cut.Instance.ShowAndFocusAsync(FcValidationSummaryKind.ClientValidation));
 
         IElement summary = cut.Find("[data-testid='fc-validation-summary']");
-        summary.HasAttribute("role").ShouldBeFalse();
+        // AA5-05 — a named group (VR-01), not a region landmark; focus-only, never live.
+        summary.GetAttribute("role").ShouldBe("group");
         summary.HasAttribute("aria-live").ShouldBeFalse();
+        summary.GetAttribute("aria-labelledby").ShouldBe("validation-summary-title");
+        summary.GetAttribute("aria-describedby").ShouldBe("validation-summary-description");
+        // VG5-02 — the client-validation kind speaks its own title and the canonical AM-18 sentence.
+        cut.Find("#validation-summary-title").TextContent.Trim().ShouldBe("Validation failed");
+        cut.Find("#validation-summary-description").TextContent.Trim().ShouldBe("Correct the errors before submitting. 2 errors.");
         string[] targets = [.. cut.FindAll("[data-fc-validation-target]").Select(element => element.GetAttribute("data-fc-validation-target")!)];
         targets.ShouldBe(ExpectedTargets);
         _ = JSInterop.VerifyInvoke("focusValidationOutcome", 1);
@@ -110,6 +116,36 @@ public sealed class FcValidationSummaryTests : BunitContext {
     }
 
     [Fact]
+    public async Task LinkRestoresNativeFragmentNavigationAfterAFailedScriptedFocus() {
+        _ = JSInterop.SetupVoid("focusValidationTarget", _ => true).SetException(new JSException("target focus unavailable"));
+        ValidationModel model = new();
+        EditContext context = new(model);
+        new ValidationMessageStore(context).Add(context.Field(nameof(ValidationModel.First)), "First is invalid.");
+
+        IRenderedComponent<FcValidationSummary> cut = Render<FcValidationSummary>(parameters => parameters
+            .Add(component => component.EditContext, context)
+            .Add(component => component.SummaryId, "restored-summary")
+            .Add(component => component.Fields, new[] {
+                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "First", "first-input", "first-error"),
+            }));
+
+        await cut.InvokeAsync(() => cut.Instance.ShowAndFocusAsync(FcValidationSummaryKind.ClientValidation));
+        cut.WaitForAssertion(() => cut.Find("[data-fc-validation-target='first-input']")
+            .HasAttribute("blazor:onclick:preventdefault").ShouldBeTrue());
+
+        await cut.InvokeAsync(() => cut.Find("[data-fc-validation-target='first-input']").Click());
+
+        // ECH-10 / BH3-16 — once scripted focus fails, the next activation uses the native fragment link.
+        cut.WaitForAssertion(() => {
+            IElement link = cut.Find("[data-fc-validation-target='first-input']");
+            link.HasAttribute("blazor:onclick").ShouldBeTrue();
+            link.HasAttribute("blazor:onclick:preventdefault").ShouldBeFalse();
+            link.GetAttribute("href").ShouldNotBeNull().ShouldEndWith("#first-input");
+        });
+        _ = JSInterop.VerifyInvoke("focusValidationTarget", 1);
+    }
+
+    [Fact]
     public async Task VisibleSummaryRebuildsWhenValidationStateChanges() {
         ValidationModel model = new();
         EditContext context = new(model);
@@ -138,7 +174,8 @@ public sealed class FcValidationSummaryTests : BunitContext {
             IElement[] links = [.. cut.FindAll("[data-fc-validation-target]")];
             links.Length.ShouldBe(1);
             links[0].GetAttribute("data-fc-validation-target").ShouldBe("second-input");
-            cut.Find("[data-testid='fc-validation-summary']").TextContent.ShouldContain("One error.");
+            // AA5-06 — one error keeps the canonical AM-18 sentence; only the count is singular.
+            cut.Find("#rebuilt-summary-description").TextContent.Trim().ShouldBe("Correct the errors before submitting. One error.");
         });
         _ = JSInterop.VerifyInvoke("focusValidationOutcome", 1);
 
@@ -162,9 +199,15 @@ public sealed class FcValidationSummaryTests : BunitContext {
         await cut.InvokeAsync(() => cut.Instance.ShowAndFocusAsync(FcValidationSummaryKind.MappedServerRejection));
 
         IElement summary = cut.Find("[data-fc-validation-kind='mapped-server-rejection']");
-        summary.HasAttribute("role").ShouldBeFalse();
+        summary.GetAttribute("role").ShouldBe("group");
         summary.HasAttribute("aria-live").ShouldBeFalse();
-        summary.TextContent.ShouldContain("One error.");
+        // VG5-02 — a mapped rejection speaks the AM-19 title and sentence, never the client-validation copy.
+        cut.Find("#mapped-summary-title").TextContent.Trim().ShouldBe("Command rejected");
+        string description = cut.Find("#mapped-summary-description").TextContent.Trim();
+        description.ShouldStartWith("The command was rejected.");
+        description.ShouldEndWith("One error.");
+        summary.TextContent.ShouldNotContain("Validation failed");
+        summary.TextContent.ShouldNotContain("Correct the errors before submitting.");
         summary.TextContent.ShouldNotContain("1 errors");
     }
 

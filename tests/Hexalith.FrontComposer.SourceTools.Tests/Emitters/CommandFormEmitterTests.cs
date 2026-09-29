@@ -116,6 +116,120 @@ public class CommandFormEmitterTests {
         masked.ShouldContain("__b.AddAttribute(#, \"AttemptedControlId\", _formDomId + \"-submit\");");
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("OrderApprover")]
+    public void EmitSubmitButtonIsNeverLifecycleDisabled(string? authorizationPolicyName) {
+        CommandFormModel form = BuildForm(
+            [new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null)],
+            authorizationPolicyName: authorizationPolicyName);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        // VG5-03 — the submit control's Disabled expression never reads the lifecycle state, for policy
+        // and non-policy forms alike: a press during an in-flight command must reach SubmitAsync (AM-20).
+        string masked = GeneratedRenderTreeText.MaskSequenceArguments(source);
+        int submit = masked.IndexOf("__b.AddAttribute(#, \"Id\", _formDomId + \"-submit\");", StringComparison.Ordinal);
+        submit.ShouldBeGreaterThanOrEqualTo(0);
+        int disabled = masked.IndexOf("\"Disabled\",", submit, StringComparison.Ordinal);
+        int childContent = masked.IndexOf("\"ChildContent\"", disabled, StringComparison.Ordinal);
+        disabled.ShouldBeGreaterThan(submit);
+        string expression = masked[disabled..childContent];
+        expression.ShouldContain("!_interactiveReady");
+        expression.ShouldNotContain("LifecycleState");
+        expression.ShouldNotContain("CommandLifecycleState");
+        if (authorizationPolicyName is null) {
+            expression.ShouldNotContain("_authorizationPresentation");
+        }
+        else {
+            expression.ShouldContain("|| !_authorizationPresentationReady");
+            expression.ShouldContain("|| !_authorizationPresentationAllowed");
+        }
+    }
+
+    [Fact]
+    public void EmitMappedRejectionUsesItsOwnStoreClearedWhenTheNextAttemptIsAdmitted() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Name", "String", FormFieldTypeCategory.TextInput, "Name", false, true, null),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        // VG5-O1 / E5-06 — a mapped rejection writes a dedicated store that is cleared after admission and
+        // before validation, so an unchanged retry dispatches; 400 validation keeps the server store.
+        source.ShouldContain("private ValidationMessageStore? _rejectionValidationMessages;");
+        source.ShouldContain("_rejectionValidationMessages = new ValidationMessageStore(_editContext);");
+        source.ShouldContain("ServerValidationApplicator.ApplyRejection(_rejectionValidationMessages, ex, _serverValidationAllowlist, _model!);");
+        source.ShouldNotContain("ServerValidationApplicator.ApplyRejection(_serverValidationMessages");
+        source.ShouldContain("ServerValidationApplicator.Apply(_serverValidationMessages, ex, _serverValidationAllowlist, _model!);");
+        source.ShouldContain("_rejectionValidationMessages?.Clear(e.FieldIdentifier);");
+
+        int submit = source.IndexOf("private async Task SubmitAsync(bool validateBeforeDispatch)", StringComparison.Ordinal);
+        int admission = source.IndexOf("if (!admission.IsAdmitted)", submit, StringComparison.Ordinal);
+        int clear = source.IndexOf("_rejectionValidationMessages?.Clear();", submit, StringComparison.Ordinal);
+        int validate = source.IndexOf("!_editContext.Validate()", submit, StringComparison.Ordinal);
+        clear.ShouldBeGreaterThan(admission);
+        clear.ShouldBeLessThan(validate);
+    }
+
+    [Fact]
+    public void EmitValidationDescriptorsShareTheFieldVisibilityPredicate() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("TenantId", "String", FormFieldTypeCategory.TextInput, "Tenant ID", false, true, null),
+            new FormFieldModel("RecordId", "String", FormFieldTypeCategory.TextInput, "Record ID", false, true, null, fieldGroup: "Purge details"),
+            new FormFieldModel("Reason", "String", FormFieldTypeCategory.TextInput, "Reason", false, true, null, fieldGroup: "Purge details"),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        // BH5-05 — a descriptor exists only while its field renders under DerivableFieldsHidden /
+        // ShowFieldsOnly, so a hidden field's message stays an unlinked summary entry.
+        source.ShouldContain("private bool IsFieldRendered(string commandPropertyName)");
+        source.ShouldContain("=> (!DerivableFieldsHidden || !IsDerivableField(commandPropertyName))");
+        source.ShouldContain("&& (ShowFieldsOnly is null || System.Array.IndexOf(ShowFieldsOnly, commandPropertyName) >= 0);");
+        int descriptors = source.IndexOf("private FcValidationFieldDescriptor[] BuildValidationFields()", StringComparison.Ordinal);
+        int descriptorsEnd = source.IndexOf("return fields.ToArray();", descriptors, StringComparison.Ordinal);
+        descriptorsEnd.ShouldBeGreaterThan(descriptors);
+        string body = source[descriptors..descriptorsEnd];
+        foreach (string property in new[] { "TenantId", "RecordId", "Reason" }) {
+            body.ShouldContain("if (IsFieldRendered(\"" + property + "\")) fields.Add(new(\"" + property + "\"");
+            source.ShouldContain("            if (IsFieldRendered(\"" + property + "\"))");
+        }
+
+        Regex.Count(body, @"fields\.Add\(").ShouldBe(3);
+        source.ShouldContain("                IsFieldRendered(\"RecordId\")");
+        source.ShouldContain("                || IsFieldRendered(\"Reason\")");
+        source.ShouldNotContain("!IsDerivableField(\"");
+    }
+
+    [Fact]
+    public void EmitNullableSwitchAndEnumBindNonNullableProxiesWithModelValidation() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Enabled", "Boolean", FormFieldTypeCategory.Switch, "Enabled", false, false, null),
+            new FormFieldModel("NotifyOwner", "Boolean", FormFieldTypeCategory.Switch, "Notify owner", true, false, null),
+            new FormFieldModel("Priority", "Enum", FormFieldTypeCategory.Select, "Priority", false, true, "Counter.Domain.Priority"),
+            new FormFieldModel("Escalation", "Enum", FormFieldTypeCategory.Select, "Escalation", true, false, "Counter.Domain.Priority"),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+        string masked = GeneratedRenderTreeText.MaskSequenceArguments(source);
+
+        // AA5-01 — a nullable bool/enum binds a non-nullable proxy (the numeric split-binding pattern),
+        // and ValidationFieldFor keeps validation on the nullable model property, so the form compiles.
+        source.ShouldContain("private bool _NotifyOwnerProxy => _model.NotifyOwner ?? false;");
+        source.ShouldContain("private Counter.Domain.Priority _EscalationProxy => _model.Escalation.GetValueOrDefault();");
+        masked.ShouldContain("__b.AddAttribute(#, \"Value\", _NotifyOwnerProxy);");
+        masked.ShouldContain("__b.AddAttribute(#, \"ValueExpression\", (global::System.Linq.Expressions.Expression<Func<bool>>)(() => _NotifyOwnerProxy));");
+        masked.ShouldContain("__b.AddAttribute(#, \"ValidationFieldFor\", (global::System.Linq.Expressions.Expression<Func<bool?>>)(() => _model.NotifyOwner));");
+        masked.ShouldContain("__b.AddAttribute(#, \"Value\", _EscalationProxy);");
+        masked.ShouldContain("__b.AddAttribute(#, \"ValueExpression\", (global::System.Linq.Expressions.Expression<Func<Counter.Domain.Priority>>)(() => _EscalationProxy));");
+        masked.ShouldContain("__b.AddAttribute(#, \"ValidationFieldFor\", (global::System.Linq.Expressions.Expression<Func<Counter.Domain.Priority?>>)(() => _model.Escalation));");
+        masked.ShouldContain("EventCallback.Factory.Create<bool>(this, v => { _model.NotifyOwner = v; NotifyClientFieldChanged(\"NotifyOwner\"); })");
+        masked.ShouldContain("EventCallback.Factory.Create<Counter.Domain.Priority>(this, v => { _model.Escalation = v; NotifyClientFieldChanged(\"Escalation\"); })");
+
+        // Non-nullable editors keep their direct model binding and need no proxy.
+        masked.ShouldContain("__b.AddAttribute(#, \"ValueExpression\", (global::System.Linq.Expressions.Expression<Func<bool>>)(() => _model.Enabled));");
+        masked.ShouldContain("__b.AddAttribute(#, \"ValueExpression\", (global::System.Linq.Expressions.Expression<Func<Counter.Domain.Priority>>)(() => _model.Priority));");
+        source.ShouldNotContain("_EnabledProxy");
+        source.ShouldNotContain("_PriorityProxy");
+    }
+
     [Fact]
     public void Emit_SubmitDispatchesSubmittedThenAcknowledged() {
         CommandFormModel form = BuildForm([
@@ -1076,6 +1190,10 @@ public class CommandFormEmitterTests {
         source.ShouldContain("if (!_authorizationDenied && sequence > 1)");
         source.ShouldContain("\"captureFocusBeforeReplacement\", _formDomId + \"-authorization-heading\"");
         source.ShouldContain("\"focusReplacementHeading\", headingId, headingId");
+
+        // The form denial card is a named group, not a region landmark per denied form.
+        string masked = GeneratedRenderTreeText.MaskSequenceArguments(source);
+        masked.ShouldContain("__denied.AddAttribute(#, \"role\", \"group\");");
 
         // BH3-01 — Ready=false and the refresh stamp precede the capture round trip.
         int refresh = source.IndexOf("private async Task RefreshPresentationAuthorizationAsync()", StringComparison.Ordinal);

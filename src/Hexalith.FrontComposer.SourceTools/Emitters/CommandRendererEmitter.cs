@@ -188,7 +188,10 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
         if (hasAuthorizationPolicy) {
-            _ = sb.AppendLine("    private async Task RefreshPresentationAuthorizationAsync()");
+            _ = sb.AppendLine("    private Task RefreshPresentationAuthorizationAsync()");
+            _ = sb.AppendLine("        => RefreshPresentationAuthorizationAsync(carriedReplacementArmed: false);");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private async Task RefreshPresentationAuthorizationAsync(bool carriedReplacementArmed)");
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        if (_authorizationDisposed) { return; }");
             _ = sb.AppendLine("        bool replacesShownForm = _authorizationPresentationReady && _authorizationPresentationAllowed;");
@@ -204,7 +207,11 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("        // activations. Record what held focus before a refresh that can replace the shown form, so the");
             _ = sb.AppendLine("        // denied heading takes focus only when the replaced form contained it. The armed state is");
             _ = sb.AppendLine("        // local to this refresh, so a superseded refresh cannot arm a later unrelated denial (E4-11).");
-            _ = sb.AppendLine("        bool replacementArmed = replacesShownForm && await CaptureFocusBeforeReplacementAsync().ConfigureAwait(false);");
+            _ = sb.AppendLine("        // E5-08 — a Pending result replaces the form with its checking card and retries; the retry");
+            _ = sb.AppendLine("        // carries the armed state, reusing the capture still stored for this heading, so the final");
+            _ = sb.AppendLine("        // denial of that same replacement can still take focus.");
+            _ = sb.AppendLine("        bool replacementArmed = (replacesShownForm && await CaptureFocusBeforeReplacementAsync().ConfigureAwait(false))");
+            _ = sb.AppendLine("            || carriedReplacementArmed;");
             _ = sb.AppendLine("        if (_authorizationDisposed) { return; }");
             _ = sb.AppendLine("        var cts = _authorizationCts;");
             _ = sb.AppendLine("        global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationDecision? decision;");
@@ -251,18 +258,18 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("        await InvokeAsync(StateHasChanged).ConfigureAwait(false);");
             _ = sb.AppendLine("        if (decision?.Kind == global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationDecisionKind.Pending)");
             _ = sb.AppendLine("        {");
-            _ = sb.AppendLine("            _ = ScheduleAuthorizationRetryAsync(sequence);");
+            _ = sb.AppendLine("            _ = ScheduleAuthorizationRetryAsync(sequence, replacementArmed);");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
-            _ = sb.AppendLine("    private async Task ScheduleAuthorizationRetryAsync(long observedSequence)");
+            _ = sb.AppendLine("    private async Task ScheduleAuthorizationRetryAsync(long observedSequence, bool replacementArmed)");
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        try");
             _ = sb.AppendLine("        {");
             _ = sb.AppendLine("            await global::System.Threading.Tasks.Task.Delay(global::System.TimeSpan.FromMilliseconds(250), _authorizationCts?.Token ?? global::System.Threading.CancellationToken.None).ConfigureAwait(false);");
             _ = sb.AppendLine("            if (_authorizationDisposed) { return; }");
             _ = sb.AppendLine("            if (global::System.Threading.Interlocked.Read(ref _authorizationRefreshSequence) != observedSequence) { return; }");
-            _ = sb.AppendLine("            await InvokeAsync(RefreshPresentationAuthorizationAsync).ConfigureAwait(false);");
+            _ = sb.AppendLine("            await InvokeAsync(() => RefreshPresentationAuthorizationAsync(replacementArmed)).ConfigureAwait(false);");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        catch (global::System.OperationCanceledException) { }");
             _ = sb.AppendLine("        catch (global::System.ObjectDisposedException) { }");
@@ -1114,7 +1121,11 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("                    {");
         _ = sb.AppendLine("                        int aseq = 0;");
         _ = sb.AppendLine("                        __message.OpenElement(aseq++, \"section\");");
-        _ = sb.AppendLine("                        __message.AddAttribute(aseq++, \"data-fc-authorization-denied\", \"true\");");
+        // Story 13.3 — a named group, not a region landmark per denied row; focus is the only speech path.
+        _ = sb.AppendLine("                        __message.AddAttribute(aseq++, \"role\", \"group\");");
+        // Story 13.3 E5-24 / AA5-03 — the same card shows "Checking permission" while the decision is
+        // pending; only a settled denial carries the denial marker.
+        _ = sb.AppendLine("                        __message.AddAttribute(aseq++, \"data-fc-authorization-denied\", _authorizationPresentationReady && !_authorizationPresentationAllowed ? \"true\" : null);");
         _ = sb.AppendLine("                        __message.AddAttribute(aseq++, \"aria-labelledby\", _authorizationHeadingId);");
         _ = sb.AppendLine("                        __message.OpenElement(aseq++, \"h2\");");
         _ = sb.AppendLine("                        __message.AddAttribute(aseq++, \"id\", _authorizationHeadingId);");

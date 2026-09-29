@@ -9,21 +9,29 @@
 @if (_showingWarning) {
     <div class="fc-form-abandonment-warning-card">
         <FluentCard>
+            @* A named group, not a region landmark; the warning is silent (never alert/status). *@
             <section class="fc-form-abandonment-warning"
+                     role="group"
                      aria-labelledby="@_warningTitleId"
                      aria-describedby="@_warningDescriptionId"
                      @onkeydown="HandleBarKeyDownAsync"
                      data-testid="fc-form-abandonment-warning">
                 <h2 id="@_warningTitleId">@Localizer["FormAbandonmentTitle"]</h2>
                 <p id="@_warningDescriptionId">@Localizer["FormAbandonmentDescription"]</p>
-                <FluentButton Appearance="ButtonAppearance.Primary"
-                              Id="@_stayButtonId"
-                              AutoFocus="true"
-                              OnClick="OnStayClickedAsync"
-                              data-testid="fc-form-abandonment-stay">@Localizer["FormAbandonmentStay"]</FluentButton>
-                <FluentButton Appearance="ButtonAppearance.Outline"
-                              OnClick="OnLeaveClickedAsync"
-                              data-testid="fc-form-abandonment-leave">@Localizer["FormAbandonmentLeave"]</FluentButton>
+                @* Story 13.3 AA5-09 — Fluent layout for the actions (project-context §4.3), not hand-rolled flex. *@
+                <FluentStack Orientation="Orientation.Horizontal"
+                             HorizontalGap="8px"
+                             VerticalGap="8px"
+                             Wrap="true">
+                    <FluentButton Appearance="ButtonAppearance.Primary"
+                                  Id="@_stayButtonId"
+                                  AutoFocus="true"
+                                  OnClick="OnStayClickedAsync"
+                                  data-testid="fc-form-abandonment-stay">@Localizer["FormAbandonmentStay"]</FluentButton>
+                    <FluentButton Appearance="ButtonAppearance.Outline"
+                                  OnClick="OnLeaveClickedAsync"
+                                  data-testid="fc-form-abandonment-leave">@Localizer["FormAbandonmentLeave"]</FluentButton>
+                </FluentStack>
             </section>
         </FluentCard>
     </div>

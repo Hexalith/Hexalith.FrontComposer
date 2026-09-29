@@ -132,6 +132,9 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    private " + commandFqn + " _model = new();");
         _ = sb.AppendLine("    private EditContext? _editContext;");
         _ = sb.AppendLine("    private ValidationMessageStore? _serverValidationMessages;");
+        // Story 13.3 VG5-O1 / E5-06 — a mapped rejection answers one attempt only, so its field messages
+        // live in their own store, cleared when the next attempt is admitted; 400 validation is unchanged.
+        _ = sb.AppendLine("    private ValidationMessageStore? _rejectionValidationMessages;");
         _ = sb.AppendLine("    private System.Collections.Generic.IReadOnlyList<string> _serverFormLevelErrors = System.Array.Empty<string>();");
         _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning? _serverWarning;");
         _ = sb.AppendLine("    private CancellationTokenSource? _cts;");
@@ -179,6 +182,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        _model = InitialValue ?? new();");
         _ = sb.AppendLine("        _editContext = new EditContext(_model);");
         _ = sb.AppendLine("        _serverValidationMessages = new ValidationMessageStore(_editContext);");
+        _ = sb.AppendLine("        _rejectionValidationMessages = new ValidationMessageStore(_editContext);");
         _ = sb.AppendLine("        _editContext.OnFieldChanged += OnEditContextFieldChanged;");
         _ = sb.AppendLine("        LifecycleState.StateChanged += OnStateChanged;");
         _ = sb.AppendLine("        // Story 2-5 Task 5.3 — surface the EditContext to the renderer so it can wire D24 validation + abandonment guard.");
@@ -422,6 +426,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        IsDirty = true;");
         _ = sb.AppendLine("        // Story 5-2 D5 — clear stale server-side validation for the edited field.");
         _ = sb.AppendLine("        _serverValidationMessages?.Clear(e.FieldIdentifier);");
+        _ = sb.AppendLine("        _rejectionValidationMessages?.Clear(e.FieldIdentifier);");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
         // Story 11.21 CA1507 — the parameter carries a property name of the *command model*, never a
@@ -638,6 +643,15 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        _ => false,");
         _ = sb.AppendLine("    };");
         _ = sb.AppendLine();
+        if (form.Fields.Count > 0) {
+            // Story 13.3 BH5-05 — the one visibility predicate shared by field rendering and the summary
+            // descriptors, so a summary never links to a control that this surface does not render.
+            _ = sb.AppendLine("    /// <summary>Story 2-2 ADR-016: whether a command property renders on this surface (DerivableFieldsHidden / ShowFieldsOnly).</summary>");
+            _ = sb.AppendLine("    private bool IsFieldRendered(string commandPropertyName)");
+            _ = sb.AppendLine("        => (!DerivableFieldsHidden || !IsDerivableField(commandPropertyName))");
+            _ = sb.AppendLine("            && (ShowFieldsOnly is null || System.Array.IndexOf(ShowFieldsOnly, commandPropertyName) >= 0);");
+            _ = sb.AppendLine();
+        }
 
         EmitClientParseErrorHelper(sb, form);
         EmitValidationFieldDescriptors(sb, form);
@@ -831,6 +845,15 @@ public static class CommandFormEmitter {
                 or FormFieldTypeCategory.DecimalInput) {
                 _ = sb.AppendLine("    private string? _" + field.PropertyName + "String;");
                 _ = sb.AppendLine("    private string? _" + field.PropertyName + "ParseError;");
+            }
+            else if (field.IsNullable && field.TypeCategory == FormFieldTypeCategory.Switch) {
+                // Story 13.3 AA5-01 — FluentSwitch binds a non-nullable bool: a nullable property binds
+                // this proxy, and ValidationFieldFor keeps validation on the model property.
+                _ = sb.AppendLine("    private bool _" + field.PropertyName + "Proxy => _model." + field.PropertyName + " ?? false;");
+            }
+            else if (field.IsNullable && field.TypeCategory == FormFieldTypeCategory.Select) {
+                string enumFqn = field.EnumFullyQualifiedName ?? "object";
+                _ = sb.AppendLine("    private " + enumFqn + " _" + field.PropertyName + "Proxy => _model." + field.PropertyName + ".GetValueOrDefault();");
             }
         }
 
@@ -1252,6 +1275,9 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        // from an earlier attempt so it can never feed this attempt's client-validation summary.");
         _ = sb.AppendLine("        await ClearBlockedOutcomeAsync().ConfigureAwait(false);");
         _ = sb.AppendLine("        _serverFormLevelErrors = System.Array.Empty<string>();");
+        _ = sb.AppendLine("        // Story 13.3 VG5-O1 / E5-06 — a mapped rejection's field messages answered the previous attempt;");
+        _ = sb.AppendLine("        // clearing them before validation lets an unchanged retry dispatch (VR-02 retry recovery).");
+        _ = sb.AppendLine("        _rejectionValidationMessages?.Clear();");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        // Story 13.3 ECH-05 — validate only after the concurrency outcome is known.");
         _ = sb.AppendLine("        if (validateBeforeDispatch && _editContext is not null && !_editContext.Validate())");
@@ -1630,10 +1656,10 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        catch (CommandRejectedException ex)");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            bool hasMappedFieldErrors = false;");
-        _ = sb.AppendLine("            if (_editContext is not null && _serverValidationMessages is not null)");
+        _ = sb.AppendLine("            if (_editContext is not null && _rejectionValidationMessages is not null)");
         _ = sb.AppendLine("            {");
-        _ = sb.AppendLine("                _serverValidationMessages.Clear();");
-        _ = sb.AppendLine("                var rejectionValidation = global::Hexalith.FrontComposer.Shell.Services.Validation.ServerValidationApplicator.ApplyRejection(_serverValidationMessages, ex, _serverValidationAllowlist, _model!);");
+        _ = sb.AppendLine("                _rejectionValidationMessages.Clear();");
+        _ = sb.AppendLine("                var rejectionValidation = global::Hexalith.FrontComposer.Shell.Services.Validation.ServerValidationApplicator.ApplyRejection(_rejectionValidationMessages, ex, _serverValidationAllowlist, _model!);");
         _ = sb.AppendLine("                hasMappedFieldErrors = rejectionValidation.HasMappedFieldErrors;");
         _ = sb.AppendLine("                // VR-03 — an unmapped rejection stays in its lifecycle region; its text never reaches a");
         _ = sb.AppendLine("                // summary. A mapped rejection lists its safe form-level messages beside the field links.");
@@ -1718,19 +1744,23 @@ public static class CommandFormEmitter {
             return;
         }
 
+        FormFieldModel[] describedFields = [.. OrderFieldsForRender(form.Fields.AsImmutableArray()).Where(field => field.TypeCategory != FormFieldTypeCategory.Placeholder)];
         _ = sb.AppendLine("    private FcValidationFieldDescriptor[] BuildValidationFields()");
-        _ = sb.AppendLine("        => new FcValidationFieldDescriptor[]");
-        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("    {");
         // Story 13.3 BH2-08 — descriptors follow the rendered order (declared groups hoisted to their
         // first member), so the summary order and the next-target fallback match the DOM order.
-        foreach (FormFieldModel field in OrderFieldsForRender(form.Fields.AsImmutableArray()).Where(field => field.TypeCategory != FormFieldTypeCategory.Placeholder)) {
+        // BH5-05 — a descriptor exists only while its field renders: a message on a field hidden by
+        // DerivableFieldsHidden/ShowFieldsOnly stays in the summary as an unlinked entry.
+        _ = sb.AppendLine("        var fields = new System.Collections.Generic.List<FcValidationFieldDescriptor>(" + describedFields.Length.ToString(System.Globalization.CultureInfo.InvariantCulture) + ");");
+        foreach (FormFieldModel field in describedFields) {
             string propertyName = EscapeString(field.PropertyName);
             string staticLabel = EscapeString(field.StaticLabel);
             string hasExplicitDisplay = field.HasExplicitDisplayName ? "true" : "false";
-            _ = sb.AppendLine("            new(\"" + propertyName + "\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\", " + hasExplicitDisplay + "), _formDomId + \"-" + propertyName + "\", _formDomId + \"-" + propertyName + "-error\"),");
+            _ = sb.AppendLine("        if (IsFieldRendered(\"" + propertyName + "\")) fields.Add(new(\"" + propertyName + "\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\", " + hasExplicitDisplay + "), _formDomId + \"-" + propertyName + "\", _formDomId + \"-" + propertyName + "-error\"));");
         }
 
-        _ = sb.AppendLine("        };");
+        _ = sb.AppendLine("        return fields.ToArray();");
+        _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
     }
 
@@ -1822,6 +1852,8 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                {");
         _ = sb.AppendLine("                    int dseq = 0;");
         _ = sb.AppendLine("                    __denied.OpenElement(dseq++, \"section\");");
+        // Story 13.3 — a named group, not a region landmark per denied form; focus is the only speech path.
+        _ = sb.AppendLine("                    __denied.AddAttribute(dseq++, \"role\", \"group\");");
         _ = sb.AppendLine("                    __denied.AddAttribute(dseq++, \"data-fc-authorization-denied\", \"true\");");
         _ = sb.AppendLine("                    __denied.AddAttribute(dseq++, \"aria-labelledby\", _formDomId + \"-authorization-heading\");");
         _ = sb.AppendLine("                    __denied.OpenElement(dseq++, \"h2\");");
@@ -1983,8 +2015,7 @@ public static class CommandFormEmitter {
             for (int visibilityIndex = 0; visibilityIndex < groupedFields.Length; visibilityIndex++) {
                 string groupedPropertyName = groupedFields[visibilityIndex].PropertyName;
                 string prefix = visibilityIndex == 0 ? "                " : "                || ";
-                _ = sb.AppendLine(prefix + "((!DerivableFieldsHidden || !IsDerivableField(\"" + groupedPropertyName + "\"))");
-                _ = sb.AppendLine("                    && (ShowFieldsOnly is null || System.Array.IndexOf(ShowFieldsOnly, \"" + groupedPropertyName + "\") >= 0))");
+                _ = sb.AppendLine(prefix + "IsFieldRendered(\"" + groupedPropertyName + "\")");
             }
 
             _ = sb.AppendLine("            )");
@@ -2025,8 +2056,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("            // Field: " + propertyName);
         // Story 2-2 ADR-016: ShowFieldsOnly gate. When non-null, render only fields in the set.
-        _ = sb.AppendLine("            if ((!DerivableFieldsHidden || !IsDerivableField(\"" + propertyName + "\"))");
-        _ = sb.AppendLine("                && (ShowFieldsOnly is null || System.Array.IndexOf(ShowFieldsOnly, \"" + propertyName + "\") >= 0))");
+        _ = sb.AppendLine("            if (IsFieldRendered(\"" + propertyName + "\"))");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("            __b.OpenElement(cseq++, \"div\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"class\", \"fc-command-field\");");
@@ -2041,7 +2071,7 @@ public static class CommandFormEmitter {
                 EmitNumericInput(sb, field, decimalMode: true);
                 break;
             case FormFieldTypeCategory.Switch:
-                EmitSwitch(sb, propertyName, staticLabel, hasExplicitDisplay, field.Description);
+                EmitSwitch(sb, propertyName, staticLabel, hasExplicitDisplay, field.Description, field.IsNullable);
                 break;
             case FormFieldTypeCategory.DatePicker:
                 EmitDatePicker(sb, field);
@@ -2140,14 +2170,21 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.CloseComponent();");
     }
 
-    private static void EmitSwitch(StringBuilder sb, string propertyName, string staticLabel, string hasExplicitDisplay, string? description) {
+    private static void EmitSwitch(StringBuilder sb, string propertyName, string staticLabel, string hasExplicitDisplay, string? description, bool isNullable) {
+        // Story 13.3 AA5-01 — a bool? property binds the non-nullable proxy (the numeric editors'
+        // split-binding pattern), while ValidationFieldFor keeps validation on the model property.
+        string boundMember = isNullable ? "_" + propertyName + "Proxy" : "_model." + propertyName;
         _ = sb.AppendLine("            __b.OpenComponent<FluentSwitch>(cseq++);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Id\", _formDomId + \"-" + propertyName + "\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"data-fc-validation-field\", \"true\");");
         EmitFieldAccessibility(sb, propertyName, description, hasParseError: false);
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _model." + propertyName + ");");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", " + boundMember + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<bool>(this, v => { _model." + propertyName + " = v; NotifyClientFieldChanged(\"" + propertyName + "\"); }));");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueExpression\", (global::System.Linq.Expressions.Expression<Func<bool>>)(() => _model." + propertyName + "));");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueExpression\", (global::System.Linq.Expressions.Expression<Func<bool>>)(() => " + boundMember + "));");
+        if (isNullable) {
+            _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValidationFieldFor\", (global::System.Linq.Expressions.Expression<Func<bool?>>)(() => _model." + propertyName + "));");
+        }
+
         _ = sb.AppendLine("            string " + propertyName + "Label = ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\", " + hasExplicitDisplay + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", " + propertyName + "Label);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"AriaLabel\", " + propertyName + "Label);");
@@ -2187,15 +2224,22 @@ public static class CommandFormEmitter {
         string staticLabel = EscapeString(field.StaticLabel);
         string hasExplicitDisplay = field.HasExplicitDisplayName ? "true" : "false";
         string enumFqn = field.EnumFullyQualifiedName ?? "object";
+        // Story 13.3 AA5-01 — a nullable enum binds the non-nullable proxy, while ValidationFieldFor
+        // keeps validation on the model property.
+        string boundMember = field.IsNullable ? "_" + propertyName + "Proxy" : "_model." + propertyName;
 
         _ = sb.AppendLine("            __b.OpenComponent<FluentSelect<" + enumFqn + ", " + enumFqn + ">>(cseq++);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Id\", _formDomId + \"-" + propertyName + "\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"data-fc-validation-field\", \"true\");");
         EmitFieldAccessibility(sb, propertyName, field.Description, hasParseError: false);
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Items\", (System.Collections.Generic.IEnumerable<" + enumFqn + ">)System.Enum.GetValues<" + enumFqn + ">());");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _model." + propertyName + ");");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", " + boundMember + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<" + enumFqn + ">(this, v => { _model." + propertyName + " = v; NotifyClientFieldChanged(\"" + propertyName + "\"); }));");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueExpression\", (global::System.Linq.Expressions.Expression<Func<" + enumFqn + ">>)(() => _model." + propertyName + "));");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueExpression\", (global::System.Linq.Expressions.Expression<Func<" + enumFqn + ">>)(() => " + boundMember + "));");
+        if (field.IsNullable) {
+            _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValidationFieldFor\", (global::System.Linq.Expressions.Expression<Func<" + enumFqn + "?>>)(() => _model." + propertyName + "));");
+        }
+
         _ = sb.AppendLine("            string " + propertyName + "Label = ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\", " + hasExplicitDisplay + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", " + propertyName + "Label);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"AriaLabel\", " + propertyName + "Label);");

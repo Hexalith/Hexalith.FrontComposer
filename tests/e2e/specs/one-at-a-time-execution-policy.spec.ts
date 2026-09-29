@@ -43,9 +43,26 @@ test.describe('Story 4.3: one-at-a-time execution policy', () => {
     const batchForm = commandForm(page, 'Batch Increment command form');
     await fillField(batchForm, 'Amount', '2');
     await fillField(batchForm, 'Note', 'QA story 4.3 first command');
-    await batchForm.getByRole('button', { name: 'Batch Increment' }).click();
+    const batchSubmit = batchForm.getByRole('button', { name: 'Batch Increment' });
+    // Bounding boxes are viewport-relative: scroll first so the click's own scroll-into-view is not
+    // measured as a layout shift.
+    await batchSubmit.scrollIntoViewIfNeeded();
+    const submitBoxBefore = await batchSubmit.boundingBox();
+    await batchSubmit.click();
 
     await lifecycle.expectState(BATCH_COMMAND_ID, 'syncing');
+
+    // Story 13.3 BH5-02 — the active lifecycle heading is rendered (it can take focus) but visually
+    // hidden until it holds focus, so submitting never shifts the form under a second press.
+    const batchHeading = lifecycle.locator(BATCH_COMMAND_ID).locator('[data-fc-lifecycle-heading]');
+    const batchHeadingContainer = lifecycle.locator(BATCH_COMMAND_ID).locator('.fc-lifecycle-heading');
+    await expect(batchHeading).toHaveCount(1);
+    expect(await batchHeading.evaluate((element) => element.tagName)).toBe('H2');
+    expect((await batchHeadingContainer.boundingBox())?.height ?? 0).toBeLessThanOrEqual(1);
+    const submitBoxDuring = await batchSubmit.boundingBox();
+    expect(submitBoxBefore).not.toBeNull();
+    expect(submitBoxDuring).not.toBeNull();
+    expect(Math.abs((submitBoxDuring?.y ?? 0) - (submitBoxBefore?.y ?? 0))).toBeLessThanOrEqual(1);
 
     await page.getByRole('button', { name: 'Increment', exact: true }).click();
     const incrementForm = commandForm(page, 'Increment command form');
@@ -106,6 +123,9 @@ test.describe('Story 4.3: one-at-a-time execution policy', () => {
 
     await incrementForm.getByRole('button', { name: 'View active command' }).click();
     await expect(lifecycle.locator(BATCH_COMMAND_ID).locator('[data-fc-lifecycle-heading]')).toBeFocused();
+    // The focused heading is shown in place, unobscured, while it holds focus.
+    await expect(batchHeading).toBeInViewport();
+    expect((await batchHeadingContainer.boundingBox())?.height ?? 0).toBeGreaterThan(1);
 
     await lifecycle.expectState(BATCH_COMMAND_ID, 'confirmed');
 

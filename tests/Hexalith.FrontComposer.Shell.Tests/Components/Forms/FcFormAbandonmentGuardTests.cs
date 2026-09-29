@@ -331,6 +331,26 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
     }
 
     [Fact]
+    public async Task WarningActionsAreLaidOutByAHorizontalFluentStackInsideTheWarning() {
+        TestModel model = new() { Name = string.Empty };
+        EditContext editContext = new(model);
+        (FcFormAbandonmentGuard guard, IRenderedComponent<FcFormAbandonmentGuard> cut) = RenderGuardWithCut(editContext);
+        await ShowWarningThroughPreventedNavigationAsync(cut, guard, editContext);
+
+        // AA5-09 — project-context §4.3: the Stay/Leave actions share one horizontal FluentStack inside the
+        // named warning, in Stay-then-Leave order, instead of hand-rolled flex on the section.
+        IElement warning = cut.Find("[data-testid='fc-form-abandonment-warning']");
+        IElement stay = cut.Find("[data-testid='fc-form-abandonment-stay']");
+        IElement leave = cut.Find("[data-testid='fc-form-abandonment-leave']");
+        IElement actions = stay.ParentElement.ShouldNotBeNull();
+        leave.ParentElement.ShouldBe(actions);
+        actions.ShouldNotBe(warning);
+        actions.ClassList.ShouldContain("fluent-stack-horizontal");
+        warning.Contains(actions).ShouldBeTrue();
+        actions.Children.Select(child => child.GetAttribute("data-testid")).ShouldBe(["fc-form-abandonment-stay", "fc-form-abandonment-leave"]);
+    }
+
+    [Fact]
     public async Task PreventedNavigationFocusesTheRenderedStayButtonOnce() {
         BunitJSModuleInterop focusModule = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
         TestModel model = new() { Name = string.Empty };
@@ -394,7 +414,9 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
         first.GetAttribute("aria-describedby").ShouldNotBe(second.GetAttribute("aria-describedby"));
         firstCut.Find("[data-testid='fc-form-abandonment-stay']").Id
             .ShouldNotBe(secondCut.Find("[data-testid='fc-form-abandonment-stay']").Id);
-        first.HasAttribute("role").ShouldBeFalse();
+        // A named group, never a region landmark, alert, or status.
+        first.GetAttribute("role").ShouldBe("group");
+        second.GetAttribute("role").ShouldBe("group");
         first.HasAttribute("aria-live").ShouldBeFalse();
     }
 

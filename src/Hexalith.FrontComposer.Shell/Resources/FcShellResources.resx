@@ -679,8 +679,8 @@
     <comment>Story 13.3 AM-18 — heading of the focused, non-live client-validation summary (VR-01).</comment>
   </data>
   <data name="ValidationSummaryMessageSingle" xml:space="preserve">
-    <value>Correct the error before submitting. One error.</value>
-    <comment>Story 13.3 AM-18 — summary description when exactly one error is listed. Keep "Correct the error before submitting." first; the summary is focus-only and never live.</comment>
+    <value>Correct the errors before submitting. One error.</value>
+    <comment>Story 13.3 AM-18 — summary description when exactly one error is listed. Keep the canonical AM-18 sentence "Correct the errors before submitting." unchanged and first; only the count is singular. The summary is focus-only and never live.</comment>
   </data>
   <data name="ValidationSummaryMessage" xml:space="preserve">
     <value>Correct the errors before submitting. {0} errors.</value>
@@ -719,8 +719,8 @@
     <comment>Story 13.3 OF-03 — the non-destructive dialog action; it starts focused and never confirms.</comment>
   </data>
   <data name="DestructiveConfirmationTitleTemplate" xml:space="preserve">
-    <value>Confirm {0}?</value>
-    <comment>Story 13.3 OF-03 — default destructive confirmation dialog title. {0} is the command display label (plain text, already localized by the adopter).</comment>
+    <value>{0}?</value>
+    <comment>Story 13.3 OF-03 — default destructive confirmation dialog title, kept as the pre-13.3 "{DisplayLabel}?" copy. {0} is the command display label (plain text, already localized by the adopter).</comment>
   </data>
   <data name="DestructiveConfirmationDefaultBody" xml:space="preserve">
     <value>This action cannot be undone.</value>
@@ -737,6 +737,26 @@
   <data name="RejectionEditRetry" xml:space="preserve">
     <value>Edit and retry</value>
     <comment>Story 13.3 VR-03 / FM-08 — recovery action after an unmapped rejection; moves focus to the first editable form control. It does not resubmit.</comment>
+  </data>
+  <data name="RejectionReturn" xml:space="preserve">
+    <value>Return</value>
+    <comment>Story 13.3 VR-03 — recovery action after an unmapped rejection; goes back to the previous page in the browser history and does not resubmit. It behaves like the browser Back button: the abandonment guard applies to in-app history navigation on guarded forms, and a back to another document is not guarded.</comment>
+  </data>
+  <data name="RejectionCopySupportReference" xml:space="preserve">
+    <value>Copy support reference</value>
+    <comment>Story 13.3 VR-03 — recovery action that copies the support-safe error and documentation codes already shown in the rejection details. Never copies payloads or backend metadata.</comment>
+  </data>
+  <data name="RejectionSupportReferenceCopied" xml:space="preserve">
+    <value>Support reference copied</value>
+    <comment>Story 13.3 VR-03 — label of the copy action after the support reference was copied.</comment>
+  </data>
+  <data name="RejectionSupportReferenceCopyFailed" xml:space="preserve">
+    <value>Copy failed. Use the codes shown.</value>
+    <comment>Story 13.3 VR-03 — label of the copy action when the browser refused the copy; the same codes stay visible in the rejection details.</comment>
+  </data>
+  <data name="RejectionSupportReferenceTemplate" xml:space="preserve">
+    <value>Error code: {0}, documentation code: {1}</value>
+    <comment>Story 13.3 VR-03 — copied support reference text. {0} is the support-safe error code and {1} the documentation code, both plain text.</comment>
   </data>
   <data name="MappedRejectionRecoveryMessage" xml:space="preserve">
     <value>The command was rejected. Correct the linked fields and try again.</value>

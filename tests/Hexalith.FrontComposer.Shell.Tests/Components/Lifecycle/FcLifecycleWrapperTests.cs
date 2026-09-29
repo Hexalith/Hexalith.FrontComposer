@@ -221,6 +221,8 @@ public sealed class FcLifecycleWrapperTests : LifecycleWrapperTestBase {
         IReadOnlyList<IElement> headings = cut.FindAll("[data-fc-active-lifecycle='true'] [data-fc-lifecycle-heading][tabindex='-1']");
         if (expectedHeading) {
             headings.Count.ShouldBe(1);
+            // The focus target is the heading element itself, not a role-less wrapper host.
+            headings[0].TagName.ShouldBe("H2");
             headings[0].TextContent.ShouldContain(displayLabel);
         }
         else {

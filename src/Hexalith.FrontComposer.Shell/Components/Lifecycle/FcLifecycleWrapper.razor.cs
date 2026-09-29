@@ -21,6 +21,9 @@ namespace Hexalith.FrontComposer.Shell.Components.Lifecycle;
 /// </summary>
 public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisposable {
     private const string FocusModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js";
+
+    // Story 13.3 VR-03 — the Shell's never-throwing clipboard helper; it returns a structured outcome string.
+    private const string ClipboardModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-devmode-clipboard.js";
     private string _boundCorrelationId = string.Empty;
     private IDisposable? _subscription;
     private IDisposable? _optionsChangeRegistration;
@@ -35,6 +38,10 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
         LastFailureCategory: null);
     private int _disposed;
     private ElementReference _wrapperElement;
+
+    // Story 13.3 VR-03 — outcome of the last "Copy support reference" activation for the current
+    // rejection: null before any attempt, true when copied, false when the browser refused the copy.
+    private bool? _supportReferenceCopied;
 
     // Review 2026-04-17 P3 — cascaded as WrapperInitiatedNavigation so FcFormAbandonmentGuard
     // can bypass its warning when the wrapper itself triggers a Start-over navigation.
@@ -250,6 +257,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
             case CommandLifecycleState.Rejected:
                 _timer?.EnterTerminal();
                 CancelDismissTimer();
+                _supportReferenceCopied = null;
                 next = next with { TimerPhase = LifecycleTimerPhase.Terminal };
                 break;
 
@@ -398,6 +406,62 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
             if (module is not null) {
                 await DisposeFocusModuleAsync(module).ConfigureAwait(true);
             }
+        }
+    }
+
+    /// <summary>
+    /// Story 13.3 VR-03 — "Return" goes back to the previous page in the browser history and never
+    /// resubmits. It behaves like the browser Back button: the abandonment guard applies to in-app
+    /// history navigation on a guarded form, and a back to another document is not guarded.
+    /// </summary>
+    private async Task ReturnToPreviousPageAsync() {
+        try {
+            await JS.InvokeVoidAsync("history.back").ConfigureAwait(true);
+        }
+        catch (JSDisconnectedException) {
+        }
+        catch (JSException) {
+        }
+        catch (InvalidOperationException) {
+        }
+    }
+
+    /// <summary>
+    /// Story 13.3 VR-03 — copies the support-safe error and documentation codes that the rejection
+    /// details already show. Nothing else (payload, backend metadata, identifiers) is copied.
+    /// </summary>
+    private async Task CopySupportReferenceAsync() {
+        CommandRejectionDetails? details = RejectionDetails;
+        if (details is null) {
+            return;
+        }
+
+        string reference = string.Format(
+            System.Globalization.CultureInfo.CurrentCulture,
+            Localizer["RejectionSupportReferenceTemplate"],
+            details.ErrorCode,
+            details.DocsCode);
+        IJSObjectReference? module = null;
+        bool copied = false;
+        try {
+            module = await JS.InvokeAsync<IJSObjectReference>("import", ClipboardModulePath).ConfigureAwait(true);
+            string outcome = await module.InvokeAsync<string>("copyToClipboard", reference).ConfigureAwait(true);
+            copied = string.Equals(outcome, "Success", StringComparison.Ordinal);
+        }
+        catch (JSDisconnectedException) {
+        }
+        catch (JSException) {
+        }
+        catch (InvalidOperationException) {
+        }
+        finally {
+            if (module is not null) {
+                await DisposeFocusModuleAsync(module).ConfigureAwait(true);
+            }
+        }
+
+        if (_disposed == 0) {
+            _supportReferenceCopied = copied;
         }
     }
 

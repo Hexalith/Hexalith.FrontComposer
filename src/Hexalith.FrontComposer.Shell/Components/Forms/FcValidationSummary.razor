@@ -5,8 +5,10 @@
 @if (_visible && _entries.Count > 0) {
     <div class="fc-validation-summary-card">
         <FluentCard>
+            @* Story 13.3 VR-01 / AA5-05 — a named group, not a region landmark per form; focus-only, never live. *@
             <section id="@SummaryId"
                      class="fc-validation-summary"
+                     role="group"
                      tabindex="-1"
                      aria-labelledby="@TitleId"
                      aria-describedby="@DescriptionId"

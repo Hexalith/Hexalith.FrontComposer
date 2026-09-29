@@ -73,6 +73,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     private Counter.Domain.IncrementCommand _model = new();
     private EditContext? _editContext;
     private ValidationMessageStore? _serverValidationMessages;
+    private ValidationMessageStore? _rejectionValidationMessages;
     private System.Collections.Generic.IReadOnlyList<string> _serverFormLevelErrors = System.Array.Empty<string>();
     private global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning? _serverWarning;
     private CancellationTokenSource? _cts;
@@ -101,6 +102,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         _model = InitialValue ?? new();
         _editContext = new EditContext(_model);
         _serverValidationMessages = new ValidationMessageStore(_editContext);
+        _rejectionValidationMessages = new ValidationMessageStore(_editContext);
         _editContext.OnFieldChanged += OnEditContextFieldChanged;
         LifecycleState.StateChanged += OnStateChanged;
         // Story 2-5 Task 5.3 — surface the EditContext to the renderer so it can wire D24 validation + abandonment guard.
@@ -148,6 +150,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         IsDirty = true;
         // Story 5-2 D5 — clear stale server-side validation for the edited field.
         _serverValidationMessages?.Clear(e.FieldIdentifier);
+        _rejectionValidationMessages?.Clear(e.FieldIdentifier);
     }
 
     private void NotifyClientFieldChanged(string commandPropertyName) {
@@ -340,17 +343,23 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         _ => false,
     };
 
+    /// <summary>Story 2-2 ADR-016: whether a command property renders on this surface (DerivableFieldsHidden / ShowFieldsOnly).</summary>
+    private bool IsFieldRendered(string commandPropertyName)
+        => (!DerivableFieldsHidden || !IsDerivableField(commandPropertyName))
+            && (ShowFieldsOnly is null || System.Array.IndexOf(ShowFieldsOnly, commandPropertyName) >= 0);
+
     private bool HasClientParseErrors()
     {
         return !string.IsNullOrEmpty(_AmountParseError);
     }
 
     private FcValidationFieldDescriptor[] BuildValidationFields()
-        => new FcValidationFieldDescriptor[]
-        {
-            new("TenantId", ResolveLabel("TenantId", "Tenant Id", false), _formDomId + "-TenantId", _formDomId + "-TenantId-error"),
-            new("Amount", ResolveLabel("Amount", "Amount", false), _formDomId + "-Amount", _formDomId + "-Amount-error"),
-        };
+    {
+        var fields = new System.Collections.Generic.List<FcValidationFieldDescriptor>(2);
+        if (IsFieldRendered("TenantId")) fields.Add(new("TenantId", ResolveLabel("TenantId", "Tenant Id", false), _formDomId + "-TenantId", _formDomId + "-TenantId-error"));
+        if (IsFieldRendered("Amount")) fields.Add(new("Amount", ResolveLabel("Amount", "Amount", false), _formDomId + "-Amount", _formDomId + "-Amount-error"));
+        return fields.ToArray();
+    }
 
     private async Task ObserveFieldAccessibilityAsync()
     {
@@ -447,6 +456,9 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         // from an earlier attempt so it can never feed this attempt's client-validation summary.
         await ClearBlockedOutcomeAsync().ConfigureAwait(false);
         _serverFormLevelErrors = System.Array.Empty<string>();
+        // Story 13.3 VG5-O1 / E5-06 — a mapped rejection's field messages answered the previous attempt;
+        // clearing them before validation lets an unchanged retry dispatch (VR-02 retry recovery).
+        _rejectionValidationMessages?.Clear();
 
         // Story 13.3 ECH-05 — validate only after the concurrency outcome is known.
         if (validateBeforeDispatch && _editContext is not null && !_editContext.Validate())
@@ -768,10 +780,10 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         catch (CommandRejectedException ex)
         {
             bool hasMappedFieldErrors = false;
-            if (_editContext is not null && _serverValidationMessages is not null)
+            if (_editContext is not null && _rejectionValidationMessages is not null)
             {
-                _serverValidationMessages.Clear();
-                var rejectionValidation = global::Hexalith.FrontComposer.Shell.Services.Validation.ServerValidationApplicator.ApplyRejection(_serverValidationMessages, ex, _serverValidationAllowlist, _model!);
+                _rejectionValidationMessages.Clear();
+                var rejectionValidation = global::Hexalith.FrontComposer.Shell.Services.Validation.ServerValidationApplicator.ApplyRejection(_rejectionValidationMessages, ex, _serverValidationAllowlist, _model!);
                 hasMappedFieldErrors = rejectionValidation.HasMappedFieldErrors;
                 // VR-03 — an unmapped rejection stays in its lifecycle region; its text never reaches a
                 // summary. A mapped rejection lists its safe form-level messages beside the field links.
@@ -890,15 +902,16 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                 __b.AddAttribute(1, "ChildContent", (RenderFragment)(__denied =>
                 {
                     __denied.OpenElement(0, "section");
-                    __denied.AddAttribute(1, "data-fc-authorization-denied", "true");
-                    __denied.AddAttribute(2, "aria-labelledby", _formDomId + "-authorization-heading");
-                    __denied.OpenElement(3, "h2");
-                    __denied.AddAttribute(4, "id", _formDomId + "-authorization-heading");
-                    __denied.AddAttribute(5, "tabindex", "-1");
-                    __denied.AddContent(6, _serverWarning?.Title ?? ResolveShellLocalized("UnauthorizedCommandWarningTitle", "Permission required"));
+                    __denied.AddAttribute(1, "role", "group");
+                    __denied.AddAttribute(2, "data-fc-authorization-denied", "true");
+                    __denied.AddAttribute(3, "aria-labelledby", _formDomId + "-authorization-heading");
+                    __denied.OpenElement(4, "h2");
+                    __denied.AddAttribute(5, "id", _formDomId + "-authorization-heading");
+                    __denied.AddAttribute(6, "tabindex", "-1");
+                    __denied.AddContent(7, _serverWarning?.Title ?? ResolveShellLocalized("UnauthorizedCommandWarningTitle", "Permission required"));
                     __denied.CloseElement();
-                    __denied.OpenElement(7, "p");
-                    __denied.AddContent(8, _serverWarning?.Detail ?? ResolveShellLocalized("AuthorizationActionUnavailableMessage", "This action is unavailable."));
+                    __denied.OpenElement(8, "p");
+                    __denied.AddContent(9, _serverWarning?.Detail ?? ResolveShellLocalized("AuthorizationActionUnavailableMessage", "This action is unavailable."));
                     __denied.CloseElement();
                     __denied.CloseElement();
                 }));
@@ -938,8 +951,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             }
 
             // Field: TenantId
-            if ((!DerivableFieldsHidden || !IsDerivableField("TenantId"))
-                && (ShowFieldsOnly is null || System.Array.IndexOf(ShowFieldsOnly, "TenantId") >= 0))
+            if (IsFieldRendered("TenantId"))
             {
             __b.OpenElement(14, "div");
             __b.AddAttribute(15, "class", "fc-command-field");
@@ -963,8 +975,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             }
 
             // Field: Amount
-            if ((!DerivableFieldsHidden || !IsDerivableField("Amount"))
-                && (ShowFieldsOnly is null || System.Array.IndexOf(ShowFieldsOnly, "Amount") >= 0))
+            if (IsFieldRendered("Amount"))
             {
             __b.OpenElement(30, "div");
             __b.AddAttribute(31, "class", "fc-command-field");

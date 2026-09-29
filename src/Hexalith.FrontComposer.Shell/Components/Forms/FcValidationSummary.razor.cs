@@ -79,7 +79,7 @@ public partial class FcValidationSummary : ComponentBase, IDisposable {
                         ? "The command was rejected. Correct the mapped error before submitting again. One error."
                         : "The command was rejected. Correct the mapped errors before submitting again. {0} errors."
                     : singular
-                        ? "Correct the error before submitting. One error."
+                        ? "Correct the errors before submitting. One error."
                         : "Correct the errors before submitting. {0} errors.");
             return string.Format(System.Globalization.CultureInfo.CurrentCulture, template, _entries.Count);
         }
