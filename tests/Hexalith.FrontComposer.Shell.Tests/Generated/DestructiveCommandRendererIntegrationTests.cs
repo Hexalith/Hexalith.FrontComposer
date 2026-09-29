@@ -17,6 +17,30 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 
 public sealed class DestructiveCommandRendererIntegrationTests : CommandRendererTestBase {
     [Fact]
+    public async Task GeneratedRenderer_NestedModalOrigin_FailsClosedWithoutDialogOrDispatch() {
+        _ = FcFocusModule.Setup<bool>("captureOverlayOrigin", _ => true).SetResult(false);
+        RecordingCommandService commandService = new();
+        ControlledDialogService dialogService = new(DialogResult.Ok());
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => commandService));
+        Services.Replace(ServiceDescriptor.Scoped<IDialogService>(_ => dialogService.Service));
+        await InitializeStoreAsync();
+
+        IRenderedComponent<DeleteWidgetCommandRenderer> cut = Render<DeleteWidgetCommandRenderer>();
+
+        cut.WaitForAssertion(() => _ = cut.Find("fluent-button"));
+        cut.Find("fluent-button").Click();
+        cut.WaitForAssertion(() => _ = cut.Find("form"));
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(() => FcFocusModule.Invocations
+            .Count(invocation => invocation.Identifier == "captureOverlayOrigin")
+            .ShouldBe(1));
+        dialogService.ShowDialogCallCount.ShouldBe(0);
+        commandService.DispatchCount.ShouldBe(0);
+        FcFocusModule.Invocations.Any(invocation => invocation.Identifier == "restoreOverlayOrigin").ShouldBeFalse();
+    }
+
+    [Fact]
     public async Task GeneratedRenderer_CancelledDialog_PreventsCommandDispatch() {
         RecordingCommandService commandService = new();
         ControlledDialogService dialogService = new(DialogResult.Cancel());

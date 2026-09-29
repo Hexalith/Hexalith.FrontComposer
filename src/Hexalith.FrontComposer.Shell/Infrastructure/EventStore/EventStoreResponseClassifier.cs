@@ -101,7 +101,7 @@ public sealed class EventStoreResponseClassifier {
                         : problem.Title!;
                     string resolution = problem.Detail ?? string.Empty;
                     return EventStoreCommandClassification.FromFailure(
-                        new CommandRejectedException(reason, resolution, problem.RejectionDetails));
+                        CommandRejectedException.FromProblem(reason, resolution, problem));
                 }
 
             case (HttpStatusCode)429: {

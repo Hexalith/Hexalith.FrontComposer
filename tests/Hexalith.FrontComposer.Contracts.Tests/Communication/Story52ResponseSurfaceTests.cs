@@ -115,6 +115,17 @@ public class Story52ResponseSurfaceTests {
         ex.ReasonCategory.ShouldBe("Concurrency");
         ex.SuggestedAction.ShouldBe("Reload the order.");
         ex.DocsCode.ShouldBe("FC-CMD-409");
+        CommandRejectedException compatible = new("Order locked", "Retry later.", null);
+        compatible.Details.ErrorCode.ShouldBe(CommandRejectionDetails.UnknownErrorCode);
+        ProblemDetailsPayload problem = ProblemDetailsPayload.Empty with {
+            Title = "Order locked",
+        };
+        CommandRejectedException fromProblem = CommandRejectedException.FromProblem(
+            "Order locked",
+            "Retry later.",
+            problem);
+        fromProblem.Problem.Title.ShouldBe(problem.Title);
+        fromProblem.Problem.RejectionDetails.ShouldBe(fromProblem.Details);
     }
 
     [Fact]

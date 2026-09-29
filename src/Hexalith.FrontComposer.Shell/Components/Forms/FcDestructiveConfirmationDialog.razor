@@ -4,10 +4,11 @@
 
 <FluentDialogBody>
     <TitleTemplate>
-        <h2 class="fc-destructive-dialog-title">@(Title ?? string.Empty)</h2>
+        <h2 id="fc-destructive-dialog-title" class="fc-destructive-dialog-title">@(Title ?? string.Empty)</h2>
     </TitleTemplate>
     <ChildContent>
-        <div class="fc-destructive-dialog-body"
+        <div id="fc-destructive-dialog-description"
+             class="fc-destructive-dialog-body"
              tabindex="-1"
              @onkeydown="HandleKeyDownAsync"
              data-testid="fc-destructive-dialog">
@@ -19,7 +20,7 @@
                       Appearance="ButtonAppearance.Outline"
                       AutoFocus="true"
                       Class="fc-destructive-cancel"
-                      data-testid="fc-destructive-cancel">Cancel</FluentButton>
+                      data-testid="fc-destructive-cancel">@Localizer["DestructiveConfirmationCancel"]</FluentButton>
         <FluentButton OnClick="OnConfirmAsync"
                       Appearance="ButtonAppearance.Primary"
                       Class="fc-destructive-confirm"

@@ -48,7 +48,8 @@ public static class CommandFluxorActionsEmitter {
         _ = sb.AppendLine("        string? ErrorCode,");
         _ = sb.AppendLine("        string? ReasonCategory,");
         _ = sb.AppendLine("        string? SuggestedAction,");
-        _ = sb.AppendLine("        string? DocsCode);");
+        _ = sb.AppendLine("        string? DocsCode,");
+        _ = sb.AppendLine("        bool HasMappedFieldErrors = false);");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    /// <summary>");
         _ = sb.AppendLine("    /// Resets the lifecycle state to Idle -- dispatched after a Rejected terminal to allow resubmit,");

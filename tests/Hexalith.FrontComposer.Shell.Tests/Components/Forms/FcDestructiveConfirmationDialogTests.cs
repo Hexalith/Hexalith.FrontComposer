@@ -20,6 +20,7 @@ public sealed class FcDestructiveConfirmationDialogTests : BunitContext {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddFluentUIComponents();
         _ = Services.AddLogging();
+        _ = Services.AddLocalization();
     }
 
     [Fact]

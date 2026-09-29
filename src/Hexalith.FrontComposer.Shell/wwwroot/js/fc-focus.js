@@ -5,6 +5,7 @@ let routeFocusTimer = null;
 let pendingRoutePath = null;
 let pendingTabFocus = null;
 let routeFocusGuardController = null;
+const editedOriginCaptureSequences = new WeakMap();
 
 export function prepareTabNavigation(route, tabId) {
     pendingTabFocus = { path: normalizePath(new URL(route, document.baseURI).pathname), tabId };
@@ -30,10 +31,11 @@ export function labelTabPanels(testId) {
 }
 
 export function captureOverlayOrigin(testId = null, preserveExisting = false) {
-    if (document.activeElement?.closest('[role="dialog"], fluent-dialog')) return;
-    if (preserveExisting && window.__fcOverlayOrigin instanceof HTMLElement
-        && window.__fcOverlayOrigin.isConnected && window.__fcOverlayOpenIntent) {
-        return;
+    if (document.activeElement?.closest('[role="dialog"], fluent-dialog')) return false;
+    if (window.__fcOverlayOpenIntent) {
+        return preserveExisting
+            && window.__fcOverlayOrigin instanceof HTMLElement
+            && window.__fcOverlayOrigin.isConnected;
     }
     const candidate = testId
         ? document.querySelector(`[data-testid="${testId}"]`)
@@ -42,6 +44,159 @@ export function captureOverlayOrigin(testId = null, preserveExisting = false) {
         ? candidate
         : null;
     window.__fcOverlayOpenIntent = { origin: window.__fcOverlayOrigin, moved: false, watchFocus: false };
+    return true;
+}
+
+export function captureEditedOrigin(root = null, fieldName = null, sequence = 0) {
+    if (!(root instanceof HTMLElement) || !fieldName) return false;
+    const previousSequence = editedOriginCaptureSequences.get(root) ?? -1;
+    if (sequence < previousSequence) return false;
+
+    const fieldHost = root.querySelector(`[name="${cssEscape(fieldName)}"]`);
+    const declaredEditor = fieldHost instanceof HTMLElement
+        ? fieldHost.matches(fieldEditableSelector)
+            ? fieldHost
+            : fieldHost.querySelector(fieldEditableSelector)
+        : null;
+    if (!(declaredEditor instanceof HTMLElement)
+        || !declaredEditor.isConnected
+        || declaredEditor.hasAttribute('disabled')) return false;
+
+    editedOriginCaptureSequences.set(root, sequence);
+    window.__fcEditedOrigin = declaredEditor;
+    window.__fcEditedFormRoot = root;
+    return true;
+}
+
+export function restoreEditedOrigin() {
+    const origin = window.__fcEditedOrigin;
+    const capturedFormRoot = window.__fcEditedFormRoot;
+    runAfterDismiss(() => {
+        const formRoot = capturedFormRoot instanceof HTMLElement && capturedFormRoot.isConnected
+            ? capturedFormRoot
+            : null;
+        const target = origin instanceof HTMLElement && origin.isConnected && !origin.disabled
+            ? origin
+            : formRoot?.querySelector('[data-fc-form-heading]')
+                ?? document.querySelector('[data-fc-form-heading="true"]')
+                ?? document.querySelector('#fc-main-content h1, main h1');
+        focusTarget(target);
+    });
+}
+
+export function labelDialog(testId, titleId, descriptionId) {
+    const content = document.querySelector(`[data-testid="${cssEscape(testId)}"]`);
+    const host = content?.closest('fluent-dialog');
+    const dialog = host?.shadowRoot?.querySelector('dialog');
+    if (!(dialog instanceof HTMLElement)) return false;
+
+    const title = document.getElementById(titleId)?.textContent?.trim();
+    const description = document.getElementById(descriptionId)?.textContent?.trim();
+    const applyAccessibleIdentity = () => {
+        if (!dialog.isConnected) return;
+        dialog.setAttribute('aria-labelledby', titleId);
+        if (title) dialog.setAttribute('aria-label', title);
+        if (description) dialog.setAttribute('aria-description', description);
+    };
+    applyAccessibleIdentity();
+    setTimeout(applyAccessibleIdentity, 150);
+    return true;
+}
+
+export function focusValidationOutcome(summaryId) {
+    runAfterDismiss(() => {
+        const summary = document.getElementById(summaryId);
+        if (focusTarget(summary)) return;
+        const form = document.querySelector(`[data-fc-validation-summary-id="${cssEscape(summaryId)}"]`);
+        const invalid = form?.querySelector('[aria-invalid="true"], [data-fc-validation-invalid="true"]')
+            ?? Array.from(form?.querySelectorAll('[data-fc-validation-field]') ?? [])
+                .find((candidate) => candidate instanceof HTMLElement
+                    && document.getElementById(`${candidate.id}-error`)?.textContent?.trim());
+        focusTarget(invalid);
+    });
+}
+
+export function focusValidationTarget(summaryId, targetId) {
+    const summary = document.getElementById(summaryId);
+    const form = summary?.closest('[data-fc-command-form="true"]')
+        ?? document.querySelector(`[data-fc-validation-summary-id="${cssEscape(summaryId)}"]`);
+    const orderedTargets = Array.from(form?.querySelectorAll('[data-fc-validation-field]') ?? [])
+        .filter((candidate) => candidate instanceof HTMLElement
+            && candidate.isConnected
+            && !candidate.hasAttribute('disabled'));
+    const requested = document.getElementById(targetId);
+    if (requested instanceof HTMLElement && orderedTargets.includes(requested) && focusTarget(requested)) {
+        return true;
+    }
+
+    const linkedTargets = Array.from(summary?.querySelectorAll('[data-fc-validation-target]') ?? []);
+    const requestedLinkIndex = linkedTargets.findIndex((candidate) => candidate.getAttribute('data-fc-validation-target') === targetId);
+    if (requestedLinkIndex >= 0) {
+        for (const link of linkedTargets.slice(requestedLinkIndex + 1)) {
+            const nextId = link.getAttribute('data-fc-validation-target');
+            if (nextId && focusTarget(document.getElementById(nextId))) return true;
+        }
+    }
+
+    const firstLinkedTarget = linkedTargets
+        .map((link) => document.getElementById(link.getAttribute('data-fc-validation-target') ?? ''))
+        .find((candidate) => candidate instanceof HTMLElement && candidate.isConnected && !candidate.hasAttribute('disabled'));
+    return focusTarget(firstLinkedTarget
+        ?? orderedTargets.find((candidate) => candidate.getAttribute('aria-invalid') === 'true'));
+}
+
+export function focusElementById(id) {
+    return focusTarget(document.getElementById(id));
+}
+
+export function focusActiveLifecycle() {
+    const active = document.querySelector('[data-fc-active-lifecycle="true"] [data-fc-lifecycle-heading]');
+    return focusTarget(active);
+}
+
+export function hasActiveLifecycle() {
+    const active = document.querySelector('[data-fc-active-lifecycle="true"] [data-fc-lifecycle-heading]');
+    return active instanceof HTMLElement && active.isConnected && !active.hasAttribute('disabled');
+}
+
+export function focusFirstEditableWithin(element) {
+    if (!(element instanceof HTMLElement)) return false;
+    const target = element.querySelector(editableSelector);
+    return focusTarget(target);
+}
+
+const editableSelector = [
+    '[data-fc-validation-field]:not([disabled])',
+    'input:not([disabled])',
+    'textarea:not([disabled])',
+    'select:not([disabled])',
+    'button:not([disabled])',
+    'fluent-button:not([disabled])',
+    '[contenteditable="true"]',
+].join(', ');
+
+const fieldEditableSelector = [
+    '[data-fc-validation-field]:not([disabled])',
+    'input:not([disabled])',
+    'textarea:not([disabled])',
+    'select:not([disabled])',
+    '[contenteditable="true"]',
+].join(', ');
+
+function focusTarget(target) {
+    if (!(target instanceof HTMLElement) || !target.isConnected || target.hasAttribute('disabled')) return false;
+    if (!target.hasAttribute('tabindex') && /^H[1-6]$/.test(target.tagName)) {
+        target.setAttribute('tabindex', '-1');
+    }
+    target.scrollIntoView({ block: 'nearest' });
+    target.focus({ preventScroll: true });
+    return document.activeElement === target;
+}
+
+function cssEscape(value) {
+    return typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+        ? CSS.escape(value)
+        : value.replace(/["\\]/g, '\\$&');
 }
 
 export function restoreOverlayOrigin(forceRouteHeading = false) {

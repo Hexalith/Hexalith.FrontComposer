@@ -154,7 +154,8 @@ public class CommandFluxorEmitterTests {
         source.ShouldContain("string? ErrorCode,");
         source.ShouldContain("string? ReasonCategory,");
         source.ShouldContain("string? SuggestedAction,");
-        source.ShouldContain("string? DocsCode);");
+        source.ShouldContain("string? DocsCode,");
+        source.ShouldContain("bool HasMappedFieldErrors = false);");
     }
 
     [Fact]
@@ -164,11 +165,13 @@ public class CommandFluxorEmitterTests {
         source.ShouldContain("string? RejectionErrorCode,");
         source.ShouldContain("string? RejectionReasonCategory,");
         source.ShouldContain("string? RejectionSuggestedAction,");
-        source.ShouldContain("string? RejectionDocsCode);");
+        source.ShouldContain("string? RejectionDocsCode,");
+        source.ShouldContain("bool HasMappedFieldErrors = false);");
         source.ShouldContain("state.CorrelationId != action.CorrelationId");
         source.ShouldContain("RejectionErrorCode = action.ErrorCode");
         source.ShouldContain("RejectionReasonCategory = action.ReasonCategory");
         source.ShouldContain("RejectionSuggestedAction = action.SuggestedAction");
         source.ShouldContain("RejectionDocsCode = action.DocsCode");
+        source.ShouldContain("HasMappedFieldErrors = action.HasMappedFieldErrors");
     }
 }

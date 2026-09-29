@@ -109,6 +109,7 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Shell.Services.InlinePopoverRegistry InlinePopoverRegistry { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private NavigationManager NavigationManager { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private ILogger<" + rendererName + ">? Logger { get; set; }");
+        _ = sb.AppendLine("    [Inject] private global::Microsoft.Extensions.Localization.IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> ShellLocalizer { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private ICommandPageContext PageContext { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private IState<" + lifecycleStateTypeFqn + "> _lifecycleState { get; set; } = default!;");
         if (hasAuthorizationPolicy) {
@@ -154,6 +155,8 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("    private bool _authorizationStateSubscribed;");
             _ = sb.AppendLine("    private string _authorizationPresentationTitle = string.Empty;");
             _ = sb.AppendLine("    private string _authorizationPresentationMessage = string.Empty;");
+            _ = sb.AppendLine("    private bool _authorizationFocusPending;");
+            _ = sb.AppendLine("    private readonly string _authorizationHeadingId = \"fc-command-authorization-" + SanitizeCssId(model.CommandFullyQualifiedName) + "-\" + Guid.NewGuid().ToString(\"N\");");
         }
         _ = sb.AppendLine();
 
@@ -227,6 +230,7 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("            _authorizationPresentationAllowed = decision.IsAllowed;");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        SetAuthorizationPresentationMessage(decision);");
+            _ = sb.AppendLine("        _authorizationFocusPending = _authorizationPresentationReady && !_authorizationPresentationAllowed;");
             _ = sb.AppendLine("        await InvokeAsync(StateHasChanged).ConfigureAwait(false);");
             _ = sb.AppendLine("        if (decision?.Kind == global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationDecisionKind.Pending)");
             _ = sb.AppendLine("        {");
@@ -502,10 +506,10 @@ public static class CommandRendererEmitter {
         if (model.IsDestructive) {
             string title = !string.IsNullOrEmpty(model.DestructiveConfirmTitle)
                 ? EscapeString(model.DestructiveConfirmTitle!)
-                : EscapeString(model.DisplayLabel) + "?";
+                : string.Empty;
             string body = !string.IsNullOrEmpty(model.DestructiveConfirmBody)
                 ? EscapeString(model.DestructiveConfirmBody!)
-                : "This action cannot be undone.";
+                : string.Empty;
 
             // Story 2-5 D2 / D11 / D24 — gating lives in BeforeSubmit so the form's OnValidSubmit
             // has already validated (D24 satisfied: if invalid, OnInvalidSubmit fires and we never
@@ -519,13 +523,35 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        if (_dialogOpen) throw new OperationCanceledException(\"Destructive dialog already open.\");");
             _ = sb.AppendLine("        _dialogOpen = true;");
+            _ = sb.AppendLine("        bool focusOriginCaptured = false;");
             _ = sb.AppendLine("        try");
             _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            await using var focusModule = await JSRuntime.InvokeAsync<IJSObjectReference>(\"import\", \"./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js\");");
+            _ = sb.AppendLine("            focusOriginCaptured = await focusModule.InvokeAsync<bool>(\"captureOverlayOrigin\");");
+            _ = sb.AppendLine("            if (!focusOriginCaptured) throw new OperationCanceledException(\"Another modal interaction is already active.\");");
             _ = sb.AppendLine("            await RefreshDerivedValuesBeforeSubmitAsync();");
             _ = sb.AppendLine("            var result = await DialogService.ShowDialogAsync<FcDestructiveConfirmationDialog>(options =>");
             _ = sb.AppendLine("            {");
-            _ = sb.AppendLine("                options.Parameters.Add(nameof(FcDestructiveConfirmationDialog.Title), \"" + title + "\");");
-            _ = sb.AppendLine("                options.Parameters.Add(nameof(FcDestructiveConfirmationDialog.Body), \"" + body + "\");");
+            _ = sb.AppendLine("                options.Modal = true;");
+            _ = sb.AppendLine("                options.PreventDismissOnEscape = false;");
+            _ = sb.AppendLine("                options.Id = \"fc-destructive-confirmation\";");
+            _ = sb.AppendLine("                options.AdditionalAttributes = new global::System.Collections.Generic.Dictionary<string, object>");
+            _ = sb.AppendLine("                {");
+            _ = sb.AppendLine("                    [\"aria-labelledby\"] = \"fc-destructive-dialog-title\",");
+            _ = sb.AppendLine("                    [\"aria-describedby\"] = \"fc-destructive-dialog-description\",");
+            _ = sb.AppendLine("                };");
+            if (string.IsNullOrEmpty(title)) {
+                _ = sb.AppendLine("                options.Parameters.Add(nameof(FcDestructiveConfirmationDialog.Title), ShellLocalizer[\"DestructiveConfirmationTitleTemplate\", \"" + EscapeString(model.DisplayLabel) + "\"].Value);");
+            }
+            else {
+                _ = sb.AppendLine("                options.Parameters.Add(nameof(FcDestructiveConfirmationDialog.Title), \"" + title + "\");");
+            }
+            if (string.IsNullOrEmpty(body)) {
+                _ = sb.AppendLine("                options.Parameters.Add(nameof(FcDestructiveConfirmationDialog.Body), ShellLocalizer[\"DestructiveConfirmationDefaultBody\"].Value);");
+            }
+            else {
+                _ = sb.AppendLine("                options.Parameters.Add(nameof(FcDestructiveConfirmationDialog.Body), \"" + body + "\");");
+            }
             _ = sb.AppendLine("                options.Parameters.Add(nameof(FcDestructiveConfirmationDialog.DestructiveLabel), \"" + EscapeString(model.DisplayLabel) + "\");");
             _ = sb.AppendLine("            });");
             _ = sb.AppendLine("            if (result.Cancelled)");
@@ -533,8 +559,31 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("                throw new OperationCanceledException(\"User cancelled destructive confirmation.\");");
             _ = sb.AppendLine("            }");
             _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        catch (JSDisconnectedException ex)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            throw new OperationCanceledException(\"Destructive confirmation is unavailable.\", ex);");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        catch (JSException ex)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            throw new OperationCanceledException(\"Destructive confirmation is unavailable.\", ex);");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        catch (InvalidOperationException ex) when (!focusOriginCaptured)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            throw new OperationCanceledException(\"Destructive confirmation is unavailable.\", ex);");
+            _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        finally");
             _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            if (focusOriginCaptured)");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                try");
+            _ = sb.AppendLine("                {");
+            _ = sb.AppendLine("                    await using var focusModule = await JSRuntime.InvokeAsync<IJSObjectReference>(\"import\", \"./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js\");");
+            _ = sb.AppendLine("                    await focusModule.InvokeVoidAsync(\"restoreOverlayOrigin\");");
+            _ = sb.AppendLine("                }");
+            _ = sb.AppendLine("                catch (JSDisconnectedException) { /* circuit teardown; benign. */ }");
+            _ = sb.AppendLine("                catch (JSException) { }");
+            _ = sb.AppendLine("                catch (InvalidOperationException) { }");
+            _ = sb.AppendLine("            }");
             _ = sb.AppendLine("            _dialogOpen = false;");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("    }");
@@ -675,6 +724,20 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("            catch (InvalidOperationException) { /* prerender: JSInterop not yet available. */ }");
         _ = sb.AppendLine("            catch (JSDisconnectedException) { /* circuit teardown; benign. */ }");
         _ = sb.AppendLine("        }");
+        if (hasAuthorizationPolicy) {
+            _ = sb.AppendLine("        if (_authorizationFocusPending)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            _authorizationFocusPending = false;");
+            _ = sb.AppendLine("            try");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                await using var focusModule = await JSRuntime.InvokeAsync<IJSObjectReference>(\"import\", \"./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js\").ConfigureAwait(false);");
+            _ = sb.AppendLine("                await focusModule.InvokeVoidAsync(\"focusOverlayEntry\", _authorizationHeadingId).ConfigureAwait(false);");
+            _ = sb.AppendLine("            }");
+            _ = sb.AppendLine("            catch (JSDisconnectedException) { /* circuit teardown; benign. */ }");
+            _ = sb.AppendLine("            catch (JSException) { }");
+            _ = sb.AppendLine("            catch (InvalidOperationException) { }");
+            _ = sb.AppendLine("        }");
+        }
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
 
@@ -904,16 +967,7 @@ public static class CommandRendererEmitter {
             // presentation auth disallows the trigger. Form-level submit gate still authoritative
             // but the user sees a coherent "no permission" surface instead of an interactive form
             // that always rejects on submit.
-            _ = sb.AppendLine("                if (AuthorizationTriggerDisabled())");
-            _ = sb.AppendLine("                {");
-            _ = sb.AppendLine("                    builder.OpenComponent<FluentMessageBar>(seq++);");
-            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Intent\", MessageBarIntent.Warning);");
-            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Title\", _authorizationPresentationTitle);");
-            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"AllowDismiss\", false);");
-            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)(__message => __message.AddContent(0, _authorizationPresentationMessage)));");
-            _ = sb.AppendLine("                    builder.CloseComponent();");
-            _ = sb.AppendLine("                    break;");
-            _ = sb.AppendLine("                }");
+            EmitAuthorizationMessageBar(sb, "builder", "seq", emitBreak: true);
         }
 
         _ = sb.AppendLine("                builder.OpenElement(seq++, \"div\");");
@@ -948,19 +1002,7 @@ public static class CommandRendererEmitter {
             // Pass-4 DN-7-3-4-6 (b) — same presentation gate as CompactInline. Form's submit-time
             // auth check is authoritative; this guard prevents users from interacting with form
             // fields they will never be able to submit.
-            _ = sb.AppendLine("                if (AuthorizationTriggerDisabled())");
-            _ = sb.AppendLine("                {");
-            _ = sb.AppendLine("                    builder.OpenElement(seq++, \"div\");");
-            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"style\", $\"max-width: {opts.FullPageFormMaxWidth}; margin: 0 auto;\");");
-            _ = sb.AppendLine("                    builder.OpenComponent<FluentMessageBar>(seq++);");
-            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Intent\", MessageBarIntent.Warning);");
-            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Title\", _authorizationPresentationTitle);");
-            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"AllowDismiss\", false);");
-            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)(__message => __message.AddContent(0, _authorizationPresentationMessage)));");
-            _ = sb.AppendLine("                    builder.CloseComponent();");
-            _ = sb.AppendLine("                    builder.CloseElement();");
-            _ = sb.AppendLine("                    break;");
-            _ = sb.AppendLine("                }");
+            EmitAuthorizationMessageBar(sb, "builder", "seq", emitBreak: true);
         }
 
         _ = sb.AppendLine("                builder.OpenElement(seq++, \"div\");");
@@ -1006,15 +1048,29 @@ public static class CommandRendererEmitter {
         _ => "FullPage",
     };
 
-    private static void EmitAuthorizationMessageBar(StringBuilder sb, string builderName, string sequenceName) {
+    private static void EmitAuthorizationMessageBar(StringBuilder sb, string builderName, string sequenceName, bool emitBreak = false) {
         _ = sb.AppendLine("                if (AuthorizationTriggerDisabled())");
         _ = sb.AppendLine("                {");
-        _ = sb.AppendLine("                    " + builderName + ".OpenComponent<FluentMessageBar>(" + sequenceName + "++);");
-        _ = sb.AppendLine("                    " + builderName + ".AddAttribute(" + sequenceName + "++, \"Intent\", MessageBarIntent.Warning);");
-        _ = sb.AppendLine("                    " + builderName + ".AddAttribute(" + sequenceName + "++, \"Title\", _authorizationPresentationTitle);");
-        _ = sb.AppendLine("                    " + builderName + ".AddAttribute(" + sequenceName + "++, \"AllowDismiss\", false);");
-        _ = sb.AppendLine("                    " + builderName + ".AddAttribute(" + sequenceName + "++, \"ChildContent\", (RenderFragment)(__message => __message.AddContent(0, _authorizationPresentationMessage)));");
+        _ = sb.AppendLine("                    " + builderName + ".OpenComponent<FluentCard>(" + sequenceName + "++);");
+        _ = sb.AppendLine("                    " + builderName + ".AddAttribute(" + sequenceName + "++, \"ChildContent\", (RenderFragment)(__message =>");
+        _ = sb.AppendLine("                    {");
+        _ = sb.AppendLine("                        int aseq = 0;");
+        _ = sb.AppendLine("                        __message.OpenElement(aseq++, \"section\");");
+        _ = sb.AppendLine("                        __message.AddAttribute(aseq++, \"aria-labelledby\", _authorizationHeadingId);");
+        _ = sb.AppendLine("                        __message.OpenElement(aseq++, \"h2\");");
+        _ = sb.AppendLine("                        __message.AddAttribute(aseq++, \"id\", _authorizationHeadingId);");
+        _ = sb.AppendLine("                        __message.AddAttribute(aseq++, \"tabindex\", \"-1\");");
+        _ = sb.AppendLine("                        __message.AddContent(aseq++, _authorizationPresentationTitle);");
+        _ = sb.AppendLine("                        __message.CloseElement();");
+        _ = sb.AppendLine("                        __message.OpenElement(aseq++, \"p\");");
+        _ = sb.AppendLine("                        __message.AddContent(aseq++, _authorizationPresentationMessage);");
+        _ = sb.AppendLine("                        __message.CloseElement();");
+        _ = sb.AppendLine("                        __message.CloseElement();");
+        _ = sb.AppendLine("                    }));");
         _ = sb.AppendLine("                    " + builderName + ".CloseComponent();");
+        if (emitBreak) {
+            _ = sb.AppendLine("                    break;");
+        }
         _ = sb.AppendLine("                }");
     }
 

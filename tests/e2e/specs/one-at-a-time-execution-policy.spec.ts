@@ -51,19 +51,31 @@ test.describe('Story 4.3: one-at-a-time execution policy', () => {
     const incrementForm = commandForm(page, 'Increment command form');
     await expect(incrementForm).toBeVisible();
     await fillField(incrementForm, 'Amount', '7');
-    await incrementForm.getByRole('button', { name: 'Increment', exact: true }).click();
+    const attemptedSubmit = incrementForm.getByRole('button', { name: 'Increment', exact: true });
+    await attemptedSubmit.click();
 
-    await expect(incrementForm).toContainText('Command already in progress');
-    await expect(incrementForm).toContainText('A command is still waiting for confirmation.');
+    await expect(incrementForm).toContainText('Command not run');
+    await expect(incrementForm).toContainText('This command did not run. Another command is already in progress.');
+    const blockedStatus = incrementForm.getByRole('status');
+    await expect(blockedStatus).toHaveCount(1);
+    await expect(blockedStatus).toHaveAttribute('aria-live', 'polite');
+    await expect(blockedStatus).toHaveAttribute('aria-atomic', 'true');
+    await expect(blockedStatus).toContainText('This command did not run. Another command is already in progress.');
     await expect(incrementForm).not.toContainText(/queued|retried|submitted/iu);
     await expectFieldValue(incrementForm, 'Amount', '7');
-    await expect(incrementForm.getByRole('button', { name: 'Increment', exact: true })).toBeEnabled();
+    await expect(attemptedSubmit).toBeEnabled();
+    await expect(attemptedSubmit).toBeFocused();
+    await expect(page.getByText('This command did not run. Another command is already in progress.', { exact: true })).toHaveCount(1);
     await lifecycle.expectState(INCREMENT_COMMAND_ID, 'idle');
     await lifecycle.expectState(BATCH_COMMAND_ID, 'syncing');
 
+    await incrementForm.getByRole('button', { name: 'View active command' }).click();
+    await expect(lifecycle.locator(BATCH_COMMAND_ID).locator('[data-fc-lifecycle-heading]')).toBeFocused();
+
     await lifecycle.expectState(BATCH_COMMAND_ID, 'confirmed');
 
-    await incrementForm.getByRole('button', { name: 'Increment', exact: true }).click();
+    await attemptedSubmit.focus();
+    await attemptedSubmit.press('Enter');
     await expect(incrementForm.getByText(/Submitting/u)).toBeVisible();
     await lifecycle.expectState(INCREMENT_COMMAND_ID, 'confirmed');
     await expect(page.getByText('IncrementCommand: confirmed.', { exact: true })).toBeVisible();

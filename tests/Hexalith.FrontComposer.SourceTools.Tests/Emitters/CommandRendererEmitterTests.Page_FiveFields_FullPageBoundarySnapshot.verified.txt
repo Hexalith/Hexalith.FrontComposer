@@ -74,9 +74,10 @@ public partial class DemoCommandPage : ComponentBase
             __page.AddAttribute(1, "PageTitle", "Demo");
             __page.AddAttribute(2, "Heading", "Demo");
             __page.AddAttribute(3, "HeadingTabIndex", (int?)-1);
+            __page.AddAttribute(4, "IsCommandFormHeading", true);
             __page.CloseComponent();
-            __page.OpenComponent<Demo.Domain.DemoCommandRenderer>(4);
-            __page.AddAttribute(5, "RenderMode", (CommandRenderMode?)CommandRenderMode.FullPage);
+            __page.OpenComponent<Demo.Domain.DemoCommandRenderer>(5);
+            __page.AddAttribute(6, "RenderMode", (CommandRenderMode?)CommandRenderMode.FullPage);
             __page.CloseComponent();
         }));
         builder.CloseComponent();

@@ -1,0 +1,36 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Forms
+@using Microsoft.FluentUI.AspNetCore.Components
+
+@if (_visible && _entries.Count > 0) {
+    <div class="fc-validation-summary-card">
+        <FluentCard>
+            <section id="@SummaryId"
+                     class="fc-validation-summary"
+                     tabindex="-1"
+                     aria-labelledby="@TitleId"
+                     aria-describedby="@DescriptionId"
+                     data-testid="fc-validation-summary"
+                     data-fc-validation-kind="@ValidationKindAttribute">
+                <FluentText Id="@TitleId"
+                            As="TextTag.H2"
+                            Size="TextSize.Size400"
+                            Weight="TextWeight.Semibold">@Title</FluentText>
+                <p id="@DescriptionId">@Description</p>
+                <ul>
+                    @foreach ((string message, string? inputId, string? label) in _entries) {
+                        <li>
+                            @if (inputId is not null) {
+                                <a href="@($"#{inputId}")"
+                                   data-fc-validation-target="@inputId"
+                                   @onclick="() => FocusFieldAsync(inputId)">@(label is null ? message : $"{label}: {message}")</a>
+                            }
+                            else {
+                                @message
+                            }
+                        </li>
+                    }
+                </ul>
+            </section>
+        </FluentCard>
+    </div>
+}

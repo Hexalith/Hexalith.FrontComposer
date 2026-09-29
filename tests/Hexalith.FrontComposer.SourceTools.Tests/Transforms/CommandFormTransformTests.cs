@@ -54,6 +54,29 @@ public class CommandFormTransformTests {
     }
 
     [Fact]
+    public void Transform_PreservesDescriptionAndFieldGroupInDeclaredOrder() {
+        PropertyModel first = BuildProperty(
+            name: "FirstNote",
+            typeName: "String",
+            fieldGroup: "Primary \"workflow\"",
+            description: "Explain the first value.\nKeep its declared line break.");
+        PropertyModel second = BuildProperty(
+            name: "SecondNote",
+            typeName: "String",
+            fieldGroup: "Secondary workflow",
+            description: "Explain the \"second\" value.");
+        CommandModel command = BuildCommand(nonDerivable: [first, second]);
+
+        CommandFormModel result = CommandFormTransform.Transform(command);
+
+        result.Fields.Select(field => field.PropertyName).ShouldBe(["FirstNote", "SecondNote"]);
+        result.Fields[0].FieldGroup.ShouldBe("Primary \"workflow\"");
+        result.Fields[0].Description.ShouldBe("Explain the first value.\nKeep its declared line break.");
+        result.Fields[1].FieldGroup.ShouldBe("Secondary workflow");
+        result.Fields[1].Description.ShouldBe("Explain the \"second\" value.");
+    }
+
+    [Fact]
     public void Transform_HumanizesCamelCaseWhenDisplayAbsent() {
         PropertyModel property = BuildProperty(name: "CustomerName", typeName: "String");
         CommandModel command = BuildCommand(nonDerivable: [property]);
@@ -191,14 +214,18 @@ public class CommandFormTransformTests {
         bool isNullable = false,
         bool isUnsupported = false,
         string? displayName = null,
-        string? enumFqn = null) => new(
+        string? enumFqn = null,
+        string? fieldGroup = null,
+        string? description = null) => new(
             name,
             typeName,
             isNullable,
             isUnsupported,
             displayName,
             new EquatableArray<BadgeMappingEntry>(ImmutableArray<BadgeMappingEntry>.Empty),
-            enumFqn);
+            enumFqn,
+            fieldGroup: fieldGroup,
+            description: description);
 
     private static CommandModel BuildCommand(
         string typeName = "TestCommand",

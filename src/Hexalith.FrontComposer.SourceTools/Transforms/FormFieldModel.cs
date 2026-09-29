@@ -14,7 +14,9 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
         bool isNullable,
         bool isRequired,
         string? enumFullyQualifiedName,
-        bool hasExplicitDisplayName = false)
+        bool hasExplicitDisplayName = false,
+        string? fieldGroup = null,
+        string? description = null)
         : this(
             propertyName,
             typeName,
@@ -24,7 +26,9 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
             isRequired,
             enumFullyQualifiedName,
             hasExplicitDisplayName,
-            isProviderCloneAssignable: true) {
+            isProviderCloneAssignable: true,
+            fieldGroup,
+            description) {
     }
 
     internal FormFieldModel(
@@ -36,7 +40,9 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
         bool isRequired,
         string? enumFullyQualifiedName,
         bool hasExplicitDisplayName,
-        bool isProviderCloneAssignable) {
+        bool isProviderCloneAssignable,
+        string? fieldGroup = null,
+        string? description = null) {
         PropertyName = propertyName;
         TypeName = typeName;
         TypeCategory = typeCategory;
@@ -46,6 +52,8 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
         EnumFullyQualifiedName = enumFullyQualifiedName;
         HasExplicitDisplayName = hasExplicitDisplayName;
         IsProviderCloneAssignable = isProviderCloneAssignable;
+        FieldGroup = fieldGroup;
+        Description = description;
     }
 
     /// <summary>Gets the .NET property name (e.g., <c>Amount</c>).</summary>
@@ -87,6 +95,12 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
     /// </summary>
     public bool HasExplicitDisplayName { get; }
 
+    /// <summary>Gets the optional declared field-group name.</summary>
+    public string? FieldGroup { get; }
+
+    /// <summary>Gets optional operator-facing help text for the field.</summary>
+    public string? Description { get; }
+
     internal bool IsProviderCloneAssignable { get; }
 
     public bool Equals(FormFieldModel? other) {
@@ -106,7 +120,9 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
             && IsRequired == other.IsRequired
             && EnumFullyQualifiedName == other.EnumFullyQualifiedName
             && HasExplicitDisplayName == other.HasExplicitDisplayName
-            && IsProviderCloneAssignable == other.IsProviderCloneAssignable;
+            && IsProviderCloneAssignable == other.IsProviderCloneAssignable
+            && FieldGroup == other.FieldGroup
+            && Description == other.Description;
     }
 
     public override bool Equals(object? obj) => Equals(obj as FormFieldModel);
@@ -123,6 +139,8 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
             hash = (hash * 31) + (EnumFullyQualifiedName?.GetHashCode() ?? 0);
             hash = (hash * 31) + HasExplicitDisplayName.GetHashCode();
             hash = (hash * 31) + IsProviderCloneAssignable.GetHashCode();
+            hash = (hash * 31) + (FieldGroup?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (Description?.GetHashCode() ?? 0);
             return hash;
         }
     }

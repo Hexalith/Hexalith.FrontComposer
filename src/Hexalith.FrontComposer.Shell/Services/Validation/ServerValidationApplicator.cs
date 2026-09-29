@@ -37,13 +37,65 @@ public sealed class ServerValidationApplicator {
         System.ArgumentNullException.ThrowIfNull(allowlist);
         System.ArgumentNullException.ThrowIfNull(model);
 
-        List<string> formLevel = [.. exception.Problem.GlobalErrors];
+        return ApplyMap(
+            messageStore,
+            exception.Problem.ValidationErrors,
+            exception.Problem.GlobalErrors,
+            exception.Problem.Detail,
+            allowlist,
+            model).UnmappedMessages;
+    }
 
-        foreach (KeyValuePair<string, IReadOnlyList<string>> entry in exception.Problem.ValidationErrors) {
+    /// <summary>
+    /// Applies the bounded field map carried by an authoritative command rejection.
+    /// </summary>
+    /// <param name="messageStore">The validation store associated with the form.</param>
+    /// <param name="exception">The authoritative rejection.</param>
+    /// <param name="allowlist">The generated command's safe editable-field allowlist.</param>
+    /// <param name="model">The current editable model.</param>
+    /// <returns>A result that explicitly distinguishes mapped from unmapped recovery.</returns>
+    public static ServerValidationApplicationResult ApplyRejection(
+        ValidationMessageStore messageStore,
+        CommandRejectedException exception,
+        ICommandValidationFieldAllowlist allowlist,
+        object model) {
+        System.ArgumentNullException.ThrowIfNull(exception);
+        return ApplyMap(
+            messageStore,
+            exception.Problem.ValidationErrors,
+            exception.Problem.GlobalErrors,
+            exception.Problem.Detail,
+            allowlist,
+            model);
+    }
+
+    private static ServerValidationApplicationResult ApplyMap(
+        ValidationMessageStore messageStore,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> validationErrors,
+        IReadOnlyList<string> globalErrors,
+        string? detail,
+        ICommandValidationFieldAllowlist allowlist,
+        object model) {
+        System.ArgumentNullException.ThrowIfNull(messageStore);
+        System.ArgumentNullException.ThrowIfNull(validationErrors);
+        System.ArgumentNullException.ThrowIfNull(globalErrors);
+        System.ArgumentNullException.ThrowIfNull(allowlist);
+        System.ArgumentNullException.ThrowIfNull(model);
+
+        List<string> formLevel = [.. globalErrors];
+        int mappedFieldCount = 0;
+
+        foreach (KeyValuePair<string, IReadOnlyList<string>> entry in validationErrors) {
             if (allowlist.TryGetEditableField(entry.Key, out string normalized)) {
                 FieldIdentifier identifier = new(model, normalized);
+                bool mappedAny = false;
                 foreach (string message in entry.Value) {
                     messageStore.Add(identifier, message);
+                    mappedAny = true;
+                }
+
+                if (mappedAny) {
+                    mappedFieldCount++;
                 }
             }
             else {
@@ -56,14 +108,14 @@ public sealed class ServerValidationApplicator {
         }
 
         if (formLevel.Count == 0
-            && exception.Problem.Detail is { Length: > 0 } detail
-            && exception.Problem.ValidationErrors.Count == 0) {
+            && detail is { Length: > 0 }
+            && validationErrors.Count == 0) {
             // ProblemDetails carried no field map but did include a top-level detail string —
             // surface it form-level so the user gets something actionable.
             formLevel.Add(detail);
         }
 
-        return formLevel;
+        return new ServerValidationApplicationResult(formLevel, mappedFieldCount);
     }
 
     /// <summary>

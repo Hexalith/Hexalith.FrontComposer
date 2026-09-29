@@ -28,6 +28,9 @@ public abstract class CommandRendererTestBase : BunitContext {
     /// <summary>JS module for <c>fc-expandinrow.js</c> (expand-in-row init + inline popover focus restore).</summary>
     protected BunitJSModuleInterop FcExpandInRowModule { get; }
 
+    /// <summary>JS module for command-outcome focus placement and restoration.</summary>
+    protected BunitJSModuleInterop FcFocusModule { get; }
+
     protected CommandRendererTestBase() {
         CultureInfo.CurrentCulture = new CultureInfo("en");
         CultureInfo.CurrentUICulture = new CultureInfo("en");
@@ -37,9 +40,21 @@ public abstract class CommandRendererTestBase : BunitContext {
             .SetVoidResult();
         JSInterop.SetupVoid("Microsoft.FluentUI.Blazor.Utilities.Attributes.disposeAttributeObserver", _ => true)
             .SetVoidResult();
+        JSInterop.SetupVoid("Microsoft.FluentUI.Blazor.Utilities.Attributes.copyToShadow", _ => true)
+            .SetVoidResult();
+        JSInterop.SetupVoid("Microsoft.FluentUI.Blazor.Components.TextInput.attachImmediateEvent", _ => true)
+            .SetVoidResult();
         FcExpandInRowModule = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-expandinrow.js");
         _ = FcExpandInRowModule.SetupVoid("initializeExpandInRow", _ => true).SetVoidResult();
         _ = FcExpandInRowModule.SetupVoid("focusTriggerElementById", _ => true).SetVoidResult();
+        FcFocusModule = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
+        _ = FcFocusModule.SetupVoid("focusElementById", _ => true).SetVoidResult();
+        _ = FcFocusModule.SetupVoid("focusValidationOutcome", _ => true).SetVoidResult();
+        _ = FcFocusModule.Setup<bool>("focusActiveLifecycle", _ => true).SetResult(true);
+        _ = FcFocusModule.Setup<bool>("hasActiveLifecycle", _ => true).SetResult(true);
+        _ = FcFocusModule.SetupVoid("focusFirstEditableWithin", _ => true).SetVoidResult();
+        _ = FcFocusModule.Setup<bool>("captureOverlayOrigin", _ => true).SetResult(true);
+        _ = FcFocusModule.SetupVoid("restoreOverlayOrigin", _ => true).SetVoidResult();
         _ = Services.AddFluentUIComponents();
         _ = Services.AddLocalization();
         _ = Services.AddLogging();

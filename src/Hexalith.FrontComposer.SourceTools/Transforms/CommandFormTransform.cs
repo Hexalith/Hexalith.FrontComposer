@@ -63,7 +63,9 @@ public static class CommandFormTransform {
             isRequired,
             property.EnumFullyQualifiedName,
             hasExplicitDisplay,
-            property.IsWritable);
+            property.IsWritable,
+            property.FieldGroup,
+            property.Description);
     }
 
     private static FormFieldTypeCategory MapCategory(PropertyModel property) {

@@ -40,6 +40,7 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
     [Inject] private global::Hexalith.FrontComposer.Shell.Services.InlinePopoverRegistry InlinePopoverRegistry { get; set; } = default!;
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
     [Inject] private ILogger<DemoCommandRenderer>? Logger { get; set; }
+    [Inject] private global::Microsoft.Extensions.Localization.IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> ShellLocalizer { get; set; } = default!;
     [Inject] private ICommandPageContext PageContext { get; set; } = default!;
     [Inject] private IState<Demo.Domain.DemoCommandLifecycleState> _lifecycleState { get; set; } = default!;
 

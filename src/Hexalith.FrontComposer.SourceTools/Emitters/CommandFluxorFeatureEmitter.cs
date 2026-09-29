@@ -40,7 +40,8 @@ public static class CommandFluxorFeatureEmitter {
         _ = sb.AppendLine("    string? RejectionErrorCode,");
         _ = sb.AppendLine("    string? RejectionReasonCategory,");
         _ = sb.AppendLine("    string? RejectionSuggestedAction,");
-        _ = sb.AppendLine("    string? RejectionDocsCode);");
+        _ = sb.AppendLine("    string? RejectionDocsCode,");
+        _ = sb.AppendLine("    bool HasMappedFieldErrors = false);");
         _ = sb.AppendLine();
 
         // Feature class
@@ -52,7 +53,7 @@ public static class CommandFluxorFeatureEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("    /// <inheritdoc />");
         _ = sb.AppendLine("    protected override " + model.StateName + " GetInitialState()");
-        _ = sb.AppendLine("        => new(CommandLifecycleState.Idle, null, null, null, null, null, null, null, null);");
+        _ = sb.AppendLine("        => new(CommandLifecycleState.Idle, null, null, null, null, null, null, null, null, false);");
         _ = sb.AppendLine("}");
         _ = sb.AppendLine();
 
@@ -65,7 +66,7 @@ public static class CommandFluxorFeatureEmitter {
 
         _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
         _ = sb.AppendLine("    public static " + state + " OnSubmitted(" + state + " state, " + actions + ".SubmittedAction action)");
-        _ = sb.AppendLine("        => state with { State = CommandLifecycleState.Submitting, CorrelationId = action.CorrelationId, RejectionReason = null, RejectionResolution = null, RejectionErrorCode = null, RejectionReasonCategory = null, RejectionSuggestedAction = null, RejectionDocsCode = null };");
+        _ = sb.AppendLine("        => state with { State = CommandLifecycleState.Submitting, CorrelationId = action.CorrelationId, RejectionReason = null, RejectionResolution = null, RejectionErrorCode = null, RejectionReasonCategory = null, RejectionSuggestedAction = null, RejectionDocsCode = null, HasMappedFieldErrors = false };");
         _ = sb.AppendLine();
         // CorrelationId guard prevents stale in-flight callbacks from a prior submit from overwriting
         // the state of a new submit (see code-review 2026-04-15, patch P2).
@@ -92,7 +93,7 @@ public static class CommandFluxorFeatureEmitter {
         _ = sb.AppendLine("    public static " + state + " OnRejected(" + state + " state, " + actions + ".RejectedAction action)");
         _ = sb.AppendLine("        => state.CorrelationId != action.CorrelationId");
         _ = sb.AppendLine("            ? state");
-        _ = sb.AppendLine("            : state with { State = CommandLifecycleState.Rejected, RejectionReason = action.Reason, RejectionResolution = action.Resolution, RejectionErrorCode = action.ErrorCode, RejectionReasonCategory = action.ReasonCategory, RejectionSuggestedAction = action.SuggestedAction, RejectionDocsCode = action.DocsCode };");
+        _ = sb.AppendLine("            : state with { State = CommandLifecycleState.Rejected, RejectionReason = action.Reason, RejectionResolution = action.Resolution, RejectionErrorCode = action.ErrorCode, RejectionReasonCategory = action.ReasonCategory, RejectionSuggestedAction = action.SuggestedAction, RejectionDocsCode = action.DocsCode, HasMappedFieldErrors = action.HasMappedFieldErrors };");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    /// <summary>");
         _ = sb.AppendLine("    /// Resets lifecycle state to Idle (used after rejection to allow retry, or on form disposal).");
@@ -103,12 +104,12 @@ public static class CommandFluxorFeatureEmitter {
         _ = sb.AppendLine("    public static " + state + " OnResetToIdle(" + state + " state, " + actions + ".ResetToIdleAction action)");
         _ = sb.AppendLine("        => state.CorrelationId != action.CorrelationId");
         _ = sb.AppendLine("            ? state");
-        _ = sb.AppendLine("            : new(CommandLifecycleState.Idle, null, null, null, null, null, null, null, null);");
+        _ = sb.AppendLine("            : new(CommandLifecycleState.Idle, null, null, null, null, null, null, null, null, false);");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    /// <summary>Clears all lifecycle details when the circuit scope changes.</summary>");
         _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
         _ = sb.AppendLine("    public static " + state + " OnScopeChanged(" + state + " state, global::Hexalith.FrontComposer.Shell.State.Navigation.ScopeChangedAction action)");
-        _ = sb.AppendLine("        => new(CommandLifecycleState.Idle, null, null, null, null, null, null, null, null);");
+        _ = sb.AppendLine("        => new(CommandLifecycleState.Idle, null, null, null, null, null, null, null, null, false);");
         _ = sb.AppendLine("}");
 
         return sb.ToString();

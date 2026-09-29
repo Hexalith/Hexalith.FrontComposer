@@ -84,7 +84,8 @@ public abstract class LifecycleWrapperTestBase : BunitContext {
         string? rejectionMessage = null,
         string? rejectionTitle = null,
         CommandRejectionDetails? rejectionDetails = null,
-        string? idempotentInfoMessage = null) {
+        string? idempotentInfoMessage = null,
+        bool mappedRejection = false) {
         ILifecycleStateService service = Substitute.For<ILifecycleStateService>();
         Action<CommandLifecycleTransition>? captured = null;
         _ = service.Subscribe(Arg.Any<string>(), Arg.Do<Action<CommandLifecycleTransition>>(cb => captured = cb))
@@ -97,6 +98,7 @@ public abstract class LifecycleWrapperTestBase : BunitContext {
             .Add(c => c.RejectionTitle, rejectionTitle)
             .Add(c => c.RejectionDetails, rejectionDetails)
             .Add(c => c.IdempotentInfoMessage, idempotentInfoMessage)
+            .Add(c => c.MappedRejection, mappedRejection)
             .AddChildContent("<span class='child-content-marker'>child</span>"));
 
         void Push(CommandLifecycleTransition transition) {

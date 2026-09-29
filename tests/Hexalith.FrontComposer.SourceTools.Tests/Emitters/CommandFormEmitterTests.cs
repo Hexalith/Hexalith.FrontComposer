@@ -95,20 +95,22 @@ public class CommandFormEmitterTests {
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
         source.ShouldContain("OpenComponent<EditForm>");
+        source.ShouldContain("[\"novalidate\"] = \"novalidate\"");
         source.ShouldContain("OpenComponent<DataAnnotationsValidator>");
-        source.ShouldContain("OpenComponent<FluentValidationSummary>");
+        source.ShouldContain("OpenComponent<FcValidationSummary>");
         string masked = GeneratedRenderTreeText.MaskSequenceArguments(source);
         masked.ShouldContain("__b.AddAttribute(#, \"EditContext\", _editContext);");
         masked.ShouldNotContain("__b.AddAttribute(#, \"Model\", (object)_model);");
     }
 
     [Fact]
-    public void Emit_ButtonDisabledWhenNotIdle() {
+    public void Emit_ActiveCommandAllowsAttemptSoConcurrencyOutcomeCanBeAnnounced() {
         CommandFormModel form = BuildForm(System.Array.Empty<FormFieldModel>());
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
         source.ShouldContain("!_interactiveReady");
-        source.ShouldContain("LifecycleState.Value.State != CommandLifecycleState.Idle");
+        source.ShouldContain("SetCommandInProgressWarning");
+        source.ShouldContain("FocusElementAsync(_formDomId + \"-submit\")");
     }
 
     [Fact]
@@ -122,7 +124,7 @@ public class CommandFormEmitterTests {
         source.ShouldContain("IncrementCommandActions.AcknowledgedAction(correlationId, result.MessageId)");
         source.ShouldContain("IncrementCommandActions.SyncingAction(correlationId)");
         source.ShouldContain("IncrementCommandActions.ConfirmedAction(correlationId)");
-        source.ShouldContain("IncrementCommandActions.RejectedAction(correlationId, ex.Message, ex.Resolution, ex.ErrorCode, ex.ReasonCategory, ex.SuggestedAction, ex.DocsCode)");
+        source.ShouldContain("IncrementCommandActions.RejectedAction(correlationId, ex.Message, ex.Resolution, ex.ErrorCode, ex.ReasonCategory, ex.SuggestedAction, ex.DocsCode, hasMappedFieldErrors)");
     }
 
     [Fact]
@@ -334,28 +336,33 @@ public class CommandFormEmitterTests {
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
         source.ShouldContain("[Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.ICommandExecutionAdmissionGate CommandExecutionAdmissionGate { get; set; } = default!;");
-        source.ShouldContain("CommandExecutionAdmissionGate.TryAcquire(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionRequest(");
-        source.ShouldContain("SetCommandInProgressWarning(admission.DenialReason);");
+        source.ShouldContain("CommandExecutionAdmissionGate.TryAcquire(CreateAdmissionRequest())");
+        source.ShouldContain("PresentBlockedSubmissionAsync(admission.DenialReason, admission.BlockingMessageId)");
         source.ShouldContain("CommandFeedbackPublisher.PublishWarning(_serverWarning);");
+        source.ShouldContain("__blocked.AddMultipleAttributes(");
+        source.ShouldContain("[\"role\"] = \"status\"");
+        source.ShouldContain("[\"aria-live\"] = \"polite\"");
+        source.ShouldContain("[\"aria-atomic\"] = \"true\"");
     }
 
     [Fact]
-    public void Emit_CommandExecutionAdmissionRunsAfterBeforeSubmitBeforeSideEffects() {
+    public void Emit_CommandExecutionAdmissionRunsBeforeBeforeSubmitAndSideEffects() {
         CommandFormModel form = BuildForm([
             new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
         ]);
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
+        int validSubmitIndex = source.IndexOf("private async Task OnValidSubmitAsync()", StringComparison.Ordinal);
         int beforeSubmitIndex = source.IndexOf("await BeforeSubmit().ConfigureAwait(false);", StringComparison.Ordinal);
-        int admissionIndex = source.IndexOf("CommandExecutionAdmissionGate.TryAcquire", StringComparison.Ordinal);
-        int cleanupTryIndex = source.IndexOf("try\n        {\n        var correlationId", StringComparison.Ordinal);
+        int admissionIndex = source.IndexOf("CommandExecutionAdmissionGate.TryAcquire", validSubmitIndex, StringComparison.Ordinal);
+        int admissionTryIndex = source.IndexOf("try\n        {\n        if (!admission.IsAdmitted)", admissionIndex, StringComparison.Ordinal);
         int correlationIndex = source.IndexOf("var correlationId = UlidFactory.NewUlid();", StringComparison.Ordinal);
         int submittedIndex = source.IndexOf("IncrementCommandActions.SubmittedAction(correlationId, _model)", StringComparison.Ordinal);
         int dispatchIndex = source.IndexOf("CommandService.DispatchWithLifecycleObservationsAsync", StringComparison.Ordinal);
         int registerIndex = source.IndexOf("PendingCommandOutcomeResolver.AssociateAccepted", StringComparison.Ordinal);
 
-        admissionIndex.ShouldBeGreaterThan(beforeSubmitIndex);
-        cleanupTryIndex.ShouldBeGreaterThan(admissionIndex);
+        admissionIndex.ShouldBeLessThan(beforeSubmitIndex);
+        admissionTryIndex.ShouldBeGreaterThan(admissionIndex);
         correlationIndex.ShouldBeGreaterThan(admissionIndex);
         submittedIndex.ShouldBeGreaterThan(admissionIndex);
         dispatchIndex.ShouldBeGreaterThan(admissionIndex);
@@ -691,7 +698,9 @@ public class CommandFormEmitterTests {
             .Single(invocation => invocation.Expression is MemberAccessExpressionSyntax memberAccess
                 && memberAccess.Expression is IdentifierNameSyntax identifier
                 && identifier.Identifier.ValueText == "admission"
-                && memberAccess.Name.Identifier.ValueText == "Dispose");
+                && memberAccess.Name.Identifier.ValueText == "Dispose"
+                && invocation.Ancestors().OfType<MethodDeclarationSyntax>()
+                    .Any(method => method.Identifier.ValueText == "OnValidSubmitAsync"));
         FinallyClauseSyntax disposalFinally = disposeInvocation.Ancestors()
             .OfType<FinallyClauseSyntax>()
             .Single();
@@ -807,25 +816,114 @@ public class CommandFormEmitterTests {
         source.ShouldContain("_AmountParseError");
         source.ShouldContain("OnAmountChanged(string? value)");
         string masked = GeneratedRenderTreeText.MaskSequenceArguments(source);
-        masked.ShouldContain("__b.OpenElement(#, \"input\")");
-        source.ShouldContain("EventCallback.Factory.Create<ChangeEventArgs>(this, e => OnAmountChanged(e.Value?.ToString()))");
+        masked.ShouldContain("__b.OpenComponent<FluentTextInput>(#)");
+        source.ShouldContain("EventCallback.Factory.Create<string?>(this, OnAmountChanged)");
         source.ShouldContain("NotifyClientFieldChanged(\"Amount\")");
-        masked.ShouldNotContain("__b.AddAttribute(#, \"required\"");
+        masked.ShouldContain("__b.AddAttribute(#, \"Required\", true)");
         source.ShouldContain("int.TryParse(value,");
     }
 
     [Fact]
-    public void Emit_TextFieldEmitsRawInputHandler() {
+    public void Emit_TextFieldEmitsFluentImmediateInputHandler() {
         CommandFormModel form = BuildForm([
             new FormFieldModel("Note", "String", FormFieldTypeCategory.TextInput, "Note", true, false, null),
         ]);
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
         string masked = GeneratedRenderTreeText.MaskSequenceArguments(source);
-        masked.ShouldContain("__b.OpenElement(#, \"input\")");
-        source.ShouldContain("EventCallback.Factory.Create<ChangeEventArgs>(this, e => { _model.Note = e.Value?.ToString(); NotifyClientFieldChanged(\"Note\"); })");
+        masked.ShouldContain("__b.OpenComponent<FluentTextInput>(#)");
+        source.ShouldContain("EventCallback.Factory.Create<string?>(this, value => { _model.Note = value; NotifyClientFieldChanged(\"Note\"); })");
         source.ShouldContain("NotifyClientFieldChanged(\"Note\")");
-        masked.ShouldNotContain("__b.AddAttribute(#, \"required\"");
+        masked.ShouldContain("__b.AddAttribute(#, \"Required\", false)");
+    }
+
+    [Fact]
+    public void Emit_DescribedAndGroupedFieldsPreserveEscapedMetadataAndDeclaredOrder() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel(
+                "FirstNote",
+                "String",
+                FormFieldTypeCategory.TextInput,
+                "First Note",
+                true,
+                false,
+                null,
+                fieldGroup: "Primary \"workflow\"",
+                description: "Explain the \"first\" value.\nKeep its declared line break."),
+            new FormFieldModel(
+                "SecondNote",
+                "String",
+                FormFieldTypeCategory.TextInput,
+                "Second Note",
+                true,
+                false,
+                null,
+                fieldGroup: "Secondary workflow",
+                description: "Explain the second value."),
+        ]);
+
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        int firstField = source.IndexOf("// Field: FirstNote", StringComparison.Ordinal);
+        int secondField = source.IndexOf("// Field: SecondNote", StringComparison.Ordinal);
+        firstField.ShouldBeGreaterThanOrEqualTo(0);
+        secondField.ShouldBeGreaterThan(firstField);
+
+        string escapedGroup = GeneratedLiteral.Escape("Primary \"workflow\"");
+        string escapedDescription = GeneratedLiteral.Escape("Explain the \"first\" value.\nKeep its declared line break.");
+        string masked = GeneratedRenderTreeText.MaskSequenceArguments(source);
+        masked.ShouldContain("__b.OpenElement(#, \"fieldset\")");
+        masked.ShouldContain("__b.AddAttribute(#, \"data-fc-field-group\", \"" + escapedGroup + "\")");
+        masked.ShouldContain("__b.AddAttribute(#, \"aria-labelledby\", _formDomId + \"-field-group-1\")");
+        masked.ShouldContain("__b.OpenElement(#, \"legend\")");
+        masked.ShouldContain("__b.AddAttribute(#, \"id\", _formDomId + \"-field-group-1\")");
+        source.ShouldContain(escapedDescription);
+
+        string firstFieldSource = GeneratedRenderTreeText.MaskSequenceArguments(source[firstField..secondField]);
+        int inputStart = firstFieldSource.IndexOf("__b.OpenComponent<FluentTextInput>", StringComparison.Ordinal);
+        int describedBy = firstFieldSource.IndexOf(
+            "__b.AddAttribute(#, \"aria-describedby\", _formDomId + \"-FirstNote-description \" + _formDomId + \"-FirstNote-error\")",
+            StringComparison.Ordinal);
+        int inputEnd = firstFieldSource.IndexOf("__b.CloseComponent();", inputStart, StringComparison.Ordinal);
+        inputStart.ShouldBeGreaterThanOrEqualTo(0);
+        describedBy.ShouldBeGreaterThan(inputStart);
+        describedBy.ShouldBeLessThan(inputEnd);
+
+        masked.ShouldContain("__b.AddAttribute(#, \"id\", _formDomId + \"-FirstNote-description\")");
+        masked.ShouldContain("__b.AddAttribute(#, \"id\", _formDomId + \"-FirstNote-error\")");
+        masked.ShouldContain("__b.AddAttribute(#, \"id\", _formDomId + \"-SecondNote-description\")");
+        masked.ShouldContain("__b.AddAttribute(#, \"id\", _formDomId + \"-SecondNote-error\")");
+    }
+
+    [Fact]
+    public void Emit_FocusInteropExplicitlyHandlesCircuitTeardown() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Note", "String", FormFieldTypeCategory.TextInput, "Note", true, false, null),
+        ]);
+
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        System.Text.RegularExpressions.Regex.Count(
+                source,
+                @"catch \(global::Microsoft\.JSInterop\.JSDisconnectedException\)")
+            .ShouldBeGreaterThanOrEqualTo(2);
+    }
+
+    [Fact]
+    public void Emit_FieldsSharingADeclaredGroupUseOneVisibleProgrammaticContainer() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("RecordId", "String", FormFieldTypeCategory.TextInput, "Record ID", false, true, null, fieldGroup: "Purge details", description: "Record to purge."),
+            new FormFieldModel("Reason", "String", FormFieldTypeCategory.TextInput, "Reason", false, true, null, fieldGroup: "Purge details", description: "Why the purge is required."),
+        ]);
+
+        string source = GeneratedRenderTreeText.MaskSequenceArguments(CommandFormEmitter.Emit(form, BuildFluxor()));
+
+        Regex.Count(source, "data-fc-field-group").ShouldBe(1);
+        Regex.Count(source, "__b.OpenElement\\(#, \\\"fieldset\\\"\\)").ShouldBe(1);
+        Regex.Count(source, "__b.OpenElement\\(#, \\\"legend\\\"\\)").ShouldBe(1);
+        source.ShouldContain("__b.AddContent(#, \"Purge details\")");
+        source.IndexOf("// Field: RecordId", StringComparison.Ordinal)
+            .ShouldBeLessThan(source.IndexOf("// Field: Reason", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -841,6 +939,8 @@ public class CommandFormEmitterTests {
         // must lift through `?.` or the adopter's generated form fails to compile (CS1501).
         source.ShouldContain("_QuantityString ?? _model.Quantity?.ToString(CultureInfo.CurrentCulture)");
         source.ShouldContain("_DiscountAmountString ?? _model.DiscountAmount?.ToString(CultureInfo.CurrentCulture)");
+        source.ShouldContain("\"ValidationFieldFor\", (global::System.Linq.Expressions.Expression<Func<Int32?>>)(() => _model.Quantity)");
+        source.ShouldContain("\"ValidationFieldFor\", (global::System.Linq.Expressions.Expression<Func<Decimal?>>)(() => _model.DiscountAmount)");
     }
 
     [Fact]

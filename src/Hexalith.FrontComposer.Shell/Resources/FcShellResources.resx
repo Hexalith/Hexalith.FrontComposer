@@ -686,6 +686,30 @@
     <value>A command is still waiting for confirmation. Wait for it to finish before submitting another command.</value>
     <comment>Story 4.3 FC-CNC — warning body when an accepted pending command blocks a later local submit. Do not mention queuing or retry.</comment>
   </data>
+  <data name="ValidationSummaryTitle" xml:space="preserve"><value>Validation failed</value></data>
+  <data name="ValidationSummaryMessageSingle" xml:space="preserve"><value>Correct the error before submitting. One error.</value></data>
+  <data name="ValidationSummaryMessage" xml:space="preserve"><value>Correct the errors before submitting. {0} errors.</value></data>
+  <data name="MappedRejectionSummaryTitle" xml:space="preserve"><value>Command rejected</value></data>
+  <data name="MappedRejectionSummaryMessageSingle" xml:space="preserve"><value>The command was rejected. Correct the mapped error before submitting again. One error.</value></data>
+  <data name="MappedRejectionSummaryMessage" xml:space="preserve"><value>The command was rejected. Correct the mapped errors before submitting again. {0} errors.</value></data>
+  <data name="FormAbandonmentTitle" xml:space="preserve"><value>You have unsaved input.</value></data>
+  <data name="FormAbandonmentDescription" xml:space="preserve"><value>Leaving now discards what you've entered.</value></data>
+  <data name="FormAbandonmentStay" xml:space="preserve"><value>Stay on form</value></data>
+  <data name="FormAbandonmentLeave" xml:space="preserve"><value>Leave anyway</value></data>
+  <data name="DestructiveConfirmationCancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="DestructiveConfirmationTitleTemplate" xml:space="preserve"><value>Confirm {0}?</value></data>
+  <data name="DestructiveConfirmationDefaultBody" xml:space="preserve"><value>This action cannot be undone.</value></data>
+  <data name="ActiveCommandLifecycleHeading" xml:space="preserve"><value>{0} command status</value></data>
+  <data name="CommandGenericLabel" xml:space="preserve"><value>Command</value></data>
+  <data name="RejectionEditRetry" xml:space="preserve"><value>Edit and retry</value></data>
+  <data name="MappedRejectionRecoveryMessage" xml:space="preserve"><value>The command was rejected. Correct the linked fields and try again.</value></data>
+  <data name="RejectionErrorCodeLabel" xml:space="preserve"><value>Error code</value></data>
+  <data name="RejectionReasonCategoryLabel" xml:space="preserve"><value>Reason category</value></data>
+  <data name="RejectionSuggestedActionLabel" xml:space="preserve"><value>Suggested action</value></data>
+  <data name="RejectionDocsCodeLabel" xml:space="preserve"><value>Documentation code</value></data>
+  <data name="CommandBlockedTitle" xml:space="preserve"><value>Command not run</value></data>
+  <data name="CommandBlockedMessage" xml:space="preserve"><value>This command did not run. Another command is already in progress.</value></data>
+  <data name="ViewActiveCommand" xml:space="preserve"><value>View active command</value></data>
   <data name="ScopeBlockedHeading" xml:space="preserve">
     <value>Workspace unavailable</value>
   </data>

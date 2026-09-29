@@ -3,11 +3,14 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.JSInterop;
 
 namespace Hexalith.FrontComposer.Shell.Components.Lifecycle;
 
@@ -17,6 +20,7 @@ namespace Hexalith.FrontComposer.Shell.Components.Lifecycle;
 /// <see cref="LifecycleThresholdTimer"/> at the configured <see cref="FcShellOptions"/> thresholds.
 /// </summary>
 public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisposable {
+    private const string FocusModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js";
     private string _boundCorrelationId = string.Empty;
     private IDisposable? _subscription;
     private IDisposable? _optionsChangeRegistration;
@@ -30,6 +34,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
         ReconnectAttempt: 0,
         LastFailureCategory: null);
     private int _disposed;
+    private ElementReference _wrapperElement;
 
     // Review 2026-04-17 P3 — cascaded as WrapperInitiatedNavigation so FcFormAbandonmentGuard
     // can bypass its warning when the wrapper itself triggers a Start-over navigation.
@@ -66,6 +71,17 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
     public CommandRejectionDetails? RejectionDetails { get; set; }
 
     /// <summary>
+    /// Gets or sets whether the rejection owns a focused mapped validation summary. When true,
+    /// the lifecycle region remains visible but suppresses its independent live announcement.
+    /// </summary>
+    [Parameter]
+    public bool MappedRejection { get; set; }
+
+    /// <summary>Gets or sets the localized command label used by the active lifecycle heading.</summary>
+    [Parameter]
+    public string? DisplayLabel { get; set; }
+
+    /// <summary>
     /// Story 2-5 D3 / D7 / D17 — optional adopter-supplied idempotent Info copy override.
     /// Null → framework default "This was already confirmed — no action needed." (AC2 front-loaded
     /// reassurance — safe under both cross-user and self-reconnect replay contexts). Plain text only per D14.
@@ -90,6 +106,12 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
 
     [Inject]
     private TimeProvider Time { get; set; } = default!;
+
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+
+    [Inject]
+    private IStringLocalizer<FcShellResources> Localizer { get; set; } = default!;
 
     /// <inheritdoc />
     protected override void OnInitialized() {
@@ -357,6 +379,37 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
         catch {
             _wrapperInitiatedNavigation = false;
             throw;
+        }
+    }
+
+    private async Task FocusEditableFormAsync() {
+        IJSObjectReference? module = null;
+        try {
+            module = await JS.InvokeAsync<IJSObjectReference>("import", FocusModulePath).ConfigureAwait(true);
+            await module.InvokeVoidAsync("focusFirstEditableWithin", _wrapperElement).ConfigureAwait(true);
+        }
+        catch (JSDisconnectedException) {
+        }
+        catch (JSException) {
+        }
+        catch (InvalidOperationException) {
+        }
+        finally {
+            if (module is not null) {
+                await DisposeFocusModuleAsync(module).ConfigureAwait(true);
+            }
+        }
+    }
+
+    private static async ValueTask DisposeFocusModuleAsync(IJSObjectReference module) {
+        try {
+            await module.DisposeAsync().ConfigureAwait(true);
+        }
+        catch (JSDisconnectedException) {
+        }
+        catch (JSException) {
+        }
+        catch (InvalidOperationException) {
         }
     }
 

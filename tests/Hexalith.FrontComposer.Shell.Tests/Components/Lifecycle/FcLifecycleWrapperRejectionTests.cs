@@ -110,6 +110,22 @@ public sealed class FcLifecycleWrapperRejectionTests : LifecycleWrapperTestBase 
         cut.Markup.ShouldContain("The command was rejected");
     }
 
+    [Fact]
+    public void MappedRejection_SuppressesGenericLiveAnnouncementAndRendersNonLiveRecovery() {
+        (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push) = RenderWrapperWithLiveService(
+            rejectionMessage: "Correct Quantity and retry.",
+            mappedRejection: true);
+
+        push(RejectedNow());
+
+        cut.FindAll("[data-fc-phase='rejected']").ShouldBeEmpty();
+        AngleSharp.Dom.IElement mapped = cut.Find("[data-testid='fc-rejected-mapped']");
+        mapped.GetAttribute("role").ShouldNotBe("alert");
+        mapped.GetAttribute("role").ShouldNotBe("status");
+        mapped.HasAttribute("aria-live").ShouldBeFalse();
+        mapped.TextContent.ShouldContain("Correct Quantity and retry.");
+    }
+
     private CommandLifecycleTransition RejectedNow()
         => TransitionAt(CommandLifecycleState.Syncing, CommandLifecycleState.Rejected, FakeTime.GetUtcNow());
 }

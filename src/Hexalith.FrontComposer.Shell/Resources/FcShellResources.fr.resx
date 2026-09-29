@@ -565,6 +565,30 @@
   <data name="CommandAlreadyInProgressPendingMessage" xml:space="preserve">
     <value>Une commande attend encore sa confirmation. Attendez qu'elle se termine avant d'envoyer une autre commande.</value>
   </data>
+  <data name="ValidationSummaryTitle" xml:space="preserve"><value>Échec de la validation</value></data>
+  <data name="ValidationSummaryMessageSingle" xml:space="preserve"><value>Corrigez l’erreur avant l’envoi. Une erreur.</value></data>
+  <data name="ValidationSummaryMessage" xml:space="preserve"><value>Corrigez les erreurs avant l'envoi. {0} erreurs.</value></data>
+  <data name="MappedRejectionSummaryTitle" xml:space="preserve"><value>Commande rejetée</value></data>
+  <data name="MappedRejectionSummaryMessageSingle" xml:space="preserve"><value>La commande a été rejetée. Corrigez l’erreur associée avant un nouvel envoi. Une erreur.</value></data>
+  <data name="MappedRejectionSummaryMessage" xml:space="preserve"><value>La commande a été rejetée. Corrigez les erreurs associées avant un nouvel envoi. {0} erreurs.</value></data>
+  <data name="FormAbandonmentTitle" xml:space="preserve"><value>Vous avez des données non enregistrées.</value></data>
+  <data name="FormAbandonmentDescription" xml:space="preserve"><value>Quitter maintenant supprimera les données saisies.</value></data>
+  <data name="FormAbandonmentStay" xml:space="preserve"><value>Rester sur le formulaire</value></data>
+  <data name="FormAbandonmentLeave" xml:space="preserve"><value>Quitter quand même</value></data>
+  <data name="DestructiveConfirmationCancel" xml:space="preserve"><value>Annuler</value></data>
+  <data name="DestructiveConfirmationTitleTemplate" xml:space="preserve"><value>Confirmer {0} ?</value></data>
+  <data name="DestructiveConfirmationDefaultBody" xml:space="preserve"><value>Cette action est irréversible.</value></data>
+  <data name="ActiveCommandLifecycleHeading" xml:space="preserve"><value>État de la commande {0}</value></data>
+  <data name="CommandGenericLabel" xml:space="preserve"><value>Commande</value></data>
+  <data name="RejectionEditRetry" xml:space="preserve"><value>Modifier et réessayer</value></data>
+  <data name="MappedRejectionRecoveryMessage" xml:space="preserve"><value>La commande a été rejetée. Corrigez les champs liés puis réessayez.</value></data>
+  <data name="RejectionErrorCodeLabel" xml:space="preserve"><value>Code d'erreur</value></data>
+  <data name="RejectionReasonCategoryLabel" xml:space="preserve"><value>Catégorie du motif</value></data>
+  <data name="RejectionSuggestedActionLabel" xml:space="preserve"><value>Action suggérée</value></data>
+  <data name="RejectionDocsCodeLabel" xml:space="preserve"><value>Code de documentation</value></data>
+  <data name="CommandBlockedTitle" xml:space="preserve"><value>Commande non exécutée</value></data>
+  <data name="CommandBlockedMessage" xml:space="preserve"><value>Cette commande n'a pas été exécutée. Une autre commande est déjà en cours.</value></data>
+  <data name="ViewActiveCommand" xml:space="preserve"><value>Voir la commande active</value></data>
   <data name="ScopeBlockedHeading" xml:space="preserve">
     <value>Espace de travail indisponible</value>
   </data>

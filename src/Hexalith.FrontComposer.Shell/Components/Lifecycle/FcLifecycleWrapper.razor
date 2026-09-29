@@ -9,8 +9,21 @@
    which bypasses NavigationLock anyway, but the cascade is correct defense-in-depth. *@
 <CascadingValue Name="WrapperInitiatedNavigation" Value="_wrapperInitiatedNavigation" IsFixed="false">
 <div class="fc-lifecycle-wrapper @PulseClass()"
+     @ref="_wrapperElement"
      data-testid="@LifecycleTestId"
-     data-lifecycle-state="@LifecycleStateAttribute">
+     data-lifecycle-state="@LifecycleStateAttribute"
+    data-fc-active-lifecycle="@(IsActiveLifecycle ? "true" : "false")">
+    @if (IsActiveLifecycle) {
+        <div class="fc-lifecycle-heading">
+            <FluentText As="TextTag.H2"
+                        Size="TextSize.Size400"
+                        Weight="TextWeight.Semibold"
+                        tabindex="-1"
+                        data-fc-lifecycle-heading>
+                @LifecycleHeading
+            </FluentText>
+        </div>
+    }
     @ChildContent
 
     @if (!string.IsNullOrEmpty(Announcement)) {
@@ -79,7 +92,7 @@
         </FluentMessageBar>
     }
 
-    @if (_state.Current is CommandLifecycleState.Rejected) {
+    @if (_state.Current is CommandLifecycleState.Rejected && !MappedRejection) {
         <FluentMessageBar Intent="MessageBarIntent.Error"
                          Title="@ResolveRejectionTitle()"
                          AllowDismiss="true"
@@ -107,7 +120,29 @@
                     </dl>
                 }
             </ChildContent>
+            <ActionsTemplate>
+                <FluentButton Appearance="ButtonAppearance.Outline"
+                              OnClick="FocusEditableFormAsync"
+                              data-testid="fc-rejection-edit-retry">@Localizer["RejectionEditRetry"]</FluentButton>
+            </ActionsTemplate>
         </FluentMessageBar>
+    }
+
+    @if (_state.Current is CommandLifecycleState.Rejected && MappedRejection) {
+        <div class="fc-rejection-mapped">
+            <FluentCard data-testid="fc-rejected-mapped">
+                <h2>@ResolveRejectionTitle()</h2>
+                <p>@(RejectionMessage ?? Localizer["MappedRejectionRecoveryMessage"])</p>
+                @if (RejectionDetails is not null) {
+                    <dl class="fc-rejection-details">
+                        <div><dt>@Localizer["RejectionErrorCodeLabel"]</dt><dd>@RejectionDetails.ErrorCode</dd></div>
+                        <div><dt>@Localizer["RejectionReasonCategoryLabel"]</dt><dd>@RejectionDetails.ReasonCategory</dd></div>
+                        <div><dt>@Localizer["RejectionSuggestedActionLabel"]</dt><dd>@RejectionDetails.SuggestedAction</dd></div>
+                        <div><dt>@Localizer["RejectionDocsCodeLabel"]</dt><dd>@RejectionDetails.DocsCode</dd></div>
+                    </dl>
+                }
+            </FluentCard>
+        </div>
     }
 </div>
 </CascadingValue>
@@ -128,6 +163,16 @@
         CommandLifecycleState.Rejected => "rejected",
         _ => "idle",
     };
+
+    private bool IsActiveLifecycle => _state.Current is
+        CommandLifecycleState.Submitting or
+        CommandLifecycleState.Acknowledged or
+        CommandLifecycleState.Syncing;
+
+    private string LifecycleHeading => string.Format(
+        System.Globalization.CultureInfo.CurrentCulture,
+        Localizer["ActiveCommandLifecycleHeading"],
+        string.IsNullOrWhiteSpace(DisplayLabel) ? Localizer["CommandGenericLabel"] : DisplayLabel);
 
     private string ActionPromptTitle =>
         _state.Current is CommandLifecycleState.Syncing
@@ -152,7 +197,7 @@
         // announce that copy rather than the hardcoded "Already confirmed" (matches the visible body).
         CommandLifecycleState.Confirmed when _state.IsIdempotent => IdempotentInfoMessage ?? "Already confirmed",
         CommandLifecycleState.Confirmed => "Submission confirmed",
-        CommandLifecycleState.Rejected => "Submission rejected",
+        CommandLifecycleState.Rejected when !MappedRejection => "Submission rejected",
         _ => string.Empty,
     };
 

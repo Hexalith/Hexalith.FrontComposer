@@ -1,4 +1,16 @@
 /* Story 2-5 UX-DR57 — layout-only, defer all color/typography to Fluent theme tokens. */
+.fc-form-abandonment-warning-card {
+    margin-block-end: var(--spacingVerticalM);
+}
+
 .fc-form-abandonment-warning {
-    margin-bottom: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacingHorizontalS);
+}
+
+.fc-form-abandonment-warning h2,
+.fc-form-abandonment-warning p {
+    flex-basis: 100%;
+    margin-block: 0;
 }

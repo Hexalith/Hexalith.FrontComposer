@@ -16,8 +16,11 @@ public class PurgeSpecimenRecordCommand {
     public string TenantId { get; set; } = string.Empty;
 
     [Required]
-    [Display(Name = "Record Id")]
+    [Display(Name = "Record Id", Description = "Record to purge.")]
+    [ProjectionFieldGroup("Purge details")]
     public string RecordId { get; set; } = "FC-1002";
 
+    [Display(Description = "Why this purge is required.")]
+    [ProjectionFieldGroup("Purge details")]
     public string Reason { get; set; } = "QA destructive confirmation coverage";
 }

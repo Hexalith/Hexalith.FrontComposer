@@ -57,6 +57,9 @@ public sealed partial class FcPageHeader : ComponentBase {
     /// <summary>Optional stable test selector for the header root.</summary>
     [Parameter] public string TestId { get; set; } = "fc-page-header";
 
+    /// <summary>Marks this route heading as the owning full-page command form's fallback focus target.</summary>
+    [Parameter] public bool IsCommandFormHeading { get; set; }
+
     /// <summary>Optional additional CSS classes for the header root.</summary>
     [Parameter] public string? Class { get; set; }
 
@@ -76,6 +79,8 @@ public sealed partial class FcPageHeader : ComponentBase {
     /// so the route never carries a dangling empty heading element (Requested outcome 3).
     /// </summary>
     private bool HasHeading => !string.IsNullOrWhiteSpace(Heading);
+
+    private string? CommandFormHeadingMarker => IsCommandFormHeading ? "true" : null;
 
     /// <summary>
     /// The role advertised on the header root so it never becomes a competing top-level

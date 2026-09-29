@@ -106,6 +106,7 @@ public static class CommandPageEmitter {
         _ = sb.AppendLine("            __page.AddAttribute(pseq++, \"PageTitle\", \"" + pageTitleText + "\");");
         _ = sb.AppendLine("            __page.AddAttribute(pseq++, \"Heading\", \"" + pageTitleText + "\");");
         _ = sb.AppendLine("            __page.AddAttribute(pseq++, \"HeadingTabIndex\", (int?)-1);");
+        _ = sb.AppendLine("            __page.AddAttribute(pseq++, \"IsCommandFormHeading\", true);");
         _ = sb.AppendLine("            __page.CloseComponent();");
         _ = sb.AppendLine("            __page.OpenComponent<" + rendererFqn + ">(pseq++);");
         _ = sb.AppendLine("            __page.AddAttribute(pseq++, \"RenderMode\", (CommandRenderMode?)CommandRenderMode.FullPage);");

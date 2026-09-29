@@ -1,0 +1,8 @@
+.fc-validation-summary-card {
+    margin-block-end: var(--spacingVerticalM);
+}
+
+.fc-validation-summary:focus {
+    outline: var(--strokeWidthThick) solid var(--colorStrokeFocus2);
+    outline-offset: var(--strokeWidthThick);
+}

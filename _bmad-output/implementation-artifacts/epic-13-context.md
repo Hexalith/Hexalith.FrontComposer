@@ -44,7 +44,7 @@ Operators can browse projections, execute commands, recover from connection fail
 
 ## Cross-Story Dependencies
 
-- Tenant-scope proof underpins shell preferences, fail-closed projection and authorization states, and fresh-row clearing. Shell frame and information-architecture structure are inherited from Epic 12; this epic owns their interaction behavior.
+- Tenant-scope proof underpins shell preferences, fail-closed projection and authorization states, and fresh-row clearing. Preserve the delivered shell frame and information-architecture baseline while this epic closes the remaining interaction and evidence gaps.
 - Stories 13.2–13.5 divide ownership of navigation, command, lifecycle, and fresh-row announcements. Consume canonical messages across story boundaries without redefining their copy or channel.
 - Story 13.6 verifies all changed operator surfaces; Story 13.7 makes those assertions reusable for adopters. Its reviewer gate remains separate from owner decisions.
 - Story 13.8 requires dated Product acceptance of the immutable Story 9.8 live proof. Story 13.9 requires UX-A through UX-F evidence for one exact Fluent catalog identity, then feeds the separate Product re-approval gate. Neither decision is implied by implementation completion.

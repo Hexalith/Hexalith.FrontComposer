@@ -1,6 +1,10 @@
+using Hexalith.FrontComposer.Shell.Resources;
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.Localization;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.JSInterop;
 
 // Blazor component: awaited tasks must resume on the component's sync context, so ConfigureAwait(false) is the wrong choice here.
 #pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
@@ -20,6 +24,14 @@ namespace Hexalith.FrontComposer.Shell.Components.Forms;
 /// Copy is framework-controlled plain text (UX-DR57 + D14 XSS invariant — never <c>MarkupString</c>).
 /// </remarks>
 public partial class FcDestructiveConfirmationDialog : ComponentBase {
+    private const string FocusModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js";
+
+    [Inject]
+    private IStringLocalizer<FcShellResources> Localizer { get; set; } = default!;
+
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+
     /// <summary>
     /// Gets or sets the dialog instance cascaded by <see cref="IDialogService"/>. Null when the
     /// component is rendered standalone (tests).
@@ -52,6 +64,49 @@ public partial class FcDestructiveConfirmationDialog : ComponentBase {
     /// </summary>
     [Parameter]
     public EventCallback OnCancel { get; set; }
+
+    /// <inheritdoc />
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender) {
+            return;
+        }
+
+        IJSObjectReference? module = null;
+        try {
+            module = await JS.InvokeAsync<IJSObjectReference>("import", FocusModulePath);
+            await module.InvokeVoidAsync(
+                "labelDialog",
+                "fc-destructive-dialog",
+                "fc-destructive-dialog-title",
+                "fc-destructive-dialog-description");
+        }
+        catch (JSDisconnectedException) {
+            // Circuit teardown after the dialog was displayed is safe to ignore.
+        }
+        catch (JSException) {
+            // The Fluent dialog retains its built-in semantics if focus enhancement is unavailable.
+        }
+        catch (InvalidOperationException) {
+            // Prerender has no interactive JS runtime.
+        }
+        finally {
+            if (module is not null) {
+                await DisposeModuleAsync(module);
+            }
+        }
+    }
+
+    private static async ValueTask DisposeModuleAsync(IJSObjectReference module) {
+        try {
+            await module.DisposeAsync();
+        }
+        catch (JSDisconnectedException) {
+        }
+        catch (JSException) {
+        }
+        catch (InvalidOperationException) {
+        }
+    }
 
     // Review 2026-04-17 — Blazor UI handlers must stay on the sync context; removed ConfigureAwait(false)
     // throughout. Dialog.CloseAsync / CancelAsync now run in a finally block so a throwing OnConfirm /

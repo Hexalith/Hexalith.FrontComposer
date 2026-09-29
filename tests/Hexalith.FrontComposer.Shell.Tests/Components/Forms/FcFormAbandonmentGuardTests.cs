@@ -39,6 +39,7 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddFluentUIComponents();
         _ = Services.AddLogging();
+        _ = Services.AddLocalization();
         _ = Services.AddOptions<FcShellOptions>();
         Services.TryAddSingleton<IValidateOptions<FcShellOptions>, FcShellOptionsThresholdValidator>();
         _ = Services.AddSingleton<TimeProvider>(_time);
@@ -480,5 +481,73 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
 
     private sealed class TestModel {
         public string Name { get; set; } = string.Empty;
+    }
+}
+
+public sealed class FcValidationSummaryTests : BunitContext {
+    private static readonly string[] ExpectedTargets = ["first-input", "second-input"];
+
+    public FcValidationSummaryTests() {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        _ = Services.AddFluentUIComponents();
+        _ = Services.AddLocalization();
+        _ = Services.AddLogging();
+    }
+
+    [Fact]
+    public async Task ClientValidation_RendersOneNonLiveLinkedSummaryInDeclaredFieldOrder() {
+        ValidationModel model = new();
+        EditContext context = new(model);
+        ValidationMessageStore store = new(context);
+        store.Add(context.Field(nameof(ValidationModel.Second)), "Second is invalid.");
+        store.Add(context.Field(nameof(ValidationModel.First)), "First is invalid.");
+
+        IRenderedComponent<FcValidationSummary> cut = Render<FcValidationSummary>(parameters => parameters
+            .Add(component => component.EditContext, context)
+            .Add(component => component.SummaryId, "validation-summary")
+            .Add(component => component.Fields, new[] {
+                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "First", "first-input", "first-error"),
+                new FcValidationFieldDescriptor(nameof(ValidationModel.Second), "Second", "second-input", "second-error"),
+            }));
+
+        await cut.InvokeAsync(() => cut.Instance.ShowAndFocusAsync(FcValidationSummaryKind.ClientValidation));
+
+        AngleSharp.Dom.IElement summary = cut.Find("[data-testid='fc-validation-summary']");
+        summary.HasAttribute("role").ShouldBeFalse();
+        summary.HasAttribute("aria-live").ShouldBeFalse();
+        string[] targets = cut.FindAll("[data-fc-validation-target]")
+            .Select(element => element.GetAttribute("data-fc-validation-target")!)
+            .ToArray();
+        targets.ShouldBe(ExpectedTargets);
+        JSInterop.VerifyInvoke("focusValidationOutcome", 1);
+    }
+
+    [Fact]
+    public async Task MappedRejection_UsesExplicitMappedKindWithoutLiveRegion() {
+        ValidationModel model = new();
+        EditContext context = new(model);
+        ValidationMessageStore store = new(context);
+        store.Add(context.Field(nameof(ValidationModel.First)), "Rejected value.");
+
+        IRenderedComponent<FcValidationSummary> cut = Render<FcValidationSummary>(parameters => parameters
+            .Add(component => component.EditContext, context)
+            .Add(component => component.SummaryId, "mapped-summary")
+            .Add(component => component.Fields, new[] {
+                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "First", "first-input", "first-error"),
+            }));
+
+        await cut.InvokeAsync(() => cut.Instance.ShowAndFocusAsync(FcValidationSummaryKind.MappedServerRejection));
+
+        AngleSharp.Dom.IElement summary = cut.Find("[data-fc-validation-kind='mapped-server-rejection']");
+        summary.HasAttribute("role").ShouldBeFalse();
+        summary.HasAttribute("aria-live").ShouldBeFalse();
+        summary.TextContent.ShouldContain("One error.");
+        summary.TextContent.ShouldNotContain("1 errors");
+    }
+
+    private sealed class ValidationModel {
+        public string First { get; set; } = string.Empty;
+
+        public string Second { get; set; } = string.Empty;
     }
 }

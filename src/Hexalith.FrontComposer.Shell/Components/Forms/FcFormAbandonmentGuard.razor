@@ -7,24 +7,28 @@
 <NavigationLock OnBeforeInternalNavigation="HandleNavigationChangingAsync" />
 
 @if (_showingWarning) {
-    <FluentMessageBar Intent="MessageBarIntent.Warning"
-                      Title="You have unsaved input."
-                      AllowDismiss="false"
-                      data-testid="fc-form-abandonment-warning">
-        <ChildContent>
-            Leaving now discards what you've entered.
-        </ChildContent>
-        <ActionsTemplate>
-            <FluentButton Appearance="ButtonAppearance.Primary"
-                          AutoFocus="true"
-                          OnClick="OnStayClickedAsync"
-                          @onkeydown="HandleBarKeyDownAsync"
-                          data-testid="fc-form-abandonment-stay">Stay on form</FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Outline"
-                          OnClick="OnLeaveClickedAsync"
-                          data-testid="fc-form-abandonment-leave">Leave anyway</FluentButton>
-        </ActionsTemplate>
-    </FluentMessageBar>
+    <div class="fc-form-abandonment-warning-card">
+        <FluentCard>
+            <section class="fc-form-abandonment-warning"
+                     aria-labelledby="@_warningTitleId"
+                     aria-describedby="@_warningDescriptionId"
+                     @onkeydown="HandleBarKeyDownAsync"
+                     data-testid="fc-form-abandonment-warning">
+                <h2 id="@_warningTitleId">@Localizer["FormAbandonmentTitle"]</h2>
+                <p id="@_warningDescriptionId">@Localizer["FormAbandonmentDescription"]</p>
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              Id="@_stayButtonId"
+                              AutoFocus="true"
+                              OnClick="OnStayClickedAsync"
+                              data-testid="fc-form-abandonment-stay">@Localizer["FormAbandonmentStay"]</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Outline"
+                              OnClick="OnLeaveClickedAsync"
+                              data-testid="fc-form-abandonment-leave">@Localizer["FormAbandonmentLeave"]</FluentButton>
+            </section>
+        </FluentCard>
+    </div>
 }
 
-@ChildContent
+<div @ref="_guardRoot" data-fc-abandonment-root>
+    @ChildContent
+</div>

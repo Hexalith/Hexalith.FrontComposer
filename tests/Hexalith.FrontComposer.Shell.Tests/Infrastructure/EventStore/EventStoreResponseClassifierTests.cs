@@ -16,6 +16,8 @@ namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 /// loaders, and badge readers cannot drift on raw HTTP status parsing.
 /// </summary>
 public class EventStoreResponseClassifierTests {
+    private static readonly string[] ExpectedMappedConflictErrors = ["Quantity conflicts with current state."];
+    private static readonly string[] ExpectedConflictGlobalErrors = ["Review the order."];
     private readonly EventStoreResponseClassifier _classifier = new(NullLogger<EventStoreResponseClassifier>.Instance);
 
     // -----------------------
@@ -123,6 +125,22 @@ public class EventStoreResponseClassifierTests {
         ex.ReasonCategory.ShouldBe("Concurrency");
         ex.SuggestedAction.ShouldBe("Reload the order");
         ex.DocsCode.ShouldBe("FC-CMD-409");
+    }
+
+    [Fact]
+    public async Task Command_409Conflict_PreservesBoundedValidationMapForMappedRecovery() {
+        using HttpResponseMessage response = new(HttpStatusCode.Conflict) {
+            Content = new StringContent(
+                """{"title":"order locked","detail":"correct quantity","errors":{"Quantity":["Quantity conflicts with current state."]},"globalErrors":["Review the order."]}""",
+                Encoding.UTF8,
+                "application/problem+json"),
+        };
+
+        EventStoreCommandClassification classification = await _classifier.ClassifyCommandAsync(response, TestContext.Current.CancellationToken);
+
+        CommandRejectedException ex = classification.Failure.ShouldBeOfType<CommandRejectedException>();
+        ex.Problem.ValidationErrors["Quantity"].ShouldBe(ExpectedMappedConflictErrors);
+        ex.Problem.GlobalErrors.ShouldBe(ExpectedConflictGlobalErrors);
     }
 
     [Fact]

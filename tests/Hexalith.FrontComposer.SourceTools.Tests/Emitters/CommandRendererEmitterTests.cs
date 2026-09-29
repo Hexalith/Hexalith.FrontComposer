@@ -108,6 +108,7 @@ public class CommandRendererEmitterTests {
 
         renderer.DisplayLabel.ShouldBe("Configure Counter");
         CommandPageEmitter.Emit(renderer).ShouldContain("\"Heading\", \"Configure Counter\"");
+        CommandPageEmitter.Emit(renderer).ShouldContain("\"IsCommandFormHeading\", true");
     }
 
     [Fact]
@@ -293,6 +294,8 @@ public class CommandRendererEmitterTests {
         source.ShouldContain("ScheduleAuthorizationRetryAsync");
         source.ShouldContain("AuthorizationCheckingPermissionMessage");
         source.ShouldContain("UnauthorizedCommandWarningMessage");
+        source.ShouldContain("private readonly string _authorizationHeadingId = \"fc-command-authorization-");
+        source.ShouldContain("Guid.NewGuid().ToString(\"N\")");
         // Pass-4 AA-15 / BH-37 — presentation-time auth must not include unvalidated user input.
         // The emitted CommandAuthorizationRequest passes null (not _prefilledModel) for the
         // command resource. Verified by parsing and inspecting the literal arg in the request.
@@ -317,6 +320,8 @@ public class CommandRendererEmitterTests {
         // Inline + CompactInline + FullPage placeholder branches all check the gate via if-statement.
         int placeholderBranches = System.Text.RegularExpressions.Regex.Count(source, @"if \(AuthorizationTriggerDisabled\(\)\)");
         placeholderBranches.ShouldBe(3, "Inline + CompactInline + FullPage placeholder branches");
+        source.ShouldContain("focusOverlayEntry");
+        source.ShouldContain("catch (JSDisconnectedException) { /* circuit teardown; benign. */ }");
     }
 
     [Fact]
@@ -337,6 +342,13 @@ public class CommandRendererEmitterTests {
         source.ShouldContain("private async Task DestructiveBeforeSubmitAsync()");
         source.ShouldContain("if (_dialogOpen) throw new OperationCanceledException(\"Destructive dialog already open.\");");
         source.ShouldContain("var result = await DialogService.ShowDialogAsync<FcDestructiveConfirmationDialog>");
+        source.ShouldContain("options.Modal = true");
+        source.ShouldContain("options.PreventDismissOnEscape = false");
+        source.ShouldContain("focusOriginCaptured = await focusModule.InvokeAsync<bool>(\"captureOverlayOrigin\")");
+        source.ShouldContain("if (!focusOriginCaptured) throw new OperationCanceledException(\"Another modal interaction is already active.\")");
+        source.ShouldContain("if (focusOriginCaptured)");
+        source.ShouldContain("restoreOverlayOrigin");
+        source.ShouldContain("catch (JSDisconnectedException) { /* circuit teardown; benign. */ }");
         source.ShouldNotContain("dialogRef.Result");
         source.ShouldContain("nameof(FcDestructiveConfirmationDialog.Title), \"Delete this widget?\"");
         source.ShouldContain("nameof(FcDestructiveConfirmationDialog.Body), \"The widget will be permanently removed.\"");
@@ -351,8 +363,8 @@ public class CommandRendererEmitterTests {
             typeName: "DeleteWidgetCommand",
             isDestructive: true));
 
-        source.ShouldContain("nameof(FcDestructiveConfirmationDialog.Title), \"Demo?\"");
-        source.ShouldContain("nameof(FcDestructiveConfirmationDialog.Body), \"This action cannot be undone.\"");
+        source.ShouldContain("nameof(FcDestructiveConfirmationDialog.Title), ShellLocalizer[\"DestructiveConfirmationTitleTemplate\", \"Demo\"].Value");
+        source.ShouldContain("nameof(FcDestructiveConfirmationDialog.Body), ShellLocalizer[\"DestructiveConfirmationDefaultBody\"].Value");
         source.ShouldContain("nameof(FcDestructiveConfirmationDialog.DestructiveLabel), \"Demo\"");
     }
 

@@ -2,6 +2,7 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.AspNetCore.Components;
@@ -9,8 +10,10 @@ using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.JSInterop;
 
 // Blazor component: awaited tasks must resume on the component's sync context, so ConfigureAwait(false) is the wrong choice here.
 #pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
@@ -28,12 +31,23 @@ namespace Hexalith.FrontComposer.Shell.Components.Forms;
 /// </list>
 /// </summary>
 public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
+    private const string FocusModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js";
     private EditContext? _subscribedEditContext;
     private DateTimeOffset? _firstEditAt;
     private bool _showingWarning;
     private string? _pendingTarget;
     private bool _isLeaving;
     private int _disposed;
+    private int _editedOriginCaptureSequence;
+    private ElementReference _guardRoot;
+    private bool _stayFocusPending;
+    private readonly string _instanceId = Guid.NewGuid().ToString("N");
+
+    private string _warningTitleId => $"fc-form-abandonment-title-{_instanceId}";
+
+    private string _warningDescriptionId => $"fc-form-abandonment-description-{_instanceId}";
+
+    private string _stayButtonId => $"fc-form-abandonment-stay-{_instanceId}";
 
     /// <summary>Gets or sets the form children wrapped by the guard.</summary>
     [Parameter]
@@ -79,13 +93,19 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
     [Inject]
     private IServiceProvider ServiceProvider { get; set; } = default!;
 
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+
+    [Inject]
+    private IStringLocalizer<FcShellResources> Localizer { get; set; } = default!;
+
     /// <inheritdoc />
     protected override void OnParametersSet() {
         if (!ReferenceEquals(EditContext, _subscribedEditContext)) {
             UnsubscribeFromEditContext();
             if (EditContext is not null) {
                 _subscribedEditContext = EditContext;
-                _subscribedEditContext.OnFieldChanged += OnFirstEdit;
+                _subscribedEditContext.OnFieldChanged += OnFieldEdited;
             }
         }
     }
@@ -93,14 +113,16 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
     // D9 — "Stay on form" auto-focus is wired via FluentButton's AutoFocus="true" attribute;
     // the button renders every time the warning becomes visible, re-applying focus.
 
-    private void OnFirstEdit(object? sender, FieldChangedEventArgs e) {
-        // D10 — capture the moment of the first edit, then detach so later edits don't re-anchor.
-        if (_firstEditAt is not null || _disposed != 0) {
+    private void OnFieldEdited(object? sender, FieldChangedEventArgs e) {
+        if (_disposed != 0) {
             return;
         }
 
-        _firstEditAt = Time.GetUtcNow();
-        UnsubscribeFromEditContext();
+        // Keep the timer anchored to the first edit while refreshing the deterministic focus
+        // origin to the most recently edited control.
+        _firstEditAt ??= Time.GetUtcNow();
+        int sequence = Interlocked.Increment(ref _editedOriginCaptureSequence);
+        _ = InvokeAsync(() => CaptureEditedOriginAsync(e.FieldIdentifier.FieldName, sequence));
     }
 
     private async Task HandleNavigationChangingAsync(LocationChangingContext context) {
@@ -156,6 +178,7 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
 
         _pendingTarget = context.TargetLocation;
         _showingWarning = true;
+        _stayFocusPending = true;
         // A shell activation waiting for this route must settle as cancelled, so an open command
         // palette closes and this warning stays reachable.
         ServiceProvider.GetService<NavigationFailureNotifier>()?.CancelAttempt(context.TargetLocation);
@@ -165,11 +188,30 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
         await InvokeAsync(StateHasChanged);
     }
 
-    private Task OnStayClickedAsync() {
+    /// <inheritdoc />
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!_stayFocusPending || _disposed != 0) {
+            return;
+        }
+
+        _stayFocusPending = false;
+        try {
+            await using IJSObjectReference module = await JS.InvokeAsync<IJSObjectReference>("import", FocusModulePath);
+            await module.InvokeVoidAsync("focusElementById", _stayButtonId);
+        }
+        catch (JSDisconnectedException) {
+        }
+        catch (JSException) {
+        }
+        catch (InvalidOperationException) {
+        }
+    }
+
+    private async Task OnStayClickedAsync() {
         _showingWarning = false;
         _pendingTarget = null;
-        StateHasChanged();
-        return Task.CompletedTask;
+        await InvokeAsync(StateHasChanged);
+        await RestoreEditedOriginAsync();
     }
 
     private Task OnLeaveClickedAsync() {
@@ -207,8 +249,34 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
         }
     }
 
+    private async Task CaptureEditedOriginAsync(string fieldName, int sequence) {
+        try {
+            await using IJSObjectReference module = await JS.InvokeAsync<IJSObjectReference>("import", FocusModulePath);
+            await module.InvokeVoidAsync("captureEditedOrigin", _guardRoot, fieldName, sequence);
+        }
+        catch (JSDisconnectedException) {
+        }
+        catch (JSException) {
+        }
+        catch (InvalidOperationException) {
+        }
+    }
+
+    private async Task RestoreEditedOriginAsync() {
+        try {
+            await using IJSObjectReference module = await JS.InvokeAsync<IJSObjectReference>("import", FocusModulePath);
+            await module.InvokeVoidAsync("restoreEditedOrigin");
+        }
+        catch (JSDisconnectedException) {
+        }
+        catch (JSException) {
+        }
+        catch (InvalidOperationException) {
+        }
+    }
+
     private void UnsubscribeFromEditContext() {
-        _subscribedEditContext?.OnFieldChanged -= OnFirstEdit;
+        _subscribedEditContext?.OnFieldChanged -= OnFieldEdited;
         _subscribedEditContext = null;
     }
 
@@ -224,7 +292,7 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
         if (!ReferenceEquals(_subscribedEditContext, EditContext)) {
             UnsubscribeFromEditContext();
             _subscribedEditContext = EditContext;
-            _subscribedEditContext.OnFieldChanged += OnFirstEdit;
+            _subscribedEditContext.OnFieldChanged += OnFieldEdited;
         }
     }
 

@@ -19,7 +19,9 @@ using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.JSInterop;
 using Hexalith.FrontComposer.Shell.Components.Lifecycle;
+using Hexalith.FrontComposer.Shell.Components.Forms;
 
 namespace Counter.Domain;
 
@@ -61,6 +63,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     [Inject] private IStringLocalizer<Counter.Domain.IncrementCommand> Localizer { get; set; } = default!;
     [Inject] private IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> ShellLocalizer { get; set; } = default!;
     [Inject] private ILogger<IncrementCommandForm>? Logger { get; set; }
+    [Inject] private global::Microsoft.JSInterop.IJSRuntime JS { get; set; } = default!;
     [Inject] private global::Hexalith.FrontComposer.Shell.Services.Feedback.ICommandFeedbackPublisher CommandFeedbackPublisher { get; set; } = default!;
     [Inject] private global::Hexalith.FrontComposer.Contracts.Communication.IAuthRedirector AuthRedirector { get; set; } = default!;
 
@@ -75,6 +78,12 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     private bool _interactiveReady;
     private string? _submittedCorrelationId;
     private int _acceptedAssociationSucceeded;
+    private readonly string _formDomId = "fc-command-form-" + Guid.NewGuid().ToString("N");
+    private FcValidationSummary? _validationSummary;
+    private bool _authorizationDenied;
+    private bool _authorizationFocusPending;
+    private bool _concurrencyBlocked;
+    private bool _activeLifecycleActionAvailable;
     private static readonly global::Hexalith.FrontComposer.Contracts.Communication.ICommandValidationFieldAllowlist _serverValidationAllowlist = new global::Hexalith.FrontComposer.Shell.Services.Validation.ReflectionCommandValidationFieldAllowlist<Counter.Domain.IncrementCommand>();
     /// <summary>Indicates the form has been modified since creation. Used by later stories to warn on navigation.</summary>
     public bool IsDirty { get; private set; }
@@ -99,18 +108,17 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         bool scopeUnavailable = reason == global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.ScopeUnavailable;
         string title = scopeUnavailable
             ? ResolveShellLocalized("ScopeBlockedHeading", "Workspace unavailable")
-            : ResolveShellLocalized("CommandAlreadyInProgressTitle", "Command already in progress");
+            : ResolveShellLocalized("CommandBlockedTitle", "Command not run");
         string detail = scopeUnavailable
             ? ResolveShellLocalized("ScopeBlockedMessage", "Your workspace identity could not be verified. Sign in again or contact support.")
-            : reason == global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.PendingCommandAlreadyExists
-                ? ResolveShellLocalized("CommandAlreadyInProgressPendingMessage", "A command is still waiting for confirmation. Wait for it to finish before submitting another command.")
-                : ResolveShellLocalized("CommandAlreadyInProgressAdmissionMessage", "A command is already being submitted. Wait for it to finish before submitting another command.");
+            : ResolveShellLocalized("CommandBlockedMessage", "This command did not run. Another command is already in progress.");
         _serverWarning = new global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning(
             global::Hexalith.FrontComposer.Contracts.Communication.CommandWarningKind.Pending,
             title,
             detail,
             null,
             null);
+        _concurrencyBlocked = !scopeUnavailable;
     }
 
     private string ResolveShellLocalized(string key, string fallback)
@@ -135,6 +143,106 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     private void NotifyClientFieldChanged(string commandPropertyName) {
         if (_editContext is null) return;
         _editContext.NotifyFieldChanged(new FieldIdentifier(_model, commandPropertyName));
+    }
+
+    private void UpdateClientParseError(string commandPropertyName, string? error)
+    {
+        if (_editContext is null || _serverValidationMessages is null) return;
+        var field = new FieldIdentifier(_model, commandPropertyName);
+        _serverValidationMessages.Clear(field);
+        if (!string.IsNullOrWhiteSpace(error)) _serverValidationMessages.Add(field, error);
+        _editContext.NotifyValidationStateChanged();
+    }
+
+    private async Task OnInvalidSubmitAsync()
+    {
+        if (_disposed) return;
+        var currentState = LifecycleState.Value.State;
+        if (currentState != CommandLifecycleState.Idle
+            && currentState != CommandLifecycleState.Rejected
+            && currentState != CommandLifecycleState.Confirmed)
+        {
+            await PresentBlockedSubmissionAsync(
+                global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.PendingCommandAlreadyExists,
+                blockingMessageId: null).ConfigureAwait(false);
+            return;
+        }
+
+        var admission = CommandExecutionAdmissionGate.TryAcquire(CreateAdmissionRequest());
+        try
+        {
+            if (!admission.IsAdmitted)
+            {
+                await PresentBlockedSubmissionAsync(admission.DenialReason, admission.BlockingMessageId).ConfigureAwait(false);
+                return;
+            }
+
+            if (_validationSummary is not null)
+            {
+                await _validationSummary.ShowAndFocusAsync(FcValidationSummaryKind.ClientValidation).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            admission.Dispose();
+        }
+    }
+
+    private global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionRequest CreateAdmissionRequest()
+        => new(typeof(Counter.Domain.IncrementCommand).FullName ?? nameof(Counter.Domain.IncrementCommand), "Send IncrementCommand");
+
+    private async Task PresentBlockedSubmissionAsync(
+        global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason reason,
+        string? blockingMessageId)
+    {
+        SetCommandInProgressWarning(reason);
+        if (_serverWarning is not null) CommandFeedbackPublisher.PublishWarning(_serverWarning);
+        _activeLifecycleActionAvailable = _concurrencyBlocked && await HasActiveCommandAsync().ConfigureAwait(false);
+        await InvokeAsync(StateHasChanged);
+        await FocusElementAsync(_formDomId + "-submit").ConfigureAwait(false);
+        if (Logger is not null) { LogSubmitBlockedByConcurrency(Logger, reason, blockingMessageId); }
+    }
+
+    private async Task FocusElementAsync(string id)
+    {
+        try
+        {
+            await using var module = await JS.InvokeAsync<global::Microsoft.JSInterop.IJSObjectReference>("import", "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js").ConfigureAwait(false);
+            await module.InvokeVoidAsync("focusElementById", id).ConfigureAwait(false);
+        }
+        catch (global::Microsoft.JSInterop.JSDisconnectedException) { }
+        catch (global::Microsoft.JSInterop.JSException) { }
+        catch (InvalidOperationException) { }
+    }
+
+    private async Task<bool> HasActiveCommandAsync()
+    {
+        try
+        {
+            await using var module = await JS.InvokeAsync<global::Microsoft.JSInterop.IJSObjectReference>("import", "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js").ConfigureAwait(false);
+            return await module.InvokeAsync<bool>("hasActiveLifecycle").ConfigureAwait(false);
+        }
+        catch (global::Microsoft.JSInterop.JSDisconnectedException) { return false; }
+        catch (global::Microsoft.JSInterop.JSException) { return false; }
+        catch (InvalidOperationException) { return false; }
+    }
+
+    private async Task FocusActiveCommandAsync()
+    {
+        bool focused = false;
+        try
+        {
+            await using var module = await JS.InvokeAsync<global::Microsoft.JSInterop.IJSObjectReference>("import", "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js").ConfigureAwait(false);
+            focused = await module.InvokeAsync<bool>("focusActiveLifecycle").ConfigureAwait(false);
+        }
+        catch (global::Microsoft.JSInterop.JSDisconnectedException) { }
+        catch (global::Microsoft.JSInterop.JSException) { }
+        catch (InvalidOperationException) { }
+        if (!focused)
+        {
+            _activeLifecycleActionAvailable = false;
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private CommandLifecycleState _previousLifecycleState = CommandLifecycleState.Idle;
@@ -167,6 +275,16 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         if (firstRender && !_interactiveReady) {
             _interactiveReady = true;
             _ = InvokeAsync(StateHasChanged);
+        }
+    }
+
+    /// <inheritdoc />
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_authorizationFocusPending)
+        {
+            _authorizationFocusPending = false;
+            await FocusElementAsync(_formDomId + "-authorization-heading").ConfigureAwait(false);
         }
     }
 
@@ -209,6 +327,13 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     {
         return !string.IsNullOrEmpty(_AmountParseError);
     }
+
+    private FcValidationFieldDescriptor[] BuildValidationFields()
+        => new FcValidationFieldDescriptor[]
+        {
+            new("TenantId", ResolveLabel("TenantId", "Tenant Id", false), _formDomId + "-TenantId", _formDomId + "-TenantId-error"),
+            new("Amount", ResolveLabel("Amount", "Amount", false), _formDomId + "-Amount", _formDomId + "-Amount-error"),
+        };
 
     private void DiscardUnacceptedTerminalObservations(
         string ownerId,
@@ -271,12 +396,31 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             && currentState != CommandLifecycleState.Rejected
             && currentState != CommandLifecycleState.Confirmed)
         {
+            await PresentBlockedSubmissionAsync(
+                global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.PendingCommandAlreadyExists,
+                blockingMessageId: null).ConfigureAwait(false);
+            return;
+        }
+
+        var validatedScope = ScopeServices.GetService(typeof(global::Hexalith.FrontComposer.Shell.State.PendingCommands.IValidatedPendingScope)) as global::Hexalith.FrontComposer.Shell.State.PendingCommands.IValidatedPendingScope;
+        var admissionScope = validatedScope?.Current();
+        bool IsAdmissionScopeCurrent() => validatedScope is null || (admissionScope is { } origin && validatedScope.Current() is { } current && origin == current);
+        var admission = CommandExecutionAdmissionGate.TryAcquire(CreateAdmissionRequest());
+        try
+        {
+        if (!admission.IsAdmitted)
+        {
+            await PresentBlockedSubmissionAsync(admission.DenialReason, admission.BlockingMessageId).ConfigureAwait(false);
             return;
         }
 
         if (HasClientParseErrors())
         {
             _editContext?.NotifyValidationStateChanged();
+            if (_validationSummary is not null)
+            {
+                await _validationSummary.ShowAndFocusAsync(FcValidationSummaryKind.ClientValidation).ConfigureAwait(false);
+            }
             return;
         }
 
@@ -290,6 +434,9 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         }
 
         // Story 5-2 D5 — clear server-driven validation state from the prior submit (auth has already passed if a policy is in scope).
+        _validationSummary?.Hide();
+        _concurrencyBlocked = false;
+        _activeLifecycleActionAvailable = false;
         _serverValidationMessages?.Clear();
         if (_serverFormLevelErrors.Count > 0)
         {
@@ -304,26 +451,6 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             if (_disposed || _cts.IsCancellationRequested) return;
         }
 
-        var validatedScope = ScopeServices.GetService(typeof(global::Hexalith.FrontComposer.Shell.State.PendingCommands.IValidatedPendingScope)) as global::Hexalith.FrontComposer.Shell.State.PendingCommands.IValidatedPendingScope;
-        var admissionScope = validatedScope?.Current();
-        bool IsAdmissionScopeCurrent() => validatedScope is null || (admissionScope is { } origin && validatedScope.Current() is { } current && origin == current);
-        var admission = CommandExecutionAdmissionGate.TryAcquire(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionRequest(
-            typeof(Counter.Domain.IncrementCommand).FullName ?? nameof(Counter.Domain.IncrementCommand),
-            "Send IncrementCommand"));
-        if (!admission.IsAdmitted)
-        {
-            SetCommandInProgressWarning(admission.DenialReason);
-            if (_serverWarning is not null)
-            {
-                CommandFeedbackPublisher.PublishWarning(_serverWarning);
-            }
-            await InvokeAsync(StateHasChanged);
-            if (Logger is not null) { LogSubmitBlockedByConcurrency(Logger, admission.DenialReason, admission.BlockingMessageId); }
-            return;
-        }
-
-        try
-        {
         var correlationId = UlidFactory.NewUlid();
         _submittedCorrelationId = correlationId;
         System.Threading.Interlocked.Exchange(ref _acceptedAssociationSucceeded, 0);
@@ -574,6 +701,11 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                 _editContext.NotifyValidationStateChanged();
             }
             Dispatcher.Dispatch(new IncrementCommandActions.ResetToIdleAction(correlationId));
+            await InvokeAsync(StateHasChanged);
+            if (_validationSummary is not null)
+            {
+                await _validationSummary.ShowAndFocusAsync(FcValidationSummaryKind.ClientValidation).ConfigureAwait(false);
+            }
             if (Logger is not null) { LogCommandValidationFailed(Logger, correlationId, ex.Problem.Title); }
         }
         catch (CommandWarningException ex)
@@ -587,6 +719,11 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                 ex.Problem.EntityLabel,
                 ex.RetryAfter);
             CommandFeedbackPublisher.PublishWarning(_serverWarning);
+            if (ex.Kind == global::Hexalith.FrontComposer.Contracts.Communication.CommandWarningKind.Forbidden)
+            {
+                _authorizationDenied = true;
+                _authorizationFocusPending = true;
+            }
             Dispatcher.Dispatch(new IncrementCommandActions.ResetToIdleAction(correlationId));
             await InvokeAsync(StateHasChanged);
             if (Logger is not null) { LogCommandWarning(Logger, ex.Kind, correlationId, ex.Problem.Title); }
@@ -602,9 +739,21 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         }
         catch (CommandRejectedException ex)
         {
-            Dispatcher.Dispatch(new IncrementCommandActions.RejectedAction(correlationId, ex.Message, ex.Resolution, ex.ErrorCode, ex.ReasonCategory, ex.SuggestedAction, ex.DocsCode));
-            // Notify validation pipeline so any stale error state redraws (patch P16).
-            _editContext?.NotifyValidationStateChanged();
+            bool hasMappedFieldErrors = false;
+            if (_editContext is not null && _serverValidationMessages is not null)
+            {
+                _serverValidationMessages.Clear();
+                var rejectionValidation = global::Hexalith.FrontComposer.Shell.Services.Validation.ServerValidationApplicator.ApplyRejection(_serverValidationMessages, ex, _serverValidationAllowlist, _model!);
+                _serverFormLevelErrors = rejectionValidation.UnmappedMessages;
+                hasMappedFieldErrors = rejectionValidation.HasMappedFieldErrors;
+                _editContext.NotifyValidationStateChanged();
+            }
+            Dispatcher.Dispatch(new IncrementCommandActions.RejectedAction(correlationId, ex.Message, ex.Resolution, ex.ErrorCode, ex.ReasonCategory, ex.SuggestedAction, ex.DocsCode, hasMappedFieldErrors));
+            await InvokeAsync(StateHasChanged);
+            if (hasMappedFieldErrors && _validationSummary is not null)
+            {
+                await _validationSummary.ShowAndFocusAsync(FcValidationSummaryKind.MappedServerRejection).ConfigureAwait(false);
+            }
             if (Logger is not null) { LogCommandRejected(Logger, correlationId, ex.Message); }
         }
         catch (OperationCanceledException)
@@ -634,6 +783,10 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                 }
             }
         }
+        }
+        catch (OperationCanceledException)
+        {
+            // A pre-dispatch confirmation or authorization interaction failed closed.
         }
         finally
         {
@@ -676,54 +829,68 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         builder.OpenElement(0, "div");
         // AC3 density: Comfortable by default (patch P13).
         builder.AddAttribute(1, "class", "fc-command-form fc-density-comfortable");
-        builder.AddAttribute(2, "data-fc-interactive", _interactiveReady ? "true" : "false");
-        builder.AddAttribute(3, "aria-label", "Send IncrementCommand command form");
+        builder.AddAttribute(2, "id", _formDomId);
+        builder.AddAttribute(3, "data-fc-command-form", "true");
+        builder.AddAttribute(4, "data-fc-validation-summary-id", _formDomId + "-validation-summary");
+        builder.AddAttribute(5, "data-fc-interactive", _interactiveReady ? "true" : "false");
+        builder.AddAttribute(6, "aria-label", "Send IncrementCommand command form");
 
-        builder.OpenComponent<FcLifecycleWrapper>(4);
-        builder.AddAttribute(5, "CorrelationId", _submittedCorrelationId);
-        builder.AddAttribute(6, "CommandId", "increment");
-        builder.AddAttribute(7, "RejectionMessage", BuildFcLifecycleRejectionCopy());
-        builder.AddAttribute(8, "RejectionTitle", BuildFcLifecycleRejectionTitle());
-        builder.AddAttribute(9, "RejectionDetails", BuildFcLifecycleRejectionDetails());
-        builder.AddAttribute(10, "ChildContent", (RenderFragment)(__wrap =>
+        builder.OpenComponent<FcLifecycleWrapper>(7);
+        builder.AddAttribute(8, "CorrelationId", _submittedCorrelationId);
+        builder.AddAttribute(9, "CommandId", "increment");
+        builder.AddAttribute(10, "RejectionMessage", BuildFcLifecycleRejectionCopy());
+        builder.AddAttribute(11, "RejectionTitle", BuildFcLifecycleRejectionTitle());
+        builder.AddAttribute(12, "RejectionDetails", BuildFcLifecycleRejectionDetails());
+        builder.AddAttribute(13, "MappedRejection", LifecycleState.Value.HasMappedFieldErrors);
+        builder.AddAttribute(14, "DisplayLabel", "Send IncrementCommand");
+        builder.AddAttribute(15, "ChildContent", (RenderFragment)(__wrap =>
         {
             __wrap.OpenComponent<EditForm>(0);
             __wrap.AddAttribute(1, "EditContext", _editContext);
-            __wrap.AddAttribute(2, "OnValidSubmit", EventCallback.Factory.Create<EditContext>(this, async _ => await OnValidSubmitAsync()));
+            __wrap.AddAttribute(2, "AdditionalAttributes", new global::System.Collections.Generic.Dictionary<string, object> { ["novalidate"] = "novalidate" });
+            __wrap.AddAttribute(3, "OnValidSubmit", EventCallback.Factory.Create<EditContext>(this, async _ => await OnValidSubmitAsync()));
+            __wrap.AddAttribute(4, "OnInvalidSubmit", EventCallback.Factory.Create<EditContext>(this, async _ => await OnInvalidSubmitAsync()));
         RenderFragment<EditContext> formBody = _ => (RenderFragment)(__b =>
         {
-            __b.OpenComponent<DataAnnotationsValidator>(0);
-            __b.CloseComponent();
-
-            __b.OpenComponent<FluentValidationSummary>(1);
-            __b.AddAttribute(2, "EditContext", _editContext);
-            __b.CloseComponent();
-
-            if (_serverFormLevelErrors.Count > 0)
+            if (_authorizationDenied)
             {
-                __b.OpenComponent<FluentMessageBar>(3);
-                __b.AddAttribute(4, "Intent", MessageBarIntent.Error);
-                __b.AddAttribute(5, "Title", "Validation failed");
-                __b.AddAttribute(6, "AllowDismiss", true);
-                __b.AddAttribute(7, "ChildContent", (RenderFragment)(__msg =>
+                __b.OpenComponent<FluentCard>(0);
+                __b.AddAttribute(1, "ChildContent", (RenderFragment)(__denied =>
                 {
-                    foreach (string error in _serverFormLevelErrors)
-                    {
-                        __msg.OpenElement(0, "div");
-                        __msg.AddContent(1, error);
-                        __msg.CloseElement();
-                    }
+                    __denied.OpenElement(0, "section");
+                    __denied.AddAttribute(1, "aria-labelledby", _formDomId + "-authorization-heading");
+                    __denied.OpenElement(2, "h2");
+                    __denied.AddAttribute(3, "id", _formDomId + "-authorization-heading");
+                    __denied.AddAttribute(4, "tabindex", "-1");
+                    __denied.AddContent(5, _serverWarning?.Title ?? ResolveShellLocalized("UnauthorizedCommandWarningTitle", "Permission required"));
+                    __denied.CloseElement();
+                    __denied.OpenElement(6, "p");
+                    __denied.AddContent(7, _serverWarning?.Detail ?? ResolveShellLocalized("AuthorizationActionUnavailableMessage", "This action is unavailable."));
+                    __denied.CloseElement();
+                    __denied.CloseElement();
                 }));
                 __b.CloseComponent();
             }
-
-            if (_serverWarning is not null)
+            else
             {
-                __b.OpenComponent<FluentMessageBar>(8);
-                __b.AddAttribute(9, "Intent", MessageBarIntent.Warning);
-                __b.AddAttribute(10, "Title", _serverWarning.Kind == CommandWarningKind.RetryableDispatchFailed ? ShellLocalizer["RetryableDispatchFailedTitle"].Value : (_serverWarning.Title ?? _serverWarning.Kind.ToString()));
-                __b.AddAttribute(11, "AllowDismiss", true);
-                __b.AddAttribute(12, "ChildContent", (RenderFragment)(__msg =>
+            __b.OpenComponent<DataAnnotationsValidator>(2);
+            __b.CloseComponent();
+
+            __b.OpenComponent<FcValidationSummary>(3);
+            __b.AddAttribute(4, "EditContext", _editContext);
+            __b.AddAttribute(5, "Fields", BuildValidationFields());
+            __b.AddAttribute(6, "FormLevelErrors", _serverFormLevelErrors);
+            __b.AddAttribute(7, "SummaryId", _formDomId + "-validation-summary");
+            __b.AddComponentReferenceCapture(8, instance => _validationSummary = (FcValidationSummary)instance);
+            __b.CloseComponent();
+
+            if (_serverWarning is not null && !_concurrencyBlocked)
+            {
+                __b.OpenComponent<FluentMessageBar>(9);
+                __b.AddAttribute(10, "Intent", MessageBarIntent.Warning);
+                __b.AddAttribute(11, "Title", _serverWarning.Kind == CommandWarningKind.RetryableDispatchFailed ? ShellLocalizer["RetryableDispatchFailedTitle"].Value : (_serverWarning.Title ?? _serverWarning.Kind.ToString()));
+                __b.AddAttribute(12, "AllowDismiss", true);
+                __b.AddAttribute(13, "ChildContent", (RenderFragment)(__msg =>
                 {
                     string body = _serverWarning.Kind == CommandWarningKind.RetryableDispatchFailed ? ShellLocalizer["RetryableDispatchFailedFallback"].Value : (_serverWarning.Detail ?? _serverWarning.EntityLabel ?? "Please review the warning and try again.");
                     __msg.AddContent(0, body);
@@ -736,27 +903,74 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                 }));
                 __b.CloseComponent();
             }
+            if (_concurrencyBlocked)
+            {
+                __b.OpenComponent<FluentCard>(14);
+                __b.AddAttribute(15, "ChildContent", (RenderFragment)(__blocked =>
+                {
+                    __blocked.OpenElement(0, "section");
+                    __blocked.AddMultipleAttributes(1, new global::System.Collections.Generic.Dictionary<string, object>
+                    {
+                        ["data-testid"] = "fc-command-blocked",
+                        ["role"] = "status",
+                        ["aria-live"] = "polite",
+                        ["aria-atomic"] = "true",
+                    });
+                    __blocked.OpenElement(2, "h2");
+                    __blocked.AddContent(3, ResolveShellLocalized("CommandBlockedTitle", "Command not run"));
+                    __blocked.CloseElement();
+                    __blocked.OpenElement(4, "p");
+                    __blocked.AddContent(5, ResolveShellLocalized("CommandBlockedMessage", "This command did not run. Another command is already in progress."));
+                    __blocked.CloseElement();
+                    if (_activeLifecycleActionAvailable)
+                    {
+                        __blocked.OpenComponent<FluentButton>(6);
+                        __blocked.AddAttribute(7, "Appearance", ButtonAppearance.Outline);
+                        __blocked.AddAttribute(8, "Type", ButtonType.Button);
+                        __blocked.AddAttribute(9, "role", "button");
+                        __blocked.AddAttribute(10, "aria-label", ResolveShellLocalized("ViewActiveCommand", "View active command"));
+                        __blocked.AddAttribute(11, "OnClick", EventCallback.Factory.Create<global::Microsoft.AspNetCore.Components.Web.MouseEventArgs>(this, FocusActiveCommandAsync));
+                        __blocked.AddAttribute(12, "ChildContent", (RenderFragment)(__view => __view.AddContent(0, ResolveShellLocalized("ViewActiveCommand", "View active command"))));
+                        __blocked.CloseComponent();
+                    }
+                    __blocked.CloseElement();
+                }));
+                __b.CloseComponent();
+            }
 
             // Field: TenantId
             if ((!DerivableFieldsHidden || !IsDerivableField("TenantId"))
                 && (ShowFieldsOnly is null || System.Array.IndexOf(ShowFieldsOnly, "TenantId") >= 0))
             {
+            __b.OpenElement(16, "div");
+            __b.AddAttribute(17, "class", "fc-command-field");
             string TenantIdLabel = ResolveLabel("TenantId", "Tenant Id", false);
-            __b.OpenElement(13, "label");
-            __b.AddAttribute(14, "class", "fc-command-field");
-            __b.OpenElement(15, "span");
-            __b.AddAttribute(16, "class", "fc-command-field-label");
-            __b.AddContent(17, TenantIdLabel);
-            if (true) { __b.AddContent(18, " *"); }
-            __b.CloseElement();
-            __b.OpenElement(19, "input");
-            __b.AddAttribute(20, "class", "fc-command-input");
-            __b.AddAttribute(21, "value", _model.TenantId);
-            __b.AddAttribute(22, "oninput", EventCallback.Factory.Create<ChangeEventArgs>(this, e => { _model.TenantId = e.Value?.ToString() ?? string.Empty; NotifyClientFieldChanged("TenantId"); }));
-            __b.SetUpdatesAttributeName("value");
-            __b.AddAttribute(23, "aria-label", TenantIdLabel);
-            __b.AddAttribute(24, "name", "TenantId");
-            __b.AddAttribute(25, "type", "text");
+            __b.OpenComponent<FluentTextInput>(18);
+            __b.AddAttribute(19, "Id", _formDomId + "-TenantId");
+            __b.AddAttribute(20, "data-fc-validation-field", "true");
+            __b.AddAttribute(21, "Class", "fc-command-input");
+            __b.AddAttribute(22, "Value", _model.TenantId);
+            __b.AddAttribute(23, "ValueChanged", EventCallback.Factory.Create<string?>(this, value => { _model.TenantId = value ?? string.Empty; NotifyClientFieldChanged("TenantId"); }));
+            __b.AddAttribute(24, "ValueExpression", (global::System.Linq.Expressions.Expression<Func<string>>)(() => _model.TenantId));
+            __b.AddAttribute(25, "Immediate", true);
+            __b.AddAttribute(26, "Label", TenantIdLabel);
+            __b.AddAttribute(27, "AriaLabel", TenantIdLabel);
+            __b.AddAttribute(28, "Name", "TenantId");
+            __b.AddAttribute(29, "Required", true);
+            __b.AddAttribute(30, "aria-describedby", _formDomId + "-TenantId-error");
+            __b.CloseComponent();
+            __b.OpenElement(31, "div");
+            __b.AddAttribute(32, "id", _formDomId + "-TenantId-error");
+            __b.AddAttribute(33, "class", "fc-command-field-message");
+            if (_editContext is not null)
+            {
+                foreach (string message in _editContext.GetValidationMessages(new FieldIdentifier(_model, "TenantId")))
+                {
+                    __b.OpenElement(34, "div");
+                    __b.AddContent(35, message);
+                    __b.CloseElement();
+                }
+            }
             __b.CloseElement();
             __b.CloseElement();
             }
@@ -765,47 +979,51 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             if ((!DerivableFieldsHidden || !IsDerivableField("Amount"))
                 && (ShowFieldsOnly is null || System.Array.IndexOf(ShowFieldsOnly, "Amount") >= 0))
             {
+            __b.OpenElement(36, "div");
+            __b.AddAttribute(37, "class", "fc-command-field");
             string AmountLabel = ResolveLabel("Amount", "Amount", false);
-            __b.OpenElement(26, "label");
-            __b.AddAttribute(27, "class", "fc-command-field");
-            __b.OpenElement(28, "span");
-            __b.AddAttribute(29, "class", "fc-command-field-label");
-            __b.AddContent(30, AmountLabel);
-            if (true) { __b.AddContent(31, " *"); }
-            __b.CloseElement();
-            __b.OpenElement(32, "input");
-            __b.AddAttribute(33, "class", "fc-command-input");
-            __b.AddAttribute(34, "value", _AmountString ?? _model.Amount.ToString(CultureInfo.CurrentCulture));
-            __b.AddAttribute(35, "oninput", EventCallback.Factory.Create<ChangeEventArgs>(this, e => OnAmountChanged(e.Value?.ToString())));
-            __b.SetUpdatesAttributeName("value");
-            __b.AddAttribute(36, "aria-label", AmountLabel);
-            __b.AddAttribute(37, "name", "Amount");
-            __b.AddAttribute(38, "type", "text");
-            __b.AddAttribute(39, "inputmode", "numeric");
-            __b.AddAttribute(40, "aria-invalid", !string.IsNullOrEmpty(_AmountParseError));
-            __b.CloseElement();
-            if (!string.IsNullOrEmpty(_AmountParseError))
+            __b.OpenComponent<FluentTextInput>(38);
+            __b.AddAttribute(39, "Id", _formDomId + "-Amount");
+            __b.AddAttribute(40, "data-fc-validation-field", "true");
+            __b.AddAttribute(41, "Class", "fc-command-input");
+            __b.AddAttribute(42, "Value", _AmountString ?? _model.Amount.ToString(CultureInfo.CurrentCulture));
+            __b.AddAttribute(43, "ValueChanged", EventCallback.Factory.Create<string?>(this, OnAmountChanged));
+            __b.AddAttribute(44, "ValueExpression", (global::System.Linq.Expressions.Expression<Func<string?>>)(() => _AmountString));
+            __b.AddAttribute(45, "ValidationFieldFor", (global::System.Linq.Expressions.Expression<Func<Int32>>)(() => _model.Amount));
+            __b.AddAttribute(46, "Immediate", true);
+            __b.AddAttribute(47, "Label", AmountLabel);
+            __b.AddAttribute(48, "AriaLabel", AmountLabel);
+            __b.AddAttribute(49, "Name", "Amount");
+            __b.AddAttribute(50, "Required", true);
+            __b.AddAttribute(51, "InputMode", TextInputMode.Numeric);
+            __b.AddAttribute(52, "aria-describedby", _formDomId + "-Amount-error");
+            __b.AddAttribute(53, "aria-invalid", !string.IsNullOrEmpty(_AmountParseError) ? "true" : "false");
+            __b.CloseComponent();
+            __b.OpenElement(54, "div");
+            __b.AddAttribute(55, "id", _formDomId + "-Amount-error");
+            __b.AddAttribute(56, "class", "fc-command-field-message");
+            if (_editContext is not null)
             {
-                __b.OpenElement(41, "div");
-                __b.AddAttribute(42, "class", "fc-command-field-message");
-                __b.AddAttribute(43, "role", "alert");
-                __b.AddContent(44, _AmountParseError);
-                __b.CloseElement();
+                foreach (string message in _editContext.GetValidationMessages(new FieldIdentifier(_model, "Amount")))
+                {
+                    __b.OpenElement(57, "div");
+                    __b.AddContent(58, message);
+                    __b.CloseElement();
+                }
             }
+            __b.CloseElement();
             __b.CloseElement();
             }
 
-            __b.OpenComponent<FluentButton>(45);
-            __b.AddAttribute(46, "Type", ButtonType.Submit);
-            __b.AddAttribute(47, "role", "button");
-            __b.AddAttribute(48, "aria-label", "Send IncrementCommand");
+            __b.OpenComponent<FluentButton>(59);
+            __b.AddAttribute(60, "Id", _formDomId + "-submit");
+            __b.AddAttribute(61, "Type", ButtonType.Submit);
+            __b.AddAttribute(62, "role", "button");
+            __b.AddAttribute(63, "aria-label", "Send IncrementCommand");
             // Enable submit in Idle, Confirmed, or Rejected (terminals allow retry) -- patch P3.
-            __b.AddAttribute(49, "Disabled",
-                !_interactiveReady
-                || (LifecycleState.Value.State != CommandLifecycleState.Idle
-                && LifecycleState.Value.State != CommandLifecycleState.Confirmed
-                && LifecycleState.Value.State != CommandLifecycleState.Rejected));
-            __b.AddAttribute(50, "ChildContent", (RenderFragment)(__btn =>
+            __b.AddAttribute(64, "Disabled",
+                !_interactiveReady);
+            __b.AddAttribute(65, "ChildContent", (RenderFragment)(__btn =>
             {
                 if (LifecycleState.Value.State == CommandLifecycleState.Submitting)
                 {
@@ -816,8 +1034,9 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                 __btn.AddContent(2, "Send IncrementCommand");
             }));
             __b.CloseComponent();
+            }
         });
-            __wrap.AddAttribute(3, "ChildContent", formBody);
+            __wrap.AddAttribute(5, "ChildContent", formBody);
             __wrap.CloseComponent();
         }));
         builder.CloseComponent();
@@ -863,6 +1082,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         {
             _AmountParseError = "A number is required.";
             NotifyClientFieldChanged("Amount");
+            UpdateClientParseError("Amount", _AmountParseError);
             return;
         }
         if (int.TryParse(value, NumberStyles.Integer | NumberStyles.AllowLeadingSign | NumberStyles.AllowTrailingWhite | NumberStyles.AllowLeadingWhite, CultureInfo.CurrentCulture, out var parsed))
@@ -875,6 +1095,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             _AmountParseError = "Invalid number format.";
         }
         NotifyClientFieldChanged("Amount");
+        UpdateClientParseError("Amount", _AmountParseError);
     }
 
     // Story 11.21 — cached LoggerMessage delegates (CA1848/CA1873). Generated code cannot use
