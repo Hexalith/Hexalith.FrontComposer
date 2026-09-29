@@ -23,4 +23,10 @@ public class PurgeSpecimenRecordCommand {
     [Display(Description = "Why this purge is required.")]
     [ProjectionFieldGroup("Purge details")]
     public string Reason { get; set; } = "QA destructive confirmation coverage";
+
+    // Story 13.3 VG7-02 — a required nullable enum renders as a Fluent select, so browser evidence
+    // covers the invalid state and description of a non-text editor's focusable control.
+    [Required]
+    [Display(Name = "Retention", Description = "How long the purged record stays recoverable.")]
+    public PurgeRetention? Retention { get; set; }
 }

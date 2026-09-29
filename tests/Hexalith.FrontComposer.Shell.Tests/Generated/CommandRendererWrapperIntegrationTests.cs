@@ -944,22 +944,60 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
     }
 
     [Fact]
-    public async Task GeneratedFormMappedRejectionOnAHiddenFieldKeepsItsMessageUnlinked() {
+    public async Task GeneratedFormRejectionMappedOnlyToAHiddenFieldTakesTheUnmappedRecoveryPath() {
         Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => new MappedRejectingCommandService()));
         await InitializeStoreAsync();
+        IState<TwoFieldCompactCommandLifecycleState> state = Services.GetRequiredService<IState<TwoFieldCompactCommandLifecycleState>>();
         IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>(parameters => parameters
             .Add(p => p.InitialValue, new TwoFieldCompactCommand { Name = "hidden name", Amount = 7 })
             .Add(p => p.ShowFieldsOnly, new[] { nameof(TwoFieldCompactCommand.Amount) }));
 
         cut.Find("form").Submit();
 
-        // BH5-05 / E3-06 — a mapped error on a field this surface hides stays readable in the focused
-        // summary, never as a link to an unrendered control.
+        // AA7-01 — Name is not rendered on this surface, so the operator can neither see nor edit the only
+        // mapped field. The rejection takes the unmapped path: the generic rejection bar with its AM-14
+        // phase and every recovery action, and no summary naming the hidden field.
         cut.WaitForAssertion(() => {
+            state.Value.State.ShouldBe(CommandLifecycleState.Rejected);
+            state.Value.HasMappedFieldErrors.ShouldBeFalse();
+            _ = cut.Find("[data-fc-phase='rejected']");
+            _ = cut.Find("[data-testid='fc-rejected']");
+            _ = cut.Find("[data-testid='fc-rejection-edit-retry']");
+            _ = cut.Find("[data-testid='fc-rejection-return']");
+            cut.FindAll("[data-testid='fc-rejected-mapped']").ShouldBeEmpty();
+            cut.FindAll("[data-testid='fc-validation-summary']").ShouldBeEmpty();
+            cut.Markup.ShouldNotContain("Name conflicts with current state.");
+            cut.Markup.ShouldContain("value=\"7\"", Case.Insensitive);
+        });
+        FcFocusModule.Invocations.ShouldNotContain(invocation => invocation.Identifier == "focusValidationOutcome");
+    }
+
+    [Fact]
+    public async Task GeneratedFormRejectionMappedToVisibleAndHiddenFieldsStaysMapped() {
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => new VisibleAndHiddenMappedRejectingCommandService()));
+        await InitializeStoreAsync();
+        IState<TwoFieldCompactCommandLifecycleState> state = Services.GetRequiredService<IState<TwoFieldCompactCommandLifecycleState>>();
+        IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new TwoFieldCompactCommand { Name = "hidden name", Amount = 7 })
+            .Add(p => p.ShowFieldsOnly, new[] { nameof(TwoFieldCompactCommand.Amount) }));
+
+        cut.Find("form").Submit();
+
+        // AA7-01 / BH5-05 — a rendered field received a message, so the rejection stays mapped: the
+        // visible field is linked, and the hidden field's message stays readable as an unlinked entry.
+        cut.WaitForAssertion(() => {
+            state.Value.State.ShouldBe(CommandLifecycleState.Rejected);
+            state.Value.HasMappedFieldErrors.ShouldBeTrue();
             AngleSharp.Dom.IElement summary = cut.Find("[data-fc-validation-kind='mapped-server-rejection']");
-            AngleSharp.Dom.IElement entry = summary.QuerySelectorAll("li").ShouldHaveSingleItem();
-            entry.QuerySelector("a").ShouldBeNull();
-            entry.TextContent.Trim().ShouldBe("Name conflicts with current state.");
+            AngleSharp.Dom.IElement[] entries = [.. summary.QuerySelectorAll("li")];
+            entries.Length.ShouldBe(2);
+            AngleSharp.Dom.IElement link = entries[0].QuerySelector("a").ShouldNotBeNull();
+            link.GetAttribute("data-fc-validation-target").ShouldNotBeNull().ShouldEndWith("-Amount");
+            link.TextContent.ShouldContain("Amount exceeds the allowed limit.");
+            entries[1].QuerySelector("a").ShouldBeNull();
+            entries[1].TextContent.Trim().ShouldBe("Name conflicts with current state.");
+            cut.FindAll("[data-testid='fc-rejected']").ShouldBeEmpty();
+            _ = cut.Find("[data-testid='fc-rejected-mapped']");
         });
     }
 
@@ -1042,6 +1080,11 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         IRenderedComponent<FieldContractEditorsCommandForm> cut = Render<FieldContractEditorsCommandForm>();
         string formId = cut.Find("[data-fc-command-form='true']").Id.ShouldNotBeNull();
 
+        // VG7-02 — a null nullable enum selects no option instead of showing the zero member.
+        AngleSharp.Dom.IElement escalationSelect = cut.Find("[name='" + nameof(FieldContractEditorsCommand.EscalationPriority) + "']");
+        escalationSelect.QuerySelectorAll("fluent-option").Length.ShouldBe(3);
+        escalationSelect.QuerySelectorAll("fluent-option[selected]").ShouldBeEmpty();
+
         // VG4-10 — non-text editors carry the same rendered field contract as text inputs.
         foreach (string property in new[] { nameof(FieldContractEditorsCommand.DueDate), nameof(FieldContractEditorsCommand.Priority), nameof(FieldContractEditorsCommand.Urgent) }) {
             AngleSharp.Dom.IElement editor = cut.FindAll("[data-fc-validation-field='true']")
@@ -1059,6 +1102,15 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             AngleSharp.Dom.IElement link = cut.Find("[data-testid='fc-validation-summary'] [data-fc-validation-target]");
             link.GetAttribute("data-fc-validation-target").ShouldBe(dateId);
             link.TextContent.ShouldContain("Due date");
+
+            // VG7-02 — the required nullable enum's own Fluent field renders its validation message once,
+            // because the select is bound to the nullable model property rather than a proxy.
+            string escalationId = formId + "-" + nameof(FieldContractEditorsCommand.EscalationPriority);
+            AngleSharp.Dom.IElement escalation = cut.FindAll("[data-fc-validation-field='true']").Single(element => element.Id == escalationId);
+            escalation.GetAttribute("data-fc-invalid").ShouldBe("true");
+            AngleSharp.Dom.IElement escalationField = escalation.Closest("fluent-field").ShouldNotBeNull();
+            escalationField.QuerySelectorAll(".fluent-validation-message").ShouldHaveSingleItem()
+                .TextContent.Trim().ShouldBe("The Escalation priority field is required.");
         });
     }
 
@@ -1141,6 +1193,67 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             && invocation.Arguments[0]!.ToString()!.EndsWith("-authorization-heading", StringComparison.Ordinal));
     }
 
+    [Theory]
+    [MemberData(nameof(ClearedAuthorizationDenials))]
+    public async Task ProtectedFormReturnsWithItsEnteredValuesWhenADenialClears(
+        CommandAuthorizationDecision block,
+        CommandAuthorizationDecision restore,
+        string? expectedWarning) {
+        MutableAuthorizationEvaluator evaluator = new(CommandAuthorizationDecision.Allowed("corr-allowed"));
+        NotifyingAuthenticationStateProvider authentication = new();
+        Services.Replace(ServiceDescriptor.Singleton<AuthenticationStateProvider>(authentication));
+        Services.Replace(ServiceDescriptor.Scoped<ICommandAuthorizationEvaluator>(_ => evaluator));
+        await InitializeStoreAsync();
+
+        IRenderedComponent<ProtectedTwoFieldCompactCommandForm> cut = Render<ProtectedTwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new ProtectedTwoFieldCompactCommand { Name = "initial name", Amount = 4 }));
+        cut.WaitForAssertion(() => cut.FindAll("[data-fc-validation-field='true']").Count.ShouldBe(2));
+        cut.Find("fluent-text-input[name='Name']").Change("edited name");
+
+        evaluator.Decision = block;
+        await cut.InvokeAsync(authentication.Notify);
+        cut.WaitForAssertion(() => {
+            _ = cut.Find("section[data-fc-authorization-denied='true'] [id$='-authorization-heading']");
+            cut.FindAll("[data-fc-validation-field='true']").ShouldBeEmpty();
+        });
+
+        evaluator.Decision = restore;
+        await cut.InvokeAsync(authentication.Notify);
+
+        // VG7-01 — a denial or sign-in requirement that clears gives the operator the form back, with the
+        // values entered before the denial, instead of a permanent "Permission required" card.
+        cut.WaitForAssertion(() => {
+            cut.FindAll("[data-fc-authorization-denied]").ShouldBeEmpty();
+            cut.FindAll("[id$='-authorization-heading']").ShouldBeEmpty();
+            IReadOnlyList<AngleSharp.Dom.IElement> editors = cut.FindAll("[data-fc-validation-field='true']");
+            editors.Count.ShouldBe(2);
+            editors[0].GetAttribute("name").ShouldBe("Name");
+            editors[0].GetAttribute("value").ShouldBe("edited name");
+            editors[1].GetAttribute("value").ShouldBe("4");
+            if (expectedWarning is null) {
+                cut.FindAll("fluent-message-bar").ShouldBeEmpty();
+            }
+            else {
+                cut.Find("fluent-message-bar").TextContent.ShouldContain(expectedWarning, Case.Insensitive);
+            }
+        });
+    }
+
+    [Fact]
+    public async Task GeneratedFormOmitsADeclaredGroupWhenEveryMemberIsHidden() {
+        await InitializeStoreAsync();
+
+        IRenderedComponent<GroupedFieldsCommandForm> cut = Render<GroupedFieldsCommandForm>(parameters => parameters
+            .Add(p => p.ShowFieldsOnly, new[] { nameof(GroupedFieldsCommand.MessageId) }));
+
+        // VG7-03 / VG4-09 — ShowFieldsOnly names neither group member, so no empty "Change details"
+        // fieldset renders without fields.
+        cut.WaitForAssertion(() => _ = cut.Find("form"));
+        cut.FindAll("fieldset[data-fc-field-group]").ShouldBeEmpty();
+        cut.FindAll("[data-fc-validation-field='true']").ShouldBeEmpty();
+        cut.Markup.ShouldNotContain("Change details");
+    }
+
     [Fact]
     public async Task ProtectedGeneratedRenderers_AllModes_SurfaceAuthorizationGating() {
         var evaluator = new FixedAuthorizationEvaluator(CommandAuthorizationDecision.Pending("corr-pending"));
@@ -1164,6 +1277,13 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         => new() {
             { CommandAuthorizationDecision.Denied("corr-denied"), CommandWarningKind.Forbidden },
             { CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Unauthenticated, "corr-unauthenticated"), CommandWarningKind.Forbidden },
+        };
+
+    public static TheoryData<CommandAuthorizationDecision, CommandAuthorizationDecision, string?> ClearedAuthorizationDenials()
+        => new() {
+            { CommandAuthorizationDecision.Denied("corr-denied"), CommandAuthorizationDecision.Allowed("corr-restored"), null },
+            { CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Unauthenticated, "corr-unauthenticated"), CommandAuthorizationDecision.Allowed("corr-restored"), null },
+            { CommandAuthorizationDecision.Denied("corr-denied"), CommandAuthorizationDecision.Pending("corr-pending"), "Checking permission" },
         };
 
     public static TheoryData<CommandAuthorizationReason> TransientAuthorizationFailures()
@@ -1255,6 +1375,34 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
                         ["Name"] = NameErrors,
                     },
                     globalErrors));
+    }
+
+    private sealed class VisibleAndHiddenMappedRejectingCommandService : ICommandServiceWithLifecycle {
+        private static readonly string[] NameErrors = ["Name conflicts with current state."];
+        private static readonly string[] AmountErrors = ["Amount exceeds the allowed limit."];
+
+        public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
+            where TCommand : class
+            => DispatchAsync(command, onLifecycleChange: null, cancellationToken);
+
+        public Task<CommandResult> DispatchAsync<TCommand>(
+            TCommand command,
+            Action<CommandLifecycleState, string?>? onLifecycleChange,
+            CancellationToken cancellationToken = default)
+            where TCommand : class
+            => throw CommandRejectedException.FromProblem(
+                "Change rejected",
+                "Correct the linked fields and retry.",
+                new ProblemDetailsPayload(
+                    "Change rejected",
+                    "Correct the linked fields and retry.",
+                    409,
+                    null,
+                    new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal) {
+                        ["Name"] = NameErrors,
+                        ["Amount"] = AmountErrors,
+                    },
+                    Array.Empty<string>()));
     }
 
     private sealed class MappedThenAcceptingCommandService : ICommandServiceWithLifecycle {

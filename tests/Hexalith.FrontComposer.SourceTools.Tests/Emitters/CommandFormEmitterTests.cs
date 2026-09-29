@@ -194,13 +194,42 @@ public class CommandFormEmitterTests {
         }
 
         Regex.Count(body, @"fields\.Add\(").ShouldBe(3);
+        // BH7-13 — descriptors carry no error id; fc-focus.js owns the Fluent error node's id.
+        body.ShouldNotContain("-error");
         source.ShouldContain("                IsFieldRendered(\"RecordId\")");
         source.ShouldContain("                || IsFieldRendered(\"Reason\")");
         source.ShouldNotContain("!IsDerivableField(\"");
+
+        // AA7-01 — a rejection counts as mapped only through the same rendered-field predicate, and a
+        // rejection mapped only to hidden fields clears its store and takes the unmapped path.
+        int rendered = source.IndexOf("private bool HasRenderedRejectionMessage()", StringComparison.Ordinal);
+        rendered.ShouldBeGreaterThan(0);
+        string renderedBody = source[rendered..source.IndexOf("        return false;", rendered, StringComparison.Ordinal)];
+        foreach (string property in new[] { "TenantId", "RecordId", "Reason" }) {
+            renderedBody.ShouldContain("if (IsFieldRendered(\"" + property + "\") && _rejectionValidationMessages[new FieldIdentifier(_model, \"" + property + "\")].Any()) return true;");
+        }
+
+        int rejection = source.IndexOf("catch (CommandRejectedException ex)", StringComparison.Ordinal);
+        int mapped = source.IndexOf("hasMappedFieldErrors = rejectionValidation.HasMappedFieldErrors && HasRenderedRejectionMessage();", rejection, StringComparison.Ordinal);
+        int clearHidden = source.IndexOf("_rejectionValidationMessages.Clear();", mapped, StringComparison.Ordinal);
+        int dispatch = source.IndexOf(".RejectedAction(correlationId", rejection, StringComparison.Ordinal);
+        mapped.ShouldBeGreaterThan(rejection);
+        clearHidden.ShouldBeGreaterThan(mapped);
+        clearHidden.ShouldBeLessThan(dispatch);
     }
 
     [Fact]
-    public void EmitNullableSwitchAndEnumBindNonNullableProxiesWithModelValidation() {
+    public void EmitRejectionMappingWithoutEditableFieldsNeverCountsAsMapped() {
+        CommandFormModel form = BuildForm([]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        // AA7-01 — a surface with no linkable editor keeps every rejection on the unmapped path.
+        source.ShouldContain("private static bool HasRenderedRejectionMessage() => false;");
+        source.ShouldContain("hasMappedFieldErrors = rejectionValidation.HasMappedFieldErrors && HasRenderedRejectionMessage();");
+    }
+
+    [Fact]
+    public void EmitNullableSwitchBindsAProxyAndNullableEnumBindsTheNullableModelProperty() {
         CommandFormModel form = BuildForm([
             new FormFieldModel("Enabled", "Boolean", FormFieldTypeCategory.Switch, "Enabled", false, false, null),
             new FormFieldModel("NotifyOwner", "Boolean", FormFieldTypeCategory.Switch, "Notify owner", true, false, null),
@@ -210,24 +239,30 @@ public class CommandFormEmitterTests {
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
         string masked = GeneratedRenderTreeText.MaskSequenceArguments(source);
 
-        // AA5-01 — a nullable bool/enum binds a non-nullable proxy (the numeric split-binding pattern),
-        // and ValidationFieldFor keeps validation on the nullable model property, so the form compiles.
+        // AA5-01 — a nullable bool binds a non-nullable proxy (the numeric split-binding pattern), and
+        // ValidationFieldFor keeps validation on the nullable model property, so the form compiles.
         source.ShouldContain("private bool _NotifyOwnerProxy => _model.NotifyOwner ?? false;");
-        source.ShouldContain("private Counter.Domain.Priority _EscalationProxy => _model.Escalation.GetValueOrDefault();");
         masked.ShouldContain("__b.AddAttribute(#, \"Value\", _NotifyOwnerProxy);");
         masked.ShouldContain("__b.AddAttribute(#, \"ValueExpression\", (global::System.Linq.Expressions.Expression<Func<bool>>)(() => _NotifyOwnerProxy));");
         masked.ShouldContain("__b.AddAttribute(#, \"ValidationFieldFor\", (global::System.Linq.Expressions.Expression<Func<bool?>>)(() => _model.NotifyOwner));");
-        masked.ShouldContain("__b.AddAttribute(#, \"Value\", _EscalationProxy);");
-        masked.ShouldContain("__b.AddAttribute(#, \"ValueExpression\", (global::System.Linq.Expressions.Expression<Func<Counter.Domain.Priority>>)(() => _EscalationProxy));");
-        masked.ShouldContain("__b.AddAttribute(#, \"ValidationFieldFor\", (global::System.Linq.Expressions.Expression<Func<Counter.Domain.Priority?>>)(() => _model.Escalation));");
         masked.ShouldContain("EventCallback.Factory.Create<bool>(this, v => { _model.NotifyOwner = v; NotifyClientFieldChanged(\"NotifyOwner\"); })");
-        masked.ShouldContain("EventCallback.Factory.Create<Counter.Domain.Priority>(this, v => { _model.Escalation = v; NotifyClientFieldChanged(\"Escalation\"); })");
+
+        // VG7-02 — a nullable enum binds FluentSelect<TEnum, TEnum?> to the nullable model property, so
+        // the select's own Fluent field renders the model field's validation message (the select ignores
+        // ValidationFieldFor) and a null value selects no option.
+        masked.ShouldContain("__b.OpenComponent<FluentSelect<Counter.Domain.Priority, Counter.Domain.Priority?>>(#);");
+        masked.ShouldContain("__b.AddAttribute(#, \"Value\", _model.Escalation);");
+        masked.ShouldContain("__b.AddAttribute(#, \"ValueExpression\", (global::System.Linq.Expressions.Expression<Func<Counter.Domain.Priority?>>)(() => _model.Escalation));");
+        masked.ShouldContain("EventCallback.Factory.Create<Counter.Domain.Priority?>(this, v => { _model.Escalation = v; NotifyClientFieldChanged(\"Escalation\"); })");
+        source.ShouldNotContain("_EscalationProxy");
 
         // Non-nullable editors keep their direct model binding and need no proxy.
+        masked.ShouldContain("__b.OpenComponent<FluentSelect<Counter.Domain.Priority, Counter.Domain.Priority>>(#);");
         masked.ShouldContain("__b.AddAttribute(#, \"ValueExpression\", (global::System.Linq.Expressions.Expression<Func<bool>>)(() => _model.Enabled));");
         masked.ShouldContain("__b.AddAttribute(#, \"ValueExpression\", (global::System.Linq.Expressions.Expression<Func<Counter.Domain.Priority>>)(() => _model.Priority));");
         source.ShouldNotContain("_EnabledProxy");
         source.ShouldNotContain("_PriorityProxy");
+        Regex.Count(masked, "\"ValidationFieldFor\"").ShouldBe(1);
     }
 
     [Fact]

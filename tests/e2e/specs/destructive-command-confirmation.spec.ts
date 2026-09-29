@@ -110,14 +110,18 @@ test.describe('Story 4.1: destructive command confirmation', () => {
     await expect(groupedFields.nth(0)).toHaveAttribute('name', 'RecordId');
     await expect(groupedFields.nth(1)).toHaveAttribute('name', 'Reason');
 
+    // Retention stays unchosen, so the required nullable enum select is invalid beside Record Id.
     await fillDestructiveFields(form, '', 'QA story 4.1 validation blocks dialog');
-    await submitDestructiveCommand(form);
+    await submitDestructiveCommand(form, { chooseRetention: false });
 
     const summary = page.getByTestId('fc-validation-summary');
     await expect(summary.getByText('The Record Id field is required.')).toBeVisible();
     await expect(summary).toBeFocused();
     // BH3-17 — the default message already names its field, so the link does not repeat the label.
-    await expect(summary.locator('[data-fc-validation-target]')).toHaveText('The Record Id field is required.');
+    await expect(summary.locator('[data-fc-validation-target]')).toHaveText([
+      'The Record Id field is required.',
+      'The Retention field is required.',
+    ]);
 
     // Story 13.3 VR-01 / BH3-08 / BH3-09 — the Chromium accessibility tree of each focusable textbox
     // reports the invalid state and is described by its Fluent-rendered description and error; each
@@ -131,17 +135,42 @@ test.describe('Story 4.1: destructive command confirmation', () => {
         invalid: undefined,
         description: 'Why this purge is required.',
       });
+      // Story 13.3 VG7-02 — a Fluent select's focusable control is the combobox slotted into the light
+      // DOM, not a shadow input; it too reports the invalid state and is described by its error.
+      await expect.poll(async () => axField(page, `.fc-command-form[aria-label="${FORM_LABEL}"] fluent-dropdown[name="Retention"]`), { timeout: 10_000 }).toMatchObject({
+        role: 'combobox',
+        invalid: 'true',
+        description: expect.stringMatching(/How long the purged record stays recoverable\.[\s\S]*The Retention field is required\./u),
+      });
     }
     const recordField = form.locator('fluent-field', { has: page.locator('label[slot="label"]:text-is("Record Id")') });
     await expect(recordField.locator('.fluent-validation-message')).toHaveCount(1);
     await expect(recordField.getByText('The Record Id field is required.', { exact: true })).toHaveCount(1);
     await expect(recordField.locator('[slot="message"] .fc-command-field-description')).toHaveText('Record to purge.');
-    await summary.locator('[data-fc-validation-target]').click();
+    const retentionField = form.locator('fluent-field', { has: page.locator('label[slot="label"]:text-is("Retention")') });
+    await expect(retentionField.locator('.fluent-validation-message')).toHaveCount(1);
+    await expect(retentionField.getByText('The Retention field is required.', { exact: true })).toHaveCount(1);
+    await summary.locator('[data-fc-validation-target]').first().click();
     await expect(fieldEditorByLabel(form, 'Record Id')).toBeFocused();
+    if (test.info().project.name === 'chromium') {
+      // A Fluent select forwards focus to the combobox it slots into its light DOM; the summary link
+      // must count that as reaching the select, not fall back to another field.
+      await summary.locator('[data-fc-validation-target]').nth(1).click();
+      await expect(form.locator('fluent-dropdown[name="Retention"] > [slot="control"]')).toBeFocused();
+    }
     await expect(destructiveDialog(page)).toHaveCount(0);
     await lifecycle.expectState(COMMAND_ID, 'idle');
 
     await fillDestructiveFields(form, 'FC-1002', 'QA story 4.1 rapid submit gate');
+    await chooseRetention(form);
+    // A corrected select drops its invalid state and its single error.
+    if (test.info().project.name === 'chromium') {
+      await expect.poll(async () => axField(page, `.fc-command-form[aria-label="${FORM_LABEL}"] fluent-dropdown[name="Retention"]`), { timeout: 10_000 }).toMatchObject({
+        invalid: undefined,
+        description: 'How long the purged record stays recoverable.',
+      });
+    }
+    await expect(retentionField.locator('.fluent-validation-message')).toHaveCount(0);
     await form.getByRole('button', { name: ACTION_LABEL }).dblclick();
 
     await expect(destructiveDialog(page)).toHaveCount(1);
@@ -158,8 +187,10 @@ test.describe('Story 4.1: destructive command confirmation', () => {
 
     await gotoTypeSpecimen(page);
     const form = destructiveForm(page);
-    // Open the real settings modal only once the circuit is interactive, so the click is not lost.
+    // Open the real settings modal only once the circuit is interactive, so the click is not lost. A
+    // valid form makes the programmatic press reach the confirmation gate, not client validation.
     await waitForGeneratedFormReady(form);
+    await chooseRetention(form);
     await page.getByTestId('fc-settings-button').click();
     const settings = page.getByTestId('fc-settings-dialog');
     await expect(settings).toBeVisible();
@@ -293,14 +324,20 @@ test.describe('Story 4.1: destructive command confirmation', () => {
 });
 
 // Reads the Chromium accessibility tree (not the DOM) for the focusable control of one generated
-// editor: the input inside the Fluent editor's shadow root, found from the editor host selector.
-const axField = async (page: Page, hostSelector: string): Promise<{ invalid?: string; description?: string }> => {
+// editor, found from the editor host selector: the input inside a text-like editor's shadow root, or
+// the control a Fluent select slots into the light DOM.
+const axField = async (
+  page: Page,
+  hostSelector: string,
+): Promise<{ role?: string; invalid?: string; description?: string }> => {
   const session = await page.context().newCDPSession(page);
   try {
     const { result } = await session.send('Runtime.evaluate', {
       expression: `(() => {
         const host = document.querySelector(${JSON.stringify(hostSelector)});
-        return host?.shadowRoot?.querySelector('input, textarea') ?? host;
+        return host?.shadowRoot?.querySelector('input, textarea')
+          ?? host?.querySelector(':scope > [slot="control"]')
+          ?? host;
       })()`,
     }) as { result: { objectId?: string } };
     if (!result.objectId) return {};
@@ -309,6 +346,7 @@ const axField = async (page: Page, hostSelector: string): Promise<{ invalid?: st
       fetchRelatives: false,
     }) as {
       nodes: Array<{
+        role?: { value?: string };
         description?: { value?: string };
         properties?: Array<{ name: string; value?: { value?: unknown } }>;
       }>;
@@ -316,6 +354,7 @@ const axField = async (page: Page, hostSelector: string): Promise<{ invalid?: st
     const node = nodes[0];
     const invalid = node?.properties?.find((property) => property.name === 'invalid')?.value?.value;
     return {
+      role: node?.role?.value,
       invalid: invalid === undefined || invalid === 'false' ? undefined : String(invalid),
       description: node?.description?.value,
     };
@@ -342,7 +381,21 @@ const fillDestructiveFields = async (form: Locator, recordId: string, reason: st
   await fillFieldByLabel(form, 'Reason', reason);
 };
 
-const submitDestructiveCommand = async (form: Locator): Promise<void> => {
+// The required Retention select starts unchosen; a valid purge picks a retention first.
+const chooseRetention = async (form: Locator, option = 'Thirty Days'): Promise<void> => {
   await waitForGeneratedFormReady(form);
+  const control = form.locator('fluent-dropdown[name="Retention"] > [slot="control"]');
+  if ((await control.textContent())?.trim() === option) return;
+  await control.click();
+  await form.locator('fluent-dropdown[name="Retention"] fluent-option', { hasText: option }).click();
+  await expect(control).toHaveText(option);
+};
+
+const submitDestructiveCommand = async (
+  form: Locator,
+  { chooseRetention: withRetention = true }: { chooseRetention?: boolean } = {},
+): Promise<void> => {
+  await waitForGeneratedFormReady(form);
+  if (withRetention) await chooseRetention(form);
   await form.getByRole('button', { name: ACTION_LABEL }).click();
 };

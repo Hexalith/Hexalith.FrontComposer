@@ -470,7 +470,10 @@ function focusTarget(target) {
     }
     target.scrollIntoView({ block: 'nearest' });
     target.focus({ preventScroll: true });
-    return document.activeElement === target;
+    // A Fluent select (fluent-dropdown) forwards focus to the combobox it slots into its light DOM,
+    // so focus that lands inside the target also counts as focusing it.
+    const active = document.activeElement;
+    return active === target || (active instanceof Node && target.contains(active));
 }
 
 function cssEscape(value) {

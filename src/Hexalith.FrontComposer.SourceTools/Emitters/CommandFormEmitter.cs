@@ -851,10 +851,6 @@ public static class CommandFormEmitter {
                 // this proxy, and ValidationFieldFor keeps validation on the model property.
                 _ = sb.AppendLine("    private bool _" + field.PropertyName + "Proxy => _model." + field.PropertyName + " ?? false;");
             }
-            else if (field.IsNullable && field.TypeCategory == FormFieldTypeCategory.Select) {
-                string enumFqn = field.EnumFullyQualifiedName ?? "object";
-                _ = sb.AppendLine("    private " + enumFqn + " _" + field.PropertyName + "Proxy => _model." + field.PropertyName + ".GetValueOrDefault();");
-            }
         }
 
         if (form.Fields.Count > 0) {
@@ -1660,7 +1656,14 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                _rejectionValidationMessages.Clear();");
         _ = sb.AppendLine("                var rejectionValidation = global::Hexalith.FrontComposer.Shell.Services.Validation.ServerValidationApplicator.ApplyRejection(_rejectionValidationMessages, ex, _serverValidationAllowlist, _model!);");
-        _ = sb.AppendLine("                hasMappedFieldErrors = rejectionValidation.HasMappedFieldErrors;");
+        _ = sb.AppendLine("                // AA7-01 — a rejection counts as mapped only when a field this surface renders received a");
+        _ = sb.AppendLine("                // message. One mapped only to hidden fields would leave the operator a summary naming a field");
+        _ = sb.AppendLine("                // they cannot edit and no recovery action, so it takes the unmapped path instead.");
+        _ = sb.AppendLine("                hasMappedFieldErrors = rejectionValidation.HasMappedFieldErrors && HasRenderedRejectionMessage();");
+        _ = sb.AppendLine("                if (!hasMappedFieldErrors)");
+        _ = sb.AppendLine("                {");
+        _ = sb.AppendLine("                    _rejectionValidationMessages.Clear();");
+        _ = sb.AppendLine("                }");
         _ = sb.AppendLine("                // VR-03 — an unmapped rejection stays in its lifecycle region; its text never reaches a");
         _ = sb.AppendLine("                // summary. A mapped rejection lists its safe form-level messages beside the field links.");
         _ = sb.AppendLine("                _serverFormLevelErrors = hasMappedFieldErrors ? rejectionValidation.UnmappedMessages : System.Array.Empty<string>();");
@@ -1741,6 +1744,9 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("    private static FcValidationFieldDescriptor[] BuildValidationFields()");
             _ = sb.AppendLine("        => System.Array.Empty<FcValidationFieldDescriptor>();");
             _ = sb.AppendLine();
+            _ = sb.AppendLine("    /// <summary>Story 13.3 AA7-01 — this surface renders no editable field, so no rejection message is linkable.</summary>");
+            _ = sb.AppendLine("    private static bool HasRenderedRejectionMessage() => false;");
+            _ = sb.AppendLine();
             return;
         }
 
@@ -1756,10 +1762,25 @@ public static class CommandFormEmitter {
             string propertyName = EscapeString(field.PropertyName);
             string staticLabel = EscapeString(field.StaticLabel);
             string hasExplicitDisplay = field.HasExplicitDisplayName ? "true" : "false";
-            _ = sb.AppendLine("        if (IsFieldRendered(\"" + propertyName + "\")) fields.Add(new(\"" + propertyName + "\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\", " + hasExplicitDisplay + "), _formDomId + \"-" + propertyName + "\", _formDomId + \"-" + propertyName + "-error\"));");
+            _ = sb.AppendLine("        if (IsFieldRendered(\"" + propertyName + "\")) fields.Add(new(\"" + propertyName + "\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\", " + hasExplicitDisplay + "), _formDomId + \"-" + propertyName + "\"));");
         }
 
         _ = sb.AppendLine("        return fields.ToArray();");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+
+        // Story 13.3 AA7-01 — the same rendered-field predicate as the descriptors above: a rejection is
+        // mapped only when a linkable field on this surface received one of its messages.
+        _ = sb.AppendLine("    /// <summary>Story 13.3 AA7-01 — whether a field rendered on this surface received a rejection message.</summary>");
+        _ = sb.AppendLine("    private bool HasRenderedRejectionMessage()");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        if (_rejectionValidationMessages is null) return false;");
+        foreach (FormFieldModel field in describedFields) {
+            string propertyName = EscapeString(field.PropertyName);
+            _ = sb.AppendLine("        if (IsFieldRendered(\"" + propertyName + "\") && _rejectionValidationMessages[new FieldIdentifier(_model, \"" + propertyName + "\")].Any()) return true;");
+        }
+
+        _ = sb.AppendLine("        return false;");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
     }
@@ -2173,6 +2194,9 @@ public static class CommandFormEmitter {
     private static void EmitSwitch(StringBuilder sb, string propertyName, string staticLabel, string hasExplicitDisplay, string? description, bool isNullable) {
         // Story 13.3 AA5-01 — a bool? property binds the non-nullable proxy (the numeric editors'
         // split-binding pattern), while ValidationFieldFor keeps validation on the model property.
+        // Known gap (VG7-02): FluentSwitch 5.0.0-rc.5 ignores ValidationFieldFor, so its own Fluent field
+        // reads the proxy and renders no message for a bool? validation error; the host's
+        // data-fc-invalid still reads the model property, and the summary still lists the error.
         string boundMember = isNullable ? "_" + propertyName + "Proxy" : "_model." + propertyName;
         _ = sb.AppendLine("            __b.OpenComponent<FluentSwitch>(cseq++);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Id\", _formDomId + \"-" + propertyName + "\");");
@@ -2224,22 +2248,21 @@ public static class CommandFormEmitter {
         string staticLabel = EscapeString(field.StaticLabel);
         string hasExplicitDisplay = field.HasExplicitDisplayName ? "true" : "false";
         string enumFqn = field.EnumFullyQualifiedName ?? "object";
-        // Story 13.3 AA5-01 — a nullable enum binds the non-nullable proxy, while ValidationFieldFor
-        // keeps validation on the model property.
-        string boundMember = field.IsNullable ? "_" + propertyName + "Proxy" : "_model." + propertyName;
+        // Story 13.3 AA5-01 / VG7-02 — a nullable enum binds FluentSelect<TEnum, TEnum?> straight to the
+        // nullable model property: Fluent supports a value type that is Nullable<TOption>. A proxy would
+        // compile too, but FluentSelect ignores ValidationFieldFor, so its own FluentField would read the
+        // proxy and never render the field's validation message (Chromium: no error text, and no error in
+        // the combobox description). Bound to the model, a null value also selects no option.
+        string valueType = field.IsNullable ? enumFqn + "?" : enumFqn;
 
-        _ = sb.AppendLine("            __b.OpenComponent<FluentSelect<" + enumFqn + ", " + enumFqn + ">>(cseq++);");
+        _ = sb.AppendLine("            __b.OpenComponent<FluentSelect<" + enumFqn + ", " + valueType + ">>(cseq++);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Id\", _formDomId + \"-" + propertyName + "\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"data-fc-validation-field\", \"true\");");
         EmitFieldAccessibility(sb, propertyName, field.Description, hasParseError: false);
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Items\", (System.Collections.Generic.IEnumerable<" + enumFqn + ">)System.Enum.GetValues<" + enumFqn + ">());");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", " + boundMember + ");");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<" + enumFqn + ">(this, v => { _model." + propertyName + " = v; NotifyClientFieldChanged(\"" + propertyName + "\"); }));");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueExpression\", (global::System.Linq.Expressions.Expression<Func<" + enumFqn + ">>)(() => " + boundMember + "));");
-        if (field.IsNullable) {
-            _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValidationFieldFor\", (global::System.Linq.Expressions.Expression<Func<" + enumFqn + "?>>)(() => _model." + propertyName + "));");
-        }
-
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _model." + propertyName + ");");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<" + valueType + ">(this, v => { _model." + propertyName + " = v; NotifyClientFieldChanged(\"" + propertyName + "\"); }));");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueExpression\", (global::System.Linq.Expressions.Expression<Func<" + valueType + ">>)(() => _model." + propertyName + "));");
         _ = sb.AppendLine("            string " + propertyName + "Label = ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\", " + hasExplicitDisplay + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", " + propertyName + "Label);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"AriaLabel\", " + propertyName + "Label);");

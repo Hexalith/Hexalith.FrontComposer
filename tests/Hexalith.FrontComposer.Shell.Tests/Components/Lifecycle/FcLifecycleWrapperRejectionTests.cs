@@ -169,7 +169,8 @@ public sealed class FcLifecycleWrapperRejectionTests : LifecycleWrapperTestBase 
 
         cut.Find("[data-testid='fc-rejection-return']").Click();
 
-        // VR-03 — Return is a plain history navigation, so unsaved-input protection still applies.
+        // VR-03 — Return behaves like the browser Back button: the abandonment guard applies only to
+        // in-app history navigation on a guarded form, and a back to another document is not guarded.
         cut.WaitForAssertion(() => JSInterop.VerifyInvoke("history.back", 1));
         ((TestNavigationManager)Services.GetRequiredService<NavigationManager>()).LastNavigateCall.ShouldBeNull();
     }

@@ -6,9 +6,7 @@ namespace Hexalith.FrontComposer.Shell.Components.Forms;
 /// <param name="FieldName">The command-model property name.</param>
 /// <param name="Label">The localized visible field label.</param>
 /// <param name="InputId">The stable DOM identifier of the editable control.</param>
-/// <param name="ErrorId">The stable DOM identifier of the field error container.</param>
 public sealed record FcValidationFieldDescriptor(
     string FieldName,
     string Label,
-    string InputId,
-    string ErrorId);
+    string InputId);

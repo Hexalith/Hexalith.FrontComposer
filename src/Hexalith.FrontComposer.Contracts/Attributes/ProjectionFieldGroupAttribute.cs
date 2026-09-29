@@ -22,9 +22,11 @@ namespace Hexalith.FrontComposer.Contracts.Attributes;
 /// </para>
 /// <para>
 /// Commands (Story 13.3 VR-01): a generated command form renders each declared group once, as a
-/// <c>fieldset</c> positioned at its first member, with the members in declared order; ungrouped
-/// command properties keep their declared positions. The "Additional details" catch-all, HFC1030,
-/// and HFC1031 apply to projections only.
+/// <c>fieldset</c> positioned at its first member, with all of its members in declared order. Later
+/// members are pulled up to that position, so an ungrouped property declared between two members of
+/// a group renders after that group: <c>A(G), B, C(G)</c> renders as <c>A, C, B</c>. Ungrouped
+/// properties otherwise keep their relative declared order. The "Additional details" catch-all,
+/// HFC1030, and HFC1031 apply to projections only.
 /// </para>
 /// </remarks>
 [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]

@@ -20,6 +20,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Forms;
 /// </summary>
 public sealed class FcValidationSummaryTests : BunitContext {
     private static readonly string[] ExpectedTargets = ["first-input", "second-input"];
+    private static readonly string[] DuplicateFormLevelErrors = ["First is invalid.", "The record is locked."];
 
     public FcValidationSummaryTests() {
         JSInterop.Mode = JSRuntimeMode.Loose;
@@ -40,8 +41,8 @@ public sealed class FcValidationSummaryTests : BunitContext {
             .Add(component => component.EditContext, context)
             .Add(component => component.SummaryId, "validation-summary")
             .Add(component => component.Fields, new[] {
-                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "First", "first-input", "first-error"),
-                new FcValidationFieldDescriptor(nameof(ValidationModel.Second), "Second", "second-input", "second-error"),
+                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "First", "first-input"),
+                new FcValidationFieldDescriptor(nameof(ValidationModel.Second), "Second", "second-input"),
             }));
 
         await cut.InvokeAsync(() => cut.Instance.ShowAndFocusAsync(FcValidationSummaryKind.ClientValidation));
@@ -71,7 +72,7 @@ public sealed class FcValidationSummaryTests : BunitContext {
             .Add(component => component.EditContext, context)
             .Add(component => component.SummaryId, "linked-summary")
             .Add(component => component.Fields, new[] {
-                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "First", "first-input", "first-error"),
+                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "First", "first-input"),
             }));
 
         await cut.InvokeAsync(() => cut.Instance.ShowAndFocusAsync(FcValidationSummaryKind.ClientValidation));
@@ -102,7 +103,7 @@ public sealed class FcValidationSummaryTests : BunitContext {
             .Add(component => component.EditContext, context)
             .Add(component => component.SummaryId, "fallback-summary")
             .Add(component => component.Fields, new[] {
-                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "First", "first-input", "first-error"),
+                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "First", "first-input"),
             }));
 
         await cut.InvokeAsync(() => cut.Instance.ShowAndFocusAsync(FcValidationSummaryKind.ClientValidation));
@@ -126,7 +127,7 @@ public sealed class FcValidationSummaryTests : BunitContext {
             .Add(component => component.EditContext, context)
             .Add(component => component.SummaryId, "restored-summary")
             .Add(component => component.Fields, new[] {
-                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "First", "first-input", "first-error"),
+                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "First", "first-input"),
             }));
 
         await cut.InvokeAsync(() => cut.Instance.ShowAndFocusAsync(FcValidationSummaryKind.ClientValidation));
@@ -157,8 +158,8 @@ public sealed class FcValidationSummaryTests : BunitContext {
             .Add(component => component.EditContext, context)
             .Add(component => component.SummaryId, "rebuilt-summary")
             .Add(component => component.Fields, new[] {
-                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "First", "first-input", "first-error"),
-                new FcValidationFieldDescriptor(nameof(ValidationModel.Second), "Second", "second-input", "second-error"),
+                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "First", "first-input"),
+                new FcValidationFieldDescriptor(nameof(ValidationModel.Second), "Second", "second-input"),
             }));
 
         await cut.InvokeAsync(() => cut.Instance.ShowAndFocusAsync(FcValidationSummaryKind.ClientValidation));
@@ -193,7 +194,7 @@ public sealed class FcValidationSummaryTests : BunitContext {
             .Add(component => component.EditContext, context)
             .Add(component => component.SummaryId, "mapped-summary")
             .Add(component => component.Fields, new[] {
-                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "First", "first-input", "first-error"),
+                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "First", "first-input"),
             }));
 
         await cut.InvokeAsync(() => cut.Instance.ShowAndFocusAsync(FcValidationSummaryKind.MappedServerRejection));
@@ -223,8 +224,8 @@ public sealed class FcValidationSummaryTests : BunitContext {
             .Add(component => component.EditContext, context)
             .Add(component => component.SummaryId, "label-summary")
             .Add(component => component.Fields, new[] {
-                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "Record Id", "first-input", "first-error"),
-                new FcValidationFieldDescriptor(nameof(ValidationModel.Second), "Amount", "second-input", "second-error"),
+                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "Record Id", "first-input"),
+                new FcValidationFieldDescriptor(nameof(ValidationModel.Second), "Amount", "second-input"),
             }));
 
         await cut.InvokeAsync(() => cut.Instance.ShowAndFocusAsync(FcValidationSummaryKind.ClientValidation));
@@ -247,8 +248,8 @@ public sealed class FcValidationSummaryTests : BunitContext {
             .Add(component => component.EditContext, context)
             .Add(component => component.SummaryId, "word-summary")
             .Add(component => component.Fields, new[] {
-                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "Id", "first-input", "first-error"),
-                new FcValidationFieldDescriptor(nameof(ValidationModel.Second), "Id", "second-input", "second-error"),
+                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "Id", "first-input"),
+                new FcValidationFieldDescriptor(nameof(ValidationModel.Second), "Id", "second-input"),
             }));
 
         await cut.InvokeAsync(() => cut.Instance.ShowAndFocusAsync(FcValidationSummaryKind.ClientValidation));
@@ -271,7 +272,7 @@ public sealed class FcValidationSummaryTests : BunitContext {
             .Add(component => component.EditContext, context)
             .Add(component => component.SummaryId, "model-summary")
             .Add(component => component.Fields, new[] {
-                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "First", "first-input", "first-error"),
+                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "First", "first-input"),
             }));
 
         await cut.InvokeAsync(() => cut.Instance.ShowAndFocusAsync(FcValidationSummaryKind.ClientValidation));
@@ -285,6 +286,33 @@ public sealed class FcValidationSummaryTests : BunitContext {
         entries[1].QuerySelector("a").ShouldBeNull();
         entries[1].TextContent.Trim().ShouldBe("The record cannot be saved.");
         summary.TextContent.ShouldContain("2 errors.");
+    }
+
+    [Fact]
+    public async Task FormLevelErrorRepeatingALinkedFieldMessageIsListedOnce() {
+        ValidationModel model = new();
+        EditContext context = new(model);
+        new ValidationMessageStore(context).Add(context.Field(nameof(ValidationModel.First)), "First is invalid.");
+
+        IRenderedComponent<FcValidationSummary> cut = Render<FcValidationSummary>(parameters => parameters
+            .Add(component => component.EditContext, context)
+            .Add(component => component.SummaryId, "duplicate-summary")
+            .Add(component => component.FormLevelErrors, DuplicateFormLevelErrors)
+            .Add(component => component.Fields, new[] {
+                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "First", "first-input"),
+            }));
+
+        await cut.InvokeAsync(() => cut.Instance.ShowAndFocusAsync(FcValidationSummaryKind.ClientValidation));
+
+        // A form-level error identical to a linked field message stays the single linked entry and is
+        // not counted twice; a distinct form-level error is still listed unlinked.
+        IElement summary = cut.Find("[data-testid='fc-validation-summary']");
+        IElement[] entries = [.. summary.QuerySelectorAll("li")];
+        entries.Length.ShouldBe(2);
+        entries[0].QuerySelector("a[data-fc-validation-target='first-input']").ShouldNotBeNull();
+        entries[1].QuerySelector("a").ShouldBeNull();
+        entries[1].TextContent.Trim().ShouldBe("The record is locked.");
+        cut.Find("#duplicate-summary-description").TextContent.Trim().ShouldBe("Correct the errors before submitting. 2 errors.");
     }
 
     private sealed class ValidationModel {

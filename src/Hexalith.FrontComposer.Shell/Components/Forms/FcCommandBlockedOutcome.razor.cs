@@ -17,8 +17,10 @@ namespace Hexalith.FrontComposer.Shell.Components.Forms;
 /// attempt clears the status text, waits <see cref="ReannounceDelay"/>, and sets the exact AM-20 copy
 /// again, so every blocked attempt — including an identical repeat — is announced once. Attempts
 /// are serialized, so a rapid repeat still gets its own clear-and-set. "View active command" is
-/// offered only while a rendered active lifecycle heading exists, and it is withdrawn, with focus
-/// returned to the attempted control, when that heading is gone.
+/// offered only when a rendered active lifecycle heading exists at the time the attempt is
+/// announced. The action is not withdrawn automatically when that heading later disappears: it is
+/// withdrawn, with focus returned to the attempted control, only when the operator activates it
+/// and no rendered active lifecycle heading can take focus.
 /// </remarks>
 public partial class FcCommandBlockedOutcome : ComponentBase, IDisposable {
     /// <summary>The pause between clearing and re-setting the status text for one attempt.</summary>
@@ -184,6 +186,9 @@ public partial class FcCommandBlockedOutcome : ComponentBase, IDisposable {
         catch (JSException) {
         }
         catch (InvalidOperationException) {
+        }
+        catch (TaskCanceledException) {
+            // A stalled dispose must not fault the serialized presentation chain either.
         }
     }
 

@@ -5,8 +5,10 @@ using Bunit;
 using Hexalith.FrontComposer.Shell.Components.Forms;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Time.Testing;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.JSInterop;
 
 using Shouldly;
 
@@ -140,6 +142,25 @@ public sealed class FcCommandBlockedOutcomeTests : BunitContext {
         FocusModule.Invocations.Count(invocation => invocation.Identifier == "hasActiveLifecycle").ShouldBe(0);
     }
 
+    [Fact]
+    public async Task AStalledModuleDisposeDoesNotFaultLaterBlockedAttempts() {
+        StalledDisposeJSRuntime runtime = new();
+        Services.Replace(ServiceDescriptor.Singleton<IJSRuntime>(runtime));
+        IRenderedComponent<FcCommandBlockedOutcome> cut = RenderOutcome();
+
+        Task first = cut.InvokeAsync(() => cut.Instance.PresentAsync());
+        await AdvanceUntilAsync(() => first.IsCompleted);
+        Task second = cut.InvokeAsync(() => cut.Instance.PresentAsync());
+        await AdvanceUntilAsync(() => second.IsCompleted);
+
+        // E7-01 — a module dispose that times out is caught like the stalled call itself, so it never
+        // faults the serialized presentation chain that every later attempt awaits.
+        first.IsCompletedSuccessfully.ShouldBeTrue();
+        second.IsCompletedSuccessfully.ShouldBeTrue();
+        cut.WaitForAssertion(() => StatusText(cut).ShouldBe(BlockedMessage));
+        runtime.Module.DisposeAttempts.ShouldBe(4);
+    }
+
     private async Task AdvanceUntilAsync(Func<bool> condition) {
         DateTime deadline = DateTime.UtcNow.AddSeconds(5);
         while (!condition() && DateTime.UtcNow < deadline) {
@@ -154,4 +175,31 @@ public sealed class FcCommandBlockedOutcomeTests : BunitContext {
 
     private static string StatusText(IRenderedComponent<FcCommandBlockedOutcome> cut)
         => cut.Find("[data-testid='fc-command-blocked-status']").TextContent;
+
+    private sealed class StalledDisposeJSRuntime : IJSRuntime {
+        public StalledDisposeModule Module { get; } = new();
+
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
+            => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
+            => identifier == "import" && Module is TValue module
+                ? ValueTask.FromResult(module)
+                : ValueTask.FromResult(default(TValue)!);
+    }
+
+    private sealed class StalledDisposeModule : IJSObjectReference {
+        public int DisposeAttempts { get; private set; }
+
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
+            => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
+            => ValueTask.FromResult(default(TValue)!);
+
+        public ValueTask DisposeAsync() {
+            DisposeAttempts++;
+            return ValueTask.FromException(new TaskCanceledException("The JS interop dispose call timed out."));
+        }
+    }
 }

@@ -356,9 +356,18 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     private FcValidationFieldDescriptor[] BuildValidationFields()
     {
         var fields = new System.Collections.Generic.List<FcValidationFieldDescriptor>(2);
-        if (IsFieldRendered("Amount")) fields.Add(new("Amount", ResolveLabel("Amount", "Amount", false), _formDomId + "-Amount", _formDomId + "-Amount-error"));
-        if (IsFieldRendered("Note")) fields.Add(new("Note", ResolveLabel("Note", "Note", false), _formDomId + "-Note", _formDomId + "-Note-error"));
+        if (IsFieldRendered("Amount")) fields.Add(new("Amount", ResolveLabel("Amount", "Amount", false), _formDomId + "-Amount"));
+        if (IsFieldRendered("Note")) fields.Add(new("Note", ResolveLabel("Note", "Note", false), _formDomId + "-Note"));
         return fields.ToArray();
+    }
+
+    /// <summary>Story 13.3 AA7-01 — whether a field rendered on this surface received a rejection message.</summary>
+    private bool HasRenderedRejectionMessage()
+    {
+        if (_rejectionValidationMessages is null) return false;
+        if (IsFieldRendered("Amount") && _rejectionValidationMessages[new FieldIdentifier(_model, "Amount")].Any()) return true;
+        if (IsFieldRendered("Note") && _rejectionValidationMessages[new FieldIdentifier(_model, "Note")].Any()) return true;
+        return false;
     }
 
     private async Task ObserveFieldAccessibilityAsync()
@@ -784,7 +793,14 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             {
                 _rejectionValidationMessages.Clear();
                 var rejectionValidation = global::Hexalith.FrontComposer.Shell.Services.Validation.ServerValidationApplicator.ApplyRejection(_rejectionValidationMessages, ex, _serverValidationAllowlist, _model!);
-                hasMappedFieldErrors = rejectionValidation.HasMappedFieldErrors;
+                // AA7-01 — a rejection counts as mapped only when a field this surface renders received a
+                // message. One mapped only to hidden fields would leave the operator a summary naming a field
+                // they cannot edit and no recovery action, so it takes the unmapped path instead.
+                hasMappedFieldErrors = rejectionValidation.HasMappedFieldErrors && HasRenderedRejectionMessage();
+                if (!hasMappedFieldErrors)
+                {
+                    _rejectionValidationMessages.Clear();
+                }
                 // VR-03 — an unmapped rejection stays in its lifecycle region; its text never reaches a
                 // summary. A mapped rejection lists its safe form-level messages beside the field links.
                 _serverFormLevelErrors = hasMappedFieldErrors ? rejectionValidation.UnmappedMessages : System.Array.Empty<string>();

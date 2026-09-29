@@ -21,6 +21,8 @@
     --fc-specimen-warning-background: #fff4ce;
     --fc-specimen-warning-border: #f2c94c;
     --fc-specimen-warning-foreground: #3b2f00;
+    /* Fluent's dark-palette red foreground: 6.4:1 on the dark specimen background. */
+    --fc-specimen-error-foreground: #e37d80;
 
     color: #f7f7f2;
     background: #15171a;
@@ -137,7 +139,7 @@
 /* Story 13.3 — generated command fields are Fluent editors: the visible label is the Fluent field
    label, the declared description renders in the Fluent field message slot, and only the editor
    itself carries the control surface, so the label stays on the page. Validation errors keep
-   Fluent's own error styling. */
+   Fluent's error styling on the light specimen; the dark specimen lightens their text below. */
 .fc-specimen ::deep .fluent-card,
 .fc-specimen ::deep .fc-command-form,
 .fc-specimen ::deep .fc-command-field,
@@ -152,6 +154,12 @@
     background: var(--fc-specimen-control-background);
     border: 1px solid var(--fc-specimen-control-border);
     color: var(--fc-specimen-control-foreground);
+}
+
+/* Fluent's validation message sets its red inline for a light surface (about 3.1:1 on the dark
+   specimen background), so only the dark specimen overrides its text color to stay at least 4.5:1. */
+.fc-specimen--dark ::deep .fluent-validation-message {
+    color: var(--fc-specimen-error-foreground) !important;
 }
 
 /* The fail-closed denial card and form-level warnings keep the readable warning scheme. */

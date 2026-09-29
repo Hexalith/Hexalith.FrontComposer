@@ -286,8 +286,9 @@ public partial class FcValidationSummary : ComponentBase, IDisposable {
             _entries.Add((message, null, null));
         }
 
+        // A form-level error that repeats any listed message, linked or not, is not listed or counted twice.
         foreach (string message in FormLevelErrors) {
-            if (!_entries.Any(entry => entry.InputId is null && string.Equals(entry.Message, message, StringComparison.Ordinal))) {
+            if (!_entries.Any(entry => string.Equals(entry.Message, message, StringComparison.Ordinal))) {
                 _entries.Add((message, null, null));
             }
         }

@@ -354,7 +354,21 @@ public sealed class FcShellResourcesTests {
     [InlineData("UnauthenticatedCommandWarningMessage")]
     [InlineData("AuthorizationCheckingPermissionTitle")]
     [InlineData("AuthorizationCheckingPermissionMessage")]
-    public void AuthorizationResourceKey_PlaceholderCountMatchesAcrossLocales(string key) {
+    public void AuthorizationResourceKey_PlaceholderCountMatchesAcrossLocales(string key)
+        => AssertPlaceholderParity(key);
+
+    // Story 13.3 — placeholder parity for the command-safety format keys, so a translation that drops
+    // or adds a {n} placeholder fails here instead of throwing a FormatException at render.
+    [Theory]
+    [InlineData("ActiveCommandLifecycleHeading")]
+    [InlineData("DestructiveConfirmationTitleTemplate")]
+    [InlineData("MappedRejectionSummaryMessage")]
+    [InlineData("RejectionSupportReferenceTemplate")]
+    [InlineData("ValidationSummaryMessage")]
+    public void CommandSafetyResourceKeyPlaceholderCountMatchesAcrossLocales(string key)
+        => AssertPlaceholderParity(key);
+
+    private static void AssertPlaceholderParity(string key) {
         ResourceManager manager = new(typeof(FcShellResources));
         string? enValue = manager.GetString(key, new CultureInfo("en"));
         string? frValue = manager.GetString(key, new CultureInfo("fr"));
