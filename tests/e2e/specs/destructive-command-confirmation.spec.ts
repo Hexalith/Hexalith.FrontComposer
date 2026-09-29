@@ -116,6 +116,26 @@ test.describe('Story 4.1: destructive command confirmation', () => {
     const summary = page.getByTestId('fc-validation-summary');
     await expect(summary.getByText('The Record Id field is required.')).toBeVisible();
     await expect(summary).toBeFocused();
+    // BH3-17 — the default message already names its field, so the link does not repeat the label.
+    await expect(summary.locator('[data-fc-validation-target]')).toHaveText('The Record Id field is required.');
+
+    // Story 13.3 VR-01 / BH3-08 / BH3-09 — the Chromium accessibility tree of each focusable textbox
+    // reports the invalid state and is described by its Fluent-rendered description and error; each
+    // error is visible exactly once.
+    if (test.info().project.name === 'chromium') {
+      await expect.poll(async () => axField(page, `.fc-command-form[aria-label="${FORM_LABEL}"] fluent-text-input[name="RecordId"]`), { timeout: 10_000 }).toMatchObject({
+        invalid: 'true',
+        description: expect.stringMatching(/Record to purge\.[\s\S]*The Record Id field is required\./u),
+      });
+      await expect.poll(async () => axField(page, `.fc-command-form[aria-label="${FORM_LABEL}"] fluent-text-input[name="Reason"]`), { timeout: 10_000 }).toMatchObject({
+        invalid: undefined,
+        description: 'Why this purge is required.',
+      });
+    }
+    const recordField = form.locator('fluent-field', { has: page.locator('label[slot="label"]:text-is("Record Id")') });
+    await expect(recordField.locator('.fluent-validation-message')).toHaveCount(1);
+    await expect(recordField.getByText('The Record Id field is required.', { exact: true })).toHaveCount(1);
+    await expect(recordField.locator('[slot="message"] .fc-command-field-description')).toHaveText('Record to purge.');
     await summary.locator('[data-fc-validation-target]').click();
     await expect(fieldEditorByLabel(form, 'Record Id')).toBeFocused();
     await expect(destructiveDialog(page)).toHaveCount(0);
@@ -138,6 +158,8 @@ test.describe('Story 4.1: destructive command confirmation', () => {
 
     await gotoTypeSpecimen(page);
     const form = destructiveForm(page);
+    // Open the real settings modal only once the circuit is interactive, so the click is not lost.
+    await waitForGeneratedFormReady(form);
     await page.getByTestId('fc-settings-button').click();
     const settings = page.getByTestId('fc-settings-dialog');
     await expect(settings).toBeVisible();
@@ -152,6 +174,63 @@ test.describe('Story 4.1: destructive command confirmation', () => {
     await lifecycle.expectState(COMMAND_ID, 'idle');
     await page.getByTestId('fc-settings-done').click();
     await expect(settings).toHaveCount(0);
+  });
+
+  test('an opening overlay intent reserves the modal slot only until it expires', async ({ page, lifecycle, tenant }) => {
+    expect(tenant.tenantId).toBeTruthy();
+
+    await gotoTypeSpecimen(page);
+
+    const reservation = await page.evaluate(async (focusModulePath) => {
+      const focus = await import(focusModulePath) as {
+        captureOverlayOrigin: (testId?: string | null, preserveExisting?: boolean) => boolean;
+      };
+      const intentWindow = window as unknown as { __fcOverlayOpenIntent: unknown; __fcOverlayOrigin: unknown };
+
+      // A second capture before the first overlay receives focus must be refused (no nested modal).
+      intentWindow.__fcOverlayOpenIntent = null;
+      const firstCapture = focus.captureOverlayOrigin();
+      const racingCapture = focus.captureOverlayOrigin();
+
+      // A press that never opened its overlay must not refuse every later confirmation.
+      intentWindow.__fcOverlayOpenIntent = { origin: null, moved: false, watchFocus: false, createdAt: Date.now() - 60_000 };
+      const afterStaleIntent = focus.captureOverlayOrigin();
+
+      // Story 13.3 BH2-15 / VG2-07 — shell overlays that ask to preserve an existing origin keep the
+      // keyboard tracker's intent (it carries no createdAt) and its `moved` state untouched.
+      const trackerOrigin = document.querySelector('h1');
+      const trackerIntent = { origin: trackerOrigin, moved: true, watchFocus: true };
+      intentWindow.__fcOverlayOrigin = trackerOrigin;
+      intentWindow.__fcOverlayOpenIntent = trackerIntent;
+      const preservedCapture = focus.captureOverlayOrigin('fc-palette-trigger', true);
+      const trackerPreserved = intentWindow.__fcOverlayOpenIntent === trackerIntent
+        && intentWindow.__fcOverlayOrigin === trackerOrigin
+        && trackerIntent.moved === true;
+
+      intentWindow.__fcOverlayOrigin = null;
+      intentWindow.__fcOverlayOpenIntent = { origin: null, moved: false, watchFocus: false, createdAt: Date.now() - 60_000 };
+      return { firstCapture, racingCapture, afterStaleIntent, preservedCapture, trackerPreserved };
+    }, '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js');
+
+    expect(reservation).toEqual({
+      firstCapture: true,
+      racingCapture: false,
+      afterStaleIntent: true,
+      preservedCapture: true,
+      trackerPreserved: true,
+    });
+
+    // The expired intent left behind above still lets the real destructive flow open exactly one dialog.
+    const form = destructiveForm(page);
+    await submitDestructiveCommand(form);
+    const dialog = destructiveDialog(page);
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toHaveCount(1);
+    await expect(page.getByTestId('fc-destructive-cancel')).toBeFocused();
+    await page.getByTestId('fc-destructive-cancel').click();
+    await expect(dialog).toHaveCount(0);
+    await lifecycle.expectState(COMMAND_ID, 'idle');
+    await expect(form.getByRole('button', { name: ACTION_LABEL })).toBeFocused();
   });
 
   test('validation focus fallbacks use the next invalid target and survive a missing summary', async ({ page, tenant }) => {
@@ -171,7 +250,7 @@ test.describe('Story 4.1: destructive command confirmation', () => {
             <a data-fc-validation-target="removed-input">Removed field</a>
             <a data-fc-validation-target="next-invalid-input">Next field</a>
           </section>
-          <button id="first-invalid-input" data-fc-validation-field aria-invalid="true">First invalid field</button>
+          <button id="first-invalid-input" data-fc-validation-field data-fc-invalid="true">First invalid field</button>
           <button id="next-invalid-input" data-fc-validation-field>Next invalid field</button>
         </div>`;
       document.body.append(fixture);
@@ -212,6 +291,39 @@ test.describe('Story 4.1: destructive command confirmation', () => {
     })).toBeFocused();
   });
 });
+
+// Reads the Chromium accessibility tree (not the DOM) for the focusable control of one generated
+// editor: the input inside the Fluent editor's shadow root, found from the editor host selector.
+const axField = async (page: Page, hostSelector: string): Promise<{ invalid?: string; description?: string }> => {
+  const session = await page.context().newCDPSession(page);
+  try {
+    const { result } = await session.send('Runtime.evaluate', {
+      expression: `(() => {
+        const host = document.querySelector(${JSON.stringify(hostSelector)});
+        return host?.shadowRoot?.querySelector('input, textarea') ?? host;
+      })()`,
+    }) as { result: { objectId?: string } };
+    if (!result.objectId) return {};
+    const { nodes } = await session.send('Accessibility.getPartialAXTree', {
+      objectId: result.objectId,
+      fetchRelatives: false,
+    }) as {
+      nodes: Array<{
+        description?: { value?: string };
+        properties?: Array<{ name: string; value?: { value?: unknown } }>;
+      }>;
+    };
+    const node = nodes[0];
+    const invalid = node?.properties?.find((property) => property.name === 'invalid')?.value?.value;
+    return {
+      invalid: invalid === undefined || invalid === 'false' ? undefined : String(invalid),
+      description: node?.description?.value,
+    };
+  }
+  finally {
+    await session.detach();
+  }
+};
 
 const gotoTypeSpecimen = async (page: Page): Promise<void> => {
   const route = getSpecimenRoute('type');

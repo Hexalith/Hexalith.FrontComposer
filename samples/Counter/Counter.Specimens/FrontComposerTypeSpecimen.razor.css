@@ -134,25 +134,36 @@
     max-inline-size: 36rem;
 }
 
+/* Story 13.3 — generated command fields are Fluent editors: the visible label is the Fluent field
+   label, the declared description renders in the Fluent field message slot, and only the editor
+   itself carries the control surface, so the label stays on the page. Validation errors keep
+   Fluent's own error styling. */
 .fc-specimen ::deep .fluent-card,
 .fc-specimen ::deep .fc-command-form,
 .fc-specimen ::deep .fc-command-field,
-.fc-specimen ::deep .fc-command-field-label,
-.fc-specimen ::deep .fc-command-field-message {
+.fc-specimen ::deep .fc-command-field label,
+.fc-specimen ::deep .fc-command-field-group legend,
+.fc-specimen ::deep .fc-command-field-description {
     color: var(--fc-specimen-foreground);
 }
 
-.fc-specimen ::deep .fc-command-input,
+.fc-specimen ::deep .fc-command-field fluent-text-input,
 .fc-specimen input {
     background: var(--fc-specimen-control-background);
     border: 1px solid var(--fc-specimen-control-border);
     color: var(--fc-specimen-control-foreground);
 }
 
+/* The fail-closed denial card and form-level warnings keep the readable warning scheme. */
+.fc-specimen ::deep [data-fc-authorization-denied],
 .fc-specimen ::deep fluent-message-bar {
     background: var(--fc-specimen-warning-background);
-    border-color: var(--fc-specimen-warning-border);
+    border: 1px solid var(--fc-specimen-warning-border);
     color: var(--fc-specimen-warning-foreground);
+}
+
+.fc-specimen ::deep [data-fc-authorization-denied] {
+    padding: .75rem;
 }
 
 .fc-specimen__form label { display: grid; gap: .25rem; }

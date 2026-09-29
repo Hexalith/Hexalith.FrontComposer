@@ -102,6 +102,32 @@ public sealed class DestructiveCommandRendererIntegrationTests : CommandRenderer
         dialogService.ShowDialogCallCount.ShouldBe(1);
     }
 
+    [Fact]
+    public async Task GeneratedRendererWithoutDeclaredCopyShowsLocalizedDefaultConfirmation() {
+        RecordingCommandService commandService = new();
+        ControlledDialogService dialogService = new(DialogResult.Cancel());
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => commandService));
+        Services.Replace(ServiceDescriptor.Scoped<IDialogService>(_ => dialogService.Service));
+        await InitializeStoreAsync();
+
+        IRenderedComponent<ArchiveWidgetCommandRenderer> cut = Render<ArchiveWidgetCommandRenderer>();
+
+        cut.WaitForAssertion(() => _ = cut.Find("fluent-button"));
+        cut.Find("fluent-button").Click();
+        cut.WaitForAssertion(() => _ = cut.Find("form"));
+        cut.Find("form").Submit();
+
+        // VG3-05 — the default copy comes from the localized Shell resources at runtime, and the
+        // modal is named, described, and cancel-first.
+        cut.WaitForAssertion(() => dialogService.ShowDialogCallCount.ShouldBe(1));
+        DialogOptions options = dialogService.LastOptions.ShouldNotBeNull();
+        options.Parameters[nameof(FcDestructiveConfirmationDialog.Title)].ShouldBe("Confirm Archive Widget?");
+        options.Parameters[nameof(FcDestructiveConfirmationDialog.Body)].ShouldBe("This action cannot be undone.");
+        options.Parameters[nameof(FcDestructiveConfirmationDialog.DestructiveLabel)].ShouldBe("Archive Widget");
+        options.Modal.ShouldBe(true);
+        commandService.DispatchCount.ShouldBe(0);
+    }
+
     private sealed class ControlledDialogService : DialogService {
         private readonly Queue<TaskCompletionSource<DialogResult>> _pendingResults = new();
         private readonly DialogResult? _immediateResult;

@@ -135,6 +135,11 @@ public static class CommandRendererEmitter {
         string stableTriggerId = "fc-trigger-" + SanitizeCssId(model.CommandFullyQualifiedName);
         _ = sb.AppendLine("    private readonly string _triggerButtonId = \"" + stableTriggerId + "\";");
         _ = sb.AppendLine("    private Action? _externalSubmit;");
+        if (model.NonDerivablePropertyNames.Count == 0) {
+            // Story 13.3 VG2-13 — the zero-field form is hidden, so the renderer owns its AM-20 node.
+            _ = sb.AppendLine("    private FcCommandBlockedOutcome? _blockedOutcome;");
+        }
+
         _ = sb.AppendLine("    private IJSObjectReference? _expandInRowModule;");
         _ = sb.AppendLine("    private " + commandFqn + " _prefilledModel = new();");
         if (model.NonDerivablePropertyNames.Count >= 1) {
@@ -186,12 +191,21 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("    private async Task RefreshPresentationAuthorizationAsync()");
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        if (_authorizationDisposed) { return; }");
+            _ = sb.AppendLine("        bool replacesShownForm = _authorizationPresentationReady && _authorizationPresentationAllowed;");
             // Sync flip Ready=false so concurrent renders see the in-flight state immediately
             // (Pass-3 form-emitter pattern; mirror in renderer).
             _ = sb.AppendLine("        _authorizationPresentationReady = false;");
             _ = sb.AppendLine("        _authorizationPresentationAllowed = false;");
             _ = sb.AppendLine("        SetAuthorizationPresentationMessage(global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationDecision.Pending(UlidFactory.NewUlid()));");
             _ = sb.AppendLine("        long sequence = global::System.Threading.Interlocked.Increment(ref _authorizationRefreshSequence);");
+            // Story 13.3 BH3-01 — Ready=false and the sequence stamp precede the focus-capture round trip,
+            // so a stale "allowed" trigger is never interactive while JS answers and stamps keep refresh order.
+            _ = sb.AppendLine("        // Story 13.3 FM-01 / AM-26 — the initial evaluation and a background refresh are not operator");
+            _ = sb.AppendLine("        // activations. Record what held focus before a refresh that can replace the shown form, so the");
+            _ = sb.AppendLine("        // denied heading takes focus only when the replaced form contained it. The armed state is");
+            _ = sb.AppendLine("        // local to this refresh, so a superseded refresh cannot arm a later unrelated denial (E4-11).");
+            _ = sb.AppendLine("        bool replacementArmed = replacesShownForm && await CaptureFocusBeforeReplacementAsync().ConfigureAwait(false);");
+            _ = sb.AppendLine("        if (_authorizationDisposed) { return; }");
             _ = sb.AppendLine("        var cts = _authorizationCts;");
             _ = sb.AppendLine("        global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationDecision? decision;");
             _ = sb.AppendLine("        try");
@@ -230,7 +244,10 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("            _authorizationPresentationAllowed = decision.IsAllowed;");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        SetAuthorizationPresentationMessage(decision);");
-            _ = sb.AppendLine("        _authorizationFocusPending = _authorizationPresentationReady && !_authorizationPresentationAllowed;");
+            _ = sb.AppendLine("        if (_authorizationPresentationReady)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            _authorizationFocusPending = !_authorizationPresentationAllowed && replacementArmed;");
+            _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        await InvokeAsync(StateHasChanged).ConfigureAwait(false);");
             _ = sb.AppendLine("        if (decision?.Kind == global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationDecisionKind.Pending)");
             _ = sb.AppendLine("        {");
@@ -249,6 +266,18 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        catch (global::System.OperationCanceledException) { }");
             _ = sb.AppendLine("        catch (global::System.ObjectDisposedException) { }");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private async Task<bool> CaptureFocusBeforeReplacementAsync()");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        try");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            await using var focusModule = await JSRuntime.InvokeAsync<IJSObjectReference>(\"import\", \"./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js\").ConfigureAwait(false);");
+            _ = sb.AppendLine("            return await focusModule.InvokeAsync<bool>(\"captureFocusBeforeReplacement\", _authorizationHeadingId).ConfigureAwait(false);");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        catch (JSDisconnectedException) { return false; }");
+            _ = sb.AppendLine("        catch (JSException) { return false; }");
+            _ = sb.AppendLine("        catch (InvalidOperationException) { return false; }");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
             _ = sb.AppendLine("    private void SetAuthorizationPresentationMessage(global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationDecision? decision)");
@@ -597,6 +626,15 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
 
+        if (model.NonDerivablePropertyNames.Count == 0) {
+            _ = sb.AppendLine("    private Task OnFormBlockedSubmissionAsync(bool blocked)");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        if (_blockedOutcome is null) return Task.CompletedTask;");
+            _ = sb.AppendLine("        return blocked ? _blockedOutcome.PresentAsync() : _blockedOutcome.ClearAsync();");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+        }
+
         _ = sb.AppendLine("    private async Task OpenPopoverAsync()");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        await InlinePopoverRegistry.OpenAsync(this).ConfigureAwait(false);");
@@ -731,7 +769,7 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("            try");
             _ = sb.AppendLine("            {");
             _ = sb.AppendLine("                await using var focusModule = await JSRuntime.InvokeAsync<IJSObjectReference>(\"import\", \"./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js\").ConfigureAwait(false);");
-            _ = sb.AppendLine("                await focusModule.InvokeVoidAsync(\"focusOverlayEntry\", _authorizationHeadingId).ConfigureAwait(false);");
+            _ = sb.AppendLine("                _ = await focusModule.InvokeAsync<bool>(\"focusReplacementHeading\", _authorizationHeadingId, _authorizationHeadingId).ConfigureAwait(false);");
             _ = sb.AppendLine("            }");
             _ = sb.AppendLine("            catch (JSDisconnectedException) { /* circuit teardown; benign. */ }");
             _ = sb.AppendLine("            catch (JSException) { }");
@@ -894,18 +932,27 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"OnClick\", EventCallback.Factory.Create<MouseEventArgs>(this, _ => OnZeroFieldClickAsync()));");
             _ = sb.AppendLine("                builder.CloseComponent();");
             _ = sb.AppendLine();
+            // Story 13.3 AM-20 — the hidden zero-field form hands its blocked outcome to this visible,
+            // always-mounted node beside the trigger.
+            _ = sb.AppendLine("                builder.OpenComponent<FcCommandBlockedOutcome>(seq++);");
+            _ = sb.AppendLine("                builder.AddAttribute(seq++, \"AttemptedControlId\", _triggerButtonId);");
+            _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Inline\", true);");
+            _ = sb.AppendLine("                builder.AddComponentReferenceCapture(seq++, instance => _blockedOutcome = (FcCommandBlockedOutcome)instance);");
+            _ = sb.AppendLine("                builder.CloseComponent();");
+            _ = sb.AppendLine();
             _ = sb.AppendLine("                builder.OpenElement(seq++, \"div\");");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"style\", \"display:none\");");
             _ = sb.AppendLine("                builder.OpenComponent<" + formFqn + ">(seq++);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"InitialValue\", _prefilledModel);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"RegisterExternalSubmit\", (Action<Action>)OnFormRegisteredExternalSubmit);");
+            _ = sb.AppendLine("                builder.AddAttribute(seq++, \"OnBlockedSubmission\", EventCallback.Factory.Create<bool>(this, OnFormBlockedSubmissionAsync));");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"BeforeSubmit\", " + beforeSubmitFunc + ");");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"OnConfirmed\", EventCallback.Factory.Create(this, OnConfirmedAsync));");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"OnEditContextReady\", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));");
             _ = sb.AppendLine("                builder.CloseComponent();");
             _ = sb.AppendLine("                builder.CloseElement();");
             if (hasAuthorizationPolicy) {
-                EmitAuthorizationMessageBar(sb, "builder", "seq");
+                EmitAuthorizationDenialCard(sb, "builder", "seq");
             }
         }
         else {
@@ -953,7 +1000,7 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("                }));");
             _ = sb.AppendLine("                builder.CloseComponent();");
             if (hasAuthorizationPolicy) {
-                EmitAuthorizationMessageBar(sb, "builder", "seq");
+                EmitAuthorizationDenialCard(sb, "builder", "seq");
             }
         }
 
@@ -967,7 +1014,7 @@ public static class CommandRendererEmitter {
             // presentation auth disallows the trigger. Form-level submit gate still authoritative
             // but the user sees a coherent "no permission" surface instead of an interactive form
             // that always rejects on submit.
-            EmitAuthorizationMessageBar(sb, "builder", "seq", emitBreak: true);
+            EmitAuthorizationDenialCard(sb, "builder", "seq", emitBreak: true);
         }
 
         _ = sb.AppendLine("                builder.OpenElement(seq++, \"div\");");
@@ -1001,8 +1048,9 @@ public static class CommandRendererEmitter {
         if (hasAuthorizationPolicy) {
             // Pass-4 DN-7-3-4-6 (b) — same presentation gate as CompactInline. Form's submit-time
             // auth check is authoritative; this guard prevents users from interacting with form
-            // fields they will never be able to submit.
-            EmitAuthorizationMessageBar(sb, "builder", "seq", emitBreak: true);
+            // fields they will never be able to submit. Story 13.3 E3-15 — the FullPage denial card keeps
+            // the page form's max-width column.
+            EmitAuthorizationDenialCard(sb, "builder", "seq", emitBreak: true, fullPageMaxWidth: true);
         }
 
         _ = sb.AppendLine("                builder.OpenElement(seq++, \"div\");");
@@ -1048,14 +1096,25 @@ public static class CommandRendererEmitter {
         _ => "FullPage",
     };
 
-    private static void EmitAuthorizationMessageBar(StringBuilder sb, string builderName, string sequenceName, bool emitBreak = false) {
+    private static void EmitAuthorizationDenialCard(
+        StringBuilder sb,
+        string builderName,
+        string sequenceName,
+        bool emitBreak = false,
+        bool fullPageMaxWidth = false) {
         _ = sb.AppendLine("                if (AuthorizationTriggerDisabled())");
         _ = sb.AppendLine("                {");
+        if (fullPageMaxWidth) {
+            _ = sb.AppendLine("                    " + builderName + ".OpenElement(" + sequenceName + "++, \"div\");");
+            _ = sb.AppendLine("                    " + builderName + ".AddAttribute(" + sequenceName + "++, \"style\", $\"max-width: {opts.FullPageFormMaxWidth}; margin: 0 auto;\");");
+        }
+
         _ = sb.AppendLine("                    " + builderName + ".OpenComponent<FluentCard>(" + sequenceName + "++);");
         _ = sb.AppendLine("                    " + builderName + ".AddAttribute(" + sequenceName + "++, \"ChildContent\", (RenderFragment)(__message =>");
         _ = sb.AppendLine("                    {");
         _ = sb.AppendLine("                        int aseq = 0;");
         _ = sb.AppendLine("                        __message.OpenElement(aseq++, \"section\");");
+        _ = sb.AppendLine("                        __message.AddAttribute(aseq++, \"data-fc-authorization-denied\", \"true\");");
         _ = sb.AppendLine("                        __message.AddAttribute(aseq++, \"aria-labelledby\", _authorizationHeadingId);");
         _ = sb.AppendLine("                        __message.OpenElement(aseq++, \"h2\");");
         _ = sb.AppendLine("                        __message.AddAttribute(aseq++, \"id\", _authorizationHeadingId);");
@@ -1068,6 +1127,10 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("                        __message.CloseElement();");
         _ = sb.AppendLine("                    }));");
         _ = sb.AppendLine("                    " + builderName + ".CloseComponent();");
+        if (fullPageMaxWidth) {
+            _ = sb.AppendLine("                    " + builderName + ".CloseElement();");
+        }
+
         if (emitBreak) {
             _ = sb.AppendLine("                    break;");
         }

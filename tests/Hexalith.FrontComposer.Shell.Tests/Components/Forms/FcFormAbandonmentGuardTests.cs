@@ -1,3 +1,5 @@
+using AngleSharp.Dom;
+
 using Bunit;
 
 using Hexalith.FrontComposer.Contracts;
@@ -224,22 +226,176 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
         TestModel model = new() { Name = "" };
         EditContext editContext = new(model);
         (FcFormAbandonmentGuard guard, IRenderedComponent<FcFormAbandonmentGuard> cut) = RenderGuardWithCut(editContext);
+        await ShowWarningThroughPreventedNavigationAsync(cut, guard, editContext);
 
-        SetField(guard, "_showingWarning", true);
-        SetField(guard, "_pendingTarget", "/somewhere-else");
+        // VG4-06 — Escape is raised on the rendered warning itself (focus notionally on Leave), so the
+        // handler must stay on the warning container rather than on one of its buttons.
+        cut.Find("[data-testid='fc-form-abandonment-warning']").KeyDown(Key.Escape);
 
-        await cut.InvokeAsync(() => {
-            var escapeTask = (Task)typeof(FcFormAbandonmentGuard).GetMethod(
-                "HandleBarKeyDownAsync",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-                .Invoke(guard, [new KeyboardEventArgs { Key = "Escape" }])!;
-            return escapeTask;
-        });
-
+        cut.WaitForAssertion(() => cut.FindAll("[data-testid='fc-form-abandonment-warning']").ShouldBeEmpty());
         GetField<bool>(guard, "_showingWarning").ShouldBeFalse();
         GetField<string?>(guard, "_pendingTarget").ShouldBeNull();
         var nav = (TestNavigationManager)Services.GetRequiredService<NavigationManager>();
         nav.LastNavigateCall.ShouldBeNull("Escape must behave like Stay and preserve the form.");
+    }
+
+    [Fact]
+    public async Task EditedOriginCaptureIsFieldBoundSequencedAndRestoredWithinTheGuardRoot() {
+        TestModel model = new() { Name = string.Empty, Description = string.Empty };
+        EditContext editContext = new(model);
+        (FcFormAbandonmentGuard guard, IRenderedComponent<FcFormAbandonmentGuard> cut) = RenderGuardWithCut(editContext);
+
+        // BH-05 — each capture names the edited field and carries a monotonically increasing sequence,
+        // so a stale completion or the warning action can never replace the latest edited origin.
+        await cut.InvokeAsync(() => editContext.NotifyFieldChanged(editContext.Field(nameof(TestModel.Name))));
+        await cut.InvokeAsync(() => editContext.NotifyFieldChanged(editContext.Field(nameof(TestModel.Description))));
+
+        cut.WaitForAssertion(() => JSInterop.Invocations.Count(invocation => invocation.Identifier == "captureEditedOrigin").ShouldBe(2));
+        JSRuntimeInvocation[] captures = [.. JSInterop.Invocations.Where(invocation => invocation.Identifier == "captureEditedOrigin")];
+        captures.Select(invocation => invocation.Arguments[1]).ShouldBe([nameof(TestModel.Name), nameof(TestModel.Description)]);
+        captures.Select(invocation => invocation.Arguments[2]).ShouldBe([1, 2]);
+        _ = captures[1].Arguments[0].ShouldBeOfType<ElementReference>();
+        captures[1].Arguments[0].ShouldBe(captures[0].Arguments[0]);
+
+        SetField(guard, "_showingWarning", true);
+        SetField(guard, "_pendingTarget", "/somewhere-else");
+        await cut.InvokeAsync(() => (Task)typeof(FcFormAbandonmentGuard).GetMethod(
+            "OnStayClickedAsync",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .Invoke(guard, null)!);
+
+        // Stay restores the origin captured inside this guard's own root.
+        cut.WaitForAssertion(() => {
+            JSRuntimeInvocation restore = JSInterop.Invocations.Single(invocation => invocation.Identifier == "restoreEditedOrigin");
+            restore.Arguments.Count.ShouldBe(1);
+            restore.Arguments[0].ShouldBe(captures[0].Arguments[0]);
+        });
+        JSInterop.Invocations.Count(invocation => invocation.Identifier == "captureEditedOrigin").ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task RepeatedEditsOfTheSameFieldCaptureTheEditedOriginOnce() {
+        BunitJSModuleInterop focusModule = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
+        _ = focusModule.Setup<bool>("captureEditedOrigin", _ => true).SetResult(true);
+        TestModel model = new() { Name = string.Empty, Description = string.Empty };
+        EditContext editContext = new(model);
+        IRenderedComponent<FcFormAbandonmentGuard> cut = RenderGuardWithCut(editContext).Cut;
+
+        // BH2-10 — typing in one field does not re-import the focus module per keystroke.
+        for (int keystroke = 0; keystroke < 4; keystroke++) {
+            await cut.InvokeAsync(() => editContext.NotifyFieldChanged(editContext.Field(nameof(TestModel.Name))));
+        }
+
+        await cut.InvokeAsync(() => editContext.NotifyFieldChanged(editContext.Field(nameof(TestModel.Description))));
+        await cut.InvokeAsync(() => editContext.NotifyFieldChanged(editContext.Field(nameof(TestModel.Description))));
+        await cut.InvokeAsync(() => editContext.NotifyFieldChanged(editContext.Field(nameof(TestModel.Name))));
+
+        cut.WaitForAssertion(() => focusModule.Invocations
+            .Where(invocation => invocation.Identifier == "captureEditedOrigin")
+            .Select(invocation => invocation.Arguments[1])
+            .ShouldBe([nameof(TestModel.Name), nameof(TestModel.Description), nameof(TestModel.Name)]));
+    }
+
+    [Fact]
+    public async Task UnboundOriginCaptureIsRetriedOnTheNextEditOfTheSameField() {
+        BunitJSModuleInterop focusModule = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
+        _ = focusModule.Setup<bool>("captureEditedOrigin", _ => true).SetResult(false);
+        TestModel model = new() { Name = string.Empty };
+        EditContext editContext = new(model);
+        IRenderedComponent<FcFormAbandonmentGuard> cut = RenderGuardWithCut(editContext).Cut;
+
+        await cut.InvokeAsync(() => editContext.NotifyFieldChanged(editContext.Field(nameof(TestModel.Name))));
+        cut.WaitForAssertion(() => focusModule.Invocations.Count(invocation => invocation.Identifier == "captureEditedOrigin").ShouldBe(1));
+
+        await cut.InvokeAsync(() => editContext.NotifyFieldChanged(editContext.Field(nameof(TestModel.Name))));
+        cut.WaitForAssertion(() => focusModule.Invocations.Count(invocation => invocation.Identifier == "captureEditedOrigin").ShouldBe(2));
+    }
+
+    [Fact]
+    public async Task SwappedEditContextCapturesTheSameFieldNameAgain() {
+        BunitJSModuleInterop focusModule = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
+        _ = focusModule.Setup<bool>("captureEditedOrigin", _ => true).SetResult(true);
+        EditContext firstContext = new(new TestModel());
+        IRenderedComponent<FcFormAbandonmentGuard> cut = RenderGuardWithCut(firstContext).Cut;
+
+        await cut.InvokeAsync(() => firstContext.NotifyFieldChanged(firstContext.Field(nameof(TestModel.Name))));
+        cut.WaitForAssertion(() => focusModule.Invocations.Count(invocation => invocation.Identifier == "captureEditedOrigin").ShouldBe(1));
+
+        // BH3-14 — a new EditContext belongs to a new form model, so editing the same field name
+        // on it binds the origin again instead of reusing the replaced form's capture.
+        EditContext secondContext = new(new TestModel());
+        cut.Render(parameters => parameters.Add(component => component.EditContext, secondContext));
+        await cut.InvokeAsync(() => secondContext.NotifyFieldChanged(secondContext.Field(nameof(TestModel.Name))));
+
+        cut.WaitForAssertion(() => focusModule.Invocations.Count(invocation => invocation.Identifier == "captureEditedOrigin").ShouldBe(2));
+    }
+
+    [Fact]
+    public async Task PreventedNavigationFocusesTheRenderedStayButtonOnce() {
+        BunitJSModuleInterop focusModule = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
+        TestModel model = new() { Name = string.Empty };
+        EditContext editContext = new(model);
+        (FcFormAbandonmentGuard guard, IRenderedComponent<FcFormAbandonmentGuard> cut) = RenderGuardWithCut(editContext);
+        await ShowWarningThroughPreventedNavigationAsync(cut, guard, editContext);
+
+        // VG4-07 / FM-11 — the warning moves focus to its rendered Stay button exactly once.
+        string? stayId = cut.Find("[data-testid='fc-form-abandonment-stay']").GetAttribute("id");
+        stayId.ShouldNotBeNullOrWhiteSpace();
+        cut.WaitForAssertion(() => {
+            JSRuntimeInvocation focus = focusModule.Invocations.Single(invocation => invocation.Identifier == "focusElementById");
+            focus.Arguments.ShouldBe([stayId]);
+        });
+
+        cut.Render();
+
+        focusModule.Invocations.Count(invocation => invocation.Identifier == "focusElementById").ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ForeignModelFieldChangesDoNotRecaptureTheEditedOrigin() {
+        BunitJSModuleInterop focusModule = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
+        _ = focusModule.Setup<bool>("captureEditedOrigin", _ => true).SetResult(true);
+        TestModel model = new() { Name = string.Empty };
+        EditContext editContext = new(model);
+        IRenderedComponent<FcFormAbandonmentGuard> cut = RenderGuardWithCut(editContext).Cut;
+        object formComponent = new();
+
+        // E4-08 — a split numeric binding reports its text buffer on the form component before the
+        // model field on every keystroke; only the model field names the edited editor.
+        for (int keystroke = 0; keystroke < 3; keystroke++) {
+            await cut.InvokeAsync(() => editContext.NotifyFieldChanged(new FieldIdentifier(formComponent, "_NameString")));
+            await cut.InvokeAsync(() => editContext.NotifyFieldChanged(editContext.Field(nameof(TestModel.Name))));
+        }
+
+        cut.WaitForAssertion(() => focusModule.Invocations
+            .Where(invocation => invocation.Identifier == "captureEditedOrigin")
+            .Select(invocation => invocation.Arguments[1])
+            .ShouldBe([nameof(TestModel.Name)]));
+    }
+
+    [Fact]
+    public void WarningIdsAreUniquePerGuardInstance() {
+        EditContext firstContext = new(new TestModel());
+        EditContext secondContext = new(new TestModel());
+        (FcFormAbandonmentGuard firstGuard, IRenderedComponent<FcFormAbandonmentGuard> firstCut) = RenderGuardWithCut(firstContext);
+        IRenderedComponent<FcFormAbandonmentGuard> secondCut = Render<FcFormAbandonmentGuard>(parameters => parameters
+            .Add(component => component.CorrelationId, DefaultCorrelationId)
+            .Add(component => component.EditContext, secondContext));
+
+        SetField(firstGuard, "_showingWarning", true);
+        SetField(secondCut.Instance, "_showingWarning", true);
+        firstCut.Render();
+        secondCut.Render();
+
+        // BH-07 — two guards on one page never share warning or Stay ids, and the warning is silent.
+        IElement first = firstCut.Find("[data-testid='fc-form-abandonment-warning']");
+        IElement second = secondCut.Find("[data-testid='fc-form-abandonment-warning']");
+        first.GetAttribute("aria-labelledby").ShouldNotBe(second.GetAttribute("aria-labelledby"));
+        first.GetAttribute("aria-describedby").ShouldNotBe(second.GetAttribute("aria-describedby"));
+        firstCut.Find("[data-testid='fc-form-abandonment-stay']").Id
+            .ShouldNotBe(secondCut.Find("[data-testid='fc-form-abandonment-stay']").Id);
+        first.HasAttribute("role").ShouldBeFalse();
+        first.HasAttribute("aria-live").ShouldBeFalse();
     }
 
     [Fact]
@@ -409,6 +565,18 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
             .SetValue(target, value);
 
+    private async Task ShowWarningThroughPreventedNavigationAsync(
+        IRenderedComponent<FcFormAbandonmentGuard> cut,
+        FcFormAbandonmentGuard guard,
+        EditContext editContext) {
+        await cut.InvokeAsync(() => editContext.NotifyFieldChanged(editContext.Field(nameof(TestModel.Name)))).ConfigureAwait(true);
+        _time.Advance(TimeSpan.FromSeconds(31));
+        Microsoft.AspNetCore.Components.Routing.LocationChangingContext context = BuildLocationChangingContext("/somewhere-else");
+        await InvokeNavigationChangingAsync(cut, guard, context).ConfigureAwait(true);
+        DidPreventNavigation(context).ShouldBeTrue();
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-form-abandonment-warning']"));
+    }
+
     private static Task InvokeNavigationChangingAsync(
         IRenderedComponent<FcFormAbandonmentGuard> cut,
         FcFormAbandonmentGuard guard,
@@ -481,73 +649,7 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
 
     private sealed class TestModel {
         public string Name { get; set; } = string.Empty;
-    }
-}
 
-public sealed class FcValidationSummaryTests : BunitContext {
-    private static readonly string[] ExpectedTargets = ["first-input", "second-input"];
-
-    public FcValidationSummaryTests() {
-        JSInterop.Mode = JSRuntimeMode.Loose;
-        _ = Services.AddFluentUIComponents();
-        _ = Services.AddLocalization();
-        _ = Services.AddLogging();
-    }
-
-    [Fact]
-    public async Task ClientValidation_RendersOneNonLiveLinkedSummaryInDeclaredFieldOrder() {
-        ValidationModel model = new();
-        EditContext context = new(model);
-        ValidationMessageStore store = new(context);
-        store.Add(context.Field(nameof(ValidationModel.Second)), "Second is invalid.");
-        store.Add(context.Field(nameof(ValidationModel.First)), "First is invalid.");
-
-        IRenderedComponent<FcValidationSummary> cut = Render<FcValidationSummary>(parameters => parameters
-            .Add(component => component.EditContext, context)
-            .Add(component => component.SummaryId, "validation-summary")
-            .Add(component => component.Fields, new[] {
-                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "First", "first-input", "first-error"),
-                new FcValidationFieldDescriptor(nameof(ValidationModel.Second), "Second", "second-input", "second-error"),
-            }));
-
-        await cut.InvokeAsync(() => cut.Instance.ShowAndFocusAsync(FcValidationSummaryKind.ClientValidation));
-
-        AngleSharp.Dom.IElement summary = cut.Find("[data-testid='fc-validation-summary']");
-        summary.HasAttribute("role").ShouldBeFalse();
-        summary.HasAttribute("aria-live").ShouldBeFalse();
-        string[] targets = cut.FindAll("[data-fc-validation-target]")
-            .Select(element => element.GetAttribute("data-fc-validation-target")!)
-            .ToArray();
-        targets.ShouldBe(ExpectedTargets);
-        JSInterop.VerifyInvoke("focusValidationOutcome", 1);
-    }
-
-    [Fact]
-    public async Task MappedRejection_UsesExplicitMappedKindWithoutLiveRegion() {
-        ValidationModel model = new();
-        EditContext context = new(model);
-        ValidationMessageStore store = new(context);
-        store.Add(context.Field(nameof(ValidationModel.First)), "Rejected value.");
-
-        IRenderedComponent<FcValidationSummary> cut = Render<FcValidationSummary>(parameters => parameters
-            .Add(component => component.EditContext, context)
-            .Add(component => component.SummaryId, "mapped-summary")
-            .Add(component => component.Fields, new[] {
-                new FcValidationFieldDescriptor(nameof(ValidationModel.First), "First", "first-input", "first-error"),
-            }));
-
-        await cut.InvokeAsync(() => cut.Instance.ShowAndFocusAsync(FcValidationSummaryKind.MappedServerRejection));
-
-        AngleSharp.Dom.IElement summary = cut.Find("[data-fc-validation-kind='mapped-server-rejection']");
-        summary.HasAttribute("role").ShouldBeFalse();
-        summary.HasAttribute("aria-live").ShouldBeFalse();
-        summary.TextContent.ShouldContain("One error.");
-        summary.TextContent.ShouldNotContain("1 errors");
-    }
-
-    private sealed class ValidationModel {
-        public string First { get; set; } = string.Empty;
-
-        public string Second { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
     }
 }

@@ -320,8 +320,50 @@ public class CommandRendererEmitterTests {
         // Inline + CompactInline + FullPage placeholder branches all check the gate via if-statement.
         int placeholderBranches = System.Text.RegularExpressions.Regex.Count(source, @"if \(AuthorizationTriggerDisabled\(\)\)");
         placeholderBranches.ShouldBe(3, "Inline + CompactInline + FullPage placeholder branches");
-        source.ShouldContain("focusOverlayEntry");
         source.ShouldContain("catch (JSDisconnectedException) { /* circuit teardown; benign. */ }");
+
+        // Story 13.3 AM-26 / FM-01 — presentation-time denial never focuses directly: only a refresh
+        // that replaces a shown form arms the replacement check, which verifies the form held focus.
+        source.ShouldNotContain("focusOverlayEntry");
+        source.ShouldNotContain("_authorizationFocusPending = _authorizationPresentationReady && !_authorizationPresentationAllowed;");
+        source.ShouldContain("bool replacesShownForm = _authorizationPresentationReady && _authorizationPresentationAllowed;");
+        source.ShouldContain("\"captureFocusBeforeReplacement\", _authorizationHeadingId");
+        source.ShouldContain("bool replacementArmed = replacesShownForm && await CaptureFocusBeforeReplacementAsync().ConfigureAwait(false);");
+        source.ShouldContain("_authorizationFocusPending = !_authorizationPresentationAllowed && replacementArmed;");
+
+        // E4-11 — the armed state is local to one refresh; no field lets a superseded refresh arm a
+        // later unrelated background denial.
+        source.ShouldNotContain("_authorizationReplacementArmed");
+        source.ShouldContain("\"focusReplacementHeading\", _authorizationHeadingId, _authorizationHeadingId");
+
+        // BH3-01 — Ready=false and the refresh stamp precede the capture round trip.
+        int refresh = source.IndexOf("private async Task RefreshPresentationAuthorizationAsync()", StringComparison.Ordinal);
+        int notReady = source.IndexOf("_authorizationPresentationReady = false;", refresh, StringComparison.Ordinal);
+        int stamp = source.IndexOf("Interlocked.Increment(ref _authorizationRefreshSequence)", refresh, StringComparison.Ordinal);
+        int capture = source.IndexOf("CaptureFocusBeforeReplacementAsync()", refresh, StringComparison.Ordinal);
+        notReady.ShouldBeGreaterThan(refresh);
+        stamp.ShouldBeGreaterThan(notReady);
+        capture.ShouldBeGreaterThan(stamp);
+    }
+
+    [Fact]
+    public void RendererZeroFieldInlineOwnsBlockedOutcomeBesideItsTrigger() {
+        string source = GeneratedRenderTreeText.MaskSequenceArguments(CommandRendererEmitter.Emit(BuildModel(0)));
+        string oneField = CommandRendererEmitter.Emit(BuildModel(1));
+
+        // VG2-13 — the zero-field form is hidden, so its AM-20 node renders beside the visible trigger.
+        int trigger = source.IndexOf("builder.AddAttribute(#, \"Id\", _triggerButtonId);", StringComparison.Ordinal);
+        int outcome = source.IndexOf("builder.OpenComponent<FcCommandBlockedOutcome>(#);", StringComparison.Ordinal);
+        int hiddenForm = source.IndexOf("builder.AddAttribute(#, \"style\", \"display:none\");", StringComparison.Ordinal);
+        trigger.ShouldBeGreaterThanOrEqualTo(0);
+        outcome.ShouldBeGreaterThan(trigger);
+        outcome.ShouldBeLessThan(hiddenForm);
+        source.ShouldContain("builder.AddAttribute(#, \"AttemptedControlId\", _triggerButtonId);");
+        source.ShouldContain("builder.AddAttribute(#, \"Inline\", true);");
+        source.ShouldContain("builder.AddAttribute(#, \"OnBlockedSubmission\", EventCallback.Factory.Create<bool>(this, OnFormBlockedSubmissionAsync));");
+        source.ShouldContain("return blocked ? _blockedOutcome.PresentAsync() : _blockedOutcome.ClearAsync();");
+        oneField.ShouldNotContain("FcCommandBlockedOutcome");
+        oneField.ShouldNotContain("OnBlockedSubmission");
     }
 
     [Fact]
@@ -489,6 +531,22 @@ public class CommandRendererEmitterTests {
         string withIcon = CommandRendererEmitter.Emit(BuildModel(1, iconName: "Regular.Size16.Add"));
         withIcon.ShouldContain("private Icon? ResolveIcon()");
         withIcon.ShouldNotContain("private static Icon? ResolveIcon()");
+    }
+
+    [Fact]
+    public void RendererFullPageDenialCardKeepsThePageFormMaxWidthColumn() {
+        string source = GeneratedRenderTreeText.MaskSequenceArguments(
+            CommandRendererEmitter.Emit(BuildModel(5, authorizationPolicyName: "OrderApprover")));
+
+        // E3-15 — the FullPage presentation denial keeps the page form's centered max-width column.
+        int fullPage = source.IndexOf("var opts = ShellOptions.Value;", StringComparison.Ordinal);
+        int gate = source.IndexOf("if (AuthorizationTriggerDisabled())", fullPage, StringComparison.Ordinal);
+        int wrapper = source.IndexOf("builder.AddAttribute(#, \"style\", $\"max-width: {opts.FullPageFormMaxWidth}; margin: 0 auto;\");", gate, StringComparison.Ordinal);
+        int card = source.IndexOf("builder.OpenComponent<FluentCard>(#);", gate, StringComparison.Ordinal);
+        fullPage.ShouldBeGreaterThanOrEqualTo(0);
+        gate.ShouldBeGreaterThan(fullPage);
+        wrapper.ShouldBeGreaterThan(gate);
+        card.ShouldBeGreaterThan(wrapper);
     }
 
     [Fact]

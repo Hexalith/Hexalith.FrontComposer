@@ -674,7 +674,9 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
 
         cut.Find("form").Submit();
         await provider.Started.Task.WaitAsync(Xunit.TestContext.Current.CancellationToken);
-        cut.Find("input").Input("edited-after-clone");
+        // Generated editors are Fluent text inputs; wait until the edit reaches the bound model.
+        cut.Find("fluent-text-input[name='Name']").Change("edited-after-clone");
+        cut.WaitForAssertion(() => cut.Instance.InitialValue.ShouldNotBeNull().Name.ShouldBe("edited-after-clone"));
         provider.Release();
 
         cut.WaitForAssertion(() => {
@@ -725,6 +727,14 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
             first.Find("form").Submit();
             SpinWait.SpinUntil(() => Volatile.Read(ref getterReads) == 1, TimeSpan.FromSeconds(2)).ShouldBeTrue();
             first.WaitForAssertion(() => service.DispatchCount.ShouldBe(1), timeout: TimeSpan.FromSeconds(2));
+
+            // The first submit must release its admission before the second one: a still-held
+            // admission would block the second submit with AM-20 instead of failing target fast.
+            ICommandExecutionAdmissionGate admissionGate = Services.GetRequiredService<ICommandExecutionAdmissionGate>();
+            SpinWait.SpinUntil(() => {
+                using CommandExecutionAdmission probe = admissionGate.TryAcquire(new CommandExecutionAdmissionRequest("settlement-probe"));
+                return probe.IsAdmitted;
+            }, TimeSpan.FromSeconds(2)).ShouldBeTrue();
 
             long secondStartedAt = Stopwatch.GetTimestamp();
             second.Find("form").Submit();
@@ -846,7 +856,8 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
 
         service.DispatchCount.ShouldBe(0);
         cut.Markup.ShouldContain("Workspace unavailable");
-        cut.Markup.ShouldNotContain("Command already in progress");
+        // E3-14 — a scope failure is not a blocked concurrent submit, so the AM-20 copy is absent.
+        cut.Markup.ShouldNotContain("This command did not run. Another command is already in progress.");
         pending.Snapshot().ShouldBeEmpty();
         indicators.Snapshot("Counter:Counter.Domain.CounterProjection").ShouldBeEmpty();
     }

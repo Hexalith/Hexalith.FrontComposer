@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import type { Locator, Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/index.js';
-import { expectFieldValue, fillFieldByLabel } from '../helpers/fluent-fields.js';
+import { expectFieldValue, fieldEditorByLabel, fillFieldByLabel } from '../helpers/fluent-fields.js';
 
 const BATCH_COMMAND_ID = 'batch-increment';
 const INCREMENT_COMMAND_ID = 'increment';
@@ -52,12 +52,24 @@ test.describe('Story 4.3: one-at-a-time execution policy', () => {
     await expect(incrementForm).toBeVisible();
     await fillField(incrementForm, 'Amount', '7');
     const attemptedSubmit = incrementForm.getByRole('button', { name: 'Increment', exact: true });
+    // Story 13.3 BH2-06 — the polite AM-20 node exists before the first blocked attempt, so its
+    // first update is announced; record every text it shows to prove one speech per attempt.
+    const blockedStatus = incrementForm.getByTestId('fc-command-blocked-status');
+    await expect(blockedStatus).toHaveCount(1);
+    await expect(blockedStatus).toHaveText('');
+    await blockedStatus.evaluate((node) => {
+      const texts: string[] = [];
+      (window as unknown as { __fcBlockedTexts: string[] }).__fcBlockedTexts = texts;
+      new MutationObserver(() => texts.push(node.textContent ?? '')).observe(node, {
+        characterData: true,
+        childList: true,
+        subtree: true,
+      });
+    });
     await attemptedSubmit.click();
 
-    await expect(incrementForm).toContainText('Command not run');
     await expect(incrementForm).toContainText('This command did not run. Another command is already in progress.');
-    const blockedStatus = incrementForm.getByRole('status');
-    await expect(blockedStatus).toHaveCount(1);
+    await expect(incrementForm.getByRole('status')).toHaveCount(1);
     await expect(blockedStatus).toHaveAttribute('aria-live', 'polite');
     await expect(blockedStatus).toHaveAttribute('aria-atomic', 'true');
     await expect(blockedStatus).toContainText('This command did not run. Another command is already in progress.');
@@ -69,10 +81,39 @@ test.describe('Story 4.3: one-at-a-time execution policy', () => {
     await lifecycle.expectState(INCREMENT_COMMAND_ID, 'idle');
     await lifecycle.expectState(BATCH_COMMAND_ID, 'syncing');
 
+    // An identical repeat is announced again: the node clears, then sets the same exact copy.
+    await attemptedSubmit.press('Enter');
+    await expect.poll(async () => page.evaluate(() => (window as unknown as { __fcBlockedTexts: string[] }).__fcBlockedTexts
+      .filter((text) => text === 'This command did not run. Another command is already in progress.').length))
+      .toBe(2);
+    const blockedTexts = await page.evaluate(() => (window as unknown as { __fcBlockedTexts: string[] }).__fcBlockedTexts);
+    expect(blockedTexts.filter((text) => text === '').length).toBeGreaterThanOrEqual(1);
+    await expect(attemptedSubmit).toBeFocused();
+    await expectFieldValue(incrementForm, 'Amount', '7');
+    await lifecycle.expectState(INCREMENT_COMMAND_ID, 'idle');
+
+    // Story 13.3 BH3-05 — Enter in a field is an attempt from inside the form: focus stays in that
+    // field instead of being pulled to the submit button, and the attempt is still announced once.
+    const amountEditor = fieldEditorByLabel(incrementForm, 'Amount');
+    await amountEditor.focus();
+    await amountEditor.press('Enter');
+    await expect.poll(async () => page.evaluate(() => (window as unknown as { __fcBlockedTexts: string[] }).__fcBlockedTexts
+      .filter((text) => text === 'This command did not run. Another command is already in progress.').length))
+      .toBe(3);
+    await expect(amountEditor).toBeFocused();
+    await expectFieldValue(incrementForm, 'Amount', '7');
+    await lifecycle.expectState(INCREMENT_COMMAND_ID, 'idle');
+
     await incrementForm.getByRole('button', { name: 'View active command' }).click();
     await expect(lifecycle.locator(BATCH_COMMAND_ID).locator('[data-fc-lifecycle-heading]')).toBeFocused();
 
     await lifecycle.expectState(BATCH_COMMAND_ID, 'confirmed');
+
+    // Story 13.3 BH3-04 — the focused active-lifecycle heading unmounts when its command settles;
+    // focus moves to the owning form's first editable control and never falls to the document body.
+    await expect(lifecycle.locator(BATCH_COMMAND_ID).locator('[data-fc-lifecycle-heading]')).toHaveCount(0);
+    await expect(fieldEditorByLabel(batchForm, 'Amount')).toBeFocused();
+    expect(await page.evaluate(() => document.activeElement === document.body)).toBe(false);
 
     await attemptedSubmit.focus();
     await attemptedSubmit.press('Enter');
@@ -80,6 +121,40 @@ test.describe('Story 4.3: one-at-a-time execution policy', () => {
     await lifecycle.expectState(INCREMENT_COMMAND_ID, 'confirmed');
     await expect(page.getByText('IncrementCommand: confirmed.', { exact: true })).toBeVisible();
     await expect(incrementForm).toBeHidden();
+  });
+});
+
+test.describe('Story 13.3: View active command availability', () => {
+  test('a hidden active lifecycle offers no View active command target', async ({ page, tenant }) => {
+    expect(tenant.tenantId).toBeTruthy();
+
+    await gotoCounter(page);
+
+    // Story 13.3 BH3-07 — a lifecycle inside a hidden zero-field form or a closed popover cannot take
+    // focus, so it must not count as available; the same heading counts once it is rendered.
+    const outcome = await page.evaluate(async (focusModulePath) => {
+      const focus = await import(focusModulePath) as {
+        hasActiveLifecycle: () => boolean;
+        focusActiveLifecycle: () => boolean;
+      };
+      const fixture = document.createElement('div');
+      fixture.innerHTML = `
+        <div data-fc-command-form="true">
+          <div data-fc-active-lifecycle="true" style="display:none">
+            <h2 data-fc-lifecycle-heading tabindex="-1">Hidden command status</h2>
+          </div>
+        </div>`;
+      document.body.append(fixture);
+      const hiddenAvailable = focus.hasActiveLifecycle();
+      const hiddenFocused = focus.focusActiveLifecycle();
+      (fixture.querySelector('[data-fc-active-lifecycle]') as HTMLElement).style.display = '';
+      const shownAvailable = focus.hasActiveLifecycle();
+      const shownFocused = focus.focusActiveLifecycle();
+      fixture.remove();
+      return { hiddenAvailable, hiddenFocused, shownAvailable, shownFocused };
+    }, '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js');
+
+    expect(outcome).toEqual({ hiddenAvailable: false, hiddenFocused: false, shownAvailable: true, shownFocused: true });
   });
 });
 

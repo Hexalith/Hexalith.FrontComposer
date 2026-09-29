@@ -79,6 +79,9 @@ public partial class FcDestructiveConfirmationDialog : ComponentBase {
                 "fc-destructive-dialog",
                 "fc-destructive-dialog-title",
                 "fc-destructive-dialog-description");
+            // OF-03 — the native modal dialog makes the page inert, but Tab can still leave the
+            // document for browser chrome; wrap Tab and Shift+Tab across the dialog's own actions.
+            _ = await module.InvokeAsync<bool>("containDialogFocus", "fc-destructive-dialog");
         }
         catch (JSDisconnectedException) {
             // Circuit teardown after the dialog was displayed is safe to ignore.

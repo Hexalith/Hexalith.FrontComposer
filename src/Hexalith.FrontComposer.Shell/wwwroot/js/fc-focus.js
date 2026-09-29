@@ -5,7 +5,9 @@ let routeFocusTimer = null;
 let pendingRoutePath = null;
 let pendingTabFocus = null;
 let routeFocusGuardController = null;
-const editedOriginCaptureSequences = new WeakMap();
+const editedOrigins = new WeakMap();
+const containedDialogs = new WeakSet();
+let lastEditedRootRef = null;
 
 export function prepareTabNavigation(route, tabId) {
     pendingTabFocus = { path: normalizePath(new URL(route, document.baseURI).pathname), tabId };
@@ -32,10 +34,18 @@ export function labelTabPanels(testId) {
 
 export function captureOverlayOrigin(testId = null, preserveExisting = false) {
     if (document.activeElement?.closest('[role="dialog"], fluent-dialog')) return false;
-    if (window.__fcOverlayOpenIntent) {
-        return preserveExisting
-            && window.__fcOverlayOrigin instanceof HTMLElement
-            && window.__fcOverlayOrigin.isConnected;
+    if (preserveExisting) {
+        // Shell overlays (palette, settings, shortcuts) keep an origin the keyboard tracker or an
+        // earlier trigger already captured, including its `moved` state, exactly as before the
+        // destructive-confirmation reservation existed. Tracker intents carry no `createdAt`.
+        if (window.__fcOverlayOrigin instanceof HTMLElement
+            && window.__fcOverlayOrigin.isConnected
+            && window.__fcOverlayOpenIntent) {
+            return true;
+        }
+    } else if (isLiveOverlayIntent(window.__fcOverlayOpenIntent)) {
+        // A destructive confirmation refuses while another overlay reserves the single modal slot.
+        return false;
     }
     const candidate = testId
         ? document.querySelector(`[data-testid="${testId}"]`)
@@ -43,15 +53,36 @@ export function captureOverlayOrigin(testId = null, preserveExisting = false) {
     window.__fcOverlayOrigin = candidate instanceof HTMLElement && candidate.isConnected && !candidate.disabled
         ? candidate
         : null;
-    window.__fcOverlayOpenIntent = { origin: window.__fcOverlayOrigin, moved: false, watchFocus: false };
+    window.__fcOverlayOpenIntent = { origin: window.__fcOverlayOrigin, moved: false, watchFocus: false, createdAt: Date.now() };
     return true;
+}
+
+// An opening intent reserves the single modal slot only while its overlay is plausibly on the
+// way. A modal that is already open keeps it reserved; otherwise an intent expires, so a press
+// that never opened its overlay cannot refuse every later confirmation for the whole session.
+const overlayIntentLifetimeMs = 5000;
+
+function isLiveOverlayIntent(intent) {
+    if (!intent) return false;
+    if (hasOpenModal()) return true;
+    return typeof intent.createdAt === 'number' && Date.now() - intent.createdAt < overlayIntentLifetimeMs;
+}
+
+function hasOpenModal() {
+    if (document.querySelector('dialog[open]')) return true;
+    return Array.from(document.querySelectorAll('fluent-dialog')).some((host) => {
+        const dialog = host.shadowRoot?.querySelector('dialog');
+        return dialog instanceof HTMLDialogElement ? dialog.open : host.isConnected;
+    });
 }
 
 export function captureEditedOrigin(root = null, fieldName = null, sequence = 0) {
     if (!(root instanceof HTMLElement) || !fieldName) return false;
-    const previousSequence = editedOriginCaptureSequences.get(root) ?? -1;
-    if (sequence < previousSequence) return false;
+    const previous = editedOrigins.get(root);
+    if (previous && sequence < previous.sequence) return false;
 
+    // Bind the origin to the field named by the edit event, never to whatever is focused now:
+    // by the time this completes, focus may already sit on a warning action.
     const fieldHost = root.querySelector(`[name="${cssEscape(fieldName)}"]`);
     const declaredEditor = fieldHost instanceof HTMLElement
         ? fieldHost.matches(fieldEditableSelector)
@@ -62,22 +93,19 @@ export function captureEditedOrigin(root = null, fieldName = null, sequence = 0)
         || !declaredEditor.isConnected
         || declaredEditor.hasAttribute('disabled')) return false;
 
-    editedOriginCaptureSequences.set(root, sequence);
-    window.__fcEditedOrigin = declaredEditor;
-    window.__fcEditedFormRoot = root;
+    editedOrigins.set(root, { origin: declaredEditor, sequence });
+    lastEditedRootRef = typeof WeakRef === 'function' ? new WeakRef(root) : { deref: () => root };
     return true;
 }
 
-export function restoreEditedOrigin() {
-    const origin = window.__fcEditedOrigin;
-    const capturedFormRoot = window.__fcEditedFormRoot;
+export function restoreEditedOrigin(root = null) {
+    const formRoot = root instanceof HTMLElement ? root : lastEditedRootRef?.deref() ?? null;
+    const origin = formRoot ? editedOrigins.get(formRoot)?.origin : null;
     runAfterDismiss(() => {
-        const formRoot = capturedFormRoot instanceof HTMLElement && capturedFormRoot.isConnected
-            ? capturedFormRoot
-            : null;
+        const connectedRoot = formRoot instanceof HTMLElement && formRoot.isConnected ? formRoot : null;
         const target = origin instanceof HTMLElement && origin.isConnected && !origin.disabled
             ? origin
-            : formRoot?.querySelector('[data-fc-form-heading]')
+            : connectedRoot?.querySelector('[data-fc-form-heading="true"]')
                 ?? document.querySelector('[data-fc-form-heading="true"]')
                 ?? document.querySelector('#fc-main-content h1, main h1');
         focusTarget(target);
@@ -103,15 +131,58 @@ export function labelDialog(testId, titleId, descriptionId) {
     return true;
 }
 
+const dialogTabbableSelector = [
+    'fluent-button:not([disabled])',
+    'button:not([disabled])',
+    'a[href]',
+    'input:not([disabled])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    '[tabindex]:not([tabindex="-1"]):not([disabled])',
+].join(', ');
+
+// A native modal dialog makes the page inert but lets Tab leave the document for browser chrome.
+// Wrap Tab and Shift+Tab across the dialog's own actions so keyboard focus stays contained.
+export function containDialogFocus(testId, retryOnce = true) {
+    const content = document.querySelector(`[data-testid="${cssEscape(testId)}"]`);
+    const host = content?.closest('fluent-dialog');
+    if (!(host instanceof HTMLElement)) {
+        // The dialog host can attach one frame after its first render; retry exactly once.
+        if (retryOnce) runAfterDismiss(() => containDialogFocus(testId, false));
+        return false;
+    }
+    if (containedDialogs.has(host)) return true;
+
+    host.addEventListener('keydown', (event) => {
+        if (event.key !== 'Tab' || event.altKey || event.ctrlKey || event.metaKey) return;
+        const tabbables = Array.from(host.querySelectorAll(dialogTabbableSelector))
+            .filter((candidate) => candidate instanceof HTMLElement
+                && candidate.isConnected
+                && candidate.tabIndex >= 0
+                && candidate.getClientRects().length > 0);
+        if (tabbables.length === 0) return;
+        const first = tabbables[0];
+        const last = tabbables[tabbables.length - 1];
+        const active = document.activeElement;
+        const inside = active instanceof Node && host.contains(active);
+        const atBoundary = event.shiftKey ? active === first : active === last;
+        if (!inside || atBoundary) {
+            event.preventDefault();
+            (event.shiftKey ? last : first).focus();
+        }
+    }, true);
+    containedDialogs.add(host);
+    return true;
+}
+
 export function focusValidationOutcome(summaryId) {
     runAfterDismiss(() => {
         const summary = document.getElementById(summaryId);
         if (focusTarget(summary)) return;
+        // FM-06 — without a rendered summary, the first invalid generated editor takes focus.
         const form = document.querySelector(`[data-fc-validation-summary-id="${cssEscape(summaryId)}"]`);
-        const invalid = form?.querySelector('[aria-invalid="true"], [data-fc-validation-invalid="true"]')
-            ?? Array.from(form?.querySelectorAll('[data-fc-validation-field]') ?? [])
-                .find((candidate) => candidate instanceof HTMLElement
-                    && document.getElementById(`${candidate.id}-error`)?.textContent?.trim());
+        const invalid = Array.from(form?.querySelectorAll('[data-fc-validation-field][data-fc-invalid="true"]') ?? [])
+            .find((candidate) => candidate instanceof HTMLElement && isRendered(candidate));
         focusTarget(invalid);
     });
 }
@@ -142,32 +213,238 @@ export function focusValidationTarget(summaryId, targetId) {
         .map((link) => document.getElementById(link.getAttribute('data-fc-validation-target') ?? ''))
         .find((candidate) => candidate instanceof HTMLElement && candidate.isConnected && !candidate.hasAttribute('disabled'));
     return focusTarget(firstLinkedTarget
-        ?? orderedTargets.find((candidate) => candidate.getAttribute('aria-invalid') === 'true'));
+        ?? orderedTargets.find((candidate) => candidate.getAttribute('data-fc-invalid') === 'true'));
+}
+
+// Story 13.3 VR-01 / BH3-08 — generated editors are Fluent web components whose focusable control
+// lives in an open shadow root, where host aria-invalid / aria-describedby never reach it. The form
+// marks each editor host with the non-ARIA data-fc-invalid state; this projection mirrors that state
+// onto the focusable control and relates the control to its Fluent description and error message
+// through ARIA element reflection, which may reference light-DOM elements from inside a shadow root.
+// The Fluent field renders the visible error text once; its element gets the stable
+// "{editor id}-error" id for the control's description relationship. Validation summary links
+// target the editor id itself, not this error id.
+const fieldAccessibilityObservers = new WeakMap();
+
+const fieldControlSelector = [
+    'input:not([type="hidden"])',
+    'textarea',
+    'select',
+    '[role="combobox"]',
+    '[role="textbox"]',
+    '[role="switch"]',
+    '[role="checkbox"]',
+    'button',
+].join(', ');
+
+export function observeFieldAccessibility(rootId) {
+    const root = typeof rootId === 'string' ? document.getElementById(rootId) : rootId;
+    if (!(root instanceof HTMLElement)) return false;
+    if (fieldAccessibilityObservers.has(root)) {
+        syncFieldAccessibility(root);
+        return true;
+    }
+
+    let scheduled = false;
+    const schedule = () => {
+        if (scheduled) return;
+        scheduled = true;
+        queueMicrotask(() => {
+            scheduled = false;
+            if (root.isConnected) syncFieldAccessibility(root);
+        });
+    };
+    const observer = new MutationObserver(schedule);
+    observer.observe(root, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ['data-fc-invalid'],
+    });
+    fieldAccessibilityObservers.set(root, observer);
+    syncFieldAccessibility(root);
+    // Fluent editors upgrade asynchronously; project again once each editor's shadow control exists.
+    const pendingTags = new Set(Array.from(root.querySelectorAll('[data-fc-validation-field]'))
+        .filter((host) => host.localName.includes('-') && !host.shadowRoot)
+        .map((host) => host.localName));
+    for (const tag of pendingTags) {
+        customElements.whenDefined(tag).then(() => requestAnimationFrame(schedule));
+    }
+    return true;
+}
+
+export function syncFieldAccessibility(root) {
+    if (!(root instanceof HTMLElement)) return 0;
+    let synced = 0;
+    for (const host of root.querySelectorAll('[data-fc-validation-field]')) {
+        if (!(host instanceof HTMLElement)) continue;
+        const control = fieldControl(host);
+        const field = host.closest('fluent-field');
+        const invalid = host.getAttribute('data-fc-invalid') === 'true';
+        const error = invalid && field
+            ? Array.from(field.children).find((child) => child.classList.contains('fluent-validation-message'))
+            : null;
+        if (error instanceof HTMLElement && host.id) {
+            error.id = `${host.id}-error`;
+        }
+
+        const description = host.id ? document.getElementById(`${host.id}-description`) : null;
+        const describedBy = [description, error].filter((element) => element instanceof HTMLElement);
+        if (invalid) {
+            control.setAttribute('aria-invalid', 'true');
+        }
+        else {
+            control.removeAttribute('aria-invalid');
+        }
+
+        if ('ariaDescribedByElements' in control) {
+            control.ariaDescribedByElements = describedBy.length > 0 ? describedBy : null;
+        }
+        else {
+            // Engines without ARIA element reflection still get the text relationship.
+            const text = describedBy.map((element) => element.textContent?.trim()).filter(Boolean).join(' ');
+            if (text) control.setAttribute('aria-description', text);
+            else control.removeAttribute('aria-description');
+        }
+
+        synced++;
+    }
+
+    return synced;
+}
+
+function fieldControl(host) {
+    // A text-like editor focuses an input inside its shadow root; a dropdown may slot its control into
+    // the light DOM; a switch is itself the focusable control.
+    const inner = host.shadowRoot?.querySelector(fieldControlSelector)
+        ?? host.querySelector(':scope > [slot="control"]');
+    return inner instanceof HTMLElement ? inner : host;
+}
+
+// Story 13.3 FM-09 / BH3-05 — a blocked attempt keeps focus on the attempted control. When the
+// attempt came from inside the owning form (for example Enter in a field), focus already sits on the
+// attempted control and stays there; `force` moves focus back after a withdrawn action.
+// BH4-02 — a zero-field inline trigger id is shared by every renderer instance of the same command,
+// so the focused element carrying that id is the pressed trigger and keeps focus.
+export function focusAttemptedControl(controlId, force = false) {
+    if (!force && controlId) {
+        const active = document.activeElement;
+        if (active instanceof HTMLElement && active.isConnected && active.id === controlId) return true;
+    }
+
+    const control = controlId ? document.getElementById(controlId) : null;
+    if (!(control instanceof HTMLElement) || !control.isConnected) return false;
+    if (!force) {
+        const active = document.activeElement;
+        const form = control.closest('[data-fc-command-form="true"]');
+        if (form && active instanceof HTMLElement && active !== document.body && active.isConnected && form.contains(active)) {
+            return true;
+        }
+    }
+
+    return focusTarget(control);
 }
 
 export function focusElementById(id) {
     return focusTarget(document.getElementById(id));
 }
 
+// Story 13.3 FM-01 / AM-26 — a background authorization refresh may replace a form with its
+// denied state. The heading takes focus only when the replaced content held focus: the element
+// focused before the replacement render is gone and focus fell back to the document. An initial
+// denial, or a refresh while focus sits elsewhere, renders silently and leaves focus alone.
+const focusBeforeReplacement = new Map();
+
+export function captureFocusBeforeReplacement(key) {
+    if (!key) return false;
+    const active = document.activeElement;
+    focusBeforeReplacement.delete(key);
+    focusBeforeReplacement.set(key, active instanceof HTMLElement && active !== document.body ? active : null);
+    // A refresh that settles allowed never consumes its capture; keep the map bounded.
+    while (focusBeforeReplacement.size > 32) {
+        focusBeforeReplacement.delete(focusBeforeReplacement.keys().next().value);
+    }
+    return true;
+}
+
+export function focusReplacementHeading(key, headingId) {
+    const prior = focusBeforeReplacement.get(key);
+    focusBeforeReplacement.delete(key);
+    if (!(prior instanceof HTMLElement) || prior.isConnected) return false;
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && active !== document.body && active.isConnected) return false;
+    return focusTarget(document.getElementById(headingId));
+}
+
+// Story 13.3 FM-09 / BH3-07 — only a rendered active lifecycle heading counts: a lifecycle inside a
+// hidden zero-field form or a closed popover cannot receive focus, so it offers no action.
+function activeLifecycleHeading() {
+    return Array.from(document.querySelectorAll('[data-fc-active-lifecycle="true"] [data-fc-lifecycle-heading]'))
+        .find((heading) => heading instanceof HTMLElement
+            && heading.isConnected
+            && !heading.hasAttribute('disabled')
+            && isRendered(heading)) ?? null;
+}
+
 export function focusActiveLifecycle() {
-    const active = document.querySelector('[data-fc-active-lifecycle="true"] [data-fc-lifecycle-heading]');
-    return focusTarget(active);
+    const heading = activeLifecycleHeading();
+    if (!focusTarget(heading)) return false;
+    watchLifecycleSettle(heading);
+    return true;
 }
 
 export function hasActiveLifecycle() {
-    const active = document.querySelector('[data-fc-active-lifecycle="true"] [data-fc-lifecycle-heading]');
-    return active instanceof HTMLElement && active.isConnected && !active.hasAttribute('disabled');
+    return activeLifecycleHeading() !== null;
+}
+
+// Story 13.3 BH3-04 — the active lifecycle heading renders only while its command is Submitting,
+// Acknowledged, or Syncing. When it unmounts while focused, focus moves to the owning form's first
+// editable control, or its submit control when it has none; it never falls to the document body.
+function watchLifecycleSettle(heading) {
+    const wrapper = heading.closest('[data-fc-active-lifecycle]');
+    if (!(wrapper instanceof HTMLElement)) return;
+    const form = wrapper.closest('[data-fc-command-form="true"]') ?? wrapper;
+    let done = false;
+    const observer = new MutationObserver(() => {
+        if (done || heading.isConnected) return;
+        finish();
+        const active = document.activeElement;
+        if (active instanceof HTMLElement && active !== document.body && active.isConnected) return;
+        if (!focusFirstEditableWithin(form)) focusFirstEditableWithin(wrapper);
+    });
+    const onFocusOut = (event) => {
+        // The operator moved on while the heading is still mounted: focus is no longer ours to repair.
+        if (heading.isConnected && event.relatedTarget instanceof Node) finish();
+    };
+    const finish = () => {
+        done = true;
+        observer.disconnect();
+        heading.removeEventListener('focusout', onFocusOut);
+    };
+    heading.addEventListener('focusout', onFocusOut);
+    observer.observe(form, { childList: true, subtree: true });
+}
+
+function isRendered(element) {
+    return element instanceof HTMLElement && element.getClientRects().length > 0;
 }
 
 export function focusFirstEditableWithin(element) {
     if (!(element instanceof HTMLElement)) return false;
-    const target = element.querySelector(editableSelector);
-    return focusTarget(target);
+    // Declared generated editors win over incidental form plumbing (for example the hidden
+    // antiforgery input EditForm renders first); only a rendered, focus-accepting control counts.
+    const candidates = [
+        ...element.querySelectorAll('[data-fc-validation-field]:not([disabled])'),
+        ...element.querySelectorAll(editableSelector),
+    ];
+    return candidates.some((candidate) => candidate instanceof HTMLElement
+        && candidate.getClientRects().length > 0
+        && focusTarget(candidate));
 }
 
 const editableSelector = [
     '[data-fc-validation-field]:not([disabled])',
-    'input:not([disabled])',
+    'input:not([disabled]):not([type="hidden"])',
     'textarea:not([disabled])',
     'select:not([disabled])',
     'button:not([disabled])',
@@ -177,7 +454,7 @@ const editableSelector = [
 
 const fieldEditableSelector = [
     '[data-fc-validation-field]:not([disabled])',
-    'input:not([disabled])',
+    'input:not([disabled]):not([type="hidden"])',
     'textarea:not([disabled])',
     'select:not([disabled])',
     '[contenteditable="true"]',

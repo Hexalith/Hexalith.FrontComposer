@@ -1,0 +1,12 @@
+/* Story 13.3 AM-20 — layout only; typography and color come from the Fluent theme. The inline
+   variant stays zero-width while empty so a zero-field trigger keeps its place in the flow. */
+.fc-command-blocked-outcome--inline {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacingHorizontalS);
+}
+
+.fc-command-blocked-outcome--inline[data-fc-blocked="true"] {
+    margin-inline-start: var(--spacingHorizontalS);
+}

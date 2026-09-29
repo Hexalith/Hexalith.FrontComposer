@@ -9,6 +9,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 public sealed class GroupedFieldsCommand {
     public string MessageId { get; set; } = string.Empty;
 
+    [Required]
     [Display(Name = "Record ID", Description = "Record to change.")]
     [ProjectionFieldGroup("Change details")]
     public string RecordId { get; set; } = string.Empty;

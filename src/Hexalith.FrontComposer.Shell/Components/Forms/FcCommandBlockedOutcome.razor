@@ -1,0 +1,48 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Forms
+@using Microsoft.FluentUI.AspNetCore.Components
+
+@* Story 13.3 AM-20 — the status node below is always mounted, so assistive technology already
+   tracks it when a blocked attempt sets its text. Only this node speaks; the attempted control
+   keeps focus. The inline variant sits beside a zero-field trigger whose form is hidden. *@
+
+@if (Inline) {
+    <span class="fc-command-blocked-outcome fc-command-blocked-outcome--inline"
+          data-testid="fc-command-blocked-outcome"
+          data-fc-blocked="@BlockedAttribute">
+        <span role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              class="fc-command-blocked-status"
+              data-testid="fc-command-blocked-status">@_message</span>
+        @if (_blocked && _viewActionAvailable) {
+            <FluentButton Type="ButtonType.Button"
+                          role="button"
+                          Appearance="ButtonAppearance.Outline"
+                          OnClick="FocusActiveCommandAsync"
+                          data-testid="fc-view-active-command">@ViewActiveCommandLabel</FluentButton>
+        }
+    </span>
+}
+else {
+    <FluentStack Orientation="Orientation.Horizontal"
+                 VerticalAlignment="VerticalAlignment.Center"
+                 HorizontalGap="8px"
+                 VerticalGap="8px"
+                 Wrap="true"
+                 Class="fc-command-blocked-outcome"
+                 data-testid="fc-command-blocked-outcome"
+                 data-fc-blocked="@BlockedAttribute">
+        <div role="status"
+             aria-live="polite"
+             aria-atomic="true"
+             class="fc-command-blocked-status"
+             data-testid="fc-command-blocked-status">@_message</div>
+        @if (_blocked && _viewActionAvailable) {
+            <FluentButton Type="ButtonType.Button"
+                          role="button"
+                          Appearance="ButtonAppearance.Outline"
+                          OnClick="FocusActiveCommandAsync"
+                          data-testid="fc-view-active-command">@ViewActiveCommandLabel</FluentButton>
+        }
+    </FluentStack>
+}

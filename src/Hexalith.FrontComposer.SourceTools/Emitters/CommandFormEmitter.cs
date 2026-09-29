@@ -91,6 +91,9 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    /// <summary>Story 2-5 Task 5.3: fired once after the form's EditContext is constructed so the renderer can wire validation gates and abandonment protection.</summary>");
         _ = sb.AppendLine("    [Parameter] public EventCallback<EditContext> OnEditContextReady { get; set; }");
         _ = sb.AppendLine();
+        _ = sb.AppendLine("    /// <summary>Story 13.3 AM-20: when bound, the host renders the blocked-submit outcome because this form is not perceivable (zero-field inline). Invoked with true for each blocked attempt and false when a later attempt is admitted.</summary>");
+        _ = sb.AppendLine("    [Parameter] public EventCallback<bool> OnBlockedSubmission { get; set; }");
+        _ = sb.AppendLine();
         if (form.CommandTarget?.ResolutionMode == CommandTargetResolutionMode.SameAsSource) {
             _ = sb.AppendLine("    [CascadingParameter] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity? PendingCommandRowIdentity { get; set; }");
             _ = sb.AppendLine();
@@ -137,15 +140,18 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    private bool _interactiveReady;");
         _ = sb.AppendLine("    private string? _submittedCorrelationId;");
         _ = sb.AppendLine("    private int _acceptedAssociationSucceeded;");
-        _ = sb.AppendLine("    private readonly string _formDomId = \"fc-command-form-\" + Guid.NewGuid().ToString(\"N\");");
+        // Story 13.3 ULID policy — per-instance DOM ids come from a process-local counter, not a random GUID.
+        _ = sb.AppendLine("    private static int _formDomIdSequence;");
+        _ = sb.AppendLine("    private readonly string _formDomId = \"fc-command-form-" + BuildLifecycleCommandId(form.TypeName) + "-\" + System.Threading.Interlocked.Increment(ref _formDomIdSequence).ToString(CultureInfo.InvariantCulture);");
         _ = sb.AppendLine("    private FcValidationSummary? _validationSummary;");
+        _ = sb.AppendLine("    private FcCommandBlockedOutcome? _blockedOutcome;");
+        _ = sb.AppendLine("    private bool _hostBlockedOutcomePresented;");
         _ = sb.AppendLine("    private bool _authorizationDenied;");
         _ = sb.AppendLine("    private bool _authorizationFocusPending;");
-        _ = sb.AppendLine("    private bool _concurrencyBlocked;");
-        _ = sb.AppendLine("    private bool _activeLifecycleActionAvailable;");
         if (hasAuthorizationPolicy) {
             _ = sb.AppendLine("    private bool _authorizationPresentationReady;");
             _ = sb.AppendLine("    private bool _authorizationPresentationAllowed;");
+            _ = sb.AppendLine("    private bool _authorizationReplacementFocusPending;");
             // Pass 3 — sequence guard: each refresh stamps the counter; only the latest completion applies its result.
             _ = sb.AppendLine("    private int _authorizationRefreshSequence;");
             string authorizationPolicyLiteral = "\"" + EscapeString(form.AuthorizationPolicyName!) + "\"";
@@ -213,6 +219,18 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("        _authorizationPresentationReady = false;");
             _ = sb.AppendLine("        // Pass 3 — sequence guard: stamp before await, compare after; only the latest completion applies.");
             _ = sb.AppendLine("        int sequence = System.Threading.Interlocked.Increment(ref _authorizationRefreshSequence);");
+            // Story 13.3 BH3-01 — Ready=false and the sequence stamp above precede the focus-capture round
+            // trip, so a stale "allowed" trigger is never interactive while JS answers and the stamps keep
+            // refresh order rather than JS completion order.
+            _ = sb.AppendLine("        // Story 13.3 FM-01 / AM-26 — only a refresh after the first one can replace a form the operator");
+            _ = sb.AppendLine("        // is using. Record what held focus before the decision so the denied heading takes focus only");
+            _ = sb.AppendLine("        // when the replaced form contained it; the initial evaluation never moves focus.");
+            _ = sb.AppendLine("        bool replacementArmed = false;");
+            _ = sb.AppendLine("        if (!_authorizationDenied && sequence > 1)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            replacementArmed = await CaptureFocusBeforeReplacementAsync().ConfigureAwait(false);");
+            _ = sb.AppendLine("            if (_disposed) return;");
+            _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        // Pass 3 — capture _cts once so concurrent disposal does not race the post-await access.");
             _ = sb.AppendLine("        CancellationTokenSource? cts = _cts;");
             _ = sb.AppendLine("        var token = cts?.Token ?? CancellationToken.None;");
@@ -227,7 +245,10 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("        _authorizationPresentationAllowed = authorization.IsAllowed;");
             _ = sb.AppendLine("        if (!authorization.IsAllowed && !isPending)");
             _ = sb.AppendLine("        {");
-            _ = sb.AppendLine("            SetAuthorizationWarning(authorization.Reason);");
+            _ = sb.AppendLine("            // A presentation refresh is never an operator activation: it moves focus only when it");
+            _ = sb.AppendLine("            // replaces a form that held focus (FM-01, AM-26).");
+            _ = sb.AppendLine("            _authorizationReplacementFocusPending = SetAuthorizationWarning(authorization.Reason, operatorActivation: false)");
+            _ = sb.AppendLine("                && replacementArmed;");
             _ = sb.AppendLine("            if (Logger is not null) { LogAuthorizationBlocked(Logger, authorization.CorrelationId, authorization.Reason); }");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        else if (isPending)");
@@ -241,6 +262,31 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("            _authorizationDenied = false;");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        await InvokeAsync(StateHasChanged);");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private async Task<bool> CaptureFocusBeforeReplacementAsync()");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        try");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            await using var module = await JS.InvokeAsync<global::Microsoft.JSInterop.IJSObjectReference>(\"import\", \"./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js\").ConfigureAwait(false);");
+            _ = sb.AppendLine("            return await module.InvokeAsync<bool>(\"captureFocusBeforeReplacement\", _formDomId + \"-authorization-heading\").ConfigureAwait(false);");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        catch (global::Microsoft.JSInterop.JSDisconnectedException) { return false; }");
+            _ = sb.AppendLine("        catch (global::Microsoft.JSInterop.JSException) { return false; }");
+            _ = sb.AppendLine("        catch (InvalidOperationException) { return false; }");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private async Task FocusReplacementHeadingAsync()");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        string headingId = _formDomId + \"-authorization-heading\";");
+            _ = sb.AppendLine("        try");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            await using var module = await JS.InvokeAsync<global::Microsoft.JSInterop.IJSObjectReference>(\"import\", \"./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js\").ConfigureAwait(false);");
+            _ = sb.AppendLine("            _ = await module.InvokeAsync<bool>(\"focusReplacementHeading\", headingId, headingId).ConfigureAwait(false);");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        catch (global::Microsoft.JSInterop.JSDisconnectedException) { }");
+            _ = sb.AppendLine("        catch (global::Microsoft.JSInterop.JSException) { }");
+            _ = sb.AppendLine("        catch (InvalidOperationException) { }");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
             _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationRequest CreateAuthorizationRequest()");
@@ -258,17 +304,21 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("        return localized.ResourceNotFound ? fallback : localized.Value;");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
-            _ = sb.AppendLine("    private void SetAuthorizationWarning(global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationReason reason)");
+            _ = sb.AppendLine("    private bool SetAuthorizationWarning(");
+            _ = sb.AppendLine("        global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationReason reason,");
+            _ = sb.AppendLine("        bool operatorActivation)");
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        // DN7 — distinguish infrastructure failures from user-denied so users see a retry hint instead of a permission error.");
             _ = sb.AppendLine("        // Pass 3 DN-7-3-3-1 — Unauthenticated routes to a distinct sign-in copy variant.");
+            _ = sb.AppendLine("        // Story 13.3 — a still-pending check at submit is transient too: it keeps the form and asks for a retry.");
             _ = sb.AppendLine("        bool infrastructureFailure = reason is");
             _ = sb.AppendLine("            global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationReason.MissingService");
             _ = sb.AppendLine("            or global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationReason.MissingPolicy");
             _ = sb.AppendLine("            or global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationReason.StaleTenantContext");
             _ = sb.AppendLine("            or global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationReason.HandlerFailed");
             _ = sb.AppendLine("            or global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationReason.Canceled");
-            _ = sb.AppendLine("            or global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationReason.CatalogInconsistent;");
+            _ = sb.AppendLine("            or global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationReason.CatalogInconsistent");
+            _ = sb.AppendLine("            or global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationReason.Pending;");
             _ = sb.AppendLine("        bool unauthenticated = reason == global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationReason.Unauthenticated;");
             _ = sb.AppendLine("        string titleKey;");
             _ = sb.AppendLine("        string bodyKey;");
@@ -306,8 +356,14 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("            warningBody,");
             _ = sb.AppendLine("            null,");
             _ = sb.AppendLine("            null);");
-            _ = sb.AppendLine("        _authorizationDenied = true;");
-            _ = sb.AppendLine("        _authorizationFocusPending = true;");
+            _ = sb.AppendLine("        // Story 13.3 VR-04 — only a genuine denial or sign-in requirement replaces the form. A transient");
+            _ = sb.AppendLine("        // infrastructure failure keeps the entered values with its retry warning, so the operator can retry.");
+            _ = sb.AppendLine("        _authorizationDenied = !infrastructureFailure;");
+            _ = sb.AppendLine("        // AM-26 — the denied heading takes focus only when the denial answers an operator submit.");
+            _ = sb.AppendLine("        // E4-18 — a background denial keeps an operator submit's pending heading focus instead of");
+            _ = sb.AppendLine("        // clearing it before it renders; a restored form has no heading, so it drops the request.");
+            _ = sb.AppendLine("        _authorizationFocusPending = _authorizationDenied && (_authorizationFocusPending || operatorActivation);");
+            _ = sb.AppendLine("        return _authorizationDenied;");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
             _ = sb.AppendLine("    private void SetAuthorizationCheckingHint()");
@@ -325,7 +381,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
         }
-        _ = sb.AppendLine("    private void SetCommandInProgressWarning(global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason reason)");
+        _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning CreateCommandBlockedWarning(global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason reason)");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        bool scopeUnavailable = reason == global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.ScopeUnavailable;");
         _ = sb.AppendLine("        string title = scopeUnavailable");
@@ -334,13 +390,19 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        string detail = scopeUnavailable");
         _ = sb.AppendLine("            ? ResolveShellLocalized(\"ScopeBlockedMessage\", \"Your workspace identity could not be verified. Sign in again or contact support.\")");
         _ = sb.AppendLine("            : ResolveShellLocalized(\"CommandBlockedMessage\", \"This command did not run. Another command is already in progress.\");");
-        _ = sb.AppendLine("        _serverWarning = new global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning(");
+        _ = sb.AppendLine("        return new global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning(");
         _ = sb.AppendLine("            global::Hexalith.FrontComposer.Contracts.Communication.CommandWarningKind.Pending,");
         _ = sb.AppendLine("            title,");
         _ = sb.AppendLine("            detail,");
         _ = sb.AppendLine("            null,");
         _ = sb.AppendLine("            null);");
-        _ = sb.AppendLine("        _concurrencyBlocked = !scopeUnavailable;");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private async Task PresentScopeUnavailableAsync()");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        _serverWarning = CreateCommandBlockedWarning(global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.ScopeUnavailable);");
+        _ = sb.AppendLine("        CommandFeedbackPublisher.PublishWarning(_serverWarning);");
+        _ = sb.AppendLine("        await InvokeAsync(StateHasChanged);");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private string ResolveShellLocalized(string key, string fallback)");
@@ -381,40 +443,39 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        _editContext.NotifyValidationStateChanged();");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("    private async Task OnInvalidSubmitAsync()");
+        _ = sb.AppendLine("    private Task OnSubmitAsync() => SubmitAsync(validateBeforeDispatch: true);");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private async Task ClearBlockedOutcomeAsync()");
         _ = sb.AppendLine("    {");
-        _ = sb.AppendLine("        if (_disposed) return;");
-        _ = sb.AppendLine("        var currentState = LifecycleState.Value.State;");
-        _ = sb.AppendLine("        if (currentState != CommandLifecycleState.Idle");
-        _ = sb.AppendLine("            && currentState != CommandLifecycleState.Rejected");
-        _ = sb.AppendLine("            && currentState != CommandLifecycleState.Confirmed)");
+        _ = sb.AppendLine("        if (OnBlockedSubmission.HasDelegate)");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            await PresentBlockedSubmissionAsync(");
-        _ = sb.AppendLine("                global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.PendingCommandAlreadyExists,");
-        _ = sb.AppendLine("                blockingMessageId: null).ConfigureAwait(false);");
-        _ = sb.AppendLine("            return;");
+        _ = sb.AppendLine("            if (!_hostBlockedOutcomePresented) return;");
+        _ = sb.AppendLine("            _hostBlockedOutcomePresented = false;");
+        _ = sb.AppendLine("            await InvokeAsync(() => OnBlockedSubmission.InvokeAsync(false));");
         _ = sb.AppendLine("        }");
-        _ = sb.AppendLine();
-        _ = sb.AppendLine("        var admission = CommandExecutionAdmissionGate.TryAcquire(CreateAdmissionRequest());");
-        _ = sb.AppendLine("        try");
+        _ = sb.AppendLine("        else if (_blockedOutcome is not null)");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            if (!admission.IsAdmitted)");
-        _ = sb.AppendLine("            {");
-        _ = sb.AppendLine("                await PresentBlockedSubmissionAsync(admission.DenialReason, admission.BlockingMessageId).ConfigureAwait(false);");
-        _ = sb.AppendLine("                return;");
-        _ = sb.AppendLine("            }");
-        _ = sb.AppendLine();
-        _ = sb.AppendLine("            if (_validationSummary is not null)");
-        _ = sb.AppendLine("            {");
-        _ = sb.AppendLine("                await _validationSummary.ShowAndFocusAsync(FcValidationSummaryKind.ClientValidation).ConfigureAwait(false);");
-        _ = sb.AppendLine("            }");
-        _ = sb.AppendLine("        }");
-        _ = sb.AppendLine("        finally");
-        _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            admission.Dispose();");
+        _ = sb.AppendLine("            await _blockedOutcome.ClearAsync().ConfigureAwait(false);");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
+        _ = sb.AppendLine("    private async Task ShowValidationSummaryAsync(FcValidationSummaryKind kind)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        // Render the form first so the summary is built from the current form-level errors before its");
+        _ = sb.AppendLine("        // single focus move; a stale list must never be what the focused summary speaks.");
+        _ = sb.AppendLine("        await InvokeAsync(StateHasChanged);");
+        _ = sb.AppendLine("        if (_validationSummary is not null)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            await _validationSummary.ShowAndFocusAsync(kind).ConfigureAwait(false);");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        if (form.Fields.Any(field => field.TypeCategory != FormFieldTypeCategory.Placeholder)) {
+            _ = sb.AppendLine("    private bool IsFieldInvalid(string commandPropertyName)");
+            _ = sb.AppendLine("        => _editContext is not null && _editContext.GetValidationMessages(new FieldIdentifier(_model, commandPropertyName)).Any();");
+            _ = sb.AppendLine();
+        }
+
         _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionRequest CreateAdmissionRequest()");
         _ = sb.AppendLine("        => new(typeof(" + commandFqn + ").FullName ?? nameof(" + commandFqn + "), \"" + escapedButtonLabel + "\");");
         _ = sb.AppendLine();
@@ -422,12 +483,28 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason reason,");
         _ = sb.AppendLine("        string? blockingMessageId)");
         _ = sb.AppendLine("    {");
-        _ = sb.AppendLine("        SetCommandInProgressWarning(reason);");
-        _ = sb.AppendLine("        if (_serverWarning is not null) CommandFeedbackPublisher.PublishWarning(_serverWarning);");
-        _ = sb.AppendLine("        _activeLifecycleActionAvailable = _concurrencyBlocked && await HasActiveCommandAsync().ConfigureAwait(false);");
-        _ = sb.AppendLine("        await InvokeAsync(StateHasChanged);");
-        _ = sb.AppendLine("        await FocusElementAsync(_formDomId + \"-submit\").ConfigureAwait(false);");
         _ = sb.AppendLine("        if (Logger is not null) { LogSubmitBlockedByConcurrency(Logger, reason, blockingMessageId); }");
+        _ = sb.AppendLine("        if (reason == global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.ScopeUnavailable)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            await PresentScopeUnavailableAsync().ConfigureAwait(false);");
+        _ = sb.AppendLine("            // BH4-04 — the same attempted-control rule as AM-20: Enter in a field keeps that field focused.");
+        _ = sb.AppendLine("            await FocusAttemptedControlAsync(_formDomId + \"-submit\").ConfigureAwait(false);");
+        _ = sb.AppendLine("            return;");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("        // Story 13.3 VR-05 / AM-20 — nothing is queued or dispatched and no validation runs. The");
+        _ = sb.AppendLine("        // always-mounted status node announces AM-20 once for this attempt while the attempted");
+        _ = sb.AppendLine("        // control keeps focus; a hidden zero-field form hands that outcome to its renderer.");
+        _ = sb.AppendLine("        CommandFeedbackPublisher.PublishWarning(CreateCommandBlockedWarning(reason));");
+        _ = sb.AppendLine("        if (OnBlockedSubmission.HasDelegate)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            _hostBlockedOutcomePresented = true;");
+        _ = sb.AppendLine("            await InvokeAsync(() => OnBlockedSubmission.InvokeAsync(true));");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("        else if (_blockedOutcome is not null)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            await _blockedOutcome.PresentAsync().ConfigureAwait(false);");
+        _ = sb.AppendLine("        }");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private async Task FocusElementAsync(string id)");
@@ -442,34 +519,16 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        catch (InvalidOperationException) { }");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("    private async Task<bool> HasActiveCommandAsync()");
+        _ = sb.AppendLine("    private async Task FocusAttemptedControlAsync(string id)");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        try");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            await using var module = await JS.InvokeAsync<global::Microsoft.JSInterop.IJSObjectReference>(\"import\", \"./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js\").ConfigureAwait(false);");
-        _ = sb.AppendLine("            return await module.InvokeAsync<bool>(\"hasActiveLifecycle\").ConfigureAwait(false);");
-        _ = sb.AppendLine("        }");
-        _ = sb.AppendLine("        catch (global::Microsoft.JSInterop.JSDisconnectedException) { return false; }");
-        _ = sb.AppendLine("        catch (global::Microsoft.JSInterop.JSException) { return false; }");
-        _ = sb.AppendLine("        catch (InvalidOperationException) { return false; }");
-        _ = sb.AppendLine("    }");
-        _ = sb.AppendLine();
-        _ = sb.AppendLine("    private async Task FocusActiveCommandAsync()");
-        _ = sb.AppendLine("    {");
-        _ = sb.AppendLine("        bool focused = false;");
-        _ = sb.AppendLine("        try");
-        _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            await using var module = await JS.InvokeAsync<global::Microsoft.JSInterop.IJSObjectReference>(\"import\", \"./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js\").ConfigureAwait(false);");
-        _ = sb.AppendLine("            focused = await module.InvokeAsync<bool>(\"focusActiveLifecycle\").ConfigureAwait(false);");
+        _ = sb.AppendLine("            _ = await module.InvokeAsync<bool>(\"focusAttemptedControl\", id, false).ConfigureAwait(false);");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        catch (global::Microsoft.JSInterop.JSDisconnectedException) { }");
         _ = sb.AppendLine("        catch (global::Microsoft.JSInterop.JSException) { }");
         _ = sb.AppendLine("        catch (InvalidOperationException) { }");
-        _ = sb.AppendLine("        if (!focused)");
-        _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            _activeLifecycleActionAvailable = false;");
-        _ = sb.AppendLine("            await InvokeAsync(StateHasChanged);");
-        _ = sb.AppendLine("        }");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private CommandLifecycleState _previousLifecycleState = CommandLifecycleState.Idle;");
@@ -485,8 +544,14 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            && !string.IsNullOrEmpty(_submittedCorrelationId)");
         _ = sb.AppendLine("            && string.Equals(currentCorrelationId, _submittedCorrelationId, StringComparison.Ordinal)) {");
         _ = sb.AppendLine("            IsDirty = false;");
-        _ = sb.AppendLine("            _editContext?.MarkAsUnmodified();");
-        _ = sb.AppendLine("            _ = OnConfirmed.InvokeAsync(null);");
+        _ = sb.AppendLine("            // The Confirmed transition can arrive on a background lifecycle callback, and the renderer's");
+        _ = sb.AppendLine("            // OnConfirmed may navigate, which runs the abandonment guard's NavigationLock handler. Marshal");
+        _ = sb.AppendLine("            // both onto the renderer dispatcher; the form is marked unmodified before that navigation.");
+        _ = sb.AppendLine("            _ = InvokeAsync(() =>");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                _editContext?.MarkAsUnmodified();");
+        _ = sb.AppendLine("                return OnConfirmed.InvokeAsync(null);");
+        _ = sb.AppendLine("            });");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        _previousLifecycleState = current;");
         _ = sb.AppendLine("        InvokeAsync(StateHasChanged);");
@@ -497,7 +562,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        if (firstRender && !_externalSubmitRegistered && RegisterExternalSubmit is not null) {");
         _ = sb.AppendLine("            _externalSubmitRegistered = true;");
         _ = sb.AppendLine("            // Story 2-2 ADR-016 rule 6 + Decision D36 — supply the renderer with a synthetic-submit invoker.");
-        _ = sb.AppendLine("            RegisterExternalSubmit(() => _ = OnValidSubmitAsync());");
+        _ = sb.AppendLine("            RegisterExternalSubmit(() => _ = SubmitAsync(validateBeforeDispatch: false));");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        if (firstRender && !_interactiveReady) {");
         _ = sb.AppendLine("            _interactiveReady = true;");
@@ -506,13 +571,36 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    /// <inheritdoc />");
+        bool hasEditableFields = form.Fields.Any(field => field.TypeCategory != FormFieldTypeCategory.Placeholder);
         _ = sb.AppendLine("    protected override async Task OnAfterRenderAsync(bool firstRender)");
         _ = sb.AppendLine("    {");
+        if (hasEditableFields) {
+            _ = sb.AppendLine("        if (firstRender)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            // Story 13.3 VR-01 / BH3-08 — keep each editor's invalid state and description/error");
+            _ = sb.AppendLine("            // relationship on the focusable control inside its Fluent shadow root for every later render.");
+            _ = sb.AppendLine("            await ObserveFieldAccessibilityAsync().ConfigureAwait(false);");
+            _ = sb.AppendLine("        }");
+        }
+
         _ = sb.AppendLine("        if (_authorizationFocusPending)");
         _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            // AM-26 — the denial answers this operator's submit, so its heading is the only speech path.");
         _ = sb.AppendLine("            _authorizationFocusPending = false;");
+        if (hasAuthorizationPolicy) {
+            _ = sb.AppendLine("            _authorizationReplacementFocusPending = false;");
+        }
+
         _ = sb.AppendLine("            await FocusElementAsync(_formDomId + \"-authorization-heading\").ConfigureAwait(false);");
         _ = sb.AppendLine("        }");
+        if (hasAuthorizationPolicy) {
+            _ = sb.AppendLine("        else if (_authorizationReplacementFocusPending)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            _authorizationReplacementFocusPending = false;");
+            _ = sb.AppendLine("            await FocusReplacementHeadingAsync().ConfigureAwait(false);");
+            _ = sb.AppendLine("        }");
+        }
+
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    /// <summary>");
@@ -553,6 +641,7 @@ public static class CommandFormEmitter {
 
         EmitClientParseErrorHelper(sb, form);
         EmitValidationFieldDescriptors(sb, form);
+        EmitFieldAccessibilityObserver(sb, form);
         EmitCommandTargetResolutionHelper(sb, form);
         EmitSubmitMethod(sb, form, fluxor, escapedButtonLabel);
         EmitDispose(sb, fluxor, hasAuthorizationPolicy);
@@ -1130,7 +1219,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        string.IsNullOrWhiteSpace(value) ? null : value.Trim().ToUpperInvariant();");
         _ = sb.AppendLine();
 
-        _ = sb.AppendLine("    private async Task OnValidSubmitAsync()");
+        _ = sb.AppendLine("    private async Task SubmitAsync(bool validateBeforeDispatch)");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        // Story 2-2 code-review P35 — guard against invocation via RegisterExternalSubmit after form disposal.");
         _ = sb.AppendLine("        if (_disposed) return;");
@@ -1159,13 +1248,22 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            return;");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine();
+        _ = sb.AppendLine("        // This attempt was admitted: withdraw any earlier blocked outcome, and drop form-level text");
+        _ = sb.AppendLine("        // from an earlier attempt so it can never feed this attempt's client-validation summary.");
+        _ = sb.AppendLine("        await ClearBlockedOutcomeAsync().ConfigureAwait(false);");
+        _ = sb.AppendLine("        _serverFormLevelErrors = System.Array.Empty<string>();");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("        // Story 13.3 ECH-05 — validate only after the concurrency outcome is known.");
+        _ = sb.AppendLine("        if (validateBeforeDispatch && _editContext is not null && !_editContext.Validate())");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            await ShowValidationSummaryAsync(FcValidationSummaryKind.ClientValidation).ConfigureAwait(false);");
+        _ = sb.AppendLine("            return;");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine();
         _ = sb.AppendLine("        if (HasClientParseErrors())");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            _editContext?.NotifyValidationStateChanged();");
-        _ = sb.AppendLine("            if (_validationSummary is not null)");
-        _ = sb.AppendLine("            {");
-        _ = sb.AppendLine("                await _validationSummary.ShowAndFocusAsync(FcValidationSummaryKind.ClientValidation).ConfigureAwait(false);");
-        _ = sb.AppendLine("            }");
+        _ = sb.AppendLine("            await ShowValidationSummaryAsync(FcValidationSummaryKind.ClientValidation).ConfigureAwait(false);");
         _ = sb.AppendLine("            return;");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine();
@@ -1189,7 +1287,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("        if (_disposed || _cts.IsCancellationRequested) return;");
             _ = sb.AppendLine("        if (!authorization.IsAllowed)");
             _ = sb.AppendLine("        {");
-            _ = sb.AppendLine("            SetAuthorizationWarning(authorization.Reason);");
+            _ = sb.AppendLine("            _ = SetAuthorizationWarning(authorization.Reason, operatorActivation: true);");
             _ = sb.AppendLine("            if (_serverWarning is not null)");
             _ = sb.AppendLine("            {");
             _ = sb.AppendLine("                CommandFeedbackPublisher.PublishWarning(_serverWarning);");
@@ -1201,14 +1299,11 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine();
         }
         _ = sb.AppendLine("        // Story 5-2 D5 — clear server-driven validation state from the prior submit (auth has already passed if a policy is in scope).");
-        _ = sb.AppendLine("        _validationSummary?.Hide();");
-        _ = sb.AppendLine("        _concurrencyBlocked = false;");
-        _ = sb.AppendLine("        _activeLifecycleActionAvailable = false;");
-        _ = sb.AppendLine("        _serverValidationMessages?.Clear();");
-        _ = sb.AppendLine("        if (_serverFormLevelErrors.Count > 0)");
+        _ = sb.AppendLine("        if (_validationSummary is not null)");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            _serverFormLevelErrors = System.Array.Empty<string>();");
+        _ = sb.AppendLine("            await _validationSummary.HideAsync().ConfigureAwait(false);");
         _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("        _serverValidationMessages?.Clear();");
         if (!hasAuthorizationPolicy) {
             _ = sb.AppendLine("        _serverWarning = null;");
         }
@@ -1232,7 +1327,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("        if (_disposed || _cts.IsCancellationRequested) return;");
             _ = sb.AppendLine("        if (!authorizationPostBeforeSubmit.IsAllowed)");
             _ = sb.AppendLine("        {");
-            _ = sb.AppendLine("            SetAuthorizationWarning(authorizationPostBeforeSubmit.Reason);");
+            _ = sb.AppendLine("            _ = SetAuthorizationWarning(authorizationPostBeforeSubmit.Reason, operatorActivation: true);");
             _ = sb.AppendLine("            if (_serverWarning is not null)");
             _ = sb.AppendLine("            {");
             _ = sb.AppendLine("                CommandFeedbackPublisher.PublishWarning(_serverWarning);");
@@ -1257,9 +1352,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("        if (!IsAdmissionScopeCurrent())");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            SetCommandInProgressWarning(global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.ScopeUnavailable);");
-        _ = sb.AppendLine("            if (_serverWarning is not null) CommandFeedbackPublisher.PublishWarning(_serverWarning);");
-        _ = sb.AppendLine("            await InvokeAsync(StateHasChanged);");
+        _ = sb.AppendLine("            await PresentScopeUnavailableAsync().ConfigureAwait(false);");
         _ = sb.AppendLine("            return;");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".SubmittedAction(correlationId, _model));");
@@ -1295,9 +1388,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            var dispatchScope = validatedScope?.Current();");
         _ = sb.AppendLine("            if (validatedScope is not null && !(admissionScope is { } dispatchOrigin && dispatchScope is { } dispatchCurrent && dispatchOrigin == dispatchCurrent))");
         _ = sb.AppendLine("            {");
-        _ = sb.AppendLine("                SetCommandInProgressWarning(global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.ScopeUnavailable);");
-        _ = sb.AppendLine("                if (_serverWarning is not null) CommandFeedbackPublisher.PublishWarning(_serverWarning);");
-        _ = sb.AppendLine("                await InvokeAsync(StateHasChanged);");
+        _ = sb.AppendLine("                await PresentScopeUnavailableAsync().ConfigureAwait(false);");
         _ = sb.AppendLine("                return;");
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine("            var result = await CommandService.DispatchWithLifecycleObservationsAsync(");
@@ -1503,11 +1594,8 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                _editContext.NotifyValidationStateChanged();");
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine("            Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".ResetToIdleAction(correlationId));");
-        _ = sb.AppendLine("            await InvokeAsync(StateHasChanged);");
-        _ = sb.AppendLine("            if (_validationSummary is not null)");
-        _ = sb.AppendLine("            {");
-        _ = sb.AppendLine("                await _validationSummary.ShowAndFocusAsync(FcValidationSummaryKind.ClientValidation).ConfigureAwait(false);");
-        _ = sb.AppendLine("            }");
+        _ = sb.AppendLine("            // Allowlisted field errors and support-safe form-level errors share the one focused summary.");
+        _ = sb.AppendLine("            await ShowValidationSummaryAsync(FcValidationSummaryKind.ClientValidation).ConfigureAwait(false);");
         _ = sb.AppendLine("            if (Logger is not null) { LogCommandValidationFailed(Logger, correlationId, ex.Problem.Title); }");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        catch (CommandWarningException ex)");
@@ -1546,15 +1634,20 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                _serverValidationMessages.Clear();");
         _ = sb.AppendLine("                var rejectionValidation = global::Hexalith.FrontComposer.Shell.Services.Validation.ServerValidationApplicator.ApplyRejection(_serverValidationMessages, ex, _serverValidationAllowlist, _model!);");
-        _ = sb.AppendLine("                _serverFormLevelErrors = rejectionValidation.UnmappedMessages;");
         _ = sb.AppendLine("                hasMappedFieldErrors = rejectionValidation.HasMappedFieldErrors;");
+        _ = sb.AppendLine("                // VR-03 — an unmapped rejection stays in its lifecycle region; its text never reaches a");
+        _ = sb.AppendLine("                // summary. A mapped rejection lists its safe form-level messages beside the field links.");
+        _ = sb.AppendLine("                _serverFormLevelErrors = hasMappedFieldErrors ? rejectionValidation.UnmappedMessages : System.Array.Empty<string>();");
         _ = sb.AppendLine("                _editContext.NotifyValidationStateChanged();");
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine("            Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".RejectedAction(correlationId, ex.Message, ex.Resolution, ex.ErrorCode, ex.ReasonCategory, ex.SuggestedAction, ex.DocsCode, hasMappedFieldErrors));");
-        _ = sb.AppendLine("            await InvokeAsync(StateHasChanged);");
-        _ = sb.AppendLine("            if (hasMappedFieldErrors && _validationSummary is not null)");
+        _ = sb.AppendLine("            if (hasMappedFieldErrors)");
         _ = sb.AppendLine("            {");
-        _ = sb.AppendLine("                await _validationSummary.ShowAndFocusAsync(FcValidationSummaryKind.MappedServerRejection).ConfigureAwait(false);");
+        _ = sb.AppendLine("                await ShowValidationSummaryAsync(FcValidationSummaryKind.MappedServerRejection).ConfigureAwait(false);");
+        _ = sb.AppendLine("            }");
+        _ = sb.AppendLine("            else");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                await InvokeAsync(StateHasChanged);");
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine("            if (Logger is not null) { LogCommandRejected(Logger, correlationId, ex.Message); }");
         _ = sb.AppendLine("        }");
@@ -1598,6 +1691,25 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine();
     }
 
+    private static void EmitFieldAccessibilityObserver(StringBuilder sb, CommandFormModel form) {
+        if (form.Fields.All(field => field.TypeCategory == FormFieldTypeCategory.Placeholder)) {
+            return;
+        }
+
+        _ = sb.AppendLine("    private async Task ObserveFieldAccessibilityAsync()");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        try");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            await using var module = await JS.InvokeAsync<global::Microsoft.JSInterop.IJSObjectReference>(\"import\", \"./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js\").ConfigureAwait(false);");
+        _ = sb.AppendLine("            _ = await module.InvokeAsync<bool>(\"observeFieldAccessibility\", _formDomId).ConfigureAwait(false);");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("        catch (global::Microsoft.JSInterop.JSDisconnectedException) { }");
+        _ = sb.AppendLine("        catch (global::Microsoft.JSInterop.JSException) { }");
+        _ = sb.AppendLine("        catch (InvalidOperationException) { }");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+    }
+
     private static void EmitValidationFieldDescriptors(StringBuilder sb, CommandFormModel form) {
         if (form.Fields.All(field => field.TypeCategory == FormFieldTypeCategory.Placeholder)) {
             _ = sb.AppendLine("    private static FcValidationFieldDescriptor[] BuildValidationFields()");
@@ -1609,7 +1721,9 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    private FcValidationFieldDescriptor[] BuildValidationFields()");
         _ = sb.AppendLine("        => new FcValidationFieldDescriptor[]");
         _ = sb.AppendLine("        {");
-        foreach (FormFieldModel field in form.Fields.Where(field => field.TypeCategory != FormFieldTypeCategory.Placeholder)) {
+        // Story 13.3 BH2-08 — descriptors follow the rendered order (declared groups hoisted to their
+        // first member), so the summary order and the next-target fallback match the DOM order.
+        foreach (FormFieldModel field in OrderFieldsForRender(form.Fields.AsImmutableArray()).Where(field => field.TypeCategory != FormFieldTypeCategory.Placeholder)) {
             string propertyName = EscapeString(field.PropertyName);
             string staticLabel = EscapeString(field.StaticLabel);
             string hasExplicitDisplay = field.HasExplicitDisplayName ? "true" : "false";
@@ -1696,8 +1810,8 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __wrap.OpenComponent<EditForm>(wseq++);");
         _ = sb.AppendLine("            __wrap.AddAttribute(wseq++, \"EditContext\", _editContext);");
         _ = sb.AppendLine("            __wrap.AddAttribute(wseq++, \"AdditionalAttributes\", new global::System.Collections.Generic.Dictionary<string, object> { [\"novalidate\"] = \"novalidate\" });");
-        _ = sb.AppendLine("            __wrap.AddAttribute(wseq++, \"OnValidSubmit\", EventCallback.Factory.Create<EditContext>(this, async _ => await OnValidSubmitAsync()));");
-        _ = sb.AppendLine("            __wrap.AddAttribute(wseq++, \"OnInvalidSubmit\", EventCallback.Factory.Create<EditContext>(this, async _ => await OnInvalidSubmitAsync()));");
+        // Story 13.3 ECH-05 — one OnSubmit path checks lifecycle and admission before validation runs.
+        _ = sb.AppendLine("            __wrap.AddAttribute(wseq++, \"OnSubmit\", EventCallback.Factory.Create<EditContext>(this, async _ => await OnSubmitAsync()));");
         _ = sb.AppendLine("        RenderFragment<EditContext> formBody = _ => (RenderFragment)(__b =>");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            int cseq = 0;");
@@ -1708,6 +1822,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                {");
         _ = sb.AppendLine("                    int dseq = 0;");
         _ = sb.AppendLine("                    __denied.OpenElement(dseq++, \"section\");");
+        _ = sb.AppendLine("                    __denied.AddAttribute(dseq++, \"data-fc-authorization-denied\", \"true\");");
         _ = sb.AppendLine("                    __denied.AddAttribute(dseq++, \"aria-labelledby\", _formDomId + \"-authorization-heading\");");
         _ = sb.AppendLine("                    __denied.OpenElement(dseq++, \"h2\");");
         _ = sb.AppendLine("                    __denied.AddAttribute(dseq++, \"id\", _formDomId + \"-authorization-heading\");");
@@ -1734,7 +1849,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.AddComponentReferenceCapture(cseq++, instance => _validationSummary = (FcValidationSummary)instance);");
         _ = sb.AppendLine("            __b.CloseComponent();");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("            if (_serverWarning is not null && !_concurrencyBlocked)");
+        _ = sb.AppendLine("            if (_serverWarning is not null)");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                __b.OpenComponent<FluentMessageBar>(cseq++);");
         _ = sb.AppendLine("                __b.AddAttribute(cseq++, \"Intent\", MessageBarIntent.Warning);");
@@ -1754,42 +1869,6 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                }));");
         _ = sb.AppendLine("                __b.CloseComponent();");
         _ = sb.AppendLine("            }");
-        _ = sb.AppendLine("            if (_concurrencyBlocked)");
-        _ = sb.AppendLine("            {");
-        _ = sb.AppendLine("                __b.OpenComponent<FluentCard>(cseq++);");
-        _ = sb.AppendLine("                __b.AddAttribute(cseq++, \"ChildContent\", (RenderFragment)(__blocked =>");
-        _ = sb.AppendLine("                {");
-        _ = sb.AppendLine("                    int xseq = 0;");
-        _ = sb.AppendLine("                    __blocked.OpenElement(xseq++, \"section\");");
-        _ = sb.AppendLine("                    __blocked.AddMultipleAttributes(xseq++, new global::System.Collections.Generic.Dictionary<string, object>");
-        _ = sb.AppendLine("                    {");
-        _ = sb.AppendLine("                        [\"data-testid\"] = \"fc-command-blocked\",");
-        _ = sb.AppendLine("                        [\"role\"] = \"status\",");
-        _ = sb.AppendLine("                        [\"aria-live\"] = \"polite\",");
-        _ = sb.AppendLine("                        [\"aria-atomic\"] = \"true\",");
-        _ = sb.AppendLine("                    });");
-        _ = sb.AppendLine("                    __blocked.OpenElement(xseq++, \"h2\");");
-        _ = sb.AppendLine("                    __blocked.AddContent(xseq++, ResolveShellLocalized(\"CommandBlockedTitle\", \"Command not run\"));");
-        _ = sb.AppendLine("                    __blocked.CloseElement();");
-        _ = sb.AppendLine("                    __blocked.OpenElement(xseq++, \"p\");");
-        _ = sb.AppendLine("                    __blocked.AddContent(xseq++, ResolveShellLocalized(\"CommandBlockedMessage\", \"This command did not run. Another command is already in progress.\"));");
-        _ = sb.AppendLine("                    __blocked.CloseElement();");
-        _ = sb.AppendLine("                    if (_activeLifecycleActionAvailable)");
-        _ = sb.AppendLine("                    {");
-        _ = sb.AppendLine("                        __blocked.OpenComponent<FluentButton>(xseq++);");
-        _ = sb.AppendLine("                        __blocked.AddAttribute(xseq++, \"Appearance\", ButtonAppearance.Outline);");
-        _ = sb.AppendLine("                        __blocked.AddAttribute(xseq++, \"Type\", ButtonType.Button);");
-        _ = sb.AppendLine("                        __blocked.AddAttribute(xseq++, \"role\", \"button\");");
-        _ = sb.AppendLine("                        __blocked.AddAttribute(xseq++, \"aria-label\", ResolveShellLocalized(\"ViewActiveCommand\", \"View active command\"));");
-        _ = sb.AppendLine("                        __blocked.AddAttribute(xseq++, \"OnClick\", EventCallback.Factory.Create<global::Microsoft.AspNetCore.Components.Web.MouseEventArgs>(this, FocusActiveCommandAsync));");
-        _ = sb.AppendLine("                        __blocked.AddAttribute(xseq++, \"ChildContent\", (RenderFragment)(__view => __view.AddContent(0, ResolveShellLocalized(\"ViewActiveCommand\", \"View active command\"))));");
-        _ = sb.AppendLine("                        __blocked.CloseComponent();");
-        _ = sb.AppendLine("                    }");
-        _ = sb.AppendLine("                    __blocked.CloseElement();");
-        _ = sb.AppendLine("                }));");
-        _ = sb.AppendLine("                __b.CloseComponent();");
-        _ = sb.AppendLine("            }");
-
         EmitFields(sb, form.Fields.AsImmutableArray());
 
         // Submit button
@@ -1799,7 +1878,8 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Type\", ButtonType.Submit);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"role\", \"button\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"aria-label\", \"" + escapedButtonLabel + "\");");
-        _ = sb.AppendLine("            // Enable submit in Idle, Confirmed, or Rejected (terminals allow retry) -- patch P3.");
+        _ = sb.AppendLine("            // Story 13.3 VR-05 — the button is not lifecycle-disabled: a later press while a command is in");
+        _ = sb.AppendLine("            // flight must reach SubmitAsync, which keeps focus here and announces AM-20 without dispatching.");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Disabled\",");
         if (hasAuthorizationPolicy) {
             // Wrap the lifecycle group in explicit parens so a future reorder of the && chain cannot
@@ -1824,6 +1904,17 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            }));");
         _ = sb.AppendLine("            __b.CloseComponent();");
         _ = sb.AppendLine("            }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("            // Story 13.3 AM-20 — one always-mounted polite, atomic status node per form surface, after the");
+        _ = sb.AppendLine("            // submit control so its optional \"View active command\" action is next in tab order. A hidden");
+        _ = sb.AppendLine("            // zero-field form lets its renderer own the node beside the visible trigger instead.");
+        _ = sb.AppendLine("            if (!OnBlockedSubmission.HasDelegate)");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                __b.OpenComponent<FcCommandBlockedOutcome>(cseq++);");
+        _ = sb.AppendLine("                __b.AddAttribute(cseq++, \"AttemptedControlId\", _formDomId + \"-submit\");");
+        _ = sb.AppendLine("                __b.AddComponentReferenceCapture(cseq++, instance => _blockedOutcome = (FcCommandBlockedOutcome)instance);");
+        _ = sb.AppendLine("                __b.CloseComponent();");
+        _ = sb.AppendLine("            }");
         _ = sb.AppendLine("        });");
         _ = sb.AppendLine("            __wrap.AddAttribute(wseq++, \"ChildContent\", formBody);");
         _ = sb.AppendLine("            __wrap.CloseComponent();");
@@ -1833,6 +1924,37 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
     }
+
+    /// <summary>
+    /// Story 13.3 BH2-08 — returns the fields in the order <see cref="EmitFields"/> renders them: an
+    /// ungrouped field keeps its declared position, and a declared group is hoisted to its first
+    /// member's position with every member in declared order.
+    /// </summary>
+    /// <param name="fields">The declared form fields.</param>
+    /// <returns>The fields in rendered order.</returns>
+    internal static FormFieldModel[] OrderFieldsForRender(System.Collections.Immutable.ImmutableArray<FormFieldModel> fields) {
+        var ordered = new System.Collections.Generic.List<FormFieldModel>(fields.Length);
+        var emittedGroups = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
+        foreach (FormFieldModel field in fields) {
+            if (string.IsNullOrWhiteSpace(field.FieldGroup)) {
+                ordered.Add(field);
+            }
+            else if (emittedGroups.Add(field.FieldGroup!)) {
+                ordered.AddRange(fields.Where(candidate => string.Equals(candidate.FieldGroup, field.FieldGroup, StringComparison.Ordinal)));
+            }
+        }
+
+        return [.. ordered];
+    }
+
+    /// <summary>Fluent 2 token styling for a declared field group's native fieldset.</summary>
+    private const string FieldGroupStyle =
+        "margin: 0; padding: var(--spacingVerticalM) var(--spacingHorizontalM); "
+        + "border: var(--strokeWidthThin) solid var(--colorNeutralStroke2); "
+        + "border-radius: var(--borderRadiusMedium); min-inline-size: 0;";
+
+    /// <summary>Fluent 2 token styling for a declared field group's legend.</summary>
+    private const string FieldGroupLegendStyle = "padding-inline: var(--spacingHorizontalXS);";
 
     private static void EmitFields(
         StringBuilder sb,
@@ -1867,13 +1989,22 @@ public static class CommandFormEmitter {
 
             _ = sb.AppendLine("            )");
             _ = sb.AppendLine("            {");
+            // Story 13.3 VR-01 / BH3-09 — one native fieldset/legend per declared group gives the shared
+            // programmatic group name; Fluent 2 tokens and FluentText give it Fluent styling without a
+            // Shell stylesheet, so adopter forms are never left with unstyled browser fieldset chrome.
             _ = sb.AppendLine("            __b.OpenElement(cseq++, \"fieldset\");");
             _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"class\", \"fc-command-field-group\");");
             _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"data-fc-field-group\", \"" + escapedGroupName + "\");");
             _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"aria-labelledby\", _formDomId + \"-field-group-" + groupOrdinal + "\");");
+            _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"style\", \"" + FieldGroupStyle + "\");");
             _ = sb.AppendLine("            __b.OpenElement(cseq++, \"legend\");");
             _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"id\", _formDomId + \"-field-group-" + groupOrdinal + "\");");
-            _ = sb.AppendLine("            __b.AddContent(cseq++, \"" + escapedGroupName + "\");");
+            _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"style\", \"" + FieldGroupLegendStyle + "\");");
+            _ = sb.AppendLine("            __b.OpenComponent<FluentText>(cseq++);");
+            _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Size\", TextSize.Size300);");
+            _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Weight\", TextWeight.Semibold);");
+            _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ChildContent\", (RenderFragment)(__legend => __legend.AddContent(0, \"" + escapedGroupName + "\")));");
+            _ = sb.AppendLine("            __b.CloseComponent();");
             _ = sb.AppendLine("            __b.CloseElement();");
 
             for (int groupedIndex = 0; groupedIndex < groupedFields.Length; groupedIndex++) {
@@ -1930,37 +2061,8 @@ public static class CommandFormEmitter {
                 break;
         }
 
-        if (field.TypeCategory != FormFieldTypeCategory.Placeholder) {
-            EmitFieldFeedback(sb, field);
-        }
-
         _ = sb.AppendLine("            __b.CloseElement();");
         _ = sb.AppendLine("            }");
-    }
-
-    private static void EmitFieldFeedback(StringBuilder sb, FormFieldModel field) {
-        string propertyName = EscapeString(field.PropertyName);
-        if (!string.IsNullOrWhiteSpace(field.Description)) {
-            _ = sb.AppendLine("            __b.OpenElement(cseq++, \"div\");");
-            _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"id\", _formDomId + \"-" + propertyName + "-description\");");
-            _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"class\", \"fc-command-field-description\");");
-            _ = sb.AppendLine("            __b.AddContent(cseq++, \"" + EscapeString(field.Description!) + "\");");
-            _ = sb.AppendLine("            __b.CloseElement();");
-        }
-
-        _ = sb.AppendLine("            __b.OpenElement(cseq++, \"div\");");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"id\", _formDomId + \"-" + propertyName + "-error\");");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"class\", \"fc-command-field-message\");");
-        _ = sb.AppendLine("            if (_editContext is not null)");
-        _ = sb.AppendLine("            {");
-        _ = sb.AppendLine("                foreach (string message in _editContext.GetValidationMessages(new FieldIdentifier(_model, \"" + propertyName + "\")))");
-        _ = sb.AppendLine("                {");
-        _ = sb.AppendLine("                    __b.OpenElement(cseq++, \"div\");");
-        _ = sb.AppendLine("                    __b.AddContent(cseq++, message);");
-        _ = sb.AppendLine("                    __b.CloseElement();");
-        _ = sb.AppendLine("                }");
-        _ = sb.AppendLine("            }");
-        _ = sb.AppendLine("            __b.CloseElement();");
     }
 
     private static void EmitTextInput(
@@ -1994,7 +2096,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"AriaLabel\", " + propertyName + "Label);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Name\", \"" + propertyName + "\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Required\", " + isRequired + ");");
-        EmitDescribedBy(sb, propertyName, description);
+        EmitFieldAccessibility(sb, propertyName, description, hasParseError: false);
 
         if (string.Equals(inputType, "Time", StringComparison.Ordinal)) {
             _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"TextInputType\", TextInputType.Time);");
@@ -2034,8 +2136,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Name\", \"" + propertyName + "\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Required\", " + isRequired + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"InputMode\", " + (decimalMode ? "TextInputMode.Decimal" : "TextInputMode.Numeric") + ");");
-        EmitDescribedBy(sb, propertyName, field.Description);
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"aria-invalid\", !string.IsNullOrEmpty(_" + propertyName + "ParseError) ? \"true\" : \"false\");");
+        EmitFieldAccessibility(sb, propertyName, field.Description, hasParseError: true);
         _ = sb.AppendLine("            __b.CloseComponent();");
     }
 
@@ -2043,7 +2144,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.OpenComponent<FluentSwitch>(cseq++);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Id\", _formDomId + \"-" + propertyName + "\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"data-fc-validation-field\", \"true\");");
-        EmitDescribedBy(sb, propertyName, description);
+        EmitFieldAccessibility(sb, propertyName, description, hasParseError: false);
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _model." + propertyName + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<bool>(this, v => { _model." + propertyName + " = v; NotifyClientFieldChanged(\"" + propertyName + "\"); }));");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueExpression\", (global::System.Linq.Expressions.Expression<Func<bool>>)(() => _model." + propertyName + "));");
@@ -2070,7 +2171,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.OpenComponent<FluentDatePicker<" + genericArg + ">>(cseq++);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Id\", _formDomId + \"-" + propertyName + "\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"data-fc-validation-field\", \"true\");");
-        EmitDescribedBy(sb, propertyName, field.Description);
+        EmitFieldAccessibility(sb, propertyName, field.Description, hasParseError: false);
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _model." + propertyName + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<" + genericArg + ">(this, v => { _model." + propertyName + " = v; NotifyClientFieldChanged(\"" + propertyName + "\"); }));");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueExpression\", (global::System.Linq.Expressions.Expression<Func<" + genericArg + ">>)(() => _model." + propertyName + "));");
@@ -2090,7 +2191,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.OpenComponent<FluentSelect<" + enumFqn + ", " + enumFqn + ">>(cseq++);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Id\", _formDomId + \"-" + propertyName + "\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"data-fc-validation-field\", \"true\");");
-        EmitDescribedBy(sb, propertyName, field.Description);
+        EmitFieldAccessibility(sb, propertyName, field.Description, hasParseError: false);
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Items\", (System.Collections.Generic.IEnumerable<" + enumFqn + ">)System.Enum.GetValues<" + enumFqn + ">());");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _model." + propertyName + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<" + enumFqn + ">(this, v => { _model." + propertyName + " = v; NotifyClientFieldChanged(\"" + propertyName + "\"); }));");
@@ -2103,12 +2204,49 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.CloseComponent();");
     }
 
-    private static void EmitDescribedBy(StringBuilder sb, string propertyName, string? description) {
+    /// <summary>
+    /// Story 13.3 VR-01 / BH3-08 / BH3-09 — emits one editor's validation relationships.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The Fluent field that wraps every generated editor already renders the field's current
+    /// EditContext messages once, in Fluent's error styling (including numeric parse errors, which the
+    /// form stores for the model field), so no second error node is emitted. A declared description is
+    /// rendered through the editor's Fluent <c>MessageTemplate</c> with a stable id.
+    /// </para>
+    /// <para>
+    /// Host <c>aria-invalid</c>/<c>aria-describedby</c> never reach the focusable control inside a
+    /// Fluent editor's shadow root, so the host only carries the non-ARIA <c>data-fc-invalid</c> state
+    /// (BH2-11: from every validation store, not only the parse error). <c>fc-focus.js</c>
+    /// (<c>observeFieldAccessibility</c>) projects the invalid state and the description/error
+    /// relationship onto the inner control.
+    /// </para>
+    /// </remarks>
+    private static void EmitFieldAccessibility(StringBuilder sb, string propertyName, string? description, bool hasParseError) {
         string escapedPropertyName = EscapeString(propertyName);
-        string expression = string.IsNullOrWhiteSpace(description)
-            ? "_formDomId + \"-" + escapedPropertyName + "-error\""
-            : "_formDomId + \"-" + escapedPropertyName + "-description \" + _formDomId + \"-" + escapedPropertyName + "-error\"";
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"aria-describedby\", " + expression + ");");
+        string invalidExpression = hasParseError
+            ? "!string.IsNullOrEmpty(_" + propertyName + "ParseError) || IsFieldInvalid(\"" + escapedPropertyName + "\")"
+            : "IsFieldInvalid(\"" + escapedPropertyName + "\")";
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"data-fc-invalid\", " + invalidExpression + " ? \"true\" : \"false\");");
+        // Fluent text-like editors default to a built-in "required" message after focus loss that is
+        // not an EditContext message; it would show error text while the field reports valid. The
+        // EditContext is the single error source, so the Fluent message slot carries only the
+        // declared description.
+        if (string.IsNullOrWhiteSpace(description)) {
+            _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"MessageCondition\", FluentFieldCondition.Never);");
+            return;
+        }
+
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"MessageCondition\", FluentFieldCondition.Always);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"MessageTemplate\", (RenderFragment)(__fieldMessage =>");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                int fmseq = 0;");
+        _ = sb.AppendLine("                __fieldMessage.OpenElement(fmseq++, \"span\");");
+        _ = sb.AppendLine("                __fieldMessage.AddAttribute(fmseq++, \"id\", _formDomId + \"-" + escapedPropertyName + "-description\");");
+        _ = sb.AppendLine("                __fieldMessage.AddAttribute(fmseq++, \"class\", \"fc-command-field-description\");");
+        _ = sb.AppendLine("                __fieldMessage.AddContent(fmseq++, \"" + EscapeString(description!) + "\");");
+        _ = sb.AppendLine("                __fieldMessage.CloseElement();");
+        _ = sb.AppendLine("            }));");
     }
 
     private static void EmitPlaceholder(StringBuilder sb, FormFieldModel field) {
@@ -2269,7 +2407,9 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        if (label.Length <= " + maxLen + ") return label;");
         _ = sb.AppendLine("        int cutoff = " + (maxLen - 1) + ";");
         _ = sb.AppendLine("        if (cutoff > 0 && char.IsHighSurrogate(label[cutoff - 1])) { cutoff--; }");
-        _ = sb.AppendLine("        return label.Substring(0, cutoff) + \"\\u2026\";");
+        // Story 13.3 VG4-10 — span-based like the projection emitter's truncation, so a generated form
+        // with an enum field compiles in adopter projects that enforce CA1845.
+        _ = sb.AppendLine("        return string.Concat(label.AsSpan(0, cutoff), \"\\u2026\");");
         _ = sb.AppendLine("    }");
     }
 

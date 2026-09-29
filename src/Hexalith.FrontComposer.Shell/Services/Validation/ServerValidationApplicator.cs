@@ -9,7 +9,9 @@ namespace Hexalith.FrontComposer.Shell.Services.Validation;
 /// <see cref="ValidationMessageStore"/> entries on a generated command form's
 /// <see cref="EditContext"/>. Field paths are mapped through an
 /// <see cref="ICommandValidationFieldAllowlist"/>; unknown / nested / hostile paths and
-/// global errors collapse into <see cref="ResultUnmappedMessages"/> for form-level rendering.
+/// global errors are returned as unmapped, support-safe form-level messages. Story 13.3 —
+/// <see cref="ApplyRejection"/> returns a <see cref="ServerValidationApplicationResult"/> that also
+/// states whether any allowlisted field received a message (mapped versus unmapped recovery).
 /// </summary>
 /// <remarks>
 /// Stale server-side messages MUST be cleared before invoking
@@ -19,14 +21,14 @@ namespace Hexalith.FrontComposer.Shell.Services.Validation;
 public sealed class ServerValidationApplicator {
     /// <summary>
     /// Applies validation messages from the supplied exception to the message store. Returns
-    /// any global / unmapped error strings that should be surfaced through a form-level
-    /// validation MessageBar (per AC2 / D5).
+    /// any global / unmapped error strings, which a generated form lists as unlinked entries in
+    /// its focused validation summary (Story 13.3 AM-18; originally a form-level MessageBar per AC2 / D5).
     /// </summary>
     /// <param name="messageStore">The store associated with the form's EditContext.</param>
     /// <param name="exception">The raised <see cref="CommandValidationException"/>.</param>
     /// <param name="allowlist">The per-command allowlist (typically <see cref="ReflectionCommandValidationFieldAllowlist{TCommand}"/>).</param>
     /// <param name="model">The form's editable model instance (used to construct <see cref="FieldIdentifier"/>s).</param>
-    /// <returns>Plain-text messages destined for the form-level MessageBar (never null; may be empty).</returns>
+    /// <returns>Plain-text form-level messages (never null; may be empty).</returns>
     public static IReadOnlyList<string> Apply(
         ValidationMessageStore messageStore,
         CommandValidationException exception,
@@ -99,8 +101,8 @@ public sealed class ServerValidationApplicator {
                 }
             }
             else {
-                // Map unknown / nested-hostile paths to the form-level MessageBar so they
-                // remain visible without polluting an unrelated allowlisted field.
+                // Map unknown / nested-hostile paths to form-level messages so they remain
+                // visible without polluting an unrelated allowlisted field.
                 foreach (string message in entry.Value) {
                     formLevel.Add(message);
                 }
@@ -119,8 +121,8 @@ public sealed class ServerValidationApplicator {
     }
 
     /// <summary>
-    /// Property name retained for documentation symmetry — there is no separate "result"
-    /// type because the method's return value carries the unmapped messages directly.
+    /// Always empty; retained for source compatibility. Unmapped messages are returned by
+    /// <see cref="Apply"/> and carried by <see cref="ServerValidationApplicationResult.UnmappedMessages"/>.
     /// </summary>
     public static IReadOnlyList<string> ResultUnmappedMessages { get; } = System.Array.Empty<string>();
 }

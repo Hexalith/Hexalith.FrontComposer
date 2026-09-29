@@ -39,6 +39,10 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
     private bool _isLeaving;
     private int _disposed;
     private int _editedOriginCaptureSequence;
+
+    // The field whose editor is the current captured origin. A capture round trip runs only when the
+    // edited field changes, so typing in one field does not import the focus module per keystroke.
+    private string? _capturedOriginFieldName;
     private ElementReference _guardRoot;
     private bool _stayFocusPending;
     private readonly string _instanceId = Guid.NewGuid().ToString("N");
@@ -103,6 +107,9 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
     protected override void OnParametersSet() {
         if (!ReferenceEquals(EditContext, _subscribedEditContext)) {
             UnsubscribeFromEditContext();
+            // Story 13.3 BH3-14 — a new EditContext belongs to a new form model, so the next edit
+            // must capture its origin again even when it names the same field.
+            _capturedOriginFieldName = null;
             if (EditContext is not null) {
                 _subscribedEditContext = EditContext;
                 _subscribedEditContext.OnFieldChanged += OnFieldEdited;
@@ -110,8 +117,9 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
         }
     }
 
-    // D9 — "Stay on form" auto-focus is wired via FluentButton's AutoFocus="true" attribute;
-    // the button renders every time the warning becomes visible, re-applying focus.
+    // D9 — "Stay on form" is focused when the warning appears: FluentButton's AutoFocus="true"
+    // requests it and OnAfterRenderAsync moves focus there by id (FM-11), because AutoFocus alone
+    // does not re-apply when the warning re-renders in an already interactive page.
 
     private void OnFieldEdited(object? sender, FieldChangedEventArgs e) {
         if (_disposed != 0) {
@@ -121,8 +129,22 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
         // Keep the timer anchored to the first edit while refreshing the deterministic focus
         // origin to the most recently edited control.
         _firstEditAt ??= Time.GetUtcNow();
+
+        // Story 13.3 E4-08 — a split numeric binding also reports its private text buffer on the form
+        // component ("_XString") before the model field ("X"). Only model fields name an editor, so a
+        // foreign-model identifier must not re-capture the origin on every keystroke.
+        if (!ReferenceEquals(e.FieldIdentifier.Model, _subscribedEditContext?.Model)) {
+            return;
+        }
+
+        string fieldName = e.FieldIdentifier.FieldName;
+        if (string.Equals(fieldName, _capturedOriginFieldName, StringComparison.Ordinal)) {
+            return;
+        }
+
+        _capturedOriginFieldName = fieldName;
         int sequence = Interlocked.Increment(ref _editedOriginCaptureSequence);
-        _ = InvokeAsync(() => CaptureEditedOriginAsync(e.FieldIdentifier.FieldName, sequence));
+        _ = InvokeAsync(() => CaptureEditedOriginAsync(fieldName, sequence));
     }
 
     private async Task HandleNavigationChangingAsync(LocationChangingContext context) {
@@ -250,9 +272,10 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
     }
 
     private async Task CaptureEditedOriginAsync(string fieldName, int sequence) {
+        bool captured = false;
         try {
             await using IJSObjectReference module = await JS.InvokeAsync<IJSObjectReference>("import", FocusModulePath);
-            await module.InvokeVoidAsync("captureEditedOrigin", _guardRoot, fieldName, sequence);
+            captured = await module.InvokeAsync<bool>("captureEditedOrigin", _guardRoot, fieldName, sequence);
         }
         catch (JSDisconnectedException) {
         }
@@ -260,12 +283,20 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
         }
         catch (InvalidOperationException) {
         }
+
+        // A capture that did not bind (editor not rendered yet, or interop unavailable) must not
+        // suppress the next edit of the same field from trying again.
+        if (!captured
+            && sequence == Volatile.Read(ref _editedOriginCaptureSequence)
+            && string.Equals(fieldName, _capturedOriginFieldName, StringComparison.Ordinal)) {
+            _capturedOriginFieldName = null;
+        }
     }
 
     private async Task RestoreEditedOriginAsync() {
         try {
             await using IJSObjectReference module = await JS.InvokeAsync<IJSObjectReference>("import", FocusModulePath);
-            await module.InvokeVoidAsync("restoreEditedOrigin");
+            await module.InvokeVoidAsync("restoreEditedOrigin", _guardRoot);
         }
         catch (JSDisconnectedException) {
         }

@@ -131,7 +131,7 @@ test.describe('Story 4.2: unsaved full-page command form abandonment guard', () 
     const staleCaptureAccepted = await page.evaluate(async (focusModulePath) => {
       const focus = await import(focusModulePath) as {
         captureEditedOrigin: (root: HTMLElement, fieldName: string, sequence: number) => boolean;
-        restoreEditedOrigin: () => void;
+        restoreEditedOrigin: (root?: HTMLElement) => void;
       };
       const root = document.querySelector<HTMLElement>('[data-fc-abandonment-root]');
       if (!root) {
@@ -142,7 +142,7 @@ test.describe('Story 4.2: unsaved full-page command form abandonment guard', () 
       focus.captureEditedOrigin(root, 'Description', 2);
       document.querySelector<HTMLElement>('[data-testid="fc-settings-button"]')?.focus();
       const staleAccepted = focus.captureEditedOrigin(root, 'Name', 1);
-      focus.restoreEditedOrigin();
+      focus.restoreEditedOrigin(root);
       await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
       return staleAccepted;
     }, '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js');

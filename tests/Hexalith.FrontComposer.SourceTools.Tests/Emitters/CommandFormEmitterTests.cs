@@ -109,8 +109,11 @@ public class CommandFormEmitterTests {
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
         source.ShouldContain("!_interactiveReady");
-        source.ShouldContain("SetCommandInProgressWarning");
-        source.ShouldContain("FocusElementAsync(_formDomId + \"-submit\")");
+        source.ShouldContain("CreateCommandBlockedWarning(reason)");
+        source.ShouldContain("await _blockedOutcome.PresentAsync().ConfigureAwait(false);");
+        string masked = GeneratedRenderTreeText.MaskSequenceArguments(source);
+        masked.ShouldContain("__b.OpenComponent<FcCommandBlockedOutcome>(#);");
+        masked.ShouldContain("__b.AddAttribute(#, \"AttemptedControlId\", _formDomId + \"-submit\");");
     }
 
     [Fact]
@@ -338,11 +341,40 @@ public class CommandFormEmitterTests {
         source.ShouldContain("[Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.ICommandExecutionAdmissionGate CommandExecutionAdmissionGate { get; set; } = default!;");
         source.ShouldContain("CommandExecutionAdmissionGate.TryAcquire(CreateAdmissionRequest())");
         source.ShouldContain("PresentBlockedSubmissionAsync(admission.DenialReason, admission.BlockingMessageId)");
-        source.ShouldContain("CommandFeedbackPublisher.PublishWarning(_serverWarning);");
-        source.ShouldContain("__blocked.AddMultipleAttributes(");
-        source.ShouldContain("[\"role\"] = \"status\"");
-        source.ShouldContain("[\"aria-live\"] = \"polite\"");
-        source.ShouldContain("[\"aria-atomic\"] = \"true\"");
+        source.ShouldContain("CommandFeedbackPublisher.PublishWarning(CreateCommandBlockedWarning(reason));");
+        // Story 13.3 BH2-06 — AM-20 speaks through the always-mounted shell status node, never through
+        // a live region inserted together with its text.
+        source.ShouldContain("OpenComponent<FcCommandBlockedOutcome>");
+        source.ShouldNotContain("[\"aria-live\"] = \"polite\"");
+    }
+
+    [Fact]
+    public void EmitEverySubmitChecksConcurrencyBeforeValidationCanPublishFeedback() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Name", "String", FormFieldTypeCategory.TextInput, "Name", false, true, null),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+        string masked = GeneratedRenderTreeText.MaskSequenceArguments(source);
+
+        // ECH-05 — one OnSubmit path; lifecycle and admission checks run before validation can focus a summary.
+        masked.ShouldContain("__wrap.AddAttribute(#, \"OnSubmit\", EventCallback.Factory.Create<EditContext>(this, async _ => await OnSubmitAsync()));");
+        masked.ShouldNotContain("\"OnValidSubmit\"");
+        masked.ShouldNotContain("\"OnInvalidSubmit\"");
+        source.ShouldContain("private Task OnSubmitAsync() => SubmitAsync(validateBeforeDispatch: true);");
+        source.ShouldContain("RegisterExternalSubmit(() => _ = SubmitAsync(validateBeforeDispatch: false));");
+        int submitIndex = source.IndexOf("private async Task SubmitAsync(bool validateBeforeDispatch)", StringComparison.Ordinal);
+        int lifecycleGateIndex = source.IndexOf("await PresentBlockedSubmissionAsync(", submitIndex, StringComparison.Ordinal);
+        int admissionIndex = source.IndexOf("CommandExecutionAdmissionGate.TryAcquire(CreateAdmissionRequest())", submitIndex, StringComparison.Ordinal);
+        int admissionDeniedIndex = source.IndexOf("PresentBlockedSubmissionAsync(admission.DenialReason, admission.BlockingMessageId)", submitIndex, StringComparison.Ordinal);
+        int validateIndex = source.IndexOf("!_editContext.Validate()", submitIndex, StringComparison.Ordinal);
+        int summaryIndex = source.IndexOf("ShowValidationSummaryAsync(FcValidationSummaryKind.ClientValidation)", validateIndex, StringComparison.Ordinal);
+        submitIndex.ShouldBeGreaterThanOrEqualTo(0);
+        lifecycleGateIndex.ShouldBeGreaterThan(submitIndex);
+        admissionIndex.ShouldBeGreaterThan(lifecycleGateIndex);
+        admissionDeniedIndex.ShouldBeGreaterThan(admissionIndex);
+        validateIndex.ShouldBeGreaterThan(admissionDeniedIndex);
+        summaryIndex.ShouldBeGreaterThan(validateIndex);
+        Regex.Count(source, @"_editContext\.Validate\(\)").ShouldBe(1);
     }
 
     [Fact]
@@ -352,7 +384,7 @@ public class CommandFormEmitterTests {
         ]);
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
-        int validSubmitIndex = source.IndexOf("private async Task OnValidSubmitAsync()", StringComparison.Ordinal);
+        int validSubmitIndex = source.IndexOf("private async Task SubmitAsync(bool validateBeforeDispatch)", StringComparison.Ordinal);
         int beforeSubmitIndex = source.IndexOf("await BeforeSubmit().ConfigureAwait(false);", StringComparison.Ordinal);
         int admissionIndex = source.IndexOf("CommandExecutionAdmissionGate.TryAcquire", validSubmitIndex, StringComparison.Ordinal);
         int admissionTryIndex = source.IndexOf("try\n        {\n        if (!admission.IsAdmitted)", admissionIndex, StringComparison.Ordinal);
@@ -700,7 +732,7 @@ public class CommandFormEmitterTests {
                 && identifier.Identifier.ValueText == "admission"
                 && memberAccess.Name.Identifier.ValueText == "Dispose"
                 && invocation.Ancestors().OfType<MethodDeclarationSyntax>()
-                    .Any(method => method.Identifier.ValueText == "OnValidSubmitAsync"));
+                    .Any(method => method.Identifier.ValueText == "SubmitAsync"));
         FinallyClauseSyntax disposalFinally = disposeInvocation.Ancestors()
             .OfType<FinallyClauseSyntax>()
             .Single();
@@ -879,20 +911,67 @@ public class CommandFormEmitterTests {
         masked.ShouldContain("__b.AddAttribute(#, \"id\", _formDomId + \"-field-group-1\")");
         source.ShouldContain(escapedDescription);
 
+        // Story 13.3 BH3-09 — the group is Fluent-styled (Fluent 2 tokens and a FluentText legend).
+        masked.ShouldContain("__b.AddAttribute(#, \"style\", \"margin: 0; padding: var(--spacingVerticalM) var(--spacingHorizontalM);");
+        masked.ShouldContain("border: var(--strokeWidthThin) solid var(--colorNeutralStroke2)");
+        masked.ShouldContain("__b.AddAttribute(#, \"Weight\", TextWeight.Semibold);");
+
+        // The description is rendered inside the editor through Fluent field messaging, with a stable id.
         string firstFieldSource = GeneratedRenderTreeText.MaskSequenceArguments(source[firstField..secondField]);
         int inputStart = firstFieldSource.IndexOf("__b.OpenComponent<FluentTextInput>", StringComparison.Ordinal);
-        int describedBy = firstFieldSource.IndexOf(
-            "__b.AddAttribute(#, \"aria-describedby\", _formDomId + \"-FirstNote-description \" + _formDomId + \"-FirstNote-error\")",
-            StringComparison.Ordinal);
+        int messageTemplate = firstFieldSource.IndexOf("__b.AddAttribute(#, \"MessageTemplate\", (RenderFragment)(__fieldMessage =>", StringComparison.Ordinal);
+        int descriptionId = firstFieldSource.IndexOf("__fieldMessage.AddAttribute(#, \"id\", _formDomId + \"-FirstNote-description\");", StringComparison.Ordinal);
         int inputEnd = firstFieldSource.IndexOf("__b.CloseComponent();", inputStart, StringComparison.Ordinal);
         inputStart.ShouldBeGreaterThanOrEqualTo(0);
-        describedBy.ShouldBeGreaterThan(inputStart);
-        describedBy.ShouldBeLessThan(inputEnd);
+        messageTemplate.ShouldBeGreaterThan(inputStart);
+        descriptionId.ShouldBeGreaterThan(messageTemplate);
+        descriptionId.ShouldBeLessThan(inputEnd);
+        masked.ShouldContain("__fieldMessage.AddAttribute(#, \"id\", _formDomId + \"-SecondNote-description\");");
 
-        masked.ShouldContain("__b.AddAttribute(#, \"id\", _formDomId + \"-FirstNote-description\")");
-        masked.ShouldContain("__b.AddAttribute(#, \"id\", _formDomId + \"-FirstNote-error\")");
-        masked.ShouldContain("__b.AddAttribute(#, \"id\", _formDomId + \"-SecondNote-description\")");
-        masked.ShouldContain("__b.AddAttribute(#, \"id\", _formDomId + \"-SecondNote-error\")");
+        // BH3-08 / BH3-09 — no host ARIA that cannot reach the shadow control, and no second error node:
+        // the Fluent field renders each error once.
+        masked.ShouldNotContain("\"aria-describedby\"");
+        masked.ShouldNotContain("\"aria-invalid\"");
+        masked.ShouldNotContain("__b.AddAttribute(#, \"id\", _formDomId + \"-FirstNote-error\")");
+        masked.ShouldContain("__b.AddAttribute(#, \"MessageCondition\", FluentFieldCondition.Always);");
+        masked.ShouldNotContain("fc-command-field-message");
+    }
+
+    [Fact]
+    public void EmitEveryEditorExposesInvalidStateForShadowControlProjection() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Name", "String", FormFieldTypeCategory.TextInput, "Name", false, true, null),
+            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
+            new FormFieldModel("Enabled", "Boolean", FormFieldTypeCategory.Switch, "Enabled", false, false, null),
+            new FormFieldModel("Due", "DateTime", FormFieldTypeCategory.DatePicker, "Due", false, false, null),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+        string masked = GeneratedRenderTreeText.MaskSequenceArguments(source);
+
+        // BH2-11 — the invalid state comes from every validation store, not only the parse error.
+        masked.ShouldContain("__b.AddAttribute(#, \"data-fc-invalid\", IsFieldInvalid(\"Name\") ? \"true\" : \"false\");");
+        masked.ShouldContain("__b.AddAttribute(#, \"data-fc-invalid\", !string.IsNullOrEmpty(_AmountParseError) || IsFieldInvalid(\"Amount\") ? \"true\" : \"false\");");
+        masked.ShouldContain("__b.AddAttribute(#, \"data-fc-invalid\", IsFieldInvalid(\"Enabled\") ? \"true\" : \"false\");");
+        masked.ShouldContain("__b.AddAttribute(#, \"data-fc-invalid\", IsFieldInvalid(\"Due\") ? \"true\" : \"false\");");
+        source.ShouldContain("_editContext.GetValidationMessages(new FieldIdentifier(_model, commandPropertyName)).Any()");
+
+        // The EditContext is the single error source: Fluent's built-in focus-loss "required" message
+        // never shows error text for a field that reports valid.
+        Regex.Count(masked, "__b.AddAttribute\\(#, \"MessageCondition\", FluentFieldCondition.Never\\);").ShouldBe(4);
+
+        // BH3-08 — fc-focus.js projects that state and the description/error relationship onto the
+        // focusable control inside each Fluent editor's shadow root, once per form lifetime.
+        source.ShouldContain("\"observeFieldAccessibility\", _formDomId");
+        int afterRender = source.IndexOf("protected override async Task OnAfterRenderAsync(bool firstRender)", StringComparison.Ordinal);
+        int observe = source.IndexOf("await ObserveFieldAccessibilityAsync().ConfigureAwait(false);", afterRender, StringComparison.Ordinal);
+        observe.ShouldBeGreaterThan(afterRender);
+        source.IndexOf("if (firstRender)", afterRender, StringComparison.Ordinal).ShouldBeLessThan(observe);
+
+        // Numeric editors keep their model-field validation association (loop 2 KEEP).
+        source.ShouldContain("\"ValidationFieldFor\", (global::System.Linq.Expressions.Expression<Func<Int32>>)(() => _model.Amount)");
+
+        string withoutFields = CommandFormEmitter.Emit(BuildForm(System.Array.Empty<FormFieldModel>()), BuildFluxor());
+        withoutFields.ShouldNotContain("observeFieldAccessibility");
     }
 
     [Fact]
@@ -903,10 +982,14 @@ public class CommandFormEmitterTests {
 
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
+        int focusHelper = source.IndexOf("private async Task FocusElementAsync(string id)", StringComparison.Ordinal);
+        focusHelper.ShouldBeGreaterThanOrEqualTo(0);
+        source.IndexOf("catch (global::Microsoft.JSInterop.JSDisconnectedException) { }", focusHelper, StringComparison.Ordinal)
+            .ShouldBeGreaterThan(focusHelper);
         System.Text.RegularExpressions.Regex.Count(
                 source,
                 @"catch \(global::Microsoft\.JSInterop\.JSDisconnectedException\)")
-            .ShouldBeGreaterThanOrEqualTo(2);
+            .ShouldBeGreaterThanOrEqualTo(1);
     }
 
     [Fact]
@@ -921,9 +1004,111 @@ public class CommandFormEmitterTests {
         Regex.Count(source, "data-fc-field-group").ShouldBe(1);
         Regex.Count(source, "__b.OpenElement\\(#, \\\"fieldset\\\"\\)").ShouldBe(1);
         Regex.Count(source, "__b.OpenElement\\(#, \\\"legend\\\"\\)").ShouldBe(1);
-        source.ShouldContain("__b.AddContent(#, \"Purge details\")");
+        source.ShouldContain("__legend.AddContent(#, \"Purge details\")");
         source.IndexOf("// Field: RecordId", StringComparison.Ordinal)
             .ShouldBeLessThan(source.IndexOf("// Field: Reason", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void EmitSummaryDescriptorsFollowRenderedOrderForGroupMembersDeclaredApart() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("RecordId", "String", FormFieldTypeCategory.TextInput, "Record ID", false, true, null, fieldGroup: "Purge details"),
+            new FormFieldModel("Note", "String", FormFieldTypeCategory.TextInput, "Note", true, false, null),
+            new FormFieldModel("Reason", "String", FormFieldTypeCategory.TextInput, "Reason", false, true, null, fieldGroup: "Purge details"),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        // BH2-08 — a declared group is hoisted to its first member, and the summary follows that DOM order.
+        int recordField = source.IndexOf("// Field: RecordId", StringComparison.Ordinal);
+        int reasonField = source.IndexOf("// Field: Reason", StringComparison.Ordinal);
+        int noteField = source.IndexOf("// Field: Note", StringComparison.Ordinal);
+        recordField.ShouldBeLessThan(reasonField);
+        reasonField.ShouldBeLessThan(noteField);
+        int descriptors = source.IndexOf("private FcValidationFieldDescriptor[] BuildValidationFields()", StringComparison.Ordinal);
+        int recordDescriptor = source.IndexOf("new(\"RecordId\"", descriptors, StringComparison.Ordinal);
+        int reasonDescriptor = source.IndexOf("new(\"Reason\"", descriptors, StringComparison.Ordinal);
+        int noteDescriptor = source.IndexOf("new(\"Note\"", descriptors, StringComparison.Ordinal);
+        descriptors.ShouldBeGreaterThanOrEqualTo(0);
+        recordDescriptor.ShouldBeLessThan(reasonDescriptor);
+        reasonDescriptor.ShouldBeLessThan(noteDescriptor);
+        CommandFormEmitter.OrderFieldsForRender(form.Fields.AsImmutableArray())
+            .Select(field => field.PropertyName)
+            .ShouldBe(["RecordId", "Reason", "Note"]);
+    }
+
+    [Fact]
+    public void EmitUnmappedRejectionTextNeverFeedsALaterClientSummary() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Name", "String", FormFieldTypeCategory.TextInput, "Name", false, true, null),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        // VR-03 / VG2-10 — form-level text from an earlier attempt is dropped once a later attempt is admitted.
+        int submit = source.IndexOf("private async Task SubmitAsync(bool validateBeforeDispatch)", StringComparison.Ordinal);
+        int admission = source.IndexOf("if (!admission.IsAdmitted)", submit, StringComparison.Ordinal);
+        int reset = source.IndexOf("_serverFormLevelErrors = System.Array.Empty<string>();", admission, StringComparison.Ordinal);
+        int validate = source.IndexOf("!_editContext.Validate()", submit, StringComparison.Ordinal);
+        reset.ShouldBeGreaterThan(admission);
+        reset.ShouldBeLessThan(validate);
+        source.ShouldContain("_serverFormLevelErrors = hasMappedFieldErrors ? rejectionValidation.UnmappedMessages : System.Array.Empty<string>();");
+        source.ShouldNotContain("_serverFormLevelErrors = rejectionValidation.UnmappedMessages;");
+    }
+
+    [Fact]
+    public void EmitPolicyFormKeepsInputsForTransientAuthorizationFailuresAndFocusesOnlyActivationDenials() {
+        CommandFormModel form = BuildForm(
+            [new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null)],
+            "IncrementCommand",
+            "Counter.Domain",
+            "OrderApprover");
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        // BH2-05 / BH2-04 — only a genuine denial replaces the form, and only an operator submit focuses it.
+        source.ShouldContain("_authorizationDenied = !infrastructureFailure;");
+        source.ShouldContain("CommandAuthorizationReason.CatalogInconsistent");
+        source.ShouldContain("CommandAuthorizationReason.Pending;");
+        Regex.Count(source, @"SetAuthorizationWarning\([^;]*operatorActivation: true\)").ShouldBe(2);
+        Regex.Count(source, @"SetAuthorizationWarning\([^;]*operatorActivation: false\)").ShouldBe(1);
+        // E4-18 — a background denial (operatorActivation: false) OR-keeps an operator submit's pending
+        // heading focus rather than overwriting it with false before it renders.
+        source.ShouldContain("_authorizationFocusPending = _authorizationDenied && (_authorizationFocusPending || operatorActivation);");
+        source.ShouldNotContain("_authorizationFocusPending = operatorActivation && _authorizationDenied;");
+        source.ShouldContain("if (!_authorizationDenied && sequence > 1)");
+        source.ShouldContain("\"captureFocusBeforeReplacement\", _formDomId + \"-authorization-heading\"");
+        source.ShouldContain("\"focusReplacementHeading\", headingId, headingId");
+
+        // BH3-01 — Ready=false and the refresh stamp precede the capture round trip.
+        int refresh = source.IndexOf("private async Task RefreshPresentationAuthorizationAsync()", StringComparison.Ordinal);
+        int notReady = source.IndexOf("_authorizationPresentationReady = false;", refresh, StringComparison.Ordinal);
+        int stamp = source.IndexOf("Interlocked.Increment(ref _authorizationRefreshSequence)", refresh, StringComparison.Ordinal);
+        int capture = source.IndexOf("CaptureFocusBeforeReplacementAsync()", refresh, StringComparison.Ordinal);
+        notReady.ShouldBeGreaterThan(refresh);
+        stamp.ShouldBeGreaterThan(notReady);
+        capture.ShouldBeGreaterThan(stamp);
+    }
+
+    [Fact]
+    public void EmitBlockedSubmitHandsOutcomeToHostWhenTheFormIsNotPerceivable() {
+        string source = CommandFormEmitter.Emit(BuildForm(System.Array.Empty<FormFieldModel>()), BuildFluxor());
+        string masked = GeneratedRenderTreeText.MaskSequenceArguments(source);
+
+        // VG2-13 — a hidden zero-field form hands its AM-20 outcome to the renderer.
+        source.ShouldContain("[Parameter] public EventCallback<bool> OnBlockedSubmission { get; set; }");
+        source.ShouldContain("await InvokeAsync(() => OnBlockedSubmission.InvokeAsync(true));");
+        source.ShouldContain("await InvokeAsync(() => OnBlockedSubmission.InvokeAsync(false));");
+        masked.ShouldContain("if (!OnBlockedSubmission.HasDelegate)");
+        int present = source.IndexOf("private async Task PresentBlockedSubmissionAsync(", StringComparison.Ordinal);
+        int presentEnd = source.IndexOf("private async Task FocusElementAsync(", present, StringComparison.Ordinal);
+        string presentBody = source[present..presentEnd];
+        presentBody.ShouldNotContain("Validate()");
+        presentBody.ShouldNotContain("Dispatcher.Dispatch");
+        presentBody.ShouldNotContain("ShowAndFocusAsync");
+
+        // BH4-04 — a scope-unavailable attempt uses the AM-20 attempted-control rule instead of forcing
+        // focus onto the submit button, so Enter in a field keeps that field focused.
+        presentBody.ShouldContain("await FocusAttemptedControlAsync(_formDomId + \"-submit\").ConfigureAwait(false);");
+        presentBody.ShouldNotContain("FocusElementAsync(");
+        source.ShouldContain("_ = await module.InvokeAsync<bool>(\"focusAttemptedControl\", id, false).ConfigureAwait(false);");
     }
 
     [Fact]

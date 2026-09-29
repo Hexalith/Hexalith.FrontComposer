@@ -37,6 +37,18 @@ public sealed class FcDestructiveConfirmationDialogTests : BunitContext {
     }
 
     [Fact]
+    public void FirstRenderNamesDescribesAndContainsTheModalActions() {
+        _ = Render<FcDestructiveConfirmationDialog>(p => p
+            .Add(c => c.Title, "Delete?")
+            .Add(c => c.Body, "Gone forever.")
+            .Add(c => c.DestructiveLabel, "Delete"));
+
+        // OF-03 — the dialog is named and described, and Tab stays inside its actions.
+        _ = JSInterop.VerifyInvoke("labelDialog");
+        JSInterop.VerifyInvoke("containDialogFocus").Arguments.ShouldBe(["fc-destructive-dialog"]);
+    }
+
+    [Fact]
     public void Cancel_button_carries_autofocus_affordance() {
         IRenderedComponent<FcDestructiveConfirmationDialog> cut = Render<FcDestructiveConfirmationDialog>(p => p
             .Add(c => c.Title, "Delete?")

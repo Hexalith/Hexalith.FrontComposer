@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 
 using NSubstitute;
 
@@ -41,8 +42,11 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             groups.Count.ShouldBe(1);
             AngleSharp.Dom.IElement group = groups[0];
             AngleSharp.Dom.IElement legend = group.QuerySelector("legend").ShouldNotBeNull();
-            legend.TextContent.ShouldBe("Change details");
+            legend.TextContent.Trim().ShouldBe("Change details");
             group.GetAttribute("aria-labelledby").ShouldBe(legend.Id);
+            // BH3-09 — the group is Fluent-styled: Fluent 2 tokens and a FluentText legend.
+            group.GetAttribute("style").ShouldNotBeNull().ShouldContain("var(--colorNeutralStroke2)");
+            _ = legend.QuerySelector("fluent-text").ShouldNotBeNull();
 
             AngleSharp.Dom.IHtmlCollection<AngleSharp.Dom.IElement> fields = group.QuerySelectorAll("[data-fc-validation-field='true']");
             fields.Length.ShouldBe(2);
@@ -50,10 +54,16 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             fields[1].GetAttribute("name").ShouldBe("Reason");
 
             foreach (AngleSharp.Dom.IElement field in fields) {
-                string[] describedByIds = field.GetAttribute("aria-describedby").ShouldNotBeNull().Split(' ');
-                describedByIds.Length.ShouldBe(2);
-                describedByIds.All(id => cut.FindAll("#" + id).Count == 1).ShouldBeTrue();
+                // Descriptions render once, through the editor's own Fluent field message slot.
+                AngleSharp.Dom.IElement description = cut.FindAll("#" + field.Id + "-description").ShouldHaveSingleItem();
+                description.Closest("[slot='message']").ShouldNotBeNull();
+                description.Closest("fluent-field").ShouldBe(field.Closest("fluent-field"));
+                field.GetAttribute("data-fc-invalid").ShouldBe("false");
+                field.HasAttribute("aria-describedby").ShouldBeFalse();
+                field.HasAttribute("aria-invalid").ShouldBeFalse();
             }
+
+            cut.FindAll(".fc-command-field-message").ShouldBeEmpty();
         });
     }
 
@@ -189,10 +199,10 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
     [Fact]
     public async Task GeneratedForm_ClientValidation_RendersOneCompleteLinkedNonLiveSummary() {
         await InitializeStoreAsync();
-        IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>(parameters => parameters
-            .Add(p => p.InitialValue, new TwoFieldCompactCommand {
-                Name = string.Empty,
-                Amount = 7,
+        IRenderedComponent<GroupedFieldsCommandForm> cut = Render<GroupedFieldsCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new GroupedFieldsCommand {
+                RecordId = string.Empty,
+                Reason = "kept reason",
             }));
 
         cut.Find("form").Submit();
@@ -202,8 +212,10 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             summaries.Count.ShouldBe(1);
             summaries[0].HasAttribute("aria-live").ShouldBeFalse();
             summaries[0].GetAttribute("role").ShouldNotBe("alert");
-            cut.FindAll("[data-fc-validation-target]").ShouldNotBeEmpty();
-            cut.Markup.ShouldContain("value=\"7\"", Case.Insensitive);
+            AngleSharp.Dom.IElement link = cut.Find("[data-fc-validation-target]");
+            link.GetAttribute("data-fc-validation-target").ShouldNotBeNull().ShouldEndWith("-RecordId");
+            link.TextContent.ShouldContain("Record ID");
+            cut.Markup.ShouldContain("value=\"kept reason\"", Case.Insensitive);
         });
     }
 
@@ -315,8 +327,8 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         using IDisposable subscription = Services.GetRequiredService<ICommandFeedbackPublisher>().Subscribe(warnings.Add);
         IRenderedComponent<FourFieldCompactCommandForm> first = Render<FourFieldCompactCommandForm>(parameters => parameters
             .Add(p => p.InitialValue, new FourFieldCompactCommand { Name = "first" }));
-        IRenderedComponent<TwoFieldCompactCommandForm> invalid = Render<TwoFieldCompactCommandForm>(parameters => parameters
-            .Add(p => p.InitialValue, new TwoFieldCompactCommand { Name = string.Empty, Amount = 7 }));
+        IRenderedComponent<GroupedFieldsCommandForm> invalid = Render<GroupedFieldsCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new GroupedFieldsCommand { RecordId = string.Empty, Reason = "blocked reason" }));
 
         first.Find("form").Submit();
         await service.DispatchStarted.Task.WaitAsync(TimeSpan.FromSeconds(2), Xunit.TestContext.Current.CancellationToken);
@@ -326,14 +338,14 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         invalid.WaitForAssertion(() => {
             service.DispatchCount.ShouldBe(1);
             invalid.FindAll("[data-testid='fc-validation-summary']").ShouldBeEmpty();
+            // ECH-05 — no validation ran: no field error was added and the entered value is kept.
+            invalid.Markup.ShouldNotContain("field is required");
+            invalid.Markup.ShouldContain("blocked reason");
             invalid.FindAll("[role='status'][aria-live='polite']").Count.ShouldBe(1);
             warnings.Count.ShouldBe(1);
             FcFocusModule.Invocations.Count(invocation => invocation.Identifier == "focusValidationOutcome")
                 .ShouldBe(validationFocusCount);
-            FcFocusModule.Invocations.ShouldContain(invocation => invocation.Identifier == "focusElementById"
-                && invocation.Arguments.Count > 0
-                && invocation.Arguments[0] != null
-                && invocation.Arguments[0]!.ToString()!.EndsWith("-submit", StringComparison.Ordinal));
+            AttemptedFocusRequests().ShouldBe(1);
         });
 
         service.AllowDispatch.SetResult();
@@ -355,8 +367,38 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         blocked.Find("form").Submit();
 
         blocked.WaitForAssertion(() => {
-            _ = blocked.Find("[data-testid='fc-command-blocked']");
-            blocked.FindAll("[aria-label='View active command']").ShouldBeEmpty();
+            blocked.Find("[data-testid='fc-command-blocked-status']").TextContent.ShouldBe(BlockedMessage);
+            blocked.FindAll("[data-testid='fc-view-active-command']").ShouldBeEmpty();
+            service.DispatchCount.ShouldBe(1);
+        });
+
+        service.AllowDispatch.SetResult();
+    }
+
+    [Fact]
+    public async Task GeneratedFormViewActiveCommandWithdrawsInertActionAndReturnsFocusToAttemptedSubmit() {
+        _ = FcFocusModule.Setup<bool>("focusActiveLifecycle", _ => true).SetResult(false);
+        BlockingCommandService service = new();
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        IRenderedComponent<FourFieldCompactCommandForm> first = Render<FourFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new FourFieldCompactCommand { Name = "first" }));
+        IRenderedComponent<TwoFieldCompactCommandForm> blocked = Render<TwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new TwoFieldCompactCommand { Name = "second", Amount = 7 }));
+
+        first.Find("form").Submit();
+        await service.DispatchStarted.Task.WaitAsync(TimeSpan.FromSeconds(2), Xunit.TestContext.Current.CancellationToken);
+        blocked.Find("form").Submit();
+        blocked.WaitForAssertion(() => _ = blocked.Find("[data-testid='fc-view-active-command']"));
+        int attemptedFocusCount = AttemptedFocusRequests();
+
+        blocked.Find("[data-testid='fc-view-active-command']").Click();
+
+        // ECH-06 / BH-11 — an inert action is withdrawn and focus returns to the attempted submit.
+        blocked.WaitForAssertion(() => {
+            blocked.FindAll("[data-testid='fc-view-active-command']").ShouldBeEmpty();
+            blocked.Find("[data-testid='fc-command-blocked-status']").TextContent.ShouldNotBeEmpty();
+            AttemptedFocusRequests().ShouldBe(attemptedFocusCount + 1);
             service.DispatchCount.ShouldBe(1);
         });
 
@@ -475,13 +517,17 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
                 Amount = 9,
             }));
 
-        cut.WaitForAssertion(() => _ = cut.Find("form"));
+        // AM-26 / FM-01 — the initial presentation denial replaces the controls without moving focus.
+        cut.WaitForAssertion(() => _ = cut.Find("[id$='-authorization-heading']"));
+        HeadingFocusRequests().ShouldBe(0);
         cut.Find("form").Submit();
 
         cut.WaitForAssertion(() => {
             service.DispatchCount.ShouldBe(0);
             pending.Snapshot().ShouldBeEmpty();
             state.Value.State.ShouldBe(CommandLifecycleState.Idle);
+            // The denial now answers the operator's submit, so its heading takes focus exactly once.
+            HeadingFocusRequests().ShouldBe(1);
             cut.FindAll("input").ShouldBeEmpty();
             cut.FindAll("fluent-button").ShouldBeEmpty();
             AngleSharp.Dom.IElement heading = cut.Find("[id$='-authorization-heading']");
@@ -490,6 +536,459 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             warnings.ShouldNotBeEmpty();
             warnings.ShouldContain(w => w.Kind == expectedWarningKind);
         });
+
+        int HeadingFocusRequests() => FcFocusModule.Invocations.Count(invocation => invocation.Identifier == "focusElementById"
+            && invocation.Arguments.Count > 0
+            && invocation.Arguments[0]?.ToString()?.EndsWith("-authorization-heading", StringComparison.Ordinal) == true);
+    }
+
+    [Theory]
+    [MemberData(nameof(TransientAuthorizationFailures))]
+    public async Task ProtectedGeneratedFormTransientAuthorizationFailureKeepsInputsAndRetryWarning(CommandAuthorizationReason reason) {
+        var evaluator = new FixedAuthorizationEvaluator(CommandAuthorizationDecision.Blocked(reason, "corr-transient"));
+        RecordingCommandService service = new();
+        RegisterAuthorization(evaluator);
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        IRenderedComponent<ProtectedTwoFieldCompactCommandForm> cut = Render<ProtectedTwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new ProtectedTwoFieldCompactCommand { Name = "kept name", Amount = 9 }));
+
+        cut.WaitForAssertion(() => _ = cut.Find("fluent-message-bar"));
+        cut.Find("form").Submit();
+
+        // BH2-05 / BH3-10 — only a genuine denial replaces the form; a transient failure, including a
+        // check still pending at submit, keeps the entered values and the retry warning.
+        cut.WaitForAssertion(() => {
+            evaluator.Requests.Count.ShouldBeGreaterThanOrEqualTo(2);
+            service.DispatchCount.ShouldBe(0);
+            cut.FindAll("[id$='-authorization-heading']").ShouldBeEmpty();
+            cut.Markup.ShouldContain("kept name");
+            cut.Markup.ShouldContain("value=\"9\"");
+            cut.FindAll("[data-fc-validation-field='true']").Count.ShouldBe(2);
+            cut.Find("fluent-message-bar").TextContent.ShouldContain("retry", Case.Insensitive);
+        });
+        FcFocusModule.Invocations.ShouldNotContain(invocation => invocation.Identifier == "focusElementById"
+            && invocation.Arguments.Count > 0
+            && invocation.Arguments[0]!.ToString()!.EndsWith("-authorization-heading", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task GeneratedFormDispatchForbiddenReplacesControlsAndFocusesDeniedHeading() {
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => new ForbiddenCommandService()));
+        await InitializeStoreAsync();
+        IState<TwoFieldCompactCommandLifecycleState> state = Services.GetRequiredService<IState<TwoFieldCompactCommandLifecycleState>>();
+        IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new TwoFieldCompactCommand { Name = "denied name", Amount = 3 }));
+
+        cut.Find("form").Submit();
+
+        // VG2-03 / VG2-04 — a service-boundary 403 replaces the form with a focused, support-safe
+        // denial heading and marks no field invalid.
+        cut.WaitForAssertion(() => {
+            state.Value.State.ShouldBe(CommandLifecycleState.Idle);
+            AngleSharp.Dom.IElement heading = cut.Find("[id$='-authorization-heading']");
+            heading.GetAttribute("tabindex").ShouldBe("-1");
+            heading.TextContent.ShouldBe("Not allowed");
+            cut.FindAll("[data-fc-validation-field='true']").ShouldBeEmpty();
+            cut.FindAll("[data-fc-invalid='true']").ShouldBeEmpty();
+            cut.FindAll("[data-testid='fc-validation-summary']").ShouldBeEmpty();
+            FcFocusModule.Invocations.Count(invocation => invocation.Identifier == "focusElementById"
+                && Equals(invocation.Arguments[0], heading.Id)).ShouldBe(1);
+        });
+    }
+
+    [Fact]
+    public async Task GeneratedFormServerValidationGlobalErrorsRenderInTheFocusedSummary() {
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => new ServerValidationCommandService()));
+        await InitializeStoreAsync();
+        IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new TwoFieldCompactCommand { Name = "server name", Amount = 5 }));
+
+        cut.Find("form").Submit();
+
+        // VG2-02 — allowlisted field errors and form-level errors share the one focused summary.
+        cut.WaitForAssertion(() => {
+            AngleSharp.Dom.IElement summary = cut.Find("[data-testid='fc-validation-summary']");
+            summary.TextContent.ShouldContain("The name is already taken.");
+            summary.TextContent.ShouldContain("The request could not be processed.");
+            cut.Find("[data-fc-validation-target]").GetAttribute("data-fc-validation-target").ShouldNotBeNull()
+                .ShouldEndWith("-Name");
+            cut.Find("[name='Name']").GetAttribute("data-fc-invalid").ShouldBe("true");
+            cut.Find("[name='Amount']").GetAttribute("data-fc-invalid").ShouldBe("false");
+            // BH3-09 — the Fluent field shows the mapped error exactly once, in Fluent's error styling.
+            AngleSharp.Dom.IElement nameField = cut.Find("[name='Name']").Closest("fluent-field").ShouldNotBeNull();
+            nameField.QuerySelectorAll(".fluent-validation-message").Length.ShouldBe(1);
+            System.Text.RegularExpressions.Regex.Count(nameField.TextContent, "The name is already taken.").ShouldBe(1);
+            cut.Markup.ShouldContain("server name");
+            FcFocusModule.Invocations.Count(invocation => invocation.Identifier == "focusValidationOutcome").ShouldBe(1);
+        });
+    }
+
+    [Fact]
+    public async Task GeneratedFormUnmappedRejectionTextNeverAppearsInALaterClientSummary() {
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => new UnmappedProblemRejectingCommandService()));
+        await InitializeStoreAsync();
+        GroupedFieldsCommand model = new() { RecordId = "FC-1", Reason = "first reason" };
+        IRenderedComponent<GroupedFieldsCommandForm> cut = Render<GroupedFieldsCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, model));
+
+        cut.Find("form").Submit();
+        cut.WaitForAssertion(() => _ = cut.Find("[data-testid='fc-rejection-edit-retry']"));
+        cut.FindAll("[data-testid='fc-validation-summary']").ShouldBeEmpty();
+
+        model.RecordId = string.Empty;
+        cut.Find("form").Submit();
+
+        // VR-03 / VG2-10 — unmapped rejection text stays in its lifecycle region.
+        cut.WaitForAssertion(() => {
+            AngleSharp.Dom.IElement summary = cut.Find("[data-testid='fc-validation-summary']");
+            summary.GetAttribute("data-fc-validation-kind").ShouldBe("client-validation");
+            summary.TextContent.ShouldNotContain("Stale global rejection text.");
+            summary.TextContent.ShouldNotContain("Stale rejection detail.");
+            cut.FindAll("[data-fc-validation-target]").Count.ShouldBe(1);
+        });
+    }
+
+    [Fact]
+    public async Task GeneratedFormServerFormLevelErrorsAreResetBeforeALaterClientSummary() {
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => new ServerValidationCommandService()));
+        await InitializeStoreAsync();
+        GroupedFieldsCommand model = new() { RecordId = "FC-1", Reason = "first reason" };
+        IRenderedComponent<GroupedFieldsCommandForm> cut = Render<GroupedFieldsCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, model));
+
+        cut.Find("form").Submit();
+
+        // The server map names no field of this command, so both messages are form-level summary text.
+        cut.WaitForAssertion(() => {
+            AngleSharp.Dom.IElement summary = cut.Find("[data-testid='fc-validation-summary']");
+            summary.TextContent.ShouldContain("The request could not be processed.");
+            summary.TextContent.ShouldContain("The name is already taken.");
+        });
+
+        model.RecordId = string.Empty;
+        cut.Find("form").Submit();
+
+        // VG3-04 — the earlier attempt's form-level errors never reach this client-validation summary.
+        cut.WaitForAssertion(() => {
+            AngleSharp.Dom.IElement summary = cut.Find("[data-testid='fc-validation-summary']");
+            summary.GetAttribute("data-fc-validation-kind").ShouldBe("client-validation");
+            summary.TextContent.ShouldNotContain("The request could not be processed.");
+            summary.TextContent.ShouldNotContain("The name is already taken.");
+            cut.FindAll("[data-fc-validation-target]").Count.ShouldBe(1);
+            FcFocusModule.Invocations.Count(invocation => invocation.Identifier == "focusValidationOutcome").ShouldBe(2);
+        });
+    }
+
+    [Fact]
+    public async Task GeneratedFormSameFormResubmitDuringItsOwnCommandAnnouncesEachAttemptWithoutDispatch() {
+        FakeTimeProvider time = new(DateTimeOffset.UtcNow);
+        Services.Replace(ServiceDescriptor.Singleton<TimeProvider>(time));
+        BlockingCommandService service = new();
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        IState<TwoFieldCompactCommandLifecycleState> state = Services.GetRequiredService<IState<TwoFieldCompactCommandLifecycleState>>();
+        IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new TwoFieldCompactCommand { Name = "only form", Amount = 4 }));
+
+        cut.Find("form").Submit();
+        await service.DispatchStarted.Task.WaitAsync(TimeSpan.FromSeconds(2), Xunit.TestContext.Current.CancellationToken);
+        string correlationId = state.Value.CorrelationId.ShouldNotBeNull();
+
+        // VG2-05 — every blocked re-press of the same form clears and re-sets AM-20 once.
+        for (int attempt = 1; attempt <= 2; attempt++) {
+            cut.Find("form").Submit();
+            cut.WaitForAssertion(() => BlockedStatus(cut).ShouldBeEmpty());
+            await AdvanceUntilAsync(time, () => BlockedStatus(cut).Length > 0);
+            BlockedStatus(cut).ShouldBe(BlockedMessage);
+        }
+
+        service.DispatchCount.ShouldBe(1);
+        state.Value.CorrelationId.ShouldBe(correlationId);
+        state.Value.State.ShouldNotBe(CommandLifecycleState.Idle);
+        cut.FindAll("[data-testid='fc-command-blocked-status']").Count.ShouldBe(1);
+        cut.FindAll("[data-testid='fc-validation-summary']").ShouldBeEmpty();
+        cut.Markup.ShouldContain("only form");
+        AttemptedFocusRequests().ShouldBe(2);
+
+        service.AllowDispatch.SetResult();
+
+        static string BlockedStatus(IRenderedComponent<TwoFieldCompactCommandForm> component)
+            => component.Find("[data-testid='fc-command-blocked-status']").TextContent;
+    }
+
+    [Fact]
+    public async Task GeneratedFormAdmittedLaterAttemptClearsTheEarlierBlockedOutcome() {
+        FakeTimeProvider time = new(DateTimeOffset.UtcNow);
+        Services.Replace(ServiceDescriptor.Singleton<TimeProvider>(time));
+        // The held first command settles as an authoritative rejection, so no accepted pending command
+        // keeps the admission gate closed for the later attempt.
+        HeldRejectingCommandService service = new();
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        IRenderedComponent<FourFieldCompactCommandForm> first = Render<FourFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new FourFieldCompactCommand { Name = "first" }));
+        IRenderedComponent<TwoFieldCompactCommandForm> later = Render<TwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new TwoFieldCompactCommand { Name = "later", Amount = 2 }));
+
+        first.Find("form").Submit();
+        await service.DispatchStarted.Task.WaitAsync(TimeSpan.FromSeconds(2), Xunit.TestContext.Current.CancellationToken);
+        later.Find("form").Submit();
+        await AdvanceUntilAsync(time, () => LaterStatus().Length > 0);
+        LaterStatus().ShouldBe(BlockedMessage);
+        later.Find("[data-testid='fc-command-blocked-outcome']").GetAttribute("data-fc-blocked").ShouldBe("true");
+
+        service.AllowDispatch.SetResult();
+        ICommandExecutionAdmissionGate admissionGate = Services.GetRequiredService<ICommandExecutionAdmissionGate>();
+        SpinWait.SpinUntil(() => {
+            using CommandExecutionAdmission probe = admissionGate.TryAcquire(new CommandExecutionAdmissionRequest("settlement-probe"));
+            return probe.IsAdmitted;
+        }, TimeSpan.FromSeconds(2)).ShouldBeTrue();
+
+        later.Find("form").Submit();
+
+        // VG3-03 — an admitted attempt withdraws the earlier AM-20 outcome before it dispatches.
+        later.WaitForAssertion(() => {
+            service.DispatchCount.ShouldBe(2);
+            LaterStatus().ShouldBeEmpty();
+            later.Find("[data-testid='fc-command-blocked-outcome']").GetAttribute("data-fc-blocked").ShouldBe("false");
+        });
+
+        string LaterStatus() => later.Find("[data-testid='fc-command-blocked-status']").TextContent;
+    }
+
+    [Fact]
+    public async Task ZeroFieldInlineRendererOwnsTheBlockedOutcomeBesideItsTrigger() {
+        // The held first command settles as an authoritative rejection, so the admission gate reopens
+        // for the later trigger activation.
+        HeldRejectingCommandService service = new();
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        IRenderedComponent<FourFieldCompactCommandForm> first = Render<FourFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new FourFieldCompactCommand { Name = "first" }));
+        IRenderedComponent<ZeroFieldInlineCommandRenderer> renderer = Render<ZeroFieldInlineCommandRenderer>();
+
+        first.Find("form").Submit();
+        await service.DispatchStarted.Task.WaitAsync(TimeSpan.FromSeconds(2), Xunit.TestContext.Current.CancellationToken);
+        renderer.WaitForAssertion(() => renderer.Find("fluent-button").HasAttribute("disabled").ShouldBeFalse());
+        string triggerId = renderer.Find("fluent-button").Id.ShouldNotBeNull();
+        renderer.Find("fluent-button").Click();
+
+        // VG2-13 — the hidden zero-field form hands AM-20 to a visible node beside the trigger.
+        renderer.WaitForAssertion(() => {
+            AngleSharp.Dom.IElement status = renderer.Find("[data-testid='fc-command-blocked-status']");
+            status.TextContent.ShouldBe(BlockedMessage);
+            status.Closest("[style*='display:none']").ShouldBeNull();
+            renderer.Find("[data-testid='fc-command-blocked-outcome']").TagName.ShouldBe("SPAN");
+            renderer.FindAll("[role='status'][aria-live='polite']").Count.ShouldBe(1);
+            service.DispatchCount.ShouldBe(1);
+            FcFocusModule.Invocations.ShouldContain(invocation => invocation.Identifier == "focusAttemptedControl"
+                && Equals(invocation.Arguments[0], triggerId));
+        });
+
+        service.AllowDispatch.SetResult();
+        ICommandExecutionAdmissionGate admissionGate = Services.GetRequiredService<ICommandExecutionAdmissionGate>();
+        SpinWait.SpinUntil(() => {
+            using CommandExecutionAdmission probe = admissionGate.TryAcquire(new CommandExecutionAdmissionRequest("settlement-probe"));
+            return probe.IsAdmitted;
+        }, TimeSpan.FromSeconds(2)).ShouldBeTrue();
+
+        renderer.FindAll("fluent-button").Single(button => button.Id == triggerId).Click();
+
+        // VG4-05 — the admitted later activation withdraws the renderer-owned AM-20 outcome.
+        renderer.WaitForAssertion(() => {
+            service.DispatchCount.ShouldBe(2);
+            renderer.Find("[data-testid='fc-command-blocked-status']").TextContent.ShouldBeEmpty();
+            renderer.Find("[data-testid='fc-command-blocked-outcome']").GetAttribute("data-fc-blocked").ShouldBe("false");
+        });
+    }
+
+    [Fact]
+    public async Task GeneratedFormNumericParseErrorReachesTheSummaryAndClearsOnAValidNumber() {
+        await InitializeStoreAsync();
+        IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new TwoFieldCompactCommand { Name = "kept name", Amount = 3 }));
+
+        cut.Find("fluent-text-input[name='Amount']").Change("not a number");
+        cut.Find("form").Submit();
+
+        // VG4-02 — the numeric parse error is an EditContext message: it is linked from the summary to
+        // the rendered editor and marks that editor invalid.
+        cut.WaitForAssertion(() => {
+            AngleSharp.Dom.IElement link = cut.Find("[data-testid='fc-validation-summary'] [data-fc-validation-target]");
+            AngleSharp.Dom.IElement amount = cut.Find("fluent-text-input[name='Amount']");
+            link.TextContent.Trim().ShouldBe("Amount: Invalid number format.");
+            link.GetAttribute("data-fc-validation-target").ShouldBe(amount.Id);
+            amount.GetAttribute("data-fc-invalid").ShouldBe("true");
+        });
+
+        cut.Find("fluent-text-input[name='Amount']").Change("12");
+
+        cut.WaitForAssertion(() => {
+            cut.FindAll("[data-fc-validation-target]").ShouldBeEmpty();
+            cut.Find("fluent-text-input[name='Amount']").GetAttribute("data-fc-invalid").ShouldBe("false");
+        });
+        cut.Markup.ShouldContain("kept name");
+    }
+
+    [Fact]
+    public async Task GeneratedFormMappedRejectionListsItsFormLevelMessageBesideTheFieldLink() {
+        const string formLevelError = "The order is locked by another operator.";
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => new MappedRejectingCommandService(formLevelError)));
+        await InitializeStoreAsync();
+        IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new TwoFieldCompactCommand { Name = "preserved name", Amount = 7 }));
+
+        cut.Find("form").Submit();
+
+        // VG4-03 — a mapped rejection keeps its form-level message as an unlinked entry beside the
+        // linked field error, and both count toward the summary total.
+        cut.WaitForAssertion(() => {
+            AngleSharp.Dom.IElement summary = cut.Find("[data-fc-validation-kind='mapped-server-rejection']");
+            AngleSharp.Dom.IElement[] entries = [.. summary.QuerySelectorAll("li")];
+            entries.Length.ShouldBe(2);
+            entries[0].QuerySelector("a[data-fc-validation-target]").ShouldNotBeNull()
+                .GetAttribute("data-fc-validation-target").ShouldNotBeNull().ShouldEndWith("-Name");
+            entries[1].QuerySelector("a").ShouldBeNull();
+            entries[1].TextContent.Trim().ShouldBe(formLevelError);
+            summary.TextContent.ShouldContain("2 errors.");
+        });
+    }
+
+    [Fact]
+    public async Task SameGeneratedFormAndProtectedRendererInstancesUseDistinctIds() {
+        RegisterAuthorization(new FixedAuthorizationEvaluator(CommandAuthorizationDecision.Denied("corr-denied")));
+        await InitializeStoreAsync();
+        IRenderedComponent<GroupedFieldsCommandForm> firstForm = Render<GroupedFieldsCommandForm>();
+        IRenderedComponent<GroupedFieldsCommandForm> secondForm = Render<GroupedFieldsCommandForm>();
+        IRenderedComponent<ProtectedTwoFieldCompactCommandRenderer> firstRenderer = Render<ProtectedTwoFieldCompactCommandRenderer>();
+        IRenderedComponent<ProtectedTwoFieldCompactCommandRenderer> secondRenderer = Render<ProtectedTwoFieldCompactCommandRenderer>();
+
+        firstForm.Find("form").Submit();
+        secondForm.Find("form").Submit();
+
+        // VG4-08 — every instance owns its DOM ids, so links, focus and descriptions never resolve
+        // into a sibling instance of the same command.
+        string firstSummary = string.Empty;
+        string secondSummary = string.Empty;
+        firstForm.WaitForAssertion(() => firstSummary = firstForm.Find("[data-testid='fc-validation-summary']").Id.ShouldNotBeNull());
+        secondForm.WaitForAssertion(() => secondSummary = secondForm.Find("[data-testid='fc-validation-summary']").Id.ShouldNotBeNull());
+        string firstFormId = firstForm.Find("[data-fc-command-form='true']").Id.ShouldNotBeNull();
+        string secondFormId = secondForm.Find("[data-fc-command-form='true']").Id.ShouldNotBeNull();
+        firstFormId.ShouldNotBe(secondFormId);
+        firstSummary.ShouldNotBe(secondSummary);
+        firstForm.Find("[data-fc-validation-target]").GetAttribute("data-fc-validation-target")
+            .ShouldNotBe(secondForm.Find("[data-fc-validation-target]").GetAttribute("data-fc-validation-target"));
+
+        string firstHeading = string.Empty;
+        string secondHeading = string.Empty;
+        firstRenderer.WaitForAssertion(() => firstHeading = firstRenderer.Find("section[aria-labelledby] h2[tabindex='-1']").Id.ShouldNotBeNull());
+        secondRenderer.WaitForAssertion(() => secondHeading = secondRenderer.Find("section[aria-labelledby] h2[tabindex='-1']").Id.ShouldNotBeNull());
+        firstHeading.ShouldNotBe(secondHeading);
+    }
+
+    [Fact]
+    public async Task GeneratedSwitchDatePickerAndEnumSelectHonorTheFieldContract() {
+        // The Fluent date picker's calendar and the Fluent select initialize through their own interop.
+        JSInterop.SetupModule("./_content/Microsoft.FluentUI.AspNetCore.Components/Components/DateTime/FluentCalendar.razor.js").Mode = JSRuntimeMode.Loose;
+        JSInterop.SetupVoid("Microsoft.FluentUI.Blazor.Components.Select.Initialize", _ => true).SetVoidResult();
+        await InitializeStoreAsync();
+        IRenderedComponent<FieldContractEditorsCommandForm> cut = Render<FieldContractEditorsCommandForm>();
+        string formId = cut.Find("[data-fc-command-form='true']").Id.ShouldNotBeNull();
+
+        // VG4-10 — non-text editors carry the same rendered field contract as text inputs.
+        foreach (string property in new[] { nameof(FieldContractEditorsCommand.DueDate), nameof(FieldContractEditorsCommand.Priority), nameof(FieldContractEditorsCommand.Urgent) }) {
+            AngleSharp.Dom.IElement editor = cut.FindAll("[data-fc-validation-field='true']")
+                .Where(element => element.Id == formId + "-" + property)
+                .ShouldHaveSingleItem();
+            editor.GetAttribute("data-fc-invalid").ShouldBe("false");
+        }
+
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(() => {
+            string dateId = formId + "-" + nameof(FieldContractEditorsCommand.DueDate);
+            AngleSharp.Dom.IElement date = cut.FindAll("[data-fc-validation-field='true']").Single(element => element.Id == dateId);
+            date.GetAttribute("data-fc-invalid").ShouldBe("true");
+            AngleSharp.Dom.IElement link = cut.Find("[data-testid='fc-validation-summary'] [data-fc-validation-target]");
+            link.GetAttribute("data-fc-validation-target").ShouldBe(dateId);
+            link.TextContent.ShouldContain("Due date");
+        });
+    }
+
+    [Fact]
+    public async Task ProtectedRendererInitialDenialNeverMovesFocus() {
+        var evaluator = new FixedAuthorizationEvaluator(CommandAuthorizationDecision.Denied("corr-initial"));
+        RegisterAuthorization(evaluator);
+        await InitializeStoreAsync();
+
+        IRenderedComponent<ProtectedTwoFieldCompactCommandRenderer> cut = Render<ProtectedTwoFieldCompactCommandRenderer>();
+
+        // BH2-04 — an initially denied renderer renders its replacement silently (FM-01).
+        cut.WaitForAssertion(() => _ = cut.Find("section[aria-labelledby] h2[tabindex='-1']"));
+        FcFocusModule.Invocations.ShouldNotContain(invocation => invocation.Identifier == "captureFocusBeforeReplacement");
+        FcFocusModule.Invocations.ShouldNotContain(invocation => invocation.Identifier == "focusReplacementHeading");
+        FcFocusModule.Invocations.ShouldNotContain(invocation => invocation.Identifier == "focusOverlayEntry");
+    }
+
+    [Fact]
+    public async Task ProtectedRendererBackgroundDenialFocusesHeadingOnlyThroughReplacementCheck() {
+        MutableAuthorizationEvaluator evaluator = new(CommandAuthorizationDecision.Allowed("corr-allowed"));
+        NotifyingAuthenticationStateProvider authentication = new();
+        Services.Replace(ServiceDescriptor.Singleton<AuthenticationStateProvider>(authentication));
+        Services.Replace(ServiceDescriptor.Scoped<ICommandAuthorizationEvaluator>(_ => evaluator));
+        await InitializeStoreAsync();
+
+        IRenderedComponent<ProtectedTwoFieldCompactCommandRenderer> cut = Render<ProtectedTwoFieldCompactCommandRenderer>();
+        cut.WaitForAssertion(() => _ = cut.Find("form"));
+        FcFocusModule.Invocations.ShouldNotContain(invocation => invocation.Identifier == "captureFocusBeforeReplacement");
+
+        evaluator.Decision = CommandAuthorizationDecision.Denied("corr-revoked");
+        await cut.InvokeAsync(authentication.Notify);
+
+        // A background refresh may focus the heading only through the replacement check, which
+        // verifies that the replaced form held focus (AM-26).
+        cut.WaitForAssertion(() => {
+            AngleSharp.Dom.IElement heading = cut.Find("section[aria-labelledby] h2[tabindex='-1']");
+            JSRuntimeInvocation capture = FcFocusModule.Invocations.Single(invocation => invocation.Identifier == "captureFocusBeforeReplacement"
+                && Equals(invocation.Arguments[0], heading.Id));
+            JSRuntimeInvocation focus = FcFocusModule.Invocations.Single(invocation => invocation.Identifier == "focusReplacementHeading"
+                && Equals(invocation.Arguments[0], heading.Id));
+            capture.Arguments[0].ShouldBe(heading.Id);
+            focus.Arguments.ShouldBe([heading.Id, heading.Id]);
+        });
+        FcFocusModule.Invocations.ShouldNotContain(invocation => invocation.Identifier == "focusElementById"
+            && invocation.Arguments[0]!.ToString()!.Contains("authorization", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ProtectedFormBackgroundDenialFocusesHeadingOnlyThroughReplacementCheck() {
+        MutableAuthorizationEvaluator evaluator = new(CommandAuthorizationDecision.Allowed("corr-allowed"));
+        NotifyingAuthenticationStateProvider authentication = new();
+        Services.Replace(ServiceDescriptor.Singleton<AuthenticationStateProvider>(authentication));
+        Services.Replace(ServiceDescriptor.Scoped<ICommandAuthorizationEvaluator>(_ => evaluator));
+        await InitializeStoreAsync();
+
+        IRenderedComponent<ProtectedTwoFieldCompactCommandForm> cut = Render<ProtectedTwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new ProtectedTwoFieldCompactCommand { Name = "standalone", Amount = 1 }));
+        cut.WaitForAssertion(() => cut.FindAll("[data-fc-validation-field='true']").Count.ShouldBe(2));
+        FcFocusModule.Invocations.ShouldNotContain(invocation => invocation.Identifier == "captureFocusBeforeReplacement");
+
+        evaluator.Decision = CommandAuthorizationDecision.Denied("corr-revoked");
+        await cut.InvokeAsync(authentication.Notify);
+
+        // VG3-02 / BH3-03 — a standalone form replaced by a background denial focuses its heading only
+        // through the capture-then-verify replacement check, never directly.
+        cut.WaitForAssertion(() => {
+            AngleSharp.Dom.IElement heading = cut.Find("[id$='-authorization-heading']");
+            JSRuntimeInvocation capture = FcFocusModule.Invocations.Single(invocation => invocation.Identifier == "captureFocusBeforeReplacement");
+            capture.Arguments[0].ShouldBe(heading.Id);
+            JSRuntimeInvocation focus = FcFocusModule.Invocations.Single(invocation => invocation.Identifier == "focusReplacementHeading");
+            focus.Arguments.ShouldBe([heading.Id, heading.Id]);
+            cut.FindAll("[data-fc-validation-field='true']").ShouldBeEmpty();
+        });
+        FcFocusModule.Invocations.ShouldNotContain(invocation => invocation.Identifier == "focusElementById"
+            && invocation.Arguments[0]!.ToString()!.EndsWith("-authorization-heading", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -514,9 +1013,33 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
     public static TheoryData<CommandAuthorizationDecision, CommandWarningKind> BlockingAuthorizationDecisions()
         => new() {
             { CommandAuthorizationDecision.Denied("corr-denied"), CommandWarningKind.Forbidden },
-            { CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.HandlerFailed, "corr-failed"), CommandWarningKind.Forbidden },
-            { CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Canceled, "corr-canceled"), CommandWarningKind.Forbidden },
+            { CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Unauthenticated, "corr-unauthenticated"), CommandWarningKind.Forbidden },
         };
+
+    public static TheoryData<CommandAuthorizationReason> TransientAuthorizationFailures()
+        => new() {
+            CommandAuthorizationReason.MissingService,
+            CommandAuthorizationReason.MissingPolicy,
+            CommandAuthorizationReason.StaleTenantContext,
+            CommandAuthorizationReason.HandlerFailed,
+            CommandAuthorizationReason.Canceled,
+            CommandAuthorizationReason.CatalogInconsistent,
+            CommandAuthorizationReason.Pending,
+        };
+
+    private const string BlockedMessage = "This command did not run. Another command is already in progress.";
+
+    private int AttemptedFocusRequests() => FcFocusModule.Invocations.Count(invocation => invocation.Identifier == "focusAttemptedControl"
+        && invocation.Arguments.Count > 0
+        && invocation.Arguments[0]?.ToString()?.EndsWith("-submit", StringComparison.Ordinal) == true);
+
+    private static async Task AdvanceUntilAsync(FakeTimeProvider time, Func<bool> condition) {
+        DateTime deadline = DateTime.UtcNow.AddSeconds(5);
+        while (!condition() && DateTime.UtcNow < deadline) {
+            time.Advance(TimeSpan.FromMilliseconds(50));
+            await Task.Delay(10, Xunit.TestContext.Current.CancellationToken).ConfigureAwait(true);
+        }
+    }
 
     private void RegisterAuthorization(FixedAuthorizationEvaluator evaluator) {
         Services.Replace(ServiceDescriptor.Singleton<AuthenticationStateProvider>(new TestAuthenticationStateProvider()));
@@ -558,7 +1081,7 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
                 new CommandRejectionDetails("ORDER_LOCKED", "Concurrency", "Reload before retrying", "FC-CMD-409"));
     }
 
-    private sealed class MappedRejectingCommandService : ICommandServiceWithLifecycle {
+    private sealed class MappedRejectingCommandService(params string[] globalErrors) : ICommandServiceWithLifecycle {
         private static readonly string[] NameErrors = ["Name conflicts with current state."];
 
         public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
@@ -581,7 +1104,95 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
                     new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal) {
                         ["Name"] = NameErrors,
                     },
+                    globalErrors));
+    }
+
+    private sealed class ForbiddenCommandService : ICommandServiceWithLifecycle {
+        public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
+            where TCommand : class
+            => DispatchAsync(command, onLifecycleChange: null, cancellationToken);
+
+        public Task<CommandResult> DispatchAsync<TCommand>(
+            TCommand command,
+            Action<CommandLifecycleState, string?>? onLifecycleChange,
+            CancellationToken cancellationToken = default)
+            where TCommand : class
+            => throw new CommandWarningException(
+                CommandWarningKind.Forbidden,
+                new ProblemDetailsPayload(
+                    "Not allowed",
+                    "You cannot run this command.",
+                    403,
+                    null,
+                    new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal),
                     Array.Empty<string>()));
+    }
+
+    private sealed class ServerValidationCommandService : ICommandServiceWithLifecycle {
+        private static readonly string[] NameErrors = ["The name is already taken."];
+        private static readonly string[] GlobalErrors = ["The request could not be processed."];
+
+        public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
+            where TCommand : class
+            => DispatchAsync(command, onLifecycleChange: null, cancellationToken);
+
+        public Task<CommandResult> DispatchAsync<TCommand>(
+            TCommand command,
+            Action<CommandLifecycleState, string?>? onLifecycleChange,
+            CancellationToken cancellationToken = default)
+            where TCommand : class
+            => throw new CommandValidationException(new ProblemDetailsPayload(
+                "Validation failed",
+                null,
+                400,
+                null,
+                new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal) {
+                    ["Name"] = NameErrors,
+                },
+                GlobalErrors));
+    }
+
+    private sealed class UnmappedProblemRejectingCommandService : ICommandServiceWithLifecycle {
+        private static readonly string[] GlobalErrors = ["Stale global rejection text."];
+
+        public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
+            where TCommand : class
+            => DispatchAsync(command, onLifecycleChange: null, cancellationToken);
+
+        public Task<CommandResult> DispatchAsync<TCommand>(
+            TCommand command,
+            Action<CommandLifecycleState, string?>? onLifecycleChange,
+            CancellationToken cancellationToken = default)
+            where TCommand : class
+            => throw CommandRejectedException.FromProblem(
+                "Record locked",
+                "Reload the record and retry.",
+                new ProblemDetailsPayload(
+                    "Record locked",
+                    "Stale rejection detail.",
+                    409,
+                    null,
+                    new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal),
+                    GlobalErrors));
+    }
+
+    private sealed class MutableAuthorizationEvaluator(CommandAuthorizationDecision decision) : ICommandAuthorizationEvaluator {
+        public CommandAuthorizationDecision Decision { get; set; } = decision;
+
+        public Task<CommandAuthorizationDecision> EvaluateAsync(
+            CommandAuthorizationRequest request,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(Decision);
+    }
+
+    private sealed class NotifyingAuthenticationStateProvider : AuthenticationStateProvider {
+        private static readonly AuthenticationState State = new(new ClaimsPrincipal(
+            new ClaimsIdentity([new Claim(ClaimTypes.Name, "test-user")], "Test")));
+
+        public override Task<AuthenticationState> GetAuthenticationStateAsync()
+            => Task.FromResult(State);
+
+        public void Notify() => NotifyAuthenticationStateChanged(Task.FromResult(State));
     }
 
     private sealed class RetryExhaustedCommandService : ICommandServiceWithLifecycle {
@@ -651,6 +1262,29 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             DispatchStarted.TrySetResult();
             await AllowDispatch.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
             return new CommandResult("01ARZ3NDEKTSV4RRFFQ69G5FAV", "Accepted");
+        }
+    }
+
+    private sealed class HeldRejectingCommandService : ICommandServiceWithLifecycle {
+        public TaskCompletionSource DispatchStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource AllowDispatch { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public int DispatchCount { get; private set; }
+
+        public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
+            where TCommand : class
+            => DispatchAsync(command, onLifecycleChange: null, cancellationToken);
+
+        public async Task<CommandResult> DispatchAsync<TCommand>(
+            TCommand command,
+            Action<CommandLifecycleState, string?>? onLifecycleChange,
+            CancellationToken cancellationToken = default)
+            where TCommand : class {
+            DispatchCount++;
+            DispatchStarted.TrySetResult();
+            await AllowDispatch.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+            throw new CommandRejectedException("Record locked", "Reload the record and retry.");
         }
     }
 

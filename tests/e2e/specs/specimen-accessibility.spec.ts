@@ -162,15 +162,15 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
         };
       };
 
+      // Story 13.3 — generated fields are Fluent editors (the label is the Fluent field label) and a
+      // fail-closed command renders a denial card instead of a message bar.
       return {
-        destructiveInput: sample(["[data-testid='fc-destructive-command-specimen'] .fc-command-input"]),
-        destructiveLabel: sample(["[data-testid='fc-destructive-command-specimen'] .fc-command-field-label"]),
-        policyInput: sample(["[data-testid='fc-policy-command-specimen'] .fc-command-input"]),
-        policyLabel: sample(["[data-testid='fc-policy-command-specimen'] .fc-command-field-label"]),
-        policyWarningText: sample([
-          "[data-testid='fc-policy-command-specimen'] fluent-message-bar .content",
-          "[data-testid='fc-policy-command-specimen'] fluent-message-bar",
-        ]),
+        destructiveInput: sample(["[data-testid='fc-destructive-command-specimen'] .fc-command-field fluent-text-input"]),
+        destructiveLabel: sample(["[data-testid='fc-destructive-command-specimen'] .fc-command-field fluent-field > label"]),
+        policyInput: sample(["[data-testid='fc-policy-command-specimen'] .fc-command-field fluent-text-input"]),
+        policyLabel: sample(["[data-testid='fc-policy-command-specimen'] .fc-command-field fluent-field > label"]),
+        policyDenialHeading: sample(["[data-testid='fc-policy-command-specimen'] [data-fc-authorization-denied] h2"]),
+        policyDenialText: sample(["[data-testid='fc-policy-command-specimen'] [data-fc-authorization-denied] p"]),
       };
     });
 
@@ -184,7 +184,9 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
     expect(samples.policyInput.foreground).toBe('rgb(20, 20, 20)');
     expect(samples.policyInput.background).toBe('rgb(255, 255, 255)');
     expect(samples.policyLabel.foreground).toBe('rgb(247, 247, 242)');
-    expect(samples.policyWarningText.foreground).toBe('rgb(59, 47, 0)');
+    expect(samples.policyDenialHeading.foreground).toBe('rgb(59, 47, 0)');
+    expect(samples.policyDenialText.foreground).toBe('rgb(59, 47, 0)');
+    expect(samples.policyDenialText.background).toBe('rgb(255, 244, 206)');
   });
 
   // Touch activation (AC2) requires a touch-enabled browser context. The desktop projects
@@ -575,9 +577,11 @@ const scrollTestIdIntoView = async (page: import('@playwright/test').Page, testI
 };
 
 const tabUntilTestId = async (page: import('@playwright/test').Page, testId: string): Promise<void> => {
-  for (let attempt = 0; attempt < 20; attempt += 1) {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
     await page.keyboard.press('Tab');
-    const focusedTestId = await page.locator(':focus').getAttribute('data-testid');
+    // Fluent editors focus a control inside their shadow root, so `:focus` can match both the host
+    // and its inner input; the document's active element is always the single light-DOM host.
+    const focusedTestId = await page.evaluate(() => document.activeElement?.getAttribute('data-testid') ?? null);
     if (focusedTestId === testId) {
       return;
     }

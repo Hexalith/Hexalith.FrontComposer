@@ -2,6 +2,7 @@ using Hexalith.FrontComposer.Shell.Resources;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Localization;
 using Microsoft.JSInterop;
 
@@ -16,6 +17,10 @@ public partial class FcValidationSummary : ComponentBase, IDisposable {
     private EditContext? _subscribedEditContext;
     private bool _focusPending;
     private bool _visible;
+
+    // A summary link cancels its native fragment navigation only after scripted focus has been
+    // proven to work; until then, or after a scripted failure, the native href remains the fallback.
+    private bool _scriptFocusAvailable;
     private int _disposed;
     private FcValidationSummaryKind _kind;
 
@@ -39,6 +44,9 @@ public partial class FcValidationSummary : ComponentBase, IDisposable {
 
     [Inject]
     private IJSRuntime JS { get; set; } = default!;
+
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
 
     [Inject]
     private IStringLocalizer<FcShellResources> Localizer { get; set; } = default!;
@@ -94,21 +102,31 @@ public partial class FcValidationSummary : ComponentBase, IDisposable {
 
     /// <summary>Shows the complete current summary and schedules its single focus move.</summary>
     /// <param name="kind">The validation outcome kind.</param>
-    /// <returns>A task that completes after the render request is queued.</returns>
-    public Task ShowAndFocusAsync(FcValidationSummaryKind kind) {
-        _kind = kind;
-        _visible = true;
-        _focusPending = true;
-        RebuildEntries();
-        return InvokeAsync(StateHasChanged);
-    }
+    /// <returns>A task that completes after the summary is rebuilt and rendered on the renderer dispatcher.</returns>
+    /// <remarks>
+    /// Callers run after <c>ConfigureAwait(false)</c> continuations, so every state change is
+    /// marshalled onto the renderer dispatcher and cannot race a Fluxor-triggered render (BH2-07).
+    /// </remarks>
+    public Task ShowAndFocusAsync(FcValidationSummaryKind kind)
+        => InvokeAsync(() => {
+            _kind = kind;
+            _visible = true;
+            _focusPending = true;
+            RebuildEntries();
+            StateHasChanged();
+        });
 
     /// <summary>Clears the visible summary without changing validation messages.</summary>
-    public void Hide() {
-        _visible = false;
-        _focusPending = false;
-        _entries.Clear();
-    }
+    /// <returns>A task that completes after the summary is hidden on the renderer dispatcher.</returns>
+    public Task HideAsync()
+        => InvokeAsync(() => {
+            if (_visible || _entries.Count != 0) {
+                _visible = false;
+                _focusPending = false;
+                _entries.Clear();
+                StateHasChanged();
+            }
+        });
 
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -121,6 +139,10 @@ public partial class FcValidationSummary : ComponentBase, IDisposable {
         try {
             module = await JS.InvokeAsync<IJSObjectReference>("import", FocusModulePath).ConfigureAwait(true);
             await module.InvokeVoidAsync("focusValidationOutcome", SummaryId).ConfigureAwait(true);
+            if (!_scriptFocusAvailable && _disposed == 0) {
+                _scriptFocusAvailable = true;
+                StateHasChanged();
+            }
         }
         catch (JSDisconnectedException) {
             // Circuit teardown after validation is safe to ignore.
@@ -147,15 +169,79 @@ public partial class FcValidationSummary : ComponentBase, IDisposable {
         catch (JSDisconnectedException) {
         }
         catch (JSException) {
-            // The native fragment href remains a functional fallback.
+            // Scripted focus failed: let the next activation use the native fragment href.
+            RestoreNativeLinkFallback();
         }
         catch (InvalidOperationException) {
+            RestoreNativeLinkFallback();
         }
         finally {
             if (module is not null) {
                 await DisposeModuleAsync(module).ConfigureAwait(true);
             }
         }
+    }
+
+    private void RestoreNativeLinkFallback() {
+        if (_scriptFocusAvailable && _disposed == 0) {
+            _scriptFocusAvailable = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Builds a same-page fragment link: Blazor's base href would otherwise resolve a bare
+    /// <c>#id</c> against the application root and navigate away from the form.
+    /// </summary>
+    private string FragmentHref(string inputId) {
+        string fragment = "#" + Uri.EscapeDataString(inputId);
+        try {
+            string relative = Navigation.ToBaseRelativePath(Navigation.Uri);
+            int existingFragment = relative.IndexOf('#', StringComparison.Ordinal);
+            return (existingFragment >= 0 ? relative[..existingFragment] : relative) + fragment;
+        }
+        catch (InvalidOperationException) {
+            return fragment;
+        }
+        catch (ArgumentException) {
+            return fragment;
+        }
+    }
+
+    /// <summary>
+    /// Story 13.3 BH3-17 — a link names its field once: default DataAnnotations messages already
+    /// contain the label, so the "Label: " prefix is added only when the message lacks it.
+    /// BH4-03 — the label must appear as a whole word: "Id" inside "Invalid" does not name the field.
+    /// </summary>
+    private static string LinkText(string message, string? label)
+        => string.IsNullOrWhiteSpace(label) || ContainsWholeWord(message, label)
+            ? message
+            : $"{label}: {message}";
+
+    private static bool ContainsWholeWord(string message, string label) {
+        System.Globalization.CompareInfo compare = System.Globalization.CultureInfo.CurrentCulture.CompareInfo;
+        int offset = 0;
+        while (offset < message.Length) {
+            int index = compare.IndexOf(
+                message.AsSpan(offset),
+                label.AsSpan(),
+                System.Globalization.CompareOptions.IgnoreCase,
+                out int matchLength);
+            if (index < 0) {
+                return false;
+            }
+
+            int start = offset + index;
+            int end = start + matchLength;
+            if ((start == 0 || !char.IsLetterOrDigit(message[start - 1]))
+                && (end >= message.Length || !char.IsLetterOrDigit(message[end]))) {
+                return true;
+            }
+
+            offset = start + 1;
+        }
+
+        return false;
     }
 
     private static async ValueTask DisposeModuleAsync(IJSObjectReference module) {

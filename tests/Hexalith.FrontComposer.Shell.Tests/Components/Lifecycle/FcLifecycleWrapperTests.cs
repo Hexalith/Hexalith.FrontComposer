@@ -188,4 +188,44 @@ public sealed class FcLifecycleWrapperTests : LifecycleWrapperTestBase {
         firstHandle.Received(1).Dispose();
         service.Received(1).Subscribe("corr-b", Arg.Any<Action<CommandLifecycleTransition>>());
     }
+
+    [Theory]
+    [InlineData(CommandLifecycleState.Idle, CommandLifecycleState.Idle, false)]
+    [InlineData(CommandLifecycleState.Idle, CommandLifecycleState.Submitting, true)]
+    [InlineData(CommandLifecycleState.Submitting, CommandLifecycleState.Acknowledged, true)]
+    [InlineData(CommandLifecycleState.Acknowledged, CommandLifecycleState.Syncing, true)]
+    [InlineData(CommandLifecycleState.Syncing, CommandLifecycleState.Confirmed, false)]
+    [InlineData(CommandLifecycleState.Syncing, CommandLifecycleState.Rejected, false)]
+    public async Task ActiveLifecycleHeadingRendersOnlyWhileTheCommandIsInFlight(
+        CommandLifecycleState previous,
+        CommandLifecycleState next,
+        bool expectedHeading) {
+        const string displayLabel = "Approve order";
+        ILifecycleStateService service = Substitute.For<ILifecycleStateService>();
+        Action<CommandLifecycleTransition>? push = null;
+        _ = service.Subscribe(Arg.Any<string>(), Arg.Do<Action<CommandLifecycleTransition>>(callback => push = callback))
+            .Returns(Substitute.For<IDisposable>());
+        RegisterLifecycleService(service);
+        IRenderedComponent<FcLifecycleWrapper> cut = Render<FcLifecycleWrapper>(p => p
+            .Add(c => c.CorrelationId, DefaultCorrelationId)
+            .Add(c => c.DisplayLabel, displayLabel)
+            .AddChildContent("<span class='child-content-marker'>child</span>"));
+
+        if (next != CommandLifecycleState.Idle) {
+            push.ShouldNotBeNull();
+            await cut.InvokeAsync(() => push(Transition(previous, next)));
+        }
+
+        // VG4-01 / FM-09 — fc-focus.js moves "View active command" focus to exactly this markup, so it
+        // exists with the display label only while the command is in flight.
+        IReadOnlyList<IElement> headings = cut.FindAll("[data-fc-active-lifecycle='true'] [data-fc-lifecycle-heading][tabindex='-1']");
+        if (expectedHeading) {
+            headings.Count.ShouldBe(1);
+            headings[0].TextContent.ShouldContain(displayLabel);
+        }
+        else {
+            headings.ShouldBeEmpty();
+            cut.FindAll("[data-fc-lifecycle-heading]").ShouldBeEmpty();
+        }
+    }
 }

@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-
 using Hexalith.FrontComposer.Contracts.Attributes;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Generated;
@@ -34,7 +32,6 @@ public class ProtectedOneFieldInlineCommand {
 public class TwoFieldCompactCommand {
     public string MessageId { get; set; } = string.Empty;
 
-    [Required]
     public string Name { get; set; } = string.Empty;
 
     public int Amount { get; set; }
