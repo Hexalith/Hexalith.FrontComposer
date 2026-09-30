@@ -207,7 +207,7 @@ test.describe('Story 4.1: destructive command confirmation', () => {
     await expect(settings).toHaveCount(0);
   });
 
-  test('an opening overlay intent reserves the modal slot only until it expires', async ({ page, lifecycle, tenant }) => {
+  test('one modal reservation survives long preparation and refuses competing shell overlays', async ({ page, lifecycle, tenant }) => {
     expect(tenant.tenantId).toBeTruthy();
 
     await gotoTypeSpecimen(page);
@@ -215,17 +215,29 @@ test.describe('Story 4.1: destructive command confirmation', () => {
     const reservation = await page.evaluate(async (focusModulePath) => {
       const focus = await import(focusModulePath) as {
         captureOverlayOrigin: (testId?: string | null, preserveExisting?: boolean) => boolean;
+        restoreOverlayOrigin: () => void;
       };
-      const intentWindow = window as unknown as { __fcOverlayOpenIntent: unknown; __fcOverlayOrigin: unknown };
+      const intentWindow = window as unknown as {
+        __fcModalReservation: { createdAt: number; durable: boolean } | null;
+        __fcOverlayOpenIntent: unknown;
+        __fcOverlayOrigin: unknown;
+      };
 
       // A second capture before the first overlay receives focus must be refused (no nested modal).
+      intentWindow.__fcModalReservation = null;
       intentWindow.__fcOverlayOpenIntent = null;
       const firstCapture = focus.captureOverlayOrigin();
       const racingCapture = focus.captureOverlayOrigin();
 
-      // A press that never opened its overlay must not refuse every later confirmation.
-      intentWindow.__fcOverlayOpenIntent = { origin: null, moved: false, watchFocus: false, createdAt: Date.now() - 60_000 };
-      const afterStaleIntent = focus.captureOverlayOrigin();
+      // Derived-value refresh may exceed the shell recovery window. A destructive reservation is
+      // durable until its owner releases it, and a Shell overlay may not overwrite that owner.
+      const destructiveReservation = Reflect.get(intentWindow, '__fcModalReservation') as { createdAt: number } | null;
+      if (destructiveReservation) {
+        destructiveReservation.createdAt = Date.now() - 60_000;
+      }
+      const afterRecoveryWindow = focus.captureOverlayOrigin();
+      const competingShellCapture = focus.captureOverlayOrigin('fc-palette-trigger', true);
+      focus.restoreOverlayOrigin();
 
       // Story 13.3 BH2-15 / VG2-07 — shell overlays that ask to preserve an existing origin keep the
       // keyboard tracker's intent (it carries no createdAt) and its `moved` state untouched.
@@ -238,20 +250,77 @@ test.describe('Story 4.1: destructive command confirmation', () => {
         && intentWindow.__fcOverlayOrigin === trackerOrigin
         && trackerIntent.moved === true;
 
-      intentWindow.__fcOverlayOrigin = null;
-      intentWindow.__fcOverlayOpenIntent = { origin: null, moved: false, watchFocus: false, createdAt: Date.now() - 60_000 };
-      return { firstCapture, racingCapture, afterStaleIntent, preservedCapture, trackerPreserved };
+      // A Shell capture that never opens still expires, so it cannot block the modal slot forever.
+      // Its origin is stale as well: the keyboard tracker could not replace it while the reservation
+      // existed, so recovery must capture the current trigger instead of preserving the old owner.
+      const shellReservation = Reflect.get(intentWindow, '__fcModalReservation') as { createdAt: number } | null;
+      if (shellReservation) {
+        shellReservation.createdAt = Date.now() - 60_000;
+      }
+      const settingsTrigger = document.querySelector('[data-testid="fc-settings-button"]');
+      if (!(settingsTrigger instanceof HTMLElement)) throw new Error('Expected the settings trigger.');
+      settingsTrigger.focus();
+      const afterStaleShellCapture = focus.captureOverlayOrigin('fc-settings-button', true);
+      const staleOriginDiscarded = intentWindow.__fcOverlayOrigin === settingsTrigger
+        && (intentWindow.__fcOverlayOpenIntent as { origin?: unknown } | null)?.origin === settingsTrigger;
+      focus.restoreOverlayOrigin();
+      return {
+        firstCapture,
+        racingCapture,
+        afterRecoveryWindow,
+        competingShellCapture,
+        preservedCapture,
+        trackerPreserved,
+        afterStaleShellCapture,
+        staleOriginDiscarded,
+      };
     }, '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js');
 
     expect(reservation).toEqual({
       firstCapture: true,
       racingCapture: false,
-      afterStaleIntent: true,
+      afterRecoveryWindow: false,
+      competingShellCapture: false,
       preservedCapture: true,
       trackerPreserved: true,
+      afterStaleShellCapture: true,
+      staleOriginDiscarded: true,
     });
 
-    // The expired intent left behind above still lets the real destructive flow open exactly one dialog.
+    // The real pointer path must also honor the reservation, and its global event tracker must not
+    // replace the destructive command's return-focus origin before the C# caller sees the refusal.
+    await page.evaluate(async (focusModulePath) => {
+      const focus = await import(focusModulePath) as {
+        captureOverlayOrigin: () => boolean;
+      };
+      const heading = document.querySelector('h1');
+      if (!(heading instanceof HTMLElement)) throw new Error('Expected the route heading.');
+      heading.setAttribute('data-reservation-origin', 'true');
+      heading.setAttribute('tabindex', '-1');
+      heading.focus();
+      if (!focus.captureOverlayOrigin()) throw new Error('Expected to reserve the modal slot.');
+    }, '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js');
+    await page.getByTestId('fc-settings-button').evaluate((button) => {
+      button.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, composed: true }));
+      (button as HTMLElement).click();
+    });
+    // The Blazor click handler imports the focus module asynchronously. Let it observe the durable
+    // reservation before the inspection below deliberately releases that owner.
+    await page.waitForTimeout(250);
+    await expect(page.getByTestId('fc-settings-dialog')).toHaveCount(0);
+    const originWasPreserved = await page.evaluate(async (focusModulePath) => {
+      const focus = await import(focusModulePath) as { restoreOverlayOrigin: () => void };
+      const intentWindow = window as unknown as { __fcOverlayOrigin: unknown };
+      const heading = document.querySelector('[data-reservation-origin=true]');
+      const preserved = intentWindow.__fcOverlayOrigin === heading;
+      focus.restoreOverlayOrigin();
+      heading?.removeAttribute('data-reservation-origin');
+      heading?.removeAttribute('tabindex');
+      return preserved;
+    }, '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js');
+    expect(originWasPreserved).toBe(true);
+
+    // Releasing the owner lets the real destructive flow open exactly one dialog.
     const form = destructiveForm(page);
     await submitDestructiveCommand(form);
     const dialog = destructiveDialog(page);

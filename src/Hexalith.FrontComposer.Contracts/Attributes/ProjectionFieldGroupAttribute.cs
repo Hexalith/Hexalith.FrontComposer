@@ -32,7 +32,10 @@ namespace Hexalith.FrontComposer.Contracts.Attributes;
 [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
 public sealed class ProjectionFieldGroupAttribute : Attribute {
     /// <summary>Initializes a new instance of the <see cref="ProjectionFieldGroupAttribute"/> class.</summary>
-    /// <param name="groupName">Non-empty group label rendered as the <c>FluentAccordionItem</c> heading.</param>
+    /// <param name="groupName">
+    /// Non-empty group label rendered as the projection <c>FluentAccordionItem</c> heading and the
+    /// generated command-form <c>fieldset</c> legend.
+    /// </param>
     /// <exception cref="ArgumentException">Thrown when <paramref name="groupName"/> is null, empty, or whitespace.</exception>
     public ProjectionFieldGroupAttribute(string groupName) {
         if (string.IsNullOrWhiteSpace(groupName)) {

@@ -56,7 +56,7 @@ public abstract class LayoutComponentTestBase : BunitContext {
         FocusModule = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
         _ = FocusModule.SetupVoid("restoreOverlayOrigin", _ => true).SetVoidResult();
         _ = FocusModule.SetupVoid("focusOverlayEntry", _ => true).SetVoidResult();
-        _ = FocusModule.SetupVoid("captureOverlayOrigin", _ => true).SetVoidResult();
+        _ = FocusModule.Setup<bool>("captureOverlayOrigin", _ => true).SetResult(true);
         _ = FocusModule.SetupVoid("focusRouteHeading", _ => true).SetVoidResult();
         _ = FocusModule.SetupVoid("labelTabPanels", _ => true).SetVoidResult();
 

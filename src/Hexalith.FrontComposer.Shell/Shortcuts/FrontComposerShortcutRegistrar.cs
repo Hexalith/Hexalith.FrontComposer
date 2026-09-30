@@ -156,7 +156,10 @@ public sealed class FrontComposerShortcutRegistrar(
 
         try {
             if (captureKeyboardOrigin) {
-                await CaptureKeyboardOriginAsync().ConfigureAwait(false);
+                bool captured = await CaptureKeyboardOriginAsync().ConfigureAwait(false);
+                if (!captured) {
+                    return;
+                }
             }
             // P5 (2026-04-21 pass-4): moved dispatch inside the try so a synchronous throw from
             // ulidFactory.NewUlid() or dispatcher.Dispatch() is caught by the rollback path below.
@@ -199,22 +202,26 @@ public sealed class FrontComposerShortcutRegistrar(
     /// </summary>
     /// <returns>A task representing the dialog presentation.</returns>
     public async Task OpenSettingsAsync() {
-        await CaptureKeyboardOriginAsync().ConfigureAwait(false);
+        bool captured = await CaptureKeyboardOriginAsync().ConfigureAwait(false);
+        if (!captured) {
+            return;
+        }
+
         _ = await FcSettingsDialogLauncher
             .ShowAsync(dialogService, localizer["SettingsDialogTitle"].Value)
             .ConfigureAwait(false);
     }
 
-    private async Task CaptureKeyboardOriginAsync() {
+    private async Task<bool> CaptureKeyboardOriginAsync() {
         IJSRuntime? js = services?.GetService<IJSRuntime>();
         if (js is null) {
-            return;
+            return true;
         }
         try {
             IJSObjectReference module = await js.InvokeAsync<IJSObjectReference>(
                 "import", "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js").ConfigureAwait(false);
             try {
-                await module.InvokeVoidAsync("captureOverlayOrigin", null, true).ConfigureAwait(false);
+                return await module.InvokeAsync<bool>("captureOverlayOrigin", null, true).ConfigureAwait(false);
             }
             finally {
                 await module.DisposeAsync().ConfigureAwait(false);
@@ -222,6 +229,7 @@ public sealed class FrontComposerShortcutRegistrar(
         }
         catch (Exception ex) when (ex is JSException or JSDisconnectedException or OperationCanceledException or InvalidOperationException) {
             // The dialog remains available if origin capture is unavailable.
+            return true;
         }
     }
 

@@ -57,4 +57,18 @@ public sealed class FcSettingsButtonTests : LayoutComponentTestBase {
         dialogService.LastOptions.Width.ShouldBe("480px");
         string.IsNullOrWhiteSpace(dialogService.LastOptions.Header.Title).ShouldBeFalse();
     }
+
+    [Fact]
+    public async Task Click_WhenModalSlotIsReserved_DoesNotOpenSettingsDialog() {
+        RecordingDialogService dialogService = new();
+        Services.Replace(ServiceDescriptor.Scoped<IDialogService>(_ => dialogService));
+        _ = FocusModule.Setup<bool>("captureOverlayOrigin", _ => true).SetResult(false);
+
+        IRenderedComponent<FcSettingsButton> cut = Render<FcSettingsButton>();
+
+        await cut.Find("[data-testid=\"fc-settings-button\"]")
+            .ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        dialogService.ShowDialogCallCount.ShouldBe(0);
+    }
 }

@@ -253,6 +253,9 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("            // replaces a form that held focus (FM-01, AM-26).");
             _ = sb.AppendLine("            _authorizationReplacementFocusPending = SetAuthorizationWarning(authorization.Reason, operatorActivation: false)");
             _ = sb.AppendLine("                && replacementArmed;");
+            _ = sb.AppendLine("            // A retained infrastructure-warning form remains actionable so a later submit can retry");
+            _ = sb.AppendLine("            // authoritative authorization. Genuine denial and sign-in outcomes still replace it.");
+            _ = sb.AppendLine("            _authorizationPresentationAllowed = !_authorizationDenied;");
             _ = sb.AppendLine("            if (Logger is not null) { LogAuthorizationBlocked(Logger, authorization.CorrelationId, authorization.Reason); }");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        else if (isPending)");

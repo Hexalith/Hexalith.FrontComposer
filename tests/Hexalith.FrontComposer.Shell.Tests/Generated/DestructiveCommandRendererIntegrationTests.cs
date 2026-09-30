@@ -1,8 +1,12 @@
+using System.Globalization;
+
 using Bunit;
 
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
+using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Components.Forms;
+using Hexalith.FrontComposer.Shell.Components.Layout;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 
@@ -68,6 +72,51 @@ public sealed class DestructiveCommandRendererIntegrationTests : CommandRenderer
         FcFocusModule.Invocations.Any(invocation => invocation.Identifier == "restoreOverlayOrigin").ShouldBeFalse();
         Renderer.UnhandledException.IsCompleted.ShouldBeFalse();
         _ = cut.Find("form");
+    }
+
+    [Fact]
+    public async Task GeneratedRendererHeldPreparationKeepsCompetingSettingsLaunchReserved() {
+        HoldingDerivedValueProvider derivedValues = new();
+        RecordingCommandService commandService = new();
+        ControlledDialogService dialogService = new(DialogResult.Cancel());
+        Services.RemoveAll<IDerivedValueProvider>();
+        _ = Services.AddSingleton<IDerivedValueProvider>(derivedValues);
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => commandService));
+        Services.Replace(ServiceDescriptor.Scoped<IDialogService>(_ => dialogService.Service));
+        await InitializeStoreAsync();
+
+        IRenderedComponent<DeleteWidgetCommandRenderer> cut = Render<DeleteWidgetCommandRenderer>();
+        IRenderedComponent<FcSettingsButton> settings = Render<FcSettingsButton>();
+
+        cut.WaitForAssertion(() => _ = cut.Find("fluent-button"));
+        cut.Find("fluent-button").Click();
+        cut.WaitForAssertion(() => _ = cut.Find("form"));
+        cut.Find("form").Submit();
+        await derivedValues.RefreshStarted.Task.WaitAsync(TimeSpan.FromSeconds(2), Xunit.TestContext.Current.CancellationToken);
+
+        // The destructive path reserves the modal slot before the real derived-value await. A shell
+        // overlay therefore fails closed while preparation is held and cannot open a competing dialog.
+        _ = FcFocusModule.Setup<bool>("captureOverlayOrigin", invocation => invocation.Arguments.Count == 2).SetResult(false);
+        await settings.Find("[data-testid='fc-settings-button']")
+            .ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        dialogService.ShowDialogCallCount.ShouldBe(0);
+        FcFocusModule.Invocations.ShouldContain(invocation => invocation.Identifier == "captureOverlayOrigin"
+            && invocation.Arguments.Count == 2
+            && Equals(invocation.Arguments[0], "fc-settings-button")
+            && Equals(invocation.Arguments[1], true));
+
+        derivedValues.Release();
+        cut.WaitForAssertion(() => dialogService.ShowDialogCallCount.ShouldBe(1));
+        AssertOverlayOriginRestoredOnce();
+
+        // Once preparation completes and the destructive owner releases the reservation, the same
+        // settings launch is admitted normally.
+        _ = FcFocusModule.Setup<bool>("captureOverlayOrigin", invocation => invocation.Arguments.Count == 2).SetResult(true);
+        await settings.Find("[data-testid='fc-settings-button']")
+            .ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        settings.WaitForAssertion(() => dialogService.ShowDialogCallCount.ShouldBe(2));
+        dialogService.LastDialogType.ShouldBe(typeof(FcSettingsDialog));
+        commandService.DispatchCount.ShouldBe(0);
     }
 
     [Fact]
@@ -166,31 +215,45 @@ public sealed class DestructiveCommandRendererIntegrationTests : CommandRenderer
         dialogService.ShowDialogCallCount.ShouldBe(1);
     }
 
-    [Fact]
-    public async Task GeneratedRendererWithoutDeclaredCopyShowsLocalizedDefaultConfirmation() {
-        RecordingCommandService commandService = new();
-        ControlledDialogService dialogService = new(DialogResult.Cancel());
-        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => commandService));
-        Services.Replace(ServiceDescriptor.Scoped<IDialogService>(_ => dialogService.Service));
-        await InitializeStoreAsync();
+    [Theory]
+    [InlineData("en", "Archive Widget?", "This action cannot be undone.")]
+    [InlineData("fr", "Archive Widget\u00a0?", "Cette action est irréversible.")]
+    public async Task GeneratedRendererWithoutDeclaredCopyShowsLocalizedDefaultConfirmation(
+        string cultureName,
+        string expectedTitle,
+        string expectedBody) {
+        CultureInfo previousCulture = CultureInfo.CurrentCulture;
+        CultureInfo previousUiCulture = CultureInfo.CurrentUICulture;
+        CultureInfo culture = new(cultureName);
+        CultureInfo.CurrentCulture = culture;
+        CultureInfo.CurrentUICulture = culture;
+        try {
+            RecordingCommandService commandService = new();
+            ControlledDialogService dialogService = new(DialogResult.Cancel());
+            Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => commandService));
+            Services.Replace(ServiceDescriptor.Scoped<IDialogService>(_ => dialogService.Service));
+            await InitializeStoreAsync();
 
-        IRenderedComponent<ArchiveWidgetCommandRenderer> cut = Render<ArchiveWidgetCommandRenderer>();
+            IRenderedComponent<ArchiveWidgetCommandRenderer> cut = Render<ArchiveWidgetCommandRenderer>();
 
-        cut.WaitForAssertion(() => _ = cut.Find("fluent-button"));
-        cut.Find("fluent-button").Click();
-        cut.WaitForAssertion(() => _ = cut.Find("form"));
-        cut.Find("form").Submit();
+            cut.WaitForAssertion(() => _ = cut.Find("fluent-button"));
+            cut.Find("fluent-button").Click();
+            cut.WaitForAssertion(() => _ = cut.Find("form"));
+            cut.Find("form").Submit();
 
-        // VG3-05 — the default copy comes from the localized Shell resources at runtime, and the
-        // modal is named, described, and cancel-first. E5-23 — the default title keeps the baseline
-        // "{DisplayLabel}?" copy.
-        cut.WaitForAssertion(() => dialogService.ShowDialogCallCount.ShouldBe(1));
-        DialogOptions options = dialogService.LastOptions.ShouldNotBeNull();
-        options.Parameters[nameof(FcDestructiveConfirmationDialog.Title)].ShouldBe("Archive Widget?");
-        options.Parameters[nameof(FcDestructiveConfirmationDialog.Body)].ShouldBe("This action cannot be undone.");
-        options.Parameters[nameof(FcDestructiveConfirmationDialog.DestructiveLabel)].ShouldBe("Archive Widget");
-        options.Modal.ShouldBe(true);
-        commandService.DispatchCount.ShouldBe(0);
+            // VG3-05 — default title/body copy comes from the localized Shell resources at runtime.
+            cut.WaitForAssertion(() => dialogService.ShowDialogCallCount.ShouldBe(1));
+            DialogOptions options = dialogService.LastOptions.ShouldNotBeNull();
+            options.Parameters[nameof(FcDestructiveConfirmationDialog.Title)].ShouldBe(expectedTitle);
+            options.Parameters[nameof(FcDestructiveConfirmationDialog.Body)].ShouldBe(expectedBody);
+            options.Parameters[nameof(FcDestructiveConfirmationDialog.DestructiveLabel)].ShouldBe("Archive Widget");
+            options.Modal.ShouldBe(true);
+            commandService.DispatchCount.ShouldBe(0);
+        }
+        finally {
+            CultureInfo.CurrentCulture = previousCulture;
+            CultureInfo.CurrentUICulture = previousUiCulture;
+        }
     }
 
     private void AssertOverlayOriginRestoredOnce() {
@@ -200,6 +263,30 @@ public sealed class DestructiveCommandRendererIntegrationTests : CommandRenderer
             () => FcFocusModule.Invocations.Any(invocation => invocation.Identifier == "restoreOverlayOrigin"),
             TimeSpan.FromSeconds(5)).ShouldBeTrue();
         FcFocusModule.Invocations.Count(invocation => invocation.Identifier == "restoreOverlayOrigin").ShouldBe(1);
+    }
+
+    private sealed class HoldingDerivedValueProvider : IDerivedValueProvider {
+        private readonly TaskCompletionSource _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _calls;
+
+        public TaskCompletionSource RefreshStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async Task<DerivedValueResult> ResolveAsync(
+            Type commandType,
+            string propertyName,
+            ProjectionContext? context,
+            CancellationToken cancellationToken = default) {
+            if (Interlocked.Increment(ref _calls) > 1) {
+                RefreshStarted.TrySetResult();
+                await _release.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            return propertyName == nameof(DeleteWidgetCommand.MessageId)
+                ? new DerivedValueResult(true, "01ARZ3NDEKTSV4RRFFQ69G5FAV")
+                : new DerivedValueResult(false, null);
+        }
+
+        public void Release() => _release.TrySetResult();
     }
 
     private sealed class ControlledDialogService : DialogService {

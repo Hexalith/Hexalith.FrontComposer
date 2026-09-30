@@ -652,6 +652,21 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
         dialogService.LastOptions.Header.Title.ShouldBe(expectedTitle);
     }
 
+    [Fact]
+    public async Task PaletteTrigger_WhenModalSlotIsReserved_DoesNotOpenPaletteDialog() {
+        RecordingDialogService dialogService = new();
+        Services.Replace(ServiceDescriptor.Scoped<IDialogService>(_ => dialogService));
+        _ = FocusModule.Setup<bool>("captureOverlayOrigin", _ => true).SetResult(false);
+
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+
+        await cut.Find("[data-testid=\"fc-palette-trigger\"]")
+            .ClickAsync(new MouseEventArgs());
+
+        dialogService.ShowDialogCallCount.ShouldBe(0);
+    }
+
     // P24 (Pass-6 — AC8 spec-named replacement). AC8 line 241 names this test verbatim and
     // prescribes the assertion shape: (a) registrar registered "ctrl+," on first render via the
     // IShortcutService surface; (b) TryInvokeAsync(Key=",", CtrlKey=true) reaches

@@ -99,11 +99,45 @@ public class FrontComposerShortcutRegistrarTests {
         dispatcher.Received(1).Dispatch(Arg.Any<PaletteClosedAction>());
     }
 
+    [Fact]
+    public async Task OpenPaletteAsync_WhenModalSlotIsReserved_DoesNotOpenPalette() {
+        IShortcutService shortcuts = Substitute.For<IShortcutService>();
+        Hexalith.FrontComposer.Shell.Tests.Components.Layout.RecordingDialogService dialog = new();
+        IServiceProvider services = BuildFocusServices(captured: false);
+        FrontComposerShortcutRegistrar sut = BuildRegistrar(
+            shortcuts,
+            out IDispatcher dispatcher,
+            dialog: dialog,
+            services: services);
+
+        await sut.OpenPaletteAsync();
+
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteOpenedAction>());
+        dialog.ShowDialogCallCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task OpenSettingsAsync_WhenModalSlotIsReserved_DoesNotOpenSettings() {
+        IShortcutService shortcuts = Substitute.For<IShortcutService>();
+        Hexalith.FrontComposer.Shell.Tests.Components.Layout.RecordingDialogService dialog = new();
+        IServiceProvider services = BuildFocusServices(captured: false);
+        FrontComposerShortcutRegistrar sut = BuildRegistrar(
+            shortcuts,
+            out _,
+            dialog: dialog,
+            services: services);
+
+        await sut.OpenSettingsAsync();
+
+        dialog.ShowDialogCallCount.ShouldBe(0);
+    }
+
     private static FrontComposerShortcutRegistrar BuildRegistrar(
         IShortcutService shortcuts,
         out IDispatcher dispatcher,
         bool isOpen = false,
-        IDialogService? dialog = null) {
+        IDialogService? dialog = null,
+        IServiceProvider? services = null) {
         dispatcher = Substitute.For<IDispatcher>();
         IState<FrontComposerCommandPaletteState> state = Substitute.For<IState<FrontComposerCommandPaletteState>>();
         state.Value.Returns(new FrontComposerCommandPaletteState(isOpen, string.Empty,
@@ -116,7 +150,12 @@ public class FrontComposerShortcutRegistrarTests {
         ulids.NewUlid().Returns(_ => Guid.NewGuid().ToString("N"));
         NavigationManager nav = new BunitNavigationManager();
         DataGridFocusScope focus = new(Substitute.For<IJSRuntime>());
-        return new FrontComposerShortcutRegistrar(shortcuts, dispatcher, state, dialog, nav, loc, ulids, focus);
+        return new FrontComposerShortcutRegistrar(shortcuts, dispatcher, state, dialog, nav, loc, ulids, focus, services);
+    }
+
+    private static ServiceProvider BuildFocusServices(bool captured) {
+        FocusReservationJsInterop js = new(captured);
+        return new ServiceCollection().AddSingleton<IJSRuntime>(js).BuildServiceProvider();
     }
 
     private sealed class BunitNavigationManager : NavigationManager {
@@ -136,6 +175,27 @@ public class FrontComposerShortcutRegistrarTests {
 
         public override Task<DialogResult> ShowDialogAsync(Type dialogComponent, DialogOptions options)
             => throw new InvalidOperationException("dialog failed");
+    }
+
+    private sealed class FocusReservationJsInterop(bool captured) : IJSRuntime, IJSObjectReference {
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
+            => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+
+        public ValueTask<TValue> InvokeAsync<TValue>(
+            string identifier,
+            CancellationToken cancellationToken,
+            object?[]? args) {
+            _ = cancellationToken;
+            _ = args;
+            object result = identifier switch {
+                "import" => this,
+                "captureOverlayOrigin" => captured,
+                _ => throw new InvalidOperationException($"Unexpected JS invocation: {identifier}"),
+            };
+            return ValueTask.FromResult((TValue)result);
+        }
     }
 
     private sealed class EchoLocalizer : IStringLocalizer<FcShellResources> {

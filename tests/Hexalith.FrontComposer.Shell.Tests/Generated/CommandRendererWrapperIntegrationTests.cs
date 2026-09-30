@@ -549,9 +549,9 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
     [Theory]
     [MemberData(nameof(TransientAuthorizationFailures))]
     public async Task ProtectedGeneratedFormTransientAuthorizationFailureKeepsInputsAndRetryWarning(CommandAuthorizationReason reason) {
-        var evaluator = new FixedAuthorizationEvaluator(CommandAuthorizationDecision.Blocked(reason, "corr-transient"));
+        var evaluator = new MutableAuthorizationEvaluator(CommandAuthorizationDecision.Blocked(reason, "corr-transient"));
         RecordingCommandService service = new();
-        RegisterAuthorization(evaluator);
+        Services.Replace(ServiceDescriptor.Scoped<ICommandAuthorizationEvaluator>(_ => evaluator));
         Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
         await InitializeStoreAsync();
         IRenderedComponent<ProtectedTwoFieldCompactCommandForm> cut = Render<ProtectedTwoFieldCompactCommandForm>(parameters => parameters
@@ -570,10 +570,31 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             cut.Markup.ShouldContain("value=\"9\"");
             cut.FindAll("[data-fc-validation-field='true']").Count.ShouldBe(2);
             cut.Find("fluent-message-bar").TextContent.ShouldContain("retry", Case.Insensitive);
+            cut.Find("[id$='-submit']").HasAttribute("disabled").ShouldBeFalse();
         });
         FcFocusModule.Invocations.ShouldNotContain(invocation => invocation.Identifier == "focusElementById"
             && invocation.Arguments.Count > 0
             && invocation.Arguments[0]!.ToString()!.EndsWith("-authorization-heading", StringComparison.Ordinal));
+
+        evaluator.Decision = CommandAuthorizationDecision.Allowed("corr-retry");
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(() => service.DispatchCount.ShouldBe(1));
+    }
+
+    [Fact]
+    public async Task ProtectedGeneratedFormPendingAuthorizationKeepsSubmitDisabled() {
+        var evaluator = new FixedAuthorizationEvaluator(CommandAuthorizationDecision.Pending("corr-pending"));
+        RegisterAuthorization(evaluator);
+        await InitializeStoreAsync();
+
+        IRenderedComponent<ProtectedTwoFieldCompactCommandForm> cut = Render<ProtectedTwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new ProtectedTwoFieldCompactCommand { Name = "pending name", Amount = 9 }));
+
+        cut.WaitForAssertion(() => {
+            cut.Find("fluent-message-bar").TextContent.ShouldContain("Checking permission", Case.Insensitive);
+            cut.Find("[id$='-submit']").HasAttribute("disabled").ShouldBeTrue();
+        });
     }
 
     [Fact]
@@ -867,6 +888,19 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             entries[1].QuerySelector("a").ShouldBeNull();
             entries[1].TextContent.Trim().ShouldBe(formLevelError);
             summary.TextContent.ShouldContain("2 errors.");
+        });
+
+        cut.Find("fluent-text-input[name='Name']").Change("edited name");
+
+        // Editing the mapped field clears only that rejection entry immediately; the form-level
+        // outcome remains visible and the field is no longer exposed as invalid before resubmission.
+        cut.WaitForAssertion(() => {
+            AngleSharp.Dom.IElement summary = cut.Find("[data-fc-validation-kind='mapped-server-rejection']");
+            AngleSharp.Dom.IElement[] entries = [.. summary.QuerySelectorAll("li")];
+            entries.Length.ShouldBe(1);
+            entries[0].TextContent.Trim().ShouldBe(formLevelError);
+            summary.QuerySelectorAll("[data-fc-validation-target]").ShouldBeEmpty();
+            cut.Find("[name='Name']").GetAttribute("data-fc-invalid").ShouldBe("false");
         });
     }
 
@@ -1538,10 +1572,14 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
     private sealed class MutableAuthorizationEvaluator(CommandAuthorizationDecision decision) : ICommandAuthorizationEvaluator {
         public CommandAuthorizationDecision Decision { get; set; } = decision;
 
+        public List<CommandAuthorizationRequest> Requests { get; } = [];
+
         public Task<CommandAuthorizationDecision> EvaluateAsync(
             CommandAuthorizationRequest request,
-            CancellationToken cancellationToken = default)
-            => Task.FromResult(Decision);
+            CancellationToken cancellationToken = default) {
+            Requests.Add(request);
+            return Task.FromResult(Decision);
+        }
     }
 
     private sealed class NotifyingAuthenticationStateProvider : AuthenticationStateProvider {

@@ -34,6 +34,22 @@ export function labelTabPanels(testId) {
 
 export function captureOverlayOrigin(testId = null, preserveExisting = false) {
     if (document.activeElement?.closest('[role="dialog"], fluent-dialog')) return false;
+    const existingReservation = window.__fcModalReservation;
+    if (isLiveModalReservation(existingReservation)) {
+        // Every modal entry point shares one explicit reservation. Keep the destructive-command
+        // reservation for the whole derived-value refresh instead of inferring ownership from a
+        // short-lived focus intent, and refuse shell overlays until the owner releases it.
+        return false;
+    }
+    window.__fcModalReservation = null;
+    if (existingReservation) {
+        // The keyboard tracker deliberately cannot replace origin state while a reservation exists.
+        // Once that reservation expires, its origin and intent are stale too; start this launch from
+        // the current trigger/focus instead of preserving the abandoned owner's connected element.
+        window.__fcOverlayOrigin = null;
+        window.__fcOverlayOpenIntent = null;
+    }
+    let preservesTrackedOrigin = false;
     if (preserveExisting) {
         // Shell overlays (palette, settings, shortcuts) keep an origin the keyboard tracker or an
         // earlier trigger already captured, including its `moved` state, exactly as before the
@@ -41,31 +57,36 @@ export function captureOverlayOrigin(testId = null, preserveExisting = false) {
         if (window.__fcOverlayOrigin instanceof HTMLElement
             && window.__fcOverlayOrigin.isConnected
             && window.__fcOverlayOpenIntent) {
-            return true;
+            preservesTrackedOrigin = true;
         }
-    } else if (isLiveOverlayIntent(window.__fcOverlayOpenIntent)) {
-        // A destructive confirmation refuses while another overlay reserves the single modal slot.
-        return false;
     }
-    const candidate = testId
-        ? document.querySelector(`[data-testid="${testId}"]`)
-        : document.activeElement;
-    window.__fcOverlayOrigin = candidate instanceof HTMLElement && candidate.isConnected && !candidate.disabled
-        ? candidate
-        : null;
-    window.__fcOverlayOpenIntent = { origin: window.__fcOverlayOrigin, moved: false, watchFocus: false, createdAt: Date.now() };
+    if (!preservesTrackedOrigin) {
+        const candidate = testId
+            ? document.querySelector(`[data-testid="${testId}"]`)
+            : document.activeElement;
+        window.__fcOverlayOrigin = candidate instanceof HTMLElement && candidate.isConnected && !candidate.disabled
+            ? candidate
+            : null;
+        window.__fcOverlayOpenIntent = { origin: window.__fcOverlayOrigin, moved: false, watchFocus: false };
+    }
+    window.__fcModalReservation = {
+        createdAt: Date.now(),
+        durable: !preserveExisting,
+    };
     return true;
 }
 
-// An opening intent reserves the single modal slot only while its overlay is plausibly on the
-// way. A modal that is already open keeps it reserved; otherwise an intent expires, so a press
-// that never opened its overlay cannot refuse every later confirmation for the whole session.
-const overlayIntentLifetimeMs = 5000;
+// Shell launch reservations expire if their overlay never opens. Destructive-command reservations
+// are durable because derived-value refresh can legitimately take longer than this recovery window;
+// the renderer releases them in its existing finally path.
+const modalReservationRecoveryMs = 5000;
 
-function isLiveOverlayIntent(intent) {
-    if (!intent) return false;
+function isLiveModalReservation(reservation) {
+    if (!reservation) return false;
     if (hasOpenModal()) return true;
-    return typeof intent.createdAt === 'number' && Date.now() - intent.createdAt < overlayIntentLifetimeMs;
+    if (reservation.durable === true) return true;
+    return typeof reservation.createdAt === 'number'
+        && Date.now() - reservation.createdAt < modalReservationRecoveryMs;
 }
 
 function hasOpenModal() {
@@ -486,6 +507,7 @@ export function restoreOverlayOrigin(forceRouteHeading = false) {
     const origin = window.__fcOverlayOrigin;
     window.__fcOverlayOrigin = null;
     window.__fcOverlayOpenIntent = null;
+    window.__fcModalReservation = null;
     let userMovedFocus = false;
     const markUserMove = () => { userMovedFocus = true; };
     document.addEventListener('pointerdown', markUserMove, true);
@@ -543,6 +565,7 @@ export function preserveRouteFocusAfterOverlay(openedRoute) {
     const origin = window.__fcOverlayOrigin;
     window.__fcOverlayOrigin = null;
     window.__fcOverlayOpenIntent = null;
+    window.__fcModalReservation = null;
     const focusHeadingIfNeeded = () => {
         if (window.location.pathname === openedPath) {
             return;

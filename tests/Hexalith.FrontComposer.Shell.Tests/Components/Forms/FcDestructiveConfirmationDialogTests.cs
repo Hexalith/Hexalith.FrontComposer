@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using Bunit;
 
 using Hexalith.FrontComposer.Shell.Components.Forms;
@@ -50,14 +52,22 @@ public sealed class FcDestructiveConfirmationDialogTests : BunitContext {
 
     [Fact]
     public void Cancel_button_carries_autofocus_affordance() {
-        IRenderedComponent<FcDestructiveConfirmationDialog> cut = Render<FcDestructiveConfirmationDialog>(p => p
-            .Add(c => c.Title, "Delete?")
-            .Add(c => c.Body, "Gone forever.")
-            .Add(c => c.DestructiveLabel, "Delete"));
+        CultureInfo previous = CultureInfo.CurrentUICulture;
+        CultureInfo.CurrentUICulture = new CultureInfo("fr");
+        try {
+            IRenderedComponent<FcDestructiveConfirmationDialog> cut = Render<FcDestructiveConfirmationDialog>(p => p
+                .Add(c => c.Title, "Supprimer ?")
+                .Add(c => c.Body, "Suppression définitive.")
+                .Add(c => c.DestructiveLabel, "Supprimer"));
 
-        // AutoFocus="true" emits the autofocus attribute on the rendered button element.
-        AngleSharp.Dom.IElement cancel = cut.Find("[data-testid='fc-destructive-cancel']");
-        cancel.HasAttribute("autofocus").ShouldBeTrue("Cancel button must auto-focus so Enter does the safe thing (D11).");
+            // AutoFocus="true" emits the autofocus attribute, and the safe action is localized.
+            AngleSharp.Dom.IElement cancel = cut.Find("[data-testid='fc-destructive-cancel']");
+            cancel.HasAttribute("autofocus").ShouldBeTrue("Cancel button must auto-focus so Enter does the safe thing (D11).");
+            cancel.TextContent.Trim().ShouldBe("Annuler");
+        }
+        finally {
+            CultureInfo.CurrentUICulture = previous;
+        }
     }
 
     [Fact]

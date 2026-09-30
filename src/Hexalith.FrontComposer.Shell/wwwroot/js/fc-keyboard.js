@@ -10,7 +10,9 @@ if (!window.__fcFocusIntentTrackerInstalled) {
             .map((node) => node.closest('[data-testid="fc-settings-button"], [data-testid="fc-palette-trigger"]'))
             .find((node) => node instanceof HTMLElement);
         const opensTrigger = event.type === 'pointerdown' || event.key === 'Enter' || event.key === ' ';
-        if (opensTrigger && trigger instanceof HTMLElement && !document.activeElement?.closest('[role="dialog"], fluent-dialog')) {
+        if (opensTrigger && trigger instanceof HTMLElement
+            && !document.activeElement?.closest('[role="dialog"], fluent-dialog')
+            && !window.__fcModalReservation) {
             window.__fcOverlayOrigin = trigger;
             window.__fcOverlayOpenIntent = { origin: trigger, moved: false, watchFocus: false };
         }
@@ -189,7 +191,7 @@ export function registerShellKeyFilter(element) {
             (key === "k" || key === ",")
         ) {
             const active = document.activeElement;
-            if (!active?.closest('[role="dialog"], fluent-dialog')) {
+            if (!active?.closest('[role="dialog"], fluent-dialog') && !window.__fcModalReservation) {
                 window.__fcOverlayOrigin = active instanceof HTMLElement && active.isConnected && !active.disabled ? active : null;
                 window.__fcOverlayOpenIntent = { origin: active, moved: false, watchFocus: false };
             }

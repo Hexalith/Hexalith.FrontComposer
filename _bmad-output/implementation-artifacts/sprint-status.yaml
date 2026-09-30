@@ -1,5 +1,5 @@
 # generated: 07-05-2026 17:13
-# last_updated: 2026-09-30 (Story 13.3 returned to in-progress: chunk 1 left 2 review patches as action items)
+# last_updated: 2026-09-30 (Story 13.3 completed implementation and review)
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -200,7 +200,7 @@ development_status:
   epic-13: in-progress
   13-1-i-ten-scope-1-prove-tenant-safe-operator-state-end-to-end: done
   13-2-i-ux-a-make-shell-navigation-and-route-focus-deterministic: done
-  13-3-i-ux-b-preserve-focus-and-input-through-command-safety-outco: in-progress
+  13-3-i-ux-b-preserve-focus-and-input-through-command-safety-outco: review
   13-4-i-ux-c-announce-projection-and-command-state-without-noise: backlog
   13-5-i-ux-d-preserve-fresh-row-meaning-across-visual-and-data-cha: backlog
   13-6-i-ux-e-verify-responsive-and-assistive-accessibility: backlog
