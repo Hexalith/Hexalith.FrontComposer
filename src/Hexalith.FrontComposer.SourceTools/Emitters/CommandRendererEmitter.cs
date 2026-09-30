@@ -128,6 +128,10 @@ public static class CommandRendererEmitter {
         if (model.IsDestructive) {
             // Story 2-5 D24 + Winston #2 — dialog-lifetime flag prevents double-click dispatch.
             _ = sb.AppendLine("    private bool _dialogOpen;");
+            // Story 13.3 BH10-01 — each confirmation attempt owns its modal reservation by token; a
+            // release that failed (for example during a disconnect) is retried on the next render or attempt.
+            _ = sb.AppendLine("    private static long _modalReservationSequence;");
+            _ = sb.AppendLine("    private string? _unreleasedModalReservationOwner;");
         }
         // Story 2-5 Task 5.3 / Task 6.1 — expose EditContext to FcFormAbandonmentGuard via OnEditContextReady.
         _ = sb.AppendLine("    private EditContext? _formEditContext;");
@@ -547,10 +551,10 @@ public static class CommandRendererEmitter {
                 ? EscapeString(model.DestructiveConfirmBody!)
                 : string.Empty;
 
-            // Story 2-5 D2 / D11 / D24 — gating lives in BeforeSubmit so the form's OnValidSubmit
-            // has already validated (D24 satisfied: if invalid, OnInvalidSubmit fires and we never
-            // reach here). The dialog opens, and cancel → throw OperationCanceledException → the
-            // form's existing catch resets lifecycle state to Idle via ResetToIdleAction (P-11).
+            // Story 2-5 D2 / D11 / D24 — gating lives in BeforeSubmit, which the form's single OnSubmit
+            // path awaits only after admission and client validation passed (Story 13.3). Cancel →
+            // throw OperationCanceledException → the form's outer SubmitAsync catch fails closed before
+            // any SubmittedAction is dispatched, so no lifecycle reset is needed.
             // Review 2026-04-17 P11 — _dialogOpen is set BEFORE any async work so a rapid
             // double-click during RefreshDerivedValuesBeforeSubmitAsync cannot open a second dialog.
             // Review 2026-04-17 P8 — no ConfigureAwait(false) on Blazor UI paths; continuations
@@ -559,11 +563,15 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        if (_dialogOpen) throw new OperationCanceledException(\"Destructive dialog already open.\");");
             _ = sb.AppendLine("        _dialogOpen = true;");
+            _ = sb.AppendLine("        await ReleaseUnreleasedModalReservationAsync();");
+            _ = sb.AppendLine("        string reservationOwner = _triggerButtonId + \"-\" + global::System.Threading.Interlocked.Increment(ref _modalReservationSequence).ToString(global::System.Globalization.CultureInfo.InvariantCulture);");
+            _ = sb.AppendLine("        bool reservationRequested = false;");
             _ = sb.AppendLine("        bool focusOriginCaptured = false;");
             _ = sb.AppendLine("        try");
             _ = sb.AppendLine("        {");
             _ = sb.AppendLine("            await using var focusModule = await JSRuntime.InvokeAsync<IJSObjectReference>(\"import\", \"./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js\");");
-            _ = sb.AppendLine("            focusOriginCaptured = await focusModule.InvokeAsync<bool>(\"captureOverlayOrigin\");");
+            _ = sb.AppendLine("            reservationRequested = true;");
+            _ = sb.AppendLine("            focusOriginCaptured = await focusModule.InvokeAsync<bool>(\"captureOverlayOrigin\", null, false, reservationOwner);");
             _ = sb.AppendLine("            if (!focusOriginCaptured) throw new OperationCanceledException(\"Another modal interaction is already active.\");");
             _ = sb.AppendLine("            await RefreshDerivedValuesBeforeSubmitAsync();");
             _ = sb.AppendLine("            var result = await DialogService.ShowDialogAsync<FcDestructiveConfirmationDialog>(options =>");
@@ -609,20 +617,42 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        finally");
             _ = sb.AppendLine("        {");
-            _ = sb.AppendLine("            if (focusOriginCaptured)");
+            _ = sb.AppendLine("            // Story 13.3 BH10-01 — release this attempt's reservation on every path. A capture whose");
+            _ = sb.AppendLine("            // reply never arrived may still have reserved the slot in the browser, so it is released by");
+            _ = sb.AppendLine("            // owner too; a release that fails is retried on the next render or confirmation attempt.");
+            _ = sb.AppendLine("            if (reservationRequested)");
             _ = sb.AppendLine("            {");
-            _ = sb.AppendLine("                try");
-            _ = sb.AppendLine("                {");
-            _ = sb.AppendLine("                    await using var focusModule = await JSRuntime.InvokeAsync<IJSObjectReference>(\"import\", \"./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js\");");
-            _ = sb.AppendLine("                    await focusModule.InvokeVoidAsync(\"restoreOverlayOrigin\");");
-            _ = sb.AppendLine("                }");
-            _ = sb.AppendLine("                catch (JSDisconnectedException) { /* circuit teardown; benign. */ }");
-            _ = sb.AppendLine("                catch (JSException) { }");
-            _ = sb.AppendLine("                catch (InvalidOperationException) { }");
+            _ = sb.AppendLine("                await ReleaseModalReservationAsync(reservationOwner, restoreFocus: focusOriginCaptured);");
             _ = sb.AppendLine("            }");
             _ = sb.AppendLine("            _dialogOpen = false;");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private async Task ReleaseModalReservationAsync(string owner, bool restoreFocus)");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        try");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            await using var focusModule = await JSRuntime.InvokeAsync<IJSObjectReference>(\"import\", \"./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js\");");
+            _ = sb.AppendLine("            if (restoreFocus)");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                await focusModule.InvokeVoidAsync(\"restoreOverlayOrigin\", false, owner);");
+            _ = sb.AppendLine("            }");
+            _ = sb.AppendLine("            else");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                _ = await focusModule.InvokeAsync<bool>(\"releaseOverlayReservation\", owner);");
+            _ = sb.AppendLine("            }");
+            _ = sb.AppendLine("            if (_unreleasedModalReservationOwner == owner) _unreleasedModalReservationOwner = null;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        catch (JSDisconnectedException) { _unreleasedModalReservationOwner = owner; }");
+            _ = sb.AppendLine("        catch (JSException) { _unreleasedModalReservationOwner = owner; }");
+            _ = sb.AppendLine("        catch (InvalidOperationException) { _unreleasedModalReservationOwner = owner; }");
+            _ = sb.AppendLine("        catch (TaskCanceledException) { _unreleasedModalReservationOwner = owner; }");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private Task ReleaseUnreleasedModalReservationAsync()");
+            _ = sb.AppendLine("        => _unreleasedModalReservationOwner is { } owner");
+            _ = sb.AppendLine("            ? ReleaseModalReservationAsync(owner, restoreFocus: false)");
+            _ = sb.AppendLine("            : Task.CompletedTask;");
             _ = sb.AppendLine();
         }
 
@@ -769,6 +799,12 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("            catch (InvalidOperationException) { /* prerender: JSInterop not yet available. */ }");
         _ = sb.AppendLine("            catch (JSDisconnectedException) { /* circuit teardown; benign. */ }");
         _ = sb.AppendLine("        }");
+        if (model.IsDestructive) {
+            _ = sb.AppendLine("        if (_unreleasedModalReservationOwner is not null && !_dialogOpen)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            await ReleaseUnreleasedModalReservationAsync();");
+            _ = sb.AppendLine("        }");
+        }
         if (hasAuthorizationPolicy) {
             _ = sb.AppendLine("        if (_authorizationFocusPending)");
             _ = sb.AppendLine("        {");

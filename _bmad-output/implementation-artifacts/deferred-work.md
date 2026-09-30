@@ -9986,3 +9986,12 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
   summary: Reset the complete abandonment-guard session when a direct consumer replaces its `EditContext`.
   evidence: `FcFormAbandonmentGuard.OnParametersSet` replaces the event subscription and captured field name but retains `_firstEditAt`, `_showingWarning`, and `_pendingTarget`, so a direct consumer can carry an expired timer or pending warning into a new model. The baseline already retained that state, and generated full-page forms do not swap contexts on a mounted guard.
+
+## Deferred from: code review of spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md (2026-09-30, iteration 10 chunk 1)
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: Confirm whether the focused field-mapped rejection summary must speak the rejection's own reason.
+  evidence: Unverified medium (review iteration 10, AA10-06). `FcValidationSummary` names and describes a mapped rejection with the generic "Command rejected" copy, while the operation's reason renders only in the `fc-rejected-mapped` card, which the summary does not reference. AM-19 (`ux-design.md:184`) asks for "Rejected lifecycle message plus mapped field summary"; settle whether that means the canonical rejected copy or the server reason.
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: Surface a server `detail` when a validation field map contains only allowlisted fields with empty message lists.
+  evidence: Review iteration 10, E10-15 (low). `ServerValidationApplicator.ApplyMap` adds `detail` only when `ValidationErrors.Count == 0`, so `{ "Amount": [] }` plus a detail yields no field or form-level message and an empty summary. The baseline `Apply` used the same condition.

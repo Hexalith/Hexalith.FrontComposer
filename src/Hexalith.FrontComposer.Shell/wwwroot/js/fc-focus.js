@@ -32,8 +32,12 @@ export function labelTabPanels(testId) {
     }
 }
 
-export function captureOverlayOrigin(testId = null, preserveExisting = false) {
-    if (document.activeElement?.closest('[role="dialog"], fluent-dialog')) return false;
+// Modal containers that already hold the single modal slot. A non-modal popover that merely carries
+// role="dialog" (for example the page-toolbar filter or the column prioritizer) is not one of them.
+const modalContainerSelector = 'fluent-dialog, dialog, [aria-modal="true"]';
+
+export function captureOverlayOrigin(testId = null, preserveExisting = false, owner = null) {
+    if (document.activeElement?.closest(modalContainerSelector)) return false;
     const existingReservation = window.__fcModalReservation;
     if (isLiveModalReservation(existingReservation)) {
         // Every modal entry point shares one explicit reservation. Keep the destructive-command
@@ -72,13 +76,29 @@ export function captureOverlayOrigin(testId = null, preserveExisting = false) {
     window.__fcModalReservation = {
         createdAt: Date.now(),
         durable: !preserveExisting,
+        owner: typeof owner === 'string' && owner.length > 0 ? owner : null,
     };
+    return true;
+}
+
+// Story 13.3 BH10-01 — releases a durable reservation only for the owner that took it, without moving
+// focus. A destructive renderer calls this when its confirmation never opened, including when the
+// capture reply was lost, and retries it after a failed release, so an interop failure cannot keep
+// shell overlays and destructive commands refused until the page reloads.
+export function releaseOverlayReservation(owner) {
+    const reservation = window.__fcModalReservation;
+    if (!reservation || typeof owner !== 'string' || owner.length === 0 || reservation.owner !== owner) {
+        return false;
+    }
+    window.__fcModalReservation = null;
+    window.__fcOverlayOrigin = null;
+    window.__fcOverlayOpenIntent = null;
     return true;
 }
 
 // Shell launch reservations expire if their overlay never opens. Destructive-command reservations
 // are durable because derived-value refresh can legitimately take longer than this recovery window;
-// the renderer releases them in its existing finally path.
+// the owning renderer releases them by owner token on every completion and exception path.
 const modalReservationRecoveryMs = 5000;
 
 function isLiveModalReservation(reservation) {
@@ -503,7 +523,12 @@ function cssEscape(value) {
         : value.replace(/["\\]/g, '\\$&');
 }
 
-export function restoreOverlayOrigin(forceRouteHeading = false) {
+export function restoreOverlayOrigin(forceRouteHeading = false, owner = null) {
+    // An owner-scoped restore never clears a slot that a later launch now holds.
+    if (typeof owner === 'string' && owner.length > 0
+        && window.__fcModalReservation && window.__fcModalReservation.owner !== owner) {
+        return;
+    }
     const origin = window.__fcOverlayOrigin;
     window.__fcOverlayOrigin = null;
     window.__fcOverlayOpenIntent = null;
