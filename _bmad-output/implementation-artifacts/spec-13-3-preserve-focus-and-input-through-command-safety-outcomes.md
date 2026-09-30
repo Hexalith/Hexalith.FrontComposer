@@ -2,7 +2,7 @@
 title: 'Story 13.3: Preserve Focus and Input Through Command Safety Outcomes'
 type: 'feature'
 created: '2026-09-28'
-status: 'done'
+status: 'in-progress'
 route: 'dispatch'
 review_loop_iteration: 3
 baseline_commit: '52fa0739ab8dfb02e1b9d8b5b05d2fd318f220d8'
@@ -158,6 +158,36 @@ Code review 2026-09-29 (iteration 7; diff `52fa0739..HEAD` at `f86fb730` without
 - E7-13 an adopter localizer missing a Shell key renders the raw key — `low`: carried BH5-11/E5-16.
 - E7-19 `MappedFieldCount` counts case-variant keys twice — `low`: carried BH5-13/E4-16; `HasMappedFieldErrors` is unaffected.
 - AA7-04 the active-lifecycle `h2` sits inside `FluentText`'s default `span` — `low`: invalid content nesting with no visual or accessibility-tree effect; a clean fix must keep the Fluent typography and the `h2` focus target (BH6-05), which is more than a direct correction.
+
+Code review 2026-09-30 (iteration 9, chunk 1; diff `52fa0739..HEAD`; Shell runtime, Contracts, and migration documentation; layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor; no layer failed).
+
+- [ ] [Review][Patch] A destructive confirmation's modal reservation can be bypassed by shell-overlay launches or a derived-value refresh lasting more than five seconds [`src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js:35`]
+- [ ] [Review][Patch] The 4.6 migration guide says no C# member is removed even though extending generated positional records replaces their old constructor and `Deconstruct` members [`docs/migrations/4.5-to-4.6.md:100`]
+- [x] [Review][Defer] Story 13.3's real-browser shadow-control ARIA and focus-management tests remain outside the blocking CI browser lane [`.github/workflows/quality.yml:900`] — deferred: the omission and the pre-existing Counter Test-host `MapFrontComposerMcp` boot failure are already tracked in `deferred-work.md`; settle by restoring the Test host and enrolling the existing Story 13.3 Chromium specs.
+- [x] [Review][Defer] Replacing a public `FcFormAbandonmentGuard` instance's `EditContext` retains the old form's timer and pending-warning session [`src/Hexalith.FrontComposer.Shell/Components/Forms/FcFormAbandonmentGuard.razor.cs:107`] — deferred: this behavior exists in the baseline and generated full-page forms do not swap the context on a mounted guard; a direct component consumer that replaces contexts would settle product impact.
+
+**Rejected (iteration 9, chunk 1):**
+
+- VG9-03 ignored Boolean focus result — `low`: `focusValidationTarget` returns false only after the requested, later linked, first linked, and first invalid targets all fail; native fragment navigation cannot restore focus when no target accepts it.
+- VG9-04 shared zero-field trigger id on forced restoration — `low`: requires multiple instances of the same zero-field command plus activation of a stale View action; fixing it requires per-instance generated identifiers.
+- BH9-03 disabled edited origin skips the heading fallback — `false`: generated editors are supported Fluent controls captured only while enabled, and the Story 13.3 forms do not disable those field hosts.
+- BH9-04 ignored Boolean focus result — `low`: duplicate of VG9-03; the native fallback has no focusable destination in the demonstrated false-result state.
+- BH9-05 open modal check depends on an intent — `false`: a native modal makes the rest of the page inert, while a command hosted inside that modal is rejected by the active-element dialog check at the start of `captureOverlayOrigin`.
+- BH9-06 fixed destructive-dialog ids — `low`: the single-modal slot makes concurrent instances unreachable in the normal path; instance ids add emitter and dialog plumbing for a close-animation edge.
+- BH9-07 `MappedFieldCount` can count case-variant keys twice — `low`: only `HasMappedFieldErrors` consumes the count, so duplicate normalized keys do not change recovery behavior; this is the previously rejected E4-16/E7-19 case.
+- BH9-08 stale View action can focus a later command — `low`: requires one blocker to settle, another command to start, and then activation of the old outcome; operation binding needs new lifecycle coordination.
+- BH9-09 shared zero-field trigger id — `low`: duplicate of VG9-04 and the previously rejected BH5-09/E5-15 case.
+- BH9-10 uncaught `TaskCanceledException` on new interop paths — `low`: requires a long JS interop stall and is the previously rejected Shell-wide policy issue E3-10/E6-03/E6-04.
+- BH9-11 raw heading and paragraph elements — `low`: these are semantic text inside Fluent cards/stacks and inherit the active theme; replacing every wrapper is disproportionate to the cosmetic difference.
+- BH9-12 lifecycle heading nested under `FluentText` — `false`: the pinned component renders a custom `fluent-text` host rather than a literal phrasing `span`, and the existing browser evidence shows no visual or accessibility-tree defect.
+- BH9-13 copy outcome changes only the button label — `low`: the visible focused-control label is the accepted AA5-02 outcome, and adding a live region would introduce another speech path not required by the story.
+- E9-03 a hidden first fallback editor blocks a later target — `false`: generated descriptors use the same static visibility predicate as their editors, and Story 13.3 does not leave an earlier linked field connected-but-hidden while a later linked field remains visible.
+- E9-04 a re-created same-field editor falls back to the heading — `false`: the story explicitly specifies the form heading when the captured origin element was removed; a replacement DOM node is not the captured origin.
+- E9-05 Return does nothing on direct entry — `false`: the recorded AA5-02 decision defines Return as browser Back, including the browser's no-history behavior; no in-app fallback is specified.
+- E9-06 a late clipboard completion can label a newer rejection copied — `low`: requires another submit and rejection to finish while clipboard interop for the prior rejection is still pending; an ownership generation adds state for a narrow race.
+- E9-07 `MappedFieldCount` overstates case-variant keys — `low`: duplicate of BH9-07; current behavior consumes only whether the count is positive.
+- E9-08 settlement can refocus after focus moved to browser chrome — `low`: requires a null-related-target focusout from the lifecycle heading immediately before settlement; guarding browser-window focus adds complexity for a narrow edge already rejected as E4-14.
+- E9-09 dialog labeling can miss late shadow attachment — `false`: with the pinned Fluent dialog, child first-render occurs after the dialog host and shadow dialog exist; Chromium evidence already verifies the copied name and description.
 
 ## Implementation Notes
 

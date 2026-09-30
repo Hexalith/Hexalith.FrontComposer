@@ -9977,3 +9977,12 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
   summary: Stop a 400 server-validation message on a hidden or unedited field from blocking every later submit until the form remounts.
   evidence: Review iteration 8, E8-03 (medium). The generated submit path runs `_editContext.Validate()` before `_serverValidationMessages.Clear()`, and `EditContext.Validate` counts every store; a message on a field hidden by `DerivableFieldsHidden`/`ShowFieldsOnly` can never be cleared by an edit. Pre-existing: the baseline `EditForm.OnValidSubmit` gate validated across all stores before its own clear, and the iteration-5 VG5-O1 decision separated only rejection-mapped messages, leaving 400 handling unchanged.
+
+## Deferred from: code review of spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md (2026-09-30, iteration 9 chunk 1)
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: Enroll Story 13.3's real-browser shadow-control ARIA and focus-management tests in the blocking CI browser lane.
+  evidence: Verification Gap review confirmed that `quality.yml` runs only the specimen accessibility script while `command-form-generation`, `destructive-command-confirmation`, `form-abandonment-guard`, `one-at-a-time-execution-policy`, and `policy-gated-command-authorization` contain the real DOM proofs. This remains blocked by the pre-existing Counter Test-host `MapFrontComposerMcp` failure and carries the existing 2026-09-29 deferred entry.
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: Reset the complete abandonment-guard session when a direct consumer replaces its `EditContext`.
+  evidence: `FcFormAbandonmentGuard.OnParametersSet` replaces the event subscription and captured field name but retains `_firstEditAt`, `_showingWarning`, and `_pendingTarget`, so a direct consumer can carry an expired timer or pending warning into a new model. The baseline already retained that state, and generated full-page forms do not swap contexts on a mounted guard.
