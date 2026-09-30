@@ -216,6 +216,13 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             link.GetAttribute("data-fc-validation-target").ShouldNotBeNull().ShouldEndWith("-RecordId");
             link.TextContent.ShouldContain("Record ID");
             cut.Markup.ShouldContain("value=\"kept reason\"", Case.Insensitive);
+            // VG10-02 — a described field shows its error exactly once, in Fluent's error styling,
+            // and its declared description still renders beside it.
+            AngleSharp.Dom.IElement recordField = cut.Find("[name='RecordId']").Closest("fluent-field").ShouldNotBeNull();
+            recordField.QuerySelectorAll(".fluent-validation-message").Length.ShouldBe(1);
+            System.Text.RegularExpressions.Regex.Count(recordField.TextContent, "The Record ID field is required\\.").ShouldBe(1);
+            recordField.QuerySelector("[id$='-RecordId-description']").ShouldNotBeNull()
+                .TextContent.Trim().ShouldBe("Record to change.");
         });
     }
 
@@ -613,9 +620,14 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             state.Value.State.ShouldBe(CommandLifecycleState.Idle);
             AngleSharp.Dom.IElement heading = cut.Find("[id$='-authorization-heading']");
             heading.GetAttribute("tabindex").ShouldBe("-1");
-            heading.TextContent.ShouldBe("Not allowed");
-            // The form denial card is a named group, not a region landmark, alert, or status.
+            // AA10-02 — the focused heading and body are the Shell's localized denial copy naming the
+            // action; the server's problem title and detail never reach the denial card.
+            heading.TextContent.ShouldBe("Permission required");
             AngleSharp.Dom.IElement card = cut.Find("section[data-fc-authorization-denied='true']");
+            card.QuerySelector("p").ShouldNotBeNull().TextContent.ShouldStartWith("You do not have permission to ");
+            card.TextContent.ShouldNotContain("Not allowed");
+            card.TextContent.ShouldNotContain("You cannot run this command.");
+            // The form denial card is a named group, not a region landmark, alert, or status.
             card.GetAttribute("role").ShouldBe("group");
             card.GetAttribute("aria-labelledby").ShouldBe(heading.Id);
             card.HasAttribute("aria-live").ShouldBeFalse();
@@ -856,13 +868,19 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             link.TextContent.Trim().ShouldBe("Amount: Invalid number format.");
             link.GetAttribute("data-fc-validation-target").ShouldBe(amount.Id);
             amount.GetAttribute("data-fc-invalid").ShouldBe("true");
+            // VG10-02 — the split numeric binding still shows the parse error exactly once at the field.
+            AngleSharp.Dom.IElement amountField = amount.Closest("fluent-field").ShouldNotBeNull();
+            amountField.QuerySelectorAll(".fluent-validation-message").Length.ShouldBe(1);
+            System.Text.RegularExpressions.Regex.Count(amountField.TextContent, "Invalid number format\\.").ShouldBe(1);
         });
 
         cut.Find("fluent-text-input[name='Amount']").Change("12");
 
         cut.WaitForAssertion(() => {
             cut.FindAll("[data-fc-validation-target]").ShouldBeEmpty();
-            cut.Find("fluent-text-input[name='Amount']").GetAttribute("data-fc-invalid").ShouldBe("false");
+            AngleSharp.Dom.IElement amount = cut.Find("fluent-text-input[name='Amount']");
+            amount.GetAttribute("data-fc-invalid").ShouldBe("false");
+            amount.Closest("fluent-field").ShouldNotBeNull().QuerySelectorAll(".fluent-validation-message").Length.ShouldBe(0);
         });
         cut.Markup.ShouldContain("kept name");
     }

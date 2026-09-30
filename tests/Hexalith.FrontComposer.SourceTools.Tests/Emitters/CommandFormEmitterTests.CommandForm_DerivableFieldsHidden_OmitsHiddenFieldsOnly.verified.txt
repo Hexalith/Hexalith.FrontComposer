@@ -126,6 +126,14 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             null);
     }
 
+    private global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning CreateServerDenialWarning()
+        => new(
+            global::Hexalith.FrontComposer.Contracts.Communication.CommandWarningKind.Forbidden,
+            ResolveShellLocalized("UnauthorizedCommandWarningTitle", "Permission required"),
+            ResolveShellLocalized("UnauthorizedCommandWarningMessage", "You do not have permission to {0}.", "Send IncrementCommand"),
+            null,
+            null);
+
     private async Task PresentScopeUnavailableAsync()
     {
         _serverWarning = CreateCommandBlockedWarning(global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.ScopeUnavailable);
@@ -144,6 +152,24 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         {
             return fallback;
         }
+    }
+
+    private string ResolveShellLocalized(string key, string fallback, string argument)
+    {
+        try
+        {
+            var localized = ShellLocalizer[key, argument];
+            if (!localized.ResourceNotFound && !string.IsNullOrEmpty(localized.Value))
+            {
+                return localized.Value;
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // A malformed host template falls back to the built-in copy below.
+        }
+
+        return string.Format(CultureInfo.CurrentCulture, fallback, argument);
     }
 
     private void OnEditContextFieldChanged(object? sender, FieldChangedEventArgs e) {
@@ -761,12 +787,16 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         {
             // Story 5-2 D6 — 403/404/429 surface through a separate warning channel. Lifecycle is
             // reset to Idle so the user can react (e.g. wait out a Retry-After) and try again.
-            _serverWarning = new global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning(
-                ex.Kind,
-                ex.Problem.Title,
-                ex.Problem.Detail,
-                ex.Problem.EntityLabel,
-                ex.RetryAfter);
+            // Story 13.3 VR-04 / AA10-02 — a 403 replaces the form with the fail-closed denial card, whose
+            // focused heading and body use the Shell's localized copy naming the action, never server text.
+            _serverWarning = ex.Kind == global::Hexalith.FrontComposer.Contracts.Communication.CommandWarningKind.Forbidden
+                ? CreateServerDenialWarning()
+                : new global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning(
+                    ex.Kind,
+                    ex.Problem.Title,
+                    ex.Problem.Detail,
+                    ex.Problem.EntityLabel,
+                    ex.RetryAfter);
             CommandFeedbackPublisher.PublishWarning(_serverWarning);
             if (ex.Kind == global::Hexalith.FrontComposer.Contracts.Communication.CommandWarningKind.Forbidden)
             {
@@ -924,10 +954,10 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                     __denied.OpenElement(4, "h2");
                     __denied.AddAttribute(5, "id", _formDomId + "-authorization-heading");
                     __denied.AddAttribute(6, "tabindex", "-1");
-                    __denied.AddContent(7, _serverWarning?.Title ?? ResolveShellLocalized("UnauthorizedCommandWarningTitle", "Permission required"));
+                    __denied.AddContent(7, string.IsNullOrWhiteSpace(_serverWarning?.Title) ? ResolveShellLocalized("UnauthorizedCommandWarningTitle", "Permission required") : _serverWarning.Title);
                     __denied.CloseElement();
                     __denied.OpenElement(8, "p");
-                    __denied.AddContent(9, _serverWarning?.Detail ?? ResolveShellLocalized("AuthorizationActionUnavailableMessage", "This action is unavailable."));
+                    __denied.AddContent(9, string.IsNullOrWhiteSpace(_serverWarning?.Detail) ? ResolveShellLocalized("AuthorizationActionUnavailableMessage", "This action is unavailable.") : _serverWarning.Detail);
                     __denied.CloseElement();
                     __denied.CloseElement();
                 }));

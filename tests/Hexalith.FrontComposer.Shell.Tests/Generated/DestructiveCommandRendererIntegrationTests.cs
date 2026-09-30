@@ -44,6 +44,8 @@ public sealed class DestructiveCommandRendererIntegrationTests : CommandRenderer
         dialogService.ShowDialogCallCount.ShouldBe(0);
         commandService.DispatchCount.ShouldBe(0);
         FcFocusModule.Invocations.Any(invocation => invocation.Identifier == "restoreOverlayOrigin").ShouldBeFalse();
+        // BH10-01 — the refused attempt releases only its own token, which cannot clear the holder's slot.
+        AssertReservationReleasedByOwner();
     }
 
     [Fact]
@@ -72,6 +74,60 @@ public sealed class DestructiveCommandRendererIntegrationTests : CommandRenderer
         FcFocusModule.Invocations.Any(invocation => invocation.Identifier == "restoreOverlayOrigin").ShouldBeFalse();
         Renderer.UnhandledException.IsCompleted.ShouldBeFalse();
         _ = cut.Find("form");
+        // BH10-01 — the browser may have reserved the slot before failing, so the attempt releases it by owner.
+        AssertReservationReleasedByOwner();
+    }
+
+    [Fact]
+    public async Task GeneratedRendererLostCaptureReplyReleasesItsReservationByOwner() {
+        // BH10-01 — a capture whose reply never arrives may still have reserved the modal slot in the
+        // browser; the renderer releases it by owner token instead of leaving a durable reservation.
+        _ = FcFocusModule.Setup<bool>("captureOverlayOrigin", _ => true).SetException(new TaskCanceledException("capture reply lost"));
+        RecordingCommandService commandService = new();
+        ControlledDialogService dialogService = new(DialogResult.Ok());
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => commandService));
+        Services.Replace(ServiceDescriptor.Scoped<IDialogService>(_ => dialogService.Service));
+        await InitializeStoreAsync();
+
+        IRenderedComponent<DeleteWidgetCommandRenderer> cut = Render<DeleteWidgetCommandRenderer>();
+
+        cut.WaitForAssertion(() => _ = cut.Find("fluent-button"));
+        cut.Find("fluent-button").Click();
+        cut.WaitForAssertion(() => _ = cut.Find("form"));
+        cut.Find("form").Submit();
+
+        AssertReservationReleasedByOwner();
+        dialogService.ShowDialogCallCount.ShouldBe(0);
+        commandService.DispatchCount.ShouldBe(0);
+        Renderer.UnhandledException.IsCompleted.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task GeneratedRendererFailedRestoreRetriesTheReleaseOnTheNextRender() {
+        // BH10-01 — a restore that fails (for example during a disconnect) would leave the durable
+        // reservation in the browser; the renderer retries its owner release on the next render.
+        _ = FcFocusModule.SetupVoid("restoreOverlayOrigin", _ => true).SetException(new JSException("restore failed"));
+        RecordingCommandService commandService = new();
+        ControlledDialogService dialogService = new(DialogResult.Cancel());
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => commandService));
+        Services.Replace(ServiceDescriptor.Scoped<IDialogService>(_ => dialogService.Service));
+        await InitializeStoreAsync();
+
+        IRenderedComponent<DeleteWidgetCommandRenderer> cut = Render<DeleteWidgetCommandRenderer>();
+
+        cut.WaitForAssertion(() => _ = cut.Find("fluent-button"));
+        cut.Find("fluent-button").Click();
+        cut.WaitForAssertion(() => _ = cut.Find("form"));
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(() => dialogService.ShowDialogCallCount.ShouldBe(1));
+        AssertOverlayOriginRestoredOnce();
+        FcFocusModule.Invocations.Any(invocation => invocation.Identifier == "releaseOverlayReservation").ShouldBeFalse();
+
+        cut.Render();
+
+        AssertReservationReleasedByOwner();
+        commandService.DispatchCount.ShouldBe(0);
     }
 
     [Fact]
@@ -263,6 +319,21 @@ public sealed class DestructiveCommandRendererIntegrationTests : CommandRenderer
             () => FcFocusModule.Invocations.Any(invocation => invocation.Identifier == "restoreOverlayOrigin"),
             TimeSpan.FromSeconds(5)).ShouldBeTrue();
         FcFocusModule.Invocations.Count(invocation => invocation.Identifier == "restoreOverlayOrigin").ShouldBe(1);
+    }
+
+    private void AssertReservationReleasedByOwner() {
+        // The release runs in the gate's finally block or a later render, so it is polled.
+        SpinWait.SpinUntil(
+            () => FcFocusModule.Invocations.Any(invocation => invocation.Identifier == "releaseOverlayReservation"),
+            TimeSpan.FromSeconds(5)).ShouldBeTrue();
+        string owner = FcFocusModule.Invocations
+            .Last(invocation => invocation.Identifier == "captureOverlayOrigin")
+            .Arguments[2].ShouldBeOfType<string>();
+        owner.ShouldStartWith("fc-trigger-");
+        FcFocusModule.Invocations
+            .Where(invocation => invocation.Identifier == "releaseOverlayReservation")
+            .ShouldHaveSingleItem()
+            .Arguments.ShouldHaveSingleItem().ShouldBe(owner);
     }
 
     private sealed class HoldingDerivedValueProvider : IDerivedValueProvider {

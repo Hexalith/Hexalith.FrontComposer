@@ -43,6 +43,9 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
     // rejection: null before any attempt, true when copied, false when the browser refused the copy.
     private bool? _supportReferenceCopied;
 
+    // Story 13.3 VR-02 / AA10-07 — the operator cancelled the current field-mapped rejection's card.
+    private bool _mappedRejectionDismissed;
+
     // Review 2026-04-17 P3 — cascaded as WrapperInitiatedNavigation so FcFormAbandonmentGuard
     // can bypass its warning when the wrapper itself triggers a Start-over navigation.
     private bool _wrapperInitiatedNavigation;
@@ -258,6 +261,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
                 _timer?.EnterTerminal();
                 CancelDismissTimer();
                 _supportReferenceCopied = null;
+                _mappedRejectionDismissed = false;
                 next = next with { TimerPhase = LifecycleTimerPhase.Terminal };
                 break;
 
@@ -388,6 +392,17 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
             _wrapperInitiatedNavigation = false;
             throw;
         }
+    }
+
+    /// <summary>
+    /// Story 13.3 VR-02 / AA10-07 — "cancel" for a field-mapped rejection withdraws the mapped card. The
+    /// entered values and the linked field errors stay, and focus moves to the form's first editable
+    /// control so it never falls to the document body when the pressed button unmounts.
+    /// </summary>
+    private async Task DismissMappedRejectionAsync() {
+        _mappedRejectionDismissed = true;
+        StateHasChanged();
+        await FocusEditableFormAsync().ConfigureAwait(true);
     }
 
     private async Task FocusEditableFormAsync() {

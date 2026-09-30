@@ -141,7 +141,7 @@
         </FluentMessageBar>
     }
 
-    @if (_state.Current is CommandLifecycleState.Rejected && MappedRejection) {
+    @if (_state.Current is CommandLifecycleState.Rejected && MappedRejection && !_mappedRejectionDismissed) {
         <div class="fc-rejection-mapped">
             <FluentCard data-testid="fc-rejected-mapped">
                 <h2>@ResolveRejectionTitle()</h2>
@@ -154,6 +154,10 @@
                         <div><dt>@Localizer["RejectionDocsCodeLabel"]</dt><dd>@RejectionDetails.DocsCode</dd></div>
                     </dl>
                 }
+                @* Story 13.3 VR-02 / AA10-07 — the mapped outcome's cancel, mirroring the unmapped bar's dismiss. *@
+                <FluentButton Appearance="ButtonAppearance.Outline"
+                              OnClick="DismissMappedRejectionAsync"
+                              data-testid="fc-rejected-mapped-dismiss">@Localizer["MappedRejectionDismiss"]</FluentButton>
             </FluentCard>
         </div>
     }

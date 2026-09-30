@@ -762,6 +762,10 @@
     <value>The command was rejected. Correct the linked fields and try again.</value>
     <comment>Story 13.3 VR-02 — lifecycle copy for a mapped rejection when the server supplied no safe reason. The focused summary is the only speech path.</comment>
   </data>
+  <data name="MappedRejectionDismiss" xml:space="preserve">
+    <value>Dismiss</value>
+    <comment>Story 13.3 VR-02 / AA10-07 — the mapped rejection card's cancel action. It withdraws the card and keeps the entered values and the linked field errors.</comment>
+  </data>
   <data name="RejectionErrorCodeLabel" xml:space="preserve">
     <value>Error code</value>
     <comment>Story 13.3 — label for the support-safe rejection error code in the mapped-rejection details.</comment>

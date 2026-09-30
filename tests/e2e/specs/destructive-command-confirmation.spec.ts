@@ -214,11 +214,12 @@ test.describe('Story 4.1: destructive command confirmation', () => {
 
     const reservation = await page.evaluate(async (focusModulePath) => {
       const focus = await import(focusModulePath) as {
-        captureOverlayOrigin: (testId?: string | null, preserveExisting?: boolean) => boolean;
-        restoreOverlayOrigin: () => void;
+        captureOverlayOrigin: (testId?: string | null, preserveExisting?: boolean, owner?: string | null) => boolean;
+        releaseOverlayReservation: (owner: string) => boolean;
+        restoreOverlayOrigin: (forceRouteHeading?: boolean, owner?: string | null) => void;
       };
       const intentWindow = window as unknown as {
-        __fcModalReservation: { createdAt: number; durable: boolean } | null;
+        __fcModalReservation: { createdAt: number; durable: boolean; owner: string | null } | null;
         __fcOverlayOpenIntent: unknown;
         __fcOverlayOrigin: unknown;
       };
@@ -264,6 +265,30 @@ test.describe('Story 4.1: destructive command confirmation', () => {
       const staleOriginDiscarded = intentWindow.__fcOverlayOrigin === settingsTrigger
         && (intentWindow.__fcOverlayOpenIntent as { origin?: unknown } | null)?.origin === settingsTrigger;
       focus.restoreOverlayOrigin();
+
+      // Story 13.3 BH10-01 — a destructive reservation is released only by the owner token that took it,
+      // so a renderer can release a reservation whose capture reply was lost without clearing another's.
+      const reservationOwner = () =>
+        (Reflect.get(intentWindow, '__fcModalReservation') as { owner: string | null } | null)?.owner;
+      const ownedCapture = focus.captureOverlayOrigin(null, false, 'fc-e2e-owner-a');
+      const foreignReleaseRefused = !focus.releaseOverlayReservation('fc-e2e-owner-b')
+        && reservationOwner() === 'fc-e2e-owner-a';
+      focus.restoreOverlayOrigin(false, 'fc-e2e-owner-b');
+      const foreignRestoreRefused = reservationOwner() === 'fc-e2e-owner-a';
+      const ownerReleased = focus.releaseOverlayReservation('fc-e2e-owner-a')
+        && Reflect.get(intentWindow, '__fcModalReservation') === null;
+
+      // Story 13.3 AA10-01 — a non-modal popover that carries role="dialog" does not hold the modal
+      // slot, so a Shell overlay launched from inside it is admitted.
+      const popover = document.createElement('div');
+      popover.setAttribute('role', 'dialog');
+      const popoverInput = document.createElement('input');
+      popover.append(popoverInput);
+      document.body.append(popover);
+      popoverInput.focus();
+      const popoverCaptureAdmitted = focus.captureOverlayOrigin(null, true);
+      focus.restoreOverlayOrigin();
+      popover.remove();
       return {
         firstCapture,
         racingCapture,
@@ -273,6 +298,11 @@ test.describe('Story 4.1: destructive command confirmation', () => {
         trackerPreserved,
         afterStaleShellCapture,
         staleOriginDiscarded,
+        ownedCapture,
+        foreignReleaseRefused,
+        foreignRestoreRefused,
+        ownerReleased,
+        popoverCaptureAdmitted,
       };
     }, '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js');
 
@@ -285,6 +315,11 @@ test.describe('Story 4.1: destructive command confirmation', () => {
       trackerPreserved: true,
       afterStaleShellCapture: true,
       staleOriginDiscarded: true,
+      ownedCapture: true,
+      foreignReleaseRefused: true,
+      foreignRestoreRefused: true,
+      ownerReleased: true,
+      popoverCaptureAdmitted: true,
     });
 
     // The real pointer path must also honor the reservation, and its global event tracker must not

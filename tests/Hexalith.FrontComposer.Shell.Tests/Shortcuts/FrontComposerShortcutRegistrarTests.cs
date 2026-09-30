@@ -132,6 +132,47 @@ public class FrontComposerShortcutRegistrarTests {
         dialog.ShowDialogCallCount.ShouldBe(0);
     }
 
+    // Story 13.3 VG10-01 — focus interop failing is not a refusal: the shortcut still opens its dialog.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OpenPaletteAsync_WhenFocusCaptureInteropFails_StillOpensPalette(bool canceled) {
+        IShortcutService shortcuts = Substitute.For<IShortcutService>();
+        Hexalith.FrontComposer.Shell.Tests.Components.Layout.RecordingDialogService dialog = new();
+        IServiceProvider services = BuildFocusServices(captured: false, captureFailure: CaptureFailure(canceled));
+        FrontComposerShortcutRegistrar sut = BuildRegistrar(
+            shortcuts,
+            out IDispatcher dispatcher,
+            dialog: dialog,
+            services: services);
+
+        await sut.OpenPaletteAsync();
+
+        dispatcher.Received(1).Dispatch(Arg.Any<PaletteOpenedAction>());
+        dialog.ShowDialogCallCount.ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OpenSettingsAsync_WhenFocusCaptureInteropFails_StillOpensSettings(bool canceled) {
+        IShortcutService shortcuts = Substitute.For<IShortcutService>();
+        Hexalith.FrontComposer.Shell.Tests.Components.Layout.RecordingDialogService dialog = new();
+        IServiceProvider services = BuildFocusServices(captured: false, captureFailure: CaptureFailure(canceled));
+        FrontComposerShortcutRegistrar sut = BuildRegistrar(
+            shortcuts,
+            out _,
+            dialog: dialog,
+            services: services);
+
+        await sut.OpenSettingsAsync();
+
+        dialog.ShowDialogCallCount.ShouldBe(1);
+    }
+
+    private static Exception CaptureFailure(bool canceled)
+        => canceled ? new OperationCanceledException("capture interop timed out") : new JSException("capture failed");
+
     private static FrontComposerShortcutRegistrar BuildRegistrar(
         IShortcutService shortcuts,
         out IDispatcher dispatcher,
@@ -153,8 +194,8 @@ public class FrontComposerShortcutRegistrarTests {
         return new FrontComposerShortcutRegistrar(shortcuts, dispatcher, state, dialog, nav, loc, ulids, focus, services);
     }
 
-    private static ServiceProvider BuildFocusServices(bool captured) {
-        FocusReservationJsInterop js = new(captured);
+    private static ServiceProvider BuildFocusServices(bool captured, Exception? captureFailure = null) {
+        FocusReservationJsInterop js = new(captured, captureFailure);
         return new ServiceCollection().AddSingleton<IJSRuntime>(js).BuildServiceProvider();
     }
 
@@ -177,7 +218,7 @@ public class FrontComposerShortcutRegistrarTests {
             => throw new InvalidOperationException("dialog failed");
     }
 
-    private sealed class FocusReservationJsInterop(bool captured) : IJSRuntime, IJSObjectReference {
+    private sealed class FocusReservationJsInterop(bool captured, Exception? captureFailure = null) : IJSRuntime, IJSObjectReference {
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
         public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
@@ -189,6 +230,10 @@ public class FrontComposerShortcutRegistrarTests {
             object?[]? args) {
             _ = cancellationToken;
             _ = args;
+            if (identifier == "captureOverlayOrigin" && captureFailure is not null) {
+                return ValueTask.FromException<TValue>(captureFailure);
+            }
+
             object result = identifier switch {
                 "import" => this,
                 "captureOverlayOrigin" => captured,

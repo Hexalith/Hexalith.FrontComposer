@@ -578,6 +578,7 @@
   <data name="RejectionSupportReferenceCopyFailed" xml:space="preserve"><value>Échec de la copie. Utilisez les codes affichés.</value></data>
   <data name="RejectionSupportReferenceTemplate" xml:space="preserve"><value>Code d'erreur : {0}, code de documentation : {1}</value></data>
   <data name="MappedRejectionRecoveryMessage" xml:space="preserve"><value>La commande a été rejetée. Corrigez les champs liés puis réessayez.</value></data>
+  <data name="MappedRejectionDismiss" xml:space="preserve"><value>Fermer</value></data>
   <data name="RejectionErrorCodeLabel" xml:space="preserve"><value>Code d'erreur</value></data>
   <data name="RejectionReasonCategoryLabel" xml:space="preserve"><value>Catégorie du motif</value></data>
   <data name="RejectionSuggestedActionLabel" xml:space="preserve"><value>Action suggérée</value></data>

@@ -403,10 +403,15 @@ public class CommandRendererEmitterTests {
         source.ShouldContain("var result = await DialogService.ShowDialogAsync<FcDestructiveConfirmationDialog>");
         source.ShouldContain("options.Modal = true");
         source.ShouldContain("options.PreventDismissOnEscape = false");
-        source.ShouldContain("focusOriginCaptured = await focusModule.InvokeAsync<bool>(\"captureOverlayOrigin\")");
+        source.ShouldContain("focusOriginCaptured = await focusModule.InvokeAsync<bool>(\"captureOverlayOrigin\", null, false, reservationOwner)");
         source.ShouldContain("if (!focusOriginCaptured) throw new OperationCanceledException(\"Another modal interaction is already active.\")");
-        source.ShouldContain("if (focusOriginCaptured)");
-        source.ShouldContain("restoreOverlayOrigin");
+        // BH10-01 — every attempt that asked for the reservation releases it by owner token, restoring
+        // focus only when the capture was confirmed; a failed release is retried on the next render.
+        source.ShouldContain("await ReleaseModalReservationAsync(reservationOwner, restoreFocus: focusOriginCaptured);");
+        source.ShouldContain("await focusModule.InvokeVoidAsync(\"restoreOverlayOrigin\", false, owner);");
+        source.ShouldContain("_ = await focusModule.InvokeAsync<bool>(\"releaseOverlayReservation\", owner);");
+        source.ShouldContain("catch (TaskCanceledException) { _unreleasedModalReservationOwner = owner; }");
+        source.ShouldContain("if (_unreleasedModalReservationOwner is not null && !_dialogOpen)");
         source.ShouldContain("catch (JSDisconnectedException) { /* circuit teardown; benign. */ }");
         source.ShouldNotContain("dialogRef.Result");
         source.ShouldContain("nameof(FcDestructiveConfirmationDialog.Title), \"Delete this widget?\"");
