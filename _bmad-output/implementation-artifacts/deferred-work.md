@@ -10011,3 +10011,7 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
   summary: Reset the lifecycle when a scope change arrives after SubmittedAction and before server dispatch.
   evidence: The generated submit path dispatches SubmittedAction, then returns from the dispatch-scope mismatch after PresentScopeUnavailableAsync without ResetToIdleAction, so the lifecycle stays Submitting and later submits stay blocked. That return without a reset was already in the baseline; Story 13.3 only replaced SetCommandInProgressWarning with PresentScopeUnavailableAsync on the same path.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-repair-tests-ci-and-release-publication.md`
+  summary: Verify diagnostic-host cleanup behavior when child-process signaling itself fails; medium developer severity remains unverified.
+  evidence: The only observed error event is spawn failure with no owned child. Reproduce an error event plus failed SIGTERM/SIGKILL and a still-running owned child on a supported platform to determine whether ownership is lost.

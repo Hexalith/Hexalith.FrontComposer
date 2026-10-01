@@ -1,6 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 
 import { expect, test } from '../fixtures/index.js';
+import { fillFieldByLabel } from '../helpers/fluent-fields.js';
 
 const VIEW_KEY = 'Counter:Counter.Domain.CounterProjection';
 const INDICATOR_COPY = 'New item. It may not match current filters yet.';
@@ -18,6 +19,19 @@ test.describe('Epic 9 composed and live acceptance', () => {
     const grid = page.locator(`[data-fc-datagrid="${VIEW_KEY}"]`);
     const indicator = page.getByTestId('fc-new-item-indicator');
     const catchUp = page.getByTestId('epic-9-catch-up');
+    const showOverview = async () => {
+      const tab = page.getByRole('tab', { name: 'Overview', exact: true });
+      await tab.click();
+      await expect(tab).toHaveAttribute('aria-selected', 'true');
+      await expect(createForm).toBeVisible();
+      await expect(updateForm).toBeVisible();
+    };
+    const showProjection = async () => {
+      const tab = page.getByRole('tab', { name: 'Projection', exact: true });
+      await tab.click();
+      await expect(tab).toHaveAttribute('aria-selected', 'true');
+      await expect(grid).toBeVisible();
+    };
     const screenshotPath = testInfo.outputPath('epic-9-live-acceptance.png');
     const evidencePath = testInfo.outputPath('epic-9-command-evidence.json');
 
@@ -29,17 +43,20 @@ test.describe('Epic 9 composed and live acceptance', () => {
     });
     const html = page.locator('html');
     await expect(html).toHaveAttribute('lang', 'en');
-    await expect(grid).toBeVisible();
+    await showProjection();
     await expect(catchUp).toHaveCount(1);
     await expect(grid.getByText(exactKey, { exact: true })).toHaveCount(0);
     const uiLanguage = (await html.getAttribute('lang'))?.trim() ?? '';
     const gridWasRenderedBeforeDispatch = await grid.isVisible();
     const exactKeyCountBeforeDispatch = await grid.getByText(exactKey, { exact: true }).count();
 
-    await createForm.getByLabel('Counter key').fill(exactKey);
-    await createForm.getByLabel('Initial Value').fill('41');
+    await showOverview();
+    await fillFieldByLabel(createForm, 'Counter key', exactKey);
+    await fillFieldByLabel(createForm, 'Initial Value', '41');
     await createForm.getByRole('button', { name: 'Create Counter', exact: true }).click();
 
+    await showProjection();
+    await expect(indicator).toBeVisible();
     await expect(indicator).toHaveCount(1);
     await expect(indicator).toHaveAttribute('role', 'status');
     await expect(indicator).toHaveAttribute('aria-live', 'polite');
@@ -58,8 +75,9 @@ test.describe('Epic 9 composed and live acceptance', () => {
     const catchUpCaptured = Number(await catchUp.getAttribute('data-captured'));
     const catchUpPublished = Number(await catchUp.getAttribute('data-published'));
     const catchUpReceived = Number(await catchUp.getAttribute('data-received'));
-    const createdRow = grid.getByRole('group').filter({ hasText: exactKey });
-    const createdCount = createdRow.locator('strong');
+    const createdRow = grid.getByRole('row').or(grid.getByRole('group')).filter({ hasText: exactKey });
+    const createdCount = createdRow.locator('[data-fc-field="Count"], .counter-count-slot strong');
+    await expect(createdCount).toHaveCount(1);
     await expect(createdRow).toBeVisible();
     await expect(createdCount).toHaveText('41');
     const materializedCountAfterCreate = Number((await createdCount.textContent())?.trim());
@@ -69,19 +87,27 @@ test.describe('Epic 9 composed and live acceptance', () => {
     // Two provider-resolved updates reach the same target before the first projection refresh.
     // The live DOM can prove that one localized indicator remains visible through the overlap;
     // internal composite-key provenance remains in the bUnit composition proof.
-    await updateForm.getByLabel('Counter key').fill(exactKey);
-    await updateForm.getByLabel('Amount').fill('1');
+    await showOverview();
+    await fillFieldByLabel(updateForm, 'Counter key', exactKey);
+    await fillFieldByLabel(updateForm, 'Amount', '1');
     await updateForm.getByRole('button', { name: 'Update Counter', exact: true }).click();
+    await showProjection();
+    await expect(indicator).toBeVisible();
     await expect(indicator).toHaveCount(1);
     const firstUpdateAnnouncement = (await indicator.textContent())?.trim() ?? '';
     expect(firstUpdateAnnouncement).toBe(INDICATOR_COPY);
     const firstUpdateIndicatorElement = await indicator.elementHandle();
     expect(firstUpdateIndicatorElement).not.toBeNull();
     const overlapIndicatorCountBeforeSecondDispatch = await indicator.count();
-    await updateForm.getByLabel('Amount').fill('2');
+    await showOverview();
+    await fillFieldByLabel(updateForm, 'Amount', '2');
+    await showProjection();
     await expect(createdCount).toHaveText('41');
     const materializedCountBeforeSecondDispatch = Number((await createdCount.textContent())?.trim());
+    await showOverview();
     await updateForm.getByRole('button', { name: 'Update Counter', exact: true }).click();
+    await showProjection();
+    await expect(indicator).toBeVisible();
     await expect(indicator).toHaveCount(1);
     await expect(indicator).toHaveText(firstUpdateAnnouncement);
     const secondUpdateIndicatorElement = await indicator.elementHandle();
@@ -96,6 +122,7 @@ test.describe('Epic 9 composed and live acceptance', () => {
     expect(overlapIndicatorElementRetained).toBe(true);
     const overlapIndicatorCountAfterSecondDispatch = await indicator.count();
     const overlapIndicatorCopyAfterSecondDispatch = (await indicator.textContent())?.trim() ?? '';
+    await expect(catchUp).toHaveAttribute('data-published', '3');
     await expect(createdCount).toHaveText('44');
     const materializedCountAfterOverlappingUpdates = Number((await createdCount.textContent())?.trim());
     await expect(indicator).toHaveCount(0);
@@ -103,11 +130,15 @@ test.describe('Epic 9 composed and live acceptance', () => {
 
     // A later update proves the provider path against a row that was absent before dispatch and
     // is now already rendered. Its projection refresh dismisses the fresh-row announcement.
-    await updateForm.getByLabel('Counter key').fill(exactKey);
-    await updateForm.getByLabel('Amount').fill('8');
+    await showOverview();
+    await fillFieldByLabel(updateForm, 'Counter key', exactKey);
+    await fillFieldByLabel(updateForm, 'Amount', '8');
     await updateForm.getByRole('button', { name: 'Update Counter', exact: true }).click();
+    await showProjection();
+    await expect(indicator).toBeVisible();
     await expect(indicator).toHaveCount(1);
     const laterUpdateIndicatorVisibleCount = await indicator.count();
+    await expect(catchUp).toHaveAttribute('data-published', '4');
     await expect(createdCount).toHaveText('52');
     const materializedCountAfterLaterUpdate = Number((await createdCount.textContent())?.trim());
     await expect(indicator).toHaveCount(0);

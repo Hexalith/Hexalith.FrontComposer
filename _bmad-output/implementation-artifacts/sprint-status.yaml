@@ -740,6 +740,7 @@ action_items:
     status: open
     gate: "G-3"
     historical_story: "11.25"
+    implementation_story: "11.25"
     proposed_work:
       - "EVT-ID-1"
       - "EVT-APP-1"

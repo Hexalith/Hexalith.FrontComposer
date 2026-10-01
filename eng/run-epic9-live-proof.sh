@@ -237,6 +237,11 @@ inspect_failed_start() {
     echo "An unrelated FrontComposer AppHost appeared after the failed $phase start; refusing fallback without stopping it." >&2
     return 1
   fi
+  # Confirmed absence ends ownership of this start attempt before a fallback can acquire a new PID.
+  cleanup_required=0
+  unknown_pid_cleanup_allowed=0
+  started_apphost_path=""
+  started_apphost_pid=""
   rm -f -- "$raw_process_list"
   raw_process_list=""
   return 0
@@ -246,7 +251,7 @@ parse_and_own_started_apphost() {
   local parsed_start
   parsed_start="$(mktemp)"
   sed -n '/^[[:space:]]*{/,$p' "$raw_start" > "$parsed_start"
-  if ! jq -e 'type == "object"' "$parsed_start" >/dev/null; then
+  if ! jq -e -s 'length == 1 and (.[0] | type == "object")' "$parsed_start" >/dev/null; then
     rm -f -- "$parsed_start"
     echo "Aspire start did not return a valid JSON object." >&2
     return 1
@@ -375,14 +380,22 @@ fi
 
 start_mode="isolated-build"
 raw_start="$(mktemp)"
-if ! aspire start \
+start_result=0
+start_ownership_result=0
+aspire start \
   --apphost "$apphost" \
   --isolated \
   --non-interactive \
   --format Json \
-  --nologo > "$raw_start" 2>&1; then
+  --nologo > "$raw_start" 2>&1 || start_result=$?
+if [[ $start_result -eq 0 ]]; then
+  parse_and_own_started_apphost || start_ownership_result=$?
+  start_result=$start_ownership_result
+fi
+if [[ $start_result -ne 0 ]]; then
   redact_lifecycle_text "$raw_start" "$artifact_root/apphost-start.failed.json"
-  if ! inspect_failed_start "initial"; then
+  # A path/PID mismatch cannot establish ownership, so it must never authorize fallback.
+  if [[ $start_ownership_result -eq 3 ]] || ! inspect_failed_start "initial"; then
     exit 2
   fi
   rm -f -- "$raw_start"
@@ -409,35 +422,30 @@ if ! aspire start \
   fi
   start_mode="isolated-no-build-after-serialized-build"
   raw_start="$(mktemp)"
-  if ! aspire start \
+  start_result=0
+  start_ownership_result=0
+  aspire start \
     --apphost "$apphost" \
     --isolated \
     --no-build \
     --non-interactive \
     --format Json \
-    --nologo > "$raw_start" 2>&1; then
+    --nologo > "$raw_start" 2>&1 || start_result=$?
+  if [[ $start_result -eq 0 ]]; then
+    parse_and_own_started_apphost || start_ownership_result=$?
+    start_result=$start_ownership_result
+  fi
+  if [[ $start_result -ne 0 ]]; then
     {
       printf '\n%s\n' 'Fallback --no-build start output:'
       sed -E 's/(login\?t=)[^[:space:]"&]+/\1[REDACTED]/g' "$raw_start"
     } >> "$artifact_root/apphost-start.failed.json"
-    if ! inspect_failed_start "fallback"; then
+    if [[ $start_ownership_result -eq 3 ]] || ! inspect_failed_start "fallback"; then
       exit 2
     fi
     echo "Fallback AppHost start failed without leaving an owned partial run." >&2
     exit 2
   fi
-fi
-
-parse_result=0
-parse_and_own_started_apphost || parse_result=$?
-if [[ $parse_result -ne 0 ]]; then
-  if [[ $parse_result -eq 3 ]]; then
-    exit 2
-  fi
-  if ! inspect_failed_start "successful-but-unparseable"; then
-    exit 2
-  fi
-  exit 2
 fi
 rm -f -- "$raw_start"
 raw_start=""

@@ -375,6 +375,31 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
+    public void QualityWorkflow_RunsAllPinnedBrowsersOnLinux() {
+        string quality = StripYamlComments(File.ReadAllText(Path.Combine(RepositoryRoot(), ".github/workflows/quality.yml")));
+        int start = quality.IndexOf("  browser-regressions-linux:", StringComparison.Ordinal);
+        start.ShouldBeGreaterThanOrEqualTo(0);
+        int end = quality.IndexOf("  epic9-live-acceptance:", start, StringComparison.Ordinal);
+        end.ShouldBeGreaterThan(start);
+        string job = quality[start..end];
+        job.ShouldContain("runs-on: ubuntu-latest");
+        job.ShouldContain("submodules: false");
+        job.ShouldContain("git -c submodule.recurse=false submodule update --init references/Hexalith.Builds");
+        job.ShouldNotContain("--recursive");
+        job.ShouldNotContain("continue-on-error:");
+        Regex.IsMatch(job[..job.IndexOf("    steps:", StringComparison.Ordinal)], @"^[ \t]*if[ \t]*:", RegexOptions.Multiline).ShouldBeFalse();
+        ExtractNamedStep(job, "Install pinned Playwright workspace").ShouldContain("npm ci");
+        ExtractNamedStep(job, "Install all pinned Playwright browsers").ShouldContain("npx playwright install --with-deps chromium firefox webkit");
+        ExtractNamedStep(job, "Build Counter browser host").ShouldContain("dotnet build samples/Counter/Counter.Web/Counter.Web.csproj --configuration Release -m:1");
+        ExtractNamedStep(job, "Build CLI browser fixture").ShouldContain("dotnet build src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj --configuration Release -m:1");
+        string run = ExtractNamedStep(job, "Run all configured browser projects");
+        run.ShouldContain("npx playwright test --workers 4");
+        run.ShouldNotContain("--project");
+        run.ShouldNotContain("--grep");
+        ExtractNamedStep(job, "Upload Linux browser results").ShouldContain("if: always()");
+    }
+
+    [Fact]
     public void QualityWorkflow_PinsAccessibilityVisualGate() {
         // REL-2 code-review P3 (2026-07-13): the Playwright a11y/visual job (the sole automated
         // accessibility + visual-regression gate) relocated from ci.yml into quality.yml. Pin the job
@@ -493,7 +518,6 @@ public sealed class CiGovernanceTests {
         checkoutStep.ShouldContain("GIT_CONFIG_KEY_0: core.longpaths");
         checkoutStep.ShouldContain("GIT_CONFIG_VALUE_0: 'true'");
         checkoutStep.ShouldNotContain("git config --global");
-        a11yJob.Replace(checkoutStep, string.Empty, StringComparison.Ordinal).ShouldNotContain("core.longpaths");
 
         string initializeBuildSubmodules = ExtractNamedStep(a11yJob, "Initialize build submodules");
         a11yJob.ShouldContain("fetch-depth: 0");
@@ -505,10 +529,15 @@ public sealed class CiGovernanceTests {
         initializeBuildSubmodules
             .Replace("submodule update --init references/Hexalith.Builds", string.Empty, StringComparison.Ordinal)
             .ShouldNotContain("submodule update --init");
-        initializeBuildSubmodules.ShouldContain("GIT_CONFIG_COUNT: 1");
+        initializeBuildSubmodules.ShouldContain("GIT_CONFIG_COUNT: 2");
         initializeBuildSubmodules.ShouldContain("GIT_CONFIG_KEY_0: core.symlinks");
         initializeBuildSubmodules.ShouldContain("GIT_CONFIG_VALUE_0: 'false'");
+        initializeBuildSubmodules.ShouldContain("GIT_CONFIG_KEY_1: core.longpaths");
+        initializeBuildSubmodules.ShouldContain("GIT_CONFIG_VALUE_1: 'true'");
         initializeBuildSubmodules.ShouldNotContain("git config --global");
+        a11yJob.Replace(checkoutStep, string.Empty, StringComparison.Ordinal)
+            .Replace(initializeBuildSubmodules, string.Empty, StringComparison.Ordinal)
+            .ShouldNotContain("core.longpaths");
 
         foreach (string stepName in new[] {
             "Typecheck Playwright accessibility lane",
@@ -1078,6 +1107,7 @@ public sealed class CiGovernanceTests {
         const string expectedDotnetSdk = "10.0.401";
         const string sourceResourceCompatibilitySdk = "10.0.302";
         const string expectedAspire = "13.5.4";
+        const string expectedAspireHosting = "13.6.0";
         const string expectedDaprCli = "1.18.0";
         const string expectedDaprRuntime = "1.18.2";
         string root = RepositoryRoot();
@@ -1178,7 +1208,8 @@ public sealed class CiGovernanceTests {
             .Attribute("Version")
             .ShouldNotBeNull()
             .Value;
-        selectedAspire.ShouldBe(expectedAspire);
+        // The shared integration packages and the AppHost SDK/CLI have independent pins.
+        selectedAspire.ShouldBe(expectedAspireHosting);
     }
 
     [Theory]
@@ -1747,7 +1778,7 @@ public sealed class CiGovernanceTests {
         // Bind the published baseline to the packer's own --plan output rather than to a Python
         // source substring: the literal alone went green on a constant compared with itself.
         string publishedBaseline = PublishedPackageValidationBaseline(root);
-        publishedBaseline.ShouldBe("4.4.0");
+        publishedBaseline.ShouldBe("4.5.0");
         File.Exists(Path.Combine(root, "eng/pack_release_packages.py")).ShouldBeFalse(
             "the retired build-plus-pack lifecycle entrypoint must not coexist with the live packer.");
         qualityWorkflow.ShouldContain("python3 -m unittest tests/eng/test_pack_release_packages.py tests/eng/test_release_prepublish.py");
@@ -3910,11 +3941,12 @@ public sealed class CiGovernanceTests {
         const string sealedV2BuildsSha = "a32cb422749352cce8dec948aa3e78c8f00eb4cf";
         const string sealedV2Version = "3.103.0";
         const string activePacketSourceSha = "ba7ac196e60db8820525961791eccfacec24633f";
+        const string activePacketVersion = "3.106.0";
         const string activePacketBuildsSha = "4f522a8caa62ad82584bdf56d54e16109b717b1c";
         const string sealedV3IdentitySha = "6dc9aaa586cf35531de112bd68dd4d724a81d7ad76a11930684e8e9fe6c98892";
-        const string currentSourceSha = "bf03d57cf459b329d709622af6c616c1635b83d9";
-        const string currentBuildsSha = "2fba3497043fe5ffcfe4dc44c51a09eae9b950ab";
-        const string currentVersion = "3.106.0";
+        const string successorSourceSha = "19dc1f82122564453163ac010dc7e5ae81db7ed3";
+        const string successorBuildsSha = "21ce044ab465ccb2adab58b3d66e394ffbecf3c2";
+        const string successorVersion = "3.110.0";
         // The immutable Story 11.24 owner capture remains historical evidence. Current source,
         // package, and Builds values are compatibility provenance, not migration approval.
         string root = RepositoryRoot();
@@ -3979,7 +4011,7 @@ public sealed class CiGovernanceTests {
         predecessor.GetProperty("supersededForActiveReleaseSelectionOnly").GetBoolean().ShouldBeTrue();
         JsonElement activeTuple = activeIdentity.GetProperty("activeTuple");
         activeTuple.GetProperty("eventStoreSourceGitlink").GetString().ShouldBe(activePacketSourceSha);
-        activeTuple.GetProperty("eventStorePackageVersion").GetString().ShouldBe(currentVersion);
+        activeTuple.GetProperty("eventStorePackageVersion").GetString().ShouldBe(activePacketVersion);
         activeTuple.GetProperty("buildsCatalogGitlink").GetString().ShouldBe(activePacketBuildsSha);
         JsonElement runtimeInputs = activeIdentity.GetProperty("runtimeInputs");
         string runtimeManifestPath = Path.Combine(root, runtimeInputs.GetProperty("path").GetString()!);
@@ -4080,9 +4112,9 @@ public sealed class CiGovernanceTests {
         const string successorCandidateCondition = "github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')";
         successorTargetLane.ShouldContain($"if: {successorCandidateCondition}");
         successorTargetLane.ShouldContain("TARGET_FRONTCOMPOSER_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.frontcomposer_revision || github.sha }}");
-        successorTargetLane.ShouldContain($"TARGET_EVENTSTORE_SOURCE_REVISION: ${{{{ github.event_name == 'workflow_dispatch' && inputs.eventstore_source_revision || '{currentSourceSha}' }}}}");
-        successorTargetLane.ShouldContain($"TARGET_EVENTSTORE_PACKAGE_VERSION: ${{{{ github.event_name == 'workflow_dispatch' && inputs.eventstore_package_version || '{currentVersion}' }}}}");
-        successorTargetLane.ShouldContain($"TARGET_BUILDS_CATALOG_REVISION: ${{{{ github.event_name == 'workflow_dispatch' && inputs.builds_catalog_revision || '{currentBuildsSha}' }}}}");
+        successorTargetLane.ShouldContain($"TARGET_EVENTSTORE_SOURCE_REVISION: ${{{{ github.event_name == 'workflow_dispatch' && inputs.eventstore_source_revision || '{successorSourceSha}' }}}}");
+        successorTargetLane.ShouldContain($"TARGET_EVENTSTORE_PACKAGE_VERSION: ${{{{ github.event_name == 'workflow_dispatch' && inputs.eventstore_package_version || '{successorVersion}' }}}}");
+        successorTargetLane.ShouldContain($"TARGET_BUILDS_CATALOG_REVISION: ${{{{ github.event_name == 'workflow_dispatch' && inputs.builds_catalog_revision || '{successorBuildsSha}' }}}}");
         successorTargetLane.ShouldContain("test \"$GITHUB_REF\" = \"refs/heads/main\"");
         successorTargetLane.ShouldContain("--prepare-runtime-successor");
         successorTargetLane.ShouldContain("--successor-frontcomposer-revision \"$TARGET_FRONTCOMPOSER_REVISION\"");
@@ -4100,9 +4132,9 @@ public sealed class CiGovernanceTests {
         artifactLane.ShouldContain("-RequireProviderVerification");
         artifactLane.ShouldContain("-PrepareRuntimeSuccessor");
         artifactLane.ShouldContain("-SuccessorFrontComposerRevision \"${{ github.sha }}\"");
-        artifactLane.ShouldContain($"-SuccessorEventStoreSourceRevision \"{currentSourceSha}\"");
-        artifactLane.ShouldContain($"-SuccessorEventStorePackageVersion \"{currentVersion}\"");
-        artifactLane.ShouldContain($"-SuccessorBuildsCatalogRevision \"{currentBuildsSha}\"");
+        artifactLane.ShouldContain($"-SuccessorEventStoreSourceRevision \"{successorSourceSha}\"");
+        artifactLane.ShouldContain($"-SuccessorEventStorePackageVersion \"{successorVersion}\"");
+        artifactLane.ShouldContain($"-SuccessorBuildsCatalogRevision \"{successorBuildsSha}\"");
         artifactLane.ShouldContain("-AppHostPackageRoot \"\"");
         artifactLane.ShouldContain("_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json");
         artifactLane.ShouldNotContain("BLOCKED_HANDOFF");
@@ -4124,9 +4156,9 @@ public sealed class CiGovernanceTests {
         contractValidator.ShouldContain("--prepare-runtime-successor");
         contractValidator.ShouldContain("--successor-builds-catalog-revision");
         string runtimeEvidenceValidator = File.ReadAllText(Path.Combine(root, "eng/eventstore_runtime_evidence.py"));
-        runtimeEvidenceValidator.ShouldContain($"SUCCESSOR_SOURCE_SHA = \"{currentSourceSha}\"");
-        runtimeEvidenceValidator.ShouldContain($"SUCCESSOR_BUILDS_SHA = \"{currentBuildsSha}\"");
-        runtimeEvidenceValidator.ShouldContain($"SUCCESSOR_VERSION = \"{currentVersion}\"");
+        runtimeEvidenceValidator.ShouldContain($"SUCCESSOR_SOURCE_SHA = \"{successorSourceSha}\"");
+        runtimeEvidenceValidator.ShouldContain($"SUCCESSOR_BUILDS_SHA = \"{successorBuildsSha}\"");
+        runtimeEvidenceValidator.ShouldContain($"SUCCESSOR_VERSION = \"{successorVersion}\"");
         liveProviderLane.ShouldContain("export NUGET_PACKAGES=\"$provider_packages\"");
         liveProviderLane.ShouldContain("--write-runtime-input-manifest");
         liveProviderLane.ShouldContain("--runtime-input-manifest-output \"$runtime_manifest\"");
@@ -4355,14 +4387,14 @@ public sealed class CiGovernanceTests {
         string pactContracts = File.ReadAllText(Path.Combine(root, "docs/reference/pact-contracts.md"));
         pactContracts.ShouldContain("--repo Hexalith/Hexalith.FrontComposer");
         pactContracts.ShouldContain("test \"$local_main_revision\" = \"$remote_main_revision\"");
-        pactContracts.ShouldContain($"-f eventstore_source_revision={currentSourceSha}");
-        pactContracts.ShouldContain($"-f eventstore_package_version={currentVersion}");
-        pactContracts.ShouldContain($"-f builds_catalog_revision={currentBuildsSha}");
-        pactContracts.ShouldContain($"`{activePacketSourceSha}`, package `{currentVersion}`, and Builds catalog");
+        pactContracts.ShouldContain($"-f eventstore_source_revision={successorSourceSha}");
+        pactContracts.ShouldContain($"-f eventstore_package_version={successorVersion}");
+        pactContracts.ShouldContain($"-f builds_catalog_revision={successorBuildsSha}");
+        pactContracts.ShouldContain($"`{activePacketSourceSha}`, package `{activePacketVersion}`, and Builds catalog");
         pactContracts.ShouldContain($"`{activePacketBuildsSha}`. The current checkout target");
         Regex.IsMatch(
                 pactContracts,
-                $@"selects EventStore source `{currentSourceSha}`, package `{currentVersion}`, and Builds catalog\s+`{currentBuildsSha}`",
+                $@"selects EventStore source `{successorSourceSha}`, package `{successorVersion}`, and Builds catalog\s+`{successorBuildsSha}`",
                 RegexOptions.CultureInvariant)
             .ShouldBeTrue("the operator guide must bind the exact current successor tuple");
         pactContracts.ShouldContain("Identity v4 remains pending genuine hosted provider and authenticated AppHost evidence");
@@ -4429,11 +4461,11 @@ public sealed class CiGovernanceTests {
         JsonElement liveIdentity = liveReport.RootElement.GetProperty("identity");
         string? liveSourceSha = liveIdentity.GetProperty("observedSourceSha").GetString();
         bool isSealedV2Capture = liveSourceSha == sealedV2SourceSha;
-        bool isCurrentCapture = liveSourceSha == currentSourceSha;
+        bool isCurrentCapture = liveSourceSha == successorSourceSha;
         (isSealedV2Capture || isCurrentCapture).ShouldBeTrue(
             "the live root must contain either the committed sealed v2 packet or this workflow's exact current recapture");
-        string expectedLiveVersion = isCurrentCapture ? currentVersion : sealedV2Version;
-        string expectedLiveBuildsSha = isCurrentCapture ? currentBuildsSha : sealedV2BuildsSha;
+        string expectedLiveVersion = isCurrentCapture ? successorVersion : sealedV2Version;
+        string expectedLiveBuildsSha = isCurrentCapture ? successorBuildsSha : sealedV2BuildsSha;
         liveIdentity.GetProperty("expectedVersion").GetString().ShouldBe(expectedLiveVersion);
         liveIdentity.GetProperty("observedBuildsSha").GetString().ShouldBe(expectedLiveBuildsSha);
         liveIdentity.GetProperty("approvalAuthorized").GetBoolean().ShouldBeFalse();
@@ -4529,36 +4561,62 @@ public sealed class CiGovernanceTests {
             daprCleanup.GetProperty("createdByInvocation").GetArrayLength());
         daprCleanup.GetProperty("remainingAfterCleanup").GetArrayLength().ShouldBe(0);
 
+        // Historical capture hashes above are immutable. Current provenance comes from the root
+        // commit; advancing a compatible root gitlink does not rewrite or confer capture approval.
         ProcessResult eventStoreGitlink = RunProcess(
             root,
             "git",
             ["ls-tree", "HEAD", "--", "references/Hexalith.EventStore"]);
         eventStoreGitlink.ExitCode.ShouldBe(0, eventStoreGitlink.Error);
-        eventStoreGitlink.Output.Trim().ShouldBe($"160000 commit {currentSourceSha}\treferences/Hexalith.EventStore");
+        Match selectedSource = Regex.Match(
+            eventStoreGitlink.Output.Trim(),
+            @"^160000 commit (?<sha>[0-9a-f]{40})\treferences/Hexalith.EventStore$",
+            RegexOptions.CultureInvariant);
+        selectedSource.Success.ShouldBeTrue("the committed root must select one exact EventStore gitlink");
+        string selectedSourceSha = selectedSource.Groups["sha"].Value;
+        selectedSourceSha.ShouldBe(successorSourceSha,
+            "the current capture target must select the committed EventStore gitlink");
 
         ProcessResult eventStoreHead = RunProcess(
             root,
             "git",
             ["-C", "references/Hexalith.EventStore", "rev-parse", "HEAD"]);
         eventStoreHead.ExitCode.ShouldBe(0, eventStoreHead.Error);
-        eventStoreHead.Output.Trim().ShouldBe(currentSourceSha);
+        eventStoreHead.Output.Trim().ShouldBe(selectedSourceSha);
 
         ProcessResult buildsGitlink = RunProcess(
             root,
             "git",
             ["ls-tree", "HEAD", "--", "references/Hexalith.Builds"]);
         buildsGitlink.ExitCode.ShouldBe(0, buildsGitlink.Error);
-        buildsGitlink.Output.Trim().ShouldBe($"160000 commit {currentBuildsSha}\treferences/Hexalith.Builds");
+        Match selectedBuilds = Regex.Match(
+            buildsGitlink.Output.Trim(),
+            @"^160000 commit (?<sha>[0-9a-f]{40})\treferences/Hexalith.Builds$",
+            RegexOptions.CultureInvariant);
+        selectedBuilds.Success.ShouldBeTrue("the committed root must select one exact Builds gitlink");
+        string selectedBuildsSha = selectedBuilds.Groups["sha"].Value;
+        selectedBuildsSha.ShouldBe(successorBuildsSha,
+            "the current capture target must select the committed Builds gitlink");
 
         ProcessResult buildsHead = RunProcess(
             root,
             "git",
             ["-C", "references/Hexalith.Builds", "rev-parse", "HEAD"]);
         buildsHead.ExitCode.ShouldBe(0, buildsHead.Error);
-        buildsHead.Output.Trim().ShouldBe(currentBuildsSha);
+        buildsHead.Output.Trim().ShouldBe(selectedBuildsSha);
 
+        ProcessResult committedCatalog = RunProcess(
+            root,
+            "git",
+            ["-C", "references/Hexalith.Builds", "show", $"{selectedBuildsSha}:Props/Directory.Packages.props"]);
+        committedCatalog.ExitCode.ShouldBe(0, committedCatalog.Error);
+        XDocument selectedCatalog = XDocument.Parse(committedCatalog.Output);
         XDocument catalog = XDocument.Load(Path.Combine(root, "references/Hexalith.Builds/Props/Directory.Packages.props"));
-        catalog.Descendants("HexalithEventStoreVersion").Single().Value.ShouldBe(currentVersion);
+        XNode.DeepEquals(catalog, selectedCatalog).ShouldBeTrue(
+            "current catalog inputs must match the catalog selected by the committed root gitlink");
+        selectedCatalog.Descendants("HexalithEventStoreVersion").Single().Value.ShouldBe(
+            successorVersion,
+            "the current capture target must select the committed catalog package version");
 
         using JsonDocument report = JsonDocument.Parse(File.ReadAllText(Path.Combine(
             evidenceRoot,

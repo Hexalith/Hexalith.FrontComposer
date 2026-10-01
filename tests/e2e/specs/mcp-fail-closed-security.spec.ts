@@ -1,7 +1,18 @@
+import { fileURLToPath } from 'node:url';
+
 import { expect, test } from '../fixtures/index.js';
+import { spawnOwnedProcess, stopOwnedProcess, waitForOwnedServer, type OwnedProcess } from '../helpers/owned-process.js';
 import { McpClient, type McpCallToolResult, type McpResource, type McpTextResourceContents } from '../helpers/mcp-client.js';
 
 const lifecycleTool = 'frontcomposer.lifecycle.subscribe';
+const admittedTools = [
+  lifecycleTool,
+  'Counter.CreateCounterCommand.Execute',
+  'Counter.UpdateCounterCommand.Execute',
+  'Default.IncrementCommand.Execute',
+  'Counter.BatchIncrementCommand.Execute',
+  'Counter.ConfigureCounterCommand.Execute',
+].sort();
 const visibleCommand = 'Counter.BatchIncrementCommand.Execute';
 const absentCommand = 'Counter.DoesNotExistCommand.Execute';
 const secretArgument = 'Bearer eyJhbGciOiJIUzI1NiJ9.agent-secret';
@@ -17,8 +28,7 @@ test.describe('Story 5.4: MCP fail-closed security gates', () => {
     );
     const names = result.tools.map((tool) => tool.name);
 
-    expect(names).toContain(lifecycleTool);
-    expect(names).toContain(visibleCommand);
+    expect(names.sort()).toEqual(admittedTools);
     expect(JSON.stringify(result)).not.toContain('Specimens.PolicyDenied');
     expect(JSON.stringify(result)).not.toContain('Specimens.PolicyAllowed');
     expect(JSON.stringify(result)).not.toContain('demo-tenant');
@@ -130,6 +140,61 @@ test.describe('Story 5.4: MCP fail-closed security gates', () => {
     expect(body).not.toContain(invalidApiKey);
     expect(body).not.toContain('demo-tenant');
     expect(body).not.toContain('demo-user');
+  });
+});
+
+
+test.describe('Counter sample Development HTTP authentication', () => {
+  let host: OwnedProcess | undefined;
+  let baseUrl: string;
+  test.afterEach(async () => {
+    if (host) await stopOwnedProcess(host);
+  });
+  test.beforeEach(async () => {
+    const projectDirectory = new URL('../../../samples/Counter/Counter.Web/', import.meta.url);
+    const assembly = fileURLToPath(new URL('bin/Release/net10.0/Counter.Web.dll', projectDirectory));
+    host = spawnOwnedProcess('dotnet', [assembly, '--urls', 'http://127.0.0.1:0'], {
+      cwd: projectDirectory,
+      env: {
+        ...process.env,
+        ASPNETCORE_ENVIRONMENT: 'Development',
+        DOTNET_ENVIRONMENT: 'Development',
+        Hexalith__FrontComposer__Specimens__Enabled: 'true',
+      },
+    }, 60_000);
+    await expect.poll(() => [...host!.listeningOrigins][0]).toBeTruthy();
+    baseUrl = [...host.listeningOrigins][0];
+    await waitForOwnedServer(host, baseUrl, Date.now() + 10_000);
+  });
+
+  test('admits the exact API-key tool inventory and rejects missing or invalid HTTP credentials', async ({ playwright }) => {
+    const request = await playwright.request.newContext({ baseURL: baseUrl });
+    try {
+      const client = new McpClient(request);
+      await client.initialize();
+      const result = await client.call<{ tools: Array<{ name: string }> }>('tools/list');
+      expect(result.tools.map((tool) => tool.name).sort()).toEqual(admittedTools);
+      expect(JSON.stringify(result)).not.toContain('Specimens.');
+      for (const key of [null, invalidApiKey]) {
+        const response = await request.post('/mcp', {
+          headers: {
+            Accept: 'application/json, text/event-stream',
+            ...(key === null ? {} : { 'X-FrontComposer-Mcp-Key': key }),
+          },
+          data: { jsonrpc: '2.0', id: 1, method: 'initialize', params: {
+            protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'auth-probe', version: '0.0.0' },
+          } },
+        });
+        expect(response.status()).toBe(401);
+        const body = await response.text();
+        expect(body).not.toContain(invalidApiKey);
+        expect(body).not.toContain('Invalid sample credential');
+        expect(body).not.toContain('demo-tenant');
+        expect(body).not.toContain('demo-user');
+      }
+    } finally {
+      await request.dispose();
+    }
   });
 });
 

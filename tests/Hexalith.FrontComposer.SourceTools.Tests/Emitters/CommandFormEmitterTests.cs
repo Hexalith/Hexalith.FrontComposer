@@ -247,13 +247,14 @@ public class CommandFormEmitterTests {
         masked.ShouldContain("__b.AddAttribute(#, \"ValidationFieldFor\", (global::System.Linq.Expressions.Expression<Func<bool?>>)(() => _model.NotifyOwner));");
         masked.ShouldContain("EventCallback.Factory.Create<bool>(this, v => { _model.NotifyOwner = v; NotifyClientFieldChanged(\"NotifyOwner\"); })");
 
-        // VG7-02 — a nullable enum binds FluentSelect<TEnum, TEnum?> to the nullable model property, so
+        // VG7-02 — a nullable enum binds FluentSelect<TEnum?, TEnum?> to the nullable model property, so
         // the select's own Fluent field renders the model field's validation message (the select ignores
         // ValidationFieldFor) and a null value selects no option.
-        masked.ShouldContain("__b.OpenComponent<FluentSelect<Counter.Domain.Priority, Counter.Domain.Priority?>>(#);");
+        masked.ShouldContain("__b.OpenComponent<FluentSelect<Counter.Domain.Priority?, Counter.Domain.Priority?>>(#);");
         masked.ShouldContain("__b.AddAttribute(#, \"Value\", _model.Escalation);");
         masked.ShouldContain("__b.AddAttribute(#, \"ValueExpression\", (global::System.Linq.Expressions.Expression<Func<Counter.Domain.Priority?>>)(() => _model.Escalation));");
         masked.ShouldContain("EventCallback.Factory.Create<Counter.Domain.Priority?>(this, v => { _model.Escalation = v; NotifyClientFieldChanged(\"Escalation\"); })");
+        source.ShouldContain("System.Linq.Enumerable.Select(System.Enum.GetValues<Counter.Domain.Priority>(), static value => (Counter.Domain.Priority?)value)");
         source.ShouldNotContain("_EscalationProxy");
 
         // Non-nullable editors keep their direct model binding and need no proxy.

@@ -675,7 +675,7 @@ public sealed partial class DiagnosticRegistryTests {
     [Fact]
     public void FrontComposerObsoleteAttributes_OnNet10TargetUseDiagnosticIdAndUrlFormat() {
         // AC24 / AC9 precedence: where TFM supports custom obsolete diagnostic IDs and URL format,
-        // they must be used. We assert this for the two known production deprecations.
+        // they must be used. We assert this for the known production deprecations.
         string queryRequest = File.ReadAllText(Path.Combine(ProjectRoot().FullName, "src", "Hexalith.FrontComposer.Contracts", "Communication", "QueryRequest.cs"), Encoding.UTF8);
         queryRequest.ShouldContain("private const string DiagnosticId = \"HFC0001\"", customMessage: "QueryRequest legacy entry points must use the HFC0001 identity on net10.0+ obsolete metadata (AC24).");
         queryRequest.ShouldContain("private const string HelpLinkFormat = \"https://hexalith.github.io/FrontComposer/diagnostics/{0}\"", customMessage: "QueryRequest legacy entry points must use the canonical help-link format on net10.0+ obsolete metadata (AC24).");
@@ -684,6 +684,10 @@ public sealed partial class DiagnosticRegistryTests {
         string schemaNegotiation = File.ReadAllText(Path.Combine(ProjectRoot().FullName, "src", "Hexalith.FrontComposer.Mcp", "Schema", "SchemaNegotiation.cs"), Encoding.UTF8);
         schemaNegotiation.ShouldContain("DiagnosticId = \"HFC4001\"", customMessage: "SchemaNegotiation.HasCompatibleAdditiveDrift must declare DiagnosticId (AC24).");
         schemaNegotiation.ShouldContain("UrlFormat = \"https://hexalith.github.io/FrontComposer/diagnostics/{0}\"", customMessage: "SchemaNegotiation.HasCompatibleAdditiveDrift must declare UrlFormat (AC24).");
+
+        string shortcutRegistrar = File.ReadAllText(Path.Combine(ProjectRoot().FullName, "src", "Hexalith.FrontComposer.Shell", "Shortcuts", "FrontComposerShortcutRegistrar.cs"), Encoding.UTF8);
+        shortcutRegistrar.ShouldContain("DiagnosticId = \"HFC2122\"", customMessage: "the legacy column-filter shortcut must use its own deprecation identity.");
+        shortcutRegistrar.ShouldContain("UrlFormat = \"https://hexalith.github.io/FrontComposer/diagnostics/{0}\"", customMessage: "the shortcut deprecation must resolve its registry migration page.");
     }
 
     [Fact]
@@ -694,10 +698,10 @@ public sealed partial class DiagnosticRegistryTests {
         JsonObject json = JsonNode.Parse(File.ReadAllText(suppression.FullName, Encoding.UTF8))!.AsObject();
         ValidateCompatibilitySuppressionsJson(json).ShouldBeEmpty();
         json["schemaVersion"]!.GetValue<string>().ShouldBe(CompatibilitySuppressionsSchemaVersion);
-        json["currentRelease"]!.GetValue<string>().ShouldBe("v4.5");
+        json["currentRelease"]!.GetValue<string>().ShouldBe("v4.6");
         JsonArray suppressions = json["suppressions"]!.AsArray();
 
-        suppressions.ShouldBeEmpty("the published 4.4.0 baseline absorbs all reviewed v4 MCP removals.");
+        suppressions.ShouldBeEmpty("the published 4.5.0 baseline absorbs all reviewed v4 MCP removals.");
 
         HashSet<string> apiCompatDiagnosticIds = ["CP0001", "CP0002", "CP0008"];
         Regex targetReleaseRegex = TargetReleaseRegex();
@@ -956,7 +960,7 @@ public sealed partial class DiagnosticRegistryTests {
             @"<FrontComposerPackageValidationBaselineVersion Condition=""'\$\(FrontComposerPackageValidationBaselineVersion\)' == ''"">(?<version>[^<]+)</FrontComposerPackageValidationBaselineVersion>");
         sharedBaseline.Success.ShouldBeTrue("Directory.Build.targets must default the package-validation baseline.");
         string packageValidationBaseline = sharedBaseline.Groups["version"].Value;
-        packageValidationBaseline.ShouldBe("4.4.0");
+        packageValidationBaseline.ShouldBe("4.5.0");
         directoryBuildTargets.ShouldContain("Condition=\"'$(IsPackable)' == 'true' AND '$(EnableFrontComposerPackageValidation)' == 'true'\"");
         directoryBuildTargets.ShouldContain("<EnablePackageValidation>true</EnablePackageValidation>");
         directoryBuildTargets.ShouldContain("<PackageValidationBaselineVersion Condition=\"'$(FrontComposerPackageValidationSkipBaseline)' != 'true'\">$(FrontComposerPackageValidationBaselineVersion)</PackageValidationBaselineVersion>");

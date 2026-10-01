@@ -135,8 +135,8 @@ the lane fails closed if either is missing, altered, or unbound.
 Identity v3 is sealed at EventStore source `ba7ac196e60db8820525961791eccfacec24633f`,
 package `3.106.0`, and Builds catalog `4f522a8caa62ad82584bdf56d54e16109b717b1c`.
 The selected successor advances the EventStore source to
-`bf03d57cf459b329d709622af6c616c1635b83d9` and the Builds catalog to
-`2fba3497043fe5ffcfe4dc44c51a09eae9b950ab`, while retaining package `3.106.0`.
+`19dc1f82122564453163ac010dc7e5ae81db7ed3` and the Builds catalog to
+`21ce044ab465ccb2adab58b3d66e394ffbecf3c2`, with selected package `3.110.0`.
 Do not rewrite or relabel identity v3.
 After the preparation merge is pushed to `main`, dispatch the target-bound capture with its exact
 40-hex merge revision:
@@ -153,9 +153,9 @@ gh workflow run quality.yml \
   --repo Hexalith/Hexalith.FrontComposer \
   --ref main \
   -f frontcomposer_revision="$local_main_revision" \
-  -f eventstore_source_revision=bf03d57cf459b329d709622af6c616c1635b83d9 \
-  -f eventstore_package_version=3.106.0 \
-  -f builds_catalog_revision=2fba3497043fe5ffcfe4dc44c51a09eae9b950ab
+  -f eventstore_source_revision=19dc1f82122564453163ac010dc7e5ae81db7ed3 \
+  -f eventstore_package_version=3.110.0 \
+  -f builds_catalog_revision=21ce044ab465ccb2adab58b3d66e394ffbecf3c2
 ```
 
 The command refuses to dispatch unless the checked-out local `main` and the hosted `main` resolve to
@@ -186,8 +186,8 @@ Re-capture rules:
 Identity v3 is sealed historical compatibility for EventStore source
 `ba7ac196e60db8820525961791eccfacec24633f`, package `3.106.0`, and Builds catalog
 `4f522a8caa62ad82584bdf56d54e16109b717b1c`. The current checkout target
-selects EventStore source `bf03d57cf459b329d709622af6c616c1635b83d9`, package `3.106.0`, and Builds catalog
-`2fba3497043fe5ffcfe4dc44c51a09eae9b950ab`.
+selects EventStore source `19dc1f82122564453163ac010dc7e5ae81db7ed3`, package `3.110.0`, and Builds catalog
+`21ce044ab465ccb2adab58b3d66e394ffbecf3c2`.
 
 Identity v4 remains pending genuine hosted provider and authenticated AppHost evidence for that exact
 target. No v4 identity, evidence tree, decision, approval subject, or receipt is present.

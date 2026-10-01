@@ -26,6 +26,13 @@ export function initializeExpandInRow(elementRef) {
         return;
     }
 
+    // Route navigation owns the initial heading focus. Eager inline forms must not scroll
+    // that focused heading away; a user-opened form has already moved focus to its trigger.
+    if (document.activeElement instanceof HTMLElement
+        && document.activeElement.matches('#fc-main-content h1, main h1, [role="main"] h1')) {
+        return;
+    }
+
     const reduceMotion = typeof window !== 'undefined'
         && typeof window.matchMedia === 'function'
         && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -40,7 +47,9 @@ export function initializeExpandInRow(elementRef) {
     }
 
     requestAnimationFrame(() => {
-        if (!elementRef.isConnected) {
+        if (!elementRef.isConnected
+            || (document.activeElement instanceof HTMLElement
+                && document.activeElement.matches('#fc-main-content h1, main h1, [role="main"] h1'))) {
             return;
         }
         const rect = elementRef.getBoundingClientRect();

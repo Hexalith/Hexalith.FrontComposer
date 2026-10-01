@@ -50,6 +50,7 @@ const createHarness = async (t, options = {}) => {
   const stateFile = join(root, 'aspire-state');
   await mkdir(bin, { recursive: true });
   await writeFile(stateFile, 'stopped\n');
+  await writeFile(`${stateFile}.pid`, '4321\n');
   t.after(() => rm(root, { recursive: true, force: true }));
 
   await writeExecutable(join(bin, 'git'), `#!/usr/bin/env bash
@@ -112,7 +113,7 @@ case "$1" in
     if [[ "$count" -eq 1 && "\${FC_EPIC9_FAKE_UNRELATED:-false}" == "true" ]]; then
       printf '[{"appHostPath":"/unrelated/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj","appHostPid":9999}]\\n'
     elif [[ "$state" == "running" ]]; then
-      pid="\${FC_EPIC9_FAKE_PS_PID:-4321}"
+      pid="\${FC_EPIC9_FAKE_PS_PID:-$(cat "$FC_EPIC9_FAKE_STATE.pid")}"
       if [[ "\${FC_EPIC9_FAKE_PS_PID_CHANGE_CALL:-0}" -gt 0 \
         && "$count" -ge "$FC_EPIC9_FAKE_PS_PID_CHANGE_CALL" ]]; then
         pid="$FC_EPIC9_FAKE_PS_PID_AFTER_CHANGE"
@@ -124,15 +125,30 @@ case "$1" in
     ;;
   start)
     count="$(next_count "$FC_EPIC9_FAKE_START_COUNT")"
+    pid="$FC_EPIC9_FAKE_FIRST_START_PID"
+    if [[ "$count" -gt 1 ]]; then pid="$FC_EPIC9_FAKE_SECOND_START_PID"; fi
+    printf '%s\\n' "$pid" > "$FC_EPIC9_FAKE_STATE.pid"
     if [[ "$count" -eq 1 && "\${FC_EPIC9_FAKE_FIRST_START_FAILS:-false}" == "true" ]]; then
       if [[ "\${FC_EPIC9_FAKE_PARTIAL_START:-false}" == "true" ]]; then
         printf 'running\\n' > "$FC_EPIC9_FAKE_STATE"
       fi
       printf 'start failed at https://localhost/login?t=secret\\n' >&2
-      exit 95
+      exit "$FC_EPIC9_FAKE_FIRST_START_EXIT_CODE"
     fi
+    case ",\${FC_EPIC9_FAKE_INVALID_START_CALLS:-}," in
+      *",$count,"*)
+        if [[ "\${FC_EPIC9_FAKE_PARTIAL_START:-false}" == "true" ]]; then
+          printf 'running\\n' > "$FC_EPIC9_FAKE_STATE"
+        fi
+        printf 'Build failed on start call %s at https://localhost/login?t=secret\\n' "$count"
+        exit 0
+        ;;
+    esac
     printf 'running\\n' > "$FC_EPIC9_FAKE_STATE"
-    printf '{"appHostPath":"%s","appHostPid":4321,"dashboardUrl":"https://localhost/login?t=secret"}\\n' "$FC_EPIC9_FAKE_APPHOST"
+    if [[ "$count" -eq 1 && "$FC_EPIC9_FAKE_FIRST_START_ABSENT" == "true" ]]; then
+      printf 'stopped\\n' > "$FC_EPIC9_FAKE_STATE"
+    fi
+    printf '{"appHostPath":"%s","appHostPid":%s,"dashboardUrl":"https://localhost/login?t=secret"}\\n' "$FC_EPIC9_FAKE_APPHOST" "$pid"
     ;;
   stop)
     count="$(next_count "$FC_EPIC9_FAKE_STOP_COUNT")"
@@ -228,10 +244,15 @@ fi
     FC_EPIC9_FAKE_START_COUNT: join(root, 'aspire-start-count'),
     FC_EPIC9_FAKE_STOP_COUNT: join(root, 'aspire-stop-count'),
     FC_EPIC9_FAKE_FIRST_START_FAILS: String(options.firstStartFails ?? false),
+    FC_EPIC9_FAKE_FIRST_START_EXIT_CODE: String(options.firstStartExitCode ?? 95),
+    FC_EPIC9_FAKE_INVALID_START_CALLS: options.invalidStartCalls?.join(',') ?? '',
     FC_EPIC9_FAKE_PARTIAL_START: String(options.partialStart ?? false),
     FC_EPIC9_FAKE_UNRELATED: String(options.unrelated ?? false),
     FC_EPIC9_FAKE_PS_FAIL_CALLS: options.psFailCalls?.join(',') ?? '',
-    FC_EPIC9_FAKE_PS_PID: String(options.psPid ?? 4321),
+    FC_EPIC9_FAKE_PS_PID: options.psPid === undefined ? '' : String(options.psPid),
+    FC_EPIC9_FAKE_FIRST_START_PID: String(options.startPids?.[0] ?? 4321),
+    FC_EPIC9_FAKE_SECOND_START_PID: String(options.startPids?.[1] ?? 4321),
+    FC_EPIC9_FAKE_FIRST_START_ABSENT: String(options.firstStartAbsent ?? false),
     FC_EPIC9_FAKE_PS_PID_CHANGE_CALL: String(options.psPidChangeCall ?? 0),
     FC_EPIC9_FAKE_PS_PID_AFTER_CHANGE: String(options.psPidAfterChange ?? 9999),
     FC_EPIC9_FAKE_STOP_FAILURES: String(options.stopFailures ?? 0),
@@ -402,6 +423,69 @@ test('Epic 9 proof uses the serialized-build fallback only after failed-start po
   assert.match(invocations.join(' '), /stop/u);
 });
 
+test('Epic 9 proof distinguishes CLI exit code three from an ownership mismatch', async (t) => {
+  for (const partialStart of [false, true]) {
+    await t.test(`partial start ${partialStart}`, async (subtest) => {
+      const harness = await createHarness(subtest, { firstStartFails: true, firstStartExitCode: 3, partialStart });
+      const result = await runProof(harness.environment);
+      const invocations = lifecycleNames(await readInvocations(harness.aspireLog));
+
+      assert.equal(result.exitCode, partialStart ? 2 : 0, result.stderr);
+      assert.deepEqual(invocations.slice(0, 5), partialStart
+        ? ['ps', 'start', 'ps', 'stop', 'ps']
+        : ['ps', 'start', 'ps', 'start', 'ps']);
+      if (partialStart) {
+        assert.match(result.stderr, /partial FrontComposer AppHost/u);
+        assert.deepEqual(await readInvocations(harness.npmLog), []);
+      }
+    });
+  }
+});
+
+test('Epic 9 proof falls back after a zero-exit invalid start response and absent postflight', async (t) => {
+  const harness = await createHarness(t, { invalidStartCalls: [1] });
+  const result = await runProof(harness.environment);
+  const invocations = await readInvocations(harness.aspireLog);
+
+  assert.equal(result.exitCode, 0, result.stderr);
+  assert.deepEqual(lifecycleNames(invocations).slice(0, 5), ['ps', 'start', 'ps', 'start', 'ps']);
+  assert.match(invocations.filter((invocation) => invocation.startsWith('start '))[1], /--no-build/u);
+  assert.deepEqual(
+    (await readInvocations(harness.dotnetLog)).filter((invocation) => invocation.startsWith('build ')),
+    [EXPECTED_COUNTER_WEB_BUILD, EXPECTED_DEPENDENCY_BUILD, EXPECTED_APPHOST_BUILD],
+  );
+  const failure = await readFile(join(harness.artifactRoot, 'apphost-start.failed.json'), 'utf8');
+  assert.match(failure, /Build failed on start call 1/u);
+  assert.match(failure, /login\?t=\[REDACTED\]/u);
+  assert.doesNotMatch(failure, /secret/u);
+});
+
+test('Epic 9 proof retains both invalid zero-exit start diagnostics and fails closed', async (t) => {
+  const harness = await createHarness(t, { invalidStartCalls: [1, 2] });
+  const result = await runProof(harness.environment);
+
+  assert.equal(result.exitCode, 2);
+  assert.match(result.stderr, /Fallback AppHost start failed/u);
+  assert.deepEqual(lifecycleNames(await readInvocations(harness.aspireLog)), ['ps', 'start', 'ps', 'start', 'ps']);
+  assert.deepEqual(await readInvocations(harness.npmLog), []);
+  const failure = await readFile(join(harness.artifactRoot, 'apphost-start.failed.json'), 'utf8');
+  assert.match(failure, /Build failed on start call 1/u);
+  assert.match(failure, /Fallback --no-build start output:/u);
+  assert.match(failure, /Build failed on start call 2/u);
+  assert.doesNotMatch(failure, /secret/u);
+});
+
+test('Epic 9 proof cleans a partial AppHost after an invalid zero-exit start and refuses fallback', async (t) => {
+  const harness = await createHarness(t, { invalidStartCalls: [1], partialStart: true });
+  const result = await runProof(harness.environment);
+
+  assert.equal(result.exitCode, 2);
+  assert.match(result.stderr, /partial FrontComposer AppHost/u);
+  assert.deepEqual(lifecycleNames(await readInvocations(harness.aspireLog)), ['ps', 'start', 'ps', 'stop', 'ps']);
+  assert.deepEqual(await readInvocations(harness.dotnetLog), [EXPECTED_COUNTER_WEB_BUILD]);
+  assert.deepEqual(await readInvocations(harness.npmLog), []);
+});
+
 test('Epic 9 proof stops before the AppHost build and fallback start when the dependency build fails', async (t) => {
   const harness = await createHarness(t, { firstStartFails: true, dotnetFailBuildCall: 2 });
   const result = await runProof(harness.environment);
@@ -495,4 +579,21 @@ test('Epic 9 proof refuses to proceed or stop when process ownership does not ma
   assert.equal(result.exitCode, 2);
   assert.match(result.stderr, /did not uniquely correlate/u);
   assert.equal(invocations.filter((name) => name === 'stop').length, 0);
+});
+
+test('Epic 9 proof releases an absent initial PID before cleaning a different partial fallback PID', async (t) => {
+  const harness = await createHarness(t, {
+    startPids: [4321, 8765], firstStartAbsent: true, psFailCalls: [2],
+    invalidStartCalls: [2], partialStart: true,
+  });
+  const result = await runProof(harness.environment);
+  assert.equal(result.exitCode, 2);
+  assert.match(result.stderr, /partial FrontComposer AppHost/u);
+  assert.doesNotMatch(result.stderr, /different AppHost PID/u);
+  assert.deepEqual(lifecycleNames(await readInvocations(harness.aspireLog)), [
+    'ps', 'start', 'ps', 'ps', 'start', 'ps', 'stop', 'ps',
+  ]);
+  assert.equal((await readFile(harness.environment.FC_EPIC9_FAKE_STATE, 'utf8')).trim(), 'stopped');
+  assert.equal((await readFile(`${harness.environment.FC_EPIC9_FAKE_STATE}.pid`, 'utf8')).trim(), '8765');
+  assert.deepEqual(await readInvocations(harness.npmLog), []);
 });

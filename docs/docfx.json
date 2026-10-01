@@ -15,6 +15,7 @@
         }
       ],
       "dest": "reference/api",
+      "references": [{ "src": "..", "files": ["artifacts/docs/api-references/*.dll"] }],
       "disableGitFeatures": true,
       "disableDefaultFilter": false
     }

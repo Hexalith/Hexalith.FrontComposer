@@ -84,6 +84,10 @@ test.describe('Story 6.3: Level 4 full-view overrides', () => {
       'confirmed',
     );
 
+    const projectionTab = page.getByRole('tab', { name: 'Projection', exact: true });
+    await projectionTab.click();
+    await expect(projectionTab).toHaveAttribute('aria-selected', 'true');
+
     const replacement = page.locator('section[aria-labelledby="counter-full-view-heading"]');
     await expect(replacement).toBeVisible();
     await expect(replacement.locator('#counter-full-view-heading')).toBeVisible();

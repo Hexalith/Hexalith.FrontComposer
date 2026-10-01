@@ -82,6 +82,10 @@ test.describe('Story 6.2: Level 3 field-slot overrides', () => {
       'confirmed',
     );
 
+    const projectionTab = page.getByRole('tab', { name: 'Projection', exact: true });
+    await projectionTab.click();
+    await expect(projectionTab).toHaveAttribute('aria-selected', 'true');
+
     const slot = page.locator('.counter-count-slot');
     await expect(slot).toHaveCount(1);
     await expect(slot.getByText('Count')).toBeVisible();

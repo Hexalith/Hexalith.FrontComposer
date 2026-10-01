@@ -1,0 +1,130 @@
+---
+title: Repair tests and CI for verified NuGet release publication
+type: bugfix
+created: '2026-10-01'
+status: done
+route: dispatch
+review_loop_iteration: 0
+baseline_commit: 50d07e58eafd5361ba94b2c84cb76bcd2a631aa3
+context:
+  - AGENTS.md
+  - references/Hexalith.AI.Tools/hexalith-llm-instructions.md
+  - references/Hexalith.AI.Tools/hexalith-ux-instructions.md
+  - .editorconfig
+  - .gitattributes
+  - tests/README.md
+---
+
+<frozen-after-approval reason="user authorized test/CI repairs and release publication in the task">
+
+## Intent
+
+The user requests all tests passing, CI/CD repairs, and execution of Release with verified NuGet publication. Recent CI and Quality runs fail from dependency expectation drift, Windows submodule paths, invalid deprecation metadata, and broken live browser assumptions.
+
+Repair demonstrated failures while retaining the behavior and evidence the tests protect. The parent agent handles Git operations, publication enablement, Release dispatch, normal production approvals, and public package verification after code validation.
+
+## Boundaries & Constraints
+
+Preserve user edits, dependency gitlinks, immutable historical approval packets, package inventory, and production protection rules. Use root-declared submodules only and never load skills under references. Retain test counts and fail-closed checks; do not skip, quarantine, loosen thresholds, fabricate evidence, or suppress failures. Existing task authorization permits these repairs without another approval checkpoint. Only the parent performs staging, commits, pushes, and external mutations.
+
+## I/O & Edge-Case Matrix
+
+| Scenario | Input/state | Expected behavior | Error handling |
+| --- | --- | --- | --- |
+| Packaged consumer | Shared catalog selects Fluent UI 5.0.0 | Package-boundary checks retain exact dependency and consumer compilation assertions | Reject v4 or mismatched component/icon dependencies |
+| Historical provenance | Current root gitlinks advance beyond sealed v3 capture | Keep historical exact hashes immutable; validate current provenance separately against committed root inputs | Reject checkout/gitlink mismatch and invalid catalog policy |
+| Windows checkout | Builds contains long tracked evidence paths | Step-scoped long-path support checks out Builds | Preserve nested-submodule prohibition |
+| Aspire launch | Exit status 0 with non-JSON build-error output | Treat invalid launch output as failure and use existing safe serialized fallback | Fail with retained diagnostics if fallback also fails |
+| Live browser proof | Overview contains command forms, Projection contains grid | Navigate tabs at each assertion boundary and prove actual lifecycle behavior | Retain all state assertions |
+
+</frozen-after-approval>
+
+## Code Map
+
+- `tests/Hexalith.FrontComposer.Contracts.UI.Tests/PackageBoundaryTests.cs`, `tests/Hexalith.FrontComposer.Testing.Tests/PackageBoundaryTests.cs`, `tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/PackagedAnalyzerConsumerTests.cs`, and `tests/Hexalith.FrontComposer.Shell.Tests/Governance/FluentConformanceTests.cs` repeat obsolete Fluent RC pins; selected Builds catalog is 5.0.0 for components/icons.
+- `eng/dependency-graph-policy.json` pins Verify/Verify.XunitV3 33.0.2; selected catalog is 33.2.0. Preserve closed policy structure and all other requirements.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs`: toolchain test incorrectly requires current catalog Aspire.Hosting == 13.5.4 although catalog is 13.6.0 and AppHost SDK/CLI remain 13.5.4; runtime identity test keeps stale current tuple while sealed historical data is intentionally immutable.
+- `src/Hexalith.FrontComposer.Shell/Shortcuts/FrontComposerShortcutRegistrar.cs:259`: new obsolete attribute fails repository diagnostic deprecation format; inspect `DiagnosticRegistryTests` before fixing. Preserve legacy method behavior and replacement.
+- `.github/workflows/quality.yml:829-837`: Windows Builds checkout sets symlinks false but needs longpaths true for that step too.
+- `eng/run-epic9-live-proof.sh:378-425`: successful-exit invalid JSON bypasses serialized fallback. Existing lifecycle/cleanup guards must survive. `tests/e2e/scripts/run-epic9-live-proof.test.mjs` covers tooling.
+- `tests/e2e/specs/epic-9-fresh-row-acceptance.spec.ts` assumes visible grid alongside commands; `samples/Counter/Counter.Web/Components/Pages/CounterPage.razor` separates Overview/Projection tabs.
+- CI log `/tmp/frontcomposer-ci-job.log`; Epic9 diagnostics `/tmp/frontcomposer-epic9-triage` and `/tmp/frontcomposer-epic9-old-triage` are diagnostic inputs, never approval evidence.
+
+## Tasks & Acceptance
+
+- [x] Update stale dependency assertions to match selected catalog while preserving exact package and consumer tests.
+- [x] Repair `eng/dependency-graph-policy.json` demonstrated Verify version drift and retain all negative graph-policy tests.
+- [x] Repair current-provenance/toolchain governance without editing immutable approval evidence or confusing current compatibility with historical approval.
+- [x] Correct shortcut obsolete metadata according to repository policy; do not invent a diagnostic identity unrelated to that deprecation.
+- [x] Enable Windows long paths in the existing submodule initialization step.
+- [x] Repair launch fallback and tab-aware browser proof; add a focused regression for a zero-exit invalid launch response.
+- [x] Run focused affected checks and inspect broader failures reported by the parent; repair additional demonstrated defects within this same release-readiness goal.
+
+Given the current selected dependencies, when affected suites run, then package consumers and governance pass with the same protected boundaries. Given failed launch output or long paths, when CI executes, then it either safely recovers or reports the actual failure. Given a successful candidate, when the parent runs Release, then all eight packages are published and independently verified.
+
+## Implementation Notes
+
+The parent is running baseline Shell and Python suites and attempted isolated Aspire startup before code changes. Local Aspire timed out after 120 seconds during restore; the unrelated Tenants AppHost belongs to the user and must remain untouched. Do not overlap solution/project builds with running validation jobs; coordinate before broad validation.
+
+Additional baseline evidence: Shell has two CounterStoryVerificationTests snapshots showing the Fluent 5.0 SVG/spacer output transition and one GeneratedSwitchDatePickerAndEnumSelectHonorTheFieldContract selected-option assertion failure; inspect semantics before updating expectations. Story artifact validators report E11R-AI-1 missing implementation_story=11.25. Semantic Release plans 4.6.0; release compatibility currently rejects this because docs/diagnostics/compatibility-suppressions.json still declares v4.5 and the default published baseline remains 4.4.0. Bring the current release ledger and production baseline sites to the published 4.5.0 predecessor for candidate 4.6.0, retain strict baseline recency checks and empty reviewed suppressions, and update affected live-site assertions without weakening synthetic negative fixtures. CI/release.yml source closures remain unchanged; quality.yml and release-evidence.yml can update necessary baseline arguments.
+
+The Verify policy predecessor was independently validated with all 529 Python engine tests and committed/pushed as 89aa9bf639c8ae7edb997c2356f62005c8e98d5c. Separate pushes are necessary because dependency graph CI authenticates the candidate using the event-base policy. All eight published 4.5.0 NuGet packages were checked on the public feed before changing the baseline; 4.6.0 was absent. A browser startup run demonstrates that Test Counter hosting cannot register development-only AllowAll MCP gates; bind sample gates to the authenticated sample identity and declared inventory without changing the production MCP guard. UI.Tests Debug no-restore compiled stale RC restore inputs; current evaluated catalogs select 5.0.0, so fresh restore is required before concluding a source API failure.
+
+Quality successor preparation still selected the obsolete bf03d57c / 3.106.0 / 2fba3497 capture target although the committed root selects EventStore 19dc1f82122564453163ac010dc7e5ae81db7ed3 and Builds 21ce044ab465ccb2adab58b3d66e394ffbecf3c2 with package 3.110.0. Update only the validator-owned successor pins, Quality target coordinates, mutable operator guide, and corresponding current-target assertions. Preserve v1/v2/v3 records, evidence hashes, v3 package 3.106.0, open approval state, and all mismatch/tamper guards. Current-target validation remains capture preparation and does not confer historical migration approval.
+
+The broad Firefox lane demonstrates additional actual blockers: generated Fluent field labels also match shadow editors, Test MCP transport reaches authorization without an HTTP authentication service, incoming CompactInline smooth scrolling hides the focused route heading, and the responsive hamburger wrapper duplicates the inner Fluent button role. Use the existing exact field helpers; configure sample API-key HTTP authentication for Development/Test with a loopback Test transport policy that preserves anonymous sanitized-protocol coverage and restrictive identity/inventory admission; cancel incoming smooth scrolling when the route heading receives focus; and retain one accessible keyboard-operable hamburger button. Production MCP mapping and authorization guards remain unchanged.
+
+The Test specimen scan also omitted CounterProjectionReducers, so catch-up loaded actions left the seeded row unchanged. Register those generated reducers and let the Epic9 proof identify the exact row/count in either generated specimen tables or the normal card replacement. Explicit update-publication phase boundaries separate terminal confirmation from the unchanged five-second projection catch-up, retaining the original assertion timeouts and all indicator/44/52 checks.
+
+The full three-browser run identified the same Overview/Projection assumption in the Level 3 and Level 4 override specs. Those specs now select Projection after confirmed commands before asserting the unchanged count 2, replacement/slot inventory, and accessibility contracts. The dedicated Story 6.4 Debug launch also outlived its 60-second assertion test and orphaned MSBuild children. Its existing 120-second startup allowance now belongs to beforeAll, with one serialized Debug build, direct owned DLL hosts, bounded readiness requests, and registered cleanup with checked shutdown/escalation; assertion test budgets remain unchanged. Both diagnostic cases navigate the Counter workspace before checking the exact Development panel and Test suppression. The WebKit workspace palette test now waits for the native search focus, types the same Configure query through keyboard events, and asserts the full query before its unchanged generated-route/content/focus checks.
+
+## Spec Change Log
+
+## Review Triage Log
+
+| Finding | Verdict | Evidence and route |
+| --- | --- | --- |
+| Docs review 2: native Windows runtime DLLs | medium | Windows runtime folders contain native coreclr/clrjit DLLs, whose missing assembly manifests cause BadImageFormatException. Skip precisely that exception while preserving failures for managed reference resolution. |
+| Docs review 1: ignored reference glob | medium | The probe logged no reference matches and explicitly rejected ../ in glob patterns. Patched the supported src/file mapping and verified actual reference consumption, then ran the full gate. |
+| Blind 1: deferred route scroll | medium | The guard precedes requestAnimationFrame but its callback checks only isConnected. Both reviewers reproduced a heading focus followed by smooth scroll; patch the callback guard. |
+| Blind 2: fallback ownership PID | medium | parse_and_own_started_apphost assigns PID before discovery; inspect_failed_start returns success on absence without resetting it. A later partial fallback with a different PID is wrongly rejected; patch reset after proven absence and cover different start PIDs. |
+| Blind 3: build descendants on timeout | medium | A local isolated MSBuild Exec probe with the exact --disable-build-servers/-m:1 settings and a two-second spawn timeout left its owned sleep descendant alive after dotnet exited (/tmp/frontcomposer-timeout-probe.proj); patch process-tree cleanup and a forced-timeout check. |
+| Blind 4: readiness port collision | medium | Readiness currently accepts HTTP200 after only the pre-request exit check; a pre-existing listener can respond while the new child is still starting. Patch owned startup confirmation and post-request exit validation. |
+| Blind 5: failed cleanup ownership | maybe-false | The only observed error event is spawn failure, which owns no child; failed termination with an error and a living child has not been reproduced. Defer this unverified developer issue pending a failed-signal reproduction on supported platforms. |
+| Blind 6: nullable enum restoration/zero | medium | Existing bUnit behavior pins null and required validation but does not select a prepopulated or zero-valued nullable enum after changing both select generic arguments. Patch the existing behavior test for both values. |
+| Blind 7: all admitted commands | medium | The new gate has five tuples; direct and checked browser tests observe only BatchIncrement. Patch complete admitted inventory coverage. |
+| Blind 8: loopback policy negatives | medium | CreateTestTransportPolicy explicitly uses IsLoopback but existing coverage uses localhost only or manually built principals. Patch IPv4/IPv6 admission and remote/missing-address rejection. |
+| Blind 9: duplicate Count renderers | medium | createdCount.first() bypasses Playwright strictness on the new union selector. Patch exact-one matching Count before asserting the original values. |
+| Blind 10: recurring browser baselines | medium | Quality test:a11y selects Chromium on Windows; the new Linux Firefox/WebKit baselines have no recurring hosted comparison. Patch a Linux browser regression job for all three configured projects. |
+| Blind 11: compiled HFC2122 consumer | low | The actual Obsolete attribute is attached directly to FocusFirstColumnFilterAsync with HFC2122 and canonical UrlFormat; the registry and existing compiler infrastructure are covered. No wrong consumer outcome was demonstrated. Reject the proposed extra compiled-fixture complexity for this direct metadata correction. |
+| Edge 1: deferred route scroll | medium | Same reproduced callback race as Blind1, independently verified against the callback and focused-heading guard; grouped with its patch. |
+| Verification 1: Development HTTP authentication | medium | Pre-verified regression gap: checked Test MCP transport permits loopback envelopes and does not exercise Development endpoint authentication. Patch valid, missing and invalid credential coverage on an actual Development host. |
+| Verification 2: Test loopback negatives | medium | Pre-verified regression gap: removing IsLoopback would retain all current localhost/direct-gate tests. Patch the real authorization policy with loopback, remote and null addresses, grouped with Blind8. |
+| Verification 3: four allowlisted commands | medium | Pre-verified regression gap: removing ConfigureCounter does not fail checked inclusion tests. Patch complete command inventory, grouped with Blind7. |
+
+
+Review repair completion: the deferred expand-in-row frame rechecks route-heading focus; confirmed failed-start absence clears the first attempt's ownership before fallback; the dedicated diagnostic helper owns private POSIX process groups and uses Windows taskkill tree termination before parent-only timeout could orphan children. Its readiness requires the owned Kestrel startup origin and a live child both before and after HTTP response. Nullable-enum restoration covers High and explicit zero Low separately from null. Real policy evaluation covers IPv4/IPv6 loopback, remote addresses and a missing address, and actual Development HTTP probes cover valid/missing/invalid credentials. Exact inventory includes the four Counter commands plus the existing Default.Increment descriptor, with cross-context spoof rejection. Epic9 requires exactly one count renderer. Quality now runs an unconditional Linux lane using lockfile-pinned Chromium/Firefox/WebKit, prebuilt Counter/CLI fixtures, bounded four-worker execution of all configured projects, focused launcher/scroll/process guards and uploaded results; the Windows accessibility lane, permissions, baselines and assertion thresholds are preserved.
+
+## Verification
+
+Run test projects individually using Microsoft.Testing.Platform native filters. Focus package-boundary suites, Shell/SourceTools Governance, Python `tests/eng` and `eng.tests.test_validate_story_artifacts`, and the Epic9 Node tooling suite. Parent runs broad project lanes and remote CI/Quality before Release; no external mutations by implementation agent.
+
+Implementation verification: Python release/artifact checks passed 264 tests with two existing expected skips; EventStore evidence/AppHost checks passed 265 tests (`/tmp/frontcomposer-eventstore-target-repair.log`). SourceTools diagnostic/emitter/packaged-consumer checks passed 166; Contracts.UI boundaries 4; Testing boundaries 5; MCP runtime package boundaries 2. Final Shell hamburger/access/route-focus/Counter checks passed 51 (`/tmp/frontcomposer-shell-browser-final-tests.log`), and exact current-target governance passed 1. Launcher tooling passed 23, Epic9 evidence tooling passed 92 before the final launcher exit-code distinction, TypeScript typecheck and whitespace validation passed. Structural docs validation passed with DocFx and snippet builds explicitly deferred (`/tmp/frontcomposer-docs-target-repair.log`).
+
+Focused Firefox verification passed Test MCP security/resource/schema checks and accessibility smoke; final route workspace activation passed after the scroll repair. Development MCP initialization/admitted inventory/resource checks passed 2 (`/tmp/frontcomposer-development-mcp-final.log`). The complete Epic9 exact-key create/update/overlap/materialization proof passed 1 in 48.6 seconds (`/tmp/frontcomposer-epic9-final-browser.log`), including unchanged 41/44/52 outcomes and all indicator lifecycle assertions. Final Release builds completed with zero warnings/errors. The parent owns remaining full browser/CI/Quality checks, hosted capture, review, Release approval/dispatch, and independent public publication verification. No implementation-agent Git or external mutation occurred.
+
+Narrow full-browser follow-up verification passed all four Chromium Level 3/Level 4/Debug diagnostic cases in 41.0 seconds (`/tmp/frontcomposer-browser-followup.log`) and the WebKit workspace palette case in 7.1 seconds (`/tmp/frontcomposer-browser-webkit-followup.log`). The Debug build and both diagnostic hosts were confirmed stopped after teardown. Final TypeScript typecheck passed (`/tmp/frontcomposer-browser-followup-typecheck.log`); whitespace validation passed. Visual baseline review remains parent-owned.
+
+Parent verification: all eight default Release suites passed (5,200 tests), Debug UI passed 17, isolated GovernanceBuild passed 2, and the Epic9 Node suite passed 95. Advisory property/performance/palette lanes passed; the existing live two-tenant probe skipped because its external endpoints and identities are not configured. The initial full browser sweep passed 399, skipped 40 existing cases, and exposed the sixteen visual/startup/tab/focus failures now repaired; a fresh full sweep is pending. The six Chromium Linux baseline changes and twelve missing Firefox/WebKit Linux captures were inspected and documented without changing screenshot tolerances. Full DocFx/snippet validation is running.
+
+Full parent browser rerun passed 416 tests with 40 existing skips and no failures (/tmp/frontcomposer-browser-final-tests.log). DocFx metadata failed to resolve .NET10 references; temporary probes exited successfully but emitted zero-match warnings; those exits did not establish reference consumption. The full documentation gate repair is pending alongside the review patches.
+
+Additional Docs review: the reference glob initially failed to match paths outside docs. The mapping now uses src=.. and files=artifacts/docs/api-references/*.dll. DocFx also mixes automatically resolved runtime DLLs with explicit SDK reference facades, which caused predefined-type failures; runtime framework DLLs plus catalog-resolved package references were independently verified with zero glob misses, zero unresolved assembly references and zero errors (/tmp/frontcomposer-docfx-runtime-proof.log). Existing InvalidCref warnings remain visible. The full gate is running against the actual helper/config.
+
+Full Docs validation passed against the actual helper and configuration, including all six compiled examples, API summary baseline, metadata/site generation and producer fingerprints (/tmp/frontcomposer-full-docs-final.log; artifacts/docs/validation-manifest.json). The complete sample catalog test found IncrementCommand is generated under Default, so its exact Default tuple must be admitted alongside the four Counter commands without admitting any other Default descriptor.
+
+Review patch verification: queued-frame and lifecycle runner regressions passed 26 (`/tmp/frontcomposer-review-js-launcher.log`); actual forced MSBuild Exec timeout, unrelated listener and response/exit readiness probes passed 3 (`/tmp/frontcomposer-review-owned-process.log`). Final Shell Release build passed with zero warnings/errors; nullable enum null/restored High/explicit Low checks passed 3, exact sample descriptor/real network-policy checks passed 11, and Linux/Windows workflow governance passed 2 (`/tmp/frontcomposer-review-enum.log`, `/tmp/frontcomposer-review-sample-access.log`, `/tmp/frontcomposer-review-browser-governance.log`). Dedicated Debug diagnostics passed 2 in 8.1 seconds; Test sanitized protocol and Development HTTP authentication/inventory checks passed 7 in 4.2 seconds (`/tmp/frontcomposer-review-diagnostics.log`, `/tmp/frontcomposer-review-mcp.log`). Epic9 exact-one count proof passed in 46.7 seconds with unchanged 41/44/52 and lifecycle assertions (`/tmp/frontcomposer-review-browser.log`); that first run exposed the missing Increment admission, which was then corrected and reverified in the MCP/access checks. TypeScript typecheck, Quality YAML parsing, Bash syntax and whitespace checks passed. Owned build descendants and diagnostic/Development hosts were confirmed stopped. Only focused checks ran; the parent retains full verification, hosted workflows and publication. Windows taskkill cleanup is implemented but was not locally executed on this Linux workspace.
+
+Final analyzer inventory reconciliation: reviewed four intentionally added public underscore-named declarations within the existing approved tests/**.cs scope: CiGovernanceTests.QualityWorkflow_RunsAllPinnedBrowsersOnLinux and CounterMcpSampleAccessTests.SampleGates_RestrictGeneratedDescriptorsToTheAuthenticatedSampleIdentity, TestTransportPolicy_AdmitsOnlyLoopbackAddresses, and SampleGates_RejectUnknownDescriptorsAndMismatchedPrincipalClaims. These retain the repository test naming convention and pin recurring browser CI, complete authenticated descriptor admission, and real network authorization boundaries. Refresh only the mutable test identifier count/hash after including the new tracked test file; preserve the Contracts inventory, historical censuses, approval records, and analyzer/suppression policy. An unrelated user update moved the Tenants submodule checkout to 3d7c0736 during verification; retain it unstaged and leave the root gitlink unchanged.
+
+Final reviewed implementation verification: native Microsoft.Testing.Platform default Shell rerun passed 3,090/3,090 with no skips or failures (/tmp/frontcomposer-shell-final-green.log), including the refreshed 3,529 / bc4f7cf38325b071f0e0f51356b5c507218d247576ce19b211d54566ee802965 test inventory seal. The Contracts seal remains unchanged. All 101 current Node artifact/launcher/scroll/owned-process checks passed and TypeScript typecheck passed (/tmp/frontcomposer-final-node-tooling.log, /tmp/frontcomposer-final-typecheck.log). Earlier default project lanes passed 5,200 combined tests before the eight added Shell cases. Three independent review lenses and the focused Docs review are triaged above; one unverified cleanup observation is deferred. Implementation is complete; hosted CI/Quality qualification, protected Release execution and actual public-feed verification remain parent-owned follow-through for the user task.

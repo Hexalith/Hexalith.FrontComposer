@@ -2288,18 +2288,22 @@ public static class CommandFormEmitter {
         string staticLabel = EscapeString(field.StaticLabel);
         string hasExplicitDisplay = field.HasExplicitDisplayName ? "true" : "false";
         string enumFqn = field.EnumFullyQualifiedName ?? "object";
-        // Story 13.3 AA5-01 / VG7-02 — a nullable enum binds FluentSelect<TEnum, TEnum?> straight to the
-        // nullable model property: Fluent supports a value type that is Nullable<TOption>. A proxy would
+        // Story 13.3 AA5-01 / VG7-02 — a nullable enum binds FluentSelect<TEnum?, TEnum?> straight to the
+        // nullable model property. Nullable options keep Fluent 5.0's empty-selection default null;
+        // a non-nullable option type would select the zero enum member. A proxy would
         // compile too, but FluentSelect ignores ValidationFieldFor, so its own FluentField would read the
         // proxy and never render the field's validation message (Chromium: no error text, and no error in
         // the combobox description). Bound to the model, a null value also selects no option.
         string valueType = field.IsNullable ? enumFqn + "?" : enumFqn;
+        string items = field.IsNullable
+            ? "System.Linq.Enumerable.Select(System.Enum.GetValues<" + enumFqn + ">(), static value => (" + valueType + ")value)"
+            : "System.Enum.GetValues<" + enumFqn + ">()";
 
-        _ = sb.AppendLine("            __b.OpenComponent<FluentSelect<" + enumFqn + ", " + valueType + ">>(cseq++);");
+        _ = sb.AppendLine("            __b.OpenComponent<FluentSelect<" + valueType + ", " + valueType + ">>(cseq++);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Id\", _formDomId + \"-" + propertyName + "\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"data-fc-validation-field\", \"true\");");
         EmitFieldAccessibility(sb, propertyName, field.Description, hasParseError: false);
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Items\", (System.Collections.Generic.IEnumerable<" + enumFqn + ">)System.Enum.GetValues<" + enumFqn + ">());");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Items\", (System.Collections.Generic.IEnumerable<" + valueType + ">)" + items + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _model." + propertyName + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<" + valueType + ">(this, v => { _model." + propertyName + " = v; NotifyClientFieldChanged(\"" + propertyName + "\"); }));");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueExpression\", (global::System.Linq.Expressions.Expression<Func<" + valueType + ">>)(() => _model." + propertyName + "));");
@@ -2307,7 +2311,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", " + propertyName + "Label);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"AriaLabel\", " + propertyName + "Label);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Name\", \"" + propertyName + "\");");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"OptionText\", (Func<" + enumFqn + ", string>)(e => HumanizeEnumLabel(e.ToString() ?? string.Empty)));");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"OptionText\", (Func<" + valueType + ", string>)(e => HumanizeEnumLabel(e.ToString() ?? string.Empty)));");
         _ = sb.AppendLine("            __b.CloseComponent();");
     }
 

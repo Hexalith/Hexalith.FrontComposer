@@ -16,6 +16,7 @@ using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
 
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -49,6 +50,7 @@ builder.Services.AddHexalithFrontComposerQuickstart(
             _ = o.ScanTypes(
                 typeof(CounterProjectionEffects),
                 typeof(CounterProjectionSeedFeature),
+                typeof(CounterProjectionReducers),
                 typeof(SpecimenStatusProjectionSeedFeature),
                 typeof(SpecimenFormattingProjectionSeedFeature),
                 typeof(CreateCounterCommandLifecycleFeature),
@@ -178,18 +180,22 @@ builder.Services.Configure<StubCommandServiceOptions>(
     builder.Configuration.GetSection("Hexalith:FrontComposer:StubCommandService"));
 
 if (mcpEnabled) {
+    _ = builder.Services.AddAuthentication(CounterMcpSampleAuthenticationHandler.SchemeName)
+        .AddScheme<AuthenticationSchemeOptions, CounterMcpSampleAuthenticationHandler>(
+            CounterMcpSampleAuthenticationHandler.SchemeName, _ => { });
+    _ = builder.Services.AddAuthorization();
     builder.Services.TryAddScoped<IQueryService, CounterMcpSampleQueryService>();
-    _ = builder.Services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-    _ = builder.Services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+    _ = builder.Services.AddSingleton<IFrontComposerMcpTenantToolGate, CounterMcpSampleTenantToolGate>();
+    _ = builder.Services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, CounterMcpSampleResourceVisibilityGate>();
     _ = builder.Services.AddFrontComposerMcp(o => {
         o.ManifestAssemblies.Add(typeof(CounterDomain).Assembly);
         if (specimensEnabled) {
             o.ManifestAssemblies.Add(typeof(CounterSpecimensDomain).Assembly);
         }
 
-        o.ApiKeys["counter-e2e-mcp-key"] = new FrontComposerMcpApiKeyIdentity(
-            "demo-tenant",
-            "demo-user");
+        o.ApiKeys[CounterMcpSampleAccessPolicy.ApiKey] = new FrontComposerMcpApiKeyIdentity(
+            CounterMcpSampleAccessPolicy.TenantId,
+            CounterMcpSampleAccessPolicy.UserId);
     });
 }
 
@@ -198,6 +204,11 @@ WebApplication app = builder.Build();
 app.MapStaticAssets();
 app.UseStaticFiles();
 app.UseRequestLocalization();
+if (mcpEnabled) {
+    _ = app.UseAuthentication();
+    _ = app.UseAuthorization();
+}
+
 app.UseAntiforgery();
 
 RazorComponentsEndpointConventionBuilder razorComponents = app.MapRazorComponents<Counter.Web.Components.App>();
@@ -212,7 +223,12 @@ razorComponents
     .AddInteractiveServerRenderMode();
 
 if (mcpEnabled) {
-    _ = app.MapFrontComposerMcp();
+    IEndpointConventionBuilder mcpEndpoint = app.MapFrontComposerMcp();
+    if (app.Environment.IsEnvironment("Test")) {
+        // Local protocol probes exercise sanitized anonymous failures inside MCP admission.
+        // Explicit transport policy keeps authorization metadata and admits only loopback Test traffic.
+        _ = mcpEndpoint.RequireAuthorization(CounterMcpSampleAccessPolicy.CreateTestTransportPolicy());
+    }
 }
 
 app.Run();

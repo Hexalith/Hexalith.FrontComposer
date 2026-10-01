@@ -68,7 +68,10 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await expect(page).toHaveURL(/\/counter$/);
 
     await page.getByTestId('fc-palette-trigger').click();
-    await page.getByRole('searchbox').pressSequentially('Configure');
+    const paletteSearch = page.getByRole('searchbox');
+    await expect(paletteSearch).toBeFocused();
+    await paletteSearch.pressSequentially('Configure');
+    await expect(paletteSearch).toHaveValue('Configure');
     const configureCounter = page.getByTestId('fc-palette-option').filter({ hasText: 'ConfigureCounterCommand' });
     await expect(configureCounter).toBeVisible();
     await configureCounter.click();

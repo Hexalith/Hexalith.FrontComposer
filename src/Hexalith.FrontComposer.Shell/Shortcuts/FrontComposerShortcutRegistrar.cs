@@ -256,7 +256,8 @@ public sealed class FrontComposerShortcutRegistrar(
     /// container so the shortcut stays transparent in non-DataGrid contexts.
     /// </summary>
     /// <returns>A task that resolves when the focus attempt completes.</returns>
-    [Obsolete("Use FocusSolePageSearchAsync for the page-search shortcut.")]
+    [Obsolete("FocusFirstColumnFilterAsync replaced by FocusSolePageSearchAsync in v4.6. See HFC2122. Removed in v4.7.",
+        DiagnosticId = "HFC2122", UrlFormat = "https://hexalith.github.io/FrontComposer/diagnostics/{0}")]
     public async Task FocusFirstColumnFilterAsync() {
         bool inGrid = await dataGridFocusScope.IsFocusWithinDataGridAsync().ConfigureAwait(false);
         if (!inGrid) {

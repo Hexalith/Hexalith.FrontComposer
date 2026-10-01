@@ -14,7 +14,7 @@ COMPATIBILITY_SUPPRESSIONS_SCHEMA_VERSION = "2.0"
 # The published package-validation baseline every live pack command applies. It is no longer
 # self-referential: `validate_release_policy` checks it against the release line the candidate (or
 # the checked-in `currentRelease`) declares, so leaving it behind a published line fails closed.
-PUBLISHED_BASELINE_VERSION = "4.4.0"
+PUBLISHED_BASELINE_VERSION = "4.5.0"
 LIFECYCLE_TOKEN = re.compile(
     r"^v(?P<major>0|[1-9][0-9]*)\.(?P<minor>0|[1-9][0-9]*)$"
 )

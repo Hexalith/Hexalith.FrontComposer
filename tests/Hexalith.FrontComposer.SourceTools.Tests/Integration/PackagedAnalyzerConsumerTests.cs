@@ -10,7 +10,7 @@ using Shouldly;
 namespace Hexalith.FrontComposer.SourceTools.Tests.Integration;
 
 public sealed partial class PackagedAnalyzerConsumerTests {
-    private const string FluentV5Version = "5.0.0-rc.5-26219.1";
+    private const string FluentV5Version = "5.0.0";
     private const string ConsumerTargetFramework = "net10.0";
 
     [Fact]

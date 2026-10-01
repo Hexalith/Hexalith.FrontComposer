@@ -75,6 +75,9 @@ public sealed class FcHamburgerToggleTests : LayoutComponentTestBase {
 
             // F5 — lock the e2e selector contract at the unit level (hamburger visible at every tier).
             cut.Markup.ShouldContain("data-testid=\"fc-hamburger-toggle\"");
+            cut.Find("[data-testid=fc-hamburger-toggle]").QuerySelectorAll("[role=button]").Length.ShouldBe(1,
+                "the responsive toggle must expose only Fluent's inner keyboard-operable button");
+            cut.Find("[data-testid=fc-hamburger-toggle]").HasAttribute("role").ShouldBeFalse();
         });
     }
 }

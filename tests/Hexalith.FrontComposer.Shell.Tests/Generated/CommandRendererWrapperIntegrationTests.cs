@@ -1303,6 +1303,31 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         });
     }
 
+    [Theory]
+    [InlineData(FieldContractPriority.High)]
+    [InlineData(FieldContractPriority.Low)]
+    public async Task GeneratedNullableEnumRestoresNonzeroAndExplicitZeroValues(FieldContractPriority priority) {
+        JSInterop.SetupModule("./_content/Microsoft.FluentUI.AspNetCore.Components/Components/DateTime/FluentCalendar.razor.js").Mode = JSRuntimeMode.Loose;
+        JSInterop.SetupVoid("Microsoft.FluentUI.Blazor.Components.Select.Initialize", _ => true).SetVoidResult();
+        await InitializeStoreAsync();
+        IRenderedComponent<FieldContractEditorsCommandForm> cut = Render<FieldContractEditorsCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new FieldContractEditorsCommand { EscalationPriority = priority }));
+
+        cut.WaitForAssertion(() => {
+            AngleSharp.Dom.IElement select = cut.Find("[name='" + nameof(FieldContractEditorsCommand.EscalationPriority) + "']");
+            select.QuerySelectorAll("fluent-option").Length.ShouldBe(3);
+            select.QuerySelectorAll("fluent-option[selected]").ShouldHaveSingleItem()
+                .TextContent.Trim().ShouldBe(priority.ToString());
+        });
+        cut.Find("form").Submit();
+        cut.WaitForAssertion(() => {
+            // Required validation distinguishes a restored zero member from the null model value.
+            cut.Find("[name='" + nameof(FieldContractEditorsCommand.EscalationPriority) + "']")
+                .GetAttribute("data-fc-invalid").ShouldBe("false");
+            cut.Markup.ShouldNotContain("The Escalation priority field is required.");
+        });
+    }
+
     [Fact]
     public async Task ProtectedRendererInitialDenialNeverMovesFocus() {
         var evaluator = new FixedAuthorizationEvaluator(CommandAuthorizationDecision.Denied("corr-initial"));

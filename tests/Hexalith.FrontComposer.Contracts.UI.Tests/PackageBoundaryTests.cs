@@ -13,7 +13,7 @@ using Xunit;
 namespace Hexalith.FrontComposer.Contracts.UI.Tests;
 
 public sealed class PackageBoundaryTests {
-    private const string FluentV5Version = "5.0.0-rc.5-26219.1";
+    private const string FluentV5Version = "5.0.0";
 
     [Fact]
     public void PublicApi_ExportedMembers_MatchIntentionalBaseline() {
@@ -64,7 +64,7 @@ public sealed class PackageBoundaryTests {
             @"<FrontComposerPackageValidationBaselineVersion Condition=""'\$\(FrontComposerPackageValidationBaselineVersion\)' == ''"">(?<version>[^<]+)</FrontComposerPackageValidationBaselineVersion>");
         sharedBaseline.Success.ShouldBeTrue("Directory.Build.targets must default the package-validation baseline.");
         string baseline = sharedBaseline.Groups["version"].Value;
-        baseline.ShouldBe("4.4.0");
+        baseline.ShouldBe("4.5.0");
 
         project.ShouldContain($"<FrontComposerPackageValidationBaselineVersion>{baseline}</FrontComposerPackageValidationBaselineVersion>");
         project.ShouldNotContain("<FrontComposerPackageValidationBaselineVersion>2.0.4</FrontComposerPackageValidationBaselineVersion>");

@@ -107,7 +107,7 @@ jobs:
       - name: 'Gate 2a: CLI Tool Package Smoke'
         shell: bash
         run: |
-          dotnet pack src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj --configuration Release --no-build --output ./nupkgs -p:PackageVersion=0.0.0-ci -p:EnableFrontComposerPackageValidation=true -p:FrontComposerPackageValidationBaselineVersion=4.4.0 -p:FrontComposerPackageValidationSkipBaseline=false
+          dotnet pack src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj --configuration Release --no-build --output ./nupkgs -p:PackageVersion=0.0.0-ci -p:EnableFrontComposerPackageValidation=true -p:FrontComposerPackageValidationBaselineVersion=4.5.0 -p:FrontComposerPackageValidationSkipBaseline=false
 
           tool_home="$(mktemp -d)"
           fixture="$(mktemp -d)"
@@ -205,9 +205,9 @@ jobs:
         shell: bash
         env:
           TARGET_FRONTCOMPOSER_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.frontcomposer_revision || github.sha }}
-          TARGET_EVENTSTORE_SOURCE_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.eventstore_source_revision || 'bf03d57cf459b329d709622af6c616c1635b83d9' }}
-          TARGET_EVENTSTORE_PACKAGE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.eventstore_package_version || '3.106.0' }}
-          TARGET_BUILDS_CATALOG_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.builds_catalog_revision || '2fba3497043fe5ffcfe4dc44c51a09eae9b950ab' }}
+          TARGET_EVENTSTORE_SOURCE_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.eventstore_source_revision || '19dc1f82122564453163ac010dc7e5ae81db7ed3' }}
+          TARGET_EVENTSTORE_PACKAGE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.eventstore_package_version || '3.110.0' }}
+          TARGET_BUILDS_CATALOG_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.builds_catalog_revision || '21ce044ab465ccb2adab58b3d66e394ffbecf3c2' }}
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = "refs/heads/main"
@@ -427,9 +427,9 @@ jobs:
             -RequireProviderVerification `
             -PrepareRuntimeSuccessor `
             -SuccessorFrontComposerRevision "${{ github.sha }}" `
-            -SuccessorEventStoreSourceRevision "bf03d57cf459b329d709622af6c616c1635b83d9" `
-            -SuccessorEventStorePackageVersion "3.106.0" `
-            -SuccessorBuildsCatalogRevision "2fba3497043fe5ffcfe4dc44c51a09eae9b950ab" `
+            -SuccessorEventStoreSourceRevision "19dc1f82122564453163ac010dc7e5ae81db7ed3" `
+            -SuccessorEventStorePackageVersion "3.110.0" `
+            -SuccessorBuildsCatalogRevision "21ce044ab465ccb2adab58b3d66e394ffbecf3c2" `
             -AppHostPackageRoot "" `
             -ProviderVerificationReport "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json"
 
@@ -610,7 +610,7 @@ jobs:
             # sequential packs (and their ProjectReference graphs) intermingle in a single
             # bin/Release/<tfm>/, and ApiCompat could then diff a stale sibling assembly.
             name="$(basename "$project" .csproj)"
-            dotnet pack "$project" --configuration Release --output ./nupkgs-validation -p:Version=4.4.0-ci -p:PackageVersion=4.4.0-ci -p:EnableFrontComposerPackageValidation=true -p:FrontComposerPackageValidationBaselineVersion=4.4.0 -p:FrontComposerPackageValidationSkipBaseline=false -p:BaseOutputPath="$GITHUB_WORKSPACE/artifacts/library-package-validation/$name/bin/"
+            dotnet pack "$project" --configuration Release --output ./nupkgs-validation -p:Version=4.5.0-ci -p:PackageVersion=4.5.0-ci -p:EnableFrontComposerPackageValidation=true -p:FrontComposerPackageValidationBaselineVersion=4.5.0 -p:FrontComposerPackageValidationSkipBaseline=false -p:BaseOutputPath="$GITHUB_WORKSPACE/artifacts/library-package-validation/$name/bin/"
           done
 
       # Story 12.1: the adopter proof kit copies Shell markup, diagnostics, and types that the
@@ -624,7 +624,7 @@ jobs:
           runtime="$(dotnet --list-runtimes | awk '/^Microsoft.AspNetCore.App 10\./ { version = $2 } END { print version }')"
           python3 eng/adopter_proof.py \
             --candidate-sha "$(git rev-parse HEAD)" \
-            --package-version 4.4.0-ci \
+            --package-version 4.5.0-ci \
             --package-source ./nupkgs-validation \
             --runtime-version "$runtime" \
             --eventstore-endpoint http://127.0.0.1:1 \
@@ -830,9 +830,11 @@ jobs:
         shell: bash
         env:
           # Override only this step's Git processes so the runner's global setting is untouched.
-          GIT_CONFIG_COUNT: 1
+          GIT_CONFIG_COUNT: 2
           GIT_CONFIG_KEY_0: core.symlinks
           GIT_CONFIG_VALUE_0: 'false'
+          GIT_CONFIG_KEY_1: core.longpaths
+          GIT_CONFIG_VALUE_1: 'true'
         # Builds-only: avoid checking out EventStore evidence paths that exceed Windows MAX_PATH.
         run: git -c submodule.recurse=false submodule update --init references/Hexalith.Builds
 
@@ -933,6 +935,70 @@ jobs:
             tests/e2e/playwright-report/**
             tests/e2e/test-results/**
             artifacts/story-2-2-live/**
+
+  browser-regressions-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: false
+
+      - name: Initialize root build submodule
+        run: git -c submodule.recurse=false submodule update --init references/Hexalith.Builds
+
+      - uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
+        with:
+          dotnet-version: '10.0.401'
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '24.10.0'
+          cache: 'npm'
+          cache-dependency-path: tests/e2e/package-lock.json
+
+      - name: Install pinned Playwright workspace
+        working-directory: tests/e2e
+        run: npm ci
+
+      - name: Install all pinned Playwright browsers
+        working-directory: tests/e2e
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Build Counter browser host
+        run: dotnet build samples/Counter/Counter.Web/Counter.Web.csproj --configuration Release -m:1
+
+      - name: Build CLI browser fixture
+        run: dotnet build src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj --configuration Release -m:1
+
+      - name: Run browser launch and scroll regressions
+        working-directory: tests/e2e
+        run: node --test scripts/owned-process.test.mjs scripts/expand-in-row.test.mjs scripts/run-epic9-live-proof.test.mjs
+
+      - name: Typecheck browser regressions
+        working-directory: tests/e2e
+        run: npm run typecheck
+
+      - name: Run all configured browser projects
+        working-directory: tests/e2e
+        env:
+          CI: true
+          ASPNETCORE_ENVIRONMENT: Test
+          Hexalith__FrontComposer__Specimens__Enabled: true
+        run: npx playwright test --workers 4
+
+      - name: Upload Linux browser results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: browser-regressions-linux-results
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            tests/e2e/playwright-report/**
+            tests/e2e/test-results/**
 
   epic9-live-acceptance:
     runs-on: ubuntu-latest

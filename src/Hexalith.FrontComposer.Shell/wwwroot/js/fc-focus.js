@@ -783,7 +783,8 @@ export function focusRouteHeading(routeKey, routeFocusOwner, preservePaletteFocu
             if (!heading.hasAttribute('tabindex')) {
                 heading.setAttribute('tabindex', '-1');
             }
-            heading.scrollIntoView({ block: 'nearest' });
+            // Cancel incoming inline-form smooth scrolls before confirming the focused route.
+            heading.scrollIntoView({ block: 'start', behavior: 'instant' });
             heading.focus({ preventScroll: true });
             allowRouteFocusRestore = true;
         }
