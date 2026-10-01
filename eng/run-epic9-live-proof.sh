@@ -2,6 +2,11 @@
 
 set -euo pipefail
 
+# CLI 13.5 creates its socket directory during discovery using the inherited mask;
+# Hosting 13.6 requires 0700. Keep newly created paths private without changing any
+# existing user/shared directory or the caller's process mask.
+umask 077
+
 if ! repo_root="$(git rev-parse --show-toplevel)" || [[ -z "$repo_root" ]]; then
   echo "Could not resolve the repository root." >&2
   exit 2
@@ -466,6 +471,7 @@ if [[ -z "$resource_name" || -z "$base_url" ]]; then
 fi
 
 commands=(
+  "umask 077"
   "export HexalithFrontComposerFromSource=true"
   "dotnet build src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --configuration Debug --disable-build-servers -m:1 -p:BuildInParallel=false -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false"
   "aspire ps --format Json --non-interactive --nologo"

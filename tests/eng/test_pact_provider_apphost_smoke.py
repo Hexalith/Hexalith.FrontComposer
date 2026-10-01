@@ -11,6 +11,8 @@ import io
 import json
 import os
 import shutil
+import stat
+import subprocess
 import sys
 import tempfile
 import threading
@@ -95,6 +97,16 @@ def _synthetic_package_ledger(
             json.dumps(entries, sort_keys=True, separators=(",", ":")).encode("utf-8")
         ).hexdigest(),
     }
+
+
+def _projection_query_response(tenant_id: Any) -> tuple[int, dict[str, Any], dict[str, str]]:
+    return 200, {
+        "payload": {"TenantId": tenant_id},
+        "metadata": {
+            "provenance": "ProjectionBacked",
+            "projectionVersion": "tenant-sequence:1",
+        },
+    }, {"X-Hexalith-Query-Provenance": "ProjectionBacked"}
 
 
 class FakeRuntime(smoke.SmokeRuntime):
@@ -205,7 +217,7 @@ class FakeRuntime(smoke.SmokeRuntime):
                 return 401, {}, {}
             self.assert_token_present(token)
             tenant_id = body.get("entityId") if isinstance(body, dict) else None
-            return 200, {"payload": {"TenantId": tenant_id}}, {"X-Hexalith-Query-Provenance": "HandlerComputed"}
+            return _projection_query_response(tenant_id)
         raise AssertionError(url)
 
     def signalr_negotiate_status(
@@ -320,6 +332,70 @@ class FakeRuntime(smoke.SmokeRuntime):
 
 
 class PactProviderAppHostSmokeTests(unittest.TestCase):
+    def _aspire_permission_probe(self, *, preexisting: bool) -> tuple[subprocess.CompletedProcess[str], Path]:
+        repository = Path(self.temporary.name) / "permission-probe"
+        repository.mkdir()
+        binary_directory = repository / "bin"
+        binary_directory.mkdir()
+        socket_directory = repository / ".aspire" / "cli" / "bch"
+        executable = binary_directory / "aspire"
+        executable.write_text(
+            "#!/usr/bin/env python3\n"
+            "import os, stat, sys\n"
+            "from pathlib import Path\n"
+            "directory = Path(os.environ['FRONTCOMPOSER_TEST_SOCKET_ROOT'])\n"
+            "directory.mkdir(parents=True, exist_ok=True)\n"
+            "mode = stat.S_IMODE(directory.stat().st_mode)\n"
+            "print(oct(mode))\n"
+            "sys.exit(0 if mode == 0o700 else 1)\n",
+            encoding="utf-8",
+        )
+        executable.chmod(0o700)
+        if preexisting:
+            socket_directory.mkdir(parents=True)
+            socket_directory.chmod(0o755)
+            (socket_directory / "sentinel").write_bytes(b"existing-directory-must-stay-unchanged")
+        environment = os.environ.copy()
+        environment["PATH"] = str(binary_directory) + os.pathsep + environment.get("PATH", "")
+        environment["FRONTCOMPOSER_TEST_SOCKET_ROOT"] = str(socket_directory)
+        wrapper = (
+            "import sys\n"
+            "from pathlib import Path\n"
+            "sys.path.insert(0, sys.argv[1])\n"
+            "import pact_provider_apphost_smoke as smoke\n"
+            "smoke.ROOT = Path(sys.argv[2])\n"
+            "result = smoke.SmokeRuntime().command(['aspire', 'ps'], 5)\n"
+            "(smoke.ROOT / 'parent-after-aspire').mkdir()\n"
+            "sys.stdout.write(result.stdout)\n"
+            "sys.stderr.write(result.stderr)\n"
+            "sys.exit(result.returncode)\n"
+        )
+        completed = subprocess.run(
+            [sys.executable, "-c", wrapper, str(ROOT / "eng"), str(repository)],
+            env=environment,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            umask=0o022,
+        )
+        return completed, socket_directory
+
+    @unittest.skipUnless(os.name == "posix", "Aspire socket permissions require POSIX")
+    def test_aspire_child_creates_private_socket_directory_under_permissive_parent_umask(self) -> None:
+        completed, directory = self._aspire_permission_probe(preexisting=False)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(stat.S_IMODE(directory.stat().st_mode), 0o700)
+        self.assertEqual(completed.stdout.strip(), "0o700")
+        self.assertEqual(stat.S_IMODE((directory.parents[2] / "parent-after-aspire").stat().st_mode), 0o755)
+
+    @unittest.skipUnless(os.name == "posix", "Aspire socket permissions require POSIX")
+    def test_aspire_child_rejects_existing_permissive_directory_without_repairing_it(self) -> None:
+        completed, directory = self._aspire_permission_probe(preexisting=True)
+        self.assertEqual(completed.returncode, 1, completed.stderr)
+        self.assertEqual(stat.S_IMODE(directory.stat().st_mode), 0o755)
+        self.assertEqual((directory / "sentinel").read_bytes(), b"existing-directory-must-stay-unchanged")
+
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
@@ -596,13 +672,13 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
             },
         }))
 
-    def test_handler_computed_query_provenance_is_accepted_for_tenant_routes(self) -> None:
+    def test_projection_backed_query_provenance_is_required_for_current_tenant_route(self) -> None:
         runtime = FakeRuntime()
 
         def json_request(url: str, *, method: str = "GET", token: str | None = None, form: dict[str, str] | None = None, body: dict[str, Any] | None = None, timeout: int = 10, deadline: float | None = None) -> tuple[int, dict[str, Any], dict[str, str]]:
             if url.endswith("/api/v1/queries") and token == "synthetic-token-never-persisted":
                 runtime.assert_token_present(token)
-                return 200, {"payload": {"TenantId": (body or {}).get("entityId")}}, {"X-Hexalith-Query-Provenance": "HandlerComputed"}
+                return _projection_query_response((body or {}).get("entityId"))
             return FakeRuntime.json_request(runtime, url, method=method, token=token, form=form, body=body, timeout=timeout, deadline=deadline)
 
         runtime.json_request = json_request  # type: ignore[method-assign]
@@ -611,8 +687,10 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
 
         self.assertEqual(result, 0)
         document = json.loads(self.output.read_text(encoding="utf-8"))
-        self.assertEqual(document["observations"]["queryProvenance"]["reasonCode"], "query.handler-computed")
-        self.assertEqual(document["observations"]["queryProvenance"]["provenance"], "HandlerComputed")
+        self.assertEqual(document["observations"]["queryProvenance"]["reasonCode"], "query.projection-backed")
+        self.assertEqual(document["observations"]["queryProvenance"]["provenance"], "ProjectionBacked")
+        self.assertEqual(document["observations"]["queryProvenance"]["projectionType"], "tenants")
+        self.assertEqual(document["observations"]["queryProvenance"]["projectionVersion"], "tenant-sequence:1")
 
     def test_query_provenance_accepts_metadata_when_header_is_absent(self) -> None:
         runtime = FakeRuntime()
@@ -620,7 +698,8 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         def json_request(url: str, *, method: str = "GET", token: str | None = None, form: dict[str, str] | None = None, body: dict[str, Any] | None = None, timeout: int = 10, deadline: float | None = None) -> tuple[int, dict[str, Any], dict[str, str]]:
             if url.endswith("/api/v1/queries") and token == "synthetic-token-never-persisted":
                 runtime.assert_token_present(token)
-                return 200, {"metadata": {"provenance": "HandlerComputed"}, "payload": {"TenantId": (body or {}).get("entityId")}}, {}
+                status, document, _ = _projection_query_response((body or {}).get("entityId"))
+                return status, document, {}
             return FakeRuntime.json_request(runtime, url, method=method, token=token, form=form, body=body, timeout=timeout, deadline=deadline)
 
         runtime.json_request = json_request  # type: ignore[method-assign]
@@ -629,8 +708,57 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
 
         self.assertEqual(result, 0)
         document = json.loads(self.output.read_text(encoding="utf-8"))
-        self.assertEqual(document["observations"]["queryProvenance"]["reasonCode"], "query.handler-computed")
-        self.assertEqual(document["observations"]["queryProvenance"]["provenance"], "HandlerComputed")
+        self.assertEqual(document["observations"]["queryProvenance"]["reasonCode"], "query.projection-backed")
+        self.assertEqual(document["observations"]["queryProvenance"]["provenance"], "ProjectionBacked")
+
+    def test_current_query_rejects_historical_stamp_and_missing_projection_metadata(self) -> None:
+        for invalid in ("historical-stamp", "missing-metadata"):
+            with self.subTest(invalid=invalid):
+                runtime = FakeRuntime()
+                original_request = runtime.json_request
+
+                def json_request(url: str, **kwargs: Any) -> tuple[int, dict[str, Any], dict[str, str]]:
+                    status, document, headers = original_request(url, **kwargs)
+                    if url.endswith("/api/v1/queries") and status == 200:
+                        if invalid == "historical-stamp":
+                            headers["X-Hexalith-Query-Provenance"] = "HandlerComputed"
+                            document["metadata"]["provenance"] = "HandlerComputed"
+                        else:
+                            document["metadata"].pop("projectionVersion")
+                    return status, document, headers
+
+                runtime.json_request = json_request  # type: ignore[method-assign]
+                clock = [0.0]
+                with (
+                    mock.patch.object(smoke.time, "monotonic", side_effect=lambda: clock[0]),
+                    mock.patch.object(smoke, "_bounded_sleep", side_effect=lambda *_args: clock.__setitem__(0, clock[0] + 1)),
+                ):
+                    result = smoke.capture(self.output, runtime, timeout=30)
+                document = json.loads(self.output.read_text(encoding="utf-8"))
+                self.assertEqual(result, 1)
+                self.assertEqual(
+                    document["observations"]["queryProvenance"]["reasonCode"],
+                    "query.provenance.missing" if invalid == "historical-stamp" else "query.projection-metadata.invalid",
+                )
+
+    def test_tenant_projection_metadata_rejects_foreign_or_malformed_versions(self) -> None:
+        for version in (None, True, "", "sequence:1", "other-sequence:1", "tenant-sequence:-1", "tenant-sequence:01", "tenant-sequence:9223372036854775808"):
+            with self.subTest(version=version):
+                self.assertEqual(smoke._query_projection_version({
+                    "metadata": {"provenance": "ProjectionBacked", "projectionVersion": version},
+                }), "")
+        self.assertEqual(smoke._query_projection_version({
+            "metadata": {"provenance": "HandlerComputed", "projectionVersion": "tenant-sequence:1"},
+        }), "")
+
+    def test_unknown_query_contract_catalog_rejects_capture_before_startup(self) -> None:
+        runtime = FakeRuntime()
+        with mock.patch.object(smoke, "_release_version", return_value="3.999.0"):
+            result = smoke.capture(self.output, runtime, timeout=30)
+        document = json.loads(self.output.read_text(encoding="utf-8"))
+        self.assertEqual(result, 1)
+        self.assertIn("runtime-inputs.not-clean-or-complete", document["reasonCodes"])
+        self.assertEqual(runtime.commands, [])
 
     def test_conflicting_query_provenance_channels_fail_closed(self) -> None:
         self.assertEqual(
@@ -688,7 +816,7 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
             if url.endswith("/api/v1/queries") and token == "synthetic-token-never-persisted":
                 runtime.assert_token_present(token)
                 recorded.update(body or {})
-                return 200, {"payload": {"TenantId": (body or {}).get("entityId")}}, {"X-Hexalith-Query-Provenance": "HandlerComputed"}
+                return _projection_query_response((body or {}).get("entityId"))
             return FakeRuntime.json_request(runtime, url, method=method, token=token, form=form, body=body, timeout=timeout, deadline=deadline)
 
         runtime.json_request = json_request  # type: ignore[method-assign]
@@ -2488,9 +2616,7 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
                 and token is not None
                 and token != "invalid-local-evidence-token"
             ):
-                return 200, {"payload": {"TenantId": "different-tenant"}}, {
-                    "X-Hexalith-Query-Provenance": "HandlerComputed"
-                }
+                return _projection_query_response("different-tenant")
             return original_request(
                 url, method=method, token=token, form=form, body=body,
                 timeout=timeout, deadline=deadline,

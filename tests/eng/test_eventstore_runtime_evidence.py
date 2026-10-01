@@ -4252,6 +4252,83 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
         self.assertTrue(any("query provenance stamp is missing or drifted" in error for error in errors), errors)
 
+    def test_apphost_query_contract_is_bound_to_exact_trusted_source_and_catalog(self) -> None:
+        self.make_live_apphost_pass()
+        path = self.live_root / "apphost-smoke.json"
+        original = _read_json(path)
+        manifest = _read_json(self.active_root / "frontcomposer-runtime-inputs.json")
+        historical = evidence._live_provenance(ROOT, [])
+        current = {
+            **historical,
+            "sourceSha": evidence.SUCCESSOR_SOURCE_SHA,
+            "releaseVersion": evidence.SUCCESSOR_VERSION,
+            "buildsSha": evidence.SUCCESSOR_BUILDS_SHA,
+        }
+
+        def validate(provenance: dict[str, str], stamp: str, **metadata: Any) -> list[str]:
+            document = copy.deepcopy(original)
+            document["identity"].update({
+                "eventStoreSourceSha": provenance["sourceSha"],
+                "eventStoreReleaseVersion": provenance["releaseVersion"],
+                "buildsCatalogSha": provenance["buildsSha"],
+            })
+            observation = document["observations"]["queryProvenance"]
+            observation.update({
+                "provenance": stamp,
+                "reasonCode": "query.projection-backed" if stamp == "ProjectionBacked" else "query.handler-computed",
+                **metadata,
+            })
+            _write_json(path, document)
+            errors: list[str] = []
+            evidence._validate_live_apphost(
+                self.live_root, ROOT, provenance, errors,
+                package_root=self.package_root, runtime_manifest=manifest,
+            )
+            return errors
+
+        projection = {
+            "queryType": "get-tenant", "projectionType": "tenants",
+            "projectionVersion": "tenant-sequence:1",
+        }
+        self.assertEqual(validate(historical, "HandlerComputed"), [])
+        self.assertEqual(validate(current, "ProjectionBacked", **projection), [])
+        self.assertTrue(any("queryProvenance" in error for error in validate(current, "HandlerComputed")))
+        self.assertTrue(any("queryProvenance" in error for error in validate(historical, "ProjectionBacked", **projection)))
+        for key in ("sourceSha", "releaseVersion", "buildsSha"):
+            with self.subTest(mixed=key):
+                mixed = {**current, key: historical[key]}
+                errors = validate(mixed, "ProjectionBacked", **projection)
+                self.assertTrue(any("query provenance stamp is missing or drifted" in error for error in errors), errors)
+        for key, invalid in (
+            ("projectionType", "tenant-index"),
+            ("queryType", "list-tenants"),
+            ("projectionVersion", "other-sequence:1"),
+            ("projectionVersion", "tenant-sequence:9223372036854775808"),
+            ("projectionVersion", None),
+        ):
+            with self.subTest(metadata=key, invalid=invalid):
+                errors = validate(current, "ProjectionBacked", **{**projection, key: invalid})
+                self.assertTrue(any("queryProvenance" in error or "tenant projection metadata" in error for error in errors), errors)
+
+    def test_query_contract_cannot_be_selected_by_untrusted_smoke_identity(self) -> None:
+        self.make_live_apphost_pass()
+        path = self.live_root / "apphost-smoke.json"
+        smoke = _read_json(path)
+        smoke["identity"].update({
+            "eventStoreSourceSha": evidence.SUCCESSOR_SOURCE_SHA,
+            "eventStoreReleaseVersion": evidence.SUCCESSOR_VERSION,
+            "buildsCatalogSha": evidence.SUCCESSOR_BUILDS_SHA,
+        })
+        smoke["observations"]["queryProvenance"].update({
+            "provenance": "ProjectionBacked", "reasonCode": "query.projection-backed",
+            "queryType": "get-tenant", "projectionType": "tenants",
+            "projectionVersion": "tenant-sequence:1",
+        })
+        _write_json(path, smoke)
+        errors = self.validate_live()
+        self.assertIn("Live AppHost smoke provenance is stale or untruthful.", errors)
+        self.assertIn("Live AppHost observation has incorrect semantics: queryProvenance", errors)
+
     def test_live_provider_rejects_duplicate_input_hash_names(self) -> None:
         self.make_live_apphost_pass()
         report_path = self.live_root / "provider-verification.json"

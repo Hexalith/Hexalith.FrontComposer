@@ -547,6 +547,10 @@ const gotoSpecimen = async (page: import('@playwright/test').Page, route: Specim
 };
 
 const prepareSpecimenVisualBaseline = async (page: import('@playwright/test').Page): Promise<void> => {
+  await expect(page.locator('.fc-shell-root')).toHaveAttribute('data-fc-interactive', 'true');
+  // The cleared desktop fixture uses the shell's Compact factory density; the query's density
+  // controls the specimen cards separately. Wait for the real shell projection before capture.
+  await expect(page.locator('body')).toHaveAttribute('data-fc-density', 'compact');
   await page.waitForFunction(() => [...document.querySelectorAll('*')]
     .filter((element) => element.localName.includes('-'))
     .every((element) => customElements.get(element.localName) !== undefined));

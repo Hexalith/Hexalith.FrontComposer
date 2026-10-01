@@ -41,22 +41,42 @@ public sealed class FcDensityApplierTests : LayoutComponentTestBase {
                 .ShouldNotBeEmpty("setDensity must be invoked at least once on initial render."));
     }
 
-    [Fact]
-    public async Task InvokesSetDensityOnStateChange() {
+    [Theory]
+    [InlineData(DensityLevel.Comfortable, DensityLevel.Compact)]
+    [InlineData(DensityLevel.Compact, DensityLevel.Comfortable)]
+    public async Task InvokesSetDensityOnStateChange(DensityLevel initial, DensityLevel pending) {
         BunitJSModuleInterop module = JSInterop.SetupModule(ModulePath);
         _ = module.SetupVoid("setDensity", _ => true).SetVoidResult();
 
         IRenderedComponent<FcDensityApplier> cut = Render<FcDensityApplier>();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        dispatcher.Dispatch(new UserPreferenceChangedAction("initial", initial, initial));
+        cut.WaitForAssertion(() => module.Invocations.Last(i => i.Identifier == "setDensity")
+            .Arguments[0].ShouldBe(initial.ToString()));
 
-        // Dispatch UserPreferenceChangedAction with newEffective = Compact (resolver pre-computed by producer).
-        dispatcher.Dispatch(new UserPreferenceChangedAction("c1", DensityLevel.Compact, DensityLevel.Compact));
+        // Hold the next write after the browser receives it, then return to the last completed
+        // density. Deduplication must account for the pending write before accepting that return.
+        JSRuntimeInvocationHandler held = module.SetupVoid("setDensity", pending.ToString());
+        dispatcher.Dispatch(new UserPreferenceChangedAction("pending", pending, pending));
+        cut.WaitForAssertion(() => held.Invocations.ShouldHaveSingleItem());
+        TaskCompletionSource returned = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _ = module.SetupVoid("setDensity", invocation => {
+            if (!Equals(invocation.Arguments[0], initial.ToString())) {
+                return false;
+            }
+            returned.TrySetResult();
+            return true;
+        }).SetVoidResult();
+        dispatcher.Dispatch(new UserPreferenceChangedAction("return", initial, initial));
+        returned.Task.IsCompleted.ShouldBeFalse("The newer write must wait for the held write.");
+        held.SetVoidResult();
 
-        await Task.Yield();
-        cut.WaitForAssertion(() => {
-            int setDensityCalls = module.Invocations.Count(i => i.Identifier == "setDensity");
-            setDensityCalls.ShouldBeGreaterThan(1, "setDensity must be invoked again on state change.");
-        });
+        // This headless component does not render after writes. Await the actual interop call
+        // rather than a render-triggered assertion; retain bUnit's default one-second budget.
+        await returned.Task.WaitAsync(TimeSpan.FromSeconds(1), Xunit.TestContext.Current.CancellationToken);
+        module.Invocations.Last(i => i.Identifier == "setDensity")
+            .Arguments[0].ShouldBe(initial.ToString(),
+                "A pending older density write must not overwrite the latest selected density.");
     }
 
     [Fact]

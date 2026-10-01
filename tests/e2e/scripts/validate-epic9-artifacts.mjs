@@ -118,7 +118,7 @@ const expectedCommands = (startMode, evidenceMode) => {
     ? VALIDATE_DEVELOPMENT_COMMAND
     : VALIDATE_FINAL_COMMAND;
   if (startMode === 'isolated-no-build-after-source-graph-build') {
-    return [SOURCE_ROUTING_COMMAND, SOURCE_GRAPH_BUILD_COMMAND, 'aspire ps --format Json --non-interactive --nologo',
+    return ['umask 077', SOURCE_ROUTING_COMMAND, SOURCE_GRAPH_BUILD_COMMAND, 'aspire ps --format Json --non-interactive --nologo',
       SOURCE_GRAPH_START_COMMAND, ...COMMON_COMMANDS, validationCommand];
   }
   return startMode === 'isolated-build'

@@ -150,6 +150,11 @@ class SmokeRuntime:
             package_root = getattr(self, "package_root", None)
             if isinstance(package_root, Path):
                 environment["NUGET_PACKAGES"] = str(package_root)
+            process_options = {}
+            if os.name == "posix" and arguments[:1] == ["aspire"]:
+                # CLI 13.5 creates backchannel directories with inherited permissions;
+                # Hosting 13.6 requires 0700. Restrict only this owned child process.
+                process_options["umask"] = 0o077
             completed = subprocess.run(
                 arguments,
                 cwd=ROOT,
@@ -158,6 +163,7 @@ class SmokeRuntime:
                 capture_output=True,
                 text=True,
                 timeout=timeout,
+                **process_options,
             )
             output_limit = (
                 MAX_MSBUILD_OUTPUT_CHARS
@@ -1867,6 +1873,14 @@ def _query_provenance(headers: dict[str, str], document: dict[str, Any]) -> str:
     return header or metadata_value
 
 
+def _query_projection_version(document: dict[str, Any]) -> str:
+    metadata = document.get("metadata")
+    if not isinstance(metadata, dict) or metadata.get("provenance") != "ProjectionBacked":
+        return ""
+    version = metadata.get("projectionVersion")
+    return version if runtime_evidence.is_tenant_projection_version(version) else ""
+
+
 def _writer_protocol_is_only_unhealthy(document: dict[str, Any]) -> bool:
     """Return whether a disposable topology is ready for explicit writer cutover."""
     results = document.get("results")
@@ -2108,6 +2122,13 @@ def _capture(
         )
     runtime.package_root = package_root
     evidence = _base_evidence(runtime_manifest, timeout)
+    query_contract = runtime_evidence.apphost_query_contract({
+        "sourceSha": evidence["identity"]["eventStoreSourceSha"],
+        "releaseVersion": evidence["identity"]["eventStoreReleaseVersion"],
+        "buildsSha": evidence["identity"]["buildsCatalogSha"],
+    })
+    if query_contract is None:
+        runtime_input_issues.append("AppHost query contract source/catalog tuple is unsupported.")
     if runtime_input_manifest_path is not None:
         apphost_captured_at = runtime_evidence._parse_timestamp(
             evidence["capturedAt"],
@@ -2638,6 +2659,9 @@ def _capture(
         query_status = 0
         provenance = ""
         response_tenant_id = ""
+        projection_version = ""
+        expected_provenance, expected_query_reason = query_contract
+        projection_metadata_valid = expected_provenance != "ProjectionBacked"
         query_body = {
             "tenant": "system",
             "domain": "tenants",
@@ -2690,23 +2714,31 @@ def _capture(
             )
             provenance = _query_provenance(query_headers, query_document)
             response_tenant_id = _query_tenant_id(query_document)
-            # This exact tenant handler route is stamped HandlerComputed. ProjectionBacked is a
-            # different execution path and must not satisfy this observation.
+            projection_version = _query_projection_version(query_document)
+            # EventStore 3.110 preserves the pinned tenant handler's projection
+            # metadata. The sealed 3.106 predecessor used HandlerComputed instead.
+            projection_metadata_valid = (
+                expected_provenance != "ProjectionBacked" or bool(projection_version)
+            )
             if (
                 query_status == 200
-                and provenance == "HandlerComputed"
+                and provenance == expected_provenance
+                and projection_metadata_valid
                 and response_tenant_id == tenant_id
             ):
                 break
             _bounded_sleep(query_deadline)
         query_passed = (
             query_status == 200
-            and provenance == "HandlerComputed"
+            and provenance == expected_provenance
+            and projection_metadata_valid
             and response_tenant_id == tenant_id
         )
         if query_passed:
-            query_reason = "query.handler-computed"
-        elif query_status == 200 and provenance == "HandlerComputed":
+            query_reason = expected_query_reason
+        elif query_status == 200 and provenance == expected_provenance and not projection_metadata_valid:
+            query_reason = "query.projection-metadata.invalid"
+        elif query_status == 200 and provenance == expected_provenance:
             query_reason = "query.tenant-mismatch"
         else:
             query_reason = "query.provenance.missing"
@@ -2721,6 +2753,12 @@ def _capture(
             "entityId": tenant_id,
             "responseTenantId": response_tenant_id or "not-observed",
         }
+        if expected_provenance == "ProjectionBacked":
+            evidence["observations"]["queryProvenance"].update({
+                "queryType": "get-tenant",
+                "projectionType": "tenants",
+                "projectionVersion": projection_version or "not-observed",
+            })
 
         signalr_bases = _resource_signalr_urls(records, "eventstore") or eventstore_bases or [eventstore_base]
         signalr_control_passed = False

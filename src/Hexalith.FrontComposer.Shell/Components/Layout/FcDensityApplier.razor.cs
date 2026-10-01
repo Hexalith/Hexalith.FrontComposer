@@ -17,6 +17,7 @@ namespace Hexalith.FrontComposer.Shell.Components.Layout;
 public partial class FcDensityApplier : ComponentBase, IAsyncDisposable {
     private const string ModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-density.js";
 
+    private readonly SemaphoreSlim _densityWrites = new(1, 1);
     private IJSObjectReference? _module;
     private DensityLevel? _lastApplied;
     private bool _disposed;
@@ -80,20 +81,30 @@ public partial class FcDensityApplier : ComponentBase, IAsyncDisposable {
         _ = InvokeSetDensityAsync(value);
 
     private async Task InvokeSetDensityAsync(DensityLevel level) {
-        if (_module is null || _disposed) {
-            return;
-        }
-
-        if (_lastApplied == level) {
-            return;
-        }
-
+        await _densityWrites.WaitAsync().ConfigureAwait(false);
         try {
-            await _module.InvokeVoidAsync("setDensity", level.ToString()).ConfigureAwait(false);
-            _lastApplied = level;
+            if (_module is null || _disposed) {
+                return;
+            }
+
+            // A selection can change while an earlier JS write awaits its acknowledgement. Read
+            // the latest value after that write completes, so a queued stale value cannot win or
+            // cause a return to the last completed value to be incorrectly deduplicated.
+            level = EffectiveSelection.Value;
+            if (_lastApplied == level) {
+                return;
+            }
+
+            try {
+                await _module.InvokeVoidAsync("setDensity", level.ToString()).ConfigureAwait(false);
+                _lastApplied = level;
+            }
+            catch (OperationCanceledException) { }
+            catch (JSDisconnectedException) { }
+            catch (JSException) { }
         }
-        catch (OperationCanceledException) { }
-        catch (JSDisconnectedException) { }
-        catch (JSException) { }
+        finally {
+            _densityWrites.Release();
+        }
     }
 }

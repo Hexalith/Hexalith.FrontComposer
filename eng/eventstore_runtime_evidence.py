@@ -489,7 +489,32 @@ APPHOST_OBSERVATIONS = (
     "queryProvenance",
     "projectionSignalR",
 )
-APPHOST_QUERY_PROVENANCE = {"HandlerComputed": "query.handler-computed"}
+APPHOST_QUERY_CONTRACTS = {
+    (ACTIVE_SOURCE_SHA, ACTIVE_VERSION, ACTIVE_BUILDS_SHA): (
+        "HandlerComputed", "query.handler-computed"
+    ),
+    (SUCCESSOR_SOURCE_SHA, SUCCESSOR_VERSION, SUCCESSOR_BUILDS_SHA): (
+        "ProjectionBacked", "query.projection-backed"
+    ),
+}
+
+
+def apphost_query_contract(provenance: dict[str, str]) -> tuple[str, str] | None:
+    """Select a query contract from authenticated source/catalog provenance."""
+    return APPHOST_QUERY_CONTRACTS.get((
+        provenance.get("sourceSha"),
+        provenance.get("releaseVersion"),
+        provenance.get("buildsSha"),
+    ))
+
+
+def is_tenant_projection_version(value: Any) -> bool:
+    """Match the pinned Tenants aggregate-local Int64 projection marker."""
+    return (
+        isinstance(value, str)
+        and re.fullmatch(r"tenant-sequence:(0|[1-9][0-9]{0,18})", value) is not None
+        and int(value.split(":", 1)[1]) <= 9223372036854775807
+    )
 EXPECTED_RECEIPTS = {
     "eventstore-owner.json": {
         "role": "eventstore-owner",
@@ -5687,8 +5712,11 @@ def _validate_live_apphost(
         aggregate_id = command_submit.get("aggregateId") if isinstance(command_submit, dict) else None
         message_id = command_submit.get("messageId") if isinstance(command_submit, dict) else None
         correlation_id = command_submit.get("correlationId") if isinstance(command_submit, dict) else None
-        provenance_name = observations.get("queryProvenance", {}).get("provenance") if isinstance(observations.get("queryProvenance"), dict) else None
-        expected_reason = APPHOST_QUERY_PROVENANCE.get(provenance_name)
+        query_observation = observations.get("queryProvenance", {})
+        query_contract = apphost_query_contract(provenance)
+        provenance_name, expected_reason = query_contract or (None, None)
+        if isinstance(query_observation, dict) and query_observation.get("provenance") != provenance_name:
+            errors.append("Live AppHost query provenance stamp is missing or drifted.")
         signalr_control = smoke.get("authorizationControls", {}).get("projectionSignalR", {}) if isinstance(smoke.get("authorizationControls"), dict) else {}
         signalr_endpoint = signalr_control.get("endpoint") if isinstance(signalr_control, dict) else None
         health = observations.get("health", {})
@@ -5725,6 +5753,18 @@ def _validate_live_apphost(
                 "endpoint": signalr_endpoint,
             },
         }
+        if provenance_name == "ProjectionBacked":
+            projection_version = (
+                query_observation.get("projectionVersion")
+                if isinstance(query_observation, dict) else None
+            )
+            expected_observations["queryProvenance"].update({
+                "queryType": "get-tenant",
+                "projectionType": "tenants",
+                "projectionVersion": projection_version,
+            })
+            if not is_tenant_projection_version(projection_version):
+                errors.append("Live AppHost tenant projection metadata is missing or drifted.")
         if not isinstance(aggregate_id, str) or not ACTIVE_AGGREGATE_ID_RE.fullmatch(aggregate_id):
             errors.append("Live AppHost command observation lacks its generated aggregate identity.")
         if (

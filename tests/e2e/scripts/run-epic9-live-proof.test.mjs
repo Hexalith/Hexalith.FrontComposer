@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { access, chmod, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, chmod, mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,6 +31,12 @@ const createHarness = async (t, options = {}) => {
   const npmLog = join(root, 'npm.log');
   const dotnetLog = join(root, 'dotnet.log');
   const stateFile = join(root, 'aspire-state');
+  const socketDirectory = options.simulateSocketPermissions ? join(root, 'owned-cli', 'bch') : '';
+  if (options.existingSocketDirectory) {
+    await mkdir(socketDirectory, { recursive: true });
+    await chmod(socketDirectory, 0o755);
+    await writeFile(join(socketDirectory, 'unrelated-owner.txt'), 'preserve this shared-directory sentinel\n');
+  }
   await mkdir(bin, { recursive: true });
   await writeFile(stateFile, 'stopped\n');
   await writeFile(`${stateFile}.pid`, '4321\n');
@@ -88,6 +94,7 @@ next_count() {
 printf '%s\\n' "$*" >> "$FC_EPIC9_FAKE_ASPIRE_LOG"
 case "$1" in
   ps)
+    if [[ -n "$FC_EPIC9_FAKE_SOCKET_DIRECTORY" ]]; then mkdir -p "$FC_EPIC9_FAKE_SOCKET_DIRECTORY"; fi
     count="$(next_count "$FC_EPIC9_FAKE_PS_COUNT")"
     case ",\${FC_EPIC9_FAKE_PS_FAIL_CALLS:-}," in
       *",$count,"*) exit 96 ;;
@@ -119,6 +126,12 @@ case "$1" in
     printf 'AppHost exited before readiness with code 0\\n' >> "$child_log"
     printf 'password=fixture-password\\nauthorization=fixture-authorization\\nhttps://localhost/login?t=child-secret\\n' >> "$child_log"
     count="$(next_count "$FC_EPIC9_FAKE_START_COUNT")"
+    if [[ -n "$FC_EPIC9_FAKE_SOCKET_DIRECTORY" \
+      && "$(stat -c %a "$FC_EPIC9_FAKE_SOCKET_DIRECTORY")" != "700" ]]; then
+      printf 'The configured socket directory must have mode 0700.\\n' >> "$child_log"
+      printf 'Starting Aspire AppHost in the background...\\n'
+      exit 0
+    fi
     pid="$FC_EPIC9_FAKE_FIRST_START_PID"
     if [[ "$count" -gt 1 ]]; then pid="$FC_EPIC9_FAKE_SECOND_START_PID"; fi
     printf '%s\\n' "$pid" > "$FC_EPIC9_FAKE_STATE.pid"
@@ -238,6 +251,7 @@ fi
     FC_EPIC9_FAKE_STATUS_COUNT: join(root, 'git-status-count'),
     FC_EPIC9_FAKE_ASPIRE_LOG: aspireLog,
     FC_EPIC9_FAKE_STATE: stateFile,
+    FC_EPIC9_FAKE_SOCKET_DIRECTORY: socketDirectory,
     FC_EPIC9_FAKE_PS_COUNT: join(root, 'aspire-ps-count'),
     FC_EPIC9_FAKE_START_COUNT: join(root, 'aspire-start-count'),
     FC_EPIC9_FAKE_STOP_COUNT: join(root, 'aspire-stop-count'),
@@ -262,11 +276,12 @@ fi
     FC_EPIC9_FAKE_NPM_LOG: npmLog,
     FC_EPIC9_FAKE_RETRY_ARTIFACTS: String(options.retryArtifacts ?? false),
   };
-  return { artifactRoot, aspireLog, dotnetLog, environment, npmLog };
+  return { artifactRoot, aspireLog, dotnetLog, environment, npmLog, socketDirectory };
 };
 
 const runProof = async (environment) => new Promise((resolvePromise, rejectPromise) => {
-  const child = spawn(PROOF_SCRIPT, [], {
+  // Model a fresh hosted runner: the proof must restrict its own mask before ps.
+  const child = spawn('bash', ['-c', 'umask 0022; exec "$1"', 'epic9-proof', PROOF_SCRIPT], {
     cwd: REPOSITORY_ROOT,
     env: environment,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -414,8 +429,8 @@ test('Epic 9 proof records the exact serialized complete-graph build and isolate
   assert.deepEqual((await readInvocations(harness.dotnetLog)).filter((invocation) => invocation.startsWith('build ')), [EXPECTED_SOURCE_GRAPH_BUILD]);
   const metadata = JSON.parse(await readFile(join(harness.artifactRoot, 'runtime-metadata.json'), 'utf8'));
   assert.equal(metadata.startMode, 'isolated-no-build-after-source-graph-build');
-  assert.equal(metadata.commands[1], EXPECTED_SOURCE_GRAPH_BUILD.replace(APPHOST, 'src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj').replace(/^build /u, 'dotnet build '));
-  assert.equal(metadata.commands[3], 'aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --isolated --no-build --non-interactive --format Json --nologo --log-file <temporary-cli-log>');
+  assert.equal(metadata.commands[2], EXPECTED_SOURCE_GRAPH_BUILD.replace(APPHOST, 'src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj').replace(/^build /u, 'dotnet build '));
+  assert.equal(metadata.commands[4], 'aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --isolated --no-build --non-interactive --format Json --nologo --log-file <temporary-cli-log>');
   assert.doesNotMatch(metadata.commands.join(' '), /BuildProjectReferences=false/u);
 });
 
@@ -534,4 +549,29 @@ test('Epic 9 proof fails closed when post-build discovery fails before startup',
   assert.match(result.stderr, /process discovery failed closed/u);
   assert.deepEqual(lifecycleNames(await readInvocations(harness.aspireLog)), ['ps', 'ps']);
   assert.deepEqual(await readInvocations(harness.npmLog), []);
+});
+
+test('Epic 9 proof makes freshly discovered socket directories private under ambient umask 0022', async (t) => {
+  const ambientMask = process.umask();
+  const originalHome = process.env.HOME;
+  const harness = await createHarness(t, { simulateSocketPermissions: true });
+  const result = await runProof(harness.environment);
+  assert.equal(result.exitCode, 0, result.stderr);
+  assert.equal((await stat(harness.socketDirectory)).mode & 0o777, 0o700);
+  assert.equal(process.umask(), ambientMask);
+  assert.equal(process.env.HOME, originalHome);
+  const metadata = JSON.parse(await readFile(join(harness.artifactRoot, 'runtime-metadata.json'), 'utf8'));
+  assert.equal(metadata.commands[0], 'umask 077');
+});
+
+test('Epic 9 proof leaves an existing permissive shared socket directory untouched and fails closed', async (t) => {
+  const harness = await createHarness(t, { simulateSocketPermissions: true, existingSocketDirectory: true });
+  const result = await runProof(harness.environment);
+  assert.equal(result.exitCode, 2);
+  assert.equal((await stat(harness.socketDirectory)).mode & 0o777, 0o755);
+  assert.equal(await readFile(join(harness.socketDirectory, 'unrelated-owner.txt'), 'utf8'), 'preserve this shared-directory sentinel\n');
+  assert.deepEqual(lifecycleNames(await readInvocations(harness.aspireLog)), ['ps', 'ps', 'start', 'ps']);
+  assert.deepEqual(await readInvocations(harness.npmLog), []);
+  assert.equal((await readFile(harness.environment.FC_EPIC9_FAKE_STATE, 'utf8')).trim(), 'stopped');
+  assert.match(await readFile(join(harness.artifactRoot, 'apphost-start.failed.json'), 'utf8'), /must have mode 0700/u);
 });

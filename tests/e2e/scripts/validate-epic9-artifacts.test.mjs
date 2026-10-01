@@ -35,7 +35,7 @@ const DIRECT_COMMANDS = [SOURCE_ROUTING_COMMAND, COUNTER_WEB_BUILD_COMMAND, INIT
 const FALLBACK_COMMANDS = [SOURCE_ROUTING_COMMAND, COUNTER_WEB_BUILD_COMMAND, INITIAL_START_COMMAND, FALLBACK_DEPENDENCY_BUILD_COMMAND,
   FALLBACK_APPHOST_BUILD_COMMAND, FALLBACK_START_COMMAND, ...COMMON_COMMANDS, VALIDATE_FINAL_COMMAND];
 
-const SOURCE_GRAPH_COMMANDS = [SOURCE_ROUTING_COMMAND, SOURCE_GRAPH_BUILD_COMMAND, 'aspire ps --format Json --non-interactive --nologo', SOURCE_GRAPH_START_COMMAND, ...COMMON_COMMANDS, VALIDATE_FINAL_COMMAND];
+const SOURCE_GRAPH_COMMANDS = ['umask 077', SOURCE_ROUTING_COMMAND, SOURCE_GRAPH_BUILD_COMMAND, 'aspire ps --format Json --non-interactive --nologo', SOURCE_GRAPH_START_COMMAND, ...COMMON_COMMANDS, VALIDATE_FINAL_COMMAND];
 
 const pngFixture = (width = 1280, height = 720) => {
   const png = Buffer.alloc(24);
@@ -277,11 +277,13 @@ test('Epic 9 artifact validator rejects semantic contradictions and weak evidenc
     ['source-graph missing launch preflight', (fixture) => { useSourceGraph(fixture); fixture.launchPreflight = undefined; }, /empty or missing: apphost-launch-preflight/u],
     ['source-graph malformed launch preflight', (fixture) => { useSourceGraph(fixture); fixture.launchPreflight = {}; }, /must contain the Aspire process list/u],
     ['source-graph occupied launch preflight', (fixture) => { useSourceGraph(fixture); fixture.launchPreflight = [{ appHostPath: `/repo/${APPHOST_RELATIVE}`, appHostPid: 9999 }]; }, /launch preflight shows an existing/u],
+    ['source-graph missing private umask', (fixture) => { useSourceGraph(fixture); fixture.metadata.commands.shift(); }, /runtime-metadata.json.commands/u],
+    ['source-graph permissive umask', (fixture) => { useSourceGraph(fixture); fixture.metadata.commands[0] = 'umask 022'; }, /runtime-metadata.json.commands/u],
     ['source-graph missing build', (fixture) => { useSourceGraph(fixture); fixture.sourceGraphBuild = undefined; }, /requires non-empty apphost-source-graph-build/u],
     ['source-graph empty build', (fixture) => { useSourceGraph(fixture); fixture.sourceGraphBuild = ''; }, /requires non-empty apphost-source-graph-build/u],
-    ['source-graph skips project references', (fixture) => { useSourceGraph(fixture); fixture.metadata.commands[1] += ' -p:BuildProjectReferences=false'; }, /runtime-metadata.json.commands/u],
-    ['source-graph parallel build', (fixture) => { useSourceGraph(fixture); fixture.metadata.commands[1] = fixture.metadata.commands[1].replace('-m:1', '-m:4'); }, /runtime-metadata.json.commands/u],
-    ['source-graph implicit startup build', (fixture) => { useSourceGraph(fixture); fixture.metadata.commands[3] = fixture.metadata.commands[3].replace(' --no-build', ''); }, /runtime-metadata.json.commands/u],
+    ['source-graph skips project references', (fixture) => { useSourceGraph(fixture); fixture.metadata.commands[2] += ' -p:BuildProjectReferences=false'; }, /runtime-metadata.json.commands/u],
+    ['source-graph parallel build', (fixture) => { useSourceGraph(fixture); fixture.metadata.commands[2] = fixture.metadata.commands[2].replace('-m:1', '-m:4'); }, /runtime-metadata.json.commands/u],
+    ['source-graph implicit startup build', (fixture) => { useSourceGraph(fixture); fixture.metadata.commands[4] = fixture.metadata.commands[4].replace(' --no-build', ''); }, /runtime-metadata.json.commands/u],
     ['source-graph fallback packet', (fixture) => { useSourceGraph(fixture); fixture.failedStart = 'failed\n'; }, /reject fallback-only/u],
     ['source-graph artifact in historical direct mode', (fixture) => { fixture.sourceGraphBuild = 'build\n'; }, /Historical start modes/u],
     ['source-graph artifact in historical fallback mode', (fixture) => { useFallback(fixture); fixture.sourceGraphBuild = 'build\n'; }, /Historical start modes/u],
