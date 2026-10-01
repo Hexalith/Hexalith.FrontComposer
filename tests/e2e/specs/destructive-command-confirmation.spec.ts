@@ -211,6 +211,9 @@ test.describe('Story 4.1: destructive command confirmation', () => {
     expect(tenant.tenantId).toBeTruthy();
 
     await gotoTypeSpecimen(page);
+    // Capture the interactive tree: hydration replaces the prerendered heading and its attributes.
+    await expect(page.locator('.fc-shell-root')).toHaveAttribute('data-fc-interactive', 'true');
+    await waitForGeneratedFormReady(destructiveForm(page));
 
     const reservation = await page.evaluate(async (focusModulePath) => {
       const focus = await import(focusModulePath) as {
@@ -354,27 +357,46 @@ test.describe('Story 4.1: destructive command confirmation', () => {
       const intent = intentWindow.__fcOverlayOpenIntent;
       const shell = document.querySelector('.fc-shell-root');
       if (!(shell instanceof HTMLElement)) throw new Error('Expected the installed shell key filter.');
+      const reservationBefore = Reflect.get(intentWindow, '__fcModalReservation');
       const shortcuts = ['k', ','].map((key) => new KeyboardEvent('keydown', {
         key,
         ctrlKey: true,
         bubbles: true,
         cancelable: true,
       }));
-      for (const event of shortcuts) {
-        shell.dispatchEvent(event);
-        if (!event.defaultPrevented) {
-          throw new Error(`The installed shell key filter did not handle Ctrl+${event.key}.`);
+      // Exercise the installed JavaScript filter without queuing Blazor shortcut callbacks. Those
+      // callbacks would otherwise run after this inspection releases the reservation and open a modal.
+      const stopBlazorShortcut = (event: KeyboardEvent): void => event.stopPropagation();
+      shell.addEventListener('keydown', stopBlazorShortcut);
+      try {
+        for (const event of shortcuts) {
+          shell.dispatchEvent(event);
+          if (!event.defaultPrevented) {
+            throw new Error(`The installed shell key filter did not handle Ctrl+${event.key}.`);
+          }
         }
       }
-      const shortcutsLeftReservation = intentWindow.__fcOverlayOrigin === origin
-        && intentWindow.__fcOverlayOpenIntent === intent
-        && origin === heading;
+      finally {
+        shell.removeEventListener('keydown', stopBlazorShortcut);
+      }
+      const shortcutsLeftReservation = {
+        originStartedOnHeading: origin === heading,
+        originPreserved: intentWindow.__fcOverlayOrigin === origin,
+        intentPreserved: intentWindow.__fcOverlayOpenIntent === intent,
+        reservationPreserved: Boolean(reservationBefore)
+          && Reflect.get(intentWindow, '__fcModalReservation') === reservationBefore,
+      };
       focus.restoreOverlayOrigin();
       heading?.removeAttribute('data-reservation-origin');
       heading?.removeAttribute('tabindex');
       return shortcutsLeftReservation;
     }, '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js');
-    expect(originWasPreserved).toBe(true);
+    expect(originWasPreserved).toEqual({
+      originStartedOnHeading: true,
+      originPreserved: true,
+      intentPreserved: true,
+      reservationPreserved: true,
+    });
 
     // Releasing the owner lets the real destructive flow open exactly one dialog.
     const form = destructiveForm(page);

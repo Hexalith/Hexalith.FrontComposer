@@ -1,0 +1,250 @@
+{
+  "date": "2026-10-01",
+  "revision": "80c6d2b73088568e25acd8472c6c929cc033268d",
+  "baseline": "52fa0739ab8dfb02e1b9d8b5b05d2fd318f220d8",
+  "review": {
+    "iteration": 13,
+    "layers": [
+      "blind-hunter",
+      "edge-case-hunter",
+      "verification-gap"
+    ],
+    "reviewerFindings": 17,
+    "carriedFindingsNotDeferredAgain": 15,
+    "rejectedSpecOnlyFindings": 2,
+    "newParentVerificationPatch": "PV13-01"
+  },
+  "commands": {
+    "sourcetools-build": {
+      "command": "dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj -c Release -m:1 > /tmp/fc-13-3-20261001-sourcetools-build.log 2>&1",
+      "exitCode": 0,
+      "result": "Build succeeded; 0 warnings; 0 errors",
+      "log": {
+        "path": "/tmp/fc-13-3-20261001-sourcetools-build.log",
+        "sha256": "93d2754782d80a8cde5a18a54e0a8a435bf4ae4121747422c26b3cf890311d87"
+      }
+    },
+    "shell-build": {
+      "command": "dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release -m:1 > /tmp/fc-13-3-20261001-shell-build.log 2>&1",
+      "exitCode": 0,
+      "result": "Build succeeded; 0 warnings; 0 errors",
+      "log": {
+        "path": "/tmp/fc-13-3-20261001-shell-build.log",
+        "sha256": "dfe6f97e56edf93054ca327887602e60c343d2b8be5e4aeb7cd67a8331ab8c39"
+      }
+    },
+    "shell-focused": {
+      "command": "DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -class '*FcCommandBlockedOutcomeTests' -class '*FcDestructiveConfirmationDialogTests' -class '*FcFormAbandonmentGuardTests' -class '*FcValidationSummaryTests' -class '*FcSettingsButtonTests' -class '*FcPaletteTriggerButtonTests' -class '*FcLifecycleWrapperRejectionTests' -class '*CommandRendererWrapperIntegrationTests' -class '*CommandTargetGeneratedFormTests' -class '*DestructiveCommandRendererIntegrationTests' -class '*FcShellResourcesTests' -class '*FrontComposerShortcutRegistrarTests' -result-xml /tmp/fc-13-3-20261001-shell-focused.xml > /tmp/fc-13-3-20261001-shell-focused.log 2>&1",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 1,
+      "results": {
+        "total": 288,
+        "passed": 287,
+        "failed": 1,
+        "skipped": 0
+      },
+      "failures": [
+        "Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.GeneratedSwitchDatePickerAndEnumSelectHonorTheFieldContract"
+      ],
+      "xml": "/tmp/fc-13-3-20261001-shell-focused.xml",
+      "xmlSha256": "141382d49812c8445cee8eea20cc97bc41aedb0d7e94733e099ef57079d70891",
+      "log": {
+        "path": "/tmp/fc-13-3-20261001-shell-focused.log",
+        "sha256": "b61a60cd38aee8f553d191bc50491b58833c87b509cbfb87c4e4c98dd56123a3"
+      }
+    },
+    "shell-default": {
+      "command": "DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -trait- 'Category=GovernanceBuild' -trait- 'Category=Performance' -trait- 'Category=e2e-palette' -trait- 'Category=NightlyProperty' -trait- 'Category=Quarantined' -result-xml /tmp/fc-13-3-20261001-shell-default.xml > /tmp/fc-13-3-20261001-shell-default.log 2>&1",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 1,
+      "results": {
+        "total": 3076,
+        "passed": 3069,
+        "failed": 7,
+        "skipped": 0
+      },
+      "failures": [
+        "Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.GeneratedSwitchDatePickerAndEnumSelectHonorTheFieldContract",
+        "Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.ToolchainPins_MatchApprovedDotnetAndAspireVersions",
+        "Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval",
+        "Hexalith.FrontComposer.Shell.Tests.Generated.CounterStoryVerificationTests.CounterProjectionView_LoadedState_RendersColumnsAndFormatting",
+        "Hexalith.FrontComposer.Shell.Tests.Generated.CounterStoryVerificationTests.StatusProjectionView_NullAndBooleanValues_RenderSnapshot",
+        "Hexalith.FrontComposer.Shell.Tests.Governance.InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds",
+        "Hexalith.FrontComposer.Shell.Tests.Governance.FluentConformanceTests.Fluent_package_versions_are_v5_only_and_icons_match_components"
+      ],
+      "xml": "/tmp/fc-13-3-20261001-shell-default.xml",
+      "xmlSha256": "c947244d303453b6294e5d6393585c0692a89165b15f326b5dc4afa2400b9720",
+      "log": {
+        "path": "/tmp/fc-13-3-20261001-shell-default.log",
+        "sha256": "649b9823cba5f0010218077c99d38934943879f403c3f883bba9a8a9981a340e"
+      }
+    },
+    "sourcetools-focused": {
+      "command": "DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Release/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll -class '*CommandFormEmitterTests' -class '*CommandRendererEmitterTests' -class '*CommandFluxorEmitterTests' -class '*CommandFormTransformTests' -class '*CommandPageEmitterTests' -result-xml /tmp/fc-13-3-20261001-sourcetools-focused.xml > /tmp/fc-13-3-20261001-sourcetools-focused.log 2>&1",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 0,
+      "results": {
+        "total": 148,
+        "passed": 148,
+        "failed": 0,
+        "skipped": 0
+      },
+      "failures": [],
+      "xml": "/tmp/fc-13-3-20261001-sourcetools-focused.xml",
+      "xmlSha256": "36b1a4ce6351e750e3fe1dcbd310ff44b4df89738c0535822297b54863ce2997",
+      "log": {
+        "path": "/tmp/fc-13-3-20261001-sourcetools-focused.log",
+        "sha256": "8150251b42a9acb28a6da729c2f1e17d3c23f328cf17876f600b70c2c7101b6c"
+      }
+    },
+    "sourcetools-default": {
+      "command": "DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Release/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll -trait- 'Category=GovernanceBuild' -trait- 'Category=Performance' -trait- 'Category=e2e-palette' -trait- 'Category=NightlyProperty' -trait- 'Category=Quarantined' -result-xml /tmp/fc-13-3-20261001-sourcetools-default.xml > /tmp/fc-13-3-20261001-sourcetools-default.log 2>&1",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 1,
+      "results": {
+        "total": 1297,
+        "passed": 1295,
+        "failed": 2,
+        "skipped": 0
+      },
+      "failures": [
+        "Hexalith.FrontComposer.SourceTools.Tests.Diagnostics.DiagnosticRegistryTests.FrontComposerObsoleteAttributes_FollowDiagnosticDeprecationPolicy",
+        "Hexalith.FrontComposer.SourceTools.Tests.Integration.PackagedAnalyzerConsumerTests.PackagedAnalyzer_ContractsOnlyPayload_GeneratedShellConsumerCompiles"
+      ],
+      "xml": "/tmp/fc-13-3-20261001-sourcetools-default.xml",
+      "xmlSha256": "efda7b04a8ab47bb393b692e83eea94a11b56b6747225d61d689e88a1afbd892",
+      "log": {
+        "path": "/tmp/fc-13-3-20261001-sourcetools-default.log",
+        "sha256": "da272f4e7281cd7dfe65ee38f706532fcdff1d0bd2a2dc04210d707778823a62"
+      }
+    },
+    "typecheck": {
+      "command": "npm --prefix tests/e2e run typecheck",
+      "exitCode": 0,
+      "result": "Passed before and after the browser-test patch."
+    },
+    "aspire-baseline": {
+      "command": "timeout 90s aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive > /tmp/fc-13-3-20261001-aspire.log 2>&1",
+      "exitCode": 124,
+      "result": "Startup timed out before a running AppHost was available. Subsequent aspire describe and aspire stop both reported no running AppHost.",
+      "log": {
+        "path": "/tmp/fc-13-3-20261001-aspire.log",
+        "sha256": "24ff2c088565458c0e105bab965240f3184b50e243f21cab7170e50a84b4eaa6"
+      }
+    },
+    "browser-test-host": {
+      "command": "npm --prefix tests/e2e run test:a11y > /tmp/fc-13-3-20261001-browser-test-host.log 2>&1",
+      "exitCode": 1,
+      "hostExitCode": 134,
+      "result": "MapFrontComposerMcp requires a restrictive IFrontComposerMcpTenantToolGate outside Development; AllowAllMcpTenantToolGate is sample/dev only. No browser assertions ran.",
+      "log": {
+        "path": "/tmp/fc-13-3-20261001-browser-test-host.log",
+        "sha256": "c93188d2d4089ca1ad757d3c0999c2edbeda78671091a55021f14f6775976cea"
+      }
+    },
+    "browser-development-before-patch": {
+      "command": "./node_modules/.bin/playwright test --config /tmp/fc-13-3-20261001-playwright.config.ts --project=chromium specs/destructive-command-confirmation.spec.ts specs/form-abandonment-guard.spec.ts specs/one-at-a-time-execution-policy.spec.ts specs/policy-gated-command-authorization.spec.ts specs/command-form-generation.spec.ts specs/specimen-accessibility.spec.ts > /tmp/fc-13-3-20261001-browser-development.log 2>&1",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e",
+      "exitCode": 1,
+      "results": {
+        "total": 48,
+        "passed": 39,
+        "failed": 9
+      },
+      "failures": [
+        "specs/destructive-command-confirmation.spec.ts:210:3 › Story 4.1: destructive command confirmation › one modal reservation survives long preparation and refuses competing shell overlays (16.4s)",
+        "specs/policy-gated-command-authorization.spec.ts:30:3 › Story 4.4: policy-gated command authorization › allowed protected specimen command renders the form and dispatches after authorization (11.2s)",
+        "specs/specimen-accessibility.spec.ts:90:3 › FrontComposer accessibility and visual specimens › dark generated command specimens keep readable foreground contrast (873ms)",
+        "specs/specimen-accessibility.spec.ts:426:5 › FrontComposer accessibility and visual specimens › visual baseline light compact (2.9s)",
+        "specs/specimen-accessibility.spec.ts:426:5 › FrontComposer accessibility and visual specimens › visual baseline light comfortable (3.0s)",
+        "specs/specimen-accessibility.spec.ts:426:5 › FrontComposer accessibility and visual specimens › visual baseline light roomy (3.4s)",
+        "specs/specimen-accessibility.spec.ts:426:5 › FrontComposer accessibility and visual specimens › visual baseline dark compact (2.8s)",
+        "specs/specimen-accessibility.spec.ts:426:5 › FrontComposer accessibility and visual specimens › visual baseline dark comfortable (2.6s)",
+        "specs/specimen-accessibility.spec.ts:426:5 › FrontComposer accessibility and visual specimens › visual baseline dark roomy (2.7s)"
+      ],
+      "log": {
+        "path": "/tmp/fc-13-3-20261001-browser-development.log",
+        "sha256": "c24bbd09bf3c0ce4e53593b3f2670d3ad2339a6218864574668fafbe0b30dfe4"
+      },
+      "evidenceNote": "Counts and failure names come from the preserved broad-run log. Its temporary JUnit path was overwritten by an early focused recheck; this artifact does not claim that XML still represents the broad run."
+    },
+    "reservation-after-patch": {
+      "command": "./node_modules/.bin/playwright test --config /tmp/fc-13-3-20261001-recheck.config.ts --project=chromium specs/destructive-command-confirmation.spec.ts --grep 'one modal reservation survives' > /tmp/fc-13-3-20261001-reservation-recheck.log 2>&1",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e",
+      "exitCode": 0,
+      "results": {
+        "tests": 1,
+        "failures": 0,
+        "skipped": 0,
+        "errors": 0
+      },
+      "xml": "/tmp/fc-13-3-20261001-reservation-recheck.xml",
+      "xmlSha256": "917dc16d98ffbb4c88530126a210c5c5ce0e6cc07e352763fc87c6bd71307e5c",
+      "log": {
+        "path": "/tmp/fc-13-3-20261001-reservation-recheck.log",
+        "sha256": "d4d57c52f425052c9fa55a6d462ce943f19ce7b279deeb02f2e83adf58a3b9df"
+      }
+    },
+    "destructive-after-patch": {
+      "command": "./node_modules/.bin/playwright test --config /tmp/fc-13-3-20261001-destructive.config.ts --project=chromium specs/destructive-command-confirmation.spec.ts > /tmp/fc-13-3-20261001-destructive.log 2>&1",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e",
+      "exitCode": 0,
+      "results": {
+        "tests": 7,
+        "failures": 0,
+        "skipped": 0,
+        "errors": 0
+      },
+      "xml": "/tmp/fc-13-3-20261001-destructive.xml",
+      "xmlSha256": "fd3e29ec5ed629a2794a73eb41821f646906f3d53a1f34975875119f667ec889",
+      "log": {
+        "path": "/tmp/fc-13-3-20261001-destructive.log",
+        "sha256": "08d39df132108a4cfe97b1bb7c57db137624791aee71656f6a3d2448cbfa1cd9"
+      }
+    }
+  },
+  "dependencyState": {
+    "Hexalith.Builds": {
+      "declaredGitlink": "21ce044ab465ccb2adab58b3d66e394ffbecf3c2",
+      "checkout": "21ce044ab465ccb2adab58b3d66e394ffbecf3c2",
+      "matches": true
+    },
+    "Hexalith.EventStore": {
+      "declaredGitlink": "19dc1f82122564453163ac010dc7e5ae81db7ed3",
+      "checkout": "19dc1f82122564453163ac010dc7e5ae81db7ed3",
+      "matches": true
+    }
+  },
+  "browserFallback": {
+    "environment": "Development",
+    "gpuArguments": [
+      "--disable-gpu",
+      "--disable-software-rasterizer"
+    ],
+    "trackedHostEdits": false,
+    "configuration": "import config from \"/home/administrator/projects/hexalith/frontcomposer/tests/e2e/playwright.config.ts\";\nexport default {\n  ...config,\n  testDir: \"/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs\",\n  outputDir: \"/tmp/fc-13-3-20261001-e2e-results\",\n  reporter: [[\"list\"], [\"junit\", { outputFile: \"/tmp/fc-13-3-20261001-browser-development.xml\" }]],\n  workers: 1,\n  use: { ...config.use, launchOptions: { args: [\"--disable-gpu\", \"--disable-software-rasterizer\"] } },\n  webServer: {\n    ...config.webServer,\n    cwd: \"/home/administrator/projects/hexalith/frontcomposer/tests/e2e\",\n    env: { ...config.webServer.env, ASPNETCORE_ENVIRONMENT: \"Development\", DOTNET_ENVIRONMENT: \"Development\" }\n  }\n};\n"
+  },
+  "changes": [
+    "Wait for shell and generated-form interactivity before capturing a heading that prerender hydration replaces.",
+    "Stop synthetic Ctrl+K/Ctrl+comma propagation after the installed JavaScript filter, preventing delayed Blazor callbacks from opening an overlay after test teardown.",
+    "Assert origin, intent, reservation identity, and both default-prevention outcomes independently."
+  ],
+  "remainingBlockers": [
+    "Seven carried Shell failures: nullable-enum selection, approved toolchain/catalog pins, EventStore identity, two icon snapshots, and shared catalog compatibility.",
+    "Two carried SourceTools failures: Fluent consumer package pin and shortcut registrar obsolete-message policy.",
+    "The required Counter Test host cannot boot; Development cannot certify the Test-only allowed policy sample, its contrast sample, or six visual baselines.",
+    "Aspire runtime baseline startup timed out."
+  ],
+  "limitations": [
+    "The broad Development browser result is from before the test patch; all seven destructive-confirmation cases pass after the patch. The other eight failed browser cases remain unchanged and unresolved.",
+    "Real generated-renderer background denial during an interleaved parent render and blocking CI enrollment remain carried deferred work.",
+    "No dependencies, tracked host code, baselines, gate assertions, or frozen intent were changed.",
+    "Early focused patch attempts exposed prerender-origin replacement and failed; the final hydration-aware reservation check and complete destructive-confirmation spec pass."
+  ],
+  "completion": {
+    "done": false,
+    "specStatus": "in-review",
+    "sprintStatus": "in-progress",
+    "workflowCheckpoint": "step-04-review: verification failures remain; HALT and escalate to the human"
+  }
+}
