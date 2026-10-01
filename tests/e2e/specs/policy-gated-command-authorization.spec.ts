@@ -1,10 +1,11 @@
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 import type { Locator, Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/index.js';
 import { submissionTest } from '../fixtures/command-submission.fixture.js';
 import { expectFieldValue, fieldEditorByLabel, fillFieldByLabel } from '../helpers/fluent-fields.js';
+import { spawnOwnedProcess, stopOwnedProcess, waitForOwnedServer, type OwnedProcess } from '../helpers/owned-process.js';
 import { getSpecimenRoute } from '../helpers/specimen-manifest.js';
 
 const ALLOWED_COMMAND_ID = 'policy-allowed-specimen';
@@ -244,63 +245,43 @@ test.describe('Story 13.3: unmapped rejection recovery focus', () => {
   test.describe.configure({ mode: 'serial' });
   test.use({ baseURL: REJECTION_BASE_URL });
 
-  let server: ChildProcessWithoutNullStreams | undefined;
-  let serverOutput = '';
+  let server: OwnedProcess | undefined;
 
   test.beforeAll(async () => {
     if (process.env.FC_E2E_STORY_13_3_REJECTION_BASE_URL) {
       return;
     }
 
-    server = spawn(
-      'dotnet',
-      [
-        'run',
-        '--project',
-        '../../samples/Counter/Counter.Web/Counter.Web.csproj',
-        '--configuration',
-        'Release',
-        '--no-build',
-        '--no-launch-profile',
-        '--urls',
-        REJECTION_BASE_URL,
-      ],
-      {
-        cwd: new URL('..', import.meta.url),
-        env: {
-          ...process.env,
-          ASPNETCORE_ENVIRONMENT: 'Development',
-          DOTNET_ENVIRONMENT: 'Development',
-          Hexalith__FrontComposer__Specimens__Enabled: 'true',
-          Hexalith__FrontComposer__StubCommandService__AcknowledgeDelayMs: '0',
-          Hexalith__FrontComposer__StubCommandService__SimulateRejection: 'true',
-          Hexalith__FrontComposer__StubCommandService__RejectionReason: 'The specimen change was rejected.',
-          Hexalith__FrontComposer__StubCommandService__RejectionResolution: 'Edit the values and retry.',
-        },
+    const projectDirectory = new URL('../../../samples/Counter/Counter.Web/', import.meta.url);
+    const configuration = process.env.FC_E2E_COMMAND_SUBMISSION_CONFIGURATION === 'Debug' ? 'Debug' : 'Release';
+    const assembly = fileURLToPath(new URL(`bin/${configuration}/net10.0/Counter.Web.dll`, projectDirectory));
+    server = spawnOwnedProcess('dotnet', [assembly, '--urls', REJECTION_BASE_URL], {
+      cwd: projectDirectory,
+      env: {
+        ...process.env,
+        ASPNETCORE_ENVIRONMENT: 'Development',
+        DOTNET_ENVIRONMENT: 'Development',
+        Hexalith__FrontComposer__Specimens__Enabled: 'true',
+        Hexalith__FrontComposer__StubCommandService__AcknowledgeDelayMs: '0',
+        Hexalith__FrontComposer__StubCommandService__SimulateRejection: 'true',
+        Hexalith__FrontComposer__StubCommandService__RejectionReason: 'The specimen change was rejected.',
+        Hexalith__FrontComposer__StubCommandService__RejectionResolution: 'Edit the values and retry.',
       },
-    );
-    server.stdout.on('data', appendServerOutput);
-    server.stderr.on('data', appendServerOutput);
+    }, SERVER_READY_TIMEOUT_MS);
 
     try {
-      await waitForServerReady(REJECTION_BASE_URL);
+      await waitForOwnedServer(server, REJECTION_BASE_URL, Date.now() + SERVER_READY_TIMEOUT_MS);
     } catch (error) {
-      server.kill('SIGTERM');
+      await stopOwnedProcess(server);
       throw error;
     }
   });
 
   test.afterAll(async () => {
-    if (!server) {
-      return;
+    if (server) {
+      await stopOwnedProcess(server);
+      server = undefined;
     }
-
-    server.kill('SIGTERM');
-    await new Promise<void>((resolveExit) => {
-      server?.once('exit', () => resolveExit());
-      setTimeout(resolveExit, 5_000).unref();
-    });
-    server = undefined;
   });
 
   test('Edit and retry moves real browser focus to the first generated editor', async ({ page, lifecycle }) => {
@@ -382,36 +363,6 @@ test.describe('Story 13.3: unmapped rejection recovery focus', () => {
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(previousUrl);
   });
-
-  const appendServerOutput = (chunk: Buffer): void => {
-    serverOutput = `${serverOutput}${chunk.toString('utf8')}`.slice(-8_000);
-  };
-
-  const waitForServerReady = async (baseUrl: string): Promise<void> => {
-    const deadline = Date.now() + SERVER_READY_TIMEOUT_MS;
-    let lastError: unknown;
-
-    while (Date.now() < deadline) {
-      if (server?.exitCode !== null) {
-        throw new Error(`Counter Story 13.3 rejection host exited before readiness.\n${serverOutput}`);
-      }
-
-      try {
-        const response = await fetch(baseUrl);
-        if (response.ok) {
-          return;
-        }
-      } catch (error) {
-        lastError = error;
-      }
-
-      await new Promise((resolveWait) => setTimeout(resolveWait, 500));
-    }
-
-    throw new Error(
-      `Counter Story 13.3 rejection host did not become ready. Last error: ${String(lastError)}\n${serverOutput}`,
-    );
-  };
 });
 
 const gotoTypeSpecimen = async (page: Page): Promise<void> => {

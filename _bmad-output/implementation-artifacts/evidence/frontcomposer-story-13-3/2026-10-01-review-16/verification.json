@@ -1,0 +1,432 @@
+{
+    "date": "2026-10-01",
+    "reviewedRevision": "3b1584d923a9a7dac163050b924285a1206605b2",
+    "baselineCommit": "52fa0739ab8dfb02e1b9d8b5b05d2fd318f220d8",
+    "review": {
+        "iteration": 16,
+        "layers": [
+            "blind-hunter",
+            "edge-case-hunter",
+            "verification-gap"
+        ],
+        "diffBytes": 15922896,
+        "diffSha256": "572c639b803816eed9e6acee6c9c931a06fe1f17bcf543f8499a4e26b02834ba",
+        "findings": [
+            {
+                "id": "BH16-01",
+                "layer": "blind-hunter",
+                "summary": "Refused shell capture opens a dialog when module disposal throws.",
+                "verdict": "low",
+                "evidence": "carried VG10B-O1 / E15-04: the same disposal-failure path and recorded interop-failure policy remain unchanged.",
+                "route": "reject"
+            },
+            {
+                "id": "BH16-02",
+                "layer": "blind-hunter",
+                "summary": "Reservation owners collide between destructive renderer instances.",
+                "verdict": "false",
+                "evidence": "CommandRendererEmitter.cs:133 emits a static long counter, and :567 increments it atomically. The claimed instance-local counter does not exist.",
+                "route": "reject"
+            },
+            {
+                "id": "BH16-03",
+                "layer": "blind-hunter",
+                "summary": "An expired shell reservation can permit a delayed overlay to open over a replacement.",
+                "verdict": "low",
+                "evidence": "A capture/disposal round trip must stall beyond five seconds while another launch recovers the slot. Per-launch shell ownership and completion checks add coordination for this uncommon interleave, rather than a direct correction.",
+                "route": "reject"
+            },
+            {
+                "id": "BH16-04",
+                "layer": "blind-hunter",
+                "summary": "A stale clipboard result relabels a newer rejection.",
+                "verdict": "low",
+                "evidence": "carried E15-03 / E8-04: the same pending-copy/replacement-rejection interleave still requires the previously rejected ownership-generation guard.",
+                "route": "reject"
+            },
+            {
+                "id": "BH16-05",
+                "layer": "blind-hunter",
+                "summary": "Interop timeouts escape the summary, abandonment guard, or confirmation dialog.",
+                "verdict": "low",
+                "evidence": "carried BH14-07 / E3-10: the same Shell-wide long-interop cancellation policy remains unchanged.",
+                "route": "reject"
+            },
+            {
+                "id": "BH16-06",
+                "layer": "blind-hunter",
+                "summary": "A false validation-link focus result leaves native navigation suppressed.",
+                "verdict": "low",
+                "evidence": "carried BH11-05 / E4-06: void interop and the generated-target fallback assumptions remain unchanged.",
+                "route": "reject"
+            },
+            {
+                "id": "BH16-07",
+                "layer": "blind-hunter",
+                "summary": "A hidden first linked target prevents a later focus fallback.",
+                "verdict": "false",
+                "evidence": "carried E11-04 / E13-05: descriptors and editors share the generated visibility predicate; hidden generated fields unmount. The manually hidden DOM fixture remains outside that demonstrated path.",
+                "route": "reject"
+            },
+            {
+                "id": "BH16-08",
+                "layer": "blind-hunter",
+                "summary": "Removing a form ancestor bypasses lifecycle settle repair.",
+                "verdict": "low",
+                "evidence": "carried E13-04 / E13-06: the same whole-form unmount case and form-scoped watcher remain unchanged; ancestor observation was already rejected for this lifecycle path.",
+                "route": "reject"
+            },
+            {
+                "id": "BH16-09",
+                "layer": "blind-hunter",
+                "summary": "Nested-model editors do not capture an abandonment return origin.",
+                "verdict": "low",
+                "evidence": "The guard intentionally excludes component-buffer events, and generated command editors bind direct model properties. Supporting custom nested-model editors requires new field ownership and lookup behavior; no repository generated caller emits such an editor.",
+                "route": "reject"
+            },
+            {
+                "id": "BH16-10",
+                "layer": "blind-hunter",
+                "summary": "The unmapped-rejection browser host cleans only its launcher.",
+                "verdict": "medium",
+                "evidence": "Verified: its new raw-spawn host used SIGTERM without descendant ownership or escalation. Reuse the existing owned-process helper on readiness failure and normal teardown, invoke the prebuilt configured assembly, and cover parent-first-exit startup cleanup.",
+                "route": "patch"
+            },
+            {
+                "id": "E16-01",
+                "layer": "edge-case-hunter",
+                "summary": "Removing unrelated focused content allows an unrelated denial to claim focus.",
+                "verdict": "low",
+                "evidence": "carried E15-01 / BH11-01: page-wide capture and the concurrent replacement case remain unchanged.",
+                "route": "reject"
+            },
+            {
+                "id": "E16-02",
+                "layer": "edge-case-hunter",
+                "summary": "A late clipboard completion relabels the next rejection.",
+                "verdict": "low",
+                "evidence": "carried E15-03 / E8-04: the same pending-copy/replacement-rejection ownership race remains unchanged.",
+                "route": "reject"
+            },
+            {
+                "id": "E16-03",
+                "layer": "edge-case-hunter",
+                "summary": "Windows cleanup skips surviving descendants after the parent exits.",
+                "verdict": "medium",
+                "evidence": "carried BH15-09: stopOwnedProcess still skips taskkill after parent exit. Its platform-specific ownership repair is already assigned to the separate test/CI repair; no duplicate ledger entry.",
+                "route": "defer"
+            },
+            {
+                "id": "VG16-01",
+                "layer": "verification-gap",
+                "summary": "Background denial focus coverage bypasses the real generated browser refresh.",
+                "verdict": "medium",
+                "evidence": "carried VG11-02 / BH14-09: the same synthetic browser replacement and mocked integration round trip remain unchanged. The pre-existing pending presentation gate and authenticated refresh coverage are already deferred.",
+                "route": "defer"
+            }
+        ],
+        "findingsCount": 14,
+        "carriedFindingsCount": 10,
+        "newDeferredEntries": 0
+    },
+    "commands": {
+        "sourcetools-debug-build": {
+            "command": [
+                "dotnet",
+                "build",
+                "tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj",
+                "-c",
+                "Debug",
+                "-m:1",
+                "--no-restore"
+            ],
+            "exitCode": 0,
+            "elapsedSeconds": 10.56,
+            "log": "sourcetools-debug-build.log.txt",
+            "logSha256": "aa716aea8ac8d2d8f218f538618eb9b39e1a394206d71197d95caf9df6cad6c3"
+        },
+        "shell-debug-build": {
+            "command": [
+                "dotnet",
+                "build",
+                "tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj",
+                "-c",
+                "Debug",
+                "-m:1",
+                "--no-restore"
+            ],
+            "exitCode": 0,
+            "elapsedSeconds": 11.13,
+            "log": "shell-debug-build.log.txt",
+            "logSha256": "82094f9f738517e713e26254044f508dfbadd80d33f265d5cef967c4ae7bc2e4"
+        },
+        "sourcetools-focused": {
+            "command": [
+                "env",
+                "DiffEngine_Disabled=true",
+                "dotnet",
+                "tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll",
+                "-class",
+                "*CommandFormEmitterTests",
+                "-class",
+                "*CommandRendererEmitterTests",
+                "-class",
+                "*CommandFluxorEmitterTests",
+                "-class",
+                "*CommandFormTransformTests",
+                "-class",
+                "*CommandPageEmitterTests",
+                "-result-xml",
+                "/tmp/frontcomposer-story-13-3-review-16-lsr4fqg0/sourcetools-focused.xml"
+            ],
+            "exitCode": 0,
+            "elapsedSeconds": 3.53,
+            "log": "sourcetools-focused.log.txt",
+            "logSha256": "9284139555a9b8babaac49fae474ed0381c232c6e3ef1390daaafee81c594355",
+            "xml": "sourcetools-focused.xml",
+            "xmlSha256": "bbe8a3820b416b2d77bfeb3af598aac120b28fdd21bdf8ca6068c629a7fd807a",
+            "results": {
+                "total": 148,
+                "passed": 148,
+                "failed": 0,
+                "skipped": 0,
+                "errors": 0
+            },
+            "failures": []
+        },
+        "shell-focused": {
+            "command": [
+                "env",
+                "DiffEngine_Disabled=true",
+                "dotnet",
+                "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+                "-class",
+                "*FcCommandBlockedOutcomeTests",
+                "-class",
+                "*FcDestructiveConfirmationDialogTests",
+                "-class",
+                "*FcFormAbandonmentGuardTests",
+                "-class",
+                "*FcValidationSummaryTests",
+                "-class",
+                "*FcSettingsButtonTests",
+                "-class",
+                "*FcPaletteTriggerButtonTests",
+                "-class",
+                "*FcLifecycleWrapperRejectionTests",
+                "-class",
+                "*CommandRendererWrapperIntegrationTests",
+                "-class",
+                "*CommandTargetGeneratedFormTests",
+                "-class",
+                "*DestructiveCommandRendererIntegrationTests",
+                "-class",
+                "*FcShellResourcesTests",
+                "-class",
+                "*ServerValidationApplicatorTests",
+                "-class",
+                "*EventStoreResponseClassifierTests",
+                "-class",
+                "*CommandExecutionAdmissionGateTests",
+                "-class",
+                "*FluentConformanceTests",
+                "-class",
+                "*CounterSampleCommandServiceTests",
+                "-class",
+                "*AnalyzerPolicyGovernanceTests",
+                "-trait-",
+                "Category=GovernanceBuild",
+                "-result-xml",
+                "/tmp/frontcomposer-story-13-3-review-16-lsr4fqg0/shell-focused.xml"
+            ],
+            "exitCode": 0,
+            "elapsedSeconds": 47.43,
+            "log": "shell-focused.log.txt",
+            "logSha256": "e6b935caaeb8cd9a02934dab7dc6cc19ef1253bc0e078f492fbbfac90c92ee9a",
+            "xml": "shell-focused.xml",
+            "xmlSha256": "3f3f50032a2e0b84bf2f0609599cdebf8f69d73d734587f6408d8127d7a99a0b",
+            "results": {
+                "total": 363,
+                "passed": 363,
+                "failed": 0,
+                "skipped": 0,
+                "errors": 0
+            },
+            "failures": []
+        },
+        "governance-initial": {
+            "command": [
+                "env",
+                "DiffEngine_Disabled=true",
+                "dotnet",
+                "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+                "-method",
+                "*EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval",
+                "-method",
+                "*CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds",
+                "-result-xml",
+                "/tmp/frontcomposer-story-13-3-review-16-lsr4fqg0/governance-initial.xml"
+            ],
+            "exitCode": 1,
+            "elapsedSeconds": 0.89,
+            "log": "governance-initial.log.txt",
+            "logSha256": "ff80b2a7842e78b0d023697b8103b271795aa5cc58ba42e1037bf6cb8dac9c29",
+            "xml": "governance-initial.xml",
+            "xmlSha256": "23d346288c71826817a38d98488054131bf7ee80c7b42905a44b2deebb678904",
+            "results": {
+                "total": 2,
+                "passed": 0,
+                "failed": 2,
+                "skipped": 0,
+                "errors": 0
+            },
+            "failures": [
+                {
+                    "name": "Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval",
+                    "message": "Shouldly.ShouldAssertException : selectedSourceSha\n    should be\n\\\"19dc1f82122564453163ac010dc7e5ae81db7ed3\\\"\n    but was\n\\\"8096455e4f23f2912998e36738058b8e3d961be6\\\"\n    difference\nDifference     |  |    |    |    |    |    |    |    |    |    |         |    |    |    |    |    |    |    |    |    |        \n               | \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/       \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/       \nIndex          | 0    1    2    3    4    5    6    7    8    9    10   11   12   13   14   15   16   17   18   19   20   ...  \nExpected Value | 1    9    d    c    1    f    8    2    1    2    2    5    6    4    4    5    3    1    6    3    a    ...  \nActual Value   | 8    0    9    6    4    5    5    e    4    f    2    3    f    2    9    1    2    9    9    8    e    ...  \nExpected Code  | 49   57   100  99   49   102  56   50   49   50   50   53   54   52   52   53   51   49   54   51   97   ...  \nActual Code    | 56   48   57   54   52   53   53   101  52   102  50   51   102  50   57   49   50   57   57   56   101  ...  \n\nDifference     |       |    |    |    |    |    |    |    |    |    |    |    |         |    |    |    |    |    |    |    |   \n               |      \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/       \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \nIndex          | ...  19   20   21   22   23   24   25   26   27   28   29   30   31   32   33   34   35   36   37   38   39   \nExpected Value | ...  3    a    c    0    1    0    d    c    7    e    5    a    e    8    1    d    b    7    e    d    3    \nActual Value   | ...  8    e    3    6    7    3    8    0    5    8    b    8    e    3    d    9    6    1    b    e    6    \nExpected Code  | ...  51   97   99   48   49   48   100  99   55   101  53   97   101  56   49   100  98   55   101  100  51   \nActual Code    | ...  56   101  51   54   55   51   56   48   53   56   98   56   101  51   100  57   54   49   98   101  54   \n\nAdditional Info:\n    the current capture target must select the committed EventStore gitlink"
+                },
+                {
+                    "name": "Hexalith.FrontComposer.Shell.Tests.Governance.InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds",
+                    "message": "Shouldly.ShouldAssertException : result.Ok\n    should be\nTrue\n    but was\nFalse\n\nAdditional Info:\n    unknown/untrusted repository identity 'github.com/hexalith/hexalith.platform'"
+                }
+            ]
+        },
+        "owned-process-after-patch": {
+            "command": [
+                "node",
+                "--test",
+                "tests/e2e/scripts/owned-process.test.mjs"
+            ],
+            "exitCode": 0,
+            "elapsedSeconds": 5.66,
+            "log": "owned-process-after-patch.log.txt",
+            "logSha256": "1d0dfc164408c0c312b665e1f3cd733e5b9766eec043771e1706a3a2232207b7"
+        },
+        "typecheck-after-patch": {
+            "command": [
+                "npm",
+                "--prefix",
+                "tests/e2e",
+                "run",
+                "typecheck"
+            ],
+            "exitCode": 0,
+            "elapsedSeconds": 0.31,
+            "log": "typecheck-after-patch.log.txt",
+            "logSha256": "e2f374da3f04f0db7af1e94cc2bd8a2eabc1efb23a47f683a589f89e461c19da"
+        },
+        "browser-after-patch": {
+            "command": [
+                "env",
+                "BASE_URL=http://127.0.0.1:56305",
+                "FC_E2E_COMMAND_SUBMISSION_CONFIGURATION=Debug",
+                "./node_modules/.bin/playwright",
+                "test",
+                "--config",
+                "/tmp/frontcomposer-story-13-3-review-16-lsr4fqg0/browser.config.ts",
+                "--project=chromium",
+                "specs/destructive-command-confirmation.spec.ts",
+                "specs/form-abandonment-guard.spec.ts",
+                "specs/one-at-a-time-execution-policy.spec.ts",
+                "specs/policy-gated-command-authorization.spec.ts",
+                "specs/command-form-generation.spec.ts",
+                "specs/specimen-accessibility.spec.ts"
+            ],
+            "exitCode": 0,
+            "elapsedSeconds": 76.9,
+            "log": "browser-after-patch.log.txt",
+            "logSha256": "73b60a157520b9162f6ebd7c2989bd3cc227af1920658e1a4a6b30a3597cafc0",
+            "xml": "browser-after-patch.xml",
+            "xmlSha256": "acb0cba255878c7aad15ccfb65aa50ff9fcf612907f585958622fa730c3ab3f4",
+            "results": {
+                "tests": 51,
+                "failures": 0,
+                "skipped": 0,
+                "errors": 0
+            },
+            "failures": []
+        },
+        "aspire-start": {
+            "command": [
+                "timeout",
+                "120s",
+                "aspire",
+                "start",
+                "--non-interactive"
+            ],
+            "exitCode": 124,
+            "result": "Startup did not complete before the 120-second timeout. No FrontComposer resource state was available.",
+            "cliLog": {
+                "file": "aspire-start.log.txt",
+                "sha256": "b6d186a37d03250ff80f2688bf03907626fbf7e6ccb1aa47a7f09f41845c08bc"
+            }
+        },
+        "aspire-cleanup": {
+            "command": [
+                "aspire",
+                "stop",
+                "--apphost",
+                "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+                "--non-interactive"
+            ],
+            "exitCode": 0,
+            "result": "No AppHost is currently running for the selected FrontComposer AppHost."
+        },
+        "aspire-describe-after-cleanup": {
+            "command": [
+                "aspire",
+                "describe",
+                "--non-interactive"
+            ],
+            "exitCode": 7,
+            "result": "No running AppHost found in this workspace."
+        }
+    },
+    "dependencyState": {
+        "Hexalith.EventStore": {
+            "selectedGitlink": "8096455e4f23f2912998e36738058b8e3d961be6",
+            "checkoutHead": "8096455e4f23f2912998e36738058b8e3d961be6"
+        },
+        "Hexalith.Builds": {
+            "selectedGitlink": "21ce044ab465ccb2adab58b3d66e394ffbecf3c2",
+            "checkoutHead": "21ce044ab465ccb2adab58b3d66e394ffbecf3c2"
+        }
+    },
+    "browserConfiguration": {
+        "baseConfig": "tests/e2e/playwright.config.ts",
+        "hostBuildConfiguration": "Debug",
+        "commandSubmissionBuildConfiguration": "Debug",
+        "workers": 2,
+        "baseURL": "http://127.0.0.1:56305",
+        "reuseExistingServer": false,
+        "chromiumArguments": [
+            "--disable-gpu",
+            "--disable-software-rasterizer"
+        ]
+    },
+    "changes": [
+        "The unmapped-rejection host now uses spawnOwnedProcess, waitForOwnedServer, and stopOwnedProcess for startup and teardown.",
+        "The rejection host invokes prebuilt Debug assets when the existing verification configuration requests them, retaining Release as its default.",
+        "A POSIX regression proves that startup failure removes surviving descendants after the owned parent exits. Windows parent-first-exit tracking remains separately deferred."
+    ],
+    "validationNotes": [
+        "Both Debug test-project builds passed with zero warnings and zero errors. No C# source changed in this review pass.",
+        "Focused SourceTools 148/148 and Shell 363/363 passed, including admission and analyzer governance; GovernanceBuild tests were excluded from the focused lane.",
+        "TypeScript passed, owned-process tests passed 5/5 on Linux, and the final complete Chromium lane passed 51/51 with no skips.",
+        "The two dependency/identity governance tests were run separately and failed. Passing focused checks do not certify those gates or Release/CI verification.",
+        "Pre-patch checks are separate from the recorded final browser and process results.",
+        "Saved text evidence uses repository CRLF endings and trimmed trailing whitespace; hashes bind these normalized copies."
+    ],
+    "remainingBlockers": [
+        "EventStore capture target 19dc1f82122564453163ac010dc7e5ae81db7ed3 differs from selected gitlink 8096455e4f23f2912998e36738058b8e3d961be6.",
+        "Dependency catalog identity github.com/hexalith/hexalith.platform is outside the approved trust policy.",
+        "Aspire startup exceeded the 120-second timeout before a FrontComposer AppHost became available."
+    ],
+    "completion": {
+        "storyComplete": false,
+        "specStatus": "in-review",
+        "sprintStatus": "in-progress",
+        "workflowStoppedAt": "step-04-review",
+        "reason": "Required verification still fails or is unavailable; do not certify completion or change dependency trust/identity gates."
+    }
+}

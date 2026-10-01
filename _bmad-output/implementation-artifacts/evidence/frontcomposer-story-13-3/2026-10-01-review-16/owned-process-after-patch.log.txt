@@ -1,0 +1,13 @@
+✔ listening URLs wait for complete stdout chunks and tolerate malformed diagnostics (9.848947ms)
+✔ forced Debug build timeout terminates its owned MSBuild Exec descendant (5048.840602ms)
+✔ another listener cannot establish readiness before the owned startup confirmation (261.512959ms)
+✔ owned server exit during an HTTP response cannot establish readiness (117.75181ms)
+✔ startup failure cleans descendants after the owned parent exits (84.584304ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5619.561641

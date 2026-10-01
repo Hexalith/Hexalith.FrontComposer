@@ -87,3 +87,23 @@ test('owned server exit during an HTTP response cannot establish readiness', asy
   t.after(async () => { await stopOwnedProcess(owned); server.close(); });
   await assert.rejects(waitForOwnedServer(owned, url, Date.now() + 2_000), /exited before readiness/u);
 });
+
+// POSIX process groups survive their launcher; Windows descendant tracking is separately deferred.
+test('startup failure cleans descendants after the owned parent exits', { skip: process.platform === 'win32' }, async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'fc-owned-parent-exit-'));
+  const childPidPath = join(root, 'descendant.pid');
+  const childScript = `require('node:fs').writeFileSync(${JSON.stringify(childPidPath)}, String(process.pid)); process.on('SIGTERM', () => {}); setInterval(() => {}, 1000);`;
+  const parentScript = `require('node:child_process').spawn(process.execPath, ['-e', ${JSON.stringify(childScript)}], { stdio: 'ignore' }).unref();`;
+  const owned = spawnOwnedProcess(process.execPath, ['-e', parentScript], { env: process.env });
+  t.after(async () => { await stopOwnedProcess(owned); await rm(root, { recursive: true, force: true }); });
+  let childPid;
+  await waitUntil(async () => {
+    try { childPid = Number(await readFile(childPidPath, 'utf8')); return true; }
+    catch (error) { if (error.code === 'ENOENT') return false; throw error; }
+  });
+  await waitUntil(() => owned.child.exitCode !== null);
+  assert.equal(await isAlive(childPid), true);
+  await assert.rejects(waitForOwnedServer(owned, 'http://127.0.0.1:1', Date.now() + 1_000), /exited before readiness/u);
+  await stopOwnedProcess(owned);
+  await waitUntil(async () => !await isAlive(childPid));
+});

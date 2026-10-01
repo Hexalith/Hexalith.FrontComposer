@@ -1,0 +1,7 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.FrontComposer.SourceTools.Tests
+  Discovered:  Hexalith.FrontComposer.SourceTools.Tests
+  Starting:    Hexalith.FrontComposer.SourceTools.Tests
+  Finished:    Hexalith.FrontComposer.SourceTools.Tests (ID = '5aff563a7fa597d2df6a72b680fda16a7b9a42e29863adccb47f8a3aea6b854a')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.FrontComposer.SourceTools.Tests  Total: 148, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 3.269s

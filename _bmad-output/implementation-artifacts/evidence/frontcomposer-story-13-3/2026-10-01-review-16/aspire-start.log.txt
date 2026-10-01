@@ -1,0 +1,107 @@
+﻿[2026-10-01 17:23:21.484] [INFO] [Cli] Aspire CLI version: 13.5.3+b5f143315ffb6968ea939a9978797a5b20e4c688
+[2026-10-01 17:23:21.484] [INFO] [Cli] Aspire CLI build ID: 13.500.326.42503
+[2026-10-01 17:23:21.484] [INFO] [Cli] Aspire CLI path: /home/administrator/.aspire/bin/aspire
+[2026-10-01 17:23:21.484] [INFO] [Cli] Aspire CLI channel: stable
+[2026-10-01 17:23:21.484] [INFO] [Cli] Working directory: /home/administrator/projects/hexalith/frontcomposer
+[2026-10-01 17:23:21.484] [INFO] [Cli] Log file: /home/administrator/.aspire/logs/cli_20261001T172321_34095312.log
+[2026-10-01 17:23:21.484] [INFO] [Cli] CLI process ID: 2367281
+[2026-10-01 17:23:21.486] [DBUG] [Host] Hosting starting
+[2026-10-01 17:23:21.493] [DBUG] [Host] Hosting started
+[2026-10-01 17:23:21.504] [DBUG] [Features] Feature aspireSkillsRemoteFetchEnabled = False (default: False)
+[2026-10-01 17:23:21.504] [DBUG] [Features] Feature defaultWatchEnabled = False (default: False)
+[2026-10-01 17:23:21.504] [DBUG] [Features] Feature experimentalPolyglot:go = False (default: False)
+[2026-10-01 17:23:21.504] [DBUG] [Features] Feature experimentalPolyglot:java = False (default: False)
+[2026-10-01 17:23:21.504] [DBUG] [Features] Feature experimentalPolyglot:python = False (default: False)
+[2026-10-01 17:23:21.504] [DBUG] [Features] Feature experimentalPolyglot:rust = False (default: False)
+[2026-10-01 17:23:21.504] [DBUG] [Features] Feature nugetSignatureVerificationEnabled = True (default: True)
+[2026-10-01 17:23:21.504] [DBUG] [Features] Feature polyglotIntegrationFilterEnabled = False (default: False)
+[2026-10-01 17:23:21.504] [DBUG] [Features] Feature showAllTemplates = False (default: False)
+[2026-10-01 17:23:21.504] [DBUG] [Features] Feature showDeprecatedPackages = False (default: False)
+[2026-10-01 17:23:21.504] [DBUG] [Features] Feature stagingChannelEnabled = False (default: False)
+[2026-10-01 17:23:21.504] [DBUG] [Features] Feature terminalCommandsEnabled = False (default: False)
+[2026-10-01 17:23:21.504] [DBUG] [Features] Feature updateNotificationsEnabled = True (default: True)
+[2026-10-01 17:23:21.519] [INFO] [Cli] Command: aspire start --non-interactive
+[2026-10-01 17:23:21.519] [DBUG] [Cli] Parsing arguments: start --non-interactive
+[2026-10-01 17:23:21.519] [DBUG] [Cli] Executing command: aspire start
+[2026-10-01 17:23:21.519] [DBUG] [AuxiliaryBackchannelMonitor] Current command is not MCP start command. Auxiliary backchannel monitoring disabled.
+[2026-10-01 17:23:21.519] [DBUG] [ProjectLocator] Finding project file in /home/administrator/projects/hexalith/frontcomposer
+[2026-10-01 17:23:21.519] [DBUG] [LayoutDiscovery] TryDiscoverRelativeLayout: CLI at /home/administrator/.aspire/bin, checking for layout...
+[2026-10-01 17:23:21.519] [DBUG] [LayoutDiscovery] TryInferLayout: Checking layout at /home/administrator/.aspire/bin
+[2026-10-01 17:23:21.519] [DBUG] [LayoutDiscovery]   bundle/managed/: MISSING
+[2026-10-01 17:23:21.519] [DBUG] [LayoutDiscovery]   bundle/dcp/: MISSING
+[2026-10-01 17:23:21.519] [DBUG] [LayoutDiscovery]   managed/: MISSING
+[2026-10-01 17:23:21.519] [DBUG] [LayoutDiscovery]   dcp/: MISSING
+[2026-10-01 17:23:21.519] [DBUG] [LayoutDiscovery] TryInferLayout: Layout rejected - missing required directories
+[2026-10-01 17:23:21.519] [DBUG] [LayoutDiscovery] TryDiscoverRelativeLayout: Checking parent directory /home/administrator/.aspire...
+[2026-10-01 17:23:21.519] [DBUG] [LayoutDiscovery] TryInferLayout: Checking layout at /home/administrator/.aspire
+[2026-10-01 17:23:21.519] [DBUG] [LayoutDiscovery]   bundle/managed/: exists
+[2026-10-01 17:23:21.519] [DBUG] [LayoutDiscovery]   bundle/dcp/: exists
+[2026-10-01 17:23:21.519] [DBUG] [LayoutDiscovery]   bundle/managed/aspire-managed: exists
+[2026-10-01 17:23:21.519] [DBUG] [LayoutDiscovery]   bundle/dcp/dcp: exists
+[2026-10-01 17:23:21.519] [DBUG] [LayoutDiscovery] TryInferLayout: New bundle/ layout is valid
+[2026-10-01 17:23:21.519] [DBUG] [LayoutDiscovery] Discovered layout relative to CLI: /home/administrator/.aspire
+[2026-10-01 17:23:21.520] [DBUG] [BundleService] Bundle already extracted and up to date (version: 13.5.3+b5f143315ffb6968ea939a9978797a5b20e4c688|151692872|639232753550000000).
+[2026-10-01 17:23:21.521] [INFO] [ProjectLocator] Found AppHost path 'src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj' from config file in /home/administrator/projects/hexalith/frontcomposer
+[2026-10-01 17:23:21.521] [DBUG] [AppHostProjectFactory] TryGetProject called for file: /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj
+[2026-10-01 17:23:21.521] [DBUG] [AppHostProjectFactory] Language detected: csharp for file: /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj
+[2026-10-01 17:23:21.529] [DBUG] [ProjectLocator] Using AppHost path from settings without scanning: /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj
+[2026-10-01 17:23:21.529] [DBUG] [AppHostLauncher] Starting AppHost in background: /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj
+[2026-10-01 17:23:21.529] [DBUG] [BundleNuGetPackageCache] Running NuGet search via aspire-managed: Aspire.Cli
+[2026-10-01 17:23:21.529] [DBUG] [BundleNuGetPackageCache] aspire-managed path: /home/administrator/.aspire/versions/13.5.3_b5f143315ffb6968ea939a9978797a5b20e4c688-9c44730df5df187c/managed/aspire-managed
+[2026-10-01 17:23:21.529] [DBUG] [BundleNuGetPackageCache] NuGet search args: nuget search --query Aspire.Cli --take 1000 --format json --prerelease --working-dir /home/administrator/projects/hexalith/frontcomposer --verbose
+[2026-10-01 17:23:21.529] [DBUG] [BundleNuGetPackageCache] Working directory: /home/administrator/projects/hexalith/frontcomposer
+[2026-10-01 17:23:21.529] [DBUG] [AppHostLauncher] Spawning child CLI: /home/administrator/.aspire/bin/aspire (isDotnetHost=False) with args: run --non-interactive --apphost /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --log-file /home/administrator/.aspire/logs/cli_20261001T172321529_detach-child_1a79786771b141c6958e3e6c4a6ad9af.log
+[2026-10-01 17:23:21.529] [DBUG] [AppHostLauncher] Working directory: /home/administrator/projects/hexalith/frontcomposer
+[2026-10-01 17:23:21.529] [DBUG] [AppHostLauncher] Waiting for socket with prefix: /home/administrator/.aspire/cli/bch/FWu_jF2nT6I, Hash: FWu_jF2nT6I
+[2026-10-01 17:23:21.529] [DBUG] [AppHostLauncher] Also searching for legacy hash(es): 156bbf8c5da74fa2
+[2026-10-01 17:23:21.530] [INFO] [Stdout] Starting Aspire AppHost in the background...
+[2026-10-01 17:23:21.530] [DBUG] [ProcessExecutionFactory] Running /home/administrator/.aspire/bin/aspire in /home/administrator/projects/hexalith/frontcomposer with args: run --non-interactive --apphost /home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --log-file /home/administrator/.aspire/logs/cli_20261001T172321529_detach-child_1a79786771b141c6958e3e6c4a6ad9af.log
+[2026-10-01 17:23:21.530] [DBUG] [ProcessExecutionFactory] /home/administrator/.aspire/bin/aspire env: ASPIRE_CLI_RUN_DETACHED=true
+[2026-10-01 17:23:21.530] [DBUG] [ProcessExecutionFactory] /home/administrator/.aspire/bin/aspire env: ASPIRE_LAUNCHER_PID=2367281
+[2026-10-01 17:23:21.530] [DBUG] [ProcessExecutionFactory] /home/administrator/.aspire/bin/aspire env: ASPIRE_LAUNCHER_STARTED=507309080
+[2026-10-01 17:23:21.530] [DBUG] [LayoutDiscovery] TryDiscoverRelativeLayout: CLI at /home/administrator/.aspire/bin, checking for layout...
+[2026-10-01 17:23:21.530] [DBUG] [LayoutDiscovery] TryInferLayout: Checking layout at /home/administrator/.aspire/bin
+[2026-10-01 17:23:21.530] [DBUG] [LayoutDiscovery]   bundle/managed/: MISSING
+[2026-10-01 17:23:21.530] [DBUG] [LayoutDiscovery]   bundle/dcp/: MISSING
+[2026-10-01 17:23:21.530] [DBUG] [LayoutDiscovery]   managed/: MISSING
+[2026-10-01 17:23:21.530] [DBUG] [LayoutDiscovery]   dcp/: MISSING
+[2026-10-01 17:23:21.530] [DBUG] [LayoutDiscovery] TryInferLayout: Layout rejected - missing required directories
+[2026-10-01 17:23:21.530] [DBUG] [LayoutDiscovery] TryDiscoverRelativeLayout: Checking parent directory /home/administrator/.aspire...
+[2026-10-01 17:23:21.530] [DBUG] [LayoutDiscovery] TryInferLayout: Checking layout at /home/administrator/.aspire
+[2026-10-01 17:23:21.530] [DBUG] [LayoutDiscovery]   bundle/managed/: exists
+[2026-10-01 17:23:21.530] [DBUG] [LayoutDiscovery]   bundle/dcp/: exists
+[2026-10-01 17:23:21.530] [DBUG] [LayoutDiscovery]   bundle/managed/aspire-managed: exists
+[2026-10-01 17:23:21.530] [DBUG] [LayoutDiscovery]   bundle/dcp/dcp: exists
+[2026-10-01 17:23:21.530] [DBUG] [LayoutDiscovery] TryInferLayout: New bundle/ layout is valid
+[2026-10-01 17:23:21.530] [DBUG] [LayoutDiscovery] Discovered layout relative to CLI: /home/administrator/.aspire
+[2026-10-01 17:23:21.530] [DBUG] [BundleService] Bundle already extracted and up to date (version: 13.5.3+b5f143315ffb6968ea939a9978797a5b20e4c688|151692872|639232753550000000).
+[2026-10-01 17:23:21.543] [DBUG] [ProcessExecutionFactory] Launching detached child process through DCP fork-process: /home/administrator/.aspire/versions/13.5.3_b5f143315ffb6968ea939a9978797a5b20e4c688-9c44730df5df187c/dcp/dcp
+[2026-10-01 17:23:21.812] [DBUG] [ProcessExecutionFactory] /home/administrator/.aspire/bin/aspire(2367336) started in /home/administrator/projects/hexalith/frontcomposer
+[2026-10-01 17:23:21.812] [DBUG] [AppHostLauncher] Child CLI process started with PID: 2367336
+[2026-10-01 17:23:21.812] [DBUG] [ProcessExecutionFactory] /home/administrator/.aspire/bin/aspire(2367336) waiting for exit
+[2026-10-01 17:23:21.813] [DBUG] [AuxiliaryBackchannelMonitor] Socket created: /home/administrator/.aspire/cli/bch/T8VQMwawRSE5KUQwc0R.784540
+[2026-10-01 17:23:21.813] [INFO] [AuxiliaryBackchannelMonitor] Connecting to auxiliary socket: /home/administrator/.aspire/cli/bch/T8VQMwawRSE5KUQwc0R.784540
+[2026-10-01 17:23:21.814] [DBUG] [AuxiliaryBackchannelMonitor] Connected to auxiliary backchannel at /home/administrator/.aspire/cli/bch/T8VQMwawRSE5KUQwc0R.784540
+[2026-10-01 17:23:21.820] [DBUG] [AuxiliaryBackchannelMonitor] AppHost capabilities: aux.v1, aux.v2, aux.v3, terminals.v1, resource-snapshot-versions.v1
+[2026-10-01 17:23:21.820] [INFO] [AuxiliaryBackchannelMonitor] Successfully connected to AppHost at /home/administrator/.aspire/cli/bch/T8VQMwawRSE5KUQwc0R.784540. Hash: T8VQMwawRSE, AppHost Path: /home/administrator/projects/hexalith/tenants/src/Hexalith.Tenants.AppHost/Hexalith.Tenants.AppHost.csproj, AppHost PID: 784540, CLI PID: 782872, In Scope: False, Supports V2: True
+[2026-10-01 17:23:22.983] [DBUG] [BundleNuGetPackageCache] NuGetHelper stderr: Using source from config: nuget.org (https://api.nuget.org/v3/index.json)
+Searching 1 source(s) for 'Aspire.Cli'
+Searching nuget.org (https://api.nuget.org/v3/index.json)...
+Found 2 search endpoints.
+Querying https://azuresearch-usnc.nuget.org/query?q=Aspire.Cli&skip=0&take=1000&prerelease=true&semVerLevel=2.0.0
+
+[2026-10-01 17:23:22.983] [DBUG] [BundleNuGetPackageCache] NuGet search returned 161937 bytes
+[2026-10-01 17:25:21.516] [INFO] [Cli] Termination signal received, requesting cancellation.
+[2026-10-01 17:25:21.516] [WARN] [Cli] Second termination signal received, expiring graceful shutdown window.
+[2026-10-01 17:25:21.516] [DBUG] [ProcessTreeGracefulShutdownService] Sending stop signal to process 2367336
+[2026-10-01 17:25:21.516] [DBUG] [ProcessTreeGracefulShutdownService] Requesting graceful shutdown of process 2367336...
+[2026-10-01 17:25:21.521] [DBUG] [ProcessExecutionFactory] /home/administrator/.aspire/bin/aspire(2367336) exited with code: 1
+[2026-10-01 17:25:21.521] [DBUG] [ProcessExecutionFactory] /home/administrator/.aspire/bin/aspire(2367336) output drained
+[2026-10-01 17:25:21.717] [INFO] [Stdout] 🛑 Stopping Aspire.
+[2026-10-01 17:25:22.273] [DBUG] [CliUpdateNotifier] Current version: 13.5.3
+Newest stable version: 13.6.0
+Newest prerelease version: (null)
+[2026-10-01 17:25:22.273] [DBUG] [CliUpdateNotifier] Current version 13.5.3 is stable and older than newest stable version 13.6.0.
+[2026-10-01 17:25:22.274] [INFO] [Cli] Exit code: 0
+[2026-10-01 17:25:22.291] [DBUG] [Host] Hosting stopping
+[2026-10-01 17:25:22.291] [DBUG] [Host] Hosting stopped
