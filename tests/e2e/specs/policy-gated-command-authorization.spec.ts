@@ -3,6 +3,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import type { Locator, Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/index.js';
+import { submissionTest } from '../fixtures/command-submission.fixture.js';
 import { expectFieldValue, fieldEditorByLabel, fillFieldByLabel } from '../helpers/fluent-fields.js';
 import { getSpecimenRoute } from '../helpers/specimen-manifest.js';
 
@@ -137,6 +138,61 @@ test.describe('Story 4.4: policy-gated command authorization', () => {
       afterSilent: 'elsewhere',
       uncapturedFocused: false,
     });
+  });
+});
+
+test.describe('Story 13.3: mapped rejection recovery focus', () => {
+  submissionTest.use({ mappedRejectionEnabled: true });
+
+  submissionTest('keyboard dismissal preserves mapped errors and values, then permits a corrected retry', async ({ page, lifecycle, browserName }) => {
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+      window.sessionStorage.clear();
+    });
+    await page.goto('/counter');
+    await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+    const form = policyForm(page, REJECTION_FORM_LABEL);
+    await fillField(form, 'Amount', '3');
+    await fillField(form, 'Note', 'QA mapped rejection preservation');
+    await form.getByRole('button', { name: REJECTION_ACTION_LABEL, exact: true }).click();
+
+    await lifecycle.expectState(REJECTION_COMMAND_ID, 'rejected');
+    const summary = form.getByTestId('fc-validation-summary');
+    const amount = fieldEditorByLabel(form, 'Amount');
+    const error = 'Amount conflicts with the specimen limit.';
+    await expect(summary).toBeFocused();
+    await expect(summary.locator('[data-fc-validation-target]')).toHaveText(error);
+    await expect(summary).not.toHaveAttribute('aria-live');
+    await expect(form.locator('.fc-lifecycle-live')).toHaveCount(0);
+    await expect(amount).toHaveAttribute('aria-invalid', 'true');
+    if (browserName === 'chromium') {
+      // ARIA element reflection crosses Fluent's shadow boundary in the native accessibility tree;
+      // Playwright's DOM-only description matcher does not follow that relationship.
+      await expect.poll(async () => mappedFieldDescription(page)).toBe(error);
+    }
+    const field = form.locator('.fc-command-field').filter({ has: page.locator('fluent-text-input[name="Amount"]') });
+    await expect(field.locator('.fluent-validation-message')).toHaveText(error);
+    await expectFieldValue(form, 'Note', 'QA mapped rejection preservation');
+
+    const dismiss = form.getByTestId('fc-rejected-mapped-dismiss');
+    await dismiss.focus();
+    await page.keyboard.press('Enter');
+    await expect(form.getByTestId('fc-rejected-mapped')).toHaveCount(0);
+    await expect(amount).toBeFocused();
+    await expectFieldValue(form, 'Amount', '3');
+    await expectFieldValue(form, 'Note', 'QA mapped rejection preservation');
+    await expect(field.locator('.fluent-validation-message')).toHaveText(error);
+    await expect(amount).toHaveAttribute('aria-invalid', 'true');
+    await expect(summary.locator('[data-fc-validation-target]')).toHaveText(error);
+
+    await fillField(form, 'Amount', '4');
+    await expect(field.locator('.fluent-validation-message')).toHaveCount(0);
+    await expect(amount).not.toHaveAttribute('aria-invalid');
+    await form.getByRole('button', { name: REJECTION_ACTION_LABEL, exact: true }).click();
+    await lifecycle.expectState(REJECTION_COMMAND_ID, 'confirmed');
+    await expect(form.getByTestId('fc-rejected-mapped')).toHaveCount(0);
+    await expect(summary).toHaveCount(0);
+    await expectFieldValue(form, 'Note', 'QA mapped rejection preservation');
   });
 });
 
@@ -320,6 +376,23 @@ const gotoTypeSpecimen = async (page: Page): Promise<void> => {
   await page.goto(route.path);
   await expect(page.locator(route.readySelector)).toBeVisible();
   await expect(page.getByTestId('fc-policy-command-specimen')).toBeVisible();
+};
+
+const mappedFieldDescription = async (page: Page): Promise<string | undefined> => {
+  const session = await page.context().newCDPSession(page);
+  try {
+    const { result } = await session.send('Runtime.evaluate', {
+      expression: `document.querySelector('.fc-command-form[aria-label="${REJECTION_FORM_LABEL}"] fluent-text-input[name="Amount"]')?.shadowRoot?.querySelector('input')`,
+    });
+    if (!result.objectId) return undefined;
+    const { nodes } = await session.send('Accessibility.getPartialAXTree', {
+      objectId: result.objectId,
+      fetchRelatives: false,
+    });
+    return nodes[0]?.description?.value;
+  } finally {
+    await session.detach();
+  }
 };
 
 const policyForm = (page: Page, ariaLabel: string): Locator =>

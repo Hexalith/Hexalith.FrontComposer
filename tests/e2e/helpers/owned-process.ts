@@ -21,8 +21,11 @@ export const spawnOwnedProcess = (
   const owned: OwnedProcess = { child, output: '', listeningOrigins: new Set(), timedOut: false };
   const append = (chunk: Buffer): void => {
     owned.output = `${owned.output}${chunk.toString('utf8')}`.slice(-8_000);
-    for (const match of owned.output.matchAll(/Now listening on:\s+(https?:\/\/[^\s]+)/gu)) {
-      owned.listeningOrigins.add(new URL(match[1]).origin);
+    for (const match of owned.output.matchAll(/Now listening on:[\t ]+(https?:\/\/[^\s]+)(?=\r?\n)/gu)) {
+      // Stream chunks can stop inside a hostname, port, or IPv6 address. Readiness requires a
+      // complete line, and malformed diagnostics must not throw from the process data listener.
+      try { owned.listeningOrigins.add(new URL(match[1]).origin); }
+      catch { /* Ignore a complete line whose listening address is not a URL. */ }
     }
   };
   child.stdout.on('data', append);

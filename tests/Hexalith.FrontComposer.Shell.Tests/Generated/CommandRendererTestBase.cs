@@ -54,6 +54,7 @@ public abstract class CommandRendererTestBase : BunitContext {
         _ = FcFocusModule.Setup<bool>("hasActiveLifecycle", _ => true).SetResult(true);
         _ = FcFocusModule.SetupVoid("focusFirstEditableWithin", _ => true).SetVoidResult();
         _ = FcFocusModule.Setup<bool>("captureOverlayOrigin", _ => true).SetResult(true);
+        _ = FcFocusModule.Setup<bool>("ownsOverlayReservation", _ => true).SetResult(true);
         _ = FcFocusModule.SetupVoid("restoreOverlayOrigin", _ => true).SetVoidResult();
         _ = FcFocusModule.Setup<bool>("releaseOverlayReservation", _ => true).SetResult(true);
         _ = FcFocusModule.Setup<bool>("captureFocusBeforeReplacement", _ => true).SetResult(true);

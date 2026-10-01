@@ -1,0 +1,527 @@
+{
+  "date": "2026-10-01",
+  "revision": "25c897bf5bfe88cc08f32944d794f86c55548593",
+  "baseline": "52fa0739ab8dfb02e1b9d8b5b05d2fd318f220d8",
+  "review": {
+    "iteration": 14,
+    "layers": [
+      "blind-hunter",
+      "edge-case-hunter",
+      "verification-gap"
+    ],
+    "reviewerFindings": 15,
+    "reviewedDiffBytes": 1444462,
+    "reviewedDiffSha256": "659a634c71a15eb09b13758344328e39ed0abe5366d71f943f1c55ca9ce31f26",
+    "edgeCaseRetry": "Initial layer turn failed with model capacity; the same agent resumed and returned all four findings.",
+    "triage": "Every finding has its own row; carried decisions were neither patched nor deferred again. One unrelated CI fixture-policy finding was deferred."
+  },
+  "commands": {
+    "aspire-baseline": {
+      "command": "timeout 90s aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 124,
+      "seconds": 90.83,
+      "finishedUtc": "2026-10-01T14:19:36.583591+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/aspire-baseline.log",
+      "logSha256": "24ff2c088565458c0e105bab965240f3184b50e243f21cab7170e50a84b4eaa6"
+    },
+    "aspire-describe": {
+      "command": "timeout 30s aspire describe --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --format Json",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 0,
+      "seconds": 0.52,
+      "finishedUtc": "2026-10-01T14:19:18.147700+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/aspire-describe.log",
+      "logSha256": "29f7d99063dcc47784f583b1e48d39680666353ed7cb51092a83bee592cb6889"
+    },
+    "aspire-stop": {
+      "command": "timeout 30s aspire stop --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 0,
+      "seconds": 0.3,
+      "finishedUtc": "2026-10-01T14:19:41.338771+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/aspire-stop.log",
+      "logSha256": "29f7d99063dcc47784f583b1e48d39680666353ed7cb51092a83bee592cb6889"
+    },
+    "browser-final": {
+      "command": "env BASE_URL=http://127.0.0.1:44509 ./node_modules/.bin/playwright test --config /tmp/fc-13-3-resume-zi72c8sz/playwright-final.config.ts --project=chromium specs/destructive-command-confirmation.spec.ts specs/policy-gated-command-authorization.spec.ts",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e",
+      "exitCode": 1,
+      "seconds": 70.73,
+      "finishedUtc": "2026-10-01T14:48:26.444158+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/browser-final.log",
+      "logSha256": "d06215db9a044884b862e76c9efd9aaf9f89424d53516038445a67b61bee8475",
+      "results": {
+        "tests": 13,
+        "failures": 2,
+        "skipped": 0,
+        "errors": 0,
+        "passed": 11
+      },
+      "failures": [
+        {
+          "name": "destructive-command-confirmation.spec.ts :: Story 4.1: destructive command confirmation \u203a removed destructive invoker restores focus to the route heading",
+          "kind": "failure",
+          "message": "\n  [chromium] \u203a destructive-command-confirmation.spec.ts:473:3 \u203a Story 4.1: destructive command confirmation \u203a removed destructive invoker restores focus to the route heading \n\n    Error: expect(locator).toHaveAttribute(expected) failed\n\n    Locator:  locator('.fc-command-form[aria-label=\"Purge Specimen Record command form\"]')\n    Expected: \"true\"\n    Received: \"false\"\n    Timeout:  10000ms\n\n    Call log:\n      - Expect \"toHaveAttribute\" locator('.fc-command-form[aria-label=\"Purge Specimen Record command form\"]') with timeout 10000ms\n      - waiting for locator('.fc-command-form[aria-label=\"Purge Specimen Record command form\"]')\n        24 \u00d7 locator resolved to <div data-fc-command-form=\"true\" data-fc-interactive=\"false\" class=\"fc-command-form fc-density-comfortable\" aria-label=\"Purge Specimen Record command form\" id=\"fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-13\" data-fc-validation-summary-id=\"fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-13-validation-summary\">\u2026</div>\n           - unexpected value \"false\"\n\n\n       at ../helpers/fluent-fields.ts:15\n\n      13 |\n      14 |   if (isGeneratedCommandForm) {\n    > 15 |     await expect(root).toHaveAttribute('data-fc-interactive', 'true');\n         |                        ^\n      16 |   }\n      17 | };\n      18 |\n        at waitForGeneratedFormReady (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/fluent-fields.ts:15:24)\n        at submitDestructiveCommand (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/destructive-command-confirmation.spec.ts:566:3)\n        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/destructive-command-confirmation.spec.ts:479:5\n\n    attachment #1: screenshot (image/png) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    ../../../../../../../../tmp/fc-13-3-resume-zi72c8sz/browser-final-results/destructive-command-confir-bfc84--focus-to-the-route-heading-chromium/test-failed-1.png\n    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n    attachment #2: video (video/webm) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+        },
+        {
+          "name": "policy-gated-command-authorization.spec.ts :: Story 13.3: mapped rejection recovery focus \u203a keyboard dismissal preserves mapped errors and values, then permits a corrected retry",
+          "kind": "failure",
+          "message": "\n  [chromium] \u203a policy-gated-command-authorization.spec.ts:147:3 \u203a Story 13.3: mapped rejection recovery focus \u203a keyboard dismissal preserves mapped errors and values, then permits a corrected retry \n\n    Error: expect(locator).toHaveText(expected) failed\n\n    Locator: locator('.fc-command-form[aria-label=\"Batch Increment command form\"]').locator('.fc-command-field').filter({ has: locator('.fc-command-form[aria-label=\"Batch Increment command form\"]').getByLabel('Amount', { exact: true }).locator('input, textarea').first() }).locator('.fluent-validation-message')\n    Expected: \"Amount conflicts with the specimen limit.\"\n    Timeout: 10000ms\n    Error: element(s) not found\n\n    Call log:\n      - Expect \"toHaveText\" locator('.fc-command-form[aria-label=\"Batch Increment command form\"]').locator('.fc-command-field').filter({ has: locator('.fc-command-form[aria-label=\"Batch Increment command form\"]').getByLabel('Amount', { exact: true }).locator('input, textarea').first() }).locator('.fluent-validation-message') with timeout 10000ms\n      - waiting for locator('.fc-command-form[aria-label=\"Batch Increment command form\"]').locator('.fc-command-field').filter({ has: locator('.fc-command-form[aria-label=\"Batch Increment command form\"]').getByLabel('Amount', { exact: true }).locator('input, textarea').first() }).locator('.fluent-validation-message')\n\n\n      172 |     }\n      173 |     const field = form.locator('.fc-command-field').filter({ has: amount });\n    > 174 |     await expect(field.locator('.fluent-validation-message')).toHaveText(error);\n          |                                                               ^\n      175 |     await expectFieldValue(form, 'Note', 'QA mapped rejection preservation');\n      176 |\n      177 |     const dismiss = form.getByTestId('fc-rejected-mapped-dismiss');\n        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/policy-gated-command-authorization.spec.ts:174:63\n\n    attachment #1: screenshot (image/png) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    ../../../../../../../../tmp/fc-13-3-resume-zi72c8sz/browser-final-results/policy-gated-command-autho-9ea75-n-permits-a-corrected-retry-chromium"
+        }
+      ],
+      "xml": "/tmp/fc-13-3-resume-zi72c8sz/browser-final.xml",
+      "xmlSha256": "70ff0f3d851bcdc02a0cda5757134f6adfbe36e3cdb90416fa4107ec92682ef6"
+    },
+    "browser-recheck": {
+      "command": "env BASE_URL=http://127.0.0.1:44509 ./node_modules/.bin/playwright test --config /tmp/fc-13-3-resume-zi72c8sz/playwright-recheck.config.ts --project=chromium specs/destructive-command-confirmation.spec.ts specs/form-abandonment-guard.spec.ts specs/one-at-a-time-execution-policy.spec.ts specs/policy-gated-command-authorization.spec.ts specs/command-form-generation.spec.ts specs/specimen-accessibility.spec.ts",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e",
+      "exitCode": 1,
+      "seconds": 234.78,
+      "finishedUtc": "2026-10-01T14:42:36.021212+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/browser-recheck.log",
+      "logSha256": "c2bbf74c54a989117df5406a646b9b74959b12b4af4bb3bc8548edddfddd9699",
+      "results": {
+        "tests": 49,
+        "failures": 3,
+        "skipped": 1,
+        "errors": 2,
+        "passed": 43
+      },
+      "failures": [
+        {
+          "name": "policy-gated-command-authorization.spec.ts :: Story 13.3: mapped rejection recovery focus \u203a keyboard dismissal preserves mapped errors and values, then permits a corrected retry",
+          "kind": "failure",
+          "message": "\n  [chromium] \u203a policy-gated-command-authorization.spec.ts:147:3 \u203a Story 13.3: mapped rejection recovery focus \u203a keyboard dismissal preserves mapped errors and values, then permits a corrected retry \n\n    Error: expect(locator).toHaveAccessibleDescription(expected) failed\n\n    Locator:  locator('.fc-command-form[aria-label=\"Batch Increment command form\"]').getByLabel('Amount', { exact: true }).locator('input, textarea').first()\n    Expected: \"Amount conflicts with the specimen limit.\"\n    Received: \"\"\n    Timeout:  10000ms\n\n    Call log:\n      - Expect \"toHaveAccessibleDescription\" locator('.fc-command-form[aria-label=\"Batch Increment command form\"]').getByLabel('Amount', { exact: true }).locator('input, textarea').first() with timeout 10000ms\n      - waiting for locator('.fc-command-form[aria-label=\"Batch Increment command form\"]').getByLabel('Amount', { exact: true }).locator('input, textarea').first()\n        24 \u00d7 locator resolved to <input value=\"3\" required=\"\" type=\"text\" id=\"control\" name=\"Amount\" part=\"control\" class=\"control\" aria-invalid=\"true\" aria-describedby=\"\" aria-label=\"Amount, Required\"/>\n           - unexpected value \"\"\n\n\n      166 |     await expect(form.locator('.fc-lifecycle-live')).toHaveCount(0);\n      167 |     await expect(amount).toHaveAttribute('aria-invalid', 'true');\n    > 168 |     await expect(amount).toHaveAccessibleDescription(error);\n          |                          ^\n      169 |     const field = form.locator('.fc-command-field').filter({ has: amount });\n      170 |     await expect(field.locator('.fluent-validation-message')).toHaveText(error);\n      171 |     await expectFieldValue(form, 'Note', 'QA mapped rejection preservation');\n        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/policy-gated-command-authorization.spec.ts:168:26\n\n    attachment #1: screenshot (image/png) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    ../../../../../../../../tmp/fc-13-3-resume-zi72c8sz/browser-recheck-results/policy-gated-command-autho-9ea75-n-permits-a-corrected-retry-chromium/test-failed-1.png\n    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
+        },
+        {
+          "name": "policy-gated-command-authorization.spec.ts :: Story 13.3: unmapped rejection recovery focus \u203a Edit and retry moves real browser focus to the first generated editor",
+          "kind": "error",
+          "message": "\n  [chromium] \u203a policy-gated-command-authorization.spec.ts:259:3 \u203a Story 13.3: unmapped rejection recovery focus \u203a Edit and retry moves real browser focus to the first generated editor \n\n    TimeoutError: locator.waitFor: Timeout 15000ms exceeded.\n    Call log:\n      - waiting for locator('.fc-shell-root[data-fc-interactive=\"true\"]') to be visible\n\n\n      265 |     // authentication provider; the rejection comes from the authoritative command service.\n      266 |     await page.goto('/counter');\n    > 267 |     await page.locator('.fc-shell-root[data-fc-interactive=\"true\"]').waitFor();\n          |                                                                      ^\n      268 |     const form = policyForm(page, REJECTION_FORM_LABEL);\n      269 |     await expect(form).toBeVisible();\n      270 |     await fillField(form, 'Amount', '3');\n        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/policy-gated-command-authorization.spec.ts:267:70\n\n    attachment #1: screenshot (image/png) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    ../../../../../../../../tmp/fc-13-3-resume-zi72c8sz/browser-recheck-results/policy-gated-command-autho-6cd15--the-first-generated-editor-chromium/test-failed-1.png\n    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n    attachment #2: video (video/webm) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    ../../../../../../../../tmp/fc-13-3-resume-zi72c8sz/browser-recheck-results/policy-gated-command-autho-6cd15--the-first-generated-editor-chromium/video.webm\n    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n    Error Context: ../../../../../../../../tmp/fc-13-3-resume-zi72c8sz/browser-recheck-results/policy-gated-command-autho-6cd15--the-first-generated-editor-chromium/error-context.md\n\n    Error Context: ../../../../../../../../tmp/fc-13-3-resume-zi72c8sz/browser-recheck-results/policy-gated-command-autho-6cd15--the-first-generated-editor-chromium/error-context.md\n\n    attachment #5: trace (application/zip) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    ../../../../../"
+        },
+        {
+          "name": "specimen-accessibility.spec.ts :: FrontComposer accessibility and visual specimens \u203a visual baseline light compact",
+          "kind": "failure",
+          "message": "\n  [chromium] \u203a specimen-accessibility.spec.ts:435:5 \u203a FrontComposer accessibility and visual specimens \u203a visual baseline light compact \n\n    Error: expect(page).toHaveScreenshot(expected) failed\n\n      668 pixels (ratio 0.01 of all image pixels) are different.\n\n      Snapshot: frontcomposer-type-light-compact.png\n\n    Call log:\n      - Expect \"toHaveScreenshot(frontcomposer-type-light-compact.png)\" with timeout 10000ms\n        - verifying given screenshot expectation\n      - taking page screenshot\n        - disabled all CSS animations\n      - waiting for fonts to load...\n      - fonts loaded\n      - 668 pixels (ratio 0.01 of all image pixels) are different.\n      - waiting 100ms before taking screenshot\n      - taking page screenshot\n        - disabled all CSS animations\n      - waiting for fonts to load...\n      - fonts loaded\n      - captured a stable screenshot\n      - 668 pixels (ratio 0.01 of all image pixels) are different.\n\n\n      437 |       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();\n      438 |       await prepareSpecimenVisualBaseline(page);\n    > 439 |       await expect(page).toHaveScreenshot(combination.artifact, {\n          |                          ^\n      440 |         fullPage: true,\n      441 |         animations: 'disabled',\n      442 |         // Linux baselines are regenerated locally. Windows baselines come from CI\n        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:439:26\n\n    attachment #1: specimen-console-and-network-guard (text/plain) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    Console and network guards are active for specimen routes.\n    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n    attachment #2: frontcomposer-type-light-compact (image/png) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    Expected: specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-compact-chromium-linux.png\n    Received: ../../../../../../../../tmp/fc-13-3-resume-zi72c8sz/browser-recheck-results/specimen-accessibility-Fro-f59b0-sual-baseline-light-compact-chromium/frontcomposer-type-light-compact-actual.png\n    Diff:     ../../"
+        },
+        {
+          "name": "specimen-accessibility.spec.ts :: FrontComposer accessibility and visual specimens \u203a visual baseline light comfortable",
+          "kind": "failure",
+          "message": "\n  [chromium] \u203a specimen-accessibility.spec.ts:435:5 \u203a FrontComposer accessibility and visual specimens \u203a visual baseline light comfortable \n\n    Error: expect(locator).toHaveAttribute(expected) failed\n\n    Locator:  locator('.fc-shell-root')\n    Expected: \"true\"\n    Received: \"false\"\n    Timeout:  10000ms\n\n    Call log:\n      - Expect \"toHaveAttribute\" locator('.fc-shell-root') with timeout 10000ms\n      - waiting for locator('.fc-shell-root')\n        23 \u00d7 locator resolved to <div tabindex=\"-1\" b-zbeq395ew8=\"\" class=\"fc-shell-root\" data-fc-interactive=\"false\">\u2026</div>\n           - unexpected value \"false\"\n\n\n      548 |\n      549 | const prepareSpecimenVisualBaseline = async (page: import('@playwright/test').Page): Promise<void> => {\n    > 550 |   await expect(page.locator('.fc-shell-root')).toHaveAttribute('data-fc-interactive', 'true');\n          |                                                ^\n      551 |   // The cleared desktop fixture uses the shell's Compact factory density; the query's density\n      552 |   // controls the specimen cards separately. Wait for the real shell projection before capture.\n      553 |   await expect(page.locator('body')).toHaveAttribute('data-fc-density', 'compact');\n        at prepareSpecimenVisualBaseline (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:550:48)\n        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:438:13\n\n    Error: Unhandled browser console errors:\n    Failed to load module script: Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of \"\". Strict MIME type checking is enforced for module scripts per HTML spec.\n\n    expect(received).toEqual(expected) // deep equality\n\n    - Expected  - 1\n    + Received  + 3\n\n    - Array []\n    + Array [\n    +   \"Failed to load module script: Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of \\\"\\\". Strict MIME type checking is enforced for module scripts per HTML spec.\",\n    + ]\n\n      44 |     const consoleErrors = consoleErrorsByPage.get(page) ?? [];\n      45 |     const unexpectedRequests = unexpe"
+        },
+        {
+          "name": "specimen-accessibility.spec.ts :: FrontComposer accessibility and visual specimens \u203a production-style route exposure fails closed when specimen host configuration is absent",
+          "kind": "error",
+          "message": "\n  [chromium] \u203a specimen-accessibility.spec.ts:450:3 \u203a FrontComposer accessibility and visual specimens \u203a production-style route exposure fails closed when specimen host configuration is absent \n\n    Test timeout of 60000ms exceeded.\n\n    Error: Counter production smoke host did not start: Error: apiRequestContext.get: connect ECONNREFUSED 127.0.0.1:5071\n    Call log:\n      - \u2192 GET http://127.0.0.1:5071/\n        - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.8010.12 Safari/537.36\n        - accept: */*\n        - accept-encoding: gzip,deflate,br\n\n\n      636 |   }\n      637 |\n    > 638 |   throw new Error(`Counter production smoke host did not start: ${String(lastError)}`);\n          |         ^\n      639 | };\n      640 |\n        at waitForHost (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:638:9)\n        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:477:7\n\n    attachment #1: specimen-console-and-network-guard (text/plain) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    Console and network guards are active for specimen routes.\n    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n    attachment #2: screenshot (image/png) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    ../../../../../../../../tmp/fc-13-3-resume-zi72c8sz/browser-recheck-results/specimen-accessibility-Fro-4b6d0-ost-configuration-is-absent-chromium/test-failed-1.png\n    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n    attachment #3: video (video/webm) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    ../../../../../../../../tmp/fc-13-3-resume-zi72c8sz/browser-recheck-results/specimen-accessibility-Fro-4b6d0-ost-configuration-is-absent-chromium/video.webm\n    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n    Error Context: ../../../../../../../../tmp/fc-13-3-resume-zi72c8sz/browser-recheck-results/specimen-accessibility-Fro-4b6d0-ost-configuration-is-absent-chromi"
+        }
+      ],
+      "xml": "/tmp/fc-13-3-resume-zi72c8sz/browser-recheck.xml",
+      "xmlSha256": "ea526e088462e909583cf1bd895712e1f3543c107b193d5b2c4fe220702dc846"
+    },
+    "browser-targeted": {
+      "command": "env BASE_URL=http://127.0.0.1:44509 ./node_modules/.bin/playwright test --config /tmp/fc-13-3-resume-zi72c8sz/playwright-targeted.config.ts --project=chromium specs/destructive-command-confirmation.spec.ts specs/policy-gated-command-authorization.spec.ts --grep 'keyboard dismissal|one modal reservation|removed destructive invoker'",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e",
+      "exitCode": 0,
+      "seconds": 18.09,
+      "finishedUtc": "2026-10-01T14:50:29.220653+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/browser-targeted.log",
+      "logSha256": "8b8d49f3d8403334b2bae7ae1bd37de50236d5f1eb60bcb6d559acfb7aab5a8c",
+      "results": {
+        "tests": 3,
+        "failures": 0,
+        "skipped": 0,
+        "errors": 0,
+        "passed": 3
+      },
+      "failures": [],
+      "xml": "/tmp/fc-13-3-resume-zi72c8sz/browser-targeted.xml",
+      "xmlSha256": "81ebd81af9b7a9b78b5ee828dc693bcc57578042257746dc87aa810648d07211"
+    },
+    "browser": {
+      "command": "./node_modules/.bin/playwright test --config /tmp/fc-13-3-resume-zi72c8sz/playwright.config.ts --project=chromium specs/destructive-command-confirmation.spec.ts specs/form-abandonment-guard.spec.ts specs/one-at-a-time-execution-policy.spec.ts specs/policy-gated-command-authorization.spec.ts specs/command-form-generation.spec.ts specs/specimen-accessibility.spec.ts",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer/tests/e2e",
+      "exitCode": 1,
+      "seconds": 168.96,
+      "finishedUtc": "2026-10-01T14:24:39.391688+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/browser.log",
+      "logSha256": "4fe35304fe8c68a27264d442ad75765cfa46c988c706900cf672bce16c121e4a",
+      "results": {
+        "tests": 48,
+        "failures": 2,
+        "skipped": 0,
+        "errors": 2,
+        "passed": 44
+      },
+      "failures": [
+        {
+          "name": "command-form-generation.spec.ts :: Story 3.3: FC-CMD pending identity and correlation contract \u203a generated compact form keeps identity framework-owned while command reaches pending confirmation",
+          "kind": "error",
+          "message": "\n  [chromium] \u203a command-form-generation.spec.ts:196:3 \u203a Story 3.3: FC-CMD pending identity and correlation contract \u203a generated compact form keeps identity framework-owned while command reaches pending confirmation \n\n    TimeoutError: locator.waitFor: Timeout 15000ms exceeded.\n    Call log:\n      - waiting for locator('.fc-shell-root[data-fc-interactive=\"true\"]') to be visible\n\n\n      220 | const gotoCounter = async (page: Page): Promise<void> => {\n      221 |   await page.goto('/counter');\n    > 222 |   await page.locator('.fc-shell-root[data-fc-interactive=\"true\"]').waitFor();\n          |                                                                    ^\n      223 |   await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();\n      224 | };\n      225 |\n        at gotoCounter (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/command-form-generation.spec.ts:222:68)\n        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/command-form-generation.spec.ts:202:5\n\n    attachment #1: screenshot (image/png) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    ../../../../../../../../tmp/fc-13-3-resume-zi72c8sz/browser-results/command-form-generation-St-a6010-eaches-pending-confirmation-chromium/test-failed-1.png\n    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n    attachment #2: video (video/webm) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    ../../../../../../../../tmp/fc-13-3-resume-zi72c8sz/browser-results/command-form-generation-St-a6010-eaches-pending-confirmation-chromium/video.webm\n    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n    Error Context: ../../../../../../../../tmp/fc-13-3-resume-zi72c8sz/browser-results/command-form-generation-St-a6010-eaches-pending-confirmation-chromium/error-context.md\n\n    attachment #4: trace (application/zip) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    ../../../../../../../../tmp/fc-13-3-resume-zi72c8sz/browser-results/command-form-generation-St-a6010-eaches-pending-confirmation-chromium/trace.zip\n    Usage:\n\n       "
+        },
+        {
+          "name": "destructive-command-confirmation.spec.ts :: Story 4.1: destructive command confirmation \u203a a real settings modal prevents opening a nested destructive dialog",
+          "kind": "failure",
+          "message": "\n  [chromium] \u203a destructive-command-confirmation.spec.ts:185:3 \u203a Story 4.1: destructive command confirmation \u203a a real settings modal prevents opening a nested destructive dialog \n\n    Error: expect(locator).toHaveAttribute(expected) failed\n\n    Locator:  locator('.fc-command-form[aria-label=\"Purge Specimen Record command form\"]')\n    Expected: \"true\"\n    Received: \"false\"\n    Timeout:  10000ms\n\n    Call log:\n      - Expect \"toHaveAttribute\" locator('.fc-command-form[aria-label=\"Purge Specimen Record command form\"]') with timeout 10000ms\n      - waiting for locator('.fc-command-form[aria-label=\"Purge Specimen Record command form\"]')\n        24 \u00d7 locator resolved to <div data-fc-command-form=\"true\" data-fc-interactive=\"false\" class=\"fc-command-form fc-density-comfortable\" aria-label=\"Purge Specimen Record command form\" id=\"fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-7\" data-fc-validation-summary-id=\"fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-7-validation-summary\">\u2026</div>\n           - unexpected value \"false\"\n\n\n       at ../helpers/fluent-fields.ts:15\n\n      13 |\n      14 |   if (isGeneratedCommandForm) {\n    > 15 |     await expect(root).toHaveAttribute('data-fc-interactive', 'true');\n         |                        ^\n      16 |   }\n      17 | };\n      18 |\n        at waitForGeneratedFormReady (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/fluent-fields.ts:15:24)\n        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/destructive-command-confirmation.spec.ts:192:5\n\n    attachment #1: screenshot (image/png) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    ../../../../../../../../tmp/fc-13-3-resume-zi72c8sz/browser-results/destructive-command-confir-d56c6-a-nested-destructive-dialog-chromium/test-failed-1.png\n    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n    attachment #2: video (video/webm) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    ../../../../../../../../tmp/fc-13-3-resume-zi72c8sz/browser-results/destructive-command-confir-d56c6-a-nested-destructive-dialog-chromium/video.we"
+        },
+        {
+          "name": "destructive-command-confirmation.spec.ts :: Story 4.1: destructive command confirmation \u203a one modal reservation survives long preparation and refuses competing shell overlays",
+          "kind": "failure",
+          "message": "\n  [chromium] \u203a destructive-command-confirmation.spec.ts:210:3 \u203a Story 4.1: destructive command confirmation \u203a one modal reservation survives long preparation and refuses competing shell overlays \n\n    Error: expect(locator).toHaveAttribute(expected) failed\n\n    Locator:  locator('.fc-shell-root')\n    Expected: \"true\"\n    Received: \"false\"\n    Timeout:  10000ms\n\n    Call log:\n      - Expect \"toHaveAttribute\" locator('.fc-shell-root') with timeout 10000ms\n      - waiting for locator('.fc-shell-root')\n        24 \u00d7 locator resolved to <div tabindex=\"-1\" b-zbeq395ew8=\"\" class=\"fc-shell-root\" data-fc-interactive=\"false\">\u2026</div>\n           - unexpected value \"false\"\n\n\n      213 |     await gotoTypeSpecimen(page);\n      214 |     // Capture the interactive tree: hydration replaces the prerendered heading and its attributes.\n    > 215 |     await expect(page.locator('.fc-shell-root')).toHaveAttribute('data-fc-interactive', 'true');\n          |                                                  ^\n      216 |     await waitForGeneratedFormReady(destructiveForm(page));\n      217 |\n      218 |     const reservation = await page.evaluate(async (focusModulePath) => {\n        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/destructive-command-confirmation.spec.ts:215:50\n\n    attachment #1: screenshot (image/png) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    ../../../../../../../../tmp/fc-13-3-resume-zi72c8sz/browser-results/destructive-command-confir-dd8ac-es-competing-shell-overlays-chromium/test-failed-1.png\n    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n    attachment #2: video (video/webm) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    ../../../../../../../../tmp/fc-13-3-resume-zi72c8sz/browser-results/destructive-command-confir-dd8ac-es-competing-shell-overlays-chromium/video.webm\n    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n    Error Context: ../../../../../../../../tmp/fc-13-3-resume-zi72c8sz/browser-results/destructive-command-confir-dd8ac-es-competing-shell-overlays-chromium/error-context.md\n\n    atta"
+        },
+        {
+          "name": "specimen-accessibility.spec.ts :: FrontComposer accessibility and visual specimens \u203a forced-colors and reduced-motion states are active and perceivable",
+          "kind": "error",
+          "message": "\n  [chromium] \u203a specimen-accessibility.spec.ts:394:3 \u203a FrontComposer accessibility and visual specimens \u203a forced-colors and reduced-motion states are active and perceivable \n\n    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:5070/__frontcomposer/specimens/type\n    Call log:\n      - navigating to \"http://127.0.0.1:5070/__frontcomposer/specimens/type\", waiting until \"load\"\n\n\n      523 |\n      524 | const gotoSpecimen = async (page: import('@playwright/test').Page, route: SpecimenRoute): Promise<void> => {\n    > 525 |   await page.goto(route.path);\n          |              ^\n      526 |   await expect(page.locator(route.readySelector), `${route.path} missing ready marker`).toBeVisible();\n      527 |   await page.waitForFunction(() => [...document.querySelectorAll('*')]\n      528 |     .filter((element) => element.localName.includes('-'))\n        at gotoSpecimen (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:525:14)\n        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/specimen-accessibility.spec.ts:405:11\n\n    attachment #1: specimen-console-and-network-guard (text/plain) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    Console and network guards are active for specimen routes.\n    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n    attachment #2: screenshot (image/png) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    ../../../../../../../../tmp/fc-13-3-resume-zi72c8sz/browser-results/specimen-accessibility-Fro-4bdc5--are-active-and-perceivable-chromium/test-failed-2.png\n    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n    attachment #3: screenshot (image/png) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n    ../../../../../../../../tmp/fc-13-3-resume-zi72c8sz/browser-results/specimen-accessibility-Fro-4bdc5--are-active-and-perceivable-chromium/test-failed-1.png\n    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n    attachment #4: video (video/webm) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+        }
+      ],
+      "xml": "/tmp/fc-13-3-resume-zi72c8sz/browser.xml",
+      "xmlSha256": "01a4fe2c8420cab148f7d5e07ad85f7004e967582bf39e79f87f749a71458eae"
+    },
+    "docs": {
+      "command": "pwsh ./eng/validate-docs.ps1",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": -15,
+      "seconds": 1121.94,
+      "finishedUtc": "2026-10-01T14:37:44.225957+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/docs.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "governance-blockers-final": {
+      "command": "dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -method '*CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds' -method '*EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval' -result-xml /tmp/fc-13-3-resume-zi72c8sz/governance-blockers-final.xml",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 1,
+      "seconds": 0.78,
+      "finishedUtc": "2026-10-01T14:49:02.260819+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/governance-blockers-final.log",
+      "logSha256": "01ba592536f0119544d726697fa377df6eaeec189d0a8431e710520ca0acd699",
+      "results": {
+        "total": 2,
+        "passed": 0,
+        "failed": 2,
+        "skipped": 0,
+        "errors": 0
+      },
+      "failures": [
+        {
+          "name": "Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval",
+          "message": "Shouldly.ShouldAssertException : selectedSourceSha\n    should be\n\\\"19dc1f82122564453163ac010dc7e5ae81db7ed3\\\"\n    but was\n\\\"8096455e4f23f2912998e36738058b8e3d961be6\\\"\n    difference\nDifference     |  |    |    |    |    |    |    |    |    |    |         |    |    |    |    |    |    |    |    |    |        \n               | \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/       \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/       \nIndex          | 0    1    2    3    4    5    6    7    8    9    10   11   12   13   14   15   16   17   18   19   20   ...  \nExpected Value | 1    9    d    c    1    f    8    2    1    2    2    5    6    4    4    5    3    1    6    3    a    ...  \nActual Value   | 8    0    9    6    4    5    5    e    4    f    2    3    f    2    9    1    2    9    9    8    e    ...  \nExpected Code  | 49   57   100  99   49   102  56   50   49   50   50   53   54   52   52   53   51   49   54   51   97   ...  \nActual Code    | 56   48   57   54   52   53   53   101  52   102  50   51   102  50   57   49   50   57   57   56   101  ...  \n\nDifference     |       |    |    |    |    |    |    |    |    |    |    |    |         |    |    |    |    |    |    |    |   \n               |      \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/       \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \nIndex          | ...  19   20   21   22   23   24   25   26   27   28   29   30   31   32   33   34   35   36   37   38   39   \nExpected Value | ...  3    a    c    0    1    0    d    c    7    e    5    a    e    8    1    d    b    7    e    d    3    \nActual Value   | ...  8    e    3    6    7    3    8    0    5    8    b    8    e    3    d    9    6    1    b    e    6    \nExpected Code  | ...  51   97   99   48   49   48   100  99   55   101  53   97   101  56   49   100  98   55   101  100  51   \nActual Code    | ...  56   101  51   54   55   51   56   48   53   56   98   56   101  51   100  57   54   49   98   101  54   \n\nAdditional Info:\n    the current capture target must select the committed EventStore gitlink"
+        },
+        {
+          "name": "Hexalith.FrontComposer.Shell.Tests.Governance.InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds",
+          "message": "Shouldly.ShouldAssertException : result.Ok\n    should be\nTrue\n    but was\nFalse\n\nAdditional Info:\n    unknown/untrusted repository identity 'github.com/hexalith/hexalith.platform'"
+        }
+      ],
+      "xml": "/tmp/fc-13-3-resume-zi72c8sz/governance-blockers-final.xml",
+      "xmlSha256": "f5aacf3e40abacd585273fcd10edc900a83f6d4e4e8704b53f7d2650973da663"
+    },
+    "owned-process": {
+      "command": "node --test tests/e2e/scripts/owned-process.test.mjs",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 0,
+      "seconds": 5.55,
+      "finishedUtc": "2026-10-01T14:36:38.404543+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/owned-process.log",
+      "logSha256": "bb302d38762c4121ee1edd70c8603aff3cc45c3112490e1804301194978051cf"
+    },
+    "shell-build-after-patch": {
+      "command": "dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release -m:1",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 0,
+      "seconds": 17.78,
+      "finishedUtc": "2026-10-01T14:37:25.194048+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/shell-build-after-patch.log",
+      "logSha256": "18b76fa915c06d758243ac6fe2b7de6061b4f6e69478dfd906eed0a170575e53"
+    },
+    "shell-build-final": {
+      "command": "dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release -m:1",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 0,
+      "seconds": 21.15,
+      "finishedUtc": "2026-10-01T14:46:11.004440+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/shell-build-final.log",
+      "logSha256": "2a54d6348da7fdc61f80f2f3a80877d1fd18d6d9f19d74d251b067f0719b17ea"
+    },
+    "shell-build": {
+      "command": "dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release -m:1",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 0,
+      "seconds": 16.1,
+      "finishedUtc": "2026-10-01T14:20:32.890192+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/shell-build.log",
+      "logSha256": "88efceaa69192f89a84dcd42e564f45e06edc5ccde4426ead8a3d210a74dd964"
+    },
+    "shell-default": {
+      "command": "dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -trait- Category=GovernanceBuild -trait- Category=Performance -trait- Category=e2e-palette -trait- Category=NightlyProperty -trait- Category=Quarantined -result-xml /tmp/fc-13-3-resume-zi72c8sz/shell-default.xml",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 1,
+      "seconds": 132.38,
+      "finishedUtc": "2026-10-01T14:23:26.421021+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/shell-default.log",
+      "logSha256": "e30315bd61f679d4e65fb091da6db761763e04a3e5ddb9339493ec137b63bc57",
+      "results": {
+        "total": 3091,
+        "passed": 3089,
+        "failed": 2,
+        "skipped": 0,
+        "errors": 0
+      },
+      "failures": [
+        {
+          "name": "Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval",
+          "message": "Shouldly.ShouldAssertException : selectedSourceSha\n    should be\n\\\"19dc1f82122564453163ac010dc7e5ae81db7ed3\\\"\n    but was\n\\\"8096455e4f23f2912998e36738058b8e3d961be6\\\"\n    difference\nDifference     |  |    |    |    |    |    |    |    |    |    |         |    |    |    |    |    |    |    |    |    |        \n               | \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/       \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/       \nIndex          | 0    1    2    3    4    5    6    7    8    9    10   11   12   13   14   15   16   17   18   19   20   ...  \nExpected Value | 1    9    d    c    1    f    8    2    1    2    2    5    6    4    4    5    3    1    6    3    a    ...  \nActual Value   | 8    0    9    6    4    5    5    e    4    f    2    3    f    2    9    1    2    9    9    8    e    ...  \nExpected Code  | 49   57   100  99   49   102  56   50   49   50   50   53   54   52   52   53   51   49   54   51   97   ...  \nActual Code    | 56   48   57   54   52   53   53   101  52   102  50   51   102  50   57   49   50   57   57   56   101  ...  \n\nDifference     |       |    |    |    |    |    |    |    |    |    |    |    |         |    |    |    |    |    |    |    |   \n               |      \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/       \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \nIndex          | ...  19   20   21   22   23   24   25   26   27   28   29   30   31   32   33   34   35   36   37   38   39   \nExpected Value | ...  3    a    c    0    1    0    d    c    7    e    5    a    e    8    1    d    b    7    e    d    3    \nActual Value   | ...  8    e    3    6    7    3    8    0    5    8    b    8    e    3    d    9    6    1    b    e    6    \nExpected Code  | ...  51   97   99   48   49   48   100  99   55   101  53   97   101  56   49   100  98   55   101  100  51   \nActual Code    | ...  56   101  51   54   55   51   56   48   53   56   98   56   101  51   100  57   54   49   98   101  54   \n\nAdditional Info:\n    the current capture target must select the committed EventStore gitlink"
+        },
+        {
+          "name": "Hexalith.FrontComposer.Shell.Tests.Governance.InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds",
+          "message": "Shouldly.ShouldAssertException : result.Ok\n    should be\nTrue\n    but was\nFalse\n\nAdditional Info:\n    unknown/untrusted repository identity 'github.com/hexalith/hexalith.platform'"
+        }
+      ],
+      "xml": "/tmp/fc-13-3-resume-zi72c8sz/shell-default.xml",
+      "xmlSha256": "b1dedfa1697767c1ef4a6c3b8f9469e312b7fab6da48f3c42af814de06066265"
+    },
+    "shell-focused-after-patch": {
+      "command": "dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -class '*Counter*Tests' -class '*DestructiveCommandRendererIntegrationTests' -class '*FcLifecycleWrapperRejectionTests' -class '*AnalyzerPolicy*Tests' -result-xml /tmp/fc-13-3-resume-zi72c8sz/shell-focused-after-patch.xml",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 3,
+      "seconds": 0.09,
+      "finishedUtc": "2026-10-01T14:38:42.094917+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/shell-focused-after-patch.log",
+      "logSha256": "4d1e208f32a628e8ce2429cde6bf78d1bc6f00d839bc6e68ef0b1702c216597e"
+    },
+    "shell-focused-corrected": {
+      "command": "dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -class '*CounterStoryVerificationTests' -class '*CounterPageLifecycleE2ETests' -class '*CounterMcpSampleAccessTests' -class '*CounterWebIntegrationTests' -class '*DestructiveCommandRendererIntegrationTests' -class '*FcLifecycleWrapperRejectionTests' -class '*AnalyzerPolicyGovernanceTests' -result-xml /tmp/fc-13-3-resume-zi72c8sz/shell-focused-corrected.xml",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 0,
+      "seconds": 94.87,
+      "finishedUtc": "2026-10-01T14:41:54.992292+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/shell-focused-corrected.log",
+      "logSha256": "da61fec559824dc1c04a930111cce77dc2678583ac9ea600f19655443a6a955a",
+      "results": {
+        "total": 72,
+        "passed": 72,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0
+      },
+      "failures": [],
+      "xml": "/tmp/fc-13-3-resume-zi72c8sz/shell-focused-corrected.xml",
+      "xmlSha256": "4381776fbe7e3d417d9d7ead3dc7b7a4e96bf42729aa9b4a91ce5eb3f98f5c2b"
+    },
+    "shell-focused-final": {
+      "command": "dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -class '*DestructiveCommandRendererIntegrationTests' -class '*FcLifecycleWrapperRejectionTests' -class '*CommandRendererWrapperIntegrationTests' -class '*AnalyzerPolicyGovernanceTests' -result-xml /tmp/fc-13-3-resume-zi72c8sz/shell-focused-final.xml",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 0,
+      "seconds": 98.35,
+      "finishedUtc": "2026-10-01T14:48:54.823388+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/shell-focused-final.log",
+      "logSha256": "f2b112a6f0486796fdc7335fc8c080ea62abb2aa1c29b9e024c580ed01716241",
+      "results": {
+        "total": 93,
+        "passed": 93,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0
+      },
+      "failures": [],
+      "xml": "/tmp/fc-13-3-resume-zi72c8sz/shell-focused-final.xml",
+      "xmlSha256": "4ce1b804c9eb82bb0825468f701578946d789666f7d215a77beac75234096650"
+    },
+    "sourcetools-build-final": {
+      "command": "dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj -c Release -m:1",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 0,
+      "seconds": 10.13,
+      "finishedUtc": "2026-10-01T14:44:24.118993+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/sourcetools-build-final.log",
+      "logSha256": "c7e715611f505aebcd1449239069545a932942514e1c968217d5152e6649bf50"
+    },
+    "sourcetools-build": {
+      "command": "dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj -c Release -m:1",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 0,
+      "seconds": 12.48,
+      "finishedUtc": "2026-10-01T14:20:00.271086+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/sourcetools-build.log",
+      "logSha256": "62be035a1ecf4b3c429b3372d1b43c006a38c0aa02b5253f22b9363a5fc9c9e4"
+    },
+    "sourcetools-default": {
+      "command": "dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Release/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll -trait- Category=GovernanceBuild -trait- Category=Performance -trait- Category=e2e-palette -trait- Category=NightlyProperty -trait- Category=Quarantined -result-xml /tmp/fc-13-3-resume-zi72c8sz/sourcetools-default.xml",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 0,
+      "seconds": 39.94,
+      "finishedUtc": "2026-10-01T14:21:52.816538+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/sourcetools-default.log",
+      "logSha256": "72ec43a0678e7c9d1c58ea07c4635ee9f0e4a020c629d3e4f3f9a611cccd3ed1",
+      "results": {
+        "total": 1297,
+        "passed": 1297,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0
+      },
+      "failures": [],
+      "xml": "/tmp/fc-13-3-resume-zi72c8sz/sourcetools-default.xml",
+      "xmlSha256": "456d118cb869d221c027b41bb17fcfac7760e6c801ffbb734dffa813757138b8"
+    },
+    "sourcetools-focused-final": {
+      "command": "dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Release/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll -class '*CommandFormEmitterTests' -class '*CommandRendererEmitterTests' -class '*CommandFluxorEmitterTests' -class '*CommandFormTransformTests' -class '*CommandPageEmitterTests' -result-xml /tmp/fc-13-3-resume-zi72c8sz/sourcetools-focused-final.xml",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 0,
+      "seconds": 3.43,
+      "finishedUtc": "2026-10-01T14:45:54.444544+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/sourcetools-focused-final.log",
+      "logSha256": "d6bc53441cae39eb591cf4e6a335e0e6ea1d062f629686b85ffeb2f76af03f05",
+      "results": {
+        "total": 148,
+        "passed": 148,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0
+      },
+      "failures": [],
+      "xml": "/tmp/fc-13-3-resume-zi72c8sz/sourcetools-focused-final.xml",
+      "xmlSha256": "349cd193f4678074a2bc6128a5e883d08a4a6d3cd1734ae1ba8c83bbe25e5325"
+    },
+    "typecheck-after-patch": {
+      "command": "npm --prefix tests/e2e run typecheck",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 0,
+      "seconds": 0.26,
+      "finishedUtc": "2026-10-01T14:36:33.118133+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/typecheck-after-patch.log",
+      "logSha256": "f25f1003ff1cfe84552996098a4b5da48fac24aca38a162310dab5aa0f742da2"
+    },
+    "typecheck-final": {
+      "command": "npm --prefix tests/e2e run typecheck",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 0,
+      "seconds": 0.26,
+      "finishedUtc": "2026-10-01T14:43:59.945837+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/typecheck-final.log",
+      "logSha256": "f25f1003ff1cfe84552996098a4b5da48fac24aca38a162310dab5aa0f742da2"
+    },
+    "typecheck": {
+      "command": "npm --prefix tests/e2e run typecheck",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 0,
+      "seconds": 0.96,
+      "finishedUtc": "2026-10-01T14:18:07.954764+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/typecheck.log",
+      "logSha256": "f25f1003ff1cfe84552996098a4b5da48fac24aca38a162310dab5aa0f742da2"
+    },
+    "typecheck-last": {
+      "command": "npm --prefix tests/e2e run typecheck",
+      "workingDirectory": "/home/administrator/projects/hexalith/frontcomposer",
+      "exitCode": 0,
+      "seconds": 0.26,
+      "finishedUtc": "2026-10-01T14:56:23.027478+00:00",
+      "log": "/tmp/fc-13-3-resume-zi72c8sz/typecheck-last.log",
+      "logSha256": "f25f1003ff1cfe84552996098a4b5da48fac24aca38a162310dab5aa0f742da2"
+    }
+  },
+  "dependencyState": {
+    "Hexalith.Builds": {
+      "declaredGitlink": "21ce044ab465ccb2adab58b3d66e394ffbecf3c2",
+      "checkout": "21ce044ab465ccb2adab58b3d66e394ffbecf3c2",
+      "matches": true
+    },
+    "Hexalith.EventStore": {
+      "declaredGitlink": "8096455e4f23f2912998e36738058b8e3d961be6",
+      "checkout": "8096455e4f23f2912998e36738058b8e3d961be6",
+      "matches": true
+    }
+  },
+  "changes": [
+    "Durable modal reservations retain their captured invoker. After it is removed, the next launch recovers the slot unless an actual modal remains open.",
+    "The generated destructive renderer checks its reservation owner again after derived-value preparation; an abandoned or superseded attempt opens no dialog and dispatches nothing.",
+    "The existing held-preparation integration regression now exercises both retained and abandoned ownership without adding a new analyzer-inventory declaration.",
+    "The isolated Test specimen host can reject BatchIncrement Amount=3 with a support-safe field map. The opt-in is disabled outside Test or without specimen configuration; corrected values use the existing authorized service.",
+    "The mapped-rejection browser regression proves summary focus, native Chromium accessibility-tree error description, single inline error, no duplicate lifecycle announcement, keyboard Dismiss focus, retained values and errors, and confirmed corrected retry.",
+    "Owned-process readiness parses only complete listening lines and ignores malformed addresses; split IPv4 and IPv6 log chunks are covered."
+  ],
+  "browserConfiguration": "import config from \"/home/administrator/projects/hexalith/frontcomposer/tests/e2e/playwright.config.ts\";\nexport default {\n  ...config,\n  testDir: \"/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs\",\n  outputDir: \"/tmp/fc-13-3-resume-zi72c8sz/browser-targeted-results\",\n  reporter: [[\"list\"], [\"json\", { outputFile: \"/tmp/fc-13-3-resume-zi72c8sz/browser-targeted.json\" }], [\"junit\", { outputFile: \"/tmp/fc-13-3-resume-zi72c8sz/browser-targeted.xml\" }]],\n  workers: 1,\n  use: { ...config.use, baseURL: \"http://127.0.0.1:44509\" },\n  projects: config.projects.map(project => ({ ...project, use: { ...project.use, launchOptions: { args: [\"--disable-gpu\", \"--disable-software-rasterizer\"] } } })),\n  webServer: { ...config.webServer, cwd: \"/home/administrator/projects/hexalith/frontcomposer/tests/e2e\", command: config.webServer.command.replace(\"5070\", \"44509\"), url: \"http://127.0.0.1:44509\", reuseExistingServer: false }\n};\n",
+  "validationNotes": [
+    "The initial default SourceTools lane passed 1297/1297 and Shell passed 3089/3091. After the final runtime changes, the required builds, focused SourceTools 148/148, focused Shell 93/93, native browser regressions 3/3, TypeScript check, and owned-process regressions 4/4 passed.",
+    "The initial broad browser run was 44/48; its forced-colors failure used the default 5070 because the temporary configuration did not also supply BASE_URL to an explicitly created context. The recheck supplied that environment value.",
+    "The broad browser recheck was 43 passed, 5 failed, 1 skipped. The intermediate mapped test failures were test-only DOM-description and relative-locator mistakes; the final test reads native Chromium AX data and uses a correctly scoped field locator. The changed-spec run before the final locator correction was 11/13.",
+    "Final targeted browser regressions all pass, but they do not certify the broader lane. Intermittent failures include JavaScript requests returning HTTP 200 with Content-Length 0 and no Content-Type, leaving forms prerendered; broad visual and production-host checks also failed.",
+    "The first focused Shell invocation used an unsupported middle wildcard; the corrected invocation passed 72/72, and the final affected runtime/validation/governance classes passed 93/93.",
+    "Optional docs validation produced no output and stalled in its isolated Snippet.csproj build for more than eighteen minutes; only the owned validation processes were terminated. It has no passing result.",
+    "No dependency checkout, trust policy, runtime identity, visual baseline, frozen intent, staged change, commit, or push was changed by this run."
+  ],
+  "remainingBlockers": [
+    {
+      "check": "InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds",
+      "result": "unknown/untrusted repository identity github.com/hexalith/hexalith.platform",
+      "commandRecord": "governance-blockers-final"
+    },
+    {
+      "check": "CiGovernanceTests.EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval",
+      "result": "current capture target source is 19dc1f82122564453163ac010dc7e5ae81db7ed3; current committed EventStore gitlink is 8096455e4f23f2912998e36738058b8e3d961be6",
+      "commandRecord": "governance-blockers-final"
+    },
+    {
+      "check": "Broad Chromium validation",
+      "result": "The broad recheck and intermediate changed-spec run are not green; only the three final targeted regressions pass.",
+      "commandRecords": [
+        "browser",
+        "browser-recheck",
+        "browser-final",
+        "browser-targeted"
+      ]
+    },
+    {
+      "check": "Aspire baseline",
+      "result": "Startup timed out after 90 seconds; describe and stop reported no running AppHost.",
+      "commandRecords": [
+        "aspire-baseline",
+        "aspire-describe",
+        "aspire-stop"
+      ]
+    },
+    {
+      "check": "Optional documentation validation",
+      "result": "Owned stalled validation was terminated without a passing result.",
+      "commandRecord": "docs"
+    }
+  ],
+  "completion": {
+    "done": false,
+    "specStatus": "in-review",
+    "sprintStatus": "in-progress",
+    "workflowCheckpoint": "step-04-review: required verification remains failed or unavailable; HALT"
+  },
+  "sanitizedBrowserHydrationEvidence": [
+    {
+      "trace": "/tmp/fc-13-3-resume-zi72c8sz/browser-results/destructive-command-confir-dd8ac-es-competing-shell-overlays-chromium/trace.zip",
+      "traceSha256": "9c581ce17a6b3fdc2da8d16d623e428519836dd6bfdb12a51fa4229ca9b3c2eb",
+      "url": "http://127.0.0.1:44509/_content/Microsoft.FluentUI.AspNetCore.Components/Microsoft.FluentUI.AspNetCore.Components.lib.module.js",
+      "status": 200,
+      "contentLength": 0,
+      "contentType": null
+    },
+    {
+      "trace": "/tmp/fc-13-3-resume-zi72c8sz/browser-results/destructive-command-confir-dd8ac-es-competing-shell-overlays-chromium/trace.zip",
+      "traceSha256": "9c581ce17a6b3fdc2da8d16d623e428519836dd6bfdb12a51fa4229ca9b3c2eb",
+      "url": "http://127.0.0.1:44509/_framework/blazor.web.js",
+      "status": 200,
+      "contentLength": 0,
+      "contentType": null
+    },
+    {
+      "trace": "/tmp/fc-13-3-resume-zi72c8sz/browser-results/destructive-command-confir-d56c6-a-nested-destructive-dialog-chromium/trace.zip",
+      "traceSha256": "d3e2151f2503d8c752ce88d9eeb2e5eab958c65f7d8f95dcf3e80316ae3263bc",
+      "url": "http://127.0.0.1:44509/_content/Microsoft.FluentUI.AspNetCore.Components/Microsoft.FluentUI.AspNetCore.Components.lib.module.js",
+      "status": 200,
+      "contentLength": 0,
+      "contentType": null
+    },
+    {
+      "trace": "/tmp/fc-13-3-resume-zi72c8sz/browser-results/destructive-command-confir-d56c6-a-nested-destructive-dialog-chromium/trace.zip",
+      "traceSha256": "d3e2151f2503d8c752ce88d9eeb2e5eab958c65f7d8f95dcf3e80316ae3263bc",
+      "url": "http://127.0.0.1:44509/_framework/blazor.web.js",
+      "status": 200,
+      "contentLength": 0,
+      "contentType": null
+    }
+  ]
+}

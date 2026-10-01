@@ -77,6 +77,7 @@ export function captureOverlayOrigin(testId = null, preserveExisting = false, ow
         createdAt: Date.now(),
         durable: !preserveExisting,
         owner: typeof owner === 'string' && owner.length > 0 ? owner : null,
+        origin: window.__fcOverlayOrigin,
     };
     return true;
 }
@@ -101,10 +102,22 @@ export function releaseOverlayReservation(owner) {
 // the owning renderer releases them by owner token on every completion and exception path.
 const modalReservationRecoveryMs = 5000;
 
+// Recheck the original owner after asynchronous preparation so an abandoned renderer cannot open
+// its delayed confirmation over the replacement interaction that recovered the slot.
+export function ownsOverlayReservation(owner) {
+    const reservation = window.__fcModalReservation;
+    return typeof owner === 'string' && owner.length > 0
+        && reservation?.owner === owner && isLiveModalReservation(reservation);
+}
+
 function isLiveModalReservation(reservation) {
     if (!reservation) return false;
     if (hasOpenModal()) return true;
-    if (reservation.durable === true) return true;
+    if (reservation.durable === true) {
+        // A lost release reply must not strand the modal slot after navigation removes its invoker.
+        // An open modal still owns the slot, and a connected invoker retains it during long preparation.
+        return !(reservation.origin instanceof HTMLElement) || reservation.origin.isConnected;
+    }
     return typeof reservation.createdAt === 'number'
         && Date.now() - reservation.createdAt < modalReservationRecoveryMs;
 }

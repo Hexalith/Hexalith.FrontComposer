@@ -574,6 +574,7 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("            focusOriginCaptured = await focusModule.InvokeAsync<bool>(\"captureOverlayOrigin\", null, false, reservationOwner);");
             _ = sb.AppendLine("            if (!focusOriginCaptured) throw new OperationCanceledException(\"Another modal interaction is already active.\");");
             _ = sb.AppendLine("            await RefreshDerivedValuesBeforeSubmitAsync();");
+            _ = sb.AppendLine("            if (!await focusModule.InvokeAsync<bool>(\"ownsOverlayReservation\", reservationOwner)) throw new OperationCanceledException(\"Destructive confirmation origin is no longer available.\");");
             _ = sb.AppendLine("            var result = await DialogService.ShowDialogAsync<FcDestructiveConfirmationDialog>(options =>");
             _ = sb.AppendLine("            {");
             _ = sb.AppendLine("                options.Modal = true;");

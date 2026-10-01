@@ -31,6 +31,18 @@ const isAlive = async (pid) => {
   }
 };
 
+test('listening URLs wait for complete stdout chunks and tolerate malformed diagnostics', async (t) => {
+  const owned = spawnOwnedProcess(process.execPath, ['-e', 'setInterval(() => {}, 1000);'], { env: process.env });
+  t.after(() => stopOwnedProcess(owned));
+
+  owned.child.stdout.emit('data', Buffer.from('Now listening on: http://127.0.0.1:5'));
+  assert.equal(owned.listeningOrigins.size, 0);
+  owned.child.stdout.emit('data', Buffer.from('070\r\nNow listening on: http://['));
+  assert.deepEqual([...owned.listeningOrigins], ['http://127.0.0.1:5070']);
+  owned.child.stdout.emit('data', Buffer.from('::1]:5080\nNow listening on: http://[invalid]\n'));
+  assert.deepEqual([...owned.listeningOrigins], ['http://127.0.0.1:5070', 'http://[::1]:5080']);
+});
+
 test('forced Debug build timeout terminates its owned MSBuild Exec descendant', async (t) => {
   const root = await mkdtemp(join(tmpdir(), 'fc-owned-msbuild-'));
   const childPidPath = join(root, 'descendant.pid');

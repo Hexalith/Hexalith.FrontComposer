@@ -130,8 +130,10 @@ public sealed class DestructiveCommandRendererIntegrationTests : CommandRenderer
         commandService.DispatchCount.ShouldBe(0);
     }
 
-    [Fact]
-    public async Task GeneratedRendererHeldPreparationKeepsCompetingSettingsLaunchReserved() {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GeneratedRendererHeldPreparationKeepsCompetingSettingsLaunchReserved(bool originAbandoned) {
         HoldingDerivedValueProvider derivedValues = new();
         RecordingCommandService commandService = new();
         ControlledDialogService dialogService = new(DialogResult.Cancel());
@@ -172,9 +174,21 @@ public sealed class DestructiveCommandRendererIntegrationTests : CommandRenderer
             && Equals(invocation.Arguments[0], "fc-settings-button")
             && Equals(invocation.Arguments[1], true));
 
+        _ = FcFocusModule.Setup<bool>("ownsOverlayReservation", _ => true).SetResult(!originAbandoned);
         derivedValues.Release();
-        cut.WaitForAssertion(() => dialogService.ShowDialogCallCount.ShouldBe(1));
         AssertOverlayOriginRestoredOnce();
+        cut.WaitForAssertion(() => FcFocusModule.Invocations
+            .Where(invocation => invocation.Identifier == "ownsOverlayReservation")
+            .ShouldHaveSingleItem().Arguments.Single().ShouldBe(capture.Arguments[2]));
+        if (originAbandoned) {
+            // Navigation removed the invoker while preparation was held. The old attempt must not
+            // open a delayed modal over the replacement interaction or dispatch its command.
+            dialogService.ShowDialogCallCount.ShouldBe(0);
+            commandService.DispatchCount.ShouldBe(0);
+            return;
+        }
+
+        cut.WaitForAssertion(() => dialogService.ShowDialogCallCount.ShouldBe(1));
 
         // Once preparation completes and the destructive owner releases the reservation, the same
         // settings launch is admitted normally.

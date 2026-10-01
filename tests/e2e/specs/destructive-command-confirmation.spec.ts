@@ -219,6 +219,7 @@ test.describe('Story 4.1: destructive command confirmation', () => {
       const focus = await import(focusModulePath) as {
         captureOverlayOrigin: (testId?: string | null, preserveExisting?: boolean, owner?: string | null) => boolean;
         releaseOverlayReservation: (owner: string) => boolean;
+        ownsOverlayReservation: (owner: string) => boolean;
         restoreOverlayOrigin: (forceRouteHeading?: boolean, owner?: string | null) => void;
       };
       const intentWindow = window as unknown as {
@@ -292,6 +293,20 @@ test.describe('Story 4.1: destructive command confirmation', () => {
       const popoverCaptureAdmitted = focus.captureOverlayOrigin(null, true);
       focus.restoreOverlayOrigin();
       popover.remove();
+
+      // A failed C# release cannot be retried by a renderer that navigation has unmounted. The
+      // next launch recovers its abandoned reservation without weakening long preparation above.
+      const abandonedInvoker = document.createElement('button');
+      document.body.append(abandonedInvoker);
+      abandonedInvoker.focus();
+      const abandonedCapture = focus.captureOverlayOrigin(null, false, 'fc-e2e-abandoned-owner');
+      abandonedInvoker.remove();
+      const afterAbandonmentAdmitted = focus.captureOverlayOrigin('fc-settings-button', true, 'fc-e2e-next-owner');
+      const replacementOwnerPreserved = reservationOwner() === 'fc-e2e-next-owner'
+        && !focus.releaseOverlayReservation('fc-e2e-abandoned-owner')
+        && !focus.ownsOverlayReservation('fc-e2e-abandoned-owner')
+        && focus.ownsOverlayReservation('fc-e2e-next-owner');
+      focus.releaseOverlayReservation('fc-e2e-next-owner');
       return {
         firstCapture,
         racingCapture,
@@ -306,6 +321,9 @@ test.describe('Story 4.1: destructive command confirmation', () => {
         foreignRestoreRefused,
         ownerReleased,
         popoverCaptureAdmitted,
+        abandonedCapture,
+        afterAbandonmentAdmitted,
+        replacementOwnerPreserved,
       };
     }, '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js');
 
@@ -323,6 +341,9 @@ test.describe('Story 4.1: destructive command confirmation', () => {
       foreignRestoreRefused: true,
       ownerReleased: true,
       popoverCaptureAdmitted: true,
+      abandonedCapture: true,
+      afterAbandonmentAdmitted: true,
+      replacementOwnerPreserved: true,
     });
 
     // The real pointer path must also honor the reservation, and its global event tracker must not

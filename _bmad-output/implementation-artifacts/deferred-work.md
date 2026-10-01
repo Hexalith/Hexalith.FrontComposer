@@ -10015,3 +10015,7 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `_bmad-output/implementation-artifacts/spec-repair-tests-ci-and-release-publication.md`
   summary: Verify diagnostic-host cleanup behavior when child-process signaling itself fails; medium developer severity remains unverified.
   evidence: The only observed error event is spawn failure with no owned child. Reproduce an error event plus failed SIGTERM/SIGKILL and a still-running owned child on a supported platform to determine whether ownership is lost.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: Reconcile the Linux browser diagnostic fixture with Hexalith Release-only CI build guidance.
+  evidence: Review BH14-08 found the separate test/CI/publication repair job in `.github/workflows/quality.yml` builds Counter with `--configuration Debug`; its override-diagnostic browser fixture relies on DEBUG-only startup registration, so its CI owner must provide a compliant fixture without weakening the diagnostic gate.

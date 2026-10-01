@@ -1,3 +1,5 @@
+using Counter.Domain;
+
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
@@ -16,18 +18,31 @@ internal sealed class CounterSampleCommandService :
     private readonly CounterCommandProjectionCatchUpChannel _catchUp;
     private readonly IUserContextAccessor _userContext;
     private readonly ILogger<CounterSampleCommandService> _logger;
+    private readonly bool _mappedRejectionEnabled;
 
     /// <summary>Initializes a new instance of the <see cref="CounterSampleCommandService"/> class.</summary>
+    /// <param name="inner">The authorized sample command service.</param>
+    /// <param name="catchUp">The sample projection catch-up channel.</param>
+    /// <param name="userContext">The resolved sample tenant and user context.</param>
+    /// <param name="logger">The sample logger.</param>
+    /// <param name="configuration">The optional specimen configuration.</param>
+    /// <param name="environment">The host environment that restricts mapped rejection to Test.</param>
     public CounterSampleCommandService(
         ICommandServiceWithLifecycleObservations inner,
         CounterCommandProjectionCatchUpChannel catchUp,
         IUserContextAccessor userContext,
-        ILogger<CounterSampleCommandService> logger)
+        ILogger<CounterSampleCommandService> logger,
+        IConfiguration? configuration = null,
+        IHostEnvironment? environment = null)
     {
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
         _catchUp = catchUp ?? throw new ArgumentNullException(nameof(catchUp));
         _userContext = userContext ?? throw new ArgumentNullException(nameof(userContext));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        // This deterministic rejection is available only to the opt-in local Test specimen host.
+        _mappedRejectionEnabled = environment?.IsEnvironment("Test") == true
+            && configuration?.GetValue<bool>("Hexalith:FrontComposer:Specimens:Enabled") == true
+            && configuration.GetValue<bool>("Hexalith:FrontComposer:Specimens:MappedRejectionEnabled");
     }
 
     /// <inheritdoc />
@@ -45,6 +60,23 @@ internal sealed class CounterSampleCommandService :
         where TCommand : class
     {
         ArgumentNullException.ThrowIfNull(command);
+        if (_mappedRejectionEnabled && command is BatchIncrementCommand { Amount: 3 })
+        {
+            throw CommandRejectedException.FromProblem(
+                "Amount rejected",
+                "Correct the linked amount and retry.",
+                new ProblemDetailsPayload(
+                    "Amount rejected",
+                    "Correct the linked amount and retry.",
+                    409,
+                    null,
+                    new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+                    {
+                        [nameof(BatchIncrementCommand.Amount)] = ["Amount conflicts with the specimen limit."],
+                    },
+                    []));
+        }
+
         string? tenantId = _userContext.TenantId;
         string? userId = _userContext.UserId;
         Action<string?>? publishConfirmed = string.IsNullOrWhiteSpace(tenantId)
