@@ -5,11 +5,13 @@ import { expect, test } from './index.js';
 
 // Command-outcome tests own an isolated prebuilt host. Its slower acknowledgement keeps transient
 // Submitting observable; the opt-in mapped rejection exercises real generated-form recovery.
-export const submissionTest = test.extend<{ submissionBaseUrl: string; mappedRejectionEnabled: boolean }>({
+export const submissionTest = test.extend<{ submissionBaseUrl: string; mappedRejectionEnabled: boolean; dispatchForbiddenEnabled: boolean }>({
   mappedRejectionEnabled: [false, { option: true }],
-  submissionBaseUrl: async ({ mappedRejectionEnabled }, use) => {
+  dispatchForbiddenEnabled: [false, { option: true }],
+  submissionBaseUrl: async ({ mappedRejectionEnabled, dispatchForbiddenEnabled }, use) => {
     const projectDirectory = new URL('../../../samples/Counter/Counter.Web/', import.meta.url);
-    const assembly = fileURLToPath(new URL('bin/Release/net10.0/Counter.Web.dll', projectDirectory));
+    const configuration = process.env.FC_E2E_COMMAND_SUBMISSION_CONFIGURATION === 'Debug' ? 'Debug' : 'Release';
+    const assembly = fileURLToPath(new URL(`bin/${configuration}/net10.0/Counter.Web.dll`, projectDirectory));
     const host = spawnOwnedProcess('dotnet', [assembly, '--urls', 'http://127.0.0.1:0'], {
       cwd: projectDirectory,
       env: {
@@ -18,6 +20,7 @@ export const submissionTest = test.extend<{ submissionBaseUrl: string; mappedRej
         DOTNET_ENVIRONMENT: 'Test',
         Hexalith__FrontComposer__Specimens__Enabled: 'true',
         Hexalith__FrontComposer__Specimens__MappedRejectionEnabled: String(mappedRejectionEnabled),
+        Hexalith__FrontComposer__Specimens__DispatchForbiddenEnabled: String(dispatchForbiddenEnabled),
         Hexalith__FrontComposer__StubCommandService__AcknowledgeDelayMs: '1500',
         Hexalith__FrontComposer__StubCommandService__ConfirmDelayMs: process.env.FC_E2E_STORY_3_6_CONFIRM_DELAY_MS ?? '6500',
       },

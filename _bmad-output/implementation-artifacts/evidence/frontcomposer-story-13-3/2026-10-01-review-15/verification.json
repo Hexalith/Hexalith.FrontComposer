@@ -1,0 +1,365 @@
+{
+  "date": "2026-10-01",
+  "revision": "0e8fc836ec2292589ad800df67630a9b36bcbb5c",
+  "baseline": "52fa0739ab8dfb02e1b9d8b5b05d2fd318f220d8",
+  "review": {
+    "iteration": 15,
+    "layers": [
+      "blind-hunter",
+      "edge-case-hunter",
+      "verification-gap"
+    ],
+    "findingCount": 17,
+    "patches": [
+      "BH15-04",
+      "VG15-01"
+    ],
+    "deferredNew": [
+      "BH15-06",
+      "BH15-09",
+      "BH15-10"
+    ],
+    "reviewedDiffSha256": "c73c5f0fd33c757ff43e9189b28fdc7ef0630305f98411c4f8bff600a44e3053"
+  },
+  "commands": {
+    "sourcetools-debug-build": {
+      "command": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj",
+        "-c",
+        "Debug",
+        "-m:1",
+        "--no-restore"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 16.77,
+      "log": "sourcetools-debug-build.log",
+      "logSha256": "fbde531218ca9c74d9c27a29363ea22c7f8f2af5f2df767a681c5c1afafe05a0"
+    },
+    "shell-debug-build": {
+      "command": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj",
+        "-c",
+        "Debug",
+        "-m:1",
+        "--no-restore"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 26.67,
+      "log": "shell-debug-build.log",
+      "logSha256": "1edce67f73b95b90d078bc9d8d55354331d676dafaf3381919c0ce2ef1f02c8f"
+    },
+    "shell-debug-build-after-patch": {
+      "command": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj",
+        "-c",
+        "Debug",
+        "-m:1",
+        "--no-restore"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 17.92,
+      "log": "shell-debug-build-after-patch.log",
+      "logSha256": "01e26729a3004db18fa687bb340cca153a4477601ac1e17998d48b601580d18d"
+    },
+    "shell-debug-focused-final": {
+      "command": [
+        "env",
+        "DiffEngine_Disabled=true",
+        "dotnet",
+        "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+        "-class",
+        "*FcCommandBlockedOutcomeTests",
+        "-class",
+        "*FcDestructiveConfirmationDialogTests",
+        "-class",
+        "*FcFormAbandonmentGuardTests",
+        "-class",
+        "*FcValidationSummaryTests",
+        "-class",
+        "*FcSettingsButtonTests",
+        "-class",
+        "*FcPaletteTriggerButtonTests",
+        "-class",
+        "*FcLifecycleWrapperRejectionTests",
+        "-class",
+        "*CommandRendererWrapperIntegrationTests",
+        "-class",
+        "*CommandTargetGeneratedFormTests",
+        "-class",
+        "*DestructiveCommandRendererIntegrationTests",
+        "-class",
+        "*FcShellResourcesTests",
+        "-class",
+        "*ServerValidationApplicatorTests",
+        "-class",
+        "*EventStoreResponseClassifierTests",
+        "-class",
+        "*CommandAdmissionGateTests",
+        "-class",
+        "*FluentConformanceTests",
+        "-class",
+        "*CounterSampleCommandServiceTests",
+        "-class",
+        "*AnalyzerPolicyGovernanceTests",
+        "-trait-",
+        "Category=GovernanceBuild",
+        "-result-xml",
+        "/tmp/fc-story-13-3-review-zpidrz_f/shell-debug-focused-final.xml"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 61.59,
+      "log": "shell-debug-focused-final.log",
+      "logSha256": "28432f6733ae6851a247031f80fc84e2662cfe16d3dde7ce1776ceb2de76748c",
+      "results": {
+        "total": 354,
+        "passed": 354,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0
+      },
+      "failures": [],
+      "xml": "shell-debug-focused-final.xml",
+      "xmlSha256": "e69312f7ae1581ec7fb156609425fc9ca05b8bbda883a44cc27ba8f33d06719c"
+    },
+    "sourcetools-debug-focused-final": {
+      "command": [
+        "env",
+        "DiffEngine_Disabled=true",
+        "dotnet",
+        "tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll",
+        "-class",
+        "*CommandFormEmitterTests",
+        "-class",
+        "*CommandRendererEmitterTests",
+        "-class",
+        "*CommandFluxorEmitterTests",
+        "-class",
+        "*CommandFormTransformTests",
+        "-class",
+        "*CommandPageEmitterTests",
+        "-result-xml",
+        "/tmp/fc-story-13-3-review-zpidrz_f/sourcetools-debug-focused-final.xml"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 3.2,
+      "log": "sourcetools-debug-focused-final.log",
+      "logSha256": "17196e414d95e39c0e5865f1c9550c5458f99c941a4dd2e83690dfcad2b91202",
+      "results": {
+        "total": 148,
+        "passed": 148,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0
+      },
+      "failures": [],
+      "xml": "sourcetools-debug-focused-final.xml",
+      "xmlSha256": "7556278c2e8c6571abd40f644efecb85579fd904081bb6feb3cf4bd2e7a3e921"
+    },
+    "governance-debug-final": {
+      "command": [
+        "env",
+        "DiffEngine_Disabled=true",
+        "dotnet",
+        "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+        "-method",
+        "*EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval",
+        "-method",
+        "*CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds",
+        "-result-xml",
+        "/tmp/fc-story-13-3-review-zpidrz_f/governance-debug-final.xml"
+      ],
+      "exitCode": 1,
+      "elapsedSeconds": 0.83,
+      "log": "governance-debug-final.log",
+      "logSha256": "8bb7ca1f418cbba1f319087a901577e2e067d25eef0b6ca4cd7de7036be50d14",
+      "results": {
+        "total": 2,
+        "passed": 0,
+        "failed": 2,
+        "skipped": 0,
+        "errors": 0
+      },
+      "failures": [
+        {
+          "name": "Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval",
+          "message": "Shouldly.ShouldAssertException : selectedSourceSha\n    should be\n\\\"19dc1f82122564453163ac010dc7e5ae81db7ed3\\\"\n    but was\n\\\"8096455e4f23f2912998e36738058b8e3d961be6\\\"\n    difference\nDifference     |  |    |    |    |    |    |    |    |    |    |         |    |    |    |    |    |    |    |    |    |        \n               | \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/       \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/       \nIndex          | 0    1    2    3    4    5    6    7    8    9    10   11   12   13   14   15   16   17   18   19   20   ...  \nExpected Value | 1    9    d    c    1    f    8    2    1    2    2    5    6    4    4    5    3    1    6    3    a    ...  \nActual Value   | 8    0    9    6    4    5    5    e    4    f    2    3    f    2    9    1    2    9    9    8    e    ...  \nExpected Code  | 49   57   100  99   49   102  56   50   49   50   50   53   54   52   52   53   51   49   54   51   97   ...  \nActual Code    | 56   48   57   54   52   53   53   101  52   102  50   51   102  50   57   49   50   57   57   56   101  ...  \n\nDifference     |       |    |    |    |    |    |    |    |    |    |    |    |         |    |    |    |    |    |    |    |   \n               |      \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/       \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \nIndex          | ...  19   20   21   22   23   24   25   26   27   28   29   30   31   32   33   34   35   36   37   38   39   \nExpected Value | ...  3    a    c    0    1    0    d    c    7    e    5    a    e    8    1    d    b    7    e    d    3    \nActual Value   | ...  8    e    3    6    7    3    8    0    5    8    b    8    e    3    d    9    6    1    b    e    6    \nExpected Code  | ...  51   97   99   48   49   48   100  99   55   101  53   97   101  56   49   100  98   55   101  100  51   \nActual Code    | ...  56   101  51   54   55   51   56   48   53   56   98   56   101  51   100  57   54   49   98   101  54   \n\nAdditional Info:\n    the current capture target must select the committed EventStore gitlink"
+        },
+        {
+          "name": "Hexalith.FrontComposer.Shell.Tests.Governance.InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds",
+          "message": "Shouldly.ShouldAssertException : result.Ok\n    should be\nTrue\n    but was\nFalse\n\nAdditional Info:\n    unknown/untrusted repository identity 'github.com/hexalith/hexalith.platform'"
+        }
+      ],
+      "xml": "governance-debug-final.xml",
+      "xmlSha256": "bb3113cb9e217f1019a31ab94f7480280fa740314b3f8989266fb77e9135794f"
+    },
+    "owned-process": {
+      "command": [
+        "node",
+        "--test",
+        "tests/e2e/scripts/owned-process.test.mjs"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 5.61,
+      "log": "owned-process.log",
+      "logSha256": "02f79d3621e2a735d578ab843ee17971aa730a760c9751c5ab798a799324d1a1"
+    },
+    "observer-before-patch": {
+      "command": [
+        "env",
+        "BASE_URL=http://127.0.0.1:49097",
+        "./node_modules/.bin/playwright",
+        "test",
+        "--config",
+        "/tmp/fc-story-13-3-review-zpidrz_f/playwright.config.ts",
+        "--project=chromium",
+        "specs/command-form-generation.spec.ts",
+        "--grep",
+        "field accessibility observation disconnects"
+      ],
+      "exitCode": 1,
+      "elapsedSeconds": 4.69,
+      "log": "observer-before-patch.log",
+      "logSha256": "9e411924ddf12a87559759fe1c036739b054084151e498f791704f1f94aafde2"
+    },
+    "browser-patched-final": {
+      "command": [
+        "env",
+        "BASE_URL=http://127.0.0.1:49097",
+        "FC_E2E_COMMAND_SUBMISSION_CONFIGURATION=Debug",
+        "./node_modules/.bin/playwright",
+        "test",
+        "--config",
+        "/tmp/fc-story-13-3-review-zpidrz_f/browser-patched-final.config.ts",
+        "--project=chromium",
+        "specs/command-form-generation.spec.ts",
+        "specs/policy-gated-command-authorization.spec.ts",
+        "--grep",
+        "field accessibility observation disconnects|dispatch denial replaces"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 6.43,
+      "log": "browser-patched-final.log",
+      "logSha256": "d9b51f0ef8a4784494bd4d48c378ae4efcb49c041a88eeda225f736a76f7496f",
+      "results": {
+        "tests": 2,
+        "failures": 0,
+        "skipped": 0,
+        "errors": 0
+      },
+      "failures": [],
+      "xml": "browser-patched-final.xml",
+      "xmlSha256": "91ec0e98665c81facfacfa887b4ce41af2bdf3b2701289b760067fdec67af396"
+    },
+    "browser-final": {
+      "command": [
+        "env",
+        "BASE_URL=http://127.0.0.1:49097",
+        "FC_E2E_COMMAND_SUBMISSION_CONFIGURATION=Debug",
+        "./node_modules/.bin/playwright",
+        "test",
+        "--config",
+        "/tmp/fc-story-13-3-review-zpidrz_f/browser-final.config.ts",
+        "--project=chromium",
+        "specs/destructive-command-confirmation.spec.ts",
+        "specs/form-abandonment-guard.spec.ts",
+        "specs/one-at-a-time-execution-policy.spec.ts",
+        "specs/policy-gated-command-authorization.spec.ts",
+        "specs/command-form-generation.spec.ts",
+        "specs/specimen-accessibility.spec.ts"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 76.18,
+      "log": "browser-final.log",
+      "logSha256": "44be4267bb88d4e525f35f3fb1a4a19c92fffc79050cd88eb6878d89f5624f85",
+      "results": {
+        "tests": 51,
+        "failures": 0,
+        "skipped": 0,
+        "errors": 0
+      },
+      "failures": [],
+      "xml": "browser-final.xml",
+      "xmlSha256": "62f52e489a6655cc3f1478b9f8b1656fd463ef61472e688a510c6c28144ee096"
+    },
+    "typecheck-complete": {
+      "command": [
+        "npm",
+        "--prefix",
+        "tests/e2e",
+        "run",
+        "typecheck"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 0.28,
+      "log": "typecheck-complete.log",
+      "logSha256": "c8f3982a1c158aacd35a3ba870f1e95cccfc0c3322a479e6965d99fce903b5c4"
+    },
+    "aspire-cleanup": {
+      "command": [
+        "aspire",
+        "stop",
+        "--apphost",
+        "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+        "--non-interactive"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 0.26,
+      "log": "aspire-cleanup.log",
+      "logSha256": "03345b9fb38ecc9e6dc608574f61d19076e9d0f7f379ec484511533dc2671467"
+    },
+    "aspire-start": {
+      "command": [
+        "aspire",
+        "start",
+        "--apphost",
+        "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+        "--non-interactive"
+      ],
+      "exitCode": 2,
+      "result": "Timed out after 120 seconds during restore; no running FrontComposer AppHost.",
+      "log": "aspire-start.log",
+      "logSha256": "999484d7c1b04749f08689a05856f32f16a549549758df044714592f94c6bc33"
+    }
+  },
+  "dependencyState": {
+    "headGitlinks": [
+      "160000 commit 21ce044ab465ccb2adab58b3d66e394ffbecf3c2\treferences/Hexalith.Builds",
+      "160000 commit 8096455e4f23f2912998e36738058b8e3d961be6\treferences/Hexalith.EventStore"
+    ],
+    "captureTargetSourceSha": "19dc1f82122564453163ac010dc7e5ae81db7ed3",
+    "untrustedCatalogIdentity": "github.com/hexalith/hexalith.platform"
+  },
+  "changes": [
+    "Observe document-level ancestor removal to release disconnected field-accessibility observers.",
+    "Prove cleanup and reinstallation in Chromium; the regression fails before the patch.",
+    "Add an opt-in Test-only Forbidden specimen outcome and keyboard denial-heading focus/redaction assertions.",
+    "Allow command-submission fixtures to consume Debug assets locally while keeping the default Release configuration."
+  ],
+  "validationNotes": [
+    "Local builds use Debug and existing restore assets as required by the Hexalith baseline; no new Release artifacts were produced.",
+    "Final focused Shell: 354 passed; focused SourceTools: 148 passed.",
+    "Final Chromium lane: 51 passed, including all 22 accessibility/visual cases. Native JUnit and command logs are preserved.",
+    "The first browser run passed 48/49; a temporary baseURL override omitted the separately read BASE_URL environment value. The corrected complete final run is 51/51.",
+    "Intermediate denial-test assertions incorrectly expected the native form/container to disappear. Final assertions verify editor and submit removal, focused heading, one focus event, canonical localized copy, and no backend copy.",
+    "The separate governance check remains failed: 0/2. Passing focused checks do not certify the full solution or Release/CI gates.",
+    "Archived text artifacts use the repository CRLF convention; hashes bind those archived bytes."
+  ],
+  "remainingBlockers": [
+    "EventStore capture target does not equal the committed EventStore gitlink.",
+    "Dependency catalog identity github.com/hexalith/hexalith.platform is outside the approved trust policy.",
+    "Aspire startup times out during restore before resource startup."
+  ],
+  "completion": {
+    "spec": "in-review",
+    "sprint": "in-progress",
+    "workflow": "Step 04 requires HALT and escalation when verification cannot pass.",
+    "productApprovalClaimed": false,
+    "gitStaged": false
+  }
+}

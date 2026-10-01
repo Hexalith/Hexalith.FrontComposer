@@ -141,6 +141,49 @@ test.describe('Story 4.4: policy-gated command authorization', () => {
   });
 });
 
+test.describe('Story 13.3: submit-time denial focus', () => {
+  submissionTest.use({ dispatchForbiddenEnabled: true });
+
+  submissionTest('dispatch denial replaces editors with one focused non-live heading', async ({ page, lifecycle }) => {
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+      window.sessionStorage.clear();
+      const focusLog: string[] = [];
+      (window as unknown as { __fcSubmitDenialFocus: string[] }).__fcSubmitDenialFocus = focusLog;
+      document.addEventListener('focusin', (event) => {
+        if (event.target instanceof HTMLElement && event.target.id.endsWith('-authorization-heading')) {
+          focusLog.push(event.target.id);
+        }
+      });
+    });
+    await page.goto('/counter');
+    await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
+    const form = policyForm(page, REJECTION_FORM_LABEL);
+    await fillField(form, 'Amount', '3');
+    await fillField(form, 'Note', 'QA dispatch denial focus');
+    const submit = form.getByRole('button', { name: REJECTION_ACTION_LABEL, exact: true });
+    await submit.focus();
+    await page.keyboard.press('Enter');
+
+    const card = page.locator('section[data-fc-authorization-denied="true"]');
+    const heading = card.getByRole('heading', { name: 'Permission required', exact: true });
+    await expect(heading).toBeFocused();
+    await expect(form.locator('[data-fc-validation-field]')).toHaveCount(0);
+    await expect(form.getByRole('button', { name: REJECTION_ACTION_LABEL, exact: true })).toHaveCount(0);
+    await expect(card).toHaveAttribute('role', 'group');
+    await expect(card).toHaveAttribute('aria-labelledby', (await heading.getAttribute('id'))!);
+    await expect(card).not.toHaveAttribute('aria-live');
+    await expect(heading).not.toHaveAttribute('aria-live');
+    await expect(card.locator('[aria-live], [role="alert"], [role="status"]')).toHaveCount(0);
+    await expect(card).toContainText('You do not have permission to Batch Increment.');
+    await expect(card).not.toContainText('Specimen backend denial');
+    await expect(card).not.toContainText('This specimen command was denied at dispatch.');
+    await lifecycle.expectState(REJECTION_COMMAND_ID, 'idle');
+    expect(await page.evaluate(() => (window as unknown as { __fcSubmitDenialFocus: string[] }).__fcSubmitDenialFocus))
+      .toEqual([await heading.getAttribute('id')]);
+  });
+});
+
 test.describe('Story 13.3: mapped rejection recovery focus', () => {
   submissionTest.use({ mappedRejectionEnabled: true });
 

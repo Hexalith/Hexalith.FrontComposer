@@ -19,6 +19,7 @@ internal sealed class CounterSampleCommandService :
     private readonly IUserContextAccessor _userContext;
     private readonly ILogger<CounterSampleCommandService> _logger;
     private readonly bool _mappedRejectionEnabled;
+    private readonly bool _dispatchForbiddenEnabled;
 
     /// <summary>Initializes a new instance of the <see cref="CounterSampleCommandService"/> class.</summary>
     /// <param name="inner">The authorized sample command service.</param>
@@ -26,7 +27,7 @@ internal sealed class CounterSampleCommandService :
     /// <param name="userContext">The resolved sample tenant and user context.</param>
     /// <param name="logger">The sample logger.</param>
     /// <param name="configuration">The optional specimen configuration.</param>
-    /// <param name="environment">The host environment that restricts mapped rejection to Test.</param>
+    /// <param name="environment">The host environment that restricts specimen command outcomes to Test.</param>
     public CounterSampleCommandService(
         ICommandServiceWithLifecycleObservations inner,
         CounterCommandProjectionCatchUpChannel catchUp,
@@ -43,6 +44,9 @@ internal sealed class CounterSampleCommandService :
         _mappedRejectionEnabled = environment?.IsEnvironment("Test") == true
             && configuration?.GetValue<bool>("Hexalith:FrontComposer:Specimens:Enabled") == true
             && configuration.GetValue<bool>("Hexalith:FrontComposer:Specimens:MappedRejectionEnabled");
+        _dispatchForbiddenEnabled = environment?.IsEnvironment("Test") == true
+            && configuration?.GetValue<bool>("Hexalith:FrontComposer:Specimens:Enabled") == true
+            && configuration.GetValue<bool>("Hexalith:FrontComposer:Specimens:DispatchForbiddenEnabled");
     }
 
     /// <inheritdoc />
@@ -60,6 +64,19 @@ internal sealed class CounterSampleCommandService :
         where TCommand : class
     {
         ArgumentNullException.ThrowIfNull(command);
+        if (_dispatchForbiddenEnabled && command is BatchIncrementCommand)
+        {
+            throw new CommandWarningException(
+                CommandWarningKind.Forbidden,
+                new ProblemDetailsPayload(
+                    "Specimen backend denial",
+                    "This specimen command was denied at dispatch.",
+                    403,
+                    null,
+                    new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal),
+                    []));
+        }
+
         if (_mappedRejectionEnabled && command is BatchIncrementCommand { Amount: 3 })
         {
             throw CommandRejectedException.FromProblem(

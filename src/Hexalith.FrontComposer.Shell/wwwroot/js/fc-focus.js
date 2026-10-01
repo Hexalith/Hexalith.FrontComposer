@@ -331,11 +331,9 @@ export function observeFieldAccessibility(rootId) {
         attributes: true,
         attributeFilter: ['data-fc-invalid'],
     });
-    // Removing the form is a mutation on its parent, which an observer of the root itself never sees.
-    const detachParent = root.parentNode;
-    if (detachParent instanceof Node) {
-        observer.observe(detachParent, { childList: true });
-    }
+    // Route removal can detach both the form and its parent. Observe removals at the document
+    // boundary so that removing any ancestor releases the form and its accessibility observer.
+    observer.observe(document, { childList: true, subtree: true });
     fieldAccessibilityObservers.set(root, observer);
     syncFieldAccessibility(root);
     // Fluent editors upgrade asynchronously; project again once each editor's shadow control exists.

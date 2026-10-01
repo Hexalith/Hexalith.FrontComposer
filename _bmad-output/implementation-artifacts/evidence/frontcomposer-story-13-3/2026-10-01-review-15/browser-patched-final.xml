@@ -1,0 +1,10 @@
+<testsuites id="" name="" tests="2" failures="0" skipped="0" errors="0" time="5.994845000000001">
+<testsuite name="command-form-generation.spec.ts" timestamp="2026-10-01T15:36:41.333Z" hostname="chromium" tests="1" failures="0" skipped="0" time="1.564" errors="0">
+<testcase name="Story 3.1: generated command forms › field accessibility observation disconnects when a route ancestor is removed" classname="command-form-generation.spec.ts" time="1.564">
+</testcase>
+</testsuite>
+<testsuite name="policy-gated-command-authorization.spec.ts" timestamp="2026-10-01T15:36:41.333Z" hostname="chromium" tests="1" failures="0" skipped="0" time="3.321" errors="0">
+<testcase name="Story 13.3: submit-time denial focus › dispatch denial replaces editors with one focused non-live heading" classname="policy-gated-command-authorization.spec.ts" time="3.321">
+</testcase>
+</testsuite>
+</testsuites>

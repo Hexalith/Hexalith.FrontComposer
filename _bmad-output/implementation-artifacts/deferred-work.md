@@ -10019,3 +10019,15 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
   summary: Reconcile the Linux browser diagnostic fixture with Hexalith Release-only CI build guidance.
   evidence: Review BH14-08 found the separate test/CI/publication repair job in `.github/workflows/quality.yml` builds Counter with `--configuration Debug`; its override-diagnostic browser fixture relies on DEBUG-only startup registration, so its CI owner must provide a compliant fixture without weakening the diagnostic gate.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: Generated nullable enum fields with Required omit a pre-submit required indicator.
+  evidence: The baseline CommandFormTransform derives IsRequired from nullability alone and the enum emitter omits Required. Preserve nullable semantics while carrying validation-required metadata to the editor.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: Windows owned-process cleanup can retain descendants after the parent exits.
+  evidence: The separate test/CI/publication repair helper calls taskkill only while its parent is running. Its owner needs a Windows parent-exits-first regression and independent descendant ownership.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: Live provider proof conflates request query/projection types with observed response metadata.
+  evidence: The separate provider runtime-evidence capture records get-tenant/tenants after tenant/provenance/version checks without validating response type identity. Its owner must validate available metadata or mark request-derived values as inferred.

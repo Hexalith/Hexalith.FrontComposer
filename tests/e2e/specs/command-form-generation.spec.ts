@@ -127,6 +127,50 @@ test.describe('Story 3.1: generated command forms', () => {
     await expect.poll(async () => axField(page, CONFIGURE_FIELD('InitialValue'))).toMatchObject({ invalid: undefined });
     await expect(fieldContainer(fullPageForm, 'Initial Value').locator('.fluent-validation-message')).toHaveCount(0);
   });
+
+  test('field accessibility observation disconnects when a route ancestor is removed', async ({ page }) => {
+    await gotoCounter(page);
+    const outcome = await page.evaluate(async (focusModulePath) => {
+      const focus = await import(focusModulePath) as {
+        observeFieldAccessibility: (rootId: string) => boolean;
+      };
+      const ancestor = document.createElement('section');
+      ancestor.innerHTML = '<div><form id="observer-removal-form"><input data-fc-validation-field="true"></form></div>';
+      document.body.append(ancestor);
+      const root = ancestor.querySelector('form')!;
+      const NativeMutationObserver = window.MutationObserver;
+      let installations = 0;
+      let disconnections = 0;
+      window.MutationObserver = class extends NativeMutationObserver {
+        private watchesRoot = false;
+        override observe(target: Node, options?: MutationObserverInit): void {
+          if (target === root) {
+            this.watchesRoot = true;
+            installations += 1;
+          }
+          super.observe(target, options);
+        }
+        override disconnect(): void {
+          if (this.watchesRoot) disconnections += 1;
+          super.disconnect();
+        }
+      };
+      try {
+        const installed = focus.observeFieldAccessibility(root.id);
+        ancestor.remove();
+        await new Promise<void>((resolve) => queueMicrotask(resolve));
+        const disconnectedAfterRemoval = disconnections;
+        document.body.append(ancestor);
+        const reinstalled = focus.observeFieldAccessibility(root.id);
+        return { installed, disconnectedAfterRemoval, reinstalled, installations };
+      } finally {
+        ancestor.remove();
+        window.MutationObserver = NativeMutationObserver;
+      }
+    }, '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js');
+    expect(outcome).toEqual({ installed: true, disconnectedAfterRemoval: 1, reinstalled: true, installations: 2 });
+  });
+
 });
 
 test.describe('Story 3.2: command form density rule', () => {
