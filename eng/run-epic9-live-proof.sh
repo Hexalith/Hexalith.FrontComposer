@@ -8,8 +8,6 @@ if ! repo_root="$(git rev-parse --show-toplevel)" || [[ -z "$repo_root" ]]; then
 fi
 
 apphost="$repo_root/src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj"
-eventstore_aspire="$repo_root/references/Hexalith.EventStore/src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj"
-counter_web="$repo_root/samples/Counter/Counter.Web/Counter.Web.csproj"
 e2e_root="$repo_root/tests/e2e"
 artifact_root="${FC_EPIC9_ARTIFACT_ROOT:-$repo_root/artifacts/epic-9}"
 require_clean="${FC_EPIC9_REQUIRE_CLEAN:-false}"
@@ -17,6 +15,7 @@ playwright_results="$artifact_root/playwright-results"
 html_report="$artifact_root/playwright-report"
 raw_logs=""
 raw_start=""
+raw_cli_log=""
 raw_describe=""
 raw_process_list=""
 started_apphost_path=""
@@ -58,6 +57,27 @@ redact_lifecycle_text() {
   fi
 }
 
+capture_start_diagnostics() {
+  local child_log=""
+  local excerpt
+  excerpt="$(mktemp)"
+  # Aspire 13.5 can silently accept a detached child's early zero exit. Its parent log
+  # records the child log even when stdout contains no JSON or diagnostic path.
+  child_log="$(sed -nE '/Spawning child CLI:/{s/.*--log-file ([^[:space:]]+_detach-child_[^[:space:]]+\.log).*/\1/p;q;}' "$raw_cli_log")"
+  {
+    printf '\n%s\n' 'Bounded Aspire startup diagnostics:'
+    tail -40 "$raw_cli_log"
+    if [[ -n "$child_log" && -f "$child_log" ]]; then
+      printf '\n%s\n' 'Detached child startup log (last 120 lines):'
+      tail -120 "$child_log"
+    fi
+  } | sed -E 's/(login\?t=)[^[:space:]"&]+/\1[REDACTED]/g' \
+    | sed -E '/authorization|cookie|password|secret|token|headers|connectionstring|api[_ -]?key/Id' > "$excerpt"
+  # Only this redacted bounded excerpt is retained; the raw parent log is temporary.
+  cat "$excerpt" >> "$artifact_root/apphost-start.failed.json"
+  rm -f -- "$excerpt"
+}
+
 capture_process_list() {
   local destination_file="$1"
   if ! aspire ps --format Json --non-interactive --nologo > "$destination_file"; then
@@ -95,7 +115,7 @@ owned_apphost_count() {
 
 remove_temporary_files() {
   local temporary_file
-  for temporary_file in "$raw_logs" "$raw_start" "$raw_describe" "$raw_process_list"; do
+  for temporary_file in "$raw_logs" "$raw_start" "$raw_cli_log" "$raw_describe" "$raw_process_list"; do
     if [[ -n "$temporary_file" && -f "$temporary_file" ]]; then
       rm -f -- "$temporary_file"
     fi
@@ -189,7 +209,7 @@ inspect_failed_start() {
       && $preflight_apphost_absent -eq 1 ]]; then
       unknown_pid_cleanup_allowed=1
     fi
-    echo "Could not determine whether the failed $phase start left a partial AppHost; the EXIT trap will recheck ownership and fallback is refused." >&2
+    echo "Could not determine whether the failed $phase start left a partial AppHost; the EXIT trap will recheck ownership and continuation is refused." >&2
     return 1
   fi
   exact_count="$(exact_apphost_count "$raw_process_list")"
@@ -217,7 +237,7 @@ inspect_failed_start() {
     else
       unknown_pid_cleanup_allowed=0
     fi
-    echo "The failed $phase start left a partial FrontComposer AppHost; stopping it and refusing fallback." >&2
+    echo "The failed $phase start left a partial FrontComposer AppHost; stopping it and refusing continuation." >&2
     if ! aspire stop --apphost "$apphost" --non-interactive --nologo >/dev/null; then
       return 1
     fi
@@ -234,10 +254,10 @@ inspect_failed_start() {
     return 1
   fi
   if [[ "$frontcomposer_count" -gt 0 ]]; then
-    echo "An unrelated FrontComposer AppHost appeared after the failed $phase start; refusing fallback without stopping it." >&2
+    echo "An unrelated FrontComposer AppHost appeared after the failed $phase start; refusing continuation without stopping it." >&2
     return 1
   fi
-  # Confirmed absence ends ownership of this start attempt before a fallback can acquire a new PID.
+  # Confirmed absence ends ownership of this start attempt.
   cleanup_required=0
   unknown_pid_cleanup_allowed=0
   started_apphost_path=""
@@ -364,91 +384,66 @@ preflight_apphost_absent=1
 rm -f -- "$raw_process_list"
 raw_process_list=""
 
-if ! dotnet build "$counter_web" \
+# Build the complete source graph before the detached CLI starts its startup clock.
+# The default Aspire build can schedule property-distinct copies of the same source
+# project concurrently; serializing every build edge avoids shared DLL/package writes.
+if ! dotnet build "$apphost" \
   --configuration Debug \
+  --disable-build-servers \
   -m:1 \
+  -p:BuildInParallel=false \
   -p:NuGetAudit=false \
   -p:CentralPackageTransitivePinningEnabled=false \
-  > "$artifact_root/counter-web-prebuild.log" 2>&1; then
-  echo "Counter Web prebuild failed; refusing an Aspire no-build child launch." >&2
+  > "$artifact_root/apphost-source-graph-build.log" 2>&1; then
+  echo "Complete AppHost source-graph prebuild failed; refusing an Aspire no-build launch." >&2
   exit 2
 fi
-if [[ ! -s "$artifact_root/counter-web-prebuild.log" ]]; then
-  printf '%s\n' 'Counter Web prebuild completed without console output.' \
-    > "$artifact_root/counter-web-prebuild.log"
+if [[ ! -s "$artifact_root/apphost-source-graph-build.log" ]]; then
+  printf '%s\n' 'Complete AppHost source-graph prebuild completed without console output.' \
+    > "$artifact_root/apphost-source-graph-build.log"
 fi
 
-start_mode="isolated-build"
+# The complete build can be slow on a fresh runner. Recheck absence immediately
+# before Aspire, whose start command otherwise stops an existing matching run.
+raw_process_list="$(mktemp)"
+if ! capture_process_list "$raw_process_list"; then exit 2; fi
+redact_json "$raw_process_list" "$artifact_root/apphost-launch-preflight.json"
+if [[ "$(frontcomposer_apphost_count "$raw_process_list")" -ne 0 ]]; then
+  echo "A FrontComposer AppHost appeared during the source-graph build; refusing to stop or reuse it." >&2
+  exit 2
+fi
+rm -f -- "$raw_process_list"
+raw_process_list=""
+
+start_mode="isolated-no-build-after-source-graph-build"
 raw_start="$(mktemp)"
+raw_cli_log="$(mktemp)"
 start_result=0
 start_ownership_result=0
 aspire start \
   --apphost "$apphost" \
   --isolated \
+  --no-build \
   --non-interactive \
   --format Json \
-  --nologo > "$raw_start" 2>&1 || start_result=$?
+  --nologo \
+  --log-file "$raw_cli_log" > "$raw_start" 2>&1 || start_result=$?
 if [[ $start_result -eq 0 ]]; then
   parse_and_own_started_apphost || start_ownership_result=$?
   start_result=$start_ownership_result
 fi
 if [[ $start_result -ne 0 ]]; then
   redact_lifecycle_text "$raw_start" "$artifact_root/apphost-start.failed.json"
-  # A path/PID mismatch cannot establish ownership, so it must never authorize fallback.
-  if [[ $start_ownership_result -eq 3 ]] || ! inspect_failed_start "initial"; then
-    exit 2
-  fi
-  rm -f -- "$raw_start"
-  raw_start=""
-  if ! {
-    dotnet build "$eventstore_aspire" \
-      --configuration Debug \
-      -m:1 \
-      -p:NuGetAudit=false \
-      -p:CentralPackageTransitivePinningEnabled=false \
-      && dotnet build "$apphost" \
-        --configuration Debug \
-        -m:1 \
-        -p:BuildProjectReferences=false \
-        -p:NuGetAudit=false \
-        -p:CentralPackageTransitivePinningEnabled=false
-  } > "$artifact_root/apphost-serialized-build.log" 2>&1; then
-    echo "Serialized AppHost fallback build failed." >&2
-    exit 2
-  fi
-  if [[ ! -s "$artifact_root/apphost-serialized-build.log" ]]; then
-    printf '%s\n' 'Serialized AppHost fallback build completed without console output.' \
-      > "$artifact_root/apphost-serialized-build.log"
-  fi
-  start_mode="isolated-no-build-after-serialized-build"
-  raw_start="$(mktemp)"
-  start_result=0
-  start_ownership_result=0
-  aspire start \
-    --apphost "$apphost" \
-    --isolated \
-    --no-build \
-    --non-interactive \
-    --format Json \
-    --nologo > "$raw_start" 2>&1 || start_result=$?
-  if [[ $start_result -eq 0 ]]; then
-    parse_and_own_started_apphost || start_ownership_result=$?
-    start_result=$start_ownership_result
-  fi
-  if [[ $start_result -ne 0 ]]; then
-    {
-      printf '\n%s\n' 'Fallback --no-build start output:'
-      sed -E 's/(login\?t=)[^[:space:]"&]+/\1[REDACTED]/g' "$raw_start"
-    } >> "$artifact_root/apphost-start.failed.json"
-    if [[ $start_ownership_result -eq 3 ]] || ! inspect_failed_start "fallback"; then
-      exit 2
-    fi
-    echo "Fallback AppHost start failed without leaving an owned partial run." >&2
-    exit 2
-  fi
+  capture_start_diagnostics
+  # A path/PID mismatch cannot establish ownership. Other failures still inspect
+  # and clean an exclusively owned partial start, but never launch a second graph.
+  if [[ $start_ownership_result -eq 3 ]] || ! inspect_failed_start "source-graph"; then exit 2; fi
+  echo "Prebuilt AppHost start failed without leaving an owned partial run." >&2
+  exit 2
 fi
-rm -f -- "$raw_start"
+rm -f -- "$raw_start" "$raw_cli_log"
 raw_start=""
+raw_cli_log=""
 
 aspire wait counter-web --status up --timeout 180 --apphost "$apphost" \
   --non-interactive --nologo > "$artifact_root/counter-web-wait.log" 2>&1
@@ -472,16 +467,10 @@ fi
 
 commands=(
   "export HexalithFrontComposerFromSource=true"
-  "dotnet build samples/Counter/Counter.Web/Counter.Web.csproj --configuration Debug -m:1 -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false"
-  "aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --isolated --non-interactive --format Json --nologo"
+  "dotnet build src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --configuration Debug --disable-build-servers -m:1 -p:BuildInParallel=false -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false"
+  "aspire ps --format Json --non-interactive --nologo"
+  "aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --isolated --no-build --non-interactive --format Json --nologo --log-file <temporary-cli-log>"
 )
-if [[ "$start_mode" == "isolated-no-build-after-serialized-build" ]]; then
-  commands+=(
-    "dotnet build references/Hexalith.EventStore/src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj --configuration Debug -m:1 -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false"
-    "dotnet build src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --configuration Debug -m:1 -p:BuildProjectReferences=false -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false"
-    "aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --isolated --no-build --non-interactive --format Json --nologo"
-  )
-fi
 commands+=(
   "aspire wait counter-web --status up --timeout 180 --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --nologo"
   "aspire describe counter-web --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --format Json --non-interactive --nologo"

@@ -5584,6 +5584,61 @@ class AppHostProjectGraphDiscoveryTests(unittest.TestCase):
             ),
         )
 
+    def test_project_discovery_includes_fresh_counter_fixture_omitted_by_root_metadata(self) -> None:
+        fixture = self.repository / evidence.APPHOST_ADDITIONAL_SOURCE_PROJECTS[0]
+        self._reference_project(fixture)
+        root_assets = self.apphost.parent / "obj" / "project.assets.json"
+        document = _read_json(root_assets)
+        document["libraries"] = {}
+        _write_json(root_assets, document)
+        errors: list[str] = []
+        with mock.patch.object(evidence, "APPHOST_REACHABLE_SOURCE_GITLINKS", ()):
+            projects, assets = evidence._discover_apphost_project_graph(self.repository, errors)
+        self.assertEqual(errors, [])
+        self.assertIn(fixture.resolve(), projects)
+        self.assertIn((fixture.parent / "obj" / "project.assets.json").resolve(), assets)
+
+    def test_additional_fixture_assets_require_fresh_authority_and_exact_project_metadata(self) -> None:
+        fixture = self.repository / evidence.APPHOST_ADDITIONAL_SOURCE_PROJECTS[0]
+        self._reference_project(fixture)
+        root_assets = self.apphost.parent / "obj" / "project.assets.json"
+        document = _read_json(root_assets)
+        document["libraries"] = {}
+        _write_json(root_assets, document)
+        assets = fixture.parent / "obj" / "project.assets.json"
+        original = _read_json(assets)
+        with mock.patch.object(evidence, "APPHOST_REACHABLE_SOURCE_GITLINKS", ()):
+            stale = copy.deepcopy(original)
+            stale["packageFolders"] = {str(self.package_root.parent / "stale-packages") + os.sep: {}}
+            _write_json(assets, stale)
+            errors: list[str] = []
+            projects, _ = evidence._discover_apphost_project_graph(self.repository, errors)
+            self.assertEqual(errors, [])
+            self.assertNotIn(fixture.resolve(), projects)
+            for project in (
+                fixture.parent / "Other.csproj",
+                self.repository / "tests" / "Hexalith.FrontComposer.CounterFixture.Lookalike" / fixture.name,
+                None,
+            ):
+                with self.subTest(project=project):
+                    if project is not None:
+                        project.parent.mkdir(parents=True, exist_ok=True)
+                        project.write_text("<Project />", encoding="utf-8")
+                    document = copy.deepcopy(original)
+                    document["project"]["restore"]["projectPath"] = str(project) if project else None
+                    _write_json(assets, document)
+                    errors = []
+                    projects, _ = evidence._discover_apphost_project_graph(self.repository, errors)
+                    self.assertTrue(any("additional assets graph" in error for error in errors), errors)
+                    self.assertNotIn(fixture.resolve(), projects)
+            target = Path(self.temporary.name) / "linked-fixture-assets.json"
+            _write_json(target, original)
+            assets.unlink()
+            assets.symlink_to(target)
+            errors = []
+            evidence._discover_apphost_project_graph(self.repository, errors)
+            self.assertTrue(any("additional assets graph is symlinked" in error for error in errors), errors)
+
     def test_evaluated_inputs_reject_symlinked_compile_reference_and_analyzer_paths(self) -> None:
         outside = Path(self.temporary.name) / "outside-input.cs"
         outside.write_text("class OutsideScope {}", encoding="utf-8")

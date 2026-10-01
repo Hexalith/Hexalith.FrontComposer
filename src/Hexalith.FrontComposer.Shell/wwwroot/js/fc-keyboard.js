@@ -127,11 +127,29 @@ export function focusElement(element) {
     const focus = () => {
         if (element?.isConnected && typeof element.focus === "function") element.focus();
     };
-    focus();
-    setTimeout(() => {
-        guard.abort();
+    const enter = () => {
         if (!moved) focus();
-    }, 150);
+        setTimeout(() => {
+            guard.abort();
+            if (!moved) focus();
+        }, 150);
+    };
+    const modalHost = isPaletteEntry ? element.closest('fluent-dialog') : null;
+    if (modalHost && !modalHost.shadowRoot?.querySelector('dialog')?.open) {
+        // First render can precede Fluent's queued showModal. A closed dialog cannot focus its
+        // editors; enter when it opens, keeping later operator focus moves authoritative.
+        modalHost.addEventListener('toggle', () => {
+            if (modalHost.shadowRoot?.querySelector('dialog')?.open) enter();
+            else guard.abort();
+        }, { once: true, signal: guard.signal });
+        const observer = new MutationObserver(() => {
+            if (!element.isConnected) guard.abort();
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        guard.signal.addEventListener('abort', () => observer.disconnect(), { once: true });
+    } else {
+        enter();
+    }
 }
 
 export function focusVisibleElementById(id) {

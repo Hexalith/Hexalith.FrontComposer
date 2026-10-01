@@ -19,6 +19,8 @@ const INITIAL_START_COMMAND = `aspire start --apphost ${APPHOST_RELATIVE} --isol
 const FALLBACK_DEPENDENCY_BUILD_COMMAND = `dotnet build ${EVENTSTORE_ASPIRE_RELATIVE} --configuration Debug -m:1 -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false`;
 const FALLBACK_APPHOST_BUILD_COMMAND = `dotnet build ${APPHOST_RELATIVE} --configuration Debug -m:1 -p:BuildProjectReferences=false -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false`;
 const FALLBACK_START_COMMAND = `aspire start --apphost ${APPHOST_RELATIVE} --isolated --no-build --non-interactive --format Json --nologo`;
+const SOURCE_GRAPH_BUILD_COMMAND = `dotnet build ${APPHOST_RELATIVE} --configuration Debug --disable-build-servers -m:1 -p:BuildInParallel=false -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false`;
+const SOURCE_GRAPH_START_COMMAND = `${FALLBACK_START_COMMAND} --log-file <temporary-cli-log>`;
 const COMMON_COMMANDS = [
   `aspire wait counter-web --status up --timeout 180 --apphost ${APPHOST_RELATIVE} --non-interactive --nologo`,
   `aspire describe counter-web --apphost ${APPHOST_RELATIVE} --format Json --non-interactive --nologo`,
@@ -32,6 +34,8 @@ const VALIDATE_DEVELOPMENT_COMMAND = `${VALIDATE_FINAL_COMMAND} --allow-dirty`;
 const DIRECT_COMMANDS = [SOURCE_ROUTING_COMMAND, COUNTER_WEB_BUILD_COMMAND, INITIAL_START_COMMAND, ...COMMON_COMMANDS, VALIDATE_FINAL_COMMAND];
 const FALLBACK_COMMANDS = [SOURCE_ROUTING_COMMAND, COUNTER_WEB_BUILD_COMMAND, INITIAL_START_COMMAND, FALLBACK_DEPENDENCY_BUILD_COMMAND,
   FALLBACK_APPHOST_BUILD_COMMAND, FALLBACK_START_COMMAND, ...COMMON_COMMANDS, VALIDATE_FINAL_COMMAND];
+
+const SOURCE_GRAPH_COMMANDS = [SOURCE_ROUTING_COMMAND, SOURCE_GRAPH_BUILD_COMMAND, 'aspire ps --format Json --non-interactive --nologo', SOURCE_GRAPH_START_COMMAND, ...COMMON_COMMANDS, VALIDATE_FINAL_COMMAND];
 
 const pngFixture = (width = 1280, height = 720) => {
   const png = Buffer.alloc(24);
@@ -120,6 +124,7 @@ const validFixture = () => ({
   },
   failedStart: undefined,
   serializedBuild: undefined,
+  sourceGraphBuild: undefined,
   junit: '<testsuites tests="1" failures="0" skipped="0" errors="0"><testsuite name="epic-9-fresh-row-acceptance.spec.ts" hostname="chromium" tests="1" failures="0" skipped="0" errors="0"><testcase name="Epic 9 composed and live acceptance › generated create and update converge through the indicator into an already-rendered grid" classname="epic-9-fresh-row-acceptance.spec.ts"></testcase></testsuite></testsuites>\n',
   html: '<!DOCTYPE html><html><head><title>Playwright Test Report</title></head><body><div id="root"></div><template id="playwrightReportBase64">data</template></body></html>\n',
   screenshot: pngFixture(),
@@ -170,6 +175,12 @@ const writeFixture = async (fixture) => {
   if (fixture.serializedBuild !== undefined) {
     await writeFile(join(root, 'apphost-serialized-build.log'), fixture.serializedBuild);
   }
+  if (fixture.sourceGraphBuild !== undefined) {
+    await writeFile(join(root, 'apphost-source-graph-build.log'), fixture.sourceGraphBuild);
+  }
+  if (fixture.launchPreflight !== undefined) {
+    await writeFile(join(root, 'apphost-launch-preflight.json'), JSON.stringify(fixture.launchPreflight));
+  }
   await writeManifest(root);
   return root;
 };
@@ -194,11 +205,52 @@ const useFallback = (fixture) => {
   fixture.serializedBuild = 'serialized build succeeded\n';
 };
 
-test('Epic 9 artifact validator accepts correlated direct, fallback, and development bundles', async (t) => {
+const useSourceGraph = (fixture) => {
+  fixture.metadata.startMode = 'isolated-no-build-after-source-graph-build';
+  fixture.metadata.commands = [...SOURCE_GRAPH_COMMANDS];
+  fixture.sourceGraphBuild = 'complete source graph build succeeded\n';
+  fixture.launchPreflight = [];
+};
+
+test('Epic 9 source-graph launch preflight requires redacted credentials and dashboard URLs', async (t) => {
+  for (const [key, value] of [
+    ['authorization', 'Bearer synthetic-review-credential'],
+    ['dashboardUrl', 'http://localhost:12345'],
+  ]) {
+    await t.test(key, async (subtest) => {
+      await assert.rejects(runFixture(subtest, (fixture) => {
+        useSourceGraph(fixture);
+        fixture.launchPreflight = [{ appHostPath: '/repo/Other.AppHost.csproj', appHostPid: 9999, [key]: value }];
+      }), /apphost-launch-preflight\.json.*unredacted sensitive/u);
+    });
+  }
+
+  const result = await runFixture(t, (fixture) => {
+    useSourceGraph(fixture);
+    fixture.launchPreflight = [{
+      appHostPath: '/repo/Other.AppHost.csproj',
+      appHostPid: 9999,
+      authorization: '[REDACTED]',
+      dashboardUrl: '[REDACTED]',
+    }];
+  });
+  assert.equal(result.candidateCommit, CANDIDATE);
+});
+
+test('Epic 9 artifact validator accepts correlated direct, fallback, source-graph, and development bundles', async (t) => {
   const finalResult = await runFixture(t);
   assert.equal(finalResult.candidateCommit, CANDIDATE);
   assert.equal(finalResult.baseUrl, BASE_URL);
 
+  const sourceGraphResult = await runFixture(t, useSourceGraph);
+  assert.equal(sourceGraphResult.candidateCommit, CANDIDATE);
+  const sourceDevelopmentResult = await runFixture(t, (fixture) => {
+    useSourceGraph(fixture);
+    fixture.metadata.workingTreeDirty = true;
+    fixture.metadata.evidenceMode = 'development';
+    fixture.metadata.commands = [...SOURCE_GRAPH_COMMANDS.slice(0, -1), VALIDATE_DEVELOPMENT_COMMAND];
+  }, { allowDirty: true, expectedCandidate: CANDIDATE });
+  assert.equal(sourceDevelopmentResult.candidateCommit, CANDIDATE);
   const fallbackResult = await runFixture(t, useFallback);
   assert.equal(fallbackResult.candidateCommit, CANDIDATE);
 
@@ -222,6 +274,18 @@ test('Epic 9 artifact validator rejects semantic contradictions and weak evidenc
     ['invalid UTC timestamp', (fixture) => { fixture.metadata.startedAtUtc = '2026-99-27T12:00:00Z'; }, /valid UTC instant/u],
     ['extra command', (fixture) => { fixture.metadata.commands.push('extra'); }, /exact expected command/u],
     ['reordered command', (fixture) => { fixture.metadata.commands.reverse(); }, /exact expected command/u],
+    ['source-graph missing launch preflight', (fixture) => { useSourceGraph(fixture); fixture.launchPreflight = undefined; }, /empty or missing: apphost-launch-preflight/u],
+    ['source-graph malformed launch preflight', (fixture) => { useSourceGraph(fixture); fixture.launchPreflight = {}; }, /must contain the Aspire process list/u],
+    ['source-graph occupied launch preflight', (fixture) => { useSourceGraph(fixture); fixture.launchPreflight = [{ appHostPath: `/repo/${APPHOST_RELATIVE}`, appHostPid: 9999 }]; }, /launch preflight shows an existing/u],
+    ['source-graph missing build', (fixture) => { useSourceGraph(fixture); fixture.sourceGraphBuild = undefined; }, /requires non-empty apphost-source-graph-build/u],
+    ['source-graph empty build', (fixture) => { useSourceGraph(fixture); fixture.sourceGraphBuild = ''; }, /requires non-empty apphost-source-graph-build/u],
+    ['source-graph skips project references', (fixture) => { useSourceGraph(fixture); fixture.metadata.commands[1] += ' -p:BuildProjectReferences=false'; }, /runtime-metadata.json.commands/u],
+    ['source-graph parallel build', (fixture) => { useSourceGraph(fixture); fixture.metadata.commands[1] = fixture.metadata.commands[1].replace('-m:1', '-m:4'); }, /runtime-metadata.json.commands/u],
+    ['source-graph implicit startup build', (fixture) => { useSourceGraph(fixture); fixture.metadata.commands[3] = fixture.metadata.commands[3].replace(' --no-build', ''); }, /runtime-metadata.json.commands/u],
+    ['source-graph fallback packet', (fixture) => { useSourceGraph(fixture); fixture.failedStart = 'failed\n'; }, /reject fallback-only/u],
+    ['source-graph artifact in historical direct mode', (fixture) => { fixture.sourceGraphBuild = 'build\n'; }, /Historical start modes/u],
+    ['source-graph artifact in historical fallback mode', (fixture) => { useFallback(fixture); fixture.sourceGraphBuild = 'build\n'; }, /Historical start modes/u],
+    ['source-graph unredacted token', (fixture) => { useSourceGraph(fixture); fixture.sourceGraphBuild = 'https://localhost/login?t=secret'; }, /dashboard login token/u],
     ['fallback artifacts in direct mode', (fixture) => { fixture.failedStart = 'failed\n'; }, /fallback-only/u],
     ['fallback missing failed start', (fixture) => { useFallback(fixture); fixture.failedStart = undefined; }, /requires non-empty apphost-start.failed/u],
     ['fallback missing serialized build', (fixture) => { useFallback(fixture); fixture.serializedBuild = undefined; }, /requires non-empty apphost-serialized-build/u],

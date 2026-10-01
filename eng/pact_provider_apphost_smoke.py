@@ -1275,6 +1275,45 @@ def _discover_assets_graphs_from_json(start_project: Path) -> tuple[list[Path], 
                 assets_paths.add(assets_path.resolve(strict=True))
         except (OSError, RuntimeError, UnicodeDecodeError, json.JSONDecodeError):
             return None
+    # Aspire resource references can be absent from the root NuGet assets metadata.
+    # Admit only the exact additional project's fresh assets, never its parent tree.
+    for relative in runtime_evidence.APPHOST_ADDITIONAL_SOURCE_PROJECTS:
+        expected_project = ROOT / relative
+        assets_path = expected_project.parent / "obj" / "project.assets.json"
+        if runtime_evidence._path_has_symlink_component(assets_path):
+            return None
+        if not assets_path.exists():
+            continue
+        if not assets_path.is_file():
+            return None
+        assets = _read_assets_json(assets_path, "AppHost additional source assets graph")
+        if assets is None:
+            return None
+        folders = assets.get("packageFolders")
+        if not isinstance(folders, dict) or len(folders) != 1:
+            continue
+        try:
+            if Path(next(iter(folders))).resolve(strict=False) != selected_package_root:
+                continue
+            metadata = assets.get("project")
+            restore = metadata.get("restore") if isinstance(metadata, dict) else None
+            path = restore.get("projectPath") if isinstance(restore, dict) else None
+            if not isinstance(path, str) or not path:
+                return None
+            project = Path(path.replace("\\", os.sep))
+            if not project.is_absolute():
+                project = ROOT / project
+            if (
+                runtime_evidence._path_has_symlink_component(project)
+                or runtime_evidence._path_has_symlink_component(expected_project)
+                or not project.is_file()
+                or project.resolve(strict=True) != expected_project.absolute()
+            ):
+                return None
+            projects.add(project.resolve(strict=True))
+            assets_paths.add(assets_path.resolve(strict=True))
+        except (OSError, RuntimeError, TypeError):
+            return None
     return sorted(projects), sorted(assets_paths)
 
 
@@ -1418,7 +1457,20 @@ def _evaluate_source_graph(
         return reject("apphost-assets-discovery-failed")
     discovered_projects, discovered_assets = discovered
     discovered_project_set = set(discovered_projects)
-    if not set(typed_projects).issubset(discovered_project_set):
+    missing_projects = set(typed_projects) - discovered_project_set
+    if missing_projects:
+        print(
+            runtime_evidence._bounded_path_diagnostic(
+                "AppHost assets closure is missing evaluated projects: ",
+                (
+                    path.relative_to(ROOT).as_posix()
+                    if path.is_relative_to(ROOT)
+                    else "<outside-repository>"
+                    for path in missing_projects
+                ),
+            ),
+            file=sys.stderr,
+        )
         return reject("apphost-project-references-not-in-assets-closure")
     if expected_assets is not None:
         expected_asset_set = {

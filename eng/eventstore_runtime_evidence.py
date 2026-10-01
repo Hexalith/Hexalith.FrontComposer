@@ -4260,6 +4260,46 @@ def _discover_apphost_project_graph(
                 pending.append(restored_project)
         except (OSError, RuntimeError, TypeError):
             errors.append(f"Unable to enumerate AppHost restored source root: {authority_root}")
+    # Aspire resource references can be omitted from the root NuGet assets metadata.
+    # Only the exact additional project's assets may extend the fresh restore closure.
+    for relative in APPHOST_ADDITIONAL_SOURCE_PROJECTS:
+        expected_project = repository_root / relative
+        assets_path = expected_project.parent / "obj" / "project.assets.json"
+        if _path_has_symlink_component(assets_path):
+            errors.append(f"AppHost additional assets graph is symlinked: {relative}")
+            continue
+        if not assets_path.exists():
+            continue
+        if not assets_path.is_file():
+            errors.append(f"AppHost additional assets graph is not regular: {relative}")
+            continue
+        assets = _load_assets_graph(assets_path, errors)
+        folders = assets.get("packageFolders")
+        if not isinstance(folders, dict) or len(folders) != 1:
+            continue
+        try:
+            if Path(next(iter(folders))).resolve(strict=False) != selected_package_root:
+                continue
+            metadata = assets.get("project")
+            restore = metadata.get("restore") if isinstance(metadata, dict) else None
+            path = restore.get("projectPath") if isinstance(restore, dict) else None
+            if not isinstance(path, str) or not path:
+                errors.append(f"AppHost additional assets graph has no project path: {relative}")
+                continue
+            project = Path(path.replace("\\", os.sep))
+            if not project.is_absolute():
+                project = repository_root / project
+            if (
+                _path_has_symlink_component(project)
+                or _path_has_symlink_component(expected_project)
+                or not project.is_file()
+                or project.resolve(strict=True) != expected_project.absolute()
+            ):
+                errors.append(f"AppHost additional assets graph has a mismatched project: {relative}")
+                continue
+            pending.append(project)
+        except (OSError, RuntimeError, TypeError):
+            errors.append(f"AppHost additional assets graph project is unavailable: {relative}")
     projects: set[Path] = set()
     assets_paths: set[Path] = set()
     while pending:

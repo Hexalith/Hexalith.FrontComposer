@@ -24,6 +24,8 @@ const INITIAL_START_COMMAND = `aspire start --apphost ${APPHOST_RELATIVE} --isol
 const FALLBACK_DEPENDENCY_BUILD_COMMAND = `dotnet build ${EVENTSTORE_ASPIRE_RELATIVE} --configuration Debug -m:1 -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false`;
 const FALLBACK_APPHOST_BUILD_COMMAND = `dotnet build ${APPHOST_RELATIVE} --configuration Debug -m:1 -p:BuildProjectReferences=false -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false`;
 const FALLBACK_START_COMMAND = `aspire start --apphost ${APPHOST_RELATIVE} --isolated --no-build --non-interactive --format Json --nologo`;
+const SOURCE_GRAPH_BUILD_COMMAND = `dotnet build ${APPHOST_RELATIVE} --configuration Debug --disable-build-servers -m:1 -p:BuildInParallel=false -p:NuGetAudit=false -p:CentralPackageTransitivePinningEnabled=false`;
+const SOURCE_GRAPH_START_COMMAND = `${FALLBACK_START_COMMAND} --log-file <temporary-cli-log>`;
 const COMMON_COMMANDS = [
   `aspire wait counter-web --status up --timeout 180 --apphost ${APPHOST_RELATIVE} --non-interactive --nologo`,
   `aspire describe counter-web --apphost ${APPHOST_RELATIVE} --format Json --non-interactive --nologo`,
@@ -115,6 +117,10 @@ const expectedCommands = (startMode, evidenceMode) => {
   const validationCommand = evidenceMode === 'development'
     ? VALIDATE_DEVELOPMENT_COMMAND
     : VALIDATE_FINAL_COMMAND;
+  if (startMode === 'isolated-no-build-after-source-graph-build') {
+    return [SOURCE_ROUTING_COMMAND, SOURCE_GRAPH_BUILD_COMMAND, 'aspire ps --format Json --non-interactive --nologo',
+      SOURCE_GRAPH_START_COMMAND, ...COMMON_COMMANDS, validationCommand];
+  }
   return startMode === 'isolated-build'
     ? [SOURCE_ROUTING_COMMAND, COUNTER_WEB_BUILD_COMMAND, INITIAL_START_COMMAND, ...COMMON_COMMANDS, validationCommand]
     : [SOURCE_ROUTING_COMMAND, COUNTER_WEB_BUILD_COMMAND, INITIAL_START_COMMAND, FALLBACK_DEPENDENCY_BUILD_COMMAND, FALLBACK_APPHOST_BUILD_COMMAND,
@@ -229,10 +235,12 @@ export const validateEpic9Artifacts = async (
     'checksums.sha256',
     'runtime-metadata.json',
     'apphost-preflight.json',
+    'apphost-launch-preflight.json',
     'apphost-postflight.json',
     'apphost-start.json',
     'apphost-start.failed.json',
     'apphost-serialized-build.log',
+    'apphost-source-graph-build.log',
     'counter-web-wait.log',
     'counter-web-describe.json',
     'counter-web-logs.redacted.json',
@@ -278,7 +286,7 @@ export const validateEpic9Artifacts = async (
     'runtime-metadata.json.startedAtUtc is not a valid UTC instant.',
   );
   assertClaim(
-    ['isolated-build', 'isolated-no-build-after-serialized-build'].includes(metadata.startMode),
+    ['isolated-build', 'isolated-no-build-after-serialized-build', 'isolated-no-build-after-source-graph-build'].includes(metadata.startMode),
     'runtime-metadata.json.startMode is not a supported isolated start mode.',
   );
   for (const tool of ['aspire', 'dotnet', 'node']) {
@@ -288,6 +296,18 @@ export const validateEpic9Artifacts = async (
 
   const failedStart = filesByPath.get('apphost-start.failed.json');
   const serializedBuild = filesByPath.get('apphost-serialized-build.log');
+  const sourceGraphBuild = filesByPath.get('apphost-source-graph-build.log');
+  const launchPreflight = filesByPath.get('apphost-launch-preflight.json');
+  if (metadata.startMode === 'isolated-no-build-after-source-graph-build') {
+    assertClaim(sourceGraphBuild?.size > 0, 'Source-graph mode requires non-empty apphost-source-graph-build.log.');
+    const launchProcesses = await readJson(requireFile(filesByPath, 'apphost-launch-preflight.json'), 'apphost-launch-preflight.json');
+    assertClaim(Array.isArray(launchProcesses), 'apphost-launch-preflight.json must contain the Aspire process list.');
+    assertSensitiveValuesRedacted(launchProcesses, 'apphost-launch-preflight.json');
+    assertClaim(!JSON.stringify(launchProcesses).includes('Hexalith.FrontComposer.AppHost'), 'AppHost launch preflight shows an existing FrontComposer run.');
+    assertClaim(!failedStart && !serializedBuild, 'Source-graph mode must reject fallback-only startup artifacts.');
+  } else {
+    assertClaim(!sourceGraphBuild && !launchPreflight, 'Historical start modes must reject source-graph startup artifacts.');
+  }
   if (metadata.startMode === 'isolated-no-build-after-serialized-build') {
     assertClaim(failedStart?.size > 0, 'Fallback mode requires non-empty apphost-start.failed.json.');
     assertClaim(serializedBuild?.size > 0, 'Fallback mode requires non-empty apphost-serialized-build.log.');

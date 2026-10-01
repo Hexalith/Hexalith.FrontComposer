@@ -1053,6 +1053,85 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
             after,
         )
 
+    def _counter_fixture_restore_graph(self) -> tuple[Path, Path, Path, Path]:
+        repository = Path(self.temporary.name) / "additional-source-repository"
+        package_root = Path(self.temporary.name) / "fresh-additional-packages"
+        package_root.mkdir()
+        apphost = repository / smoke.APPHOST_RELATIVE
+        fixture = repository / smoke.runtime_evidence.APPHOST_ADDITIONAL_SOURCE_PROJECTS[0]
+        (repository / "samples" / "Counter").mkdir(parents=True)
+        for project in (apphost, fixture):
+            project.parent.mkdir(parents=True)
+            project.write_text("<Project />", encoding="utf-8")
+            assets = project.parent / "obj" / "project.assets.json"
+            assets.parent.mkdir()
+            assets.write_text(json.dumps({
+                "packageFolders": {str(package_root) + os.sep: {}},
+                "libraries": {},
+                "project": {"restore": {"projectPath": str(project)}},
+            }), encoding="utf-8")
+        return repository, package_root, apphost, fixture
+
+    def test_assets_discovery_includes_fresh_counter_fixture_omitted_by_root_metadata(self) -> None:
+        repository, _, apphost, fixture = self._counter_fixture_restore_graph()
+        with (
+            mock.patch.object(smoke, "ROOT", repository),
+            mock.patch.object(smoke, "REACHABLE_SOURCE_GITLINKS", ()),
+        ):
+            discovered = REAL_DISCOVER_ASSETS_GRAPHS(apphost)
+        self.assertEqual(discovered, (
+            sorted([apphost, fixture]),
+            sorted([project.parent / "obj" / "project.assets.json" for project in (apphost, fixture)]),
+        ))
+
+    def test_additional_fixture_assets_require_fresh_authority_and_exact_project_metadata(self) -> None:
+        repository, package_root, apphost, fixture = self._counter_fixture_restore_graph()
+        assets = fixture.parent / "obj" / "project.assets.json"
+        original = json.loads(assets.read_text(encoding="utf-8"))
+        lookalikes = (
+            fixture.parent / "Other.csproj",
+            repository / "tests" / "Hexalith.FrontComposer.CounterFixture.Lookalike" / fixture.name,
+        )
+        with (
+            mock.patch.object(smoke, "ROOT", repository),
+            mock.patch.object(smoke, "REACHABLE_SOURCE_GITLINKS", ()),
+        ):
+            stale = copy.deepcopy(original)
+            stale["packageFolders"] = {str(package_root.parent / "stale-packages") + os.sep: {}}
+            assets.write_text(json.dumps(stale), encoding="utf-8")
+            discovered = REAL_DISCOVER_ASSETS_GRAPHS(apphost)
+            self.assertIsNotNone(discovered)
+            self.assertNotIn(fixture, (discovered or ([], []))[0])
+            for project in (*lookalikes, None):
+                with self.subTest(project=project):
+                    if project is not None:
+                        project.parent.mkdir(parents=True, exist_ok=True)
+                        project.write_text("<Project />", encoding="utf-8")
+                    document = copy.deepcopy(original)
+                    document["project"]["restore"]["projectPath"] = str(project) if project else None
+                    assets.write_text(json.dumps(document), encoding="utf-8")
+                    self.assertIsNone(REAL_DISCOVER_ASSETS_GRAPHS(apphost))
+            target = Path(self.temporary.name) / "linked-fixture-assets.json"
+            target.write_text(json.dumps(original), encoding="utf-8")
+            assets.unlink()
+            assets.symlink_to(target)
+            self.assertIsNone(REAL_DISCOVER_ASSETS_GRAPHS(apphost))
+
+    def test_missing_assets_project_diagnostic_is_repository_relative(self) -> None:
+        diagnostic = io.StringIO()
+        runtime = FakeRuntime()
+        with (
+            mock.patch.object(smoke, "_discover_assets_graphs_from_json", return_value=(
+                [smoke.APPHOST], [smoke.APPHOST.parent / "obj" / "project.assets.json"]
+            )),
+            contextlib.redirect_stderr(diagnostic),
+        ):
+            result = smoke.capture(self.output, runtime, timeout=30)
+        self.assertEqual(result, 1)
+        self.assertIn("AppHost assets closure is missing evaluated projects: ", diagnostic.getvalue())
+        self.assertNotIn(str(smoke.ROOT), diagnostic.getvalue())
+        self.assertFalse(any(args[:2] == ["aspire", "start"] for args in runtime.commands))
+
     def test_assets_discovery_includes_fresh_conditionally_restored_projects(self) -> None:
         repository = Path(self.temporary.name) / "repository"
         package_root = Path(self.temporary.name) / "fresh-packages"

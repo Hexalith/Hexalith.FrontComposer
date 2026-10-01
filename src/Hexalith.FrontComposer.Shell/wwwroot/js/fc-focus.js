@@ -161,6 +161,10 @@ export function labelDialog(testId, titleId, descriptionId) {
 
     const title = document.getElementById(titleId)?.textContent?.trim();
     const description = document.getElementById(descriptionId)?.textContent?.trim();
+    // Fluent binds these native-dialog attributes from its host after initialization. Keep the
+    // source attributes populated so a deferred binding cannot erase the accessible identity.
+    host.setAttribute('aria-labelledby', titleId);
+    if (title) host.setAttribute('aria-label', title);
     const applyAccessibleIdentity = () => {
         if (!dialog.isConnected) return;
         dialog.setAttribute('aria-labelledby', titleId);
