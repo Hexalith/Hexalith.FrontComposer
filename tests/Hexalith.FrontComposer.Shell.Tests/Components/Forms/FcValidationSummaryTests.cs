@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using AngleSharp.Dom;
 
 using Bunit;
@@ -23,6 +25,9 @@ public sealed class FcValidationSummaryTests : BunitContext {
     private static readonly string[] DuplicateFormLevelErrors = ["First is invalid.", "The record is locked."];
 
     public FcValidationSummaryTests() {
+        CultureInfo.CurrentCulture = new CultureInfo("en");
+        CultureInfo.CurrentUICulture = new CultureInfo("en");
+
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddFluentUIComponents();
         _ = Services.AddLocalization();
@@ -50,6 +55,7 @@ public sealed class FcValidationSummaryTests : BunitContext {
         IElement summary = cut.Find("[data-testid='fc-validation-summary']");
         // AA5-05 — a named group (VR-01), not a region landmark; focus-only, never live.
         summary.GetAttribute("role").ShouldBe("group");
+        summary.GetAttribute("tabindex").ShouldBe("-1");
         summary.HasAttribute("aria-live").ShouldBeFalse();
         summary.GetAttribute("aria-labelledby").ShouldBe("validation-summary-title");
         summary.GetAttribute("aria-describedby").ShouldBe("validation-summary-description");

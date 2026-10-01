@@ -36,9 +36,9 @@ public sealed class Story21Story22ContractTests : CommandRendererTestBase {
         string normalized = Regex.Replace(markup, @"\s+", " ").Trim();
         normalized = Regex.Replace(normalized, @"id=""[^""]+""", "id=\"GEN\"");
         normalized = Regex.Replace(normalized, @"for=""[^""]+""", "for=\"GEN\"");
-        // Story 13.3 — per-instance form DOM ids embed a process-wide counter that also appears inside
+        // Story 13.3 — per-instance form DOM ids embed a type-local counter that also appears inside
         // other attribute values (for example aria-describedby and summary targets).
-        normalized = Regex.Replace(normalized, @"fc-command-form-[a-z0-9-]*?\d+(?=-[A-Z])", "fc-command-form-GEN");
+        normalized = Regex.Replace(normalized, @"fc-command-form-[A-Za-z0-9_-]*?-\d+(?=-[A-Z])", "fc-command-form-GEN");
         normalized = Regex.Replace(normalized, @"blazor:on\w+=""\d+""", "blazor:onevt=\"N\"");
         normalized = Regex.Replace(normalized, @"blazor:elementReference=""[^""]+""", "blazor:elementReference=\"GEN\"");
         return normalized;

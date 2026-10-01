@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using AngleSharp.Dom;
 
 using Bunit;
@@ -24,6 +26,9 @@ public sealed class FcCommandBlockedOutcomeTests : BunitContext {
     private readonly FakeTimeProvider _time = new(new DateTimeOffset(2026, 9, 29, 12, 0, 0, TimeSpan.Zero));
 
     public FcCommandBlockedOutcomeTests() {
+        CultureInfo.CurrentCulture = new CultureInfo("en");
+        CultureInfo.CurrentUICulture = new CultureInfo("en");
+
         JSInterop.Mode = JSRuntimeMode.Loose;
         FocusModule = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
         _ = FocusModule.Setup<bool>("focusAttemptedControl", _ => true).SetResult(true);

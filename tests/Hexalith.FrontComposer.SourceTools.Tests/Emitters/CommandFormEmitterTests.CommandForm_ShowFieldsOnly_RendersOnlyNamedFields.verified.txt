@@ -80,10 +80,11 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     private bool _disposed;
     private bool _externalSubmitRegistered;
     private bool _interactiveReady;
+    private bool _fieldAccessibilityObserved;
     private string? _submittedCorrelationId;
     private int _acceptedAssociationSucceeded;
     private static int _formDomIdSequence;
-    private readonly string _formDomId = "fc-command-form-increment-" + System.Threading.Interlocked.Increment(ref _formDomIdSequence).ToString(CultureInfo.InvariantCulture);
+    private readonly string _formDomId = "fc-command-form-Counter-Domain-IncrementCommand-" + System.Threading.Interlocked.Increment(ref _formDomIdSequence).ToString(CultureInfo.InvariantCulture);
     private FcValidationSummary? _validationSummary;
     private FcCommandBlockedOutcome? _blockedOutcome;
     private bool _hostBlockedOutcomePresented;
@@ -320,7 +321,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (!_fieldAccessibilityObserved)
         {
             // Story 13.3 VR-01 / BH3-08 — keep each editor's invalid state and description/error
             // relationship on the focusable control inside its Fluent shadow root for every later render.
@@ -401,7 +402,10 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         try
         {
             await using var module = await JS.InvokeAsync<global::Microsoft.JSInterop.IJSObjectReference>("import", "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js").ConfigureAwait(false);
-            _ = await module.InvokeAsync<bool>("observeFieldAccessibility", _formDomId).ConfigureAwait(false);
+            if (await module.InvokeAsync<bool>("observeFieldAccessibility", _formDomId).ConfigureAwait(false))
+            {
+                _fieldAccessibilityObserved = true;
+            }
         }
         catch (global::Microsoft.JSInterop.JSDisconnectedException) { }
         catch (global::Microsoft.JSInterop.JSException) { }

@@ -7,6 +7,7 @@ using Fluxor;
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
+using Hexalith.FrontComposer.Shell.Components.Lifecycle;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Services.Feedback;
 using Hexalith.FrontComposer.Shell.State.Navigation;
@@ -18,6 +19,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
+using Microsoft.JSInterop;
 
 using NSubstitute;
 
@@ -31,6 +33,95 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 /// emitted <c>&lt;EditForm&gt;</c> in <c>&lt;FcLifecycleWrapper&gt;</c> (Task 4.1).
 /// </summary>
 public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTestBase {
+    [Theory]
+    [InlineData("import")]
+    [InlineData("observation")]
+    [InlineData("unavailable")]
+    public async Task GeneratedForm_FailedAccessibilityObservation_RetriesUntilInstalled(string failure)
+    {
+        const string focusModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js";
+        if (failure == "import")
+        {
+            _ = JSInterop.TryGetInvokeHandler<IJSObjectReference>("import", focusModulePath).ShouldNotBeNull()
+                .SetException(new JSException("import failed"));
+        }
+        else if (failure == "observation")
+        {
+            _ = FcFocusModule.Setup<bool>("observeFieldAccessibility", _ => true).SetException(new JSException("observation failed"));
+        }
+        else
+        {
+            _ = FcFocusModule.Setup<bool>("observeFieldAccessibility", _ => true).SetResult(false);
+        }
+        await InitializeStoreAsync();
+        IRenderedComponent<GroupedFieldsCommandForm> cut = Render<GroupedFieldsCommandForm>();
+
+        cut.WaitForAssertion(() => {
+            JSInterop.Invocations.Count(invocation => invocation.Identifier == "import"
+                && Equals(invocation.Arguments[0], focusModulePath)).ShouldBeGreaterThan(0);
+            if (failure != "import")
+            {
+                FcFocusModule.Invocations.Count(invocation => invocation.Identifier == "observeFieldAccessibility").ShouldBeGreaterThan(0);
+            }
+        });
+        Renderer.UnhandledException.IsCompleted.ShouldBeFalse();
+        BunitJSModuleInterop recoveredModule = failure == "import" ? JSInterop.SetupModule(focusModulePath) : FcFocusModule;
+        int failedAttempts = recoveredModule.Invocations.Count(invocation => invocation.Identifier == "observeFieldAccessibility");
+        _ = recoveredModule.Setup<bool>("observeFieldAccessibility", _ => true).SetResult(true);
+        _ = recoveredModule.SetupVoid("focusValidationOutcome", _ => true).SetVoidResult();
+
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(() => {
+            _ = cut.Find("[data-testid='fc-validation-summary']");
+            cut.Find("[name='RecordId']").GetAttribute("data-fc-invalid").ShouldBe("true");
+            JSRuntimeInvocation[] observations = [.. recoveredModule.Invocations.Where(invocation => invocation.Identifier == "observeFieldAccessibility")];
+            observations.Length.ShouldBe(failedAttempts + 1);
+            observations[^1].Arguments.ShouldBe([cut.Find("[data-fc-command-form='true']").Id]);
+        });
+
+        cut.Render();
+        cut.Render();
+
+        recoveredModule.Invocations.Count(invocation => invocation.Identifier == "observeFieldAccessibility").ShouldBe(failedAttempts + 1);
+    }
+
+    [Fact]
+    public async Task GeneratedForms_CommandSuffixAndNamespaceCollisions_KeepDistinctDomIdsAndTheLifecycleIdentity()
+    {
+        await InitializeStoreAsync();
+        IRenderedComponent<FocusCollisionForm> first = Render<FocusCollisionForm>();
+        IRenderedComponent<FocusCollisionCommandForm> suffixed = Render<FocusCollisionCommandForm>();
+        IRenderedComponent<Alternate.FocusCollisionForm> namespaced = Render<Alternate.FocusCollisionForm>();
+        IRenderedComponent<Microsoft.AspNetCore.Components.IComponent>[] forms = [first, suffixed, namespaced];
+        string[] formIds = [.. forms.Select(form => form.Find("[data-fc-command-form='true']").Id.ShouldNotBeNull())];
+
+        formIds.Distinct(StringComparer.Ordinal).Count().ShouldBe(3);
+        formIds[0].ShouldStartWith("fc-command-form-Hexalith-FrontComposer-Shell-Tests-Generated-FocusCollision-");
+        formIds[1].ShouldStartWith("fc-command-form-Hexalith-FrontComposer-Shell-Tests-Generated-FocusCollisionCommand-");
+        formIds[2].ShouldStartWith("fc-command-form-Hexalith-FrontComposer-Shell-Tests-Generated-Alternate-FocusCollision-");
+        first.FindComponent<FcLifecycleWrapper>().Instance.CommandId.ShouldBe("focus-collision");
+        suffixed.FindComponent<FcLifecycleWrapper>().Instance.CommandId.ShouldBe("focus-collision");
+        namespaced.FindComponent<FcLifecycleWrapper>().Instance.CommandId.ShouldBe("focus-collision");
+
+        foreach (IRenderedComponent<Microsoft.AspNetCore.Components.IComponent> form in forms)
+        {
+            form.Find("form").Submit();
+        }
+
+        for (int index = 0; index < forms.Length; index++)
+        {
+            IRenderedComponent<Microsoft.AspNetCore.Components.IComponent> form = forms[index];
+            string formId = formIds[index];
+            form.WaitForAssertion(() => {
+                form.Find("[data-testid='fc-validation-summary']").Id.ShouldBe(formId + "-validation-summary");
+                form.Find("[data-fc-validation-target]").GetAttribute("data-fc-validation-target").ShouldBe(formId + "-Name");
+                form.Find("[name='Name']").Id.ShouldBe(formId + "-Name");
+                form.Find("[id$='-submit']").Id.ShouldBe(formId + "-submit");
+            });
+        }
+    }
+
     [Fact]
     public async Task GeneratedForm_FieldsSharingGroupRenderOneNamedContainerWithDescriptionsInDeclaredOrder() {
         await InitializeStoreAsync();
@@ -531,6 +622,8 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         // AM-26 / FM-01 — the initial presentation denial replaces the controls without moving focus.
         cut.WaitForAssertion(() => _ = cut.Find("[id$='-authorization-heading']"));
         HeadingFocusRequests().ShouldBe(0);
+        FcFocusModule.Invocations.ShouldNotContain(invocation => invocation.Identifier == "captureFocusBeforeReplacement"
+            || invocation.Identifier == "focusReplacementHeading");
         cut.Find("form").Submit();
 
         cut.WaitForAssertion(() => {
@@ -561,6 +654,10 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         Services.Replace(ServiceDescriptor.Scoped<ICommandAuthorizationEvaluator>(_ => evaluator));
         Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
         await InitializeStoreAsync();
+        List<CommandFeedbackWarning> warnings = [];
+        using IDisposable subscription = Services.GetRequiredService<ICommandFeedbackPublisher>().Subscribe(warnings.Add);
+        IPendingCommandStateService pending = Services.GetRequiredService<IPendingCommandStateService>();
+        IState<ProtectedTwoFieldCompactCommandLifecycleState> state = Services.GetRequiredService<IState<ProtectedTwoFieldCompactCommandLifecycleState>>();
         IRenderedComponent<ProtectedTwoFieldCompactCommandForm> cut = Render<ProtectedTwoFieldCompactCommandForm>(parameters => parameters
             .Add(p => p.InitialValue, new ProtectedTwoFieldCompactCommand { Name = "kept name", Amount = 9 }));
 
@@ -572,6 +669,9 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         cut.WaitForAssertion(() => {
             evaluator.Requests.Count.ShouldBeGreaterThanOrEqualTo(2);
             service.DispatchCount.ShouldBe(0);
+            pending.Snapshot().ShouldBeEmpty();
+            state.Value.State.ShouldBe(CommandLifecycleState.Idle);
+            warnings.ShouldNotBeEmpty();
             cut.FindAll("[id$='-authorization-heading']").ShouldBeEmpty();
             cut.Markup.ShouldContain("kept name");
             cut.Markup.ShouldContain("value=\"9\"");
@@ -587,6 +687,41 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         cut.Find("form").Submit();
 
         cut.WaitForAssertion(() => service.DispatchCount.ShouldBe(1));
+    }
+
+    [Fact]
+    public async Task ProtectedGeneratedForm_AllowedThenDeniedAtSubmit_ReplacesControlsAndFocusesTheDenialOnce()
+    {
+        var evaluator = new MutableAuthorizationEvaluator(CommandAuthorizationDecision.Allowed("corr-presentation"));
+        RecordingCommandService service = new();
+        Services.Replace(ServiceDescriptor.Singleton<AuthenticationStateProvider>(new TestAuthenticationStateProvider()));
+        Services.Replace(ServiceDescriptor.Scoped<ICommandAuthorizationEvaluator>(_ => evaluator));
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        IPendingCommandStateService pending = Services.GetRequiredService<IPendingCommandStateService>();
+        IState<ProtectedTwoFieldCompactCommandLifecycleState> state = Services.GetRequiredService<IState<ProtectedTwoFieldCompactCommandLifecycleState>>();
+        IRenderedComponent<ProtectedTwoFieldCompactCommandForm> cut = Render<ProtectedTwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new ProtectedTwoFieldCompactCommand { Name = "allowed name", Amount = 9 }));
+
+        cut.WaitForAssertion(() => {
+            cut.FindAll("[data-fc-validation-field='true']").Count.ShouldBe(2);
+            cut.Find("[id$='-submit']").HasAttribute("disabled").ShouldBeFalse();
+        });
+        evaluator.Decision = CommandAuthorizationDecision.Denied("corr-submit-denied");
+
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(() => {
+            service.DispatchCount.ShouldBe(0);
+            pending.Snapshot().ShouldBeEmpty();
+            state.Value.State.ShouldBe(CommandLifecycleState.Idle);
+            cut.FindAll("[data-fc-validation-field='true']").ShouldBeEmpty();
+            AngleSharp.Dom.IElement heading = cut.Find("section[data-fc-authorization-denied='true'] [id$='-authorization-heading']");
+            heading.TextContent.ShouldBe("Permission required");
+            FcFocusModule.Invocations.Count(invocation => invocation.Identifier == "focusElementById"
+                && Equals(invocation.Arguments[0], heading.Id)).ShouldBe(1);
+        });
+        FcFocusModule.Invocations.ShouldNotContain(invocation => invocation.Identifier == "focusReplacementHeading");
     }
 
     [Fact]
@@ -624,7 +759,7 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             // action; the server's problem title and detail never reach the denial card.
             heading.TextContent.ShouldBe("Permission required");
             AngleSharp.Dom.IElement card = cut.Find("section[data-fc-authorization-denied='true']");
-            card.QuerySelector("p").ShouldNotBeNull().TextContent.ShouldStartWith("You do not have permission to ");
+            card.QuerySelector("p").ShouldNotBeNull().TextContent.ShouldBe("You do not have permission to Two Field Compact.");
             card.TextContent.ShouldNotContain("Not allowed");
             card.TextContent.ShouldNotContain("You cannot run this command.");
             // The form denial card is a named group, not a region landmark, alert, or status.
@@ -863,7 +998,9 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         // VG4-02 — the numeric parse error is an EditContext message: it is linked from the summary to
         // the rendered editor and marks that editor invalid.
         cut.WaitForAssertion(() => {
-            AngleSharp.Dom.IElement link = cut.Find("[data-testid='fc-validation-summary'] [data-fc-validation-target]");
+            AngleSharp.Dom.IElement summary = cut.Find("[data-testid='fc-validation-summary']");
+            AngleSharp.Dom.IElement entry = summary.QuerySelectorAll("li").ShouldHaveSingleItem();
+            AngleSharp.Dom.IElement link = entry.QuerySelector("[data-fc-validation-target]").ShouldNotBeNull();
             AngleSharp.Dom.IElement amount = cut.Find("fluent-text-input[name='Amount']");
             link.TextContent.Trim().ShouldBe("Amount: Invalid number format.");
             link.GetAttribute("data-fc-validation-target").ShouldBe(amount.Id);

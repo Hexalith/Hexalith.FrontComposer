@@ -8,6 +8,7 @@ using Hexalith.FrontComposer.Shell.Components.Layout;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.JSInterop;
 
 using Shouldly;
 
@@ -56,6 +57,25 @@ public sealed class FcSettingsButtonTests : LayoutComponentTestBase {
         dialogService.LastOptions!.Modal.ShouldBe(true);
         dialogService.LastOptions.Width.ShouldBe("480px");
         string.IsNullOrWhiteSpace(dialogService.LastOptions.Header.Title).ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Click_WhenFocusCaptureInteropFails_StillOpensSettingsDialog(bool canceled)
+    {
+        RecordingDialogService dialogService = new();
+        Services.Replace(ServiceDescriptor.Scoped<IDialogService>(_ => dialogService));
+        Exception failure = canceled ? new OperationCanceledException("capture canceled") : new JSException("capture failed");
+        _ = FocusModule.Setup<bool>("captureOverlayOrigin", _ => true).SetException(failure);
+        IRenderedComponent<FcSettingsButton> cut = Render<FcSettingsButton>();
+
+        await cut.Find("[data-testid='fc-settings-button']")
+            .ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        cut.WaitForAssertion(() => dialogService.ShowDialogCallCount.ShouldBe(1));
+        dialogService.LastDialogType.ShouldBe(typeof(FcSettingsDialog));
+        _ = FocusModule.VerifyInvoke("captureOverlayOrigin", 1);
     }
 
     [Fact]

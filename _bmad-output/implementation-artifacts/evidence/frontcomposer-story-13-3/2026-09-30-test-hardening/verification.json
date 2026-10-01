@@ -1,0 +1,709 @@
+{
+  "commands": {
+    "shell-build": {
+      "command": "dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release -m:1 > /tmp/frontcomposer-13-3-shell-build.log 2>&1",
+      "log": "/tmp/frontcomposer-13-3-shell-build.log",
+      "result": "Build succeeded; 0 warnings, 0 errors"
+    },
+    "sourcetools-build": {
+      "command": "dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj -c Release -m:1 > /tmp/frontcomposer-13-3-sourcetools-build.log 2>&1",
+      "log": "/tmp/frontcomposer-13-3-sourcetools-build.log",
+      "result": "Build succeeded; 0 warnings, 0 errors"
+    },
+    "shell-focused": {
+      "command": "DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -class '*FcCommandBlockedOutcomeTests' -class '*FcDestructiveConfirmationDialogTests' -class '*FcFormAbandonmentGuardTests' -class '*FcValidationSummaryTests' -class '*FcSettingsButtonTests' -class '*FcPaletteTriggerButtonTests' -class '*FcLifecycleWrapperRejectionTests' -class '*CommandRendererWrapperIntegrationTests' -class '*CommandTargetGeneratedFormTests' -class '*DestructiveCommandRendererIntegrationTests' -class '*FcShellResourcesTests' -result-xml /tmp/frontcomposer-13-3-shell-focused.xml > /tmp/frontcomposer-13-3-shell-focused.log 2>&1",
+      "log": "/tmp/frontcomposer-13-3-shell-focused.log",
+      "xml": "/tmp/frontcomposer-13-3-shell-focused.xml",
+      "results": {
+        "total": "274",
+        "passed": "273",
+        "failed": "1",
+        "skipped": "0"
+      },
+      "failures": [
+        "Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.GeneratedSwitchDatePickerAndEnumSelectHonorTheFieldContract"
+      ]
+    },
+    "shell-focused-passing": {
+      "command": "DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -class '*FcCommandBlockedOutcomeTests' -class '*FcDestructiveConfirmationDialogTests' -class '*FcFormAbandonmentGuardTests' -class '*FcValidationSummaryTests' -class '*FcSettingsButtonTests' -class '*FcPaletteTriggerButtonTests' -class '*FcLifecycleWrapperRejectionTests' -class '*CommandRendererWrapperIntegrationTests' -class '*CommandTargetGeneratedFormTests' -class '*DestructiveCommandRendererIntegrationTests' -class '*FcShellResourcesTests' -method- '*GeneratedSwitchDatePickerAndEnumSelectHonorTheFieldContract' -result-xml /tmp/frontcomposer-13-3-shell-focused-passing.xml > /tmp/frontcomposer-13-3-shell-focused-passing.log 2>&1",
+      "log": "/tmp/frontcomposer-13-3-shell-focused-passing.log",
+      "xml": "/tmp/frontcomposer-13-3-shell-focused-passing.xml",
+      "results": {
+        "total": "273",
+        "passed": "273",
+        "failed": "0",
+        "skipped": "0"
+      },
+      "failures": []
+    },
+    "shell-french-host": {
+      "command": "DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -class '*FcCommandBlockedOutcomeTests' -class '*FcValidationSummaryTests' -culture fr -result-xml /tmp/frontcomposer-13-3-shell-french-host.xml > /tmp/frontcomposer-13-3-shell-french-host.log 2>&1",
+      "log": "/tmp/frontcomposer-13-3-shell-french-host.log",
+      "xml": "/tmp/frontcomposer-13-3-shell-french-host.xml",
+      "results": {
+        "total": "16",
+        "passed": "16",
+        "failed": "0",
+        "skipped": "0"
+      },
+      "failures": []
+    },
+    "shell-default": {
+      "command": "DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -trait- 'Category=GovernanceBuild' -trait- 'Category=Performance' -trait- 'Category=e2e-palette' -trait- 'Category=NightlyProperty' -trait- 'Category=Quarantined' -result-xml /tmp/frontcomposer-13-3-shell-default.xml > /tmp/frontcomposer-13-3-shell-default.log 2>&1",
+      "log": "/tmp/frontcomposer-13-3-shell-default.log",
+      "xml": "/tmp/frontcomposer-13-3-shell-default.xml",
+      "results": {
+        "total": "3072",
+        "passed": "3064",
+        "failed": "8",
+        "skipped": "0"
+      },
+      "failures": [
+        "Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.GeneratedSwitchDatePickerAndEnumSelectHonorTheFieldContract",
+        "Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.ToolchainPins_MatchApprovedDotnetAndAspireVersions",
+        "Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval",
+        "Hexalith.FrontComposer.Shell.Tests.Generated.CounterStoryVerificationTests.CounterProjectionView_LoadedState_RendersColumnsAndFormatting",
+        "Hexalith.FrontComposer.Shell.Tests.Generated.CounterStoryVerificationTests.StatusProjectionView_NullAndBooleanValues_RenderSnapshot",
+        "Hexalith.FrontComposer.Shell.Tests.Governance.InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds",
+        "Hexalith.FrontComposer.Shell.Tests.Governance.AnalyzerPolicyGovernanceTests.AnalyzerPolicy_IdentifierInventory_MatchesSeal",
+        "Hexalith.FrontComposer.Shell.Tests.Governance.FluentConformanceTests.Fluent_package_versions_are_v5_only_and_icons_match_components"
+      ]
+    },
+    "sourcetools-default": {
+      "command": "DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Release/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll -trait- 'Category=GovernanceBuild' -trait- 'Category=Performance' -trait- 'Category=e2e-palette' -trait- 'Category=NightlyProperty' -trait- 'Category=Quarantined' -result-xml /tmp/frontcomposer-13-3-sourcetools-default.xml > /tmp/frontcomposer-13-3-sourcetools-default.log 2>&1",
+      "log": "/tmp/frontcomposer-13-3-sourcetools-default.log",
+      "xml": "/tmp/frontcomposer-13-3-sourcetools-default.xml",
+      "results": {
+        "total": "1294",
+        "passed": "1292",
+        "failed": "2",
+        "skipped": "0"
+      },
+      "failures": [
+        "Hexalith.FrontComposer.SourceTools.Tests.Diagnostics.DiagnosticRegistryTests.FrontComposerObsoleteAttributes_FollowDiagnosticDeprecationPolicy",
+        "Hexalith.FrontComposer.SourceTools.Tests.Integration.PackagedAnalyzerConsumerTests.PackagedAnalyzer_ContractsOnlyPayload_GeneratedShellConsumerCompiles"
+      ]
+    },
+    "analyzer-governance": {
+      "command": "GIT_INDEX_FILE='/tmp/frontcomposer-13-3-cgm0t_0s.index' DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -class '*AnalyzerPolicyGovernanceTests' -trait- 'Category=GovernanceBuild' -result-xml /tmp/frontcomposer-13-3-analyzer-governance.xml > /tmp/frontcomposer-13-3-analyzer-governance.log 2>&1",
+      "log": "/tmp/frontcomposer-13-3-analyzer-governance.log",
+      "xml": "/tmp/frontcomposer-13-3-analyzer-governance.xml",
+      "results": {
+        "total": "6",
+        "passed": "6",
+        "failed": "0",
+        "skipped": "0"
+      },
+      "failures": []
+    },
+    "typecheck": {
+      "command": "npm --prefix tests/e2e run typecheck",
+      "result": "passed"
+    },
+    "aspire-baseline": {
+      "command": "aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive",
+      "exitCode": 2,
+      "result": "Blocked before resource startup: timed out after 120s at Determining projects to restore; describe and stop report no running FrontComposer AppHost."
+    },
+    "browser-test-host": {
+      "command": "npm --prefix tests/e2e run test:a11y",
+      "exitCode": 1,
+      "log": "/tmp/frontcomposer-13-3-browser-test-host.log",
+      "result": "Blocked before browser assertions: MapFrontComposerMcp requires a restrictive IFrontComposerMcpTenantToolGate outside Development; process exit 134."
+    },
+    "browser-development": {
+      "command": "./node_modules/.bin/playwright test --config /tmp/frontcomposer-13-3-playwright.config.ts --project=chromium specs/destructive-command-confirmation.spec.ts specs/form-abandonment-guard.spec.ts specs/one-at-a-time-execution-policy.spec.ts specs/policy-gated-command-authorization.spec.ts specs/command-form-generation.spec.ts specs/specimen-accessibility.spec.ts",
+      "workingDirectory": "tests/e2e",
+      "exitCode": 1,
+      "configuration": "Temporary config preserves tracked host code, uses Development, two workers, and --disable-gpu --disable-software-rasterizer. Visual baselines were not updated.",
+      "log": "/tmp/frontcomposer-13-3-browser-development.log",
+      "results": {
+        "total": 48,
+        "passed": 40,
+        "failed": 8,
+        "errors": 1,
+        "skipped": 0
+      },
+      "passedTests": [
+        "Story 3.1: generated command forms › counter sample exposes generated inline, compact, and full-page command forms",
+        "Story 3.1: generated command forms › compact generated form submits and reaches confirmed lifecycle feedback",
+        "Story 3.1: generated command forms › full-page generated form blocks invalid numbers then submits after correction",
+        "Story 3.1: generated command forms › invalid generated editors expose invalid state and their error on the focusable control",
+        "Story 3.2: command form density rule › non-derivable field count selects inline, compact inline, and full-page surfaces",
+        "Story 3.3: FC-CMD pending identity and correlation contract › generated compact form keeps identity framework-owned while command reaches pending confirmation",
+        "Story 4.1: destructive command confirmation › cancel and Escape keep the destructive command idle and reusable",
+        "Story 4.1: destructive command confirmation › confirmation is required before dispatch and reaches terminal feedback once confirmed",
+        "Story 4.1: destructive command confirmation › validation failure and rapid clicks cannot bypass the destructive gate",
+        "Story 4.1: destructive command confirmation › a real settings modal prevents opening a nested destructive dialog",
+        "Story 4.1: destructive command confirmation › one modal reservation survives long preparation and refuses competing shell overlays",
+        "Story 4.1: destructive command confirmation › validation focus fallbacks use the next invalid target and survive a missing summary",
+        "Story 4.1: destructive command confirmation › removed destructive invoker restores focus to the route heading",
+        "Story 4.2: unsaved full-page command form abandonment guard › clean generated full-page command form navigates without warning",
+        "Story 4.2: unsaved full-page command form abandonment guard › dirty generated full-page command form below threshold navigates without warning",
+        "Story 4.2: unsaved full-page command form abandonment guard › dirty generated full-page command form after threshold supports stay, Escape, and leave",
+        "Story 4.2: unsaved full-page command form abandonment guard › removed edited control restores focus to the marked full-page command heading",
+        "Story 4.2: unsaved full-page command form abandonment guard › sequenced capture ignores a stale earlier edit after focus moves to a warning action",
+        "Story 4.3: one-at-a-time execution policy › FC-CNC contract records block-not-queue v1 semantics",
+        "Story 4.3: one-at-a-time execution policy › accepted pending command blocks another generated form until terminal confirmation",
+        "Story 13.3: View active command availability › a hidden active lifecycle offers no View active command target",
+        "Story 4.4: policy-gated command authorization › denied protected specimen command fails closed without leaking policy metadata",
+        "Story 4.4: policy-gated command authorization › a background denial focuses its heading only when the replaced form held focus",
+        "Story 13.3: unmapped rejection recovery focus › Edit and retry moves real browser focus to the first generated editor",
+        "Story 13.3: unmapped rejection recovery focus › unmapped rejection recovery actions work from the keyboard alone",
+        "FrontComposer accessibility and visual specimens › manifest names owned nonblank specimen routes and exactly six visual combinations",
+        "FrontComposer accessibility and visual specimens › type specimen is nonblank and passes blocking axe gate",
+        "FrontComposer accessibility and visual specimens › data-formatting specimen is nonblank and passes blocking axe gate",
+        "FrontComposer accessibility and visual specimens › page-toolbar specimen is nonblank and passes blocking axe gate",
+        "FrontComposer accessibility and visual specimens › type specimen renders required shell, density, badge, lifecycle, detail, and nav surfaces",
+        "FrontComposer accessibility and visual specimens › status icon touch interactions › status icons expose contextual labels and reveal tooltips on focus, hover, and touch",
+        "FrontComposer accessibility and visual specimens › data-formatting specimen renders deterministic text and accessible names",
+        "FrontComposer accessibility and visual specimens › keyboard flow reaches skip link, controls, grid, command form, detail, and nav without traps",
+        "FrontComposer accessibility and visual specimens › focus-visible indicator remains visible over lifecycle visuals",
+        "FrontComposer accessibility and visual specimens › story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion",
+        "FrontComposer accessibility and visual specimens › forced-colors and reduced-motion states are active and perceivable",
+        "FrontComposer accessibility and visual specimens › zoom and reflow keep critical controls reachable at 100%",
+        "FrontComposer accessibility and visual specimens › zoom and reflow keep critical controls reachable at 200%",
+        "FrontComposer accessibility and visual specimens › zoom and reflow keep critical controls reachable at 400%",
+        "FrontComposer accessibility and visual specimens › production-style route exposure fails closed when specimen host configuration is absent"
+      ],
+      "failures": [
+        {
+          "name": "Story 4.4: policy-gated command authorization › allowed protected specimen command renders the form and dispatches after authorization",
+          "result": "failed",
+          "kind": "failure",
+          "detail": "expect(locator).toBeVisible() failed"
+        },
+        {
+          "name": "FrontComposer accessibility and visual specimens › dark generated command specimens keep readable foreground contrast",
+          "result": "failed",
+          "kind": "error",
+          "detail": "page.evaluate: Error: Missing contrast sample target: [data-testid='fc-policy-command-specimen'] .fc-command-field fluent-text-input"
+        },
+        {
+          "name": "FrontComposer accessibility and visual specimens › visual baseline light compact",
+          "result": "failed",
+          "kind": "failure",
+          "detail": "expect(page).toHaveScreenshot(expected) failed"
+        },
+        {
+          "name": "FrontComposer accessibility and visual specimens › visual baseline light comfortable",
+          "result": "failed",
+          "kind": "failure",
+          "detail": "expect(page).toHaveScreenshot(expected) failed"
+        },
+        {
+          "name": "FrontComposer accessibility and visual specimens › visual baseline light roomy",
+          "result": "failed",
+          "kind": "failure",
+          "detail": "expect(page).toHaveScreenshot(expected) failed"
+        },
+        {
+          "name": "FrontComposer accessibility and visual specimens › visual baseline dark compact",
+          "result": "failed",
+          "kind": "failure",
+          "detail": "expect(page).toHaveScreenshot(expected) failed"
+        },
+        {
+          "name": "FrontComposer accessibility and visual specimens › visual baseline dark comfortable",
+          "result": "failed",
+          "kind": "failure",
+          "detail": "expect(page).toHaveScreenshot(expected) failed"
+        },
+        {
+          "name": "FrontComposer accessibility and visual specimens › visual baseline dark roomy",
+          "result": "failed",
+          "kind": "failure",
+          "detail": "expect(page).toHaveScreenshot(expected) failed"
+        }
+      ],
+      "notes": "The dark contrast check errors because the protected form sample is absent under Development authentication; it does not produce a measured contrast violation. JUnit distinguishes seven assertion failures from one error; all eight are counted as failed checks here.",
+      "originalXmlPath": "/tmp/frontcomposer-13-3-browser-development.xml",
+      "xmlStatus": "The captured original totals and log are retained. Its original XML path was later reused by the superseded parallel run; use finalVerification.commands.browser-isolated for the current result."
+    }
+  },
+  "temporaryGitIndex": "/tmp/frontcomposer-13-3-governance-5g_k9qkw.index",
+  "realGitIndexPreserved": true,
+  "notes": "The final scoped analyzer check uses a fresh isolated index including all new C# test files. Real-index byte hashes match before and after that validation; git diff --cached remains empty. An earlier whole-lane temporary-index run was superseded.",
+  "matrixAudit": {
+    "Validation": {
+      "result": "passed",
+      "browserTests": [
+        "Story 3.1: generated command forms › invalid generated editors expose invalid state and their error on the focusable control",
+        "Story 4.1: destructive command confirmation › validation focus fallbacks use the next invalid target and survive a missing summary"
+      ],
+      "xml": "/tmp/frontcomposer-13-3-final-browser-isolated.xml"
+    },
+    "Rejection/denial": {
+      "result": "passed",
+      "browserTests": [
+        "Story 4.4: policy-gated command authorization › a background denial focuses its heading only when the replaced form held focus",
+        "Story 13.3: unmapped rejection recovery focus › Edit and retry moves real browser focus to the first generated editor",
+        "Story 13.3: unmapped rejection recovery focus › unmapped rejection recovery actions work from the keyboard alone"
+      ],
+      "xml": "/tmp/frontcomposer-13-3-final-browser-isolated.xml"
+    },
+    "Confirmation": {
+      "result": "passed",
+      "browserTests": [
+        "Story 4.1: destructive command confirmation › cancel and Escape keep the destructive command idle and reusable",
+        "Story 4.1: destructive command confirmation › confirmation is required before dispatch and reaches terminal feedback once confirmed",
+        "Story 4.1: destructive command confirmation › a real settings modal prevents opening a nested destructive dialog",
+        "Story 4.1: destructive command confirmation › removed destructive invoker restores focus to the route heading"
+      ],
+      "xml": "/tmp/frontcomposer-13-3-final-browser-isolated.xml"
+    },
+    "Abandonment": {
+      "result": "passed",
+      "browserTests": [
+        "Story 4.2: unsaved full-page command form abandonment guard › dirty generated full-page command form after threshold supports stay, Escape, and leave",
+        "Story 4.2: unsaved full-page command form abandonment guard › removed edited control restores focus to the marked full-page command heading",
+        "Story 4.2: unsaved full-page command form abandonment guard › sequenced capture ignores a stale earlier edit after focus moves to a warning action"
+      ],
+      "xml": "/tmp/frontcomposer-13-3-final-browser-isolated.xml"
+    },
+    "Concurrency": {
+      "result": "passed",
+      "browserTests": [
+        "Story 4.3: one-at-a-time execution policy › accepted pending command blocks another generated form until terminal confirmation",
+        "Story 13.3: View active command availability › a hidden active lifecycle offers no View active command target"
+      ],
+      "xml": "/tmp/frontcomposer-13-3-final-browser-isolated.xml"
+    }
+  },
+  "completion": "in-progress; accepted implementation and patch tasks complete; full gates remain failed/blocked; no completion or Product approval claim",
+  "finalVerification": {
+    "commands": {
+      "sourcetools-build": {
+        "command": "dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj -c Release -m:1",
+        "exitCode": 0,
+        "log": "/tmp/frontcomposer-13-3-final-sourcetools-build.log",
+        "result": "Build succeeded; 0 warnings, 0 errors"
+      },
+      "shell-build": {
+        "command": "dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release -m:1",
+        "exitCode": 0,
+        "log": "/tmp/frontcomposer-13-3-final-shell-build.log",
+        "result": "Build succeeded; 0 warnings, 0 errors"
+      },
+      "counter-build": {
+        "command": "dotnet build samples/Counter/Counter.Web/Counter.Web.csproj -c Release -m:1",
+        "exitCode": 0,
+        "log": "/tmp/frontcomposer-13-3-final-counter-build.log",
+        "result": "Build succeeded; 0 warnings, 0 errors"
+      },
+      "shell-default-normal": {
+        "command": [
+          "dotnet",
+          "tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+          "-trait-",
+          "Category=GovernanceBuild",
+          "-trait-",
+          "Category=Performance",
+          "-trait-",
+          "Category=e2e-palette",
+          "-trait-",
+          "Category=NightlyProperty",
+          "-trait-",
+          "Category=Quarantined",
+          "-result-xml",
+          "/tmp/frontcomposer-13-3-final-shell-default-normal.xml"
+        ],
+        "env": {
+          "DiffEngine_Disabled": "true"
+        },
+        "exitCode": 1,
+        "log": "/tmp/frontcomposer-13-3-final-shell-default-normal.log",
+        "xml": "/tmp/frontcomposer-13-3-final-shell-default-normal.xml",
+        "results": {
+          "total": 3076,
+          "passed": 3067,
+          "failed": 9,
+          "skipped": 0
+        },
+        "failures": [
+          "Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.GeneratedSwitchDatePickerAndEnumSelectHonorTheFieldContract",
+          "Hexalith.FrontComposer.Shell.Tests.Services.Lifecycle.LifecycleStateServiceTests.InformationDisabledOversizedIdentifiersAddNoDigestAllocationsOrEntries",
+          "Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.ToolchainPins_MatchApprovedDotnetAndAspireVersions",
+          "Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval",
+          "Hexalith.FrontComposer.Shell.Tests.Generated.CounterStoryVerificationTests.CounterProjectionView_LoadedState_RendersColumnsAndFormatting",
+          "Hexalith.FrontComposer.Shell.Tests.Generated.CounterStoryVerificationTests.StatusProjectionView_NullAndBooleanValues_RenderSnapshot",
+          "Hexalith.FrontComposer.Shell.Tests.Governance.InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds",
+          "Hexalith.FrontComposer.Shell.Tests.Governance.AnalyzerPolicyGovernanceTests.AnalyzerPolicy_IdentifierInventory_MatchesSeal",
+          "Hexalith.FrontComposer.Shell.Tests.Governance.FluentConformanceTests.Fluent_package_versions_are_v5_only_and_icons_match_components"
+        ]
+      },
+      "sourcetools-default": {
+        "command": [
+          "dotnet",
+          "tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Release/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll",
+          "-trait-",
+          "Category=GovernanceBuild",
+          "-trait-",
+          "Category=Performance",
+          "-trait-",
+          "Category=e2e-palette",
+          "-trait-",
+          "Category=NightlyProperty",
+          "-trait-",
+          "Category=Quarantined",
+          "-result-xml",
+          "/tmp/frontcomposer-13-3-final-sourcetools-default.xml"
+        ],
+        "env": {
+          "DiffEngine_Disabled": "true"
+        },
+        "exitCode": 1,
+        "log": "/tmp/frontcomposer-13-3-final-sourcetools-default.log",
+        "xml": "/tmp/frontcomposer-13-3-final-sourcetools-default.xml",
+        "results": {
+          "total": 1297,
+          "passed": 1295,
+          "failed": 2,
+          "skipped": 0
+        },
+        "failures": [
+          "Hexalith.FrontComposer.SourceTools.Tests.Diagnostics.DiagnosticRegistryTests.FrontComposerObsoleteAttributes_FollowDiagnosticDeprecationPolicy",
+          "Hexalith.FrontComposer.SourceTools.Tests.Integration.PackagedAnalyzerConsumerTests.PackagedAnalyzer_ContractsOnlyPayload_GeneratedShellConsumerCompiles"
+        ]
+      },
+      "shell-review-patches": {
+        "command": [
+          "dotnet",
+          "tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+          "-method",
+          "*GeneratedForm_FailedAccessibilityObservation_RetriesUntilInstalled",
+          "-method",
+          "*GeneratedForms_CommandSuffixAndNamespaceCollisions_KeepDistinctDomIdsAndTheLifecycleIdentity",
+          "-method",
+          "*SameGeneratedFormAndProtectedRendererInstancesUseDistinctIds",
+          "-method",
+          "*GeneratedForm_ClientValidation_RendersOneCompleteLinkedNonLiveSummary",
+          "-method",
+          "*CommandForm_RendererDelegation_FormBodyStructurallyIdentical",
+          "-result-xml",
+          "/tmp/frontcomposer-13-3-reviewfix-shell-focused.xml"
+        ],
+        "env": {
+          "DiffEngine_Disabled": "true"
+        },
+        "exitCode": 0,
+        "log": "/tmp/frontcomposer-13-3-reviewfix-shell-focused.log",
+        "xml": "/tmp/frontcomposer-13-3-reviewfix-shell-focused.xml",
+        "results": {
+          "total": 7,
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0
+        },
+        "failures": []
+      },
+      "emitter-review-patches": {
+        "command": [
+          "dotnet",
+          "tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Release/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll",
+          "-class",
+          "*CommandFormEmitterTests",
+          "-result-xml",
+          "/tmp/frontcomposer-13-3-reviewfix-sourcetools-focused.xml"
+        ],
+        "env": {
+          "DiffEngine_Disabled": "true"
+        },
+        "exitCode": 0,
+        "log": "/tmp/frontcomposer-13-3-reviewfix-sourcetools-focused.log",
+        "xml": "/tmp/frontcomposer-13-3-reviewfix-sourcetools-focused.xml",
+        "results": {
+          "total": 67,
+          "passed": 67,
+          "failed": 0,
+          "skipped": 0
+        },
+        "failures": []
+      },
+      "analyzer-governance": {
+        "command": [
+          "dotnet",
+          "tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+          "-class",
+          "*AnalyzerPolicyGovernanceTests",
+          "-trait-",
+          "Category=GovernanceBuild",
+          "-result-xml",
+          "/tmp/frontcomposer-13-3-final-analyzer-governance.xml"
+        ],
+        "env": {
+          "GIT_INDEX_FILE": "/tmp/frontcomposer-13-3-governance-5g_k9qkw.index",
+          "DiffEngine_Disabled": "true"
+        },
+        "exitCode": 0,
+        "log": "/tmp/frontcomposer-13-3-final-analyzer-governance.log",
+        "xml": "/tmp/frontcomposer-13-3-final-analyzer-governance.xml",
+        "results": {
+          "total": 6,
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0
+        },
+        "failures": []
+      },
+      "allocation-recheck": {
+        "command": [
+          "dotnet",
+          "tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+          "-method",
+          "*InformationDisabledOversizedIdentifiersAddNoDigestAllocationsOrEntries",
+          "-result-xml",
+          "/tmp/frontcomposer-13-3-final-allocation-recheck.xml"
+        ],
+        "env": {
+          "DiffEngine_Disabled": "true"
+        },
+        "exitCode": 0,
+        "log": "/tmp/frontcomposer-13-3-final-allocation-recheck.log",
+        "xml": "/tmp/frontcomposer-13-3-final-allocation-recheck.xml",
+        "results": {
+          "total": 1,
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0
+        },
+        "failures": []
+      },
+      "typecheck": {
+        "command": "npm --prefix tests/e2e run typecheck",
+        "exitCode": 0,
+        "log": "/tmp/frontcomposer-13-3-final-typecheck.log"
+      },
+      "counter-isolated-build": {
+        "command": [
+          "dotnet",
+          "build",
+          "samples/Counter/Counter.Web/Counter.Web.csproj",
+          "-c",
+          "Release",
+          "-m:1"
+        ],
+        "exitCode": 0,
+        "log": "/tmp/frontcomposer-13-3-final-counter-isolated-build.log"
+      },
+      "browser-isolated": {
+        "command": [
+          "./node_modules/.bin/playwright",
+          "test",
+          "--config",
+          "/tmp/frontcomposer-13-3-final-playwright.config.ts",
+          "--project=chromium",
+          "specs/destructive-command-confirmation.spec.ts",
+          "specs/form-abandonment-guard.spec.ts",
+          "specs/one-at-a-time-execution-policy.spec.ts",
+          "specs/policy-gated-command-authorization.spec.ts",
+          "specs/command-form-generation.spec.ts",
+          "specs/specimen-accessibility.spec.ts"
+        ],
+        "cwd": "tests/e2e",
+        "exitCode": 1,
+        "log": "/tmp/frontcomposer-13-3-final-browser-isolated.log",
+        "xml": "/tmp/frontcomposer-13-3-final-browser-isolated.xml",
+        "results": {
+          "total": 48,
+          "passed": 40,
+          "failed": 8,
+          "errors": 1,
+          "skipped": 0
+        },
+        "passingTests": [
+          "Story 3.1: generated command forms › counter sample exposes generated inline, compact, and full-page command forms",
+          "Story 3.1: generated command forms › compact generated form submits and reaches confirmed lifecycle feedback",
+          "Story 3.1: generated command forms › full-page generated form blocks invalid numbers then submits after correction",
+          "Story 3.1: generated command forms › invalid generated editors expose invalid state and their error on the focusable control",
+          "Story 3.2: command form density rule › non-derivable field count selects inline, compact inline, and full-page surfaces",
+          "Story 3.3: FC-CMD pending identity and correlation contract › generated compact form keeps identity framework-owned while command reaches pending confirmation",
+          "Story 4.1: destructive command confirmation › cancel and Escape keep the destructive command idle and reusable",
+          "Story 4.1: destructive command confirmation › confirmation is required before dispatch and reaches terminal feedback once confirmed",
+          "Story 4.1: destructive command confirmation › validation failure and rapid clicks cannot bypass the destructive gate",
+          "Story 4.1: destructive command confirmation › a real settings modal prevents opening a nested destructive dialog",
+          "Story 4.1: destructive command confirmation › one modal reservation survives long preparation and refuses competing shell overlays",
+          "Story 4.1: destructive command confirmation › validation focus fallbacks use the next invalid target and survive a missing summary",
+          "Story 4.1: destructive command confirmation › removed destructive invoker restores focus to the route heading",
+          "Story 4.2: unsaved full-page command form abandonment guard › clean generated full-page command form navigates without warning",
+          "Story 4.2: unsaved full-page command form abandonment guard › dirty generated full-page command form below threshold navigates without warning",
+          "Story 4.2: unsaved full-page command form abandonment guard › dirty generated full-page command form after threshold supports stay, Escape, and leave",
+          "Story 4.2: unsaved full-page command form abandonment guard › removed edited control restores focus to the marked full-page command heading",
+          "Story 4.2: unsaved full-page command form abandonment guard › sequenced capture ignores a stale earlier edit after focus moves to a warning action",
+          "Story 4.3: one-at-a-time execution policy › FC-CNC contract records block-not-queue v1 semantics",
+          "Story 4.3: one-at-a-time execution policy › accepted pending command blocks another generated form until terminal confirmation",
+          "Story 13.3: View active command availability › a hidden active lifecycle offers no View active command target",
+          "Story 4.4: policy-gated command authorization › denied protected specimen command fails closed without leaking policy metadata",
+          "Story 4.4: policy-gated command authorization › a background denial focuses its heading only when the replaced form held focus",
+          "Story 13.3: unmapped rejection recovery focus › Edit and retry moves real browser focus to the first generated editor",
+          "Story 13.3: unmapped rejection recovery focus › unmapped rejection recovery actions work from the keyboard alone",
+          "FrontComposer accessibility and visual specimens › manifest names owned nonblank specimen routes and exactly six visual combinations",
+          "FrontComposer accessibility and visual specimens › type specimen is nonblank and passes blocking axe gate",
+          "FrontComposer accessibility and visual specimens › data-formatting specimen is nonblank and passes blocking axe gate",
+          "FrontComposer accessibility and visual specimens › page-toolbar specimen is nonblank and passes blocking axe gate",
+          "FrontComposer accessibility and visual specimens › type specimen renders required shell, density, badge, lifecycle, detail, and nav surfaces",
+          "FrontComposer accessibility and visual specimens › status icon touch interactions › status icons expose contextual labels and reveal tooltips on focus, hover, and touch",
+          "FrontComposer accessibility and visual specimens › data-formatting specimen renders deterministic text and accessible names",
+          "FrontComposer accessibility and visual specimens › keyboard flow reaches skip link, controls, grid, command form, detail, and nav without traps",
+          "FrontComposer accessibility and visual specimens › focus-visible indicator remains visible over lifecycle visuals",
+          "FrontComposer accessibility and visual specimens › story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion",
+          "FrontComposer accessibility and visual specimens › forced-colors and reduced-motion states are active and perceivable",
+          "FrontComposer accessibility and visual specimens › zoom and reflow keep critical controls reachable at 100%",
+          "FrontComposer accessibility and visual specimens › zoom and reflow keep critical controls reachable at 200%",
+          "FrontComposer accessibility and visual specimens › zoom and reflow keep critical controls reachable at 400%",
+          "FrontComposer accessibility and visual specimens › production-style route exposure fails closed when specimen host configuration is absent"
+        ],
+        "failures": [
+          "Story 4.4: policy-gated command authorization › allowed protected specimen command renders the form and dispatches after authorization",
+          "FrontComposer accessibility and visual specimens › dark generated command specimens keep readable foreground contrast",
+          "FrontComposer accessibility and visual specimens › visual baseline light compact",
+          "FrontComposer accessibility and visual specimens › visual baseline light comfortable",
+          "FrontComposer accessibility and visual specimens › visual baseline light roomy",
+          "FrontComposer accessibility and visual specimens › visual baseline dark compact",
+          "FrontComposer accessibility and visual specimens › visual baseline dark comfortable",
+          "FrontComposer accessibility and visual specimens › visual baseline dark roomy"
+        ],
+        "environment": "Development specimen fallback; no tracked host edits; GPU workaround --disable-gpu --disable-software-rasterizer",
+        "failureReasons": {
+          "allowed protected specimen command": "Development lacks the Test-only authenticated principal, so the allowed-policy form is absent.",
+          "dark foreground contrast": "The check cannot find the same protected generated form sample; this is a missing sample, not a measured contrast violation.",
+          "six visual baselines": "Committed Test-host baselines differ from the Development fallback and current dependency pins. Baselines were not updated."
+        }
+      }
+    },
+    "analyzerInventory": {
+      "declarations": 3525,
+      "sha256": "910b1c39cf59af0405d5eea0a1d17fd6c3ce8b71355b3b0efd6a7fc1d92dd1de",
+      "temporaryGitIndex": "/tmp/frontcomposer-13-3-governance-5g_k9qkw.index",
+      "includedNewTestFiles": [
+        "tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcPaletteTriggerButtonTests.cs",
+        "tests/Hexalith.FrontComposer.Shell.Tests/Generated/Alternate/FocusCollision.cs",
+        "tests/Hexalith.FrontComposer.Shell.Tests/Generated/FocusCollision.cs",
+        "tests/Hexalith.FrontComposer.Shell.Tests/Generated/FocusCollisionCommand.cs"
+      ],
+      "realIndexHashBefore": "ad6606eaabdde6f64c8ceff2abf7968f2fae182ee5ac3f91dc422fe43bcec8c9",
+      "realIndexHashAfter": "ad6606eaabdde6f64c8ceff2abf7968f2fae182ee5ac3f91dc422fe43bcec8c9",
+      "realIndexPreservedDuringValidation": true
+    },
+    "remainingGateFailures": [
+      "Seven carried Shell dependency/toolchain, Fluent nullable-enum/icon snapshot, and EventStore identity failures.",
+      "Two carried SourceTools failures: Fluent consumer pin and the existing shortcut registrar obsolete-message policy.",
+      "Counter Test-host MapFrontComposerMcp boot failure; Development fallback has eight policy/sample/baseline failures.",
+      "Aspire startup restore timeout remains the recorded runtime baseline blocker."
+    ],
+    "limitations": [
+      "Background denial focus has mocked generated integration and synthetic browser replacement coverage. A real generated renderer authorization transition with a parent render during asynchronous capture remains deferred as VG11-02.",
+      "The Development fallback does not certify the Test-only allowed-policy specimen, its contrast sample, or committed Test-host visual baselines."
+    ],
+    "supersededRuns": {
+      "shell-global-temporary-index": {
+        "log": "/tmp/frontcomposer-13-3-final-shell-default.log",
+        "xml": "/tmp/frontcomposer-13-3-final-shell-default.xml",
+        "results": {
+          "total": 3076,
+          "passed": 3067,
+          "failed": 9,
+          "skipped": 0
+        },
+        "failures": [
+          "Hexalith.FrontComposer.Shell.Tests.Generated.CommandRendererWrapperIntegrationTests.GeneratedSwitchDatePickerAndEnumSelectHonorTheFieldContract",
+          "Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.ToolchainPins_MatchApprovedDotnetAndAspireVersions",
+          "Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval",
+          "Hexalith.FrontComposer.Shell.Tests.Generated.CounterStoryVerificationTests.CounterProjectionView_LoadedState_RendersColumnsAndFormatting",
+          "Hexalith.FrontComposer.Shell.Tests.Generated.CounterStoryVerificationTests.StatusProjectionView_NullAndBooleanValues_RenderSnapshot",
+          "Hexalith.FrontComposer.Shell.Tests.Governance.InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds",
+          "Hexalith.FrontComposer.Shell.Tests.Governance.AnalyzerPolicyGovernanceTests.AnalyzerPolicy_IdentifierInventory_MatchesSeal",
+          "Hexalith.FrontComposer.Shell.Tests.Governance.AnalyzerPolicyGovernanceTests.AnalyzerPolicy_GovernanceContract_FailsClosed",
+          "Hexalith.FrontComposer.Shell.Tests.Governance.FluentConformanceTests.Fluent_package_versions_are_v5_only_and_icons_match_components"
+        ],
+        "reason": "Sharing GIT_INDEX_FILE across the complete lane also exposed it to fixture repository operations, which replaced the temporary index with 20 fixture paths. Corrected with a normal-environment broad lane and a fresh, scoped isolated-index governance run."
+      },
+      "browser-parallel": {
+        "log": "/tmp/frontcomposer-13-3-final-browser-development.log",
+        "xml": "/tmp/frontcomposer-13-3-browser-parallel-superseded.xml",
+        "results": {
+          "total": 48,
+          "passed": 32,
+          "failed": 15,
+          "errors": 4,
+          "skipped": 1
+        },
+        "passingTests": [
+          "Story 3.1: generated command forms › counter sample exposes generated inline, compact, and full-page command forms",
+          "Story 3.1: generated command forms › compact generated form submits and reaches confirmed lifecycle feedback",
+          "Story 3.1: generated command forms › full-page generated form blocks invalid numbers then submits after correction",
+          "Story 3.1: generated command forms › invalid generated editors expose invalid state and their error on the focusable control",
+          "Story 3.2: command form density rule › non-derivable field count selects inline, compact inline, and full-page surfaces",
+          "Story 3.3: FC-CMD pending identity and correlation contract › generated compact form keeps identity framework-owned while command reaches pending confirmation",
+          "Story 4.1: destructive command confirmation › cancel and Escape keep the destructive command idle and reusable",
+          "Story 4.1: destructive command confirmation › confirmation is required before dispatch and reaches terminal feedback once confirmed",
+          "Story 4.1: destructive command confirmation › validation failure and rapid clicks cannot bypass the destructive gate",
+          "Story 4.1: destructive command confirmation › a real settings modal prevents opening a nested destructive dialog",
+          "Story 4.1: destructive command confirmation › one modal reservation survives long preparation and refuses competing shell overlays",
+          "Story 4.1: destructive command confirmation › validation focus fallbacks use the next invalid target and survive a missing summary",
+          "Story 4.1: destructive command confirmation › removed destructive invoker restores focus to the route heading",
+          "Story 4.2: unsaved full-page command form abandonment guard › clean generated full-page command form navigates without warning",
+          "Story 4.2: unsaved full-page command form abandonment guard › dirty generated full-page command form below threshold navigates without warning",
+          "Story 4.2: unsaved full-page command form abandonment guard › dirty generated full-page command form after threshold supports stay, Escape, and leave",
+          "Story 4.2: unsaved full-page command form abandonment guard › removed edited control restores focus to the marked full-page command heading",
+          "Story 4.2: unsaved full-page command form abandonment guard › sequenced capture ignores a stale earlier edit after focus moves to a warning action",
+          "Story 4.3: one-at-a-time execution policy › FC-CNC contract records block-not-queue v1 semantics",
+          "Story 4.3: one-at-a-time execution policy › accepted pending command blocks another generated form until terminal confirmation",
+          "Story 13.3: View active command availability › a hidden active lifecycle offers no View active command target",
+          "Story 4.4: policy-gated command authorization › denied protected specimen command fails closed without leaking policy metadata",
+          "Story 4.4: policy-gated command authorization › a background denial focuses its heading only when the replaced form held focus",
+          "FrontComposer accessibility and visual specimens › manifest names owned nonblank specimen routes and exactly six visual combinations",
+          "FrontComposer accessibility and visual specimens › keyboard flow reaches skip link, controls, grid, command form, detail, and nav without traps",
+          "FrontComposer accessibility and visual specimens › focus-visible indicator remains visible over lifecycle visuals",
+          "FrontComposer accessibility and visual specimens › story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion",
+          "FrontComposer accessibility and visual specimens › forced-colors and reduced-motion states are active and perceivable",
+          "FrontComposer accessibility and visual specimens › zoom and reflow keep critical controls reachable at 100%",
+          "FrontComposer accessibility and visual specimens › zoom and reflow keep critical controls reachable at 200%",
+          "FrontComposer accessibility and visual specimens › zoom and reflow keep critical controls reachable at 400%",
+          "FrontComposer accessibility and visual specimens › production-style route exposure fails closed when specimen host configuration is absent"
+        ],
+        "failures": [
+          "Story 4.4: policy-gated command authorization › allowed protected specimen command renders the form and dispatches after authorization",
+          "Story 13.3: unmapped rejection recovery focus › Edit and retry moves real browser focus to the first generated editor",
+          "FrontComposer accessibility and visual specimens › type specimen is nonblank and passes blocking axe gate",
+          "FrontComposer accessibility and visual specimens › data-formatting specimen is nonblank and passes blocking axe gate",
+          "FrontComposer accessibility and visual specimens › page-toolbar specimen is nonblank and passes blocking axe gate",
+          "FrontComposer accessibility and visual specimens › type specimen renders required shell, density, badge, lifecycle, detail, and nav surfaces",
+          "FrontComposer accessibility and visual specimens › dark generated command specimens keep readable foreground contrast",
+          "FrontComposer accessibility and visual specimens › status icon touch interactions › status icons expose contextual labels and reveal tooltips on focus, hover, and touch",
+          "FrontComposer accessibility and visual specimens › data-formatting specimen renders deterministic text and accessible names",
+          "FrontComposer accessibility and visual specimens › visual baseline light compact",
+          "FrontComposer accessibility and visual specimens › visual baseline light comfortable",
+          "FrontComposer accessibility and visual specimens › visual baseline light roomy",
+          "FrontComposer accessibility and visual specimens › visual baseline dark compact",
+          "FrontComposer accessibility and visual specimens › visual baseline dark comfortable",
+          "FrontComposer accessibility and visual specimens › visual baseline dark roomy"
+        ],
+        "reason": "Concurrent test lanes altered shared build outputs: the rejection host executable was briefly absent and module requests failed. An isolated Counter build and sequential browser run remove those extra failures."
+      },
+      "optional-docs-validator": {
+        "command": "pwsh ./eng/validate-docs.ps1",
+        "exitCode": 143,
+        "log": "/tmp/frontcomposer-13-3-final-docs.log",
+        "reason": "Stopped this optional run after identifying its broad solution build. It is not a passed check or a story verification gate."
+      }
+    },
+    "dependencyState": {
+      "Hexalith.Builds": {
+        "declaredGitlink": "0831915495485a97c8ccb691618418898bf7ae8b",
+        "checkout": "0831915495485a97c8ccb691618418898bf7ae8b",
+        "matchesCurrentGitlink": true
+      },
+      "Hexalith.EventStore": {
+        "declaredGitlink": "a3c2d5434fc262c6d24fbc77d2fe01da775a3fc4",
+        "checkout": "a3c2d5434fc262c6d24fbc77d2fe01da775a3fc4",
+        "matchesCurrentGitlink": true
+      },
+      "note": "Both checkouts match current HEAD gitlinks. Current pinned versions still disagree with governance/story-approved identities; historical implementation notes cite earlier revisions. No checkout or dependency was updated during this run."
+    },
+    "separateVerificationRechecks": [
+      "The normal-index Shell lane reports the sealed inventory without the untracked palette-trigger test. The fresh isolated-index governance run includes every new test file and passes 6/6.",
+      "The allocation-budget check failed once in the broad normal-index Shell run (7,975,712 vs 7,680,000 bytes) and passed its unchanged isolated rerun 1/1."
+    ]
+  }
+}

@@ -237,6 +237,7 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
         GetField<string?>(guard, "_pendingTarget").ShouldBeNull();
         var nav = (TestNavigationManager)Services.GetRequiredService<NavigationManager>();
         nav.LastNavigateCall.ShouldBeNull("Escape must behave like Stay and preserve the form.");
+        cut.WaitForAssertion(() => JSInterop.Invocations.Count(invocation => invocation.Identifier == "restoreEditedOrigin").ShouldBe(1));
     }
 
     [Fact]

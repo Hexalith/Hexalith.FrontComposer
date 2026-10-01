@@ -150,6 +150,17 @@ public sealed class DestructiveCommandRendererIntegrationTests : CommandRenderer
         cut.Find("form").Submit();
         await derivedValues.RefreshStarted.Task.WaitAsync(TimeSpan.FromSeconds(2), Xunit.TestContext.Current.CancellationToken);
 
+        // The owner capture must already have reserved the slot when derived-value preparation begins.
+        JSRuntimeInvocation capture = FcFocusModule.Invocations
+            .Where(invocation => invocation.Identifier == "captureOverlayOrigin")
+            .ShouldHaveSingleItem();
+        capture.Arguments.Count.ShouldBe(3);
+        capture.Arguments[0].ShouldBeNull();
+        capture.Arguments[1].ShouldBe(false);
+        capture.Arguments[2].ShouldBeOfType<string>().ShouldStartWith("fc-trigger-");
+        FcFocusModule.Invocations.ShouldNotContain(invocation => invocation.Identifier == "releaseOverlayReservation"
+            || invocation.Identifier == "restoreOverlayOrigin");
+
         // The destructive path reserves the modal slot before the real derived-value await. A shell
         // overlay therefore fails closed while preparation is held and cannot open a competing dialog.
         _ = FcFocusModule.Setup<bool>("captureOverlayOrigin", invocation => invocation.Arguments.Count == 2).SetResult(false);

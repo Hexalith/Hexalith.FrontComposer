@@ -1109,18 +1109,35 @@ public class CommandFormEmitterTests {
         Regex.Count(masked, "__b.AddAttribute\\(#, \"MessageCondition\", FluentFieldCondition.Never\\);").ShouldBe(4);
 
         // BH3-08 — fc-focus.js projects that state and the description/error relationship onto the
-        // focusable control inside each Fluent editor's shadow root, once per form lifetime.
+        // focusable control inside each Fluent editor's shadow root. Failed installation is retried.
         source.ShouldContain("\"observeFieldAccessibility\", _formDomId");
         int afterRender = source.IndexOf("protected override async Task OnAfterRenderAsync(bool firstRender)", StringComparison.Ordinal);
         int observe = source.IndexOf("await ObserveFieldAccessibilityAsync().ConfigureAwait(false);", afterRender, StringComparison.Ordinal);
         observe.ShouldBeGreaterThan(afterRender);
-        source.IndexOf("if (firstRender)", afterRender, StringComparison.Ordinal).ShouldBeLessThan(observe);
+        int retryGuard = source.IndexOf("if (!_fieldAccessibilityObserved)", afterRender, StringComparison.Ordinal);
+        retryGuard.ShouldBeGreaterThan(afterRender);
+        retryGuard.ShouldBeLessThan(observe);
+        source.ShouldContain("if (await module.InvokeAsync<bool>(\"observeFieldAccessibility\", _formDomId).ConfigureAwait(false))");
+        source.ShouldContain("_fieldAccessibilityObserved = true;");
 
         // Numeric editors keep their model-field validation association (loop 2 KEEP).
         source.ShouldContain("\"ValidationFieldFor\", (global::System.Linq.Expressions.Expression<Func<Int32>>)(() => _model.Amount)");
 
         string withoutFields = CommandFormEmitter.Emit(BuildForm(System.Array.Empty<FormFieldModel>()), BuildFluxor());
         withoutFields.ShouldNotContain("observeFieldAccessibility");
+        withoutFields.ShouldNotContain("_fieldAccessibilityObserved");
+    }
+
+    [Theory]
+    [InlineData("First.Domain", "Foo", "fc-command-form-First-Domain-Foo-")]
+    [InlineData("First.Domain", "FooCommand", "fc-command-form-First-Domain-FooCommand-")]
+    [InlineData("Second.Domain", "Foo", "fc-command-form-Second-Domain-Foo-")]
+    public void Emit_DomIds_IncludeTheFullCommandIdentityWithoutChangingLifecycleIdentity(string commandNamespace, string typeName, string expectedPrefix)
+    {
+        string source = CommandFormEmitter.Emit(BuildForm([], typeName, commandNamespace), BuildFluxor(typeName, commandNamespace));
+
+        source.ShouldContain("private readonly string _formDomId = \"" + expectedPrefix + "\"");
+        GeneratedRenderTreeText.MaskSequenceArguments(source).ShouldContain("builder.AddAttribute(#, \"CommandId\", \"foo\");");
     }
 
     [Fact]

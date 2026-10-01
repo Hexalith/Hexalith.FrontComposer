@@ -135,6 +135,33 @@ public sealed class FcLifecycleWrapperRejectionTests : LifecycleWrapperTestBase 
     }
 
     [Fact]
+    public void MappedRejection_DismissedCard_ReturnsOnTheNextRejection()
+    {
+        (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push) = RenderWrapperWithLiveService(
+            rejectionMessage: "Correct Quantity and retry.",
+            mappedRejection: true);
+        push(RejectedNow());
+
+        cut.Find("[data-testid='fc-rejected-mapped-dismiss']").Click();
+
+        cut.WaitForAssertion(() => {
+            cut.FindAll("[data-testid='fc-rejected-mapped']").ShouldBeEmpty();
+            _ = JSInterop.VerifyInvoke("focusFirstEditableWithin", 1);
+            _ = cut.Find(".child-content-marker");
+        });
+
+        push(TransitionAt(CommandLifecycleState.Rejected, CommandLifecycleState.Idle, FakeTime.GetUtcNow()));
+        push(TransitionAt(CommandLifecycleState.Idle, CommandLifecycleState.Submitting, FakeTime.GetUtcNow()));
+        push(RejectedNow());
+
+        cut.WaitForAssertion(() => {
+            _ = cut.Find("[data-testid='fc-rejected-mapped']");
+            _ = cut.Find("[data-testid='fc-rejected-mapped-dismiss']");
+        });
+        _ = JSInterop.VerifyInvoke("focusFirstEditableWithin", 1);
+    }
+
+    [Fact]
     public void UnmappedRejectionOffersEveryKeyboardRecoveryActionAfterTheMessage() {
         (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push) = RenderWrapperWithLiveService(
             rejectionMessage: "Order locked.",

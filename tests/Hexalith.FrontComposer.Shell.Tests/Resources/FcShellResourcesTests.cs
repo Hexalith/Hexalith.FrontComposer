@@ -332,6 +332,8 @@ public sealed class FcShellResourcesTests {
     [InlineData("RejectionReturn", "Return", "Retour")]
     [InlineData("RejectionCopySupportReference", "Copy support reference", "Copier la référence de support")]
     [InlineData("RejectionSupportReferenceCopied", "Support reference copied", "Référence de support copiée")]
+    [InlineData("RejectionSupportReferenceCopyFailed", "Copy failed. Use the codes shown.", "Échec de la copie. Utilisez les codes affichés.")]
+    [InlineData("MappedRejectionDismiss", "Dismiss", "Fermer")]
     [InlineData("RejectionSupportReferenceTemplate", "Error code: {0}, documentation code: {1}", "Code d'erreur\u00A0: {0}, code de documentation\u00A0: {1}")]
     public void UnmappedRejectionRecoveryKeysResolveInBothLocales(string key, string enValue, string frValue) {
         // Story 13.3 VR-03 — every keyboard recovery action and the copied support reference are localized.
@@ -363,10 +365,25 @@ public sealed class FcShellResourcesTests {
     [InlineData("ActiveCommandLifecycleHeading")]
     [InlineData("DestructiveConfirmationTitleTemplate")]
     [InlineData("MappedRejectionSummaryMessage")]
+    [InlineData("MappedRejectionSummaryMessageSingle")]
     [InlineData("RejectionSupportReferenceTemplate")]
     [InlineData("ValidationSummaryMessage")]
     public void CommandSafetyResourceKeyPlaceholderCountMatchesAcrossLocales(string key)
         => AssertPlaceholderParity(key);
+
+    [Theory]
+    [InlineData("en", "The command was rejected. Correct the mapped error before submitting again. One error.")]
+    [InlineData("fr", "La commande a été rejetée. Corrigez l'erreur associée avant un nouvel envoi. Une erreur.")]
+    public void MappedRejectionSummaryMessageSingle_BothLocales_KeepTheCanonicalSentenceWithoutPlaceholders(string cultureName, string expected)
+    {
+        CultureInfo culture = new(cultureName);
+        ResourceManager manager = new(typeof(FcShellResources));
+        string template = manager.GetString("MappedRejectionSummaryMessageSingle", culture).ShouldNotBeNull();
+
+        template.ShouldBe(expected);
+        ExtractFormatPlaceholderIndices(template).ShouldBeEmpty();
+        string.Format(culture, template, 1).ShouldBe(expected);
+    }
 
     private static void AssertPlaceholderParity(string key) {
         ResourceManager manager = new(typeof(FcShellResources));

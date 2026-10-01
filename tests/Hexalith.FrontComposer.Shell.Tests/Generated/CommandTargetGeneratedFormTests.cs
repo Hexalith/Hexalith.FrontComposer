@@ -856,8 +856,8 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
 
         service.DispatchCount.ShouldBe(0);
         cut.Markup.ShouldContain("Workspace unavailable");
-        // E3-14 — a scope failure is not a blocked concurrent submit, so the AM-20 copy is absent.
-        cut.Markup.ShouldNotContain("This command did not run. Another command is already in progress.");
+        // AM-20 belongs to blocked concurrent submits; a scope failure leaves its status node empty.
+        cut.Find("[data-testid='fc-command-blocked-status']").TextContent.ShouldBeEmpty();
         pending.Snapshot().ShouldBeEmpty();
         indicators.Snapshot("Counter:Counter.Domain.CounterProjection").ShouldBeEmpty();
     }

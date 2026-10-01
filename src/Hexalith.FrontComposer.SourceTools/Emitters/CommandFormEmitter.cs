@@ -64,6 +64,7 @@ public static class CommandFormEmitter {
         string escapedButtonLabel = EscapeString(form.ButtonLabel);
         string commandFqn = form.CommandFullyQualifiedName;
         bool hasAuthorizationPolicy = !string.IsNullOrWhiteSpace(form.AuthorizationPolicyName);
+        bool hasEditableFields = form.Fields.Any(field => field.TypeCategory != FormFieldTypeCategory.Placeholder);
 
         _ = sb.AppendLine("/// <summary>");
         _ = sb.AppendLine("/// Auto-generated command form for <see cref=\"" + form.TypeName + "\"/>.");
@@ -141,11 +142,15 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    private bool _disposed;");
         _ = sb.AppendLine("    private bool _externalSubmitRegistered;");
         _ = sb.AppendLine("    private bool _interactiveReady;");
+        if (hasEditableFields) {
+            _ = sb.AppendLine("    private bool _fieldAccessibilityObserved;");
+        }
         _ = sb.AppendLine("    private string? _submittedCorrelationId;");
         _ = sb.AppendLine("    private int _acceptedAssociationSucceeded;");
         // Story 13.3 ULID policy — per-instance DOM ids come from a process-local counter, not a random GUID.
         _ = sb.AppendLine("    private static int _formDomIdSequence;");
-        _ = sb.AppendLine("    private readonly string _formDomId = \"fc-command-form-" + BuildLifecycleCommandId(form.TypeName) + "-\" + System.Threading.Interlocked.Increment(ref _formDomIdSequence).ToString(CultureInfo.InvariantCulture);");
+        // Preserve namespace, casing and the Command suffix; the counter is scoped to this generated type.
+        _ = sb.AppendLine("    private readonly string _formDomId = \"fc-command-form-" + EscapeString(commandFqn.Replace('.', '-')) + "-\" + System.Threading.Interlocked.Increment(ref _formDomIdSequence).ToString(CultureInfo.InvariantCulture);");
         _ = sb.AppendLine("    private FcValidationSummary? _validationSummary;");
         _ = sb.AppendLine("    private FcCommandBlockedOutcome? _blockedOutcome;");
         _ = sb.AppendLine("    private bool _hostBlockedOutcomePresented;");
@@ -605,11 +610,10 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    /// <inheritdoc />");
-        bool hasEditableFields = form.Fields.Any(field => field.TypeCategory != FormFieldTypeCategory.Placeholder);
         _ = sb.AppendLine("    protected override async Task OnAfterRenderAsync(bool firstRender)");
         _ = sb.AppendLine("    {");
         if (hasEditableFields) {
-            _ = sb.AppendLine("        if (firstRender)");
+            _ = sb.AppendLine("        if (!_fieldAccessibilityObserved)");
             _ = sb.AppendLine("        {");
             _ = sb.AppendLine("            // Story 13.3 VR-01 / BH3-08 — keep each editor's invalid state and description/error");
             _ = sb.AppendLine("            // relationship on the focusable control inside its Fluent shadow root for every later render.");
@@ -1763,7 +1767,10 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        try");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            await using var module = await JS.InvokeAsync<global::Microsoft.JSInterop.IJSObjectReference>(\"import\", \"./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js\").ConfigureAwait(false);");
-        _ = sb.AppendLine("            _ = await module.InvokeAsync<bool>(\"observeFieldAccessibility\", _formDomId).ConfigureAwait(false);");
+        _ = sb.AppendLine("            if (await module.InvokeAsync<bool>(\"observeFieldAccessibility\", _formDomId).ConfigureAwait(false))");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                _fieldAccessibilityObserved = true;");
+        _ = sb.AppendLine("            }");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        catch (global::Microsoft.JSInterop.JSDisconnectedException) { }");
         _ = sb.AppendLine("        catch (global::Microsoft.JSInterop.JSException) { }");
