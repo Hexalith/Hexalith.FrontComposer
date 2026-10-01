@@ -5211,6 +5211,7 @@ def _validate_live_apphost(
     *,
     package_root: Path | None = None,
     runtime_manifest: dict[str, Any] | None = None,
+    require_current_match: bool = True,
 ) -> None:
     path = evidence_root / "apphost-smoke.json"
     smoke = _read_json(path, errors, "apphost-smoke.json")
@@ -5375,16 +5376,46 @@ def _validate_live_apphost(
         )
     program = repository_root / "src/Hexalith.FrontComposer.AppHost/Program.cs"
     project = repository_root / "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj"
+    topology_hashes: dict[str, str] = {}
+    for source in (program, project):
+        relative = source.relative_to(repository_root).as_posix()
+        if require_current_match:
+            topology_hashes[relative] = _sha256(source, errors)
+            continue
+        # Successor preparation authenticates the sealed predecessor manifest and
+        # evidence before reaching this check. Compare its recorded topology with
+        # that capture, whose bytes can differ from today's source and checkout EOL.
+        entries = runtime_manifest.get("entries") if isinstance(runtime_manifest, dict) else None
+        bindings = [
+            item for item in entries
+            if isinstance(item, dict) and item.get("path") == relative
+        ] if isinstance(entries, list) else []
+        if (
+            len(bindings) != 1
+            or bindings[0].get("kind") != "file"
+            or not isinstance(bindings[0].get("sha256"), str)
+            or not SHA256_RE.fullmatch(bindings[0]["sha256"])
+        ):
+            errors.append(
+                "Historical AppHost topology requires exactly one sealed runtime-input "
+                f"file binding: {relative}"
+            )
+            topology_hashes[relative] = ""
+        else:
+            topology_hashes[relative] = bindings[0]["sha256"]
     expected_topology = {
         "programPath": "src/Hexalith.FrontComposer.AppHost/Program.cs",
-        "programSha256": _sha256(program, errors),
+        "programSha256": topology_hashes[program.relative_to(repository_root).as_posix()],
         "projectPath": "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
-        "projectSha256": _sha256(project, errors),
+        "projectSha256": topology_hashes[project.relative_to(repository_root).as_posix()],
         "modifiedForSmoke": False,
         "declaredResources": list(APPHOST_DECLARED_RESOURCES),
     }
     if not _exact(topology, expected_topology):
-        errors.append("Live AppHost smoke does not bind the exact current topology and resource set.")
+        topology_source = "current" if require_current_match else "captured"
+        errors.append(
+            f"Live AppHost smoke does not bind the exact {topology_source} topology and resource set."
+        )
     startup = smoke.get("startup", {})
     expected_startup = {
         "result": "passed",
@@ -6879,6 +6910,7 @@ def _validate_active(
             captured_provenance,
             errors,
             runtime_manifest=manifest,
+            require_current_match=require_current_match,
         )
     return errors, approval_issues, claimed
 

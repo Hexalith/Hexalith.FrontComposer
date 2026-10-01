@@ -967,8 +967,9 @@ jobs:
         working-directory: tests/e2e
         run: npx playwright install --with-deps chromium firefox webkit
 
+      # Schema negotiation reads the current Release generator manifest during test discovery.
       - name: Build Counter browser host
-        run: dotnet build samples/Counter/Counter.Web/Counter.Web.csproj --configuration Release -m:1
+        run: dotnet build samples/Counter/Counter.Web/Counter.Web.csproj --configuration Release -m:1 -p:EmitCompilerGeneratedFiles=true
 
       - name: Build CLI browser fixture
         run: dotnet build src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj --configuration Release -m:1

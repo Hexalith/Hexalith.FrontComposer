@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures/index.js';
 import { expectNoBlockingAxeViolations } from '../helpers/a11y.js';
+import { fieldEditorByLabel, waitForGeneratedFormReady } from '../helpers/fluent-fields.js';
 import { spawn } from 'node:child_process';
 import {
   getSpecimenRoute,
@@ -266,10 +267,18 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
   test('focus-visible indicator remains visible over lifecycle visuals', async ({ page }, testInfo) => {
     const route = getSpecimenRoute('type');
     await gotoSpecimen(page, route);
-    await page.getByTestId('fc-command-submit').focus();
-
-    const outline = await page.getByTestId('fc-command-submit').evaluate((element) => getComputedStyle(element).outlineStyle);
-    expect(outline).not.toBe('none');
+    // Initial route focus must finish before this keyboard-focus proof begins.
+    await expect(page.locator('#fc-type-specimen-title')).toBeFocused();
+    const submit = page.getByTestId('fc-command-submit');
+    const amount = page.getByTestId('fc-command-number');
+    await amount.focus();
+    await expect(amount).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(submit).toBeFocused();
+    await expect.poll(() => submit.evaluate((element) =>
+      document.activeElement === element
+      && element.matches(':focus-visible')
+      && getComputedStyle(element).outlineStyle !== 'none')).toBe(true);
     await page.screenshot({ path: testInfo.outputPath('focus-type-command-submit.png'), fullPage: false });
   });
 
@@ -515,6 +524,22 @@ const attachSpecimenGuards = (page: import('@playwright/test').Page) => {
 const gotoSpecimen = async (page: import('@playwright/test').Page, route: SpecimenRoute): Promise<void> => {
   await page.goto(route.path);
   await expect(page.locator(route.readySelector), `${route.path} missing ready marker`).toBeVisible();
+  await page.waitForFunction(() => [...document.querySelectorAll('*')]
+    .filter((element) => element.localName.includes('-'))
+    .every((element) => customElements.get(element.localName) !== undefined));
+  await expect(page.locator('.fc-shell-root')).toHaveAttribute('data-fc-interactive', 'true');
+  for (const form of await page.locator('.fc-command-form').all()) {
+    await waitForGeneratedFormReady(form);
+  }
+  if (route.name === 'type') {
+    for (const section of ['fc-destructive-command-specimen', 'fc-policy-command-specimen']) {
+      const form = page.getByTestId(section).locator('.fc-command-form');
+      await expect(fieldEditorByLabel(form, 'Record Id')).toHaveAccessibleName(/^Record Id(?:,.*)?$/u);
+      await expect(fieldEditorByLabel(form, 'Reason')).toHaveAccessibleName(/^Reason(?:,.*)?$/u);
+    }
+    await expect(page.getByTestId('fc-destructive-command-specimen')
+      .getByRole('combobox', { name: 'Retention', exact: true })).toHaveAttribute('aria-expanded', 'false');
+  }
   for (const selector of route.requiredSections) {
     const count = await page.locator(selector).count();
     expect(count, `${route.path} missing ${selector}`).toBeGreaterThan(0);

@@ -850,6 +850,17 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                 "sha256": hashlib.sha256(editorconfig_data).hexdigest(),
             },
         ]
+        # Synthetic active/live packets use the current AppHost. Keep their sealed
+        # manifest consistent too, while historical regression tests retain it as
+        # the capture boundary after changing only the temporary current source.
+        for item in fixture_manifest["entries"]:
+            if item["path"] in (
+                "src/Hexalith.FrontComposer.AppHost/Program.cs",
+                "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+            ):
+                data = (ROOT / item["path"]).read_bytes()
+                item["bytes"] = len(data)
+                item["sha256"] = hashlib.sha256(data).hexdigest()
         fixture_manifest["entries"].sort(key=lambda item: item["path"])
         fixture_manifest["treeSha256"] = evidence._runtime_tree_sha256(
             fixture_manifest["entries"]
@@ -1954,6 +1965,143 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                 any(f"Missing valid receipt for required role: {role}" in issue for issue in approval_issues),
                 approval_issues,
             )
+
+    def test_successor_preparation_uses_sealed_topology_after_current_source_drift(self) -> None:
+        sources = [
+            self.artifact_root / "src/Hexalith.FrontComposer.AppHost/Program.cs",
+            self.artifact_root / "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+        ]
+        original = {path: path.read_bytes() for path in sources}
+        sealed_manifest = (self.active_root / "frontcomposer-runtime-inputs.json").read_bytes()
+        for drift in ("checkout-eol", "source-change"):
+            with self.subTest(drift=drift):
+                for path, data in original.items():
+                    if drift == "checkout-eol":
+                        changed = data.replace(b"\r\n", b"\n")
+                        if changed == data:
+                            changed = data.replace(b"\n", b"\r\n")
+                    else:
+                        changed = data + b"\n<!-- successor topology change -->\n"
+                    path.write_bytes(changed)
+                errors, _, claimed = self.validate_successor_preparation()
+                self.assertEqual(errors, [])
+                self.assertFalse(claimed)
+                active_errors, _, _ = self.validate_active()
+                self.assertTrue(
+                    any("exact current topology" in error for error in active_errors),
+                    active_errors,
+                )
+                self.assertEqual(
+                    (self.active_root / "frontcomposer-runtime-inputs.json").read_bytes(),
+                    sealed_manifest,
+                )
+
+    def test_successor_preparation_rejects_sealed_topology_tampering(self) -> None:
+        path = self.active_root / "recapture/apphost-smoke.json"
+        original = path.read_bytes()
+        for field in ("programSha256", "projectSha256"):
+            with self.subTest(field=field):
+                path.write_bytes(original)
+                smoke = _read_json(path)
+                smoke["topology"][field] = "0" * 64
+                _write_json(path, smoke)
+                errors, _, _ = self.validate_successor_preparation()
+                self.assertTrue(
+                    any("Active recapture SHA-256 mismatch" in error for error in errors),
+                    errors,
+                )
+                self.assertTrue(
+                    any("exact captured topology" in error for error in errors),
+                    errors,
+                )
+
+    def test_successor_preparation_rejects_coordinated_topology_resealing(self) -> None:
+        original_identity_hash = _sha256(self.identity_path)
+        manifest_path = self.active_root / "frontcomposer-runtime-inputs.json"
+        manifest = _read_json(manifest_path)
+        topology_paths = {
+            "src/Hexalith.FrontComposer.AppHost/Program.cs": "programSha256",
+            "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj": "projectSha256",
+        }
+        forged_hash = "0" * 64
+        for item in manifest["entries"]:
+            if item["path"] in topology_paths:
+                item["sha256"] = forged_hash
+        manifest["treeSha256"] = evidence._runtime_tree_sha256(manifest["entries"])
+        _write_json(manifest_path, manifest)
+        runtime_binding = {
+            "path": evidence.RUNTIME_INPUT_MANIFEST_PATH,
+            "sha256": _sha256(manifest_path),
+            "treeSha256": manifest["treeSha256"],
+        }
+        for path in (
+            self.identity_path,
+            self.active_root / "recapture-decision.json",
+            self.active_root / "approval-subject.json",
+        ):
+            document = _read_json(path)
+            document["runtimeInputs"] = runtime_binding
+            _write_json(path, document)
+
+        def reseal_smoke(smoke: dict[str, Any]) -> None:
+            smoke["identity"]["runtimeInputTreeSha256"] = manifest["treeSha256"]
+            for field in topology_paths.values():
+                smoke["topology"][field] = forged_hash
+            for item in smoke["startup"]["outputPreparation"]["evaluatedInputBinding"]["inputs"]:
+                if item["authority"] == "repository" and item["path"] in topology_paths:
+                    item["sha256"] = forged_hash
+
+        # Reseal every downstream manifest, evidence, decision, and subject binding.
+        # The original predecessor anchor must still reject this coherent forgery.
+        self.repin_active_recapture("apphost-smoke.json", reseal_smoke)
+        self.repin_active_recapture(
+            "run-evidence.json",
+            lambda receipt: receipt.__setitem__("runtimeInputTreeSha256", manifest["treeSha256"]),
+        )
+        errors, _, claimed = self.validate_successor_preparation(
+            expected_identity_hash=original_identity_hash,
+        )
+        self.assertEqual(
+            errors,
+            ["Identity v3 is not byte-identical to the future-v4 predecessor."],
+        )
+        self.assertFalse(claimed)
+
+    def test_historical_topology_rejects_missing_duplicate_or_invalid_manifest_bindings(self) -> None:
+        manifest = _read_json(self.active_root / "frontcomposer-runtime-inputs.json")
+        provenance = {
+            "sourceSha": evidence.ACTIVE_SOURCE_SHA,
+            "releaseVersion": evidence.ACTIVE_VERSION,
+            "buildsSha": evidence.ACTIVE_BUILDS_SHA,
+            "frontComposerRevision": manifest["capturedRevision"],
+            "runtimeInputTreeSha256": manifest["treeSha256"],
+        }
+        program_path = "src/Hexalith.FrontComposer.AppHost/Program.cs"
+        for invalid in ("missing", "duplicate", "invalid-kind", "invalid-hash", "missing-manifest"):
+            with self.subTest(invalid=invalid):
+                changed = copy.deepcopy(manifest)
+                binding = next(item for item in changed["entries"] if item["path"] == program_path)
+                if invalid == "missing":
+                    changed["entries"].remove(binding)
+                elif invalid == "duplicate":
+                    changed["entries"].append(copy.deepcopy(binding))
+                elif invalid == "invalid-kind":
+                    binding["kind"] = "absent"
+                elif invalid == "invalid-hash":
+                    binding["sha256"] = "invalid"
+                errors: list[str] = []
+                evidence._validate_live_apphost(
+                    self.active_root / "recapture",
+                    self.artifact_root,
+                    provenance,
+                    errors,
+                    runtime_manifest=None if invalid == "missing-manifest" else changed,
+                    require_current_match=False,
+                )
+                self.assertTrue(
+                    any("exactly one sealed runtime-input file binding" in error for error in errors),
+                    errors,
+                )
 
     def test_successor_cli_forwards_the_exact_four_coordinate_tuple(self) -> None:
         result, stdout, stderr = self.run_successor_cli()
