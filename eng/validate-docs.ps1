@@ -363,12 +363,12 @@ function Invoke-Process([string]$FileName, [string[]]$Arguments, [string]$Workin
 }
 
 function Prepare-DocFxReferences {
-    # Resolve package dependencies from the pinned SDK/catalog. Assembly metadata uses
-    # runtime framework assemblies: mixing SDK reference facades with DocFx's automatically
-    # resolved runtime assemblies makes Roslyn lose predefined types such as System.Object.
+    # Resolve package/project dependencies from the pinned SDK/catalog. DocFx resolves each
+    # assembly's framework itself; a netstandard input can select an older installed runtime
+    # than a net10 input. Adding SDK facades or one runtime's assemblies to every input mixes
+    # core libraries and makes Roslyn lose predefined types such as System.Object.
     $config = Get-Content -LiteralPath (Join-Path $DocsRoot 'docfx.json') -Raw | ConvertFrom-Json
     $references = @{}
-    $runtimeTargets = @{}
     foreach ($metadata in $config.metadata) {
         foreach ($source in $metadata.src) {
             $sourceRoot = [System.IO.Path]::GetFullPath((Join-Path $DocsRoot $source.src))
@@ -380,15 +380,18 @@ function Prepare-DocFxReferences {
                 $project = Join-Path $sourceRoot "$($Matches.project)/$($Matches.assembly).csproj"
                 $configuration = $Matches.configuration
                 $framework = $Matches.framework
-                if ($framework -match '^net(?<major>[1-9][0-9]*)\.(?<minor>[0-9]+)$') {
-                    $runtimeTargets["$($Matches.major).$($Matches.minor)"] = $true
-                }
                 $resolved = Invoke-Process 'dotnet' @(
                     'msbuild', $project, '-target:ResolveReferences', '-getItem:ReferencePath',
                     "-property:Configuration=$configuration", "-property:TargetFramework=$framework",
                     '-property:BuildProjectReferences=false', '-maxcpucount:1', '-nodeReuse:false'
                 ) $RepoRoot | ConvertFrom-Json
                 foreach ($reference in $resolved.Items.ReferencePath) {
+                    $frameworkReference = $reference.PSObject.Properties['FrameworkReferenceName']
+                    $packageId = $reference.PSObject.Properties['NuGetPackageId']
+                    if (($frameworkReference -and -not [string]::IsNullOrWhiteSpace($frameworkReference.Value)) -or
+                        ($packageId -and $packageId.Value -eq 'NETStandard.Library')) {
+                        continue
+                    }
                     $path = [string]$reference.Identity
                     $identity = [System.Reflection.AssemblyName]::GetAssemblyName($path)
                     $name = [System.IO.Path]::GetFileName($path)
@@ -399,28 +402,8 @@ function Prepare-DocFxReferences {
             }
         }
     }
-    $installedRuntimes = Invoke-Process 'dotnet' @('--list-runtimes') $RepoRoot
-    foreach ($target in $runtimeTargets.Keys) {
-        foreach ($frameworkName in @('Microsoft.NETCore.App', 'Microsoft.AspNetCore.App')) {
-            $candidates = @($installedRuntimes -split '\r?\n' | ForEach-Object {
-                if ($_ -match '^(?<name>Microsoft\.(?:NETCore|AspNetCore)\.App) (?<version>[0-9]+\.[0-9]+\.[0-9]+) \[(?<path>.+)\]$') {
-                    $version = [version]$Matches.version
-                    if ($Matches.name -eq $frameworkName -and "$($version.Major).$($version.Minor)" -eq $target) {
-                        @{ Version = $version; Path = Join-Path $Matches.path $Matches.version }
-                    }
-                }
-            })
-            $runtime = $candidates | Sort-Object { $_.Version } -Descending | Select-Object -First 1
-            if (-not $runtime) { throw "DocFx needs an installed $frameworkName $target runtime for its API inputs." }
-            foreach ($assembly in Get-ChildItem -LiteralPath $runtime.Path -Filter '*.dll' -File) {
-                try { $identity = [System.Reflection.AssemblyName]::GetAssemblyName($assembly.FullName) }
-                catch [System.BadImageFormatException] { continue } # Windows runtime folders also contain native DLLs.
-                $references[$assembly.Name] = @{ Path = $assembly.FullName; Identity = $identity }
-            }
-        }
-    }
-    if (-not $references.ContainsKey('System.Runtime.dll')) {
-        throw 'DocFx reference resolution did not produce System.Runtime.dll.'
+    if ($references.Count -eq 0) {
+        throw 'DocFx reference resolution did not produce package or project references.'
     }
     $referenceRoot = Join-Path $ArtifactsRoot 'api-references'
     if (Test-Path -LiteralPath $referenceRoot) { Remove-Item -LiteralPath $referenceRoot -Recurse -Force }
