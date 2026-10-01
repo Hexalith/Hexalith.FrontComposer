@@ -2,7 +2,7 @@
 title: 'Story 13.3: Preserve Focus and Input Through Command Safety Outcomes'
 type: 'feature'
 created: '2026-09-28'
-status: 'in-progress'
+status: 'in-review'
 route: 'dispatch'
 review_loop_iteration: 3
 baseline_commit: '52fa0739ab8dfb02e1b9d8b5b05d2fd318f220d8'
@@ -765,6 +765,34 @@ Also apply every iteration-3 `patch` row in the triage log.
 | 11 | edge-case-hunter | E11-08: Queued confirmation callback can outlive its form. | low | The existing lifecycle callback already checked ownership before invoking an asynchronous event callback; the new dispatcher hop changes scheduling. A disposal/navigation interleave needs additional ownership guards beyond the ordinary delivered confirmation path. | reject |
 | 11 | verification-gap | VG11-01: Story 13.3 browser assertions are absent from blocking CI. | medium | carried iteration-9/10 deferred CI-enrollment item: Test-host MapFrontComposerMcp boot repair and enrollment remain the same follow-up. Dedicated Chromium checks ran locally in this pass. | defer |
 | 11 | verification-gap | VG11-02: Background denial coverage bypasses a generated renderer render during capture. | medium | Filed regression gap: bUnit mocks capture, browser coverage replaces synthetic DOM, and no real renderer auth transition observes a parent render during the round trip. The pending gate already unmounted focused forms before Story 13.3; resolving that pre-existing gate and obtaining authenticated Test-host coverage remain follow-up work. | defer |
+| 12 | blind-hunter | BH12-01: The keyboard tracker still treats any `role="dialog"` ancestor as a modal. | medium | `fc-keyboard.js` records origins and Ctrl+K/Ctrl+comma targets only outside `[role="dialog"], fluent-dialog`, while `captureOverlayOrigin` admits non-modal popovers. A filter or column popover therefore does not become the return origin. | patch |
+| 12 | blind-hunter | BH12-02: `hasOpenModal` treats an unupgraded `fluent-dialog` host as open. | low | When the host has no inner `dialog`, the fallback is `host.isConnected`, so any connected host keeps a non-durable reservation from expiring. Count only an inner dialog that is open. | patch |
+| 12 | blind-hunter | BH12-03: A refused overlay capture stays silent. | low | carried BH10-02/BH2-14: refusal is the single-modal-slot outcome, and shell overlays refuse only while another launch holds the slot. | reject |
+| 12 | blind-hunter | BH12-04: Confirm restores focus to the invoker and can overwrite a programmatic move. | false | `restoreOverlayOrigin` is the dialog-close return to the captured trigger. The confirmation matrix requires that return for cancel, and confirm uses the same close path. | reject |
+| 12 | blind-hunter | BH12-05: Summary links suppress the native href before deferred focus is proven. | low | carried E10-02/BH3-16: the flag is set after the focus call is scheduled, and the previously rejected proof gap remains. | reject |
+| 12 | blind-hunter | BH12-06: A field-accessibility observer is retained after its form root disconnects. | medium | `observeFieldAccessibility` closes over the root and never disconnects, so a navigated-away form stays retained. The settle-watcher `relatedTarget == null` half is carried E4-14 and is not patched again. | patch |
+| 12 | blind-hunter | BH12-07: One faulted blocked-outcome attempt rejects later announcements. | false | carried BH10-04: interop helpers still catch their failure types, including `TaskCanceledException`, before the next attempt awaits the chain. | reject |
+| 12 | blind-hunter | BH12-08: Localized summary and lifecycle templates can throw from `string.Format`. | low | carried E10-13/BH8-08: shipped EN/FR placeholders match, and only a replaced localizer reaches the throw. A guard is more than a direct correction. | reject |
+| 12 | blind-hunter | BH12-09: Copy support reference only renames the button. | low | carried BH10-12/AA5-02: the recorded decision is a focused-button relabel of the codes already shown. | reject |
+| 12 | blind-hunter | BH12-10: Field descriptions and group legends are not localized. | low | carried BH10-07: explicit adopter attribute values are emitted literally, as explicit labels are. | reject |
+| 12 | blind-hunter | BH12-11: A confirmed form still warns on the next navigation. | false | `HandleNavigationChangingAsync` resets the anchor when `EditContext.IsModified()` is false, which `MarkAsUnmodified` establishes before navigation. The separate EditContext-swap timer is carried BH9B-10 and is not deferred again. | reject |
+| 12 | blind-hunter | BH12-12: The rejection catch notifies the edit context off the renderer dispatcher. | maybe-false | carried E7-17: the baseline 400 and 409 catches made the same call after the same `ConfigureAwait(false)` awaits. Not deferred again. | defer |
+| 12 | blind-hunter | BH12-13: A forced zero-field return uses `getElementById` on a shared trigger id. | low | carried BH10-05/BH4-02: the non-force path keeps the focused matching trigger; the force path still needs several same-command instances. | reject |
+| 12 | blind-hunter | BH12-14: `labelDialog` uses a cross-shadow id reference and a fixed retry. | low | carried BH10-14: `aria-label` names the dialog in Chromium. | reject |
+| 12 | blind-hunter | BH12-15: A blocked submit still publishes a warning beside AM-20. | false | carried BH10-17: no Shell subscriber announces published warnings, and the baseline published the same kind. | reject |
+| 12 | blind-hunter | BH12-16: The clipped lifecycle heading stays in the accessibility tree. | low | BH5-02 keeps that heading rendered so it can take focus. `aria-hidden` would remove the target, which is more than a direct correction. | reject |
+| 12 | blind-hunter | BH12-17: The migration note omits submodule pointer moves. | low | Those gitlink updates are not adopter-visible command-form breaks, so operators do not meet them through the 4.5-to-4.6 note. | reject |
+| 12 | edge-case-hunter | E12-01: A scope change after `SubmittedAction` returns without resetting the lifecycle. | medium | The return without `ResetToIdleAction` was already in the baseline. This diff only replaced `SetCommandInProgressWarning` with `PresentScopeUnavailableAsync` on that path. | defer |
+| 12 | edge-case-hunter | E12-02: Settling the lifecycle heading can leave focus on `document.body`. | medium | `watchLifecycleSettle` stops after `focusFirstEditableWithin` fails for both the form and the wrapper. The code map requires a heading fallback so focus never stays on `body`. | patch |
+| 12 | edge-case-hunter | E12-03: The field observer retains a disconnected form root. | medium | Same root cause as BH12-06. | patch |
+| 12 | edge-case-hunter | E12-04: A trigger press inside a non-modal dialog keeps a stale overlay origin. | medium | Same root cause as BH12-01. `fc-keyboard.js` line 14 still uses `[role="dialog"], fluent-dialog`. | patch |
+| 12 | edge-case-hunter | E12-05: Ctrl+K or Ctrl+comma inside a non-modal dialog keeps a stale overlay origin. | medium | Same root cause as BH12-01. `fc-keyboard.js` line 194 uses the same wide selector. | patch |
+| 12 | edge-case-hunter | E12-06: Palette dispose clears a durable destructive reservation. | false | The only caller is `FcCommandPalette` dispose. The single modal slot means a destructive confirmation is not open on that path. | reject |
+| 12 | edge-case-hunter | E12-07: A faulted blocked presentation drops later announcements. | false | carried BH10-04/BH12-07. | reject |
+| 12 | edge-case-hunter | E12-08: A failed summary-link activation neither focuses nor navigates. | low | carried E10-01: a false result follows every generated fallback, where the native fragment also has no destination. A thrown interop clears `_scriptFocusAvailable` for the next activation. | reject |
+| 12 | edge-case-hunter | E12-09: An edit between `IsDirty = false` and `MarkAsUnmodified` is discarded. | low | The gap is one queued dispatcher turn. Closing it needs capture coordination, which is more than a direct correction for everyday use. | reject |
+| 12 | edge-case-hunter | E12-10: Confirmation can discard an intervening edit without warning. | low | Same root cause as E12-09. | reject |
+| 12 | verification-gap | VG12-01: Ctrl+K and Ctrl+comma can replace a reserved return-focus origin without a failing test. | medium | Filed evidence: removing `&& !window.__fcModalReservation` at `fc-keyboard.js:194` keeps the pointerdown reservation spec and the unreserved Ctrl+K spec green. The shortcut registrar mocks capture and never loads `fc-keyboard.js`. | patch |
 
 ## Design Notes
 

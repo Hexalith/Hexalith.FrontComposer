@@ -345,13 +345,34 @@ test.describe('Story 4.1: destructive command confirmation', () => {
     await expect(page.getByTestId('fc-settings-dialog')).toHaveCount(0);
     const originWasPreserved = await page.evaluate(async (focusModulePath) => {
       const focus = await import(focusModulePath) as { restoreOverlayOrigin: () => void };
-      const intentWindow = window as unknown as { __fcOverlayOrigin: unknown };
+      const intentWindow = window as unknown as {
+        __fcOverlayOrigin: unknown;
+        __fcOverlayOpenIntent: unknown;
+      };
       const heading = document.querySelector('[data-reservation-origin=true]');
-      const preserved = intentWindow.__fcOverlayOrigin === heading;
+      const origin = intentWindow.__fcOverlayOrigin;
+      const intent = intentWindow.__fcOverlayOpenIntent;
+      const shell = document.querySelector('.fc-shell-root');
+      if (!(shell instanceof HTMLElement)) throw new Error('Expected the installed shell key filter.');
+      const shortcuts = ['k', ','].map((key) => new KeyboardEvent('keydown', {
+        key,
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      }));
+      for (const event of shortcuts) {
+        shell.dispatchEvent(event);
+        if (!event.defaultPrevented) {
+          throw new Error(`The installed shell key filter did not handle Ctrl+${event.key}.`);
+        }
+      }
+      const shortcutsLeftReservation = intentWindow.__fcOverlayOrigin === origin
+        && intentWindow.__fcOverlayOpenIntent === intent
+        && origin === heading;
       focus.restoreOverlayOrigin();
       heading?.removeAttribute('data-reservation-origin');
       heading?.removeAttribute('tabindex');
-      return preserved;
+      return shortcutsLeftReservation;
     }, '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js');
     expect(originWasPreserved).toBe(true);
 

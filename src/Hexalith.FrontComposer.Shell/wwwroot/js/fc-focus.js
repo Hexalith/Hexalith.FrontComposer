@@ -113,7 +113,7 @@ function hasOpenModal() {
     if (document.querySelector('dialog[open]')) return true;
     return Array.from(document.querySelectorAll('fluent-dialog')).some((host) => {
         const dialog = host.shadowRoot?.querySelector('dialog');
-        return dialog instanceof HTMLDialogElement ? dialog.open : host.isConnected;
+        return dialog instanceof HTMLDialogElement && dialog.open;
     });
 }
 
@@ -295,7 +295,16 @@ export function observeFieldAccessibility(rootId) {
             if (root.isConnected) syncFieldAccessibility(root);
         });
     };
-    const observer = new MutationObserver(schedule);
+    const observer = new MutationObserver((records) => {
+        if (!root.isConnected) {
+            observer.disconnect();
+            fieldAccessibilityObservers.delete(root);
+            return;
+        }
+        if (records.some((record) => record.target instanceof Node && root.contains(record.target))) {
+            schedule();
+        }
+    });
     // characterData — an error message whose text changes in place must refresh the aria-description
     // fallback of engines without ARIA element reflection, not keep announcing the previous error.
     observer.observe(root, {
@@ -305,6 +314,11 @@ export function observeFieldAccessibility(rootId) {
         attributes: true,
         attributeFilter: ['data-fc-invalid'],
     });
+    // Removing the form is a mutation on its parent, which an observer of the root itself never sees.
+    const detachParent = root.parentNode;
+    if (detachParent instanceof Node) {
+        observer.observe(detachParent, { childList: true });
+    }
     fieldAccessibilityObservers.set(root, observer);
     syncFieldAccessibility(root);
     // Fluent editors upgrade asynchronously; project again once each editor's shadow control exists.
@@ -443,7 +457,8 @@ export function hasActiveLifecycle() {
 
 // Story 13.3 BH3-04 — the active lifecycle heading renders only while its command is Submitting,
 // Acknowledged, or Syncing. When it unmounts while focused, focus moves to the owning form's first
-// editable control, or its submit control when it has none; it never falls to the document body.
+// editable control, or its submit control when it has none. When neither accepts focus, it moves to
+// the owning form heading, or the route h1, so it never falls to the document body.
 function watchLifecycleSettle(heading) {
     const wrapper = heading.closest('[data-fc-active-lifecycle]');
     if (!(wrapper instanceof HTMLElement)) return;
@@ -454,7 +469,10 @@ function watchLifecycleSettle(heading) {
         finish();
         const active = document.activeElement;
         if (active instanceof HTMLElement && active !== document.body && active.isConnected) return;
-        if (!focusFirstEditableWithin(form)) focusFirstEditableWithin(wrapper);
+        if (focusFirstEditableWithin(form) || focusFirstEditableWithin(wrapper)) return;
+        focusTarget(form.querySelector('[data-fc-form-heading="true"]')
+            ?? document.querySelector('[data-fc-form-heading="true"]')
+            ?? document.querySelector('#fc-main-content h1, main h1'));
     });
     const onFocusOut = (event) => {
         // The operator moved on while the heading is still mounted: focus is no longer ours to repair.

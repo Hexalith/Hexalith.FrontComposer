@@ -1,3 +1,7 @@
+// Same modal containers as fc-focus.js captureOverlayOrigin. A non-modal popover that merely
+// carries role="dialog" does not hold the single modal slot.
+const modalContainerSelector = 'fluent-dialog, dialog, [aria-modal="true"]';
+
 // Capture each open before an asynchronous Blazor callback. Only a real focus move
 // following later user input suppresses entry focus; typing alone does not.
 if (!window.__fcFocusIntentTrackerInstalled) {
@@ -11,7 +15,7 @@ if (!window.__fcFocusIntentTrackerInstalled) {
             .find((node) => node instanceof HTMLElement);
         const opensTrigger = event.type === 'pointerdown' || event.key === 'Enter' || event.key === ' ';
         if (opensTrigger && trigger instanceof HTMLElement
-            && !document.activeElement?.closest('[role="dialog"], fluent-dialog')
+            && !document.activeElement?.closest(modalContainerSelector)
             && !window.__fcModalReservation) {
             window.__fcOverlayOrigin = trigger;
             window.__fcOverlayOpenIntent = { origin: trigger, moved: false, watchFocus: false };
@@ -22,7 +26,8 @@ if (!window.__fcFocusIntentTrackerInstalled) {
     document.addEventListener('focusin', (event) => {
         const intent = window.__fcOverlayOpenIntent;
         if (intent?.watchFocus && event.target !== intent.origin
-            && !event.target?.matches?.('[role="dialog"], fluent-dialog, [data-testid="fc-palette-search"], #fc-settings-heading')) {
+            && !event.target?.closest?.(modalContainerSelector)
+            && !event.target?.matches?.('[data-testid="fc-palette-search"], #fc-settings-heading')) {
             intent.moved = true;
         }
     }, true);
@@ -191,7 +196,7 @@ export function registerShellKeyFilter(element) {
             (key === "k" || key === ",")
         ) {
             const active = document.activeElement;
-            if (!active?.closest('[role="dialog"], fluent-dialog') && !window.__fcModalReservation) {
+            if (!active?.closest(modalContainerSelector) && !window.__fcModalReservation) {
                 window.__fcOverlayOrigin = active instanceof HTMLElement && active.isConnected && !active.disabled ? active : null;
                 window.__fcOverlayOpenIntent = { origin: active, moved: false, watchFocus: false };
             }

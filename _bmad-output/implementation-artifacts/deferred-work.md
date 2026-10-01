@@ -10005,3 +10005,9 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
   summary: Prove background authorization denial focus on a real generated renderer during a parent render while focus capture is awaiting interop.
   evidence: Iteration 11 VG11-02 found mocked bUnit capture, emitter ordering assertions, and synthetic browser replacement but no real generated-renderer transition. The baseline pending gate already unmounted the focused form; repair the authenticated Test host, settle that pending gate, and run the actual capture/render boundary assertion.
+
+## Deferred from: code review of spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md (2026-10-01, iteration 12)
+
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: Reset the lifecycle when a scope change arrives after SubmittedAction and before server dispatch.
+  evidence: The generated submit path dispatches SubmittedAction, then returns from the dispatch-scope mismatch after PresentScopeUnavailableAsync without ResetToIdleAction, so the lifecycle stays Submitting and later submits stay blocked. That return without a reset was already in the baseline; Story 13.3 only replaced SetCommandInProgressWarning with PresentScopeUnavailableAsync on the same path.
