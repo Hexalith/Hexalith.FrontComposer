@@ -48,7 +48,7 @@ permissions:
   contents: read
 
 env:
-  ASPIRE_CLI_INSTALL: dotnet tool install --global Aspire.Cli --version 13.5.4
+  ASPIRE_CLI_INSTALL: dotnet tool install --global Aspire.Cli --version 13.6.0
 
 jobs:
   build-and-test:

@@ -1,12 +1,22 @@
 <Project>
   <!-- Local root-declared submodule ProjectReference paths (Debug/source debugging). -->
-  <!-- EventStore is ALWAYS from references/Hexalith.EventStore, never Tenants' nested copy -->
+  <!-- Resolve this repo's root dependency or its umbrella root-declared sibling; never Tenants' nested copy. -->
   <PropertyGroup>
-    <EventStorePath>$(MSBuildThisFileDirectory)references/Hexalith.EventStore</EventStorePath>
-    <TenantsPath>$(MSBuildThisFileDirectory)references/Hexalith.Tenants</TenantsPath>
-    <PartiesPath>$(MSBuildThisFileDirectory)references/Hexalith.Parties</PartiesPath>
-    <MemoriesPath>$(MSBuildThisFileDirectory)references/Hexalith.Memories</MemoriesPath>
-    <CommonsPath>$(MSBuildThisFileDirectory)references/Hexalith.Commons</CommonsPath>
+    <EventStorePath Condition="'$(EventStorePath)' == '' and Exists('$(MSBuildThisFileDirectory)references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj')">$(MSBuildThisFileDirectory)references/Hexalith.EventStore</EventStorePath>
+    <EventStorePath Condition="'$(EventStorePath)' == '' and Exists('$(MSBuildThisFileDirectory)../Hexalith.EventStore/src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj')">$(MSBuildThisFileDirectory)../Hexalith.EventStore</EventStorePath>
+    <EventStorePath Condition="'$(EventStorePath)' == ''">$(MSBuildThisFileDirectory)references/Hexalith.EventStore</EventStorePath>
+    <TenantsPath Condition="'$(TenantsPath)' == '' and Exists('$(MSBuildThisFileDirectory)references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj')">$(MSBuildThisFileDirectory)references/Hexalith.Tenants</TenantsPath>
+    <TenantsPath Condition="'$(TenantsPath)' == '' and Exists('$(MSBuildThisFileDirectory)../Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj')">$(MSBuildThisFileDirectory)../Hexalith.Tenants</TenantsPath>
+    <TenantsPath Condition="'$(TenantsPath)' == ''">$(MSBuildThisFileDirectory)references/Hexalith.Tenants</TenantsPath>
+    <PartiesPath Condition="'$(PartiesPath)' == '' and Exists('$(MSBuildThisFileDirectory)references/Hexalith.Parties/src/Hexalith.Parties.UI/Hexalith.Parties.UI.csproj')">$(MSBuildThisFileDirectory)references/Hexalith.Parties</PartiesPath>
+    <PartiesPath Condition="'$(PartiesPath)' == '' and Exists('$(MSBuildThisFileDirectory)../Hexalith.Parties/src/Hexalith.Parties.UI/Hexalith.Parties.UI.csproj')">$(MSBuildThisFileDirectory)../Hexalith.Parties</PartiesPath>
+    <PartiesPath Condition="'$(PartiesPath)' == ''">$(MSBuildThisFileDirectory)references/Hexalith.Parties</PartiesPath>
+    <MemoriesPath Condition="'$(MemoriesPath)' == '' and Exists('$(MSBuildThisFileDirectory)references/Hexalith.Memories/src/Hexalith.Memories.Contracts/Hexalith.Memories.Contracts.csproj')">$(MSBuildThisFileDirectory)references/Hexalith.Memories</MemoriesPath>
+    <MemoriesPath Condition="'$(MemoriesPath)' == '' and Exists('$(MSBuildThisFileDirectory)../Hexalith.Memories/src/Hexalith.Memories.Contracts/Hexalith.Memories.Contracts.csproj')">$(MSBuildThisFileDirectory)../Hexalith.Memories</MemoriesPath>
+    <MemoriesPath Condition="'$(MemoriesPath)' == ''">$(MSBuildThisFileDirectory)references/Hexalith.Memories</MemoriesPath>
+    <CommonsPath Condition="'$(CommonsPath)' == '' and Exists('$(MSBuildThisFileDirectory)references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj')">$(MSBuildThisFileDirectory)references/Hexalith.Commons</CommonsPath>
+    <CommonsPath Condition="'$(CommonsPath)' == '' and Exists('$(MSBuildThisFileDirectory)../Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj')">$(MSBuildThisFileDirectory)../Hexalith.Commons</CommonsPath>
+    <CommonsPath Condition="'$(CommonsPath)' == ''">$(MSBuildThisFileDirectory)references/Hexalith.Commons</CommonsPath>
     <HexalithEventStoreRoot>$(EventStorePath)</HexalithEventStoreRoot>
     <HexalithTenantsRoot>$(TenantsPath)</HexalithTenantsRoot>
     <HexalithPartiesRoot>$(PartiesPath)</HexalithPartiesRoot>
