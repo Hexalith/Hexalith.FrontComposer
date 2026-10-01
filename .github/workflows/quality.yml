@@ -974,6 +974,10 @@ jobs:
       - name: Build CLI browser fixture
         run: dotnet build src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj --configuration Release -m:1
 
+      # Prepare Debug before browser workers so the diagnostic hook only verifies an incremental build.
+      - name: Build Debug Counter diagnostic host
+        run: dotnet build samples/Counter/Counter.Web/Counter.Web.csproj --configuration Debug --disable-build-servers -m:1
+
       - name: Run browser launch and scroll regressions
         working-directory: tests/e2e
         run: node --test scripts/owned-process.test.mjs scripts/expand-in-row.test.mjs scripts/run-epic9-live-proof.test.mjs

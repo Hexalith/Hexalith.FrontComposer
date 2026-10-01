@@ -861,6 +861,16 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
                 data = (ROOT / item["path"]).read_bytes()
                 item["bytes"] = len(data)
                 item["sha256"] = hashlib.sha256(data).hexdigest()
+        for relative in _git_output(
+            "ls-files", "--", *evidence.APPHOST_ADDITIONAL_SOURCE_TREES
+        ).splitlines():
+            data = (ROOT / relative).read_bytes()
+            fixture_manifest["entries"].append({
+                "path": relative,
+                "kind": "file",
+                "bytes": len(data),
+                "sha256": hashlib.sha256(data).hexdigest(),
+            })
         fixture_manifest["entries"].sort(key=lambda item: item["path"])
         fixture_manifest["treeSha256"] = evidence._runtime_tree_sha256(
             fixture_manifest["entries"]
@@ -1033,6 +1043,9 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         for relative in (
             "src/Hexalith.FrontComposer.AppHost/Program.cs",
             "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+            *_git_output(
+                "ls-files", "--", *evidence.APPHOST_ADDITIONAL_SOURCE_TREES
+            ).splitlines(),
         ):
             destination = self.artifact_root / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
@@ -3919,6 +3932,42 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
 
                 self.assertTrue(any(expected in error for error in errors), errors)
 
+    def test_active_apphost_counter_fixture_inputs_require_sealed_manifest_hashes(self) -> None:
+        relative = f"{evidence.APPHOST_ADDITIONAL_SOURCE_TREES[0]}/Program.cs"
+        manifest = _read_json(self.active_root / "frontcomposer-runtime-inputs.json")
+        digest = next(item["sha256"] for item in manifest["entries"] if item["path"] == relative)
+        cases = (
+            (relative, digest, None),
+            (relative, "0" * 64, "differs from the sealed runtime manifest"),
+            (
+                f"{evidence.APPHOST_ADDITIONAL_SOURCE_TREES[0]}/Unsealed.cs",
+                digest,
+                "differs from the sealed runtime manifest",
+            ),
+            (
+                "tests/Hexalith.FrontComposer.CounterFixture.Lookalike/Program.cs",
+                digest,
+                "leaves the sealed runtime scope",
+            ),
+        )
+        for path, sha256, expected in cases:
+            with self.subTest(path=path, expected=expected):
+                self.repin_active_recapture(
+                    "apphost-smoke.json",
+                    lambda document, relative_path=path, hash_value=sha256: document["startup"][
+                        "outputPreparation"
+                    ]["evaluatedInputBinding"].__setitem__("inputs", [{
+                        "authority": "repository",
+                        "path": relative_path,
+                        "sha256": hash_value,
+                    }]),
+                )
+                errors, _, _ = self.validate_active()
+                if expected is None:
+                    self.assertFalse(any("evaluated input binding" in error for error in errors), errors)
+                else:
+                    self.assertTrue(any(expected in error for error in errors), errors)
+
     def test_active_apphost_rejects_reordered_declared_resources(self) -> None:
         self.repin_active_recapture(
             "apphost-smoke.json",
@@ -5535,6 +5584,117 @@ class AppHostProjectGraphDiscoveryTests(unittest.TestCase):
             ),
         )
 
+    def test_evaluated_inputs_reject_symlinked_compile_reference_and_analyzer_paths(self) -> None:
+        outside = Path(self.temporary.name) / "outside-input.cs"
+        outside.write_text("class OutsideScope {}", encoding="utf-8")
+        dotnet = Path(self.temporary.name) / "dotnet"
+        dotnet.mkdir()
+        properties = {
+            **{key: str(value) for key, value in evidence.APPHOST_BUILD_PROPERTIES.items()},
+            **{key: str(self.repository / value) for key, value in evidence.APPHOST_SOURCE_ROOT_PROPERTIES.items()},
+            "TargetFramework": evidence.APPHOST_EVALUATION_TARGET_FRAMEWORK,
+            "MSBuildAllProjects": str(self.apphost),
+        }
+        assets = self.apphost.parent / "obj" / "project.assets.json"
+        for item_name in ("Compile", "ReferencePath", "Analyzer"):
+            for index, target in enumerate((self.conditional, outside)):
+                with self.subTest(item_name=item_name, target_authority="repository" if index == 0 else "outside"):
+                    alias = self.repository / "tests" / "OtherFixture" / f"Linked-{item_name}-{index}.cs"
+                    alias.parent.mkdir(parents=True, exist_ok=True)
+                    alias.symlink_to(target)
+                    items = {name: [] for name in evidence.APPHOST_EVALUATED_INPUT_ITEMS}
+                    items[item_name] = [{"FullPath": str(alias)}]
+                    result = subprocess.CompletedProcess(
+                        [], 0, json.dumps({"Properties": properties, "Items": items}), ""
+                    )
+                    errors: list[str] = []
+                    with (
+                        mock.patch.object(evidence, "_selected_dotnet_root", return_value=dotnet),
+                        mock.patch.object(evidence, "_discover_apphost_project_graph", return_value=([self.apphost], [assets])),
+                        mock.patch.object(evidence, "_restored_project_target_framework", return_value=evidence.APPHOST_EVALUATION_TARGET_FRAMEWORK),
+                        mock.patch.object(evidence.subprocess, "run", return_value=result),
+                    ):
+                        binding = evidence._evaluate_apphost_inputs(self.repository, self.package_root, [assets], errors)
+                    self.assertIsNone(binding)
+                    self.assertIn(f"AppHost evaluated input path is invalid or symlinked: {item_name}", errors)
+
+    def test_runtime_input_binding_rejects_symlinked_import_paths(self) -> None:
+        alias = self.repository / "tests" / "OtherFixture" / "Linked.props"
+        alias.parent.mkdir(parents=True)
+        alias.symlink_to(self.apphost)
+        errors: list[str] = []
+        binding = evidence._bound_runtime_input(
+            alias, self.repository, self.package_root, self.package_root, errors
+        )
+        self.assertIsNone(binding)
+        self.assertEqual(errors, ["Evaluated AppHost input contains a symlink."])
+
+    def _reference_project(self, project: Path) -> None:
+        project.parent.mkdir(parents=True, exist_ok=True)
+        project.write_text("<Project />\n", encoding="utf-8")
+        root_assets_path = self.apphost.parent / "obj" / "project.assets.json"
+        root_assets = _read_json(root_assets_path)
+        child_assets = copy.deepcopy(root_assets)
+        child_assets["libraries"] = {}
+        child_assets["project"]["restore"]["projectPath"] = str(project)
+        assets_path = project.parent / "obj" / "project.assets.json"
+        assets_path.parent.mkdir(exist_ok=True)
+        _write_json(assets_path, child_assets)
+        root_assets["libraries"] = {
+            "CounterFixture/1.0.0": {"type": "project", "msbuildProject": str(project)}
+        }
+        _write_json(root_assets_path, root_assets)
+
+    def test_project_discovery_admits_only_exact_counter_fixture_project(self) -> None:
+        fixture = self.repository / evidence.APPHOST_ADDITIONAL_SOURCE_PROJECTS[0]
+        with mock.patch.object(evidence, "APPHOST_REACHABLE_SOURCE_GITLINKS", ()):
+            self._reference_project(fixture)
+            errors: list[str] = []
+            projects, assets_paths = evidence._discover_apphost_project_graph(self.repository, errors)
+            self.assertEqual(errors, [])
+            self.assertIn(fixture.resolve(), projects)
+            self.assertIn((fixture.parent / "obj" / "project.assets.json").resolve(), assets_paths)
+            for project in (
+                fixture.parent / "Other.csproj",
+                fixture.parent / "nested" / fixture.name,
+                self.repository / "tests" / "Hexalith.FrontComposer.CounterFixture.Lookalike" / fixture.name,
+                self.repository / "tests" / "OtherFixture" / fixture.name,
+            ):
+                with self.subTest(project=project.relative_to(self.repository).as_posix()):
+                    self._reference_project(project)
+                    errors = []
+                    projects, _ = evidence._discover_apphost_project_graph(self.repository, errors)
+                    self.assertTrue(any("leaves its sealed source roots" in error for error in errors), errors)
+                    self.assertNotIn(project.resolve(), projects)
+            self._reference_project(fixture)
+            assets = fixture.parent / "obj" / "project.assets.json"
+            document = _read_json(assets)
+            document["libraries"] = {"Hexalith.EventStore.DomainService/3.110.0": {"type": "package"}}
+            _write_json(assets, document)
+            errors = []
+            evidence._discover_apphost_project_graph(self.repository, errors)
+            self.assertTrue(any("substitutes a source dependency with a package" in error for error in errors), errors)
+
+    def test_project_discovery_rejects_counter_fixture_project_and_parent_symlinks(self) -> None:
+        fixture = self.repository / evidence.APPHOST_ADDITIONAL_SOURCE_PROJECTS[0]
+        self._reference_project(fixture)
+        target = self.conditional.parent / fixture.name
+        target.write_text("<Project />\n", encoding="utf-8")
+        with mock.patch.object(evidence, "APPHOST_REACHABLE_SOURCE_GITLINKS", ()):
+            fixture.unlink()
+            fixture.symlink_to(target)
+            errors: list[str] = []
+            evidence._discover_apphost_project_graph(self.repository, errors)
+            self.assertTrue(any("symlinked project" in error for error in errors), errors)
+            self.assertIsNone(evidence._evaluated_item_path({"FullPath": str(fixture)}, self.apphost))
+            fixture.unlink()
+            shutil.rmtree(fixture.parent)
+            fixture.parent.symlink_to(target.parent, target_is_directory=True)
+            errors = []
+            evidence._discover_apphost_project_graph(self.repository, errors)
+            self.assertTrue(any("symlinked project" in error for error in errors), errors)
+            self.assertIsNone(evidence._evaluated_item_path({"FullPath": str(fixture)}, self.apphost))
+
 
 class DependencyInertToolingTests(unittest.TestCase):
     """The frozen 2026-09-13 scope rejects graph-selected inputs, not inert tooling."""
@@ -6180,6 +6340,11 @@ class SealedManifestComparisonTests(unittest.TestCase):
         )
         self.runtime_file = self.repository / "src" / "Runtime.cs"
         self.runtime_file.write_text("// sealed runtime input\n", encoding="utf-8")
+        fixture = self.repository / evidence.APPHOST_ADDITIONAL_SOURCE_PROJECTS[0]
+        fixture.parent.mkdir(parents=True)
+        fixture.write_text("<Project />\n", encoding="utf-8")
+        self.fixture_source = fixture.parent / "Program.cs"
+        self.fixture_source.write_text("// sealed fixture source\n", encoding="utf-8")
         subprocess.run(["git", "add", "-A"], cwd=self.repository, check=True)
         subprocess.run(
             ["git", "commit", "-qm", "test: seed sealed manifest scope"],
@@ -6202,6 +6367,37 @@ class SealedManifestComparisonTests(unittest.TestCase):
         self.runtime_file.write_text("// drifted runtime input\n", encoding="utf-8")
 
         self.assertIn(self.MISMATCH, self._errors())
+
+    def test_counter_fixture_sources_are_sealed_and_tampering_rejects(self) -> None:
+        manifest = _read_json(self.manifest_path)
+        relative = self.fixture_source.relative_to(self.repository).as_posix()
+        entry = next(item for item in manifest["entries"] if item["path"] == relative)
+        self.assertEqual(entry["sha256"], _sha256(self.fixture_source))
+        self.assertIn(f"{evidence.APPHOST_ADDITIONAL_SOURCE_TREES[0]}/**", manifest["scope"]["trackedTrees"])
+        self.fixture_source.write_text("// tampered fixture source\n", encoding="utf-8")
+        self.assertIn(self.MISMATCH, self._errors())
+
+    def test_current_manifest_rejects_missing_counter_fixture_source(self) -> None:
+        document = _read_json(self.manifest_path)
+        relative = self.fixture_source.relative_to(self.repository).as_posix()
+        document["entries"] = [item for item in document["entries"] if item["path"] != relative]
+        document["treeSha256"] = evidence._runtime_tree_sha256(document["entries"])
+        _write_json(self.manifest_path, document)
+        self.assertIn(self.MISMATCH, self._errors())
+
+    def test_legacy_scope_is_accepted_only_for_historical_validation(self) -> None:
+        document = _read_json(self.manifest_path)
+        document["scope"] = evidence._runtime_scope(historical=True)
+        _write_json(self.manifest_path, document)
+        errors: list[str] = []
+        evidence._validate_runtime_input_manifest(
+            self.manifest_path, self.repository, errors, require_current_match=False
+        )
+        self.assertEqual(errors, [])
+        self.assertIn(
+            "Runtime-input manifest scope differs from the validator-owned fixed scope.",
+            self._errors(),
+        )
 
     def test_added_runtime_file_fails_the_sealed_comparison(self) -> None:
         added = self.repository / "src" / "Added.cs"

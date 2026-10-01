@@ -1,6 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/index.js';
+import { submissionTest } from '../fixtures/command-submission.fixture.js';
 import { fieldByLabel, fillFieldByLabel } from '../helpers/fluent-fields.js';
 
 const COMMAND_FORM = '.fc-command-form';
@@ -47,7 +48,7 @@ test.describe('Story 3.1: generated command forms', () => {
     await expectFrameworkIdentityHidden(fullPageForm);
   });
 
-  test('compact generated form submits and reaches confirmed lifecycle feedback', async ({ page, tenant }) => {
+  submissionTest('compact generated form submits and reaches confirmed lifecycle feedback', async ({ page, tenant }) => {
     expect(tenant.tenantId).toBeTruthy();
 
     await gotoCounter(page);
@@ -192,7 +193,7 @@ test.describe('Story 3.3: FC-CMD pending identity and correlation contract', () 
     });
   });
 
-  test('generated compact form keeps identity framework-owned while command reaches pending confirmation', async ({
+  submissionTest('generated compact form keeps identity framework-owned while command reaches pending confirmation', async ({
     page,
     tenant,
   }) => {

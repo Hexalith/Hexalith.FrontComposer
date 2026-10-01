@@ -1055,6 +1055,8 @@ def _evaluated_item_path(item: Any, project: Path = APPHOST) -> Path | None:
     candidate = Path(value.replace("\\", os.sep))
     if not candidate.is_absolute():
         candidate = project.parent / candidate
+    if runtime_evidence._path_has_symlink_component(candidate):
+        return None
     try:
         return candidate.resolve(strict=False)
     except (OSError, RuntimeError):
@@ -1088,11 +1090,17 @@ def _resolved_source_graph_is_exact(project_references: list[Path]) -> bool:
         (ROOT / "samples" / "Counter").resolve(strict=False),
         *reachable_roots.values(),
     }
+    allowed_projects = {
+        ROOT.absolute() / relative
+        for relative in runtime_evidence.APPHOST_ADDITIONAL_SOURCE_PROJECTS
+    }
     seen_roots: set[str] = set()
     pending = list(project_references)
     visited: set[Path] = set()
     while pending:
         project = pending.pop()
+        if runtime_evidence._path_has_symlink_component(project):
+            return False
         try:
             project = project.resolve(strict=False)
         except (OSError, RuntimeError):
@@ -1102,7 +1110,9 @@ def _resolved_source_graph_is_exact(project_references: list[Path]) -> bool:
         visited.add(project)
         if runtime_evidence._path_has_symlink_component(project) or not project.is_file():
             return False
-        if not any(project.is_relative_to(root) for root in allowed_roots):
+        if project not in allowed_projects and not any(
+            project.is_relative_to(root) for root in allowed_roots
+        ):
             return False
         for name, root in reachable_roots.items():
             if project == root or project.is_relative_to(root):
@@ -1146,6 +1156,8 @@ def _discover_assets_graphs_from_json(start_project: Path) -> tuple[list[Path], 
     assets_paths: set[Path] = set()
     while pending:
         candidate = pending.pop()
+        if runtime_evidence._path_has_symlink_component(candidate):
+            return None
         try:
             project = candidate.resolve(strict=True)
         except (OSError, RuntimeError):
@@ -1248,7 +1260,10 @@ def _discover_assets_graphs_from_json(start_project: Path) -> tuple[list[Path], 
                 project_path = restore.get("projectPath") if isinstance(restore, dict) else None
                 if not isinstance(project_path, str) or not project_path:
                     return None
-                project = Path(project_path.replace("\\", os.sep)).resolve(strict=True)
+                project = Path(project_path.replace("\\", os.sep))
+                if runtime_evidence._path_has_symlink_component(project):
+                    return None
+                project = project.resolve(strict=True)
                 if (
                     runtime_evidence._path_has_symlink_component(project)
                     or not project.is_file()
@@ -1523,7 +1538,9 @@ def _evaluate_source_graph(
                 return reject(f"project-input-items-invalid:{item_name}")
             for item in values:
                 path = _evaluated_item_path(item, project)
-                if path is not None and path.exists():
+                if path is None:
+                    return reject(f"project-input-path-invalid:{item_name}")
+                if path.exists():
                     input_paths.add(path)
     if evaluated_project_references != discovered_project_set - {APPHOST.resolve()}:
         return reject("evaluated-project-closure-not-exact")

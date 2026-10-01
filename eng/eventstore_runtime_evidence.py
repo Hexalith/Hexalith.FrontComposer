@@ -103,7 +103,14 @@ PRIOR_EVIDENCE_ROOT = (
     "_bmad-output/implementation-artifacts/evidence/"
     "pact-provider-reconciliation-history/2026-09-08-builds-35c3d1e5"
 )
-RUNTIME_SCOPE_VERSION = "frontcomposer-eventstore-runtime-inputs.v1"
+LEGACY_RUNTIME_SCOPE_VERSION = "frontcomposer-eventstore-runtime-inputs.v1"
+RUNTIME_SCOPE_VERSION = "frontcomposer-eventstore-runtime-inputs.v2"
+APPHOST_ADDITIONAL_SOURCE_PROJECTS = (
+    "tests/Hexalith.FrontComposer.CounterFixture/Hexalith.FrontComposer.CounterFixture.csproj",
+)
+APPHOST_ADDITIONAL_SOURCE_TREES = tuple(
+    Path(relative).parent.as_posix() for relative in APPHOST_ADDITIONAL_SOURCE_PROJECTS
+)
 RUNTIME_ROOT_INPUTS = (
     ".editorconfig",
     "Directory.Build.props",
@@ -117,10 +124,14 @@ RUNTIME_ROOT_INPUTS = (
     "nuget.config",
 )
 OPTIONAL_ABSENT_RUNTIME_ROOT_INPUTS = frozenset({"Directory.Build.rsp"})
-RUNTIME_TRACKED_TREES = (
+LEGACY_RUNTIME_TRACKED_TREES = (
     "src",
     "samples/Counter",
     "docs/skills/frontcomposer",
+)
+RUNTIME_TRACKED_TREES = (
+    *LEGACY_RUNTIME_TRACKED_TREES,
+    *APPHOST_ADDITIONAL_SOURCE_TREES,
 )
 ROOT_BUILD_CONTROL_RE = re.compile(
     r"^(?:\.editorconfig|(?:.+\.)?globalconfig|Directory\.(?:Build|Packages)\..+|"
@@ -2203,10 +2214,13 @@ def _git_completed(repository: Path, *arguments: str) -> subprocess.CompletedPro
         return None
 
 
-def _runtime_scope() -> dict[str, Any]:
+def _runtime_scope(*, historical: bool = False) -> dict[str, Any]:
     return {
-        "version": RUNTIME_SCOPE_VERSION,
-        "trackedTrees": [f"{tree}/**" for tree in RUNTIME_TRACKED_TREES],
+        "version": LEGACY_RUNTIME_SCOPE_VERSION if historical else RUNTIME_SCOPE_VERSION,
+        "trackedTrees": [
+            f"{tree}/**"
+            for tree in (LEGACY_RUNTIME_TRACKED_TREES if historical else RUNTIME_TRACKED_TREES)
+        ],
         "rootInputs": list(RUNTIME_ROOT_INPUTS),
         "pactInputs": list(RUNTIME_PACT_INPUTS),
         "dependencyGitlinks": list(RUNTIME_DEPENDENCY_GITLINKS),
@@ -3151,7 +3165,14 @@ def _validate_runtime_input_manifest(
         ancestry = _git_completed(repository_root, "merge-base", "--is-ancestor", revision, "HEAD")
         if ancestry is None or ancestry.returncode != 0:
             errors.append("Current FrontComposer revision does not descend from the capture revision.")
-    if not _exact(document.get("scope"), _runtime_scope()):
+    # Historical packets retain their authenticated v1 scope. Current captures must
+    # include the exact CounterFixture source tree selected by the restored AppHost.
+    scope_matches = _exact(document.get("scope"), _runtime_scope())
+    if not require_current_match:
+        scope_matches = scope_matches or _exact(
+            document.get("scope"), _runtime_scope(historical=True)
+        )
+    if not scope_matches:
         errors.append("Runtime-input manifest scope differs from the validator-owned fixed scope.")
     entries = document.get("entries")
     if not isinstance(entries, list) or any(not isinstance(item, dict) for item in entries):
@@ -4161,6 +4182,10 @@ def _discover_apphost_project_graph(
         repository_root / "samples" / "Counter",
         *(repository_root / value for value in APPHOST_REACHABLE_SOURCE_GITLINKS),
     )
+    allowed_projects = {
+        repository_root.absolute() / relative
+        for relative in APPHOST_ADDITIONAL_SOURCE_PROJECTS
+    }
     guarded_names = tuple(
         Path(relative).name.casefold() for relative in RUNTIME_DEPENDENCY_GITLINKS
     )
@@ -4217,6 +4242,9 @@ def _discover_apphost_project_graph(
                 restored_project = Path(project_path.replace("\\", os.sep))
                 if not restored_project.is_absolute():
                     restored_project = repository_root / restored_project
+                if _path_has_symlink_component(restored_project):
+                    errors.append(f"AppHost restored project is symlinked: {assets_path}")
+                    continue
                 try:
                     restored_project = restored_project.resolve(strict=True)
                     expected_assets = (
@@ -4236,6 +4264,9 @@ def _discover_apphost_project_graph(
     assets_paths: set[Path] = set()
     while pending:
         candidate = pending.pop()
+        if _path_has_symlink_component(candidate):
+            errors.append(f"AppHost project graph contains a symlinked project: {candidate}")
+            continue
         try:
             project = candidate.resolve(strict=True)
         except (OSError, RuntimeError):
@@ -4246,7 +4277,9 @@ def _discover_apphost_project_graph(
         if _path_has_symlink_component(project) or not project.is_file():
             errors.append(f"AppHost project graph contains a symlinked project: {candidate}")
             continue
-        if not any(project.is_relative_to(root.resolve(strict=False)) for root in allowed_roots):
+        if project not in allowed_projects and not any(
+            project.is_relative_to(root.resolve(strict=False)) for root in allowed_roots
+        ):
             errors.append(f"AppHost project graph leaves its sealed source roots: {project}")
             continue
         projects.add(project)
@@ -4344,6 +4377,8 @@ def _evaluated_item_path(item: Any, project: Path) -> Path | None:
     candidate = Path(value.replace("\\", os.sep))
     if not candidate.is_absolute():
         candidate = project.parent / candidate
+    if _path_has_symlink_component(candidate):
+        return None
     try:
         return candidate.resolve(strict=False)
     except (OSError, RuntimeError):
@@ -4384,6 +4419,9 @@ def _bound_runtime_input(
     dotnet_root: Path,
     errors: list[str],
 ) -> dict[str, str] | None:
+    if _path_has_symlink_component(path):
+        errors.append("Evaluated AppHost input contains a symlink.")
+        return None
     try:
         resolved = path.resolve(strict=True)
         authorities = (
@@ -4544,9 +4582,12 @@ def _evaluate_apphost_inputs(
                 continue
             for item in values:
                 input_path = _evaluated_item_path(item, project)
-                if input_path is not None and input_path.exists():
+                if input_path is None:
+                    errors.append(f"AppHost evaluated input path is invalid or symlinked: {item_name}")
+                    return None
+                if input_path.exists():
                     input_paths.add(input_path)
-                if item_name == "ProjectReference" and input_path is not None:
+                if item_name == "ProjectReference":
                     evaluated_references.add(input_path)
     if evaluated_references != project_set - {apphost}:
         errors.append("AppHost evaluated project-reference closure is not exact.")
@@ -5529,6 +5570,8 @@ def _validate_live_apphost(
             and isinstance(entry.get("path"), str)
             and isinstance(entry.get("sha256"), str)
         }
+        fixture_prefixes = tuple(f"{tree}/" for tree in APPHOST_ADDITIONAL_SOURCE_TREES)
+        project_output_roots = _project_output_roots(manifest_hashes)
         outside_scope: list[str] = []
         unbound: list[str] = []
         repository_inputs = 0
@@ -5544,6 +5587,10 @@ def _validate_live_apphost(
             elif (
                 relative_input in manifest_hashes
                 and manifest_hashes[relative_input] != item["sha256"]
+            ) or (
+                relative_input.startswith(fixture_prefixes)
+                and relative_input not in manifest_hashes
+                and not _is_generated_runtime_output(relative_input, project_output_roots)
             ):
                 unbound.append(relative_input)
         if not repository_inputs:

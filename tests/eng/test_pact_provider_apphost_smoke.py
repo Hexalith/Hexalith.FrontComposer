@@ -10,6 +10,7 @@ import http.server
 import io
 import json
 import os
+import shutil
 import sys
 import tempfile
 import threading
@@ -1198,6 +1199,33 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
         failure = json.loads(self.output.read_text(encoding="utf-8"))
         self.assertIn("apphost.source-graph.not-exact", failure["reasonCodes"])
 
+    def test_symlinked_compile_reference_and_analyzer_inputs_fail_before_start(self) -> None:
+        outside = Path(self.temporary.name) / "outside-input.cs"
+        outside.write_text("class OutsideScope {}", encoding="utf-8")
+        targets = (smoke.APPHOST, outside)
+        for item_name in ("Compile", "ReferencePath", "Analyzer"):
+            for index, target in enumerate(targets):
+                with self.subTest(item_name=item_name, target_authority="repository" if index == 0 else "outside"):
+                    alias = Path(self.temporary.name) / f"linked-{item_name}-{index}.cs"
+                    alias.symlink_to(target)
+                    runtime = FakeRuntime()
+                    original_command = runtime.command
+
+                    def command(arguments: list[str], timeout: float) -> smoke.CommandResult:
+                        if arguments[:2] == ["dotnet", "msbuild"]:
+                            runtime.commands.append(arguments)
+                            document = json.loads(FakeRuntime.evaluation_output())
+                            if "-target:ResolveReferences" in arguments:
+                                document["Items"][item_name] = [{"FullPath": str(alias)}]
+                            return FakeRuntime.evaluation_result(arguments, json.dumps(document))
+                        return original_command(arguments, timeout)
+
+                    runtime.command = command  # type: ignore[method-assign]
+                    self.assertEqual(smoke.capture(self.output, runtime, timeout=30), 1)
+                    self.assertFalse(any(args[:2] == ["aspire", "start"] for args in runtime.commands))
+                    failure = json.loads(self.output.read_text(encoding="utf-8"))
+                    self.assertIn("apphost.source-graph.not-exact", failure["reasonCodes"])
+
     def test_empty_or_rootless_assets_graph_set_fails_before_ledger_or_start(self) -> None:
         rootless = smoke.ROOT / smoke.runtime_evidence.PROVIDER_PACKAGE_ASSETS[0]
         for assets_paths in ([], [rootless]):
@@ -1400,6 +1428,70 @@ class PactProviderAppHostSmokeTests(unittest.TestCase):
             assets.unlink()
             assets.symlink_to(assets_target)
             self.assertFalse(smoke._resolved_source_graph_is_exact(projects))
+
+    def _fixture_source_projects(self) -> tuple[Path, list[Path], Path]:
+        repository = Path(self.temporary.name) / "fixture-source-repository"
+        projects = []
+        for relative in smoke.REACHABLE_SOURCE_GITLINKS:
+            project = repository / relative / "src" / f"{Path(relative).name}.csproj"
+            project.parent.mkdir(parents=True)
+            project.write_text("<Project />", encoding="utf-8")
+            assets = project.parent / "obj" / "project.assets.json"
+            assets.parent.mkdir()
+            assets.write_text(json.dumps({"libraries": {}}), encoding="utf-8")
+            projects.append(project)
+        fixture = repository / smoke.runtime_evidence.APPHOST_ADDITIONAL_SOURCE_PROJECTS[0]
+        fixture.parent.mkdir(parents=True)
+        fixture.write_text("<Project />", encoding="utf-8")
+        assets = fixture.parent / "obj" / "project.assets.json"
+        assets.parent.mkdir()
+        assets.write_text(json.dumps({"libraries": {}}), encoding="utf-8")
+        return repository, projects, fixture
+
+    def test_source_graph_admits_only_exact_counter_fixture_project(self) -> None:
+        repository, projects, fixture = self._fixture_source_projects()
+        with mock.patch.object(smoke, "ROOT", repository):
+            self.assertTrue(smoke._resolved_source_graph_is_exact([*projects, fixture]))
+            self.assertFalse(smoke._resolved_source_graph_is_exact([*projects[1:], fixture]))
+            lookalikes = (
+                fixture.parent / "Other.csproj",
+                fixture.parent / "nested" / fixture.name,
+                repository / "tests" / "Hexalith.FrontComposer.CounterFixture.Lookalike" / fixture.name,
+                repository / "tests" / "OtherFixture" / fixture.name,
+            )
+            for project in lookalikes:
+                with self.subTest(project=project.relative_to(repository).as_posix()):
+                    project.parent.mkdir(parents=True, exist_ok=True)
+                    project.write_text("<Project />", encoding="utf-8")
+                    assets = project.parent / "obj" / "project.assets.json"
+                    assets.parent.mkdir(exist_ok=True)
+                    assets.write_text(json.dumps({"libraries": {}}), encoding="utf-8")
+                    self.assertFalse(smoke._resolved_source_graph_is_exact([*projects, project]))
+            assets = fixture.parent / "obj" / "project.assets.json"
+            assets.write_text(
+                json.dumps({"libraries": {"Hexalith.EventStore.DomainService/3.110.0": {"type": "package"}}}),
+                encoding="utf-8",
+            )
+            self.assertFalse(smoke._resolved_source_graph_is_exact([*projects, fixture]))
+
+    def test_source_graph_rejects_counter_fixture_project_and_parent_symlinks(self) -> None:
+        repository, projects, fixture = self._fixture_source_projects()
+        target = repository / "src" / fixture.name
+        target.parent.mkdir()
+        target.write_text("<Project />", encoding="utf-8")
+        assets = target.parent / "obj" / "project.assets.json"
+        assets.parent.mkdir()
+        assets.write_text(json.dumps({"libraries": {}}), encoding="utf-8")
+        with mock.patch.object(smoke, "ROOT", repository):
+            fixture.unlink()
+            fixture.symlink_to(target)
+            self.assertFalse(smoke._resolved_source_graph_is_exact([*projects, fixture]))
+            self.assertIsNone(smoke._evaluated_item_path({"FullPath": str(fixture)}))
+            fixture.unlink()
+            shutil.rmtree(fixture.parent)
+            fixture.parent.symlink_to(target.parent, target_is_directory=True)
+            self.assertFalse(smoke._resolved_source_graph_is_exact([*projects, fixture]))
+            self.assertIsNone(smoke._evaluated_item_path({"FullPath": str(fixture)}))
 
     def test_owned_dapr_name_resolution_files_are_removed_after_confirmed_shutdown(self) -> None:
         runtime = FakeRuntime()
