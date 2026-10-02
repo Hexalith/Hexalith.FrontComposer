@@ -10046,3 +10046,9 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
   summary: Label request-derived query and projection types as inferred in provider runtime evidence, or verify them from response metadata.
   evidence: The separate provider proof records `queryType: get-tenant` and `projectionType: tenants` as observations after other response checks, but these names are copied from the request and not validated against response identity. Its evidence owner must correct that provenance claim.
+
+## Deferred from: code review of spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md (2026-10-02, iteration 19)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: Determine whether a render interleave can focus a validation summary with stale form-level errors; medium severity if reproduced.
+  evidence: Review BH19-12 observed that generated ShowValidationSummaryAsync awaits InvokeAsync(StateHasChanged) before invoking the child ShowAndFocusAsync, but the method does not explicitly wait for child parameters to update. Existing integrated bUnit cases show correct final content. Settle with a controlled render-order test that captures the summary text at the focus call during a new server form-level error outcome.
