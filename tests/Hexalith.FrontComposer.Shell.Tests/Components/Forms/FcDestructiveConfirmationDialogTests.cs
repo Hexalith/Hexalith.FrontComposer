@@ -119,6 +119,25 @@ public sealed class FcDestructiveConfirmationDialogTests : BunitContext {
         confirmed.ShouldBeFalse();
     }
 
+    [Theory]
+    [InlineData("fc-destructive-cancel")]
+    [InlineData("fc-destructive-confirm")]
+    public async Task EscapeFromFocusedActionCancelsOnce(string actionTestId) {
+        int cancelCount = 0;
+        int confirmCount = 0;
+        IRenderedComponent<FcDestructiveConfirmationDialog> cut = Render<FcDestructiveConfirmationDialog>(p => p
+            .Add(c => c.Title, "Delete?")
+            .Add(c => c.Body, "Gone forever.")
+            .Add(c => c.DestructiveLabel, "Delete")
+            .Add(c => c.OnCancel, EventCallback.Factory.Create(this, () => cancelCount++))
+            .Add(c => c.OnConfirm, EventCallback.Factory.Create(this, () => confirmCount++)));
+
+        await cut.InvokeAsync(() => cut.Find($"[data-testid='{actionTestId}']").KeyDown(new KeyboardEventArgs { Key = "Escape" }));
+
+        cancelCount.ShouldBe(1);
+        confirmCount.ShouldBe(0);
+    }
+
     [Fact]
     public void Destructive_button_has_danger_class() {
         IRenderedComponent<FcDestructiveConfirmationDialog> cut = Render<FcDestructiveConfirmationDialog>(p => p

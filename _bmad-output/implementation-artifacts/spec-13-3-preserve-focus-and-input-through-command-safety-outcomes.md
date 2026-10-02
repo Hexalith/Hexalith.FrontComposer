@@ -2,7 +2,7 @@
 title: 'Story 13.3: Preserve Focus and Input Through Command Safety Outcomes'
 type: 'feature'
 created: '2026-09-28'
-status: 'in-progress'
+status: 'in-review'
 route: 'dispatch'
 review_loop_iteration: 3
 baseline_commit: '52fa0739ab8dfb02e1b9d8b5b05d2fd318f220d8'
@@ -446,6 +446,12 @@ Also apply every iteration-3 `patch` row in the triage log.
 - The BH3-08 generated-form guard now allows exactly one `aria-describedby`: the light-DOM denial heading link. Editor hosts still carry none. Two form snapshots changed only by the new denial-card `aria-describedby`/`id` lines.
 - Verification: SourceTools and Shell test projects, plus Counter.Web, build in Debug with zero warnings and errors. The full SourceTools suite passes 1303/1303. The iteration-16 set of focused Shell classes passes 364/364, including the new test, admission, Fluent-conformance, and analyzer-governance classes (GovernanceBuild excluded); the new test name has no underscore, so the identifier seal is unchanged. The e2e typecheck passes, and the six Story 13.3 Chromium specs pass 51/51 against Debug hosts. A first browser run failed one test because the renderer reason id extended the heading id; the separate prefix above fixed it.
 - Not re-run: the governance dependency/identity checks and Aspire startup recorded as completion blockers in iterations 15 and 16, the Release/CI gates, and Firefox/WebKit. Completion therefore remains blocked, and the spec and sprint are `in-progress`. Nothing is staged or committed.
+
+**Iteration 18 review and verification (2026-10-02):**
+
+- Three accepted review patches are complete: the migration introduction qualifies generated lifecycle-record binary compatibility, Escape from either confirmation action invokes the cancel callback, and a cleared blocked outcome ignores a stale View-active-command focus completion. The two affected component test classes pass 16/16 after a zero-warning/error Shell Release test-project build; `git diff --check` and e2e TypeScript checking pass.
+- Before these patches, both Release test-project builds passed, focused SourceTools passed 111/111, focused Shell form/lifecycle tests passed 275/275, and the full SourceTools suite exited successfully. The full Shell run was stopped after reproducing three governance failures, so no full-suite pass or final count is claimed. The focused Release command `env DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -method '*ToolchainPins_MatchApprovedDotnetAndAspireVersions' -method '*CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds' -method '*EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval'` exits 1 (3 failed/3 total): Aspire CLI pin expected 13.5.4 but found 13.6.0; `github.com/hexalith/hexalith.platform` is outside the approved catalog trust policy; and EventStore capture expected `19dc1f82122564453163ac010dc7e5ae81db7ed3` while the selected source was `2c58ffda41759e895ace4b9625c9bd931a217672`.
+- The prior iteration-17 Chromium run passed 51/51 before these three patches; it was not repeated afterward. `pwsh ./eng/validate-docs.ps1` produced no output during its snippet build and was terminated (exit 143). The two new unrelated sample-MCP/provider-evidence findings are recorded in `deferred-work.md`; carried decisions retain their earlier routes. Required broad verification remains failed or unavailable, so the spec stays `in-review` and sprint stays `in-progress`. No dependency pointers, trust policy, approved runtime identity, visual baselines, or Git index were changed.
 
 ## Spec Change Log
 
@@ -992,6 +998,24 @@ Also apply every iteration-3 `patch` row in the triage log.
 | 17 | edge-case-hunter | E17-18: `_scriptFocusAvailable` is set without proof that scripted focus works. | low | carried E10-02/BH3-16/BH12-05. | reject |
 | 17 | edge-case-hunter | E17-19: The migration note says fields return only when a later check allows, but they return while Pending. | medium | Same root cause as AA17-06: `SetAuthorizationCheckingHint` sets `_authorizationDenied = false` (`CommandFormEmitter.cs:392`). | defer |
 | 17 | edge-case-hunter | E17-20: `MappedFieldCount` counts case-variant keys twice. | low | carried E10-19/E4-16. | reject |
+
+
+| 18 | blind-hunter | BH18-01: Development Counter MCP accepts the fixed sample API key from a non-loopback client. | medium | `mcpEnabled` includes Development, but `MapFrontComposerMcp` applies `CreateTestTransportPolicy` only in Test; the public sample key is fixed. This is sample MCP transport work outside Story 13.3 command-focus intent. | defer |
+| 18 | blind-hunter | BH18-02: A failed validation-link focus result makes the link inert. | low | carried E4-06/E17-01: the JS helper exhausts later linked and invalid targets before returning false; native navigation would not focus an absent target. | reject |
+| 18 | blind-hunter | BH18-03: Nullable Boolean switches omit their inline validation message. | medium | carried E8-07/AA17-07: FluentSwitch ignores `ValidationFieldFor`, and the nullable editor limitation predates this story; the summary still reports the error. | defer |
+| 18 | blind-hunter | BH18-04: Duplicate zero-field trigger ids can return focus to another instance. | low | carried E14-01/E17-06: same forced-return path and unchanged per-instance trigger plumbing. | reject |
+| 18 | blind-hunter | BH18-05: An originless durable reservation can strand overlays after a lost release reply. | low | carried E17-04: this requires a lost reply with no origin; the renderer retries the owner release on its next render or attempt. | reject |
+| 18 | blind-hunter | BH18-06: Windows cleanup misses descendants after the launcher exits. | medium | carried BH15-09/E16-03: the separate test/CI repair owns Windows descendant cleanup. | defer |
+| 18 | blind-hunter | BH18-07: The background-denial browser test uses synthetic replacement. | medium | carried VG11-02/VG16-01: real generated-renderer refresh during a parent render remains a recorded verification gap. | defer |
+| 18 | blind-hunter | BH18-08: Provider proof calls request-derived query/projection types observations. | medium | `pact_provider_apphost_smoke.py` writes fixed `get-tenant` and `tenants` after other response checks, without verifying response type identity; this belongs to the separate provider-evidence workflow, not Story 13.3. | defer |
+| 18 | blind-hunter | BH18-09: Migration guide overstates binary compatibility. | low | The introduction says 4.6 keeps the 4.5 binary API while the generated lifecycle record constructor and `Deconstruct` change on line 102; a direct wording correction prevents an adopter from relying on stale binaries. | patch |
+| 18 | blind-hunter | BH18-10: Browser CI builds a Debug Counter host. | medium | carried BH14-08: the separate diagnostic CI fixture conflicts with Release-only guidance and already has a deferred owner. | defer |
+| 18 | blind-hunter | BH18-11: An old clipboard result relabels a later rejection. | low | carried E8-04/BH16-04: the narrow interleave needs rejection-generation state and retains the prior reject decision. | reject |
+| 18 | blind-hunter | BH18-12: Escape on a focused dialog action bypasses the component's cancel callback. | medium | The only `@onkeydown` is on the body div, a sibling of both action buttons; the public `OnCancel` contract promises Escape. Handle Escape from each focused action and test it. | patch |
+| 18 | edge-case-hunter | EC18-01: Editing a Fluent switch cannot capture the edited-origin control. | false | The generated `FluentSwitch` receives both `Name` and `data-fc-validation-field`; `fieldHost.matches(fieldEditableSelector)` accepts that named host without a light-DOM input. | reject |
+| 18 | edge-case-hunter | EC18-02: An unrelated detached control lets a denied form claim focus. | low | carried BH3-02/E16-01: the page-wide capture and already-lost-focus outcome are unchanged; owner-root coordination was previously rejected. | reject |
+| 18 | edge-case-hunter | EC18-03: A stale View-active-command callback can restore attempted-control focus after Clear. | low | `FocusActiveCommandAsync` awaits JS, then withdraws the action and forces focus with no `_generation` check; `ClearAsync` increments that generation. Guard the post-await path with the existing generation. | patch |
+| 18 | edge-case-hunter | EC18-04: Nullable Boolean switch lacks a described field error. | medium | carried E8-07/BH18-03: the known FluentSwitch nullable validation gap is already deferred. | defer |
 
 ## Design Notes
 

@@ -17,11 +17,13 @@
     </ChildContent>
     <ActionTemplate>
         <FluentButton OnClick="OnCancelAsync"
+                      @onkeydown="HandleKeyDownAsync"
                       Appearance="ButtonAppearance.Outline"
                       AutoFocus="true"
                       Class="fc-destructive-cancel"
                       data-testid="fc-destructive-cancel">@Localizer["DestructiveConfirmationCancel"]</FluentButton>
         <FluentButton OnClick="OnConfirmAsync"
+                      @onkeydown="HandleKeyDownAsync"
                       Appearance="ButtonAppearance.Primary"
                       Class="fc-destructive-confirm"
                       data-testid="fc-destructive-confirm">@(DestructiveLabel ?? "Confirm")</FluentButton>

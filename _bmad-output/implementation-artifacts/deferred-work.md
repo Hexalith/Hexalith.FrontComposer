@@ -10037,3 +10037,12 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
   summary: Prove that the deferred overlay restore cannot overwrite focus after a confirmed destructive command is denied or rejected; medium severity if true, unverified.
   evidence: Review AA17-01 found that the destructive `finally` calls `restoreOverlayOrigin` (`CommandRendererEmitter.cs:626`), which focuses the invoker, or the route h1 once the invoker is gone, on the next animation frame and is cancelled only by a real pointer or key press (`fc-focus.js:559`). A post-BeforeSubmit policy denial or a fast 400/409 may focus the denial heading or the summary before that frame. No fixture combines `[Destructive]` with `[RequiresPolicy]`. Settle it with a Chromium run of such a fixture whose policy denies after Confirm, plus a zero-delay stub rejection, asserting that the denial heading or the summary still holds focus 100 ms after Confirm.
+
+## Deferred from: code review of spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md (2026-10-02, iteration 18)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: Restrict the Development Counter MCP sample endpoint when it uses the fixed public sample API key.
+  evidence: The sample enables MCP in Development, registers `counter-e2e-mcp-key`, and applies its loopback transport policy only in Test. A Development host bound to a network interface can therefore accept the public credential. This belongs to the sample MCP access owner outside Story 13.3 command-focus intent.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: Label request-derived query and projection types as inferred in provider runtime evidence, or verify them from response metadata.
+  evidence: The separate provider proof records `queryType: get-tenant` and `projectionType: tenants` as observations after other response checks, but these names are copied from the request and not validated against response identity. Its evidence owner must correct that provenance claim.

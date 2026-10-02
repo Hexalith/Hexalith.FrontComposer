@@ -6,6 +6,7 @@ using Bunit;
 
 using Hexalith.FrontComposer.Shell.Components.Forms;
 
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Time.Testing;
@@ -145,6 +146,29 @@ public sealed class FcCommandBlockedOutcomeTests : BunitContext {
         StatusText(cut).ShouldBeEmpty();
         cut.FindAll("[data-testid='fc-view-active-command']").ShouldBeEmpty();
         FocusModule.Invocations.Count(invocation => invocation.Identifier == "hasActiveLifecycle").ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ClearDuringFailedLifecycleFocusDoesNotRestoreAttemptedFocus() {
+        _ = FocusModule.Setup<bool>("hasActiveLifecycle", _ => true).SetResult(true);
+        var focus = FocusModule.Setup<bool>("focusActiveLifecycle", _ => true);
+        IRenderedComponent<FcCommandBlockedOutcome> cut = RenderOutcome();
+
+        Task presentation = cut.InvokeAsync(() => cut.Instance.PresentAsync());
+        await AdvanceUntilAsync(() => presentation.IsCompleted);
+        cut.WaitForAssertion(() => _ = cut.Find("[data-testid='fc-view-active-command']"));
+
+        Task activation = cut.InvokeAsync(() => cut.Find("[data-testid='fc-view-active-command']")
+            .TriggerEventAsync("onclick", new MouseEventArgs()));
+        cut.WaitForAssertion(() => FocusModule.Invocations.Count(invocation => invocation.Identifier == "focusActiveLifecycle").ShouldBe(1));
+        await cut.InvokeAsync(() => cut.Instance.ClearAsync());
+        focus.SetResult(false);
+        await activation.ConfigureAwait(true);
+
+        cut.Instance.IsBlocked.ShouldBeFalse();
+        StatusText(cut).ShouldBeEmpty();
+        cut.FindAll("[data-testid='fc-view-active-command']").ShouldBeEmpty();
+        FocusModule.Invocations.Count(invocation => invocation.Identifier == "focusAttemptedControl").ShouldBe(1);
     }
 
     [Fact]

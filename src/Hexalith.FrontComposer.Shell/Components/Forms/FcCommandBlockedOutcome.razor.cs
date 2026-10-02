@@ -131,7 +131,9 @@ public partial class FcCommandBlockedOutcome : ComponentBase, IDisposable {
     }
 
     private async Task FocusActiveCommandAsync() {
-        if (await InvokeFocusModuleAsync("focusActiveLifecycle").ConfigureAwait(true)) {
+        int generation = _generation;
+        bool focused = await InvokeFocusModuleAsync("focusActiveLifecycle").ConfigureAwait(true);
+        if (focused || !IsCurrent(generation) || !_blocked) {
             return;
         }
 
