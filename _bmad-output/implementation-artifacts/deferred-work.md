@@ -10052,3 +10052,9 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
   summary: Determine whether a render interleave can focus a validation summary with stale form-level errors; medium severity if reproduced.
   evidence: Review BH19-12 observed that generated ShowValidationSummaryAsync awaits InvokeAsync(StateHasChanged) before invoking the child ShowAndFocusAsync, but the method does not explicitly wait for child parameters to update. Existing integrated bUnit cases show correct final content. Settle with a controlled render-order test that captures the summary text at the focus call during a new server form-level error outcome.
+
+## Deferred from: code review of spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md (2026-10-02, iteration 20)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: Verify that delayed Fluent shadow-control creation still receives invalid state and error description; medium severity if reproduced.
+  evidence: Review BH20-05 found that observeFieldAccessibility watches light-DOM mutations and schedules one retry after custom-element definition. A defined Fluent editor that creates its focusable control in the shadow root after that frame could miss projection without another observed mutation. Use a delayed-control browser fixture and inspect the focusable control accessibility state after it appears.

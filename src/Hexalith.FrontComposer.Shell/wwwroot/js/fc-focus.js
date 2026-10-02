@@ -156,6 +156,8 @@ export function restoreEditedOrigin(root = null) {
     const formRoot = root instanceof HTMLElement ? root : lastEditedRootRef?.deref() ?? null;
     const origin = formRoot ? editedOrigins.get(formRoot)?.origin : null;
     runAfterDismiss(() => {
+        // A later navigation can reopen this warning before the deferred focus return runs.
+        if (formRoot?.parentElement?.querySelector('[data-testid="fc-form-abandonment-warning"]')) return;
         const connectedRoot = formRoot instanceof HTMLElement && formRoot.isConnected ? formRoot : null;
         const target = origin instanceof HTMLElement && origin.isConnected && !origin.disabled
             ? origin
