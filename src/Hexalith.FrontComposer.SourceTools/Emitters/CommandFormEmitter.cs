@@ -1920,9 +1920,12 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                    __denied.OpenElement(dseq++, \"h2\");");
         _ = sb.AppendLine("                    __denied.AddAttribute(dseq++, \"id\", _formDomId + \"-authorization-heading\");");
         _ = sb.AppendLine("                    __denied.AddAttribute(dseq++, \"tabindex\", \"-1\");");
+        // Story 13.3 BH17-03 — the focused heading is the only speech path (AM-26), so it carries the reason.
+        _ = sb.AppendLine("                    __denied.AddAttribute(dseq++, \"aria-describedby\", _formDomId + \"-authorization-description\");");
         _ = sb.AppendLine("                    __denied.AddContent(dseq++, string.IsNullOrWhiteSpace(_serverWarning?.Title) ? ResolveShellLocalized(\"UnauthorizedCommandWarningTitle\", \"Permission required\") : _serverWarning.Title);");
         _ = sb.AppendLine("                    __denied.CloseElement();");
         _ = sb.AppendLine("                    __denied.OpenElement(dseq++, \"p\");");
+        _ = sb.AppendLine("                    __denied.AddAttribute(dseq++, \"id\", _formDomId + \"-authorization-description\");");
         _ = sb.AppendLine("                    __denied.AddContent(dseq++, string.IsNullOrWhiteSpace(_serverWarning?.Detail) ? ResolveShellLocalized(\"AuthorizationActionUnavailableMessage\", \"This action is unavailable.\") : _serverWarning.Detail);");
         _ = sb.AppendLine("                    __denied.CloseElement();");
         _ = sb.AppendLine("                    __denied.CloseElement();");

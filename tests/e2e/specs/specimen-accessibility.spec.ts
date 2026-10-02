@@ -93,6 +93,13 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
     await page.goto(`${route.path}?theme=dark&density=roomy`);
     await expect(page.locator(route.readySelector)).toBeVisible();
 
+    // VG17-01 — a failed submit renders Fluent's error text, so the dark override for it is sampled too.
+    // Retention stays unchosen, so client validation blocks the confirmation dialog.
+    const destructiveForm = page.locator("[data-testid='fc-destructive-command-specimen'] .fc-command-form");
+    await waitForGeneratedFormReady(destructiveForm);
+    await destructiveForm.getByRole('button', { name: 'Purge Specimen Record', exact: true }).click();
+    await expect(destructiveForm.locator('.fluent-validation-message')).toHaveCount(1);
+
     const samples = await page.evaluate(() => {
       type Color = { r: number; g: number; b: number; a: number };
 
@@ -168,6 +175,7 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
       return {
         destructiveInput: sample(["[data-testid='fc-destructive-command-specimen'] .fc-command-field fluent-text-input"]),
         destructiveLabel: sample(["[data-testid='fc-destructive-command-specimen'] .fc-command-field fluent-field > label"]),
+        destructiveValidationMessage: sample(["[data-testid='fc-destructive-command-specimen'] .fluent-validation-message"]),
         policyInput: sample(["[data-testid='fc-policy-command-specimen'] .fc-command-field fluent-text-input"]),
         policyLabel: sample(["[data-testid='fc-policy-command-specimen'] .fc-command-field fluent-field > label"]),
         policyDenialHeading: sample(["[data-testid='fc-policy-command-specimen'] [data-fc-authorization-denied] h2"]),
@@ -182,6 +190,7 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
     expect(samples.destructiveInput.foreground).toBe('rgb(20, 20, 20)');
     expect(samples.destructiveInput.background).toBe('rgb(255, 255, 255)');
     expect(samples.destructiveLabel.foreground).toBe('rgb(247, 247, 242)');
+    expect(samples.destructiveValidationMessage.foreground).toBe('rgb(227, 125, 128)');
     expect(samples.policyInput.foreground).toBe('rgb(20, 20, 20)');
     expect(samples.policyInput.background).toBe('rgb(255, 255, 255)');
     expect(samples.policyLabel.foreground).toBe('rgb(247, 247, 242)');

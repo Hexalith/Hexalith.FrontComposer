@@ -768,19 +768,19 @@
   </data>
   <data name="RejectionErrorCodeLabel" xml:space="preserve">
     <value>Error code</value>
-    <comment>Story 13.3 — label for the support-safe rejection error code in the mapped-rejection details.</comment>
+    <comment>Story 13.3 — label for the support-safe rejection error code in the mapped-rejection card and the unmapped rejection bar.</comment>
   </data>
   <data name="RejectionReasonCategoryLabel" xml:space="preserve">
     <value>Reason category</value>
-    <comment>Story 13.3 — label for the support-safe rejection reason category in the mapped-rejection details.</comment>
+    <comment>Story 13.3 — label for the support-safe rejection reason category in the mapped-rejection card and the unmapped rejection bar.</comment>
   </data>
   <data name="RejectionSuggestedActionLabel" xml:space="preserve">
     <value>Suggested action</value>
-    <comment>Story 13.3 — label for the support-safe suggested action in the mapped-rejection details.</comment>
+    <comment>Story 13.3 — label for the support-safe suggested action in the mapped-rejection card and the unmapped rejection bar.</comment>
   </data>
   <data name="RejectionDocsCodeLabel" xml:space="preserve">
     <value>Documentation code</value>
-    <comment>Story 13.3 — label for the support-safe documentation code in the mapped-rejection details.</comment>
+    <comment>Story 13.3 — label for the support-safe documentation code in the mapped-rejection card and the unmapped rejection bar.</comment>
   </data>
   <data name="CommandBlockedTitle" xml:space="preserve">
     <value>Command not run</value>

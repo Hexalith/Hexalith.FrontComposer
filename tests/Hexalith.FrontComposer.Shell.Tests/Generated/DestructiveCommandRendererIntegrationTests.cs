@@ -12,6 +12,7 @@ using Hexalith.FrontComposer.Shell.State.PendingCommands;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Time.Testing;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.JSInterop;
 
@@ -294,6 +295,51 @@ public sealed class DestructiveCommandRendererIntegrationTests : CommandRenderer
 
         cut.WaitForAssertion(() => commandService.DispatchCount.ShouldBe(1));
         dialogService.ShowDialogCallCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task GeneratedRendererSecondPressBeforeConfirmationAnnouncesOneBlockedAttempt() {
+        // Story 13.3 VG17-O1 (decided 2026-10-02) — admission is taken before BeforeSubmit (ECH-05), so the
+        // second press of a double-click, which reaches the form before the confirmation makes the page
+        // inert, is a blocked attempt like any same-form resubmit (VG2-05): it opens no second dialog,
+        // dispatches nothing, keeps focus on the submit control, and announces AM-20 once.
+        FakeTimeProvider time = new(DateTimeOffset.UtcNow);
+        Services.Replace(ServiceDescriptor.Singleton<TimeProvider>(time));
+        RecordingCommandService commandService = new();
+        ControlledDialogService dialogService = new();
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => commandService));
+        Services.Replace(ServiceDescriptor.Scoped<IDialogService>(_ => dialogService.Service));
+        await InitializeStoreAsync();
+
+        IRenderedComponent<DeleteWidgetCommandRenderer> cut = Render<DeleteWidgetCommandRenderer>();
+
+        cut.WaitForAssertion(() => _ = cut.Find("fluent-button"));
+        cut.Find("fluent-button").Click();
+        cut.WaitForAssertion(() => _ = cut.Find("form"));
+        cut.Find("form").Submit();
+        cut.Find("form").Submit();
+
+        DateTime deadline = DateTime.UtcNow.AddSeconds(5);
+        while (BlockedStatus().Length == 0 && DateTime.UtcNow < deadline) {
+            time.Advance(TimeSpan.FromMilliseconds(50));
+            await Task.Delay(10, Xunit.TestContext.Current.CancellationToken).ConfigureAwait(true);
+        }
+
+        BlockedStatus().ShouldBe("This command did not run. Another command is already in progress.");
+        cut.FindAll("[data-testid='fc-command-blocked-status']").Count.ShouldBe(1);
+        FcFocusModule.Invocations
+            .Where(invocation => invocation.Identifier == "focusAttemptedControl")
+            .ShouldHaveSingleItem()
+            .Arguments[0].ShouldBeOfType<string>().ShouldEndWith("-submit", Case.Sensitive);
+        dialogService.ShowDialogCallCount.ShouldBe(1);
+        commandService.DispatchCount.ShouldBe(0);
+
+        dialogService.Complete(DialogResult.Ok());
+
+        cut.WaitForAssertion(() => commandService.DispatchCount.ShouldBe(1));
+        dialogService.ShowDialogCallCount.ShouldBe(1);
+
+        string BlockedStatus() => cut.Find("[data-testid='fc-command-blocked-status']").TextContent;
     }
 
     [Theory]

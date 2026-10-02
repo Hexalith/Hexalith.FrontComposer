@@ -958,10 +958,12 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                     __denied.OpenElement(4, "h2");
                     __denied.AddAttribute(5, "id", _formDomId + "-authorization-heading");
                     __denied.AddAttribute(6, "tabindex", "-1");
-                    __denied.AddContent(7, string.IsNullOrWhiteSpace(_serverWarning?.Title) ? ResolveShellLocalized("UnauthorizedCommandWarningTitle", "Permission required") : _serverWarning.Title);
+                    __denied.AddAttribute(7, "aria-describedby", _formDomId + "-authorization-description");
+                    __denied.AddContent(8, string.IsNullOrWhiteSpace(_serverWarning?.Title) ? ResolveShellLocalized("UnauthorizedCommandWarningTitle", "Permission required") : _serverWarning.Title);
                     __denied.CloseElement();
-                    __denied.OpenElement(8, "p");
-                    __denied.AddContent(9, string.IsNullOrWhiteSpace(_serverWarning?.Detail) ? ResolveShellLocalized("AuthorizationActionUnavailableMessage", "This action is unavailable.") : _serverWarning.Detail);
+                    __denied.OpenElement(9, "p");
+                    __denied.AddAttribute(10, "id", _formDomId + "-authorization-description");
+                    __denied.AddContent(11, string.IsNullOrWhiteSpace(_serverWarning?.Detail) ? ResolveShellLocalized("AuthorizationActionUnavailableMessage", "This action is unavailable.") : _serverWarning.Detail);
                     __denied.CloseElement();
                     __denied.CloseElement();
                 }));

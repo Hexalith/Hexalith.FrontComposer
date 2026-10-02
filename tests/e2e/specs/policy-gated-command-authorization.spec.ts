@@ -177,6 +177,8 @@ test.describe('Story 13.3: submit-time denial focus', () => {
     await expect(heading).not.toHaveAttribute('aria-live');
     await expect(card.locator('[aria-live], [role="alert"], [role="status"]')).toHaveCount(0);
     await expect(card).toContainText('You do not have permission to Batch Increment.');
+    // BH17-03 — focus is the only speech path, so the focused heading is described by the reason.
+    await expect(heading).toHaveAccessibleDescription('You do not have permission to Batch Increment.');
     await expect(card).not.toContainText('Specimen backend denial');
     await expect(card).not.toContainText('This specimen command was denied at dispatch.');
     await lifecycle.expectState(REJECTION_COMMAND_ID, 'idle');
@@ -275,6 +277,9 @@ test.describe('Story 13.3: unmapped rejection recovery focus', () => {
       await stopOwnedProcess(server);
       throw error;
     }
+
+    // VG17-O2 — the spawn timeout bounds startup only; the ready host serves both serial tests until afterAll.
+    clearTimeout(server.timer);
   });
 
   test.afterAll(async () => {
@@ -309,7 +314,9 @@ test.describe('Story 13.3: unmapped rejection recovery focus', () => {
 
     const editAndRetry = form.getByTestId('fc-rejection-edit-retry');
     await expect(editAndRetry).toBeVisible();
-    await editAndRetry.click();
+    // VR-03 / AA17-02 — the first recovery action works without a pointer.
+    await editAndRetry.focus();
+    await page.keyboard.press('Enter');
 
     await expect(fieldEditorByLabel(form, 'Amount')).toBeFocused();
   });

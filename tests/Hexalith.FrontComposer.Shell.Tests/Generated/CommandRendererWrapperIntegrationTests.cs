@@ -759,7 +759,11 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             // action; the server's problem title and detail never reach the denial card.
             heading.TextContent.ShouldBe("Permission required");
             AngleSharp.Dom.IElement card = cut.Find("section[data-fc-authorization-denied='true']");
-            card.QuerySelector("p").ShouldNotBeNull().TextContent.ShouldBe("You do not have permission to Two Field Compact.");
+            AngleSharp.Dom.IElement reason = card.QuerySelector("p").ShouldNotBeNull();
+            reason.TextContent.ShouldBe("You do not have permission to Two Field Compact.");
+            // BH17-03 — the focused heading is the only speech path, so it is described by the reason.
+            reason.Id.ShouldNotBeNullOrWhiteSpace();
+            heading.GetAttribute("aria-describedby").ShouldBe(reason.Id);
             card.TextContent.ShouldNotContain("Not allowed");
             card.TextContent.ShouldNotContain("You cannot run this command.");
             // The form denial card is a named group, not a region landmark, alert, or status.
@@ -1342,6 +1346,10 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         AngleSharp.Dom.IElement card = cut.Find("section[data-fc-authorization-denied='true']");
         card.GetAttribute("role").ShouldBe("group");
         card.HasAttribute("aria-live").ShouldBeFalse();
+        // BH17-03 — the renderer heading is described by the denial reason it replaces the form with.
+        AngleSharp.Dom.IElement reason = card.QuerySelector("p").ShouldNotBeNull();
+        reason.Id.ShouldNotBeNullOrWhiteSpace();
+        card.QuerySelector("h2").ShouldNotBeNull().GetAttribute("aria-describedby").ShouldBe(reason.Id);
         FcFocusModule.Invocations.ShouldNotContain(invocation => invocation.Identifier == "captureFocusBeforeReplacement");
         FcFocusModule.Invocations.ShouldNotContain(invocation => invocation.Identifier == "focusReplacementHeading");
         FcFocusModule.Invocations.ShouldNotContain(invocation => invocation.Identifier == "focusOverlayEntry");

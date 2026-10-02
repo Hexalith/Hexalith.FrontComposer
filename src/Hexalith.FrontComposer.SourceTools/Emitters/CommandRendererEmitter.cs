@@ -166,6 +166,8 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("    private string _authorizationPresentationMessage = string.Empty;");
             _ = sb.AppendLine("    private bool _authorizationFocusPending;");
             _ = sb.AppendLine("    private readonly string _authorizationHeadingId = \"fc-command-authorization-" + SanitizeCssId(model.CommandFullyQualifiedName) + "-\" + Guid.NewGuid().ToString(\"N\");");
+            // BH17-03 — a separate prefix keeps heading-id prefix selectors matching only the heading.
+            _ = sb.AppendLine("    private readonly string _authorizationDescriptionId = \"fc-command-authorization-description-\" + Guid.NewGuid().ToString(\"N\");");
         }
         _ = sb.AppendLine();
 
@@ -1167,9 +1169,12 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("                        __message.OpenElement(aseq++, \"h2\");");
         _ = sb.AppendLine("                        __message.AddAttribute(aseq++, \"id\", _authorizationHeadingId);");
         _ = sb.AppendLine("                        __message.AddAttribute(aseq++, \"tabindex\", \"-1\");");
+        // Story 13.3 BH17-03 — the focused heading is the only speech path (AM-26), so it carries the reason.
+        _ = sb.AppendLine("                        __message.AddAttribute(aseq++, \"aria-describedby\", _authorizationDescriptionId);");
         _ = sb.AppendLine("                        __message.AddContent(aseq++, _authorizationPresentationTitle);");
         _ = sb.AppendLine("                        __message.CloseElement();");
         _ = sb.AppendLine("                        __message.OpenElement(aseq++, \"p\");");
+        _ = sb.AppendLine("                        __message.AddAttribute(aseq++, \"id\", _authorizationDescriptionId);");
         _ = sb.AppendLine("                        __message.AddContent(aseq++, _authorizationPresentationMessage);");
         _ = sb.AppendLine("                        __message.CloseElement();");
         _ = sb.AppendLine("                        __message.CloseElement();");

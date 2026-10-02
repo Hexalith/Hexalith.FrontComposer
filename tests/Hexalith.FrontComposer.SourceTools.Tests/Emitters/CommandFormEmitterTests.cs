@@ -1079,8 +1079,11 @@ public class CommandFormEmitterTests {
         masked.ShouldContain("__fieldMessage.AddAttribute(#, \"id\", _formDomId + \"-SecondNote-description\");");
 
         // BH3-08 / BH3-09 — no host ARIA that cannot reach the shadow control, and no second error node:
-        // the Fluent field renders each error once.
-        masked.ShouldNotContain("\"aria-describedby\"");
+        // the Fluent field renders each error once. BH17-03 — the only description link is the light-DOM
+        // denial heading's link to its reason.
+        const string deniedHeadingDescription = "__denied.AddAttribute(#, \"aria-describedby\", _formDomId + \"-authorization-description\");";
+        masked.ShouldContain(deniedHeadingDescription);
+        masked.Replace(deniedHeadingDescription, string.Empty, StringComparison.Ordinal).ShouldNotContain("\"aria-describedby\"");
         masked.ShouldNotContain("\"aria-invalid\"");
         masked.ShouldNotContain("__b.AddAttribute(#, \"id\", _formDomId + \"-FirstNote-error\")");
         masked.ShouldContain("__b.AddAttribute(#, \"MessageCondition\", FluentFieldCondition.Always);");

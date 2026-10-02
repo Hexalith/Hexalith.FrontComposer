@@ -10031,3 +10031,9 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
   summary: Live provider proof conflates request query/projection types with observed response metadata.
   evidence: The separate provider runtime-evidence capture records get-tenant/tenants after tenant/provenance/version checks without validating response type identity. Its owner must validate available metadata or mark request-derived values as inferred.
+
+## Deferred from: code review of spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md (2026-10-02, iteration 17)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: Prove that the deferred overlay restore cannot overwrite focus after a confirmed destructive command is denied or rejected; medium severity if true, unverified.
+  evidence: Review AA17-01 found that the destructive `finally` calls `restoreOverlayOrigin` (`CommandRendererEmitter.cs:626`), which focuses the invoker, or the route h1 once the invoker is gone, on the next animation frame and is cancelled only by a real pointer or key press (`fc-focus.js:559`). A post-BeforeSubmit policy denial or a fast 400/409 may focus the denial heading or the summary before that frame. No fixture combines `[Destructive]` with `[RequiresPolicy]`. Settle it with a Chromium run of such a fixture whose policy denies after Confirm, plus a zero-delay stub rejection, asserting that the denial heading or the summary still holds focus 100 ms after Confirm.

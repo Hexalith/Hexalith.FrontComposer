@@ -26,7 +26,13 @@ export const submissionTest = test.extend<{ submissionBaseUrl: string; mappedRej
       },
     }, 60_000);
     try {
-      await expect.poll(() => [...host.listeningOrigins][0]).toBeTruthy();
+      await expect.poll(() => {
+        // A host that exits before listening (for example an unbuilt assembly) reports its own output.
+        if (host.error || host.child.exitCode !== null || host.child.signalCode !== null) {
+          throw new Error(`Counter host exited before listening: ${String(host.error ?? host.child.exitCode ?? host.child.signalCode)}.\n${host.output}`);
+        }
+        return [...host.listeningOrigins][0];
+      }).toBeTruthy();
       const baseUrl = [...host.listeningOrigins][0];
       await waitForOwnedServer(host, baseUrl, Date.now() + 10_000);
       await use(baseUrl);
