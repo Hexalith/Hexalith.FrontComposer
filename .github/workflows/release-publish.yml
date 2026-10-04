@@ -1,0 +1,53 @@
+name: Publish FrontComposer release
+
+# NuGet matches the job workflow identity. Keep login and publication in this
+# repository-owned workflow so the production policy can name this file.
+on:
+  workflow_call:
+    inputs:
+      builds-execution-sha:
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+  id-token: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: production
+    steps:
+      - name: Checkout exact dispatched source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: false
+      - name: Prepare caller-owned release
+        id: prepare
+        uses: Hexalith/Hexalith.Builds/Github/prepare-domain-release@360a2b9c4e96809365a7de785be9a68152d5ac28
+        with:
+          solution: Hexalith.FrontComposer.slnx
+          builds-execution-sha: ${{ inputs.builds-execution-sha }}
+          expected-package-count: '8'
+          publication-flag: ${{ vars.HEXALITH_RELEASE_PUBLISH_ENABLED }}
+          nuget-user: ${{ vars.NUGET_USER }}
+      - name: Exchange GitHub OIDC token for temporary NuGet key
+        if: steps.prepare.outputs.publish-enabled == 'true'
+        id: nuget-login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: ${{ vars.NUGET_USER }}
+      - name: Semantic Release
+        if: steps.prepare.outputs.publish-enabled == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+          HEXALITH_BUILDS_EXECUTION_SHA: ${{ inputs.builds-execution-sha }}
+        run: npx semantic-release

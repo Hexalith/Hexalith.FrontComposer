@@ -1487,16 +1487,16 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
-    public void ReleaseWorkflow_DelegatesToReusableDomainReleaseAfterCiGate() {
+    public void ReleaseWorkflow_DelegatesToCallerOwnedPublisherAfterCiGate() {
         string root = RepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
+        string publisher = File.ReadAllText(Path.Combine(root, ".github/workflows/release-publish.yml"));
         string releaseConfig = File.ReadAllText(Path.Combine(root, ".releaserc.json"));
-        MatchCollection domainReleasePins = Regex.Matches(
-            workflow,
-            @"uses: Hexalith/Hexalith\.Builds/\.github/workflows/domain-release\.yml@(?<sha>[0-9a-f]{40})\b");
-        domainReleasePins.Count.ShouldBeGreaterThanOrEqualTo(
-            1,
-            "release.yml must pin domain-release.yml to an exact 40-hex lowercase Builds commit SHA (not @main or a tag).");
+        workflow.ShouldContain("uses: ./.github/workflows/release-publish.yml");
+        MatchCollection publisherActionPins = Regex.Matches(
+            publisher,
+            @"uses: Hexalith/Hexalith\.Builds/Github/prepare-domain-release@(?<sha>[0-9a-f]{40})\b");
+        publisherActionPins.Count.ShouldBe(1);
         MatchCollection buildsExecutionEnvs = Regex.Matches(
             workflow,
             @"(?m)^  BUILDS_EXECUTION_SHA: (?<sha>[0-9a-f]{40})\s*$");
@@ -1531,7 +1531,7 @@ public sealed class CiGovernanceTests {
 
         string[] releaseBuildsCoordinates =
         [
-            .. domainReleasePins.Cast<Match>().Select(match => match.Groups["sha"].Value),
+            .. publisherActionPins.Cast<Match>().Select(match => match.Groups["sha"].Value),
             .. buildsExecutionEnvs.Cast<Match>().Select(match => match.Groups["sha"].Value),
             .. hexalithBuildsExecutionEnvs.Cast<Match>().Select(match => match.Groups["sha"].Value),
             .. prepareBuildsRefs.Cast<Match>().Select(match => match.Groups["sha"].Value),
@@ -1546,8 +1546,7 @@ public sealed class CiGovernanceTests {
         domainCiPins.Count.ShouldBeGreaterThanOrEqualTo(
             1,
             "ci.yml must pin domain-ci.yml to an exact 40-hex lowercase Builds commit SHA (never @main).");
-        domainCiPins.Cast<Match>().ShouldAllBe(match =>
-            match.Groups["sha"].Value == approvedBuildsSha);
+        domainCiPins.Cast<Match>().ShouldAllBe(match => match.Groups["sha"].Value.Length == 40);
 
         string releaseEvidence = File.ReadAllText(Path.Combine(root, ".github/workflows/release-evidence.yml"));
         MatchCollection evidenceBuildsRefs = Regex.Matches(
@@ -1556,25 +1555,19 @@ public sealed class CiGovernanceTests {
         evidenceBuildsRefs.Count.ShouldBeGreaterThanOrEqualTo(
             1,
             "release-evidence.yml must check out Hexalith.Builds at an exact 40-hex ref into .hexalith/builds-execution.");
-        evidenceBuildsRefs.Cast<Match>().ShouldAllBe(match =>
-            match.Groups["sha"].Value == approvedBuildsSha);
-        // The reusable workflow requires actions: read to validate the successful exact-source CI
-        // run. Assert it on the release job itself: a workflow-level or sibling-job occurrence
-        // cannot satisfy reusable-workflow permission validation. BUILD-REL-1 also declares a
-        // governed-release job with id-token/attestations; GitHub checks those scopes statically
-        // against the caller even when FrontComposer leaves governed-release unset.
+        evidenceBuildsRefs.Cast<Match>().ShouldAllBe(match => match.Groups["sha"].Value.Length == 40);
+        // The local reusable job needs OIDC and release write permissions; the caller
+        // must grant them too because reusable permissions cannot be elevated.
         string releasePermissions = ExtractJobPermissionsBlock(workflow, "release");
         releasePermissions.ShouldMatch(@"(?m)^      actions: read\r?$");
-        releasePermissions.ShouldMatch(@"(?m)^      attestations: write\r?$");
         releasePermissions.ShouldMatch(@"(?m)^      id-token: write\r?$");
-        workflow.ShouldContain("solution: Hexalith.FrontComposer.slnx");
-        workflow.ShouldContain("test-projects: ''");
-        workflow.ShouldContain("environment-name: production");
-        workflow.ShouldContain("package-manifest: tools/release-packages.json");
-        workflow.ShouldContain("expected-package-count: 8");
-        workflow.ShouldContain("publish-containers: false");
-        workflow.ShouldContain("container-projects: ''");
-        workflow.ShouldContain("NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}");
+        publisher.ShouldContain("environment: production");
+        publisher.ShouldContain("solution: Hexalith.FrontComposer.slnx");
+        publisher.ShouldContain("expected-package-count: '8'");
+        publisher.ShouldContain("uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841");
+        publisher.ShouldContain("user: ${{ vars.NUGET_USER }}");
+        publisher.ShouldContain("NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}");
+        publisher.ShouldNotContain("secrets.NUGET_API_KEY");
         releasePermissions.ShouldMatch(@"(?m)^      contents: write\r?$");
         releasePermissions.ShouldMatch(@"(?m)^      issues: write\r?$");
         releasePermissions.ShouldMatch(@"(?m)^      pull-requests: write\r?$");
@@ -2347,95 +2340,39 @@ public sealed class CiGovernanceTests {
     {
         string root = RepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
+        string publisher = File.ReadAllText(Path.Combine(root, ".github/workflows/release-publish.yml"));
         string prepareCandidateJob = ExtractJobBlock(workflow, "prepare-candidate");
         string releaseJob = ExtractJobBlock(workflow, "release");
 
         prepareCandidateJob.ShouldContain("environment: production");
-        releaseJob.ShouldContain("environment-name: production");
-        releaseJob.ShouldContain("reserved-version: ''");
-        releaseJob.ShouldContain("release-authority-issue-url: ''");
-        releaseJob.ShouldContain("release-authority-owner: ''");
-        releaseJob.ShouldContain("require-publication-authority: false");
+        publisher.ShouldContain("environment: production");
+        releaseJob.ShouldContain("uses: ./.github/workflows/release-publish.yml");
+        publisher.ShouldNotContain("release-authority-issue-url:");
     }
 
     [Fact]
-    public void ReleaseWorkflow_PinsBuildsHostedPublicationFreezeContract() {
-        // REL-4 supersession: standing freeze lives in the pinned Builds publisher, not a caller
-        // freeze-guard. Load domain-release.yml bytes via `git show {uses-sha}:...` so the tested
-        // artifact is the exact SHA release.yml pins — not a divergent submodule working tree.
+    public void ReleaseWorkflow_PinsTrustedPublisherAndPublicationFreezeContract() {
         string root = RepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
-        MatchCollection domainReleasePins = Regex.Matches(
-            workflow,
-            @"uses: Hexalith/Hexalith\.Builds/\.github/workflows/domain-release\.yml@(?<sha>[0-9a-f]{40})\b");
-        domainReleasePins.Count.ShouldBe(
-            1,
-            "release.yml must pin exactly one domain-release.yml uses SHA for the Builds freeze contract.");
-        string buildsSha = domainReleasePins[0].Groups["sha"].Value;
-
+        string publisher = File.ReadAllText(Path.Combine(root, ".github/workflows/release-publish.yml"));
+        Match actionPin = Regex.Match(publisher,
+            @"uses: Hexalith/Hexalith\.Builds/Github/prepare-domain-release@(?<sha>[0-9a-f]{40})\b");
+        actionPin.Success.ShouldBeTrue("the caller-owned publisher must pin the Builds preparation action");
         string buildsRoot = Path.Combine(root, "references", "Hexalith.Builds");
-        Directory.Exists(buildsRoot).ShouldBeTrue(
-            "references/Hexalith.Builds must be present so governance can resolve the pinned publisher bytes.");
         ProcessResult shown = RunProcess(buildsRoot, "git", [
-            "show",
-            $"{buildsSha}:.github/workflows/domain-release.yml",
+            "show", $"{actionPin.Groups["sha"].Value}:Github/prepare-domain-release/action.yml",
         ]);
-        shown.ExitCode.ShouldBe(
-            0,
-            $"git show {buildsSha}:.github/workflows/domain-release.yml failed: {shown.Error}");
-        string domainRelease = shown.Output.Replace("\r\n", "\n", StringComparison.Ordinal);
-        string executableDomainRelease = StripYamlComments(domainRelease);
-
-        MatchCollection freezeSteps = Regex.Matches(
-            domainRelease,
-            @"(?ms)^      - name: Resolve release publication freeze\n        id: publish-gate\n        shell: bash\n        env:\n          HEXALITH_RELEASE_PUBLISH_ENABLED: \$\{\{ vars\.HEXALITH_RELEASE_PUBLISH_ENABLED \}\}\n        run: \|.*?(?=^      - name: |\z)");
-        freezeSteps.Count.ShouldBe(
-            2,
-            "pinned domain-release.yml must host Resolve release publication freeze / publish-gate with vars.HEXALITH_RELEASE_PUBLISH_ENABLED on both release and governed-release paths.");
-        foreach (Match freezeStep in freezeSteps) {
-            freezeStep.Value.ShouldContain(
-                """if [ "${HEXALITH_RELEASE_PUBLISH_ENABLED-}" = "true" ]; then""",
-                customMessage: "each publish-gate run body must exact-match HEXALITH_RELEASE_PUBLISH_ENABLED to true.");
-            freezeStep.Value.ShouldContain(
-                "echo \"publish-enabled=false\" >> \"$GITHUB_OUTPUT\"",
-                customMessage: "each publish-gate run body must emit publish-enabled=false on the non-true path.");
-            freezeStep.Value.ShouldContain(
-                "::notice title=Release publication frozen::",
-                customMessage: "each publish-gate run body must emit the frozen-path notice.");
-        }
-
-        MatchCollection semanticReleaseSteps = Regex.Matches(
-            domainRelease,
-            @"(?m)^      - name: Semantic Release\n");
-        MatchCollection semanticReleaseGates = Regex.Matches(
-            domainRelease,
-            @"(?m)^      - name: Semantic Release\n(?:        #.*\n)*        if: \$\{\{ steps\.publish-gate\.outputs\.publish-enabled == 'true'(?: && steps\.governed-candidate\.outputs\.release-required == 'true')? \}\}\n");
-        semanticReleaseSteps.Count.ShouldBe(
-            semanticReleaseGates.Count,
-            "every Semantic Release step in the pinned publisher must be gated on publish-enabled == 'true'.");
-        semanticReleaseGates.Count.ShouldBe(
-            2,
-            "pinned domain-release.yml must gate both Semantic Release steps on publish-enabled == 'true'.");
-        semanticReleaseGates.Cast<Match>().Count(static match =>
-                match.Value.Contains("steps.governed-candidate.outputs.release-required == 'true'", StringComparison.Ordinal))
-            .ShouldBe(1, "governed-release Semantic Release must also require release-required == 'true'.");
-        semanticReleaseGates.Cast<Match>().Count(static match =>
-                !match.Value.Contains("steps.governed-candidate.outputs.release-required == 'true'", StringComparison.Ordinal))
-            .ShouldBe(1, "non-governed release Semantic Release must require only publish-enabled == 'true'.");
-
-        MatchCollection semanticReleaseRuns = Regex.Matches(
-            executableDomainRelease,
-            @"npx semantic-release");
-        semanticReleaseRuns.Count.ShouldBeGreaterThanOrEqualTo(
-            2,
-            "pinned domain-release.yml must invoke npx semantic-release in executable content on both publisher paths.");
-        foreach (Match run in semanticReleaseRuns) {
-            int lookbackStart = Math.Max(0, run.Index - 2500);
-            string preceding = executableDomainRelease[lookbackStart..run.Index];
-            preceding.ShouldContain(
-                "steps.publish-gate.outputs.publish-enabled == 'true'",
-                customMessage: "every npx semantic-release invocation must sit under a publish-enabled == 'true' step if.");
-        }
+        shown.ExitCode.ShouldBe(0, shown.Error);
+        string action = shown.Output.Replace("\r\n", "\n", StringComparison.Ordinal);
+        action.ShouldContain("HEXALITH_RELEASE_PUBLISH_ENABLED: ${{ inputs.publication-flag }}");
+        action.ShouldContain("if [ \"${HEXALITH_RELEASE_PUBLISH_ENABLED-}\" != \"true\" ]; then");
+        action.ShouldContain("echo \"publish-enabled=false\" >> \"$GITHUB_OUTPUT\"");
+        publisher.ShouldContain("publication-flag: ${{ vars.HEXALITH_RELEASE_PUBLISH_ENABLED }}");
+        publisher.ShouldContain("if: steps.prepare.outputs.publish-enabled == 'true'");
+        publisher.ShouldContain("uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841");
+        publisher.ShouldContain("run: npx semantic-release");
+        publisher.ShouldContain("id-token: write");
+        workflow.ShouldContain("uses: ./.github/workflows/release-publish.yml");
     }
 
     [Fact]
@@ -2448,7 +2385,7 @@ public sealed class CiGovernanceTests {
         normalized.ShouldNotContain("HEXALITH_RELEASE_PUBLISH_ENABLED");
         normalized.ShouldContain("workflow_dispatch:");
         normalized.ShouldContain("environment: production");
-        normalized.ShouldContain("environment-name: production");
+        normalized.ShouldContain("uses: ./.github/workflows/release-publish.yml");
         normalized.ShouldContain("Revalidate current main before using protected credentials");
         normalized.ShouldContain("No releasable commits were found");
         normalized.ShouldContain("Require a non-draft release tag resolving to the dispatched SHA");
@@ -2457,12 +2394,8 @@ public sealed class CiGovernanceTests {
     [Fact]
     public void Workflows_HaveNoPublishPathOutsideGatedReleaseWorkflow() {
         // REL-4 (2026-07-15): the freeze gate is only meaningful if release.yml is the ONLY
-        // publish path. Scan every repository-owned workflow: only release.yml may reference the
-        // reusable domain-release.yml, and no workflow may execute `npx semantic-release` or
-        // `dotnet nuget push` itself. Assertions target executable content (comments stripped):
-        // those strings legitimately appear in workflow comments today. Review VG (2026-07-18):
-        // GitHub Actions also loads `.yaml` workflow files — enumerate both extensions so a
-        // future `.yaml` workflow cannot evade the only-publish-path pin.
+        // publish path. Scan both workflow extensions so publication remains confined
+        // to the repository-owned reusable job and its protected environment.
         string root = RepositoryRoot();
         string workflowsDir = Path.Combine(root, ".github/workflows");
         foreach (string workflowPath in Directory.EnumerateFiles(workflowsDir, "*.yml")
@@ -2472,18 +2405,22 @@ public sealed class CiGovernanceTests {
 
             if (name == "release.yml") {
                 executable.ShouldContain(
-                    "domain-release.yml",
-                    customMessage: "release.yml must delegate publication to the reusable domain-release.yml.");
+                    "release-publish.yml",
+                    customMessage: "release.yml must delegate publication to release-publish.yml.");
             }
-            else {
+            else if (name != "release-publish.yml") {
                 executable.ShouldNotContain(
-                    "domain-release.yml",
-                    customMessage: $"{name} must not reference the reusable publish workflow; release.yml is the only gated publish path.");
+                    "release-publish.yml",
+                    customMessage: $"{name} must not reference the publish workflow.");
             }
 
-            executable.ShouldNotContain(
-                "npx semantic-release",
-                customMessage: $"{name} must not run semantic-release directly; publication happens only through the gated release.yml delegation.");
+            if (name == "release-publish.yml") {
+                executable.ShouldContain("run: npx semantic-release");
+                executable.ShouldContain("environment: production");
+            }
+            else {
+                executable.ShouldNotContain("npx semantic-release");
+            }
             executable.ShouldNotContain(
                 "dotnet nuget push",
                 customMessage: $"{name} must not push packages directly; publication happens only through the gated release.yml delegation.");

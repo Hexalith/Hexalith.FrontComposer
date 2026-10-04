@@ -317,18 +317,22 @@ def validate_publication(
         raise ContractError("GitHub Release tag does not resolve to the exact dispatched SHA")
 
 
-def validate_builds_identity(workflow_text: str, selected_gitlink: str, approved: str) -> None:
+def validate_builds_identity(workflow_text: str, publisher_text: str, selected_gitlink: str, approved: str) -> None:
     if SHA_RE.fullmatch(approved) is None:
         raise ContractError("approved Builds execution SHA must be an exact lowercase 40-hex commit")
     if SHA_RE.fullmatch(selected_gitlink) is None:
         raise ContractError("cannot resolve the candidate Builds gitlink")
+    if re.findall(r"(?m)^    uses: \./\.github/workflows/release-publish\.yml$", workflow_text) != [
+        "    uses: ./.github/workflows/release-publish.yml"
+    ]:
+        raise ContractError("release workflow must delegate to its repository-owned NuGet publisher")
     workflow_pins = re.findall(
-        r"uses:\s*Hexalith/Hexalith\.Builds/\.github/workflows/domain-release\.yml@([0-9a-f]{40})\b",
-        workflow_text,
+        r"uses:\s*Hexalith/Hexalith\.Builds/Github/prepare-domain-release@([0-9a-f]{40})\b",
+        publisher_text,
     )
     input_pins = re.findall(r"(?m)^\s+builds-execution-sha:\s*([0-9a-f]{40})\s*$", workflow_text)
     if workflow_pins != [approved] or input_pins != [approved]:
-        raise ContractError("release workflow and builds-execution-sha must use the identical approved Builds commit")
+        raise ContractError("release publisher action and builds-execution-sha must use the identical approved Builds commit")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -405,7 +409,19 @@ def main(argv: list[str] | None = None) -> int:
             )
             if workflow_bytes.returncode != 0:
                 raise ContractError("cannot resolve the exact candidate release workflow")
-            validate_builds_identity(workflow_bytes.stdout.decode("utf-8-sig"), fields[2], args.approved)
+            publisher_bytes = subprocess.run(
+                ["git", "-C", str(root), "show", f"{args.commit}:.github/workflows/release-publish.yml"],
+                capture_output=True,
+                check=False,
+            )
+            if publisher_bytes.returncode != 0:
+                raise ContractError("cannot resolve the exact candidate release publisher")
+            validate_builds_identity(
+                workflow_bytes.stdout.decode("utf-8-sig"),
+                publisher_bytes.stdout.decode("utf-8-sig"),
+                fields[2],
+                args.approved,
+            )
             print(json.dumps({
                 "ok": True,
                 "builds_catalog_sha": fields[2],

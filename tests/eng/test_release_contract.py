@@ -151,36 +151,40 @@ class ReleaseContractTests(unittest.TestCase):
         approved = "a" * 40
         catalog = "b" * 40
         workflow = (
-            "uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@" + approved + "\n"
+            "    uses: ./.github/workflows/release-publish.yml\n"
             "      builds-execution-sha: " + approved + "\n"
         )
-        rc.validate_builds_identity(workflow, approved, approved)
-        rc.validate_builds_identity(workflow, catalog, approved)
-        for changed_workflow in (
-            workflow.replace(approved, catalog, 1),
-            workflow.replace(approved, catalog),
+        publisher = "uses: Hexalith/Hexalith.Builds/Github/prepare-domain-release@" + approved + "\n"
+        rc.validate_builds_identity(workflow, publisher, approved, approved)
+        rc.validate_builds_identity(workflow, publisher, catalog, approved)
+        for changed_workflow, changed_publisher in (
+            (workflow.replace(approved, catalog), publisher),
+            (workflow, publisher.replace(approved, catalog)),
+            (workflow.replace("release-publish.yml", "other.yml"), publisher),
         ):
             with self.assertRaises(rc.ContractError):
-                rc.validate_builds_identity(changed_workflow, catalog, approved)
+                rc.validate_builds_identity(changed_workflow, changed_publisher, catalog, approved)
 
     def test_builds_identity_rejects_malformed_catalog_or_execution_sha(self) -> None:
         approved = "a" * 40
         workflow = (
-            "uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@" + approved + "\n"
+            "    uses: ./.github/workflows/release-publish.yml\n"
             "      builds-execution-sha: " + approved + "\n"
         )
+        publisher = "uses: Hexalith/Hexalith.Builds/Github/prepare-domain-release@" + approved + "\n"
         for catalog, execution in (("b" * 39, approved), ("B" * 40, approved), ("b" * 40, "A" * 40)):
             with self.subTest(catalog=catalog, execution=execution):
                 with self.assertRaises(rc.ContractError):
-                    rc.validate_builds_identity(workflow, catalog, execution)
+                    rc.validate_builds_identity(workflow, publisher, catalog, execution)
 
     def test_builds_cli_reports_distinct_catalog_and_execution_sha(self) -> None:
         approved = "a" * 40
         catalog = "b" * 40
         workflow = (
-            "uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@" + approved + "\n"
+            "    uses: ./.github/workflows/release-publish.yml\n"
             "      builds-execution-sha: " + approved + "\n"
         )
+        publisher = "uses: Hexalith/Hexalith.Builds/Github/prepare-domain-release@" + approved + "\n"
         with tempfile.TemporaryDirectory() as temporary:
             root = pathlib.Path(temporary)
             subprocess.run(["git", "init", "-q"], cwd=root, check=True, capture_output=True)
@@ -189,6 +193,7 @@ class ReleaseContractTests(unittest.TestCase):
             workflow_path = root / ".github" / "workflows" / "release.yml"
             workflow_path.parent.mkdir(parents=True, exist_ok=True)
             workflow_path.write_text(workflow, encoding="utf-8")
+            (workflow_path.parent / "release-publish.yml").write_text(publisher, encoding="utf-8")
             subprocess.run(["git", "add", "."], cwd=root, check=True, capture_output=True)
             subprocess.run(
                 ["git", "update-index", "--add", "--cacheinfo", f"160000,{catalog},references/Hexalith.Builds"],

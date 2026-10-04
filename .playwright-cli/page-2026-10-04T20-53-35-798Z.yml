@@ -1,0 +1,101 @@
+- generic [active] [ref=e1]:
+  - alert [ref=e3]:
+    - generic [ref=e4]:
+      - img [ref=e6]
+      - paragraph [ref=e8]:
+        - text: We use optional cookies to improve your experience on our websites, such as through social media connections, and to display personalized advertising based on your online activity. If you reject optional cookies, only cookies necessary to provide you the services will be used. You may change your selection by clicking “Manage Cookies” at the bottom of the page.
+        - link "Privacy Statement" [ref=e9] [cursor=pointer]:
+          - /url: https://go.microsoft.com/fwlink/?LinkId=521839
+        - link "Third-Party Cookies" [ref=e10] [cursor=pointer]:
+          - /url: https://aka.ms/3rdpartycookies
+    - generic [ref=e11]:
+      - button "Accept" [ref=e12] [cursor=pointer]
+      - button "Reject" [ref=e13] [cursor=pointer]
+      - button "Manage cookies" [ref=e14] [cursor=pointer]
+  - navigation [ref=e15]:
+    - generic [ref=e16]:
+      - generic [ref=e18]:
+        - link "Skip To Content":
+          - /url: "#"
+      - generic [ref=e20]:
+        - link "NuGet Home" [ref=e22] [cursor=pointer]:
+          - /url: /
+          - img "NuGet Home" [ref=e23]
+        - generic [ref=e24]:
+          - list [ref=e25]:
+            - listitem [ref=e26]:
+              - link "Packages" [ref=e27] [cursor=pointer]:
+                - /url: /packages
+            - listitem [ref=e28]:
+              - link "Upload" [ref=e29] [cursor=pointer]:
+                - /url: /packages/manage/upload
+            - listitem [ref=e30]:
+              - link "Statistics" [ref=e31] [cursor=pointer]:
+                - /url: /stats
+            - listitem [ref=e32]:
+              - link "Documentation" [ref=e33] [cursor=pointer]:
+                - /url: https://docs.microsoft.com/nuget/
+            - listitem [ref=e34]:
+              - link "Downloads" [ref=e35] [cursor=pointer]:
+                - /url: /downloads
+            - listitem [ref=e36]:
+              - link "Blog" [ref=e37] [cursor=pointer]:
+                - /url: https://blog.nuget.org/
+          - list [ref=e38]:
+            - listitem [ref=e39]:
+              - link "Sign in" [ref=e40] [cursor=pointer]:
+                - /url: /users/account/LogOn?returnUrl=%2Faccount%2FTrustedPublishing
+    - form "Package search bar" [ref=e43]:
+      - generic [ref=e44]:
+        - textbox "Enter packages to search" [ref=e45]:
+          - /placeholder: Search for packages...
+        - button "Search" [ref=e47] [cursor=pointer]:
+          - generic [ref=e48]: 
+  - generic [ref=e49]:
+    - main [ref=e50]:
+      - heading "Sign in" [level=1] [ref=e53]
+      - button "Sign in with Microsoft" [ref=e56] [cursor=pointer]:
+        - img [ref=e57]
+        - text: Sign in with Microsoft
+      - link "Need assistance signing in?" [ref=e60] [cursor=pointer]:
+        - /url: "#"
+    - text: 
+  - contentinfo [ref=e61]:
+    - generic [ref=e62]:
+      - generic [ref=e63]:
+        - generic [ref=e64]:
+          - link "Contact" [ref=e66] [cursor=pointer]:
+            - /url: /policies/Contact
+          - paragraph [ref=e67]: Got questions about NuGet or the NuGet Gallery?
+        - generic [ref=e68]:
+          - link "Status" [ref=e70] [cursor=pointer]:
+            - /url: https://status.nuget.org/
+          - paragraph [ref=e71]: Find out the service status of NuGet.org and its related services.
+        - generic [ref=e72]:
+          - link "Frequently Asked Questions" [ref=e74] [cursor=pointer]:
+            - /url: https://aka.ms/nuget-faq
+            - text: FAQ
+          - paragraph [ref=e75]: Read the Frequently Asked Questions about NuGet and see if your question made the list.
+      - generic [ref=e76]:
+        - img "NuGet Home" [ref=e78]
+        - paragraph [ref=e82]:
+          - text: © Microsoft 2026 -
+          - link "About" [ref=e83] [cursor=pointer]:
+            - /url: /policies/About
+          - text: "-"
+          - link "Terms of Use" [ref=e84] [cursor=pointer]:
+            - /url: /policies/Terms
+          - text: "-"
+          - link "Your Privacy Choices Opt-Out IconYour Privacy Choices" [ref=e85] [cursor=pointer]:
+            - /url: https://aka.ms/yourcaliforniaprivacychoices
+            - img "Your Privacy Choices Opt-Out Icon" [ref=e86]
+            - text: Your Privacy Choices
+          - text: "-"
+          - link "Privacy Statement" [ref=e87] [cursor=pointer]:
+            - /url: https://go.microsoft.com/fwlink/?LinkId=521839
+          - text: "-"
+          - link "Manage Cookies" [ref=e88] [cursor=pointer]:
+            - /url: "javascript: window.nuget.wcpSiteConsent.manageConsent()"
+          - text: "-"
+          - link "Trademarks" [ref=e89] [cursor=pointer]:
+            - /url: https://www.microsoft.com/trademarks

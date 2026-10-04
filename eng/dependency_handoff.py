@@ -597,7 +597,7 @@ def draft_evaluator_for_stage(
     reusable_path = (
         ".github/workflows/domain-ci.yml"
         if stage == "ci"
-        else ".github/workflows/domain-release.yml"
+        else ".github/workflows/release-publish.yml"
     )
     evaluator = {
         "caller": {
@@ -607,7 +607,7 @@ def draft_evaluator_for_stage(
             "blob_sha256": caller_blob,
         },
         "reusable": {
-            "repository": "github.com/hexalith/hexalith.builds",
+            "repository": "github.com/hexalith/hexalith.builds" if stage == "ci" else ROOT_REPOSITORY,
             "workflow_path": reusable_path,
             "commit": "0" * 40,
             "blob_sha256": "0" * 64,

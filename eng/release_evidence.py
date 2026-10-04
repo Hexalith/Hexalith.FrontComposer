@@ -32,7 +32,7 @@ from typing import Any
 # after every release-definition edit; protected production approval remains the gate.
 # 4.1.1: authenticated CI handoffs are projected into the current v3 exact-source
 # provenance shape before sealing instead of reusing the historical v2 evaluator shape.
-__version__ = "4.1.1"
+__version__ = "4.2.0"
 
 # CR-12-4-P257 (round-11, blind): assert at module load that `__version__` is a
 # non-empty semver string. Without this guard, an operator typo (`__version__ = ""`)
@@ -123,6 +123,7 @@ LEGACY_MANIFEST_RELEASE_DEFINITION_FILES = [
 RELEASE_DEFINITION_FILES = [
     ".github/workflows/ci.yml",
     ".github/workflows/release.yml",
+    ".github/workflows/release-publish.yml",
     ".releaserc.json",
     "eng/dependency-graph-policy.json",
     "eng/dependency_graph.py",
@@ -850,12 +851,19 @@ def _source_workflow_provenance(
     if gitlink.returncode != 0 or len(fields) < 3 or fields[0] != "160000" or not _valid_commit(fields[2]):
         raise ValueError("cannot resolve the candidate Builds gitlink")
     caller_bytes = _exact_workflow_bytes(graph_root, candidate, ".github/workflows/release.yml")
-    builds_root = _builds_execution_repository(graph_root, builds_execution_sha)
-    reusable_bytes = _exact_workflow_bytes(
-        builds_root,
-        builds_execution_sha,
-        ".github/workflows/domain-release.yml",
-    )
+    if b"uses: ./.github/workflows/release-publish.yml" in caller_bytes:
+        reusable_repository = "github.com/hexalith/hexalith.frontcomposer"
+        reusable_path = ".github/workflows/release-publish.yml"
+        reusable_commit = candidate
+        reusable_bytes = _exact_workflow_bytes(graph_root, candidate, reusable_path)
+    else:
+        # Preserve the provenance of already-sealed releases from the former
+        # Builds-owned reusable publisher.
+        builds_root = _builds_execution_repository(graph_root, builds_execution_sha)
+        reusable_repository = "github.com/hexalith/hexalith.builds"
+        reusable_path = ".github/workflows/domain-release.yml"
+        reusable_commit = builds_execution_sha
+        reusable_bytes = _exact_workflow_bytes(builds_root, builds_execution_sha, reusable_path)
     ci = {
         "run": {
             "repository": run["repository"],
@@ -876,9 +884,9 @@ def _source_workflow_provenance(
             "blob_sha256": hashlib.sha256(caller_bytes).hexdigest(),
         },
         "reusable": {
-            "repository": "github.com/hexalith/hexalith.builds",
-            "workflow_path": ".github/workflows/domain-release.yml",
-            "commit": builds_execution_sha,
+            "repository": reusable_repository,
+            "workflow_path": reusable_path,
+            "commit": reusable_commit,
             "blob_sha256": hashlib.sha256(reusable_bytes).hexdigest(),
         },
         "builds_execution_sha": builds_execution_sha,
@@ -904,7 +912,7 @@ def _current_workflow_provenance(
     if release_evaluator.get("caller") != release["caller"]:
         raise ValueError("Release evaluator caller differs from the exact release workflow source")
     if release_evaluator.get("reusable") != release["reusable"]:
-        raise ValueError("Release evaluator reusable differs from the exact Builds execution source")
+        raise ValueError("Release evaluator reusable differs from the exact publisher source")
     return provenance
 
 
@@ -945,12 +953,20 @@ def _validate_source_workflow_provenance(value: Any, diagnostics: list[str]) -> 
             diagnostics.append("workflow_provenance.release.builds_execution_sha must be lowercase 40-hex")
         if caller is not None and caller.get("repository") != "github.com/hexalith/hexalith.frontcomposer":
             diagnostics.append("workflow_provenance.release.caller repository mismatch")
-        if reusable is not None and (
-            reusable.get("repository") != "github.com/hexalith/hexalith.builds"
-            or reusable.get("workflow_path") != ".github/workflows/domain-release.yml"
-            or reusable.get("commit") != builds_sha
-        ):
-            diagnostics.append("workflow_provenance.release reusable Builds identity mismatch")
+        if reusable is not None:
+            old_publisher = (
+                reusable.get("repository") == "github.com/hexalith/hexalith.builds"
+                and reusable.get("workflow_path") == ".github/workflows/domain-release.yml"
+                and reusable.get("commit") == builds_sha
+            )
+            caller_publisher = (
+                reusable.get("repository") == "github.com/hexalith/hexalith.frontcomposer"
+                and reusable.get("workflow_path") == ".github/workflows/release-publish.yml"
+                and caller is not None
+                and reusable.get("commit") == caller.get("commit")
+            )
+            if not old_publisher and not caller_publisher:
+                diagnostics.append("workflow_provenance.release reusable Builds identity mismatch")
     if ci is not None and release is not None:
         expected = canonical_sha256({"ci": ci, "release": release})
         if provenance.get("definition_digest") != expected:
