@@ -27,3 +27,5 @@ Current committed EventStore and Memories graphs introduce Platform and McpCli i
 - The independent review found no additional required policy patch. Its cross-cutting findings and dispositions are recorded in `spec-reconcile-successor-capture-target-2026-10-04.md`; synthetic boundary regression and the existing real-policy integration fact exercise complementary behavior.
 
 - Verification: Debug Shell test-project build passed without warnings/errors; Python runtime evidence 208/208, dependency graph 102/102 and AppHost smoke 84/84 passed. Toolchain and runtime identity governance facts passed 2/2. Candidate policy validates 47 edges and seven selectors. Clean isolated successor preparation passes with approval explicitly open; 42 sealed files remain byte-identical. SDK follow-up review confirms no remaining issue. Committed-policy integration is run after recording the repair.
+
+- Post-commit verification at `cfa4f374cd6b25817e33ae97a2c664e4b9c08d69`: the three original governance checks pass 3/3; default committed-policy validation passes 47 edges and seven selectors. No policy override or enforcement bypass was used.

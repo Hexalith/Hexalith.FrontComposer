@@ -1,0 +1,3 @@
+⧗   --- input ---
+docs: record committed governance repair verification
+✔   found 0 problems, 0 warnings

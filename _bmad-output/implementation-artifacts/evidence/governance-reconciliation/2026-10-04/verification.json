@@ -145,8 +145,24 @@
     "version": "21.2.2",
     "exitCode": 0,
     "message": "fix: reconcile runtime successor and approved dependency governance\n",
-    "log": "commitlint.log"
+    "log": "commitlint.txt"
   },
   "hostedCapturePerformed": false,
-  "immutableBasePolicyActivation": "First landing remains governed by previous base policy; no bypass."
+  "immutableBasePolicyActivation": "First landing remains governed by previous base policy; no bypass.",
+  "postCommitVerification": {
+    "revision": "cfa4f374cd6b25817e33ae97a2c664e4b9c08d69",
+    "governance": {
+      "command": "env DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -method \"*ToolchainPins_MatchApprovedDotnetAndAspireVersions\" -method \"*CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds\" -method \"*EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval\" -result-xml /tmp/fc-governance-three.xml",
+      "exitCode": 0,
+      "passed": 3,
+      "failed": 0
+    },
+    "dependencyPolicy": {
+      "command": "python3 eng/dependency_graph.py --root . validate --commit cfa4f374cd6b25817e33ae97a2c664e4b9c08d69",
+      "exitCode": 0,
+      "edges": 47,
+      "selectorsValidated": 7,
+      "policySource": "committed policy at explicit revision; no --policy override"
+    }
+  }
 }
