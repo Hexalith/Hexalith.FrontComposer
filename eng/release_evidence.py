@@ -911,8 +911,33 @@ def _current_workflow_provenance(
     release = provenance["release"]
     if release_evaluator.get("caller") != release["caller"]:
         raise ValueError("Release evaluator caller differs from the exact release workflow source")
-    if release_evaluator.get("reusable") != release["reusable"]:
-        raise ValueError("Release evaluator reusable differs from the exact publisher source")
+    evaluator_reusable = release_evaluator.get("reusable")
+    exact_reusable = release["reusable"]
+    if evaluator_reusable != exact_reusable:
+        # The active policy can pin the commit that introduced an unchanged local
+        # publisher, while the release source is the later caller commit. Match
+        # the exact bytes and require that policy commit to be its ancestor.
+        matching_local_source = (
+            isinstance(evaluator_reusable, dict)
+            and exact_reusable["repository"] == "github.com/hexalith/hexalith.frontcomposer"
+            and evaluator_reusable.get("repository") == exact_reusable["repository"]
+            and evaluator_reusable.get("workflow_path") == exact_reusable["workflow_path"]
+            and evaluator_reusable.get("blob_sha256") == exact_reusable["blob_sha256"]
+            and _valid_commit(evaluator_reusable.get("commit"))
+            and subprocess.run(
+                [
+                    "git", "-C", str(graph_root), "merge-base", "--is-ancestor",
+                    evaluator_reusable["commit"], release["caller"]["commit"],
+                ],
+                capture_output=True,
+                check=False,
+            ).returncode == 0
+            and hashlib.sha256(
+                _exact_workflow_bytes(graph_root, evaluator_reusable["commit"], exact_reusable["workflow_path"])
+            ).hexdigest() == exact_reusable["blob_sha256"]
+        )
+        if not matching_local_source:
+            raise ValueError("Release evaluator reusable differs from the exact publisher source")
     return provenance
 
 

@@ -724,6 +724,59 @@ class ReleaseEvidenceV2Tests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "cannot resolve exact Builds execution commit"):
             HELPER._source_workflow_provenance(proof, "e" * 64, self.root, "f" * 40)
 
+    def test_current_provenance_accepts_unchanged_local_publisher_from_ancestor(self) -> None:
+        caller_path = ".github/workflows/release.yml"
+        publisher_path = ".github/workflows/release-publish.yml"
+        (self.root / caller_path).write_text(
+            "jobs:\n  publish:\n    uses: ./.github/workflows/release-publish.yml\n",
+            encoding="utf-8",
+        )
+        (self.root / publisher_path).write_text("name: local publisher\n", encoding="utf-8")
+        self._git("add", caller_path, publisher_path)
+        self._git("commit", "-q", "-m", "test: introduce local publisher")
+        publisher_commit = self._git("rev-parse", "HEAD").stdout.strip()
+        (self.root / "later-source.txt").write_text("unchanged publisher\n", encoding="utf-8")
+        self._git("add", "later-source.txt")
+        self._git("commit", "-q", "-m", "test: advance caller")
+        candidate = self._git("rev-parse", "HEAD").stdout.strip()
+        caller_blob = hashlib.sha256(
+            self._git("show", f"{candidate}:{caller_path}").stdout.encode("utf-8")
+        ).hexdigest()
+        publisher_blob = hashlib.sha256(
+            self._git("show", f"{publisher_commit}:{publisher_path}").stdout.encode("utf-8")
+        ).hexdigest()
+        evaluator = _evaluator(
+            {
+                "repository": ROOT_IDENTITY,
+                "workflow_path": caller_path,
+                "commit": candidate,
+                "blob_sha256": caller_blob,
+            },
+            {
+                "repository": ROOT_IDENTITY,
+                "workflow_path": publisher_path,
+                "commit": publisher_commit,
+                "blob_sha256": publisher_blob,
+            },
+        )
+        handoff = copy.deepcopy(self.handoff)
+        handoff["run"]["candidate"] = candidate
+
+        provenance = HELPER._current_workflow_provenance(
+            handoff, "e" * 64, evaluator, self.root, self.builds_commit,
+        )
+        self.assertEqual(candidate, provenance["release"]["reusable"]["commit"])
+        diagnostics: list[str] = []
+        HELPER._validate_source_workflow_provenance(provenance, diagnostics)
+        self.assertEqual([], diagnostics)
+
+        mismatched = copy.deepcopy(evaluator)
+        mismatched["reusable"]["blob_sha256"] = "f" * 64
+        with self.assertRaisesRegex(ValueError, "reusable differs"):
+            HELPER._current_workflow_provenance(
+                handoff, "e" * 64, mismatched, self.root, self.builds_commit,
+            )
+
     def test_source_provenance_rejects_missing_builds_gitlink(self) -> None:
         proof = {"run": {**self.handoff["run"], "candidate": self.base}}
         with self.assertRaisesRegex(ValueError, "cannot resolve the candidate Builds gitlink"):
