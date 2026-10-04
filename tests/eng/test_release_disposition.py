@@ -41,7 +41,7 @@ class ReleaseDispositionTests(unittest.TestCase):
             _job("plan-release", "success"),
             _job("prepare-candidate", "success"),
             _job("release", "success"),
-            _job("release / release", "success"),
+            _job("release / publish", "success"),
             _job("verify-publication", "success"),
             _job("emit-verification-handoff", "success"),
         ]
@@ -77,6 +77,24 @@ class ReleaseDispositionTests(unittest.TestCase):
         )
         self.assertTrue(result["governed_attempt"])
         self.assertEqual(result["status"], "governed-publication-attempt")
+
+    def test_two_publisher_jobs_are_rejected_as_ambiguous(self) -> None:
+        jobs = [
+            _job("verify-source", "success"),
+            _job("plan-release", "success"),
+            _job("release / publish", "success"),
+            _job("release / release", "success"),
+            _job("emit-verification-handoff", "success"),
+        ]
+        with self.assertRaises(rd.DispositionError):
+            rd.classify_release_run(
+                run=self._run(),
+                jobs=jobs,
+                expected_run_id=42,
+                expected_run_attempt=1,
+                expected_conclusion="success",
+                expected_head_sha=SHA,
+            )
 
     def test_misclassified_no_release_topology_fails_closed(self) -> None:
         jobs = [

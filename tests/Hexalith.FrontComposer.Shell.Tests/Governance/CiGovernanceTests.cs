@@ -2467,7 +2467,7 @@ public sealed class CiGovernanceTests {
         dispositionHelper.ShouldContain("no-releasable-commits");
         dispositionHelper.ShouldContain("rejected-before-publication");
         dispositionHelper.ShouldContain("governed-publication-attempt");
-        dispositionHelper.ShouldContain("release / release");
+        dispositionHelper.ShouldContain("release / publish");
 
         // AC13: independent download + verification of the published bytes.
         executable.ShouldContain("gh release download");
@@ -2529,7 +2529,7 @@ public sealed class CiGovernanceTests {
         releaseConfig.ShouldNotContain("classify-release");
         releaseConfig.ShouldNotContain("CycloneDX");
 
-        // Runtime proof: completed release / release topology must classify as governed.
+        // Runtime proof: completed release / publish topology must classify as governed.
         string sha = new string('a', 40);
         string workRoot = Path.Combine(Path.GetTempPath(), $"fc-disposition-{Guid.NewGuid():N}");
         Directory.CreateDirectory(workRoot);
@@ -2557,7 +2557,7 @@ public sealed class CiGovernanceTests {
                 {"name":"plan-release","status":"completed","conclusion":"success"},
                 {"name":"prepare-candidate","status":"completed","conclusion":"success"},
                 {"name":"release","status":"completed","conclusion":"success"},
-                {"name":"release / release","status":"completed","conclusion":"success"},
+                {"name":"release / publish","status":"completed","conclusion":"success"},
                 {"name":"verify-publication","status":"completed","conclusion":"success"},
                 {"name":"emit-verification-handoff","status":"completed","conclusion":"success"}
               ]

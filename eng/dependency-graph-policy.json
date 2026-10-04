@@ -1863,6 +1863,77 @@
           }
         ],
         "closure_digest": "6555354ef3f0b2ec4c1413f12a56b68af5c67d3614fe70344ff7444605d703a2"
+      },
+      {
+        "stage": "release",
+        "caller": {
+          "repository": "github.com/hexalith/hexalith.frontcomposer",
+          "workflow_path": ".github/workflows/release.yml",
+          "blob_sha256": "ef1cae7d76d7af04c4a53d512f3b7e08170cb898ccb38369811ac1288a618990"
+        },
+        "reusable": {
+          "repository": "github.com/hexalith/hexalith.frontcomposer",
+          "workflow_path": ".github/workflows/release-publish.yml",
+          "commit": "2670339e8b748a8264d433f49f8544e5e41cded2",
+          "blob_sha256": "7f5dc65a6bdbcb6296ff149f82fe566ed092f6b9a6e780e97d753827c85b07dd"
+        },
+        "actions": [
+          {
+            "repository": "github.com/actions/cache",
+            "path": "action.yml",
+            "commit": "55cc8345863c7cc4c66a329aec7e433d2d1c52a9",
+            "blob_sha256": "c04edf35104c16c8944076df01561748bac9cd10941417e467a236e508e52dda"
+          },
+          {
+            "repository": "github.com/actions/checkout",
+            "path": "action.yml",
+            "commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "blob_sha256": "d59219cb79590abdb877deaa14e3b65a00c05318bf5a6f3b989b9162b5d08c35"
+          },
+          {
+            "repository": "github.com/actions/checkout",
+            "path": "action.yml",
+            "commit": "9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0",
+            "blob_sha256": "d59219cb79590abdb877deaa14e3b65a00c05318bf5a6f3b989b9162b5d08c35"
+          },
+          {
+            "repository": "github.com/actions/setup-dotnet",
+            "path": "action.yml",
+            "commit": "a98b56852c35b8e3190ac28c8c2271da59106c68",
+            "blob_sha256": "75999c0bf863f23de88dad047ccf176b5089454cf7e3264c3fee5bc47eba4cf1"
+          },
+          {
+            "repository": "github.com/actions/setup-node",
+            "path": "action.yml",
+            "commit": "820762786026740c76f36085b0efc47a31fe5020",
+            "blob_sha256": "5d765941ab5d8bef27f08e81b0b041cdb2df2050ea0261dc925d157a2bafbd2b"
+          },
+          {
+            "repository": "github.com/actions/upload-artifact",
+            "path": "action.yml",
+            "commit": "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+            "blob_sha256": "c5979822866a72362e609844b6ebe77d4b7e759af68cc1c2c425dcf51481fab4"
+          },
+          {
+            "repository": "github.com/hexalith/hexalith.builds",
+            "path": "Github/initialize-build/action.yml",
+            "commit": "360a2b9c4e96809365a7de785be9a68152d5ac28",
+            "blob_sha256": "1b249e2dee86cbdc10cb517aea810566903ac7e5a443c348ff2e58fc9686cad0"
+          },
+          {
+            "repository": "github.com/hexalith/hexalith.builds",
+            "path": "Github/prepare-domain-release/action.yml",
+            "commit": "360a2b9c4e96809365a7de785be9a68152d5ac28",
+            "blob_sha256": "bcacce4ee505f84258159edcf126d05448e06f6263e7bab95053d5f671c7f875"
+          },
+          {
+            "repository": "github.com/nuget/login",
+            "path": "action.yml",
+            "commit": "8d196754b4036150537f80ac539e15c2f1028841",
+            "blob_sha256": "d423a0aeb912cc3d9b7611d5a810773f3c91cf275440806e3879f1c0cbe308b4"
+          }
+        ],
+        "closure_digest": "0baf88b219699b1f5223ad35e75b4eed595b7bcbd17107a6a9b94e3375ac5d04"
       }
     ],
     "post_release": [

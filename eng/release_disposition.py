@@ -20,6 +20,7 @@ KNOWN_JOB_NAMES = frozenset({
     "plan-release",
     "prepare-candidate",
     "release",
+    "release / publish",
     "release / release",
     "release / governed-release",
     "verify-publication",
@@ -83,7 +84,10 @@ def classify_release_run(
     for required in REQUIRED_JOBS:
         if required not in by_name:
             raise DispositionError(f"Release job topology lacks {required}")
-    governed = by_name.get("release / release")
+    publishers = [by_name[name] for name in ("release / publish", "release / release") if name in by_name]
+    if len(publishers) > 1:
+        raise DispositionError("Release run contains more than one publisher job")
+    governed = publishers[0] if publishers else None
     if governed is not None and governed.get("conclusion") not in {"skipped", None}:
         disposition = "governed-publication-attempt"
         governed_attempt = True
