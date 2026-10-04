@@ -301,9 +301,12 @@ public sealed class ReleaseModelGovernanceTests {
 
         string releaseWorkflow = CiGovernanceTests.StripYamlComments(
             File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml")));
+        string publisherWorkflow = CiGovernanceTests.StripYamlComments(
+            File.ReadAllText(Path.Combine(root, ".github/workflows/release-publish.yml")));
         releaseWorkflow.ShouldContain("workflow_dispatch:");
         releaseWorkflow.ShouldContain("environment: production");
-        releaseWorkflow.ShouldContain("environment-name: production");
+        releaseWorkflow.ShouldContain("uses: ./.github/workflows/release-publish.yml");
+        publisherWorkflow.ShouldContain("environment: production");
         releaseWorkflow.ShouldNotContain("HEXALITH_RELEASE_PUBLISH_ENABLED");
     }
 
