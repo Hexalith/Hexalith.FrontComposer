@@ -94,7 +94,7 @@ public sealed class PackageBoundaryTests {
         AssertCentralPackageVersion(root, "xunit.v3.assert", XunitV3AssertVersion);
         string packageOutput = Path.Combine(Path.GetTempPath(), "fc-testing-clean-pack-" + Guid.NewGuid().ToString("N"));
         string consumer = Path.Combine(Path.GetTempPath(), "fc-testing-consumer-" + Guid.NewGuid().ToString("N"));
-        string packageVersion = "2.0.0-review." + Guid.NewGuid().ToString("N")[..8];
+        string packageVersion = "2.0.0-review.g" + Guid.NewGuid().ToString("N")[..8];
         string fallbackPackages = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
         _ = Directory.CreateDirectory(packageOutput);
         _ = Directory.CreateDirectory(consumer);
