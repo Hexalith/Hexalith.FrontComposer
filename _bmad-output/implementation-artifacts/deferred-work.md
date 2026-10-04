@@ -10070,3 +10070,15 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
   summary: Umbrella sibling dependency selection has no runtime MSBuild verification.
   evidence: Iteration 21 VG21-01: Filed evidence: CiGovernanceTests:1059 checks text/existence, FakeRuntime supplies synthetic MSBuild results, and no test evaluates the sibling branch in deps.local.props:6. This dependency-layout change in the broad baseline diff belongs to the separate test/CI repair rather than Story 13.3 generated-command focus behavior.
+
+- source_spec: `spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: Fresh-tenant projection proof accepts tenant-sequence:0. Natural owner: the separate test/CI/evidence repair.
+  evidence: is_tenant_projection_version accepts zero and both the capture and runtime validator consume it. EventStore EventMetadata requires sequence >= 1; the current fresh-tenant smoke should distinguish format-valid zero from evidence of its create event. This provider-evidence helper predates this run and belongs to the separate test/CI/evidence repair.
+
+- source_spec: `spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: Detached-child startup logs are not tracked for cleanup. Natural owner: the separate test/CI/evidence repair.
+  evidence: capture_start_diagnostics reads the parsed child log, but remove_temporary_files lists only parent/start/describe/process-list paths. The fixture writes credential/token values into that child file and asserts only parent deletion. This launcher ownership/retention work predates this run and belongs to the separate test/CI repair.
+
+- source_spec: `spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: DocFx reference selection may conflate equal-version assemblies from different TFMs. Natural owner: the separate test/CI/evidence repair.
+  evidence: Prepare-DocFxReferences deduplicates by filename and greater assembly version, so equal identities keep the first input. The claim needs a real equal-name/equal-version dependency exposing different APIs across TFMs and a failing DocFx metadata fixture; current docs input order and prior gate evidence do not demonstrate that bad outcome. Medium if reproduced; separate docs/test repair ownership.

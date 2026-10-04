@@ -338,6 +338,8 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
         await cut.Instance.DisposeAsync();
 
         FocusModule.Invocations.Count(i => i.Identifier == "restoreOverlayOrigin").ShouldBe(focusInvocationsBefore);
+        FocusModule.Invocations.Count(i => i.Identifier == "preserveRouteFocusAfterOverlay"
+            && Equals(i.Arguments[0], "http://localhost/")).ShouldBe(1);
     }
 
     [Fact]

@@ -92,6 +92,69 @@ test.describe('Story 4.2: unsaved full-page command form abandonment guard', () 
     await expect(abandonmentWarning(page)).toHaveCount(0);
   });
 
+  test('deferred edited-origin return preserves a reopened warning action', async ({ page, tenant }) => {
+    expect(tenant.tenantId).toBeTruthy();
+    await gotoConfigureCounter(page);
+
+    const keepsWarningFocus = await page.evaluate(async (focusModulePath) => {
+      const focus = await import(focusModulePath) as {
+        captureEditedOrigin: (root: HTMLElement, fieldName: string, sequence: number) => boolean;
+        restoreEditedOrigin: (root: HTMLElement) => void;
+      };
+      const root = document.querySelector<HTMLElement>('[data-fc-abandonment-root]');
+      if (!root) throw new Error('The generated abandonment root was not rendered.');
+      if (!focus.captureEditedOrigin(root, 'Description', 1000)) throw new Error('The edited origin was not captured.');
+
+      const card = document.createElement('div');
+      const warning = document.createElement('section');
+      warning.setAttribute('data-testid', 'fc-form-abandonment-warning');
+      const stay = document.createElement('button');
+      stay.type = 'button';
+      stay.textContent = 'Stay';
+      warning.append(stay);
+      card.append(warning);
+      root.before(card);
+      stay.focus();
+      focus.restoreEditedOrigin(root);
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      return document.activeElement === stay;
+    }, '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js');
+
+    expect(keepsWarningFocus).toBe(true);
+  });
+
+  test('a sibling guard warning does not suppress this form edited-origin return', async ({ page, tenant }) => {
+    expect(tenant.tenantId).toBeTruthy();
+    await gotoConfigureCounter(page);
+
+    await page.evaluate(async (focusModulePath) => {
+      const focus = await import(focusModulePath) as {
+        captureEditedOrigin: (root: HTMLElement, fieldName: string, sequence: number) => boolean;
+        restoreEditedOrigin: (root: HTMLElement) => void;
+      };
+      const root = document.querySelector<HTMLElement>('[data-fc-abandonment-root]');
+      if (!root) throw new Error('The generated abandonment root was not rendered.');
+      if (!focus.captureEditedOrigin(root, 'Description', 1000)) throw new Error('The edited origin was not captured.');
+
+      const siblingRoot = document.createElement('div');
+      siblingRoot.setAttribute('data-fc-abandonment-root', '');
+      const card = document.createElement('div');
+      const warning = document.createElement('section');
+      warning.setAttribute('data-testid', 'fc-form-abandonment-warning');
+      const stay = document.createElement('button');
+      stay.type = 'button';
+      stay.textContent = 'Sibling Stay';
+      warning.append(stay);
+      card.append(warning);
+      root.after(card, siblingRoot);
+      stay.focus();
+      focus.restoreEditedOrigin(root);
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    }, '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js');
+
+    await expect(fieldEditorByLabel(configureCounterForm(page), 'Description')).toBeFocused();
+  });
+
   test('removed edited control restores focus to the marked full-page command heading', async ({ page, tenant }) => {
     expect(tenant.tenantId).toBeTruthy();
 

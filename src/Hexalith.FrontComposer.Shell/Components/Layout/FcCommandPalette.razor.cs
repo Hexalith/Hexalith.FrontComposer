@@ -159,12 +159,17 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
             }
         }
 
-        if (_navigatesToOtherRoute && _openedRoute is not null && _focusModule is not null) {
-            try {
-                await _focusModule.InvokeVoidAsync("preserveRouteFocusAfterOverlay", _openedRoute);
-            }
-            catch (Exception ex) when (ex is JSDisconnectedException or JSException or OperationCanceledException) {
-                // The circuit can close while the navigation is completing.
+        if (_navigatesToOtherRoute && _openedRoute is not null) {
+            // Search entry normally imports only the keyboard module. Navigation still needs the
+            // focus module to release the palette reservation while preserving the route heading.
+            IJSObjectReference? focusModule = await EnsureFocusModuleAsync();
+            if (focusModule is not null) {
+                try {
+                    await focusModule.InvokeVoidAsync("preserveRouteFocusAfterOverlay", _openedRoute);
+                }
+                catch (Exception ex) when (ex is JSDisconnectedException or JSException or OperationCanceledException) {
+                    // The circuit can close while the navigation is completing.
+                }
             }
         }
 

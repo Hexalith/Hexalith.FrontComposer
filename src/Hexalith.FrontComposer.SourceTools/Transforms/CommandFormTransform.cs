@@ -65,7 +65,8 @@ public static class CommandFormTransform {
             hasExplicitDisplay,
             property.IsWritable,
             property.FieldGroup,
-            property.Description);
+            property.Description,
+            property.FieldGroupDescription);
     }
 
     private static FormFieldTypeCategory MapCategory(PropertyModel property) {

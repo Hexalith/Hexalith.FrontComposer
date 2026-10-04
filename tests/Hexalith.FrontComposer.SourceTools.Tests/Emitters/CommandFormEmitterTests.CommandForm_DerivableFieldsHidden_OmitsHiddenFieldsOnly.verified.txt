@@ -963,7 +963,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                     __denied.CloseElement();
                     __denied.OpenElement(9, "p");
                     __denied.AddAttribute(10, "id", _formDomId + "-authorization-description");
-                    __denied.AddContent(11, string.IsNullOrWhiteSpace(_serverWarning?.Detail) ? ResolveShellLocalized("AuthorizationActionUnavailableMessage", "This action is unavailable.") : _serverWarning.Detail);
+                    __denied.AddContent(11, string.IsNullOrWhiteSpace(_serverWarning?.Detail) ? ResolveShellLocalized("UnauthorizedCommandWarningMessage", "You do not have permission to {0}.", "Send IncrementCommand") : _serverWarning.Detail);
                     __denied.CloseElement();
                     __denied.CloseElement();
                 }));

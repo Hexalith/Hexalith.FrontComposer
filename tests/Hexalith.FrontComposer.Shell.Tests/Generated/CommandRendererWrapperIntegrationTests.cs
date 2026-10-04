@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 
 using Bunit;
@@ -8,6 +9,7 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Components.Lifecycle;
+using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Services.Feedback;
 using Hexalith.FrontComposer.Shell.State.Navigation;
@@ -17,6 +19,7 @@ using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Microsoft.JSInterop;
@@ -122,11 +125,14 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         }
     }
 
-    [Fact]
-    public async Task GeneratedForm_FieldsSharingGroupRenderOneNamedContainerWithDescriptionsInDeclaredOrder() {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GeneratedForm_FieldsSharingGroupRenderOneNamedContainerWithDescriptionsInDeclaredOrder(bool hideFirstMember) {
         await InitializeStoreAsync();
 
-        IRenderedComponent<GroupedFieldsCommandForm> cut = Render<GroupedFieldsCommandForm>();
+        IRenderedComponent<GroupedFieldsCommandForm> cut = Render<GroupedFieldsCommandForm>(parameters => parameters
+            .Add(p => p.ShowFieldsOnly, hideFirstMember ? new[] { nameof(GroupedFieldsCommand.Reason) } : null));
 
         cut.WaitForAssertion(() => {
             IReadOnlyList<AngleSharp.Dom.IElement> groups = cut.FindAll("fieldset[data-fc-field-group='Change details']");
@@ -138,11 +144,14 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             // BH3-09 — the group is Fluent-styled: Fluent 2 tokens and a FluentText legend.
             group.GetAttribute("style").ShouldNotBeNull().ShouldContain("var(--colorNeutralStroke2)");
             _ = legend.QuerySelector("fluent-text").ShouldNotBeNull();
+            AngleSharp.Dom.IElement groupDescription = group.QuerySelectorAll("fluent-text.fc-command-field-group-description").ShouldHaveSingleItem();
+            groupDescription.Id.ShouldNotBeNullOrWhiteSpace();
+            groupDescription.TextContent.ShouldBe("Identify the record and explain the change.");
+            group.GetAttribute("aria-describedby").ShouldBe(groupDescription.Id);
+            groupDescription.HasAttribute("aria-live").ShouldBeFalse();
 
             AngleSharp.Dom.IHtmlCollection<AngleSharp.Dom.IElement> fields = group.QuerySelectorAll("[data-fc-validation-field='true']");
-            fields.Length.ShouldBe(2);
-            fields[0].GetAttribute("name").ShouldBe("RecordId");
-            fields[1].GetAttribute("name").ShouldBe("Reason");
+            fields.Select(field => field.GetAttribute("name")).ShouldBe(hideFirstMember ? ["Reason"] : ["RecordId", "Reason"]);
 
             foreach (AngleSharp.Dom.IElement field in fields) {
                 // Descriptions render once, through the editor's own Fluent field message slot.
@@ -722,6 +731,43 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
                 && Equals(invocation.Arguments[0], heading.Id)).ShouldBe(1);
         });
         FcFocusModule.Invocations.ShouldNotContain(invocation => invocation.Identifier == "focusReplacementHeading");
+    }
+
+    [Theory]
+    [InlineData("en", "You do not have permission to Protected Two Field Compact.")]
+    [InlineData("fr", "Vous n'avez pas l'autorisation d'exécuter Protected Two Field Compact.")]
+    public async Task ProtectedGeneratedFormBlankDenialBodyUsesShellPermissionCopy(string culture, string expected) {
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
+        var evaluator = new MutableAuthorizationEvaluator(CommandAuthorizationDecision.Allowed("corr-presentation"));
+        RecordingCommandService service = new();
+        IStringLocalizer<FcShellResources> localizer = Substitute.For<IStringLocalizer<FcShellResources>>();
+        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.ArgAt<string>(0), "Permission required"));
+        localizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(call => new LocalizedString(call.ArgAt<string>(0), " "));
+        Services.Replace(ServiceDescriptor.Singleton<AuthenticationStateProvider>(new TestAuthenticationStateProvider()));
+        Services.Replace(ServiceDescriptor.Scoped<ICommandAuthorizationEvaluator>(_ => evaluator));
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        IRenderedComponent<ProtectedTwoFieldCompactCommandForm> cut = Render<ProtectedTwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new ProtectedTwoFieldCompactCommand { Name = "kept name", Amount = 9 }));
+        cut.WaitForAssertion(() => cut.FindAll("[data-fc-validation-field='true']").Count.ShouldBe(2));
+        // An adopter supplies a blank authorization body; the shell fallback still uses its real resources.
+        typeof(ProtectedTwoFieldCompactCommandForm)
+            .GetProperty("CommandAuthorizationLocalizer", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            .ShouldNotBeNull().SetValue(cut.Instance, localizer);
+        evaluator.Decision = CommandAuthorizationDecision.Denied("corr-denied");
+
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(() => {
+            service.DispatchCount.ShouldBe(0);
+            Services.GetRequiredService<IPendingCommandStateService>().Snapshot().ShouldBeEmpty();
+            AngleSharp.Dom.IElement card = cut.Find("section[data-fc-authorization-denied='true']");
+            AngleSharp.Dom.IElement reason = card.QuerySelector("p").ShouldNotBeNull();
+            reason.TextContent.ShouldBe(expected);
+            card.QuerySelector("h2").ShouldNotBeNull().GetAttribute("aria-describedby").ShouldBe(reason.Id);
+            cut.FindAll("[data-fc-validation-field='true']").ShouldBeEmpty();
+        });
     }
 
     [Fact]

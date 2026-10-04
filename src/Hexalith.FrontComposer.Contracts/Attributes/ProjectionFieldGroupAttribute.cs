@@ -27,6 +27,9 @@ namespace Hexalith.FrontComposer.Contracts.Attributes;
 /// a group renders after that group: <c>A(G), B, C(G)</c> renders as <c>A, C, B</c>. Ungrouped
 /// properties otherwise keep their relative declared order. The "Additional details" catch-all,
 /// HFC1030, and HFC1031 apply to projections only.
+/// An optional <see cref="Description"/> renders once as Fluent-styled help text and describes
+/// the command fieldset. When several members supply a description, the first non-empty
+/// description in declared order is used, including when that member's editor is hidden.
 /// </para>
 /// </remarks>
 [AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
@@ -47,4 +50,11 @@ public sealed class ProjectionFieldGroupAttribute : Attribute {
 
     /// <summary>Gets the declared group name.</summary>
     public string GroupName { get; }
+
+    /// <summary>
+    /// Gets or sets optional operator-facing help text for a generated command-form group.
+    /// Null, empty, or whitespace values omit the group description. Projection detail grouping
+    /// uses only <see cref="GroupName"/>.
+    /// </summary>
+    public string? Description { get; set; }
 }

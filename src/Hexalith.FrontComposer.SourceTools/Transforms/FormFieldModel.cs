@@ -16,7 +16,8 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
         string? enumFullyQualifiedName,
         bool hasExplicitDisplayName = false,
         string? fieldGroup = null,
-        string? description = null)
+        string? description = null,
+        string? fieldGroupDescription = null)
         : this(
             propertyName,
             typeName,
@@ -28,7 +29,8 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
             hasExplicitDisplayName,
             isProviderCloneAssignable: true,
             fieldGroup,
-            description) {
+            description,
+            fieldGroupDescription) {
     }
 
     internal FormFieldModel(
@@ -42,7 +44,8 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
         bool hasExplicitDisplayName,
         bool isProviderCloneAssignable,
         string? fieldGroup = null,
-        string? description = null) {
+        string? description = null,
+        string? fieldGroupDescription = null) {
         PropertyName = propertyName;
         TypeName = typeName;
         TypeCategory = typeCategory;
@@ -53,6 +56,7 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
         HasExplicitDisplayName = hasExplicitDisplayName;
         IsProviderCloneAssignable = isProviderCloneAssignable;
         FieldGroup = fieldGroup;
+        FieldGroupDescription = fieldGroupDescription;
         Description = description;
     }
 
@@ -98,6 +102,9 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
     /// <summary>Gets the optional declared field-group name.</summary>
     public string? FieldGroup { get; }
 
+    /// <summary>Gets optional operator-facing help text for the declared field group.</summary>
+    public string? FieldGroupDescription { get; }
+
     /// <summary>Gets optional operator-facing help text for the field.</summary>
     public string? Description { get; }
 
@@ -122,6 +129,7 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
             && HasExplicitDisplayName == other.HasExplicitDisplayName
             && IsProviderCloneAssignable == other.IsProviderCloneAssignable
             && FieldGroup == other.FieldGroup
+            && FieldGroupDescription == other.FieldGroupDescription
             && Description == other.Description;
     }
 
@@ -140,6 +148,7 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
             hash = (hash * 31) + HasExplicitDisplayName.GetHashCode();
             hash = (hash * 31) + IsProviderCloneAssignable.GetHashCode();
             hash = (hash * 31) + (FieldGroup?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (FieldGroupDescription?.GetHashCode() ?? 0);
             hash = (hash * 31) + (Description?.GetHashCode() ?? 0);
             return hash;
         }

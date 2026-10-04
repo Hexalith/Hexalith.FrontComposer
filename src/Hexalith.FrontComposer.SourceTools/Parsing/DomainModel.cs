@@ -418,7 +418,8 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
         int? relativeTimeWindowDays = null,
         string? sourceTypeName = null,
         EquatableArray<string> requiredExternAliases = default,
-        bool supportsStaticAssignment = true)
+        bool supportsStaticAssignment = true,
+        string? fieldGroupDescription = null)
         : this(
             name,
             typeName,
@@ -437,7 +438,8 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
             isWritable: true,
             sourceTypeName: sourceTypeName ?? typeName,
             requiredExternAliases: requiredExternAliases,
-            supportsStaticAssignment: supportsStaticAssignment) {
+            supportsStaticAssignment: supportsStaticAssignment,
+            fieldGroupDescription: fieldGroupDescription) {
     }
 
     internal PropertyModel(
@@ -458,7 +460,8 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
         bool isWritable,
         string sourceTypeName,
         EquatableArray<string> requiredExternAliases,
-        bool supportsStaticAssignment) {
+        bool supportsStaticAssignment,
+        string? fieldGroupDescription = null) {
         Name = name;
         TypeName = typeName;
         IsNullable = isNullable;
@@ -470,6 +473,7 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
         EnumMemberNames = enumMemberNames;
         ColumnPriority = columnPriority;
         FieldGroup = fieldGroup;
+        FieldGroupDescription = fieldGroupDescription;
         Description = description;
         DisplayFormat = displayFormat;
         RelativeTimeWindowDays = displayFormat == FieldDisplayFormat.RelativeTime ? relativeTimeWindowDays ?? 7 : null;
@@ -533,6 +537,9 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
     /// </summary>
     public string? FieldGroup { get; }
 
+    /// <summary>Gets optional help text declared for the generated command-form group.</summary>
+    public string? FieldGroupDescription { get; }
+
     /// <summary>
     /// Gets the Level 1 display format selected by <c>[RelativeTime]</c> or <c>[Currency]</c>.
     /// The value is UI-agnostic metadata; emitters choose the concrete rendering path.
@@ -588,6 +595,7 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
             && EnumMemberNames == other.EnumMemberNames
             && ColumnPriority == other.ColumnPriority
             && FieldGroup == other.FieldGroup
+            && FieldGroupDescription == other.FieldGroupDescription
             && Description == other.Description
             && DisplayFormat == other.DisplayFormat
             && RelativeTimeWindowDays == other.RelativeTimeWindowDays
@@ -613,6 +621,7 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
             hash = (hash * 31) + EnumMemberNames.GetHashCode();
             hash = (hash * 31) + (ColumnPriority?.GetHashCode() ?? 0);
             hash = (hash * 31) + (FieldGroup?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (FieldGroupDescription?.GetHashCode() ?? 0);
             hash = (hash * 31) + (Description?.GetHashCode() ?? 0);
             hash = (hash * 31) + DisplayFormat.GetHashCode();
             hash = (hash * 31) + (RelativeTimeWindowDays?.GetHashCode() ?? 0);

@@ -59,7 +59,8 @@ public class CommandFormTransformTests {
             name: "FirstNote",
             typeName: "String",
             fieldGroup: "Primary \"workflow\"",
-            description: "Explain the first value.\nKeep its declared line break.");
+            description: "Explain the first value.\nKeep its declared line break.",
+            fieldGroupDescription: "Explain the whole workflow.");
         PropertyModel second = BuildProperty(
             name: "SecondNote",
             typeName: "String",
@@ -71,8 +72,10 @@ public class CommandFormTransformTests {
 
         result.Fields.Select(field => field.PropertyName).ShouldBe(["FirstNote", "SecondNote"]);
         result.Fields[0].FieldGroup.ShouldBe("Primary \"workflow\"");
+        result.Fields[0].FieldGroupDescription.ShouldBe("Explain the whole workflow.");
         result.Fields[0].Description.ShouldBe("Explain the first value.\nKeep its declared line break.");
         result.Fields[1].FieldGroup.ShouldBe("Secondary workflow");
+        result.Fields[1].FieldGroupDescription.ShouldBeNull();
         result.Fields[1].Description.ShouldBe("Explain the \"second\" value.");
     }
 
@@ -202,6 +205,24 @@ public class CommandFormTransformTests {
         a.Equals(b).ShouldBeFalse();
     }
 
+    [Fact]
+    public void FieldGroupDescriptionChangesInvalidateGeneratorModels() {
+        PropertyModel first = BuildProperty("Name", "String", fieldGroup: "Details", fieldGroupDescription: "First help.");
+        PropertyModel same = BuildProperty("Name", "String", fieldGroup: "Details", fieldGroupDescription: "First help.");
+        PropertyModel changed = BuildProperty("Name", "String", fieldGroup: "Details", fieldGroupDescription: "Changed help.");
+
+        first.Equals(same).ShouldBeTrue();
+        first.GetHashCode().ShouldBe(same.GetHashCode());
+        first.Equals(changed).ShouldBeFalse();
+        CommandFormModel firstForm = CommandFormTransform.Transform(BuildCommand(nonDerivable: [first]));
+        CommandFormModel sameForm = CommandFormTransform.Transform(BuildCommand(nonDerivable: [same]));
+        CommandFormModel changedForm = CommandFormTransform.Transform(BuildCommand(nonDerivable: [changed]));
+        firstForm.Equals(sameForm).ShouldBeTrue();
+        firstForm.GetHashCode().ShouldBe(sameForm.GetHashCode());
+        firstForm.Equals(changedForm).ShouldBeFalse();
+        firstForm.Fields[0].Equals(changedForm.Fields[0]).ShouldBeFalse();
+    }
+
     private static CommandFormModel BuildFormModel() {
         FormFieldModel field = new("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null);
         EquatableArray<FormFieldModel> fields = new(ImmutableArray.Create(field));
@@ -216,7 +237,8 @@ public class CommandFormTransformTests {
         string? displayName = null,
         string? enumFqn = null,
         string? fieldGroup = null,
-        string? description = null) => new(
+        string? description = null,
+        string? fieldGroupDescription = null) => new(
             name,
             typeName,
             isNullable,
@@ -225,7 +247,8 @@ public class CommandFormTransformTests {
             new EquatableArray<BadgeMappingEntry>(ImmutableArray<BadgeMappingEntry>.Empty),
             enumFqn,
             fieldGroup: fieldGroup,
-            description: description);
+            description: description,
+            fieldGroupDescription: fieldGroupDescription);
 
     private static CommandModel BuildCommand(
         string typeName = "TestCommand",

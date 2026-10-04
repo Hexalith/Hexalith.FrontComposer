@@ -1,0 +1,102 @@
+xUnit.net v3 In-Process Runner v4.0.1+8ed8aa354c (64-bit .NET 10.0.12)
+  Discovering: Hexalith.FrontComposer.Shell.Tests
+  Discovered:  Hexalith.FrontComposer.Shell.Tests
+  Starting:    Hexalith.FrontComposer.Shell.Tests
+Mock driver logs:
+
+2026-10-04T12:54:28.569250Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-04T12:54:28.570043Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-04T12:54:28.618888Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-04T12:54:28.619383Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-04T12:54:28.621818Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-04T12:54:28.622237Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-04T12:54:28.623933Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-04T12:54:28.624981Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-04T12:54:28.626801Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-04T12:54:28.627295Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-04T12:54:28.629671Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-04T12:54:28.630292Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-04T12:54:28.633646Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-04T12:54:28.634078Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-04T12:54:28.637353Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-04T12:54:28.638006Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-04T12:54:28.667406Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-04T12:54:28.668018Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-04T12:54:28.670256Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-04T12:54:28.670705Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-04T12:54:28.680553Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-04T12:54:28.681268Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-04T12:54:28.690164Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-04T12:54:28.691024Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-04T12:54:28.725298Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-04T12:54:28.726090Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-04T12:54:28.728478Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-04T12:54:28.729111Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-04T12:54:28.734643Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-04T12:54:28.735624Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-04T12:54:28.744498Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-04T12:54:28.745530Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-04T12:54:28.752488Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-04T12:54:28.753719Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-04T12:54:28.780111Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/commands
+2026-10-04T12:54:28.780993Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+Mock driver logs:
+
+2026-10-04T12:54:28.787991Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Received request POST /api/v1/queries
+2026-10-04T12:54:28.788871Z  INFO tokio-runtime-worker pact_mock_server::hyper_server: Request matched, sending response
+
+  Finished:    Hexalith.FrontComposer.Shell.Tests (ID = '47ea1885be85e02ea5ab6d4f3f0a3316b9743a6877b49a72f290b3b7fc1a0f08')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.FrontComposer.Shell.Tests  Total: 3101, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 100.265s

@@ -1031,7 +1031,8 @@ public class CommandFormEmitterTests {
                 false,
                 null,
                 fieldGroup: "Primary \"workflow\"",
-                description: "Explain the \"first\" value.\nKeep its declared line break."),
+                description: "Explain the \"first\" value.\nKeep its declared line break.",
+                fieldGroupDescription: "Explain the \"group\".\nKeep its line break."),
             new FormFieldModel(
                 "SecondNote",
                 "String",
@@ -1060,6 +1061,11 @@ public class CommandFormEmitterTests {
         masked.ShouldContain("__b.OpenElement(#, \"legend\")");
         masked.ShouldContain("__b.AddAttribute(#, \"id\", _formDomId + \"-field-group-1\")");
         source.ShouldContain(escapedDescription);
+        string groupDescriptionLink = "__b.AddAttribute(#, \"aria-describedby\", _formDomId + \"-field-group-1-description\");";
+        masked.ShouldContain(groupDescriptionLink);
+        masked.ShouldContain("__b.AddAttribute(#, \"Id\", _formDomId + \"-field-group-1-description\");");
+        masked.ShouldContain("__groupDescription.AddContent(#, \"" + GeneratedLiteral.Escape("Explain the \"group\".\nKeep its line break.") + "\")");
+        masked.ShouldNotContain("-field-group-2-description");
 
         // Story 13.3 BH3-09 — the group is Fluent-styled (Fluent 2 tokens and a FluentText legend).
         masked.ShouldContain("__b.AddAttribute(#, \"style\", \"margin: 0; padding: var(--spacingVerticalM) var(--spacingHorizontalM);");
@@ -1080,10 +1086,11 @@ public class CommandFormEmitterTests {
 
         // BH3-08 / BH3-09 — no host ARIA that cannot reach the shadow control, and no second error node:
         // the Fluent field renders each error once. BH17-03 — the only description link is the light-DOM
-        // denial heading's link to its reason.
+        // denial heading's link to its reason and the fieldset's group-description link.
         const string deniedHeadingDescription = "__denied.AddAttribute(#, \"aria-describedby\", _formDomId + \"-authorization-description\");";
         masked.ShouldContain(deniedHeadingDescription);
-        masked.Replace(deniedHeadingDescription, string.Empty, StringComparison.Ordinal).ShouldNotContain("\"aria-describedby\"");
+        masked.Replace(deniedHeadingDescription, string.Empty, StringComparison.Ordinal)
+            .Replace(groupDescriptionLink, string.Empty, StringComparison.Ordinal).ShouldNotContain("\"aria-describedby\"");
         masked.ShouldNotContain("\"aria-invalid\"");
         masked.ShouldNotContain("__b.AddAttribute(#, \"id\", _formDomId + \"-FirstNote-error\")");
         masked.ShouldContain("__b.AddAttribute(#, \"MessageCondition\", FluentFieldCondition.Always);");

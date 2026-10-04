@@ -1926,7 +1926,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                    __denied.CloseElement();");
         _ = sb.AppendLine("                    __denied.OpenElement(dseq++, \"p\");");
         _ = sb.AppendLine("                    __denied.AddAttribute(dseq++, \"id\", _formDomId + \"-authorization-description\");");
-        _ = sb.AppendLine("                    __denied.AddContent(dseq++, string.IsNullOrWhiteSpace(_serverWarning?.Detail) ? ResolveShellLocalized(\"AuthorizationActionUnavailableMessage\", \"This action is unavailable.\") : _serverWarning.Detail);");
+        _ = sb.AppendLine("                    __denied.AddContent(dseq++, string.IsNullOrWhiteSpace(_serverWarning?.Detail) ? ResolveShellLocalized(\"UnauthorizedCommandWarningMessage\", \"You do not have permission to {0}.\", \"" + escapedButtonLabel + "\") : _serverWarning.Detail);");
         _ = sb.AppendLine("                    __denied.CloseElement();");
         _ = sb.AppendLine("                    __denied.CloseElement();");
         _ = sb.AppendLine("                }));");
@@ -2074,6 +2074,9 @@ public static class CommandFormEmitter {
             FormFieldModel[] groupedFields = fields
                 .Where(candidate => string.Equals(candidate.FieldGroup, groupName, StringComparison.Ordinal))
                 .ToArray();
+            string? groupDescription = groupedFields
+                .Select(candidate => candidate.FieldGroupDescription)
+                .FirstOrDefault(description => !string.IsNullOrWhiteSpace(description));
             _ = sb.AppendLine();
             _ = sb.AppendLine("            if (");
             for (int visibilityIndex = 0; visibilityIndex < groupedFields.Length; visibilityIndex++) {
@@ -2091,6 +2094,9 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"class\", \"fc-command-field-group\");");
             _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"data-fc-field-group\", \"" + escapedGroupName + "\");");
             _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"aria-labelledby\", _formDomId + \"-field-group-" + groupOrdinal + "\");");
+            if (groupDescription is not null) {
+                _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"aria-describedby\", _formDomId + \"-field-group-" + groupOrdinal + "-description\");");
+            }
             _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"style\", \"" + FieldGroupStyle + "\");");
             _ = sb.AppendLine("            __b.OpenElement(cseq++, \"legend\");");
             _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"id\", _formDomId + \"-field-group-" + groupOrdinal + "\");");
@@ -2101,6 +2107,15 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ChildContent\", (RenderFragment)(__legend => __legend.AddContent(0, \"" + escapedGroupName + "\")));");
             _ = sb.AppendLine("            __b.CloseComponent();");
             _ = sb.AppendLine("            __b.CloseElement();");
+
+            if (groupDescription is not null) {
+                _ = sb.AppendLine("            __b.OpenComponent<FluentText>(cseq++);");
+                _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Id\", _formDomId + \"-field-group-" + groupOrdinal + "-description\");");
+                _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"class\", \"fc-command-field-group-description\");");
+                _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Size\", TextSize.Size200);");
+                _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ChildContent\", (RenderFragment)(__groupDescription => __groupDescription.AddContent(0, \"" + EscapeString(groupDescription) + "\")));");
+                _ = sb.AppendLine("            __b.CloseComponent();");
+            }
 
             for (int groupedIndex = 0; groupedIndex < groupedFields.Length; groupedIndex++) {
                 EmitField(sb, groupedFields[groupedIndex]);

@@ -1,0 +1,630 @@
+{
+  "schema": "frontcomposer-story-verification.v1",
+  "date": "2026-10-04",
+  "reviewedRevision": "37c8c6d295032968edba347940c41614ce8f2573",
+  "baselineCommit": "52fa0739ab8dfb02e1b9d8b5b05d2fd318f220d8",
+  "storyKey": "13-3-i-ux-b-preserve-focus-and-input-through-command-safety-outco",
+  "workingChanges": [
+    "Optional group descriptions and fieldset association",
+    "Localized denial fallback",
+    "Own-guard warning focus recovery",
+    "Palette navigation lazy module import and reservation release",
+    "Parser, emitter, rendered, and browser regressions; migration documentation"
+  ],
+  "commands": [
+    {
+      "name": "source-default",
+      "command": [
+        "env",
+        "DiffEngine_Disabled=true",
+        "dotnet",
+        "tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll",
+        "-trait-",
+        "Category=GovernanceBuild",
+        "-trait-",
+        "Category=Performance",
+        "-trait-",
+        "Category=e2e-palette",
+        "-trait-",
+        "Category=NightlyProperty",
+        "-trait-",
+        "Category=Quarantined",
+        "-result-xml",
+        "<temporary-verification-directory>/source-default.xml"
+      ],
+      "exitCode": 0,
+      "startedUtc": "2026-10-04T12:50:29.223372+00:00",
+      "completedUtc": "2026-10-04T12:50:50.967611+00:00",
+      "log": "source-default.log",
+      "result": {
+        "errors": 0,
+        "failed": 0,
+        "not-run": 0,
+        "passed": 1302,
+        "skipped": 0,
+        "total": 1302
+      }
+    },
+    {
+      "name": "shell-default",
+      "command": [
+        "env",
+        "DiffEngine_Disabled=true",
+        "dotnet",
+        "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+        "-trait-",
+        "Category=GovernanceBuild",
+        "-trait-",
+        "Category=Performance",
+        "-trait-",
+        "Category=e2e-palette",
+        "-trait-",
+        "Category=NightlyProperty",
+        "-trait-",
+        "Category=Quarantined",
+        "-result-xml",
+        "<temporary-verification-directory>/shell-default.xml"
+      ],
+      "exitCode": 0,
+      "startedUtc": "2026-10-04T12:54:20.294585+00:00",
+      "completedUtc": "2026-10-04T12:56:01.100770+00:00",
+      "log": "shell-default.log",
+      "result": {
+        "errors": 0,
+        "failed": 0,
+        "not-run": 0,
+        "passed": 3101,
+        "skipped": 0,
+        "total": 3101
+      }
+    },
+    {
+      "name": "contracts-default",
+      "command": [
+        "env",
+        "DiffEngine_Disabled=true",
+        "dotnet",
+        "tests/Hexalith.FrontComposer.Contracts.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Contracts.Tests.dll",
+        "-result-xml",
+        "<temporary-verification-directory>/contracts-default.xml"
+      ],
+      "exitCode": 0,
+      "startedUtc": "2026-10-04T12:53:25.941590+00:00",
+      "completedUtc": "2026-10-04T12:53:30.650029+00:00",
+      "log": "contracts-default.log",
+      "result": {
+        "errors": 0,
+        "failed": 0,
+        "not-run": 0,
+        "passed": 233,
+        "skipped": 0,
+        "total": 233
+      }
+    },
+    {
+      "name": "SourceTools-debug-build",
+      "command": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj",
+        "-c",
+        "Debug",
+        "-m:1"
+      ],
+      "exitCode": 0,
+      "log": "source-build-debug-final.log",
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "name": "Shell-debug-build",
+      "command": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj",
+        "-c",
+        "Debug",
+        "-m:1"
+      ],
+      "exitCode": 0,
+      "log": "shell-build-debug-final.log",
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "name": "Contracts-debug-build",
+      "command": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.FrontComposer.Contracts.Tests/Hexalith.FrontComposer.Contracts.Tests.csproj",
+        "-c",
+        "Debug",
+        "-m:1"
+      ],
+      "exitCode": 0,
+      "log": "contracts-build-debug.log",
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "name": "typecheck",
+      "command": [
+        "npm",
+        "--prefix",
+        "tests/e2e",
+        "run",
+        "typecheck"
+      ],
+      "exitCode": 0,
+      "log": "typecheck-final.log"
+    },
+    {
+      "name": "browser-final",
+      "workingDirectory": "tests/e2e",
+      "command": [
+        "env",
+        "BASE_URL=http://127.0.0.1:36871",
+        "FC_E2E_COMMAND_SUBMISSION_CONFIGURATION=Debug",
+        "npx",
+        "playwright",
+        "test",
+        "--config",
+        "<temporary-verification-directory>/browser-final.config.ts",
+        "--project=chromium",
+        "specs/destructive-command-confirmation.spec.ts",
+        "specs/form-abandonment-guard.spec.ts",
+        "specs/one-at-a-time-execution-policy.spec.ts",
+        "specs/policy-gated-command-authorization.spec.ts",
+        "specs/command-form-generation.spec.ts",
+        "specs/route-contract.spec.ts",
+        "specs/specimen-accessibility.spec.ts"
+      ],
+      "exitCode": 0,
+      "log": "browser-final.log",
+      "result": {
+        "total": 74,
+        "passed": 74,
+        "failed": 0,
+        "skipped": 0
+      }
+    }
+  ],
+  "evidenceFiles": [
+    {
+      "path": "source-build-debug-final.log",
+      "sourceSha256": "32ca0374c49a9fc1e35c923e9b803a316866e9c5705fcece989b52f95336db3e",
+      "storedSha256": "ddadfa2e9987079d4d27e47724186cb525dad02779901438b25d8af73cc139a8",
+      "normalization": "Repository/NuGet/temp paths generalized; terminal colors and trailing whitespace removed; CRLF."
+    },
+    {
+      "path": "shell-build-debug-final.log",
+      "sourceSha256": "12598d83d001f88d345a4b572844de27cd93208281c7fd1a311f762dc4650910",
+      "storedSha256": "9aa75458fa26614e2e6c3b2804a543c4df0b9e24b1325f5e07997ba6c8799fdb",
+      "normalization": "Repository/NuGet/temp paths generalized; terminal colors and trailing whitespace removed; CRLF."
+    },
+    {
+      "path": "contracts-build-debug.log",
+      "sourceSha256": "e48648dcda35243a711506439ac56f6f3b6036303704890c9aa3929b008744ea",
+      "storedSha256": "915b675e71e810707d73b30977dcc4e3f7c6f6f8d6729de23bff20a2ff919c5e",
+      "normalization": "Repository/NuGet/temp paths generalized; terminal colors and trailing whitespace removed; CRLF."
+    },
+    {
+      "path": "source-focused-final.log",
+      "sourceSha256": "736070a8f8643fedfb77fda1dbb6e8eb0bee3d7f41a919949df865c9a584436d",
+      "storedSha256": "74490dc8f2f96dea4e3db553da4bb1a7c74b96d2dd9af677ed5bf02a892d472e",
+      "normalization": "Repository/NuGet/temp paths generalized; terminal colors and trailing whitespace removed; CRLF."
+    },
+    {
+      "path": "shell-focused.log",
+      "sourceSha256": "713e5957b12729aa87063e97a04ee12d263c94cf4696e6aff19c5056f1227efd",
+      "storedSha256": "85eeb60f1ab3d0698a81d6467f143decb38950b97bfa4477c169822fc389d992",
+      "normalization": "Repository/NuGet/temp paths generalized; terminal colors and trailing whitespace removed; CRLF."
+    },
+    {
+      "path": "shell-changed-final.log",
+      "sourceSha256": "83691880f99d5ad2b689783b0b1c730356c65df4ec6b4470ea2a03cee2264f9d",
+      "storedSha256": "51ac8ef3ef7c433f7fc11d95edb6fb47dc2775e19c917444333995173c0665e5",
+      "normalization": "Repository/NuGet/temp paths generalized; terminal colors and trailing whitespace removed; CRLF."
+    },
+    {
+      "path": "contracts-focused.log",
+      "sourceSha256": "62607a61d33a1d6026f5134c65ed8635add76225532c62a1fecbae277644e043",
+      "storedSha256": "3aa07e9a74bef274d542bbed9cb10d94769709a667d19197db8a98661b35bfac",
+      "normalization": "Repository/NuGet/temp paths generalized; terminal colors and trailing whitespace removed; CRLF."
+    },
+    {
+      "path": "source-default.log",
+      "sourceSha256": "c7f12052cb472b4bee0183eef09a01ffd1ad6e214a110ce7a2ab2497546f4c86",
+      "storedSha256": "e81e1630589d6dd94dfbb0c6e3b2e22809a5373e516c9fa8b314cd9a933de458",
+      "normalization": "Repository/NuGet/temp paths generalized; terminal colors and trailing whitespace removed; CRLF."
+    },
+    {
+      "path": "shell-default.log",
+      "sourceSha256": "d39e03ad2ee0a04f4734a636a37d0093956657696c8e0fd688e7cabdfbac21cc",
+      "storedSha256": "449d143b0e3f4f94b03580fe701ffe58cd6ff589b74f336490cfd28fdc0e23a1",
+      "normalization": "Repository/NuGet/temp paths generalized; terminal colors and trailing whitespace removed; CRLF."
+    },
+    {
+      "path": "contracts-default.log",
+      "sourceSha256": "6b373323258e2f7099e57475c270209d9748cf35f25329172c980c469d187116",
+      "storedSha256": "0484b63e6830f80675acacf43759a1cb05f7361ad2196cdb4add5fe9d6a0c1c8",
+      "normalization": "Repository/NuGet/temp paths generalized; terminal colors and trailing whitespace removed; CRLF."
+    },
+    {
+      "path": "typecheck-final.log",
+      "sourceSha256": "f25f1003ff1cfe84552996098a4b5da48fac24aca38a162310dab5aa0f742da2",
+      "storedSha256": "e2f374da3f04f0db7af1e94cc2bd8a2eabc1efb23a47f683a589f89e461c19da",
+      "normalization": "Repository/NuGet/temp paths generalized; terminal colors, trailing whitespace, and trailing empty lines removed; CRLF."
+    },
+    {
+      "path": "browser-final.log",
+      "sourceSha256": "effcc9f0831a45f30f9b41865833e31718ce19ff34549954f8d00d562972a3a7",
+      "storedSha256": "05c6552e29714d18f03a7cd1756111e33dc3384301a77a4f17b29729fe312e57",
+      "normalization": "Repository/NuGet/temp paths generalized; terminal colors and trailing whitespace removed; CRLF."
+    },
+    {
+      "path": "browser-final.xml",
+      "sourceSha256": "8571f675752771c5be57e5a0b5133f5c254dd25b6bb7a143520813e1749c5c74",
+      "storedSha256": "304447ae82bb95e113a01fa87325e5e445b31c0d31a42ed8690b38e3546f3f97",
+      "normalization": "Repository/NuGet/temp paths generalized; terminal colors and trailing whitespace removed; CRLF."
+    },
+    {
+      "path": "source-default.summary.xml",
+      "storedSha256": "5cae606260e62be840a819f854cd63bbb2c20a932a6b0b6d73f2ab3482dc86ff",
+      "normalization": "Aggregate-only result extracted from original xUnit XML; CRLF.",
+      "sourceResultSha256": "75389e6bd795c7d1c142725727ec03a8717b93651059af6b5725ca86adacca59"
+    },
+    {
+      "path": "shell-default.summary.xml",
+      "storedSha256": "507aec36cf6c5e24fd4eac62a07887627e0e4687daf32621c69446ce6376bd7a",
+      "normalization": "Aggregate-only result extracted from original xUnit XML; CRLF.",
+      "sourceResultSha256": "d81a17f3b4a726dc46cd2621a6c96a3908399b22339a44feb90f60007f8feaff"
+    },
+    {
+      "path": "contracts-default.summary.xml",
+      "storedSha256": "6417adee89fe47abead0d1631931eaa3246e96211a3fe3df43b6a850326a9004",
+      "normalization": "Aggregate-only result extracted from original xUnit XML; CRLF.",
+      "sourceResultSha256": "eeeaabc1bf0a9ded15382b191b32d4347e3c9f121a944c265fd189e426057f12"
+    },
+    {
+      "path": "matrix-audit.json",
+      "sourceSha256": "4396a263dfe2b4995e13eb6195980b5232d9b1f4b8b59154ccd8735ac8da4e16",
+      "storedSha256": "a8feee567a43b2be172a79226f7838e94f2f22fade93de6826888a9ab4b147d7"
+    },
+    {
+      "path": "browser-final.config.ts",
+      "sourceSha256": "35182696adb3a9b7abec0364951d85d7e091aab7975a7292d5630497a38dca8b",
+      "storedSha256": "c3992d4a53f5cbd428b407daa3cb39169f1126ed81b23c8f93036861f559cc5c"
+    },
+    {
+      "path": "commitlint.log",
+      "storedSha256": "24530198f3900566744e2e6a0e9373f29b0e7d8d2d0e9ba1ad0e5475557bb066",
+      "normalization": "CRLF."
+    }
+  ],
+  "matrixAudit": {
+    "matrixRows": 5,
+    "allCoveredAndPassed": true,
+    "rows": [
+      {
+        "scenario": "Validation",
+        "source": "browser-final.xml",
+        "tests": [
+          "Story 3.1: generated command forms \u203a invalid generated editors expose invalid state and their error on the focusable control",
+          "Story 4.1: destructive command confirmation \u203a validation focus fallbacks use the next invalid target and survive a missing summary",
+          "Story 13.3: mapped rejection recovery focus \u203a keyboard dismissal preserves mapped errors and values, then permits a corrected retry"
+        ],
+        "result": "passed"
+      },
+      {
+        "scenario": "Rejection/denial",
+        "source": "browser-final.xml",
+        "tests": [
+          "Story 13.3: submit-time denial focus \u203a dispatch denial replaces editors with one focused non-live heading",
+          "Story 13.3: unmapped rejection recovery focus \u203a Edit and retry moves real browser focus to the first generated editor",
+          "Story 13.3: unmapped rejection recovery focus \u203a unmapped rejection recovery actions work from the keyboard alone"
+        ],
+        "result": "passed"
+      },
+      {
+        "scenario": "Confirmation",
+        "source": "browser-final.xml",
+        "tests": [
+          "Story 4.1: destructive command confirmation \u203a cancel and Escape keep the destructive command idle and reusable",
+          "Story 4.1: destructive command confirmation \u203a confirmation is required before dispatch and reaches terminal feedback once confirmed",
+          "Story 4.1: destructive command confirmation \u203a removed destructive invoker restores focus to the route heading"
+        ],
+        "result": "passed"
+      },
+      {
+        "scenario": "Abandonment",
+        "source": "browser-final.xml",
+        "tests": [
+          "Story 4.2: unsaved full-page command form abandonment guard \u203a dirty generated full-page command form after threshold supports stay, Escape, and leave",
+          "Story 4.2: unsaved full-page command form abandonment guard \u203a removed edited control restores focus to the marked full-page command heading",
+          "Story 4.2: unsaved full-page command form abandonment guard \u203a sequenced capture ignores a stale earlier edit after focus moves to a warning action"
+        ],
+        "result": "passed"
+      },
+      {
+        "scenario": "Concurrency",
+        "source": "browser-final.xml",
+        "tests": [
+          "Story 4.3: one-at-a-time execution policy \u203a accepted pending command blocks another generated form until terminal confirmation",
+          "Story 13.3: View active command availability \u203a a hidden active lifecycle offers no View active command target"
+        ],
+        "result": "passed"
+      }
+    ]
+  },
+  "defaultLaneExcludedTraits": [
+    "Category=GovernanceBuild",
+    "Category=Performance",
+    "Category=e2e-palette",
+    "Category=NightlyProperty",
+    "Category=Quarantined"
+  ],
+  "browser": {
+    "configuration": "Debug",
+    "environment": "Test",
+    "workers": 2,
+    "launchArgs": [
+      "--disable-gpu",
+      "--disable-software-rasterizer"
+    ],
+    "unchangedVisualComparisons": 6,
+    "hostStopped": true,
+    "hostCommand": [
+      "dotnet",
+      "run",
+      "--project",
+      "../../samples/Counter/Counter.Web/Counter.Web.csproj",
+      "--configuration",
+      "Debug",
+      "--no-build",
+      "--no-launch-profile",
+      "--urls",
+      "http://127.0.0.1:36871"
+    ],
+    "hostWorkingDirectory": "tests/e2e",
+    "hostEnvironment": {
+      "ASPNETCORE_ENVIRONMENT": "Test",
+      "Hexalith__FrontComposer__Specimens__Enabled": "true",
+      "Hexalith__Shell__FormAbandonmentThresholdSeconds": "5",
+      "Hexalith__Shell__TimeoutActionThresholdMs": "5000",
+      "Hexalith__FrontComposer__StubCommandService__ConfirmDelayMs": "6500"
+    }
+  },
+  "aspireBaseline": {
+    "mode": "prebuilt isolated start",
+    "counterHealthy": true,
+    "otherResources": "Security unhealthy and dependent resources waiting",
+    "ownedHostStopped": true,
+    "unrelatedTenantsHostPreserved": true,
+    "startCommand": [
+      "aspire",
+      "start",
+      "--no-build",
+      "--isolated",
+      "--apphost",
+      "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+      "--non-interactive",
+      "--format",
+      "Json"
+    ],
+    "stopCommand": [
+      "aspire",
+      "stop",
+      "--apphost",
+      "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+      "--non-interactive"
+    ]
+  },
+  "initialFailures": {
+    "sourceFocused": "Two intended denial-copy snapshot deltas and one sequence-mask assertion; corrected and all 112 passed.",
+    "browser": "Palette owner assertion corrected; route-navigation release then exposed the unloaded focus module. Caller fixed and final 74/74 passed.",
+    "configuration": "One SourceTools Release build passed before the local Debug-only clarification; all final evidence uses Debug."
+  },
+  "review": {
+    "iteration": 24,
+    "layers": [
+      "blind-hunter",
+      "edge-case-hunter",
+      "verification-gap"
+    ],
+    "status": "complete",
+    "diffBytes": 1154096,
+    "diffSha256": "e55fc0145661e6ef646a292a2b52232ddb2d4e30187aa31ecf79f763489c88bf",
+    "diffScope": "All production/test/configuration/gitlink changes since canonical baseline. _bmad-output claims/evidence excluded so the spec is supplied only to edge-case-hunter.",
+    "failedLayers": [],
+    "findings": [
+      {
+        "id": "BH24-01",
+        "layer": "blind-hunter",
+        "summary": "Modal refusal can be overwritten by module-disposal failure.",
+        "verdict": "low",
+        "evidence": "carried VG10B-O1: the same capture-false followed by DisposeAsync failure pattern remains; it retains the recorded interop-failure policy and rejection.",
+        "route": "reject",
+        "carried": true
+      },
+      {
+        "id": "BH24-02",
+        "layer": "blind-hunter",
+        "summary": "EditContext replacement retains the prior abandonment timer and warning.",
+        "verdict": "medium",
+        "evidence": "carried BH9B-10/BH20-02: OnParametersSet still resets only the captured field name; generated mounted guards do not swap contexts and the direct-consumer session repair is already recorded.",
+        "route": "defer",
+        "carried": true
+      },
+      {
+        "id": "BH24-03",
+        "layer": "blind-hunter",
+        "summary": "Delayed Fluent shadow-dialog initialization can miss labeling.",
+        "verdict": "false",
+        "evidence": "carried E9-09: the pinned Fluent dialog initializes its native shadow dialog before the child first-render call; existing and final Chromium naming/description checks pass.",
+        "route": "reject",
+        "carried": true
+      },
+      {
+        "id": "BH24-04",
+        "layer": "blind-hunter",
+        "summary": "Fresh-tenant projection proof accepts tenant-sequence:0.",
+        "verdict": "medium",
+        "evidence": "is_tenant_projection_version accepts zero and both the capture and runtime validator consume it. EventStore EventMetadata requires sequence >= 1; the current fresh-tenant smoke should distinguish format-valid zero from evidence of its create event. This provider-evidence helper predates this run and belongs to the separate test/CI/evidence repair.",
+        "route": "defer",
+        "carried": false
+      },
+      {
+        "id": "BH24-05",
+        "layer": "blind-hunter",
+        "summary": "Detached-child startup logs are not tracked for cleanup.",
+        "verdict": "medium",
+        "evidence": "capture_start_diagnostics reads the parsed child log, but remove_temporary_files lists only parent/start/describe/process-list paths. The fixture writes credential/token values into that child file and asserts only parent deletion. This launcher ownership/retention work predates this run and belongs to the separate test/CI repair.",
+        "route": "defer",
+        "carried": false
+      },
+      {
+        "id": "BH24-06",
+        "layer": "blind-hunter",
+        "summary": "Nullable Boolean switches lack inline errors and error descriptions.",
+        "verdict": "medium",
+        "evidence": "carried E8-07/BH21-03/E23-33: FluentSwitch still validates its proxy and ignores ValidationFieldFor; the same nullable editor limitation remains documented and deferred.",
+        "route": "defer",
+        "carried": true
+      },
+      {
+        "id": "BH24-07",
+        "layer": "blind-hunter",
+        "summary": "Switch, date, and select editors omit required indication.",
+        "verdict": "medium",
+        "evidence": "carried BH21-02: Required is still absent on those editor paths, and the canonical baseline also omitted it; the existing editor follow-up retains its route.",
+        "route": "defer",
+        "carried": true
+      },
+      {
+        "id": "BH24-08",
+        "layer": "blind-hunter",
+        "summary": "Windows cleanup leaves descendants after the launcher exits.",
+        "verdict": "medium",
+        "evidence": "carried BH15-09/E16-03: stopOwnedProcess still skips taskkill when the parent has exited; platform-specific ownership belongs to the already-recorded test/CI repair.",
+        "route": "defer",
+        "carried": true
+      },
+      {
+        "id": "BH24-09",
+        "layer": "blind-hunter",
+        "summary": "Linux diagnostic CI builds Debug assets.",
+        "verdict": "medium",
+        "evidence": "carried BH14-08/BH20-11: the same DEBUG-only diagnostic fixture conflicts with Release-only CI guidance and remains assigned to the separate CI repair.",
+        "route": "defer",
+        "carried": true
+      },
+      {
+        "id": "BH24-10",
+        "layer": "blind-hunter",
+        "summary": "DocFx reference selection may conflate equal-version assemblies from different TFMs.",
+        "verdict": "maybe-false",
+        "evidence": "Prepare-DocFxReferences deduplicates by filename and greater assembly version, so equal identities keep the first input. The claim needs a real equal-name/equal-version dependency exposing different APIs across TFMs and a failing DocFx metadata fixture; current docs input order and prior gate evidence do not demonstrate that bad outcome. Medium if reproduced; separate docs/test repair ownership.",
+        "route": "defer",
+        "carried": false
+      },
+      {
+        "id": "E24-01",
+        "layer": "edge-case-hunter",
+        "summary": "More than 32 replacement captures evict a pending origin.",
+        "verdict": "low",
+        "evidence": "carried BH22-05: the same bounded Map and 33-capture helper reproduction retain the recorded rejection; changing retention to recovery-lifetime coordination adds complexity for the uncommon case.",
+        "route": "reject",
+        "carried": true
+      },
+      {
+        "id": "E24-02",
+        "layer": "edge-case-hunter",
+        "summary": "Forced recovery targets the first duplicate zero-field trigger.",
+        "verdict": "low",
+        "evidence": "carried BH22-03/E22-03: the same shared trigger id and force:true return path retain their recorded rejection; per-instance trigger coordination is unchanged.",
+        "route": "reject",
+        "carried": true
+      },
+      {
+        "id": "E24-03",
+        "layer": "edge-case-hunter",
+        "summary": "The every-editor validation relationship claim fails for nullable Boolean switches.",
+        "verdict": "medium",
+        "evidence": "carried E21-03/E23-33: the identical FluentSwitch proxy/message limitation is documented and deferred; no new Boolean editor behavior changed.",
+        "route": "defer",
+        "carried": true
+      },
+      {
+        "id": "E24-04",
+        "layer": "edge-case-hunter",
+        "summary": "Windows cleanup misses descendants when the parent exits first.",
+        "verdict": "medium",
+        "evidence": "carried BH15-09/E16-03: unchanged parent-exit shortcut in the separate test/CI helper; retain the existing Windows ownership follow-up.",
+        "route": "defer",
+        "carried": true
+      },
+      {
+        "id": "E24-05",
+        "layer": "edge-case-hunter",
+        "summary": "Validation-summary interop timeout can escape its component lifecycle.",
+        "verdict": "low",
+        "evidence": "carried E23-01\u2013E23-07/BH10B-04: the same focus-summary timeout ladder retains the earlier codebase-wide timeout-policy rejection.",
+        "route": "reject",
+        "carried": true
+      },
+      {
+        "id": "E24-06",
+        "layer": "edge-case-hunter",
+        "summary": "Zero-field inline submit denial remains inside its hidden form.",
+        "verdict": "medium",
+        "evidence": "carried BH15-07/E5-12: the unchanged hidden form owns non-AM-20 feedback; the visible denial/feedback presentation gap is already recorded.",
+        "route": "defer",
+        "carried": true
+      },
+      {
+        "id": "VG24-01",
+        "layer": "verification-gap",
+        "summary": "Umbrella sibling dependency selection lacks evaluated MSBuild verification.",
+        "verdict": "medium",
+        "evidence": "carried VG21-01: CiGovernanceTests still checks source strings/existence, and FakeRuntime still supplies synthetic MSBuild results; evaluating sibling-only selection remains the same separately recorded test/CI repair.",
+        "route": "defer",
+        "carried": true
+      }
+    ],
+    "newDeferredEntries": 3,
+    "carriedFindings": 14,
+    "storyPatchFindings": 0
+  },
+  "limitations": [
+    "Protected Release/NuGet gates, Firefox/WebKit, full solution/all-project lanes, and excluded advisory/isolated lanes are not claimed.",
+    "Aspire inspection used prebuilt assets; only Counter health was verified in this run.",
+    "Existing deferred findings retain their recorded routes; no Product or broader accessibility approval is implied."
+  ],
+  "completion": {
+    "specStatus": "done",
+    "sprintStatus": "review",
+    "acceptedPatchTasksComplete": true,
+    "frozenIntentPreserved": true,
+    "canonicalBaselinePreserved": true,
+    "localDotnetTestsPassed": 4636,
+    "chromiumTestsPassed": 74,
+    "newDeferredFollowUps": 3
+  },
+  "commitMessageValidation": {
+    "message": "feat: Preserve focus and input through command safety outcomes\n",
+    "messageSha256": "ecfaf40abcb3ce718ec382ff2db460a13ad7384015853b12c1ecb9446c1377db",
+    "command": [
+      "node",
+      "node_modules/@commitlint/cli/cli.js",
+      "--edit",
+      "<temporary-verification-directory>/commit-message.txt",
+      "--verbose"
+    ],
+    "cliVersion": "21.2.2",
+    "configConventionalVersion": "21.2.2",
+    "versionsMatchPackageLock": true,
+    "exitCode": 0,
+    "log": "commitlint.log"
+  }
+}

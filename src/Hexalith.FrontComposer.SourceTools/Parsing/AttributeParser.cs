@@ -554,7 +554,7 @@ public static class AttributeParser {
         int? columnPriority = ParseColumnPriority(propertySymbol);
 
         // Story 4-5 T6.4 / D9 — [ProjectionFieldGroup("Name")] annotation; null when absent.
-        string? fieldGroup = ParseProjectionFieldGroup(propertySymbol);
+        (string? fieldGroup, string? fieldGroupDescription) = ParseProjectionFieldGroup(propertySymbol);
 
         FieldDisplayFormat displayFormat = ParseDisplayFormat(
             propertySymbol,
@@ -583,7 +583,8 @@ public static class AttributeParser {
             propertySymbol.SetMethod is { DeclaredAccessibility: Accessibility.Public, IsInitOnly: false },
             sourceTypeName,
             requiredExternAliases,
-            supportsStaticAssignment);
+            supportsStaticAssignment,
+            fieldGroupDescription);
     }
 
     private static bool SupportsStaticAssignment(
@@ -839,21 +840,25 @@ public static class AttributeParser {
 
     /// <summary>
     /// Story 4-5 T6.4 / D9 — reads <c>[ProjectionFieldGroup(string)]</c> and returns the
-    /// trimmed group name, or <see langword="null"/> when the attribute is absent. Empty /
+    /// trimmed group name and optional description, or null values when the attribute is absent. Empty /
     /// whitespace values are filtered to <see langword="null"/> to mirror the runtime guard
     /// on <c>ProjectionFieldGroupAttribute</c>'s constructor (defence-in-depth).
     /// </summary>
-    private static string? ParseProjectionFieldGroup(IPropertySymbol propertySymbol) {
+    private static (string? GroupName, string? Description) ParseProjectionFieldGroup(IPropertySymbol propertySymbol) {
         foreach (AttributeData attr in propertySymbol.GetAttributes()) {
             if (attr.AttributeClass?.ToDisplayString() == ProjectionFieldGroupAttributeName
                 && attr.ConstructorArguments.Length > 0
                 && attr.ConstructorArguments[0].Value is string groupName
                 && !string.IsNullOrWhiteSpace(groupName)) {
-                return groupName.Trim();
+                string? description = attr.NamedArguments
+                    .Where(argument => argument.Key == "Description")
+                    .Select(argument => argument.Value.Value as string)
+                    .FirstOrDefault();
+                return (groupName.Trim(), string.IsNullOrWhiteSpace(description) ? null : description!.Trim());
             }
         }
 
-        return null;
+        return (null, null);
     }
 
     /// <summary>

@@ -11,7 +11,7 @@ public sealed class GroupedFieldsCommand {
 
     [Required]
     [Display(Name = "Record ID", Description = "Record to change.")]
-    [ProjectionFieldGroup("Change details")]
+    [ProjectionFieldGroup("Change details", Description = "Identify the record and explain the change.")]
     public string RecordId { get; set; } = string.Empty;
 
     [Display(Description = "Why the change is required.")]

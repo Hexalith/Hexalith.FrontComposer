@@ -70,6 +70,7 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await page.getByTestId('fc-palette-trigger').click();
     const paletteSearch = page.getByRole('searchbox');
     await expect(paletteSearch).toBeFocused();
+    expect(await page.evaluate(() => (window as any).__fcModalReservation)).toBeTruthy();
     await paletteSearch.pressSequentially('Configure');
     await expect(paletteSearch).toHaveValue('Configure');
     const configureCounter = page.getByTestId('fc-palette-option').filter({ hasText: 'ConfigureCounterCommand' });
@@ -83,6 +84,12 @@ test.describe('Story 11.7: generated command and module route contract', () => {
     await expect(commandHeading).toBeVisible();
     await expect(commandHeading).toBeFocused();
     await expect(page.locator('.fc-command-form[aria-label="Configure Counter command form"]')).toBeVisible();
+
+    // Palette route navigation skips origin restoration, so it must release its modal reservation.
+    await expect.poll(() => page.evaluate(() => (window as any).__fcModalReservation), { timeout: 2_000 }).toBeNull();
+    await page.getByTestId('fc-settings-button').click();
+    await expect(page.locator('#fc-settings-heading')).toBeFocused();
+    await page.getByTestId('fc-settings-done').click();
   });
 
   test('invalid module tab selects Overview with one persistent announcement', async ({ page, tenant }) => {

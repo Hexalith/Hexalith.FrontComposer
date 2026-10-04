@@ -1,0 +1,55 @@
+{
+  "matrixRows": 5,
+  "allCoveredAndPassed": true,
+  "rows": [
+    {
+      "scenario": "Validation",
+      "source": "browser-final.xml",
+      "tests": [
+        "Story 3.1: generated command forms \u203a invalid generated editors expose invalid state and their error on the focusable control",
+        "Story 4.1: destructive command confirmation \u203a validation focus fallbacks use the next invalid target and survive a missing summary",
+        "Story 13.3: mapped rejection recovery focus \u203a keyboard dismissal preserves mapped errors and values, then permits a corrected retry"
+      ],
+      "result": "passed"
+    },
+    {
+      "scenario": "Rejection/denial",
+      "source": "browser-final.xml",
+      "tests": [
+        "Story 13.3: submit-time denial focus \u203a dispatch denial replaces editors with one focused non-live heading",
+        "Story 13.3: unmapped rejection recovery focus \u203a Edit and retry moves real browser focus to the first generated editor",
+        "Story 13.3: unmapped rejection recovery focus \u203a unmapped rejection recovery actions work from the keyboard alone"
+      ],
+      "result": "passed"
+    },
+    {
+      "scenario": "Confirmation",
+      "source": "browser-final.xml",
+      "tests": [
+        "Story 4.1: destructive command confirmation \u203a cancel and Escape keep the destructive command idle and reusable",
+        "Story 4.1: destructive command confirmation \u203a confirmation is required before dispatch and reaches terminal feedback once confirmed",
+        "Story 4.1: destructive command confirmation \u203a removed destructive invoker restores focus to the route heading"
+      ],
+      "result": "passed"
+    },
+    {
+      "scenario": "Abandonment",
+      "source": "browser-final.xml",
+      "tests": [
+        "Story 4.2: unsaved full-page command form abandonment guard \u203a dirty generated full-page command form after threshold supports stay, Escape, and leave",
+        "Story 4.2: unsaved full-page command form abandonment guard \u203a removed edited control restores focus to the marked full-page command heading",
+        "Story 4.2: unsaved full-page command form abandonment guard \u203a sequenced capture ignores a stale earlier edit after focus moves to a warning action"
+      ],
+      "result": "passed"
+    },
+    {
+      "scenario": "Concurrency",
+      "source": "browser-final.xml",
+      "tests": [
+        "Story 4.3: one-at-a-time execution policy \u203a accepted pending command blocks another generated form until terminal confirmation",
+        "Story 13.3: View active command availability \u203a a hidden active lifecycle offers no View active command target"
+      ],
+      "result": "passed"
+    }
+  ]
+}

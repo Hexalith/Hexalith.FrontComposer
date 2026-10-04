@@ -14,6 +14,9 @@ public sealed class ProjectionFieldGroupAttributeTests {
     public void Constructor_AcceptsNonEmptyGroupName() {
         ProjectionFieldGroupAttribute attribute = new("Shipping");
         attribute.GroupName.ShouldBe("Shipping");
+        attribute.Description.ShouldBeNull();
+        attribute.Description = "Details used to deliver the order.";
+        attribute.Description.ShouldBe("Details used to deliver the order.");
     }
 
     [Fact]

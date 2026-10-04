@@ -174,6 +174,36 @@ public sealed class DescriptionAttributeParserTests {
         result.Model.ShouldNotBeNull().EmptyStateCtaCommandTypeName.ShouldBe("CreateOrderCommand");
     }
 
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("", null)]
+    [InlineData("   ", null)]
+    [InlineData("  Explain the \"group\".\nKeep the line break.  ", "Explain the \"group\".\nKeep the line break.")]
+    public void GroupDescriptionParsesIndependentlyOfFieldDescription(string? declared, string? expected) {
+        string literal = Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(declared ?? string.Empty, quote: true);
+        string argument = declared is null ? string.Empty : ", Description = " + literal;
+        ParseResult result = ParseDescriptionProjection($$"""
+            using System.ComponentModel;
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace TestDomain;
+
+            [BoundedContext("Orders")]
+            [Projection]
+            public partial class DescriptionProjection
+            {
+                [Description("Describe this field.")]
+                [ProjectionFieldGroup("Details"{{argument}})]
+                public string Name { get; set; } = "";
+            }
+            """);
+
+        PropertyModel property = GetProperty(result, "Name");
+        property.FieldGroup.ShouldBe("Details");
+        property.FieldGroupDescription.ShouldBe(expected);
+        property.Description.ShouldBe("Describe this field.");
+    }
+
     private static ParseResult ParseDescriptionProjection(string source) {
         ParseResult result = CompilationHelper.ParseProjection(source, "TestDomain.DescriptionProjection");
         result.Diagnostics.AsImmutableArray().ShouldBeEmpty();
