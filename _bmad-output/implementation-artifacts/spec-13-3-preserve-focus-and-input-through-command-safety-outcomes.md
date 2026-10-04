@@ -439,6 +439,95 @@ Code review 2026-10-04 (iteration 25; diff `52fa0739..HEAD` at `df4fe039`, narro
 - BH25-06 no diagnostic when `[ProjectionFieldGroup(Description = …)]` has no effect — `low`: the XML docs state that projections use only `GroupName` and that the first non-empty command description wins. A new diagnostic is new public surface.
 - BH25-07 one AM-20 live region per zero-field trigger per row — `low`: the spec's Code Map mandates a renderer-owned node beside each zero-field trigger, so consolidating it edits the spec. Empty polite regions stay silent.
 
+Code review 2026-10-04 (iteration 27; diff `52fa0739..HEAD` at `7668d040`, the same content iteration 26 reviewed. The operator narrowed it to production scope: `src/`, `samples/`, and `docs/`, 63 files, +3,523/−390. .NET tests, `tests/e2e`, eng/CI, and `_bmad-output` were not re-reviewed in this pass. All four layers ran and none failed. 49 findings: 1 decision, 1 patch, 10 deferred in 8 entries, 37 rejected.)
+
+- [x] [Review][Patch] The unmapped-rejection bar is an implicit `role="status"` live region, so the Story 13.3 recovery actions sit inside a second speech path (medium, AA27-01+BH27-16; decided 2026-10-04: option (a), `aria-live="off"` on the rejected bar only) [`src/Hexalith.FrontComposer.Shell/Components/Lifecycle/FcLifecycleWrapper.razor:97`]
+  - **Evidence:**
+    - The pinned Fluent `5.0.0` bundle (and `5.0.0-rc.5`) sets `this.elementInternals.role="status"` on `fluent-message-bar`. No other Fluent element does this.
+    - `ActionsTemplate` renders as light-DOM `slot="actions"` content inside that host.
+    - Story 13.3 added Edit and retry, Return, and Copy support reference to the rejected bar (`FcLifecycleWrapper.razor:125-139`).
+  - **Problem:**
+    - Copy relabels its own button to "Support reference copied" or "Copy failed. Use the codes shown." (`FcLifecycleWrapper.razor.cs:479`).
+    - `status` is implicitly polite and atomic. In Chromium the relabel is therefore a live-region change, which makes a screen reader re-read the whole bar: title, message, the four code pairs, and every action label. This comes on top of the focused button's own name change.
+    - The wrapper's own `role="alert"` region (`:32`) is a separate path, already deferred to Story 13.4 as AA25-01.
+    - This contradicts AC2 ("focus/announcement uses only its canonical path").
+    - It also disproves the premise behind the BH9-13/BH10-12/BH12-09 rejections, which held that the relabel has no live region.
+  - **Limits:** bUnit cannot see ElementInternals roles, and no assistive-technology run was made.
+  - **Options:**
+    - (a) **Recommended:** silence only the rejected bar's implicit region by putting `aria-live="off"` on its host. Leave the `status` role and the wrapper's AM-14 path for Story 13.4. Add a Chromium accessibility-tree assertion that `fc-rejected` is not a live region and that the Copy button reports its new name.
+    - (b) Move the three recovery actions out of the bar into a sibling Fluent stack directly after it, so nothing inside the status region changes after insertion. This changes the layout, and the rejection-recovery specs need updating.
+    - (c) Defer to Story 13.4 alongside AA25-01, as part of rejection speech consolidation, and record the re-read as a known 13.3 limitation.
+    - (d) Accept it: treat the bar re-read as the copy feedback, and record the corrected premise.
+- [x] [Review][Patch] The active lifecycle heading's generic-label fallback has no test (low, VG27-02) [`tests/Hexalith.FrontComposer.Shell.Tests/Components/Lifecycle/FcLifecycleWrapperTests.cs:192`]
+  - When `DisplayLabel` is blank, `LifecycleHeading` (`FcLifecycleWrapper.razor:201-204`) formats `ActiveCommandLifecycleHeading` with `CommandGenericLabel`. That heading is the focus target for "View active command".
+  - Every `ActiveLifecycleHeadingRendersOnlyWhileTheCommandIsInFlight` case sets `DisplayLabel = "Approve order"`, and no test references `CommandGenericLabel`. Removing or misspelling the fallback would leave adopter-hosted wrappers with an accessible name of " command status", and no test would fail.
+  - Fix: add a case that renders Submitting with no `DisplayLabel` and asserts the heading text "Command command status".
+- [x] [Review][Defer] The expand-in-row guard for a route heading that is already focused at initialization is untested (medium, VG27-01) [`src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-expandinrow.js:29`] — deferred: owned by `spec-repair-tests-ci-and-release-publication` (`b7384b97`), not Story 13.3.
+  - Both `expand-in-row.test.mjs` cases start with a non-heading `activeElement`, and its `scrollIntoView` stub records nothing.
+  - Deleting `:29-34` therefore keeps the suite green, even though an eager CompactInline form would then scroll the just-focused route heading out of view.
+- [x] [Review][Defer] Carried findings already in `deferred-work.md` — deferred: already recorded, no new ledger entry:
+  - BH27-01 (BH25-04b/BH26-10): the 4.5→4.6 guide has no HFC2122 row. Owned by the repair spec.
+  - AA27-C1 (AA25-01): an unmapped rejection speaks through an assertive alert, not AM-14 polite status. Story 13.4 hand-off.
+  - AA27-C2 (VG7-02/AA17-07/BH26-01): a `bool?` switch shows its error only in the summary.
+  - AA27-C3+E27-22 (AA17-05/E3-16/E25-23): the renderer's presentation gate replaces forms on infrastructure authorization failures.
+  - AA27-C4+E27-17 (BH3-06/E25-13/BH26-03): zero-field inline 403 and scope-unavailable outcomes render inside the hidden form. The re-dispatch part was rejected earlier as BH7-04.
+  - AA27-C5 (AA10-06/BH19-11): the focused mapped summary does not speak the rejection reason. Awaiting a product interpretation; unverified medium.
+  - AA27-C6 (AA17-01/BH22-06): with Destructive plus RequiresPolicy, the deferred origin return may override the denial-heading focus. Awaiting browser reproduction; unverified medium.
+
+**Iteration 27 patches and verification (2026-10-04):**
+
+- AA27-01, option (a):
+  - `FcLifecycleWrapper.razor` puts `aria-live="off"` on the unmapped-rejection `FluentMessageBar`. The bar keeps its implicit `status` role, the wrapper's live region stays the only speech path, and the AM-14 path is unchanged for Story 13.4.
+  - bUnit `UnmappedRejectionBarIsNotASecondLiveRegion` pins the attribute and a single wrapper live region.
+  - The Chromium case "unmapped rejection recovery actions work from the keyboard alone" now reads the bar's accessibility node over CDP after Copy relabels. It asserts `role: status` with no `live` property.
+  - The 4.5→4.6 migration row for the rejection bar records the change.
+  - The other lifecycle bars (Acknowledged, Action prompt, Confirmed, Already confirmed) are also implicit live regions. They are handed to Story 13.4 in an iteration-27 `deferred-work.md` entry.
+- VG27-02: bUnit `ActiveLifecycleHeadingFallsBackToTheGenericCommandLabel` renders Submitting without `DisplayLabel` under `en` and asserts "Command command status".
+- Neither new test name contains an underscore, so the CA1707 identifier-inventory seal is unchanged.
+- Verification (local, Debug project references):
+  - The Shell test project builds with 0 warnings and 0 errors.
+  - `FcLifecycleWrapperTests` passes 22/22 and both new tests ran by name.
+  - `FcLifecycleWrapperRejectionTests`, `CommandRendererWrapperIntegrationTests`, and `FcShellResourcesTests` pass 161/161.
+  - `npm --prefix tests/e2e run typecheck` passes.
+  - The Chromium "Story 13.3: unmapped rejection recovery focus" describe passes 2/2 against a Debug Counter host. That host also contained another session's `CounterSampleCommandService.cs` edit (since committed as `24f62394`), which does not touch the rejection path.
+- Not run in this pass: the full SourceTools/Shell default lanes, the seven-file Chromium lane, and Firefox/WebKit.
+
+**Rejected (iteration 27):**
+- BH27-02 out-of-story work bundled into the reviewed range — `false`: the baseline range spans concurrent commits, and each hunk is already attributed to its owner (AA17-04/BH23-03). The range itself is not a code defect.
+- BH27-03 holding Enter queues serialized AM-20 re-announcements — `low`: `PresentAfterAsync` (`FcCommandBlockedOutcome.razor.cs:104`) chains every attempt without coalescing, so autorepeat submits during an in-flight command keep replaying after the key is released. The Code Map requires every blocked attempt, including an identical repeat, to announce once, and coalescing would add a branch that breaks that rule.
+- BH27-04 and E27-01 to E27-06 uncaught `TaskCanceledException` in the summary, dialog, guard, and wrapper components, the emitted helpers, and capture-before-replacement — `low`: carried E3-10/E23-01–E23-07/E25-01–E25-04/E26-05 (codebase-wide timeout policy).
+- BH27-05 English-only mapped-rejection card title, lifecycle titles, "Confirm" fallback, and "… command form" label — `low`: carried BH4-06/BH7-07. Every literal exists at baseline `52fa0739`, and generated dialogs always pass `DestructiveLabel`.
+- BH27-06 field descriptions and group legends bypass localization — `false`: carried BH2-09.
+- BH27-07 `Guid.NewGuid()` ids and inconsistent id sanitizing — `low`: carried BH2-20/BH5-15/E5-30/BH7-15d.
+- BH27-08 Return (`history.back`) has no fallback, is unguarded across documents, and leaves an inline grid page — `low`: carried BH6-02/E6-05/BH10-11. Return is browser Back by the AA5-02 decision, from inline hosts too.
+- BH27-09 unmapped rejections drop global and unknown-path messages — `low`: carried ECH-07/BH-02.
+- BH27-10 and E27-18 a document-wide observer per generated form — `low`: carried BH17-05/E23-15/BH25-01.
+- BH27-11 a server 400 summary carries the client-validation kind — `low`: carried BH3-12/BH17-12.
+- BH27-12 refused palette, settings, and destructive launches are silent — `low`: carried BH2-14/E3-08/BH5-03/BH7-05/BH10-02.
+- BH27-13 `FcDensityApplier` defects — `low`: carried BH23-03 (out-of-story `6a4fb398`).
+- BH27-14 `ResultUnmappedMessages` lacks `[Obsolete]` — `low`: carried BH10-20.
+- BH27-15 Counter sample gaps (flag precedence, hand-built specimen check, hard-coded MCP header, MCP allowlist) — `low`. Most of it is not a defect:
+  - Forbidden-before-rejection mirrors authorization before handling, and each spec sets only one flag (`policy-gated-command-authorization.spec.ts:146`, `:191`).
+  - The header equals the `FrontComposerMcpOptions.ApiKeyHeaderName` default.
+  - The tool gate is a documented, explicit inventory.
+
+  The one real part is that at HEAD the specimen check is hand-built instead of calling `FrontComposerSpecimenRoutes.IsEnabled`. That is out of story (`b7384b97`), and the concurrent CI-fix commit `24f62394` has since replaced it with `FrontComposerSpecimenRoutes.IsEnabled`.
+- BH27-16 the copy outcome is not announced — `false`: AA27-01 disproves the premise. The relabel sits inside `fluent-message-bar`'s implicit `role="status"` region, so it is announced, only too broadly; that is kept as the AA27-01 decision.
+- VG27-O1 and E27-16 malformed host templates throw `FormatException` — `low`: carried E17-13/E23-20/E25-16.
+- AA27-02 grouped fields are reordered against the frozen declared-field-order rule — `false`: the loop-1 Code Map amendment (BH-13) requires one shared container per declared group in declared group/field order. That forces a non-contiguous member to be hoisted. AA7-03/AA25-03 document it, and every alternative either edits the spec or adds diagnostic surface.
+- E27-07 a null-origin durable reservation never expires after a lost release — `low`: carried E17-04/E23-08/E25-06.
+- E27-08 a second failed release overwrites the single unreleased-owner slot — `low`: `ReleaseModalReservationAsync` (`CommandRendererEmitter.cs:647-652`) keeps one owner. Losing the earlier owner needs two consecutive JS release failures on one renderer, and a collection would add state for that case.
+- E27-09 a modal `fluent-drawer` is not treated as a modal container — `low`: real, since `modalContainerSelector`/`hasOpenModal` omit `fluent-drawer`, which defaults to `showModal()`. But no FrontComposer, Tenants, or Parties surface renders a drawer, which matches the E17-05 precedent, and detection would add a branch for an adopter-only case.
+- E27-10 `focusAbandonmentStay` re-arms a frame callback while a modal stays open — `low`: `fc-focus.js:143-151` runs two DOM queries per frame only until the modal closes, Stay disconnects, or a new request replaces it. A cap would add a branch.
+- E27-11 whole-form removal with the lifecycle heading focused drops focus to `body` — `low`: carried E10-16/E23-13.
+- E27-12 forced attempted-control return targets the first duplicate trigger id — `low`: carried E21-01/E24-02/E25-11.
+- E27-13 a summary corrected to zero entries reappears unfocused — `low`: carried BH5-12/E7-04/E10B-11.
+- E27-14 Return does nothing without history — `low`: carried E17-03/E23-19/E25-18.
+- E27-15 a late clipboard result relabels a newer rejection — `low`: carried E8-04/E9-06/E22-02/E26-04.
+- E27-19 both specimen flags make the mapped rejection unreachable — `false`: same as BH27-15. Forbidden-first is the intended precedence, and the specs set one flag at a time.
+- E27-20 summary links cancel the native href without proven focus — `low`: carried E4-06/E10-01/E17-01/BH12-05/E25-12.
+- E27-21 `MappedFieldCount` counts case-variant keys twice — `low`: carried E23-28/E25-15.
+
 ## Implementation Notes
 
 **Review loop 1 KEEP instructions:** Preserve the working non-live linked validation summary and its missing-target/summary fallbacks; mapped-rejection lifecycle identity and AM-14 suppression; authorization-denial replacement/focus; destructive confirmation naming, Cancel-first behavior, origin/h1 return, and single dispatch; silent in-flow abandonment warning and explicit Leave; one polite atomic AM-20 region with attempted-submit focus; support-safe localized EN/FR copy; and the passing focused unit, integration, typecheck, and Story 13.3 Chromium verification structure. Re-derive these behaviors while correcting the loop-triggering contracts and all accepted patch findings in the triage log.
@@ -1371,6 +1460,50 @@ Also apply every iteration-3 `patch` row in the triage log.
 | 26 | edge-case-hunter | E26-06: The activation-owned heading claim fails for concurrent unrelated replacements. | low | carried BH3-02/BH21-04: same owning-root capture claim and unchanged helper as E26-03; preserve the previously rejected unrelated-detached-focus verdict. | reject |
 | 26 | verification-gap | VG26-01: No real generated-renderer authorization refresh browser proof. | medium | carried VG11-02/VG22-01: the filed caller evidence still uses mocked capture and synthetic browser replacement; the existing authenticated refresh follow-up remains. | defer |
 | 26 | verification-gap | VG26-02: All-hidden field groups lack a rendered omission assertion. | false | The reviewer withdrew this finding: GeneratedFormOmitsADeclaredGroupWhenEveryMemberIsHidden at CommandRendererWrapperIntegrationTests.cs:1548 omits both members and asserts no fieldset/editor/group label. It passed in the final Shell result; VG7-03 already closed VG4-09. | reject |
+| 27 | blind-hunter | BH27-01: The 4.5→4.6 guide omits HFC2122 and its front matter is stale. | low | carried BH25-04b/BH26-10: owned by spec-repair-tests-ci-and-release-publication; BH25-04a already extended the description, and `ownerStory` stays the guide's primary owner. | defer |
+| 27 | blind-hunter | BH27-02: Out-of-story work is bundled into the reviewed range. | false | The baseline range spans concurrent commits, each already attributed to its owner (AA17-04/BH23-03); the range is not a code defect. | reject |
+| 27 | blind-hunter | BH27-03: Holding Enter queues serialized AM-20 re-announcements. | low | `PresentAfterAsync` (`FcCommandBlockedOutcome.razor.cs:104`) chains every attempt without coalescing; the Code Map requires each blocked attempt, including an identical repeat, to announce once, and coalescing adds a branch against that rule. | reject |
+| 27 | blind-hunter | BH27-04: Shell components and emitted helpers do not catch `TaskCanceledException`. | low | carried E3-10/E23-01–E23-07/E25-01–E25-04/E26-05 (codebase-wide timeout policy). | reject |
+| 27 | blind-hunter | BH27-05: The mapped-rejection card title and other lifecycle strings are English-only. | low | carried BH4-06/BH7-07: every literal exists at baseline `52fa0739`; generated dialogs always pass `DestructiveLabel`. | reject |
+| 27 | blind-hunter | BH27-06: Field descriptions and group legends bypass localization. | false | carried BH2-09. | reject |
+| 27 | blind-hunter | BH27-07: `Guid.NewGuid()` ids and inconsistent id sanitizing. | low | carried BH2-20/BH5-15/E5-30/BH7-15d. | reject |
+| 27 | blind-hunter | BH27-08: Return has no fallback, is unguarded across documents, and leaves an inline grid page. | low | carried BH6-02/E6-05/BH10-11 (AA5-02: Return is browser Back). | reject |
+| 27 | blind-hunter | BH27-09: Unmapped rejections drop global and unknown-path messages. | low | carried ECH-07/BH-02. | reject |
+| 27 | blind-hunter | BH27-10: Every generated form adds a document-wide observer. | low | carried BH17-05/E23-15/BH25-01. | reject |
+| 27 | blind-hunter | BH27-11: A server 400 summary carries the client-validation kind. | low | carried BH3-12/BH17-12. | reject |
+| 27 | blind-hunter | BH27-12: Refused palette, settings, and destructive launches are silent. | low | carried BH2-14/E3-08/BH5-03/BH7-05/BH10-02. | reject |
+| 27 | blind-hunter | BH27-13: `FcDensityApplier` defects. | low | carried BH23-03 (out-of-story `6a4fb398`). | reject |
+| 27 | blind-hunter | BH27-14: `ResultUnmappedMessages` lacks `[Obsolete]`. | low | carried BH10-20. | reject |
+| 27 | blind-hunter | BH27-15: Counter sample flag precedence, hand-built specimen check, MCP header, and MCP allowlist. | low | Only the HEAD hand-built specimen check is real; it is out of story (`b7384b97`) and was replaced by the concurrent CI-fix commit `24f62394`. Flag precedence, the default header name, and the explicit allowlist are intended. | reject |
+| 27 | blind-hunter | BH27-16: The copy outcome is not announced. | false | Disproved by AA27-01: the relabel sits inside `fluent-message-bar`'s implicit `role="status"` region. | reject |
+| 27 | verification-gap | VG27-01: The expand-in-row init-time route-heading guard is untested. | medium | Filed evidence: both `expand-in-row.test.mjs` cases start with a non-heading `activeElement`, so deleting `fc-expandinrow.js:29-34` passes. Owned by spec-repair-tests-ci-and-release-publication (`b7384b97`). | defer |
+| 27 | verification-gap | VG27-02: The lifecycle heading's `CommandGenericLabel` fallback is untested. | low | Filed evidence: every `FcLifecycleWrapperTests` case sets `DisplayLabel`, and no test references `CommandGenericLabel`; the test addition is direct. | patch |
+| 27 | verification-gap | VG27-O1: Host templates passed to `string.Format` can throw `FormatException`. | low | carried E17-13/E23-20/E25-16. | reject |
+| 27 | acceptance-auditor | AA27-01: The unmapped-rejection bar is an implicit `role="status"` live region holding the 13.3 recovery actions. | medium | Fluent 5.0.0 sets `elementInternals.role="status"` on `fluent-message-bar`, and `ActionsTemplate` renders inside it, so the Copy relabel (`FcLifecycleWrapper.razor.cs:479`) is an atomic polite change that re-reads the whole bar beside the wrapper's alert path. A Chromium CDP probe confirmed `live: polite, atomic: true` for an internals `status` role and no live properties with an explicit host `aria-live="off"`. Decided 2026-10-04: option (a). | patch |
+| 27 | acceptance-auditor | AA27-02: Grouped fields reorder against the frozen declared-field-order rule. | false | The loop-1 Code Map amendment (BH-13) requires one shared container per declared group in declared group/field order, which forces hoisting; AA7-03/AA25-03 document it. | reject |
+| 27 | acceptance-auditor | AA27-C1: An unmapped rejection speaks through an assertive alert. | medium | carried AA25-01 (Story 13.4 hand-off, in ledger). | defer |
+| 27 | acceptance-auditor | AA27-C2: A `bool?` switch shows its error only in the summary. | medium | carried VG7-02/AA17-07/BH26-01 (in ledger). | defer |
+| 27 | acceptance-auditor | AA27-C3: The presentation gate replaces forms on infrastructure failures. | medium | carried AA17-05/E3-16/E25-23 (in ledger); same root cause as E27-22. | defer |
+| 27 | acceptance-auditor | AA27-C4: Zero-field inline 403 and scope-unavailable outcomes stay inside the hidden form. | medium | carried BH3-06/E25-13/BH26-03 (in ledger); same root cause as E27-17. | defer |
+| 27 | acceptance-auditor | AA27-C5: The focused mapped summary does not speak the rejection reason. | maybe-false | carried AA10-06/BH19-11 (product interpretation pending, in ledger). | defer |
+| 27 | acceptance-auditor | AA27-C6: Destructive + RequiresPolicy origin return may override denial-heading focus. | maybe-false | carried AA17-01/BH22-06 (browser reproduction pending, in ledger). | defer |
+| 27 | edge-case-hunter | E27-01–E27-06: `TaskCanceledException` escapes components, emitted helpers, and capture-before-replacement. | low | carried E3-10/E23-01–E23-07/E25-01–E25-04/E26-05. | reject |
+| 27 | edge-case-hunter | E27-07: A null-origin durable reservation never expires after a lost release. | low | carried E17-04/E23-08/E25-06. | reject |
+| 27 | edge-case-hunter | E27-08: A second failed release overwrites the single unreleased-owner slot. | low | `CommandRendererEmitter.cs:647-652` keeps one owner; losing it needs two consecutive JS release failures on one renderer, and a collection adds state. | reject |
+| 27 | edge-case-hunter | E27-09: A modal `fluent-drawer` is not a modal container. | low | Real (the selector and `hasOpenModal` omit it, and it defaults to `showModal()`), but no FrontComposer, Tenants, or Parties surface renders a drawer (E17-05 precedent). | reject |
+| 27 | edge-case-hunter | E27-10: `focusAbandonmentStay` re-arms a frame callback while a modal stays open. | low | `fc-focus.js:143-151` polls two queries per frame only until the modal closes, Stay disconnects, or a new request replaces it. | reject |
+| 27 | edge-case-hunter | E27-11: Whole-form removal with the heading focused drops focus to `body`. | low | carried E10-16/E23-13. | reject |
+| 27 | edge-case-hunter | E27-12: Forced attempted-control return targets the first duplicate trigger id. | low | carried E21-01/E24-02/E25-11. | reject |
+| 27 | edge-case-hunter | E27-13: A summary corrected to zero entries reappears unfocused. | low | carried BH5-12/E7-04/E10B-11. | reject |
+| 27 | edge-case-hunter | E27-14: Return does nothing without history. | low | carried E17-03/E23-19/E25-18. | reject |
+| 27 | edge-case-hunter | E27-15: A late clipboard result relabels a newer rejection. | low | carried E8-04/E9-06/E22-02/E26-04. | reject |
+| 27 | edge-case-hunter | E27-16: Malformed host templates throw `FormatException`. | low | carried E23-20/E25-16; duplicate of VG27-O1. | reject |
+| 27 | edge-case-hunter | E27-17: Zero-field inline 403 is hidden and the trigger re-dispatches. | medium | carried BH3-06/E25-13 (in ledger) and BH7-04 (re-dispatch, rejected). | defer |
+| 27 | edge-case-hunter | E27-18: Per-form document-wide observers scale with form count. | low | carried BH17-05/BH25-01. | reject |
+| 27 | edge-case-hunter | E27-19: Both specimen flags make the mapped rejection unreachable. | false | Forbidden-first is the intended precedence, and the specs set one flag at a time. | reject |
+| 27 | edge-case-hunter | E27-20: Summary links cancel the native href without proven focus. | low | carried E4-06/E10-01/E17-01/BH12-05/E25-12. | reject |
+| 27 | edge-case-hunter | E27-21: `MappedFieldCount` counts case-variant keys twice. | low | carried E23-28/E25-15. | reject |
+| 27 | edge-case-hunter | E27-22: Transient presentation-time authorization failures replace the form. | medium | carried E3-16/E23-32/E25-23 (in ledger). | defer |
 
 ## Design Notes
 

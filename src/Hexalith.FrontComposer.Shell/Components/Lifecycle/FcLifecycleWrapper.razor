@@ -95,9 +95,13 @@
     }
 
     @if (_state.Current is CommandLifecycleState.Rejected && !MappedRejection) {
+        @* Story 13.3 AA27-01 — fluent-message-bar is an implicit polite, atomic status region, so the
+           Copy relabel below would re-read the whole bar. The wrapper's live region stays the only
+           speech path; the bar keeps its status role but is not live. *@
         <FluentMessageBar Intent="MessageBarIntent.Error"
                          Title="@ResolveRejectionTitle()"
                          AllowDismiss="true"
+                         aria-live="off"
                          data-testid="fc-rejected">
             <ChildContent>
                 @(RejectionMessage ?? "The command was rejected. Please review your input and try again.")

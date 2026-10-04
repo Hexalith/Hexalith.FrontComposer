@@ -155,6 +155,17 @@ public sealed class FcLifecycleWrapperTests : LifecycleWrapperTestBase {
     }
 
     [Fact]
+    public void UnmappedRejectionBarIsNotASecondLiveRegion() {
+        (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push) = RenderWrapperWithLiveService();
+        push(Transition(CommandLifecycleState.Syncing, CommandLifecycleState.Rejected));
+
+        // AA27-01 — fluent-message-bar sets an implicit role="status"; an explicit aria-live="off" keeps
+        // the Copy relabel from re-reading the bar beside the wrapper's own announcement.
+        cut.Find("[data-testid='fc-rejected']").GetAttribute("aria-live").ShouldBe("off");
+        cut.FindAll(".fc-lifecycle-live").Count.ShouldBe(1);
+    }
+
+    [Fact]
     public void Rejected_state_uses_default_fallback_message_when_RejectionMessage_parameter_null() {
         (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push) = RenderWrapperWithLiveService(rejectionMessage: null);
         push(Transition(CommandLifecycleState.Syncing, CommandLifecycleState.Rejected));
@@ -229,5 +240,24 @@ public sealed class FcLifecycleWrapperTests : LifecycleWrapperTestBase {
             headings.ShouldBeEmpty();
             cut.FindAll("[data-fc-lifecycle-heading]").ShouldBeEmpty();
         }
+    }
+
+    [Fact]
+    public async Task ActiveLifecycleHeadingFallsBackToTheGenericCommandLabel() {
+        using CultureScope culture = new("en");
+        ILifecycleStateService service = Substitute.For<ILifecycleStateService>();
+        Action<CommandLifecycleTransition>? push = null;
+        _ = service.Subscribe(Arg.Any<string>(), Arg.Do<Action<CommandLifecycleTransition>>(callback => push = callback))
+            .Returns(Substitute.For<IDisposable>());
+        RegisterLifecycleService(service);
+        IRenderedComponent<FcLifecycleWrapper> cut = Render<FcLifecycleWrapper>(p => p
+            .Add(c => c.CorrelationId, DefaultCorrelationId)
+            .AddChildContent("<span class='child-content-marker'>child</span>"));
+
+        push.ShouldNotBeNull();
+        await cut.InvokeAsync(() => push(Transition(CommandLifecycleState.Idle, CommandLifecycleState.Submitting)));
+
+        // VG27-02 — an adopter-hosted wrapper without DisplayLabel still names the "View active command" target.
+        cut.Find("[data-fc-lifecycle-heading]").TextContent.ShouldBe("Command command status");
     }
 }

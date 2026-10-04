@@ -359,6 +359,9 @@ test.describe('Story 13.3: unmapped rejection recovery focus', () => {
     await page.keyboard.press('Enter');
     await expect(copyReference).toHaveText('Support reference copied');
     await expect(copyReference).toBeFocused();
+    // AA27-01 — the bar keeps Fluent's implicit status role but is not live, so the Copy relabel
+    // speaks only as the focused button's new name instead of re-reading the whole rejection bar.
+    expect(await rejectionBarLiveProperties(page)).toEqual({ role: 'status', live: undefined });
     const copied = await page.evaluate(async () => navigator.clipboard.readText());
     expect(copied).toMatch(/^Error code: \S.*, documentation code: \S.*$/u);
     expect(copied).not.toContain('QA keyboard recovery');
@@ -391,6 +394,24 @@ const mappedFieldDescription = async (page: Page): Promise<string | undefined> =
       fetchRelatives: false,
     });
     return nodes[0]?.description?.value;
+  } finally {
+    await session.detach();
+  }
+};
+
+const rejectionBarLiveProperties = async (page: Page): Promise<{ role: string | undefined; live: string | undefined }> => {
+  const session = await page.context().newCDPSession(page);
+  try {
+    const { result } = await session.send('Runtime.evaluate', {
+      expression: `document.querySelector('.fc-command-form[aria-label="${REJECTION_FORM_LABEL}"] [data-testid="fc-rejected"]')`,
+    });
+    if (!result.objectId) return { role: undefined, live: undefined };
+    const { nodes } = await session.send('Accessibility.getPartialAXTree', {
+      objectId: result.objectId,
+      fetchRelatives: false,
+    });
+    const live = nodes[0]?.properties?.find((property) => property.name === 'live')?.value.value;
+    return { role: nodes[0]?.role?.value, live: typeof live === 'string' ? live : undefined };
   } finally {
     await session.detach();
   }
