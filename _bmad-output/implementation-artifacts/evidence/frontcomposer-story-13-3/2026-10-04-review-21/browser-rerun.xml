@@ -1,0 +1,6 @@
+<testsuites id="" name="" tests="1" failures="0" skipped="0" errors="0" time="5.174846">
+<testsuite name="specimen-accessibility.spec.ts" timestamp="2026-10-04T08:39:20.344Z" hostname="chromium" tests="1" failures="0" skipped="0" time="2.414" errors="0">
+<testcase name="FrontComposer accessibility and visual specimens › forced-colors and reduced-motion states are active and perceivable" classname="specimen-accessibility.spec.ts" time="2.414">
+</testcase>
+</testsuite>
+</testsuites>

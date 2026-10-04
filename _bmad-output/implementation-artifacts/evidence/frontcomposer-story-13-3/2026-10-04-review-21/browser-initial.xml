@@ -1,0 +1,182 @@
+<testsuites id="" name="" tests="51" failures="0" skipped="0" errors="1" time="82.42787599999998">
+<testsuite name="command-form-generation.spec.ts" timestamp="2026-10-04T08:37:27.314Z" hostname="chromium" tests="7" failures="0" skipped="0" time="37.041" errors="0">
+<testcase name="Story 3.1: generated command forms › counter sample exposes generated inline, compact, and full-page command forms" classname="command-form-generation.spec.ts" time="2.047">
+</testcase>
+<testcase name="Story 3.1: generated command forms › compact generated form submits and reaches confirmed lifecycle feedback" classname="command-form-generation.spec.ts" time="11.532">
+</testcase>
+<testcase name="Story 3.1: generated command forms › full-page generated form blocks invalid numbers then submits after correction" classname="command-form-generation.spec.ts" time="8.306">
+</testcase>
+<testcase name="Story 3.1: generated command forms › invalid generated editors expose invalid state and their error on the focusable control" classname="command-form-generation.spec.ts" time="1.321">
+</testcase>
+<testcase name="Story 3.1: generated command forms › field accessibility observation disconnects when a route ancestor is removed" classname="command-form-generation.spec.ts" time="0.591">
+</testcase>
+<testcase name="Story 3.2: command form density rule › non-derivable field count selects inline, compact inline, and full-page surfaces" classname="command-form-generation.spec.ts" time="1.115">
+</testcase>
+<testcase name="Story 3.3: FC-CMD pending identity and correlation contract › generated compact form keeps identity framework-owned while command reaches pending confirmation" classname="command-form-generation.spec.ts" time="12.129">
+</testcase>
+</testsuite>
+<testsuite name="destructive-command-confirmation.spec.ts" timestamp="2026-10-04T08:37:27.314Z" hostname="chromium" tests="7" failures="0" skipped="0" time="27.64" errors="0">
+<testcase name="Story 4.1: destructive command confirmation › cancel and Escape keep the destructive command idle and reusable" classname="destructive-command-confirmation.spec.ts" time="1.735">
+</testcase>
+<testcase name="Story 4.1: destructive command confirmation › confirmation is required before dispatch and reaches terminal feedback once confirmed" classname="destructive-command-confirmation.spec.ts" time="8.876">
+</testcase>
+<testcase name="Story 4.1: destructive command confirmation › validation failure and rapid clicks cannot bypass the destructive gate" classname="destructive-command-confirmation.spec.ts" time="9.75">
+</testcase>
+<testcase name="Story 4.1: destructive command confirmation › a real settings modal prevents opening a nested destructive dialog" classname="destructive-command-confirmation.spec.ts" time="1.659">
+</testcase>
+<testcase name="Story 4.1: destructive command confirmation › one modal reservation survives long preparation and refuses competing shell overlays" classname="destructive-command-confirmation.spec.ts" time="2.317">
+</testcase>
+<testcase name="Story 4.1: destructive command confirmation › validation focus fallbacks use the next invalid target and survive a missing summary" classname="destructive-command-confirmation.spec.ts" time="1.199">
+</testcase>
+<testcase name="Story 4.1: destructive command confirmation › removed destructive invoker restores focus to the route heading" classname="destructive-command-confirmation.spec.ts" time="2.104">
+</testcase>
+</testsuite>
+<testsuite name="form-abandonment-guard.spec.ts" timestamp="2026-10-04T08:37:27.314Z" hostname="chromium" tests="5" failures="0" skipped="0" time="12.693" errors="0">
+<testcase name="Story 4.2: unsaved full-page command form abandonment guard › clean generated full-page command form navigates without warning" classname="form-abandonment-guard.spec.ts" time="1.075">
+</testcase>
+<testcase name="Story 4.2: unsaved full-page command form abandonment guard › dirty generated full-page command form below threshold navigates without warning" classname="form-abandonment-guard.spec.ts" time="0.927">
+</testcase>
+<testcase name="Story 4.2: unsaved full-page command form abandonment guard › dirty generated full-page command form after threshold supports stay, Escape, and leave" classname="form-abandonment-guard.spec.ts" time="8.864">
+</testcase>
+<testcase name="Story 4.2: unsaved full-page command form abandonment guard › removed edited control restores focus to the marked full-page command heading" classname="form-abandonment-guard.spec.ts" time="0.813">
+</testcase>
+<testcase name="Story 4.2: unsaved full-page command form abandonment guard › sequenced capture ignores a stale earlier edit after focus moves to a warning action" classname="form-abandonment-guard.spec.ts" time="1.014">
+</testcase>
+</testsuite>
+<testsuite name="one-at-a-time-execution-policy.spec.ts" timestamp="2026-10-04T08:37:27.314Z" hostname="chromium" tests="3" failures="0" skipped="0" time="17.244" errors="0">
+<testcase name="Story 4.3: one-at-a-time execution policy › FC-CNC contract records block-not-queue v1 semantics" classname="one-at-a-time-execution-policy.spec.ts" time="0.018">
+</testcase>
+<testcase name="Story 4.3: one-at-a-time execution policy › accepted pending command blocks another generated form until terminal confirmation" classname="one-at-a-time-execution-policy.spec.ts" time="15.831">
+</testcase>
+<testcase name="Story 13.3: View active command availability › a hidden active lifecycle offers no View active command target" classname="one-at-a-time-execution-policy.spec.ts" time="1.395">
+</testcase>
+</testsuite>
+<testsuite name="policy-gated-command-authorization.spec.ts" timestamp="2026-10-04T08:37:27.314Z" hostname="chromium" tests="7" failures="0" skipped="0" time="34.766" errors="0">
+<testcase name="Story 4.4: policy-gated command authorization › allowed protected specimen command renders the form and dispatches after authorization" classname="policy-gated-command-authorization.spec.ts" time="8.077">
+</testcase>
+<testcase name="Story 4.4: policy-gated command authorization › denied protected specimen command fails closed without leaking policy metadata" classname="policy-gated-command-authorization.spec.ts" time="1.924">
+</testcase>
+<testcase name="Story 4.4: policy-gated command authorization › a background denial focuses its heading only when the replaced form held focus" classname="policy-gated-command-authorization.spec.ts" time="0.729">
+</testcase>
+<testcase name="Story 13.3: submit-time denial focus › dispatch denial replaces editors with one focused non-live heading" classname="policy-gated-command-authorization.spec.ts" time="4.648">
+</testcase>
+<testcase name="Story 13.3: mapped rejection recovery focus › keyboard dismissal preserves mapped errors and values, then permits a corrected retry" classname="policy-gated-command-authorization.spec.ts" time="13.814">
+</testcase>
+<testcase name="Story 13.3: unmapped rejection recovery focus › Edit and retry moves real browser focus to the first generated editor" classname="policy-gated-command-authorization.spec.ts" time="3.936">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="Story 13.3: unmapped rejection recovery focus › unmapped rejection recovery actions work from the keyboard alone" classname="policy-gated-command-authorization.spec.ts" time="1.638">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="specimen-accessibility.spec.ts" timestamp="2026-10-04T08:37:27.314Z" hostname="chromium" tests="22" failures="0" skipped="0" time="26.169" errors="1">
+<testcase name="FrontComposer accessibility and visual specimens › manifest names owned nonblank specimen routes and exactly six visual combinations" classname="specimen-accessibility.spec.ts" time="0.206">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › type specimen is nonblank and passes blocking axe gate" classname="specimen-accessibility.spec.ts" time="1.833">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › data-formatting specimen is nonblank and passes blocking axe gate" classname="specimen-accessibility.spec.ts" time="1.376">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › page-toolbar specimen is nonblank and passes blocking axe gate" classname="specimen-accessibility.spec.ts" time="1.29">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › type specimen renders required shell, density, badge, lifecycle, detail, and nav surfaces" classname="specimen-accessibility.spec.ts" time="1.058">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › dark generated command specimens keep readable foreground contrast" classname="specimen-accessibility.spec.ts" time="0.841">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › status icon touch interactions › status icons expose contextual labels and reveal tooltips on focus, hover, and touch" classname="specimen-accessibility.spec.ts" time="1.409">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › data-formatting specimen renders deterministic text and accessible names" classname="specimen-accessibility.spec.ts" time="0.715">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › keyboard flow reaches skip link, controls, grid, command form, detail, and nav without traps" classname="specimen-accessibility.spec.ts" time="1.621">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › focus-visible indicator remains visible over lifecycle visuals" classname="specimen-accessibility.spec.ts" time="0.89">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion" classname="specimen-accessibility.spec.ts" time="1.346">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › forced-colors and reduced-motion states are active and perceivable" classname="specimen-accessibility.spec.ts" time="0.192">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|fc-13-3-browser-results/specimen-accessibility-Fro-4bdc5--are-active-and-perceivable-chromium/test-failed-1.png]]
+
+[[ATTACHMENT|fc-13-3-browser-results/specimen-accessibility-Fro-4bdc5--are-active-and-perceivable-chromium/test-failed-2.png]]
+
+[[ATTACHMENT|fc-13-3-browser-results/specimen-accessibility-Fro-4bdc5--are-active-and-perceivable-chromium/video.webm]]
+
+[[ATTACHMENT|fc-13-3-browser-results/specimen-accessibility-Fro-4bdc5--are-active-and-perceivable-chromium/error-context.md]]
+
+[[ATTACHMENT|fc-13-3-browser-results/specimen-accessibility-Fro-4bdc5--are-active-and-perceivable-chromium/trace.zip]]
+]]>
+</system-out>
+<error message="page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:5070/__frontcomposer/specimens/type" type="Error">
+<![CDATA[  [chromium] › specimen-accessibility.spec.ts:403:3 › FrontComposer accessibility and visual specimens › forced-colors and reduced-motion states are active and perceivable 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:5070/__frontcomposer/specimens/type
+    Call log:
+      - navigating to "http://127.0.0.1:5070/__frontcomposer/specimens/type", waiting until "load"
+
+
+      532 |
+      533 | const gotoSpecimen = async (page: import('@playwright/test').Page, route: SpecimenRoute): Promise<void> => {
+    > 534 |   await page.goto(route.path);
+          |              ^
+      535 |   await expect(page.locator(route.readySelector), `${route.path} missing ready marker`).toBeVisible();
+      536 |   await page.waitForFunction(() => [...document.querySelectorAll('*')]
+      537 |     .filter((element) => element.localName.includes('-'))
+        at gotoSpecimen (tests/e2e/specs/specimen-accessibility.spec.ts:534:14)
+        at tests/e2e/specs/specimen-accessibility.spec.ts:414:11
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/fc-13-3-browser-results/specimen-accessibility-Fro-4bdc5--are-active-and-perceivable-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/fc-13-3-browser-results/specimen-accessibility-Fro-4bdc5--are-active-and-perceivable-chromium/test-failed-2.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/fc-13-3-browser-results/specimen-accessibility-Fro-4bdc5--are-active-and-perceivable-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/fc-13-3-browser-results/specimen-accessibility-Fro-4bdc5--are-active-and-perceivable-chromium/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/fc-13-3-browser-results/specimen-accessibility-Fro-4bdc5--are-active-and-perceivable-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../../tmp/fc-13-3-browser-results/specimen-accessibility-Fro-4bdc5--are-active-and-perceivable-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</error>
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › zoom and reflow keep critical controls reachable at 100%" classname="specimen-accessibility.spec.ts" time="1.007">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › zoom and reflow keep critical controls reachable at 200%" classname="specimen-accessibility.spec.ts" time="0.847">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › zoom and reflow keep critical controls reachable at 400%" classname="specimen-accessibility.spec.ts" time="0.87">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › visual baseline light compact" classname="specimen-accessibility.spec.ts" time="1.414">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › visual baseline light comfortable" classname="specimen-accessibility.spec.ts" time="1.51">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › visual baseline light roomy" classname="specimen-accessibility.spec.ts" time="1.414">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › visual baseline dark compact" classname="specimen-accessibility.spec.ts" time="1.349">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › visual baseline dark comfortable" classname="specimen-accessibility.spec.ts" time="1.448">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › visual baseline dark roomy" classname="specimen-accessibility.spec.ts" time="1.495">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › production-style route exposure fails closed when specimen host configuration is absent" classname="specimen-accessibility.spec.ts" time="2.038">
+</testcase>
+</testsuite>
+</testsuites>

@@ -1,0 +1,18 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test:chromium
+> playwright test --project=chromium --config /tmp/fc-13-3-browser.config.ts specs/specimen-accessibility.spec.ts --grep forced-colors and reduced-motion states --output /tmp/fc-13-3-browser-rerun-results --reporter list,junit
+
+
+Running 1 test using 1 worker
+
+(node:88048) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › specs/specimen-accessibility.spec.ts:403:3 › FrontComposer accessibility and visual specimens › forced-colors and reduced-motion states are active and perceivable (2.4s)
+
+  1 passed (5.2s)
+<testsuites id="" name="" tests="1" failures="0" skipped="0" errors="0" time="5.174846">
+<testsuite name="specimen-accessibility.spec.ts" timestamp="2026-10-04T08:39:20.344Z" hostname="chromium" tests="1" failures="0" skipped="0" time="2.414" errors="0">
+<testcase name="FrontComposer accessibility and visual specimens › forced-colors and reduced-motion states are active and perceivable" classname="specimen-accessibility.spec.ts" time="2.414">
+</testcase>
+</testsuite>
+</testsuites>

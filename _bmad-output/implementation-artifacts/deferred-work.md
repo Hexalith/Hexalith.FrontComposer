@@ -10058,3 +10058,15 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
   summary: Verify that delayed Fluent shadow-control creation still receives invalid state and error description; medium severity if reproduced.
   evidence: Review BH20-05 found that observeFieldAccessibility watches light-DOM mutations and schedules one retry after custom-element definition. A defined Fluent editor that creates its focusable control in the shadow root after that frame could miss projection without another observed mutation. Use a delayed-control browser fixture and inspect the focusable control accessibility state after it appears.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: Required switch, date, and select fields omit their required indication.
+  evidence: Iteration 21 BH21-02: Verified in EmitSwitch, EmitDatePicker, and EmitEnumSelect: none emits Required. Baseline 52fa0739ab8dfb02e1b9d8b5b05d2fd318f220d8 also omitted Required and provided no raw required label for these controls, so the missing indication predates this story.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: Unmapped rejection dismissal removes its focused cancel button without focus recovery.
+  evidence: Iteration 21 BH21-08: Verified against installed Fluent 5.0.0: FluentMessageBar.DismissClickAsync sets Visible=false, and BuildRenderTree then removes its focused button; the wrapper supplies no return handler. The baseline already used the same AllowDismiss=true rejection bar, so this cancellation-focus gap predates the story.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: Umbrella sibling dependency selection has no runtime MSBuild verification.
+  evidence: Iteration 21 VG21-01: Filed evidence: CiGovernanceTests:1059 checks text/existence, FakeRuntime supplies synthetic MSBuild results, and no test evaluates the sibling branch in deps.local.props:6. This dependency-layout change in the broad baseline diff belongs to the separate test/CI repair rather than Story 13.3 generated-command focus behavior.

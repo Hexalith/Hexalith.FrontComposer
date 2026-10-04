@@ -1,0 +1,658 @@
+{
+  "date": "2026-10-04",
+  "reviewedRevision": "bf40099f81fcaeac324b7b4377513ac7d49cead4",
+  "baselineCommit": "52fa0739ab8dfb02e1b9d8b5b05d2fd318f220d8",
+  "storyKey": "13-3-i-ux-b-preserve-focus-and-input-through-command-safety-outco",
+  "review": {
+    "iteration": 21,
+    "layers": [
+      "blind-hunter",
+      "edge-case-hunter",
+      "verification-gap"
+    ],
+    "failedLayers": [],
+    "diffBytes": 1114757,
+    "diffSha256": "1d41863391d3b4c922d32c4d078d783c1b9a5a40c338a0ac61f85216ffa2d8d6",
+    "diffScope": "All changes since the baseline, excluding _bmad-output claims/review receipts so only the edge-case reviewer receives the spec. Gitlinks included.",
+    "findings": [
+      {
+        "id": "BH21-01",
+        "layer": "blind-hunter",
+        "summary": "Zero-field inline commands hide submit-time denial outcomes.",
+        "verdict": "medium",
+        "evidence": "carried BH3-06/E5-12: non-AM-20 outcomes remain in the pre-existing display:none generated form; the separate zero-field feedback gap is already deferred.",
+        "route": "defer",
+        "carried": true
+      },
+      {
+        "id": "BH21-02",
+        "layer": "blind-hunter",
+        "summary": "Required switch, date, and select fields omit their required indication.",
+        "verdict": "medium",
+        "evidence": "Verified in EmitSwitch, EmitDatePicker, and EmitEnumSelect: none emits Required. Baseline 52fa0739ab8dfb02e1b9d8b5b05d2fd318f220d8 also omitted Required and provided no raw required label for these controls, so the missing indication predates this story.",
+        "route": "defer",
+        "carried": false
+      },
+      {
+        "id": "BH21-03",
+        "layer": "blind-hunter",
+        "summary": "Nullable Boolean switches lack inline errors and error descriptions.",
+        "verdict": "medium",
+        "evidence": "carried E8-07/BH18-03: the FluentSwitch proxy and ignored ValidationFieldFor still prevent model-field messaging; this effective baseline editor limitation is already deferred.",
+        "route": "defer",
+        "carried": true
+      },
+      {
+        "id": "BH21-04",
+        "layer": "blind-hunter",
+        "summary": "Authorization replacement can capture an unrelated removed control.",
+        "verdict": "low",
+        "evidence": "carried BH3-02/BH11-01: page-wide capture and the unrelated-control removal path are unchanged; owner-root coordination retains its earlier rejection.",
+        "route": "reject",
+        "carried": true
+      },
+      {
+        "id": "BH21-05",
+        "layer": "blind-hunter",
+        "summary": "A hidden connected edited origin prevents abandonment heading fallback.",
+        "verdict": "low",
+        "evidence": "carried BH11-04/E13-02: generated visibility predicates unmount excluded editors; manually hiding a retained origin exercises the previously rejected eligibility-guard expansion.",
+        "route": "reject",
+        "carried": true
+      },
+      {
+        "id": "BH21-06",
+        "layer": "blind-hunter",
+        "summary": "Duplicate zero-field trigger ids return withdrawn-action focus to another instance.",
+        "verdict": "low",
+        "evidence": "carried BH5-09/E14-01/BH20-07: shared trigger ids and the uncommon same-command multi-instance forced-return path are unchanged.",
+        "route": "reject",
+        "carried": true
+      },
+      {
+        "id": "BH21-07",
+        "layer": "blind-hunter",
+        "summary": "An external ARIA modal can admit another modal when focus is outside it.",
+        "verdict": "low",
+        "evidence": "carried BH11-02: FrontComposer entry points own reservations; the external custom-modal reproduction retains the earlier rejected wider modal-discovery change.",
+        "route": "reject",
+        "carried": true
+      },
+      {
+        "id": "BH21-08",
+        "layer": "blind-hunter",
+        "summary": "Unmapped rejection dismissal removes its focused cancel button without focus recovery.",
+        "verdict": "medium",
+        "evidence": "Verified against installed Fluent 5.0.0: FluentMessageBar.DismissClickAsync sets Visible=false, and BuildRenderTree then removes its focused button; the wrapper supplies no return handler. The baseline already used the same AllowDismiss=true rejection bar, so this cancellation-focus gap predates the story.",
+        "route": "defer",
+        "carried": false
+      },
+      {
+        "id": "BH21-09",
+        "layer": "blind-hunter",
+        "summary": "Windows cleanup leaves descendants after their launcher exits.",
+        "verdict": "medium",
+        "evidence": "carried BH15-09/E16-03: stopOwnedProcess still skips taskkill after parent exit; platform-specific ownership belongs to the separate test/CI repair.",
+        "route": "defer",
+        "carried": true
+      },
+      {
+        "id": "BH21-10",
+        "layer": "blind-hunter",
+        "summary": "Firefox and WebKit skip accessibility-tree and unmapped-recovery browser assertions.",
+        "verdict": "low",
+        "evidence": "Verified at command-form-generation.spec.ts:103 and policy-gated-command-authorization.spec.ts:217/246. The approved 13.3 verification specifically requires Chromium; additional cross-engine keyboard and accessibility-tree scenarios need wider test infrastructure and no new product defect is demonstrated.",
+        "route": "reject",
+        "carried": false
+      },
+      {
+        "id": "E21-01",
+        "layer": "edge-case-hunter",
+        "summary": "A withdrawn View action on duplicate zero-field triggers focuses another row.",
+        "verdict": "low",
+        "evidence": "carried BH5-09/E14-01/E20-03: same shared-id forced-return path; per-instance trigger identity retains its prior rejection.",
+        "route": "reject",
+        "carried": true
+      },
+      {
+        "id": "E21-02",
+        "layer": "edge-case-hunter",
+        "summary": "A removed last target plus a hidden first linked editor prevents fallback exhaustion.",
+        "verdict": "false",
+        "evidence": "carried E11-04/E13-01/E13-05: the Chromium helper probe manually hides a retained editor; generated descriptors and editors share visibility predicates and excluded editors unmount, so this does not establish the generated-form outcome.",
+        "route": "reject",
+        "carried": true
+      },
+      {
+        "id": "E21-03",
+        "layer": "edge-case-hunter",
+        "summary": "The every-editor validation claim fails for nullable Boolean switches.",
+        "verdict": "medium",
+        "evidence": "carried E8-07/EC18-04: the same proxy field-message limitation remains documented and deferred; no changed nullable-switch behavior warrants a second ledger entry.",
+        "route": "defer",
+        "carried": true
+      },
+      {
+        "id": "VG21-01",
+        "layer": "verification-gap",
+        "summary": "Umbrella sibling dependency selection has no runtime MSBuild verification.",
+        "verdict": "medium",
+        "evidence": "Filed evidence: CiGovernanceTests:1059 checks text/existence, FakeRuntime supplies synthetic MSBuild results, and no test evaluates the sibling branch in deps.local.props:6. This dependency-layout change in the broad baseline diff belongs to the separate test/CI repair rather than Story 13.3 generated-command focus behavior.",
+        "route": "defer",
+        "carried": false
+      }
+    ],
+    "findingsCount": 14,
+    "carriedFindingsCount": 10,
+    "newDeferredEntries": 3,
+    "productionPatches": 0
+  },
+  "commands": [
+    {
+      "name": "sourcetools-debug-build",
+      "command": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj",
+        "-c",
+        "Debug",
+        "-m:1"
+      ],
+      "exitCode": 0,
+      "log": {
+        "path": "sourcetools-debug-build.log.txt",
+        "sourceSha256": "64eb4d71f0299372370cca77e0faa34abb62e48e1d00a2a7dcc8b3ad80f5bf8e",
+        "storedSha256": "aad8770f7ed40dd97af2de8c3eae721c12f1951ad32f538eb9f9d9b99c44b107",
+        "normalization": "Repository paths made relative; NuGet cache prefix and terminal colors normalized; CRLF."
+      }
+    },
+    {
+      "name": "shell-debug-build",
+      "command": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj",
+        "-c",
+        "Debug",
+        "-m:1"
+      ],
+      "exitCode": 0,
+      "log": {
+        "path": "shell-debug-build.log.txt",
+        "sourceSha256": "4b0eaa95be84106cd95ce137661fb760316540eb1ff3fdfb6ec6dc820d570fa4",
+        "storedSha256": "78e8502d20392b2dbb6c20578d9c87aa224ba1ec709ec8e86b1bd938d833e83e",
+        "normalization": "Repository paths made relative; NuGet cache prefix and terminal colors normalized; CRLF."
+      }
+    },
+    {
+      "name": "sourcetools-focused",
+      "command": [
+        "env",
+        "DiffEngine_Disabled=true",
+        "dotnet",
+        "tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll",
+        "-class",
+        "*CommandFormEmitterTests",
+        "-class",
+        "*CommandRendererEmitterTests",
+        "-class",
+        "*CommandFluxorEmitterTests",
+        "-class",
+        "*CommandFormTransformTests",
+        "-class",
+        "*CommandPageEmitterTests",
+        "-result-xml",
+        "/tmp/fc-13-3-sourcetools-focused.xml"
+      ],
+      "exitCode": 0,
+      "log": {
+        "path": "sourcetools-focused.log.txt",
+        "sourceSha256": "814f33923a06492117af5b4be80c1514b86cce22ea01559f0d003e9048efece8",
+        "storedSha256": "5bc9ac8e527fbf0be379b56bc0454852c56206cac6bc0fe4c81b59bd3405d2e1",
+        "normalization": "Repository paths made relative; NuGet cache prefix and terminal colors normalized; CRLF."
+      },
+      "results": {
+        "total": 148,
+        "passed": 148,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0
+      },
+      "xml": {
+        "path": "sourcetools-focused.xml",
+        "sourceSha256": "7ef0c59cbc8c081b07b5bf140df74ea3df70f8e3700161bace90781e3b3da37e",
+        "storedSha256": "4fc24a52563a9fc68d4763752f3fea7657cef6869df9afd8b49629e7d516d527",
+        "normalization": "Repository paths made relative; NuGet cache prefix and terminal colors normalized; CRLF."
+      },
+      "failures": [],
+      "elapsedSeconds": 2.838
+    },
+    {
+      "name": "shell-focused",
+      "command": [
+        "env",
+        "DiffEngine_Disabled=true",
+        "dotnet",
+        "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+        "-class",
+        "*FcCommandBlockedOutcomeTests",
+        "-class",
+        "*FcDestructiveConfirmationDialogTests",
+        "-class",
+        "*FcFormAbandonmentGuardTests",
+        "-class",
+        "*FcValidationSummaryTests",
+        "-class",
+        "*FcSettingsButtonTests",
+        "-class",
+        "*FcPaletteTriggerButtonTests",
+        "-class",
+        "*FcLifecycleWrapperRejectionTests",
+        "-class",
+        "*FcLifecycleWrapperTests",
+        "-class",
+        "*CommandRendererWrapperIntegrationTests",
+        "-class",
+        "*CommandTargetGeneratedFormTests",
+        "-class",
+        "*DestructiveCommandRendererIntegrationTests",
+        "-class",
+        "*FcShellResourcesTests",
+        "-class",
+        "*ServerValidationApplicatorTests",
+        "-class",
+        "*EventStoreResponseClassifierTests",
+        "-class",
+        "*CommandExecutionAdmissionGateTests",
+        "-class",
+        "*FluentConformanceTests",
+        "-class",
+        "*CounterSampleCommandServiceTests",
+        "-class",
+        "*AnalyzerPolicyGovernanceTests",
+        "-trait-",
+        "Category=GovernanceBuild",
+        "-result-xml",
+        "/tmp/fc-13-3-shell-focused.xml"
+      ],
+      "exitCode": 0,
+      "log": {
+        "path": "shell-focused.log.txt",
+        "sourceSha256": "de829d37b76671842ef9711d93de974e390a1e64d9f678997861dfa94c936425",
+        "storedSha256": "7485301b12248ab26e8bdecaf74a8486042b43365afa3bf1927aeeaa4ffa7fb3",
+        "normalization": "Repository paths made relative; NuGet cache prefix and terminal colors normalized; CRLF."
+      },
+      "results": {
+        "total": 387,
+        "passed": 387,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0
+      },
+      "xml": {
+        "path": "shell-focused.xml",
+        "sourceSha256": "b80584890938c54736207e666f8cfb0ade96ffb5f7523267af57868a9b9e4617",
+        "storedSha256": "75946ed657a53fbe6d5d20fc2c403c0aeb5a2b7f7fded914a28bd4b9597af035",
+        "normalization": "Repository paths made relative; NuGet cache prefix and terminal colors normalized; CRLF."
+      },
+      "failures": [],
+      "elapsedSeconds": 73.687
+    },
+    {
+      "name": "governance",
+      "command": [
+        "env",
+        "DiffEngine_Disabled=true",
+        "dotnet",
+        "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+        "-method",
+        "*ToolchainPins_MatchApprovedDotnetAndAspireVersions",
+        "-method",
+        "*CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds",
+        "-method",
+        "*EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval",
+        "-result-xml",
+        "/tmp/fc-13-3-governance.xml"
+      ],
+      "exitCode": 1,
+      "log": {
+        "path": "governance.log.txt",
+        "sourceSha256": "1ff8f082b9e45f48c84ee8205ef1cdc76ae592c54a8b71e74e71d910fe4df450",
+        "storedSha256": "f79cb8dc1420a072dabaf61aa8e78071f0370b0ed02f9bb956d67e4e6319b233",
+        "normalization": "Repository paths made relative; NuGet cache prefix and terminal colors normalized; CRLF."
+      },
+      "results": {
+        "total": 3,
+        "passed": 0,
+        "failed": 3,
+        "skipped": 0,
+        "errors": 0
+      },
+      "xml": {
+        "path": "governance.xml",
+        "sourceSha256": "c08c687a5b0e093be1f7e528e383dc67a19486d71889ef8ed8193f197e00445f",
+        "storedSha256": "eb7eb294be9b14bb2de20be6e6d6a6a4ecebfd32cbfe0b10f05434ae01ed58a5",
+        "normalization": "Repository paths made relative; NuGet cache prefix and terminal colors normalized; CRLF."
+      },
+      "failures": [
+        {
+          "test": "Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval",
+          "message": "Shouldly.ShouldAssertException : selectedSourceSha\n    should be\n\\\"19dc1f82122564453163ac010dc7e5ae81db7ed3\\\"\n    but was\n\\\"2c58ffda41759e895ace4b9625c9bd931a217672\\\"\n    difference\nDifference     |  |    |    |    |    |         |    |    |    |    |         |    |    |    |    |    |    |    |    |        \n               | \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/       \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/       \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/       \nIndex          | 0    1    2    3    4    5    6    7    8    9    10   11   12   13   14   15   16   17   18   19   20   ...  \nExpected Value | 1    9    d    c    1    f    8    2    1    2    2    5    6    4    4    5    3    1    6    3    a    ...  \nActual Value   | 2    c    5    8    f    f    d    a    4    1    7    5    9    e    8    9    5    a    c    e    4    ...  \nExpected Code  | 49   57   100  99   49   102  56   50   49   50   50   53   54   52   52   53   51   49   54   51   97   ...  \nActual Code    | 50   99   53   56   102  102  100  97   52   49   55   53   57   101  56   57   53   97   99   101  52   ...  \n\nDifference     |       |    |    |    |    |    |    |         |    |    |    |    |    |    |    |    |         |    |    |   \n               |      \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/       \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/  \\\\|/       \\\\|/  \\\\|/  \\\\|/  \nIndex          | ...  19   20   21   22   23   24   25   26   27   28   29   30   31   32   33   34   35   36   37   38   39   \nExpected Value | ...  3    a    c    0    1    0    d    c    7    e    5    a    e    8    1    d    b    7    e    d    3    \nActual Value   | ...  e    4    b    9    6    2    5    c    9    b    d    9    3    1    a    2    1    7    6    7    2    \nExpected Code  | ...  51   97   99   48   49   48   100  99   55   101  53   97   101  56   49   100  98   55   101  100  51   \nActual Code    | ...  101  52   98   57   54   50   53   99   57   98   100  57   51   49   97   50   49   55   54   55   50   \n\nAdditional Info:\n    the current capture target must select the committed EventStore gitlink"
+        },
+        {
+          "test": "Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.ToolchainPins_MatchApprovedDotnetAndAspireVersions",
+          "message": "Shouldly.ShouldAssertException : aspireInstalls[0].Groups[\\\"version\\\"].Value\n    should be\n\\\"13.5.4\\\"\n    but was\n\\\"13.6.0\\\"\n    difference\nDifference     |                 |         |   \n               |                \\\\|/       \\\\|/  \nIndex          | 0    1    2    3    4    5    \nExpected Value | 1    3    .    5    .    4    \nActual Value   | 1    3    .    6    .    0    \nExpected Code  | 49   51   46   53   46   52   \nActual Code    | 49   51   46   54   46   48   "
+        },
+        {
+          "test": "Hexalith.FrontComposer.Shell.Tests.Governance.InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds",
+          "message": "Shouldly.ShouldAssertException : result.Ok\n    should be\nTrue\n    but was\nFalse\n\nAdditional Info:\n    unknown/untrusted repository identity 'github.com/hexalith/hexalith.platform'"
+        }
+      ],
+      "elapsedSeconds": 0.322
+    }
+  ],
+  "additionalChecks": [
+    {
+      "command": [
+        "npm",
+        "--prefix",
+        "tests/e2e",
+        "run",
+        "typecheck"
+      ],
+      "exitCode": 0
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exitCode": 0
+    }
+  ],
+  "browser": {
+    "configuration": "Debug",
+    "environment": "Test",
+    "launchArgs": [
+      "--disable-gpu",
+      "--disable-software-rasterizer"
+    ],
+    "workers": 2,
+    "initial": {
+      "command": [
+        "env",
+        "FC_E2E_COMMAND_SUBMISSION_CONFIGURATION=Debug",
+        "npm",
+        "--prefix",
+        "tests/e2e",
+        "run",
+        "test:chromium",
+        "--",
+        "--config",
+        "/tmp/fc-13-3-browser.config.ts",
+        "specs/command-form-generation.spec.ts",
+        "specs/destructive-command-confirmation.spec.ts",
+        "specs/form-abandonment-guard.spec.ts",
+        "specs/one-at-a-time-execution-policy.spec.ts",
+        "specs/policy-gated-command-authorization.spec.ts",
+        "specs/specimen-accessibility.spec.ts"
+      ],
+      "exitCode": 1,
+      "results": {
+        "total": 51,
+        "passed": 50,
+        "failed": 1,
+        "skipped": 0
+      },
+      "failure": "The forced-colors test created its own context using default port 5070 because this isolated invocation omitted BASE_URL. page.goto failed with net::ERR_CONNECTION_REFUSED before browser assertions. The temporary server used port 32843.",
+      "log": {
+        "path": "browser-initial.log.txt",
+        "sourceSha256": "2c88755e21d0b07836da6bd85f8d4e15db87a6013b48fc6a9ff2ddf82ba88ef8",
+        "storedSha256": "8e2f2b60ab1e68ff8821bf0ef8dc7980e5faf9a02d519c49d9b68b4a39b86cf1",
+        "normalization": "Repository paths made relative; NuGet cache prefix and terminal colors normalized; CRLF."
+      },
+      "xml": {
+        "path": "browser-initial.xml",
+        "sourceSha256": "3e3366615c549b8b937f20e14e02dbaa88c49533a232f03201b92b04a4a4a9f0",
+        "storedSha256": "2d2cfde2d79fa51330716d2ddddfd70fa47cca2d374a66995e184370a195eca9",
+        "normalization": "Repository paths made relative; NuGet cache prefix and terminal colors normalized; CRLF."
+      }
+    },
+    "targetedRerun": {
+      "command": [
+        "env",
+        "BASE_URL=http://127.0.0.1:32843",
+        "FC_E2E_OUTPUT_DIR=/tmp/fc-13-3-browser-rerun-results",
+        "FC_E2E_JUNIT_PATH=/tmp/fc-13-3-browser-rerun.xml",
+        "FC_E2E_HTML_REPORT_DIR=/tmp/fc-13-3-browser-rerun-report",
+        "FC_E2E_COMMAND_SUBMISSION_CONFIGURATION=Debug",
+        "npm",
+        "--prefix",
+        "tests/e2e",
+        "run",
+        "test:chromium",
+        "--",
+        "--config",
+        "/tmp/fc-13-3-browser.config.ts",
+        "specs/specimen-accessibility.spec.ts",
+        "--grep",
+        "forced-colors and reduced-motion states",
+        "--output",
+        "/tmp/fc-13-3-browser-rerun-results",
+        "--reporter",
+        "list,junit"
+      ],
+      "exitCode": 0,
+      "results": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0
+      },
+      "log": {
+        "path": "browser-rerun.log.txt",
+        "sourceSha256": "d31c7d39906a94adfd7e4aa67fb1c8145f2622cc9512e55135cae0690b41f875",
+        "storedSha256": "27e92f4c62fa4ee261e85a017dd0dc88fdba0e1c4848ade8031d7d9793253fad",
+        "normalization": "Repository paths made relative; NuGet cache prefix and terminal colors normalized; CRLF."
+      },
+      "note": "All 51 selected test identities have passing evidence across the initial run and the corrected targeted rerun; no single complete 51/51 run is claimed. CLI junit reporter wrote the targeted XML to stdout.",
+      "xml": {
+        "path": "browser-rerun.xml",
+        "storedSha256": "e63f7f9ffebd8538055247c963eb80806cc980bbed70b32169d7bf258e4b599d"
+      }
+    }
+  },
+  "aspire": {
+    "startCommand": [
+      "timeout",
+      "60s",
+      "aspire",
+      "start",
+      "--apphost",
+      "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+      "--no-build",
+      "--non-interactive"
+    ],
+    "startExitCode": 0,
+    "waitCommand": [
+      "aspire",
+      "wait",
+      "counter-web",
+      "--non-interactive",
+      "--timeout",
+      "30"
+    ],
+    "waitExitCode": 0,
+    "describeCommand": [
+      "aspire",
+      "describe",
+      "--non-interactive",
+      "--format",
+      "Json"
+    ],
+    "describeExitCode": 0,
+    "resources": [
+      {
+        "displayName": "counter-web",
+        "resourceType": "Project",
+        "state": "Running",
+        "healthStatus": "Healthy"
+      },
+      {
+        "displayName": "eventstore-admin-dapr-cli",
+        "resourceType": "Executable",
+        "state": "Waiting",
+        "waitingFor": [
+          "security"
+        ]
+      },
+      {
+        "displayName": "eventstore-admin",
+        "resourceType": "Project",
+        "state": "Waiting",
+        "waitingFor": [
+          "security"
+        ]
+      },
+      {
+        "displayName": "eventstore-admin-ui-dapr-cli",
+        "resourceType": "Executable",
+        "state": "Waiting",
+        "waitingFor": [
+          "eventstore-admin",
+          "security"
+        ]
+      },
+      {
+        "displayName": "eventstore-admin-ui",
+        "resourceType": "Project",
+        "state": "Waiting",
+        "waitingFor": [
+          "eventstore-admin",
+          "security"
+        ]
+      },
+      {
+        "displayName": "eventstore-dapr-cli",
+        "resourceType": "Executable",
+        "state": "Waiting",
+        "waitingFor": [
+          "security"
+        ]
+      },
+      {
+        "displayName": "eventstore",
+        "resourceType": "Project",
+        "state": "Waiting",
+        "waitingFor": [
+          "security"
+        ]
+      },
+      {
+        "displayName": "frontcomposer-ui",
+        "resourceType": "Project",
+        "state": "Waiting",
+        "waitingFor": [
+          "tenants",
+          "parties",
+          "eventstore",
+          "security"
+        ]
+      },
+      {
+        "displayName": "parties-dapr-cli",
+        "resourceType": "Executable",
+        "state": "Waiting",
+        "waitingFor": [
+          "eventstore",
+          "tenants",
+          "security"
+        ]
+      },
+      {
+        "displayName": "parties",
+        "resourceType": "Project",
+        "state": "Waiting",
+        "waitingFor": [
+          "eventstore",
+          "tenants",
+          "security"
+        ]
+      },
+      {
+        "displayName": "sample-dapr-cli",
+        "resourceType": "Executable",
+        "state": "Waiting",
+        "waitingFor": [
+          "eventstore"
+        ]
+      },
+      {
+        "displayName": "sample",
+        "resourceType": "Project",
+        "state": "Waiting",
+        "waitingFor": [
+          "eventstore"
+        ]
+      },
+      {
+        "displayName": "security",
+        "resourceType": "Container",
+        "state": "Running",
+        "healthStatus": "Unhealthy"
+      },
+      {
+        "displayName": "tenants-dapr-cli",
+        "resourceType": "Executable",
+        "state": "Waiting",
+        "waitingFor": [
+          "eventstore",
+          "security"
+        ]
+      },
+      {
+        "displayName": "tenants",
+        "resourceType": "Project",
+        "state": "Waiting",
+        "waitingFor": [
+          "eventstore",
+          "security"
+        ]
+      },
+      {
+        "displayName": "tenants-ui",
+        "resourceType": "Project",
+        "state": "Waiting",
+        "waitingFor": [
+          "tenants",
+          "eventstore",
+          "security"
+        ]
+      }
+    ],
+    "stopCommand": [
+      "aspire",
+      "stop",
+      "--apphost",
+      "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+      "--non-interactive"
+    ],
+    "stopExitCode": 0,
+    "limitation": "Existing prebuilt Debug AppHost only. Counter was healthy; security was unhealthy and dependent topology resources were waiting. Raw CLI output/environment was not retained because it includes authentication material."
+  },
+  "completion": {
+    "status": "in-review",
+    "sprintStatus": "in-progress",
+    "blockedBy": [
+      "Tracked CI Aspire installer pin 13.6.0 differs from the approved 13.5.4.",
+      "Dependency graph rejects unknown/untrusted github.com/hexalith/hexalith.platform.",
+      "Selected EventStore source 2c58ffda41759e895ace4b9625c9bd931a217672 differs from approved capture 19dc1f82122564453163ac010dc7e5ae81db7ed3."
+    ],
+    "limitations": [
+      "Local validation uses Debug assets and project references per the Hexalith baseline; exact Release/NuGet and protected CI gates remain required.",
+      "Firefox/WebKit and complete solution/all-project lanes were not rerun.",
+      "No production code, dependency pointers, trust policy, approved runtime identity, visual baseline, or Git index was changed."
+    ]
+  }
+}

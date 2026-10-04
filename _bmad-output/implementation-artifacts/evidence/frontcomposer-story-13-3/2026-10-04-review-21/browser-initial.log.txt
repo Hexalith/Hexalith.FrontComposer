@@ -1,0 +1,112 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test:chromium
+> playwright test --project=chromium --config /tmp/fc-13-3-browser.config.ts specs/command-form-generation.spec.ts specs/destructive-command-confirmation.spec.ts specs/form-abandonment-guard.spec.ts specs/one-at-a-time-execution-policy.spec.ts specs/policy-gated-command-authorization.spec.ts specs/specimen-accessibility.spec.ts
+
+
+Running 51 tests using 2 workers
+
+(node:71969) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:71968) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   2 [chromium] › specs/command-form-generation.spec.ts:21:3 › Story 3.1: generated command forms › counter sample exposes generated inline, compact, and full-page command forms (2.0s)
+  ✓   3 [chromium] › specs/command-form-generation.spec.ts:67:3 › Story 3.1: generated command forms › full-page generated form blocks invalid numbers then submits after correction (8.3s)
+  ✓   1 [chromium] › specs/command-form-generation.spec.ts:51:3 › Story 3.1: generated command forms › compact generated form submits and reaches confirmed lifecycle feedback (11.5s)
+  ✓   4 [chromium] › specs/command-form-generation.spec.ts:98:3 › Story 3.1: generated command forms › invalid generated editors expose invalid state and their error on the focusable control (1.3s)
+  ✓   5 [chromium] › specs/command-form-generation.spec.ts:131:3 › Story 3.1: generated command forms › field accessibility observation disconnects when a route ancestor is removed (591ms)
+  ✓   6 [chromium] › specs/command-form-generation.spec.ts:184:3 › Story 3.2: command form density rule › non-derivable field count selects inline, compact inline, and full-page surfaces (1.1s)
+  ✓   8 [chromium] › specs/destructive-command-confirmation.spec.ts:19:3 › Story 4.1: destructive command confirmation › cancel and Escape keep the destructive command idle and reusable (1.7s)
+  ✓   9 [chromium] › specs/destructive-command-confirmation.spec.ts:72:3 › Story 4.1: destructive command confirmation › confirmation is required before dispatch and reaches terminal feedback once confirmed (8.9s)
+  ✓   7 [chromium] › specs/command-form-generation.spec.ts:240:3 › Story 3.3: FC-CMD pending identity and correlation contract › generated compact form keeps identity framework-owned while command reaches pending confirmation (12.1s)
+  ✓  11 [chromium] › specs/destructive-command-confirmation.spec.ts:185:3 › Story 4.1: destructive command confirmation › a real settings modal prevents opening a nested destructive dialog (1.7s)
+  ✓  12 [chromium] › specs/destructive-command-confirmation.spec.ts:210:3 › Story 4.1: destructive command confirmation › one modal reservation survives long preparation and refuses competing shell overlays (2.3s)
+  ✓  13 [chromium] › specs/destructive-command-confirmation.spec.ts:435:3 › Story 4.1: destructive command confirmation › validation focus fallbacks use the next invalid target and survive a missing summary (1.2s)
+  ✓  14 [chromium] › specs/destructive-command-confirmation.spec.ts:473:3 › Story 4.1: destructive command confirmation › removed destructive invoker restores focus to the route heading (2.1s)
+  ✓  15 [chromium] › specs/form-abandonment-guard.spec.ts:20:3 › Story 4.2: unsaved full-page command form abandonment guard › clean generated full-page command form navigates without warning (1.1s)
+  ✓  10 [chromium] › specs/destructive-command-confirmation.spec.ts:99:3 › Story 4.1: destructive command confirmation › validation failure and rapid clicks cannot bypass the destructive gate (9.8s)
+  ✓  16 [chromium] › specs/form-abandonment-guard.spec.ts:32:3 › Story 4.2: unsaved full-page command form abandonment guard › dirty generated full-page command form below threshold navigates without warning (927ms)
+  ✓  18 [chromium] › specs/form-abandonment-guard.spec.ts:95:3 › Story 4.2: unsaved full-page command form abandonment guard › removed edited control restores focus to the marked full-page command heading (813ms)
+  ✓  19 [chromium] › specs/form-abandonment-guard.spec.ts:126:3 › Story 4.2: unsaved full-page command form abandonment guard › sequenced capture ignores a stale earlier edit after focus moves to a warning action (1.0s)
+  ✓  20 [chromium] › specs/one-at-a-time-execution-policy.spec.ts:15:3 › Story 4.3: one-at-a-time execution policy › FC-CNC contract records block-not-queue v1 semantics (18ms)
+  ✓  17 [chromium] › specs/form-abandonment-guard.spec.ts:46:3 › Story 4.2: unsaved full-page command form abandonment guard › dirty generated full-page command form after threshold supports stay, Escape, and leave (8.9s)
+  ✓  22 [chromium] › specs/one-at-a-time-execution-policy.spec.ts:148:3 › Story 13.3: View active command availability › a hidden active lifecycle offers no View active command target (1.4s)
+  ✓  21 [chromium] › specs/one-at-a-time-execution-policy.spec.ts:34:3 › Story 4.3: one-at-a-time execution policy › accepted pending command blocks another generated form until terminal confirmation (15.8s)
+  ✓  23 [chromium] › specs/policy-gated-command-authorization.spec.ts:32:3 › Story 4.4: policy-gated command authorization › allowed protected specimen command renders the form and dispatches after authorization (8.1s)
+  ✓  25 [chromium] › specs/policy-gated-command-authorization.spec.ts:92:3 › Story 4.4: policy-gated command authorization › a background denial focuses its heading only when the replaced form held focus (729ms)
+  ✓  24 [chromium] › specs/policy-gated-command-authorization.spec.ts:54:3 › Story 4.4: policy-gated command authorization › denied protected specimen command fails closed without leaking policy metadata (1.9s)
+  ✓  26 [chromium] › specs/policy-gated-command-authorization.spec.ts:148:3 › Story 13.3: submit-time denial focus › dispatch denial replaces editors with one focused non-live heading (4.6s)
+  ✓  28 [chromium] › specs/policy-gated-command-authorization.spec.ts:292:3 › Story 13.3: unmapped rejection recovery focus › Edit and retry moves real browser focus to the first generated editor (3.9s)
+  ✓  29 [chromium] › specs/policy-gated-command-authorization.spec.ts:324:3 › Story 13.3: unmapped rejection recovery focus › unmapped rejection recovery actions work from the keyboard alone (1.6s)
+  ✓  30 [chromium] › specs/specimen-accessibility.spec.ts:50:3 › FrontComposer accessibility and visual specimens › manifest names owned nonblank specimen routes and exactly six visual combinations (206ms)
+  ✓  31 [chromium] › specs/specimen-accessibility.spec.ts:55:5 › FrontComposer accessibility and visual specimens › type specimen is nonblank and passes blocking axe gate (1.8s)
+  ✓  27 [chromium] › specs/policy-gated-command-authorization.spec.ts:193:3 › Story 13.3: mapped rejection recovery focus › keyboard dismissal preserves mapped errors and values, then permits a corrected retry (13.8s)
+  ✓  32 [chromium] › specs/specimen-accessibility.spec.ts:55:5 › FrontComposer accessibility and visual specimens › data-formatting specimen is nonblank and passes blocking axe gate (1.4s)
+  ✓  34 [chromium] › specs/specimen-accessibility.spec.ts:66:3 › FrontComposer accessibility and visual specimens › type specimen renders required shell, density, badge, lifecycle, detail, and nav surfaces (1.1s)
+  ✓  33 [chromium] › specs/specimen-accessibility.spec.ts:55:5 › FrontComposer accessibility and visual specimens › page-toolbar specimen is nonblank and passes blocking axe gate (1.3s)
+  ✓  35 [chromium] › specs/specimen-accessibility.spec.ts:91:3 › FrontComposer accessibility and visual specimens › dark generated command specimens keep readable foreground contrast (841ms)
+  ✓  36 [chromium] › specs/specimen-accessibility.spec.ts:208:5 › FrontComposer accessibility and visual specimens › status icon touch interactions › status icons expose contextual labels and reveal tooltips on focus, hover, and touch (1.4s)
+  ✓  37 [chromium] › specs/specimen-accessibility.spec.ts:226:3 › FrontComposer accessibility and visual specimens › data-formatting specimen renders deterministic text and accessible names (715ms)
+  ✓  39 [chromium] › specs/specimen-accessibility.spec.ts:276:3 › FrontComposer accessibility and visual specimens › focus-visible indicator remains visible over lifecycle visuals (890ms)
+  ✓  38 [chromium] › specs/specimen-accessibility.spec.ts:243:3 › FrontComposer accessibility and visual specimens › keyboard flow reaches skip link, controls, grid, command form, detail, and nav without traps (1.6s)
+  ✘  41 [chromium] › specs/specimen-accessibility.spec.ts:403:3 › FrontComposer accessibility and visual specimens › forced-colors and reduced-motion states are active and perceivable (192ms)
+(node:82893) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  40 [chromium] › specs/specimen-accessibility.spec.ts:294:3 › FrontComposer accessibility and visual specimens › story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion (1.3s)
+  ✓  43 [chromium] › specs/specimen-accessibility.spec.ts:431:5 › FrontComposer accessibility and visual specimens › zoom and reflow keep critical controls reachable at 200% (847ms)
+  ✓  42 [chromium] › specs/specimen-accessibility.spec.ts:431:5 › FrontComposer accessibility and visual specimens › zoom and reflow keep critical controls reachable at 100% (1.0s)
+  ✓  44 [chromium] › specs/specimen-accessibility.spec.ts:431:5 › FrontComposer accessibility and visual specimens › zoom and reflow keep critical controls reachable at 400% (870ms)
+  ✓  45 [chromium] › specs/specimen-accessibility.spec.ts:444:5 › FrontComposer accessibility and visual specimens › visual baseline light compact (1.4s)
+  ✓  46 [chromium] › specs/specimen-accessibility.spec.ts:444:5 › FrontComposer accessibility and visual specimens › visual baseline light comfortable (1.5s)
+  ✓  47 [chromium] › specs/specimen-accessibility.spec.ts:444:5 › FrontComposer accessibility and visual specimens › visual baseline light roomy (1.4s)
+  ✓  48 [chromium] › specs/specimen-accessibility.spec.ts:444:5 › FrontComposer accessibility and visual specimens › visual baseline dark compact (1.3s)
+  ✓  49 [chromium] › specs/specimen-accessibility.spec.ts:444:5 › FrontComposer accessibility and visual specimens › visual baseline dark comfortable (1.4s)
+  ✓  50 [chromium] › specs/specimen-accessibility.spec.ts:444:5 › FrontComposer accessibility and visual specimens › visual baseline dark roomy (1.5s)
+  ✓  51 [chromium] › specs/specimen-accessibility.spec.ts:459:3 › FrontComposer accessibility and visual specimens › production-style route exposure fails closed when specimen host configuration is absent (2.0s)
+
+
+  1) [chromium] › specs/specimen-accessibility.spec.ts:403:3 › FrontComposer accessibility and visual specimens › forced-colors and reduced-motion states are active and perceivable 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:5070/__frontcomposer/specimens/type
+    Call log:
+      - navigating to "http://127.0.0.1:5070/__frontcomposer/specimens/type", waiting until "load"
+
+
+      532 |
+      533 | const gotoSpecimen = async (page: import('@playwright/test').Page, route: SpecimenRoute): Promise<void> => {
+    > 534 |   await page.goto(route.path);
+          |              ^
+      535 |   await expect(page.locator(route.readySelector), `${route.path} missing ready marker`).toBeVisible();
+      536 |   await page.waitForFunction(() => [...document.querySelectorAll('*')]
+      537 |     .filter((element) => element.localName.includes('-'))
+        at gotoSpecimen (tests/e2e/specs/specimen-accessibility.spec.ts:534:14)
+        at tests/e2e/specs/specimen-accessibility.spec.ts:414:11
+
+    attachment #1: specimen-console-and-network-guard (text/plain) ─────────────────────────────────
+    Console and network guards are active for specimen routes.
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc-13-3-browser-results/specimen-accessibility-Fro-4bdc5--are-active-and-perceivable-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc-13-3-browser-results/specimen-accessibility-Fro-4bdc5--are-active-and-perceivable-chromium/test-failed-2.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc-13-3-browser-results/specimen-accessibility-Fro-4bdc5--are-active-and-perceivable-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../tmp/fc-13-3-browser-results/specimen-accessibility-Fro-4bdc5--are-active-and-perceivable-chromium/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../tmp/fc-13-3-browser-results/specimen-accessibility-Fro-4bdc5--are-active-and-perceivable-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../tmp/fc-13-3-browser-results/specimen-accessibility-Fro-4bdc5--are-active-and-perceivable-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › specs/specimen-accessibility.spec.ts:403:3 › FrontComposer accessibility and visual specimens › forced-colors and reduced-motion states are active and perceivable 
+  50 passed (1.4m)
