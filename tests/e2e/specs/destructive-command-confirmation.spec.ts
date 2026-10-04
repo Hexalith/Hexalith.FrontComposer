@@ -50,6 +50,15 @@ test.describe('Story 4.1: destructive command confirmation', () => {
     await page.keyboard.press('Tab');
     await expect(page.getByTestId('fc-destructive-cancel')).toBeFocused();
 
+    // The body can take programmatic/click focus without joining the tab order. Shift+Tab must
+    // still wrap to the final action instead of letting the native modal send it to browser chrome.
+    await page.locator('#fc-destructive-dialog-description').click();
+    await expect(page.locator('#fc-destructive-dialog-description')).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(page.getByTestId('fc-destructive-confirm')).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(page.getByTestId('fc-destructive-cancel')).toBeFocused();
+
     await page.getByTestId('fc-destructive-cancel').click();
 
     await expect(dialog).toHaveCount(0);
@@ -207,6 +216,33 @@ test.describe('Story 4.1: destructive command confirmation', () => {
     await expect(settings).toHaveCount(0);
   });
 
+  test('body and document origins fall back to the route heading after an overlay closes', async ({ page, tenant }) => {
+    expect(tenant.tenantId).toBeTruthy();
+    await gotoTypeSpecimen(page);
+    await waitForGeneratedFormReady(destructiveForm(page));
+
+    for (const origin of ['body', 'html']) {
+      const ignoredOrigin = await page.evaluate(async ({ focusModulePath, originTag }) => {
+        const focus = await import(focusModulePath) as {
+          captureOverlayOrigin: (testId?: string | null, preserveExisting?: boolean) => boolean;
+          restoreOverlayOrigin: () => void;
+        };
+        const target = originTag === 'body' ? document.body : document.documentElement;
+        target.setAttribute('tabindex', '-1');
+        target.focus();
+        if (document.activeElement !== target) throw new Error('The test origin did not take focus.');
+        if (!focus.captureOverlayOrigin()) throw new Error('The overlay reservation was not admitted.');
+        const ignored = Reflect.get(window, '__fcOverlayOrigin') === null;
+        focus.restoreOverlayOrigin();
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+        target.removeAttribute('tabindex');
+        return ignored;
+      }, { focusModulePath: '/_content/Hexalith.FrontComposer.Shell/js/fc-focus.js', originTag: origin });
+      expect(ignoredOrigin).toBe(true);
+      await expect(page.getByRole('main').getByRole('heading', { level: 1 })).toBeFocused();
+    }
+  });
+
   test('one modal reservation survives long preparation and refuses competing shell overlays', async ({ page, lifecycle, tenant }) => {
     expect(tenant.tenantId).toBeTruthy();
 
@@ -232,13 +268,14 @@ test.describe('Story 4.1: destructive command confirmation', () => {
       intentWindow.__fcModalReservation = null;
       intentWindow.__fcOverlayOpenIntent = null;
       const firstCapture = focus.captureOverlayOrigin();
+      const reservationClockIsMonotonic = Math.abs(intentWindow.__fcModalReservation!.createdAt - performance.now()) < 1000;
       const racingCapture = focus.captureOverlayOrigin();
 
       // Derived-value refresh may exceed the shell recovery window. A destructive reservation is
       // durable until its owner releases it, and a Shell overlay may not overwrite that owner.
       const destructiveReservation = Reflect.get(intentWindow, '__fcModalReservation') as { createdAt: number } | null;
       if (destructiveReservation) {
-        destructiveReservation.createdAt = Date.now() - 60_000;
+        destructiveReservation.createdAt = performance.now() - 60_000;
       }
       const afterRecoveryWindow = focus.captureOverlayOrigin();
       const competingShellCapture = focus.captureOverlayOrigin('fc-palette-trigger', true);
@@ -260,7 +297,7 @@ test.describe('Story 4.1: destructive command confirmation', () => {
       // existed, so recovery must capture the current trigger instead of preserving the old owner.
       const shellReservation = Reflect.get(intentWindow, '__fcModalReservation') as { createdAt: number } | null;
       if (shellReservation) {
-        shellReservation.createdAt = Date.now() - 60_000;
+        shellReservation.createdAt = performance.now() - 60_000;
       }
       const settingsTrigger = document.querySelector('[data-testid="fc-settings-button"]');
       if (!(settingsTrigger instanceof HTMLElement)) throw new Error('Expected the settings trigger.');
@@ -309,6 +346,7 @@ test.describe('Story 4.1: destructive command confirmation', () => {
       focus.releaseOverlayReservation('fc-e2e-next-owner');
       return {
         firstCapture,
+        reservationClockIsMonotonic,
         racingCapture,
         afterRecoveryWindow,
         competingShellCapture,
@@ -329,6 +367,7 @@ test.describe('Story 4.1: destructive command confirmation', () => {
 
     expect(reservation).toEqual({
       firstCapture: true,
+      reservationClockIsMonotonic: true,
       racingCapture: false,
       afterRecoveryWindow: false,
       competingShellCapture: false,

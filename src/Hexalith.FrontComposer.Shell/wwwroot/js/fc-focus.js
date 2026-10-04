@@ -8,6 +8,7 @@ let routeFocusGuardController = null;
 const editedOrigins = new WeakMap();
 const containedDialogs = new WeakSet();
 let lastEditedRootRef = null;
+let pendingAbandonmentStay = null;
 
 export function prepareTabNavigation(route, tabId) {
     pendingTabFocus = { path: normalizePath(new URL(route, document.baseURI).pathname), tabId };
@@ -53,12 +54,17 @@ export function captureOverlayOrigin(testId = null, preserveExisting = false, ow
         window.__fcOverlayOrigin = null;
         window.__fcOverlayOpenIntent = null;
     }
+    // A fulfilled Stay request belongs to the warning's initial appearance. A later modal launch
+    // starts a new focus interaction and must retain its own ordinary invoker return.
+    if (pendingAbandonmentStay?.focused) pendingAbandonmentStay = null;
     let preservesTrackedOrigin = false;
     if (preserveExisting) {
         // Shell overlays (palette, settings, shortcuts) keep an origin the keyboard tracker or an
         // earlier trigger already captured, including its `moved` state, exactly as before the
         // destructive-confirmation reservation existed. Tracker intents carry no `createdAt`.
         if (window.__fcOverlayOrigin instanceof HTMLElement
+            && window.__fcOverlayOrigin !== document.body
+            && window.__fcOverlayOrigin !== document.documentElement
             && window.__fcOverlayOrigin.isConnected
             && window.__fcOverlayOpenIntent) {
             preservesTrackedOrigin = true;
@@ -68,13 +74,15 @@ export function captureOverlayOrigin(testId = null, preserveExisting = false, ow
         const candidate = testId
             ? document.querySelector(`[data-testid="${testId}"]`)
             : document.activeElement;
-        window.__fcOverlayOrigin = candidate instanceof HTMLElement && candidate.isConnected && !candidate.disabled
+        window.__fcOverlayOrigin = candidate instanceof HTMLElement
+            && candidate !== document.body && candidate !== document.documentElement
+            && candidate.isConnected && !candidate.disabled
             ? candidate
             : null;
         window.__fcOverlayOpenIntent = { origin: window.__fcOverlayOrigin, moved: false, watchFocus: false };
     }
     window.__fcModalReservation = {
-        createdAt: Date.now(),
+        createdAt: performance.now(),
         durable: !preserveExisting,
         owner: typeof owner === 'string' && owner.length > 0 ? owner : null,
         origin: window.__fcOverlayOrigin,
@@ -119,7 +127,7 @@ function isLiveModalReservation(reservation) {
         return !(reservation.origin instanceof HTMLElement) || reservation.origin.isConnected;
     }
     return typeof reservation.createdAt === 'number'
-        && Date.now() - reservation.createdAt < modalReservationRecoveryMs;
+        && performance.now() - reservation.createdAt < modalReservationRecoveryMs;
 }
 
 function hasOpenModal() {
@@ -128,6 +136,36 @@ function hasOpenModal() {
         const dialog = host.shadowRoot?.querySelector('dialog');
         return dialog instanceof HTMLDialogElement && dialog.open;
     });
+}
+
+// A palette activation can be held by a dirty form while its modal still makes Stay inert. Keep
+// this in-flow warning's initial focus request until that modal closes, ahead of its origin return.
+export function focusAbandonmentStay(id) {
+    const request = { id, focused: false };
+    pendingAbandonmentStay = request;
+    const complete = () => {
+        if (pendingAbandonmentStay !== request || !focusPendingAbandonmentStay()) return;
+        if (!request.focused) runAfterDismiss(complete);
+    };
+    runAfterDismiss(complete);
+}
+
+function focusPendingAbandonmentStay() {
+    const request = pendingAbandonmentStay;
+    if (!request) return false;
+    const target = document.getElementById(request.id);
+    if (!(target instanceof HTMLElement) || !target.isConnected || target.hasAttribute('disabled')) {
+        pendingAbandonmentStay = null;
+        return false;
+    }
+    if (!hasOpenModal() && !request.focused) {
+        request.focused = focusTarget(target);
+        if (!request.focused) {
+            pendingAbandonmentStay = null;
+            return false;
+        }
+    }
+    return true;
 }
 
 export function captureEditedOrigin(root = null, fieldName = null, sequence = 0) {
@@ -225,7 +263,7 @@ export function containDialogFocus(testId, retryOnce = true) {
         const last = tabbables[tabbables.length - 1];
         const active = document.activeElement;
         const inside = active instanceof Node && host.contains(active);
-        const atBoundary = event.shiftKey ? active === first : active === last;
+        const atBoundary = !tabbables.includes(active) || (event.shiftKey ? active === first : active === last);
         if (!inside || atBoundary) {
             event.preventDefault();
             (event.shiftKey ? last : first).focus();
@@ -578,6 +616,7 @@ export function restoreOverlayOrigin(forceRouteHeading = false, owner = null) {
         if (userMovedFocus) {
             return;
         }
+        if (focusPendingAbandonmentStay()) return;
         const target = !forceRouteHeading && origin instanceof HTMLElement && origin.isConnected && !origin.disabled
             ? origin
             : document.querySelector('#fc-main-content h1, main h1');

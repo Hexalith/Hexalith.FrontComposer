@@ -76,7 +76,9 @@ public class CommandRejectedException : Exception {
     public CommandRejectionDetails Details { get; }
 
     /// <summary>
-    /// Gets the bounded problem projection, including support-safe field and form error maps.
+    /// Gets the bounded server problem projection, including support-safe field and form error maps,
+    /// when created by <see cref="FromProblem"/>. Other constructors expose an empty projection whose
+    /// <see cref="ProblemDetailsPayload.RejectionDetails"/> mirrors <see cref="Details"/>.
     /// </summary>
     public ProblemDetailsPayload Problem { get; }
 

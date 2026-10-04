@@ -1020,6 +1020,26 @@ public class CommandFormEmitterTests {
     }
 
     [Fact]
+    public void EmitFirstNonEmptyGroupDescriptionWinsInDeclaredMemberOrder() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("First", "String", FormFieldTypeCategory.TextInput, "First", true, false, null,
+                fieldGroup: "Details"),
+            new FormFieldModel("Second", "String", FormFieldTypeCategory.TextInput, "Second", true, false, null,
+                fieldGroup: "Details", fieldGroupDescription: "B"),
+            new FormFieldModel("Third", "String", FormFieldTypeCategory.TextInput, "Third", true, false, null,
+                fieldGroup: "Details", fieldGroupDescription: "C"),
+        ]);
+
+        string source = GeneratedRenderTreeText.MaskSequenceArguments(CommandFormEmitter.Emit(form, BuildFluxor()));
+
+        const string descriptionLink = "__b.AddAttribute(#, \"aria-describedby\", _formDomId + \"-field-group-1-description\");";
+        source.Split(descriptionLink, StringSplitOptions.None).Length.ShouldBe(2);
+        source.Split("__groupDescription.AddContent(#, \"B\")", StringSplitOptions.None).Length.ShouldBe(2);
+        source.ShouldNotContain("__groupDescription.AddContent(#, \"C\")");
+        source.ShouldNotContain("-field-group-2-description");
+    }
+
+    [Fact]
     public void Emit_DescribedAndGroupedFieldsPreserveEscapedMetadataAndDeclaredOrder() {
         CommandFormModel form = BuildForm([
             new FormFieldModel(

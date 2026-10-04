@@ -64,8 +64,10 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
         cut.WaitForAssertion(() => cut.Find("[data-testid='fc-form-abandonment-warning']"));
     }
 
-    [Fact]
-    public async Task Prevented_navigation_settles_a_pending_shell_activation_as_cancelled() {
+    [Theory]
+    [InlineData("https://localhost/leave")]
+    [InlineData("/leave")]
+    public async Task Prevented_navigation_settles_a_pending_shell_activation_as_cancelled(string targetLocation) {
         _ = Services.AddLocalization();
         _ = Services.AddScoped<NavigationFailureNotifier>();
         TestModel model = new() { Name = "" };
@@ -77,7 +79,7 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
 
         editContext.NotifyFieldChanged(editContext.Field(nameof(TestModel.Name)));
         _time.Advance(TimeSpan.FromSeconds(31));
-        Microsoft.AspNetCore.Components.Routing.LocationChangingContext context = BuildLocationChangingContext("https://localhost/leave");
+        Microsoft.AspNetCore.Components.Routing.LocationChangingContext context = BuildLocationChangingContext(targetLocation);
         await InvokeNavigationChangingAsync(cut, guard, context);
 
         DidPreventNavigation(context).ShouldBeTrue();
@@ -363,13 +365,13 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
         string? stayId = cut.Find("[data-testid='fc-form-abandonment-stay']").GetAttribute("id");
         stayId.ShouldNotBeNullOrWhiteSpace();
         cut.WaitForAssertion(() => {
-            JSRuntimeInvocation focus = focusModule.Invocations.Single(invocation => invocation.Identifier == "focusElementById");
+            JSRuntimeInvocation focus = focusModule.Invocations.Single(invocation => invocation.Identifier == "focusAbandonmentStay");
             focus.Arguments.ShouldBe([stayId]);
         });
 
         cut.Render();
 
-        focusModule.Invocations.Count(invocation => invocation.Identifier == "focusElementById").ShouldBe(1);
+        focusModule.Invocations.Count(invocation => invocation.Identifier == "focusAbandonmentStay").ShouldBe(1);
     }
 
     [Fact]

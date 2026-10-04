@@ -1,0 +1,181 @@
+{
+  "date": "2026-10-04",
+  "iteration": 26,
+  "reviewedDiffSha256": "823a7a8cb97719c01e76825d0c877fbd90f01ae604a68d3bbbb1e69bb9f7c086",
+  "layers": [
+    "blind-hunter",
+    "edge-case-hunter",
+    "verification-gap"
+  ],
+  "failedLayers": [],
+  "findings": [
+    {
+      "layer": "blind-hunter",
+      "id": "BH26-01",
+      "claim": "Nullable Boolean editors lack inline model-field errors.",
+      "verdict": "medium",
+      "route": "defer",
+      "evidence": "carried BH21-03/E8-07: FluentSwitch still validates its proxy and ignores ValidationFieldFor; the effective baseline editor limitation remains documented and deferred."
+    },
+    {
+      "layer": "blind-hunter",
+      "id": "BH26-02",
+      "claim": "Required switch, date, and enum editors omit required indication.",
+      "verdict": "medium",
+      "route": "defer",
+      "evidence": "carried BH21-02/BH24-07: those editor paths and the canonical baseline omit Required; the existing editor follow-up retains its route."
+    },
+    {
+      "layer": "blind-hunter",
+      "id": "BH26-03",
+      "claim": "Zero-field inline forms hide denial, scope-unavailable, and rejection feedback.",
+      "verdict": "medium",
+      "route": "defer",
+      "evidence": "carried BH3-06/E17-08/E17-09: only AM-20 is renderer-owned; other outcomes remain inside the baseline hidden form and their existing follow-up remains."
+    },
+    {
+      "layer": "blind-hunter",
+      "id": "BH26-04",
+      "claim": "Unmapped rejection dismissal removes its focused cancel action.",
+      "verdict": "medium",
+      "route": "defer",
+      "evidence": "carried BH21-08: the installed Fluent dismiss behavior removes the focused control and the baseline rejection bar supplies no return handler; no new cancellation path changed."
+    },
+    {
+      "layer": "blind-hunter",
+      "id": "BH26-05",
+      "claim": "EditContext replacement retains the prior abandonment session.",
+      "verdict": "medium",
+      "route": "defer",
+      "evidence": "carried BH9B-10/BH24-02: generated mounted guards do not swap contexts; the public direct-consumer session repair remains in the existing ledger."
+    },
+    {
+      "layer": "blind-hunter",
+      "id": "BH26-06",
+      "claim": "Development MCP accepts a fixed public sample credential remotely.",
+      "verdict": "medium",
+      "route": "defer",
+      "evidence": "carried BH18-01/BH19-01: the Development sample transport and credential are unchanged in this run and belong to their separately recorded MCP owner."
+    },
+    {
+      "layer": "blind-hunter",
+      "id": "BH26-07",
+      "claim": "Windows cleanup misses descendants after their launcher exits.",
+      "verdict": "medium",
+      "route": "defer",
+      "evidence": "carried BH15-09/E16-03/BH24-08: the unchanged taskkill parent-liveness branch belongs to the separate test/CI repair."
+    },
+    {
+      "layer": "blind-hunter",
+      "id": "BH26-08",
+      "claim": "Startup diagnostics retain an owned raw detached-child log.",
+      "verdict": "medium",
+      "route": "defer",
+      "evidence": "carried BH24-05: capture_start_diagnostics reads the child log while remove_temporary_files omits it; the separate launcher ownership/retention follow-up remains."
+    },
+    {
+      "layer": "blind-hunter",
+      "id": "BH26-09",
+      "claim": "HFC2122 schedules public API removal in minor 4.7.0.",
+      "verdict": "medium",
+      "route": "defer",
+      "evidence": "carried BH25-03: the obsolete message and registry removal version are unchanged and owned by spec-repair-tests-ci-and-release-publication."
+    },
+    {
+      "layer": "blind-hunter",
+      "id": "BH26-10",
+      "claim": "The migration guide omits HFC2122.",
+      "verdict": "low",
+      "route": "defer",
+      "evidence": "carried BH25-04b: the missing deprecation row is assigned to the separate repair spec; this run only extends the guide metadata requested by BH25-04a."
+    },
+    {
+      "layer": "blind-hunter",
+      "id": "BH26-11",
+      "claim": "Migration copy overstates denial persistence across Pending or infrastructure refresh.",
+      "verdict": "medium",
+      "route": "defer",
+      "evidence": "carried AA17-06/E25-24: SetAuthorizationWarning still clears denial on those existing transitions; the already-recorded refresh follow-up retains its route."
+    },
+    {
+      "layer": "blind-hunter",
+      "id": "BH26-12",
+      "claim": "Background denial browser coverage bypasses the generated renderer refresh.",
+      "verdict": "medium",
+      "route": "defer",
+      "evidence": "carried VG11-02/BH14-09: the synthetic browser replacement and mocked caller round trip leave the previously deferred authenticated parent-render boundary unverified."
+    },
+    {
+      "layer": "edge-case-hunter",
+      "id": "E26-01",
+      "claim": "A disabled first invalid editor stops missing-summary fallback.",
+      "verdict": "low",
+      "route": "reject",
+      "evidence": "carried BH11-08/E11-03: the helper reproduction manually disables an editor; normal generated lifecycle/visibility paths do not produce that state and additional eligibility guards retain the prior rejection."
+    },
+    {
+      "layer": "edge-case-hunter",
+      "id": "E26-02",
+      "claim": "A hidden first linked fallback prevents another available target taking focus.",
+      "verdict": "false",
+      "route": "reject",
+      "evidence": "carried E9-03/E11-04: descriptors and editors share the visibility predicate and hidden generated fields unmount; manual DOM hiding does not establish the generated-form outcome."
+    },
+    {
+      "layer": "edge-case-hunter",
+      "id": "E26-03",
+      "claim": "Concurrent background captures can focus an unrelated form denial.",
+      "verdict": "low",
+      "route": "reject",
+      "evidence": "carried BH3-02/BH11-01/EC18-02: the page-wide capture and unrelated-control disconnection case are unchanged; owner-root coordination retains its previous rejection."
+    },
+    {
+      "layer": "edge-case-hunter",
+      "id": "E26-04",
+      "claim": "A late clipboard result relabels a newer rejection copied.",
+      "verdict": "low",
+      "route": "reject",
+      "evidence": "carried E8-04/E9-06/E22-02: a second rejection must arrive during the prior clipboard round trip; the rejected ownership-generation interleave is unchanged."
+    },
+    {
+      "layer": "edge-case-hunter",
+      "id": "E26-05",
+      "claim": "Validation-summary interop timeout can fault component rendering.",
+      "verdict": "low",
+      "route": "reject",
+      "evidence": "carried E3-10/E23-01: this needs the same long JS stall and Shell-wide TaskCanceledException policy change previously rejected for the story."
+    },
+    {
+      "layer": "edge-case-hunter",
+      "id": "E26-06",
+      "claim": "The activation-owned heading claim fails for concurrent unrelated replacements.",
+      "verdict": "low",
+      "route": "reject",
+      "evidence": "carried BH3-02/BH21-04: same owning-root capture claim and unchanged helper as E26-03; preserve the previously rejected unrelated-detached-focus verdict."
+    },
+    {
+      "layer": "verification-gap",
+      "id": "VG26-01",
+      "claim": "No real generated-renderer authorization refresh browser proof.",
+      "verdict": "medium",
+      "route": "defer",
+      "evidence": "carried VG11-02/VG22-01: the filed caller evidence still uses mocked capture and synthetic browser replacement; the existing authenticated refresh follow-up remains."
+    },
+    {
+      "layer": "verification-gap",
+      "id": "VG26-02",
+      "claim": "All-hidden field groups lack a rendered omission assertion.",
+      "verdict": "false",
+      "route": "reject",
+      "evidence": "The reviewer withdrew this finding: GeneratedFormOmitsADeclaredGroupWhenEveryMemberIsHidden at CommandRendererWrapperIntegrationTests.cs:1548 omits both members and asserts no fieldset/editor/group label. It passed in the final Shell result; VG7-03 already closed VG4-09."
+    }
+  ],
+  "summary": {
+    "total": 20,
+    "carried": 19,
+    "withdrawn": 1,
+    "newPatches": 0,
+    "newDeferredEntries": 0
+  },
+  "matrixAuditSha256": "e5035fa20635f175eff8970a92a0709b1c4d54ce40abad148105baf5e832705a"
+}

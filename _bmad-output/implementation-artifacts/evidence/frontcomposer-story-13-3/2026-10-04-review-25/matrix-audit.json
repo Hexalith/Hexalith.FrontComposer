@@ -1,0 +1,97 @@
+[
+  {
+    "matrixRow": "Validation",
+    "tests": [
+      {
+        "test": "Story 3.1: generated command forms \u203a invalid generated editors expose invalid state and their error on the focusable control",
+        "file": "command-form-generation.spec.ts",
+        "result": "passed"
+      },
+      {
+        "test": "Story 4.1: destructive command confirmation \u203a validation focus fallbacks use the next invalid target and survive a missing summary",
+        "file": "destructive-command-confirmation.spec.ts",
+        "result": "passed"
+      }
+    ],
+    "result": "passed"
+  },
+  {
+    "matrixRow": "Rejection/denial",
+    "tests": [
+      {
+        "test": "Story 13.3: mapped rejection recovery focus \u203a keyboard dismissal preserves mapped errors and values, then permits a corrected retry",
+        "file": "policy-gated-command-authorization.spec.ts",
+        "result": "passed"
+      },
+      {
+        "test": "Story 13.3: unmapped rejection recovery focus \u203a Edit and retry moves real browser focus to the first generated editor",
+        "file": "policy-gated-command-authorization.spec.ts",
+        "result": "passed"
+      },
+      {
+        "test": "Story 13.3: unmapped rejection recovery focus \u203a unmapped rejection recovery actions work from the keyboard alone",
+        "file": "policy-gated-command-authorization.spec.ts",
+        "result": "passed"
+      },
+      {
+        "test": "Story 13.3: submit-time denial focus \u203a dispatch denial replaces editors with one focused non-live heading",
+        "file": "policy-gated-command-authorization.spec.ts",
+        "result": "passed"
+      }
+    ],
+    "result": "passed"
+  },
+  {
+    "matrixRow": "Confirmation",
+    "tests": [
+      {
+        "test": "Story 4.1: destructive command confirmation \u203a cancel and Escape keep the destructive command idle and reusable",
+        "file": "destructive-command-confirmation.spec.ts",
+        "result": "passed"
+      },
+      {
+        "test": "Story 4.1: destructive command confirmation \u203a confirmation is required before dispatch and reaches terminal feedback once confirmed",
+        "file": "destructive-command-confirmation.spec.ts",
+        "result": "passed"
+      },
+      {
+        "test": "Story 4.1: destructive command confirmation \u203a removed destructive invoker restores focus to the route heading",
+        "file": "destructive-command-confirmation.spec.ts",
+        "result": "passed"
+      }
+    ],
+    "result": "passed"
+  },
+  {
+    "matrixRow": "Abandonment",
+    "tests": [
+      {
+        "test": "Story 4.2: unsaved full-page command form abandonment guard \u203a dirty generated full-page command form after threshold supports stay, Escape, and leave",
+        "file": "form-abandonment-guard.spec.ts",
+        "result": "passed"
+      },
+      {
+        "test": "Story 4.2: unsaved full-page command form abandonment guard \u203a palette navigation from a dirty form focuses Stay after the modal closes",
+        "file": "form-abandonment-guard.spec.ts",
+        "result": "passed"
+      },
+      {
+        "test": "Story 4.2: unsaved full-page command form abandonment guard \u203a removed edited control restores focus to the marked full-page command heading",
+        "file": "form-abandonment-guard.spec.ts",
+        "result": "passed"
+      }
+    ],
+    "result": "passed"
+  },
+  {
+    "matrixRow": "Concurrency",
+    "tests": [
+      {
+        "test": "Story 4.3: one-at-a-time execution policy \u203a accepted pending command blocks another generated form until terminal confirmation",
+        "file": "one-at-a-time-execution-policy.spec.ts",
+        "result": "passed"
+      }
+    ],
+    "result": "passed"
+  }
+]

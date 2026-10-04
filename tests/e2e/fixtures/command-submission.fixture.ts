@@ -32,9 +32,10 @@ export const submissionTest = test.extend<{ submissionBaseUrl: string; mappedRej
           throw new Error(`Counter host exited before listening: ${String(host.error ?? host.child.exitCode ?? host.child.signalCode)}.\n${host.output}`);
         }
         return [...host.listeningOrigins][0];
-      }).toBeTruthy();
+      }, { timeout: 60_000 }).toBeTruthy();
       const baseUrl = [...host.listeningOrigins][0];
       await waitForOwnedServer(host, baseUrl, Date.now() + 10_000);
+      clearTimeout(host.timer);
       await use(baseUrl);
     } finally {
       await stopOwnedProcess(host);

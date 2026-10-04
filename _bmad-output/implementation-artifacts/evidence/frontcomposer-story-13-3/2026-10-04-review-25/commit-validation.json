@@ -1,0 +1,13 @@
+{
+  "command": [
+    "/home/administrator/projects/hexalith/frontcomposer/node_modules/.bin/commitlint",
+    "--edit",
+    "/tmp/frontcomposer-13-3-commit-message-057sbd7b.txt",
+    "--verbose"
+  ],
+  "pinnedCliVersion": "21.2.2",
+  "exitCode": 0,
+  "messageFile": "/tmp/frontcomposer-13-3-commit-message-057sbd7b.txt",
+  "message": "fix: preserve focus and input through command safety outcomes\n",
+  "log": "commitlint.log"
+}

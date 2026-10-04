@@ -49,6 +49,7 @@ public abstract class CommandRendererTestBase : BunitContext {
         _ = FcExpandInRowModule.SetupVoid("focusTriggerElementById", _ => true).SetVoidResult();
         FcFocusModule = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
         _ = FcFocusModule.SetupVoid("focusElementById", _ => true).SetVoidResult();
+        _ = FcFocusModule.SetupVoid("focusAbandonmentStay", _ => true).SetVoidResult();
         _ = FcFocusModule.SetupVoid("focusValidationOutcome", _ => true).SetVoidResult();
         _ = FcFocusModule.Setup<bool>("focusActiveLifecycle", _ => true).SetResult(true);
         _ = FcFocusModule.Setup<bool>("hasActiveLifecycle", _ => true).SetResult(true);

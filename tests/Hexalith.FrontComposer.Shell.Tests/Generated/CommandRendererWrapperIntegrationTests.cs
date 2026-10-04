@@ -331,6 +331,9 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => new MappedRejectingCommandService()));
         await InitializeStoreAsync();
         IState<TwoFieldCompactCommandLifecycleState> state = Services.GetRequiredService<IState<TwoFieldCompactCommandLifecycleState>>();
+        string? submittedCorrelationId = null;
+        Services.GetRequiredService<IActionSubscriber>().SubscribeToAction<TwoFieldCompactCommandActions.SubmittedAction>(
+            this, action => submittedCorrelationId = action.CorrelationId);
         IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>(parameters => parameters
             .Add(p => p.InitialValue, new TwoFieldCompactCommand {
                 Name = "preserved name",
@@ -342,6 +345,8 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         cut.WaitForAssertion(() => {
             state.Value.State.ShouldBe(CommandLifecycleState.Rejected);
             state.Value.HasMappedFieldErrors.ShouldBeTrue();
+            submittedCorrelationId.ShouldNotBeNullOrWhiteSpace();
+            state.Value.CorrelationId.ShouldBe(submittedCorrelationId);
             AngleSharp.Dom.IElement summary = cut.Find("[data-fc-validation-kind='mapped-server-rejection']");
             summary.GetAttribute("role").ShouldNotBe("alert");
             summary.HasAttribute("aria-live").ShouldBeFalse();
@@ -766,6 +771,38 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             AngleSharp.Dom.IElement reason = card.QuerySelector("p").ShouldNotBeNull();
             reason.TextContent.ShouldBe(expected);
             card.QuerySelector("h2").ShouldNotBeNull().GetAttribute("aria-describedby").ShouldBe(reason.Id);
+            cut.FindAll("[data-fc-validation-field='true']").ShouldBeEmpty();
+        });
+    }
+
+    [Fact]
+    public async Task ProtectedGeneratedFormBlankSignInCopyKeepsTheSignInRequirement() {
+        var evaluator = new MutableAuthorizationEvaluator(CommandAuthorizationDecision.Allowed("corr-presentation"));
+        RecordingCommandService service = new();
+        IStringLocalizer<FcShellResources> localizer = Substitute.For<IStringLocalizer<FcShellResources>>();
+        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.ArgAt<string>(0), " "));
+        localizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(call => new LocalizedString(call.ArgAt<string>(0), " "));
+        Services.Replace(ServiceDescriptor.Singleton<AuthenticationStateProvider>(new TestAuthenticationStateProvider()));
+        Services.Replace(ServiceDescriptor.Scoped<ICommandAuthorizationEvaluator>(_ => evaluator));
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        IRenderedComponent<ProtectedTwoFieldCompactCommandForm> cut = Render<ProtectedTwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new ProtectedTwoFieldCompactCommand { Name = "kept name", Amount = 9 }));
+        cut.WaitForAssertion(() => cut.FindAll("[data-fc-validation-field='true']").Count.ShouldBe(2));
+        typeof(ProtectedTwoFieldCompactCommandForm)
+            .GetProperty("CommandAuthorizationLocalizer", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            .ShouldNotBeNull().SetValue(cut.Instance, localizer);
+        evaluator.Decision = CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Unauthenticated, "corr-sign-in");
+
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(() => {
+            service.DispatchCount.ShouldBe(0);
+            Services.GetRequiredService<IPendingCommandStateService>().Snapshot().ShouldBeEmpty();
+            AngleSharp.Dom.IElement card = cut.Find("section[data-fc-authorization-denied='true']");
+            card.QuerySelector("h2").ShouldNotBeNull().TextContent.ShouldBe("Sign-in required");
+            card.QuerySelector("p").ShouldNotBeNull().TextContent.ShouldBe("Please sign in to Protected Two Field Compact.");
+            card.TextContent.ShouldNotContain("permission", Case.Insensitive);
             cut.FindAll("[data-fc-validation-field='true']").ShouldBeEmpty();
         });
     }

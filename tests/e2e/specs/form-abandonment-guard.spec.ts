@@ -92,6 +92,42 @@ test.describe('Story 4.2: unsaved full-page command form abandonment guard', () 
     await expect(abandonmentWarning(page)).toHaveCount(0);
   });
 
+  test('palette navigation from a dirty form focuses Stay after the modal closes', async ({ page, tenant }) => {
+    expect(tenant.tenantId).toBeTruthy();
+    await gotoConfigureCounter(page);
+    const form = configureCounterForm(page);
+    await fillField(form, 'Name', 'QA palette unsaved counter');
+    await fillField(form, 'Description', 'QA palette edited description');
+    await waitForConfiguredAbandonmentThreshold(page);
+    await fieldEditorByLabel(form, 'Description').focus();
+
+    await page.keyboard.press('Control+k');
+    const search = page.getByRole('searchbox');
+    await expect(search).toBeFocused();
+    await search.pressSequentially('Counter');
+    const destination = page.locator('[aria-labelledby="fc-palette-group-projection"]')
+      .getByTestId('fc-palette-option').filter({ hasText: 'Counter' });
+    await expect(destination).toBeVisible();
+    await expect(destination).toHaveAttribute('aria-selected', 'true');
+    await search.press('Enter');
+
+    await expect(page.getByTestId('fc-palette-root')).toHaveCount(0);
+    await expect(abandonmentWarning(page)).toBeVisible();
+    await expect(page.getByTestId('fc-form-abandonment-stay')).toBeFocused();
+    await expect(page).toHaveURL(FULL_PAGE_ROUTE);
+    await expectFieldValue(form, 'Name', 'QA palette unsaved counter');
+    await expectFieldValue(form, 'Description', 'QA palette edited description');
+    // Once Stay has received its initial focus, another modal owns a fresh invoker return even
+    // while the silent warning remains open.
+    await page.getByTestId('fc-settings-button').click();
+    await expect(page.locator('#fc-settings-heading')).toBeFocused();
+    await page.getByTestId('fc-settings-done').click();
+    await expect(page.getByTestId('fc-settings-button')).toBeFocused();
+    await page.getByTestId('fc-form-abandonment-stay').press('Enter');
+    await expect(abandonmentWarning(page)).toHaveCount(0);
+    await expect(fieldEditorByLabel(form, 'Description')).toBeFocused();
+  });
+
   test('deferred edited-origin return preserves a reopened warning action', async ({ page, tenant }) => {
     expect(tenant.tenantId).toBeTruthy();
     await gotoConfigureCounter(page);

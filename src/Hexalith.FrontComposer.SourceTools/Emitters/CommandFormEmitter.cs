@@ -313,7 +313,8 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("    private string ResolveAuthorizationLocalized(string key, string fallback, params object[] args)");
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        var localized = args is { Length: > 0 } ? CommandAuthorizationLocalizer[key, args] : CommandAuthorizationLocalizer[key];");
-            _ = sb.AppendLine("        return localized.ResourceNotFound ? fallback : localized.Value;");
+            _ = sb.AppendLine("        if (!localized.ResourceNotFound && !string.IsNullOrWhiteSpace(localized.Value)) return localized.Value;");
+            _ = sb.AppendLine("        return args is { Length: > 0 } ? ResolveShellLocalized(key, fallback, (string)args[0]) : ResolveShellLocalized(key, fallback);");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
             _ = sb.AppendLine("    private bool SetAuthorizationWarning(");
@@ -2023,8 +2024,9 @@ public static class CommandFormEmitter {
 
     /// <summary>
     /// Story 13.3 BH2-08 — returns the fields in the order <see cref="EmitFields"/> renders them: an
-    /// ungrouped field keeps its declared position, and a declared group is hoisted to its first
-    /// member's position with every member in declared order.
+    /// ungrouped field keeps its relative order and renders after any group whose later members
+    /// are hoisted past it. A declared group is hoisted to its first member's position with every
+    /// member in declared order.
     /// </summary>
     /// <param name="fields">The declared form fields.</param>
     /// <returns>The fields in rendered order.</returns>

@@ -203,7 +203,7 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
         _stayFocusPending = true;
         // A shell activation waiting for this route must settle as cancelled, so an open command
         // palette closes and this warning stays reachable.
-        ServiceProvider.GetService<NavigationFailureNotifier>()?.CancelAttempt(context.TargetLocation);
+        ServiceProvider.GetService<NavigationFailureNotifier>()?.CancelAttempt(Nav.ToAbsoluteUri(context.TargetLocation).AbsoluteUri);
         context.PreventNavigation();
         // Review 2026-04-17 P5 — NavigationLock callbacks can run on a background thread in
         // Blazor Server; marshal back via InvokeAsync so StateHasChanged hits the render context.
@@ -219,7 +219,7 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
         _stayFocusPending = false;
         try {
             await using IJSObjectReference module = await JS.InvokeAsync<IJSObjectReference>("import", FocusModulePath);
-            await module.InvokeVoidAsync("focusElementById", _stayButtonId);
+            await module.InvokeVoidAsync("focusAbandonmentStay", _stayButtonId);
         }
         catch (JSDisconnectedException) {
         }

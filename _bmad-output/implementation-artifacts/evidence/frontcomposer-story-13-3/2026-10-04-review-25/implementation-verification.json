@@ -1,0 +1,143 @@
+{
+  "schema": "frontcomposer-story-verification.v1",
+  "date": "2026-10-04",
+  "phase": "step-03 implementation handoff; acceptance audit and review pending",
+  "revision": "2cc8dd3a3ac76c03f5ea6f6f92e65829306db470",
+  "storyKey": "13-3-i-ux-b-preserve-focus-and-input-through-command-safety-outco",
+  "commands": [
+    {
+      "name": "source-build",
+      "command": "dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj -c Debug --no-restore -m:1",
+      "exitCode": 0,
+      "result": "0 warnings, 0 errors",
+      "log": "source-build.log"
+    },
+    {
+      "name": "shell-build",
+      "command": "dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Debug --no-restore -m:1",
+      "exitCode": 0,
+      "result": "0 warnings, 0 errors",
+      "log": "shell-build.log"
+    },
+    {
+      "name": "source-default",
+      "command": "env DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll -trait- 'Category=GovernanceBuild' -trait- 'Category=Performance' -trait- 'Category=e2e-palette' -trait- 'Category=NightlyProperty' -trait- 'Category=Quarantined' -result-xml /tmp/frontcomposer-13-3-source-default.xml",
+      "exitCode": 0,
+      "log": "source-default.log",
+      "result": {
+        "total": 1303,
+        "passed": 1303,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0,
+        "not-run": 0,
+        "time": 35.371
+      },
+      "summary": "source-default.summary.xml"
+    },
+    {
+      "name": "shell-default",
+      "command": "env DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -trait- 'Category=GovernanceBuild' -trait- 'Category=Performance' -trait- 'Category=e2e-palette' -trait- 'Category=NightlyProperty' -trait- 'Category=Quarantined' -result-xml /tmp/frontcomposer-13-3-shell-default.xml",
+      "exitCode": 0,
+      "log": "shell-default.log",
+      "result": {
+        "total": 3103,
+        "passed": 3103,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0,
+        "not-run": 0,
+        "time": 128.627
+      },
+      "summary": "shell-default.summary.xml"
+    },
+    {
+      "name": "shell-cancellation",
+      "command": "env DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -class '*FcFormAbandonmentGuardTests' -class '*CommandPaletteEffectsTests' -class '*AnalyzerPolicyGovernanceTests' -trait- 'Category=GovernanceBuild' -result-xml /tmp/frontcomposer-13-3-shell-cancellation.xml",
+      "exitCode": 0,
+      "log": "shell-cancellation.log",
+      "result": {
+        "total": 83,
+        "passed": 83,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0,
+        "not-run": 0,
+        "time": 62.887
+      },
+      "summary": "shell-cancellation.summary.xml"
+    },
+    {
+      "name": "typecheck",
+      "command": "npm --prefix tests/e2e run typecheck",
+      "exitCode": 0,
+      "log": "typecheck.log"
+    },
+    {
+      "name": "javascript-syntax",
+      "command": "node --check src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js",
+      "exitCode": 0
+    },
+    {
+      "name": "browser-default",
+      "cwd": "{project-root}/tests/e2e",
+      "command": "env BASE_URL=http://127.0.0.1:53849 FC_E2E_COMMAND_SUBMISSION_CONFIGURATION=Debug npx playwright test --config /tmp/frontcomposer-13-3-playwright.config.ts --workers 4 specs/command-form-generation.spec.ts specs/destructive-command-confirmation.spec.ts specs/form-abandonment-guard.spec.ts specs/one-at-a-time-execution-policy.spec.ts specs/policy-gated-command-authorization.spec.ts specs/specimen-accessibility.spec.ts specs/route-contract.spec.ts",
+      "exitCode": 0,
+      "result": {
+        "total": 76,
+        "passed": 76,
+        "failed": 0
+      },
+      "log": "browser-default.log",
+      "resultXml": "browser-final.xml",
+      "configuration": "browser-final.config.ts"
+    }
+  ],
+  "supplementalResults": {
+    "sourceFocusedPassed": 136,
+    "shellFocusedPassedBeforeUriNormalization": 392,
+    "sourceUnfilteredPassedBeforeFinalDefaultRun": 1309,
+    "sourceUnfilteredCategoriesExcluded": []
+  },
+  "initialFindings": [
+    "The first palette regression used a command without an advertised full-page route; the final case activates the registered Counter projection.",
+    "The real palette regression exposed a relative NavigationLock target versus an absolute pending confirmation. Cancellation now normalizes through NavigationManager.ToAbsoluteUri, with absolute and relative unit cases.",
+    "Temporary cancellation diagnostics were removed before final builds and browser verification.",
+    "An affected-suite invocation omitted GovernanceBuild exclusion and was interrupted; it is not passing evidence. The corrected affected suite passed 83/83. Existing analyzer negative-control tests still invoke Release internally."
+  ],
+  "aspireBaseline": {
+    "assets": "prebuilt; no AppHost rebuild",
+    "counter-web": "Running/Healthy",
+    "security": "Unhealthy",
+    "dependents": "Waiting",
+    "cleanup": "Only owned FrontComposer AppHost stopped; unrelated Tenants AppHost preserved",
+    "commands": [
+      "timeout 120s aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --no-build --isolated --non-interactive"
+    ],
+    "operations": [
+      "Started the owning FrontComposer AppHost in isolated non-interactive mode with --no-build",
+      "Waited for counter-web health, inspected JSON resource states, and stopped the owning FrontComposer AppHost"
+    ]
+  },
+  "limitations": [
+    "All explicit implementation builds and browser assets are Debug/project references. Existing analyzer negative-control tests perform internal Release builds; protected Release/NuGet gate success is not claimed.",
+    "Chromium evidence only; Firefox/WebKit and full solution/all-project lanes are not claimed.",
+    "Existing deferred review findings retain their recorded routes. No visual baseline, dependency, Git index, branch, or commit changed."
+  ],
+  "artifacts": {
+    "browser-default.log": "4860013ffb2d9b6d42ca2322011f4817cc4e8c358815c1f99fa50b9ccbb4a4e1",
+    "browser-final.config.ts": "f3a2ff979131a23eec07197c20e4457359a44af7ee9e2699b8f51e3b6abe5b15",
+    "browser-final.xml": "8db945b608f75db65c2578bd318774f542e16964a18d5a757f95669ce5a5e3cb",
+    "shell-build.log": "59c938abd26e06ed8266826fc593004e39ce8cc0e9dd11421cab4947dd675434",
+    "shell-cancellation.log": "4714cfdda5e974891725be4d22cf93244e8b8a5a6d7650002e4a139f2c88f71c",
+    "shell-cancellation.summary.xml": "697aa91558d39e44a40c2396fd903dc5a1e2089b723c38ab98bb83c27eb2a1c6",
+    "shell-default.log": "a654101485bc55d0a6ce72fd97f4a9680f870859a1ba49536a5d72c8ba1db3ae",
+    "shell-default.summary.xml": "5bbe378eda94023b26c50168093fe37af004488dfa8ed357d9d2fc84fcb02032",
+    "shell-focused.summary.xml": "04888182cc213c5a32d16f4cacdb7c305f1f25cf3d387b099a237a940668b59d",
+    "source-build.log": "fab219b10afce1fe27daf4e3dce429b9b872063c9a123120b08b7c7c241b4bac",
+    "source-default.log": "068a74ab4bb006cc35ee57c31710f22c0fb2bfc51ca9abc7f04e114f9c6653d3",
+    "source-default.summary.xml": "3b55eb6fc653a5293e1e15695d2ef02e5bba6cb0cd2b3c9a41783d33d53668ec",
+    "source-focused.log": "c0f4f514f18b9cc4900c4085af90459bccab6da45815094995d5bbb276ea14dc",
+    "typecheck.log": "e2f374da3f04f0db7af1e94cc2bd8a2eabc1efb23a47f683a589f89e461c19da"
+  }
+}
