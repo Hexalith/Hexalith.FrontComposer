@@ -116,10 +116,11 @@ compensating controls, and revocation trigger; it cannot be inferred from enviro
 
 - **Binds:** every graph node and edge.
 - **Prevents:** candidate-controlled URLs expanding trust or resolving one repository under multiple names.
-- **Rule:** resolve only the explicit FrontComposer root identity and identities declared by its root
-  `.gitmodules`, validated against the active policy revision selected by AD-12. Identity is the trust
-  key; the gitlink path is graph evidence, not policy data, and the policy `local_path` is acquisition
-  data only. Normalization is ordered: accept `https://github.com/<owner>/<repo>`,
+- **Rule:** resolve only the explicit FrontComposer root identity and identities explicitly trusted
+  by the active policy revision selected by AD-12. Approved depth-2 targets may be absent from the
+  root `.gitmodules`; this does not promote them to depth-1 owners or permit nested initialization.
+  Identity is the trust key; the gitlink path is graph evidence, not policy data, and the policy
+  `local_path` is acquisition data only. Normalization is ordered: accept `https://github.com/<owner>/<repo>`,
   `git@github.com:<owner>/<repo>`, or `ssh://git@github.com/<owner>/<repo>` with scheme and host
   matched case-sensitively; reject any port, userinfo, query, fragment, percent escape, control
   character, or extra/dot segment; strip exactly one trailing `/`, then exactly one terminal `.git`
@@ -1010,7 +1011,7 @@ flowchart LR
 
 | Concern | Convention |
 | --- | --- |
-| Repository identity | Lowercase `github.com/owner/repository`; root-declared closed-world map; Builds identity is `github.com/hexalith/hexalith.builds`. |
+| Repository identity | Lowercase `github.com/owner/repository`; active-policy closed-world map; Builds identity is `github.com/hexalith/hexalith.builds`. |
 | Builds identities | Catalog identity = the unique depth-1 edge whose `repository` equals the Builds identity, resolved from the graph (path-literal lookups are non-conforming); Release execution identity = the active-policy `release` row's `reusable.commit`, equal to `builds_execution_sha`; the CI pin is independently sealed in the CI handoff; catalog/CI/Release identities need not be equal. |
 | Git identity | Full lowercase 40-hex commit IDs; no abbreviations or symbolic revisions; the all-zero OID is never a valid commit in any evidence member. |
 | Paths | ASCII relative POSIX paths, byte-exact; no absolute, backslash, empty, dot, `..`, or control segments. |

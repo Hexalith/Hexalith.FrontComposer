@@ -37,6 +37,14 @@
     {
       "identity": "github.com/hexalith/hexalith.parties",
       "local_path": "references/Hexalith.Parties"
+    },
+    {
+      "identity": "github.com/hexalith/hexalith.platform",
+      "local_path": "references/Hexalith.Platform"
+    },
+    {
+      "identity": "github.com/hexalith/hexalith.mcpcli",
+      "local_path": "references/Hexalith.McpCli"
     }
   ],
   "semantic_profiles": {
@@ -48,7 +56,9 @@
     "github.com/hexalith/hexalith.commons": "shared-catalog-baseline-v1",
     "github.com/hexalith/hexalith.polymorphicserializations": "shared-catalog-baseline-v1",
     "github.com/hexalith/hexalith.tenants": "shared-catalog-baseline-v1",
-    "github.com/hexalith/hexalith.ai.tools": "shared-catalog-baseline-v1"
+    "github.com/hexalith/hexalith.ai.tools": "shared-catalog-baseline-v1",
+    "github.com/hexalith/hexalith.platform": "shared-catalog-baseline-v1",
+    "github.com/hexalith/hexalith.mcpcli": "shared-catalog-baseline-v1"
   },
   "profiles": {
     "frontcomposer-catalog-v1": {
@@ -328,6 +338,34 @@
       "builds_contract_source": "none",
       "restore_argv": null,
       "build_argv": null
+    },
+    "github.com/hexalith/hexalith.platform": {
+      "disposition": "evidence-only",
+      "solution": null,
+      "builds_contract_source": "none",
+      "restore_argv": null,
+      "build_argv": null
+    },
+    "github.com/hexalith/hexalith.mcpcli": {
+      "disposition": "build",
+      "solution": "Hexalith.McpCli.slnx",
+      "builds_contract_source": "edge-tree:references/Hexalith.Builds",
+      "restore_argv": [
+        "dotnet",
+        "restore",
+        "Hexalith.McpCli.slnx",
+        "-p:Configuration=Release",
+        "-p:UseNuGetDeps=true"
+      ],
+      "build_argv": [
+        "dotnet",
+        "build",
+        "Hexalith.McpCli.slnx",
+        "--configuration",
+        "Release",
+        "--no-restore",
+        "-p:UseNuGetDeps=true"
+      ]
     }
   },
   "resource_limits": {

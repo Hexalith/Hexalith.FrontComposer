@@ -1,0 +1,152 @@
+{
+  "schema": "hexalith.frontcomposer.governance-reconciliation-verification.v1",
+  "date": "2026-10-04",
+  "baseRevision": "a93e4e5bc3cf1d1fc414a074578f3924882a7eea",
+  "successorTuple": {
+    "eventStoreSourceRevision": "5e32d07a6ac7a1bf70cc0ca554ea9928145b65f6",
+    "buildsCatalogRevision": "688eec9a4333245cc0ff7772115c769094471863",
+    "eventStorePackageVersion": "3.110.0"
+  },
+  "checks": [
+    {
+      "command": "python3 -m unittest discover -s tests/eng -p test_eventstore_runtime_evidence.py",
+      "exitCode": 0,
+      "passed": 208
+    },
+    {
+      "command": "python3 -m unittest discover -s tests/eng -p test_dependency_graph.py",
+      "exitCode": 0,
+      "passed": 102
+    },
+    {
+      "command": "python3 -m unittest discover -s tests/eng -p test_pact_provider_apphost_smoke.py",
+      "exitCode": 0,
+      "passed": 84
+    },
+    {
+      "command": "dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Debug -m:1",
+      "exitCode": 0,
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "command": "env DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -method \"*ToolchainPins_MatchApprovedDotnetAndAspireVersions\" -method \"*EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval\" -result-xml /tmp/fc-governance-two.xml",
+      "exitCode": 0,
+      "passed": 2
+    },
+    {
+      "command": "python3 eng/dependency_graph.py --root . --policy eng/dependency-graph-policy.json validate --commit a93e4e5bc3cf1d1fc414a074578f3924882a7eea",
+      "exitCode": 0,
+      "edges": 47,
+      "selectorsValidated": 7,
+      "policySource": "explicit working candidate; default committed-policy check follows commit"
+    }
+  ],
+  "cleanSuccessorPreparation": {
+    "rootRevision": "a93e4e5bc3cf1d1fc414a074578f3924882a7eea",
+    "errors": [],
+    "approvalIssues": [
+      "Missing named actor for required role: eventstore-maintainer",
+      "Missing named actor for required role: frontcomposer-maintainer",
+      "Missing named actor for required role: release-owner",
+      "Missing valid receipt for required role: eventstore-maintainer",
+      "Missing valid receipt for required role: frontcomposer-maintainer",
+      "Missing valid receipt for required role: release-owner"
+    ],
+    "migrationApprovalClaimed": false,
+    "isolation": "local clones of root and exact root-declared selections; no nested initialization"
+  },
+  "workspaceSuccessorPreparation": {
+    "result": "blocked by ambient generated inputs; preserved",
+    "diagnosticPath": "/tmp/fc-governance-successor-preparation.json"
+  },
+  "sealedEvidence": {
+    "files": 42,
+    "changed": 0,
+    "sha256ByPath": {
+      "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v1.json": "80c93e4e865e4cac7532e8c96481aa9205b6e6918d2177352222715e42ff2157",
+      "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v2.json": "9167a5e34fc9ed6a913efe54c254817781281bb652e9b5dfaf7cd53eb3d6d661",
+      "_bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v3.json": "6dc9aaa586cf35531de112bd68dd4d724a81d7ad76a11930684e8e9fe6c98892",
+      "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/approval-policy.json": "ce4b9265824190e80c1e1ce5c3296ebcdd13e8d71f72bb4ea52f94d77fedf733",
+      "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/approval-subject.json": "638af61071d498da76bb4c6335d05311ba2f24867498574bbc2127d946f62143",
+      "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/frontcomposer-runtime-inputs.json": "ddf822f8d6e1d51f1942fb64ab4650adab0dce03e2a4692534990d40f3ff6686",
+      "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/recapture-decision.json": "af740eb216f6276bf234e58f5df1ca64031950bf6b2197e164cb64fd95f8302e",
+      "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/recapture/apphost-smoke.json": "526be617e793af7e4a219fbcf1f2600245e953b2baa5661cbb58a89bbe343b8e",
+      "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/recapture/provider-verification.json": "fba8e8dcf86388ed43a505a686ed0f55d9ea605b594eac56b5065c3e148ebc91",
+      "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/recapture/run-evidence.json": "e3a635e5c1a22102ea9f60844524d63cf530050e20296b5fe01619ee286ffbb3",
+      "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v2/reviewer-roster.json": "e6cd02ea88c26febd8c841520c0b28a0bb943f6b1b5ae26f284f6e038328284d",
+      "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/approval-policy.json": "ce4b9265824190e80c1e1ce5c3296ebcdd13e8d71f72bb4ea52f94d77fedf733",
+      "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/approval-subject.json": "e1fe22f84c1a6efa570aa0e1e0520a579f8649d7f8285946de20f3f7d06f8f70",
+      "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/frontcomposer-runtime-inputs.json": "c2ea111f767e28fbe9e0e9870219591865649faa3c7ed0bd3efcbf0a9faad330",
+      "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/recapture-decision.json": "61744d8987d1ce8b4a5d2a75ab4ce7bb43d17670d0aa7c2e8b77b98c670ceace",
+      "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/recapture/apphost-package-ledger.json": "fc37e2af83ec4622611d61b6fa741434e1be1ea21463eb0847287ad4bfe517df",
+      "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/recapture/apphost-smoke.json": "4911f87a754039582e3e07e90fb7511d8a7a34daa2510264354951846130dde8",
+      "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/recapture/provider-package-ledger.json": "cc6637a21c7f1c9aa64add5225d61cc7cb814a2a01bb95d6f8249c8648262034",
+      "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/recapture/provider-verification.json": "2f49942cbe4bf9104d393ded7b874524311be87343040a68b49afe511849dfd4",
+      "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/recapture/run-evidence.json": "3979dfeef3622c657409327f5ce643e4a9e0035a5ad9c88a8b5e782ffad22f8f",
+      "_bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v3/reviewer-roster.json": "e6cd02ea88c26febd8c841520c0b28a0bb943f6b1b5ae26f284f6e038328284d",
+      "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/apphost-smoke/apphost-smoke.json": "2474f1ec7663a34cae597a06c4bcceffc0bb1493caf975213c470869603295bc",
+      "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/bb94d93e9b84132cff83a38fba84f25455820d31/acceptances/9d074dfd0758a8934f122aab18659627dff1cf5d4c3e548b222cc0d79a881065/eventstore-owner.json": "a20686e60d21e1448c4dee5e1b9a2a21a7be5f92b76e30e673a0e2ba848b354d",
+      "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/bb94d93e9b84132cff83a38fba84f25455820d31/acceptances/9d074dfd0758a8934f122aab18659627dff1cf5d4c3e548b222cc0d79a881065/release-owner.json": "1435d4a4ea160c125fa26cf7b2bca8da3630ddddc7af02c36121bcc65b6e3eee",
+      "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/bb94d93e9b84132cff83a38fba84f25455820d31/nuget-sha256.txt": "08449d50bf9d57c791c87e9768241442a92ec1db69b0f80fc2886529e70abfb0",
+      "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/bb94d93e9b84132cff83a38fba84f25455820d31/owner-actions.md": "c03ab1d8f7fc4e167f0536f8f9b77cd01980bbeee1b9c44704b4d5d99aefbcb6",
+      "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/bb94d93e9b84132cff83a38fba84f25455820d31/package-manifest.json": "b85b9926482b42fda508b68e26162f256892d2f49c2eab31adbae49cefdd0d12",
+      "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/bb94d93e9b84132cff83a38fba84f25455820d31/release-catalog-provenance.json": "a5821b1002daaf1284387486d14776648f490849717d25b5f3d1cbbe3ca40cef",
+      "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/bb94d93e9b84132cff83a38fba84f25455820d31/restore-receipt.json": "362761dd0f82c5bb2442f4a8514ee3d15eea2ca155f67fe600fe55dcf6cdb03d",
+      "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/bb94d93e9b84132cff83a38fba84f25455820d31/review-subject.json": "9d074dfd0758a8934f122aab18659627dff1cf5d4c3e548b222cc0d79a881065",
+      "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/bb94d93e9b84132cff83a38fba84f25455820d31/reviewer-roster.json": "a1e55d095f7919dc94a5722e356751ad35b5e86cb4e20da5db7545a6659fa346",
+      "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/frontcomposer-11-24-runtime-identity-successor.md": "69b08aba7758de770888aea53b9b51dc7e479220c9d539ed670db479fdb0164a",
+      "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/provider-verification/provider-verification.json": "7ad9d7199272680a26770f5ea980bce880736a4bd92b3d6b27fb7aed546304c7",
+      "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/provider-verification/run-evidence.json": "3338dc3060875789603ee83fc4b8fc930133f8cb2f07e9cf694f7e7447b16dfb",
+      "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/release-restore/release-restore.json": "dbdd01f248fc00c3fdd7049643c2d4a1f51659880e441c20eb3be5ecb8131619",
+      "_bmad-output/implementation-artifacts/evidence/frontcomposer-story-11-24/sha256-manifest.json": "b90fa5b86a6a9ea86e8c8190e97bd9dd6495ec8e2b133d4c83f39d8d49a27534",
+      "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/2026-09-08-builds-35c3d1e5/apphost-smoke.json": "98fe33eebe8e69d549be0b188c9f76240284d6f1672a23a9b2891d8caf3fc707",
+      "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/2026-09-08-builds-35c3d1e5/provider-verification.json": "36fa68b27b317a8b1c55ba968a4064616582a6d64d2f40ab3c14845ab7d9a1f9",
+      "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation-history/2026-09-08-builds-35c3d1e5/run-evidence.json": "3a3d0cf9967fd7e1c3fe38e94bc95d3aa596d72053030370b23288f84729ad5a",
+      "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/apphost-smoke.json": "526be617e793af7e4a219fbcf1f2600245e953b2baa5661cbb58a89bbe343b8e",
+      "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json": "fba8e8dcf86388ed43a505a686ed0f55d9ea605b594eac56b5065c3e148ebc91",
+      "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/run-evidence.json": "e3a635e5c1a22102ea9f60844524d63cf530050e20296b5fe01619ee286ffbb3"
+    }
+  },
+  "identityV4Exists": false,
+  "migrationApprovalClaimed": false,
+  "dispositionSourceTrees": {
+    "platform": {
+      "7c2f0f89f29c79f5d7ab4b731155e2cb07fc690f": [
+        "DaprSelfHostedMtls.cs",
+        "apphost.cs"
+      ],
+      "2d1b76267bc6e75d2caab1019a17f1c45ceccf81": [
+        "DaprSelfHostedMtls.cs",
+        "apphost.cs"
+      ]
+    },
+    "mcpcli": {
+      "7e3226ba612a3e7fb3a8969c4197a8f1e4c0c2ed": [
+        "Directory.Build.props",
+        "Directory.Packages.props",
+        "Hexalith.McpCli.slnx"
+      ],
+      "f91f44c3c1eed173483ccab192bf2abb7ff73368": [
+        "Directory.Build.props",
+        "Directory.Packages.props",
+        "Hexalith.McpCli.slnx"
+      ]
+    }
+  },
+  "aspireBaseline": {
+    "startup": "passed",
+    "primaryResourcesHealthy": 10,
+    "stoppedOwnedApphost": true,
+    "unrelatedTenantsApphostPreserved": true
+  },
+  "commitlint": {
+    "command": "node node_modules/@commitlint/cli/cli.js --edit /tmp/fc-governance-commit-message.txt --verbose",
+    "version": "21.2.2",
+    "exitCode": 0,
+    "message": "fix: reconcile runtime successor and approved dependency governance\n",
+    "log": "commitlint.log"
+  },
+  "hostedCapturePerformed": false,
+  "immutableBasePolicyActivation": "First landing remains governed by previous base policy; no bypass."
+}

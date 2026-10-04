@@ -1106,7 +1106,7 @@ public sealed class CiGovernanceTests {
     public void ToolchainPins_MatchApprovedDotnetAndAspireVersions() {
         const string expectedDotnetSdk = "10.0.401";
         const string sourceResourceCompatibilitySdk = "10.0.302";
-        const string expectedAspire = "13.5.4";
+        const string expectedAspire = "13.6.0";
         const string expectedAspireHosting = "13.6.0";
         const string expectedDaprCli = "1.18.0";
         const string expectedDaprRuntime = "1.18.2";
@@ -1170,6 +1170,11 @@ public sealed class CiGovernanceTests {
             .ToArray();
         aspireInstalls.Length.ShouldBe(1, "active workflows must contain exactly one Aspire CLI installation command");
         aspireInstalls[0].Groups["version"].Value.ShouldBe(expectedAspire);
+        string runtimeEvidenceValidator = File.ReadAllText(Path.Combine(root, "eng", "eventstore_runtime_evidence.py"));
+        runtimeEvidenceValidator.Split('\n')
+            .Single(line => line.StartsWith("APPHOST_TOOL_PACKAGES = ", StringComparison.Ordinal))
+            .TrimEnd('\r')
+            .ShouldBe($"APPHOST_TOOL_PACKAGES = ((\"Aspire.AppHost.Sdk\", \"{expectedAspire}\"),)");
 
         quality.ShouldContain($"version: '{expectedDaprCli}'");
         quality.ShouldContain($"dapr init --runtime-version {expectedDaprRuntime}");
@@ -3944,8 +3949,8 @@ public sealed class CiGovernanceTests {
         const string activePacketVersion = "3.106.0";
         const string activePacketBuildsSha = "4f522a8caa62ad82584bdf56d54e16109b717b1c";
         const string sealedV3IdentitySha = "6dc9aaa586cf35531de112bd68dd4d724a81d7ad76a11930684e8e9fe6c98892";
-        const string successorSourceSha = "19dc1f82122564453163ac010dc7e5ae81db7ed3";
-        const string successorBuildsSha = "21ce044ab465ccb2adab58b3d66e394ffbecf3c2";
+        const string successorSourceSha = "5e32d07a6ac7a1bf70cc0ca554ea9928145b65f6";
+        const string successorBuildsSha = "688eec9a4333245cc0ff7772115c769094471863";
         const string successorVersion = "3.110.0";
         // The immutable Story 11.24 owner capture remains historical evidence. Current source,
         // package, and Builds values are compatibility provenance, not migration approval.

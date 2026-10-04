@@ -90,6 +90,7 @@ def _synthetic_package_ledger(
     captured_at: str,
     *,
     graph_sha256: str,
+    apphost_tools: tuple[tuple[str, str], ...] = (("Aspire.AppHost.Sdk", "13.5.4"),),
 ) -> dict[str, Any]:
     content_hash = base64.b64encode(bytes(range(64))).decode("ascii")
     binding = {
@@ -119,7 +120,7 @@ def _synthetic_package_ledger(
             "contentHashSha512": content_hash,
         }
         for package_id, version in (
-            evidence.APPHOST_TOOL_PACKAGES
+            apphost_tools
             if assets_paths == [evidence.APPHOST_PACKAGE_ASSETS_ROOT]
             else ()
         )
@@ -4265,13 +4266,27 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
             "buildsSha": evidence.SUCCESSOR_BUILDS_SHA,
         }
 
-        def validate(provenance: dict[str, str], stamp: str, **metadata: Any) -> list[str]:
+        def validate(
+            provenance: dict[str, str], stamp: str,
+            *, tool_version: str | None = None, **metadata: Any,
+        ) -> list[str]:
             document = copy.deepcopy(original)
             document["identity"].update({
                 "eventStoreSourceSha": provenance["sourceSha"],
                 "eventStoreReleaseVersion": provenance["releaseVersion"],
                 "buildsCatalogSha": provenance["buildsSha"],
             })
+            version = tool_version or (
+                "13.6.0" if provenance["sourceSha"] == current["sourceSha"] else "13.5.4"
+            )
+            document["packageLedger"] = _write_package_ledger_sidecar(
+                self.live_root, evidence.APPHOST_PACKAGE_LEDGER_FILE,
+                _synthetic_package_ledger(
+                    [evidence.APPHOST_PACKAGE_ASSETS_ROOT],
+                    "2026-09-19T20:01:10.321867+00:00", graph_sha256="7" * 64,
+                    apphost_tools=(("Aspire.AppHost.Sdk", version),),
+                ),
+            )
             observation = document["observations"]["queryProvenance"]
             observation.update({
                 "provenance": stamp,
@@ -4292,6 +4307,13 @@ class EventStoreRuntimeEvidenceTests(unittest.TestCase):
         }
         self.assertEqual(validate(historical, "HandlerComputed"), [])
         self.assertEqual(validate(current, "ProjectionBacked", **projection), [])
+        for provenance, stamp, wrong_version, metadata in (
+            (historical, "HandlerComputed", "13.6.0", {}),
+            (current, "ProjectionBacked", "13.5.4", projection),
+        ):
+            with self.subTest(crossed_sdk=wrong_version):
+                errors = validate(provenance, stamp, tool_version=wrong_version, **metadata)
+                self.assertTrue(any("exact AppHost tool package set" in error for error in errors), errors)
         self.assertTrue(any("queryProvenance" in error for error in validate(current, "HandlerComputed")))
         self.assertTrue(any("queryProvenance" in error for error in validate(historical, "ProjectionBacked", **projection)))
         for key in ("sourceSha", "releaseVersion", "buildsSha"):

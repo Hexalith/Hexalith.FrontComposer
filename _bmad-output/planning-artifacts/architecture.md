@@ -123,7 +123,8 @@ not be conflated:
   catalog SHA-256 fingerprint in deterministic review and release evidence.
 
 Pointer-change CI compares the base and candidate dependency graphs and runs the affected module's
-supported standalone restore/build gate. Repository resolution is closed-world from the root
+supported standalone restore/build gate. Repository resolution is closed-world from the active
+policy's explicit identity allowlist, including approved depth-2 targets absent from the root
 `.gitmodules`; graph collection reads explicit committed Git objects, records edges before object-read
 or catalog-validation deduplication, and never recursively initializes nested submodules, moves their working-tree HEADs, clones a
 candidate URL, or executes candidate-supplied commands.

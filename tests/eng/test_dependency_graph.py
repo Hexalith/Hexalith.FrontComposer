@@ -186,6 +186,51 @@ class CollectionTests(unittest.TestCase):
         self.assertEqual(depth2[0]["repository"], fx.identity("Builds"))
         self.assertEqual(depth2[0]["catalog_sha256"], hashlib.sha256(BASELINE_CATALOG).hexdigest())
 
+    def test_approved_depth2_targets_need_no_root_gitlinks_or_local_stores(self) -> None:
+        fx = GraphFixture(self.tmp_path)
+        target_commits = {}
+        for name in ("Platform", "McpCli"):
+            target = fx.add_repo(name)
+            target.add_submodule(
+                "Untrusted", "references/Untrusted",
+                "https://github.com/other/untrusted.git", "1" * 40,
+            )
+            target_commits[name] = target.commit()
+            entry = next(
+                row for row in fx.policy["trusted_identities"]
+                if row["identity"] == fx.identity(name)
+            )
+            entry["local_path"] = f"references/{name}"
+
+        mid = fx.add_repo("Mid")
+        for name, commit in target_commits.items():
+            fx.link("Mid", f"references/{name}", name, commit)
+        mid_commit = mid.commit()
+        root = fx.add_repo("Root")
+        fx.link("Root", "references/Mid", "Mid", mid_commit)
+        root_commit = root.commit()
+
+        envelope = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
+        self.assertEqual(envelope["edge_count"], 3)
+        self.assertEqual(
+            {(edge["repository"], edge["commit"]) for edge in envelope["edges"] if edge["depth"] == 2},
+            {(fx.identity(name), commit) for name, commit in target_commits.items()},
+        )
+        self.assertEqual(
+            [edge["repository"] for edge in envelope["edges"] if edge["depth"] == 1],
+            [fx.identity("Mid")],
+        )
+        for name in target_commits:
+            self.assertFalse((root.root / f"references/{name}").exists())
+            with self.subTest(unapproved=name):
+                policy = copy.deepcopy(fx.policy)
+                policy["trusted_identities"] = [
+                    row for row in policy["trusted_identities"]
+                    if row["identity"] != fx.identity(name)
+                ]
+                with self.assertRaisesRegex(dg.GraphError, "unknown/untrusted repository identity"):
+                    dg.collect_graph(root.root, fx.identity("Root"), root_commit, policy)
+
     def test_depth2_boundary_excludes_depth3(self) -> None:
         fx = GraphFixture(self.tmp_path)
         deepest = fx.add_repo("Deepest")

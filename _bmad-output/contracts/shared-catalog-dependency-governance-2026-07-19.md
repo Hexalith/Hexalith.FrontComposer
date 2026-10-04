@@ -61,7 +61,9 @@ does not, by itself, state whether a catalog satisfies a consumer contract.
    `owner_repository`, `owner_commit`, `path`, `repository`, `commit`, and `depth`. Builds edges also
    include raw-byte `catalog_sha256` and nullable `catalog_contract_version`.
 6. **`[ADOPTED]` Closed-world acquisition and resolution.** Repository resolution includes the
-   explicit FrontComposer root identity and identities from its root `.gitmodules`. Graph collection
+   explicit FrontComposer root identity and identities explicitly trusted by the active policy.
+   The 2026-10-04 approval enrolls Platform and McpCli as depth-2 targets without adding root gitlinks;
+   policy-owned acquisition paths do not authorize nested submodule initialization. Graph collection
    reads exact committed objects, records edges before object-read/catalog-validation deduplication,
    rejects unknown/unsafe identities,
    and never clones candidate URLs, recursively initializes nested submodules, moves working-tree HEADs,

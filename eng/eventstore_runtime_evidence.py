@@ -43,8 +43,8 @@ IDENTITY_V3_SHA256 = "6dc9aaa586cf35531de112bd68dd4d724a81d7ad76a11930684e8e9fe6
 ACTIVE_SOURCE_SHA = "ba7ac196e60db8820525961791eccfacec24633f"
 ACTIVE_BUILDS_SHA = "4f522a8caa62ad82584bdf56d54e16109b717b1c"
 ACTIVE_VERSION = "3.106.0"
-SUCCESSOR_SOURCE_SHA = "19dc1f82122564453163ac010dc7e5ae81db7ed3"
-SUCCESSOR_BUILDS_SHA = "21ce044ab465ccb2adab58b3d66e394ffbecf3c2"
+SUCCESSOR_SOURCE_SHA = "5e32d07a6ac7a1bf70cc0ca554ea9928145b65f6"
+SUCCESSOR_BUILDS_SHA = "688eec9a4333245cc0ff7772115c769094471863"
 SUCCESSOR_VERSION = "3.110.0"
 PRIOR_SOURCE_SHA = "059f6a8917bfab26b85775be464840a1610dfdeb"
 PRIOR_VERSION = "3.103.0"
@@ -364,7 +364,8 @@ PROVIDER_PACKAGE_ASSETS = (
 APPHOST_PACKAGE_ASSETS_ROOT = (
     "src/Hexalith.FrontComposer.AppHost/obj/project.assets.json"
 )
-APPHOST_TOOL_PACKAGES = (("Aspire.AppHost.Sdk", "13.5.4"),)
+APPHOST_TOOL_PACKAGES = (("Aspire.AppHost.Sdk", "13.6.0"),)
+HISTORICAL_APPHOST_TOOL_PACKAGES = (("Aspire.AppHost.Sdk", "13.5.4"),)
 RAW_AUTHORIZATION_RE = re.compile(
     r"(?:[\"']authorization[\"']|(?<![A-Za-z0-9_])authorization(?![A-Za-z0-9_]))"
     r"\s*:(?!\s*\{)\s*",
@@ -496,6 +497,14 @@ APPHOST_QUERY_CONTRACTS = {
     (SUCCESSOR_SOURCE_SHA, SUCCESSOR_VERSION, SUCCESSOR_BUILDS_SHA): (
         "ProjectionBacked", "query.projection-backed"
     ),
+}
+
+
+# SDK coordinates follow the authenticated tuple; historical evidence retains its
+# original SDK even when the current producer advances to a newer AppHost toolchain.
+APPHOST_TOOL_PACKAGE_CONTRACTS = {
+    (ACTIVE_SOURCE_SHA, ACTIVE_VERSION, ACTIVE_BUILDS_SHA): HISTORICAL_APPHOST_TOOL_PACKAGES,
+    (SUCCESSOR_SOURCE_SHA, SUCCESSOR_VERSION, SUCCESSOR_BUILDS_SHA): APPHOST_TOOL_PACKAGES,
 }
 
 
@@ -5432,6 +5441,14 @@ def _validate_live_apphost(
             and _is_safe_relative_path(item["path"])
         )
     ] if isinstance(graphs, list) else []
+    expected_tool_packages = APPHOST_TOOL_PACKAGE_CONTRACTS.get((
+        provenance.get("sourceSha"),
+        provenance.get("releaseVersion"),
+        provenance.get("buildsSha"),
+    ))
+    if expected_tool_packages is None:
+        errors.append("Live AppHost tool package contract has an unsupported source/catalog tuple.")
+        expected_tool_packages = ()
     if package_root is None:
         package_captured_at = validate_package_ledger_semantics(
             package_ledger, errors
@@ -5443,7 +5460,7 @@ def _validate_live_apphost(
             package_root,
             ledger_paths,
             errors,
-            tool_packages=APPHOST_TOOL_PACKAGES,
+            tool_packages=expected_tool_packages,
         )
     if (
         ledger_graph_paths != sorted(set(ledger_graph_paths))
@@ -5452,7 +5469,7 @@ def _validate_live_apphost(
         errors.append(
             "Live AppHost package ledger must bind the canonical AppHost assets root."
         )
-    if ledger_tool_coordinates != list(APPHOST_TOOL_PACKAGES):
+    if ledger_tool_coordinates != list(expected_tool_packages):
         errors.append(
             "Live AppHost package ledger must bind the exact AppHost tool package set."
         )
