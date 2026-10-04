@@ -135,8 +135,8 @@ the lane fails closed if either is missing, altered, or unbound.
 Identity v3 is sealed at EventStore source `ba7ac196e60db8820525961791eccfacec24633f`,
 package `3.106.0`, and Builds catalog `4f522a8caa62ad82584bdf56d54e16109b717b1c`.
 The selected successor advances the EventStore source to
-`5e32d07a6ac7a1bf70cc0ca554ea9928145b65f6` and the Builds catalog to
-`688eec9a4333245cc0ff7772115c769094471863`, with selected package `3.110.0`.
+`0dc44e46ccb7f56c3182b855c21f337173a1307f` and the Builds catalog to
+`360a2b9c4e96809365a7de785be9a68152d5ac28`, with selected package `3.112.0`.
 Do not rewrite or relabel identity v3.
 
 The 2026-10-04 policy repair explicitly enrolls Platform and McpCli. Current-commit governance
@@ -159,9 +159,9 @@ gh workflow run quality.yml \
   --repo Hexalith/Hexalith.FrontComposer \
   --ref main \
   -f frontcomposer_revision="$local_main_revision" \
-  -f eventstore_source_revision=5e32d07a6ac7a1bf70cc0ca554ea9928145b65f6 \
-  -f eventstore_package_version=3.110.0 \
-  -f builds_catalog_revision=688eec9a4333245cc0ff7772115c769094471863
+  -f eventstore_source_revision=0dc44e46ccb7f56c3182b855c21f337173a1307f \
+  -f eventstore_package_version=3.112.0 \
+  -f builds_catalog_revision=360a2b9c4e96809365a7de785be9a68152d5ac28
 ```
 
 The command refuses to dispatch unless the checked-out local `main` and the hosted `main` resolve to
@@ -192,8 +192,8 @@ Re-capture rules:
 Identity v3 is sealed historical compatibility for EventStore source
 `ba7ac196e60db8820525961791eccfacec24633f`, package `3.106.0`, and Builds catalog
 `4f522a8caa62ad82584bdf56d54e16109b717b1c`. The current checkout target
-selects EventStore source `5e32d07a6ac7a1bf70cc0ca554ea9928145b65f6`, package `3.110.0`, and Builds catalog
-`688eec9a4333245cc0ff7772115c769094471863`.
+selects EventStore source `0dc44e46ccb7f56c3182b855c21f337173a1307f`, package `3.112.0`, and Builds catalog
+`360a2b9c4e96809365a7de785be9a68152d5ac28`.
 
 Identity v4 remains pending genuine hosted provider and authenticated AppHost evidence for that exact
 target. No v4 identity, evidence tree, decision, approval subject, or receipt is present.

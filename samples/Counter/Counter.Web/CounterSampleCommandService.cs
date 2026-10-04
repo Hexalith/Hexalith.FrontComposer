@@ -3,6 +3,7 @@ using Counter.Domain;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Components.Specimens;
 
 namespace Counter.Web;
 
@@ -41,12 +42,13 @@ internal sealed class CounterSampleCommandService :
         _userContext = userContext ?? throw new ArgumentNullException(nameof(userContext));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         // This deterministic rejection is available only to the opt-in local Test specimen host.
-        _mappedRejectionEnabled = environment?.IsEnvironment("Test") == true
-            && configuration?.GetValue<bool>("Hexalith:FrontComposer:Specimens:Enabled") == true
-            && configuration.GetValue<bool>("Hexalith:FrontComposer:Specimens:MappedRejectionEnabled");
-        _dispatchForbiddenEnabled = environment?.IsEnvironment("Test") == true
-            && configuration?.GetValue<bool>("Hexalith:FrontComposer:Specimens:Enabled") == true
-            && configuration.GetValue<bool>("Hexalith:FrontComposer:Specimens:DispatchForbiddenEnabled");
+        bool specimenOutcomesEnabled = environment?.IsEnvironment("Test") == true
+            && configuration is not null
+            && FrontComposerSpecimenRoutes.IsEnabled(configuration, environment);
+        _mappedRejectionEnabled = specimenOutcomesEnabled
+            && string.Equals(configuration?["Hexalith:FrontComposer:Specimens:MappedRejectionEnabled"], "true", StringComparison.OrdinalIgnoreCase);
+        _dispatchForbiddenEnabled = specimenOutcomesEnabled
+            && string.Equals(configuration?["Hexalith:FrontComposer:Specimens:DispatchForbiddenEnabled"], "true", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <inheritdoc />

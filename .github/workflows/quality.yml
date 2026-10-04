@@ -205,9 +205,9 @@ jobs:
         shell: bash
         env:
           TARGET_FRONTCOMPOSER_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.frontcomposer_revision || github.sha }}
-          TARGET_EVENTSTORE_SOURCE_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.eventstore_source_revision || '5e32d07a6ac7a1bf70cc0ca554ea9928145b65f6' }}
-          TARGET_EVENTSTORE_PACKAGE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.eventstore_package_version || '3.110.0' }}
-          TARGET_BUILDS_CATALOG_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.builds_catalog_revision || '688eec9a4333245cc0ff7772115c769094471863' }}
+          TARGET_EVENTSTORE_SOURCE_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.eventstore_source_revision || '0dc44e46ccb7f56c3182b855c21f337173a1307f' }}
+          TARGET_EVENTSTORE_PACKAGE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.eventstore_package_version || '3.112.0' }}
+          TARGET_BUILDS_CATALOG_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.builds_catalog_revision || '360a2b9c4e96809365a7de785be9a68152d5ac28' }}
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = "refs/heads/main"
@@ -427,9 +427,9 @@ jobs:
             -RequireProviderVerification `
             -PrepareRuntimeSuccessor `
             -SuccessorFrontComposerRevision "${{ github.sha }}" `
-            -SuccessorEventStoreSourceRevision "5e32d07a6ac7a1bf70cc0ca554ea9928145b65f6" `
-            -SuccessorEventStorePackageVersion "3.110.0" `
-            -SuccessorBuildsCatalogRevision "688eec9a4333245cc0ff7772115c769094471863" `
+            -SuccessorEventStoreSourceRevision "0dc44e46ccb7f56c3182b855c21f337173a1307f" `
+            -SuccessorEventStorePackageVersion "3.112.0" `
+            -SuccessorBuildsCatalogRevision "360a2b9c4e96809365a7de785be9a68152d5ac28" `
             -AppHostPackageRoot "" `
             -ProviderVerificationReport "_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json"
 
