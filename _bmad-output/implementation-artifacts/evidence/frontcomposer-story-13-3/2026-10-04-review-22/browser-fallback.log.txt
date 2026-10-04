@@ -1,0 +1,43 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test:chromium
+> playwright test --project=chromium --config {temporary-root}/browser.config.ts specs/command-form-generation.spec.ts --grep field description fallback tracks an existing error text change
+
+
+Running 1 test using 1 worker
+
+(node:1009624) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › specs/command-form-generation.spec.ts:131:3 › Story 3.1: generated command forms › field description fallback tracks an existing error text change (2.0s)
+
+
+  1) [chromium] › specs/command-form-generation.spec.ts:131:3 › Story 3.1: generated command forms › field description fallback tracks an existing error text change
+
+    Error: locator.evaluate: Error: The generated validation message has no text node.
+        at eval (eval at evaluate (:311:30), <anonymous>:3:24)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at eval (eval at evaluate (:311:30), <anonymous>:3:24)
+        at UtilityScript.evaluate (<anonymous>:313:16)
+        at UtilityScript.<anonymous> (<anonymous>:1:44)
+        at tests/e2e/specs/command-form-generation.spec.ts:153:17
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../..{temporary-root}/browser-results/command-form-generation-St-391e4--existing-error-text-change-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../..{temporary-root}/browser-results/command-form-generation-St-391e4--existing-error-text-change-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../..{temporary-root}/browser-results/command-form-generation-St-391e4--existing-error-text-change-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../..{temporary-root}/browser-results/command-form-generation-St-391e4--existing-error-text-change-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../..{temporary-root}/browser-results/command-form-generation-St-391e4--existing-error-text-change-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › specs/command-form-generation.spec.ts:131:3 › Story 3.1: generated command forms › field description fallback tracks an existing error text change

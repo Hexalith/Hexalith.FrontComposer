@@ -128,6 +128,45 @@ test.describe('Story 3.1: generated command forms', () => {
     await expect(fieldContainer(fullPageForm, 'Initial Value').locator('.fluent-validation-message')).toHaveCount(0);
   });
 
+  test('field description fallback tracks an existing error text change', async ({ page }) => {
+    // Exercise browsers without ARIA element reflection on the real generated Fluent editor.
+    await page.addInitScript(() => {
+      let prototype: object | null = Element.prototype;
+      while (prototype) {
+        Reflect.deleteProperty(prototype, 'ariaDescribedByElements');
+        prototype = Object.getPrototypeOf(prototype) as object | null;
+      }
+    });
+
+    await gotoCounter(page);
+    await page.getByRole('link', { name: 'Configure Counter' }).click();
+    const fullPageForm = commandForm(page, 'Configure Counter command form');
+    await fillField(fullPageForm, 'Initial Value', 'not-a-number');
+    const editor = page.locator(CONFIGURE_FIELD('InitialValue')).locator('input').first();
+    const error = fieldContainer(fullPageForm, 'Initial Value').locator('.fluent-validation-message');
+    expect(await editor.evaluate((control) => 'ariaDescribedByElements' in control)).toBe(false);
+    await expect(editor).toHaveAttribute('aria-invalid', 'true');
+    await expect(editor).toHaveAttribute('aria-description', /Invalid number format\./u);
+
+    // Change only the existing text node: neither insertion nor an invalid-state change can
+    // incidentally refresh the description and mask a missing character-data observation.
+    await error.evaluate((message) => {
+      const walker = document.createTreeWalker(message, NodeFilter.SHOW_TEXT);
+      let text = walker.nextNode();
+      while (text && text.nodeValue?.trim() !== 'Invalid number format.') text = walker.nextNode();
+      if (!text) throw new Error('The generated validation message has no text node.');
+      text.nodeValue = 'A number is required.';
+    });
+    await expect(error).toHaveText('A number is required.');
+    await expect(editor).toHaveAttribute('aria-invalid', 'true');
+    await expect(editor).toHaveAttribute('aria-description', /A number is required\./u);
+    await expect(editor).not.toHaveAttribute('aria-description', /Invalid number format\./u);
+
+    await fillField(fullPageForm, 'Initial Value', '1');
+    await expect(editor).not.toHaveAttribute('aria-invalid', 'true');
+    await expect(editor).not.toHaveAttribute('aria-description', /A number is required\./u);
+  });
+
   test('field accessibility observation disconnects when a route ancestor is removed', async ({ page }) => {
     await gotoCounter(page);
     const outcome = await page.evaluate(async (focusModulePath) => {

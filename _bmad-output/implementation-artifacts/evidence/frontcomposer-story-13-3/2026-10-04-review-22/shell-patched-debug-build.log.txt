@@ -1,0 +1,22 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+.nuget/packages/verify/33.2.0/buildTransitive/Verify.targets(172,5): SponsorCheck message SC059: Private sponsorship attestation trusted. Package 'Verify': trusting unverified private sponsor declaration (GitHubSponsors=jpiquot): SponsorshipPrivateUntil=2027-09, so the bundled sponsor list is not expected to contain this account. See: https://github.com/SimonCropp/SponsorCheck/blob/main/docs/VerifierDiagnosticCodes.md#sc059
+  Hexalith.FrontComposer.Contracts -> src/Hexalith.FrontComposer.Contracts/bin/Debug/netstandard2.0/Hexalith.FrontComposer.Contracts.dll
+  Hexalith.FrontComposer.SourceTools -> src/Hexalith.FrontComposer.SourceTools/bin/Debug/netstandard2.0/Hexalith.FrontComposer.SourceTools.dll
+  Hexalith.FrontComposer.Contracts -> src/Hexalith.FrontComposer.Contracts/bin/Debug/net10.0/Hexalith.FrontComposer.Contracts.dll
+  Hexalith.FrontComposer.Contracts.UI -> src/Hexalith.FrontComposer.Contracts.UI/bin/Debug/net10.0/Hexalith.FrontComposer.Contracts.UI.dll
+  Hexalith.FrontComposer.Shell -> src/Hexalith.FrontComposer.Shell/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.dll
+  Counter.Domain -> samples/Counter/Counter.Domain/bin/Debug/net10.0/Counter.Domain.dll
+  Hexalith.FrontComposer.Schema -> src/Hexalith.FrontComposer.Schema/bin/Debug/net10.0/Hexalith.FrontComposer.Schema.dll
+  Hexalith.FrontComposer.Mcp -> src/Hexalith.FrontComposer.Mcp/bin/Debug/net10.0/Hexalith.FrontComposer.Mcp.dll
+  Counter.Specimens.Domain -> samples/Counter/Counter.Specimens.Domain/bin/Debug/net10.0/Counter.Specimens.Domain.dll
+  Counter.Specimens -> samples/Counter/Counter.Specimens/bin/Debug/net10.0/Counter.Specimens.dll
+  Counter.Web -> samples/Counter/Counter.Web/bin/Debug/net10.0/Counter.Web.dll
+  Hexalith.FrontComposer.Testing -> src/Hexalith.FrontComposer.Testing/bin/Debug/net10.0/Hexalith.FrontComposer.Testing.dll
+  Hexalith.FrontComposer.Shell.Tests -> tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:17.17

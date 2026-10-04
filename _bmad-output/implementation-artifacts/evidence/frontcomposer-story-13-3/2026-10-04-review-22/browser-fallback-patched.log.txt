@@ -1,0 +1,12 @@
+
+> hexalith-frontcomposer-e2e@0.0.0 test:chromium
+> playwright test --project=chromium --config {temporary-root}/browser.config.ts specs/command-form-generation.spec.ts --grep field description fallback tracks an existing error text change
+
+
+Running 1 test using 1 worker
+
+(node:1043272) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › specs/command-form-generation.spec.ts:131:3 › Story 3.1: generated command forms › field description fallback tracks an existing error text change (1.5s)
+
+  1 passed (4.2s)

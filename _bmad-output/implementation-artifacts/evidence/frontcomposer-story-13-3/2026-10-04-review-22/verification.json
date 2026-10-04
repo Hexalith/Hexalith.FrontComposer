@@ -1,0 +1,939 @@
+{
+  "schema": "hexalith.frontcomposer.story-verification.v1",
+  "date": "2026-10-04",
+  "reviewedRevision": "374bb83392d8ab4e8a8397cfd312d09948fb0b9d",
+  "baselineCommit": "52fa0739ab8dfb02e1b9d8b5b05d2fd318f220d8",
+  "storyKey": "13-3-i-ux-b-preserve-focus-and-input-through-command-safety-outco",
+  "workingChanges": {
+    "tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs": "d8713cde4d765e10586c882db7992a77d4b70cc43f4442b8dbecd6caf1f26eb8",
+    "tests/e2e/specs/command-form-generation.spec.ts": "1c88cf857b94b3cd1c98218045df3466e60434919211696e42c553f4b5a4e5a4"
+  },
+  "review": {
+    "iteration": 22,
+    "layers": [
+      "blind-hunter",
+      "edge-case-hunter",
+      "verification-gap"
+    ],
+    "failedLayers": [],
+    "findings": [
+      {
+        "id": "BH22-01",
+        "layer": "blind-hunter",
+        "summary": "False validation-target result leaves a link inert.",
+        "verdict": "low",
+        "evidence": "carried E4-06/E17-01: the same scripted-focus fallback and no-focusable-target outcome retain their recorded rejection.",
+        "route": "reject",
+        "carried": true
+      },
+      {
+        "id": "BH22-02",
+        "layer": "blind-hunter",
+        "summary": "A hidden earlier validation target stops fallback exhaustion.",
+        "verdict": "false",
+        "evidence": "carried E11-04: the reproduction changes DOM visibility outside generated descriptor/editor visibility updates; the recorded generated-form refutation remains.",
+        "route": "reject",
+        "carried": true
+      },
+      {
+        "id": "BH22-03",
+        "layer": "blind-hunter",
+        "summary": "Withdrawn View action focuses the first duplicate zero-field trigger.",
+        "verdict": "low",
+        "evidence": "carried E21-01/BH5-09: shared trigger IDs and forced-return behavior are unchanged; instance-identity coordination retains the prior rejection.",
+        "route": "reject",
+        "carried": true
+      },
+      {
+        "id": "BH22-04",
+        "layer": "blind-hunter",
+        "summary": "Replacement capture arms recovery for unrelated removed content.",
+        "verdict": "low",
+        "evidence": "carried BH21-04/BH3-02: page-wide capture and unrelated-control removal retain their earlier rejection.",
+        "route": "reject",
+        "carried": true
+      },
+      {
+        "id": "BH22-05",
+        "layer": "blind-hunter",
+        "summary": "More than 32 replacement captures evict an outstanding focus origin.",
+        "verdict": "low",
+        "evidence": "The Map explicitly evicts its oldest key above 32 entries. The filed DOM reproduction demonstrates the bound, but normal specimen surfaces do not have 33 concurrently refreshing protected forms; replacing bounded retention with recovery-lifetime coordination adds complexity for this uncommon case.",
+        "route": "reject",
+        "carried": false
+      },
+      {
+        "id": "BH22-06",
+        "layer": "blind-hunter",
+        "summary": "Deferred destructive overlay return can overwrite denial focus.",
+        "verdict": "maybe-false",
+        "evidence": "carried AA17-01: the same deferred restoration and fast post-confirmation outcome remain recorded for a generated Destructive plus RequiresPolicy browser reproduction; the isolated helper sequence does not close that caller-path evidence. Medium if true.",
+        "route": "defer",
+        "carried": true
+      },
+      {
+        "id": "BH22-07",
+        "layer": "blind-hunter",
+        "summary": "Removing a form ancestor bypasses lifecycle settle recovery.",
+        "verdict": "low",
+        "evidence": "carried BH16-08/E10-16: the form-scoped settle watcher and whole-form unmount path are unchanged; broader observer coordination retains its recorded rejection.",
+        "route": "reject",
+        "carried": true
+      },
+      {
+        "id": "BH22-08",
+        "layer": "blind-hunter",
+        "summary": "A sibling form changes another correlation mapped-rejection classification.",
+        "verdict": "low",
+        "evidence": "carried BH6-06: the same command-type-wide mapped flag controls per-form wrappers; two same-type rejections need per-instance lifecycle classification, the previously rejected restructure.",
+        "route": "reject",
+        "carried": true
+      },
+      {
+        "id": "BH22-09",
+        "layer": "blind-hunter",
+        "summary": "An empty or title-only 400 produces no validation summary.",
+        "verdict": "low",
+        "evidence": "carried BH20-01/E3-13: the empty server-validation payload and proposed generic fallback retain the earlier malformed-response rejection.",
+        "route": "reject",
+        "carried": true
+      },
+      {
+        "id": "BH22-10",
+        "layer": "blind-hunter",
+        "summary": "A late clipboard completion relabels a newer rejection copied.",
+        "verdict": "low",
+        "evidence": "carried BH18-11/E8-04: overlapping clipboard and replacement-rejection ownership is the same narrow race previously rejected.",
+        "route": "reject",
+        "carried": true
+      },
+      {
+        "id": "BH22-11",
+        "layer": "blind-hunter",
+        "summary": "Case-variant field-map keys overcount MappedFieldCount.",
+        "verdict": "low",
+        "evidence": "carried BH9-07/E4-16: recovery consumes HasMappedFieldErrors rather than the count; duplicate normalized keys retain the earlier rejection.",
+        "route": "reject",
+        "carried": true
+      },
+      {
+        "id": "E22-01",
+        "layer": "edge-case-hunter",
+        "summary": "A sibling submission resets a mapped rejection announcement flag.",
+        "verdict": "low",
+        "evidence": "carried BH6-06: the same shared Fluxor flag and per-form rejection classification retain their earlier rejection.",
+        "route": "reject",
+        "carried": true
+      },
+      {
+        "id": "E22-02",
+        "layer": "edge-case-hunter",
+        "summary": "An old clipboard result labels a newer rejection copied.",
+        "verdict": "low",
+        "evidence": "carried E9-06/E8-04: the same pending-copy and replacement-rejection interleave retains its earlier rejection.",
+        "route": "reject",
+        "carried": true
+      },
+      {
+        "id": "E22-03",
+        "layer": "edge-case-hunter",
+        "summary": "Forced return from a stale View action selects another duplicate trigger.",
+        "verdict": "low",
+        "evidence": "carried E21-01/E15-02: unchanged shared-ID forced-return path retains its earlier rejection.",
+        "route": "reject",
+        "carried": true
+      },
+      {
+        "id": "E22-04",
+        "layer": "edge-case-hunter",
+        "summary": "Renderer infrastructure refresh unmounts numeric drafts and form validation.",
+        "verdict": "medium",
+        "evidence": "carried BH13-01/BH14-05: the unchanged baseline presentation gate replaces the form while authorization is not allowed; this separately recorded renderer-refresh follow-up retains its defer route.",
+        "route": "defer",
+        "carried": true
+      },
+      {
+        "id": "VG22-01",
+        "layer": "verification-gap",
+        "summary": "Generated background authorization replacement has no real browser refresh proof.",
+        "verdict": "medium",
+        "evidence": "carried VG11-02/BH18-07: mocked caller coverage and the helper-only browser proof still leave the same previously deferred parent-render/auth-refresh verification gap.",
+        "route": "defer",
+        "carried": true
+      },
+      {
+        "id": "VG22-02",
+        "layer": "verification-gap",
+        "summary": "In-place field-error changes lack fallback description coverage.",
+        "verdict": "medium",
+        "evidence": "Filed regression gap: existing tests introduce and remove errors but never exercise missing ARIA element reflection plus a text-only mutation. Add a real generated-editor browser regression that keeps invalid state true while changing the existing error text, then verifies correction removes that error description.",
+        "route": "patch",
+        "carried": false
+      },
+      {
+        "id": "PV22-01",
+        "layer": "parent-verification",
+        "summary": "Approved policy enrollment leaves the governance registry count obsolete.",
+        "verdict": "medium",
+        "evidence": "The full Shell default lane fails only CiGovernanceTests at line 928 because the current approved registry has eleven identities while the test pins nine. Compare its identity set with trusted_identities, retaining per-entry static command and evidence-only assertions.",
+        "route": "patch",
+        "carried": false
+      }
+    ],
+    "baselineDiffBytes": 1124959,
+    "baselineDiffSha256": "4a944ed2e87340252a2ce2d07cadecf03b16bef7ce1a4f3ec900009235255390",
+    "finalDiffBytes": 1128135,
+    "finalDiffSha256": "163a9aa3276ff69590b54caedb6c2e8ecc80fe728820720df98a47a74aba414e",
+    "diffScope": "All production/test/configuration/gitlink changes since the canonical baseline; _bmad-output claims/evidence excluded so only edge-case-hunter receives the separate spec."
+  },
+  "commands": [
+    {
+      "name": "typecheck",
+      "command": [
+        "npm",
+        "--prefix",
+        "tests/e2e",
+        "run",
+        "typecheck"
+      ],
+      "exitCode": 0,
+      "startedUtc": "2026-10-04T10:28:46.714862+00:00",
+      "completedUtc": "2026-10-04T10:28:47.114003+00:00",
+      "log": "typecheck.log.txt",
+      "logEvidence": {
+        "path": "typecheck.log.txt",
+        "sourceSha256": "f25f1003ff1cfe84552996098a4b5da48fac24aca38a162310dab5aa0f742da2",
+        "storedSha256": "e2f374da3f04f0db7af1e94cc2bd8a2eabc1efb23a47f683a589f89e461c19da",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors and trailing whitespace removed; one final newline; CRLF."
+      }
+    },
+    {
+      "name": "governance",
+      "command": [
+        "env",
+        "DiffEngine_Disabled=true",
+        "dotnet",
+        "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+        "-method",
+        "*ToolchainPins_MatchApprovedDotnetAndAspireVersions",
+        "-method",
+        "*CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds",
+        "-method",
+        "*EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval",
+        "-result-xml",
+        "/tmp/fc-story13-3-review-drl827oq/governance.xml"
+      ],
+      "exitCode": 0,
+      "startedUtc": "2026-10-04T10:28:46.714791+00:00",
+      "completedUtc": "2026-10-04T10:28:47.880370+00:00",
+      "log": "governance.log.txt",
+      "logEvidence": {
+        "path": "governance.log.txt",
+        "sourceSha256": "a7705f927a4b88b85ae924271abbffa1b0350bfeaa2fd29bc95cfc11894691fe",
+        "storedSha256": "b98701b2647a5701655ee7e96d7f21b00db6e776e9cfafda8ef84623ff72a36d",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors and trailing whitespace removed; one final newline; CRLF."
+      },
+      "result": [
+        {
+          "total": 3,
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "errors": 0,
+          "not-run": 0
+        }
+      ],
+      "resultSourceXmlSha256": "361c5806790f182a5fa539290bc717fadb7fa30ce2f1108c6dd2344df5b71415",
+      "aggregateSummaryEvidence": {
+        "path": "governance.summary.xml",
+        "sourceSha256": "724dcbea39e45dba35497ba932c58900c2b62735b824c69f7098fb27aa7318bb",
+        "storedSha256": "2d07e4ad1c5eae083b05c2817e094a4e87ce479803299a445f4428355251c0ca",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors removed; CRLF."
+      }
+    },
+    {
+      "name": "sourcetools-debug-build",
+      "command": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj",
+        "-c",
+        "Debug",
+        "-m:1"
+      ],
+      "exitCode": 0,
+      "startedUtc": "2026-10-04T10:29:30.081246+00:00",
+      "completedUtc": "2026-10-04T10:29:44.130066+00:00",
+      "log": "sourcetools-debug-build.log.txt",
+      "logEvidence": {
+        "path": "sourcetools-debug-build.log.txt",
+        "sourceSha256": "f64cc3def0256e9fdcbb9732c559b85f25759465c3fddba58c1a0f1cf0caa7b8",
+        "storedSha256": "a3d23ee24a14830bc9bd7a49ba64b3bb03e2de3885f8ae4a19b43c704de095fa",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors and trailing whitespace removed; one final newline; CRLF."
+      }
+    },
+    {
+      "name": "sourcetools-default",
+      "command": [
+        "env",
+        "DiffEngine_Disabled=true",
+        "dotnet",
+        "tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll",
+        "-trait-",
+        "Category=GovernanceBuild",
+        "-trait-",
+        "Category=Performance",
+        "-trait-",
+        "Category=e2e-palette",
+        "-trait-",
+        "Category=NightlyProperty",
+        "-trait-",
+        "Category=Quarantined",
+        "-result-xml",
+        "/tmp/fc-story13-3-review-drl827oq/sourcetools-default.xml"
+      ],
+      "exitCode": 0,
+      "startedUtc": "2026-10-04T10:30:12.923236+00:00",
+      "completedUtc": "2026-10-04T10:30:39.156890+00:00",
+      "log": "sourcetools-default.log.txt",
+      "logEvidence": {
+        "path": "sourcetools-default.log.txt",
+        "sourceSha256": "b2db443b9c57aedc2467b7f552656eb2cbc7443701aef9f0856a1a6b4f26f94a",
+        "storedSha256": "2ce85a45328587039c9f9ed6e31dea35cd723dedd1aaa96c4373b234b4907906",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors and trailing whitespace removed; one final newline; CRLF."
+      },
+      "result": [
+        {
+          "total": 1297,
+          "passed": 1297,
+          "failed": 0,
+          "skipped": 0,
+          "errors": 0,
+          "not-run": 0
+        }
+      ],
+      "resultSourceXmlSha256": "75016ba686a4d298085cbc74638cf25db67cfd243d3b614229925f7eee560ad0",
+      "aggregateSummaryEvidence": {
+        "path": "sourcetools-default.summary.xml",
+        "sourceSha256": "6c4c9a2817def2ab604481ea98d6a6ecf93a7a3c9cda6c05b5df7cd11fab4062",
+        "storedSha256": "0477b7c472ff9fbdb033c0b123092fec345c16952f16d693dc95ebf1a9d12be7",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors removed; CRLF."
+      }
+    },
+    {
+      "name": "shell-debug-build",
+      "command": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj",
+        "-c",
+        "Debug",
+        "-m:1"
+      ],
+      "exitCode": 0,
+      "startedUtc": "2026-10-04T10:30:12.922453+00:00",
+      "completedUtc": "2026-10-04T10:30:39.220595+00:00",
+      "log": "shell-debug-build.log.txt",
+      "logEvidence": {
+        "path": "shell-debug-build.log.txt",
+        "sourceSha256": "435c6c4457d1ead99c7c53392f6d3099fc21043d30bf2251331e0d413bd79bd8",
+        "storedSha256": "ab69fed53c6bdaa89b64dc5867f8582ed68a0efecf77610185180a36acb9e115",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors and trailing whitespace removed; one final newline; CRLF."
+      }
+    },
+    {
+      "name": "browser",
+      "command": [
+        "env",
+        "BASE_URL=http://127.0.0.1:55371",
+        "FC_E2E_COMMAND_SUBMISSION_CONFIGURATION=Debug",
+        "npm",
+        "--prefix",
+        "tests/e2e",
+        "run",
+        "test:chromium",
+        "--",
+        "--config",
+        "/tmp/fc-story13-3-review-drl827oq/browser.config.ts",
+        "specs/command-form-generation.spec.ts",
+        "specs/destructive-command-confirmation.spec.ts",
+        "specs/form-abandonment-guard.spec.ts",
+        "specs/one-at-a-time-execution-policy.spec.ts",
+        "specs/policy-gated-command-authorization.spec.ts",
+        "specs/specimen-accessibility.spec.ts"
+      ],
+      "exitCode": 0,
+      "startedUtc": "2026-10-04T10:30:50.482056+00:00",
+      "completedUtc": "2026-10-04T10:32:19.454598+00:00",
+      "log": "browser.log.txt",
+      "logEvidence": {
+        "path": "browser.log.txt",
+        "sourceSha256": "10baa0786570a9184a9a94c4fac9ea0be47c153d52c6288316e6134614ced37a",
+        "storedSha256": "1232f52f4cd9e008d024d7641f2e614b09c3fc14fd630070647dea9bd463ac6f",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors and trailing whitespace removed; one final newline; CRLF."
+      }
+    },
+    {
+      "name": "shell-default",
+      "command": [
+        "env",
+        "DiffEngine_Disabled=true",
+        "dotnet",
+        "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+        "-trait-",
+        "Category=GovernanceBuild",
+        "-trait-",
+        "Category=Performance",
+        "-trait-",
+        "Category=e2e-palette",
+        "-trait-",
+        "Category=NightlyProperty",
+        "-trait-",
+        "Category=Quarantined",
+        "-result-xml",
+        "/tmp/fc-story13-3-review-drl827oq/shell-default.xml"
+      ],
+      "exitCode": 1,
+      "startedUtc": "2026-10-04T10:30:50.482266+00:00",
+      "completedUtc": "2026-10-04T10:33:07.600874+00:00",
+      "log": "shell-default.log.txt",
+      "logEvidence": {
+        "path": "shell-default.log.txt",
+        "sourceSha256": "8b11064037043d48e5a098d21f70d4415893d8dafb61413ad38a398e75e256a7",
+        "storedSha256": "42215660bb173be89b5806987360b46ca185d9689f2eb797a027ca5828804bc3",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors and trailing whitespace removed; one final newline; CRLF."
+      },
+      "result": [
+        {
+          "total": 3098,
+          "passed": 3097,
+          "failed": 1,
+          "skipped": 0,
+          "errors": 0,
+          "not-run": 0
+        }
+      ],
+      "resultSourceXmlSha256": "bc8394d296ded8953310a6e66839c99ef69372508bf90aaaaddc86f6317fd01f",
+      "failedTests": [
+        "Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.DependencyGovernance_UsesExactRevisionsAndPolicyOwnedStaticModuleCommands"
+      ],
+      "aggregateSummaryEvidence": {
+        "path": "shell-default.summary.xml",
+        "sourceSha256": "9ebe5f7522bcc50941065283e24d02aaec7424adb655eeb793892ef77ff990b3",
+        "storedSha256": "fafa83ed58b2c9e8227558933e6c72ebadacde941c628c85a93268ae2158e375",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors removed; CRLF."
+      }
+    },
+    {
+      "name": "shell-patched-debug-build",
+      "command": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj",
+        "-c",
+        "Debug",
+        "-m:1"
+      ],
+      "exitCode": 0,
+      "startedUtc": "2026-10-04T10:34:10.410491+00:00",
+      "completedUtc": "2026-10-04T10:34:27.843766+00:00",
+      "log": "shell-patched-debug-build.log.txt",
+      "logEvidence": {
+        "path": "shell-patched-debug-build.log.txt",
+        "sourceSha256": "e333b4aede7731457a9aab20c2397e332879846e3af3eb70142a31b5848d8585",
+        "storedSha256": "f88d01f017274e1bf5d335afc5a4d556216b2751afe5544dcb045ff4a1845af4",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors and trailing whitespace removed; one final newline; CRLF."
+      }
+    },
+    {
+      "name": "governance-patched",
+      "command": [
+        "env",
+        "DiffEngine_Disabled=true",
+        "dotnet",
+        "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+        "-class",
+        "*CiGovernanceTests",
+        "-method",
+        "*ToolchainPins_MatchApprovedDotnetAndAspireVersions",
+        "-method",
+        "*CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds",
+        "-method",
+        "*EventStoreRuntimeIdentitySeparatesCurrentCompatibilityFromHistoricalApproval",
+        "-trait-",
+        "Category=GovernanceBuild",
+        "-result-xml",
+        "/tmp/fc-story13-3-review-drl827oq/governance-patched.xml"
+      ],
+      "exitCode": 0,
+      "startedUtc": "2026-10-04T10:34:43.916305+00:00",
+      "completedUtc": "2026-10-04T10:34:44.691210+00:00",
+      "log": "governance-patched.log.txt",
+      "logEvidence": {
+        "path": "governance-patched.log.txt",
+        "sourceSha256": "a85893a735341f7a2160b99a9ab93b9c7e6e00935fddbba26b9272301d595cbd",
+        "storedSha256": "c2fa96af01797f5a164fc41fd403bd436163e54c5c9d13bc7dd40511172f1e95",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors and trailing whitespace removed; one final newline; CRLF."
+      },
+      "result": [
+        {
+          "total": 2,
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "errors": 0,
+          "not-run": 0
+        }
+      ],
+      "resultSourceXmlSha256": "e98f6981aa254a593ee24637e2771c410ea7f72670826c903de9a6e3cb904806",
+      "aggregateSummaryEvidence": {
+        "path": "governance-patched.summary.xml",
+        "sourceSha256": "1c1d316e2b7b0a999cdfae1450a97603e7c629e704e5c83538219156c0717e0b",
+        "storedSha256": "77b4f04d382f0afa6e00756246aa547abc0cb7454fc788c582fbdeb8f5072c3a",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors removed; CRLF."
+      }
+    },
+    {
+      "name": "ci-governance-patched",
+      "command": [
+        "env",
+        "DiffEngine_Disabled=true",
+        "dotnet",
+        "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+        "-class",
+        "*CiGovernanceTests",
+        "-trait-",
+        "Category=GovernanceBuild",
+        "-result-xml",
+        "/tmp/fc-story13-3-review-drl827oq/ci-governance-patched.xml"
+      ],
+      "exitCode": 0,
+      "startedUtc": "2026-10-04T10:34:52.202488+00:00",
+      "completedUtc": "2026-10-04T10:35:30.763010+00:00",
+      "log": "ci-governance-patched.log.txt",
+      "logEvidence": {
+        "path": "ci-governance-patched.log.txt",
+        "sourceSha256": "9b893800cf2dbaad180e198185bf735426ea782ace16b27a7d839fb45dcd2b4f",
+        "storedSha256": "e07a2e2b2cd935c6b8dc5309094407be454b61b943318ad40192edb385624e8f",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors and trailing whitespace removed; one final newline; CRLF."
+      },
+      "result": [
+        {
+          "total": 85,
+          "passed": 85,
+          "failed": 0,
+          "skipped": 0,
+          "errors": 0,
+          "not-run": 0
+        }
+      ],
+      "resultSourceXmlSha256": "de83c1bf3014e4fbda8a5656435991084a38a61fcc29242f0835fdc6779e1c4e",
+      "aggregateSummaryEvidence": {
+        "path": "ci-governance-patched.summary.xml",
+        "sourceSha256": "8ec169b998d840e645c59717c030dcc649345eeb72d6f27873a5c3dc9ad961f6",
+        "storedSha256": "6d147d02f3072f1aa1a71997e87a7f6728720733357a11d0946c6925a8a7b4dd",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors removed; CRLF."
+      }
+    },
+    {
+      "name": "typecheck-patched",
+      "command": [
+        "npm",
+        "--prefix",
+        "tests/e2e",
+        "run",
+        "typecheck"
+      ],
+      "exitCode": 0,
+      "startedUtc": "2026-10-04T10:38:04.254417+00:00",
+      "completedUtc": "2026-10-04T10:38:04.566612+00:00",
+      "log": "typecheck-patched.log.txt",
+      "logEvidence": {
+        "path": "typecheck-patched.log.txt",
+        "sourceSha256": "f25f1003ff1cfe84552996098a4b5da48fac24aca38a162310dab5aa0f742da2",
+        "storedSha256": "e2f374da3f04f0db7af1e94cc2bd8a2eabc1efb23a47f683a589f89e461c19da",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors and trailing whitespace removed; one final newline; CRLF."
+      }
+    },
+    {
+      "name": "browser-fallback",
+      "command": [
+        "env",
+        "BASE_URL=http://127.0.0.1:55371",
+        "FC_E2E_COMMAND_SUBMISSION_CONFIGURATION=Debug",
+        "npm",
+        "--prefix",
+        "tests/e2e",
+        "run",
+        "test:chromium",
+        "--",
+        "--config",
+        "/tmp/fc-story13-3-review-drl827oq/browser.config.ts",
+        "specs/command-form-generation.spec.ts",
+        "--grep",
+        "field description fallback tracks an existing error text change"
+      ],
+      "exitCode": 1,
+      "startedUtc": "2026-10-04T10:38:04.254424+00:00",
+      "completedUtc": "2026-10-04T10:38:09.785629+00:00",
+      "log": "browser-fallback.log.txt",
+      "logEvidence": {
+        "path": "browser-fallback.log.txt",
+        "sourceSha256": "e74819a67ec27cbfc17d94905e3435b50472654ae49bd73b174a535a96ee6099",
+        "storedSha256": "1797c6cbb708df374d9cc6a2ad1745ac6fa690a3eb1dbec29e1a083dc1cd0872",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors and trailing whitespace removed; one final newline; CRLF."
+      }
+    },
+    {
+      "name": "shell-default-final",
+      "command": [
+        "env",
+        "DiffEngine_Disabled=true",
+        "dotnet",
+        "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+        "-trait-",
+        "Category=GovernanceBuild",
+        "-trait-",
+        "Category=Performance",
+        "-trait-",
+        "Category=e2e-palette",
+        "-trait-",
+        "Category=NightlyProperty",
+        "-trait-",
+        "Category=Quarantined",
+        "-result-xml",
+        "/tmp/fc-story13-3-review-drl827oq/shell-default-final.xml"
+      ],
+      "exitCode": 0,
+      "startedUtc": "2026-10-04T10:38:14.141126+00:00",
+      "completedUtc": "2026-10-04T10:39:50.429274+00:00",
+      "log": "shell-default-final.log.txt",
+      "logEvidence": {
+        "path": "shell-default-final.log.txt",
+        "sourceSha256": "70d42bddd335c6c9bf739dca3cad76b3a138734f7687098473858b68c92af15b",
+        "storedSha256": "ccb0996df2c2f2def9cdc707f91db722d550058df45e6950e84ec9521ec4e511",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors and trailing whitespace removed; one final newline; CRLF."
+      },
+      "result": [
+        {
+          "total": 3098,
+          "passed": 3098,
+          "failed": 0,
+          "skipped": 0,
+          "errors": 0,
+          "not-run": 0
+        }
+      ],
+      "resultSourceXmlSha256": "4dbb698fc235fbeccb3119da65e0cd94b0d17d2eb449dfc8f1ce9b67c509d7fe",
+      "aggregateSummaryEvidence": {
+        "path": "shell-default-final.summary.xml",
+        "sourceSha256": "de5fe0c2706f7d5f6e1fe1f876518d621b0b8e242158e8bc557ab11c577389fa",
+        "storedSha256": "4efa047f38184ffb258341a235ce4faf3b7dbe9a7bbce8d07fe41a13a433805c",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors removed; CRLF."
+      }
+    },
+    {
+      "name": "browser-fallback-patched",
+      "command": [
+        "env",
+        "BASE_URL=http://127.0.0.1:55371",
+        "FC_E2E_COMMAND_SUBMISSION_CONFIGURATION=Debug",
+        "npm",
+        "--prefix",
+        "tests/e2e",
+        "run",
+        "test:chromium",
+        "--",
+        "--config",
+        "/tmp/fc-story13-3-review-drl827oq/browser.config.ts",
+        "specs/command-form-generation.spec.ts",
+        "--grep",
+        "field description fallback tracks an existing error text change"
+      ],
+      "exitCode": 0,
+      "startedUtc": "2026-10-04T10:40:01.403871+00:00",
+      "completedUtc": "2026-10-04T10:40:06.093442+00:00",
+      "log": "browser-fallback-patched.log.txt",
+      "logEvidence": {
+        "path": "browser-fallback-patched.log.txt",
+        "sourceSha256": "12d04d64370ca2a7d9225c5b412387b2eca4572fe74517e6ab31f3b8619d077e",
+        "storedSha256": "547e586c425e710deea64e1cd16349c6abfb5f6d6107f0f4ae3faefdc17cf171",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors and trailing whitespace removed; one final newline; CRLF."
+      }
+    },
+    {
+      "name": "typecheck-final",
+      "command": [
+        "npm",
+        "--prefix",
+        "tests/e2e",
+        "run",
+        "typecheck"
+      ],
+      "exitCode": 0,
+      "startedUtc": "2026-10-04T10:40:57.434966+00:00",
+      "completedUtc": "2026-10-04T10:40:57.774146+00:00",
+      "log": "typecheck-final.log.txt",
+      "logEvidence": {
+        "path": "typecheck-final.log.txt",
+        "sourceSha256": "f25f1003ff1cfe84552996098a4b5da48fac24aca38a162310dab5aa0f742da2",
+        "storedSha256": "e2f374da3f04f0db7af1e94cc2bd8a2eabc1efb23a47f683a589f89e461c19da",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors and trailing whitespace removed; one final newline; CRLF."
+      }
+    },
+    {
+      "name": "browser-final",
+      "command": [
+        "env",
+        "BASE_URL=http://127.0.0.1:55371",
+        "FC_E2E_COMMAND_SUBMISSION_CONFIGURATION=Debug",
+        "npm",
+        "--prefix",
+        "tests/e2e",
+        "run",
+        "test:chromium",
+        "--",
+        "--config",
+        "/tmp/fc-story13-3-review-drl827oq/browser.config.ts",
+        "specs/command-form-generation.spec.ts",
+        "specs/destructive-command-confirmation.spec.ts",
+        "specs/form-abandonment-guard.spec.ts",
+        "specs/one-at-a-time-execution-policy.spec.ts",
+        "specs/policy-gated-command-authorization.spec.ts",
+        "specs/specimen-accessibility.spec.ts"
+      ],
+      "exitCode": 0,
+      "startedUtc": "2026-10-04T10:40:57.435713+00:00",
+      "completedUtc": "2026-10-04T10:42:16.450266+00:00",
+      "log": "browser-final.log.txt",
+      "logEvidence": {
+        "path": "browser-final.log.txt",
+        "sourceSha256": "6ae7b538c45261fd34c252788a7f1e23c844474fe41e496af90be866978f0cf6",
+        "storedSha256": "d6fd61fb9b5c54c5b7ab40b03dd7cde3fbd61b265bb3df67502e5af3e5cd5eb0",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors and trailing whitespace removed; one final newline; CRLF."
+      },
+      "result": {
+        "total": 52,
+        "passed": 52,
+        "failed": 0,
+        "skipped": 0
+      },
+      "xmlEvidence": {
+        "path": "browser-final.xml",
+        "sourceSha256": "f6e88e2267b0319c10de14bf775d7bcfb56ae0cfcad97dcc6247d1eba145f3ae",
+        "storedSha256": "1a0a64cfd04c6c83e9a3ab4bdb7978ae43bd3b2dc4a7d79f11ffe132b3f5fea3",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors removed; CRLF."
+      }
+    },
+    {
+      "name": "commitlint",
+      "command": [
+        "node",
+        "node_modules/@commitlint/cli/cli.js",
+        "--edit",
+        "/tmp/fc-story13-3-review-drl827oq/commit-message.txt",
+        "--verbose"
+      ],
+      "exitCode": 0,
+      "startedUtc": "2026-10-04T10:44:32.023457+00:00",
+      "completedUtc": "2026-10-04T10:44:32.232866+00:00",
+      "log": "commitlint.log.txt",
+      "logEvidence": {
+        "path": "commitlint.log.txt",
+        "sourceSha256": "ec620b8f704287c99d7df48455827603bf71a60172e17fe4951de8f2e93ec10d",
+        "storedSha256": "a5b00875fcba838674438734556c22fbf8aa9c4f5395867544a9020a46c7aa37",
+        "normalization": "Repository and NuGet paths made relative; temporary directory generalized; terminal colors and trailing whitespace removed; one final newline; CRLF."
+      }
+    }
+  ],
+  "defaultLaneExcludedTraits": [
+    "Category=GovernanceBuild",
+    "Category=Performance",
+    "Category=e2e-palette",
+    "Category=NightlyProperty",
+    "Category=Quarantined"
+  ],
+  "browser": {
+    "baseUrl": "http://127.0.0.1:55371",
+    "configuration": "Debug",
+    "environment": "Test",
+    "workers": 2,
+    "launchArgs": [
+      "--disable-gpu",
+      "--disable-software-rasterizer"
+    ]
+  },
+  "aspire": {
+    "startExitCode": 0,
+    "waitCounterExitCode": 0,
+    "describeCommand": [
+      "aspire",
+      "describe",
+      "--apphost",
+      "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+      "--non-interactive",
+      "--format",
+      "Json"
+    ],
+    "resources": [
+      {
+        "displayName": "counter-web",
+        "state": "Running",
+        "healthStatus": "Healthy",
+        "resourceType": "Project"
+      },
+      {
+        "displayName": "eventstore-admin-dapr-cli",
+        "state": "Finished",
+        "healthStatus": null,
+        "resourceType": "Executable"
+      },
+      {
+        "displayName": "eventstore-admin",
+        "state": "Running",
+        "healthStatus": "Healthy",
+        "resourceType": "Project"
+      },
+      {
+        "displayName": "eventstore-admin-ui-dapr-cli",
+        "state": "Finished",
+        "healthStatus": null,
+        "resourceType": "Executable"
+      },
+      {
+        "displayName": "eventstore-admin-ui-local-auth-password",
+        "state": "Running",
+        "healthStatus": "Healthy",
+        "resourceType": "Parameter"
+      },
+      {
+        "displayName": "eventstore-admin-ui-local-auth-username",
+        "state": "Running",
+        "healthStatus": "Healthy",
+        "resourceType": "Parameter"
+      },
+      {
+        "displayName": "eventstore-admin-ui",
+        "state": "Running",
+        "healthStatus": "Healthy",
+        "resourceType": "Project"
+      },
+      {
+        "displayName": "eventstore-dapr-cli",
+        "state": "Finished",
+        "healthStatus": null,
+        "resourceType": "Executable"
+      },
+      {
+        "displayName": "eventstore",
+        "state": "Running",
+        "healthStatus": "Healthy",
+        "resourceType": "Project"
+      },
+      {
+        "displayName": "frontcomposer-ui",
+        "state": "Running",
+        "healthStatus": "Healthy",
+        "resourceType": "Project"
+      },
+      {
+        "displayName": "parties-dapr-cli",
+        "state": "Finished",
+        "healthStatus": null,
+        "resourceType": "Executable"
+      },
+      {
+        "displayName": "parties",
+        "state": "Running",
+        "healthStatus": "Healthy",
+        "resourceType": "Project"
+      },
+      {
+        "displayName": "sample-dapr-cli",
+        "state": "Running",
+        "healthStatus": "Healthy",
+        "resourceType": "Executable"
+      },
+      {
+        "displayName": "sample",
+        "state": "Running",
+        "healthStatus": "Healthy",
+        "resourceType": "Project"
+      },
+      {
+        "displayName": "security-eventstore-client-password",
+        "state": "Running",
+        "healthStatus": "Healthy",
+        "resourceType": "Parameter"
+      },
+      {
+        "displayName": "security-eventstore-client-username",
+        "state": "Running",
+        "healthStatus": "Healthy",
+        "resourceType": "Parameter"
+      },
+      {
+        "displayName": "security",
+        "state": "Running",
+        "healthStatus": "Healthy",
+        "resourceType": "Container"
+      },
+      {
+        "displayName": "tenants-dapr-cli",
+        "state": "Finished",
+        "healthStatus": null,
+        "resourceType": "Executable"
+      },
+      {
+        "displayName": "tenants",
+        "state": "Running",
+        "healthStatus": "Healthy",
+        "resourceType": "Project"
+      },
+      {
+        "displayName": "tenants-ui",
+        "state": "Running",
+        "healthStatus": "Healthy",
+        "resourceType": "Project"
+      }
+    ],
+    "prebuiltAssets": true,
+    "stopOwnedAppHostExitCode": 0,
+    "remainingAppHosts": [
+      {
+        "appHostPath": "/home/administrator/projects/hexalith/tenants/src/Hexalith.Tenants.AppHost/Hexalith.Tenants.AppHost.csproj",
+        "status": "running"
+      }
+    ]
+  },
+  "commitlint": {
+    "version": "21.2.2",
+    "command": [
+      "node",
+      "node_modules/@commitlint/cli/cli.js",
+      "--edit",
+      "/tmp/fc-story13-3-review-drl827oq/commit-message.txt",
+      "--verbose"
+    ],
+    "exitCode": 0,
+    "message": "test: complete story 13.3 command safety verification\n",
+    "log": "commitlint.log.txt"
+  },
+  "completion": {
+    "specStatus": "done",
+    "sprintStatus": "review",
+    "newDeferredEntries": 0,
+    "carriedDeferredFindings": [
+      "BH22-06",
+      "E22-04",
+      "VG22-01"
+    ],
+    "blockingFailures": [],
+    "limitations": [
+      "Local validation uses Debug/project-reference assets per the Hexalith baseline; protected Release/NuGet gates were not run.",
+      "Firefox/WebKit, full solution/all-project lanes, and excluded advisory/isolated lanes were not rerun.",
+      "Aspire inspection used prebuilt assets rather than a fresh AppHost build.",
+      "Earlier renderer-refresh and confirmation-outcome follow-ups remain deferred; no Product or broader accessibility approval is claimed."
+    ]
+  }
+}

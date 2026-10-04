@@ -925,7 +925,9 @@ public sealed class CiGovernanceTests {
         JsonElement policy = policyDocument.RootElement;
         policy.GetProperty("schema").GetString().ShouldBe("hexalith.dependency-graph-policy.v1");
         JsonElement registry = policy.GetProperty("module_build_registry");
-        registry.EnumerateObject().Count().ShouldBe(9);
+        registry.EnumerateObject().Select(module => module.Name).Order(StringComparer.Ordinal).ShouldBe(
+            policy.GetProperty("trusted_identities").EnumerateArray()
+                .Select(module => module.GetProperty("identity").GetString()).Order(StringComparer.Ordinal));
         foreach (JsonProperty module in registry.EnumerateObject()) {
             JsonElement row = module.Value;
             string disposition = row.GetProperty("disposition").GetString().ShouldNotBeNull();
