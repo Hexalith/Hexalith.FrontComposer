@@ -216,6 +216,7 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
 
         await InitializeStoreAsync();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        IPendingCommandStateService pending = Services.GetRequiredService<IPendingCommandStateService>();
         INewItemIndicatorStateService indicators = Services.GetRequiredService<INewItemIndicatorStateService>();
         dispatcher.Dispatch(new CounterProjectionLoadedAction("epic-9-grid", [Counter("counter-existing", 1)]));
         IRenderedComponent<CounterProjectionView> grid = RenderGrid();
@@ -224,9 +225,12 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
         SubmitCrossRow("counter-first-wins");
         await grid.WaitForAssertionAsync(() => grid.FindAll(IndicatorSelector).Count.ShouldBe(1));
         NewItemIndicatorEntry first = indicators.Snapshot(ViewKey).Single();
-        SubmitCrossRow("counter-first-wins");
-        await grid.WaitForAssertionAsync(() =>
+        IRenderedComponent<CrossRowProviderTargetCommandForm> duplicate = SubmitCrossRow("counter-first-wins");
+        await duplicate.WaitForAssertionAsync(() =>
         {
+            pending.GetByMessageId("01GRZ3NDEKTSV4RRFFQ69G5FAV")
+                .ShouldNotBeNull()
+                .Status.ShouldBe(PendingCommandStatus.Confirmed);
             NewItemIndicatorEntry retained = indicators.Snapshot(ViewKey).Single();
             retained.MessageId.ShouldBe(first.MessageId);
             retained.CreatedAt.ShouldBe(first.CreatedAt);
@@ -313,15 +317,15 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
             Epic9DeleteTargetIdentityProvider>();
     }
 
-    private void SubmitCrossRow(string destinationId)
+    private IRenderedComponent<CrossRowProviderTargetCommandForm> SubmitCrossRow(string destinationId)
     {
-        Render<CrossRowProviderTargetCommandForm>(parameters => parameters
-                .Add(component => component.InitialValue, new CrossRowProviderTargetCommand
-                {
-                    DestinationId = destinationId,
-                }))
-            .Find("form")
-            .Submit();
+        IRenderedComponent<CrossRowProviderTargetCommandForm> form = Render<CrossRowProviderTargetCommandForm>(parameters => parameters
+            .Add(component => component.InitialValue, new CrossRowProviderTargetCommand
+            {
+                DestinationId = destinationId,
+            }));
+        form.Find("form").Submit();
+        return form;
     }
 
     private IRenderedComponent<CounterProjectionView> RenderGrid()
