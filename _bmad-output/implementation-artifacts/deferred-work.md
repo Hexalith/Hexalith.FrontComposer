@@ -10082,3 +10082,18 @@ Reconfirmed existing open items without new ids: bind transition message IDs to 
 - source_spec: `spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
   summary: DocFx reference selection may conflate equal-version assemblies from different TFMs. Natural owner: the separate test/CI/evidence repair.
   evidence: Prepare-DocFxReferences deduplicates by filename and greater assembly version, so equal identities keep the first input. The claim needs a real equal-name/equal-version dependency exposing different APIs across TFMs and a failing DocFx metadata fixture; current docs input order and prior gate evidence do not demonstrate that bad outcome. Medium if reproduced; separate docs/test repair ownership.
+
+## Deferred from: code review of spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md (2026-10-04, iteration 25)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: Story 13.4 hand-off. Unmapped rejections still speak "Submission rejected" through `role="alert"`/`aria-live="assertive"` instead of the canonical AM-14 "Command rejected. Review the message and try again." polite status.
+  evidence: Iteration 25 AA25-01. `FcLifecycleWrapper.razor:229`/`:234`/`:240` are unchanged since baseline `52fa0739`. VR-03 and the canonical AM-14 channel (`ux-design.md:179`) require one polite status announcement. Story 13.3's frozen Never-list keeps AM-14 ownership in Story 13.4, so 13.3 only keeps the existing path and suppresses it for mapped rejections. Story 13.4 must move the unmapped rejection to the shared polite status with the canonical copy.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: HFC2122 schedules removal of the public `FrontComposerShortcutRegistrar.FocusFirstColumnFilterAsync` in minor release 4.7.0. Natural owner: `spec-repair-tests-ci-and-release-publication`.
+  evidence: Iteration 25 BH25-03. `docs/diagnostics/diagnostic-registry.json:2512` sets `removedIn: "4.7.0"`, and the `[Obsolete]` message and `HFC2122.md` repeat "v4.7". Removing a public member in a minor release breaks semver and would trip package validation (CP0002) against a 4.6.0 baseline; the HFC0001 precedent removed at a major. Retarget to 5.0.0, or record an explicit policy exception.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: The 4.5→4.6 migration guide does not mention the HFC2122 deprecation of `FocusFirstColumnFilterAsync`. Natural owner: `spec-repair-tests-ci-and-release-publication`.
+  evidence: Iteration 25 BH25-04b. `docs/migrations/4.5-to-4.6.md` has no HFC2122 row, but upgrading to 4.6 raises a new compiler warning, which is an error under TreatWarningsAsErrors. Add a row that points to `HFC2122.md` and `FocusSolePageSearchAsync`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-3-preserve-focus-and-input-through-command-safety-outcomes.md`
+  summary: Confirm, then close, the Story 13.3 "Playwright specs do not run in CI" entry (VG2-01/VG4-11) and any visual-baseline entry blocked on the same Test host.
+  evidence: Iteration 25 VG25-O2. Since `b7384b97` (2026-10-01), `quality.yml` job `browser-regressions-linux` runs `npx playwright test --workers 4` (`:995`) with `ASPNETCORE_ENVIRONMENT: Test`. `playwright.config.ts` uses `testDir: './specs'` with no `testIgnore`, so the Story 13.3 specs are enrolled. No passing run or required-check status was verified, so do not close the entry until a run shows these specs passing. Later reviews should stop carrying the "not in CI" premise.
