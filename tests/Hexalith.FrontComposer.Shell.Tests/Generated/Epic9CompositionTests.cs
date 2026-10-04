@@ -225,17 +225,34 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
         SubmitCrossRow("counter-first-wins");
         await grid.WaitForAssertionAsync(() => grid.FindAll(IndicatorSelector).Count.ShouldBe(1));
         NewItemIndicatorEntry first = indicators.Snapshot(ViewKey).Single();
-        SubmitCrossRow("counter-first-wins");
-        await grid.WaitForAssertionAsync(() =>
+        const string DuplicateMessageId = "01GRZ3NDEKTSV4RRFFQ69G5FAV";
+        TaskCompletionSource<bool> duplicateConfirmed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        void ObservePendingChange(object? sender, EventArgs args)
         {
-            pending.GetByMessageId("01GRZ3NDEKTSV4RRFFQ69G5FAV")
-                .ShouldNotBeNull()
-                .Status.ShouldBe(PendingCommandStatus.Confirmed);
-            NewItemIndicatorEntry retained = indicators.Snapshot(ViewKey).Single();
-            retained.MessageId.ShouldBe(first.MessageId);
-            retained.CreatedAt.ShouldBe(first.CreatedAt);
-            grid.FindAll(IndicatorSelector).Count.ShouldBe(1);
-        });
+            if (pending.GetByMessageId(DuplicateMessageId)?.Status == PendingCommandStatus.Confirmed)
+            {
+                duplicateConfirmed.TrySetResult(true);
+            }
+        }
+
+        pending.Changed += ObservePendingChange;
+        try
+        {
+            SubmitCrossRow("counter-first-wins");
+            ObservePendingChange(null, EventArgs.Empty);
+            await duplicateConfirmed.Task.WaitAsync(
+                TimeSpan.FromSeconds(3),
+                Xunit.TestContext.Current.CancellationToken);
+        }
+        finally
+        {
+            pending.Changed -= ObservePendingChange;
+        }
+
+        NewItemIndicatorEntry retained = indicators.Snapshot(ViewKey).Single();
+        retained.MessageId.ShouldBe(first.MessageId);
+        retained.CreatedAt.ShouldBe(first.CreatedAt);
+        grid.FindAll(IndicatorSelector).Count.ShouldBe(1);
 
         time.Advance(TimeSpan.FromSeconds(10));
         await grid.WaitForAssertionAsync(() => grid.FindAll(IndicatorSelector).ShouldBeEmpty());
