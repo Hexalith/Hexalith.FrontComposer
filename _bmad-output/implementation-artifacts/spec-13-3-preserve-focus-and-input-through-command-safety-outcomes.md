@@ -2,7 +2,7 @@
 title: 'Story 13.3: Preserve Focus and Input Through Command Safety Outcomes'
 type: 'feature'
 created: '2026-09-28'
-status: 'done'
+status: 'in-progress'
 route: 'dispatch'
 review_loop_iteration: 3
 baseline_commit: '52fa0739ab8dfb02e1b9d8b5b05d2fd318f220d8'
@@ -331,6 +331,67 @@ Code review 2026-10-02 (iteration 17; diff `52fa0739ab8dfb02e1b9d8b5b05d2fd318f2
 - E17-17 route focus now scrolls the heading to the start of the view — `low`: the change comes from `b7384b97` (the repair spec), and Shell CSS has no sticky chrome over `main`.
 - E17-18 `_scriptFocusAvailable` is set without proof — `low`: carried E10-02/BH3-16/BH12-05.
 - E17-20 `MappedFieldCount` counts case-variant keys twice — `low`: carried E10-19/E4-16.
+
+Code review 2026-10-04 (iteration 23; diff `52fa0739..HEAD` at `8765891f`, narrowed to `src/` and `samples/`: 51 files, +3,249/−359. The story tests, CI/governance, and `_bmad-output` groups are left for follow-up runs. Layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor; no layer failed.)
+
+- [ ] [Review][Patch] Declared field groups have no programmatic group description (low, AA23-02; decided 2026-10-04: option (a), add an optional group description, rendered Fluent-styled and referenced by `aria-describedby` on the fieldset) [`src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs:2090`] — VR-01 (`ux-design.md:202`) and the epics Story 13.3 AC require that "every declared field group keeps its visible label, programmatic group name and description". The emitted `fieldset` (`CommandFormEmitter.cs:2090`) carries only `aria-labelledby` pointing at its legend, and `ProjectionFieldGroupAttribute` has no description member, so an adopter cannot declare a group description at all. Options:
+  - (a) add an optional group description, which is new public attribute surface, rendered as Fluent-styled text and referenced by `aria-describedby` on the fieldset;
+  - (b) record that "description" applies only when one is declared and that per-field descriptions satisfy VR-01, with no code change;
+  - (c) route it to a named follow-up story.
+
+  The other half of this finding, a missing separate "first error" control, was refuted (see Rejected).
+- [ ] [Review][Patch] The denial card's blank-body fallback uses the infrastructure "please retry" copy (low, AA23-01) [`src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs:1929`] — the card renders only when `_authorizationDenied` is true: a genuine denial, a sign-in requirement, or a server 403. When `_serverWarning.Detail` is blank, it falls back to `AuthorizationActionUnavailableMessage` ("This action could not be authorized right now. Please retry…"), and its literal fallback "This action is unavailable." matches no resource. This happens when an adopter's `CommandAuthorizationLocalizer` returns an empty value for `UnauthorizedCommandWarningMessage`, because `ResolveAuthorizationLocalized` has no blank check. Fix: fall back to `ResolveShellLocalized("UnauthorizedCommandWarningMessage", "You do not have permission to {0}.", <button label>)`, as `CreateServerDenialWarning` already does.
+- [ ] [Review][Patch] A guard's deferred Stay restore is suppressed by a sibling guard's open warning (low, BH23-06+E23-30) [`src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js:160`] — `FcFormAbandonmentGuard` renders its warning card and its `[data-fc-abandonment-root]` as unwrapped siblings, so `formRoot.parentElement.querySelector(...)` also matches another guard's warning under the same parent. Suppose two edited full-page forms share a container and both warn: pressing Stay on one skips its restore, and focus falls to `body` when its Stay button unmounts. Fix: scope the check to this guard's own card with `formRoot.previousElementSibling?.querySelector('[data-testid="fc-form-abandonment-warning"]')`.
+- [ ] [Review][Patch] The E20-01 reopened-warning guard has no test (medium, VG23-01) [`tests/e2e/specs/form-abandonment-guard.spec.ts:46`] — `restoreEditedOrigin` skips its deferred restore when the warning has reappeared (`fc-focus.js:160`, added in `bf40099f`). Every Chromium and bUnit case runs the restore with no warning in the DOM, so deleting that line keeps the suite green. Add a helper-level evaluate case:
+  1. Call `captureEditedOrigin(root, 'Description', n)`.
+  2. Insert a warning card holding a focused button immediately before `[data-fc-abandonment-root]`.
+  3. Call `restoreEditedOrigin(root)` and wait one frame.
+  4. Assert the button keeps focus.
+
+  Also add a case with a sibling guard's warning that still restores, which pins the BH23-06 patch.
+- [ ] [Review][Patch] Releasing the palette reservation on route navigation has no test (medium, VG23-02) [`src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js:628`] — when the palette navigates (`FcCommandPalette.razor.cs:164`), `preserveRouteFocusAfterOverlay` is the only code that releases the palette's non-durable reservation, because that path skips `restoreOverlayOrigin`. Without that release, every modal launch is refused for up to 5 s after a palette navigation: settings, the palette trigger, Ctrl+K, and destructive confirmations. No test references the function, and `route-contract.spec.ts:43` ends without opening another modal. Fix: after the full-page command form is visible in that test, open settings or press Ctrl+K, and assert that the settings heading or the search box takes focus.
+- [x] [Review][Defer] Carried findings already in `deferred-work.md` — deferred: pre-existing or already recorded, so no new ledger entry. They are:
+  - E23-21 (E7-17/BH12-12): the rejection catch notifies the EditContext off the renderer dispatcher.
+  - E23-32 (E3-16/BH13-01/E22-04): the renderer presentation gate replaces forms on infrastructure failures.
+  - E23-33 (E8-07/BH21-03): `bool?` switches show no inline error.
+
+**Rejected (iteration 23):**
+- BH23-01 counter-based sequence numbers remount every frame below a conditional message — `false`: `RenderTreeSequenceRewriter.AssignLiteralsOrFail` (`CommandFormEmitter.cs:708`) rewrites every `seq++`/`cseq++` into a literal for its source position, so a conditional frame never shifts later frames.
+- BH23-02 per-call `fc-focus.js` imports and duplicated dispose ladders — `low`: carried BH5-16/BH10-22. A shared focus-module service is a refactor, and no cost has been measured.
+- BH23-03 `FcDensityApplier` has a dead parameter, an undisposed semaphore, and a dispose race — `low`. The code comes from `6a4fb398`, outside 13.3:
+  - The parameter is overwritten on purpose, as its comment says.
+  - An unused `SemaphoreSlim` holds no wait handle.
+  - The race needs disposal between two synchronous statements, and then yields only a fire-and-forget fault.
+- BH23-04 `fieldControl` picks the first match of a comma-joined selector — `false`: `shadowRoot.querySelector` sees only shadow-tree nodes, and the emitted editors expose their control first. The Chromium `axField` checks pass for `fluent-text-input` and `fluent-dropdown` (`destructive-command-confirmation.spec.ts:130-168`).
+- BH23-05 route-heading selectors differ between modules — `low`: `#fc-main-content h1, main h1` is the baseline selector at every `fc-focus.js` site, and every FrontComposerShell host renders `#fc-main-content`. The wider `fc-expandinrow.js` selector comes from `b7384b97` (the repair spec).
+- BH23-06 (the `data-testid` part) production focus logic keys on test ids — `low`: the baseline `captureOverlayOrigin` and palette helpers already resolve elements by `data-testid`. The parent-scope part of this finding is kept as a patch above.
+- BH23-07 the Counter MCP gates hard-code type names, and specimen manifests are unreachable — `low`: this is sample-host code from `b7384b97` (the repair spec), outside 13.3, and it only affects the sample MCP surface.
+- BH23-08/E23-27 enabling both specimen flags makes the mapped branch unreachable — `false`: `command-submission.fixture.ts` enables at most one flag per describe block (`policy-gated-command-authorization.spec.ts:146`, `:191`).
+- BH23-09 inconsistent `role="button"` — `false`: the removal applies to `FluentLayoutHamburger`, a container around its own button. `FluentButton` hosts keep the generated-submit convention, and the finding names no harm.
+- BH23-10 a scope change keeps the form's denial, warning, and rejection state — `low`: the baseline form already kept `_serverWarning` and model values across `ScopeChangedAction`, with no keyed remount. The case needs a 403 or a mapped rejection followed by a tenant switch on the same mounted form, and the fix adds a scope subscription.
+- BH23-11/E23-16 one unexpected exception faults the blocked-outcome chain — `false`: carried BH10-04. Every interop and dispose path catches its failure types, including `TaskCanceledException`, and an `IsCurrent` check precedes each `StateHasChanged`.
+- AA23-02 (the "first error" part) there is no separate "first error" control — `false`: the epics AC names only summary links, the first link is the first-error path, and FM-07 lists the two as alternatives.
+- E23-01 to E23-07 uncaught `TaskCanceledException` on dialog, guard, summary, lifecycle, generated-form, and renderer interop (E23-03 adds the skipped capture reset) — `low`: carried E3-10/BH7-11/BH9-10/E10-07/E17-11, the codebase-wide timeout policy.
+- E23-08/E23-34 a durable reservation whose origin is `null` or `body` outlives a lost release, including after renderer disposal — `low`: carried E17-04. It needs both a lost release reply and a `null`/`body` capture origin, but destructive captures record the focused submit button or field.
+- E23-09 non-modal dialogs count as open modals — `low`: carried E17-05/BH2-14.
+- E23-10 a destructive submit from inside an open modal is refused silently — `low`: carried BH5-03/E5-02.
+- E23-11 duplicate zero-field trigger ids — `low`: carried E21-01/BH22-03.
+- E23-12 View focuses the first rendered active heading — `low`: carried BH20-06.
+- E23-13 a whole-form removal bypasses the settle watcher — `low`: carried BH22-07/BH16-08.
+- E23-14 the palette-entry guard leaks listeners when the dialog never opens — `low`: the code comes from `c6068f59` (the repair spec). The case needs a palette dialog that never opens while its search box stays connected, and the fix adds a timeout path.
+- E23-15 every generated form adds its own document-wide observer — `low`: carried BH17-05.
+- E23-17 Escape on a focused dialog button can cancel twice — `maybe-false`, low if real: generated renderers pass no `OnCancel`, so a repeat only calls `Dialog.CancelAsync` again after the single awaited result.
+- E23-18 an empty 400 renders no summary — `low`: carried BH22-09/BH20-01.
+- E23-19 Return does nothing without a history entry — `low`: carried E17-03.
+- E23-20 malformed localized templates throw `FormatException` — `low`: carried E17-13/E10-13.
+- E23-22 the generated `OnAfterRenderAsync` reads its focus flags off the dispatcher — `low`: the `ConfigureAwait(false)` hop precedes the flag read only until the observer installs, and a first-render denial never sets the flag (AM-26).
+- E23-23 a no-policy 403 replaces the form permanently — `false`: carried BH5-04/E5-11; this is VR-04 fail-closed behavior.
+- E23-24 focus falls to `body` when an allowed refresh replaces a focused denial heading — `low`: it needs a mid-session permission grant while focus stays on the denial heading, and the fix adds a capture-and-restore branch.
+- E23-25 the Test MCP transport policy combines with `RequireAuthorization()` into a bare 401 — `false`: `mcp-fail-closed-security.spec.ts:188` asserts the anonymous 401.
+- E23-26 an IPv4-mapped loopback address is rejected — `false`: the Test host binds `http://127.0.0.1:0` (`command-submission.fixture.ts:15`), not a dual-mode socket.
+- E23-28 `MappedFieldCount` counts case-variant keys twice — `low`: carried BH22-11/E17-20.
+- E23-29 group names that differ by case or whitespace split into two fieldsets — `low`: ordering and emission both compare names with `Ordinal`, so the split follows the names the adopter declared, and normalizing them adds a new rule.
+- E23-31 the `HFC2122` diagnostic id breaks adopters' `CS0618` suppressions — `false`: no release shipped the plain `[Obsolete]`. `v4.5.0` had none, and `v4.6.0` ships `HFC2122`.
 
 ## Implementation Notes
 
@@ -1115,6 +1176,49 @@ Also apply every iteration-3 `patch` row in the triage log.
 | 22 | verification-gap | VG22-01: Generated background authorization replacement has no real browser refresh proof. | medium | carried VG11-02/BH18-07: mocked caller coverage and the helper-only browser proof still leave the same previously deferred parent-render/auth-refresh verification gap. | defer |
 | 22 | verification-gap | VG22-02: In-place field-error changes lack fallback description coverage. | medium | Filed regression gap: existing tests introduce and remove errors but never exercise missing ARIA element reflection plus a text-only mutation. Add a real generated-editor browser regression that keeps invalid state true while changing the existing error text, then verifies correction removes that error description. | patch |
 | 22 | parent-verification | PV22-01: Approved policy enrollment leaves the governance registry count obsolete. | medium | The full Shell default lane fails only CiGovernanceTests at line 928 because the current approved registry has eleven identities while the test pins nine. Compare its identity set with trusted_identities, retaining per-entry static command and evidence-only assertions. | patch |
+| 23 | blind-hunter | BH23-01: Counter-based sequence numbers remount editors below a conditional message. | false | `RenderTreeSequenceRewriter.AssignLiteralsOrFail` (`CommandFormEmitter.cs:708`) converts each `seq++`/`cseq++` call site to a position literal. | reject |
+| 23 | blind-hunter | BH23-02: Every focus call imports and disposes `fc-focus.js`. | low | carried BH5-16/BH10-22: a shared module service is a refactor with no measured cost. | reject |
+| 23 | blind-hunter | BH23-03: `FcDensityApplier` dead parameter, undisposed semaphore, dispose race. | low | Out-of-story `6a4fb398`; the overwrite is commented and deliberate, the semaphore holds no handle, and the race window is two synchronous statements. | reject |
+| 23 | blind-hunter | BH23-04: `fieldControl` takes the first comma-selector match. | false | Shadow-root queries see only shadow nodes; Chromium `axField` passes for text input and dropdown (`destructive-command-confirmation.spec.ts:130-168`). | reject |
+| 23 | blind-hunter | BH23-05: Route heading selectors differ between modules. | low | Baseline selector at every `fc-focus.js` site; Shell hosts render `#fc-main-content`; the wider selector is from `b7384b97`. | reject |
+| 23 | blind-hunter | BH23-06: Focus logic keys on `data-testid`; the parent-scoped warning query matches sibling guards. | low | The test-id hooks predate the story; the guard renders its warning and root as unwrapped siblings, so `parentElement.querySelector` matches another guard's warning; scoping to `previousElementSibling` is direct. | patch |
+| 23 | blind-hunter | BH23-07: Counter MCP gates hard-code names; specimen manifests unreachable. | low | Sample-host code from `b7384b97`, outside 13.3. | reject |
+| 23 | blind-hunter | BH23-08: Both specimen flags make the mapped branch unreachable. | false | `command-submission.fixture.ts` enables at most one flag per describe block. | reject |
+| 23 | blind-hunter | BH23-09: `role="button"` removed in one place, added in another. | false | The removal is on `FluentLayoutHamburger`, not a `FluentButton`; no harm named. | reject |
+| 23 | blind-hunter | BH23-10: Scope change keeps form denial, warning, and rejection state. | low | Baseline already kept `_serverWarning` and values across `ScopeChangedAction`; needs a 403 or mapped rejection then a tenant switch on a mounted form; fix adds a subscription. | reject |
+| 23 | blind-hunter | BH23-11: One unexpected exception faults the blocked-outcome chain. | false | carried BH10-04: every interop/dispose path catches its failure types and `IsCurrent` precedes each `StateHasChanged`. | reject |
+| 23 | verification-gap | VG23-01: The E20-01 reopened-warning guard has no test. | medium | Filed evidence: every `restoreEditedOrigin` case runs with no warning in the DOM; deleting `fc-focus.js:160` keeps the suite green. | patch |
+| 23 | verification-gap | VG23-02: Palette-navigation reservation release has no test. | medium | Filed evidence: no test references `preserveRouteFocusAfterOverlay`; dropping `fc-focus.js:628` refuses modal launches for up to 5 s after a palette navigation. | patch |
+| 23 | acceptance-auditor | AA23-01: The denial card's blank-body fallback uses infrastructure retry copy. | low | `CommandFormEmitter.cs:1929` falls back to `AuthorizationActionUnavailableMessage` for a genuine denial when an adopter localizer returns a blank `UnauthorizedCommandWarningMessage`; swapping the key is direct. | patch |
+| 23 | acceptance-auditor | AA23-02: Field groups have no programmatic description; no separate "first error" control. | low | The fieldset has only `aria-labelledby` and the attribute has no description member, against the VR-01 wording; the "first error" half is false (the epics AC names only summary links). Adding a description is new public surface; decided 2026-10-04: option (a). | patch |
+| 23 | edge-case-hunter | E23-01–E23-07: `TaskCanceledException` escapes dialog, guard, summary, lifecycle, generated, and renderer interop. | low | carried E3-10/BH7-11/BH9-10/E10-07/E17-11 (codebase-wide timeout policy). | reject |
+| 23 | edge-case-hunter | E23-08: A durable reservation with a null or `body` origin never expires. | low | carried E17-04: needs a lost release reply plus a null/`body` capture origin. | reject |
+| 23 | edge-case-hunter | E23-09: Non-modal dialogs count as open modals. | low | carried E17-05/BH2-14. | reject |
+| 23 | edge-case-hunter | E23-10: A destructive submit inside a modal is refused silently. | low | carried BH5-03/E5-02. | reject |
+| 23 | edge-case-hunter | E23-11: Duplicate zero-field trigger ids misdirect forced return. | low | carried E21-01/BH22-03. | reject |
+| 23 | edge-case-hunter | E23-12: View focuses the first rendered active heading. | low | carried BH20-06. | reject |
+| 23 | edge-case-hunter | E23-13: Whole-form removal bypasses the settle watcher. | low | carried BH22-07/BH16-08. | reject |
+| 23 | edge-case-hunter | E23-14: Palette-entry guard leaks listeners when the dialog never opens. | low | From `c6068f59` (repair spec); needs a never-opening palette with a connected search; fix adds a timeout path. | reject |
+| 23 | edge-case-hunter | E23-15: One document observer per generated form. | low | carried BH17-05. | reject |
+| 23 | edge-case-hunter | E23-16: Unexpected exception faults the blocked-outcome chain. | false | Same refutation as BH23-11 (carried BH10-04). | reject |
+| 23 | edge-case-hunter | E23-17: Escape on a focused dialog button cancels twice. | maybe-false | Generated renderers pass no `OnCancel`; a repeat only re-calls `Dialog.CancelAsync` after the single awaited result. Low if real. | reject |
+| 23 | edge-case-hunter | E23-18: An empty 400 renders no summary. | low | carried BH22-09/BH20-01. | reject |
+| 23 | edge-case-hunter | E23-19: Return without history does nothing. | low | carried E17-03. | reject |
+| 23 | edge-case-hunter | E23-20: Malformed localized templates throw `FormatException`. | low | carried E17-13/E10-13. | reject |
+| 23 | edge-case-hunter | E23-21: The rejection catch mutates the store off the dispatcher. | maybe-false | carried E7-17/BH12-12; already in the ledger. Medium if true. | defer |
+| 23 | edge-case-hunter | E23-22: Generated `OnAfterRenderAsync` reads focus flags off the dispatcher. | low | The `ConfigureAwait(false)` hop precedes the read only until the observer installs; a first-render denial never sets the flag (AM-26). | reject |
+| 23 | edge-case-hunter | E23-23: A no-policy 403 replaces the form permanently. | false | carried BH5-04/E5-11: VR-04 fail-closed behavior. | reject |
+| 23 | edge-case-hunter | E23-24: An allowed refresh unmounts a focused denial heading. | low | Needs a mid-session permission grant while focus stays on the heading; fix adds a capture-and-restore branch. | reject |
+| 23 | edge-case-hunter | E23-25: The Test MCP transport policy combines into a bare 401. | false | `mcp-fail-closed-security.spec.ts:188` asserts the anonymous 401. | reject |
+| 23 | edge-case-hunter | E23-26: IPv4-mapped loopback is rejected. | false | The Test host binds `http://127.0.0.1:0` (`command-submission.fixture.ts:15`). | reject |
+| 23 | edge-case-hunter | E23-27: Both specimen flags make the mapped branch unreachable. | false | Same refutation as BH23-08. | reject |
+| 23 | edge-case-hunter | E23-28: `MappedFieldCount` counts case-variant keys twice. | low | carried BH22-11/E17-20. | reject |
+| 23 | edge-case-hunter | E23-29: Case- or whitespace-variant group names split fieldsets. | low | Ordering and emission both use `Ordinal`, so the split follows the declared names; normalizing adds a rule. | reject |
+| 23 | edge-case-hunter | E23-30: A sibling guard's warning suppresses this guard's Stay restore. | low | Same root cause as BH23-06. | patch |
+| 23 | edge-case-hunter | E23-31: `HFC2122` breaks adopter `CS0618` suppressions. | false | No release shipped the plain `[Obsolete]`: `v4.5.0` had none, and `v4.6.0` ships `HFC2122`. | reject |
+| 23 | edge-case-hunter | E23-32: Renderer replaces the form on transient authorization failures. | medium | carried E3-16/BH13-01/E22-04; already in the ledger. | defer |
+| 23 | edge-case-hunter | E23-33: `bool?` switches show no inline error. | medium | carried E8-07/BH21-03; already in the ledger. | defer |
+| 23 | edge-case-hunter | E23-34: A disposed renderer never retries its failed release. | low | Same root cause as E23-08 (carried E17-04). | reject |
 
 ## Design Notes
 
