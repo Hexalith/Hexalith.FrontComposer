@@ -225,8 +225,8 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
         SubmitCrossRow("counter-first-wins");
         await grid.WaitForAssertionAsync(() => grid.FindAll(IndicatorSelector).Count.ShouldBe(1));
         NewItemIndicatorEntry first = indicators.Snapshot(ViewKey).Single();
-        IRenderedComponent<CrossRowProviderTargetCommandForm> duplicate = SubmitCrossRow("counter-first-wins");
-        await duplicate.WaitForAssertionAsync(() =>
+        SubmitCrossRow("counter-first-wins");
+        await grid.WaitForAssertionAsync(() =>
         {
             pending.GetByMessageId("01GRZ3NDEKTSV4RRFFQ69G5FAV")
                 .ShouldNotBeNull()
@@ -317,15 +317,15 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
             Epic9DeleteTargetIdentityProvider>();
     }
 
-    private IRenderedComponent<CrossRowProviderTargetCommandForm> SubmitCrossRow(string destinationId)
+    private void SubmitCrossRow(string destinationId)
     {
-        IRenderedComponent<CrossRowProviderTargetCommandForm> form = Render<CrossRowProviderTargetCommandForm>(parameters => parameters
-            .Add(component => component.InitialValue, new CrossRowProviderTargetCommand
-            {
-                DestinationId = destinationId,
-            }));
-        form.Find("form").Submit();
-        return form;
+        Render<CrossRowProviderTargetCommandForm>(parameters => parameters
+                .Add(component => component.InitialValue, new CrossRowProviderTargetCommand
+                {
+                    DestinationId = destinationId,
+                }))
+            .Find("form")
+            .Submit();
     }
 
     private IRenderedComponent<CounterProjectionView> RenderGrid()
