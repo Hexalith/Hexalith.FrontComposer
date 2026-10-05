@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-10-04'
 status: 'in-review'
 route: 'dispatch'
-review_loop_iteration: 7
+review_loop_iteration: 8
 baseline_commit: '7dd5f7cf07122ac25e33732c02f31b47564518a1'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-13-context.md'
@@ -360,6 +360,49 @@ Grouped root causes: truthful command warning and idempotent/dismissed status co
 | VG7-02 | high | bad_spec | At that same first-observation deadline, ResolveTerminal returns DegradedExhausted and converges lifecycle, but generated CommandFormEmitter dispatches the original ConfirmedAction from observation.State; the form can report success after local exhaustion. |
 
 Grouped root causes: carried command warning/dismissal (BH7-01–02, BH7-04), stale and failure ordering (BH7-05–07, EC7-04–05), duplicate live status and timer ownership (BH7-08–09), fatal callback isolation (BH7-10), connection remount ownership (BH7-11), coordinator pending identity and cleared-group callback ownership (EC7-02–03), cap transition identity (EC7-06), and first terminal-at-deadline verification and form-state divergence (VG7-01–02). BH7-03 and BH7-12 are refuted; EC7-01 remains a carried pre-existing issue. The bad-spec groups require a loopback. `review_loop_iteration` is now 7, above the step-04 limit of 5, so this run halts for human escalation; lower patch and defer work is not processed.
+
+### Review iteration 8 — independent layers
+
+| ID | Verdict | Route | Evidence |
+| --- | --- | --- | --- |
+| BH8-01 | medium | patch (carried) | carried EC7-02: `Cancel` still clears `PendingIdentity` and leaves the identity in `Seen`, so a later announce of that identity returns at `SurfaceAnnouncementCoordinator.Announce`. |
+| BH8-02 | medium | patch (carried) | carried EC7-03: `Clear` still drops group objects after bumping version, and `Flush` still accepts a callback whose name and version match a newer group. |
+| BH8-03 | medium | patch (carried) | carried BH7-10: `Deliver` still catches every exception except `OperationCanceledException`, including `ExceptionGuard` fatal exceptions. |
+| BH8-04 | false | reject | `SubscribeWithReplay` invokes the subscriber under `_gate`, but `FcSurfaceStatus` only queues `InvokeAsync` to store the message and call `StateHasChanged`. That callback does not re-enter the coordinator, so the described deadlock does not occur. |
+| BH8-05 | maybe-false | defer | Generated `OnStateChanged` still calls `AnnounceProjectionState` before `InvokeAsync`. A concurrent Fluxor notification could interleave `_pendingLoadingGroup` and `_activeFailureGroup`; whether Fluxor can deliver those notifications concurrently is not settled by this code. Unverified medium. |
+| BH8-06 | medium | bad_spec (carried) | carried BH7-05: a terminal query failure and `FcProjectionStaleNotice` still share one surface, and the stale group can flush after the failure. |
+| BH8-07 | medium | patch (carried) | carried BH7-06: the stale-notice `InvokeAsync` callback still has no disposal guard before `Reconcile`. |
+| BH8-08 | medium | bad_spec (carried) | carried BH7-07: non-grid `EmitFailureShell` still creates `FcProjectionFailure` without the action message. |
+| BH8-09 | medium | bad_spec (carried) | carried EC7-05: that same non-grid failure shell still returns before cached rows and `FcProjectionStaleNotice`. |
+| BH8-10 | medium | bad_spec (carried) | carried EC6-03: `TrimResultMetadata` still evicts the oldest failed offset once failed results fill `ResultMetadataLimit`, so `CurrentFailedPage` can lose in-place Retry. |
+| BH8-11 | medium | patch (carried) | carried EC7-06: `FcMaxItemsCapNotice` still speaks only when `ResultIdentity` changes, so a new `MaxUnfilteredItems` can change the visible sentence without a new announcement. |
+| BH8-12 | false | reject | `PendingStartedAtByKey` falls back to `DateTimeOffset.UtcNow` only when `RegisteredAt` is null. Generated `LoadPageAsync` and in-place retry both set `RegisteredAt` from `TimeProvider.GetUtcNow()` before dispatch. |
+| BH8-13 | medium | bad_spec (carried) | carried BH7-09: `OnPhaseChangedFromTimer` still applies the live correlation and acceptance anchor inside the queued callback. |
+| BH8-14 | medium | bad_spec | Disconnect, or `TimeoutActionThresholdMs` below 10 seconds, enters `ActionPrompt` before the canonical 10-second mark. `OnPhaseChangedFromTimer` samples Degraded only on that callback and only when elapsed time is already at least 10 seconds, and the timer does not emit another phase change, so Degraded never starts. |
+| BH8-15 | low | patch | A blank `ViewKey` returns from `ReconcileVisibility` without cancelling `_slowTimer` or the active slow-query group, so a cleared view can still speak AM-08. |
+| BH8-16 | medium | patch (carried) | carried BH7-04: confirmed and idempotent dismissal still set local state to Idle and leave the coordinator message in place. |
+| BH8-17 | high | patch (carried) | carried BH7-01: generated fallback copy still says the command was not accepted, while `CreatePreAcceptWarning` says acceptance is unknown. |
+| BH8-18 | medium | patch (carried) | carried BH7-02: the generated warning still formats the 250 ms hint as “Retry after 0 seconds.” |
+| BH8-19 | high | bad_spec (carried) | carried VG7-02: `ResolveTerminal` can store `DegradedExhausted` at the polling budget, while generated `CommandFormEmitter` still dispatches `ConfirmedAction` from `observation.State`. |
+| BH8-20 | medium | patch (carried) | carried BH7-08: the rejected `FluentMessageBar` in `FcPendingCommandSummary` still has no `aria-live="off"`. |
+| BH8-21 | medium | bad_spec (carried) | carried BH7-11: connection-status disposal still does not clear `projection-connection` groups, and a remount restarts `_offlineEpisode` and `_recoveryEpisode` at zero. |
+| BH8-22 | low | patch | `fc-connectivity.js` still calls `invokeMethodAsync` without handling rejection after the .NET reference is gone. |
+| BH8-23 | false | reject | `DisposeAsync` waits on `_connectivityGate` only while initialization holds it, and `TryInitializeConnectivityAsync` releases that gate in `finally` after the JS calls return or throw. The wait is the in-flight call, not a stranded lock. |
+| BH8-24 | low | reject | `unwatchConnectivity` can throw `InvalidOperationException` during circuit teardown and skip disposing the .NET reference. The page is already going away, and covering that exception adds catch branches beyond a direct correction. |
+| BH8-25 | medium | defer | Visible lifecycle bars still use hardcoded English (“Submission acknowledged”, “Submission confirmed”, “Already confirmed”, and the action-prompt body) beside localized speech. Those literals predate this story’s announcement channel. |
+| BH8-26 | medium | patch | The defensive `LoadPageFailedAction` still stores “effect exited without terminal dispatch” as `ErrorMessage`, so that internal sentence can be shown and spoken. |
+| BH8-27 | false | reject | A null-item failure leaves `LoadedPageResult.ErrorMessage` null and stores the resource name only in `FailureByKey`. Generated failure speech uses `page.ErrorMessage ?? Localizer["Am30QueryFailed"]`, so it does not speak the English TCS exception or the raw resource name. |
+| BH8-28 | medium | patch | `ClassifyCommandAsync` still runs before `using (response)`, so a throw from classification skips disposal of the accepted response. |
+| BH8-29 | low | reject | A body read that outlives the two-second `WaitAsync` can fault unobserved after the linked token is cancelled. The command path already treats that timeout as unknown correlation, and observing the leftover task is more than a direct correction. |
+| BH8-30 | low | reject | The verification record and sprint status are behind this review loop. Correcting them means editing this build’s spec or its tracking note, which this review does not do. |
+| EC8-01 | medium | defer (carried) | carried EC7-01: terminal-to-Idle rejection predates Story 13.4, and a new attempt uses a new correlation. |
+| EC8-02 | medium | bad_spec (carried) | carried BH8-14: the same early `ActionPrompt` callback is the only Degraded sample, so a disconnected command can skip the 10-second Degraded state until the polling deadline. |
+| VG8-01 | medium | patch | Pre-verified gap: no `QueryAsync` test advances fake time across `MaxPendingCommandPollingDurationMs` and returns `Confirmed`. Removing the post-await `IsExpired` branch would still pass the current expiry tests and could store that confirmation. |
+| VG8-02 | medium | patch | Pre-verified gap: `HasRealFilter` treats search text and a `__status` chip as real filters, but `HandleLoadPageAsync` tests never send either. Removing those exceptions would still pass the empty-filter clamp tests and could truncate a filtered request. |
+| VG8-03 | medium | patch | Pre-verified gap: the safe failure test constructs `LoadPageEffects` without a localizer. Changing the localizer arm back to `ex.Message` would still pass it and could show transport text on a localized host. |
+| VG8-04 | medium | patch | Pre-verified gap: hidden-detail tests leave `ResultSettled` at its default true. Deleting `&& ResultSettled` would still pass them and could focus Clear filter before the filter result exists. |
+
+Grouped root causes: carried coordinator identity and cleared-group callbacks (BH8-01/02); fatal callback isolation (BH8-03); stale/failure precedence and non-grid failure rendering (BH8-06/08/09); failed-page metadata (BH8-10); lifecycle timer ownership and the 10-second Degraded sample (BH8-13/14, EC8-02); command truth versus generated form state (BH8-17/19). Those bad-spec groups require a loopback. `review_loop_iteration` is now 8, above the step-04 limit of 5, so this run halts for human escalation. Patch, defer, and reject rows are recorded and are not processed.
 
 ## Verification
 
