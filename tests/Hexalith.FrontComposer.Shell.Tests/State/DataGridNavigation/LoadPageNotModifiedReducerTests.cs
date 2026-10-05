@@ -58,6 +58,25 @@ public class LoadPageNotModifiedReducerTests {
     }
 
     [Fact]
+    public void NotModified_AfterFailure_ClearsFailedProvenanceWithoutChangingCache() {
+        const string viewKey = "orders:Counter.Domain.OrderProjection";
+        TaskCompletionSource<object> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        IReadOnlyList<object> cached = [new { Id = "order-1" }];
+        LoadedPageState state = new() {
+            PendingCompletionsByKey = ImmutableDictionary<(string ViewKey, int Skip), TaskCompletionSource<object>>.Empty.Add((viewKey, 0), completion),
+            PagesByKey = ImmutableDictionary<(string ViewKey, int Skip), IReadOnlyList<object>>.Empty.Add((viewKey, 0), cached),
+            FailureByKey = ImmutableDictionary<string, string>.Empty.Add(viewKey, "Data could not be loaded."),
+            LastResultByKey = ImmutableDictionary<string, LoadedPageResult>.Empty.Add(viewKey, new LoadedPageResult(1, "request", 0, true, false)),
+        };
+
+        LoadedPageState next = LoadedPageReducers.ReduceLoadPageNotModified(state, new LoadPageNotModifiedAction(viewKey, 0, cached, completion));
+
+        next.FailureByKey.ShouldNotContainKey(viewKey);
+        next.LastResultByKey.ShouldNotContainKey(viewKey);
+        next.PagesByKey[(viewKey, 0)].ShouldBeSameAs(cached);
+    }
+
+    [Fact]
     public void NotModified_NoMatchingPending_ReturnsStateUnchanged() {
         LoadedPageState state = new();
         LoadPageNotModifiedAction action = new(

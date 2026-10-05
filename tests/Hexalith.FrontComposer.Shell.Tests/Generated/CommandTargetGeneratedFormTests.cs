@@ -981,6 +981,99 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
             .Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
     }
 
+    [Theory]
+    [InlineData(CommandLifecycleState.IdempotentConfirmed, PendingCommandStatus.IdempotentConfirmed)]
+    [InlineData(CommandLifecycleState.NeedsReview, PendingCommandStatus.NeedsReview)]
+    [InlineData(CommandLifecycleState.Warning, PendingCommandStatus.Warning)]
+    [InlineData(CommandLifecycleState.DegradedExhausted, PendingCommandStatus.DegradedExhausted)]
+    public async Task EarlyTerminalOutcomeDispatchesItsExactGeneratedAction(
+        CommandLifecycleState outcome,
+        PendingCommandStatus pendingStatus) {
+        EarlyTerminalCommandService service = new(AcceptedMessageId, terminalState: outcome);
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        IPendingCommandStateService pending = Services.GetRequiredService<IPendingCommandStateService>();
+        IState<TwoFieldCompactCommandLifecycleState> state =
+            Services.GetRequiredService<IState<TwoFieldCompactCommandLifecycleState>>();
+        IActionSubscriber subscriber = Services.GetRequiredService<IActionSubscriber>();
+        object owner = new();
+        System.Collections.Concurrent.ConcurrentQueue<CommandLifecycleState> actions = new();
+        subscriber.SubscribeToAction<TwoFieldCompactCommandActions.IdempotentConfirmedAction>(
+            owner, _ => actions.Enqueue(CommandLifecycleState.IdempotentConfirmed));
+        subscriber.SubscribeToAction<TwoFieldCompactCommandActions.NeedsReviewAction>(
+            owner, _ => actions.Enqueue(CommandLifecycleState.NeedsReview));
+        subscriber.SubscribeToAction<TwoFieldCompactCommandActions.WarningAction>(
+            owner, _ => actions.Enqueue(CommandLifecycleState.Warning));
+        subscriber.SubscribeToAction<TwoFieldCompactCommandActions.DegradedExhaustedAction>(
+            owner, _ => actions.Enqueue(CommandLifecycleState.DegradedExhausted));
+        IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>();
+
+        try {
+            cut.Find("form").Submit();
+            cut.WaitForAssertion(() => {
+                service.DispatchCount.ShouldBe(1);
+                pending.GetByMessageId(AcceptedMessageId).ShouldNotBeNull().Status.ShouldBe(pendingStatus);
+                state.Value.State.ShouldBe(outcome);
+                actions.ToArray().ShouldBe([outcome]);
+                PendingCommandEntry entry = pending.GetByMessageId(AcceptedMessageId).ShouldNotBeNull();
+                Services.GetRequiredService<ILifecycleStateService>().GetState(entry.CorrelationId).ShouldBe(outcome);
+            });
+        }
+        finally {
+            subscriber.UnsubscribeFromAllActions(owner);
+        }
+    }
+
+    [Fact]
+    public async Task IdempotentConfirmationInvokesSuccessAndClearsDirtyStateOnce() {
+        EarlyTerminalCommandService service = new(AcceptedMessageId, terminalState: CommandLifecycleState.IdempotentConfirmed);
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        int callbacks = 0;
+        IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>(parameters => parameters
+            .Add(component => component.OnConfirmed, () => callbacks++));
+        cut.Find("fluent-text-input[name='Name']").Change("edited");
+        cut.Instance.IsDirty.ShouldBeTrue();
+
+        cut.Find("form").Submit();
+        cut.WaitForAssertion(() => {
+            callbacks.ShouldBe(1);
+            cut.Instance.IsDirty.ShouldBeFalse();
+        });
+        cut.Render();
+        callbacks.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task DegradedObservationDispatchesGeneratedActionAndKeepsCommandPending() {
+        LateTerminalCommandService service = new();
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        IPendingCommandStateService pending = Services.GetRequiredService<IPendingCommandStateService>();
+        IState<TwoFieldCompactCommandLifecycleState> state =
+            Services.GetRequiredService<IState<TwoFieldCompactCommandLifecycleState>>();
+        IActionSubscriber subscriber = Services.GetRequiredService<IActionSubscriber>();
+        object owner = new();
+        int degradedActions = 0;
+        subscriber.SubscribeToAction<TwoFieldCompactCommandActions.DegradedAction>(
+            owner, _ => Interlocked.Increment(ref degradedActions));
+        IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>();
+
+        try {
+            cut.Find("form").Submit();
+            cut.WaitForAssertion(() => state.Value.State.ShouldBe(CommandLifecycleState.Acknowledged));
+            service.EmitState(CommandLifecycleState.Degraded);
+            cut.WaitForAssertion(() => {
+                state.Value.State.ShouldBe(CommandLifecycleState.Degraded);
+                Volatile.Read(ref degradedActions).ShouldBe(1);
+                pending.GetByMessageId(AcceptedMessageId).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.Pending);
+            });
+        }
+        finally {
+            subscriber.UnsubscribeFromAllActions(owner);
+        }
+    }
+
     [Fact]
     public async Task PreAcceptCallbackForAnotherPendingMessageId_CannotResolveThatCommand() {
         Services.Replace(ServiceDescriptor.Scoped<ICommandService>(provider =>
@@ -1623,7 +1716,10 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
         }
     }
 
-    private class EarlyTerminalCommandService(string messageId, bool emitTerminal = true) : ICommandServiceWithLifecycleObservations {
+    private class EarlyTerminalCommandService(
+        string messageId,
+        bool emitTerminal = true,
+        CommandLifecycleState terminalState = CommandLifecycleState.Confirmed) : ICommandServiceWithLifecycleObservations {
         public int DispatchCount { get; private set; }
 
         public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
@@ -1637,7 +1733,7 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
             DispatchCount++;
             if (emitTerminal) {
                 onLifecycleObservation?.Invoke(new CommandLifecycleObservation(
-                    CommandLifecycleState.Confirmed,
+                    terminalState,
                     messageId,
                     CommandMateriality.Material,
                     TimeProvider.System.GetUtcNow()));
@@ -1942,6 +2038,12 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
 
         public void EmitSyncing() => Callback.ShouldNotBeNull().Invoke(new CommandLifecycleObservation(
             CommandLifecycleState.Syncing,
+            AcceptedMessageId,
+            CommandMateriality.Unknown,
+            TimeProvider.System.GetUtcNow()));
+
+        public void EmitState(CommandLifecycleState state) => Callback.ShouldNotBeNull().Invoke(new CommandLifecycleObservation(
+            state,
             AcceptedMessageId,
             CommandMateriality.Unknown,
             TimeProvider.System.GetUtcNow()));

@@ -4,7 +4,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.FluentUI.AspNetCore.Components
 
-<div role="status"
+<div role="@(SuppressStandaloneStatus ? null : "status")"
      aria-label="@ResolvedAriaLabel"
      class="fc-empty-state-body fc-projection-empty-placeholder">
     <FluentIcon Value="@FcFluentIcons.DocumentSearch48()" Color="Color.Default" Class="fc-empty-state-body__icon" />

@@ -1,0 +1,58 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Rendering
+@implements IDisposable
+@inject Hexalith.FrontComposer.Shell.Services.Announcements.ISurfaceAnnouncementCoordinator Announcements
+
+<div role="status" aria-live="polite" aria-atomic="true" data-testid="fc-surface-status">
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <span @key="_messageRevision" data-message-revision="@_messageRevision">@_message</span>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Surface { get; set; } = string.Empty;
+
+    private string _message = string.Empty;
+    private long _messageRevision;
+    private IDisposable? _subscription;
+    private string? _boundSurface;
+    private long _bindingGeneration;
+    private long _lastAppliedRevision = -1;
+    private bool _disposed;
+
+    protected override void OnParametersSet()
+    {
+        if (string.Equals(Surface, _boundSurface, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _subscription?.Dispose();
+        _boundSurface = Surface;
+        long bindingGeneration = ++_bindingGeneration;
+        _message = string.Empty;
+        _lastAppliedRevision = -1;
+        ++_messageRevision;
+        string boundSurface = Surface;
+        _subscription = Announcements.SubscribeWithReplay(boundSurface, (message, revision) => _ = InvokeAsync(() =>
+        {
+            if (!_disposed
+                && _bindingGeneration == bindingGeneration
+                && string.Equals(_boundSurface, boundSurface, StringComparison.Ordinal)
+                && revision > _lastAppliedRevision)
+            {
+                _lastAppliedRevision = revision;
+                _message = message;
+                ++_messageRevision;
+                StateHasChanged();
+            }
+        }));
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        _subscription?.Dispose();
+    }
+}

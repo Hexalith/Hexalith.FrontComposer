@@ -6,7 +6,7 @@
 
 <FluentCard data-testid="fc-scope-blocked">
     <FluentStack Orientation="Orientation.Vertical">
-        <h1>@Localizer["ScopeBlockedHeading"].Value</h1>
+        <h1 tabindex="-1" @ref="_heading">@Localizer["ScopeBlockedHeading"].Value</h1>
         <FluentText>@Localizer["ScopeBlockedMessage"].Value</FluentText>
     </FluentStack>
 </FluentCard>

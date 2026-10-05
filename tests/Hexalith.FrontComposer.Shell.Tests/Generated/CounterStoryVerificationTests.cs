@@ -181,7 +181,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
             state, new CounterProjectionLoadRequestedAction("initial-request"));
         CounterProjectionReducers.OnCounterProjectionLoaded(initial,
             new CounterProjectionLoadedAction("direct-initial-result", [new CounterProjection { Id = "direct" }]))
-            .Items.ShouldNotBeNull().Single().Id.ShouldBe("direct");
+            .Items.ShouldNotBeNull().Single().Id.ShouldBe("prior");
     }
 
     [Fact]

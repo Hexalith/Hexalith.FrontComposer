@@ -77,7 +77,7 @@ public sealed class LoadPageEffects {
             });
 
             string projectionTypeFqn = ExtractProjectionTypeFqn(action.ViewKey);
-            bool hasRealFilter = HasRealFilter(action.Filters);
+            bool hasRealFilter = HasRealFilter(action.Filters) || !string.IsNullOrWhiteSpace(action.SearchQuery);
             int maxUnfilteredItems = Math.Max(0, _options.CurrentValue.MaxUnfilteredItems);
             int take = ResolveTake(action, hasRealFilter, maxUnfilteredItems);
             if (take <= 0) {
@@ -87,7 +87,7 @@ public sealed class LoadPageEffects {
                     items: Array.Empty<object>(),
                     totalCount: maxUnfilteredItems,
                     elapsedMs: 0,
-                    completion: action.Completion));
+                    completion: action.Completion) { RequestIdentity = action.RequestIdentity, RequestGeneration = action.RequestGeneration, OperatorInitiated = action.OperatorInitiated });
                 return;
             }
 
@@ -111,7 +111,7 @@ public sealed class LoadPageEffects {
                     viewKey: action.ViewKey,
                     skip: action.Skip,
                     cachedItems: result.Items,
-                    completion: action.Completion));
+                    completion: action.Completion) { RequestIdentity = action.RequestIdentity, RequestGeneration = action.RequestGeneration });
                 return;
             }
 
@@ -125,7 +125,7 @@ public sealed class LoadPageEffects {
                 items: result.Items,
                 totalCount: totalCount,
                 elapsedMs: elapsedMs,
-                completion: action.Completion));
+                completion: action.Completion) { RequestIdentity = action.RequestIdentity, RequestGeneration = action.RequestGeneration, OperatorInitiated = action.OperatorInitiated });
         }
         catch (OperationCanceledException) {
             dispatcher.Dispatch(new LoadPageCancelledAction(action.ViewKey, action.Skip, action.Completion));
@@ -145,11 +145,12 @@ public sealed class LoadPageEffects {
                 _logger,
                 ex.ProjectionType,
                 ex.GetType().Name);
-            dispatcher.Dispatch(new LoadPageFailedAction(action.ViewKey, action.Skip, sectionUpdatingCopy, action.Completion));
+            dispatcher.Dispatch(new LoadPageFailedAction(action.ViewKey, action.Skip, sectionUpdatingCopy, action.Completion) { RequestIdentity = action.RequestIdentity, RequestGeneration = action.RequestGeneration, Take = action.Take });
         }
-        catch (Exception ex) {
-            string message = string.IsNullOrWhiteSpace(ex.Message) ? ex.GetType().Name : ex.Message;
-            dispatcher.Dispatch(new LoadPageFailedAction(action.ViewKey, action.Skip, message, action.Completion));
+        catch (Exception) {
+            // Transport exception text can contain endpoint, tenant, or response fragments.
+            string message = _localizer is null ? "Data could not be loaded." : _localizer["Am30QueryFailed"];
+            dispatcher.Dispatch(new LoadPageFailedAction(action.ViewKey, action.Skip, message, action.Completion) { RequestIdentity = action.RequestIdentity, RequestGeneration = action.RequestGeneration, Take = action.Take });
         }
         finally {
             ctr.Dispose();
@@ -163,7 +164,7 @@ public sealed class LoadPageEffects {
                         viewKey: action.ViewKey,
                         skip: action.Skip,
                         errorMessage: "effect exited without terminal dispatch",
-                        completion: action.Completion));
+                        completion: action.Completion) { RequestIdentity = action.RequestIdentity, RequestGeneration = action.RequestGeneration, Take = action.Take });
                 }
                 catch (Exception defensiveEx) {
                     FrontComposerWarningLog.ProjectionLoadTerminalDispatchFailed(
@@ -194,7 +195,8 @@ public sealed class LoadPageEffects {
 
     private static bool HasRealFilter(IImmutableDictionary<string, string> filters) {
         foreach (KeyValuePair<string, string> filter in filters) {
-            if (!filter.Key.StartsWith("__", StringComparison.Ordinal)
+            if ((!filter.Key.StartsWith("__", StringComparison.Ordinal)
+                    || string.Equals(filter.Key, ReservedFilterKeys.StatusKey, StringComparison.Ordinal))
                 && !string.IsNullOrWhiteSpace(filter.Value)) {
                 return true;
             }

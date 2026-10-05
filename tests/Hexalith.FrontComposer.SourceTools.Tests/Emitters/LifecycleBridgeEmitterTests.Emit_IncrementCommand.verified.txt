@@ -38,6 +38,16 @@ public sealed class IncrementCommandLifecycleBridge : global::System.IDisposable
                 a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Confirmed, null));
             _subscriber.SubscribeToAction<IncrementCommandActions.RejectedAction>(this,
                 a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Rejected, null));
+            _subscriber.SubscribeToAction<IncrementCommandActions.IdempotentConfirmedAction>(this,
+                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.IdempotentConfirmed, null));
+            _subscriber.SubscribeToAction<IncrementCommandActions.NeedsReviewAction>(this,
+                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.NeedsReview, null));
+            _subscriber.SubscribeToAction<IncrementCommandActions.WarningAction>(this,
+                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Warning, null));
+            _subscriber.SubscribeToAction<IncrementCommandActions.DegradedAction>(this,
+                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Degraded, null));
+            _subscriber.SubscribeToAction<IncrementCommandActions.DegradedExhaustedAction>(this,
+                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.DegradedExhausted, null));
             _subscriber.SubscribeToAction<IncrementCommandActions.ResetToIdleAction>(this,
                 OnResetToIdle);
         }
@@ -65,6 +75,10 @@ public sealed class IncrementCommandLifecycleBridge : global::System.IDisposable
     {
         bool closesSubscription = state is global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Confirmed
             or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Rejected
+            or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.IdempotentConfirmed
+            or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.NeedsReview
+            or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Warning
+            or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.DegradedExhausted
             or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Idle;
         global::System.IDisposable? subscription = null;
         lock (_gate)
@@ -140,7 +154,11 @@ public sealed class IncrementCommandLifecycleBridge : global::System.IDisposable
                 || _forwardingActions.ContainsKey((transition.CorrelationId, transition.NewState))
                 || !_lifecycleSubscriptions.ContainsKey(transition.CorrelationId)) return;
             if (transition.NewState is global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Confirmed
-                or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Rejected)
+                or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Rejected
+                or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.IdempotentConfirmed
+                or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.NeedsReview
+                or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Warning
+                or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.DegradedExhausted)
             {
                 // Claim terminal delivery while holding the gate. Removing before dispatch makes
                 // duplicate/re-entrant callbacks no-ops; disposal happens outside the gate.
@@ -156,6 +174,21 @@ public sealed class IncrementCommandLifecycleBridge : global::System.IDisposable
                 break;
             case global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Rejected:
                 _dispatcher.Dispatch(new IncrementCommandActions.RejectedAction(transition.CorrelationId, "Command rejected.", "Review the command and retry.", null, null, null, null));
+                break;
+            case global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.IdempotentConfirmed:
+                _dispatcher.Dispatch(new IncrementCommandActions.IdempotentConfirmedAction(transition.CorrelationId));
+                break;
+            case global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.NeedsReview:
+                _dispatcher.Dispatch(new IncrementCommandActions.NeedsReviewAction(transition.CorrelationId));
+                break;
+            case global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Warning:
+                _dispatcher.Dispatch(new IncrementCommandActions.WarningAction(transition.CorrelationId));
+                break;
+            case global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Degraded:
+                _dispatcher.Dispatch(new IncrementCommandActions.DegradedAction(transition.CorrelationId));
+                break;
+            case global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.DegradedExhausted:
+                _dispatcher.Dispatch(new IncrementCommandActions.DegradedExhaustedAction(transition.CorrelationId));
                 break;
             }
         }

@@ -286,8 +286,8 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         // another instance's successful submit.
         var current = LifecycleState.Value.State;
         var currentCorrelationId = LifecycleState.Value.CorrelationId;
-        if (current == CommandLifecycleState.Confirmed
-            && _previousLifecycleState != CommandLifecycleState.Confirmed
+        if (current is CommandLifecycleState.Confirmed or CommandLifecycleState.IdempotentConfirmed
+            && _previousLifecycleState is not (CommandLifecycleState.Confirmed or CommandLifecycleState.IdempotentConfirmed)
             && OnConfirmed.HasDelegate
             && !string.IsNullOrEmpty(_submittedCorrelationId)
             && string.Equals(currentCorrelationId, _submittedCorrelationId, StringComparison.Ordinal)) {
@@ -471,7 +471,11 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         var currentState = LifecycleState.Value.State;
         if (currentState != CommandLifecycleState.Idle
             && currentState != CommandLifecycleState.Rejected
-            && currentState != CommandLifecycleState.Confirmed)
+            && currentState != CommandLifecycleState.Confirmed
+            && currentState != CommandLifecycleState.IdempotentConfirmed
+            && currentState != CommandLifecycleState.NeedsReview
+            && currentState != CommandLifecycleState.Warning
+            && currentState != CommandLifecycleState.DegradedExhausted)
         {
             await PresentBlockedSubmissionAsync(
                 global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.PendingCommandAlreadyExists,
@@ -587,7 +591,9 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                     if (System.Threading.Volatile.Read(ref lifecycleCallbackClosed) == 1) return;
                     bool dispatchTerminalAction = false;
                     bool terminalApplied = false;
-                    if (observation.State is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected)
+                    if (observation.State is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected
+                        or CommandLifecycleState.IdempotentConfirmed or CommandLifecycleState.NeedsReview
+                        or CommandLifecycleState.Warning or CommandLifecycleState.DegradedExhausted)
                     {
                         lock (lifecycleCallbackGate)
                         {
@@ -600,9 +606,15 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                             }
                             var pendingOutcomeObservation = new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandOutcomeObservation(
                             global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandOutcomeSource.LiveNudgeRefresh,
-                            observation.State == CommandLifecycleState.Confirmed
-                                ? global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalOutcome.Confirmed
-                                : global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalOutcome.Rejected,
+                            observation.State switch
+                            {
+                                CommandLifecycleState.Confirmed => global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalOutcome.Confirmed,
+                                CommandLifecycleState.IdempotentConfirmed => global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalOutcome.IdempotentConfirmed,
+                                CommandLifecycleState.NeedsReview => global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalOutcome.NeedsReview,
+                                CommandLifecycleState.Warning => global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalOutcome.Warning,
+                                CommandLifecycleState.DegradedExhausted => global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalOutcome.DegradedExhausted,
+                                _ => global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalOutcome.Rejected,
+                            },
                             MessageId: observation.MessageId,
                             ObservedAt: observation.ObservedAt)
                         {
@@ -632,6 +644,8 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                         }
                     }
                     if (observation.State is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected
+                        or CommandLifecycleState.IdempotentConfirmed or CommandLifecycleState.NeedsReview
+                        or CommandLifecycleState.Warning or CommandLifecycleState.DegradedExhausted
                         && !terminalApplied) return;
                     // Guard against callbacks arriving after form disposal or cancellation (patch P10).
                     if (_disposed || cts.IsCancellationRequested
@@ -647,6 +661,21 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                                 break;
                             case CommandLifecycleState.Confirmed:
                                 Dispatcher.Dispatch(new IncrementCommandActions.ConfirmedAction(correlationId));
+                                break;
+                            case CommandLifecycleState.IdempotentConfirmed:
+                                Dispatcher.Dispatch(new IncrementCommandActions.IdempotentConfirmedAction(correlationId));
+                                break;
+                            case CommandLifecycleState.NeedsReview:
+                                Dispatcher.Dispatch(new IncrementCommandActions.NeedsReviewAction(correlationId));
+                                break;
+                            case CommandLifecycleState.Warning:
+                                Dispatcher.Dispatch(new IncrementCommandActions.WarningAction(correlationId));
+                                break;
+                            case CommandLifecycleState.Degraded:
+                                Dispatcher.Dispatch(new IncrementCommandActions.DegradedAction(correlationId));
+                                break;
+                            case CommandLifecycleState.DegradedExhausted:
+                                Dispatcher.Dispatch(new IncrementCommandActions.DegradedExhaustedAction(correlationId));
                                 break;
                             case CommandLifecycleState.Rejected:
                                 Dispatcher.Dispatch(new IncrementCommandActions.RejectedAction(correlationId, "Command rejected.", "Review the command and retry.", null, null, null, null));
@@ -752,20 +781,20 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             if (_disposed || cts.IsCancellationRequested) return;
             if (pendingRegistration is { Status: global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.MergedTerminal, Entry: { } mergedEntry })
             {
-                if (mergedEntry.Status is global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStatus.Confirmed
-                    or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStatus.IdempotentConfirmed)
+                switch (mergedEntry.Status)
                 {
-                    if (LifecycleState.Value.State != CommandLifecycleState.Confirmed)
-                    {
-                        Dispatcher.Dispatch(new IncrementCommandActions.ConfirmedAction(correlationId));
-                    }
-                }
-                else
-                {
-                    if (LifecycleState.Value.State != CommandLifecycleState.Rejected)
-                    {
-                        Dispatcher.Dispatch(new IncrementCommandActions.RejectedAction(correlationId, "Command rejected.", "Review the command and retry.", null, null, null, null));
-                    }
+                    case global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStatus.Confirmed:
+                        if (LifecycleState.Value.State != CommandLifecycleState.Confirmed) Dispatcher.Dispatch(new IncrementCommandActions.ConfirmedAction(correlationId)); break;
+                    case global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStatus.IdempotentConfirmed:
+                        if (LifecycleState.Value.State != CommandLifecycleState.IdempotentConfirmed) Dispatcher.Dispatch(new IncrementCommandActions.IdempotentConfirmedAction(correlationId)); break;
+                    case global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStatus.NeedsReview:
+                        if (LifecycleState.Value.State != CommandLifecycleState.NeedsReview) Dispatcher.Dispatch(new IncrementCommandActions.NeedsReviewAction(correlationId)); break;
+                    case global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStatus.Warning:
+                        if (LifecycleState.Value.State != CommandLifecycleState.Warning) Dispatcher.Dispatch(new IncrementCommandActions.WarningAction(correlationId)); break;
+                    case global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStatus.DegradedExhausted:
+                        if (LifecycleState.Value.State != CommandLifecycleState.DegradedExhausted) Dispatcher.Dispatch(new IncrementCommandActions.DegradedExhaustedAction(correlationId)); break;
+                    case global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStatus.Rejected:
+                        if (LifecycleState.Value.State != CommandLifecycleState.Rejected) Dispatcher.Dispatch(new IncrementCommandActions.RejectedAction(correlationId, "Command rejected.", "Review the command and retry.", null, null, null, null)); break;
                 }
                 if (Logger is not null) { LogCommandAcknowledgedDispatchSkipped(Logger, pendingRegistration.Status, correlationId); }
                 return;

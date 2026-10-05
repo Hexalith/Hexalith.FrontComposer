@@ -14,6 +14,7 @@ using Hexalith.FrontComposer.Shell.Components.EventStore;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.Infrastructure.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.Resources;
+using Hexalith.FrontComposer.Shell.Services.Announcements;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
@@ -69,10 +70,14 @@ public sealed class ReconnectReconcileSubscriptionIntegrationTests : BunitContex
         CultureInfo.CurrentUICulture = new CultureInfo("en");
         CultureInfo.CurrentCulture = new CultureInfo("en");
         JSInterop.Mode = JSRuntimeMode.Loose;
+        BunitJSModuleInterop connectivity = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-connectivity.js");
+        _ = connectivity.Setup<int>("watchConnectivity").SetResult(1);
+        _ = connectivity.Setup<bool>("isOnline").SetResult(true);
         Services.AddLogging();
         Services.AddSingleton<IStringLocalizer<FcShellResources>>(new StatusStubLocalizer());
         Services.AddFluentUIComponents();
         Services.AddSingleton<TimeProvider>(_time);
+        Services.AddSingleton<ISurfaceAnnouncementCoordinator>(new SurfaceAnnouncementCoordinator(_time));
 
         _connection = new ProjectionConnectionStateService(_time, NullLogger<ProjectionConnectionStateService>.Instance);
         _reconciliation = new ReconnectionReconciliationStateService(_time, NullLogger<ReconnectionReconciliationStateService>.Instance);
@@ -130,7 +135,7 @@ public sealed class ReconnectReconcileSubscriptionIntegrationTests : BunitContex
     }
 
     [Fact]
-    public async Task ReconnectThroughSubscriptionService_WithUnchangedReconcile_RejoinsButStaysSilent() {
+    public async Task ReconnectThroughSubscriptionService_WithUnchangedReconcile_ShowsRecoveryWithoutSweep() {
         _ = RegisterLane(ProjectionFallbackLaneRefreshOutcome.NotModified);
         ReconnectionReconciliationCoordinator coordinator = CreateCoordinator();
         await using FaultInjectingProjectionHubConnection harness = new();
@@ -143,11 +148,13 @@ public sealed class ReconnectReconcileSubscriptionIntegrationTests : BunitContex
 
         // Rejoin still happened on reconnect.
         harness.GetHitCount(HarnessCheckpoint.Join(ProjectionType, TenantId)).ShouldBe(2);
-        // Reconcile completed back to Idle without surfacing a confirmation.
-        cut.WaitForAssertion(() => _reconciliation.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Idle));
-        cut.Markup.ShouldNotContain(RefreshedCopy);
+        // Successful reconciliation is truthful recovery even when rows did not change.
+        cut.WaitForAssertion(() => _reconciliation.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Refreshed));
+        cut.Markup.ShouldContain(RefreshedCopy);
         // AC2 — a no-change reconcile emits no sweep marker.
         _dispatcher.Actions.OfType<MarkReconciliationSweepAction>().ShouldBeEmpty();
+        _time.Advance(TimeSpan.FromMilliseconds(NoticeDurationMs + 100));
+        cut.WaitForAssertion(() => _reconciliation.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Idle));
     }
 
     private Func<int> RegisterLane(ProjectionFallbackLaneRefreshOutcome outcome) {
@@ -239,6 +246,10 @@ public sealed class ReconnectReconcileSubscriptionIntegrationTests : BunitContex
             ["ReconnectStatusText"] = ReconnectingCopy,
             ["ReconciliationStatusText"] = "Refreshing data...",
             ["ReconnectedDataRefreshedText"] = RefreshedCopy,
+            ["Am05Reconnecting"] = ReconnectingCopy,
+            ["Am06Fallback"] = "Live updates are unavailable. Checking for updates.",
+            ["Am07Recovery"] = RefreshedCopy,
+            ["Am30Offline"] = "You are offline. Data cannot be refreshed.",
             ["SectionUpdatingText"] = "This section is being updated",
         };
 

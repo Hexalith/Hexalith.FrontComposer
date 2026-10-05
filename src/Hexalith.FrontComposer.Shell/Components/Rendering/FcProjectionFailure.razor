@@ -1,0 +1,21 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Rendering
+@using Hexalith.FrontComposer.Shell.Resources
+@using Microsoft.Extensions.Localization
+@using Microsoft.FluentUI.AspNetCore.Components
+@using Microsoft.AspNetCore.Components
+@inject IStringLocalizer<FcShellResources> Localizer
+
+<FluentCard data-testid="fc-projection-failure">
+    <FluentStack Orientation="Orientation.Vertical">
+        <FluentText>@(Message ?? Localizer["Am30QueryFailed"].Value)</FluentText>
+        <FluentButton Appearance="ButtonAppearance.Outline" OnClick="OnRetry">@Localizer["ProjectionRetry"].Value</FluentButton>
+    </FluentStack>
+</FluentCard>
+
+@code {
+    [Parameter]
+    public string? Message { get; set; }
+
+    [Parameter]
+    public EventCallback OnRetry { get; set; }
+}

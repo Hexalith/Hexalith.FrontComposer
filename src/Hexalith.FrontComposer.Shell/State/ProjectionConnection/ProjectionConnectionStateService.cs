@@ -45,6 +45,16 @@ public sealed class ProjectionConnectionStateService(
         => _publisher.Subscribe(handler, replay);
 
     /// <inheritdoc />
+    public void SetBrowserOffline(bool offline) {
+        if (_publisher.TryApply(
+                current => current.BrowserOffline == offline ? null : current with { BrowserOffline = offline },
+                out ProjectionConnectionSnapshot snapshot,
+                out Action<ProjectionConnectionSnapshot>[] handlers)) {
+            _publisher.Deliver(handlers, snapshot);
+        }
+    }
+
+    /// <inheritdoc />
     public void Apply(ProjectionConnectionTransition transition) {
         ArgumentNullException.ThrowIfNull(transition);
 
@@ -69,7 +79,13 @@ public sealed class ProjectionConnectionStateService(
                         transition.Status,
                         timeProvider.GetUtcNow(),
                         attempt,
-                        BoundCategory(transition.FailureCategory));
+                        BoundCategory(transition.FailureCategory)) {
+                        Epoch = current.Status == ProjectionConnectionStatus.Connected
+                            && transition.Status != ProjectionConnectionStatus.Connected
+                                ? current.Epoch + 1
+                                : current.Epoch,
+                        BrowserOffline = current.BrowserOffline,
+                    };
 
                     // P9 — short-circuit when no logical change occurred (status / attempt / category).
                     // Excludes LastTransitionAt because it always differs and would defeat the dedupe.

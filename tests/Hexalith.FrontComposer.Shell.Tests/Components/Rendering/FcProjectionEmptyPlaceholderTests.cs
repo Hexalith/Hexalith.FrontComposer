@@ -68,6 +68,16 @@ public sealed class FcProjectionEmptyPlaceholderTests : LayoutComponentTestBase 
     }
 
     [Fact]
+    public void GeneratedSurfaceCanSuppressThePlaceholderStatusRole() {
+        IRenderedComponent<FcProjectionEmptyPlaceholder> cut = Render<FcProjectionEmptyPlaceholder>(parameters => parameters
+            .Add(p => p.ProjectionType, typeof(OrderProjection))
+            .Add(p => p.SuppressStandaloneStatus, true));
+
+        cut.FindAll("[role='status']").ShouldBeEmpty();
+        cut.Markup.ShouldContain("No orders yet.");
+    }
+
+    [Fact]
     public void RendersFrenchAriaLabelForAssistiveTech() {
         CultureInfo french = new("fr-FR");
         CultureInfo.CurrentCulture = french;

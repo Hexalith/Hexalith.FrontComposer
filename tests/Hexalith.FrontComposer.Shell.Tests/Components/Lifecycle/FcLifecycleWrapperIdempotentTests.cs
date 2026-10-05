@@ -32,6 +32,8 @@ public sealed class FcLifecycleWrapperIdempotentTests : LifecycleWrapperTestBase
         push(IdempotentConfirmed());
 
         cut.Markup.ShouldContain("Another user already approved this order.");
+        cut.Find("[data-testid='fc-surface-status']").TextContent
+            .ShouldBe("Another user already approved this order.");
     }
 
     [Fact]

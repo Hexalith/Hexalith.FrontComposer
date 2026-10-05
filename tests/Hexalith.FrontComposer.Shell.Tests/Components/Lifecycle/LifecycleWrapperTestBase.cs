@@ -5,6 +5,7 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Components.Lifecycle;
 using Hexalith.FrontComposer.Shell.Options;
+using Hexalith.FrontComposer.Shell.Services.Announcements;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
 using Microsoft.AspNetCore.Components;
@@ -36,6 +37,7 @@ public abstract class LifecycleWrapperTestBase : BunitContext {
         _ = Services.AddSingleton<NavigationManager>(_ => new TestNavigationManager());
         FakeTime = new FakeTimeProvider(new DateTimeOffset(2026, 4, 16, 12, 0, 0, TimeSpan.Zero));
         _ = Services.AddSingleton<TimeProvider>(FakeTime);
+        _ = Services.AddSingleton<ISurfaceAnnouncementCoordinator, SurfaceAnnouncementCoordinator>();
         _ = Services.AddSingleton<IProjectionConnectionState, ProjectionConnectionStateService>();
     }
 

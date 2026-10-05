@@ -8,12 +8,14 @@
    to this banner — the banner does not need to recompute the filter predicate itself. *@
 
 @if (IsHiddenByFilter) {
-    <div role="status"
-         aria-live="polite"
+    <div role="group"
+         aria-live="off"
+         @ref="_bannerRef"
          class="fc-expanded-row-hidden-banner"
          data-testid="fc-expanded-row-hidden-banner">
-        <span class="fc-expanded-row-hidden-banner-text">@_bannerMessage</span>
+        <span id="@_descriptionId" class="fc-expanded-row-hidden-banner-text">@_bannerMessage</span>
         <FluentButton Appearance="ButtonAppearance.Subtle"
+                      aria-describedby="@_descriptionId"
                       OnClick="@OnClearFilterClickedAsync"
                       data-testid="fc-expanded-row-hidden-banner-clear">
             @Localizer["ExpandedRowHiddenByFilterBannerClearLink"].Value

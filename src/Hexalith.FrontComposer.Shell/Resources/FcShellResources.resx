@@ -547,7 +547,7 @@
     <comment>Story 5-5 P12 — distinct accessible label for the role=status indicator.</comment>
   </data>
   <data name="PendingCommandSummaryCountsTemplate" xml:space="preserve">
-    <value>{0} pending, {1} confirmed, {2} rejected, {3} needs review</value>
+    <value>{0} pending, {1} confirmed, {2} rejected, {3} needs review, {4} warnings, {5} expired</value>
     <comment>Story 4.5 AC5 — bounded count summary header. Numeric placeholders only.</comment>
   </data>
   <data name="PendingCommandSummaryPendingTemplate" xml:space="preserve">
@@ -565,6 +565,12 @@
   <data name="PendingCommandSummaryNeedsReviewTemplate" xml:space="preserve">
     <value>{0}: unresolved. Review the current data before retrying.</value>
     <comment>Story 5-5 — needs-review entry; {0} = command type display name.</comment>
+  </data>
+  <data name="PendingCommandSummaryWarningTemplate" xml:space="preserve">
+    <value>{0}: warning. Review the command status before retrying.</value>
+  </data>
+  <data name="PendingCommandSummaryExhaustedTemplate" xml:space="preserve">
+    <value>{0}: status check expired. Review the current data before retrying.</value>
   </data>
   <data name="PendingCommandSummaryRejectedTitleTemplate" xml:space="preserve">
     <value>{0} failed</value>
@@ -838,4 +844,28 @@
   <data name="ModuleTabsLabel" xml:space="preserve"><value>Module pages</value></data>
   <data name="ModuleOverviewLabel" xml:space="preserve"><value>Overview</value></data>
   <data name="ModuleOverviewDescription" xml:space="preserve"><value>Choose a destination from the navigation menu or use the command palette.</value></data>
+  <data name="Am01Loading" xml:space="preserve"><value>Loading {0}.</value></data>
+  <data name="Am02Empty" xml:space="preserve"><value>No {0} available.</value></data>
+  <data name="Am03Loaded" xml:space="preserve"><value>{0} loaded.</value></data>
+  <data name="Am04Stale" xml:space="preserve"><value>Data may be out of date.</value></data>
+  <data name="Am05Reconnecting" xml:space="preserve"><value>Connection lost. Reconnecting.</value></data>
+  <data name="Am06Fallback" xml:space="preserve"><value>Live updates are unavailable. Checking for updates.</value></data>
+  <data name="Am07Recovery" xml:space="preserve"><value>Connection restored. Data refreshed.</value></data>
+  <data name="Am07ConnectionRestored" xml:space="preserve"><value>Connection restored.</value></data>
+  <data name="Am08SlowQuery" xml:space="preserve"><value>This is taking longer than expected.</value></data>
+  <data name="Am09MaxItems" xml:space="preserve"><value>Showing the first {0} items. Refine filters to narrow the result.</value></data>
+  <data name="Am10Submitting" xml:space="preserve"><value>Submitting command.</value></data>
+  <data name="Am11Acknowledged" xml:space="preserve"><value>Command accepted. Waiting for confirmation.</value></data>
+  <data name="Am12Syncing" xml:space="preserve"><value>Command accepted. Updating the view.</value></data>
+  <data name="Am13Confirmed" xml:space="preserve"><value>Command confirmed.</value></data>
+  <data name="Am14Rejected" xml:space="preserve"><value>Command rejected. Review the message and try again.</value></data>
+  <data name="Am15NeedsReview" xml:space="preserve"><value>Command needs review before its result can be confirmed.</value></data>
+  <data name="Am16Warning" xml:space="preserve"><value>Command completed with a warning. Review the details.</value></data>
+  <data name="Am17Degraded" xml:space="preserve"><value>Confirmation is taking longer than expected. Review status or continue working.</value></data>
+  <data name="Am22DetailHidden" xml:space="preserve"><value>The expanded row is hidden by the current filters.</value></data>
+  <data name="Am24Exhausted" xml:space="preserve"><value>Confirmation was not received. Review status later or continue working.</value></data>
+  <data name="Am27NoMatches" xml:space="preserve"><value>No {0} match these filters.</value></data>
+  <data name="Am30QueryFailed" xml:space="preserve"><value>Data could not be loaded.</value></data>
+  <data name="Am30Offline" xml:space="preserve"><value>You are offline. Data cannot be refreshed.</value></data>
+  <data name="ProjectionRetry" xml:space="preserve"><value>Retry</value></data>
 </root>

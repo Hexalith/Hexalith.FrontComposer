@@ -64,7 +64,7 @@ public class CommandFluxorEmitterTests {
         source.ShouldContain("CommandLifecycleState.Syncing");
         source.ShouldContain("CommandLifecycleState.Confirmed");
         source.ShouldContain("CommandLifecycleState.Rejected");
-        source.ShouldContain("state.State is CommandLifecycleState.Syncing or CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected");
+        source.ShouldContain("state.State is CommandLifecycleState.Syncing or CommandLifecycleState.Degraded || IsTerminal(state.State)");
     }
 
     [Fact]

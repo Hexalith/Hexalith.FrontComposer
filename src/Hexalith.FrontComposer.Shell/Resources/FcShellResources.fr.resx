@@ -461,7 +461,7 @@
     <value>Nouvel élément ajouté hors des filtres actuels</value>
   </data>
   <data name="PendingCommandSummaryCountsTemplate" xml:space="preserve">
-    <value>{0} en attente, {1} confirmées, {2} rejetées, {3} à vérifier</value>
+    <value>{0} en attente, {1} confirmées, {2} rejetées, {3} à vérifier, {4} avertissements, {5} expirées</value>
   </data>
   <data name="PendingCommandSummaryPendingTemplate" xml:space="preserve">
     <value>{0} est toujours en attente. EventStore l'a acceptée et FrontComposer vérifie son statut.</value>
@@ -474,6 +474,12 @@
   </data>
   <data name="PendingCommandSummaryNeedsReviewTemplate" xml:space="preserve">
     <value>{0}&#160;: non résolue. Vérifiez les données actuelles avant toute nouvelle tentative.</value>
+  </data>
+  <data name="PendingCommandSummaryWarningTemplate" xml:space="preserve">
+    <value>{0}&#160;: avertissement. Vérifiez le statut de la commande avant toute nouvelle tentative.</value>
+  </data>
+  <data name="PendingCommandSummaryExhaustedTemplate" xml:space="preserve">
+    <value>{0}&#160;: délai de vérification écoulé. Vérifiez les données actuelles avant toute nouvelle tentative.</value>
   </data>
   <data name="PendingCommandSummaryRejectedTitleTemplate" xml:space="preserve">
     <value>{0} a échoué</value>
@@ -630,4 +636,28 @@
   <data name="ModuleTabsLabel" xml:space="preserve"><value>Pages du module</value></data>
   <data name="ModuleOverviewLabel" xml:space="preserve"><value>Vue d'ensemble</value></data>
   <data name="ModuleOverviewDescription" xml:space="preserve"><value>Choisissez une destination dans le menu de navigation ou utilisez la palette de commandes.</value></data>
+  <data name="Am01Loading" xml:space="preserve"><value>Chargement de {0}.</value></data>
+  <data name="Am02Empty" xml:space="preserve"><value>Aucun élément {0} disponible.</value></data>
+  <data name="Am03Loaded" xml:space="preserve"><value>{0} chargé.</value></data>
+  <data name="Am04Stale" xml:space="preserve"><value>Les données peuvent être obsolètes.</value></data>
+  <data name="Am05Reconnecting" xml:space="preserve"><value>Connexion perdue. Reconnexion en cours.</value></data>
+  <data name="Am06Fallback" xml:space="preserve"><value>Les mises à jour en direct sont indisponibles. Recherche de mises à jour.</value></data>
+  <data name="Am07Recovery" xml:space="preserve"><value>Connexion rétablie. Données actualisées.</value></data>
+  <data name="Am07ConnectionRestored" xml:space="preserve"><value>Connexion rétablie.</value></data>
+  <data name="Am08SlowQuery" xml:space="preserve"><value>Cette opération prend plus de temps que prévu.</value></data>
+  <data name="Am09MaxItems" xml:space="preserve"><value>Affichage des {0} premiers éléments. Affinez les filtres pour réduire le résultat.</value></data>
+  <data name="Am10Submitting" xml:space="preserve"><value>Envoi de la commande.</value></data>
+  <data name="Am11Acknowledged" xml:space="preserve"><value>Commande acceptée. En attente de confirmation.</value></data>
+  <data name="Am12Syncing" xml:space="preserve"><value>Commande acceptée. Mise à jour de la vue.</value></data>
+  <data name="Am13Confirmed" xml:space="preserve"><value>Commande confirmée.</value></data>
+  <data name="Am14Rejected" xml:space="preserve"><value>Commande rejetée. Consultez le message et réessayez.</value></data>
+  <data name="Am15NeedsReview" xml:space="preserve"><value>La commande doit être examinée avant que son résultat puisse être confirmé.</value></data>
+  <data name="Am16Warning" xml:space="preserve"><value>Commande terminée avec un avertissement. Consultez les détails.</value></data>
+  <data name="Am17Degraded" xml:space="preserve"><value>La confirmation prend plus de temps que prévu. Consultez l’état ou poursuivez votre travail.</value></data>
+  <data name="Am22DetailHidden" xml:space="preserve"><value>La ligne développée est masquée par les filtres actuels.</value></data>
+  <data name="Am24Exhausted" xml:space="preserve"><value>Confirmation non reçue. Consultez l’état plus tard ou poursuivez votre travail.</value></data>
+  <data name="Am27NoMatches" xml:space="preserve"><value>Aucun élément {0} ne correspond à ces filtres.</value></data>
+  <data name="Am30QueryFailed" xml:space="preserve"><value>Les données n’ont pas pu être chargées.</value></data>
+  <data name="Am30Offline" xml:space="preserve"><value>Vous êtes hors ligne. Les données ne peuvent pas être actualisées.</value></data>
+  <data name="ProjectionRetry" xml:space="preserve"><value>Réessayer</value></data>
 </root>

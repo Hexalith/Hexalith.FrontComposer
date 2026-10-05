@@ -10,6 +10,13 @@ const containedDialogs = new WeakSet();
 let lastEditedRootRef = null;
 let pendingAbandonmentStay = null;
 
+export function focusFirstButtonWithin(root) {
+    const button = root instanceof HTMLElement ? root.querySelector('fluent-button, button') : null;
+    if (!(button instanceof HTMLElement) || !button.isConnected) return false;
+    button.focus({ preventScroll: true });
+    return document.activeElement === button || button.contains(document.activeElement);
+}
+
 export function prepareTabNavigation(route, tabId) {
     pendingTabFocus = { path: normalizePath(new URL(route, document.baseURI).pathname), tabId };
 }

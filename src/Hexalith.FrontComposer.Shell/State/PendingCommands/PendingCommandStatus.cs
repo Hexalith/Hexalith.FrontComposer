@@ -7,4 +7,6 @@ public enum PendingCommandStatus {
     Rejected,
     IdempotentConfirmed,
     NeedsReview,
+    Warning,
+    DegradedExhausted,
 }

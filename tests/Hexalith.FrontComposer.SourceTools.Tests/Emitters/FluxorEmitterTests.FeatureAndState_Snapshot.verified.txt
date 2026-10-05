@@ -15,6 +15,9 @@ public record OrderProjectionState(bool IsLoading, IReadOnlyList<OrderProjection
     internal bool RequiresScopedRequest { get; init; }
     internal bool HasChangedScope { get; init; }
     internal string? ActiveCorrelationId { get; init; }
+    internal bool ActiveOperatorInitiated { get; init; }
+    internal string? LastResultCorrelationId { get; init; }
+    internal bool LastResultOperatorInitiated { get; init; }
 }
 
 /// <summary>

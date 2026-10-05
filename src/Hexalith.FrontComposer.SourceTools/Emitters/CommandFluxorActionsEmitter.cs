@@ -40,6 +40,11 @@ public static class CommandFluxorActionsEmitter {
         _ = sb.AppendLine("    /// <summary>Projection state confirmed -- the command fully resolved.</summary>");
         _ = sb.AppendLine("    public sealed record ConfirmedAction(string CorrelationId);");
         _ = sb.AppendLine();
+        foreach (string state in new[] { "IdempotentConfirmed", "NeedsReview", "Warning", "Degraded", "DegradedExhausted" }) {
+            _ = sb.AppendLine("    /// <summary>Preserves the " + state + " lifecycle outcome.</summary>");
+            _ = sb.AppendLine("    public sealed record " + state + "Action(string CorrelationId);");
+            _ = sb.AppendLine();
+        }
         _ = sb.AppendLine("    /// <summary>Command rejected by the domain. Form retains its field values.</summary>");
         _ = sb.AppendLine("    public sealed record RejectedAction(");
         _ = sb.AppendLine("        string CorrelationId,");

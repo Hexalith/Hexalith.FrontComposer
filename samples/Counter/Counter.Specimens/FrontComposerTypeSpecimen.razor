@@ -4,6 +4,8 @@
 @using Counter.Specimens.Domain
 @using Hexalith.FrontComposer.Contracts.Attributes
 @using Hexalith.FrontComposer.Shell.Components.Badges
+@using Hexalith.FrontComposer.Shell.Components.DataGrid
+@using Hexalith.FrontComposer.Shell.Components.Rendering
 @using Hexalith.FrontComposer.Shell.Components.Specimens
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web
@@ -140,6 +142,20 @@
         </details>
     </section>
 
+    @if (AnnouncementFocus) {
+        <section aria-label="Announcement focus fixture" data-testid="fc-announcement-focus-fixture">
+            <button type="button" @onclick="() => _focusHidden = true" data-testid="fc-focus-hide-detail">Hide expanded detail</button>
+            <button type="button" @onclick="() => _focusResult++" data-testid="fc-focus-repeat-result">Show later hidden result</button>
+            <FcExpandedRowHiddenBanner ViewKey="specimen-announcement-focus"
+                                       IsHiddenByFilter="_focusHidden"
+                                       ResultIdentity="@_focusResult.ToString(System.Globalization.CultureInfo.InvariantCulture)" />
+            <button type="button" @onclick="() => _focusBlocked = true" data-testid="fc-focus-block-scope">Block scope</button>
+            @if (_focusBlocked) {
+                <FcScopeBlocked />
+            }
+        </section>
+    }
+
     <nav aria-label="Specimen multi-level navigation" data-testid="fc-multi-level-nav">
         <h2>Multi-level navigation</h2>
         <ul>
@@ -166,6 +182,14 @@
     [Parameter]
     [SupplyParameterFromQuery(Name = "density")]
     public string? Density { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "announcementFocus")]
+    public bool AnnouncementFocus { get; set; }
+
+    private bool _focusHidden;
+    private bool _focusBlocked;
+    private int _focusResult;
 
     private string ResolvedTheme => Resolve(Theme, Themes, "light");
 

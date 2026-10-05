@@ -22,6 +22,7 @@ using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Registration;
 using Hexalith.FrontComposer.Shell.Services;
+using Hexalith.FrontComposer.Shell.Services.Announcements;
 using Hexalith.FrontComposer.Shell.Services.Auth;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Services.DerivedValues;
@@ -259,6 +260,7 @@ public static class ServiceCollectionExtensions {
         // Story 2-4 — TimeProvider is required by FcLifecycleWrapper + LifecycleThresholdTimer.
         // Register the system provider if the adopter has not already.
         services.TryAddSingleton(TimeProvider.System);
+        services.TryAddScoped<ISurfaceAnnouncementCoordinator, SurfaceAnnouncementCoordinator>();
 
         // Story 2-2 Task 3.5a — dev diagnostic sink (per-circuit scope).
         services.TryAddScoped<IDiagnosticSink, InMemoryDiagnosticSink>();

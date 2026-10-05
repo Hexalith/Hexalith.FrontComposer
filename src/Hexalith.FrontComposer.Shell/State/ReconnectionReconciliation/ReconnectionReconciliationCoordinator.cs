@@ -94,7 +94,7 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
         // P11 — accept caller-side cancellation as well as linked cancellation.
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested || linked.IsCancellationRequested) {
             if (IsCurrent(epoch)) {
-                _state.Complete(epoch, changed: false);
+                _state.Complete(epoch, changed: false, succeeded: false);
             }
 
             DisposeCompletedCts(linked);
@@ -106,7 +106,7 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
                 epoch,
                 ex.GetType().Name);
             if (IsCurrent(epoch)) {
-                _state.Complete(epoch, changed: false);
+                _state.Complete(epoch, changed: false, succeeded: false);
             }
 
             DisposeCompletedCts(linked);
@@ -130,7 +130,7 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
                 }
             }
 
-            _state.Complete(epoch, result.ChangedViewKeys.Count > 0);
+            _state.Complete(epoch, result.ChangedViewKeys.Count > 0, dataRead: result.RefreshedCount > 0);
 
             ScheduleSweepCleanup(epoch);
 

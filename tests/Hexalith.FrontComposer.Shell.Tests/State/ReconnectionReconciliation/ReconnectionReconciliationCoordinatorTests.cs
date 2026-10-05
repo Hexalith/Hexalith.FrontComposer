@@ -56,7 +56,7 @@ public sealed class ReconnectionReconciliationCoordinatorTests {
 
         _ = await sut.ReconcileAsync(TestContext.Current.CancellationToken);
 
-        state.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Idle);
+        state.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Refreshed);
         state.Current.Changed.ShouldBeFalse();
         // No sweep marker dispatched when no lane changed (AC5 silent no-change).
         dispatcher.Actions.OfType<MarkReconciliationSweepAction>().ShouldBeEmpty();

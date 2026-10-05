@@ -7,6 +7,7 @@ using Fluxor;
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Shell.Components.EventStore;
 using Hexalith.FrontComposer.Shell.Resources;
+using Hexalith.FrontComposer.Shell.Services.Announcements;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
 
@@ -46,10 +47,14 @@ public sealed class ReconnectReconcileStatusIntegrationTests : BunitContext {
         CultureInfo.CurrentUICulture = new CultureInfo("en");
         CultureInfo.CurrentCulture = new CultureInfo("en");
         JSInterop.Mode = JSRuntimeMode.Loose;
+        BunitJSModuleInterop connectivity = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-connectivity.js");
+        _ = connectivity.Setup<int>("watchConnectivity").SetResult(1);
+        _ = connectivity.Setup<bool>("isOnline").SetResult(true);
         Services.AddLogging();
         Services.AddSingleton<IStringLocalizer<FcShellResources>>(new StatusStubLocalizer());
         Services.AddFluentUIComponents();
         Services.AddSingleton<TimeProvider>(_time);
+        Services.AddSingleton<ISurfaceAnnouncementCoordinator>(new SurfaceAnnouncementCoordinator(_time));
 
         _connection = new ProjectionConnectionStateService(_time, NullLogger<ProjectionConnectionStateService>.Instance);
         _reconciliation = new ReconnectionReconciliationStateService(_time, NullLogger<ReconnectionReconciliationStateService>.Instance);
@@ -91,7 +96,7 @@ public sealed class ReconnectReconcileStatusIntegrationTests : BunitContext {
     }
 
     [Fact]
-    public async Task ReconcileWithoutChanges_StaysSilent_AndEmitsNoSweepMarker() {
+    public async Task ReconcileWithoutChanges_AnnouncesRecovery_AndEmitsNoSweepMarker() {
         StubScheduler scheduler = new(new ProjectionReconciliationRefreshResult(1, []));
         ReconnectionReconciliationCoordinator coordinator = new(
             scheduler,
@@ -105,8 +110,8 @@ public sealed class ReconnectReconcileStatusIntegrationTests : BunitContext {
 
         _ = await coordinator.ReconcileAsync(Xunit.TestContext.Current.CancellationToken);
 
-        cut.WaitForAssertion(() => _reconciliation.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Idle));
-        cut.Markup.ShouldNotContain("Reconnected -- data refreshed");
+        cut.WaitForAssertion(() => _reconciliation.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Refreshed));
+        cut.Markup.ShouldContain("Reconnected -- data refreshed");
         _dispatcher.Actions.OfType<MarkReconciliationSweepAction>().ShouldBeEmpty();
     }
 
@@ -147,6 +152,9 @@ public sealed class ReconnectReconcileStatusIntegrationTests : BunitContext {
             ["ReconciliationStatusText"] = "Refreshing data...",
             ["ReconnectedDataRefreshedText"] = "Reconnected -- data refreshed",
             ["SectionUpdatingText"] = "This section is being updated",
+            ["Am05Reconnecting"] = "Reconnecting...",
+            ["Am07Recovery"] = "Reconnected -- data refreshed",
+            ["Am30Offline"] = "You are offline. Data cannot be refreshed.",
         };
 
         public LocalizedString this[string name]

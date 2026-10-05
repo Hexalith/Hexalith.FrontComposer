@@ -74,9 +74,7 @@ public static class RazorEmitter {
         // Story 4-2 RF3 + Story 4-5 T2.5 — only views that inject IStringLocalizer<FcShellResources>
         // pull in the namespace; keeps non-badge non-expand-in-row snapshots byte-for-byte identical
         // to the Story 4-1 baseline. The condition mirrors the EmitInjections needsShellLocalizer guard.
-        if (NeedsShellLocalizer(model)) {
-            _ = sb.AppendLine("using Microsoft.Extensions.Localization;");
-        }
+        _ = sb.AppendLine("using Microsoft.Extensions.Localization;");
 
         _ = sb.AppendLine("using Microsoft.FluentUI.AspNetCore.Components;");
         _ = sb.AppendLine();
@@ -121,19 +119,19 @@ public static class RazorEmitter {
         // [ProjectionFieldGroup] catch-all heading) resolve the localised resources via
         // IStringLocalizer<FcShellResources>. Injected conditionally so projections without
         // either need do not pick up a superfluous DI dependency.
-        if (NeedsShellLocalizer(model)) {
-            _ = sb.AppendLine("    [Inject]");
-            _ = sb.AppendLine("    private IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> " + ColumnEmitter.ShellLocalizerFieldName + " { get; set; } = default!;");
-            _ = sb.AppendLine();
-        }
+        _ = sb.AppendLine("    [Inject]");
+        _ = sb.AppendLine("    private IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> " + ColumnEmitter.ShellLocalizerFieldName + " { get; set; } = default!;");
+        _ = sb.AppendLine("    [Inject]");
+        _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Shell.Services.Announcements.ISurfaceAnnouncementCoordinator Announcements { get; set; } = default!;");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    [Inject]");
+        _ = sb.AppendLine("    private IDispatcher Dispatcher { get; set; } = default!;");
+        _ = sb.AppendLine();
 
         // Story 4-4 T2.1 / T2.3 / T2.5 / T2.6 — grid-rendering strategies receive the
         // virtualization envelope (Dispatcher / FcShellOptions / scroll interop / page state /
         // page loader) plus the cascading RenderContext for density-driven row height.
         if (RoleBodyHelpers.IsGridRenderingStrategy(model.Strategy)) {
-            _ = sb.AppendLine("    [Inject]");
-            _ = sb.AppendLine("    private IDispatcher Dispatcher { get; set; } = default!;");
-            _ = sb.AppendLine();
             _ = sb.AppendLine("    [Inject]");
             _ = sb.AppendLine("    private Microsoft.Extensions.Options.IOptions<global::Hexalith.FrontComposer.Shell.Options.FcShellOptions> ShellOptions { get; set; } = default!;");
             _ = sb.AppendLine();
@@ -188,6 +186,9 @@ public static class RazorEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("    [Inject]");
         _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionViewOverrideRegistry ProjectionViewOverrideRegistry { get; set; } = default!;");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    [Inject]");
+        _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Lifecycle.IUlidFactory UlidFactory { get; set; } = default!;");
         _ = sb.AppendLine();
 
         _ = sb.AppendLine("#if DEBUG");
@@ -1044,10 +1045,20 @@ public static class RazorEmitter {
     private static void EmitLifecycleHooks(StringBuilder sb, RazorModel model) {
         bool isGrid = RoleBodyHelpers.IsGridRenderingStrategy(model.Strategy);
 
+        _ = sb.AppendLine("    private string? _pendingLoadingGroup;");
+        _ = sb.AppendLine("    private string? _activeFailureGroup;");
+        if (isGrid) {
+            _ = sb.AppendLine("    private string? _lastPageRequestIdentity;");
+            _ = sb.AppendLine("    private long _pageRequestGeneration;");
+            _ = sb.AppendLine("    private System.Threading.CancellationTokenSource? _failedRetryCancellation;");
+        }
+        _ = sb.AppendLine();
+
         _ = sb.AppendLine("    /// <inheritdoc />");
         _ = sb.AppendLine("    protected override void OnInitialized()");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        " + model.TypeName + "State.StateChanged += OnStateChanged;");
+        _ = sb.AppendLine("        AnnounceProjectionState();");
         if (isGrid) {
             _ = sb.AppendLine("        _newItemIndicatorSubscription = NewItemIndicators.Subscribe(_viewKey, OnNewItemIndicatorsChanged);");
             _ = sb.AppendLine("        LoadedPageState.StateChanged += OnStateChanged;");
@@ -1063,13 +1074,88 @@ public static class RazorEmitter {
         _ = sb.AppendLine("    private void OnStateChanged(object? sender, EventArgs e)");
         if (isGrid) {
             _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        AnnounceProjectionState();");
             _ = sb.AppendLine("        DismissMaterializedIndicators(" + model.TypeName + "State.Value.Items);");
             _ = sb.AppendLine("        _ = InvokeAsync(StateHasChanged);");
             _ = sb.AppendLine("    }");
         }
         else {
-            _ = sb.AppendLine("        => InvokeAsync(StateHasChanged);");
+            _ = sb.AppendLine("    { AnnounceProjectionState(); _ = InvokeAsync(StateHasChanged); }");
         }
+        _ = sb.AppendLine();
+
+        string surfaceExpression = isGrid ? "_viewKey" : "(typeof(" + model.TypeName + ").FullName ?? typeof(" + model.TypeName + ").Name)";
+        _ = sb.AppendLine("    private static string AnnouncementSurface => \"projection:\" + " + surfaceExpression + ";");
+        _ = sb.AppendLine("    private void AnnounceProjectionState()");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        var state = " + model.TypeName + "State.Value;");
+        _ = sb.AppendLine("        if (state.RequiresScopedRequest) { SetFailureGroup(null); Announcements.Clear(AnnouncementSurface); return; }");
+        _ = sb.AppendLine("        string operation = state.ActiveCorrelationId ?? state.LastResultCorrelationId ?? \"initial\";");
+        _ = sb.AppendLine("        string group = \"load:\" + operation;");
+        _ = sb.AppendLine("        if (_pendingLoadingGroup is { } prior && (!state.IsLoading || !string.Equals(prior, group, StringComparison.Ordinal)))");
+        _ = sb.AppendLine("        { Announcements.Cancel(AnnouncementSurface, prior); _pendingLoadingGroup = null; }");
+        _ = sb.AppendLine("        if (state.Error is not null)");
+        _ = sb.AppendLine("        { SetFailureGroup(group); Announcements.Announce(AnnouncementSurface, group, \"failure:\" + (state.LastResultCorrelationId ?? operation), " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am30QueryFailed\"].Value, terminal: true); return; }");
+        _ = sb.AppendLine("        if (state.IsLoading)");
+        _ = sb.AppendLine("        { SetFailureGroup(null); _pendingLoadingGroup = group; Announcements.Announce(AnnouncementSurface, group, \"loading\", " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am01Loading\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value); return; }");
+        if (isGrid) {
+            _ = sb.AppendLine("        bool filtered = AnyRealFilterActive(CurrentGridSnapshot());");
+            _ = sb.AppendLine("        if (LoadedPageState.Value.LastResultByKey.TryGetValue(_viewKey, out var page))");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            if (!string.Equals(page.RequestIdentity, PageRequestIdentity(CurrentGridSnapshot()), StringComparison.Ordinal)) { SetFailureGroup(null); return; }");
+            _ = sb.AppendLine("            string pageGroup = \"page:\" + page.Identity.ToString(System.Globalization.CultureInfo.InvariantCulture);");
+            _ = sb.AppendLine("            if (page.Failed) { SetFailureGroup(pageGroup); Announcements.Announce(AnnouncementSurface, pageGroup, \"failure\", page.ErrorMessage ?? " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am30QueryFailed\"].Value, terminal: true); return; }");
+            _ = sb.AppendLine("            SetFailureGroup(null);");
+            _ = sb.AppendLine("            if (page.Skip == 0 && page.TotalCount == 0) { Announcements.Announce(AnnouncementSurface, pageGroup, filtered ? \"filtered-zero\" : \"empty\", filtered ? " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am27NoMatches\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value : " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am02Empty\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value, terminal: true); return; }");
+            _ = sb.AppendLine("            if (page.OperatorInitiated) { Announcements.Announce(AnnouncementSurface, pageGroup, \"loaded\", " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am03Loaded\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value); }");
+            _ = sb.AppendLine("            return;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        SetFailureGroup(null);");
+            _ = sb.AppendLine("        if (filtered) { return; }");
+        }
+        else {
+            _ = sb.AppendLine("        bool filtered = false;");
+            _ = sb.AppendLine("        SetFailureGroup(null);");
+        }
+        _ = sb.AppendLine("        if (state.Items is null) { return; }");
+        _ = sb.AppendLine("        if (state.Items.Count == 0)");
+        _ = sb.AppendLine("        { Announcements.Announce(AnnouncementSurface, group, \"empty:\" + (state.LastResultCorrelationId ?? operation) + \"|\" + filtered, filtered ? " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am27NoMatches\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value : " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am02Empty\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value, terminal: true); return; }");
+        _ = sb.AppendLine("        if (state.LastResultOperatorInitiated)");
+        _ = sb.AppendLine("        { Announcements.Announce(AnnouncementSurface, group, \"data:\" + (state.LastResultCorrelationId ?? operation) + \"|\" + state.Items.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am03Loaded\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value); }");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private void SetFailureGroup(string? next)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        if (_activeFailureGroup is { } prior && !string.Equals(prior, next, StringComparison.Ordinal)) { Announcements.Cancel(AnnouncementSurface, prior); }");
+        _ = sb.AppendLine("        _activeFailureGroup = next;");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+
+        _ = sb.AppendLine("    private async Task RetryProjectionAsync()");
+        _ = sb.AppendLine("    {");
+        if (isGrid) {
+            _ = sb.AppendLine("        var snapshot = CurrentGridSnapshot();");
+            _ = sb.AppendLine("        var failedPage = CurrentFailedPage();");
+            _ = sb.AppendLine("        if (failedPage is not null)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            var completion = new System.Threading.Tasks.TaskCompletionSource<object>(System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously);");
+            _ = sb.AppendLine("            var retryCancellation = new System.Threading.CancellationTokenSource();");
+            _ = sb.AppendLine("            _failedRetryCancellation?.Cancel();");
+            _ = sb.AppendLine("            _failedRetryCancellation = retryCancellation;");
+            _ = sb.AppendLine("            Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadPageAction(");
+            _ = sb.AppendLine("                _viewKey, failedPage.Skip, failedPage.Take > 0 ? failedPage.Take : ShellOptions.Value.VirtualizationServerSideThreshold,");
+            _ = sb.AppendLine("                QueryFilters(snapshot), snapshot?.SortColumn, snapshot?.SortDescending ?? false, SearchQuery(snapshot),");
+            _ = sb.AppendLine("                completion, retryCancellation.Token)");
+            _ = sb.AppendLine("                { RequestIdentity = failedPage.RequestIdentity, RequestGeneration = LoadedPageState.Value.ActiveRequestGenerationByView.TryGetValue(_viewKey, out var generation) ? generation : null, OperatorInitiated = true, RegisteredAt = TimeProvider.GetUtcNow() });");
+            _ = sb.AppendLine("            try { _ = await completion.Task.WaitAsync(retryCancellation.Token).ConfigureAwait(true); }");
+            _ = sb.AppendLine("            catch (System.Exception) { /* The failed result is rendered by the existing view. */ }");
+            _ = sb.AppendLine("            finally { if (System.Object.ReferenceEquals(_failedRetryCancellation, retryCancellation)) { _failedRetryCancellation = null; } retryCancellation.Dispose(); }");
+            _ = sb.AppendLine("            return;");
+            _ = sb.AppendLine("        }");
+        }
+        _ = sb.AppendLine("        Dispatcher.Dispatch(new " + model.TypeName + "LoadRequestedAction(UlidFactory.NewUlid(), true));");
+        _ = sb.AppendLine("        await Task.CompletedTask;");
+        _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
 
         if (isGrid) {
@@ -1159,6 +1245,11 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        var snapshot = CurrentGridSnapshot();");
             _ = sb.AppendLine("        var filters = QueryFilters(snapshot);");
             _ = sb.AppendLine("        var searchQuery = SearchQuery(snapshot);");
+            _ = sb.AppendLine("        var requestIdentity = PageRequestIdentity(snapshot);");
+            _ = sb.AppendLine("        bool operatorInitiated = _lastPageRequestIdentity is null ? AnyRealFilterActive(snapshot) : !string.Equals(_lastPageRequestIdentity, requestIdentity, StringComparison.Ordinal);");
+            _ = sb.AppendLine("        if (_lastPageRequestIdentity is null || !string.Equals(_lastPageRequestIdentity, requestIdentity, StringComparison.Ordinal))");
+            _ = sb.AppendLine("        { _pageRequestGeneration = System.Math.Max(_pageRequestGeneration, LoadedPageState.Value.ActiveRequestGenerationByView.TryGetValue(_viewKey, out var observedGeneration) ? observedGeneration : 0) + 1; }");
+            _ = sb.AppendLine("        _lastPageRequestIdentity = requestIdentity;");
             _ = sb.AppendLine("        Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadPageAction(");
             _ = sb.AppendLine("            viewKey: _viewKey,");
             _ = sb.AppendLine("            skip: skip,");
@@ -1168,7 +1259,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("            sortDescending: snapshot?.SortDescending ?? false,");
             _ = sb.AppendLine("            searchQuery: searchQuery,");
             _ = sb.AppendLine("            completion: completion,");
-            _ = sb.AppendLine("            cancellationToken: ct));");
+            _ = sb.AppendLine("            cancellationToken: ct) { RequestIdentity = requestIdentity, RequestGeneration = _pageRequestGeneration, OperatorInitiated = operatorInitiated, RegisteredAt = TimeProvider.GetUtcNow() });");
             _ = sb.AppendLine("        try");
             _ = sb.AppendLine("        {");
             _ = sb.AppendLine("            var resolved = await completion.Task.WaitAsync(ct).ConfigureAwait(true);");
@@ -1207,6 +1298,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine();
             _ = sb.AppendLine("        _newItemIndicatorSubscription?.Dispose();");
+            _ = sb.AppendLine("        _failedRetryCancellation?.Cancel();");
             _ = sb.AppendLine("        _newItemIndicatorSubscription = null;");
             _ = sb.AppendLine("        " + model.TypeName + "State.StateChanged -= OnStateChanged;");
             _ = sb.AppendLine("        LoadedPageState.StateChanged -= OnStateChanged;");
@@ -1303,6 +1395,27 @@ public static class RazorEmitter {
         _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? CurrentGridSnapshot()");
         _ = sb.AppendLine("        => GridNavigationState.Value.ViewStates.TryGetValue(_viewKey, out var snapshot) ? snapshot : null;");
         _ = sb.AppendLine();
+        _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageResult? CurrentFailedPage()");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        string request = PageRequestIdentity(CurrentGridSnapshot());");
+        _ = sb.AppendLine("        var failed = LoadedPageState.Value.ResultsByPage");
+        _ = sb.AppendLine("            .Where(entry => string.Equals(entry.Key.ViewKey, _viewKey, StringComparison.Ordinal)");
+        _ = sb.AppendLine("                && entry.Value.Failed && string.Equals(entry.Value.RequestIdentity, request, StringComparison.Ordinal))");
+        _ = sb.AppendLine("            .OrderBy(entry => entry.Key.Skip).Select(entry => entry.Value).FirstOrDefault();");
+        _ = sb.AppendLine("        return failed ?? (LoadedPageState.Value.LastResultByKey.TryGetValue(_viewKey, out var last)");
+        _ = sb.AppendLine("            && last.Failed && string.Equals(last.RequestIdentity, request, StringComparison.Ordinal) ? last : null);");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageResult? PrimaryCompletedPage()");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        string request = PageRequestIdentity(CurrentGridSnapshot());");
+        _ = sb.AppendLine("        if (LoadedPageState.Value.LastSuccessfulPrimaryByView.TryGetValue(_viewKey, out var page)");
+        _ = sb.AppendLine("            && string.Equals(page.RequestIdentity, request, StringComparison.Ordinal)) { return page; }");
+        _ = sb.AppendLine("        return LoadedPageState.Value.ResultsByPage.Count == 0");
+        _ = sb.AppendLine("            && LoadedPageState.Value.LastResultByKey.TryGetValue(_viewKey, out var last)");
+        _ = sb.AppendLine("            && !last.Failed && last.Skip == 0 && string.Equals(last.RequestIdentity, request, StringComparison.Ordinal) ? last : null;");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
         _ = sb.AppendLine("    private static System.Collections.Immutable.IImmutableDictionary<string, string> QueryFilters(global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        if (snapshot is null) { return System.Collections.Immutable.ImmutableDictionary<string, string>.Empty; }");
@@ -1317,6 +1430,19 @@ public static class RazorEmitter {
         _ = sb.AppendLine("            && !string.IsNullOrWhiteSpace(query)");
         _ = sb.AppendLine("                ? query");
         _ = sb.AppendLine("                : null;");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private static string PageRequestIdentity(global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        var identity = new System.Text.StringBuilder();");
+        _ = sb.AppendLine("        static void AppendPart(System.Text.StringBuilder buffer, string? value)");
+        _ = sb.AppendLine("        { if (value is null) { buffer.Append(\"-1:\"); return; } buffer.Append(value.Length).Append(':').Append(value); }");
+        _ = sb.AppendLine("        AppendPart(identity, snapshot?.SortColumn);");
+        _ = sb.AppendLine("        identity.Append(snapshot?.SortDescending == true ? '1' : '0');");
+        _ = sb.AppendLine("        AppendPart(identity, SearchQuery(snapshot));");
+        _ = sb.AppendLine("        foreach (var filter in QueryFilters(snapshot).OrderBy(static entry => entry.Key, StringComparer.Ordinal))");
+        _ = sb.AppendLine("        { AppendPart(identity, filter.Key); AppendPart(identity, filter.Value); }");
+        _ = sb.AppendLine("        return identity.ToString();");
+        _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
         if (HasBadgeMappings(model)) {
             _ = sb.AppendLine("    private static System.Collections.Generic.IReadOnlyList<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot> ActiveStatusSlots(global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)");
@@ -1535,7 +1661,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        if (snapshot is null) { return false; }");
         _ = sb.AppendLine("        foreach (var filter in snapshot.Filters)");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            if (!filter.Key.StartsWith(\"__\", StringComparison.Ordinal) && !string.IsNullOrWhiteSpace(filter.Value))");
+        _ = sb.AppendLine("            if ((!filter.Key.StartsWith(\"__\", StringComparison.Ordinal) || filter.Key is global::Hexalith.FrontComposer.Contracts.Rendering.ReservedFilterKeys.SearchKey or global::Hexalith.FrontComposer.Contracts.Rendering.ReservedFilterKeys.StatusKey) && !string.IsNullOrWhiteSpace(filter.Value))");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                return true;");
         _ = sb.AppendLine("            }");
@@ -1736,6 +1862,9 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        var state = " + model.TypeName + "State.Value;");
         _ = sb.AppendLine("        int seq = 0;");
+        _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcSurfaceStatus>(seq++);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Surface\", AnnouncementSurface);");
+        _ = sb.AppendLine("        builder.CloseComponent();");
         EmitDevModeAnnotation(
             sb,
             "builder",
@@ -1766,6 +1895,12 @@ public static class RazorEmitter {
         _ = sb.AppendLine();
 
         EmitSubtitleInvocation(sb, model);
+        EmitFailureShell(sb, model);
+        if (isGrid) {
+            _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcSlowQueryNotice>(seq++);");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ViewKey\", _viewKey);");
+            _ = sb.AppendLine("        builder.CloseComponent();");
+        }
         EmitLoadingShell(sb, model);
         EmitEmptyShell(sb, model);
 
@@ -1891,18 +2026,25 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        builder.CloseComponent();");
             _ = sb.AppendLine();
         }
-        _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcSlowQueryNotice>(seq++);");
-        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ViewKey\", _viewKey);");
-        _ = sb.AppendLine("        builder.CloseComponent();");
-        _ = sb.AppendLine();
         string entityPluralLiteral = "\"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"";
+        _ = sb.AppendLine("        var primaryPage = PrimaryCompletedPage();");
         _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice>(seq++);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ViewKey\", _viewKey);");
-        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemsCount\", state.Items.Count);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemsCount\", primaryPage?.TotalCount ?? (LoadedPageState.Value.ActiveRequestIdentityByView.ContainsKey(_viewKey) ? 0 : state.Items.Count));");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"AnyRealFilterActive\", anyRealFilterActive);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ResultIdentity\", primaryPage?.Identity.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? state.LastResultCorrelationId ?? \"initial\");");
         _ = sb.AppendLine("        builder.CloseComponent();");
         _ = sb.AppendLine();
-
+        _ = sb.AppendLine("        var inlineFailedPage = CurrentFailedPage();");
+        _ = sb.AppendLine("        if (inlineFailedPage is not null");
+        _ = sb.AppendLine("            && LoadedPageState.Value.PagesByKey.Keys.Any(key => string.Equals(key.ViewKey, _viewKey, StringComparison.Ordinal)))");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionFailure>(seq++);");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Message\", inlineFailedPage.ErrorMessage);");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"OnRetry\", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, RetryProjectionAsync));");
+        _ = sb.AppendLine("            builder.CloseComponent();");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine();
         // Story 11.21 ASP0006 — the indicator helper appends a variable number of keyed frames from
         // its own method scope, so it gets an explicit render region rather than borrowing (and
         // advancing) the caller's sequence space.
@@ -1986,6 +2128,18 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"EntityLabel\", " + entityLabelLiteral + ");");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"EntityPluralLabel\", " + entityPluralLabelLiteral + ");");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"IsLoading\", state.IsLoading);");
+        _ = sb.AppendLine("        builder.CloseComponent();");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("        builder.OpenComponent<" + ProjectionRoleBodyEmitter.ShellRenderingNamespace + ".FcProjectionStaleNotice>(seq++);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Surface\", AnnouncementSurface);");
+        if (RoleBodyHelpers.IsGridRenderingStrategy(model.Strategy)) {
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"HasCachedRows\", state.Items is { Count: > 0 } || LoadedPageState.Value.PagesByKey.Keys.Any(key => string.Equals(key.ViewKey, _viewKey, StringComparison.Ordinal)));");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"HasFailedRefresh\", state.Error is not null || CurrentFailedPage() is not null);");
+        }
+        else {
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"HasCachedRows\", state.Items is { Count: > 0 });");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"HasFailedRefresh\", state.Error is not null);");
+        }
         _ = sb.AppendLine("        builder.CloseComponent();");
         _ = sb.AppendLine();
     }
@@ -2076,6 +2230,28 @@ public static class RazorEmitter {
         _ = sb.AppendLine();
     }
 
+    /// <summary>Emits a safe query-failure replacement before the empty-state branch.</summary>
+    internal static void EmitFailureShell(StringBuilder sb, RazorModel model) {
+        bool isGrid = RoleBodyHelpers.IsGridRenderingStrategy(model.Strategy);
+        if (isGrid) {
+            _ = sb.AppendLine("        var failedPage = CurrentFailedPage();");
+        }
+        string failedCondition = isGrid
+            ? "state.Error is not null || (failedPage is not null && !LoadedPageState.Value.PagesByKey.Keys.Any(key => string.Equals(key.ViewKey, _viewKey, StringComparison.Ordinal)))"
+            : "state.Error is not null";
+        _ = sb.AppendLine("        if (" + failedCondition + ")");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionFailure>(seq++);");
+        if (isGrid) {
+            _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Message\", failedPage?.ErrorMessage);");
+        }
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"OnRetry\", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, RetryProjectionAsync));");
+        _ = sb.AppendLine("            builder.CloseComponent();");
+        _ = sb.AppendLine("            return;");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine();
+    }
+
     /// <summary>
     /// Story 4-1 T3.1 / D7 / AC8 / H4 — Empty shell invokes
     /// <c>FcProjectionEmptyPlaceholder</c> and always passes the <c>Role</c>
@@ -2100,6 +2276,7 @@ public static class RazorEmitter {
             : "\"" + RoleBodyHelpers.EscapeString(model.EmptyStateCtaCommandName!) + "\"";
 
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"CtaCommandName\", " + ctaCommandNameLiteral + ");");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"SuppressStandaloneStatus\", true);");
         // Story 4-6 review fix (D17): SecondaryText is resolved INSIDE the component via the
         // {ProjectionFqn}_EmptyStateSecondaryText convention key. The generator no longer emits
         // the per-view ResolveEmptyStateSecondaryText helper; the component owns the chain.

@@ -249,7 +249,7 @@ public sealed class PendingCommandStateServiceTests {
         result.Entry.DuplicateTerminalObservations.ShouldBe(0);
         // P8 — IdempotentConfirmed must surface idempotencyResolved=true so FcLifecycleWrapper
         // renders the "already confirmed" Info bar instead of the Success celebration.
-        lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId, true);
+        lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.IdempotentConfirmed, MessageId, true);
     }
 
     [Fact]
@@ -262,7 +262,7 @@ public sealed class PendingCommandStateServiceTests {
 
         result.Status.ShouldBe(PendingCommandResolutionStatus.Resolved);
         result.Entry!.Status.ShouldBe(PendingCommandStatus.NeedsReview);
-        lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.Rejected, MessageId, false);
+        lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.NeedsReview, MessageId, false);
         lifecycle.DidNotReceive().Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId, Arg.Any<bool>());
     }
 
@@ -532,7 +532,7 @@ public sealed class PendingCommandStateServiceTests {
             .Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
 
         sut.GetByMessageId(MessageId).ShouldBeNull();
-        lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.Rejected, MessageId);
+        lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.NeedsReview, MessageId);
     }
 
     [Fact]

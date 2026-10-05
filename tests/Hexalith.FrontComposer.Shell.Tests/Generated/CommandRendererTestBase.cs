@@ -13,6 +13,7 @@ using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Auth;
 using Hexalith.FrontComposer.Shell.Services.Feedback;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
+using Hexalith.FrontComposer.Shell.Services.Announcements;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
@@ -89,6 +90,7 @@ public abstract class CommandRendererTestBase : BunitContext {
 
         // Story 2-4 — FcLifecycleWrapper (wrapping every generated form) injects TimeProvider.
         _ = Services.AddSingleton(TimeProvider.System);
+        _ = Services.AddScoped<ISurfaceAnnouncementCoordinator, SurfaceAnnouncementCoordinator>();
         _ = Services.AddScoped<IProjectionConnectionState, ProjectionConnectionStateService>();
 
         // Story 5-2 — generated forms inject the warning publisher + auth-redirect seam.

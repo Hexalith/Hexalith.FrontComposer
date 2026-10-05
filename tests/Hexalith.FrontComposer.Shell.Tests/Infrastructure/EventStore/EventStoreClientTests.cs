@@ -585,7 +585,7 @@ public sealed class EventStoreClientTests {
     [InlineData(HttpStatusCode.BadGateway)]
     [InlineData(HttpStatusCode.ServiceUnavailable)]
     [InlineData(HttpStatusCode.GatewayTimeout)]
-    public async Task CommandClient_RetryablePreAcceptStatus_RetriesOnceWithSameMessageId(HttpStatusCode status) {
+    public async Task CommandClient_RetryablePreAcceptStatus_DoesNotRetry(HttpStatusCode status) {
         int attempt = 0;
         RecordingHandler handler = new(_ => ++attempt == 1
             ? new HttpResponseMessage(status)
@@ -607,15 +607,184 @@ public sealed class EventStoreClientTests {
                 CommandDispatchRetryDelayMs = 1,
             }));
 
-        CommandResult result = await sut.DispatchAsync(new ShipOrderCommand(), TestContext.Current.CancellationToken);
+        CommandWarningException warning = await Should.ThrowAsync<CommandWarningException>(
+            () => sut.DispatchAsync(new ShipOrderCommand(), TestContext.Current.CancellationToken));
 
-        result.Status.ShouldBe("Accepted");
-        handler.Bodies.Count.ShouldBe(2);
+        warning.Kind.ShouldBe(CommandWarningKind.RetryableDispatchFailed);
+        handler.Bodies.Count.ShouldBe(1);
         List<string?> messageIds = [.. handler.Bodies
             .Select(body => JsonDocument.Parse(body).RootElement.GetProperty("messageId").GetString())];
         ulidFactory.Count.ShouldBe(1);
         messageIds.Distinct().Count().ShouldBe(1);
         messageIds[0].ShouldBe("01HVTESTULID00000000000001");
+    }
+
+    [Fact]
+    public async Task CommandClient_PostAcceptReadFailure_RetriesOnceAfter250MillisecondsWithSameMessageId() {
+        FakeTimeProvider time = new();
+        FailingReadStream failingBody = new();
+        int attempts = 0;
+        RecordingHandler handler = new(_ => ++attempts == 1
+            ? new HttpResponseMessage(HttpStatusCode.Accepted) { Content = new StreamContent(failingBody) }
+            : new HttpResponseMessage(HttpStatusCode.Accepted) {
+                Content = new StringContent("""{"correlationId":"corr-recovered"}""", Encoding.UTF8, "application/json"),
+            });
+        CountingUlidFactory ids = new();
+        EventStoreCommandClient sut = new(
+            new SingleClientFactory(handler),
+            Options(),
+            ids,
+            new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStoreCommandClient>.Instance,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions {
+                CommandDispatchRetryAttempts = 1,
+                CommandDispatchRetryDelayMs = 250,
+            }),
+            time);
+
+        Task<CommandResult> dispatch = sut.DispatchAsync(new ShipOrderCommand(), TestContext.Current.CancellationToken);
+        await failingBody.ReadAttempted.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await Task.Delay(20, TestContext.Current.CancellationToken);
+        handler.Bodies.Count.ShouldBe(1);
+        time.Advance(TimeSpan.FromMilliseconds(249));
+        handler.Bodies.Count.ShouldBe(1);
+        time.Advance(TimeSpan.FromMilliseconds(1));
+
+        CommandResult result = await dispatch.WaitAsync(TestContext.Current.CancellationToken);
+        result.Status.ShouldBe(CommandResultStatus.Accepted);
+        result.CorrelationId.ShouldBe("corr-recovered");
+        ids.Count.ShouldBe(1);
+        handler.Bodies.Count.ShouldBe(2);
+        using JsonDocument first = JsonDocument.Parse(handler.Bodies[0]);
+        using JsonDocument second = JsonDocument.Parse(handler.Bodies[1]);
+        second.RootElement.GetProperty("messageId").GetString()
+            .ShouldBe(first.RootElement.GetProperty("messageId").GetString());
+    }
+
+    [Fact]
+    public async Task CommandClient_StalledAcceptedBodyStartsPendingWithOriginalHeaderTime() {
+        StallingAcceptedContent body = new();
+        RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.Accepted) {
+            Content = body,
+        });
+        EventStoreCommandClient sut = new(
+            new SingleClientFactory(handler), Options(), new FixedUlidFactory(),
+            new TestUserContextAccessor("acme", "alice"), EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStoreCommandClient>.Instance,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { CommandDispatchRetryAttempts = 0 }), TimeProvider.System);
+        List<CommandLifecycleObservation> observations = [];
+
+        Task<CommandResult> dispatch = ((ICommandServiceWithLifecycleObservations)sut).DispatchAsync(
+            new ShipOrderCommand(), observations.Add, TestContext.Current.CancellationToken);
+        await body.ReadAttempted.Task.WaitAsync(TestContext.Current.CancellationToken);
+        CommandResult result = await dispatch.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        result.Status.ShouldBe(CommandResultStatus.Accepted);
+        result.CorrelationId.ShouldBeNull();
+        result.MessageId.ShouldBe("01HVTESTULID");
+        (TimeProvider.System.GetUtcNow() - observations.Single().ObservedAt!.Value)
+            .ShouldBeGreaterThan(TimeSpan.FromMilliseconds(1_500));
+        observations.Single().MessageId.ShouldBe(result.MessageId);
+        handler.Bodies.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task CommandClient_MalformedAcceptedBody_RetriesOnceWithSameMessageId() {
+        FakeTimeProvider time = new();
+        int attempts = 0;
+        RecordingHandler handler = new(_ => ++attempts == 1
+            ? new HttpResponseMessage(HttpStatusCode.Accepted) {
+                Content = new StringContent("{\"correlationId\":", Encoding.UTF8, "application/json"),
+            }
+            : new HttpResponseMessage(HttpStatusCode.Accepted) {
+                Content = new StringContent("""{"correlationId":"corr-recovered"}""", Encoding.UTF8, "application/json"),
+            });
+        CountingUlidFactory ids = new();
+        EventStoreCommandClient sut = new(
+            new SingleClientFactory(handler), Options(), ids,
+            new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(), NullLogger<EventStoreCommandClient>.Instance,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions {
+                CommandDispatchRetryAttempts = 1, CommandDispatchRetryDelayMs = 250,
+            }), time);
+
+        Task<CommandResult> dispatch = sut.DispatchAsync(new ShipOrderCommand(), TestContext.Current.CancellationToken);
+        await Task.Delay(20, TestContext.Current.CancellationToken);
+        handler.Bodies.Count.ShouldBe(1);
+        time.Advance(TimeSpan.FromMilliseconds(249));
+        handler.Bodies.Count.ShouldBe(1);
+        time.Advance(TimeSpan.FromMilliseconds(1));
+
+        CommandResult result = await dispatch.WaitAsync(TestContext.Current.CancellationToken);
+        result.CorrelationId.ShouldBe("corr-recovered");
+        ids.Count.ShouldBe(1);
+        handler.Bodies.Count.ShouldBe(2);
+        using JsonDocument first = JsonDocument.Parse(handler.Bodies[0]);
+        using JsonDocument second = JsonDocument.Parse(handler.Bodies[1]);
+        second.RootElement.GetProperty("messageId").GetString()
+            .ShouldBe(first.RootElement.GetProperty("messageId").GetString());
+    }
+
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("{\"correlationId\":42}")]
+    public async Task CommandClient_MalformedAcceptedShapeKeepsAcceptedUnknownCorrelation(string body) {
+        RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.Accepted) {
+            Content = new StringContent(body, Encoding.UTF8, "application/json"),
+        });
+        EventStoreCommandClient sut = new(
+            new SingleClientFactory(handler), Options(), new FixedUlidFactory(),
+            new TestUserContextAccessor("acme", "alice"), EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStoreCommandClient>.Instance,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { CommandDispatchRetryAttempts = 0 }));
+        List<CommandLifecycleObservation> observations = [];
+
+        CommandResult result = await ((ICommandServiceWithLifecycleObservations)sut).DispatchAsync(
+            new ShipOrderCommand(), observations.Add, TestContext.Current.CancellationToken);
+
+        result.Status.ShouldBe(CommandResultStatus.Accepted);
+        result.MessageId.ShouldBe("01HVTESTULID");
+        result.CorrelationId.ShouldBeNull();
+        observations.Single().MessageId.ShouldBe(result.MessageId);
+        handler.Bodies.Count.ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("{\"correlationId\":42}")]
+    public async Task CommandClient_MalformedAcceptedShapeRetriesOnceWithOriginalMessageId(string body) {
+        FakeTimeProvider time = new();
+        int attempts = 0;
+        RecordingHandler handler = new(_ => ++attempts == 1
+            ? new HttpResponseMessage(HttpStatusCode.Accepted) {
+                Content = new StringContent(body, Encoding.UTF8, "application/json"),
+            }
+            : new HttpResponseMessage(HttpStatusCode.Accepted) {
+                Content = new StringContent("{\"correlationId\":\"recovered\"}", Encoding.UTF8, "application/json"),
+            });
+        CountingUlidFactory ids = new();
+        EventStoreCommandClient sut = new(
+            new SingleClientFactory(handler), Options(), ids,
+            new TestUserContextAccessor("acme", "alice"), EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStoreCommandClient>.Instance,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions {
+                CommandDispatchRetryAttempts = 1, CommandDispatchRetryDelayMs = 250,
+            }), time);
+
+        Task<CommandResult> dispatch = sut.DispatchAsync(new ShipOrderCommand(), TestContext.Current.CancellationToken);
+        await Task.Delay(20, TestContext.Current.CancellationToken);
+        handler.Bodies.Count.ShouldBe(1);
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        CommandResult result = await dispatch.WaitAsync(TestContext.Current.CancellationToken);
+
+        result.Status.ShouldBe(CommandResultStatus.Accepted);
+        result.CorrelationId.ShouldBe("recovered");
+        ids.Count.ShouldBe(1);
+        handler.Bodies.Count.ShouldBe(2);
+        using JsonDocument first = JsonDocument.Parse(handler.Bodies[0]);
+        using JsonDocument second = JsonDocument.Parse(handler.Bodies[1]);
+        second.RootElement.GetProperty("messageId").GetString()
+            .ShouldBe(first.RootElement.GetProperty("messageId").GetString());
     }
 
     [Fact]
@@ -639,7 +808,7 @@ public sealed class EventStoreClientTests {
 
         ex.Kind.ShouldBe(CommandWarningKind.RetryableDispatchFailed);
         ex.RetryAfter.ShouldBe(TimeSpan.FromMilliseconds(1));
-        handler.Bodies.Count.ShouldBe(2);
+        handler.Bodies.Count.ShouldBe(1);
     }
 
     [Theory]
@@ -797,6 +966,22 @@ public sealed class EventStoreClientTests {
             }
 
             return responseFactory(request);
+        }
+    }
+
+    private sealed class FailingReadStream : MemoryStream {
+        public FailingReadStream() : base(Encoding.UTF8.GetBytes("{}")) { }
+
+        public TaskCompletionSource<object> ReadAttempted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) {
+            ReadAttempted.TrySetResult(new object());
+            return ValueTask.FromException<int>(new IOException("post-accept body read failed"));
+        }
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) {
+            ReadAttempted.TrySetResult(new object());
+            return Task.FromException<int>(new IOException("post-accept body read failed"));
         }
     }
 }

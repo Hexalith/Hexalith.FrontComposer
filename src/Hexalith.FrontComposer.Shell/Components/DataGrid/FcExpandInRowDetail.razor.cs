@@ -62,6 +62,10 @@ public partial class FcExpandInRowDetail : ComponentBase {
     [Parameter]
     public string? SuppressedAnnouncement { get; set; }
 
+    /// <summary>Uses the generated view's shared status instead of a standalone live node.</summary>
+    [Parameter]
+    public bool SuppressStandaloneAnnouncement { get; set; }
+
     /// <summary>
     /// Gets or sets the deterministic element id consumed by the trigger button's
     /// <c>aria-controls</c> attribute. When omitted, the component falls back to an

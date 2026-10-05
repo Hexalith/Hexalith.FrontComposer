@@ -39,6 +39,9 @@ public static class FluxorFeatureEmitter {
         _ = sb.AppendLine("    internal bool RequiresScopedRequest { get; init; }");
         _ = sb.AppendLine("    internal bool HasChangedScope { get; init; }");
         _ = sb.AppendLine("    internal string? ActiveCorrelationId { get; init; }");
+        _ = sb.AppendLine("    internal bool ActiveOperatorInitiated { get; init; }");
+        _ = sb.AppendLine("    internal string? LastResultCorrelationId { get; init; }");
+        _ = sb.AppendLine("    internal bool LastResultOperatorInitiated { get; init; }");
         _ = sb.AppendLine("}");
         _ = sb.AppendLine();
 

@@ -62,7 +62,25 @@ public sealed class LoadedPageReducers {
         ArgumentNullException.ThrowIfNull(action);
 
         (string viewKey, int skip) key = (action.ViewKey, action.Skip);
+        long priorGeneration = state.ActiveRequestGenerationByView.TryGetValue(action.ViewKey, out long activeGeneration)
+            ? activeGeneration : 0;
+        if (action.RequestGeneration is { } requestedGeneration && requestedGeneration < priorGeneration) {
+            _ = action.Completion.TrySetCanceled();
+            return state;
+        }
         ImmutableDictionary<(string ViewKey, int Skip), TaskCompletionSource<object>> nextPending = state.PendingCompletionsByKey;
+        bool changedRequest = state.ActiveRequestIdentityByView.TryGetValue(action.ViewKey, out string? priorIdentity)
+            && !string.Equals(priorIdentity, action.RequestIdentity, StringComparison.Ordinal)
+            || action.RequestGeneration is { } generation && generation > priorGeneration;
+        long nextGeneration = action.RequestGeneration ?? (changedRequest ? priorGeneration + 1 : Math.Max(1, priorGeneration));
+        if (changedRequest) {
+            foreach (KeyValuePair<(string ViewKey, int Skip), TaskCompletionSource<object>> pending in nextPending) {
+                if (string.Equals(pending.Key.ViewKey, action.ViewKey, StringComparison.Ordinal)) {
+                    _ = pending.Value.TrySetCanceled();
+                    nextPending = nextPending.Remove(pending.Key);
+                }
+            }
+        }
 
         if (nextPending.TryGetValue(key, out TaskCompletionSource<object>? existing)
             && !ReferenceEquals(existing, action.Completion)) {
@@ -78,13 +96,34 @@ public sealed class LoadedPageReducers {
             : state.LaneByKey.SetItem(action.ViewKey, VirtualizationLane.ServerSide);
 
         if (ReferenceEquals(nextPending, state.PendingCompletionsByKey)
-            && ReferenceEquals(nextLane, state.LaneByKey)) {
+            && ReferenceEquals(nextLane, state.LaneByKey)
+            && !changedRequest
+            && state.ActiveRequestIdentityByView.ContainsKey(action.ViewKey)) {
             return state;
         }
 
         return state with {
             PendingCompletionsByKey = nextPending,
+            PendingStartedAtByKey = (changedRequest
+                ? state.PendingStartedAtByKey.RemoveRange(state.PendingStartedAtByKey.Keys.Where(entry => string.Equals(entry.ViewKey, action.ViewKey, StringComparison.Ordinal)))
+                : state.PendingStartedAtByKey).SetItem(key, action.RegisteredAt ?? DateTimeOffset.UtcNow),
             LaneByKey = nextLane,
+            ActiveRequestIdentityByView = state.ActiveRequestIdentityByView.SetItem(action.ViewKey, action.RequestIdentity),
+            ActiveRequestGenerationByView = state.ActiveRequestGenerationByView.SetItem(action.ViewKey, nextGeneration),
+            ResultsByPage = changedRequest
+                ? state.ResultsByPage.RemoveRange(state.ResultsByPage.Keys.Where(key => string.Equals(key.ViewKey, action.ViewKey, StringComparison.Ordinal)))
+                : state.ResultsByPage,
+            FailureByKey = changedRequest ? state.FailureByKey.Remove(action.ViewKey) : state.FailureByKey,
+            LastResultByKey = changedRequest ? state.LastResultByKey.Remove(action.ViewKey) : state.LastResultByKey,
+            LastSuccessfulPrimaryByView = changedRequest ? state.LastSuccessfulPrimaryByView.Remove(action.ViewKey) : state.LastSuccessfulPrimaryByView,
+            PagesByKey = changedRequest
+                ? state.PagesByKey.RemoveRange(state.PagesByKey.Keys.Where(key => string.Equals(key.ViewKey, action.ViewKey, StringComparison.Ordinal)))
+                : state.PagesByKey,
+            PageInsertionOrder = changedRequest
+                ? ImmutableQueue.CreateRange(state.PageInsertionOrder.Where(key => !string.Equals(key.ViewKey, action.ViewKey, StringComparison.Ordinal)))
+                : state.PageInsertionOrder,
+            TotalCountByKey = changedRequest ? state.TotalCountByKey.Remove(action.ViewKey) : state.TotalCountByKey,
+            LastElapsedMsByKey = changedRequest ? state.LastElapsedMsByKey.Remove(action.ViewKey) : state.LastElapsedMsByKey,
         };
     }
 
@@ -108,6 +147,10 @@ public sealed class LoadedPageReducers {
             return state;
         }
 
+        if (IsStaleRequest(state, action.ViewKey, action.RequestIdentity, action.RequestGeneration)) {
+            return state;
+        }
+
         (string viewKey, int skip) key = (action.ViewKey, action.Skip);
         if (action.Completion is not null) {
             if (!state.PendingCompletionsByKey.TryGetValue(key, out TaskCompletionSource<object>? pending)
@@ -120,10 +163,17 @@ public sealed class LoadedPageReducers {
             FrontComposerWarningLog.LoadedPageNullItems(_logger, action.ViewKey, action.Skip);
 
             if (state.PendingCompletionsByKey.TryGetValue(key, out TaskCompletionSource<object>? nullTcs)) {
-                _ = nullTcs.TrySetException(new InvalidOperationException(
-                    $"LoadPageSucceededAction received null Items payload for (ViewKey={action.ViewKey}, Skip={action.Skip})."));
+                _ = nullTcs.TrySetException(new InvalidOperationException("Data could not be loaded."));
+                LoadedPageResult failed = new(
+                    NextResultIdentity(state, action.ViewKey), action.RequestIdentity, 0, true,
+                    action.OperatorInitiated, action.Skip);
                 return state with {
                     PendingCompletionsByKey = state.PendingCompletionsByKey.Remove(key),
+                    PendingStartedAtByKey = state.PendingStartedAtByKey.Remove(key),
+                    FailureByKey = state.FailureByKey.SetItem(action.ViewKey, "Am30QueryFailed"),
+                    LastResultByKey = state.LastResultByKey.SetItem(action.ViewKey, failed),
+                    ResultsByPage = TrimResultMetadata(state.ResultsByPage.SetItem(key, failed), state.ResultMetadataLimit),
+                    ResultSequenceByView = state.ResultSequenceByView.SetItem(action.ViewKey, failed.Identity),
                 };
             }
 
@@ -160,12 +210,35 @@ public sealed class LoadedPageReducers {
                 evicted.Skip);
         }
 
+        LoadedPageResult completed = new(
+            NextResultIdentity(state, action.ViewKey), action.RequestIdentity,
+            action.TotalCount, false, action.OperatorInitiated, action.Skip);
+        ImmutableDictionary<(string ViewKey, int Skip), LoadedPageResult> nextResults = state.ResultsByPage.SetItem(key, completed);
+        nextResults = nextResults.RemoveRange(nextResults
+            .Where(entry => !entry.Value.Failed && !nextPages.ContainsKey(entry.Key))
+            .Select(entry => entry.Key));
+        nextResults = TrimResultMetadata(nextResults, cap);
+        string? remainingFailure = nextResults
+            .Where(entry => string.Equals(entry.Key.ViewKey, action.ViewKey, StringComparison.Ordinal) && entry.Value.Failed)
+            .Select(entry => entry.Value.ErrorMessage ?? "Am30QueryFailed")
+            .FirstOrDefault();
         return state with {
             PagesByKey = nextPages,
             TotalCountByKey = nextTotal,
             LastElapsedMsByKey = nextElapsed,
+            FailureByKey = remainingFailure is null
+                ? state.FailureByKey.Remove(action.ViewKey)
+                : state.FailureByKey.SetItem(action.ViewKey, remainingFailure),
             PageInsertionOrder = nextOrder,
             PendingCompletionsByKey = nextPending,
+            PendingStartedAtByKey = state.PendingStartedAtByKey.Remove(key),
+            LastResultByKey = state.LastResultByKey.SetItem(action.ViewKey, completed),
+            ResultsByPage = nextResults,
+            ResultMetadataLimit = cap,
+            ResultSequenceByView = state.ResultSequenceByView.SetItem(action.ViewKey, completed.Identity),
+            LastSuccessfulPrimaryByView = action.Skip == 0
+                ? state.LastSuccessfulPrimaryByView.SetItem(action.ViewKey, completed)
+                : state.LastSuccessfulPrimaryByView,
         };
     }
 
@@ -186,6 +259,10 @@ public sealed class LoadedPageReducers {
             return state;
         }
 
+        if (IsStaleRequest(state, action.ViewKey, action.RequestIdentity, action.RequestGeneration)) {
+            return state;
+        }
+
         (string viewKey, int skip) key = (action.ViewKey, action.Skip);
         if (!state.PendingCompletionsByKey.TryGetValue(key, out TaskCompletionSource<object>? tcs)) {
             return state;
@@ -196,8 +273,25 @@ public sealed class LoadedPageReducers {
         }
 
         _ = tcs.TrySetResult(action.CachedItems);
+        ImmutableDictionary<(string ViewKey, int Skip), LoadedPageResult> nextResults = state.ResultsByPage;
+        if (nextResults.TryGetValue(key, out LoadedPageResult? priorPage) && priorPage.Failed) {
+            nextResults = nextResults.Remove(key);
+        }
+        string? remainingFailure = nextResults
+            .Where(entry => string.Equals(entry.Key.ViewKey, action.ViewKey, StringComparison.Ordinal) && entry.Value.Failed)
+            .Select(entry => entry.Value.ErrorMessage ?? "Am30QueryFailed")
+            .FirstOrDefault();
         return state with {
             PendingCompletionsByKey = state.PendingCompletionsByKey.Remove(key),
+            PendingStartedAtByKey = state.PendingStartedAtByKey.Remove(key),
+            ResultsByPage = nextResults,
+            FailureByKey = remainingFailure is null
+                ? state.FailureByKey.Remove(action.ViewKey)
+                : state.FailureByKey.SetItem(action.ViewKey, remainingFailure),
+            LastResultByKey = state.LastResultByKey.TryGetValue(action.ViewKey, out LoadedPageResult? priorResult)
+                && priorResult.Failed && priorResult.Skip == action.Skip
+                ? state.LastResultByKey.Remove(action.ViewKey)
+                : state.LastResultByKey,
         };
     }
 
@@ -208,6 +302,9 @@ public sealed class LoadedPageReducers {
         ArgumentNullException.ThrowIfNull(action);
 
         (string viewKey, int skip) key = (action.ViewKey, action.Skip);
+        if (IsStaleRequest(state, action.ViewKey, action.RequestIdentity, action.RequestGeneration)) {
+            return state;
+        }
         if (!state.PendingCompletionsByKey.TryGetValue(key, out TaskCompletionSource<object>? tcs)) {
             return state;
         }
@@ -217,8 +314,16 @@ public sealed class LoadedPageReducers {
         }
 
         _ = tcs.TrySetException(new InvalidOperationException(action.ErrorMessage));
+        LoadedPageResult failed = new(
+            NextResultIdentity(state, action.ViewKey), action.RequestIdentity, 0, true,
+            false, action.Skip, action.Take) { ErrorMessage = action.ErrorMessage };
         return state with {
             PendingCompletionsByKey = state.PendingCompletionsByKey.Remove(key),
+            PendingStartedAtByKey = state.PendingStartedAtByKey.Remove(key),
+            FailureByKey = state.FailureByKey.SetItem(action.ViewKey, action.ErrorMessage),
+            LastResultByKey = state.LastResultByKey.SetItem(action.ViewKey, failed),
+            ResultsByPage = TrimResultMetadata(state.ResultsByPage.SetItem(key, failed), state.ResultMetadataLimit),
+            ResultSequenceByView = state.ResultSequenceByView.SetItem(action.ViewKey, failed.Identity),
         };
     }
 
@@ -240,6 +345,7 @@ public sealed class LoadedPageReducers {
         _ = tcs.TrySetCanceled();
         return state with {
             PendingCompletionsByKey = state.PendingCompletionsByKey.Remove(key),
+            PendingStartedAtByKey = state.PendingStartedAtByKey.Remove(key),
         };
     }
 
@@ -262,6 +368,35 @@ public sealed class LoadedPageReducers {
 
         return ReferenceEquals(next, state.PendingCompletionsByKey)
             ? state
-            : state with { PendingCompletionsByKey = next };
+            : state with {
+                PendingCompletionsByKey = next,
+                PendingStartedAtByKey = state.PendingStartedAtByKey.RemoveRange(state.PendingStartedAtByKey.Keys.Where(key => string.Equals(key.ViewKey, action.ViewKey, StringComparison.Ordinal))),
+            };
     }
+
+    private static bool IsStaleRequest(LoadedPageState state, string viewKey, string requestIdentity, long? requestGeneration)
+        => state.ActiveRequestIdentityByView.TryGetValue(viewKey, out string? active)
+            && !string.Equals(active, requestIdentity, StringComparison.Ordinal)
+            || requestGeneration is { } generation
+                && state.ActiveRequestGenerationByView.TryGetValue(viewKey, out long current)
+                && generation != current;
+
+    private static ImmutableDictionary<(string ViewKey, int Skip), LoadedPageResult> TrimResultMetadata(
+        ImmutableDictionary<(string ViewKey, int Skip), LoadedPageResult> results, int limit) {
+        int bounded = Math.Max(1, limit);
+        while (results.Count > bounded) {
+            // Retain failed offsets for in-place Retry in preference to evicted page metadata.
+            KeyValuePair<(string ViewKey, int Skip), LoadedPageResult> oldest = results
+                .OrderBy(entry => entry.Value.Failed)
+                .ThenBy(entry => entry.Value.Identity)
+                .First();
+            results = results.Remove(oldest.Key);
+        }
+        return results;
+    }
+
+    private static long NextResultIdentity(LoadedPageState state, string viewKey)
+        => state.ResultSequenceByView.TryGetValue(viewKey, out long previous)
+            ? previous + 1
+            : state.LastResultByKey.TryGetValue(viewKey, out LoadedPageResult? last) ? last.Identity + 1 : 1;
 }

@@ -10,6 +10,12 @@ public sealed record ProjectionConnectionSnapshot(
     DateTimeOffset LastTransitionAt,
     int ReconnectAttempt,
     string? LastFailureCategory) {
+    /// <summary>Stable identity for a disconnect and its recovery.</summary>
+    public long Epoch { get; init; }
+
+    /// <summary>Gets a value indicating whether the browser reports that it is offline.</summary>
+    public bool BrowserOffline { get; init; }
+
     /// <summary>Gets a value indicating whether realtime projection nudges are unavailable.</summary>
-    public bool IsDisconnected => Status is ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected;
+    public bool IsDisconnected => BrowserOffline || Status is ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected;
 }

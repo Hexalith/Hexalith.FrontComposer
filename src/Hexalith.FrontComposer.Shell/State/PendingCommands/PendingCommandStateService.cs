@@ -213,12 +213,14 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
                 duplicate = true;
             }
             else {
+                DateTimeOffset terminalAt = _time.GetUtcNow();
+                bool exhausted = terminalAt - entry.SubmittedAt >= TimeSpan.FromMilliseconds(_options.MaxPendingCommandPollingDurationMs);
                 terminal = entry with {
-                    Status = MapStatus(observation.Outcome),
-                    RejectionTitle = observation.RejectionTitle,
-                    RejectionDetail = observation.RejectionDetail,
-                    RejectionDataImpact = observation.RejectionDataImpact,
-                    TerminalAt = _time.GetUtcNow(),
+                    Status = exhausted ? PendingCommandStatus.DegradedExhausted : MapStatus(observation.Outcome),
+                    RejectionTitle = exhausted ? null : observation.RejectionTitle,
+                    RejectionDetail = exhausted ? null : observation.RejectionDetail,
+                    RejectionDataImpact = exhausted ? null : observation.RejectionDataImpact,
+                    TerminalAt = terminalAt,
                 };
                 _byMessageId[canonicalMessageId] = terminal;
                 duplicate = false;
@@ -478,7 +480,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             // NeedsReview status from PendingCommandStatus. The 3-arg overload forwards to the
             // 4-arg with idempotencyResolved=false; an explicit "evicted" reason flag is a
             // follow-up extension to the lifecycle API (P2-P18 is deferred — see deferred-work).
-            _lifecycle.Transition(entry.CorrelationId, CommandLifecycleState.Rejected, entry.MessageId);
+            _lifecycle.Transition(entry.CorrelationId, CommandLifecycleState.NeedsReview, entry.MessageId);
             return true;
         }
         catch (ObjectDisposedException) {
@@ -634,9 +636,14 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
     }
 
     private bool TryDispatchCurrentTerminalLifecycle(PendingCommandEntry terminal, Activity? activity, long? lifecycleGeneration) {
-        CommandLifecycleState lifecycleState = terminal.Status is PendingCommandStatus.Rejected or PendingCommandStatus.NeedsReview
-            ? CommandLifecycleState.Rejected
-            : CommandLifecycleState.Confirmed;
+        CommandLifecycleState lifecycleState = terminal.Status switch {
+            PendingCommandStatus.Rejected => CommandLifecycleState.Rejected,
+            PendingCommandStatus.NeedsReview => CommandLifecycleState.NeedsReview,
+            PendingCommandStatus.IdempotentConfirmed => CommandLifecycleState.IdempotentConfirmed,
+            PendingCommandStatus.Warning => CommandLifecycleState.Warning,
+            PendingCommandStatus.DegradedExhausted => CommandLifecycleState.DegradedExhausted,
+            _ => CommandLifecycleState.Confirmed,
+        };
         bool idempotencyResolved = terminal.Status == PendingCommandStatus.IdempotentConfirmed;
         try {
             if (LifecycleMatches(terminal, lifecycleState)) {
@@ -849,6 +856,8 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             PendingCommandTerminalOutcome.Rejected => PendingCommandStatus.Rejected,
             PendingCommandTerminalOutcome.IdempotentConfirmed => PendingCommandStatus.IdempotentConfirmed,
             PendingCommandTerminalOutcome.NeedsReview => PendingCommandStatus.NeedsReview,
+            PendingCommandTerminalOutcome.Warning => PendingCommandStatus.Warning,
+            PendingCommandTerminalOutcome.DegradedExhausted => PendingCommandStatus.DegradedExhausted,
             _ => PendingCommandStatus.NeedsReview,
         };
 

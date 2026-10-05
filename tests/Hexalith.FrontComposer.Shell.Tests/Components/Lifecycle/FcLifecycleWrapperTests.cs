@@ -29,7 +29,8 @@ public sealed class FcLifecycleWrapperTests : LifecycleWrapperTestBase {
         cut.Find(".fc-lifecycle-wrapper").GetAttribute("data-testid").ShouldBe("fc-lifecycle-increment");
         cut.Find(".fc-lifecycle-wrapper").GetAttribute("data-lifecycle-state").ShouldBe("idle");
         cut.Markup.ShouldContain("child-content-marker");
-        cut.FindAll("[role='status']").ShouldBeEmpty();
+        cut.FindAll("[data-testid='fc-surface-status']").Count.ShouldBe(1);
+        cut.Find("[data-testid='fc-surface-status']").TextContent.ShouldBeEmpty();
         cut.FindAll("[role='alert']").ShouldBeEmpty();
     }
 
@@ -37,6 +38,7 @@ public sealed class FcLifecycleWrapperTests : LifecycleWrapperTestBase {
     public void Submitting_state_renders_polite_aria_live_with_submitting_announcement() {
         (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push) = RenderWrapperWithLiveService();
         push(Transition(CommandLifecycleState.Idle, CommandLifecycleState.Submitting));
+        FakeTime.Advance(TimeSpan.FromMilliseconds(250));
 
         cut.Find(".fc-lifecycle-wrapper").GetAttribute("data-lifecycle-state").ShouldBe("submitting");
         IElement region = cut.Find("[role='status']");
@@ -58,7 +60,7 @@ public sealed class FcLifecycleWrapperTests : LifecycleWrapperTestBase {
         push(Transition(CommandLifecycleState.Submitting, CommandLifecycleState.Acknowledged));
 
         cut.Find(".fc-lifecycle-wrapper").GetAttribute("data-lifecycle-state").ShouldBe("acknowledged");
-        IElement region = cut.Find("[data-fc-phase='acknowledged']");
+        IElement region = cut.Find("[data-testid='fc-surface-status']");
         region.GetAttribute("aria-live")!.ShouldBe("polite");
         region.GetAttribute("role")!.ShouldBe("status");
         cut.Markup.ShouldContain("Submission acknowledged");
@@ -122,7 +124,7 @@ public sealed class FcLifecycleWrapperTests : LifecycleWrapperTestBase {
         push(Transition(CommandLifecycleState.Syncing, CommandLifecycleState.Confirmed));
 
         cut.Find(".fc-lifecycle-wrapper").GetAttribute("data-lifecycle-state").ShouldBe("confirmed");
-        IElement region = cut.Find("[data-fc-phase='confirmed']");
+        IElement region = cut.Find("[data-testid='fc-surface-status']");
         region.GetAttribute("aria-live")!.ShouldBe("polite");
         region.GetAttribute("role")!.ShouldBe("status");
         cut.Markup.ShouldContain("Submission confirmed", Case.Insensitive);
@@ -140,14 +142,15 @@ public sealed class FcLifecycleWrapperTests : LifecycleWrapperTestBase {
     }
 
     [Fact]
-    public void Rejected_state_renders_danger_message_bar_with_assertive_aria_live_and_no_auto_dismiss() {
+    public void Rejected_state_renders_danger_message_bar_with_polite_aria_live_and_no_auto_dismiss() {
         (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push, FakeTimeProvider time) = RenderWrapperWithFakeTime();
         push(TransitionAt(CommandLifecycleState.Syncing, CommandLifecycleState.Rejected, time.GetUtcNow()));
 
         cut.Find(".fc-lifecycle-wrapper").GetAttribute("data-lifecycle-state").ShouldBe("rejected");
-        IElement region = cut.Find("[data-fc-phase='rejected']");
-        region.GetAttribute("aria-live")!.ShouldBe("assertive");
-        region.GetAttribute("role")!.ShouldBe("alert");
+        IElement region = cut.Find("[data-testid='fc-surface-status']");
+        region.GetAttribute("aria-live")!.ShouldBe("polite");
+        region.GetAttribute("role")!.ShouldBe("status");
+        cut.FindAll("[role='alert']").ShouldBeEmpty();
 
         time.Advance(TimeSpan.FromMinutes(10));
 
@@ -162,7 +165,7 @@ public sealed class FcLifecycleWrapperTests : LifecycleWrapperTestBase {
         // AA27-01 — fluent-message-bar sets an implicit role="status"; an explicit aria-live="off" keeps
         // the Copy relabel from re-reading the bar beside the wrapper's own announcement.
         cut.Find("[data-testid='fc-rejected']").GetAttribute("aria-live").ShouldBe("off");
-        cut.FindAll(".fc-lifecycle-live").Count.ShouldBe(1);
+        cut.FindAll("[data-testid='fc-surface-status']").Count.ShouldBe(1);
     }
 
     [Fact]

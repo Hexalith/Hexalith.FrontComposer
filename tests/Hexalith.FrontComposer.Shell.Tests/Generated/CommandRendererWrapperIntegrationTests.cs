@@ -262,7 +262,7 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         cut.Find("form").Submit();
 
         cut.WaitForAssertion(() => {
-            cut.Markup.ShouldContain("Submission rejected", Case.Insensitive);
+            cut.Markup.ShouldContain("Command rejected", Case.Insensitive);
             cut.Markup.ShouldContain("ORDER_LOCKED");
             cut.Markup.ShouldContain("Concurrency");
             cut.Markup.ShouldContain("Reload before retrying");
@@ -423,7 +423,7 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             AngleSharp.Dom.IElement status = second.Find("[role='status'][aria-live='polite']");
             status.GetAttribute("aria-atomic").ShouldBe("true");
             status.TextContent.ShouldContain("This command did not run. Another command is already in progress.", Case.Insensitive);
-            second.FindAll("[role='status'][aria-live='polite']").Count.ShouldBe(1);
+            second.FindAll("[role='status'][aria-live='polite']").Count.ShouldBe(2);
             second.FindAll("fluent-message-bar").ShouldBeEmpty();
             second.Markup.ShouldContain("blocked name");
             warnings.Count.ShouldBe(1);
@@ -457,7 +457,7 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             // ECH-05 — no validation ran: no field error was added and the entered value is kept.
             invalid.Markup.ShouldNotContain("field is required");
             invalid.Markup.ShouldContain("blocked reason");
-            invalid.FindAll("[role='status'][aria-live='polite']").Count.ShouldBe(1);
+            invalid.FindAll("[role='status'][aria-live='polite']").Count.ShouldBe(2);
             warnings.Count.ShouldBe(1);
             FcFocusModule.Invocations.Count(invocation => invocation.Identifier == "focusValidationOutcome")
                 .ShouldBe(validationFocusCount);
@@ -1050,7 +1050,7 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             status.TextContent.ShouldBe(BlockedMessage);
             status.Closest("[style*='display:none']").ShouldBeNull();
             renderer.Find("[data-testid='fc-command-blocked-outcome']").TagName.ShouldBe("SPAN");
-            renderer.FindAll("[role='status'][aria-live='polite']").Count.ShouldBe(1);
+            renderer.FindAll("[role='status'][aria-live='polite']").Count.ShouldBe(2);
             service.DispatchCount.ShouldBe(1);
             FcFocusModule.Invocations.ShouldContain(invocation => invocation.Identifier == "focusAttemptedControl"
                 && Equals(invocation.Arguments[0], triggerId));
@@ -1236,7 +1236,7 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         cut.WaitForAssertion(() => {
             state.Value.State.ShouldBe(CommandLifecycleState.Rejected);
             state.Value.HasMappedFieldErrors.ShouldBeFalse();
-            _ = cut.Find("[data-fc-phase='rejected']");
+            _ = cut.Find("[data-lifecycle-state='rejected']");
             _ = cut.Find("[data-testid='fc-rejected']");
             _ = cut.Find("[data-testid='fc-rejection-edit-retry']");
             _ = cut.Find("[data-testid='fc-rejection-return']");

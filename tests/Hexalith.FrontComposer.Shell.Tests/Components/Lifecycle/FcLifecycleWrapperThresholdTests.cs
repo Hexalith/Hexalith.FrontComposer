@@ -2,7 +2,10 @@ using Bunit;
 
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Components.Lifecycle;
+using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 
 using Shouldly;
@@ -15,6 +18,58 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Lifecycle;
 /// (300 ms / 2 000 ms / 10 000 ms) and assert the corresponding UI surface.
 /// </summary>
 public sealed class FcLifecycleWrapperThresholdTests : LifecycleWrapperTestBase {
+    [Fact]
+    public void AcceptedCommandBecomesDegradedAtTenSecondsAndClosesAtTwoMinutes() {
+        LifecycleStateService lifecycle = new(
+            Microsoft.Extensions.Options.Options.Create(new LifecycleOptions()), FakeTime,
+            NullLogger<LifecycleStateService>.Instance);
+        RegisterLifecycleService(lifecycle);
+        IRenderedComponent<FcLifecycleWrapper> cut = Render<FcLifecycleWrapper>(p => p
+            .Add(c => c.CorrelationId, DefaultCorrelationId));
+
+        lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Submitting, "01HVTESTULID");
+        lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Acknowledged, "01HVTESTULID");
+        cut.WaitForAssertion(() => cut.Find(".fc-lifecycle-wrapper")
+            .GetAttribute("data-lifecycle-state").ShouldBe("acknowledged"));
+
+        FakeTime.Advance(TimeSpan.FromMilliseconds(9_999));
+        lifecycle.GetState(DefaultCorrelationId).ShouldBe(CommandLifecycleState.Acknowledged);
+        FakeTime.Advance(TimeSpan.FromMilliseconds(1));
+        cut.WaitForAssertion(() => lifecycle.GetState(DefaultCorrelationId)
+            .ShouldBe(CommandLifecycleState.Degraded));
+        cut.Find("[data-testid='fc-surface-status']").TextContent
+            .ShouldBe("Confirmation is taking longer than expected. Review status or continue working.");
+
+        FakeTime.Advance(TimeSpan.FromMilliseconds(109_999));
+        lifecycle.GetState(DefaultCorrelationId).ShouldBe(CommandLifecycleState.Degraded);
+        FakeTime.Advance(TimeSpan.FromMilliseconds(1));
+        cut.WaitForAssertion(() => lifecycle.GetState(DefaultCorrelationId)
+            .ShouldBe(CommandLifecycleState.DegradedExhausted));
+        cut.Find("[data-testid='fc-surface-status']").TextContent
+            .ShouldBe("Confirmation was not received. Review status later or continue working.");
+
+        lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Confirmed, "01HVTESTULID");
+        lifecycle.GetState(DefaultCorrelationId).ShouldBe(CommandLifecycleState.DegradedExhausted);
+    }
+
+    [Fact]
+    public void DegradedReplayRetainsTheOriginalAcceptanceDeadline() {
+        LifecycleStateService lifecycle = new(
+            Microsoft.Extensions.Options.Options.Create(new LifecycleOptions()), FakeTime,
+            NullLogger<LifecycleStateService>.Instance);
+        lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Submitting, "01HVTESTULID");
+        lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Acknowledged, "01HVTESTULID");
+        FakeTime.Advance(TimeSpan.FromSeconds(10));
+        lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Degraded, "01HVTESTULID");
+        RegisterLifecycleService(lifecycle);
+
+        _ = Render<FcLifecycleWrapper>(p => p.Add(c => c.CorrelationId, DefaultCorrelationId));
+        FakeTime.Advance(TimeSpan.FromMilliseconds(109_999));
+        lifecycle.GetState(DefaultCorrelationId).ShouldBe(CommandLifecycleState.Degraded);
+        FakeTime.Advance(TimeSpan.FromMilliseconds(1));
+        lifecycle.GetState(DefaultCorrelationId).ShouldBe(CommandLifecycleState.DegradedExhausted);
+    }
+
     [Fact]
     public void Confirmed_within_SyncPulseThresholdMs_never_applies_pulse_class_brand_signal_fusion() {
         (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push, FakeTimeProvider time) = RenderWrapperWithFakeTime();

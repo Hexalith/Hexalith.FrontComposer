@@ -121,7 +121,7 @@ public sealed class LoadPageEffectIntegrationTests {
     }
 
     [Fact]
-    public async Task ExceptionPath_DispatchesLoadPageFailedWithExceptionMessage() {
+    public async Task ExceptionPath_DispatchesSafeLoadPageFailure() {
         IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
         loader.LoadPageAsync(
             Arg.Any<string>(), Arg.Any<int>(), Arg.Any<int>(),
@@ -140,7 +140,7 @@ public sealed class LoadPageEffectIntegrationTests {
         await sut.HandleLoadPageAsync(MakeAction(tcs), dispatcher);
 
         LoadPageFailedAction failed = dispatcher.Single<LoadPageFailedAction>();
-        failed.ErrorMessage.ShouldBe("loader boom");
+        failed.ErrorMessage.ShouldBe("Data could not be loaded.");
     }
 
     [Fact]

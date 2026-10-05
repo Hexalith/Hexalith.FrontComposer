@@ -51,13 +51,17 @@ public partial class FcPendingCommandSummary : ComponentBase, IDisposable {
                 entry.Status is PendingCommandStatus.Confirmed or PendingCommandStatus.IdempotentConfirmed);
             int rejected = SummaryEntries.Count(static entry => entry.Status == PendingCommandStatus.Rejected);
             int unresolved = SummaryEntries.Count(static entry => entry.Status == PendingCommandStatus.NeedsReview);
+            int warnings = SummaryEntries.Count(static entry => entry.Status == PendingCommandStatus.Warning);
+            int exhausted = SummaryEntries.Count(static entry => entry.Status == PendingCommandStatus.DegradedExhausted);
             return string.Format(
                 CultureInfo.CurrentCulture,
                 Localizer["PendingCommandSummaryCountsTemplate"].Value,
                 pending,
                 confirmed,
                 rejected,
-                unresolved);
+                unresolved,
+                warnings,
+                exhausted);
         }
     }
 
@@ -74,6 +78,8 @@ public partial class FcPendingCommandSummary : ComponentBase, IDisposable {
             PendingCommandStatus.Confirmed => Localizer["PendingCommandSummaryConfirmedTemplate"].Value,
             PendingCommandStatus.IdempotentConfirmed => Localizer["PendingCommandSummaryAlreadyAppliedTemplate"].Value,
             PendingCommandStatus.NeedsReview => Localizer["PendingCommandSummaryNeedsReviewTemplate"].Value,
+            PendingCommandStatus.Warning => Localizer["PendingCommandSummaryWarningTemplate"].Value,
+            PendingCommandStatus.DegradedExhausted => Localizer["PendingCommandSummaryExhaustedTemplate"].Value,
             _ => Localizer["PendingCommandSummaryConfirmedTemplate"].Value,
         };
 
@@ -85,6 +91,8 @@ public partial class FcPendingCommandSummary : ComponentBase, IDisposable {
             PendingCommandStatus.Pending => 0,
             PendingCommandStatus.Rejected => 1,
             PendingCommandStatus.NeedsReview => 2,
+            PendingCommandStatus.Warning => 2,
+            PendingCommandStatus.DegradedExhausted => 2,
             PendingCommandStatus.Confirmed => 3,
             PendingCommandStatus.IdempotentConfirmed => 4,
             _ => 5,

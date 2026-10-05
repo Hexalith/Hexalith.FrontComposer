@@ -541,10 +541,10 @@ public sealed class PendingCommandPollingCoordinatorTests {
 
         processed.ShouldBe(1);
         PendingCommandEntry expired = state.GetByMessageId("01ARZ3NDEKTSV4RRFFQ69G5FAV")!;
-        expired.Status.ShouldBe(PendingCommandStatus.NeedsReview);
-        expired.RejectionTitle.ShouldBe("Command needs review");
+        expired.Status.ShouldBe(PendingCommandStatus.DegradedExhausted);
+        expired.RejectionTitle.ShouldBeNull();
         await query.DidNotReceiveWithAnyArgs().QueryAsync(default!, TestContext.Current.CancellationToken);
-        lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.Rejected, "01ARZ3NDEKTSV4RRFFQ69G5FAV", false);
+        lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.DegradedExhausted, "01ARZ3NDEKTSV4RRFFQ69G5FAV", false);
     }
 
     [Fact]
@@ -574,7 +574,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
 
         late.Status.ShouldBe(PendingCommandResolutionStatus.DuplicateIgnored);
         PendingCommandEntry entry = state.GetByMessageId("01ARZ3NDEKTSV4RRFFQ69G5FAV")!;
-        entry.Status.ShouldBe(PendingCommandStatus.NeedsReview);
+        entry.Status.ShouldBe(PendingCommandStatus.DegradedExhausted);
         entry.DuplicateTerminalObservations.ShouldBe(1);
     }
 

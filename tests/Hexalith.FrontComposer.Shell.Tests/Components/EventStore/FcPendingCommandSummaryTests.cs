@@ -35,7 +35,7 @@ public sealed class FcPendingCommandSummaryTests : LayoutComponentTestBase {
 
         cut.Markup.ShouldContain("1 pending, 2 confirmed, 1 rejected, 1 needs review");
         cut.Markup.ShouldContain("additional command updates");
-        cut.Markup.ShouldContain("aria-live=\"polite\"");
+        cut.Markup.ShouldContain("aria-live=\"off\"");
         cut.Markup.ShouldContain("Increment is still pending");
     }
 
@@ -64,7 +64,22 @@ public sealed class FcPendingCommandSummaryTests : LayoutComponentTestBase {
         IRenderedComponent<FcPendingCommandSummary> cut = Render<FcPendingCommandSummary>();
 
         cut.Markup.ShouldContain("Increment is still pending");
-        cut.Markup.ShouldContain("aria-live=\"polite\"");
+        cut.Markup.ShouldContain("aria-live=\"off\"");
+    }
+
+    [Fact]
+    public void WarningAndExhaustionHaveDistinctCountsAndDescriptions() {
+        PendingCommandEntry[] entries = [
+            Entry("warning", PendingCommandStatus.Warning),
+            Entry("expired", PendingCommandStatus.DegradedExhausted),
+        ];
+
+        IRenderedComponent<FcPendingCommandSummary> cut = Render<FcPendingCommandSummary>(parameters => parameters.Add(p => p.Entries, entries));
+
+        cut.Markup.ShouldContain("1 warnings, 1 expired");
+        cut.Markup.ShouldContain("Increment: warning.");
+        cut.Markup.ShouldContain("Increment: status check expired.");
+        cut.Markup.ShouldNotContain("Increment: confirmed.");
     }
 
     private static PendingCommandEntry Entry(

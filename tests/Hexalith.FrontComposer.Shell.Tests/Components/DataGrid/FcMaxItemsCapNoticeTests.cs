@@ -4,6 +4,7 @@ using Bunit;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Shell.Components.DataGrid;
+using Hexalith.FrontComposer.Shell.Services.Announcements;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -33,6 +34,7 @@ public sealed class FcMaxItemsCapNoticeTests : BunitContext {
         Services.AddLogging();
         Services.AddLocalization();
         Services.AddFluentUIComponents();
+        Services.AddSingleton<ISurfaceAnnouncementCoordinator>(new SurfaceAnnouncementCoordinator(TimeProvider.System));
     }
 
     private static IOptionsMonitor<FcShellOptions> MakeOptionsMonitor(FcShellOptions options) {
@@ -75,5 +77,26 @@ public sealed class FcMaxItemsCapNoticeTests : BunitContext {
         IRenderedComponent<FcMaxItemsCapNotice> cut = RenderNotice(itemsCount: 15_000, anyRealFilterActive: true);
 
         cut.FindAll("[data-testid=\"fc-max-items-cap-notice\"]").Count.ShouldBe(0);
+    }
+
+    [Fact]
+    public void SecondCompletedCapResultSpeaksOnce() {
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        List<string> spoken = [];
+        using IDisposable subscription = announcements.Subscribe("projection:" + ViewKey, spoken.Add);
+        IRenderedComponent<FcMaxItemsCapNotice> cut = Render<FcMaxItemsCapNotice>(p => p
+            .Add(c => c.ViewKey, ViewKey).Add(c => c.ItemsCount, 10_000)
+            .Add(c => c.AnyRealFilterActive, false).Add(c => c.ResultIdentity, "result-1"));
+
+        cut.Render(p => p.Add(c => c.ViewKey, ViewKey).Add(c => c.ItemsCount, 10_000)
+            .Add(c => c.AnyRealFilterActive, false).Add(c => c.ResultIdentity, "result-2"));
+        cut.Render(p => p.Add(c => c.ViewKey, ViewKey).Add(c => c.ItemsCount, 10_000)
+            .Add(c => c.AnyRealFilterActive, false).Add(c => c.ResultIdentity, "result-2"));
+
+        spoken.Count(message => message.Length > 0).ShouldBe(2);
+
+        cut.Render(p => p.Add(c => c.ViewKey, ViewKey).Add(c => c.ItemsCount, 9_999)
+            .Add(c => c.AnyRealFilterActive, false).Add(c => c.ResultIdentity, "result-2"));
+        announcements.Current("projection:" + ViewKey).ShouldBe(string.Empty);
     }
 }

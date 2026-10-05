@@ -82,6 +82,10 @@ public partial class FcProjectionEmptyPlaceholder : ComponentBase {
     [Parameter]
     public string? SecondaryText { get; set; }
 
+    /// <summary>Uses the generated view's shared polite status instead of a second live node.</summary>
+    [Parameter]
+    public bool SuppressStandaloneStatus { get; set; }
+
     private string EntityPlural => EntityPluralOverride ?? PluralizeHumanized(ProjectionType?.Name ?? "items");
 
     private string DisplayMessage {

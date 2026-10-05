@@ -12,6 +12,7 @@ using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
+using Hexalith.FrontComposer.Shell.Services.Announcements;
 using Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
 using Hexalith.FrontComposer.Shell.Services.ProjectionViewOverrides;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
@@ -112,6 +113,7 @@ public abstract class GeneratedComponentTestBase : BunitContext {
         // Story 2-4 — FcLifecycleWrapper injects TimeProvider; use the system clock by default
         // so generated-form rendering doesn't block on a fake clock that never ticks.
         _ = Services.AddSingleton(TimeProvider.System);
+        _ = Services.AddScoped<ISurfaceAnnouncementCoordinator, SurfaceAnnouncementCoordinator>();
         _ = Services.AddScoped<IProjectionConnectionState, ProjectionConnectionStateService>();
 
         // Story 4-4 T2.1 / T2.5 — generated grid views inject DataGridScrollInterop and

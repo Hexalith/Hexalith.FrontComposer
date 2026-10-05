@@ -21,7 +21,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.ProjectionConnection
 
 public sealed class ProjectionFallbackRefreshSchedulerTests {
     [Fact]
-    public async Task HeldRefresh_AfterScopeClear_DispatchesOldOriginThatReducerDrops() {
+    public async Task HeldRefresh_AfterScopeClear_DoesNotDispatchOldOrigin() {
         TaskCompletionSource<ProjectionPageResult> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource started = new(TaskCreationOptions.RunContinuationsAsynchronously);
         IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
@@ -48,12 +48,7 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
         held.TrySetResult(new ProjectionPageResult(["old"], 1, "v1"));
         _ = await refresh.ConfigureAwait(true);
 
-        dispatched.ShouldNotBeNull();
-        dispatched.OriginScopeGeneration.ShouldBe(0);
-        LoadedPageReducers reducers = new(
-            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()).ToMonitor(),
-            NullLogger<LoadedPageReducers>.Instance);
-        reducers.ReduceLoadPageSucceeded(pages.Value, dispatched).ShouldBeSameAs(pages.Value);
+        dispatched.ShouldBeNull();
     }
 
     [Fact]
@@ -88,14 +83,49 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
         held.TrySetResult(new ProjectionPageResult(["old"], 1, "v1", IsNotModified: true));
         _ = await refresh.ConfigureAwait(true);
 
-        dispatched.ShouldNotBeNull();
-        dispatched.OriginScopeGeneration.ShouldBe(0);
-        LoadedPageReducers.ReduceLoadPageNotModified(pages.Value, dispatched).ShouldBeSameAs(pages.Value);
+        dispatched.ShouldBeNull();
         pendingB.Task.IsCompleted.ShouldBeFalse();
         LoadedPageReducers.ReduceLoadPageNotModified(pages.Value,
             new LoadPageNotModifiedAction(viewKey, 0, ["current"]) { OriginScopeGeneration = 1 })
             .PendingCompletionsByKey.ShouldBeEmpty();
         pendingB.Task.IsCompletedSuccessfully.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task HeldFallbackAResultCannotDispatchAfterABAReturnsToSameCriteria() {
+        const string viewKey = "acme:OrdersProjection";
+        TaskCompletionSource<ProjectionPageResult> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
+        loader.LoadPageAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<int>(),
+            Arg.Any<IImmutableDictionary<string, string>>(), Arg.Any<string?>(),
+            Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(_ => {
+                started.TrySetResult();
+                return held.Task;
+            });
+        MutableLoadedPageState pages = new(new LoadedPageState {
+            ActiveRequestIdentityByView = ImmutableDictionary<string, string>.Empty.Add(viewKey, "A"),
+            ActiveRequestGenerationByView = ImmutableDictionary<string, long>.Empty.Add(viewKey, 1),
+        });
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        ProjectionFallbackRefreshScheduler scheduler = CreateScheduler(loader, dispatcher, pages);
+        _ = scheduler.RegisterLane(DefaultLane(viewKey));
+
+        Task<int> refresh = scheduler.TriggerNudgeRefreshAsync("OrdersProjection", "acme", TestContext.Current.CancellationToken);
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken).ConfigureAwait(true);
+        pages.Value = pages.Value with {
+            ActiveRequestIdentityByView = pages.Value.ActiveRequestIdentityByView.SetItem(viewKey, "B"),
+            ActiveRequestGenerationByView = pages.Value.ActiveRequestGenerationByView.SetItem(viewKey, 2),
+        };
+        pages.Value = pages.Value with {
+            ActiveRequestIdentityByView = pages.Value.ActiveRequestIdentityByView.SetItem(viewKey, "A"),
+            ActiveRequestGenerationByView = pages.Value.ActiveRequestGenerationByView.SetItem(viewKey, 3),
+        };
+        held.TrySetResult(new ProjectionPageResult(["old-A"], 1, "v1"));
+
+        (await refresh.ConfigureAwait(true)).ShouldBe(0);
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<LoadPageSucceededAction>());
     }
 
     [Fact]

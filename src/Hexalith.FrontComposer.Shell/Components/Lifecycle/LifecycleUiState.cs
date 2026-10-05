@@ -92,11 +92,15 @@ public sealed record LifecycleUiState {
         // Terminal states ignore the timer phase — always Terminal in the UI state.
         LifecycleTimerPhase effectivePhase = transition.NewState is CommandLifecycleState.Confirmed
                                                 or CommandLifecycleState.Rejected
+                                                or CommandLifecycleState.IdempotentConfirmed
+                                                or CommandLifecycleState.NeedsReview
+                                                or CommandLifecycleState.Warning
+                                                or CommandLifecycleState.DegradedExhausted
             ? LifecycleTimerPhase.Terminal
             : phase;
 
-        bool isIdempotent = transition.IdempotencyResolved
-            && transition.NewState == CommandLifecycleState.Confirmed;
+        bool isIdempotent = transition.NewState == CommandLifecycleState.IdempotentConfirmed
+            || (transition.IdempotencyResolved && transition.NewState == CommandLifecycleState.Confirmed);
 
         return new LifecycleUiState {
             Current = transition.NewState,

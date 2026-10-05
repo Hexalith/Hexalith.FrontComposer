@@ -68,7 +68,7 @@ public sealed class PendingCommandPollingCoordinator : IPendingCommandPollingCoo
             if (IsExpired(current, _options.Value)) {
                 PendingCommandOutcomeResolutionResult expiryResult = _resolver.Resolve(new PendingCommandOutcomeObservation(
                     PendingCommandOutcomeSource.FallbackPolling,
-                    PendingCommandTerminalOutcome.NeedsReview,
+                    PendingCommandTerminalOutcome.DegradedExhausted,
                     MessageId: current.MessageId,
                     RejectionTitle: "Command needs review",
                     RejectionDetail: "Command status polling reached the configured maximum duration before a terminal EventStore status arrived."));
@@ -83,6 +83,23 @@ public sealed class PendingCommandPollingCoordinator : IPendingCommandPollingCoo
                 PendingCommandOutcomeObservation? observation = await _statusQuery
                     .QueryAsync(current, cancellationToken)
                     .ConfigureAwait(false);
+
+                // A response which finishes at or after the budget cannot reopen this local
+                // lifecycle. The same identity is closed before any observed outcome is applied.
+                PendingCommandEntry? afterAwait = _pendingCommands.GetByMessageId(current.MessageId);
+                if (afterAwait is null || afterAwait.Status != PendingCommandStatus.Pending) {
+                    continue;
+                }
+                if (IsExpired(afterAwait, _options.Value)) {
+                    PendingCommandOutcomeResolutionResult exhausted = _resolver.Resolve(new PendingCommandOutcomeObservation(
+                        PendingCommandOutcomeSource.FallbackPolling,
+                        PendingCommandTerminalOutcome.DegradedExhausted,
+                        MessageId: afterAwait.MessageId));
+                    if (exhausted.Status == PendingCommandOutcomeResolutionStatus.Resolved) {
+                        processed++;
+                    }
+                    continue;
+                }
 
                 if (observation is null) {
                     continue;

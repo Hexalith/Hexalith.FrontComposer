@@ -125,6 +125,12 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        bool _expandedItemHiddenByFilter = _expandedItemKey is not null && _expandedStatusOverviewItem is null;");
         _ = sb.AppendLine();
+        _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandedRowHiddenBanner>(seq++);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ViewKey\", _viewKey);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"IsHiddenByFilter\", _expandedItemHiddenByFilter);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ResultSettled\", !LoadedPageState.Value.ActiveRequestIdentityByView.ContainsKey(_viewKey) || PrimaryCompletedPage() is not null);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ResultIdentity\", PageRequestIdentity(CurrentGridSnapshot()) + \"|\" + (_expandedItemKey?.ToString() ?? \"none\") + \"|\" + (PrimaryCompletedPage()?.Identity.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? state.LastResultCorrelationId ?? \"initial\"));");
+        _ = sb.AppendLine("        builder.CloseComponent();");
 
         _ = sb.AppendLine("        builder.OpenComponent<FluentDataGrid<" + recordTypeName + ">>(seq++);");
         // Story 4-4 T2.1 / D1 / D20 — Virtualize even at low item count keeps emission shape uniform.
@@ -455,6 +461,8 @@ public static class ProjectionRoleBodyEmitter {
             _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandedRowHiddenBanner>(seq++);");
             _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ViewKey\", _viewKey);");
             _ = sb.AppendLine("        builder.AddAttribute(seq++, \"IsHiddenByFilter\", _expandedItemHiddenByFilter);");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ResultSettled\", !LoadedPageState.Value.ActiveRequestIdentityByView.ContainsKey(_viewKey) || PrimaryCompletedPage() is not null);");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ResultIdentity\", PageRequestIdentity(CurrentGridSnapshot()) + \"|\" + (_expandedItemKey?.ToString() ?? \"none\") + \"|\" + (PrimaryCompletedPage()?.Identity.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? state.LastResultCorrelationId ?? \"initial\"));");
             _ = sb.AppendLine("        builder.CloseComponent();");
             _ = sb.AppendLine();
         }
@@ -611,6 +619,7 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"HasExpanded\", _expandedItem is not null);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"DetailPanelAriaLabel\", " + ColumnEmitter.ShellLocalizerFieldName + "[\"ExpandInRowDetailPanelAriaLabelTemplate\", _expandedItemKey?.ToString() ?? string.Empty].Value);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"SuppressedAnnouncement\", _expandedItemHiddenByFilter ? " + ColumnEmitter.ShellLocalizerFieldName + "[\"ExpandInRowDetailSuppressedByFilterAnnouncement\"].Value : null);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"SuppressStandaloneAnnouncement\", true);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)((RenderTreeBuilder builder) =>");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            if (_expandedItem is null) { return; }");
@@ -636,6 +645,7 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"HasExpanded\", _expandedStatusOverviewItem?.DetailItem is not null);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"DetailPanelAriaLabel\", " + ColumnEmitter.ShellLocalizerFieldName + "[\"ExpandInRowDetailPanelAriaLabelTemplate\", _expandedItemKey?.ToString() ?? string.Empty].Value);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"SuppressedAnnouncement\", _expandedItemHiddenByFilter ? " + ColumnEmitter.ShellLocalizerFieldName + "[\"ExpandInRowDetailSuppressedByFilterAnnouncement\"].Value : null);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"SuppressStandaloneAnnouncement\", true);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)((RenderTreeBuilder builder) =>");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            if (_expandedStatusOverviewItem?.DetailItem is null) { return; }");

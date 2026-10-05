@@ -59,6 +59,12 @@ public sealed record LoadPageNotModifiedAction {
     /// <summary>Gets the originating TCS, used to reject stale terminal actions for superseded same-page requests.</summary>
     public TaskCompletionSource<object>? Completion { get; init; }
 
+    /// <summary>Originating normalized request identity.</summary>
+    public string RequestIdentity { get; init; } = string.Empty;
+
+    /// <summary>Originating request generation.</summary>
+    public long? RequestGeneration { get; init; }
+
     /// <summary>Gets the originating scope generation for a fallback refresh.</summary>
     internal long? OriginScopeGeneration { get; init; }
 }

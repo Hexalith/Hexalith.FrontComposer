@@ -104,43 +104,22 @@ public sealed class EventStoreCommandClient(
         try {
             JsonElement payload = SerializeCommandPayload(command);
             HttpClient client = httpClientFactory.CreateClient(HttpClientName);
-            int maxAttempts = Math.Max(1, currentShellOptions.CommandDispatchRetryAttempts + 1);
-            EventStoreCommandClassification classification;
-            HttpResponseMessage response;
-            for (int attempt = 1; ; attempt++) {
-                cancellationToken.ThrowIfCancellationRequested();
-                using HttpRequestMessage request = new(HttpMethod.Post, current.CommandEndpointPath);
-                await EventStoreHttp.ApplyAuthorizationAsync(request, current, cancellationToken).ConfigureAwait(false);
-
-                request.Content = EventStoreRequestContent.Create(
-                    new SubmitCommandRequest(
-                        messageId,
-                        tenant,
-                        domain,
-                        aggregateId,
-                        commandTypeName,
-                        payload),
-                    current.MaxRequestBytes);
-
-                try {
-                    response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
-                    FrontComposerTelemetry.SetHttpStatus(activity, (int)response.StatusCode);
-                    classification = await classifier
-                        .ClassifyCommandAsync(response, cancellationToken)
-                        .ConfigureAwait(false);
-
-                    if (classification.IsAccepted || !IsRetryablePreAcceptFailure(classification.Failure) || attempt >= maxAttempts) {
-                        break;
-                    }
-                }
-                catch (HttpRequestException ex) when (IsRetryablePreAcceptFailure(ex) && attempt < maxAttempts) {
-                    await DelayBeforeRetryAsync(currentShellOptions, cancellationToken).ConfigureAwait(false);
-                    continue;
-                }
-
+            // Before transport acceptance, retrying a POST could duplicate an operation. Send
+            // once; only an acknowledged operation may use the same MessageId for one retry.
+            using HttpRequestMessage request = new(HttpMethod.Post, current.CommandEndpointPath);
+            await EventStoreHttp.ApplyAuthorizationAsync(request, current, cancellationToken).ConfigureAwait(false);
+            request.Content = EventStoreRequestContent.Create(
+                new SubmitCommandRequest(messageId, tenant, domain, aggregateId, commandTypeName, payload),
+                current.MaxRequestBytes);
+            HttpResponseMessage response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+            if (cancellationToken.IsCancellationRequested) {
                 response.Dispose();
-                await DelayBeforeRetryAsync(currentShellOptions, cancellationToken).ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
             }
+            FrontComposerTelemetry.SetHttpStatus(activity, (int)response.StatusCode);
+            EventStoreCommandClassification classification = await classifier
+                .ClassifyCommandAsync(response, cancellationToken)
+                .ConfigureAwait(false);
 
             using (response) {
 
@@ -163,23 +142,14 @@ public sealed class EventStoreCommandClient(
                         response.Headers.Location is not null,
                         Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
                     if (IsRetryablePreAcceptFailure(classification.Failure)) {
-                        throw CreateRetryExhaustedWarning(currentShellOptions);
+                        throw CreatePreAcceptWarning(currentShellOptions);
                     }
 
                     throw classification.Failure!;
                 }
 
-                string? responseCorrelationId = classification.CorrelationId
-                    ?? await ReadCorrelationIdAsync(response, logger, commandTypeName, messageId, cancellationToken).ConfigureAwait(false);
-                FrontComposerTelemetry.SetCorrelation(activity, responseCorrelationId);
-
-                CommandResult result = new(
-                    messageId,
-                    CommandResultStatus.Accepted,
-                    responseCorrelationId,
-                    classification.Location,
-                    classification.RetryAfter);
-
+                // Acceptance is established by the headers. Keep this anchor even if the
+                // optional response body stalls or cannot be read.
                 DateTimeOffset? observedAt;
                 Exception? lifecycleObservationFailure = null;
                 try {
@@ -189,6 +159,34 @@ public sealed class EventStoreCommandClient(
                     lifecycleObservationFailure = ex;
                     observedAt = null;
                 }
+
+                string? responseCorrelationId = classification.CorrelationId;
+                if (responseCorrelationId is null) {
+                    try {
+                        responseCorrelationId = await ReadAcceptedCorrelationIdAsync(response, logger, commandTypeName, messageId, timeProvider ?? TimeProvider.System, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception ex) when ((ex is HttpRequestException or IOException or JsonException or TimeoutException or OperationCanceledException)
+                        && !cancellationToken.IsCancellationRequested
+                        && currentShellOptions.CommandDispatchRetryAttempts > 0) {
+                        responseCorrelationId = await RetryAcceptedCorrelationAsync(
+                            client, current, currentShellOptions, messageId, tenant, domain, aggregateId,
+                            commandTypeName, payload, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception ex) when ((ex is HttpRequestException or IOException or JsonException or TimeoutException or OperationCanceledException)
+                        && !cancellationToken.IsCancellationRequested) {
+                        // The headers prove acceptance; an unreadable optional body only leaves
+                        // correlation unknown. Polling still starts with the original MessageId.
+                        responseCorrelationId = null;
+                    }
+                }
+                FrontComposerTelemetry.SetCorrelation(activity, responseCorrelationId);
+
+                CommandResult result = new(
+                    messageId,
+                    CommandResultStatus.Accepted,
+                    responseCorrelationId,
+                    classification.Location,
+                    classification.RetryAfter);
 
                 try {
                     onLifecycleObservation?.Invoke(new CommandLifecycleObservation(
@@ -217,7 +215,7 @@ public sealed class EventStoreCommandClient(
         catch (HttpRequestException ex) when (IsRetryablePreAcceptFailure(ex)) {
             FrontComposerTelemetry.SetOutcome(activity, "rejected");
             FrontComposerTelemetry.SetFailure(activity, nameof(CommandWarningException));
-            throw CreateRetryExhaustedWarning(currentShellOptions);
+            throw CreatePreAcceptWarning(currentShellOptions);
         }
         catch (OperationCanceledException oce) when (cancellationToken.IsCancellationRequested
             || oce.CancellationToken.IsCancellationRequested) {
@@ -265,9 +263,40 @@ public sealed class EventStoreCommandClient(
     private static JsonElement SerializeCommandPayload<TCommand>(TCommand command)
         => JsonSerializer.SerializeToElement(command, EventStoreRequestContent.JsonOptions);
 
-    private static async Task DelayBeforeRetryAsync(FcShellOptions options, CancellationToken cancellationToken) {
+    private async Task<string?> RetryAcceptedCorrelationAsync(
+        HttpClient client,
+        EventStoreOptions current,
+        FcShellOptions retryOptions,
+        string messageId,
+        string tenant,
+        string domain,
+        string aggregateId,
+        string commandTypeName,
+        JsonElement payload,
+        CancellationToken cancellationToken) {
+        await DelayBeforeRetryAsync(retryOptions, timeProvider ?? TimeProvider.System, cancellationToken).ConfigureAwait(false);
+        try {
+            using HttpRequestMessage retry = new(HttpMethod.Post, current.CommandEndpointPath);
+            await EventStoreHttp.ApplyAuthorizationAsync(retry, current, cancellationToken).ConfigureAwait(false);
+            retry.Content = EventStoreRequestContent.Create(
+                new SubmitCommandRequest(messageId, tenant, domain, aggregateId, commandTypeName, payload),
+                current.MaxRequestBytes);
+            using HttpResponseMessage response = await client.SendAsync(retry, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            EventStoreCommandClassification repeated = await classifier.ClassifyCommandAsync(response, cancellationToken).ConfigureAwait(false);
+            return repeated.IsAccepted
+                ? repeated.CorrelationId ?? await ReadAcceptedCorrelationIdAsync(response, logger, commandTypeName, messageId, timeProvider ?? TimeProvider.System, cancellationToken).ConfigureAwait(false)
+                : null;
+        }
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex) && !cancellationToken.IsCancellationRequested) {
+            // The first response already proved acceptance. A failed retry remains unconfirmed.
+            return null;
+        }
+    }
+
+    private static async Task DelayBeforeRetryAsync(FcShellOptions options, TimeProvider time, CancellationToken cancellationToken) {
         var delay = TimeSpan.FromMilliseconds(options.CommandDispatchRetryDelayMs);
-        await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+        await Task.Delay(delay, time, cancellationToken).ConfigureAwait(false);
     }
 
     private static bool IsRetryablePreAcceptFailure(Exception? exception) {
@@ -282,17 +311,34 @@ public sealed class EventStoreCommandClient(
             or HttpStatusCode.GatewayTimeout;
     }
 
-    private static CommandWarningException CreateRetryExhaustedWarning(FcShellOptions options)
+    private static CommandWarningException CreatePreAcceptWarning(FcShellOptions options)
         => new(
             CommandWarningKind.RetryableDispatchFailed,
             new ProblemDetailsPayload(
-                "Command was not accepted",
-                "EventStore did not accept the command after retrying a transient dispatch failure. Review the current data and submit again when ready.",
+                "Command outcome unknown",
+                "We could not confirm whether the command was accepted. Check its status before submitting again.",
                 null,
                 null,
                 new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal),
                 Array.Empty<string>()),
             TimeSpan.FromMilliseconds(options.CommandDispatchRetryDelayMs));
+
+    private static async Task<string?> ReadAcceptedCorrelationIdAsync(
+        HttpResponseMessage response,
+        ILogger logger,
+        string commandType,
+        string messageId,
+        TimeProvider time,
+        CancellationToken cancellationToken) {
+        using CancellationTokenSource bodyCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        try {
+            return await ReadCorrelationIdAsync(response, logger, commandType, messageId, bodyCancellation.Token)
+                .WaitAsync(TimeSpan.FromSeconds(2), time, cancellationToken).ConfigureAwait(false);
+        }
+        finally {
+            await bodyCancellation.CancelAsync().ConfigureAwait(false);
+        }
+    }
 
     private static async Task<string?> ReadCorrelationIdAsync(
         HttpResponseMessage response,
@@ -311,9 +357,23 @@ public sealed class EventStoreCommandClient(
         try {
             using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
             using JsonDocument document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
-            return document.RootElement.TryGetProperty("correlationId", out JsonElement value)
-                ? value.GetString()
-                : null;
+            if (document.RootElement.ValueKind != JsonValueKind.Object) {
+                throw new JsonException("The accepted response body has no object envelope.");
+            }
+
+            if (!document.RootElement.TryGetProperty("correlationId", out JsonElement value)) {
+                return null;
+            }
+
+            if (value.ValueKind is JsonValueKind.Null) {
+                return null;
+            }
+
+            if (value.ValueKind != JsonValueKind.String) {
+                throw new JsonException("The accepted response correlation has an invalid shape.");
+            }
+
+            return value.GetString();
         }
         catch (JsonException) {
             // Reason intentionally omitted — JsonException.Message can echo response body fragments.
@@ -324,7 +384,7 @@ public sealed class EventStoreCommandClient(
                 response.Content.Headers.ContentType?.MediaType,
                 commandType,
                 FrontComposerTelemetry.SafeIdentifierOrAbsent(messageId));
-            return null;
+            throw;
         }
     }
 

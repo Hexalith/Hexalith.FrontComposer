@@ -103,4 +103,16 @@ public sealed record LoadPageAction {
 
     /// <summary>Gets the cancellation token flowing from the provider request.</summary>
     public CancellationToken CancellationToken { get; init; }
+
+    /// <summary>Normalized filter, search and sort identity captured when the page was requested.</summary>
+    public string RequestIdentity { get; init; } = string.Empty;
+
+    /// <summary>View-owned generation for this request, including repeated criteria after an intervening request.</summary>
+    public long? RequestGeneration { get; init; }
+
+    /// <summary>Whether the operator changed the page request from the prior request.</summary>
+    public bool OperatorInitiated { get; init; }
+
+    /// <summary>Request registration time captured by the view for stable slow-query timing.</summary>
+    public DateTimeOffset? RegisteredAt { get; init; }
 }

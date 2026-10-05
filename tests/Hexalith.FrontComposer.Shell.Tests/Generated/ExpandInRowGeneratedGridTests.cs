@@ -108,8 +108,8 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
 
         await cut.WaitForAssertionAsync(() => {
             IElement banner = cut.Find("[data-testid='fc-expanded-row-hidden-banner']");
-            banner.GetAttribute("role").ShouldBe("status");
-            banner.GetAttribute("aria-live").ShouldBe("polite");
+            banner.GetAttribute("role").ShouldBe("group");
+            banner.GetAttribute("aria-live").ShouldBe("off");
             banner.TextContent.ShouldContain("1 expanded item hidden by current filter");
             banner.TextContent.ShouldContain("Clear filter");
 
@@ -118,11 +118,26 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
             region.GetAttribute("aria-label").ShouldBe("Details for counter-1");
             region.TextContent.ShouldNotContain("counter-1");
 
-            IElement liveRegion = cut.Find(".fc-expand-in-row-suppression-live-region");
+            IElement liveRegion = cut.Find("[data-testid='fc-surface-status']");
             liveRegion.GetAttribute("role").ShouldBe("status");
             liveRegion.GetAttribute("aria-live").ShouldBe("polite");
             liveRegion.GetAttribute("aria-atomic").ShouldBe("true");
-            liveRegion.TextContent.ShouldContain("Your expanded item is hidden by the current filter");
+            liveRegion.TextContent.ShouldBeEmpty();
+        });
+        _ = JSInterop.VerifyInvoke("focusFirstButtonWithin", 1);
+
+        long firstRevision = 0;
+        await cut.InvokeAsync(() => dispatcher.Dispatch(new CounterProjectionLoadedAction(
+            "story-2-4-filtered-again",
+            [Counter("counter-2", 3)])));
+        await cut.WaitForAssertionAsync(() => {
+            long secondRevision = long.Parse(
+                cut.Find("[data-testid='fc-surface-status'] span").GetAttribute("data-message-revision")!,
+                CultureInfo.InvariantCulture);
+            secondRevision.ShouldBeGreaterThan(firstRevision);
+            cut.FindAll("[data-testid='fc-surface-status']").Count.ShouldBe(1);
+            cut.Find("[data-testid='fc-surface-status']").TextContent.ShouldContain("The expanded row is hidden by the current filters");
+            cut.Find("[data-testid='fc-expanded-row-hidden-banner']").TextContent.ShouldContain("Clear filter");
         });
     }
 
@@ -249,8 +264,8 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
             cut.Nodes.QuerySelectorAll($"[id='{controls}']").Length.ShouldBe(1);
             // axe state contract — aria-expanded reflects the expanded row.
             trigger.GetAttribute("aria-expanded").ShouldBe("true");
-            // the suppressed-announcement live region stays silent while the row is visible.
-            cut.Find(".fc-expand-in-row-suppression-live-region").TextContent.Trim().ShouldBeEmpty();
+            // The shared projection status stays silent while the row is visible.
+            cut.Find("[data-testid='fc-surface-status']").TextContent.Trim().ShouldBeEmpty();
         });
     }
 
@@ -297,7 +312,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
 
     private void SetupExpandInRowModule() {
         BunitJSModuleInterop module = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-expandinrow.js");
-        module.SetupVoid("initializeExpandInRow", _ => true);
+        _ = module.SetupVoid("initializeExpandInRow", _ => true).SetVoidResult();
     }
 
     private static CounterProjection Counter(string id, int count)

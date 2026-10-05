@@ -1,14 +1,19 @@
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
+using Hexalith.FrontComposer.Shell.Resources;
+using Hexalith.FrontComposer.Shell.Services.Announcements;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Localization;
+using Microsoft.JSInterop;
 
 namespace Hexalith.FrontComposer.Shell.Components.EventStore;
 
 /// <summary>Inline EventStore projection connection status indicator.</summary>
-public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable {
+public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, IAsyncDisposable {
+    private const string ConnectivityModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-connectivity.js";
     private IDisposable? _subscription;
     private IDisposable? _reconciliationSubscription;
     private ITimer? _clearTimer;
@@ -25,6 +30,17 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable {
         Changed: false,
         LastTransitionAt: DateTimeOffset.MinValue);
     private int _disposed;
+    private bool _offline;
+    private long _offlineEpisode;
+    private IJSObjectReference? _connectivityModule;
+    private DotNetObjectReference<FcProjectionConnectionStatus>? _connectivityReference;
+    private int _connectivityWatchId;
+    private bool _connectivityReady;
+    private readonly SemaphoreSlim _connectivityGate = new(1, 1);
+    private ITimer? _connectivityRetryTimer;
+    private long _onlineEpisode;
+    private long _recoveryEpisode;
+    private string? _recoveryGroup;
 
     [Inject]
     private IProjectionConnectionState ConnectionState { get; set; } = default!;
@@ -37,6 +53,18 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable {
 
     [Inject]
     private TimeProvider Time { get; set; } = default!;
+
+    [Inject]
+    private ISurfaceAnnouncementCoordinator Announcements { get; set; } = default!;
+
+    [Inject]
+    private IStringLocalizer<FcShellResources> AnnouncementLocalizer { get; set; } = default!;
+
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+
+    [Inject]
+    private IServiceProvider Services { get; set; } = default!;
 
     /// <inheritdoc />
     protected override void OnInitialized() {
@@ -52,20 +80,133 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable {
         }
     }
 
+    /// <inheritdoc />
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        await TryInitializeConnectivityAsync().ConfigureAwait(true);
+    }
+
+    private async Task TryInitializeConnectivityAsync() {
+        if (_connectivityReady || _disposed != 0) {
+            return;
+        }
+
+        bool gateEntered = false;
+        try {
+            await _connectivityGate.WaitAsync().ConfigureAwait(true);
+            gateEntered = true;
+            if (_disposed != 0) {
+                return;
+            }
+            _connectivityModule ??= await JS.InvokeAsync<IJSObjectReference>("import", ConnectivityModulePath).ConfigureAwait(true);
+            _connectivityReference ??= DotNetObjectReference.Create(this);
+            if (_connectivityWatchId == 0) {
+                _connectivityWatchId = await _connectivityModule.InvokeAsync<int>("watchConnectivity", _connectivityReference).ConfigureAwait(true);
+            }
+            bool online = await _connectivityModule.InvokeAsync<bool>("isOnline").ConfigureAwait(true);
+            _connectivityReady = true;
+            _connectivityRetryTimer?.Dispose();
+            _connectivityRetryTimer = null;
+            if (_disposed == 0) {
+                await OnBrowserConnectivityChanged(online).ConfigureAwait(true);
+            }
+        }
+        catch (JSDisconnectedException) {
+            ScheduleConnectivityRetry();
+        }
+        catch (JSException) {
+            ScheduleConnectivityRetry();
+        }
+        catch (InvalidOperationException) {
+            ScheduleConnectivityRetry();
+        }
+        finally {
+            if (gateEntered) {
+                _connectivityGate.Release();
+            }
+        }
+    }
+
+    private void ScheduleConnectivityRetry() {
+        if (_disposed != 0 || _connectivityReady || _connectivityRetryTimer is not null) {
+            return;
+        }
+        _connectivityRetryTimer = Time.CreateTimer(_ => _ = InvokeAsync(async () => {
+            _connectivityRetryTimer?.Dispose();
+            _connectivityRetryTimer = null;
+            await TryInitializeConnectivityAsync().ConfigureAwait(true);
+        }), null, TimeSpan.FromSeconds(1), Timeout.InfiniteTimeSpan);
+    }
+
+    /// <summary>Receives actual browser online/offline evidence from the connectivity module.</summary>
+    [JSInvokable]
+    public async Task OnBrowserConnectivityChanged(bool online) {
+        if (_disposed != 0 || (_offline == !online && ConnectionState.Current.BrowserOffline == !online)) {
+            return;
+        }
+
+        _offline = !online;
+        ConnectionState.SetBrowserOffline(_offline);
+        if (_offline) {
+            CancelClearTimer();
+            _showReconnected = false;
+            if (_recoveryGroup is { } recoveryGroup) {
+                Announcements.Cancel("projection-connection", recoveryGroup);
+                _recoveryGroup = null;
+            }
+            _offlineEpisode++;
+            Announcements.Announce(
+                "projection-connection",
+                "browser-offline:" + _offlineEpisode,
+                "offline",
+                AnnouncementLocalizer["Am30Offline"],
+                immediate: true);
+        }
+        else {
+            Announcements.Cancel("projection-connection", "browser-offline:" + _offlineEpisode);
+            _onlineEpisode++;
+            if (ConnectionState.Current.Status is not ProjectionConnectionStatus.Connected) {
+                Announcements.Announce(
+                    "projection-connection",
+                    "browser-online-disconnected:" + _onlineEpisode,
+                    "fallback",
+                    AnnouncementLocalizer["Am06Fallback"],
+                    immediate: true);
+            }
+            if (Services.GetService(typeof(IReconnectionReconciliationCoordinator)) is IReconnectionReconciliationCoordinator coordinator) {
+                _ = coordinator.ReconcileAsync();
+            }
+        }
+
+        await InvokeAsync(StateHasChanged).ConfigureAwait(true);
+    }
+
     private void OnConnectionChanged(ProjectionConnectionSnapshot snapshot) {
         if (_disposed != 0) {
             return;
         }
 
         _ = InvokeAsync(() => {
-            if (_disposed != 0) {
+            if (_disposed != 0 || !ReferenceEquals(ConnectionState.Current, snapshot)) {
                 return;
             }
 
             _snapshot = snapshot;
+            if (snapshot.Status is ProjectionConnectionStatus.Connected) {
+                Announcements.Cancel("projection-connection", "connection:" + snapshot.Epoch);
+                Announcements.Cancel("projection-connection", "browser-online-disconnected:" + _onlineEpisode);
+            }
+            if (!_offline && snapshot.Status is (ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected)) {
+                Announcements.Announce(
+                    "projection-connection",
+                    "connection:" + snapshot.Epoch,
+                    snapshot.Status.ToString(),
+                    AnnouncementLocalizer[snapshot.Status == ProjectionConnectionStatus.Disconnected
+                        ? "Am06Fallback" : "Am05Reconnecting"]);
+            }
             if (snapshot.IsDisconnected || _reconciliation.Status is ReconnectionReconciliationStatus.Reconciling) {
                 CancelClearTimer();
                 _showReconnected = false;
+                CancelRecoveryAnnouncement();
             }
 
             StateHasChanged();
@@ -82,12 +223,17 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable {
                 return;
             }
 
+            if (!ReferenceEquals(ReconciliationState.Current, snapshot)) {
+                return;
+            }
+
             // P31 — connection-status precedence wins. A late Refreshed snapshot from a
             // superseded reconnect epoch must never reopen a cleared status while we are
             // already disconnected/reconnecting. Stale-epoch snapshots are also ignored:
             // if a Refreshed lands for an older epoch than what we already saw, drop it.
             if (snapshot.Status is ReconnectionReconciliationStatus.Refreshed
-                && (_snapshot.IsDisconnected
+                && (_offline
+                    || _snapshot.IsDisconnected
                     || _snapshot.Status is ProjectionConnectionStatus.Reconnecting
                     || snapshot.Epoch < _reconciliation.Epoch)) {
                 return;
@@ -95,8 +241,18 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable {
 
             _reconciliation = snapshot;
             CancelClearTimer();
-            _showReconnected = snapshot.Status is ReconnectionReconciliationStatus.Refreshed && snapshot.Changed;
+            _showReconnected = snapshot.Status is ReconnectionReconciliationStatus.Refreshed;
+            if (!_showReconnected) {
+                CancelRecoveryAnnouncement();
+            }
             if (_showReconnected) {
+                _recoveryGroup = "recovery:" + (++_recoveryEpisode);
+                Announcements.Announce(
+                    "projection-connection",
+                    _recoveryGroup,
+                    "recovered",
+                    AnnouncementLocalizer[snapshot.DataRead ? "Am07Recovery" : "Am07ConnectionRestored"],
+                    terminal: true);
                 StartClearTimer();
             }
 
@@ -126,6 +282,10 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable {
                     }
 
                     _showReconnected = false;
+                    if (_recoveryGroup is { } recoveryGroup) {
+                        Announcements.Cancel("projection-connection", recoveryGroup);
+                        _recoveryGroup = null;
+                    }
                     // P34 — generation counter breaks the loop. ReconciliationState.Reset()
                     // synchronously notifies subscribers; OnReconciliationChanged queues a
                     // follow-up InvokeAsync but its check sees the bumped generation as stale
@@ -151,6 +311,13 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable {
         timer?.Dispose();
     }
 
+    private void CancelRecoveryAnnouncement() {
+        if (_recoveryGroup is { } recoveryGroup) {
+            Announcements.Cancel("projection-connection", recoveryGroup);
+            _recoveryGroup = null;
+        }
+    }
+
     /// <inheritdoc />
     public void Dispose() {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) {
@@ -159,7 +326,33 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable {
 
         _subscription?.Dispose();
         _reconciliationSubscription?.Dispose();
+        _connectivityRetryTimer?.Dispose();
+        _connectivityRetryTimer = null;
         CancelClearTimer();
+        GC.SuppressFinalize(this);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync() {
+        Dispose();
+        await _connectivityGate.WaitAsync().ConfigureAwait(true);
+        try {
+        if (_connectivityModule is not null) {
+            try {
+                await _connectivityModule.InvokeVoidAsync("unwatchConnectivity", _connectivityWatchId).ConfigureAwait(true);
+                await _connectivityModule.DisposeAsync().ConfigureAwait(true);
+            }
+            catch (JSDisconnectedException) {
+            }
+            catch (JSException) {
+            }
+        }
+
+        _connectivityReference?.Dispose();
+        }
+        finally {
+            _connectivityGate.Release();
+        }
         GC.SuppressFinalize(this);
     }
 }

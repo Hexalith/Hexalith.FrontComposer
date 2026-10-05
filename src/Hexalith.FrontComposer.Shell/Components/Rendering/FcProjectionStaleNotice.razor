@@ -1,0 +1,77 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Rendering
+@implements IDisposable
+@using Hexalith.FrontComposer.Shell.Resources
+@using Hexalith.FrontComposer.Shell.Services.Announcements
+@using Hexalith.FrontComposer.Shell.State.ProjectionConnection
+@inject IProjectionConnectionState Connection
+@inject ISurfaceAnnouncementCoordinator Announcements
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FcShellResources> Localizer
+
+@if (_visible) {
+    <p role="group" aria-live="off" data-testid="fc-projection-stale-notice">@Localizer["Am04Stale"]</p>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public string Surface { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool HasCachedRows { get; set; }
+
+    [Parameter]
+    public bool HasFailedRefresh { get; set; }
+
+    private IDisposable? _subscription;
+    private ProjectionConnectionSnapshot _snapshot = new(ProjectionConnectionStatus.Connected, DateTimeOffset.MinValue, 0, null);
+    private bool _visible;
+    private string? _activeGroup;
+    private string? _visibleReason;
+    private long _episode;
+
+    protected override void OnInitialized() {
+        _subscription = Connection.Subscribe(snapshot => _ = InvokeAsync(() => {
+            if (!ReferenceEquals(Connection.Current, snapshot)) {
+                return;
+            }
+            _snapshot = snapshot;
+            Reconcile();
+            StateHasChanged();
+        }));
+    }
+
+    protected override void OnParametersSet() {
+        _snapshot = Connection.Current;
+        Reconcile();
+    }
+
+    private void Reconcile() {
+        bool visible = HasCachedRows && (_snapshot.IsDisconnected || HasFailedRefresh);
+        string reason = (_snapshot.BrowserOffline ? "browser-offline" : _snapshot.IsDisconnected ? "transport" : "online")
+            + ":" + HasFailedRefresh;
+        if (visible && (!_visible || !string.Equals(reason, _visibleReason, StringComparison.Ordinal))) {
+            _episode++;
+        }
+        _visible = visible;
+        _visibleReason = visible ? reason : null;
+        string group = "stale:" + _episode.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (_activeGroup is { } prior && (! _visible || !string.Equals(prior, group, StringComparison.Ordinal))) {
+            Announcements.Cancel(Surface, prior);
+            _activeGroup = null;
+        }
+        if (_visible) {
+            _activeGroup = group;
+            Announcements.Announce(
+                Surface,
+                group,
+                "stale",
+                Localizer["Am04Stale"]);
+        }
+    }
+
+    public void Dispose() {
+        _subscription?.Dispose();
+        if (_activeGroup is { } group) {
+            Announcements.Cancel(Surface, group);
+        }
+    }
+}

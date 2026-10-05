@@ -578,8 +578,8 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        // another instance's successful submit.");
         _ = sb.AppendLine("        var current = LifecycleState.Value.State;");
         _ = sb.AppendLine("        var currentCorrelationId = LifecycleState.Value.CorrelationId;");
-        _ = sb.AppendLine("        if (current == CommandLifecycleState.Confirmed");
-        _ = sb.AppendLine("            && _previousLifecycleState != CommandLifecycleState.Confirmed");
+        _ = sb.AppendLine("        if (current is CommandLifecycleState.Confirmed or CommandLifecycleState.IdempotentConfirmed");
+        _ = sb.AppendLine("            && _previousLifecycleState is not (CommandLifecycleState.Confirmed or CommandLifecycleState.IdempotentConfirmed)");
         _ = sb.AppendLine("            && OnConfirmed.HasDelegate");
         _ = sb.AppendLine("            && !string.IsNullOrEmpty(_submittedCorrelationId)");
         _ = sb.AppendLine("            && string.Equals(currentCorrelationId, _submittedCorrelationId, StringComparison.Ordinal)) {");
@@ -1281,7 +1281,11 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        var currentState = LifecycleState.Value.State;");
         _ = sb.AppendLine("        if (currentState != CommandLifecycleState.Idle");
         _ = sb.AppendLine("            && currentState != CommandLifecycleState.Rejected");
-        _ = sb.AppendLine("            && currentState != CommandLifecycleState.Confirmed)");
+        _ = sb.AppendLine("            && currentState != CommandLifecycleState.Confirmed");
+        _ = sb.AppendLine("            && currentState != CommandLifecycleState.IdempotentConfirmed");
+        _ = sb.AppendLine("            && currentState != CommandLifecycleState.NeedsReview");
+        _ = sb.AppendLine("            && currentState != CommandLifecycleState.Warning");
+        _ = sb.AppendLine("            && currentState != CommandLifecycleState.DegradedExhausted)");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            await PresentBlockedSubmissionAsync(");
         _ = sb.AppendLine("                global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.PendingCommandAlreadyExists,");
@@ -1454,7 +1458,9 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                    if (System.Threading.Volatile.Read(ref lifecycleCallbackClosed) == 1) return;");
         _ = sb.AppendLine("                    bool dispatchTerminalAction = false;");
         _ = sb.AppendLine("                    bool terminalApplied = false;");
-        _ = sb.AppendLine("                    if (observation.State is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected)");
+        _ = sb.AppendLine("                    if (observation.State is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected");
+        _ = sb.AppendLine("                        or CommandLifecycleState.IdempotentConfirmed or CommandLifecycleState.NeedsReview");
+        _ = sb.AppendLine("                        or CommandLifecycleState.Warning or CommandLifecycleState.DegradedExhausted)");
         _ = sb.AppendLine("                    {");
         _ = sb.AppendLine("                        lock (lifecycleCallbackGate)");
         _ = sb.AppendLine("                        {");
@@ -1467,9 +1473,15 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                            }");
         _ = sb.AppendLine("                            var pendingOutcomeObservation = new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandOutcomeObservation(");
         _ = sb.AppendLine("                            global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandOutcomeSource.LiveNudgeRefresh,");
-        _ = sb.AppendLine("                            observation.State == CommandLifecycleState.Confirmed");
-        _ = sb.AppendLine("                                ? global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalOutcome.Confirmed");
-        _ = sb.AppendLine("                                : global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalOutcome.Rejected,");
+        _ = sb.AppendLine("                            observation.State switch");
+        _ = sb.AppendLine("                            {");
+        _ = sb.AppendLine("                                CommandLifecycleState.Confirmed => global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalOutcome.Confirmed,");
+        _ = sb.AppendLine("                                CommandLifecycleState.IdempotentConfirmed => global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalOutcome.IdempotentConfirmed,");
+        _ = sb.AppendLine("                                CommandLifecycleState.NeedsReview => global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalOutcome.NeedsReview,");
+        _ = sb.AppendLine("                                CommandLifecycleState.Warning => global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalOutcome.Warning,");
+        _ = sb.AppendLine("                                CommandLifecycleState.DegradedExhausted => global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalOutcome.DegradedExhausted,");
+        _ = sb.AppendLine("                                _ => global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalOutcome.Rejected,");
+        _ = sb.AppendLine("                            },");
         _ = sb.AppendLine("                            MessageId: observation.MessageId,");
         _ = sb.AppendLine("                            ObservedAt: observation.ObservedAt)");
         _ = sb.AppendLine("                        {");
@@ -1499,6 +1511,8 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                        }");
         _ = sb.AppendLine("                    }");
         _ = sb.AppendLine("                    if (observation.State is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected");
+        _ = sb.AppendLine("                        or CommandLifecycleState.IdempotentConfirmed or CommandLifecycleState.NeedsReview");
+        _ = sb.AppendLine("                        or CommandLifecycleState.Warning or CommandLifecycleState.DegradedExhausted");
         _ = sb.AppendLine("                        && !terminalApplied) return;");
         _ = sb.AppendLine("                    // Guard against callbacks arriving after form disposal or cancellation (patch P10).");
         _ = sb.AppendLine("                    if (_disposed || cts.IsCancellationRequested");
@@ -1515,6 +1529,11 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                            case CommandLifecycleState.Confirmed:");
         _ = sb.AppendLine("                                Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".ConfirmedAction(correlationId));");
         _ = sb.AppendLine("                                break;");
+        foreach (string outcome in new[] { "IdempotentConfirmed", "NeedsReview", "Warning", "Degraded", "DegradedExhausted" }) {
+            _ = sb.AppendLine("                            case CommandLifecycleState." + outcome + ":");
+            _ = sb.AppendLine("                                Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + "." + outcome + "Action(correlationId));");
+            _ = sb.AppendLine("                                break;");
+        }
         _ = sb.AppendLine("                            case CommandLifecycleState.Rejected:");
         _ = sb.AppendLine("                                Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".RejectedAction(correlationId, \"Command rejected.\", \"Review the command and retry.\", null, null, null, null));");
         _ = sb.AppendLine("                                break;");
@@ -1619,20 +1638,16 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            if (_disposed || cts.IsCancellationRequested) return;");
         _ = sb.AppendLine("            if (pendingRegistration is { Status: global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.MergedTerminal, Entry: { } mergedEntry })");
         _ = sb.AppendLine("            {");
-        _ = sb.AppendLine("                if (mergedEntry.Status is global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStatus.Confirmed");
-        _ = sb.AppendLine("                    or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStatus.IdempotentConfirmed)");
+        _ = sb.AppendLine("                switch (mergedEntry.Status)");
         _ = sb.AppendLine("                {");
-        _ = sb.AppendLine("                    if (LifecycleState.Value.State != CommandLifecycleState.Confirmed)");
-        _ = sb.AppendLine("                    {");
-        _ = sb.AppendLine("                        Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".ConfirmedAction(correlationId));");
-        _ = sb.AppendLine("                    }");
-        _ = sb.AppendLine("                }");
-        _ = sb.AppendLine("                else");
-        _ = sb.AppendLine("                {");
-        _ = sb.AppendLine("                    if (LifecycleState.Value.State != CommandLifecycleState.Rejected)");
-        _ = sb.AppendLine("                    {");
-        _ = sb.AppendLine("                        Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".RejectedAction(correlationId, \"Command rejected.\", \"Review the command and retry.\", null, null, null, null));");
-        _ = sb.AppendLine("                    }");
+        _ = sb.AppendLine("                    case global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStatus.Confirmed:");
+        _ = sb.AppendLine("                        if (LifecycleState.Value.State != CommandLifecycleState.Confirmed) Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".ConfirmedAction(correlationId)); break;");
+        foreach (string outcome in new[] { "IdempotentConfirmed", "NeedsReview", "Warning", "DegradedExhausted" }) {
+            _ = sb.AppendLine("                    case global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStatus." + outcome + ":");
+            _ = sb.AppendLine("                        if (LifecycleState.Value.State != CommandLifecycleState." + outcome + ") Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + "." + outcome + "Action(correlationId)); break;");
+        }
+        _ = sb.AppendLine("                    case global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStatus.Rejected:");
+        _ = sb.AppendLine("                        if (LifecycleState.Value.State != CommandLifecycleState.Rejected) Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".RejectedAction(correlationId, \"Command rejected.\", \"Review the command and retry.\", null, null, null, null)); break;");
         _ = sb.AppendLine("                }");
         _ = sb.AppendLine("                if (Logger is not null) { LogCommandAcknowledgedDispatchSkipped(Logger, pendingRegistration.Status, correlationId); }");
         _ = sb.AppendLine("                return;");

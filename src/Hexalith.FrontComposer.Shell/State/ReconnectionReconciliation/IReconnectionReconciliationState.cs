@@ -8,7 +8,7 @@ public interface IReconnectionReconciliationState {
 
     void Start(long epoch);
 
-    void Complete(long epoch, bool changed);
+    void Complete(long epoch, bool changed, bool succeeded = true, bool dataRead = true);
 
     void Reset(long? expectedEpoch = null);
 }

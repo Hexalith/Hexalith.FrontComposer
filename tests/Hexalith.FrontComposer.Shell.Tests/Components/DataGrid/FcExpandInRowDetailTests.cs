@@ -105,6 +105,7 @@ public sealed class FcExpandInRowDetailTests : BunitContext {
             .Add(p => p.HasExpanded, false)
             .Add(p => p.DetailPanelAriaLabel, "Expanded order")
             .Add(p => p.SuppressedAnnouncement, "Expanded item hidden by current filter.")
+            .Add(p => p.SuppressStandaloneAnnouncement, true)
             .Add(p => p.ChildContent, ChildContent()));
 
         cut.Render(parameters => parameters
@@ -118,7 +119,20 @@ public sealed class FcExpandInRowDetailTests : BunitContext {
     }
 
     [Fact]
-    public void SuppressedAnnouncement_RendersPoliteLiveRegion() {
+    public void SuppressedAnnouncement_DoesNotCreateASecondLiveRegion() {
+        IRenderedComponent<FcExpandInRowDetail> cut = Render<FcExpandInRowDetail>(parameters => parameters
+            .Add(p => p.ViewKey, "orders:view:instance")
+            .Add(p => p.HasExpanded, false)
+            .Add(p => p.DetailPanelAriaLabel, "Expanded order")
+            .Add(p => p.SuppressedAnnouncement, "Expanded item hidden by current filter.")
+            .Add(p => p.SuppressStandaloneAnnouncement, true)
+            .Add(p => p.ChildContent, ChildContent()));
+
+        cut.FindAll("div[role=\"status\"]").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void StandaloneSuppressionKeepsItsPoliteStatus() {
         IRenderedComponent<FcExpandInRowDetail> cut = Render<FcExpandInRowDetail>(parameters => parameters
             .Add(p => p.ViewKey, "orders:view:instance")
             .Add(p => p.HasExpanded, false)
@@ -126,10 +140,7 @@ public sealed class FcExpandInRowDetailTests : BunitContext {
             .Add(p => p.SuppressedAnnouncement, "Expanded item hidden by current filter.")
             .Add(p => p.ChildContent, ChildContent()));
 
-        AngleSharp.Dom.IElement liveRegion = cut.Find("div[role=\"status\"]");
-        liveRegion.GetAttribute("aria-live").ShouldBe("polite");
-        liveRegion.GetAttribute("aria-atomic").ShouldBe("true");
-        liveRegion.TextContent.ShouldContain("Expanded item hidden by current filter.");
+        cut.Find("div[role=\"status\"]").TextContent.ShouldBe("Expanded item hidden by current filter.");
     }
 
     private IRenderedComponent<FcExpandInRowDetail> RenderDetail(

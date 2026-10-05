@@ -30,12 +30,12 @@ public sealed class FcLifecycleWrapperA11yTests : LifecycleWrapperTestBase {
     }
 
     [Fact]
-    public void Live_region_role_is_alert_when_Rejected_or_ActionPrompt() {
+    public void RejectedAndDegradedUseOnlyTheSharedPoliteStatus() {
         (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push, FakeTimeProvider time) = RenderWrapperWithFakeTime();
 
         push(TransitionAt(CommandLifecycleState.Syncing, CommandLifecycleState.Rejected, time.GetUtcNow()));
-        cut.Find("[data-fc-phase='rejected']").GetAttribute("role").ShouldBe("alert");
-        cut.Find("[data-fc-phase='rejected']").GetAttribute("aria-live").ShouldBe("assertive");
+        cut.Find("[data-testid='fc-surface-status']").GetAttribute("aria-live").ShouldBe("polite");
+        cut.FindAll("[role='alert']").ShouldBeEmpty();
 
         // Re-arm for action prompt path.
         push(TransitionAt(CommandLifecycleState.Rejected, CommandLifecycleState.Idle, time.GetUtcNow()));
@@ -44,8 +44,8 @@ public sealed class FcLifecycleWrapperA11yTests : LifecycleWrapperTestBase {
         push(TransitionAt(CommandLifecycleState.Acknowledged, CommandLifecycleState.Syncing, time.GetUtcNow()));
         time.Advance(TimeSpan.FromMilliseconds(10_500));
         cut.WaitForAssertion(() => {
-            cut.Find("[data-fc-phase='action-prompt']").GetAttribute("role").ShouldBe("alert");
-            cut.Find("[data-fc-phase='action-prompt']").GetAttribute("aria-live").ShouldBe("assertive");
+            cut.Find("[data-testid='fc-surface-status']").GetAttribute("aria-live").ShouldBe("polite");
+            cut.FindAll("[role='alert']").ShouldBeEmpty();
         });
     }
 

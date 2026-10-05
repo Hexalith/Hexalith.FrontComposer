@@ -11,7 +11,7 @@ namespace TestDomain;
 /// Triggers data fetch for <see cref="OrderProjection"/>. After a scope change, dispatch this request before its result.
 /// </summary>
 /// <param name="CorrelationId">Trace identifier shared by all actions in this load cycle.</param>
-public record OrderProjectionLoadRequestedAction(string CorrelationId);
+public record OrderProjectionLoadRequestedAction(string CorrelationId, bool OperatorInitiated = false);
 
 /// <summary>
 /// Data arrived for <see cref="OrderProjection"/>. After a scope change, only a result matching a new load request is accepted.

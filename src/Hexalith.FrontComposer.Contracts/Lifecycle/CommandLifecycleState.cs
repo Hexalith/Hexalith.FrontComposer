@@ -21,4 +21,19 @@ public enum CommandLifecycleState {
 
     /// <summary>Command rejected by domain logic.</summary>
     Rejected,
+
+    /// <summary>The requested result was already confirmed.</summary>
+    IdempotentConfirmed,
+
+    /// <summary>The result requires human review.</summary>
+    NeedsReview,
+
+    /// <summary>The command completed with a warning.</summary>
+    Warning,
+
+    /// <summary>Confirmation is delayed while polling remains active.</summary>
+    Degraded,
+
+    /// <summary>The local confirmation budget is exhausted and the lifecycle is closed.</summary>
+    DegradedExhausted,
 }

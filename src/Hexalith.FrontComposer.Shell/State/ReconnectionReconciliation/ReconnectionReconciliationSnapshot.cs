@@ -5,4 +5,7 @@ public sealed record ReconnectionReconciliationSnapshot(
     ReconnectionReconciliationStatus Status,
     long Epoch,
     bool Changed,
-    DateTimeOffset LastTransitionAt);
+    DateTimeOffset LastTransitionAt) {
+    /// <summary>Whether the successful reconciliation read at least one data lane.</summary>
+    public bool DataRead { get; init; } = true;
+}

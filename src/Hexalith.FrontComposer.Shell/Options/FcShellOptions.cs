@@ -262,15 +262,14 @@ public sealed class FcShellOptions {
     public int CommandTargetResolutionTimeoutMs { get; set; } = 500;
 
     /// <summary>
-    /// Number of retry attempts after the initial EventStore command dispatch attempt for retryable
-    /// pre-accept transport faults. Default: 1 retry.
+    /// Enables one same-MessageId retry after EventStore has accepted a command and the response
+    /// cannot be read completely. Pre-accept transport faults are never retried.
     /// </summary>
     [Range(0, 3, ErrorMessage = "CommandDispatchRetryAttempts must be between 0 and 3.")]
     public int CommandDispatchRetryAttempts { get; set; } = 1;
 
     /// <summary>
-    /// Deterministic delay in milliseconds between retryable pre-accept EventStore command dispatch
-    /// attempts. Default: 250 ms.
+    /// Deterministic delay before the one post-acknowledgement retry. Default: 250 ms.
     /// </summary>
     [Range(1, 60_000, ErrorMessage = "CommandDispatchRetryDelayMs must be between 1 and 60000.")]
     public int CommandDispatchRetryDelayMs { get; set; } = 250;

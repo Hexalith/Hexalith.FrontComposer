@@ -35,10 +35,14 @@ Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail.DetailPanel
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail.HasExpanded:System.Boolean:get/set
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail.PanelId:System.String:get/set
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail.SuppressedAnnouncement:System.String:get/set
+Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail.SuppressStandaloneAnnouncement:System.Boolean:get/set
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail.ViewKey:System.String:get/set
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandedRowHiddenBanner
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandedRowHiddenBanner.#ctor()
+Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandedRowHiddenBanner.Dispose():void
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandedRowHiddenBanner.IsHiddenByFilter:System.Boolean:get/set
+Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandedRowHiddenBanner.ResultIdentity:System.String:get/set
+Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandedRowHiddenBanner.ResultSettled:System.Boolean:get/set
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandedRowHiddenBanner.ViewKey:System.String:get/set
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcFilterEmptyState
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcFilterEmptyState.#ctor()
@@ -63,8 +67,10 @@ Hexalith.FrontComposer.Shell.Components.DataGrid.FcFilterSummary.TotalCount:Syst
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcFilterSummary.ViewKey:System.String:get/set
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice.#ctor()
+Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice.Dispose():void
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice.AnyRealFilterActive:System.Boolean:get/set
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice.ItemsCount:System.Int32:get/set
+Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice.ResultIdentity:System.String:get/set
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice.ViewKey:System.String:get/set
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice.Visible:System.Boolean:get/-
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcNewItemIndicator

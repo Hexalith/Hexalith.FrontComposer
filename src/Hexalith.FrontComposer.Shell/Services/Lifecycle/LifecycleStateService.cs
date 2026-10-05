@@ -104,7 +104,9 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             lock (entry) {
                 current = entry.State;
                 messageId = entry.MessageId;
-                originalAt = entry.OriginalTransitionAt;
+                originalAt = current is CommandLifecycleState.Syncing or CommandLifecycleState.Degraded
+                    ? entry.AcceptedAt ?? entry.OriginalTransitionAt
+                    : entry.OriginalTransitionAt;
             }
 
             try {
@@ -267,6 +269,9 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             entry.State = newState;
             entry.LastUpdated = now;
             entry.OriginalTransitionAt = now;
+            if (newState == CommandLifecycleState.Acknowledged) {
+                entry.AcceptedAt ??= now;
+            }
             originalAt = now;
             if (messageId is not null) {
                 entry.MessageId = messageId;
@@ -275,6 +280,7 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             if (newState == CommandLifecycleState.Idle) {
                 entry.MessageId = null;
                 entry.OutcomeNotifications = 0;
+                entry.AcceptedAt = null;
             }
 
             if (IsTerminal(newState)) {
@@ -392,9 +398,15 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
     }
 
     private static bool IsTerminal(CommandLifecycleState state) =>
-        state is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected;
+        state is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected
+            or CommandLifecycleState.IdempotentConfirmed or CommandLifecycleState.NeedsReview
+            or CommandLifecycleState.Warning or CommandLifecycleState.DegradedExhausted;
 
     private static bool IsValidTransition(CommandLifecycleState from, CommandLifecycleState to) {
+        if (IsTerminal(from)) {
+            return false;
+        }
+
         if (to == CommandLifecycleState.Idle) {
             return true;
         }
@@ -407,12 +419,32 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             CommandLifecycleState.Idle => to == CommandLifecycleState.Submitting,
             CommandLifecycleState.Submitting => to is CommandLifecycleState.Acknowledged
                 or CommandLifecycleState.Confirmed
-                or CommandLifecycleState.Rejected,
+                or CommandLifecycleState.Rejected
+                or CommandLifecycleState.IdempotentConfirmed
+                or CommandLifecycleState.NeedsReview
+                or CommandLifecycleState.Warning
+                or CommandLifecycleState.DegradedExhausted,
             CommandLifecycleState.Acknowledged => to is CommandLifecycleState.Syncing
                 or CommandLifecycleState.Confirmed
-                or CommandLifecycleState.Rejected,
+                or CommandLifecycleState.Rejected
+                or CommandLifecycleState.IdempotentConfirmed
+                or CommandLifecycleState.NeedsReview
+                or CommandLifecycleState.Warning
+                or CommandLifecycleState.Degraded
+                or CommandLifecycleState.DegradedExhausted,
             CommandLifecycleState.Syncing => to is CommandLifecycleState.Confirmed
-                or CommandLifecycleState.Rejected,
+                or CommandLifecycleState.Rejected
+                or CommandLifecycleState.IdempotentConfirmed
+                or CommandLifecycleState.NeedsReview
+                or CommandLifecycleState.Warning
+                or CommandLifecycleState.Degraded
+                or CommandLifecycleState.DegradedExhausted,
+            CommandLifecycleState.Degraded => to is CommandLifecycleState.Confirmed
+                or CommandLifecycleState.Rejected
+                or CommandLifecycleState.IdempotentConfirmed
+                or CommandLifecycleState.NeedsReview
+                or CommandLifecycleState.Warning
+                or CommandLifecycleState.DegradedExhausted,
             CommandLifecycleState.Confirmed => false,
             CommandLifecycleState.Rejected => false,
             _ => false,
@@ -442,6 +474,7 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
         public string? MessageId;
         public DateTimeOffset LastUpdated;
         public DateTimeOffset OriginalTransitionAt;
+        public DateTimeOffset? AcceptedAt;
         public int OutcomeNotifications;
     }
 

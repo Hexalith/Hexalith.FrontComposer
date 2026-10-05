@@ -238,6 +238,10 @@ public sealed class ProjectionFallbackRefreshScheduler(
         }
 
         entry.OriginScopeGeneration = loadedPages.Value.ScopeGeneration;
+        entry.OriginRequestIdentity = loadedPages.Value.ActiveRequestIdentityByView.TryGetValue(lane.ViewKey, out string? identity)
+            ? identity : string.Empty;
+        entry.OriginRequestGeneration = loadedPages.Value.ActiveRequestGenerationByView.TryGetValue(lane.ViewKey, out long generation)
+            ? generation : null;
 
         ProjectionLaneRefreshResult outcome;
         try {
@@ -542,6 +546,12 @@ public sealed class ProjectionFallbackRefreshScheduler(
         return loadedPages.Value.PagesByKey.ContainsKey(pageKey);
     }
 
+    private bool IsCurrentRequest(LaneEntry entry)
+        => loadedPages.Value.ScopeGeneration == entry.OriginScopeGeneration
+            && (!loadedPages.Value.ActiveRequestGenerationByView.TryGetValue(entry.Lane.ViewKey, out long generation)
+                ? entry.OriginRequestGeneration is null
+                : generation == entry.OriginRequestGeneration);
+
     private bool TryRecordValidatorState(
         LaneEntry entry,
         ProjectionPageResult result,
@@ -551,7 +561,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
             ? noEtagSignature ?? ProjectionFallbackRowSignature.Create(result, out _)
             : null;
         lock (_laneGate) {
-            if (!IsLaneActiveWithoutLock(entry)) {
+            if (!IsLaneActiveWithoutLock(entry) || !IsCurrentRequest(entry)) {
                 return false;
             }
 
@@ -575,7 +585,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
         string? noEtagSignature = null) {
         lock (entry.DispatchGate) {
             lock (_laneGate) {
-                if (!IsLaneActiveWithoutLock(entry)) {
+                if (!IsLaneActiveWithoutLock(entry) || !IsCurrentRequest(entry)) {
                     return false;
                 }
             }
@@ -589,7 +599,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
         lock (entry.DispatchGate) {
             bool hadValidatorState;
             lock (_laneGate) {
-                if (!IsLaneActiveWithoutLock(entry)) {
+                if (!IsLaneActiveWithoutLock(entry) || !IsCurrentRequest(entry)) {
                     return false;
                 }
 
@@ -601,6 +611,8 @@ public sealed class ProjectionFallbackRefreshScheduler(
             ProjectionFallbackLane lane = entry.Lane;
             dispatcher.Dispatch(new LoadPageNotModifiedAction(lane.ViewKey, lane.Skip, result.Items) {
                 OriginScopeGeneration = entry.OriginScopeGeneration,
+                RequestIdentity = entry.OriginRequestIdentity,
+                RequestGeneration = entry.OriginRequestGeneration,
             });
             return !hadValidatorState || TryRecordValidatorState(entry, result);
         }
@@ -612,7 +624,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
             entry.Lane.Skip,
             result.Items,
             result.TotalCount,
-            elapsedMs: 0) { OriginScopeGeneration = entry.OriginScopeGeneration });
+            elapsedMs: 0) { OriginScopeGeneration = entry.OriginScopeGeneration, RequestIdentity = entry.OriginRequestIdentity, RequestGeneration = entry.OriginRequestGeneration });
 
     private static ProjectionLaneRefreshResult MapCustomOutcome(ProjectionFallbackLaneRefreshOutcome outcome)
         => outcome switch {
@@ -625,6 +637,8 @@ public sealed class ProjectionFallbackRefreshScheduler(
         public object DispatchGate { get; } = new();
         public ProjectionFallbackLane Lane { get; } = lane;
         public long OriginScopeGeneration { get; set; }
+        public string OriginRequestIdentity { get; set; } = string.Empty;
+        public long? OriginRequestGeneration { get; set; }
         public int RefCount = 1;
     }
 

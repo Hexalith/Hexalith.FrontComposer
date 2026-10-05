@@ -38,7 +38,7 @@ public sealed class ReconnectionReconciliationStateService(
             Changed: false,
             timeProvider.GetUtcNow()));
 
-    public void Complete(long epoch, bool changed) {
+    public void Complete(long epoch, bool changed, bool succeeded = true, bool dataRead = true) {
         // P13/P15 — atomic epoch + status check inside the lock. Stale epoch results never overwrite
         // a fresh Start; once the pass has settled to Refreshed/Idle a duplicate Complete is silently
         // ignored.
@@ -53,10 +53,10 @@ public sealed class ReconnectionReconciliationStateService(
                     }
 
                     ReconnectionReconciliationSnapshot candidate = new(
-                        changed ? ReconnectionReconciliationStatus.Refreshed : ReconnectionReconciliationStatus.Idle,
+                        succeeded ? ReconnectionReconciliationStatus.Refreshed : ReconnectionReconciliationStatus.Idle,
                         epoch,
                         changed,
-                        timeProvider.GetUtcNow());
+                        timeProvider.GetUtcNow()) { DataRead = dataRead };
                     return IsLogicalDuplicate(current, candidate) ? null : candidate;
                 },
                 out ReconnectionReconciliationSnapshot snapshot,
@@ -106,5 +106,6 @@ public sealed class ReconnectionReconciliationStateService(
     private static bool IsLogicalDuplicate(ReconnectionReconciliationSnapshot current, ReconnectionReconciliationSnapshot next)
         => current.Status == next.Status
             && current.Epoch == next.Epoch
-            && current.Changed == next.Changed;
+            && current.Changed == next.Changed
+            && current.DataRead == next.DataRead;
 }

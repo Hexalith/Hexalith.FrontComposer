@@ -2,17 +2,20 @@
 @using Hexalith.FrontComposer.Shell.Resources
 @using Hexalith.FrontComposer.Shell.State.ProjectionConnection
 @using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation
+@using Hexalith.FrontComposer.Shell.Components.Rendering
 @using Microsoft.Extensions.Localization
 @using Microsoft.FluentUI.AspNetCore.Components
 
 @inject IStringLocalizer<FcShellResources> Localizer
 
+<FcSurfaceStatus Surface="projection-connection" />
+
 @if (_visible) {
     <div class="fc-projection-connection-status-host">
         <FluentMessageBar Intent="@Intent"
                           AllowDismiss="false"
-                          role="status"
-                          aria-live="polite"
+                          role="group"
+                          aria-live="off"
                           data-testid="fc-projection-connection-status"
                           Class="@CssClass">
             @Message
@@ -21,11 +24,11 @@
 }
 
 @code {
-    private bool _visible => _snapshot.Status is ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected
+    private bool _visible => _offline || _snapshot.Status is ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected
         || _reconciliation.Status is ReconnectionReconciliationStatus.Reconciling
         || _showReconnected;
 
-    private MessageBarIntent Intent => _snapshot.Status switch {
+    private MessageBarIntent Intent => _offline ? MessageBarIntent.Warning : _snapshot.Status switch {
         ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected => MessageBarIntent.Warning,
         _ => MessageBarIntent.Info,
     };
@@ -34,10 +37,11 @@
     // were added by Story 5-4; the literals previously hardcoded here meant French-locale users
     // never saw the translated string. Story precedence order is preserved: connection-state
     // (Reconnecting/Disconnected) wins over reconciliation status.
-    private string Message => _snapshot.Status switch {
-        ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected => Localizer["ReconnectStatusText"],
+    private string Message => _offline ? Localizer["Am30Offline"] : _snapshot.Status switch {
+        ProjectionConnectionStatus.Reconnecting => Localizer["ReconnectStatusText"],
+        ProjectionConnectionStatus.Disconnected => Localizer["Am06Fallback"],
         _ when _reconciliation.Status is ReconnectionReconciliationStatus.Reconciling => Localizer["ReconciliationStatusText"],
-        _ => Localizer["ReconnectedDataRefreshedText"],
+        _ => Localizer[_reconciliation.DataRead ? "Am07Recovery" : "Am07ConnectionRestored"],
     };
 
     private string CssClass => _snapshot.Status is ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected

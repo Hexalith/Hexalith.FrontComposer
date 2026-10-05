@@ -35,7 +35,7 @@ public static class FluxorActionsEmitter {
         _ = sb.AppendLine("/// Triggers data fetch for <see cref=\"" + model.TypeName + "\"/>. After a scope change, dispatch this request before its result.");
         _ = sb.AppendLine("/// </summary>");
         _ = sb.AppendLine("/// <param name=\"CorrelationId\">Trace identifier shared by all actions in this load cycle.</param>");
-        _ = sb.AppendLine("public record " + model.TypeName + "LoadRequestedAction(string CorrelationId);");
+        _ = sb.AppendLine("public record " + model.TypeName + "LoadRequestedAction(string CorrelationId, bool OperatorInitiated = false);");
         _ = sb.AppendLine();
 
         _ = sb.AppendLine("/// <summary>");
@@ -88,7 +88,7 @@ public static class FluxorActionsEmitter {
         _ = sb.AppendLine("    /// </summary>");
         _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
         _ = sb.AppendLine("    public static " + model.StateName + " On" + model.TypeName + "LoadRequested(" + model.StateName + " state, " + model.TypeName + "LoadRequestedAction action)");
-        _ = sb.AppendLine("        => state with { IsLoading = true, Error = null, RequiresScopedRequest = false, ActiveCorrelationId = state.HasChangedScope ? action.CorrelationId : null };");
+        _ = sb.AppendLine("        => state with { IsLoading = true, Error = null, RequiresScopedRequest = false, ActiveCorrelationId = action.CorrelationId, ActiveOperatorInitiated = action.OperatorInitiated };");
         _ = sb.AppendLine();
 
         // Loaded reducer
@@ -98,7 +98,7 @@ public static class FluxorActionsEmitter {
         _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
         _ = sb.AppendLine("    public static " + model.StateName + " On" + model.TypeName + "Loaded(" + model.StateName + " state, " + model.TypeName + "LoadedAction action)");
         _ = sb.AppendLine("        => state.RequiresScopedRequest || (state.ActiveCorrelationId is not null && state.ActiveCorrelationId != action.CorrelationId)");
-        _ = sb.AppendLine("            ? state : state with { IsLoading = false, Items = action.Items, Error = null };");
+        _ = sb.AppendLine("            ? state : state with { IsLoading = false, Items = action.Items, Error = null, LastResultCorrelationId = action.CorrelationId, LastResultOperatorInitiated = state.ActiveOperatorInitiated };");
         _ = sb.AppendLine();
 
         // LoadFailed reducer
@@ -108,7 +108,7 @@ public static class FluxorActionsEmitter {
         _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
         _ = sb.AppendLine("    public static " + model.StateName + " On" + model.TypeName + "LoadFailed(" + model.StateName + " state, " + model.TypeName + "LoadFailedAction action)");
         _ = sb.AppendLine("        => state.RequiresScopedRequest || (state.ActiveCorrelationId is not null && state.ActiveCorrelationId != action.CorrelationId)");
-        _ = sb.AppendLine("            ? state : state with { IsLoading = false, Error = action.Error };");
+        _ = sb.AppendLine("            ? state : state with { IsLoading = false, Error = action.Error, LastResultCorrelationId = action.CorrelationId, LastResultOperatorInitiated = state.ActiveOperatorInitiated };");
 
         _ = sb.AppendLine();
         _ = sb.AppendLine("    /// <summary>Clears prior-scope projection rows and load provenance.</summary>");

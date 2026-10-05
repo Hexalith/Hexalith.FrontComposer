@@ -6,4 +6,6 @@ public enum PendingCommandTerminalOutcome {
     Rejected,
     IdempotentConfirmed,
     NeedsReview,
+    Warning,
+    DegradedExhausted,
 }

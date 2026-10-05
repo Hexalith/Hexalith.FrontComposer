@@ -29,7 +29,8 @@ public sealed class RazorEmitterBannersTests {
         src.ShouldContain("FcSlowQueryNotice");
         src.ShouldContain("FcMaxItemsCapNotice");
         src.ShouldContain("\"ViewKey\", _viewKey");
-        src.ShouldContain("\"ItemsCount\", state.Items.Count");
+        src.ShouldContain("\"ItemsCount\", primaryPage?.TotalCount");
+        src.ShouldContain("\"ResultIdentity\", primaryPage?.Identity");
         src.ShouldContain("\"AnyRealFilterActive\", anyRealFilterActive");
     }
 

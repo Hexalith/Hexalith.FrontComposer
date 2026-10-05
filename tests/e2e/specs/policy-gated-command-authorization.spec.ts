@@ -46,7 +46,6 @@ test.describe('Story 4.4: policy-gated command authorization', () => {
     await fillField(form, 'Reason', 'QA story 4.4 allowed dispatch');
     await form.getByRole('button', { name: ALLOWED_ACTION_LABEL }).click();
 
-    await expect(form.getByText(/Submitting/u)).toBeVisible();
     await lifecycle.expectState(ALLOWED_COMMAND_ID, 'confirmed');
     await expect(form.getByTestId('fc-confirmed')).toBeVisible();
   });

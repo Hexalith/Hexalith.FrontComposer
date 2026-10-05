@@ -65,6 +65,10 @@ public static class CommandLifecycleBridgeEmitter {
         _ = sb.AppendLine("                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Confirmed, null));");
         _ = sb.AppendLine("            _subscriber.SubscribeToAction<" + model.ActionsWrapperName + ".RejectedAction>(this,");
         _ = sb.AppendLine("                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Rejected, null));");
+        foreach (string outcome in new[] { "IdempotentConfirmed", "NeedsReview", "Warning", "Degraded", "DegradedExhausted" }) {
+            _ = sb.AppendLine("            _subscriber.SubscribeToAction<" + model.ActionsWrapperName + "." + outcome + "Action>(this,");
+            _ = sb.AppendLine("                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState." + outcome + ", null));");
+        }
         _ = sb.AppendLine("            _subscriber.SubscribeToAction<" + model.ActionsWrapperName + ".ResetToIdleAction>(this,");
         _ = sb.AppendLine("                OnResetToIdle);");
         _ = sb.AppendLine("        }");
@@ -92,6 +96,10 @@ public static class CommandLifecycleBridgeEmitter {
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        bool closesSubscription = state is global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Confirmed");
         _ = sb.AppendLine("            or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Rejected");
+        _ = sb.AppendLine("            or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.IdempotentConfirmed");
+        _ = sb.AppendLine("            or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.NeedsReview");
+        _ = sb.AppendLine("            or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Warning");
+        _ = sb.AppendLine("            or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.DegradedExhausted");
         _ = sb.AppendLine("            or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Idle;");
         _ = sb.AppendLine("        global::System.IDisposable? subscription = null;");
         _ = sb.AppendLine("        lock (_gate)");
@@ -167,7 +175,11 @@ public static class CommandLifecycleBridgeEmitter {
         _ = sb.AppendLine("                || _forwardingActions.ContainsKey((transition.CorrelationId, transition.NewState))");
         _ = sb.AppendLine("                || !_lifecycleSubscriptions.ContainsKey(transition.CorrelationId)) return;");
         _ = sb.AppendLine("            if (transition.NewState is global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Confirmed");
-        _ = sb.AppendLine("                or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Rejected)");
+        _ = sb.AppendLine("                or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Rejected");
+        _ = sb.AppendLine("                or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.IdempotentConfirmed");
+        _ = sb.AppendLine("                or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.NeedsReview");
+        _ = sb.AppendLine("                or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Warning");
+        _ = sb.AppendLine("                or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.DegradedExhausted)");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                // Claim terminal delivery while holding the gate. Removing before dispatch makes");
         _ = sb.AppendLine("                // duplicate/re-entrant callbacks no-ops; disposal happens outside the gate.");
@@ -184,6 +196,11 @@ public static class CommandLifecycleBridgeEmitter {
         _ = sb.AppendLine("            case global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Rejected:");
         _ = sb.AppendLine("                _dispatcher.Dispatch(new " + model.ActionsWrapperName + ".RejectedAction(transition.CorrelationId, \"Command rejected.\", \"Review the command and retry.\", null, null, null, null));");
         _ = sb.AppendLine("                break;");
+        foreach (string outcome in new[] { "IdempotentConfirmed", "NeedsReview", "Warning", "Degraded", "DegradedExhausted" }) {
+            _ = sb.AppendLine("            case global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState." + outcome + ":");
+            _ = sb.AppendLine("                _dispatcher.Dispatch(new " + model.ActionsWrapperName + "." + outcome + "Action(transition.CorrelationId));");
+            _ = sb.AppendLine("                break;");
+        }
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        finally");

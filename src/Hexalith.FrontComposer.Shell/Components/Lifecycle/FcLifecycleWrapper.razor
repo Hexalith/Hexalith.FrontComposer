@@ -1,6 +1,7 @@
 @namespace Hexalith.FrontComposer.Shell.Components.Lifecycle
 @using Hexalith.FrontComposer.Contracts.Communication
 @using Hexalith.FrontComposer.Contracts.Lifecycle
+@using Hexalith.FrontComposer.Shell.Components.Rendering
 @using Microsoft.AspNetCore.Components
 @using Microsoft.FluentUI.AspNetCore.Components
 
@@ -28,11 +29,7 @@
     }
     @ChildContent
 
-    @if (!string.IsNullOrEmpty(Announcement)) {
-        <div role="@AriaRole" aria-live="@AriaLive" data-fc-phase="@DataPhase" class="fc-lifecycle-live">
-            @Announcement
-        </div>
-    }
+    <FcSurfaceStatus Surface="@AnnouncementSurface" />
 
     @if (_state.Current is CommandLifecycleState.Syncing
             && _state.TimerPhase is LifecycleTimerPhase.StillSyncing) {
@@ -50,6 +47,7 @@
         <FluentMessageBar Intent="MessageBarIntent.Info"
                          Title="Submission acknowledged"
                          AllowDismiss="false"
+                         aria-live="off"
                          data-testid="fc-acknowledged">
             <ChildContent>
                 The command was accepted and is waiting for confirmation.
@@ -57,11 +55,12 @@
         </FluentMessageBar>
     }
 
-    @if (_state.Current is CommandLifecycleState.Syncing
+    @if (_state.Current is CommandLifecycleState.Syncing or CommandLifecycleState.Degraded
             && _state.TimerPhase is LifecycleTimerPhase.ActionPrompt) {
         <FluentMessageBar Intent="MessageBarIntent.Warning"
                          Title="@ActionPromptTitle"
                          AllowDismiss="false"
+                         aria-live="off"
                          data-testid="fc-action-prompt">
             <ChildContent>
                 You can wait, or start over from a fresh page.
@@ -79,18 +78,30 @@
         <FluentMessageBar Intent="MessageBarIntent.Success"
                          Title="Submission confirmed"
                          AllowDismiss="true"
+                         aria-live="off"
                          data-testid="fc-confirmed">
         </FluentMessageBar>
     }
 
-    @if (_state.Current is CommandLifecycleState.Confirmed && _state.IsIdempotent) {
+    @if (_state.Current is CommandLifecycleState.IdempotentConfirmed || (_state.Current is CommandLifecycleState.Confirmed && _state.IsIdempotent)) {
         <FluentMessageBar Intent="MessageBarIntent.Info"
                          Title="Already confirmed"
                          AllowDismiss="true"
+                         aria-live="off"
                          data-testid="fc-idempotent">
             <ChildContent>
                 @(IdempotentInfoMessage ?? "This was already confirmed — no action needed.")
             </ChildContent>
+        </FluentMessageBar>
+    }
+
+    @if (_state.Current is CommandLifecycleState.NeedsReview or CommandLifecycleState.Warning or CommandLifecycleState.DegradedExhausted
+            || (_state.Current is CommandLifecycleState.Degraded && _state.TimerPhase is not LifecycleTimerPhase.ActionPrompt)) {
+        <FluentMessageBar Intent="MessageBarIntent.Warning"
+                          Title="@LifecycleStatusTitle"
+                          AllowDismiss="false"
+                          aria-live="off"
+                          data-testid="fc-lifecycle-outcome">
         </FluentMessageBar>
     }
 
@@ -193,6 +204,11 @@
         CommandLifecycleState.Acknowledged => "acknowledged",
         CommandLifecycleState.Syncing => "syncing",
         CommandLifecycleState.Confirmed => "confirmed",
+        CommandLifecycleState.IdempotentConfirmed => "idempotent-confirmed",
+        CommandLifecycleState.NeedsReview => "needs-review",
+        CommandLifecycleState.Warning => "warning",
+        CommandLifecycleState.Degraded => "degraded",
+        CommandLifecycleState.DegradedExhausted => "degraded-exhausted",
         CommandLifecycleState.Rejected => "rejected",
         _ => "idle",
     };
@@ -200,7 +216,15 @@
     private bool IsActiveLifecycle => _state.Current is
         CommandLifecycleState.Submitting or
         CommandLifecycleState.Acknowledged or
-        CommandLifecycleState.Syncing;
+        CommandLifecycleState.Syncing or
+        CommandLifecycleState.Degraded;
+
+    private string LifecycleStatusTitle => _state.Current switch {
+        CommandLifecycleState.NeedsReview => Localizer["Am15NeedsReview"],
+        CommandLifecycleState.Warning => Localizer["Am16Warning"],
+        CommandLifecycleState.DegradedExhausted => Localizer["Am24Exhausted"],
+        _ => Localizer["Am17Degraded"],
+    };
 
     private string LifecycleHeading => string.Format(
         System.Globalization.CultureInfo.CurrentCulture,
@@ -208,7 +232,9 @@
         string.IsNullOrWhiteSpace(DisplayLabel) ? Localizer["CommandGenericLabel"] : DisplayLabel);
 
     private string ActionPromptTitle =>
-        _state.Current is CommandLifecycleState.Syncing
+        _state.Current is CommandLifecycleState.Degraded
+            ? LifecycleStatusTitle
+            : _state.Current is CommandLifecycleState.Syncing
             && _state.TimerPhase is LifecycleTimerPhase.ActionPrompt
             && _projectionConnectionSnapshot.IsDisconnected
                 ? "Connection lost -- unable to confirm sync status"
@@ -220,40 +246,4 @@
                 ? "fc-lifecycle-pulse"
                 : string.Empty;
 
-    private string Announcement => _state.Current switch {
-        CommandLifecycleState.Submitting => "Submitting…",
-        CommandLifecycleState.Acknowledged => "Acknowledged",
-        CommandLifecycleState.Syncing when _state.TimerPhase is LifecycleTimerPhase.StillSyncing => "Still syncing…",
-        CommandLifecycleState.Syncing when _state.TimerPhase is LifecycleTimerPhase.ActionPrompt && _projectionConnectionSnapshot.IsDisconnected => "Connection lost -- unable to confirm sync status",
-        CommandLifecycleState.Syncing when _state.TimerPhase is LifecycleTimerPhase.ActionPrompt => "The system hasn't confirmed your submission. You can wait or start over.",
-        // Review 2026-04-17 P12 — when an adopter supplies IdempotentInfoMessage, screen readers
-        // announce that copy rather than the hardcoded "Already confirmed" (matches the visible body).
-        CommandLifecycleState.Confirmed when _state.IsIdempotent => IdempotentInfoMessage ?? "Already confirmed",
-        CommandLifecycleState.Confirmed => "Submission confirmed",
-        CommandLifecycleState.Rejected when !MappedRejection => "Submission rejected",
-        _ => string.Empty,
-    };
-
-    private string AriaRole => _state.Current switch {
-        CommandLifecycleState.Rejected => "alert",
-        CommandLifecycleState.Syncing when _state.TimerPhase is LifecycleTimerPhase.ActionPrompt => "alert",
-        _ => "status",
-    };
-
-    private string AriaLive => _state.Current switch {
-        CommandLifecycleState.Rejected => "assertive",
-        CommandLifecycleState.Syncing when _state.TimerPhase is LifecycleTimerPhase.ActionPrompt => "assertive",
-        _ => "polite",
-    };
-
-    private string DataPhase => _state.Current switch {
-        CommandLifecycleState.Submitting => "submitting",
-        CommandLifecycleState.Acknowledged => "acknowledged",
-        CommandLifecycleState.Syncing when _state.TimerPhase is LifecycleTimerPhase.StillSyncing => "still-syncing",
-        CommandLifecycleState.Syncing when _state.TimerPhase is LifecycleTimerPhase.ActionPrompt => "action-prompt",
-        CommandLifecycleState.Confirmed when _state.IsIdempotent => "confirmed-idempotent",
-        CommandLifecycleState.Confirmed => "confirmed",
-        CommandLifecycleState.Rejected => "rejected",
-        _ => "idle",
-    };
 }

@@ -7,4 +7,7 @@ public interface IProjectionConnectionState {
     IDisposable Subscribe(Action<ProjectionConnectionSnapshot> handler, bool replay = true);
 
     void Apply(ProjectionConnectionTransition transition);
+
+    /// <summary>Publishes browser connectivity evidence to every projection consumer.</summary>
+    void SetBrowserOffline(bool offline) { }
 }

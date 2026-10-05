@@ -45,6 +45,37 @@ public sealed record LoadedPageState {
     public ImmutableDictionary<string, long> LastElapsedMsByKey { get; init; }
         = ImmutableDictionary<string, long>.Empty;
 
+    /// <summary>Safe classified query failures keyed by view, cleared by a fresh load.</summary>
+    public ImmutableDictionary<string, string> FailureByKey { get; init; }
+        = ImmutableDictionary<string, string>.Empty;
+
+    /// <summary>Last completed page result and request provenance for each view.</summary>
+    public ImmutableDictionary<string, LoadedPageResult> LastResultByKey { get; init; }
+        = ImmutableDictionary<string, LoadedPageResult>.Empty;
+
+    /// <summary>Current filter and sort request identity per view.</summary>
+    public ImmutableDictionary<string, string> ActiveRequestIdentityByView { get; init; }
+        = ImmutableDictionary<string, string>.Empty;
+
+    /// <summary>Monotonic request generation per view; disambiguates A-B-A criteria sequences.</summary>
+    public ImmutableDictionary<string, long> ActiveRequestGenerationByView { get; init; }
+        = ImmutableDictionary<string, long>.Empty;
+
+    /// <summary>Maximum retained page-result metadata entries.</summary>
+    public int ResultMetadataLimit { get; init; } = 10;
+
+    /// <summary>Independent completed result provenance for each virtualized offset.</summary>
+    public ImmutableDictionary<(string ViewKey, int Skip), LoadedPageResult> ResultsByPage { get; init; }
+        = ImmutableDictionary<(string ViewKey, int Skip), LoadedPageResult>.Empty;
+
+    /// <summary>Monotonic per-view completed result sequence, retained across 304 and filter changes.</summary>
+    public ImmutableDictionary<string, long> ResultSequenceByView { get; init; }
+        = ImmutableDictionary<string, long>.Empty;
+
+    /// <summary>Last successful first page for cap and hidden-detail provenance.</summary>
+    public ImmutableDictionary<string, LoadedPageResult> LastSuccessfulPrimaryByView { get; init; }
+        = ImmutableDictionary<string, LoadedPageResult>.Empty;
+
     /// <summary>Gets the pending TCS handles keyed by <c>(viewKey, skip)</c>.</summary>
     /// <remarks>
     /// <see cref="TaskCompletionSource{TResult}"/> is a mutable reference held inside an immutable
@@ -53,6 +84,10 @@ public sealed record LoadedPageState {
     /// </remarks>
     public ImmutableDictionary<(string ViewKey, int Skip), TaskCompletionSource<object>> PendingCompletionsByKey { get; init; }
         = ImmutableDictionary<(string ViewKey, int Skip), TaskCompletionSource<object>>.Empty;
+
+    /// <summary>Stable registration times for pending page requests, retained across component remounts.</summary>
+    public ImmutableDictionary<(string ViewKey, int Skip), DateTimeOffset> PendingStartedAtByKey { get; init; }
+        = ImmutableDictionary<(string ViewKey, int Skip), DateTimeOffset>.Empty;
 
     /// <summary>Gets the virtualization lane decision latched per view key (Story 4-4 D2).</summary>
     public ImmutableDictionary<string, VirtualizationLane> LaneByKey { get; init; }
