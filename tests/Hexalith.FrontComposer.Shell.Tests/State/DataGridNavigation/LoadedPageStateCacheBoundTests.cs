@@ -129,6 +129,30 @@ public sealed class LoadedPageStateCacheBoundTests {
         state.ResultsByPage[(ViewKey, 0)].Take.ShouldBe(20);
     }
 
+    [Fact]
+    public void MetadataTrim_DropsOldestSuccessInTheChangedViewAndKeepsOtherViews() {
+        const string otherView = "acme:InvoicesProjection";
+        LoadedPageResult newer = new(2, "orders", 10, false, true, 20);
+        LoadedPageResult neighbor = new(1, "invoices", 4, false, true, 0);
+        LoadedPageState state = new() {
+            ResultMetadataLimit = 2,
+            ResultsByPage = ImmutableDictionary<(string ViewKey, int Skip), LoadedPageResult>.Empty
+                .SetItem((ViewKey, 0), new LoadedPageResult(1, "orders", 10, false, true, 0))
+                .SetItem((ViewKey, 20), newer)
+                .SetItem((otherView, 0), neighbor),
+        };
+        TaskCompletionSource<object> completion = new();
+        state = Register(state, 40, completion);
+        state = LoadedPageReducers.ReduceLoadPageFailed(
+            state,
+            new LoadPageFailedAction(ViewKey, 40, "The section could not be updated.", completion) { Take = 20 });
+
+        state.ResultsByPage.ContainsKey((ViewKey, 0)).ShouldBeFalse();
+        state.ResultsByPage[(ViewKey, 20)].ShouldBe(newer);
+        state.ResultsByPage[(ViewKey, 40)].Failed.ShouldBeTrue();
+        state.ResultsByPage[(otherView, 0)].ShouldBe(neighbor);
+    }
+
     private sealed class CapturingLogger : ILogger<LoadedPageReducers> {
         public List<string> Messages { get; } = [];
         IDisposable? ILogger.BeginScope<TState>(TState state) => null;

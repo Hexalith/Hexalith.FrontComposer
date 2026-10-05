@@ -172,7 +172,7 @@ public sealed class LoadedPageReducers {
                     PendingStartedAtByKey = state.PendingStartedAtByKey.Remove(key),
                     FailureByKey = state.FailureByKey.SetItem(action.ViewKey, "Am30QueryFailed"),
                     LastResultByKey = state.LastResultByKey.SetItem(action.ViewKey, failed),
-                    ResultsByPage = TrimResultMetadata(state.ResultsByPage.SetItem(key, failed), state.ResultMetadataLimit),
+                    ResultsByPage = TrimResultMetadata(state.ResultsByPage.SetItem(key, failed), state.ResultMetadataLimit, action.ViewKey),
                     ResultSequenceByView = state.ResultSequenceByView.SetItem(action.ViewKey, failed.Identity),
                 };
             }
@@ -217,7 +217,7 @@ public sealed class LoadedPageReducers {
         nextResults = nextResults.RemoveRange(nextResults
             .Where(entry => !entry.Value.Failed && !nextPages.ContainsKey(entry.Key))
             .Select(entry => entry.Key));
-        nextResults = TrimResultMetadata(nextResults, cap);
+        nextResults = TrimResultMetadata(nextResults, cap, action.ViewKey);
         string? remainingFailure = nextResults
             .Where(entry => string.Equals(entry.Key.ViewKey, action.ViewKey, StringComparison.Ordinal) && entry.Value.Failed)
             .Select(entry => entry.Value.ErrorMessage ?? "Am30QueryFailed")
@@ -322,7 +322,7 @@ public sealed class LoadedPageReducers {
             PendingStartedAtByKey = state.PendingStartedAtByKey.Remove(key),
             FailureByKey = state.FailureByKey.SetItem(action.ViewKey, action.ErrorMessage),
             LastResultByKey = state.LastResultByKey.SetItem(action.ViewKey, failed),
-            ResultsByPage = TrimResultMetadata(state.ResultsByPage.SetItem(key, failed), state.ResultMetadataLimit),
+            ResultsByPage = TrimResultMetadata(state.ResultsByPage.SetItem(key, failed), state.ResultMetadataLimit, action.ViewKey),
             ResultSequenceByView = state.ResultSequenceByView.SetItem(action.ViewKey, failed.Identity),
         };
     }
@@ -382,15 +382,22 @@ public sealed class LoadedPageReducers {
                 && generation != current;
 
     private static ImmutableDictionary<(string ViewKey, int Skip), LoadedPageResult> TrimResultMetadata(
-        ImmutableDictionary<(string ViewKey, int Skip), LoadedPageResult> results, int limit) {
+        ImmutableDictionary<(string ViewKey, int Skip), LoadedPageResult> results, int limit, string viewKey) {
         int bounded = Math.Max(1, limit);
-        while (results.Count > bounded) {
-            // Successful metadata stays bounded. A failed offset keeps in-place Retry until that page succeeds.
+        int viewCount = 0;
+        foreach (KeyValuePair<(string ViewKey, int Skip), LoadedPageResult> entry in results) {
+            if (string.Equals(entry.Key.ViewKey, viewKey, StringComparison.Ordinal)) {
+                viewCount++;
+            }
+        }
+
+        // Each view has its own budget. A failed offset keeps in-place Retry until that page succeeds.
+        while (viewCount > bounded) {
             bool found = false;
             (string ViewKey, int Skip) oldestKey = default;
             long oldestIdentity = long.MaxValue;
             foreach (KeyValuePair<(string ViewKey, int Skip), LoadedPageResult> entry in results) {
-                if (entry.Value.Failed) {
+                if (!string.Equals(entry.Key.ViewKey, viewKey, StringComparison.Ordinal) || entry.Value.Failed) {
                     continue;
                 }
 
@@ -406,7 +413,9 @@ public sealed class LoadedPageReducers {
             }
 
             results = results.Remove(oldestKey);
+            viewCount--;
         }
+
         return results;
     }
 

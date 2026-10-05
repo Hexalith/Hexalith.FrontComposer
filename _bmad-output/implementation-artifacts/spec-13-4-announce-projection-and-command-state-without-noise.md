@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-10-04'
 status: 'in-review'
 route: 'dispatch'
-review_loop_iteration: 8
+review_loop_iteration: 9
 baseline_commit: '7dd5f7cf07122ac25e33732c02f31b47564518a1'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-13-context.md'
@@ -134,6 +134,7 @@ context:
 - [x] `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionStaleNotice.razor` — a stale group queued beside terminal query-failure speech must not replace that failure message.
 - [x] `src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs` — a non-grid failure keeps the classified action message, cached rows, and the stale label.
 - [x] `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadedPageReducers.cs` — metadata trimming must not drop a failed offset that has not succeeded, so in-place Retry remains.
+- [x] `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadedPageReducers.cs` — give each view its own metadata budget. When that view is over the limit, drop only its oldest successes. Keep its unsucceeded failed offsets, and leave every other view unchanged.
 - [x] `src/Hexalith.FrontComposer.Shell/Components/Lifecycle/FcLifecycleWrapper.razor.cs` — a lifecycle timer callback captures the bound correlation and does not change the replacement command after that binding is gone.
 - [x] `src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor.cs` — disposal clears the projection-connection groups, and a remount uses fresh episode identities.
 
@@ -143,6 +144,7 @@ context:
 - Given terminal query-failure speech, when FcProjectionStaleNotice queues on the same surface, then the failure message remains.
 - Given a non-grid failure with cached rows, when the view renders, then the classified message, the cached rows, and the stale label all remain.
 - Given failed offsets beyond the metadata limit, when trimming runs, then a failed offset that has not succeeded keeps in-place Retry.
+- Given one view is over its metadata budget and another view has completed pages, when trimming runs, then only the changed view loses its oldest successes. Its unsucceeded failed offsets and the other view's completed-page metadata remain.
 - Given a lifecycle timer callback queued before a rebind, when that callback runs, then the replacement command is unchanged.
 - Given a disposed projection-connection surface, when a new FcProjectionConnectionStatus mounts, then the previous groups are cleared and the new episode identities do not collide with or replay the previous episode.
 
@@ -178,6 +180,8 @@ context:
 - Iteration 5, 2026-10-05: Review found stale episodes suppressed within one epoch, failure speech surviving 304 recovery, no-lane recovery overclaiming refreshed data, malformed accepted-body shapes escaping as dispatch failure, hidden focus without its reason, duplicate terminal live channels, search/chip filters misclassified, SlowQuery remount/race gaps, and ownerless failed-page retry work (BH5-01–08/10, EC5-02/03, VG5-03). Added iteration 5 tasks and Given/When/Then checks above. The known-bad state is a passing suite where an accepted command may appear failed, later stale data may be silent, or operators hear incorrect filter/recovery state. **KEEP:** atomic single-surface status replay and trailing A→B→A behavior; namespace-isolated surfaces; idempotent generated form completion and custom copy; browser watcher remount and quiet retry; generation-safe page/fallback completion, bounded metadata, classified localized failures and cached-row labels; focus-only first hidden transition with unrelated speech preserved; accepted-body deadline, first-terminal-wins, original MessageId retry, and all green Shell/SourceTools/Chromium/accessibility gates. Preserve earlier KEEP constraints and frozen approved intent.
 
 - Explicit continuation, 2026-10-05: Passes 6–8 halted on the same spec-level defects after the automatic review limit. This pass adds one unchecked task and one Given/When/Then for each carried outcome: stored terminal form state at the polling budget, Degraded armed from the acceptance anchor, terminal query-failure speech kept when a stale group queues, non-grid classified failure with cached rows and the stale label, failed-offset Retry across metadata trimming, lifecycle timer callbacks bound to the original correlation, and fresh projection-connection episodes after disposal. Logged patch, defer, and reject rows stay unprocessed. The known-bad state is a suite that can show success after local exhaustion, skip Degraded, replace failure speech, hide a non-grid failure's rows, drop in-place Retry, apply an old timer to a new command, or replay a connection episode. **KEEP:** every earlier KEEP constraint, including scoped fake-time announcement ownership, canonical EN/FR copy, safe classified failure speech, first-terminal-wins, the stable acceptance deadline, one postack same-MessageId retry, browser offline evidence, per-episode recovery, bounded successful page metadata, and the green Shell/SourceTools/Chromium/accessibility gates. Preserve the frozen approved intent.
+
+- Human decision, 2026-10-05: Review iteration 9 halted on cross-view metadata age (BH9-04). The selected rule is a per-view budget: trim only the view that just changed, drop its oldest successes, keep its unsucceeded failed offsets, and leave other views unchanged. No global result clock. Other iteration 9 rows stay unprocessed. **KEEP:** every earlier KEEP constraint and the frozen approved intent.
 
 ## Review Triage Log
 
@@ -423,6 +427,45 @@ Grouped root causes: carried command warning/dismissal (BH7-01–02, BH7-04), st
 | VG8-04 | medium | patch | Pre-verified gap: hidden-detail tests leave `ResultSettled` at its default true. Deleting `&& ResultSettled` would still pass them and could focus Clear filter before the filter result exists. |
 
 Grouped root causes: carried coordinator identity and cleared-group callbacks (BH8-01/02); fatal callback isolation (BH8-03); stale/failure precedence and non-grid failure rendering (BH8-06/08/09); failed-page metadata (BH8-10); lifecycle timer ownership and the 10-second Degraded sample (BH8-13/14, EC8-02); command truth versus generated form state (BH8-17/19). Those bad-spec groups require a loopback. `review_loop_iteration` is now 8, above the step-04 limit of 5, so this run halts for human escalation. Patch, defer, and reject rows are recorded and are not processed.
+
+### Review iteration 9 — independent layers
+
+| ID | Verdict | Route | Evidence |
+| --- | --- | --- | --- |
+| BH9-01 | medium | patch (carried) | carried BH8-07: `FcProjectionStaleNotice` still queues `InvokeAsync` with no disposal flag, and `Dispose` only drops the subscription and cancels the active group. |
+| BH9-02 | false | reject | A stale group queued before terminal failure does not stay armed. `Announce` with `terminal: true` disposes other groups' timers and increments their versions, and `Flush` returns when the captured version no longer matches. |
+| BH9-03 | medium | patch | Offline and recovery groups include `_episodeScope`, but reconnect and fallback still use `connection:{epoch}`. `Clear` drops the old group after its first announce captured version 1, and a remount's first announce of that same name is also version 1, so the old flush can publish the previous episode. |
+| BH9-04 | medium | bad_spec | `TrimResultMetadata` treats per-view `LoadedPageResult.Identity` as a global age. When failed entries alone exceed `ResultMetadataLimit`, it deletes every successful entry, including other views, and then stops. Keeping an unsucceeded failed offset does not permit wiping another view's completed-page metadata. |
+| BH9-05 | medium | patch (carried) | carried BH8-11: `FcMaxItemsCapNotice` still announces only when `ResultIdentity` changes, so a new `MaxUnfilteredItems` can change the visible sentence without new speech. |
+| BH9-06 | medium | patch (carried) | carried BH8-01: `Cancel` still clears `PendingIdentity` and leaves that identity in `Seen`. |
+| BH9-07 | medium | patch (carried) | carried BH8-02: `Clear` still drops groups after bumping version, and `Flush` still accepts a new group whose version matches the captured callback. |
+| BH9-08 | medium | patch (carried) | carried BH8-03: `Deliver` still catches every exception except `OperationCanceledException`. |
+| BH9-09 | medium | patch (carried) | carried BH8-16: confirmed and idempotent dismissal still sets local Idle and leaves the coordinator message. |
+| BH9-10 | medium | patch | Those dismiss callbacks still do not capture the bound correlation. A callback queued before rebind can set a replacement command to Idle when that command is already Confirmed. |
+| BH9-11 | high | patch (carried) | carried BH8-17: generated fallback copy still says the command was not accepted, while `CreatePreAcceptWarning` says acceptance is unknown. |
+| BH9-12 | medium | patch (carried) | carried BH8-18: the generated warning still formats the 250 ms hint as “Retry after 0 seconds.” |
+| BH9-13 | medium | patch (carried) | carried BH8-28: `ClassifyCommandAsync` still runs before `using (response)`. |
+| BH9-14 | medium | patch (carried) | carried BH8-26: the defensive `LoadPageFailedAction` still stores “effect exited without terminal dispatch”. |
+| BH9-15 | medium | patch | The generic `catch` in `LoadPageEffects` and the defensive catch still have no `ExceptionGuard.IsFatal` filter, so a fatal exception becomes a normal failed page. |
+| BH9-16 | medium | patch | Grid `EmitFailureShell` returns whenever `state.Error` is set, shows `failedPage?.ErrorMessage` rather than `state.Error`, and leaves cached pages out of the tree. The non-grid path now falls through when items remain. |
+| BH9-17 | medium | patch (carried) | carried BH8-20: the rejected `FluentMessageBar` in `FcPendingCommandSummary` still has no `aria-live="off"`. |
+| BH9-18 | low | reject | The continuation record cites filtered runs rather than the full matrix. Correcting that record means editing this build's spec. |
+| EC9-01 | medium | patch (carried) | carried BH8-28: classification still precedes response disposal at `EventStoreCommandClient`. |
+| EC9-02 | medium | patch | `ReadAcceptedCorrelationIdAsync` returns `value.GetString()` with no blank check. The caller treats only null as unknown, so a blank or whitespace `correlationId` is stored as a known correlation. |
+| EC9-03 | low | patch (carried) | carried BH8-22: `fc-connectivity.js` still calls `invokeMethodAsync` with no rejection handler. The cited `.catch` is not in the file. |
+| EC9-04 | medium | patch (carried) | carried BH8-07: the stale-notice callback still has no disposal guard. The cited `_disposed` check is not in the file. |
+| EC9-05 | low | patch (carried) | carried BH8-15: a blank `ViewKey` still returns from `ReconcileVisibility` without cancelling the slow timer or active group. The cited `CancelActiveSlow` call is not in that branch. |
+| EC9-06 | low | patch | The slow-query timer calls `InvokeAsync` before `ShowSlowQuery` checks disposal. The notice does not update after disposal, but `InvokeAsync` can still throw during teardown. |
+| EC9-07 | false | reject | Deadline and Degraded callbacks check `_disposed` and the captured correlation before any transition. A disposed wrapper does not own the exhaustion closure. |
+| EC9-08 | low | patch | In-place retry `Dispatch` sits outside the `try` that disposes `retryCancellation`. A throw leaves that token undisposed until view disposal cancels it. |
+| EC9-09 | false | reject | `OnBrowserConnectivityChanged` returns when `_disposed` is set, before `ReconcileAsync`. Disposal does not start that recovery. |
+| VG9-01 | medium | patch (carried) | carried VG7-01: no fake-time test resolves a first `Confirmed` observation at the polling budget to `DegradedExhausted`. |
+| VG9-02 | medium | patch | Pre-verified gap: the generated form now switches on `storedTerminalState`, but the existing generated-form test uses the same observation and stored status. Switching back to `observation.State` would still pass and could dispatch `ConfirmedAction` after local exhaustion. |
+| VG9-03 | medium | patch (carried) | carried VG8-02: search text and a `__status` chip are real filters, and `HandleLoadPageAsync` tests still send neither. |
+| VG9-04 | medium | patch (carried) | carried VG8-03: the safe failure test still constructs `LoadPageEffects` without a localizer. |
+| VG9-05 | medium | patch (carried) | carried VG8-04: hidden-detail tests still leave `ResultSettled` at its default true. |
+
+Grouped root causes: cross-view result-metadata age (BH9-04). The human selected a per-view budget, and that rule is now implemented. `review_loop_iteration` remains 9, above the step-04 limit of 5. Patch, defer, and reject rows stay recorded and unprocessed. The continuation did change the previously carried spec defects: stored terminal form state, Degraded armed from the acceptance anchor, terminal failure precedence, non-grid cached failure rendering, failed-offset retention, correlation capture on phase/deadline/Degraded timers, and clearing projection-connection groups on disposal.
 
 ## Verification
 
