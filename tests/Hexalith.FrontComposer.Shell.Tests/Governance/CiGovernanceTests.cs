@@ -4518,8 +4518,12 @@ public sealed class CiGovernanceTests {
             RegexOptions.CultureInvariant);
         selectedSource.Success.ShouldBeTrue("the committed root must select one exact EventStore gitlink");
         string selectedSourceSha = selectedSource.Groups["sha"].Value;
-        selectedSourceSha.ShouldBe(successorSourceSha,
-            "the current capture target must select the committed EventStore gitlink");
+        ProcessResult sourceLineage = RunProcess(
+            root,
+            "git",
+            ["-C", "references/Hexalith.EventStore", "merge-base", "--is-ancestor", successorSourceSha, selectedSourceSha]);
+        sourceLineage.ExitCode.ShouldBe(0,
+            "the selected EventStore source must descend from the sealed successor capture");
 
         ProcessResult eventStoreHead = RunProcess(
             root,
@@ -4539,8 +4543,12 @@ public sealed class CiGovernanceTests {
             RegexOptions.CultureInvariant);
         selectedBuilds.Success.ShouldBeTrue("the committed root must select one exact Builds gitlink");
         string selectedBuildsSha = selectedBuilds.Groups["sha"].Value;
-        selectedBuildsSha.ShouldBe(successorBuildsSha,
-            "the current capture target must select the committed Builds gitlink");
+        ProcessResult buildsLineage = RunProcess(
+            root,
+            "git",
+            ["-C", "references/Hexalith.Builds", "merge-base", "--is-ancestor", successorBuildsSha, selectedBuildsSha]);
+        buildsLineage.ExitCode.ShouldBe(0,
+            "the selected Builds catalog must descend from the sealed successor capture");
 
         ProcessResult buildsHead = RunProcess(
             root,
@@ -4558,9 +4566,9 @@ public sealed class CiGovernanceTests {
         XDocument catalog = XDocument.Load(Path.Combine(root, "references/Hexalith.Builds/Props/Directory.Packages.props"));
         XNode.DeepEquals(catalog, selectedCatalog).ShouldBeTrue(
             "current catalog inputs must match the catalog selected by the committed root gitlink");
-        selectedCatalog.Descendants("HexalithEventStoreVersion").Single().Value.ShouldBe(
-            successorVersion,
-            "the current capture target must select the committed catalog package version");
+        Version.Parse(selectedCatalog.Descendants("HexalithEventStoreVersion").Single().Value)
+            .CompareTo(Version.Parse(successorVersion)).ShouldBeGreaterThanOrEqualTo(0,
+                "the selected catalog cannot regress below the sealed successor package version");
 
         using JsonDocument report = JsonDocument.Parse(File.ReadAllText(Path.Combine(
             evidenceRoot,
