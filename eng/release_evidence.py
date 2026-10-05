@@ -32,7 +32,8 @@ from typing import Any
 # after every release-definition edit; protected production approval remains the gate.
 # 4.1.1: authenticated CI handoffs are projected into the current v3 exact-source
 # provenance shape before sealing instead of reusing the historical v2 evaluator shape.
-__version__ = "4.2.0"
+# 4.2.1: verify the caller-owned publisher from FrontComposer's exact Git source.
+__version__ = "4.2.1"
 
 # CR-12-4-P257 (round-11, blind): assert at module load that `__version__` is a
 # non-empty semver string. Without this guard, an operator typo (`__version__ = ""`)
@@ -1614,13 +1615,20 @@ def _live_manifest_v2_diagnostics(
                 diagnostics.append("cannot resolve the candidate Builds gitlink")
             else:
                 builds_root = _builds_execution_repository(graph_root, builds_sha)
+                reusable = release["reusable"]
+                if reusable["repository"] == "github.com/hexalith/hexalith.frontcomposer":
+                    reusable_root = graph_root
+                elif reusable["repository"] == "github.com/hexalith/hexalith.builds":
+                    reusable_root = builds_root
+                else:
+                    raise ValueError("sealed reusable workflow repository is unsupported")
                 reusable_bytes = _exact_workflow_bytes(
-                    builds_root,
-                    builds_sha,
-                    release["reusable"]["workflow_path"],
+                    reusable_root,
+                    reusable["commit"],
+                    reusable["workflow_path"],
                 )
-                if hashlib.sha256(reusable_bytes).hexdigest() != release["reusable"]["blob_sha256"]:
-                    diagnostics.append("exact Builds reusable workflow bytes differ from sealed provenance")
+                if hashlib.sha256(reusable_bytes).hexdigest() != reusable["blob_sha256"]:
+                    diagnostics.append("exact reusable workflow bytes differ from sealed provenance")
         else:
             ci_evaluator, release_evaluator = _provenance_evaluators(provenance)
             diagnostics.extend(_evaluator_authorization_diagnostics(policy, ci_evaluator, "ci"))

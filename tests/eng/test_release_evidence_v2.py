@@ -761,20 +761,41 @@ class ReleaseEvidenceV2Tests(unittest.TestCase):
         )
         handoff = copy.deepcopy(self.handoff)
         handoff["run"]["candidate"] = candidate
+        handoff["revisions"]["candidate"] = candidate
+        policy = json.loads((self.root / HELPER.POLICY_PATH).read_text(encoding="utf-8"))
+        graph = HELPER._load_dependency_graph_engine().collect_graph(
+            self.root, ROOT_IDENTITY, candidate, policy,
+        )
+        handoff["dependency_graph"] = graph
+        handoff["evaluator"]["caller"]["commit"] = candidate
+        handoff["evaluator"]["definition_digest"] = HELPER.canonical_sha256(
+            {key: handoff["evaluator"][key] for key in ("caller", "reusable", "actions")}
+        )
+        evidence = self.root / "release-evidence/dependency-release-source.json"
+        _write_json(evidence, handoff)
+        evidence_sha256 = hashlib.sha256(evidence.read_bytes()).hexdigest()
 
         provenance = HELPER._current_workflow_provenance(
-            handoff, "e" * 64, evaluator, self.root, self.builds_commit,
+            handoff, evidence_sha256, evaluator, self.root, self.builds_commit,
         )
         self.assertEqual(candidate, provenance["release"]["reusable"]["commit"])
         diagnostics: list[str] = []
         HELPER._validate_source_workflow_provenance(provenance, diagnostics)
         self.assertEqual([], diagnostics)
+        manifest = {
+            "manifest_schema": HELPER.CURRENT_MANIFEST_SCHEMA,
+            "commit_sha": candidate,
+            "dependency_graph": graph,
+            "dependency_policy": self.policy_projection,
+            "workflow_provenance": provenance,
+        }
+        self.assertEqual([], HELPER._live_manifest_v2_diagnostics(manifest, self.root))
 
         mismatched = copy.deepcopy(evaluator)
         mismatched["reusable"]["blob_sha256"] = "f" * 64
         with self.assertRaisesRegex(ValueError, "reusable differs"):
             HELPER._current_workflow_provenance(
-                handoff, "e" * 64, mismatched, self.root, self.builds_commit,
+                handoff, evidence_sha256, mismatched, self.root, self.builds_commit,
             )
 
     def test_source_provenance_rejects_missing_builds_gitlink(self) -> None:
