@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-10-04'
 status: 'in-review'
 route: 'dispatch'
-review_loop_iteration: 9
+review_loop_iteration: 10
 baseline_commit: '7dd5f7cf07122ac25e33732c02f31b47564518a1'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-13-context.md'
@@ -466,6 +466,50 @@ Grouped root causes: carried coordinator identity and cleared-group callbacks (B
 | VG9-05 | medium | patch (carried) | carried VG8-04: hidden-detail tests still leave `ResultSettled` at its default true. |
 
 Grouped root causes: cross-view result-metadata age (BH9-04). The human selected a per-view budget, and that rule is now implemented. `review_loop_iteration` remains 9, above the step-04 limit of 5. Patch, defer, and reject rows stay recorded and unprocessed. The continuation did change the previously carried spec defects: stored terminal form state, Degraded armed from the acceptance anchor, terminal failure precedence, non-grid cached failure rendering, failed-offset retention, correlation capture on phase/deadline/Degraded timers, and clearing projection-connection groups on disposal.
+
+### Review iteration 10 — independent layers
+
+| ID | Verdict | Route | Evidence |
+| --- | --- | --- | --- |
+| BH10-01 | medium | patch (carried) | carried BH9-06: `Cancel` still clears `PendingIdentity` and leaves that identity in `Seen`, so a later announce of `connection:{epoch}` returns immediately. |
+| BH10-02 | medium | patch (carried) | carried BH9-03: reconnect and fallback still use `connection:{epoch}` while `Clear` drops the group; a remount's first announce is version 1 and can accept the previous flush. |
+| BH10-03 | medium | patch (carried) | carried BH9-08: `Deliver` still catches every exception except `OperationCanceledException`. |
+| BH10-04 | medium | patch (carried) | carried BH9-01: `FcProjectionStaleNotice` still has no disposal flag before `Reconcile`. |
+| BH10-05 | medium | bad_spec | `failureOwnsSpeech` treats any non-empty current utterance as terminal failure speech. An identity mismatch cancels only the failure group and returns, so a prior loaded utterance stays and the stale warning never speaks. The continuation task only protects the failure utterance; choosing how other utterances yield needs a spec rule. |
+| BH10-06 | medium | patch (carried) | carried BH9-16: grid `EmitFailureShell` still returns when `state.Error` is set, shows `failedPage?.ErrorMessage`, and omits cached pages. |
+| BH10-07 | medium | patch (carried) | carried BH9-05: cap speech still keys only off `ResultIdentity`, so a new `MaxUnfilteredItems` can change the visible sentence silently. |
+| BH10-08 | low | patch (carried) | carried EC9-05 and EC9-06: a blank `ViewKey` still returns without cancelling the slow timer or group, and the timer still calls `InvokeAsync` before the disposal check. |
+| BH10-09 | medium | patch (carried) | carried BH9-13 and EC9-02: `ClassifyCommandAsync` still runs before `using (response)`, and `GetString()` still accepts a blank correlation. |
+| BH10-10 | high | patch (carried) | carried BH9-11 and BH9-12: fallback copy still says the command was not accepted, and the generated warning still formats 250 ms as “Retry after 0 seconds.” |
+| BH10-11 | medium | patch (carried) | carried BH9-17: the rejected `FluentMessageBar` still has no `aria-live="off"`. |
+| BH10-12 | medium | patch (carried) | carried BH9-09 and BH9-10: confirmed and idempotent dismissal still sets local Idle, leaves the coordinator message, and reads live state inside `InvokeAsync`. |
+| BH10-13 | medium | patch (carried) | carried BH9-14, BH9-15, and EC9-08: the effect catch still has no fatal filter, the defensive failure text is still stored, and in-place `Dispatch` still sits outside the `try` that disposes `retryCancellation`. |
+| BH10-14 | low | patch (carried) | carried EC9-03: `fc-connectivity.js` still calls `invokeMethodAsync` with no rejection handler. |
+| BH10-15 | maybe-false | defer (carried) | carried BH8-05: `AnnounceProjectionState` still runs before `InvokeAsync`. Whether Fluxor can interleave those notifications is still unsettled. Unverified medium. |
+| BH10-16 | medium | bad_spec | `FcLifecycleWrapper` mounts `FcSurfaceStatus` beside `FcCommandBlockedOutcome`'s own polite status node. Generated blocked-submit tests require two `[role='status'][aria-live='polite']` nodes, so the one-node rule and the Story 13.3 blocked contract are unresolved. |
+| BH10-17 | medium | patch (carried) | carried VG9-01 and VG9-02: no fake-time test stores a first `Confirmed` observation at the polling budget as `DegradedExhausted`, and the generated-form test still uses matching observation and stored state. |
+| BH10-18 | low | reject (carried) | carried BH9-18: the continuation record cites filtered runs. Correcting it means editing this build's spec. |
+| EC10-01 | low | patch (carried) | carried EC9-05: a cleared `ViewKey` still leaves the slow timer and active group armed. |
+| EC10-02 | low | patch (carried) | carried EC9-06: the slow-query timer still calls `InvokeAsync` before `ShowSlowQuery` checks disposal. |
+| EC10-03 | low | patch | Deadline and Degraded timers call `InvokeAsync` before the inner `_disposed` check. The transition guard from EC9-07 still holds; the new outcome is a teardown throw from `InvokeAsync`. A check before `InvokeAsync` is direct. |
+| EC10-04 | low | patch | The connectivity retry timer calls `InvokeAsync` with no `_disposed` check inside the callback. Disposal can throw before watcher setup returns. |
+| EC10-05 | low | patch (carried) | carried EC9-03: the connectivity module still has no rejection handler. |
+| EC10-06 | low | reject (carried) | carried BH8-24: `unwatchConnectivity` can throw `InvalidOperationException` during circuit teardown. The page is already going away, and covering it adds catch branches. |
+| EC10-07 | low | reject | `OnBrowserConnectivityChanged` returns when the component is disposed, before `ReconcileAsync`. A disposed coordinator during circuit teardown can still fault the fire-and-forget call. That is teardown-only, and the fix adds a catch. |
+| EC10-08 | medium | patch (carried) | carried BH9-01: the stale-notice callback still reconciles after disposal. |
+| EC10-09 | medium | patch | Whitespace `IdempotentInfoMessage` skips the `??` fallback. `Announce` rejects blank copy, so confirmation speech is dropped. Treating null or whitespace as the localized message is direct. |
+| EC10-10 | maybe-false | defer | A non-whitelisted body-read exception would still leave the accepted-header path and surface as dispatch failure. The reader now throws `JsonException` for a bad shape, which the filter already keeps. Unverified medium until a reachable exception outside that filter is shown. |
+| EC10-11 | low | reject | A replay handler that throws stays registered because `SubscribeWithReplay` adds it before returning the subscription. Everyday subscribers only queue `InvokeAsync`, and removing the handler needs a try/finally. |
+| EC10-12 | medium | patch (carried) | carried BH9-08: fatal subscriber exceptions are still swallowed. |
+| EC10-13 | low | reject (carried) | carried BH-02 through EC6-04: `Cancel` still leaves the group until scope disposal. Ordinary-use impact stays low, and pruning needs an ownership policy. |
+| EC10-14 | false | reject | A null generation is not stale when the request identity matches. Generated load and retry stamp `RequestGeneration`, and fallback refresh refuses to dispatch once the active generation differs, so that completion does not overwrite the current page. |
+| EC10-15 | low | reject | Same replay-leak claim as EC10-11. The handler is stored before the subscription is returned, and the everyday subscriber does not throw during replay. |
+| EC10-16 | low | reject (carried) | carried BH8-24: disposal still skips the .NET reference when `unwatchConnectivity` throws `InvalidOperationException`. |
+| EC10-17 | medium | patch | Same blank custom idempotent copy as EC10-09. `??` does not replace whitespace, and `Announce` then throws. |
+| VG10-01 | medium | patch (carried) | carried VG9-03: `HandleLoadPageAsync` tests still never send search text or a `__status` chip, so removing those filter exceptions would keep the empty-filter clamp tests green. |
+| VG10-02 | medium | patch | Pre-verified gap: French announcement templates, including the six-count pending summary, are not in the placeholder-parity theory. Dropping `{4}` or `{5}` in `fr` would still pass the English summary test and the key-presence check. |
+
+Grouped root causes: stale speech suppressed by any current utterance (BH10-05); two polite status nodes on the generated command form (BH10-16). Those bad-spec entries require a loopback. `review_loop_iteration` is now 10, above the step-04 limit of 5, so this run halts for human escalation. Patch, defer, and reject rows are recorded and are not processed.
 
 ## Verification
 
