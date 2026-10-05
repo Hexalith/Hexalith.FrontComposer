@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-10-04'
 status: 'in-review'
 route: 'dispatch'
-review_loop_iteration: 6
+review_loop_iteration: 7
 baseline_commit: '7dd5f7cf07122ac25e33732c02f31b47564518a1'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-13-context.md'
@@ -333,6 +333,33 @@ Grouped root causes: stale/recovery episode identity (BH5-01/02, EC5-02/03); acc
 | VG6-02 | medium | patch | `CounterFullViewReplacement` still has its own `aria-live="polite"` text while the generated envelope adds `FcSurfaceStatus`; its current tests never count status channels. Removing that sample live attribute and asserting one channel is direct. |
 
 Grouped root causes: truthful command warning and idempotent/dismissed status copy (BH6-01–04); stale/failure precedence and callback lifetime (BH6-05/06); non-grid classified failure copy (BH6-07/08); duplicate pending-summary semantics (BH6-09); lifecycle timer ownership (BH6-10); coordinator fatal handling (BH6-12); connection remount ownership (EC6-02); failed-page metadata policy (EC6-03); generated replacement verification (VG6-01/02). Bad-spec entries require a loopback. `review_loop_iteration` is now 6, exceeding the step-04 limit of 5, so this run halts for human escalation; patch and defer work is not processed.
+
+### Review iteration 7 — independent layers
+
+| ID | Verdict | Route | Evidence |
+| --- | --- | --- | --- |
+| BH7-01 | high | patch (carried) | carried BH6-01: EN/FR fallback still says a transport-uncertain command was not accepted, while the client reports acceptance unknown. |
+| BH7-02 | medium | patch (carried) | carried BH6-02: the generated warning still formats its 250 ms hint as “Retry after 0 seconds.” |
+| BH7-03 | false | reject | The visible idempotent bar has distinct copy, but the authoritative Story 13.4 AC explicitly requires Confirmed and IdempotentConfirmed to share spoken AM-13. The prior BH6-03 patch route conflicts with that rule. |
+| BH7-04 | medium | patch (carried) | carried BH6-04: confirmed/idempotent dismissal changes local visual state but leaves the current status message. |
+| BH7-05 | medium | bad_spec (carried) | carried BH6-05: the stale notice can queue after terminal query-failure speech and later replace it on the same surface. |
+| BH7-06 | medium | patch (carried) | carried BH6-06: a queued stale-notice callback has no disposal guard inside its renderer callback. |
+| BH7-07 | medium | bad_spec (carried) | carried BH6-07 for the visible non-grid failure: EmitFailureShell drops the action's error. Generic spoken AM-30 is required by the canonical epic, so the reviewer's additional speech-detail claim is refuted. |
+| BH7-08 | medium | patch (carried) | carried BH6-09: the nested rejected FluentMessageBar still has its implicit live semantics despite the outer summary's aria-live=off. |
+| BH7-09 | medium | bad_spec (carried) | carried BH6-10: queued timer-phase work does not capture correlation or timer generation before a wrapper rebind. |
+| BH7-10 | medium | patch (carried) | carried BH6-12: coordinator delivery catches all non-cancellation exceptions, including repository-defined fatal exceptions. |
+| BH7-11 | medium | bad_spec (carried) | carried EC6-02: connection-status disposal leaves shared-surface state, while remount starts local episode counters again. |
+| BH7-12 | false | reject | release-publish.yml is in release_definition_fingerprints; manifest_diagnostics compares that complete set at verification and classify_release_payload blocks drift, so omission from the narrower fallback digest does not permit the claimed stale approval in production. |
+| EC7-01 | medium | defer (carried) | carried EC6-01: terminal-to-Idle rejection predates Story 13.4, and a new attempt uses a new correlation. |
+| EC7-02 | medium | patch | Canceling another group's queued message clears PendingIdentity but retains its identity in Seen; a still-relevant repeat is suppressed. Removing only that undelivered identity is a direct correction. |
+| EC7-03 | medium | patch | Clear removes group objects, but an already queued callback carries only name and version; a new same-name group can reach the same version and accept the old flush. Compare captured group ownership. |
+| EC7-04 | medium | patch (carried) | carried BH6-06: a queued stale-notice callback can reconcile after disposal and republish speech. |
+| EC7-05 | medium | bad_spec | A non-grid failed refresh with cached Items enters EmitFailureShell and returns before rendering those rows or their stale label, contradicting the story's cached-data feedback. |
+| EC7-06 | medium | patch | On a rerender with a changed MaxUnfilteredItems and unchanged ResultIdentity, visible cap text changes but the announcement condition compares only result; include cap in the transition identity. |
+| VG7-01 | medium | patch | The verification-gap layer found no fake-time test for a first terminal observation at or after the 120-second budget; deleting ResolveTerminal's new deadline conversion would let late confirmation pass the existing expiry and duplicate tests. |
+| VG7-02 | high | bad_spec | At that same first-observation deadline, ResolveTerminal returns DegradedExhausted and converges lifecycle, but generated CommandFormEmitter dispatches the original ConfirmedAction from observation.State; the form can report success after local exhaustion. |
+
+Grouped root causes: carried command warning/dismissal (BH7-01–02, BH7-04), stale and failure ordering (BH7-05–07, EC7-04–05), duplicate live status and timer ownership (BH7-08–09), fatal callback isolation (BH7-10), connection remount ownership (BH7-11), coordinator pending identity and cleared-group callback ownership (EC7-02–03), cap transition identity (EC7-06), and first terminal-at-deadline verification and form-state divergence (VG7-01–02). BH7-03 and BH7-12 are refuted; EC7-01 remains a carried pre-existing issue. The bad-spec groups require a loopback. `review_loop_iteration` is now 7, above the step-04 limit of 5, so this run halts for human escalation; lower patch and defer work is not processed.
 
 ## Verification
 
