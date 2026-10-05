@@ -2,9 +2,9 @@
 title: 'Story 13.4: Announce Projection and Command State Without Noise'
 type: 'feature'
 created: '2026-10-04'
-status: 'in-progress'
+status: 'in-review'
 route: 'dispatch'
-review_loop_iteration: 5
+review_loop_iteration: 6
 baseline_commit: '7dd5f7cf07122ac25e33732c02f31b47564518a1'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-13-context.md'
@@ -308,6 +308,31 @@ Grouped root causes: lifecycle idempotent consumers (BH4-01, EC4-06); connectivi
 | EC5-04 | low | reject (carried) | carried from BH-02/EC-08/EC2-08/EC3-07/EC4-03: group history remains low impact under the existing ownership model. |
 
 Grouped root causes: stale/recovery episode identity (BH5-01/02, EC5-02/03); accepted-body truth (BH5-03); hidden/scope focus semantics and verification (BH5-04, VG5-01–03); duplicate command channel (BH5-05); filter semantics (BH5-06); query anchor and renderer dispatch (BH5-07/08); retry lifetime (BH5-10). Bad-spec entries trigger re-derivation; patch rows are moot this iteration. Carried rows keep prior routes.
+
+### Review iteration 6 — independent layers
+
+| ID | Verdict | Route | Evidence |
+| --- | --- | --- | --- |
+| BH6-01 | high | patch | A transport failure can leave acceptance unknown, but generated EN/FR fallback resources still state that the command was not accepted and invite another submission; the client’s own warning payload says to check status first. Correcting those resources is direct, though patch work is moot after spec-level findings. |
+| BH6-02 | medium | patch | The generated form renders a 250 ms preaccept delay with `TotalSeconds:0` as “Retry after 0 seconds”; `CreatePreAcceptWarning` supplies that hint even though a fresh submit is unsafe when acceptance is unknown. Removing that misleading hint is direct. |
+| BH6-03 | medium | patch | Without a custom `IdempotentInfoMessage`, the Info bar says “Already confirmed” while `AnnounceLifecycle` speaks generic AM-13 “Command confirmed”; the default announcement should use the same distinct outcome copy. |
+| BH6-04 | medium | patch | Confirmed and idempotent dismissal callbacks set visual state to Idle but leave the coordinator message in the visible persistent status node; the expired confirmation remains on the page. Canceling that correlation’s status when its bar is dismissed is direct. |
+| BH6-05 | medium | bad_spec | A generated projection announces terminal failure before rendering `FcProjectionStaleNotice`; the child then queues a new stale group on the same surface, whose 250 ms flush can replace the current failure. The spec needs a consistent precedence rule for simultaneous failure and stale cached rows. |
+| BH6-06 | medium | patch | The stale-notice subscription queues `InvokeAsync` without checking disposal inside the callback; a callback queued before `Dispose` can call `Reconcile` afterward and republish stale speech. A disposal guard is direct. |
+| BH6-07 | medium | bad_spec | For a non-grid projection, `EmitFailureShell` never passes `state.Error` to `FcProjectionFailure`, so the generated failed action’s message is discarded in favor of generic failure copy. The spec must define a safe classified-message path for these views. |
+| BH6-08 | medium | bad_spec | The same non-grid `state.Error` is ignored by `AnnounceProjectionState`, which always speaks generic AM-30; visible and spoken classified failure detail cannot agree. Same non-grid safe-message root cause as BH6-07. |
+| BH6-09 | medium | patch | The rejected pending-summary row renders a Fluent message bar without its own `aria-live="off"`; Fluent V5 gives that element an implicit status role, so the outer summary’s off setting does not reliably suppress a second live channel. A direct attribute correction preserves the visible row. |
+| BH6-10 | medium | bad_spec | `OnPhaseChangedFromTimer` queues a callback with no timer or correlation generation captured; after a wrapper rebind, an already-queued old ActionPrompt can update the new command’s timer phase. The rebind ownership rule needs to cover timer callbacks. |
+| BH6-11 | low | reject (carried) | carried from BH-02/EC-08/EC2-08/EC3-07/EC4-03/BH5-11: coordinator groups and unsubscribed surfaces remain until scope disposal; ordinary-use impact remains low and pruning needs an ownership policy. |
+| BH6-12 | medium | patch | `SurfaceAnnouncementCoordinator.Deliver` catches every non-cancellation exception, including exceptions the repository’s `ExceptionGuard` treats as fatal; the callback isolation filter needs the existing fatal guard. |
+| EC6-01 | medium | defer (carried) | carried from EC-01/EC2-07/EC3-02/EC4-01/EC5-01: the terminal-to-Idle service guard predates this story, and a new attempt uses a new correlation. |
+| EC6-02 | medium | bad_spec | Connection-status disposal leaves the shared surface’s current message and group identities; a remount resets local offline/recovery episode counters, can collide with a closed group, and can replay old speech. The spec needs surface ownership across remounts. |
+| EC6-03 | medium | bad_spec | `TrimResultMetadata` evicts the oldest failed offset once more than `MaxCachedPages` failures exist; `CurrentFailedPage` then loses that offset’s in-place retry despite the review acceptance saying it lasts until that page succeeds. Bounded metadata and retry ownership need a coherent rule. |
+| EC6-04 | low | reject (carried) | carried from BH-02/EC-08/EC2-08/EC3-07/EC4-03/EC5-04: circuit-long coordinator identity history remains low impact under the existing ownership model. |
+| VG6-01 | medium | patch | The slow-query notice is currently emitted outside the full replacement body, but Counter replacement tests do not run a pending query or assert AM-08; moving it inside the skipped body would pass existing checks. Add a generated-view fake-time assertion. |
+| VG6-02 | medium | patch | `CounterFullViewReplacement` still has its own `aria-live="polite"` text while the generated envelope adds `FcSurfaceStatus`; its current tests never count status channels. Removing that sample live attribute and asserting one channel is direct. |
+
+Grouped root causes: truthful command warning and idempotent/dismissed status copy (BH6-01–04); stale/failure precedence and callback lifetime (BH6-05/06); non-grid classified failure copy (BH6-07/08); duplicate pending-summary semantics (BH6-09); lifecycle timer ownership (BH6-10); coordinator fatal handling (BH6-12); connection remount ownership (EC6-02); failed-page metadata policy (EC6-03); generated replacement verification (VG6-01/02). Bad-spec entries require a loopback. `review_loop_iteration` is now 6, exceeding the step-04 limit of 5, so this run halts for human escalation; patch and defer work is not processed.
 
 ## Verification
 
