@@ -13,7 +13,9 @@ namespace Hexalith.FrontComposer.Shell.Components.EventStore;
 
 /// <summary>Inline EventStore projection connection status indicator.</summary>
 public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, IAsyncDisposable {
+    private const string AnnouncementSurface = "projection-connection";
     private const string ConnectivityModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-connectivity.js";
+    private readonly string _episodeScope = Guid.NewGuid().ToString("N");
     private IDisposable? _subscription;
     private IDisposable? _reconciliationSubscription;
     private ITimer? _clearTimer;
@@ -150,24 +152,24 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, 
             CancelClearTimer();
             _showReconnected = false;
             if (_recoveryGroup is { } recoveryGroup) {
-                Announcements.Cancel("projection-connection", recoveryGroup);
+                Announcements.Cancel(AnnouncementSurface, recoveryGroup);
                 _recoveryGroup = null;
             }
             _offlineEpisode++;
             Announcements.Announce(
-                "projection-connection",
-                "browser-offline:" + _offlineEpisode,
+                AnnouncementSurface,
+                ScopedEpisode("browser-offline", _offlineEpisode),
                 "offline",
                 AnnouncementLocalizer["Am30Offline"],
                 immediate: true);
         }
         else {
-            Announcements.Cancel("projection-connection", "browser-offline:" + _offlineEpisode);
+            Announcements.Cancel(AnnouncementSurface, ScopedEpisode("browser-offline", _offlineEpisode));
             _onlineEpisode++;
             if (ConnectionState.Current.Status is not ProjectionConnectionStatus.Connected) {
                 Announcements.Announce(
-                    "projection-connection",
-                    "browser-online-disconnected:" + _onlineEpisode,
+                    AnnouncementSurface,
+                    ScopedEpisode("browser-online-disconnected", _onlineEpisode),
                     "fallback",
                     AnnouncementLocalizer["Am06Fallback"],
                     immediate: true);
@@ -192,12 +194,12 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, 
 
             _snapshot = snapshot;
             if (snapshot.Status is ProjectionConnectionStatus.Connected) {
-                Announcements.Cancel("projection-connection", "connection:" + snapshot.Epoch);
-                Announcements.Cancel("projection-connection", "browser-online-disconnected:" + _onlineEpisode);
+                Announcements.Cancel(AnnouncementSurface, "connection:" + snapshot.Epoch);
+                Announcements.Cancel(AnnouncementSurface, ScopedEpisode("browser-online-disconnected", _onlineEpisode));
             }
             if (!_offline && snapshot.Status is (ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected)) {
                 Announcements.Announce(
-                    "projection-connection",
+                    AnnouncementSurface,
                     "connection:" + snapshot.Epoch,
                     snapshot.Status.ToString(),
                     AnnouncementLocalizer[snapshot.Status == ProjectionConnectionStatus.Disconnected
@@ -246,9 +248,9 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, 
                 CancelRecoveryAnnouncement();
             }
             if (_showReconnected) {
-                _recoveryGroup = "recovery:" + (++_recoveryEpisode);
+                _recoveryGroup = ScopedEpisode("recovery", ++_recoveryEpisode);
                 Announcements.Announce(
-                    "projection-connection",
+                    AnnouncementSurface,
                     _recoveryGroup,
                     "recovered",
                     AnnouncementLocalizer[snapshot.DataRead ? "Am07Recovery" : "Am07ConnectionRestored"],
@@ -283,7 +285,7 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, 
 
                     _showReconnected = false;
                     if (_recoveryGroup is { } recoveryGroup) {
-                        Announcements.Cancel("projection-connection", recoveryGroup);
+                        Announcements.Cancel(AnnouncementSurface, recoveryGroup);
                         _recoveryGroup = null;
                     }
                     // P34 — generation counter breaks the loop. ReconciliationState.Reset()
@@ -313,10 +315,13 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, 
 
     private void CancelRecoveryAnnouncement() {
         if (_recoveryGroup is { } recoveryGroup) {
-            Announcements.Cancel("projection-connection", recoveryGroup);
+            Announcements.Cancel(AnnouncementSurface, recoveryGroup);
             _recoveryGroup = null;
         }
     }
+
+    private string ScopedEpisode(string kind, long episode) =>
+        string.Concat(kind, ":", _episodeScope, ":", episode.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
     /// <inheritdoc />
     public void Dispose() {
@@ -329,6 +334,7 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, 
         _connectivityRetryTimer?.Dispose();
         _connectivityRetryTimer = null;
         CancelClearTimer();
+        Announcements.Clear(AnnouncementSurface);
         GC.SuppressFinalize(this);
     }
 

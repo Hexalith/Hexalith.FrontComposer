@@ -291,7 +291,10 @@ public class CommandFormEmitterTests {
         source.ShouldContain("PendingCommandOutcomeResolver.Resolve(pendingOutcomeObservation)");
         source.ShouldContain("Materiality = observation.Materiality");
         source.ShouldContain("terminalApplied = System.Threading.Volatile.Read(ref acceptedTerminalAssociation) == 1");
-        source.ShouldContain("dispatchTerminalAction = terminalApplied && LifecycleState.Value.State != observation.State;");
+        source.ShouldContain("CommandLifecycleState storedTerminalState = observation.State;");
+        source.ShouldContain("PendingCommandStatus.DegradedExhausted => CommandLifecycleState.DegradedExhausted");
+        source.ShouldContain("dispatchTerminalAction = terminalApplied && LifecycleState.Value.State != storedTerminalState;");
+        source.ShouldContain("switch (storedTerminalState)");
         source.ShouldContain("&& !terminalApplied) return;");
         source.ShouldContain("if (terminalApplied)");
         source.ShouldContain("System.Threading.Interlocked.Exchange(ref lifecycleCallbackClosed, 1);");

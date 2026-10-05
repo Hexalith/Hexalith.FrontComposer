@@ -105,4 +105,23 @@ public sealed class FcProjectionStaleNoticeTests : BunitContext {
         _time.Advance(TimeSpan.FromMilliseconds(250));
         cut.WaitForAssertion(() => spoken.Count(message => message == "Data may be out of date.").ShouldBe(4));
     }
+
+    [Fact]
+    public void TerminalQueryFailureSpeechRemainsWhenTheStaleGroupQueues() {
+        _announcements.Announce(
+            "projection:test",
+            "load:failed",
+            "failure",
+            "Data could not be loaded.",
+            terminal: true);
+        IRenderedComponent<FcProjectionStaleNotice> cut = Render<FcProjectionStaleNotice>(p => p
+            .Add(c => c.Surface, "projection:test")
+            .Add(c => c.HasCachedRows, true)
+            .Add(c => c.HasFailedRefresh, true));
+
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-projection-stale-notice']")
+            .TextContent.ShouldBe("Data may be out of date."));
+        _time.Advance(TimeSpan.FromMilliseconds(250));
+        _announcements.Current("projection:test").ShouldBe("Data could not be loaded.");
+    }
 }

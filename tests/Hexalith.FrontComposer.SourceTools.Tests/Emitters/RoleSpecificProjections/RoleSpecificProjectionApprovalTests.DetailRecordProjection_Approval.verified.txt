@@ -586,30 +586,34 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
         if (state.Error is not null)
         {
             builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionFailure>(18);
-            builder.AddAttribute(19, "OnRetry", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, RetryProjectionAsync));
+            builder.AddAttribute(19, "Message", state.Error);
+            builder.AddAttribute(20, "OnRetry", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, RetryProjectionAsync));
             builder.CloseComponent();
-            return;
+            if (state.Items is not { Count: > 0 })
+            {
+                return;
+            }
         }
 
         if (state.IsLoading)
         {
-            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionLoadingSkeleton>(20);
-            builder.AddAttribute(21, "ColumnCount", 8);
-            builder.AddAttribute(22, "RowCount", 5);
-            builder.AddAttribute(23, "Layout", Hexalith.FrontComposer.Shell.Components.Rendering.SkeletonLayout.Card);
-            builder.AddAttribute(24, "EntityLabel", "detail records");
+            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionLoadingSkeleton>(21);
+            builder.AddAttribute(22, "ColumnCount", 8);
+            builder.AddAttribute(23, "RowCount", 5);
+            builder.AddAttribute(24, "Layout", Hexalith.FrontComposer.Shell.Components.Rendering.SkeletonLayout.Card);
+            builder.AddAttribute(25, "EntityLabel", "detail records");
             builder.CloseComponent();
             return;
         }
 
         if (state.Items is null || state.Items.Count == 0)
         {
-            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionEmptyPlaceholder>(25);
-            builder.AddAttribute(26, "ProjectionType", typeof(DetailRecordProjection));
-            builder.AddAttribute(27, "Role", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.DetailRecord);
-            builder.AddAttribute(28, "EntityPluralOverride", "detail records");
-            builder.AddAttribute(29, "CtaCommandName", (string?)null);
-            builder.AddAttribute(30, "SuppressStandaloneStatus", true);
+            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionEmptyPlaceholder>(26);
+            builder.AddAttribute(27, "ProjectionType", typeof(DetailRecordProjection));
+            builder.AddAttribute(28, "Role", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.DetailRecord);
+            builder.AddAttribute(29, "EntityPluralOverride", "detail records");
+            builder.AddAttribute(30, "CtaCommandName", (string?)null);
+            builder.AddAttribute(31, "SuppressStandaloneStatus", true);
             builder.CloseComponent();
             return;
         }

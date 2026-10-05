@@ -278,6 +278,21 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
     }
 
     [Fact]
+    public async Task RemountClearsThePreviousConnectionEpisodeAndSpeaksAFreshOne() {
+        IRenderedComponent<FcProjectionConnectionStatus> first = Render<FcProjectionConnectionStatus>();
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        await first.Instance.OnBrowserConnectivityChanged(false);
+        announcements.Current("projection-connection").ShouldBe("You are offline. Data cannot be refreshed.");
+
+        first.Instance.Dispose();
+        announcements.Current("projection-connection").ShouldBeEmpty();
+
+        IRenderedComponent<FcProjectionConnectionStatus> second = Render<FcProjectionConnectionStatus>();
+        await second.Instance.OnBrowserConnectivityChanged(false);
+        announcements.Current("projection-connection").ShouldBe("You are offline. Data cannot be refreshed.");
+    }
+
+    [Fact]
     public async Task DisposalWaitsForLateConnectivityWatchAndUnregistersItsId() {
         ConnectivityJsRuntime js = new();
         Services.Replace(ServiceDescriptor.Singleton<IJSRuntime>(js));

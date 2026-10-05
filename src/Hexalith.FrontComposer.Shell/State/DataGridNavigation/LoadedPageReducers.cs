@@ -385,12 +385,27 @@ public sealed class LoadedPageReducers {
         ImmutableDictionary<(string ViewKey, int Skip), LoadedPageResult> results, int limit) {
         int bounded = Math.Max(1, limit);
         while (results.Count > bounded) {
-            // Retain failed offsets for in-place Retry in preference to evicted page metadata.
-            KeyValuePair<(string ViewKey, int Skip), LoadedPageResult> oldest = results
-                .OrderBy(entry => entry.Value.Failed)
-                .ThenBy(entry => entry.Value.Identity)
-                .First();
-            results = results.Remove(oldest.Key);
+            // Successful metadata stays bounded. A failed offset keeps in-place Retry until that page succeeds.
+            bool found = false;
+            (string ViewKey, int Skip) oldestKey = default;
+            long oldestIdentity = long.MaxValue;
+            foreach (KeyValuePair<(string ViewKey, int Skip), LoadedPageResult> entry in results) {
+                if (entry.Value.Failed) {
+                    continue;
+                }
+
+                if (!found || entry.Value.Identity < oldestIdentity) {
+                    found = true;
+                    oldestKey = entry.Key;
+                    oldestIdentity = entry.Value.Identity;
+                }
+            }
+
+            if (!found) {
+                break;
+            }
+
+            results = results.Remove(oldestKey);
         }
         return results;
     }

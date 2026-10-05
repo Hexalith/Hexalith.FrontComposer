@@ -2242,12 +2242,18 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        if (" + failedCondition + ")");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionFailure>(seq++);");
-        if (isGrid) {
-            _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Message\", failedPage?.ErrorMessage);");
-        }
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Message\", " + (isGrid ? "failedPage?.ErrorMessage" : "state.Error") + ");");
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"OnRetry\", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, RetryProjectionAsync));");
         _ = sb.AppendLine("            builder.CloseComponent();");
-        _ = sb.AppendLine("            return;");
+        if (isGrid) {
+            _ = sb.AppendLine("            return;");
+        }
+        else {
+            _ = sb.AppendLine("            if (state.Items is not { Count: > 0 })");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                return;");
+            _ = sb.AppendLine("            }");
+        }
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine();
     }

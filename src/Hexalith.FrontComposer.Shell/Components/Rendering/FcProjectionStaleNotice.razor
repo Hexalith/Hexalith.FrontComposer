@@ -60,11 +60,19 @@
         }
         if (_visible) {
             _activeGroup = group;
-            Announcements.Announce(
-                Surface,
-                group,
-                "stale",
-                Localizer["Am04Stale"]);
+            string staleMessage = Localizer["Am04Stale"];
+            // Query-failure speech is already terminal on this surface. Queuing the stale group
+            // would let its trailing window replace that message.
+            bool failureOwnsSpeech = HasFailedRefresh
+                && Announcements.Current(Surface) is { Length: > 0 } current
+                && !string.Equals(current, staleMessage, StringComparison.Ordinal);
+            if (!failureOwnsSpeech) {
+                Announcements.Announce(
+                    Surface,
+                    group,
+                    "stale",
+                    staleMessage);
+            }
         }
     }
 

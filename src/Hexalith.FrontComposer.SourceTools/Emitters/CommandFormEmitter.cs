@@ -1458,6 +1458,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                    if (System.Threading.Volatile.Read(ref lifecycleCallbackClosed) == 1) return;");
         _ = sb.AppendLine("                    bool dispatchTerminalAction = false;");
         _ = sb.AppendLine("                    bool terminalApplied = false;");
+        _ = sb.AppendLine("                    CommandLifecycleState storedTerminalState = observation.State;");
         _ = sb.AppendLine("                    if (observation.State is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected");
         _ = sb.AppendLine("                        or CommandLifecycleState.IdempotentConfirmed or CommandLifecycleState.NeedsReview");
         _ = sb.AppendLine("                        or CommandLifecycleState.Warning or CommandLifecycleState.DegradedExhausted)");
@@ -1503,7 +1504,20 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                                && outcomeResolution.Status is");
         _ = sb.AppendLine("                                    global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandOutcomeResolutionStatus.Resolved");
         _ = sb.AppendLine("                                    or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandOutcomeResolutionStatus.LifecycleDispatchFailed;");
-        _ = sb.AppendLine("                            dispatchTerminalAction = terminalApplied && LifecycleState.Value.State != observation.State;");
+        _ = sb.AppendLine("                            if (outcomeResolution.Entry is { } storedTerminal)");
+        _ = sb.AppendLine("                            {");
+        _ = sb.AppendLine("                                storedTerminalState = storedTerminal.Status switch");
+        _ = sb.AppendLine("                                {");
+        _ = sb.AppendLine("                                    global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStatus.Confirmed => CommandLifecycleState.Confirmed,");
+        _ = sb.AppendLine("                                    global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStatus.IdempotentConfirmed => CommandLifecycleState.IdempotentConfirmed,");
+        _ = sb.AppendLine("                                    global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStatus.NeedsReview => CommandLifecycleState.NeedsReview,");
+        _ = sb.AppendLine("                                    global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStatus.Warning => CommandLifecycleState.Warning,");
+        _ = sb.AppendLine("                                    global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStatus.DegradedExhausted => CommandLifecycleState.DegradedExhausted,");
+        _ = sb.AppendLine("                                    global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStatus.Rejected => CommandLifecycleState.Rejected,");
+        _ = sb.AppendLine("                                    _ => observation.State,");
+        _ = sb.AppendLine("                                };");
+        _ = sb.AppendLine("                            }");
+        _ = sb.AppendLine("                            dispatchTerminalAction = terminalApplied && LifecycleState.Value.State != storedTerminalState;");
         _ = sb.AppendLine("                            if (terminalApplied)");
         _ = sb.AppendLine("                            {");
         _ = sb.AppendLine("                                System.Threading.Interlocked.Exchange(ref lifecycleCallbackClosed, 1);");
@@ -1521,7 +1535,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                    {");
         _ = sb.AppendLine("                        if (_disposed || cts.IsCancellationRequested");
         _ = sb.AppendLine("                            || (!dispatchTerminalAction && System.Threading.Volatile.Read(ref lifecycleCallbackClosed) == 1)) return;");
-        _ = sb.AppendLine("                        switch (observation.State)");
+        _ = sb.AppendLine("                        switch (storedTerminalState)");
         _ = sb.AppendLine("                        {");
         _ = sb.AppendLine("                            case CommandLifecycleState.Syncing:");
         _ = sb.AppendLine("                                Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".SyncingAction(correlationId));");

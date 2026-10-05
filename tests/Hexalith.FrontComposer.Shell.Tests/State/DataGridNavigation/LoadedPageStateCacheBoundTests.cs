@@ -112,6 +112,23 @@ public sealed class LoadedPageStateCacheBoundTests {
         state.LastElapsedMsByKey[ViewKey].ShouldBe(1L);
     }
 
+    [Fact]
+    public void FailedOffsetsSurviveMetadataTrimmingUntilTheySucceed() {
+        LoadedPageState state = new() { ResultMetadataLimit = 2 };
+        for (int skip = 0; skip < 3; skip++) {
+            TaskCompletionSource<object> completion = new();
+            state = Register(state, skip, completion);
+            state = LoadedPageReducers.ReduceLoadPageFailed(
+                state,
+                new LoadPageFailedAction(ViewKey, skip, "The section could not be updated.", completion) { Take = 20 });
+        }
+
+        state.ResultsByPage.Count.ShouldBe(3);
+        state.ResultsByPage.ContainsKey((ViewKey, 0)).ShouldBeTrue();
+        state.ResultsByPage[(ViewKey, 0)].Failed.ShouldBeTrue();
+        state.ResultsByPage[(ViewKey, 0)].Take.ShouldBe(20);
+    }
+
     private sealed class CapturingLogger : ILogger<LoadedPageReducers> {
         public List<string> Messages { get; } = [];
         IDisposable? ILogger.BeginScope<TState>(TState state) => null;

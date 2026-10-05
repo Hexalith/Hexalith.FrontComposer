@@ -22,6 +22,7 @@ namespace Hexalith.FrontComposer.Shell.Components.Lifecycle;
 /// <see cref="LifecycleThresholdTimer"/> at the configured <see cref="FcShellOptions"/> thresholds.
 /// </summary>
 public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisposable {
+    private const int DegradedAfterAcceptanceMs = 10_000;
     private const string FocusModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js";
 
     // Story 13.3 VR-03 — the Shell's never-throwing clipboard helper; it returns a structured outcome string.
@@ -33,6 +34,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
     private LifecycleThresholdTimer? _timer;
     private ITimer? _dismissTimer;
     private ITimer? _deadlineTimer;
+    private ITimer? _degradedTimer;
     private DateTimeOffset? _acceptanceAt;
     private LifecycleUiState _state = LifecycleUiState.Idle;
     private ProjectionConnectionSnapshot _projectionConnectionSnapshot = new(
@@ -193,6 +195,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
         dismiss?.Dispose();
         ITimer? deadline = Interlocked.Exchange(ref _deadlineTimer, null);
         deadline?.Dispose();
+        CancelDegraded();
         Announcements.Cancel(AnnouncementSurface, _boundCorrelationId);
 
         _boundCorrelationId = string.Empty;
@@ -242,6 +245,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
                 _timer?.Reset(_acceptanceAt.Value);
                 _timer?.Start();
                 ScheduleDeadline(_acceptanceAt.Value);
+                ScheduleDegraded(_acceptanceAt.Value);
                 phase = _timer?.CurrentPhase ?? LifecycleTimerPhase.NoPulse;
                 next = next with { TimerPhase = phase };
                 CancelDismissTimer();
@@ -256,6 +260,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
                     _timer?.Reset(_acceptanceAt.Value);
                     _timer?.Start();
                     ScheduleDeadline(_acceptanceAt.Value);
+                    ScheduleDegraded(_acceptanceAt.Value);
                 }
                 phase = _timer?.CurrentPhase ?? LifecycleTimerPhase.NoPulse;
                 next = next with { TimerPhase = phase };
@@ -266,6 +271,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
             case CommandLifecycleState.IdempotentConfirmed:
                 _timer?.EnterTerminal();
                 CancelDeadline();
+                CancelDegraded();
                 if (next.IsIdempotent) {
                     // Story 2-5 D3 / AC2 — idempotent outcome schedules Info-bar dismiss at the
                     // IdempotentInfoToastDurationMs threshold, not ConfirmedToastDurationMs.
@@ -300,6 +306,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
             case CommandLifecycleState.DegradedExhausted:
                 _timer?.EnterTerminal();
                 CancelDeadline();
+                CancelDegraded();
                 CancelDismissTimer();
                 _supportReferenceCopied = null;
                 _mappedRejectionDismissed = false;
@@ -309,6 +316,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
             case CommandLifecycleState.Idle:
                 _timer?.EnterTerminal();
                 CancelDeadline();
+                CancelDegraded();
                 CancelDismissTimer();
                 _acceptanceAt = null;
                 next = LifecycleUiState.Idle with { LastTransitionAt = transition.LastTransitionAt };
@@ -330,22 +338,22 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
         }
 
         // HFC2102 — timer callback runs on the thread pool; render updates must go through InvokeAsync.
+        // Capture the binding before the queue so a rebind cannot apply this tick to the replacement command.
+        string boundCorrelationId = _boundCorrelationId;
         FrontComposerHotPathLog.LifecycleTimerPhaseMarshaled(
             Logger,
             FcDiagnosticIds.HFC2102_ThresholdTimerOffUiThread);
 
         _ = InvokeAsync(() => {
+            if (_disposed != 0 || !string.Equals(boundCorrelationId, _boundCorrelationId, StringComparison.Ordinal)) {
+                return;
+            }
+
             // Ignore tick-driven changes once we've reached a terminal display state.
             if (_state.TimerPhase == LifecycleTimerPhase.Terminal) {
                 return;
             }
             _state = _state with { TimerPhase = phase };
-            if (phase == LifecycleTimerPhase.ActionPrompt
-                && _acceptanceAt is { } acceptedAt
-                && Time.GetUtcNow() - acceptedAt >= TimeSpan.FromSeconds(10)
-                && _state.Current is CommandLifecycleState.Acknowledged or CommandLifecycleState.Syncing) {
-                LifecycleService.Transition(_boundCorrelationId, CommandLifecycleState.Degraded, _state.MessageId);
-            }
             StateHasChanged();
         });
     }
@@ -405,6 +413,23 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
                 }
             }
         }), null, due > TimeSpan.Zero ? due : TimeSpan.Zero, Timeout.InfiniteTimeSpan);
+    }
+
+    private void ScheduleDegraded(DateTimeOffset acceptedAt) {
+        CancelDegraded();
+        TimeSpan due = acceptedAt.AddMilliseconds(DegradedAfterAcceptanceMs) - Time.GetUtcNow();
+        string correlationId = _boundCorrelationId;
+        _degradedTimer = Time.CreateTimer(_ => _ = InvokeAsync(() => {
+            if (_disposed == 0 && string.Equals(_boundCorrelationId, correlationId, StringComparison.Ordinal)
+                && _state.Current is CommandLifecycleState.Acknowledged or CommandLifecycleState.Syncing) {
+                LifecycleService.Transition(correlationId, CommandLifecycleState.Degraded, _state.MessageId);
+            }
+        }), null, due > TimeSpan.Zero ? due : TimeSpan.Zero, Timeout.InfiniteTimeSpan);
+    }
+
+    private void CancelDegraded() {
+        ITimer? timer = Interlocked.Exchange(ref _degradedTimer, null);
+        timer?.Dispose();
     }
 
     private void CancelDeadline() {

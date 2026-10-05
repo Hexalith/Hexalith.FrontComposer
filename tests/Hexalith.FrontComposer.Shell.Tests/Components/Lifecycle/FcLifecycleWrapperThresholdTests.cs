@@ -1,9 +1,13 @@
 using Bunit;
 
+using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Components.Lifecycle;
+using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
+using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
@@ -50,6 +54,61 @@ public sealed class FcLifecycleWrapperThresholdTests : LifecycleWrapperTestBase 
 
         lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Confirmed, "01HVTESTULID");
         lifecycle.GetState(DefaultCorrelationId).ShouldBe(CommandLifecycleState.DegradedExhausted);
+    }
+
+    [Fact]
+    public void DegradedStartsAtTenSecondsWhenActionPromptBeginsEarlier() {
+        Services.Configure<FcShellOptions>(options => options.TimeoutActionThresholdMs = 5_000);
+        LifecycleStateService lifecycle = new(
+            Microsoft.Extensions.Options.Options.Create(new LifecycleOptions()), FakeTime,
+            NullLogger<LifecycleStateService>.Instance);
+        RegisterLifecycleService(lifecycle);
+        IRenderedComponent<FcLifecycleWrapper> cut = Render<FcLifecycleWrapper>(p => p
+            .Add(c => c.CorrelationId, DefaultCorrelationId));
+
+        lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Submitting, "01HVTESTULID");
+        lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Acknowledged, "01HVTESTULID");
+        cut.WaitForAssertion(() => cut.Find(".fc-lifecycle-wrapper")
+            .GetAttribute("data-lifecycle-state").ShouldBe("acknowledged"));
+
+        Services.GetRequiredService<IProjectionConnectionState>()
+            .Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Disconnected));
+        FakeTime.Advance(TimeSpan.FromMilliseconds(5_000));
+        cut.WaitForAssertion(() => cut.Find(".fc-lifecycle-wrapper")
+            .GetAttribute("data-lifecycle-state").ShouldBe("acknowledged"));
+        lifecycle.GetState(DefaultCorrelationId).ShouldBe(CommandLifecycleState.Acknowledged);
+
+        FakeTime.Advance(TimeSpan.FromMilliseconds(4_999));
+        lifecycle.GetState(DefaultCorrelationId).ShouldBe(CommandLifecycleState.Acknowledged);
+        FakeTime.Advance(TimeSpan.FromMilliseconds(1));
+        cut.WaitForAssertion(() => lifecycle.GetState(DefaultCorrelationId)
+            .ShouldBe(CommandLifecycleState.Degraded));
+    }
+
+    [Fact]
+    public void RebindIgnoresATimerCallbackQueuedForThePreviousCommand() {
+        LifecycleStateService lifecycle = new(
+            Microsoft.Extensions.Options.Options.Create(new LifecycleOptions()), FakeTime,
+            NullLogger<LifecycleStateService>.Instance);
+        RegisterLifecycleService(lifecycle);
+        IRenderedComponent<FcLifecycleWrapper> cut = Render<FcLifecycleWrapper>(p => p
+            .Add(c => c.CorrelationId, DefaultCorrelationId));
+        lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Submitting, "01HVTESTULID");
+        lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Acknowledged, "01HVTESTULID");
+        cut.WaitForAssertion(() => cut.Find(".fc-lifecycle-wrapper")
+            .GetAttribute("data-lifecycle-state").ShouldBe("acknowledged"));
+
+        FakeTime.Advance(TimeSpan.FromMilliseconds(2_000));
+        cut.Render(p => p.Add(c => c.CorrelationId, "corr-replacement"));
+        cut.WaitForAssertion(() => {
+            cut.Find(".fc-lifecycle-wrapper").GetAttribute("data-lifecycle-state").ShouldBe("idle");
+            cut.Markup.ShouldNotContain("Still syncing");
+        });
+        lifecycle.GetState("corr-replacement").ShouldBe(CommandLifecycleState.Idle);
+
+        FakeTime.Advance(TimeSpan.FromSeconds(10));
+        lifecycle.GetState("corr-replacement").ShouldBe(CommandLifecycleState.Idle);
+        lifecycle.GetState(DefaultCorrelationId).ShouldBe(CommandLifecycleState.Acknowledged);
     }
 
     [Fact]
