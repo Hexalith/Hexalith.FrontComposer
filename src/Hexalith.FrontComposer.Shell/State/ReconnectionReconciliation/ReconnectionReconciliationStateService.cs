@@ -38,6 +38,10 @@ public sealed class ReconnectionReconciliationStateService(
             Changed: false,
             timeProvider.GetUtcNow()));
 
+    /// <summary>Completes a successful reconciliation using the original public contract.</summary>
+    public void Complete(long epoch, bool changed) => Complete(epoch, changed, succeeded: true, dataRead: true);
+
+    /// <summary>Completes a reconciliation with its outcome and data-read result.</summary>
     public void Complete(long epoch, bool changed, bool succeeded = true, bool dataRead = true) {
         // P13/P15 — atomic epoch + status check inside the lock. Stale epoch results never overwrite
         // a fresh Start; once the pass has settled to Refreshed/Idle a duplicate Complete is silently

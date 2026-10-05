@@ -8,7 +8,12 @@ public interface IReconnectionReconciliationState {
 
     void Start(long epoch);
 
-    void Complete(long epoch, bool changed, bool succeeded = true, bool dataRead = true);
+    /// <summary>Completes a successful reconciliation using the original public contract.</summary>
+    void Complete(long epoch, bool changed);
+
+    /// <summary>Completes a reconciliation with its outcome and data-read result.</summary>
+    void Complete(long epoch, bool changed, bool succeeded = true, bool dataRead = true)
+        => Complete(epoch, changed);
 
     void Reset(long? expectedEpoch = null);
 }
