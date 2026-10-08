@@ -109,8 +109,9 @@ so overrides can create duplicate or contradictory associations. Keep content in
 use the derived `${Id}-panel` contract.
 
 Component tests can verify derived ids, owned content, lazy activation, and callbacks. Fluent's
-custom-element JavaScript owns focus, selected attributes, visibility, and browser panel labels;
-verify those transitions and reciprocal `aria-labelledby` associations in a browser test.
+custom-element JavaScript owns focus, selected attributes, and visibility. FrontComposer supplies
+reciprocal panel labels through `FcPageTabs` calling `fc-focus.js`'s `labelTabPanels`; verify those
+transitions and `aria-labelledby` associations in a browser test.
 
 Because tabs expose caller-owned panel content, custom surfaces placed inside tabs must preserve accessible names and keyboard reachability. The closest published checks are [HFC1050](../../diagnostics/HFC1050.md) for missing accessible names and [HFC1051](../../diagnostics/HFC1051.md) for blocked keyboard access.
 
