@@ -18,7 +18,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 public sealed class FcPageTabsTests : LayoutComponentTestBase
 {
     [Fact]
-    public void FcPageTabs_WithPanelContent_RendersDeterministicReciprocalAssociation()
+    public void FcPageTabs_WithPanelContent_RendersExactlyOneControlledPanelPerTab()
     {
         IRenderedComponent<FcPageTabs> cut = Render<FcPageTabs>(parameters => parameters
             .Add(tabs => tabs.ActiveTabId, "summary")
@@ -35,13 +35,16 @@ public sealed class FcPageTabsTests : LayoutComponentTestBase
         IElement tabsRoot = cut.Find("[data-testid='orders-page-tabs']");
         tabsRoot.GetAttribute("aria-label").ShouldBe("Order sections");
 
-        IElement summaryTab = cut.Find("#summary");
-        IElement summaryPanel = cut.Find("#summary-panel");
-        summaryTab.GetAttribute("aria-controls").ShouldBe("summary-panel");
-        summaryPanel.GetAttribute("role").ShouldBe("tabpanel");
-        summaryPanel.TextContent.ShouldContain("Summary body");
-
-        cut.Find("#activity-panel").TextContent.ShouldContain("Activity body");
+        foreach (string id in new[] { "summary", "activity" })
+        {
+            IElement tab = cut.FindAll($"#{id}").ShouldHaveSingleItem();
+            string panelId = tab.GetAttribute("aria-controls").ShouldNotBeNull();
+            panelId.ShouldBe($"{id}-panel");
+            IElement panel = cut.FindAll($"#{panelId}").ShouldHaveSingleItem();
+            panel.GetAttribute("role").ShouldBe("tabpanel");
+            panel.QuerySelector($"[data-testid='{id}-content']").ShouldNotBeNull();
+            panel.TextContent.ShouldNotBeNullOrWhiteSpace();
+        }
     }
 
     [Fact]
@@ -270,6 +273,53 @@ public sealed class FcPageTabsTests : LayoutComponentTestBase
 
         cut.Find("#summary-panel").TextContent.ShouldContain("Summary body");
         cut.Markup.ShouldNotContain("Activity body");
+    }
+
+    [Fact]
+    public async Task FcPageTab_DeferredPanel_ActivatesThroughCallbackAndRetainsContentOnReturn()
+    {
+        string? observed = null;
+        IRenderedComponent<FcPageTabs> cut = Render<FcPageTabs>(parameters => parameters
+            .Add(tabs => tabs.ActiveTabId, "summary")
+            .Add(tabs => tabs.ActiveTabIdChanged, EventCallback.Factory.Create<string?>(this, value => observed = value))
+            .AddChildContent(PageTabs(deferredLoading: true, disableActivity: false)));
+
+        cut.FindAll("[data-testid='summary-content']").ShouldHaveSingleItem();
+        cut.FindAll("[data-testid='activity-content']").ShouldBeEmpty();
+
+        await cut.InvokeAsync(() => cut.FindComponent<FluentTabs>().Instance.ActiveTabIdChanged.InvokeAsync("activity"));
+        observed.ShouldBe("activity");
+        cut.Render(parameters => parameters.Add(tabs => tabs.ActiveTabId, observed));
+
+        cut.FindComponent<FluentTabs>().Instance.ActiveTabId.ShouldBe("activity");
+        cut.Find("#activity-panel [data-testid='activity-content']").TextContent.ShouldBe("Activity body");
+
+        await cut.InvokeAsync(() => cut.FindComponent<FluentTabs>().Instance.ActiveTabIdChanged.InvokeAsync("summary"));
+        observed.ShouldBe("summary");
+        cut.Render(parameters => parameters.Add(tabs => tabs.ActiveTabId, observed));
+
+        cut.FindComponent<FluentTabs>().Instance.ActiveTabId.ShouldBe("summary");
+        cut.Find("#summary-panel [data-testid='summary-content']").TextContent.ShouldBe("Summary body");
+        cut.Find("#activity-panel [data-testid='activity-content']").TextContent.ShouldBe("Activity body");
+    }
+
+    [Theory]
+    [InlineData("summary")]
+    [InlineData("activity")]
+    [InlineData("missing")]
+    [InlineData(null)]
+    public async Task FcPageTabs_CurrentDisabledOrUnknownSelection_DoesNotNotifyCaller(string? selectedId)
+    {
+        int callbacks = 0;
+        IRenderedComponent<FcPageTabs> cut = Render<FcPageTabs>(parameters => parameters
+            .Add(tabs => tabs.ActiveTabId, "summary")
+            .Add(tabs => tabs.ActiveTabIdChanged, EventCallback.Factory.Create<string?>(this, _ => callbacks++))
+            .AddChildContent(PageTabs(deferredLoading: true)));
+
+        await cut.InvokeAsync(() => cut.FindComponent<FluentTabs>().Instance.ActiveTabIdChanged.InvokeAsync(selectedId));
+
+        callbacks.ShouldBe(0);
+        cut.FindAll("[data-testid='activity-content']").ShouldBeEmpty();
     }
 
     private static RenderFragment PageTabs(bool deferredLoading, bool disableActivity = true)

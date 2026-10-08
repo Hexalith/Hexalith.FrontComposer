@@ -126,43 +126,68 @@ test.describe('Story 8.6: reusable page toolbar @p1 @smoke', () => {
     const specimen = new PageToolbarSpecimenPage(page);
     await specimen.goto();
 
-    await expect(specimen.summaryTab).toHaveAttribute('aria-controls', 'summary-panel');
-    await expect(specimen.summaryPanel).toHaveAttribute('role', 'tabpanel');
+    const sections = [
+      { id: 'summary', tab: specimen.summaryTab, panel: specimen.summaryPanel },
+      { id: 'activity', tab: specimen.activityTab, panel: specimen.activityPanel },
+      { id: 'archived', tab: specimen.archivedTab, panel: specimen.archivedPanel },
+      { id: 'history', tab: specimen.historyTab, panel: specimen.historyPanel },
+    ];
+
+    for (const section of sections) {
+      await expect(section.tab).toHaveCount(1);
+      await expect(section.tab).toHaveAttribute('id', section.id);
+      await expect(section.tab).toHaveAttribute('aria-controls', `${section.id}-panel`);
+      await expect(section.panel).toHaveCount(1);
+      await expect(section.panel).toHaveAttribute('role', 'tabpanel');
+      await expect(section.panel).toHaveAttribute('aria-labelledby', section.id);
+    }
+
+    async function expectSelectedSection(id: string): Promise<void> {
+      await expect(specimen.activeTabState).toHaveText(`Active tab: ${id}`);
+      for (const section of sections) {
+        await expect(section.tab).toHaveAttribute('aria-selected', String(section.id === id));
+        if (section.id === id) {
+          await expect(section.tab).toBeFocused();
+          await expect(section.panel).toBeVisible();
+          await expect(section.panel).toContainText(`${section.id[0].toUpperCase()}${section.id.slice(1)} panel content`);
+        } else {
+          await expect(section.panel).toBeHidden();
+        }
+      }
+    }
+
     await expect(specimen.summaryContent).toBeVisible();
     await expect(specimen.activityContent).toHaveCount(0);
+    await expect(specimen.historyContent).toHaveCount(0);
 
     await specimen.summaryTab.focus();
+    await expectSelectedSection('summary');
     await specimen.summaryTab.press('ArrowRight');
-    await expect(specimen.activityTab).toBeFocused();
-    await expect(specimen.activityTab).toHaveAttribute('aria-selected', 'true');
-    await expect(specimen.activeTabState).toContainText('Active tab: activity');
-    await expect(specimen.activityPanel).toBeVisible();
+    await expectSelectedSection('activity');
     await expect(specimen.activityContent).toBeVisible();
 
     await specimen.activityTab.press('ArrowRight');
-    await expect(specimen.historyTab).toBeFocused();
+    await expectSelectedSection('history');
     await expect(specimen.archivedTab).toHaveAttribute('aria-disabled', 'true');
-    await expect(specimen.historyTab).toHaveAttribute('aria-selected', 'true');
-    await expect(specimen.activeTabState).toContainText('Active tab: history');
-    await expect(specimen.historyPanel).toBeVisible();
     await expect(specimen.historyContent).toBeVisible();
 
     await specimen.historyTab.press('Home');
-    await expect(specimen.summaryTab).toBeFocused();
-    await expect(specimen.summaryTab).toHaveAttribute('aria-selected', 'true');
-    await expect(specimen.summaryPanel).toBeVisible();
+    await expectSelectedSection('summary');
+    await expect(specimen.activityContent).toHaveCount(1);
+    await expect(specimen.activityContent).toBeHidden();
 
     await specimen.summaryTab.press('End');
-    await expect(specimen.historyTab).toBeFocused();
-    await expect(specimen.historyTab).toHaveAttribute('aria-selected', 'true');
+    await expectSelectedSection('history');
 
     await specimen.historyTab.press('ArrowRight');
-    await expect(specimen.summaryTab).toBeFocused();
-    await expect(specimen.summaryTab).toHaveAttribute('aria-selected', 'true');
+    await expectSelectedSection('summary');
 
     await specimen.summaryTab.press('ArrowLeft');
-    await expect(specimen.historyTab).toBeFocused();
-    await expect(specimen.historyTab).toHaveAttribute('aria-selected', 'true');
+    await expectSelectedSection('history');
+    await specimen.historyTab.press('ArrowLeft');
+    await expectSelectedSection('activity');
+    await specimen.activityTab.press('ArrowLeft');
+    await expectSelectedSection('summary');
   });
 
   test('toolbar wraps without overlap on narrow viewports', async ({ page, tenant }) => {

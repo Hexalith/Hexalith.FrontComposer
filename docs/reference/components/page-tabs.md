@@ -81,7 +81,7 @@ the owned content in `id="summary-panel" role="tabpanel"`.
 | `Header` | `string` | Visible label and accessible tab name. |
 | `Disabled` | `bool` | Disables the tab; Fluent excludes it from keyboard selection. |
 | `IconStart` | `Icon?` | Optional Fluent icon before the label. |
-| `DeferredLoading` | `bool` | Defers panel content until Fluent first activates the tab. |
+| `DeferredLoading` | `bool` | Defers panel content until its first activation, then retains it across tab changes. |
 | `Tooltip` | `string?` | Optional Fluent tooltip for the tab header. |
 | `ChildContent` | `RenderFragment?` | The real caller-owned panel content. |
 
@@ -93,6 +93,9 @@ or spacing wrapper; adopters place it in the body of `FcPageLayout`, `FcAggregat
 
 Use `DeferredLoading="true"` when a panel starts gateway work or renders an expensive surface. An
 inactive panel must not issue requests merely because its tab header exists.
+After first activation, the panel content stays mounted when another tab is selected, preserving
+component state and in-flight work. For caller-owned selection, supply the initial enabled tab's
+stable `ActiveTabId` and update that value from `ActiveTabIdChanged`.
 
 ## Accessibility (FC-A11Y)
 
@@ -104,6 +107,10 @@ Do not override `aria-controls`, panel ids, or `aria-labelledby` through `Fluent
 attributes. The pinned Fluent component applies additional attributes to both its header and panel,
 so overrides can create duplicate or contradictory associations. Keep content inside `FcPageTab` and
 use the derived `${Id}-panel` contract.
+
+Component tests can verify derived ids, owned content, lazy activation, and callbacks. Fluent's
+custom-element JavaScript owns focus, selected attributes, visibility, and browser panel labels;
+verify those transitions and reciprocal `aria-labelledby` associations in a browser test.
 
 Because tabs expose caller-owned panel content, custom surfaces placed inside tabs must preserve accessible names and keyboard reachability. The closest published checks are [HFC1050](../../diagnostics/HFC1050.md) for missing accessible names and [HFC1051](../../diagnostics/HFC1051.md) for blocked keyboard access.
 
