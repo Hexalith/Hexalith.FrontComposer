@@ -2,7 +2,7 @@
 title: 'Story 13.4: Announce Projection and Command State Without Noise'
 type: 'feature'
 created: '2026-10-04'
-status: 'in-progress'
+status: 'in-review'
 route: 'dispatch'
 review_loop_iteration: 15
 review_limit_override: 'Human approved continuing beyond the five-iteration limit on 2026-10-05.'
