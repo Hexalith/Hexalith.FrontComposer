@@ -1,3 +1,5 @@
+using Hexalith.FrontComposer.Shell.Services;
+
 namespace Hexalith.FrontComposer.Shell.Services.Announcements;
 
 /// <summary>Scoped, fake-time capable coalescing and deduplication for polite speech.</summary>
@@ -15,6 +17,17 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
         lock (_gate)
         {
             return _surfaces.TryGetValue(surface, out Surface? owner) ? owner.Message : string.Empty;
+        }
+    }
+
+    /// <inheritdoc />
+    public bool IsCurrent(string surface, string group, string identity)
+    {
+        lock (_gate)
+        {
+            return _surfaces.TryGetValue(surface, out Surface? owner)
+                && string.Equals(owner.CurrentGroup, group, StringComparison.Ordinal)
+                && string.Equals(owner.CurrentIdentity, identity, StringComparison.Ordinal);
         }
     }
 
@@ -72,12 +85,29 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
             {
                 return;
             }
+            // A delivered A returning while B is queued cancels B without replaying A.
+            if (state.Delivered.Contains(identity))
+            {
+                ++state.Version;
+                state.Timer?.Dispose();
+                state.Timer = null;
+                if (state.PendingIdentity is { } cancelled && !state.Delivered.Contains(cancelled))
+                {
+                    state.Seen.Remove(cancelled);
+                }
+                state.PendingIdentity = null;
+                return;
+            }
             // A repeated render is silent, but an A -> B -> A burst must end in A.
             // The earlier A was superseded before it was delivered.
             if (state.Seen.Contains(identity)
                 && (state.PendingIdentity is null || string.Equals(state.PendingIdentity, identity, StringComparison.Ordinal)))
             {
                 return;
+            }
+            if (state.PendingIdentity is { } superseded && !state.Delivered.Contains(superseded))
+            {
+                state.Seen.Remove(superseded);
             }
             _ = state.Seen.Add(identity);
 
@@ -96,12 +126,18 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
                         ++pending.Version;
                         pending.Timer?.Dispose();
                         pending.Timer = null;
+                        if (pending.PendingIdentity is { } cancelled && !pending.Delivered.Contains(cancelled))
+                        {
+                            pending.Seen.Remove(cancelled);
+                        }
                         pending.PendingIdentity = null;
                     }
                 }
+                state.Delivered.Add(identity);
                 state.Closed = terminal;
                 owner.Message = message;
                 owner.CurrentGroup = group;
+                owner.CurrentIdentity = identity;
                 handlers = [.. owner.Handlers];
                 versionedHandlers = [.. owner.VersionedHandlers];
                 revision = ++owner.Revision;
@@ -109,7 +145,7 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
             else
             {
                 state.Timer = time.CreateTimer(
-                    _ => Flush(surface, group, version, message),
+                    _ => Flush(surface, group, state, identity, version, message),
                     null,
                     Window,
                     Timeout.InfiniteTimeSpan);
@@ -133,11 +169,16 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
                 ++state.Version;
                 state.Timer?.Dispose();
                 state.Timer = null;
+                if (state.PendingIdentity is { } cancelled && !state.Delivered.Contains(cancelled))
+                {
+                    state.Seen.Remove(cancelled);
+                }
                 state.PendingIdentity = null;
                 if (string.Equals(owner.CurrentGroup, group, StringComparison.Ordinal))
                 {
                     owner.Message = string.Empty;
                     owner.CurrentGroup = null;
+                    owner.CurrentIdentity = null;
                     handlers = [.. owner.Handlers];
                     versionedHandlers = [.. owner.VersionedHandlers];
                     revision = ++owner.Revision;
@@ -170,6 +211,7 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
             owner.Groups.Clear();
             owner.Message = string.Empty;
             owner.CurrentGroup = null;
+            owner.CurrentIdentity = null;
             handlers = [.. owner.Handlers];
             versionedHandlers = [.. owner.VersionedHandlers];
             revision = ++owner.Revision;
@@ -178,7 +220,7 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
         Deliver(handlers, versionedHandlers, string.Empty, revision);
     }
 
-    private void Flush(string surface, string group, long version, string message)
+    private void Flush(string surface, string group, Group captured, string identity, long version, string message)
     {
         Action<string>[] handlers;
         Action<string, long>[] versionedHandlers;
@@ -186,7 +228,7 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
         lock (_gate)
         {
             if (_disposed || !_surfaces.TryGetValue(surface, out Surface? owner)
-                || !owner.Groups.TryGetValue(group, out Group? state) || state.Version != version)
+                || !owner.Groups.TryGetValue(group, out Group? state) || !ReferenceEquals(state, captured) || state.Version != version)
             {
                 return;
             }
@@ -194,8 +236,10 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
             state.Timer?.Dispose();
             state.Timer = null;
             state.PendingIdentity = null;
+            state.Delivered.Add(identity);
             owner.Message = message;
             owner.CurrentGroup = group;
+            owner.CurrentIdentity = identity;
             handlers = [.. owner.Handlers];
             versionedHandlers = [.. owner.VersionedHandlers];
             revision = ++owner.Revision;
@@ -212,7 +256,7 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
             {
                 handler(message);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex))
             {
                 // One removed or failing component cannot suppress the other listeners.
             }
@@ -223,7 +267,7 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
             {
                 handler(message, revision);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex))
             {
                 // A disposed subscriber cannot suppress other listeners.
             }
@@ -284,6 +328,7 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
     {
         public string Message { get; set; } = string.Empty;
         public string? CurrentGroup { get; set; }
+        public string? CurrentIdentity { get; set; }
         public List<Action<string>> Handlers { get; } = [];
         public List<Action<string, long>> VersionedHandlers { get; } = [];
         public long Revision { get; set; }
@@ -293,6 +338,7 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
     private sealed class Group
     {
         public HashSet<string> Seen { get; } = new(StringComparer.Ordinal);
+        public HashSet<string> Delivered { get; } = new(StringComparer.Ordinal);
         public string? PendingIdentity { get; set; }
         public ITimer? Timer { get; set; }
         public long Version { get; set; }

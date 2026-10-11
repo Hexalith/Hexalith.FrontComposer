@@ -77,7 +77,7 @@ public sealed class FcShellOptionsThresholdValidator : IValidateOptions<FcShellO
         }
 
         if (options.MaxPendingCommandPollingDurationMs <= options.TimeoutActionThresholdMs) {
-            (failures ??= []).Add($"FcShellOptions.MaxPendingCommandPollingDurationMs ({options.MaxPendingCommandPollingDurationMs}) must be greater than TimeoutActionThresholdMs ({options.TimeoutActionThresholdMs}) so degraded UI can surface before polling expiry resolves the command to NeedsReview.");
+            (failures ??= []).Add($"FcShellOptions.MaxPendingCommandPollingDurationMs ({options.MaxPendingCommandPollingDurationMs}) must be greater than TimeoutActionThresholdMs ({options.TimeoutActionThresholdMs}) so degraded UI can surface before polling expiry resolves the command to DegradedExhausted.");
         }
 
         if (options.CommandDispatchRetryAttempts > 0

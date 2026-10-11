@@ -26,6 +26,8 @@ public partial class FcMaxItemsCapNotice : ComponentBase, IDisposable {
     private string? _lastAnnouncedResult;
     private long _visibleEpisode;
     private string? _activeGroup;
+    private string _boundSurface = string.Empty;
+    private bool _disposed;
 
     /// <summary>Stable per-view key (reserved for future telemetry).</summary>
     [Parameter]
@@ -50,6 +52,10 @@ public partial class FcMaxItemsCapNotice : ComponentBase, IDisposable {
     [Parameter]
     public string? ResultIdentity { get; set; }
 
+    /// <summary>Uses the parent surface's persistent status node when true; direct callers own one by default.</summary>
+    [Parameter]
+    public bool SharedStatusOwner { get; set; }
+
     [Inject]
     private IOptionsMonitor<FcShellOptions> ShellOptions { get; set; } = default!;
 
@@ -69,6 +75,23 @@ public partial class FcMaxItemsCapNotice : ComponentBase, IDisposable {
 
     /// <inheritdoc />
     protected override void OnParametersSet() {
+        if (_disposed)
+        {
+            return;
+        }
+        string surface = "projection:" + ViewKey;
+        if (!string.Equals(_boundSurface, surface, StringComparison.Ordinal))
+        {
+            if (_activeGroup is { } abandoned)
+            {
+                Announcements.Cancel(_boundSurface, abandoned);
+                _activeGroup = null;
+            }
+            _boundSurface = surface;
+            _wasVisible = false;
+            _lastAnnouncedResult = null;
+        }
+
         int cap = ShellOptions.CurrentValue.MaxUnfilteredItems;
         _message = Localizer[
             "MaxItemsCapNoticeTemplate",
@@ -77,15 +100,15 @@ public partial class FcMaxItemsCapNotice : ComponentBase, IDisposable {
         if (visible && !_wasVisible) {
             _visibleEpisode++;
         }
-        string result = ResultIdentity ?? _visibleEpisode.ToString(CultureInfo.InvariantCulture);
+        string result = (ResultIdentity ?? _visibleEpisode.ToString(CultureInfo.InvariantCulture)) + ":" + cap.ToString(CultureInfo.InvariantCulture);
         if (_activeGroup is { } prior && (!visible || !string.Equals(_lastAnnouncedResult, result, StringComparison.Ordinal))) {
-            Announcements.Cancel("projection:" + ViewKey, prior);
+            Announcements.Cancel(_boundSurface, prior);
             _activeGroup = null;
         }
         if (visible && (!_wasVisible || !string.Equals(_lastAnnouncedResult, result, StringComparison.Ordinal))) {
             _activeGroup = "limit:" + ViewKey + ":" + _visibleEpisode.ToString(CultureInfo.InvariantCulture) + ":" + result;
             Announcements.Announce(
-                "projection:" + ViewKey,
+                _boundSurface,
                 _activeGroup,
                 result + ":" + cap.ToString(CultureInfo.InvariantCulture),
                 Localizer["Am09MaxItems", cap],
@@ -97,8 +120,9 @@ public partial class FcMaxItemsCapNotice : ComponentBase, IDisposable {
 
     /// <inheritdoc />
     public void Dispose() {
+        _disposed = true;
         if (_activeGroup is { } group) {
-            Announcements.Cancel("projection:" + ViewKey, group);
+            Announcements.Cancel(_boundSurface, group);
             _activeGroup = null;
         }
         GC.SuppressFinalize(this);

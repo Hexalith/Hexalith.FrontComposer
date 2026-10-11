@@ -318,6 +318,8 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
 
     private string? _pendingLoadingGroup;
     private string? _activeFailureGroup;
+    private string? _activeFailureIdentity;
+    private readonly System.Collections.Generic.HashSet<string> _resultAnnouncementGroups = new(System.StringComparer.Ordinal);
 
     /// <inheritdoc />
     protected override void OnInitialized()
@@ -332,6 +334,10 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
     private static string AnnouncementSurface => "projection:" + (typeof(TimelineProjection).FullName ?? typeof(TimelineProjection).Name);
     private void AnnounceProjectionState()
     {
+        if (System.Threading.Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
         var state = TimelineProjectionState.Value;
         if (state.RequiresScopedRequest) { SetFailureGroup(null); Announcements.Clear(AnnouncementSurface); return; }
         string operation = state.ActiveCorrelationId ?? state.LastResultCorrelationId ?? "initial";
@@ -339,22 +345,40 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
         if (_pendingLoadingGroup is { } prior && (!state.IsLoading || !string.Equals(prior, group, StringComparison.Ordinal)))
         { Announcements.Cancel(AnnouncementSurface, prior); _pendingLoadingGroup = null; }
         if (state.Error is not null)
-        { SetFailureGroup(group); Announcements.Announce(AnnouncementSurface, group, "failure:" + (state.LastResultCorrelationId ?? operation), FcShellLocalizer["Am30QueryFailed"].Value, terminal: true); return; }
+        { SetFailureGroup(group, "failure:" + (state.LastResultCorrelationId ?? operation)); Announcements.Announce(AnnouncementSurface, group, _activeFailureIdentity!, FcShellLocalizer["Am30QueryFailed"].Value, terminal: true); return; }
         if (state.IsLoading)
-        { SetFailureGroup(null); _pendingLoadingGroup = group; Announcements.Announce(AnnouncementSurface, group, "loading", FcShellLocalizer["Am01Loading", "timelines"].Value); return; }
+        { CancelResultAnnouncements(); SetFailureGroup(null); _pendingLoadingGroup = group; Announcements.Announce(AnnouncementSurface, group, "loading", FcShellLocalizer["Am01Loading", "timelines"].Value); return; }
         bool filtered = false;
         SetFailureGroup(null);
         if (state.Items is null) { return; }
         if (state.Items.Count == 0)
-        { Announcements.Announce(AnnouncementSurface, group, "empty:" + (state.LastResultCorrelationId ?? operation) + "|" + filtered, filtered ? FcShellLocalizer["Am27NoMatches", "timelines"].Value : FcShellLocalizer["Am02Empty", "timelines"].Value, terminal: true); return; }
+        { _resultAnnouncementGroups.Add(group); Announcements.Announce(AnnouncementSurface, group, "empty:" + (state.LastResultCorrelationId ?? operation) + "|" + filtered, filtered ? FcShellLocalizer["Am27NoMatches", "timelines"].Value : FcShellLocalizer["Am02Empty", "timelines"].Value, terminal: true); return; }
         if (state.LastResultOperatorInitiated)
-        { Announcements.Announce(AnnouncementSurface, group, "data:" + (state.LastResultCorrelationId ?? operation) + "|" + state.Items.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), FcShellLocalizer["Am03Loaded", "timelines"].Value); }
+        { _resultAnnouncementGroups.Add(group); Announcements.Announce(AnnouncementSurface, group, "data:" + (state.LastResultCorrelationId ?? operation) + "|" + state.Items.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), FcShellLocalizer["Am03Loaded", "timelines"].Value); }
     }
 
-    private void SetFailureGroup(string? next)
+    private void CancelOwnedAnnouncements()
+    {
+        if (_pendingLoadingGroup is { } loading)
+        {
+            Announcements.Cancel(AnnouncementSurface, loading);
+            _pendingLoadingGroup = null;
+        }
+        SetFailureGroup(null);
+        CancelResultAnnouncements();
+    }
+
+    private void CancelResultAnnouncements()
+    {
+        foreach (string result in _resultAnnouncementGroups) { Announcements.Cancel(AnnouncementSurface, result); }
+        _resultAnnouncementGroups.Clear();
+    }
+
+    private void SetFailureGroup(string? next, string? identity = null)
     {
         if (_activeFailureGroup is { } prior && !string.Equals(prior, next, StringComparison.Ordinal)) { Announcements.Cancel(AnnouncementSurface, prior); }
         _activeFailureGroup = next;
+        _activeFailureIdentity = identity;
     }
 
     private async Task RetryProjectionAsync()
@@ -371,6 +395,7 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
             return;
         }
 
+        CancelOwnedAnnouncements();
         TimelineProjectionState.StateChanged -= OnStateChanged;
         System.GC.SuppressFinalize(this);
     }
@@ -503,15 +528,18 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
 
         builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionStaleNotice>(14);
         builder.AddAttribute(15, "Surface", AnnouncementSurface);
-        builder.AddAttribute(16, "HasCachedRows", state.Items is { Count: > 0 });
-        builder.AddAttribute(17, "HasFailedRefresh", state.Error is not null);
+        builder.AddAttribute(16, "QueryFailureGroup", _activeFailureGroup);
+        builder.AddAttribute(17, "QueryFailureIdentity", _activeFailureIdentity);
+        builder.AddAttribute(18, "HasCachedRows", state.Items is { Count: > 0 });
+        builder.AddAttribute(19, "HasFailedRefresh", state.Error is not null);
+        builder.AddAttribute(20, "FreshnessIdentity", state.IsLoading || state.Error is not null ? null : state.LastResultCorrelationId);
         builder.CloseComponent();
 
         if (state.Error is not null)
         {
-            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionFailure>(18);
-            builder.AddAttribute(19, "Message", state.Error);
-            builder.AddAttribute(20, "OnRetry", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, RetryProjectionAsync));
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionFailure>(21);
+            builder.AddAttribute(22, "Message", state.Error);
+            builder.AddAttribute(23, "OnRetry", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, RetryProjectionAsync));
             builder.CloseComponent();
             if (state.Items is not { Count: > 0 })
             {
@@ -521,23 +549,23 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
 
         if (state.IsLoading)
         {
-            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionLoadingSkeleton>(21);
-            builder.AddAttribute(22, "ColumnCount", 5);
-            builder.AddAttribute(23, "RowCount", 5);
-            builder.AddAttribute(24, "Layout", Hexalith.FrontComposer.Shell.Components.Rendering.SkeletonLayout.Timeline);
-            builder.AddAttribute(25, "EntityLabel", "timelines");
+            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionLoadingSkeleton>(24);
+            builder.AddAttribute(25, "ColumnCount", 5);
+            builder.AddAttribute(26, "RowCount", 5);
+            builder.AddAttribute(27, "Layout", Hexalith.FrontComposer.Shell.Components.Rendering.SkeletonLayout.Timeline);
+            builder.AddAttribute(28, "EntityLabel", "timelines");
             builder.CloseComponent();
             return;
         }
 
         if (state.Items is null || state.Items.Count == 0)
         {
-            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionEmptyPlaceholder>(26);
-            builder.AddAttribute(27, "ProjectionType", typeof(TimelineProjection));
-            builder.AddAttribute(28, "Role", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.Timeline);
-            builder.AddAttribute(29, "EntityPluralOverride", "timelines");
-            builder.AddAttribute(30, "CtaCommandName", (string?)null);
-            builder.AddAttribute(31, "SuppressStandaloneStatus", true);
+            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionEmptyPlaceholder>(29);
+            builder.AddAttribute(30, "ProjectionType", typeof(TimelineProjection));
+            builder.AddAttribute(31, "Role", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.Timeline);
+            builder.AddAttribute(32, "EntityPluralOverride", "timelines");
+            builder.AddAttribute(33, "CtaCommandName", (string?)null);
+            builder.AddAttribute(34, "SuppressStandaloneStatus", true);
             builder.CloseComponent();
             return;
         }

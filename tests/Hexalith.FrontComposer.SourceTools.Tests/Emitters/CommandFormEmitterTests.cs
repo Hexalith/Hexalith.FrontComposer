@@ -114,6 +114,9 @@ public class CommandFormEmitterTests {
         string masked = GeneratedRenderTreeText.MaskSequenceArguments(source);
         masked.ShouldContain("__b.OpenComponent<FcCommandBlockedOutcome>(#);");
         masked.ShouldContain("__b.AddAttribute(#, \"AttemptedControlId\", _formDomId + \"-submit\");");
+        masked.ShouldContain("__b.AddAttribute(#, \"AnnouncementSurface\", FormAnnouncementSurface);");
+        masked.ShouldContain("builder.AddAttribute(#, \"StatusSurface\", FormAnnouncementSurface);");
+        masked.ShouldContain("builder.AddAttribute(#, \"RenderStatus\", !OnBlockedSubmission.HasDelegate);");
     }
 
     [Theory]
@@ -478,6 +481,7 @@ public class CommandFormEmitterTests {
         int acknowledgedIndex = source.IndexOf("AcknowledgedAction", warningCatchIndex, StringComparison.Ordinal);
 
         source.ShouldContain("CommandWarningKind.RetryableDispatchFailed");
+        source.ShouldContain("if (_serverWarning.Kind != CommandWarningKind.RetryableDispatchFailed && _serverWarning.RetryAfter is not null)");
         warningCatchIndex.ShouldBeGreaterThan(0);
         resetIndex.ShouldBeGreaterThan(warningCatchIndex);
         registerIndex.ShouldBe(-1);

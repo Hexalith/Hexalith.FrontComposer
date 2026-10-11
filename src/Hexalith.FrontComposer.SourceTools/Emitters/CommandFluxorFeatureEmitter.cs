@@ -66,23 +66,21 @@ public static class CommandFluxorFeatureEmitter {
 
         _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
         _ = sb.AppendLine("    public static " + state + " OnSubmitted(" + state + " state, " + actions + ".SubmittedAction action)");
-        _ = sb.AppendLine("        => state with { State = CommandLifecycleState.Submitting, CorrelationId = action.CorrelationId, RejectionReason = null, RejectionResolution = null, RejectionErrorCode = null, RejectionReasonCategory = null, RejectionSuggestedAction = null, RejectionDocsCode = null, HasMappedFieldErrors = false };");
+        _ = sb.AppendLine("        => state with { State = CommandLifecycleState.Submitting, CorrelationId = action.CorrelationId, MessageId = null, RejectionReason = null, RejectionResolution = null, RejectionErrorCode = null, RejectionReasonCategory = null, RejectionSuggestedAction = null, RejectionDocsCode = null, HasMappedFieldErrors = false };");
         _ = sb.AppendLine();
         // CorrelationId guard prevents stale in-flight callbacks from a prior submit from overwriting
         // the state of a new submit (see code-review 2026-04-15, patch P2).
         _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
         _ = sb.AppendLine("    public static " + state + " OnAcknowledged(" + state + " state, " + actions + ".AcknowledgedAction action)");
-        _ = sb.AppendLine("        => state.CorrelationId != action.CorrelationId");
-        _ = sb.AppendLine("            || state.State is CommandLifecycleState.Syncing or CommandLifecycleState.Degraded || IsTerminal(state.State)");
+        _ = sb.AppendLine("        => state.CorrelationId != action.CorrelationId || IsTerminal(state.State)");
         _ = sb.AppendLine("            ? state");
-        _ = sb.AppendLine("            : state with { State = CommandLifecycleState.Acknowledged, MessageId = action.MessageId };");
+        _ = sb.AppendLine("            : state with { State = state.State is CommandLifecycleState.Syncing or CommandLifecycleState.Degraded ? state.State : CommandLifecycleState.Acknowledged, MessageId = state.MessageId ?? action.MessageId };");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
         _ = sb.AppendLine("    public static " + state + " OnSyncing(" + state + " state, " + actions + ".SyncingAction action)");
-        _ = sb.AppendLine("        => state.CorrelationId != action.CorrelationId");
-        _ = sb.AppendLine("            || state.State == CommandLifecycleState.Degraded || IsTerminal(state.State)");
+        _ = sb.AppendLine("        => state.CorrelationId != action.CorrelationId || IsTerminal(state.State)");
         _ = sb.AppendLine("            ? state");
-        _ = sb.AppendLine("            : state with { State = CommandLifecycleState.Syncing };");
+        _ = sb.AppendLine("            : state with { State = state.State == CommandLifecycleState.Degraded ? state.State : CommandLifecycleState.Syncing, MessageId = state.MessageId ?? action.MessageId };");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
         _ = sb.AppendLine("    public static " + state + " OnConfirmed(" + state + " state, " + actions + ".ConfirmedAction action)");

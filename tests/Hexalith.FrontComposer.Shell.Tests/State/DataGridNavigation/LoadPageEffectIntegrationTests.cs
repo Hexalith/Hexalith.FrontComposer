@@ -30,12 +30,13 @@ public sealed class LoadPageEffectIntegrationTests {
     private static LoadPageEffects MakeSut(
         IProjectionPageLoader loader,
         LoadedPageState? state = null,
-        FcShellOptions? shellOptions = null) {
+        FcShellOptions? shellOptions = null,
+        Microsoft.Extensions.Localization.IStringLocalizer<Hexalith.FrontComposer.Shell.Resources.FcShellResources>? localizer = null) {
         IState<LoadedPageState> iState = Substitute.For<IState<LoadedPageState>>();
         iState.Value.Returns(state ?? new LoadedPageState());
         IOptionsMonitor<FcShellOptions> options = Substitute.For<IOptionsMonitor<FcShellOptions>>();
         options.CurrentValue.Returns(shellOptions ?? new FcShellOptions());
-        return new LoadPageEffects(iState, loader, NullLogger<LoadPageEffects>.Instance, options, new FakeTimeProvider());
+        return new LoadPageEffects(iState, loader, NullLogger<LoadPageEffects>.Instance, options, new FakeTimeProvider(), localizer);
     }
 
     private static LoadPageAction MakeAction(TaskCompletionSource<object> tcs, CancellationToken ct = default) =>
@@ -229,4 +230,57 @@ public sealed class LoadPageEffectIntegrationTests {
 
         dispatcher.All<LoadPageCancelledAction>().ShouldNotBeEmpty();
     }
+    [Theory]
+    [InlineData(ReservedFilterKeys.StatusKey)]
+    [InlineData(ReservedFilterKeys.SearchKey)]
+    public async Task FilteredLoadsPastTheUnfilteredCapKeepRequestedTakeAndTotal(string filter)
+    {
+        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
+        loader.LoadPageAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<IImmutableDictionary<string, string>>(),
+            Arg.Any<string?>(), Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new ProjectionPageResult(["filtered"], 500, null)));
+        LoadPageEffects sut = MakeSut(loader, shellOptions: new FcShellOptions { MaxUnfilteredItems = 100 });
+        RecordingDispatcher dispatcher = new();
+        LoadPageAction action = new(ViewKey, 110, 50,
+            filter == ReservedFilterKeys.StatusKey ? ImmutableDictionary<string, string>.Empty.Add(filter, "active") : ImmutableDictionary<string, string>.Empty,
+            null, false, filter == ReservedFilterKeys.SearchKey ? "find" : null, new(), CancellationToken.None);
+        await sut.HandleLoadPageAsync(action, dispatcher);
+        await loader.Received(1).LoadPageAsync(Arg.Any<string>(), 110, 50, Arg.Any<IImmutableDictionary<string, string>>(),
+            Arg.Any<string?>(), Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        dispatcher.Single<LoadPageSucceededAction>().TotalCount.ShouldBe(500);
+    }
+
+    [Theory]
+    [InlineData("en", "Data could not be loaded.")]
+    [InlineData("fr", "Les données n’ont pas pu être chargées.")]
+    public async Task LocalizedFailureAndDefensiveFailureNeverExposeTransportText(string culture, string expected)
+    {
+        System.Globalization.CultureInfo.CurrentUICulture = new(culture);
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        Microsoft.Extensions.DependencyInjection.LoggingServiceCollectionExtensions.AddLogging(services);
+        Microsoft.Extensions.DependencyInjection.LocalizationServiceCollectionExtensions.AddLocalization(services);
+        using var provider = Microsoft.Extensions.DependencyInjection.ServiceCollectionContainerBuilderExtensions.BuildServiceProvider(services);
+        var localizer = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Localization.IStringLocalizer<Hexalith.FrontComposer.Shell.Resources.FcShellResources>>(provider);
+        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
+        loader.LoadPageAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<IImmutableDictionary<string, string>>(),
+            Arg.Any<string?>(), Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns<Task<ProjectionPageResult>>(_ => throw new InvalidOperationException("secret tenant payload"));
+        TaskCompletionSource<object> completion = new();
+        LoadedPageState registered = new() { PendingCompletionsByKey = new LoadedPageState().PendingCompletionsByKey.SetItem((ViewKey, 0), completion) };
+        RecordingDispatcher dispatcher = new();
+        await MakeSut(loader, registered, localizer: localizer).HandleLoadPageAsync(MakeAction(completion), dispatcher);
+        dispatcher.All<LoadPageFailedAction>().Count.ShouldBe(2);
+        dispatcher.All<LoadPageFailedAction>().ShouldAllBe(failure => failure.ErrorMessage == expected);
+    }
+
+    [Fact]
+    public async Task FatalLoaderFailurePropagates()
+    {
+        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
+        loader.LoadPageAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<IImmutableDictionary<string, string>>(),
+            Arg.Any<string?>(), Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns<Task<ProjectionPageResult>>(_ => throw (OutOfMemoryException)Activator.CreateInstance(typeof(OutOfMemoryException), "fatal")!);
+        await Should.ThrowAsync<OutOfMemoryException>(() => MakeSut(loader).HandleLoadPageAsync(MakeAction(new()), new RecordingDispatcher()));
+    }
+
 }

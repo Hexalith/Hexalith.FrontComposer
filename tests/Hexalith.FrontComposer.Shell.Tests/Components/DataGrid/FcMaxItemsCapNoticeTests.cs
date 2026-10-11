@@ -22,6 +22,26 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.DataGrid;
 /// against <see cref="FcShellOptions.MaxUnfilteredItems"/>. The banner is non-dismissing per D11.
 /// </summary>
 public sealed class FcMaxItemsCapNoticeTests : BunitContext {
+    [Fact]
+    public void DirectNoticeKeepsOnePersistentPoliteOwnerAcrossTransitionsAndRemount()
+    {
+        IRenderedComponent<FcMaxItemsCapNotice> cut = RenderNotice(9999, false);
+        cut.FindAll("[role='status'][aria-live='polite']").Count.ShouldBe(1);
+        cut.Find("[data-testid='fc-surface-status']").TextContent.ShouldBeEmpty();
+        cut.Render(p => p.Add(c => c.ItemsCount, 10000).Add(c => c.ResultIdentity, "result"));
+        cut.Find("[data-testid='fc-surface-status']").TextContent
+            .ShouldBe("Showing the first 10000 items. Refine filters to narrow the result.");
+        cut.Find("[data-testid='fc-max-items-cap-notice']").GetAttribute("aria-live").ShouldBe("off");
+        cut.FindComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcSurfaceStatus>().Instance.Dispose();
+        cut.Instance.Dispose();
+        cut.Dispose();
+        IRenderedComponent<FcMaxItemsCapNotice> remounted = Render<FcMaxItemsCapNotice>(p => p
+            .Add(c => c.ViewKey, ViewKey).Add(c => c.ItemsCount, 10000).Add(c => c.AnyRealFilterActive, false)
+            .Add(c => c.ResultIdentity, "result"));
+        remounted.FindAll("[role='status'][aria-live='polite']").Count.ShouldBe(1);
+        remounted.Find("[data-testid='fc-surface-status']").TextContent.ShouldBeEmpty();
+    }
+
     private const string ViewKey = "acme:OrdersProjection";
 
     public FcMaxItemsCapNoticeTests() {
@@ -99,4 +119,39 @@ public sealed class FcMaxItemsCapNoticeTests : BunitContext {
             .Add(c => c.AnyRealFilterActive, false).Add(c => c.ResultIdentity, "result-2"));
         announcements.Current("projection:" + ViewKey).ShouldBe(string.Empty);
     }
+    [Fact]
+    public void ChangedCapOnTheSameResultSpeaksItsNewLimitOnce()
+    {
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        List<string> spoken = [];
+        using IDisposable subscription = announcements.Subscribe("projection:" + ViewKey, spoken.Add);
+        IRenderedComponent<FcMaxItemsCapNotice> cut = Render<FcMaxItemsCapNotice>(p => p
+            .Add(c => c.ViewKey, ViewKey).Add(c => c.ItemsCount, 20000)
+            .Add(c => c.AnyRealFilterActive, false).Add(c => c.ResultIdentity, "same-result"));
+        Services.GetRequiredService<IOptionsMonitor<FcShellOptions>>().CurrentValue.MaxUnfilteredItems = 20000;
+        cut.Render();
+        cut.Render();
+        spoken.Where(message => message.Length > 0).ToArray().ShouldBe([
+            "Showing the first 10000 items. Refine filters to narrow the result.",
+            "Showing the first 20000 items. Refine filters to narrow the result."]);
+        cut.Find("[data-testid='fc-max-items-cap-notice']").TextContent.ShouldContain("20000");
+    }
+    [Fact]
+    public void EqualInputSurfaceRebindWithdrawsOriginalAndPublishesReplacement()
+    {
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        IRenderedComponent<FcMaxItemsCapNotice> cut = Render<FcMaxItemsCapNotice>(p => p.Add(c => c.ViewKey, ViewKey)
+            .Add(c => c.ItemsCount, 10000).Add(c => c.AnyRealFilterActive, false).Add(c => c.ResultIdentity, "same"));
+        announcements.Current("projection:" + ViewKey).ShouldNotBeEmpty();
+        cut.Render(p => p.Add(c => c.ViewKey, "replacement").Add(c => c.ItemsCount, 10000)
+            .Add(c => c.AnyRealFilterActive, false).Add(c => c.ResultIdentity, "same"));
+        announcements.Current("projection:" + ViewKey).ShouldBeEmpty();
+        announcements.Current("projection:replacement").ShouldContain("10000");
+        announcements.Announce("projection:replacement", "other", "result", "Keep other speech", immediate: true);
+        cut.Instance.Dispose();
+        cut.Dispose();
+        announcements.Current("projection:replacement").ShouldBe("Keep other speech");
+    }
+
+
 }

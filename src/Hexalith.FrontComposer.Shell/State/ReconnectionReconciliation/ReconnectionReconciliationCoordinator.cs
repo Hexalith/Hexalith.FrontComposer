@@ -130,7 +130,8 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
                 }
             }
 
-            _state.Complete(epoch, result.ChangedViewKeys.Count > 0, dataRead: result.RefreshedCount > 0);
+            _state.Complete(epoch, result.ChangedViewKeys.Count > 0,
+                succeeded: result.RefreshedCount > 0 || result.FailedViewKeys.Count == 0, dataRead: result.RefreshedCount > 0);
 
             ScheduleSweepCleanup(epoch);
 

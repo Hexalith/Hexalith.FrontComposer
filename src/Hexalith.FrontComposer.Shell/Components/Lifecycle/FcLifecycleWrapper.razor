@@ -29,7 +29,9 @@
     }
     @ChildContent
 
-    <FcSurfaceStatus Surface="@AnnouncementSurface" />
+    @if (RenderStatus) {
+        <FcSurfaceStatus Surface="@AnnouncementSurface" />
+    }
 
     @if (_state.Current is CommandLifecycleState.Syncing
             && _state.TimerPhase is LifecycleTimerPhase.StillSyncing) {
@@ -90,7 +92,7 @@
                          aria-live="off"
                          data-testid="fc-idempotent">
             <ChildContent>
-                @(IdempotentInfoMessage ?? "This was already confirmed — no action needed.")
+                @(string.IsNullOrWhiteSpace(IdempotentInfoMessage) ? Localizer["IdempotentInfoDefault"].Value : IdempotentInfoMessage)
             </ChildContent>
         </FluentMessageBar>
     }

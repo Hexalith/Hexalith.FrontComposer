@@ -91,7 +91,7 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
             typeof(SameSourceTargetCommandLifecycleBridge)
                 .GetMethod("ForwardAction", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
                 .ShouldNotBeNull()
-                .Invoke(bridge, [correlationId, CommandLifecycleState.Acknowledged, AcceptedMessageId]));
+                .Invoke(bridge, [correlationId, CommandLifecycleState.Acknowledged, AcceptedMessageId, null]));
         acknowledgementEntered.Wait(Xunit.TestContext.Current.CancellationToken);
         try {
             lifecycle.Transition(correlationId, CommandLifecycleState.Confirmed, AcceptedMessageId);
@@ -482,7 +482,14 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
 
         cut.Find("form").Submit();
 
-        cut.WaitForAssertion(() => state.Value.State.ShouldBe(CommandLifecycleState.Syncing));
+        cut.WaitForAssertion(() => {
+            state.Value.State.ShouldBe(CommandLifecycleState.Syncing);
+            state.Value.MessageId.ShouldBe(AcceptedMessageId);
+            ILifecycleStateService lifecycle = Services.GetRequiredService<ILifecycleStateService>();
+            lifecycle.GetState(state.Value.CorrelationId!).ShouldBe(CommandLifecycleState.Syncing);
+            lifecycle.GetMessageId(state.Value.CorrelationId!).ShouldBe(AcceptedMessageId);
+            cut.Find("[data-lifecycle-state]").GetAttribute("data-lifecycle-state").ShouldBe("syncing");
+        });
     }
 
     [Fact]
@@ -857,7 +864,7 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
         service.DispatchCount.ShouldBe(0);
         cut.Markup.ShouldContain("Workspace unavailable");
         // AM-20 belongs to blocked concurrent submits; a scope failure leaves its status node empty.
-        cut.Find("[data-testid='fc-command-blocked-status']").TextContent.ShouldBeEmpty();
+        cut.Find("[data-testid='fc-surface-status']").TextContent.ShouldBeEmpty();
         pending.Snapshot().ShouldBeEmpty();
         indicators.Snapshot("Counter:Counter.Domain.CounterProjection").ShouldBeEmpty();
     }
@@ -1722,6 +1729,8 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
         CommandLifecycleState terminalState = CommandLifecycleState.Confirmed) : ICommandServiceWithLifecycleObservations {
         public int DispatchCount { get; private set; }
 
+        public Action<CommandLifecycleObservation>? Observer { get; private set; }
+
         public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
             where TCommand : class => DispatchAsync(command, null, cancellationToken);
 
@@ -1731,6 +1740,7 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
             CancellationToken cancellationToken = default)
             where TCommand : class {
             DispatchCount++;
+            Observer = onLifecycleObservation;
             if (emitTerminal) {
                 onLifecycleObservation?.Invoke(new CommandLifecycleObservation(
                     terminalState,
@@ -2172,4 +2182,253 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
             messageId,
             CommandMateriality.Material,
             TimeProvider.System.GetUtcNow());
+    [Theory]
+    [InlineData(120000)]
+    [InlineData(120001)]
+    public async Task ConfirmedObservationAtTheBudgetFollowsStoredExhaustionAndNeverDispatchesSuccess(int elapsed)
+    {
+        var time = new Microsoft.Extensions.Time.Testing.FakeTimeProvider(DateTimeOffset.UtcNow);
+        Services.Replace(ServiceDescriptor.Singleton<TimeProvider>(time));
+        EarlyTerminalCommandService service = new(AcceptedMessageId, emitTerminal: false);
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        IPendingCommandStateService pending = Services.GetRequiredService<IPendingCommandStateService>();
+        IActionSubscriber subscriber = Services.GetRequiredService<IActionSubscriber>();
+        object owner = new();
+        int confirmed = 0;
+        int exhausted = 0;
+        subscriber.SubscribeToAction<TwoFieldCompactCommandActions.ConfirmedAction>(owner, _ => confirmed++);
+        subscriber.SubscribeToAction<TwoFieldCompactCommandActions.DegradedExhaustedAction>(owner, _ => exhausted++);
+        try {
+            IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>();
+            cut.Find("form").Submit();
+            cut.WaitForAssertion(() => pending.GetByMessageId(AcceptedMessageId).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.Pending));
+            // Exercise the generated observation path after the wrapper relinquishes timer ownership.
+            cut.FindComponent<Hexalith.FrontComposer.Shell.Components.Lifecycle.FcLifecycleWrapper>().Instance.Dispose();
+            time.Advance(TimeSpan.FromMilliseconds(elapsed));
+            service.Observer.ShouldNotBeNull()(new CommandLifecycleObservation(
+                CommandLifecycleState.Confirmed, AcceptedMessageId, CommandMateriality.Material, time.GetUtcNow()));
+            cut.WaitForAssertion(() => {
+                pending.GetByMessageId(AcceptedMessageId).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.DegradedExhausted);
+                Services.GetRequiredService<IState<TwoFieldCompactCommandLifecycleState>>().Value.State.ShouldBe(CommandLifecycleState.DegradedExhausted);
+                confirmed.ShouldBe(0);
+                exhausted.ShouldBe(1);
+            });
+        }
+        finally { subscriber.UnsubscribeFromAllActions(owner); }
+    }
+
+    [Theory]
+    [InlineData(2000, true)]
+    [InlineData(4250, true)]
+    [InlineData(2000, false)]
+    public async Task AcceptedHeaderTimeSurvivesDelayedBodyAndRetryThroughBothBudgetAuthorities(int delay, bool timestamped)
+    {
+        var time = new Microsoft.Extensions.Time.Testing.FakeTimeProvider();
+        Services.Replace(ServiceDescriptor.Singleton<TimeProvider>(time));
+        DateTimeOffset headerTime = time.GetUtcNow();
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => new DelayedAcceptanceObservationService(time, delay, timestamped)));
+        await InitializeStoreAsync();
+        IPendingCommandStateService pending = Services.GetRequiredService<IPendingCommandStateService>();
+        ILifecycleStateService lifecycle = Services.GetRequiredService<ILifecycleStateService>();
+        IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>();
+        cut.Find("form").Submit();
+        PendingCommandEntry? entry = null;
+        DateTimeOffset expectedAnchor = timestamped ? headerTime : headerTime.AddMilliseconds(delay);
+        cut.WaitForAssertion(() =>
+        {
+            entry = pending.GetByMessageId(AcceptedMessageId).ShouldNotBeNull();
+            entry.SubmittedAt.ShouldBe(expectedAnchor);
+            lifecycle.GetState(entry.CorrelationId).ShouldBe(CommandLifecycleState.Syncing);
+        });
+        time.Advance(expectedAnchor.AddMilliseconds(9999) - time.GetUtcNow());
+        lifecycle.GetState(entry!.CorrelationId).ShouldBe(CommandLifecycleState.Syncing);
+        time.Advance(TimeSpan.FromMilliseconds(1));
+        cut.WaitForAssertion(() => lifecycle.GetState(entry.CorrelationId).ShouldBe(CommandLifecycleState.Degraded));
+        time.Advance(TimeSpan.FromMilliseconds(109999));
+        pending.GetByMessageId(AcceptedMessageId).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.Pending);
+        time.Advance(TimeSpan.FromMilliseconds(1));
+        cut.WaitForAssertion(() =>
+        {
+            pending.GetByMessageId(AcceptedMessageId).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.DegradedExhausted);
+            lifecycle.GetState(entry.CorrelationId).ShouldBe(CommandLifecycleState.DegradedExhausted);
+            Services.GetRequiredService<IState<TwoFieldCompactCommandLifecycleState>>().Value.State.ShouldBe(CommandLifecycleState.DegradedExhausted);
+        });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RealAcceptedClientPublishesSyncingThroughGeneratedObservationBeforeStalledRetryReturns(bool stallSend)
+    {
+        UserContext.TenantId = "real-tenant";
+        UserContext.UserId = "operator-user";
+        var time = new Microsoft.Extensions.Time.Testing.FakeTimeProvider();
+        Services.Replace(ServiceDescriptor.Singleton<TimeProvider>(time));
+        DateTimeOffset headerTime = time.GetUtcNow();
+        using var handler = new Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore.StalledPostAcknowledgementHandler(stallSend, holdNextSubmit: true);
+        IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
+        factory.CreateClient(Arg.Any<string>()).Returns(_ => new HttpClient(handler, disposeHandler: false) { BaseAddress = new("https://eventstore.test") });
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(sp => new Hexalith.FrontComposer.Shell.Infrastructure.EventStore.EventStoreCommandClient(
+            factory, Microsoft.Extensions.Options.Options.Create(new Hexalith.FrontComposer.Shell.Infrastructure.EventStore.EventStoreOptions {
+                AccessTokenProvider = _ => ValueTask.FromResult<string?>("test-token"),
+            }),
+            sp.GetRequiredService<IUlidFactory>(), UserContext,
+            Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore.EventStoreTestSupport.CreateClassifier(),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Hexalith.FrontComposer.Shell.Infrastructure.EventStore.EventStoreCommandClient>.Instance,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { CommandDispatchRetryAttempts = 1 }), time)));
+        await InitializeStoreAsync();
+        IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>(p => p
+            .Add(c => c.InitialValue, new TwoFieldCompactCommand { Name = "operator-row", Amount = 1 }));
+        cut.Find("form").Submit();
+        try
+        {
+            IState<TwoFieldCompactCommandLifecycleState> generated = Services.GetRequiredService<IState<TwoFieldCompactCommandLifecycleState>>();
+            ILifecycleStateService lifecycle = Services.GetRequiredService<ILifecycleStateService>();
+            string correlationId = string.Empty;
+            cut.WaitForAssertion(() => {
+                generated.Value.State.ShouldBe(CommandLifecycleState.Syncing);
+                correlationId = generated.Value.CorrelationId.ShouldNotBeNull();
+                lifecycle.GetState(correlationId).ShouldBe(CommandLifecycleState.Syncing);
+                cut.Find("[data-lifecycle-state]").GetAttribute("data-lifecycle-state").ShouldBe("syncing");
+            });
+            using System.Text.Json.JsonDocument request = System.Text.Json.JsonDocument.Parse(handler.Bodies.Single());
+            string messageId = request.RootElement.GetProperty("messageId").GetString()!;
+            generated.Value.MessageId.ShouldBe(messageId);
+            lifecycle.GetMessageId(correlationId).ShouldBe(messageId);
+            CommandLifecycleTransition? replay = null;
+            using IDisposable subscription = lifecycle.Subscribe(correlationId, transition => replay = transition);
+            replay.ShouldNotBeNull().LastTransitionAt.ShouldBe(headerTime);
+            IPendingCommandStateService pending = Services.GetRequiredService<IPendingCommandStateService>();
+            pending.GetByMessageId(messageId).ShouldBeNull();
+            time.Advance(TimeSpan.FromMilliseconds(250));
+            await handler.RetryEntered.Task.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken);
+            if (!stallSend) { await handler.StalledBody.ReadAttempted.Task.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken); }
+            lifecycle.GetState(correlationId).ShouldBe(CommandLifecycleState.Syncing);
+            cut.Find("[data-lifecycle-state]").GetAttribute("data-lifecycle-state").ShouldBe("syncing");
+            time.Advance(TimeSpan.FromMilliseconds(1750));
+            PendingCommandEntry? entry = null;
+            cut.WaitForAssertion(() => {
+                entry = pending.GetByMessageId(messageId).ShouldNotBeNull();
+                entry.SubmittedAt.ShouldBe(headerTime);
+            });
+            generated.Value.State.ShouldBe(CommandLifecycleState.Syncing);
+            generated.Value.MessageId.ShouldBe(messageId);
+            lifecycle.GetState(correlationId).ShouldBe(CommandLifecycleState.Syncing);
+            lifecycle.GetMessageId(correlationId).ShouldBe(messageId);
+            time.Advance(TimeSpan.FromMilliseconds(7999));
+            lifecycle.GetState(entry!.CorrelationId).ShouldNotBe(CommandLifecycleState.Degraded);
+            time.Advance(TimeSpan.FromMilliseconds(1));
+            cut.WaitForAssertion(() => lifecycle.GetState(entry.CorrelationId).ShouldBe(CommandLifecycleState.Degraded));
+            IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+            dispatcher.Dispatch(new TwoFieldCompactCommandActions.AcknowledgedAction(correlationId, messageId) { ObservedAt = time.GetUtcNow() });
+            cut.WaitForAssertion(() => {
+                generated.Value.State.ShouldBe(CommandLifecycleState.Degraded);
+                generated.Value.MessageId.ShouldBe(messageId);
+                lifecycle.GetState(correlationId).ShouldBe(CommandLifecycleState.Degraded);
+                cut.Find("[data-lifecycle-state]").GetAttribute("data-lifecycle-state").ShouldBe("degraded");
+            });
+            using (lifecycle.Subscribe(correlationId, transition => replay = transition)) {
+                replay.ShouldNotBeNull().LastTransitionAt.ShouldBe(headerTime);
+            }
+            time.Advance(TimeSpan.FromMilliseconds(109999));
+            pending.GetByMessageId(messageId)!.Status.ShouldBe(PendingCommandStatus.Pending);
+            time.Advance(TimeSpan.FromMilliseconds(1));
+            cut.WaitForAssertion(() => pending.GetByMessageId(messageId)!.Status.ShouldBe(PendingCommandStatus.DegradedExhausted));
+            dispatcher.Dispatch(new TwoFieldCompactCommandActions.AcknowledgedAction(correlationId, messageId));
+            generated.Value.State.ShouldBe(CommandLifecycleState.DegradedExhausted);
+            lifecycle.GetState(correlationId).ShouldBe(CommandLifecycleState.DegradedExhausted);
+            generated.Value.MessageId.ShouldBe(messageId);
+            handler.ReleaseRetry.TrySetResult(new(System.Net.HttpStatusCode.Accepted));
+
+            cut.Find("form").Submit();
+            await handler.NextSubmitEntered.Task.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken);
+            try {
+                string nextCorrelation = generated.Value.CorrelationId.ShouldNotBeNull();
+                nextCorrelation.ShouldNotBe(correlationId);
+                generated.Value.State.ShouldBe(CommandLifecycleState.Submitting);
+                generated.Value.MessageId.ShouldBeNull();
+                lifecycle.GetState(nextCorrelation).ShouldBe(CommandLifecycleState.Submitting);
+                lifecycle.GetMessageId(nextCorrelation).ShouldBeNull();
+                cut.Find("[data-lifecycle-state]").GetAttribute("data-lifecycle-state").ShouldBe("submitting");
+            }
+            finally {
+                handler.ReleaseNextSubmit.TrySetResult(new(System.Net.HttpStatusCode.Accepted));
+            }
+            cut.WaitForAssertion(() => {
+                generated.Value.State.ShouldBe(CommandLifecycleState.Syncing);
+                generated.Value.MessageId.ShouldNotBeNull().ShouldNotBe(messageId);
+            });
+        }
+        finally
+        {
+            handler.ReleaseRetry.TrySetResult(new(System.Net.HttpStatusCode.Accepted));
+            handler.ReleaseNextSubmit.TrySetResult(new(System.Net.HttpStatusCode.Accepted));
+        }
+    }
+
+    [Theory]
+    [InlineData(CommandLifecycleState.Syncing)]
+    [InlineData(CommandLifecycleState.Degraded)]
+    [InlineData(CommandLifecycleState.Confirmed)]
+    [InlineData(CommandLifecycleState.IdempotentConfirmed)]
+    [InlineData(CommandLifecycleState.Rejected)]
+    [InlineData(CommandLifecycleState.NeedsReview)]
+    [InlineData(CommandLifecycleState.Warning)]
+    [InlineData(CommandLifecycleState.DegradedExhausted)]
+    public async Task LateAcknowledgementSuppliesOnlyActiveMissingIdentityAndPreservesTerminalRecords(CommandLifecycleState progress)
+    {
+        var time = new Microsoft.Extensions.Time.Testing.FakeTimeProvider();
+        Services.Replace(ServiceDescriptor.Singleton<TimeProvider>(time));
+        await InitializeStoreAsync();
+        _ = Render<TwoFieldCompactCommandForm>();
+        Services.GetRequiredService<ILifecycleBridgeRegistry>().Ensure<TwoFieldCompactCommandLifecycleBridge>();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        ILifecycleStateService lifecycle = Services.GetRequiredService<ILifecycleStateService>();
+        IState<TwoFieldCompactCommandLifecycleState> state = Services.GetRequiredService<IState<TwoFieldCompactCommandLifecycleState>>();
+        const string correlation = "01ERZ3NDEKTSV4RRFFQ69G5FAV";
+        DateTimeOffset headersAt = time.GetUtcNow();
+        dispatcher.Dispatch(new TwoFieldCompactCommandActions.SubmittedAction(correlation, new TwoFieldCompactCommand()));
+        dispatcher.Dispatch(new TwoFieldCompactCommandActions.SyncingAction(correlation) { ObservedAt = headersAt });
+        if (progress != CommandLifecycleState.Syncing) { lifecycle.Transition(correlation, progress); }
+        state.Value.State.ShouldBe(progress);
+        TwoFieldCompactCommandLifecycleState original = state.Value;
+        CommandLifecycleTransition? before = null;
+        using (lifecycle.Subscribe(correlation, value => before = value)) { }
+        time.Advance(TimeSpan.FromSeconds(1));
+        dispatcher.Dispatch(new TwoFieldCompactCommandActions.AcknowledgedAction(correlation, AcceptedMessageId) { ObservedAt = time.GetUtcNow() });
+        state.Value.State.ShouldBe(progress);
+        lifecycle.GetState(correlation).ShouldBe(progress);
+        bool active = progress is CommandLifecycleState.Syncing or CommandLifecycleState.Degraded;
+        state.Value.MessageId.ShouldBe(active ? AcceptedMessageId : null);
+        lifecycle.GetMessageId(correlation).ShouldBe(active ? AcceptedMessageId : null);
+        CommandLifecycleTransition? after = null;
+        using (lifecycle.Subscribe(correlation, value => after = value)) { }
+        after.ShouldNotBeNull().LastTransitionAt.ShouldBe(before.ShouldNotBeNull().LastTransitionAt);
+        if (!active) { state.Value.ShouldBeSameAs(original); }
+        dispatcher.Dispatch(new TwoFieldCompactCommandActions.SyncingAction(correlation) { MessageId = WrongMessageId, ObservedAt = time.GetUtcNow() });
+        state.Value.State.ShouldBe(progress);
+        state.Value.MessageId.ShouldBe(active ? AcceptedMessageId : null);
+        lifecycle.GetState(correlation).ShouldBe(progress);
+        lifecycle.GetMessageId(correlation).ShouldBe(active ? AcceptedMessageId : null);
+        if (!active) { state.Value.ShouldBeSameAs(original); }
+    }
+
+    private sealed class DelayedAcceptanceObservationService(Microsoft.Extensions.Time.Testing.FakeTimeProvider time, int delay, bool timestamped)
+        : ICommandServiceWithLifecycleObservations
+    {
+        public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
+            where TCommand : class => DispatchAsync(command, null, cancellationToken);
+
+        public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, Action<CommandLifecycleObservation>? observe,
+            CancellationToken cancellationToken = default) where TCommand : class
+        {
+            DateTimeOffset headerTime = time.GetUtcNow();
+            time.Advance(TimeSpan.FromMilliseconds(delay));
+            observe?.Invoke(new(CommandLifecycleState.Syncing, AcceptedMessageId, CommandMateriality.Unknown,
+                timestamped ? headerTime : null));
+            return Task.FromResult(new CommandResult(AcceptedMessageId, CommandResultStatus.Accepted));
+        }
+    }
+
 }

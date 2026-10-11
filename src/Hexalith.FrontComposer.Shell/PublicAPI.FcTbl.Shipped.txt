@@ -71,6 +71,7 @@ Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice.Dispose():v
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice.AnyRealFilterActive:System.Boolean:get/set
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice.ItemsCount:System.Int32:get/set
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice.ResultIdentity:System.String:get/set
+Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice.SharedStatusOwner:System.Boolean:get/set
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice.ViewKey:System.String:get/set
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice.Visible:System.Boolean:get/-
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcNewItemIndicator
@@ -85,6 +86,7 @@ Hexalith.FrontComposer.Shell.Components.DataGrid.FcProjectionGlobalSearch.ViewKe
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcSlowQueryNotice
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcSlowQueryNotice.#ctor()
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcSlowQueryNotice.Dispose():void
+Hexalith.FrontComposer.Shell.Components.DataGrid.FcSlowQueryNotice.SharedStatusOwner:System.Boolean:get/set
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcSlowQueryNotice.ViewKey:System.String:get/set
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcStatusFilterChips
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcStatusFilterChips.#ctor()

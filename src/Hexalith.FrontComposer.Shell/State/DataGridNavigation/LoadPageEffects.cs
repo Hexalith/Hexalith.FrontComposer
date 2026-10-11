@@ -7,6 +7,7 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Resources;
+using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
@@ -147,7 +148,7 @@ public sealed class LoadPageEffects {
                 ex.GetType().Name);
             dispatcher.Dispatch(new LoadPageFailedAction(action.ViewKey, action.Skip, sectionUpdatingCopy, action.Completion) { RequestIdentity = action.RequestIdentity, RequestGeneration = action.RequestGeneration, Take = action.Take });
         }
-        catch (Exception) {
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             // Transport exception text can contain endpoint, tenant, or response fragments.
             string message = _localizer is null ? "Data could not be loaded." : _localizer["Am30QueryFailed"];
             dispatcher.Dispatch(new LoadPageFailedAction(action.ViewKey, action.Skip, message, action.Completion) { RequestIdentity = action.RequestIdentity, RequestGeneration = action.RequestGeneration, Take = action.Take });
@@ -163,10 +164,10 @@ public sealed class LoadPageEffects {
                     dispatcher.Dispatch(new LoadPageFailedAction(
                         viewKey: action.ViewKey,
                         skip: action.Skip,
-                        errorMessage: "effect exited without terminal dispatch",
+                        errorMessage: _localizer is null ? "Data could not be loaded." : _localizer["Am30QueryFailed"].Value,
                         completion: action.Completion) { RequestIdentity = action.RequestIdentity, RequestGeneration = action.RequestGeneration, Take = action.Take });
                 }
-                catch (Exception defensiveEx) {
+                catch (Exception defensiveEx) when (!ExceptionGuard.IsFatal(defensiveEx)) {
                     FrontComposerWarningLog.ProjectionLoadTerminalDispatchFailed(
                         _logger,
                         action.ViewKey,

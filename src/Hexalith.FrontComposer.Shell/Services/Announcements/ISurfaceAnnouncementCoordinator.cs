@@ -6,6 +6,9 @@ public interface ISurfaceAnnouncementCoordinator
     /// <summary>Gets the last spoken message for a surface.</summary>
     string Current(string surface);
 
+    /// <summary>Gets whether the current speech belongs to the specified event identity.</summary>
+    bool IsCurrent(string surface, string group, string identity);
+
     /// <summary>Subscribes to spoken messages for a surface.</summary>
     IDisposable Subscribe(string surface, Action<string> handler);
 

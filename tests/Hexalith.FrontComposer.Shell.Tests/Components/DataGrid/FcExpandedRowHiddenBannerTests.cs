@@ -10,6 +10,7 @@ using Hexalith.FrontComposer.Shell.Services.Announcements;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.JSInterop;
 
 using NSubstitute;
 
@@ -23,6 +24,53 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.DataGrid;
 /// "Clear filter" link dispatches FiltersResetAction.
 /// </summary>
 public sealed class FcExpandedRowHiddenBannerTests : BunitContext {
+    [Fact]
+    public async Task LaterSettledHiddenResultWithdrawsPendingFirstFocusAndSpeaksOnlyOnce()
+    {
+        RecordingHiddenDetailFocusModule module = new();
+        DelayedHiddenDetailFocusRuntime runtime = new();
+        IRenderedComponent<FcExpandedRowHiddenBanner> cut = Render<FcExpandedRowHiddenBanner>(p => p
+            .Add(c => c.ViewKey, "orders:Orders").Add(c => c.IsHiddenByFilter, false));
+        typeof(FcExpandedRowHiddenBanner).GetProperty("JS", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.SetValue(cut.Instance, runtime);
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        List<string> delivered = [];
+        using IDisposable subscription = announcements.Subscribe("projection:orders:Orders", delivered.Add);
+        cut.Render(p => p.Add(c => c.IsHiddenByFilter, true).Add(c => c.ResultIdentity, "first"));
+        runtime.ImportCalls.ShouldBe(1);
+        cut.Render(p => p.Add(c => c.ResultIdentity, "second"));
+        delivered.ShouldBe(["Expanded item hidden by current filter."]);
+        runtime.Import.TrySetResult(module);
+        await module.Released.Task.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken);
+        cut.Render();
+        module.FocusCalls.ShouldBe(0);
+        runtime.ImportCalls.ShouldBe(1);
+        delivered.ShouldBe(["Expanded item hidden by current filter."]);
+    }
+
+    [Theory]
+    [InlineData("import")]
+    [InlineData("focusFirstButtonWithin")]
+    [InlineData("dispose")]
+    public void RequiredFocusTimeoutRetriesOnTheNextCurrentRender(string timedOutCall)
+    {
+        RecordingHiddenDetailFocusModule module = new()
+        {
+            TimeoutFocusCallsRemaining = timedOutCall == "focusFirstButtonWithin" ? 1 : 0,
+            TimeoutDisposal = timedOutCall == "dispose",
+        };
+        DelayedHiddenDetailFocusRuntime runtime = new() { TimeoutImportsRemaining = timedOutCall == "import" ? 1 : 0 };
+        runtime.Import.TrySetResult(module);
+        IRenderedComponent<FcExpandedRowHiddenBanner> cut = Render<FcExpandedRowHiddenBanner>(p => p
+            .Add(c => c.ViewKey, "orders:Orders").Add(c => c.IsHiddenByFilter, false));
+        typeof(FcExpandedRowHiddenBanner).GetProperty("JS", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.SetValue(cut.Instance, runtime);
+        cut.Render(p => p.Add(c => c.IsHiddenByFilter, true).Add(c => c.ResultIdentity, "first"));
+        cut.Render();
+        cut.Render();
+        module.FocusCalls.ShouldBe(timedOutCall == "focusFirstButtonWithin" ? 2 : 1);
+        runtime.ImportCalls.ShouldBe(timedOutCall == "dispose" ? 1 : 2);
+        Services.GetRequiredService<ISurfaceAnnouncementCoordinator>().Current("projection:orders:Orders").ShouldBeEmpty();
+    }
+
     private readonly IDispatcher _dispatcher = Substitute.For<IDispatcher>();
     private readonly IStringLocalizer<FcShellResources> _localizer = Substitute.For<IStringLocalizer<FcShellResources>>();
 
@@ -138,4 +186,56 @@ public sealed class FcExpandedRowHiddenBannerTests : BunitContext {
             .Add(c => c.ResultIdentity, "filter-1"));
         _ = JSInterop.VerifyInvoke("focusFirstButtonWithin", 2);
     }
+    [Fact]
+    public void UnsettledHiddenDetailDoesNotFocusUntilItsResultSettles()
+    {
+        _ = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js")
+            .Setup<bool>("focusFirstButtonWithin", _ => true).SetResult(true);
+        IRenderedComponent<FcExpandedRowHiddenBanner> cut = Render<FcExpandedRowHiddenBanner>(p => p
+            .Add(c => c.ViewKey, "orders:Orders").Add(c => c.IsHiddenByFilter, true)
+            .Add(c => c.ResultIdentity, "filter-1").Add(c => c.ResultSettled, false));
+        JSInterop.Invocations.Count(invocation => invocation.Identifier == "focusFirstButtonWithin").ShouldBe(0);
+        cut.Render(p => p.Add(c => c.ViewKey, "orders:Orders").Add(c => c.IsHiddenByFilter, true)
+            .Add(c => c.ResultIdentity, "filter-1").Add(c => c.ResultSettled, true));
+        _ = JSInterop.VerifyInvoke("focusFirstButtonWithin", 1);
+    }
+    [Fact]
+    public void EqualInputSurfaceRebindStartsWithFocusOnlyAndWithdrawsOriginal()
+    {
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        IRenderedComponent<FcExpandedRowHiddenBanner> cut = Render<FcExpandedRowHiddenBanner>(p => p.Add(c => c.ViewKey, "original")
+            .Add(c => c.IsHiddenByFilter, true).Add(c => c.ResultIdentity, "first"));
+        cut.Render(p => p.Add(c => c.ViewKey, "original").Add(c => c.IsHiddenByFilter, true).Add(c => c.ResultIdentity, "second"));
+        announcements.Current("projection:original").ShouldBe("Expanded item hidden by current filter.");
+        cut.Render(p => p.Add(c => c.ViewKey, "replacement").Add(c => c.IsHiddenByFilter, true).Add(c => c.ResultIdentity, "second"));
+        announcements.Current("projection:original").ShouldBeEmpty();
+        announcements.Current("projection:replacement").ShouldBeEmpty();
+        cut.Render(p => p.Add(c => c.ViewKey, "replacement").Add(c => c.IsHiddenByFilter, true).Add(c => c.ResultIdentity, "third"));
+        announcements.Current("projection:replacement").ShouldBe("Expanded item hidden by current filter.");
+        cut.Instance.Dispose();
+        cut.Dispose();
+        announcements.Current("projection:replacement").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task SettledToPendingDuringFocusImportLeavesFocusAloneUntilCurrentResultSettles()
+    {
+        RecordingHiddenDetailFocusModule module = new();
+        DelayedHiddenDetailFocusRuntime runtime = new();
+        IRenderedComponent<FcExpandedRowHiddenBanner> cut = Render<FcExpandedRowHiddenBanner>(p => p
+            .Add(c => c.ViewKey, "orders:Orders").Add(c => c.IsHiddenByFilter, false));
+        typeof(FcExpandedRowHiddenBanner).GetProperty("JS", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.SetValue(cut.Instance, runtime);
+        cut.Render(p => p.Add(c => c.IsHiddenByFilter, true)
+            .Add(c => c.ResultIdentity, "old-result").Add(c => c.ResultSettled, true));
+        runtime.ImportCalls.ShouldBe(1);
+        cut.Render(p => p.Add(c => c.ResultIdentity, "replacement").Add(c => c.ResultSettled, false));
+        runtime.Import.TrySetResult(module);
+        await module.Released.Task.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken);
+        module.FocusCalls.ShouldBe(0);
+
+        cut.Render(p => p.Add(c => c.ResultSettled, true));
+        cut.WaitForAssertion(() => module.FocusCalls.ShouldBe(1));
+    }
+
+
 }

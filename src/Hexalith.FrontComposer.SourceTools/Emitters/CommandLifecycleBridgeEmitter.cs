@@ -58,9 +58,9 @@ public static class CommandLifecycleBridgeEmitter {
         _ = sb.AppendLine("            _subscriber.SubscribeToAction<" + model.ActionsWrapperName + ".SubmittedAction>(this,");
         _ = sb.AppendLine("                OnSubmitted);");
         _ = sb.AppendLine("            _subscriber.SubscribeToAction<" + model.ActionsWrapperName + ".AcknowledgedAction>(this,");
-        _ = sb.AppendLine("                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Acknowledged, a.MessageId));");
+        _ = sb.AppendLine("                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Acknowledged, a.MessageId, a.ObservedAt));");
         _ = sb.AppendLine("            _subscriber.SubscribeToAction<" + model.ActionsWrapperName + ".SyncingAction>(this,");
-        _ = sb.AppendLine("                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Syncing, null));");
+        _ = sb.AppendLine("                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Syncing, a.MessageId, a.ObservedAt));");
         _ = sb.AppendLine("            _subscriber.SubscribeToAction<" + model.ActionsWrapperName + ".ConfirmedAction>(this,");
         _ = sb.AppendLine("                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Confirmed, null));");
         _ = sb.AppendLine("            _subscriber.SubscribeToAction<" + model.ActionsWrapperName + ".RejectedAction>(this,");
@@ -92,7 +92,7 @@ public static class CommandLifecycleBridgeEmitter {
         _ = sb.AppendLine("        RemoveLifecycleSubscription(action.CorrelationId);");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("    private void ForwardAction(string correlationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState state, string? messageId)");
+        _ = sb.AppendLine("    private void ForwardAction(string correlationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState state, string? messageId, global::System.DateTimeOffset? observedAt = null)");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        bool closesSubscription = state is global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Confirmed");
         _ = sb.AppendLine("            or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Rejected");
@@ -111,7 +111,14 @@ public static class CommandLifecycleBridgeEmitter {
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        try");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            _service.Transition(correlationId, state, messageId);");
+        _ = sb.AppendLine("            if (_service is global::Hexalith.FrontComposer.Shell.Services.Lifecycle.LifecycleStateService observedService && observedAt is not null)");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                observedService.TransitionObserved(correlationId, state, messageId, observedAt.Value);");
+        _ = sb.AppendLine("            }");
+        _ = sb.AppendLine("            else");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                _service.Transition(correlationId, state, messageId);");
+        _ = sb.AppendLine("            }");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        finally");
         _ = sb.AppendLine("        {");

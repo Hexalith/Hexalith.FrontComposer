@@ -1,19 +1,21 @@
 @namespace Hexalith.FrontComposer.Shell.Components.Forms
 @using Microsoft.FluentUI.AspNetCore.Components
+@using Hexalith.FrontComposer.Shell.Components.Rendering
 
-@* Story 13.3 AM-20 — the status node below is always mounted, so assistive technology already
-   tracks it when a blocked attempt sets its text. Only this node speaks; the attempted control
-   keeps focus. The inline variant sits beside a zero-field trigger whose form is hidden. *@
+@* Standalone controls own an always-mounted polite node. Generated forms publish to their shared
+   node; a visible inline control can own that node for a hidden form. Focus stays on the attempt. *@
 
 @if (Inline) {
     <span class="fc-command-blocked-outcome fc-command-blocked-outcome--inline"
           data-testid="fc-command-blocked-outcome"
           data-fc-blocked="@BlockedAttribute">
-        <span role="status"
-              aria-live="polite"
-              aria-atomic="true"
-              class="fc-command-blocked-status"
-              data-testid="fc-command-blocked-status">@_message</span>
+        @if (AnnouncementSurface is null) {
+            <span role="status" aria-live="polite" aria-atomic="true"
+                  class="fc-command-blocked-status" data-testid="fc-command-blocked-status">@_message</span>
+        }
+        else if (OwnsSurfaceStatus) {
+            <FcSurfaceStatus Surface="@AnnouncementSurface" />
+        }
         @if (_blocked && _viewActionAvailable) {
             <FluentButton Type="ButtonType.Button"
                           role="button"
@@ -32,11 +34,13 @@ else {
                  Class="fc-command-blocked-outcome"
                  data-testid="fc-command-blocked-outcome"
                  data-fc-blocked="@BlockedAttribute">
-        <div role="status"
-             aria-live="polite"
-             aria-atomic="true"
-             class="fc-command-blocked-status"
-             data-testid="fc-command-blocked-status">@_message</div>
+        @if (AnnouncementSurface is null) {
+            <div role="status" aria-live="polite" aria-atomic="true"
+                 class="fc-command-blocked-status" data-testid="fc-command-blocked-status">@_message</div>
+        }
+        else if (OwnsSurfaceStatus) {
+            <FcSurfaceStatus Surface="@AnnouncementSurface" />
+        }
         @if (_blocked && _viewActionAvailable) {
             <FluentButton Type="ButtonType.Button"
                           role="button"

@@ -7,6 +7,9 @@ internal sealed class StallingAcceptedContent : HttpContent {
     /// <summary>Signals that the optional body read began.</summary>
     public TaskCompletionSource<object> ReadAttempted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+    /// <summary>Gets the cancellation token used for the optional body read.</summary>
+    public CancellationToken ObservedToken { get; private set; }
+
     /// <inheritdoc />
     protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) => Task.CompletedTask;
 
@@ -21,6 +24,7 @@ internal sealed class StallingAcceptedContent : HttpContent {
 
     /// <inheritdoc />
     protected override Task<Stream> CreateContentReadStreamAsync(CancellationToken cancellationToken) {
+        ObservedToken = cancellationToken;
         ReadAttempted.TrySetResult(new object());
         TaskCompletionSource<Stream> pending = new(TaskCreationOptions.RunContinuationsAsynchronously);
         _ = cancellationToken.Register(() => pending.TrySetCanceled(cancellationToken));

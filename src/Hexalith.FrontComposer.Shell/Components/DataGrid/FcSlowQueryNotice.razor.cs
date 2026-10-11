@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts;
@@ -19,11 +21,13 @@ namespace Hexalith.FrontComposer.Shell.Components.DataGrid;
 /// scoped to this component instance (not persisted across navigations).
 /// </summary>
 public partial class FcSlowQueryNotice : ComponentBase, IDisposable {
+    private static readonly ConditionalWeakTable<TaskCompletionSource<object>, string> RequestIdentities = new();
     private bool _visible;
     private readonly Dictionary<TaskCompletionSource<object>, DateTimeOffset> _startedAt = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<TaskCompletionSource<object>> _announced = new(ReferenceEqualityComparer.Instance);
     private TaskCompletionSource<object>? _earliest;
     private string? _activeSlowGroup;
+    private string _boundViewKey = string.Empty;
     private ITimer? _slowTimer;
     private long _generation;
     private int _disposed;
@@ -32,6 +36,10 @@ public partial class FcSlowQueryNotice : ComponentBase, IDisposable {
     [Parameter]
     [EditorRequired]
     public string ViewKey { get; set; } = string.Empty;
+
+    /// <summary>Uses the parent surface's persistent status node when true; direct callers own one by default.</summary>
+    [Parameter]
+    public bool SharedStatusOwner { get; set; }
 
     [Inject]
     private IState<LoadedPageState> LoadedPage { get; set; } = default!;
@@ -71,6 +79,22 @@ public partial class FcSlowQueryNotice : ComponentBase, IDisposable {
     }
 
     private void ReconcileVisibility() {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
+        if (!string.Equals(_boundViewKey, ViewKey, StringComparison.Ordinal))
+        {
+            _slowTimer?.Dispose();
+            _slowTimer = null;
+            ++_generation;
+            CancelActiveSlow();
+            _startedAt.Clear();
+            _announced.Clear();
+            _earliest = null;
+            _visible = false;
+            _boundViewKey = ViewKey;
+        }
         if (string.IsNullOrWhiteSpace(ViewKey)) {
             _visible = false;
             return;
@@ -85,7 +109,7 @@ public partial class FcSlowQueryNotice : ComponentBase, IDisposable {
             _startedAt.Remove(obsolete);
             _announced.Remove(obsolete);
             if (ReferenceEquals(obsolete, _earliest) && _activeSlowGroup is { } group) {
-                Announcements.Cancel("projection:" + ViewKey, group);
+                Announcements.Cancel("projection:" + _boundViewKey, group);
                 _activeSlowGroup = null;
                 _visible = false;
             }
@@ -117,7 +141,13 @@ public partial class FcSlowQueryNotice : ComponentBase, IDisposable {
             return;
         }
         _slowTimer = TimeProvider.CreateTimer(
-            _ => _ = InvokeAsync(() => ShowSlowQuery(generation)),
+            _ =>
+            {
+                if (Volatile.Read(ref _disposed) == 0)
+                {
+                    _ = InvokeAsync(() => ShowSlowQuery(generation));
+                }
+            },
             null,
             remaining,
             Timeout.InfiniteTimeSpan);
@@ -130,14 +160,24 @@ public partial class FcSlowQueryNotice : ComponentBase, IDisposable {
 
         _announced.Add(_earliest);
         _visible = true;
-        _activeSlowGroup = "slow-query:" + ViewKey + ":" + generation.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        string requestIdentity = RequestIdentities.GetValue(_earliest, static _ => Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture));
+        _activeSlowGroup = "slow-query:" + _boundViewKey + ":" + requestIdentity;
         Announcements.Announce(
             "projection:" + ViewKey,
             _activeSlowGroup,
-            generation.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            requestIdentity,
             Localizer["Am08SlowQuery"],
             immediate: true);
         StateHasChanged();
+    }
+
+    private void CancelActiveSlow()
+    {
+        if (_activeSlowGroup is { } group)
+        {
+            Announcements.Cancel("projection:" + _boundViewKey, group);
+            _activeSlowGroup = null;
+        }
     }
 
     /// <inheritdoc />
@@ -147,9 +187,7 @@ public partial class FcSlowQueryNotice : ComponentBase, IDisposable {
         }
         LoadedPage.StateChanged -= OnStateChanged;
         _slowTimer?.Dispose();
-        if (_activeSlowGroup is { } group) {
-            Announcements.Cancel("projection:" + ViewKey, group);
-        }
+        CancelActiveSlow();
         GC.SuppressFinalize(this);
     }
 }

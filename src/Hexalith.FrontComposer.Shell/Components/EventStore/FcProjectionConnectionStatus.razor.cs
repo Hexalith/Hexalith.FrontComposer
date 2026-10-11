@@ -43,6 +43,9 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, 
     private long _onlineEpisode;
     private long _recoveryEpisode;
     private string? _recoveryGroup;
+    private ElementReference _presentationHost;
+    private long _browserObservationGeneration;
+    private long _lastNativeObservation;
 
     [Inject]
     private IProjectionConnectionState ConnectionState { get; set; } = default!;
@@ -96,19 +99,21 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, 
         try {
             await _connectivityGate.WaitAsync().ConfigureAwait(true);
             gateEntered = true;
-            if (_disposed != 0) {
+            if (_disposed != 0 || _connectivityReady) {
                 return;
             }
             _connectivityModule ??= await JS.InvokeAsync<IJSObjectReference>("import", ConnectivityModulePath).ConfigureAwait(true);
             _connectivityReference ??= DotNetObjectReference.Create(this);
             if (_connectivityWatchId == 0) {
-                _connectivityWatchId = await _connectivityModule.InvokeAsync<int>("watchConnectivity", _connectivityReference).ConfigureAwait(true);
+                _connectivityWatchId = await _connectivityModule.InvokeAsync<int>("watchConnectivity", _connectivityReference,
+                    _presentationHost, AnnouncementLocalizer["Am30Offline"].Value).ConfigureAwait(true);
             }
+            long initialObservation = _browserObservationGeneration;
             bool online = await _connectivityModule.InvokeAsync<bool>("isOnline").ConfigureAwait(true);
             _connectivityReady = true;
             _connectivityRetryTimer?.Dispose();
             _connectivityRetryTimer = null;
-            if (_disposed == 0) {
+            if (_disposed == 0 && initialObservation == _browserObservationGeneration) {
                 await OnBrowserConnectivityChanged(online).ConfigureAwait(true);
             }
         }
@@ -119,6 +124,9 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, 
             ScheduleConnectivityRetry();
         }
         catch (InvalidOperationException) {
+            ScheduleConnectivityRetry();
+        }
+        catch (OperationCanceledException) {
             ScheduleConnectivityRetry();
         }
         finally {
@@ -132,17 +140,45 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, 
         if (_disposed != 0 || _connectivityReady || _connectivityRetryTimer is not null) {
             return;
         }
-        _connectivityRetryTimer = Time.CreateTimer(_ => _ = InvokeAsync(async () => {
-            _connectivityRetryTimer?.Dispose();
-            _connectivityRetryTimer = null;
-            await TryInitializeConnectivityAsync().ConfigureAwait(true);
-        }), null, TimeSpan.FromSeconds(1), Timeout.InfiniteTimeSpan);
+        _connectivityRetryTimer = Time.CreateTimer(_ =>
+        {
+            if (_disposed != 0)
+            {
+                return;
+            }
+            _ = InvokeAsync(async () =>
+            {
+                if (_disposed != 0)
+                {
+                    return;
+                }
+                _connectivityRetryTimer?.Dispose();
+                _connectivityRetryTimer = null;
+                await TryInitializeConnectivityAsync().ConfigureAwait(true);
+            });
+        }, null, TimeSpan.FromSeconds(1), Timeout.InfiniteTimeSpan);
     }
 
     /// <summary>Receives actual browser online/offline evidence from the connectivity module.</summary>
     [JSInvokable]
-    public async Task OnBrowserConnectivityChanged(bool online) {
-        if (_disposed != 0 || (_offline == !online && ConnectionState.Current.BrowserOffline == !online)) {
+    public Task OnBrowserConnectivityChanged(bool online) => ApplyBrowserConnectivityAsync(online, observationRevision: null);
+
+    /// <summary>Receives revision-bearing native browser evidence without changing the legacy callback contract.</summary>
+    /// <param name="online">Whether the browser reports that it is online.</param>
+    /// <param name="observationRevision">The native producer's ordered observation revision.</param>
+    [JSInvokable]
+    public Task OnBrowserConnectivityObserved(bool online, long observationRevision)
+        => ApplyBrowserConnectivityAsync(online, observationRevision);
+
+    private async Task ApplyBrowserConnectivityAsync(bool online, long? observationRevision) {
+        if (_disposed != 0 || (observationRevision is { } revision && revision <= _lastNativeObservation)) {
+            return;
+        }
+        if (observationRevision is { } currentRevision) {
+            _lastNativeObservation = currentRevision;
+        }
+        ++_browserObservationGeneration;
+        if (_offline == !online && ConnectionState.Current.BrowserOffline == !online) {
             return;
         }
 
@@ -194,13 +230,13 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, 
 
             _snapshot = snapshot;
             if (snapshot.Status is ProjectionConnectionStatus.Connected) {
-                Announcements.Cancel(AnnouncementSurface, "connection:" + snapshot.Epoch);
+                Announcements.Cancel(AnnouncementSurface, ScopedEpisode("connection", snapshot.Epoch));
                 Announcements.Cancel(AnnouncementSurface, ScopedEpisode("browser-online-disconnected", _onlineEpisode));
             }
             if (!_offline && snapshot.Status is (ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected)) {
                 Announcements.Announce(
                     AnnouncementSurface,
-                    "connection:" + snapshot.Epoch,
+                    ScopedEpisode("connection", snapshot.Epoch),
                     snapshot.Status.ToString(),
                     AnnouncementLocalizer[snapshot.Status == ProjectionConnectionStatus.Disconnected
                         ? "Am06Fallback" : "Am05Reconnecting"]);
@@ -345,16 +381,23 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, 
         try {
         if (_connectivityModule is not null) {
             try {
-                await _connectivityModule.InvokeVoidAsync("unwatchConnectivity", _connectivityWatchId).ConfigureAwait(true);
-                await _connectivityModule.DisposeAsync().ConfigureAwait(true);
+                try {
+                    await _connectivityModule.InvokeVoidAsync("unwatchConnectivity", _connectivityWatchId).ConfigureAwait(true);
+                }
+                finally {
+                    await _connectivityModule.DisposeAsync().ConfigureAwait(true);
+                }
             }
             catch (JSDisconnectedException) {
             }
             catch (JSException) {
             }
+            catch (OperationCanceledException) {
+            }
         }
 
         _connectivityReference?.Dispose();
+        _connectivityReference = null;
         }
         finally {
             _connectivityGate.Release();

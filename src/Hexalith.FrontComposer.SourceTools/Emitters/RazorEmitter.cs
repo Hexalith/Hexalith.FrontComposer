@@ -1047,8 +1047,11 @@ public static class RazorEmitter {
 
         _ = sb.AppendLine("    private string? _pendingLoadingGroup;");
         _ = sb.AppendLine("    private string? _activeFailureGroup;");
+        _ = sb.AppendLine("    private string? _activeFailureIdentity;");
+        _ = sb.AppendLine("    private readonly System.Collections.Generic.HashSet<string> _resultAnnouncementGroups = new(System.StringComparer.Ordinal);");
         if (isGrid) {
             _ = sb.AppendLine("    private string? _lastPageRequestIdentity;");
+            _ = sb.AppendLine("    private string? _resultPageRequestIdentity;");
             _ = sb.AppendLine("    private long _pageRequestGeneration;");
             _ = sb.AppendLine("    private System.Threading.CancellationTokenSource? _failedRetryCancellation;");
         }
@@ -1088,6 +1091,10 @@ public static class RazorEmitter {
         _ = sb.AppendLine("    private static string AnnouncementSurface => \"projection:\" + " + surfaceExpression + ";");
         _ = sb.AppendLine("    private void AnnounceProjectionState()");
         _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        if (System.Threading.Volatile.Read(ref _disposed) != 0)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            return;");
+        _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        var state = " + model.TypeName + "State.Value;");
         _ = sb.AppendLine("        if (state.RequiresScopedRequest) { SetFailureGroup(null); Announcements.Clear(AnnouncementSurface); return; }");
         _ = sb.AppendLine("        string operation = state.ActiveCorrelationId ?? state.LastResultCorrelationId ?? \"initial\";");
@@ -1095,17 +1102,21 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        if (_pendingLoadingGroup is { } prior && (!state.IsLoading || !string.Equals(prior, group, StringComparison.Ordinal)))");
         _ = sb.AppendLine("        { Announcements.Cancel(AnnouncementSurface, prior); _pendingLoadingGroup = null; }");
         _ = sb.AppendLine("        if (state.Error is not null)");
-        _ = sb.AppendLine("        { SetFailureGroup(group); Announcements.Announce(AnnouncementSurface, group, \"failure:\" + (state.LastResultCorrelationId ?? operation), " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am30QueryFailed\"].Value, terminal: true); return; }");
+        _ = sb.AppendLine("        { SetFailureGroup(group, \"failure:\" + (state.LastResultCorrelationId ?? operation)); Announcements.Announce(AnnouncementSurface, group, _activeFailureIdentity!, " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am30QueryFailed\"].Value, terminal: true); return; }");
         _ = sb.AppendLine("        if (state.IsLoading)");
-        _ = sb.AppendLine("        { SetFailureGroup(null); _pendingLoadingGroup = group; Announcements.Announce(AnnouncementSurface, group, \"loading\", " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am01Loading\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value); return; }");
+        _ = sb.AppendLine("        { CancelResultAnnouncements(); SetFailureGroup(null); _pendingLoadingGroup = group; Announcements.Announce(AnnouncementSurface, group, \"loading\", " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am01Loading\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value); return; }");
         if (isGrid) {
             _ = sb.AppendLine("        bool filtered = AnyRealFilterActive(CurrentGridSnapshot());");
+            _ = sb.AppendLine("        string currentRequestIdentity = PageRequestIdentity(CurrentGridSnapshot());");
+            _ = sb.AppendLine("        if (_resultPageRequestIdentity is not null && !string.Equals(_resultPageRequestIdentity, currentRequestIdentity, StringComparison.Ordinal)) { CancelResultAnnouncements(); }");
+            _ = sb.AppendLine("        _resultPageRequestIdentity = currentRequestIdentity;");
             _ = sb.AppendLine("        if (LoadedPageState.Value.LastResultByKey.TryGetValue(_viewKey, out var page))");
             _ = sb.AppendLine("        {");
-            _ = sb.AppendLine("            if (!string.Equals(page.RequestIdentity, PageRequestIdentity(CurrentGridSnapshot()), StringComparison.Ordinal)) { SetFailureGroup(null); return; }");
+            _ = sb.AppendLine("            if (!string.Equals(page.RequestIdentity, currentRequestIdentity, StringComparison.Ordinal)) { SetFailureGroup(null); return; }");
             _ = sb.AppendLine("            string pageGroup = \"page:\" + page.Identity.ToString(System.Globalization.CultureInfo.InvariantCulture);");
-            _ = sb.AppendLine("            if (page.Failed) { SetFailureGroup(pageGroup); Announcements.Announce(AnnouncementSurface, pageGroup, \"failure\", page.ErrorMessage ?? " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am30QueryFailed\"].Value, terminal: true); return; }");
+            _ = sb.AppendLine("            if (page.Failed) { SetFailureGroup(pageGroup, \"failure\"); Announcements.Announce(AnnouncementSurface, pageGroup, \"failure\", page.ErrorMessage ?? " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am30QueryFailed\"].Value, terminal: true); return; }");
             _ = sb.AppendLine("            SetFailureGroup(null);");
+            _ = sb.AppendLine("            if (page.Skip == 0 && page.TotalCount == 0 || page.OperatorInitiated) { _resultAnnouncementGroups.Add(pageGroup); }");
             _ = sb.AppendLine("            if (page.Skip == 0 && page.TotalCount == 0) { Announcements.Announce(AnnouncementSurface, pageGroup, filtered ? \"filtered-zero\" : \"empty\", filtered ? " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am27NoMatches\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value : " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am02Empty\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value, terminal: true); return; }");
             _ = sb.AppendLine("            if (page.OperatorInitiated) { Announcements.Announce(AnnouncementSurface, pageGroup, \"loaded\", " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am03Loaded\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value); }");
             _ = sb.AppendLine("            return;");
@@ -1119,15 +1130,33 @@ public static class RazorEmitter {
         }
         _ = sb.AppendLine("        if (state.Items is null) { return; }");
         _ = sb.AppendLine("        if (state.Items.Count == 0)");
-        _ = sb.AppendLine("        { Announcements.Announce(AnnouncementSurface, group, \"empty:\" + (state.LastResultCorrelationId ?? operation) + \"|\" + filtered, filtered ? " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am27NoMatches\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value : " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am02Empty\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value, terminal: true); return; }");
+        _ = sb.AppendLine("        { _resultAnnouncementGroups.Add(group); Announcements.Announce(AnnouncementSurface, group, \"empty:\" + (state.LastResultCorrelationId ?? operation) + \"|\" + filtered, filtered ? " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am27NoMatches\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value : " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am02Empty\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value, terminal: true); return; }");
         _ = sb.AppendLine("        if (state.LastResultOperatorInitiated)");
-        _ = sb.AppendLine("        { Announcements.Announce(AnnouncementSurface, group, \"data:\" + (state.LastResultCorrelationId ?? operation) + \"|\" + state.Items.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am03Loaded\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value); }");
+        _ = sb.AppendLine("        { _resultAnnouncementGroups.Add(group); Announcements.Announce(AnnouncementSurface, group, \"data:\" + (state.LastResultCorrelationId ?? operation) + \"|\" + state.Items.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am03Loaded\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value); }");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("    private void SetFailureGroup(string? next)");
+        _ = sb.AppendLine("    private void CancelOwnedAnnouncements()");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        if (_pendingLoadingGroup is { } loading)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            Announcements.Cancel(AnnouncementSurface, loading);");
+        _ = sb.AppendLine("            _pendingLoadingGroup = null;");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("        SetFailureGroup(null);");
+        _ = sb.AppendLine("        CancelResultAnnouncements();");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private void CancelResultAnnouncements()");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        foreach (string result in _resultAnnouncementGroups) { Announcements.Cancel(AnnouncementSurface, result); }");
+        _ = sb.AppendLine("        _resultAnnouncementGroups.Clear();");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private void SetFailureGroup(string? next, string? identity = null)");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        if (_activeFailureGroup is { } prior && !string.Equals(prior, next, StringComparison.Ordinal)) { Announcements.Cancel(AnnouncementSurface, prior); }");
         _ = sb.AppendLine("        _activeFailureGroup = next;");
+        _ = sb.AppendLine("        _activeFailureIdentity = identity;");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
 
@@ -1142,13 +1171,19 @@ public static class RazorEmitter {
             _ = sb.AppendLine("            var retryCancellation = new System.Threading.CancellationTokenSource();");
             _ = sb.AppendLine("            _failedRetryCancellation?.Cancel();");
             _ = sb.AppendLine("            _failedRetryCancellation = retryCancellation;");
-            _ = sb.AppendLine("            Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadPageAction(");
-            _ = sb.AppendLine("                _viewKey, failedPage.Skip, failedPage.Take > 0 ? failedPage.Take : ShellOptions.Value.VirtualizationServerSideThreshold,");
-            _ = sb.AppendLine("                QueryFilters(snapshot), snapshot?.SortColumn, snapshot?.SortDescending ?? false, SearchQuery(snapshot),");
-            _ = sb.AppendLine("                completion, retryCancellation.Token)");
-            _ = sb.AppendLine("                { RequestIdentity = failedPage.RequestIdentity, RequestGeneration = LoadedPageState.Value.ActiveRequestGenerationByView.TryGetValue(_viewKey, out var generation) ? generation : null, OperatorInitiated = true, RegisteredAt = TimeProvider.GetUtcNow() });");
-            _ = sb.AppendLine("            try { _ = await completion.Task.WaitAsync(retryCancellation.Token).ConfigureAwait(true); }");
-            _ = sb.AppendLine("            catch (System.Exception) { /* The failed result is rendered by the existing view. */ }");
+            _ = sb.AppendLine("            try");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadPageAction(");
+            _ = sb.AppendLine("                    _viewKey, failedPage.Skip, failedPage.Take > 0 ? failedPage.Take : ShellOptions.Value.VirtualizationServerSideThreshold,");
+            _ = sb.AppendLine("                    QueryFilters(snapshot), snapshot?.SortColumn, snapshot?.SortDescending ?? false, SearchQuery(snapshot),");
+            _ = sb.AppendLine("                    completion, retryCancellation.Token)");
+            _ = sb.AppendLine("                    { RequestIdentity = failedPage.RequestIdentity, RequestGeneration = LoadedPageState.Value.ActiveRequestGenerationByView.TryGetValue(_viewKey, out var generation) ? generation : null, OperatorInitiated = true, RegisteredAt = TimeProvider.GetUtcNow() });");
+            _ = sb.AppendLine("                _ = await completion.Task.WaitAsync(retryCancellation.Token).ConfigureAwait(true);");
+            _ = sb.AppendLine("            }");
+            _ = sb.AppendLine("            catch (System.Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException and not System.Threading.ThreadAbortException and not AccessViolationException)");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                /* The failed result is rendered by the existing view. */");
+            _ = sb.AppendLine("            }");
             _ = sb.AppendLine("            finally { if (System.Object.ReferenceEquals(_failedRetryCancellation, retryCancellation)) { _failedRetryCancellation = null; } retryCancellation.Dispose(); }");
             _ = sb.AppendLine("            return;");
             _ = sb.AppendLine("        }");
@@ -1247,8 +1282,16 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        var searchQuery = SearchQuery(snapshot);");
             _ = sb.AppendLine("        var requestIdentity = PageRequestIdentity(snapshot);");
             _ = sb.AppendLine("        bool operatorInitiated = _lastPageRequestIdentity is null ? AnyRealFilterActive(snapshot) : !string.Equals(_lastPageRequestIdentity, requestIdentity, StringComparison.Ordinal);");
-            _ = sb.AppendLine("        if (_lastPageRequestIdentity is null || !string.Equals(_lastPageRequestIdentity, requestIdentity, StringComparison.Ordinal))");
-            _ = sb.AppendLine("        { _pageRequestGeneration = System.Math.Max(_pageRequestGeneration, LoadedPageState.Value.ActiveRequestGenerationByView.TryGetValue(_viewKey, out var observedGeneration) ? observedGeneration : 0) + 1; }");
+            _ = sb.AppendLine("        long observedGeneration = LoadedPageState.Value.ActiveRequestGenerationByView.TryGetValue(_viewKey, out var persistedGeneration) ? persistedGeneration : 0;");
+            _ = sb.AppendLine("        if (_lastPageRequestIdentity is null && LoadedPageState.Value.ActiveRequestIdentityByView.TryGetValue(_viewKey, out var persistedIdentity)");
+            _ = sb.AppendLine("            && string.Equals(persistedIdentity, requestIdentity, StringComparison.Ordinal))");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            _pageRequestGeneration = observedGeneration;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        else if (_lastPageRequestIdentity is null || !string.Equals(_lastPageRequestIdentity, requestIdentity, StringComparison.Ordinal))");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            _pageRequestGeneration = System.Math.Max(_pageRequestGeneration, observedGeneration) + 1;");
+            _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        _lastPageRequestIdentity = requestIdentity;");
             _ = sb.AppendLine("        Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadPageAction(");
             _ = sb.AppendLine("            viewKey: _viewKey,");
@@ -1297,6 +1340,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("            return;");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine();
+            _ = sb.AppendLine("        CancelOwnedAnnouncements();");
             _ = sb.AppendLine("        _newItemIndicatorSubscription?.Dispose();");
             _ = sb.AppendLine("        _failedRetryCancellation?.Cancel();");
             _ = sb.AppendLine("        _newItemIndicatorSubscription = null;");
@@ -1383,6 +1427,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("            return;");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine();
+            _ = sb.AppendLine("        CancelOwnedAnnouncements();");
             _ = sb.AppendLine("        " + model.TypeName + "State.StateChanged -= OnStateChanged;");
             // Story 11.21 CA1816 — suppress finalization for derived types that add a finalizer.
             _ = sb.AppendLine("        System.GC.SuppressFinalize(this);");
@@ -1861,6 +1906,12 @@ public static class RazorEmitter {
         _ = sb.AppendLine("            return;");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        var state = " + model.TypeName + "State.Value;");
+        if (isGrid) {
+            _ = sb.AppendLine("        if (!state.RequiresScopedRequest && state.Error is not null && state.Items is not { Count: > 0 })");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            state = state with { Items = LoadedPageState.Value.PagesByKey.Where(entry => string.Equals(entry.Key.ViewKey, _viewKey, StringComparison.Ordinal)).SelectMany(entry => entry.Value).OfType<" + model.TypeName + ">().ToArray() };");
+            _ = sb.AppendLine("        }");
+        }
         _ = sb.AppendLine("        int seq = 0;");
         _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcSurfaceStatus>(seq++);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Surface\", AnnouncementSurface);");
@@ -1899,6 +1950,7 @@ public static class RazorEmitter {
         if (isGrid) {
             _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcSlowQueryNotice>(seq++);");
             _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ViewKey\", _viewKey);");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"SharedStatusOwner\", true);");
             _ = sb.AppendLine("        builder.CloseComponent();");
         }
         EmitLoadingShell(sb, model);
@@ -2030,13 +2082,14 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        var primaryPage = PrimaryCompletedPage();");
         _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice>(seq++);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ViewKey\", _viewKey);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"SharedStatusOwner\", true);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemsCount\", primaryPage?.TotalCount ?? (LoadedPageState.Value.ActiveRequestIdentityByView.ContainsKey(_viewKey) ? 0 : state.Items.Count));");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"AnyRealFilterActive\", anyRealFilterActive);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ResultIdentity\", primaryPage?.Identity.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? state.LastResultCorrelationId ?? \"initial\");");
         _ = sb.AppendLine("        builder.CloseComponent();");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        var inlineFailedPage = CurrentFailedPage();");
-        _ = sb.AppendLine("        if (inlineFailedPage is not null");
+        _ = sb.AppendLine("        if (state.Error is null && inlineFailedPage is not null");
         _ = sb.AppendLine("            && LoadedPageState.Value.PagesByKey.Keys.Any(key => string.Equals(key.ViewKey, _viewKey, StringComparison.Ordinal)))");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionFailure>(seq++);");
@@ -2132,13 +2185,17 @@ public static class RazorEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("        builder.OpenComponent<" + ProjectionRoleBodyEmitter.ShellRenderingNamespace + ".FcProjectionStaleNotice>(seq++);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Surface\", AnnouncementSurface);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"QueryFailureGroup\", _activeFailureGroup);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"QueryFailureIdentity\", _activeFailureIdentity);");
         if (RoleBodyHelpers.IsGridRenderingStrategy(model.Strategy)) {
             _ = sb.AppendLine("        builder.AddAttribute(seq++, \"HasCachedRows\", state.Items is { Count: > 0 } || LoadedPageState.Value.PagesByKey.Keys.Any(key => string.Equals(key.ViewKey, _viewKey, StringComparison.Ordinal)));");
-            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"HasFailedRefresh\", state.Error is not null || CurrentFailedPage() is not null);");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"HasFailedRefresh\", state.Error is not null || CurrentFailedPage() is not null || LoadedPageState.Value.StalePages.Any(key => string.Equals(key.ViewKey, _viewKey, StringComparison.Ordinal)));");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"FreshnessIdentity\", state.IsLoading || state.Error is not null ? null : state.LastResultCorrelationId + \"|\" + LoadedPageState.Value.SuccessfulReadSequenceByView.GetValueOrDefault(_viewKey).ToString(System.Globalization.CultureInfo.InvariantCulture));");
         }
         else {
             _ = sb.AppendLine("        builder.AddAttribute(seq++, \"HasCachedRows\", state.Items is { Count: > 0 });");
             _ = sb.AppendLine("        builder.AddAttribute(seq++, \"HasFailedRefresh\", state.Error is not null);");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"FreshnessIdentity\", state.IsLoading || state.Error is not null ? null : state.LastResultCorrelationId);");
         }
         _ = sb.AppendLine("        builder.CloseComponent();");
         _ = sb.AppendLine();
@@ -2242,11 +2299,14 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        if (" + failedCondition + ")");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionFailure>(seq++);");
-        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Message\", " + (isGrid ? "failedPage?.ErrorMessage" : "state.Error") + ");");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Message\", " + (isGrid ? "state.Error ?? failedPage?.ErrorMessage" : "state.Error") + ");");
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"OnRetry\", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, RetryProjectionAsync));");
         _ = sb.AppendLine("            builder.CloseComponent();");
         if (isGrid) {
-            _ = sb.AppendLine("            return;");
+            _ = sb.AppendLine("            if (state.Items is not { Count: > 0 } && !LoadedPageState.Value.PagesByKey.Keys.Any(key => string.Equals(key.ViewKey, _viewKey, StringComparison.Ordinal)))");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                return;");
+            _ = sb.AppendLine("            }");
         }
         else {
             _ = sb.AppendLine("            if (state.Items is not { Count: > 0 })");

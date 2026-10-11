@@ -21,6 +21,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
     private readonly object _gate = new();
     private readonly Dictionary<string, PendingCommandEntry> _byMessageId = new(StringComparer.Ordinal);
     private readonly Queue<string> _insertionOrder = new();
+    private readonly Dictionary<string, ITimer> _acceptanceDeadlines = new(StringComparer.Ordinal);
     private readonly Dictionary<string, DateTimeOffset> _lifecycleConvergenceDeadlines = new(StringComparer.Ordinal);
     private readonly Queue<string> _lifecycleConvergenceOrder = new();
     private readonly FcShellOptions _options;
@@ -152,6 +153,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
 
             _byMessageId.Add(entry.MessageId, entry);
             _insertionOrder.Enqueue(entry.MessageId);
+            ScheduleAcceptanceDeadlineLocked(entry);
 
             // P3/P4 — eviction may need to drain more than one entry when the cap is exceeded by
             // bursts; the most-recently evicted entry is reported to the caller so the generated
@@ -174,7 +176,10 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
     }
 
     /// <inheritdoc />
-    public PendingCommandResolutionResult ResolveTerminal(PendingCommandTerminalObservation observation) {
+    public PendingCommandResolutionResult ResolveTerminal(PendingCommandTerminalObservation observation)
+        => ResolveTerminalCore(observation, expectedEntry: null);
+
+    private PendingCommandResolutionResult ResolveTerminalCore(PendingCommandTerminalObservation observation, PendingCommandEntry? expectedEntry) {
         ArgumentNullException.ThrowIfNull(observation);
 
         if (!TryNormalizeUlid(observation.MessageId, out string? canonicalMessageId, out string? reason)) {
@@ -204,6 +209,9 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
                     canonicalMessageId);
                 return PendingCommandResolutionResult.UnknownMessageId();
             }
+            if (expectedEntry is not null && !ReferenceEquals(expectedEntry, entry)) {
+                return PendingCommandResolutionResult.UnknownMessageId();
+            }
 
             if (entry.Status != PendingCommandStatus.Pending) {
                 terminal = entry with {
@@ -224,6 +232,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
                 };
                 _byMessageId[canonicalMessageId] = terminal;
                 duplicate = false;
+                CancelAcceptanceDeadlineLocked(canonicalMessageId);
 
                 // P2-P6 — purge insertion order under the same lock that wrote the terminal status.
                 // Releasing then re-acquiring the gate (the previous PurgeFromInsertionOrder call)
@@ -374,6 +383,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             }
 
             _disposed = true;
+            CancelAllAcceptanceDeadlinesLocked();
             // P3 — outstanding pending commands cannot stay invisible after dispose; transition
             // each one to NeedsReview so any UI observer sees the unresolved tail.
             outstanding = [.. _byMessageId.Values.Where(static e => e.Status == PendingCommandStatus.Pending)];
@@ -421,6 +431,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             // surfaces the unresolved tail; lifecycle dispatch happens after the caller exits the
             // gate (P2-P4 — synchronous on the calling thread, no off-thread queue).
             _byMessageId[evicted.MessageId] = evicted;
+            CancelAcceptanceDeadlineLocked(evicted.MessageId);
             evictedQueue.Add(evicted);
             pendingCount--;
             FrontComposerHotPathLog.PendingEvictedUnresolved(
@@ -768,11 +779,55 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
     private List<PendingCommandEntry> ClearLocked() {
         List<PendingCommandEntry> outstanding =
             [.. _byMessageId.Values.Where(static entry => entry.Status == PendingCommandStatus.Pending)];
+        CancelAllAcceptanceDeadlinesLocked();
         _byMessageId.Clear();
         _insertionOrder.Clear();
         _lifecycleConvergenceDeadlines.Clear();
         _lifecycleConvergenceOrder.Clear();
         return outstanding;
+    }
+
+    private void CancelAcceptanceDeadlineLocked(string messageId) {
+        if (_acceptanceDeadlines.Remove(messageId, out ITimer? deadline)) {
+            deadline.Dispose();
+        }
+    }
+
+    private void ScheduleAcceptanceDeadlineLocked(PendingCommandEntry entry) {
+        CancelAcceptanceDeadlineLocked(entry.MessageId);
+        TimeSpan duration = TimeSpan.FromMilliseconds(Math.Max(1, _options.MaxPendingCommandPollingDurationMs));
+        TimeSpan remaining = duration - (_time.GetUtcNow() - entry.SubmittedAt);
+        // A producer without a usable clock can supply a future anchor. Recheck within the
+        // configured budget instead of passing an unsupported multi-year due time to ITimer.
+        TimeSpan due = remaining <= TimeSpan.Zero ? TimeSpan.Zero : remaining < duration ? remaining : duration;
+        _acceptanceDeadlines[entry.MessageId] = _time.CreateTimer(_ => ExpireAcceptedEntry(entry),
+            null, due, Timeout.InfiniteTimeSpan);
+    }
+
+    private void ExpireAcceptedEntry(PendingCommandEntry entry) {
+        if (!EnforceScopeBoundary()) {
+            return;
+        }
+        lock (_gate) {
+            if (_disposed || !IsScopeCurrentLocked()
+                || !_byMessageId.TryGetValue(entry.MessageId, out PendingCommandEntry? current)
+                || !ReferenceEquals(current, entry)) {
+                return;
+            }
+            if (_time.GetUtcNow() - entry.SubmittedAt < TimeSpan.FromMilliseconds(_options.MaxPendingCommandPollingDurationMs)) {
+                ScheduleAcceptanceDeadlineLocked(entry);
+                return;
+            }
+        }
+        // The captured accepted record, rather than a reused MessageId, owns this deadline.
+        _ = ResolveTerminalCore(new(entry.MessageId, PendingCommandTerminalOutcome.DegradedExhausted), entry);
+    }
+
+    private void CancelAllAcceptanceDeadlinesLocked() {
+        foreach (ITimer deadline in _acceptanceDeadlines.Values) {
+            deadline.Dispose();
+        }
+        _acceptanceDeadlines.Clear();
     }
 
     private void CompleteClear(List<PendingCommandEntry> outstanding, string reason) {

@@ -363,6 +363,8 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
 
     [Fact]
     public async Task GeneratedForm_RetryExhaustion_RendersWarningPreservesInputAndDoesNotRegisterPending() {
+        FakeTimeProvider time = new();
+        Services.Replace(ServiceDescriptor.Singleton<TimeProvider>(time));
         Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => new RetryExhaustedCommandService()));
         await InitializeStoreAsync();
         List<CommandFeedbackWarning> warnings = [];
@@ -382,12 +384,16 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             state.Value.State.ShouldBe(CommandLifecycleState.Idle);
             pending.Snapshot().ShouldBeEmpty();
             warnings.ShouldContain(w => w.Kind == CommandWarningKind.RetryableDispatchFailed);
-            cut.Markup.ShouldContain("Command was not accepted");
-            cut.Markup.ShouldContain("EventStore did not accept the command", Case.Insensitive);
-            cut.Markup.ShouldContain("Retry after 1 seconds.");
+            cut.Markup.ShouldContain("Command outcome unknown");
+            cut.Markup.ShouldContain("Check its status before submitting again", Case.Insensitive);
+            cut.Markup.ShouldNotContain("Retry after");
             cut.Markup.ShouldContain("preserved name");
             cut.Markup.ShouldContain("value=\"7\"", Case.Insensitive);
         });
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-surface-status']").TextContent.ShouldBeEmpty());
+        cut.Markup.ShouldContain("Command outcome unknown");
+
     }
 
     [Fact]
@@ -423,7 +429,7 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             AngleSharp.Dom.IElement status = second.Find("[role='status'][aria-live='polite']");
             status.GetAttribute("aria-atomic").ShouldBe("true");
             status.TextContent.ShouldContain("This command did not run. Another command is already in progress.", Case.Insensitive);
-            second.FindAll("[role='status'][aria-live='polite']").Count.ShouldBe(2);
+            second.FindAll("[role='status'][aria-live='polite']").Count.ShouldBe(1);
             second.FindAll("fluent-message-bar").ShouldBeEmpty();
             second.Markup.ShouldContain("blocked name");
             warnings.Count.ShouldBe(1);
@@ -457,7 +463,7 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             // ECH-05 — no validation ran: no field error was added and the entered value is kept.
             invalid.Markup.ShouldNotContain("field is required");
             invalid.Markup.ShouldContain("blocked reason");
-            invalid.FindAll("[role='status'][aria-live='polite']").Count.ShouldBe(2);
+            invalid.FindAll("[role='status'][aria-live='polite']").Count.ShouldBe(1);
             warnings.Count.ShouldBe(1);
             FcFocusModule.Invocations.Count(invocation => invocation.Identifier == "focusValidationOutcome")
                 .ShouldBe(validationFocusCount);
@@ -483,7 +489,7 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         blocked.Find("form").Submit();
 
         blocked.WaitForAssertion(() => {
-            blocked.Find("[data-testid='fc-command-blocked-status']").TextContent.ShouldBe(BlockedMessage);
+            blocked.Find("[data-testid='fc-surface-status']").TextContent.ShouldBe(BlockedMessage);
             blocked.FindAll("[data-testid='fc-view-active-command']").ShouldBeEmpty();
             service.DispatchCount.ShouldBe(1);
         });
@@ -513,7 +519,7 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         // ECH-06 / BH-11 — an inert action is withdrawn and focus returns to the attempted submit.
         blocked.WaitForAssertion(() => {
             blocked.FindAll("[data-testid='fc-view-active-command']").ShouldBeEmpty();
-            blocked.Find("[data-testid='fc-command-blocked-status']").TextContent.ShouldNotBeEmpty();
+            blocked.Find("[data-testid='fc-surface-status']").TextContent.ShouldNotBeEmpty();
             AttemptedFocusRequests().ShouldBe(attemptedFocusCount + 1);
             service.DispatchCount.ShouldBe(1);
         });
@@ -958,6 +964,11 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         cut.Find("form").Submit();
         await service.DispatchStarted.Task.WaitAsync(TimeSpan.FromSeconds(2), Xunit.TestContext.Current.CancellationToken);
         string correlationId = state.Value.CorrelationId.ShouldNotBeNull();
+        cut.FindAll("[role='status'][aria-live='polite']").Count.ShouldBe(1);
+        string surface = cut.FindComponent<FcLifecycleWrapper>().Instance.StatusSurface.ShouldNotBeNull();
+        List<string> spoken = [];
+        using IDisposable speechSubscription = Services.GetRequiredService<Hexalith.FrontComposer.Shell.Services.Announcements.ISurfaceAnnouncementCoordinator>()
+            .Subscribe(surface, spoken.Add);
 
         // VG5-03 — the submit control is not lifecycle-disabled while its own command is in flight, so a
         // real press reaches SubmitAsync (bUnit's form.Submit() would bypass a disabled button).
@@ -976,15 +987,26 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         service.DispatchCount.ShouldBe(1);
         state.Value.CorrelationId.ShouldBe(correlationId);
         state.Value.State.ShouldNotBe(CommandLifecycleState.Idle);
-        cut.FindAll("[data-testid='fc-command-blocked-status']").Count.ShouldBe(1);
+        cut.FindAll("[data-testid='fc-surface-status']").Count.ShouldBe(1);
         cut.FindAll("[data-testid='fc-validation-summary']").ShouldBeEmpty();
         cut.Markup.ShouldContain("only form");
         AttemptedFocusRequests().ShouldBe(2);
+        spoken.Count(message => message == BlockedMessage).ShouldBe(2);
+        cut.FindAll("[role='status'][aria-live='polite']").Count.ShouldBe(1);
+        ILifecycleStateService lifecycle = Services.GetRequiredService<ILifecycleStateService>();
+        string messageId = state.Value.MessageId ?? "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        await cut.InvokeAsync(() => {
+            lifecycle.Transition(correlationId, CommandLifecycleState.Acknowledged, messageId);
+            lifecycle.Transition(correlationId, CommandLifecycleState.Syncing, messageId);
+        });
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        cut.WaitForAssertion(() => BlockedStatus(cut).ShouldBe("Command accepted. Updating the view."));
+        spoken.Count(message => message == "Command accepted. Updating the view.").ShouldBe(1);
 
         service.AllowDispatch.SetResult();
 
         static string BlockedStatus(IRenderedComponent<TwoFieldCompactCommandForm> component)
-            => component.Find("[data-testid='fc-command-blocked-status']").TextContent;
+            => component.Find("[data-testid='fc-surface-status']").TextContent;
     }
 
     [Fact]
@@ -1020,11 +1042,11 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         // VG3-03 — an admitted attempt withdraws the earlier AM-20 outcome before it dispatches.
         later.WaitForAssertion(() => {
             service.DispatchCount.ShouldBe(2);
-            LaterStatus().ShouldBeEmpty();
+            LaterStatus().ShouldNotBe(BlockedMessage);
             later.Find("[data-testid='fc-command-blocked-outcome']").GetAttribute("data-fc-blocked").ShouldBe("false");
         });
 
-        string LaterStatus() => later.Find("[data-testid='fc-command-blocked-status']").TextContent;
+        string LaterStatus() => later.Find("[data-testid='fc-surface-status']").TextContent;
     }
 
     [Fact]
@@ -1046,11 +1068,11 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
 
         // VG2-13 — the hidden zero-field form hands AM-20 to a visible node beside the trigger.
         renderer.WaitForAssertion(() => {
-            AngleSharp.Dom.IElement status = renderer.Find("[data-testid='fc-command-blocked-status']");
+            AngleSharp.Dom.IElement status = renderer.Find("[data-testid='fc-surface-status']");
             status.TextContent.ShouldBe(BlockedMessage);
             status.Closest("[style*='display:none']").ShouldBeNull();
             renderer.Find("[data-testid='fc-command-blocked-outcome']").TagName.ShouldBe("SPAN");
-            renderer.FindAll("[role='status'][aria-live='polite']").Count.ShouldBe(2);
+            renderer.FindAll("[role='status'][aria-live='polite']").Count.ShouldBe(1);
             service.DispatchCount.ShouldBe(1);
             FcFocusModule.Invocations.ShouldContain(invocation => invocation.Identifier == "focusAttemptedControl"
                 && Equals(invocation.Arguments[0], triggerId));
@@ -1068,7 +1090,7 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         // VG4-05 — the admitted later activation withdraws the renderer-owned AM-20 outcome.
         renderer.WaitForAssertion(() => {
             service.DispatchCount.ShouldBe(2);
-            renderer.Find("[data-testid='fc-command-blocked-status']").TextContent.ShouldBeEmpty();
+            renderer.Find("[data-testid='fc-surface-status']").TextContent.ShouldNotBe(BlockedMessage);
             renderer.Find("[data-testid='fc-command-blocked-outcome']").GetAttribute("data-fc-blocked").ShouldBe("false");
         });
     }

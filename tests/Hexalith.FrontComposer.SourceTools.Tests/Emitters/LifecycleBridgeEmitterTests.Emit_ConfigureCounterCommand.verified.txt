@@ -31,9 +31,9 @@ public sealed class ConfigureCounterCommandLifecycleBridge : global::System.IDis
             _subscriber.SubscribeToAction<ConfigureCounterCommandActions.SubmittedAction>(this,
                 OnSubmitted);
             _subscriber.SubscribeToAction<ConfigureCounterCommandActions.AcknowledgedAction>(this,
-                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Acknowledged, a.MessageId));
+                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Acknowledged, a.MessageId, a.ObservedAt));
             _subscriber.SubscribeToAction<ConfigureCounterCommandActions.SyncingAction>(this,
-                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Syncing, null));
+                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Syncing, a.MessageId, a.ObservedAt));
             _subscriber.SubscribeToAction<ConfigureCounterCommandActions.ConfirmedAction>(this,
                 a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Confirmed, null));
             _subscriber.SubscribeToAction<ConfigureCounterCommandActions.RejectedAction>(this,
@@ -71,7 +71,7 @@ public sealed class ConfigureCounterCommandLifecycleBridge : global::System.IDis
         RemoveLifecycleSubscription(action.CorrelationId);
     }
 
-    private void ForwardAction(string correlationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState state, string? messageId)
+    private void ForwardAction(string correlationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState state, string? messageId, global::System.DateTimeOffset? observedAt = null)
     {
         bool closesSubscription = state is global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Confirmed
             or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Rejected
@@ -90,7 +90,14 @@ public sealed class ConfigureCounterCommandLifecycleBridge : global::System.IDis
         }
         try
         {
-            _service.Transition(correlationId, state, messageId);
+            if (_service is global::Hexalith.FrontComposer.Shell.Services.Lifecycle.LifecycleStateService observedService && observedAt is not null)
+            {
+                observedService.TransitionObserved(correlationId, state, messageId, observedAt.Value);
+            }
+            else
+            {
+                _service.Transition(correlationId, state, messageId);
+            }
         }
         finally
         {

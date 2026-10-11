@@ -49,6 +49,9 @@ public sealed record LoadedPageState {
     public ImmutableDictionary<string, string> FailureByKey { get; init; }
         = ImmutableDictionary<string, string>.Empty;
 
+    /// <summary>Page lanes whose cached rows have an unconfirmed failed background refresh.</summary>
+    public ImmutableHashSet<(string ViewKey, int Skip)> StalePages { get; init; } = ImmutableHashSet<(string ViewKey, int Skip)>.Empty;
+
     /// <summary>Last completed page result and request provenance for each view.</summary>
     public ImmutableDictionary<string, LoadedPageResult> LastResultByKey { get; init; }
         = ImmutableDictionary<string, LoadedPageResult>.Empty;
@@ -70,6 +73,10 @@ public sealed record LoadedPageState {
 
     /// <summary>Monotonic per-view completed result sequence, retained across 304 and filter changes.</summary>
     public ImmutableDictionary<string, long> ResultSequenceByView { get; init; }
+        = ImmutableDictionary<string, long>.Empty;
+
+    /// <summary>Monotonic genuine successful-read sequence per view, including unchanged 304 reads; criteria changes and metadata eviction do not advance it.</summary>
+    public ImmutableDictionary<string, long> SuccessfulReadSequenceByView { get; init; }
         = ImmutableDictionary<string, long>.Empty;
 
     /// <summary>Last successful first page for cap and hidden-detail provenance.</summary>

@@ -150,7 +150,9 @@ internal sealed class LegacyLifecycleObservationCommandServiceAdapter : ICommand
         Action<CommandLifecycleState, string?>? callback = onLifecycleObservation is null
             ? null
             : (state, messageId) => {
-                bool terminal = state is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected;
+                bool terminal = state is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected
+                    or CommandLifecycleState.IdempotentConfirmed or CommandLifecycleState.NeedsReview
+                    or CommandLifecycleState.Warning or CommandLifecycleState.DegradedExhausted;
                 CommandLifecycleObservation observation = CreateObservation(state, messageId);
                 bool deliver;
                 bool closeLifetime = false;
@@ -188,7 +190,7 @@ internal sealed class LegacyLifecycleObservationCommandServiceAdapter : ICommand
                 }
                 finally {
                     if (closeLifetime) {
-                        DisposeLifetime(cancel: false);
+                        DisposeLifetime(cancel: true);
                     }
                 }
             };
@@ -246,7 +248,7 @@ internal sealed class LegacyLifecycleObservationCommandServiceAdapter : ICommand
                 }
             }
             finally {
-                DisposeLifetime(cancel: !accepted);
+                DisposeLifetime(cancel: !accepted || acceptedTerminal is not null);
             }
         }
         else {

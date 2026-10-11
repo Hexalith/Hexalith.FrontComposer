@@ -22,6 +22,32 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.DataGridNavigation;
 /// </summary>
 public sealed class LoadPageReducerTests {
     [Fact]
+    public void GenuineReadSequenceSurvivesCriteriaInvalidationAndAdvancesForMatchingUnchangedReadsOnly()
+    {
+        LoadedPageReducers reducers = MakeReducers();
+        LoadedPageState state = new() { ScopeGeneration = 2 };
+        state = reducers.ReduceLoadPageSucceeded(state, new LoadPageSucceededAction(ViewKey, 0, ["cached"], 1, 0)
+            { OriginScopeGeneration = 2, RequestIdentity = "a", RequestGeneration = 1 });
+        state.SuccessfulReadSequenceByView[ViewKey].ShouldBe(1);
+        state = reducers.ReduceLoadPageSucceeded(state, new LoadPageSucceededAction("other", 0, ["other"], 1, 0)
+            { OriginScopeGeneration = 2 });
+        TaskCompletionSource<object> pending = new();
+        state = LoadedPageReducers.ReduceLoadPage(state, MakeLoadPage(ViewKey, 0, pending)
+            with { RequestIdentity = "b", RequestGeneration = 2 });
+        state.ResultsByPage.Keys.ShouldNotContain(key => key.ViewKey == ViewKey);
+        state.SuccessfulReadSequenceByView[ViewKey].ShouldBe(1);
+        LoadPageNotModifiedAction matching = new(ViewKey, 0, ["cached"], pending)
+            { OriginScopeGeneration = 2, RequestIdentity = "b", RequestGeneration = 2 };
+        LoadedPageReducers.ReduceLoadPageNotModified(state, matching with { RequestGeneration = 1 }).ShouldBeSameAs(state);
+        LoadedPageReducers.ReduceLoadPageNotModified(state, matching with { OriginScopeGeneration = 1 }).ShouldBeSameAs(state);
+        state = LoadedPageReducers.ReduceLoadPageNotModified(state, matching);
+        state.SuccessfulReadSequenceByView[ViewKey].ShouldBe(2);
+        state.SuccessfulReadSequenceByView["other"].ShouldBe(1);
+        LoadedPageReducers.ReduceLoadPageNotModified(state, matching).ShouldBeSameAs(state);
+        LoadedPageReducers.ReduceScopeChanged(state, new ScopeChangedAction()).SuccessfulReadSequenceByView.ShouldBeEmpty();
+    }
+
+    [Fact]
     public void ReduceFallbackSuccess_PriorScopeGeneration_DoesNotRefillPage() {
         LoadedPageReducers reducers = MakeReducers();
         LoadedPageState cleared = LoadedPageReducers.ReduceScopeChanged(new LoadedPageState(), new ScopeChangedAction());
@@ -33,6 +59,32 @@ public sealed class LoadPageReducerTests {
         };
         LoadedPageState populated = reducers.ReduceLoadPageSucceeded(cleared, current);
         populated.PagesByKey[("view", 0)].Single().ShouldBe("current");
+    }
+
+    [Fact]
+    public void FailedBackgroundLaneStaysStaleUntilItsOwnReadRecovers()
+    {
+        LoadedPageReducers reducers = MakeReducers();
+        LoadedPageState initial = new() { ScopeGeneration = 3,
+            ActiveRequestIdentityByView = ImmutableDictionary<string, string>.Empty.Add(ViewKey, "request"),
+            ActiveRequestGenerationByView = ImmutableDictionary<string, long>.Empty.Add(ViewKey, 4),
+            PagesByKey = ImmutableDictionary<(string ViewKey, int Skip), IReadOnlyList<object>>.Empty.Add((ViewKey, 0), ["cached"]),
+        };
+        MarkProjectionStaleAction failure = new(ViewKey, 0, 3, "request", 4);
+        LoadedPageState stale = LoadedPageReducers.ReduceMarkProjectionStale(initial, failure);
+        stale.StalePages.ShouldContain((ViewKey, 0));
+        stale.PagesByKey[(ViewKey, 0)].Single().ShouldBe("cached");
+        LoadedPageState unrelated = reducers.ReduceLoadPageSucceeded(stale,
+            new LoadPageSucceededAction(ViewKey, 500, ["other page"], 501, 0) { OriginScopeGeneration = 3, RequestIdentity = "request", RequestGeneration = 4 });
+        unrelated.StalePages.ShouldContain((ViewKey, 0));
+        LoadedPageReducers.ReduceMarkProjectionStale(unrelated, failure with { OriginScopeGeneration = 2 }).ShouldBeSameAs(unrelated);
+        LoadedPageReducers.ReduceMarkProjectionStale(unrelated, failure with { RequestGeneration = 3 }).ShouldBeSameAs(unrelated);
+        LoadedPageState recovered = reducers.ReduceLoadPageSucceeded(unrelated,
+            new LoadPageSucceededAction(ViewKey, 0, ["fresh"], 501, 0) { OriginScopeGeneration = 3, RequestIdentity = "request", RequestGeneration = 4 });
+        recovered.StalePages.ShouldBeEmpty();
+        LoadedPageState notModified = LoadedPageReducers.ReduceLoadPageNotModified(stale,
+            new LoadPageNotModifiedAction(ViewKey, 0, ["cached"]) { OriginScopeGeneration = 3, RequestIdentity = "request", RequestGeneration = 4 });
+        notModified.StalePages.ShouldBeEmpty();
     }
 
     private const string ViewKey = "acme:OrdersProjection";

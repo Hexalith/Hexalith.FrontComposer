@@ -31,6 +31,8 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
     private string? _lastAnnouncedResult;
     private long _hiddenEpisode;
     private string? _activeGroup;
+    private string _boundSurface = string.Empty;
+    private bool _disposed;
     private readonly string _descriptionId = "fc-hidden-detail-reason-" + Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture);
 
     /// <summary>Stable per-view key (PERSISTED form) — matches the key consumed by <see cref="FiltersResetAction"/> per Story 4-3.</summary>
@@ -69,14 +71,36 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
 
     /// <inheritdoc />
     protected override void OnParametersSet() {
+        if (_disposed)
+        {
+            return;
+        }
+        string surface = "projection:" + ViewKey;
+        if (!string.Equals(_boundSurface, surface, StringComparison.Ordinal))
+        {
+            if (_activeGroup is { } abandoned)
+            {
+                Announcements.Cancel(_boundSurface, abandoned);
+                _activeGroup = null;
+            }
+            _boundSurface = surface;
+            _wasHidden = false;
+            _lastAnnouncedResult = null;
+            _focusPending = false;
+        }
+
         _bannerMessage = Localizer["ExpandedRowHiddenByFilterBanner", "1"].Value;
         bool settledHidden = IsHiddenByFilter && ResultSettled;
+        if (!settledHidden)
+        {
+            _focusPending = false;
+        }
         if (settledHidden && !_wasHidden) {
             _hiddenEpisode++;
         }
         string result = ResultIdentity ?? _hiddenEpisode.ToString(System.Globalization.CultureInfo.InvariantCulture);
         if (_activeGroup is { } prior && (!settledHidden || !string.Equals(_lastAnnouncedResult, result, StringComparison.Ordinal))) {
-            Announcements.Cancel("projection:" + ViewKey, prior);
+            Announcements.Cancel(_boundSurface, prior);
             _activeGroup = null;
         }
         if (settledHidden && (!_wasHidden || !string.Equals(_lastAnnouncedResult, result, StringComparison.Ordinal))) {
@@ -84,9 +108,10 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
                 _focusPending = true;
             }
             else {
+                _focusPending = false;
                 _activeGroup = "filter:" + ViewKey + ":" + _hiddenEpisode.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":" + result;
                 Announcements.Announce(
-                    "projection:" + ViewKey,
+                    _boundSurface,
                     _activeGroup,
                     "hidden-detail:" + result,
                     Localizer["Am22DetailHidden"],
@@ -100,15 +125,30 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
 
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (!_focusPending || !IsHiddenByFilter) {
+        if (_disposed || !_focusPending || !IsHiddenByFilter || !ResultSettled) {
             return;
         }
 
+        string boundSurface = _boundSurface;
+        string? boundResult = _lastAnnouncedResult;
+        ElementReference banner = _bannerRef;
         IJSObjectReference? focus = null;
         try {
             focus = await JS.InvokeAsync<IJSObjectReference>(
                 "import", "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js").ConfigureAwait(true);
-            _focusPending = !await focus.InvokeAsync<bool>("focusFirstButtonWithin", _bannerRef).ConfigureAwait(true);
+            if (_disposed || !_focusPending || !IsHiddenByFilter || !ResultSettled
+                || !string.Equals(boundSurface, _boundSurface, StringComparison.Ordinal)
+                || !string.Equals(boundResult, _lastAnnouncedResult, StringComparison.Ordinal))
+            {
+                return;
+            }
+            bool focused = await focus.InvokeAsync<bool>("focusFirstButtonWithin", banner).ConfigureAwait(true);
+            if (!_disposed && _focusPending && IsHiddenByFilter && ResultSettled
+                && string.Equals(boundSurface, _boundSurface, StringComparison.Ordinal)
+                && string.Equals(boundResult, _lastAnnouncedResult, StringComparison.Ordinal))
+            {
+                _focusPending = !focused;
+            }
         }
         catch (JSDisconnectedException) {
         }
@@ -116,12 +156,18 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
         }
         catch (InvalidOperationException) {
         }
+        catch (OperationCanceledException) {
+        }
         finally {
             if (focus is not null) {
                 try {
                     await focus.DisposeAsync().ConfigureAwait(true);
                 }
                 catch (JSDisconnectedException) {
+                }
+                catch (JSException) {
+                }
+                catch (OperationCanceledException) {
                 }
             }
         }
@@ -134,8 +180,9 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
 
     /// <inheritdoc />
     public void Dispose() {
+        _disposed = true;
         if (_activeGroup is { } group) {
-            Announcements.Cancel("projection:" + ViewKey, group);
+            Announcements.Cancel(_boundSurface, group);
             _activeGroup = null;
         }
         GC.SuppressFinalize(this);

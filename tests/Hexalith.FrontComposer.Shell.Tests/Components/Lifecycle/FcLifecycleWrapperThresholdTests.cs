@@ -2,10 +2,14 @@ using Bunit;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
+using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Components.Lifecycle;
 using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
+using Hexalith.FrontComposer.Shell.Services.Announcements;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
+using Hexalith.FrontComposer.Shell.State.PendingCommands;
+using Hexalith.FrontComposer.Shell.Tests.State.PendingCommands;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -13,6 +17,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 
 using Shouldly;
+using NSubstitute;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Components.Lifecycle;
 
@@ -22,6 +27,70 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Lifecycle;
 /// (300 ms / 2 000 ms / 10 000 ms) and assert the corresponding UI surface.
 /// </summary>
 public sealed class FcLifecycleWrapperThresholdTests : LifecycleWrapperTestBase {
+    [Theory]
+    [InlineData(120000, false)]
+    [InlineData(30000, true)]
+    public async Task UnmountedAcceptedCommandClosesAtItsHeaderDeadlineWhileTheQueryAndCleanupAreHeld(int duration, bool blockingCleanup)
+    {
+        const string correlation = "01CPZ3NDEKTSV4RRFFQ69G5FAV";
+        const string message = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        Services.Configure<FcShellOptions>(options => options.MaxPendingCommandPollingDurationMs = duration);
+        LifecycleStateService lifecycle = new(Microsoft.Extensions.Options.Options.Create(new LifecycleOptions()), FakeTime);
+        RegisterLifecycleService(lifecycle);
+        IRenderedComponent<FcLifecycleWrapper> cut = Render<FcLifecycleWrapper>(p => p.Add(c => c.CorrelationId, correlation));
+        DateTimeOffset headers = FakeTime.GetUtcNow();
+        lifecycle.Transition(correlation, CommandLifecycleState.Submitting);
+        lifecycle.TransitionObserved(correlation, CommandLifecycleState.Syncing, message, headers);
+        cut.WaitForAssertion(() => lifecycle.GetState(correlation).ShouldBe(CommandLifecycleState.Syncing));
+        cut.Dispose();
+
+        IUserContextAccessor user = Substitute.For<IUserContextAccessor>();
+        user.TenantId.Returns("tenant-a");
+        user.UserId.Returns("user-a");
+        FcShellOptions options = new() { MaxPendingCommandPollingDurationMs = duration };
+        PendingCommandStateService state = new(Microsoft.Extensions.Options.Options.Create(options), lifecycle, user, time: FakeTime);
+        // Optional response work has finished late, but registration retains the proven header anchor.
+        FakeTime.Advance(TimeSpan.FromSeconds(2));
+        state.Register(new(correlation, message, "Counter.Increment", "Counter.Count", "counter-counts", "counter-1", null, null, headers));
+        HeldPendingCommandStatusQuery query = new();
+        using ManualResetEventSlim release = new(!blockingCleanup);
+        query.CancellationRelease = release;
+        PendingCommandPollingCoordinator polling = new(state, new PendingCommandOutcomeResolver(state), query,
+            Microsoft.Extensions.Options.Options.Create(options), timeProvider: FakeTime);
+        int exhausted = 0;
+        using IDisposable listener = lifecycle.Subscribe(correlation, change =>
+        {
+            if (change.NewState == CommandLifecycleState.DegradedExhausted) { exhausted++; }
+        });
+        FakeTime.Advance(TimeSpan.FromMilliseconds(duration - 2001));
+        Task<int> poll = polling.PollOnceAsync(Xunit.TestContext.Current.CancellationToken);
+        query.Calls.ShouldBe(1);
+        poll.IsCompleted.ShouldBeFalse();
+        state.GetByMessageId(message).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.Pending);
+        try
+        {
+            FakeTime.Advance(TimeSpan.FromMilliseconds(1));
+            (await poll.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken)).ShouldBe(0);
+            state.GetByMessageId(message).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.DegradedExhausted);
+            lifecycle.GetState(correlation).ShouldBe(CommandLifecycleState.DegradedExhausted);
+            exhausted.ShouldBe(1);
+            await query.CancellationObserved.Task.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken);
+            (await polling.PollOnceAsync(Xunit.TestContext.Current.CancellationToken)).ShouldBe(0);
+            query.Calls.ShouldBe(1);
+            PendingCommandOutcomeObservation late = new(PendingCommandOutcomeSource.FallbackPolling, PendingCommandTerminalOutcome.Confirmed, MessageId: message);
+            query.Completion.TrySetResult(late);
+            new PendingCommandOutcomeResolver(state).Resolve(late).Status.ShouldBe(PendingCommandOutcomeResolutionStatus.DuplicateIgnored);
+            lifecycle.GetState(correlation).ShouldBe(CommandLifecycleState.DegradedExhausted);
+            exhausted.ShouldBe(1);
+        }
+        finally
+        {
+            release.Set();
+            query.Completion.TrySetResult(null);
+            await query.CancellationFinished.Task.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken);
+        }
+    }
+
     [Fact]
     public void AcceptedCommandBecomesDegradedAtTenSecondsAndClosesAtTwoMinutes() {
         LifecycleStateService lifecycle = new(
@@ -254,4 +323,122 @@ public sealed class FcLifecycleWrapperThresholdTests : LifecycleWrapperTestBase 
             cut.Markup.ShouldNotContain("Still syncing", Case.Insensitive);
         });
     }
+    [Fact]
+    public void OldConfirmationDismissCannotDismissOrClearTheReplacementOperation()
+    {
+        var time = new Hexalith.FrontComposer.Shell.Tests.Infrastructure.QueuedTimerTimeProvider();
+        Services.AddSingleton<TimeProvider>(time);
+        var (cut, push) = RenderWrapperWithLiveService();
+        push(TransitionAt(CommandLifecycleState.Syncing, CommandLifecycleState.Confirmed, time.GetUtcNow()));
+        Action oldDismiss = time.Callbacks.Single();
+        cut.Render(p => p.Add(c => c.CorrelationId, "replacement"));
+        push(TransitionAt(CommandLifecycleState.Syncing, CommandLifecycleState.Confirmed, time.GetUtcNow()) with { CorrelationId = "replacement" });
+        oldDismiss();
+        cut.Find(".fc-lifecycle-wrapper").GetAttribute("data-lifecycle-state").ShouldBe("confirmed");
+        cut.Find("[data-testid='fc-surface-status']").TextContent.ShouldBe("Command confirmed.");
+    }
+
+    [Fact]
+    public void CapturedDeadlineAndDegradedTicksAfterDisposalCannotTransition()
+    {
+        var time = new Hexalith.FrontComposer.Shell.Tests.Infrastructure.QueuedTimerTimeProvider();
+        Services.AddSingleton<TimeProvider>(time);
+        LifecycleStateService lifecycle = new(Microsoft.Extensions.Options.Options.Create(new LifecycleOptions()), time,
+            NullLogger<LifecycleStateService>.Instance);
+        RegisterLifecycleService(lifecycle);
+        IRenderedComponent<FcLifecycleWrapper> cut = Render<FcLifecycleWrapper>(p => p.Add(c => c.CorrelationId, DefaultCorrelationId));
+        lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Submitting, "message");
+        lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Acknowledged, "message");
+        cut.WaitForAssertion(() => cut.Find(".fc-lifecycle-wrapper").GetAttribute("data-lifecycle-state").ShouldBe("acknowledged"));
+        Action[] queued = [.. time.Callbacks];
+        cut.Instance.Dispose();
+        foreach (Action callback in queued)
+        {
+            Should.NotThrow(callback);
+        }
+        lifecycle.GetState(DefaultCorrelationId).ShouldBe(CommandLifecycleState.Acknowledged);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CapturedOldTimerDelegateCannotApplyToReplacementOrReusedCorrelation(bool reuseCorrelation)
+    {
+        var (cut, push) = RenderWrapperWithLiveService();
+        push(TransitionAt(CommandLifecycleState.Submitting, CommandLifecycleState.Acknowledged, FakeTime.GetUtcNow()));
+        LifecycleThresholdTimer original = (LifecycleThresholdTimer)typeof(FcLifecycleWrapper)
+            .GetField("_timer", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(cut.Instance)!;
+        Action<LifecycleTimerPhase> captured = (Action<LifecycleTimerPhase>)typeof(LifecycleThresholdTimer)
+            .GetField("OnPhaseChanged", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(original)!;
+        cut.Render(p => p.Add(c => c.CorrelationId, "replacement"));
+        string current = reuseCorrelation ? DefaultCorrelationId : "replacement";
+        if (reuseCorrelation)
+        {
+            cut.Render(p => p.Add(c => c.CorrelationId, DefaultCorrelationId));
+        }
+        push(TransitionAt(CommandLifecycleState.Submitting, CommandLifecycleState.Acknowledged, FakeTime.GetUtcNow()) with { CorrelationId = current });
+        push(TransitionAt(CommandLifecycleState.Acknowledged, CommandLifecycleState.Syncing, FakeTime.GetUtcNow()) with { CorrelationId = current });
+        captured(LifecycleTimerPhase.ActionPrompt);
+        cut.FindAll("[data-testid='fc-action-prompt']").ShouldBeEmpty();
+        FakeTime.Advance(TimeSpan.FromMilliseconds(2000));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Still syncing", Case.Insensitive));
+        cut.FindAll("[data-testid='fc-action-prompt']").ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EqualCorrelationSurfaceRebindWithdrawsOwnedSpeechAndKeepsOriginalBudget(bool terminal)
+    {
+        LifecycleStateService lifecycle = new(Microsoft.Extensions.Options.Options.Create(new LifecycleOptions()), FakeTime,
+            NullLogger<LifecycleStateService>.Instance);
+        RegisterLifecycleService(lifecycle);
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        List<string> originalSpeech = [];
+        List<string> replacementSpeech = [];
+        using IDisposable originalSubscription = announcements.Subscribe("original", originalSpeech.Add);
+        using IDisposable replacementSubscription = announcements.Subscribe("replacement", replacementSpeech.Add);
+        IRenderedComponent<FcLifecycleWrapper> cut = Render<FcLifecycleWrapper>(p => p
+            .Add(c => c.CorrelationId, DefaultCorrelationId).Add(c => c.StatusSurface, "original"));
+        lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Submitting, "message");
+        lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Acknowledged, "message");
+        if (terminal) { lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Confirmed, "message"); }
+        FakeTime.Advance(TimeSpan.FromMilliseconds(250));
+        string expected = terminal ? "Command confirmed." : "Command accepted. Waiting for confirmation.";
+        cut.WaitForAssertion(() => announcements.Current("original").ShouldBe(expected));
+        object timer = typeof(FcLifecycleWrapper).GetField("_timer", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(cut.Instance)!;
+        cut.Render(p => p.Add(c => c.StatusSurface, "replacement"));
+        announcements.Current("original").ShouldBeEmpty();
+        FakeTime.Advance(TimeSpan.FromMilliseconds(250));
+        cut.WaitForAssertion(() => announcements.Current("replacement").ShouldBe(expected));
+        typeof(FcLifecycleWrapper).GetField("_timer", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(cut.Instance).ShouldBeSameAs(timer);
+        cut.Render(p => p.Add(c => c.StatusSurface, "original"));
+        FakeTime.Advance(TimeSpan.FromMilliseconds(250));
+        cut.WaitForAssertion(() => announcements.Current("original").ShouldBeEmpty());
+        announcements.Current("replacement").ShouldBeEmpty();
+        originalSpeech.Count(message => message == expected).ShouldBe(1);
+        replacementSpeech.Count(message => message == expected).ShouldBe(1);
+        cut.Find(".fc-lifecycle-wrapper").GetAttribute("data-lifecycle-state").ShouldBe(terminal ? "confirmed" : "acknowledged");
+        if (terminal)
+        {
+            FakeTime.Advance(TimeSpan.FromMilliseconds(Services.GetRequiredService<IOptionsMonitor<FcShellOptions>>().CurrentValue.ConfirmedToastDurationMs - 750));
+            cut.WaitForAssertion(() => announcements.Current("original").ShouldBeEmpty());
+            cut.Find(".fc-lifecycle-wrapper").GetAttribute("data-lifecycle-state").ShouldBe("idle");
+        }
+        else
+        {
+            FakeTime.Advance(TimeSpan.FromMilliseconds(9_249));
+            lifecycle.GetState(DefaultCorrelationId).ShouldBe(CommandLifecycleState.Acknowledged);
+            FakeTime.Advance(TimeSpan.FromMilliseconds(1));
+            cut.WaitForAssertion(() => lifecycle.GetState(DefaultCorrelationId).ShouldBe(CommandLifecycleState.Degraded));
+            originalSpeech.Count(message => message == "Confirmation is taking longer than expected. Review status or continue working.").ShouldBe(1);
+            FakeTime.Advance(TimeSpan.FromMilliseconds(110_000));
+            cut.WaitForAssertion(() => lifecycle.GetState(DefaultCorrelationId).ShouldBe(CommandLifecycleState.DegradedExhausted));
+        }
+        announcements.Announce("original", "unrelated", "current", "Other owner remains", immediate: true);
+        cut.Instance.Dispose();
+        announcements.Current("original").ShouldBe("Other owner remains");
+        announcements.Current("replacement").ShouldBeEmpty();
+    }
+
 }

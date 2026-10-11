@@ -94,6 +94,9 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("    /// <summary>Story 13.3 AM-20: when bound, the host renders the blocked-submit outcome because this form is not perceivable (zero-field inline). Invoked with true for each blocked attempt and false when a later attempt is admitted.</summary>");
         _ = sb.AppendLine("    [Parameter] public EventCallback<bool> OnBlockedSubmission { get; set; }");
+        _ = sb.AppendLine("    /// <summary>Gets or sets the visible host's shared announcement surface for a hidden form.</summary>");
+        _ = sb.AppendLine("    [Parameter] public string? AnnouncementSurface { get; set; }");
+        _ = sb.AppendLine("    private string FormAnnouncementSurface => AnnouncementSurface ?? \"command-form:\" + _formDomId;");
         _ = sb.AppendLine();
         if (form.CommandTarget?.ResolutionMode == CommandTargetResolutionMode.SameAsSource) {
             _ = sb.AppendLine("    [CascadingParameter] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity? PendingCommandRowIdentity { get; set; }");
@@ -1422,6 +1425,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        // One owner per dispatch prevents callbacks retained by an earlier service invocation");
         _ = sb.AppendLine("        // from observing or mutating a later submit's lifecycle.");
         _ = sb.AppendLine("        object lifecycleCallbackGate = new();");
+        _ = sb.AppendLine("        var acceptedObservationTimes = new System.Collections.Generic.Dictionary<string, DateTimeOffset>(StringComparer.Ordinal);");
         _ = sb.AppendLine("        var unacceptedTerminalMessageIds = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);");
         _ = sb.AppendLine("        var unacceptedTerminalMessageIdOrder = new System.Collections.Generic.Queue<string>();");
         _ = sb.AppendLine("        int lifecycleCallbackClosed = 0;");
@@ -1456,6 +1460,14 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                onLifecycleObservation: observation =>");
         _ = sb.AppendLine("                {");
         _ = sb.AppendLine("                    if (System.Threading.Volatile.Read(ref lifecycleCallbackClosed) == 1) return;");
+        _ = sb.AppendLine("                    if (observation.State is CommandLifecycleState.Acknowledged or CommandLifecycleState.Syncing && observation.ObservedAt is { } acceptedAt");
+        _ = sb.AppendLine("                        && CanonicalCommandMessageId(observation.MessageId) is { } observedMessageId)");
+        _ = sb.AppendLine("                    {");
+        _ = sb.AppendLine("                        lock (lifecycleCallbackGate)");
+        _ = sb.AppendLine("                        {");
+        _ = sb.AppendLine("                            acceptedObservationTimes.TryAdd(observedMessageId, acceptedAt);");
+        _ = sb.AppendLine("                        }");
+        _ = sb.AppendLine("                    }");
         _ = sb.AppendLine("                    bool dispatchTerminalAction = false;");
         _ = sb.AppendLine("                    bool terminalApplied = false;");
         _ = sb.AppendLine("                    CommandLifecycleState storedTerminalState = observation.State;");
@@ -1538,7 +1550,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                        switch (storedTerminalState)");
         _ = sb.AppendLine("                        {");
         _ = sb.AppendLine("                            case CommandLifecycleState.Syncing:");
-        _ = sb.AppendLine("                                Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".SyncingAction(correlationId));");
+        _ = sb.AppendLine("                                Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".SyncingAction(correlationId) { MessageId = observation.MessageId, ObservedAt = observation.ObservedAt });");
         _ = sb.AppendLine("                                break;");
         _ = sb.AppendLine("                            case CommandLifecycleState.Confirmed:");
         _ = sb.AppendLine("                                Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".ConfirmedAction(correlationId));");
@@ -1577,6 +1589,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                            ExpectedStatusSlot = commandTarget?.ExpectedStatus,");
         _ = sb.AppendLine("                            PriorStatusSlot = commandTarget?.PriorStatus,");
         _ = sb.AppendLine("                            TargetSnapshot = commandTarget,");
+        _ = sb.AppendLine("                            SubmittedAt = CanonicalCommandMessageId(result.MessageId) is { } acceptedMessageKey && acceptedObservationTimes.TryGetValue(acceptedMessageKey, out var acceptedAt) ? acceptedAt : null,");
         _ = sb.AppendLine("                            OriginScope = dispatchScope,");
         _ = sb.AppendLine("                            RequireOriginScope = validatedScope is not null,");
         _ = sb.AppendLine("                        });");
@@ -1666,7 +1679,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                if (Logger is not null) { LogCommandAcknowledgedDispatchSkipped(Logger, pendingRegistration.Status, correlationId); }");
         _ = sb.AppendLine("                return;");
         _ = sb.AppendLine("            }");
-        _ = sb.AppendLine("            Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".AcknowledgedAction(correlationId, result.MessageId));");
+        _ = sb.AppendLine("            Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".AcknowledgedAction(correlationId, result.MessageId) { ObservedAt = pendingRegistration?.Entry?.SubmittedAt });");
         _ = sb.AppendLine("            if (Logger is not null) { LogCommandAcknowledged(Logger, correlationId, result.MessageId); }");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        catch (CommandValidationException ex)");
@@ -1917,6 +1930,8 @@ public static class CommandFormEmitter {
         // renders around every generated form without service-locator plumbing.
         _ = sb.AppendLine("        builder.OpenComponent<FcLifecycleWrapper>(seq++);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"CorrelationId\", _submittedCorrelationId);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"StatusSurface\", FormAnnouncementSurface);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"RenderStatus\", !OnBlockedSubmission.HasDelegate);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"CommandId\", \"" + lifecycleCommandId + "\");");
         // Story 2-5 Task 5.2 + D4 — emitted attributes forward rejection copy + domain-language title
         // computed from the Fluxor feature state's RejectionReason/RejectionResolution fields.
@@ -1986,7 +2001,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                    int mseq = 0;");
         _ = sb.AppendLine("                    string body = _serverWarning.Kind == CommandWarningKind.RetryableDispatchFailed ? ShellLocalizer[\"RetryableDispatchFailedFallback\"].Value : (_serverWarning.Detail ?? _serverWarning.EntityLabel ?? \"Please review the warning and try again.\");");
         _ = sb.AppendLine("                    __msg.AddContent(mseq++, body);");
-        _ = sb.AppendLine("                    if (_serverWarning.RetryAfter is not null)");
+        _ = sb.AppendLine("                    if (_serverWarning.Kind != CommandWarningKind.RetryableDispatchFailed && _serverWarning.RetryAfter is not null)");
         _ = sb.AppendLine("                    {");
         _ = sb.AppendLine("                        __msg.OpenElement(mseq++, \"div\");");
         _ = sb.AppendLine("                        __msg.AddContent(mseq++, $\"Retry after {_serverWarning.RetryAfter.Value.TotalSeconds:0} seconds.\");");
@@ -2031,13 +2046,14 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.CloseComponent();");
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("            // Story 13.3 AM-20 — one always-mounted polite, atomic status node per form surface, after the");
-        _ = sb.AppendLine("            // submit control so its optional \"View active command\" action is next in tab order. A hidden");
+        _ = sb.AppendLine("            // Story 13.3 AM-20 — publish through the lifecycle wrapper's persistent polite node. Keep the");
+        _ = sb.AppendLine("            // View active command recovery after the submit control in tab order. A hidden");
         _ = sb.AppendLine("            // zero-field form lets its renderer own the node beside the visible trigger instead.");
         _ = sb.AppendLine("            if (!OnBlockedSubmission.HasDelegate)");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                __b.OpenComponent<FcCommandBlockedOutcome>(cseq++);");
         _ = sb.AppendLine("                __b.AddAttribute(cseq++, \"AttemptedControlId\", _formDomId + \"-submit\");");
+        _ = sb.AppendLine("                __b.AddAttribute(cseq++, \"AnnouncementSurface\", FormAnnouncementSurface);");
         _ = sb.AppendLine("                __b.AddComponentReferenceCapture(cseq++, instance => _blockedOutcome = (FcCommandBlockedOutcome)instance);");
         _ = sb.AppendLine("                __b.CloseComponent();");
         _ = sb.AppendLine("            }");

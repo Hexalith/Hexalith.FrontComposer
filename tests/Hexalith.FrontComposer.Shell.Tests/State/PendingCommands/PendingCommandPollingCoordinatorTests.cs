@@ -20,6 +20,78 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.State.PendingCommands;
 
 public sealed class PendingCommandPollingCoordinatorTests {
+    [Theory]
+    [InlineData(120000)]
+    [InlineData(30000)]
+    public async Task HeaderDeadlineClosesTheQuietIntervalAfterANonterminalQuery(int duration)
+    {
+        FakeTimeProvider time = new();
+        FcShellOptions options = new() { MaxPendingCommandPollingDurationMs = duration };
+        ILifecycleStateService lifecycle = CreateLifecycle();
+        PendingCommandStateService state = new(Microsoft.Extensions.Options.Options.Create(options), lifecycle, new FixedUserContext(), time);
+        const string message = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        DateTimeOffset headers = time.GetUtcNow();
+        time.Advance(TimeSpan.FromSeconds(2));
+        state.Register(Registration(CorrelationId, message, headers));
+        HeldPendingCommandStatusQuery query = new();
+        query.Completion.SetResult(null);
+        PendingCommandPollingCoordinator polling = new(state, new PendingCommandOutcomeResolver(state), query,
+            Microsoft.Extensions.Options.Options.Create(options), timeProvider: time);
+        time.Advance(TimeSpan.FromMilliseconds(duration - 2001));
+        (await polling.PollOnceAsync(TestContext.Current.CancellationToken)).ShouldBe(0);
+        state.GetByMessageId(message).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.Pending);
+        CommandExecutionAdmissionGate admission = new(state, time);
+        using (CommandExecutionAdmission blocked = admission.TryAcquire(new("Counter.Next")))
+        {
+            blocked.IsAdmitted.ShouldBeFalse();
+        }
+        time.Advance(TimeSpan.FromMilliseconds(1));
+        state.Snapshot().Count(entry => entry.Status == PendingCommandStatus.Pending).ShouldBe(0);
+        state.GetByMessageId(message).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.DegradedExhausted);
+        lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.DegradedExhausted, message, false);
+        (await polling.PollOnceAsync(TestContext.Current.CancellationToken)).ShouldBe(0);
+        query.Calls.ShouldBe(1);
+        using (CommandExecutionAdmission next = admission.TryAcquire(new("Counter.Next")))
+        {
+            next.IsAdmitted.ShouldBeTrue();
+        }
+        state.ResolveTerminal(PendingCommandTerminalObservation.Confirmed(message)).Status.ShouldBe(PendingCommandResolutionStatus.DuplicateIgnored);
+        state.GetByMessageId(message).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.DegradedExhausted);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task HeldQueryPreservesCallerCancellationAndFatalPropagation(bool fatal)
+    {
+        FakeTimeProvider time = new();
+        FcShellOptions options = new();
+        PendingCommandStateService state = new(Microsoft.Extensions.Options.Options.Create(options), CreateLifecycle(), new FixedUserContext(), time);
+        const string message = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        state.Register(Registration(CorrelationId, message, time.GetUtcNow()));
+        HeldPendingCommandStatusQuery query = new();
+        PendingCommandPollingCoordinator polling = new(state, new PendingCommandOutcomeResolver(state), query,
+            Microsoft.Extensions.Options.Options.Create(options), timeProvider: time);
+        using CancellationTokenSource cancellation = new();
+        Task<int> poll = polling.PollOnceAsync(cancellation.Token);
+        if (fatal)
+        {
+            query.Completion.TrySetException((OutOfMemoryException)Activator.CreateInstance(typeof(OutOfMemoryException), "fatal test provider")!);
+            await Should.ThrowAsync<OutOfMemoryException>(() => poll);
+        }
+        else
+        {
+            await cancellation.CancelAsync();
+            await Should.ThrowAsync<OperationCanceledException>(() => poll);
+            query.Completion.TrySetResult(null);
+        }
+        if (!fatal)
+        {
+            await query.CancellationFinished.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        }
+        state.GetByMessageId(message).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.Pending);
+    }
+
     private sealed class FixedUserContext : IUserContextAccessor {
         public string TenantId => "tenant-a";
         public string UserId => "user-a";
@@ -539,7 +611,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
 
         int processed = await sut.PollOnceAsync(TestContext.Current.CancellationToken);
 
-        processed.ShouldBe(1);
+        processed.ShouldBe(0);
         PendingCommandEntry expired = state.GetByMessageId("01ARZ3NDEKTSV4RRFFQ69G5FAV")!;
         expired.Status.ShouldBe(PendingCommandStatus.DegradedExhausted);
         expired.RejectionTitle.ShouldBeNull();
@@ -640,4 +712,30 @@ public sealed class PendingCommandPollingCoordinatorTests {
                 terminalMessageId));
         }
     }
+    [Theory]
+    [InlineData(120000)]
+    [InlineData(120001)]
+    public async Task ConfirmationReturningAtThePollingBudgetClosesAsExhausted(int elapsed)
+    {
+        FakeTimeProvider time = new();
+        ILifecycleStateService lifecycle = CreateLifecycle();
+        PendingCommandStateService state = new(Microsoft.Extensions.Options.Options.Create(new FcShellOptions()), lifecycle,
+            new FixedUserContext(), time, NullLogger<PendingCommandStateService>.Instance);
+        const string message = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        state.Register(Registration(CorrelationId, message, time.GetUtcNow()));
+        IPendingCommandStatusQuery query = Substitute.For<IPendingCommandStatusQuery>();
+#pragma warning disable CA2012 // NSubstitute owns each callback-created ValueTask; the coordinator awaits it once.
+        query.QueryAsync(Arg.Any<PendingCommandEntry>(), Arg.Any<CancellationToken>()).Returns(_ => {
+            time.Advance(TimeSpan.FromMilliseconds(elapsed));
+            return ValueTask.FromResult<PendingCommandOutcomeObservation?>(new(PendingCommandOutcomeSource.FallbackPolling,
+                PendingCommandTerminalOutcome.Confirmed, MessageId: message));
+        });
+#pragma warning restore CA2012
+        PendingCommandPollingCoordinator sut = new(state, new PendingCommandOutcomeResolver(state), query,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()), NullLogger<PendingCommandPollingCoordinator>.Instance, time);
+        (await sut.PollOnceAsync(TestContext.Current.CancellationToken)).ShouldBe(0);
+        state.GetByMessageId(message).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.DegradedExhausted);
+        lifecycle.DidNotReceive().Transition(CorrelationId, CommandLifecycleState.Confirmed, message, false);
+    }
+
 }

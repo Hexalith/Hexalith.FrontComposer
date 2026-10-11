@@ -60,6 +60,7 @@ public sealed class FcLifecycleWrapperIdempotentTests : LifecycleWrapperTestBase
         await cut.InvokeAsync(() => { });
 
         cut.Markup.ShouldNotContain("fc-idempotent");
+        cut.Find("[data-testid='fc-surface-status']").TextContent.ShouldBeEmpty();
     }
 
     [Fact]
@@ -74,4 +75,16 @@ public sealed class FcLifecycleWrapperIdempotentTests : LifecycleWrapperTestBase
 
     private CommandLifecycleTransition IdempotentConfirmed()
         => TransitionAt(CommandLifecycleState.Syncing, CommandLifecycleState.Confirmed, FakeTime.GetUtcNow(), idempotencyResolved: true);
+    [Theory]
+    [InlineData("en", "Command confirmed.")]
+    [InlineData("fr", "Commande confirmée.")]
+    public void WhitespaceIdempotentCopyUsesLocalizedConfirmation(string culture, string expected)
+    {
+        System.Globalization.CultureInfo.CurrentUICulture = new(culture);
+        var (cut, push) = RenderWrapperWithLiveService(idempotentInfoMessage: "  ");
+        push(IdempotentConfirmed());
+        cut.Find("[data-testid='fc-surface-status']").TextContent.ShouldBe(expected);
+        cut.Find("[data-testid='fc-idempotent']").TextContent.ShouldNotBeEmpty();
+    }
+
 }

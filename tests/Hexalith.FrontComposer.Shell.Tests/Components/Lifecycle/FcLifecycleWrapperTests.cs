@@ -138,7 +138,10 @@ public sealed class FcLifecycleWrapperTests : LifecycleWrapperTestBase {
 
         time.Advance(TimeSpan.FromMilliseconds(5_100));
 
-        cut.WaitForAssertion(() => cut.Markup.ShouldNotContain("Submission confirmed", Case.Insensitive));
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldNotContain("Submission confirmed", Case.Insensitive);
+            cut.Find("[data-testid='fc-surface-status']").TextContent.ShouldBeEmpty();
+        });
     }
 
     [Fact]

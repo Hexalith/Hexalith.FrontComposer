@@ -326,7 +326,7 @@ public sealed class DestructiveCommandRendererIntegrationTests : CommandRenderer
         }
 
         BlockedStatus().ShouldBe("This command did not run. Another command is already in progress.");
-        cut.FindAll("[data-testid='fc-command-blocked-status']").Count.ShouldBe(1);
+        cut.FindAll("[data-testid='fc-surface-status']").Count.ShouldBe(1);
         FcFocusModule.Invocations
             .Where(invocation => invocation.Identifier == "focusAttemptedControl")
             .ShouldHaveSingleItem()
@@ -339,7 +339,7 @@ public sealed class DestructiveCommandRendererIntegrationTests : CommandRenderer
         cut.WaitForAssertion(() => commandService.DispatchCount.ShouldBe(1));
         dialogService.ShowDialogCallCount.ShouldBe(1);
 
-        string BlockedStatus() => cut.Find("[data-testid='fc-command-blocked-status']").TextContent;
+        string BlockedStatus() => cut.Find("[data-testid='fc-surface-status']").TextContent;
     }
 
     [Theory]

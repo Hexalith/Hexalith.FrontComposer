@@ -11,6 +11,8 @@ internal enum McpTerminalOutcomeKind {
     IdempotentConfirmed,
     TimedOut,
     NeedsReview,
+    Warning,
+    DegradedExhausted,
 }
 
 internal sealed record McpLifecycleResult(
@@ -199,10 +201,41 @@ internal sealed record McpTerminalOutcome(
                 ReasonCategory: "needs_review",
                 DocsCode: "HFC-MCP-LIFECYCLE-NEEDS-REVIEW"));
 
+    public static McpTerminalOutcome Unconfirmed(CommandLifecycleState state)
+        => new(
+            state switch {
+                CommandLifecycleState.NeedsReview => McpTerminalOutcomeKind.NeedsReview,
+                CommandLifecycleState.Warning => McpTerminalOutcomeKind.Warning,
+                CommandLifecycleState.DegradedExhausted => McpTerminalOutcomeKind.DegradedExhausted,
+                _ => throw new ArgumentOutOfRangeException(nameof(state)),
+            },
+            Rejection: new McpRejectionPayload(
+                state switch {
+                    CommandLifecycleState.NeedsReview => "LIFECYCLE_NEEDS_REVIEW",
+                    CommandLifecycleState.Warning => "LIFECYCLE_WARNING",
+                    _ => "LIFECYCLE_DEGRADED_EXHAUSTED",
+                },
+                EntityId: null,
+                Message: state switch {
+                    CommandLifecycleState.NeedsReview => "Command outcome unconfirmed: the command requires review. Data impact is unknown.",
+                    CommandLifecycleState.Warning => "Command outcome unconfirmed: acceptance or completion could not be verified. Data impact is unknown.",
+                    _ => "Command outcome unconfirmed: the observation budget ended before completion was verified. Data impact is unknown.",
+                },
+                DataImpact: "Outcome is unconfirmed at the framework boundary.",
+                SuggestedAction: "poll",
+                RetryAppropriate: false,
+                ReasonCategory: ToCategory(state switch {
+                    CommandLifecycleState.NeedsReview => McpTerminalOutcomeKind.NeedsReview,
+                    CommandLifecycleState.Warning => McpTerminalOutcomeKind.Warning,
+                    _ => McpTerminalOutcomeKind.DegradedExhausted,
+                })));
+
     public JsonObject ToJson() {
         JsonObject json = new() {
             ["category"] = ToCategory(Kind),
-            ["retryAppropriate"] = Kind is not McpTerminalOutcomeKind.Confirmed and not McpTerminalOutcomeKind.IdempotentConfirmed,
+            ["retryAppropriate"] = Kind is not McpTerminalOutcomeKind.Confirmed and not McpTerminalOutcomeKind.IdempotentConfirmed
+                && (Kind is not McpTerminalOutcomeKind.Warning and not McpTerminalOutcomeKind.DegradedExhausted
+                    && (Kind is not McpTerminalOutcomeKind.NeedsReview || Rejection?.RetryAppropriate != false)),
         };
         if (Rejection is not null) {
             json["rejection"] = Rejection.ToJson();
@@ -222,6 +255,8 @@ internal sealed record McpTerminalOutcome(
             McpTerminalOutcomeKind.IdempotentConfirmed => "idempotent_confirmed",
             McpTerminalOutcomeKind.TimedOut => "timed_out",
             McpTerminalOutcomeKind.NeedsReview => "needs_review",
+            McpTerminalOutcomeKind.Warning => "warning",
+            McpTerminalOutcomeKind.DegradedExhausted => "degraded_exhausted",
             _ => "none",
         };
 }

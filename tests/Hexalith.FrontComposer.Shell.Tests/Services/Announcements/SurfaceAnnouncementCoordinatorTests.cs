@@ -9,6 +9,27 @@ namespace Hexalith.FrontComposer.Shell.Tests.Services.Announcements;
 public sealed class SurfaceAnnouncementCoordinatorTests
 {
     [Fact]
+    public void CancellingOrdinaryAndVersionedObserversCannotSuppressHealthyListeners()
+    {
+        using SurfaceAnnouncementCoordinator sut = new(new FakeTimeProvider());
+        List<string> ordinary = [];
+        List<string> versioned = [];
+        using IDisposable first = sut.Subscribe("surface", _ => throw new OperationCanceledException());
+        using IDisposable second = sut.Subscribe("surface", ordinary.Add);
+        using IDisposable third = sut.SubscribeWithReplay("surface", (message, _) =>
+        {
+            if (message.Length > 0) { throw new TaskCanceledException(); }
+        });
+        using IDisposable fourth = sut.SubscribeWithReplay("surface", (message, _) =>
+        {
+            if (message.Length > 0) { versioned.Add(message); }
+        });
+        sut.Announce("surface", "load", "loaded", "Data loaded.", immediate: true);
+        ordinary.ShouldBe(["Data loaded."]);
+        versioned.ShouldBe(["Data loaded."]);
+    }
+
+    [Fact]
     public void LifecycleBurstAnnouncesOnlyAcknowledgedThenImmediateTerminal()
     {
         FakeTimeProvider time = new();
@@ -75,6 +96,33 @@ public sealed class SurfaceAnnouncementCoordinatorTests
     }
 
     [Fact]
+    public void DeliveredIdentityCancelsAnotherPendingStateWithoutRepeatingSpeech()
+    {
+        FakeTimeProvider time = new();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        List<string> spoken = [];
+        using IDisposable subscription = sut.Subscribe("surface", spoken.Add);
+        sut.Announce("surface", "operation", "A", "Delivered A");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        sut.Announce("surface", "operation", "B", "Pending B");
+        time.Advance(TimeSpan.FromMilliseconds(100));
+        sut.Announce("surface", "operation", "A", "Delivered A");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        spoken.ShouldBe(["Delivered A"]);
+
+        sut.Announce("surface", "operation", "B", "Pending B");
+        sut.Announce("surface", "unrelated", "other", "Unrelated");
+        sut.Announce("surface", "operation", "A", "Delivered A");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        spoken.ShouldBe(["Delivered A", "Unrelated"]);
+
+        // B was cancelled before delivery and remains eligible if it returns later.
+        sut.Announce("surface", "operation", "B", "Current B");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        spoken.ShouldBe(["Delivered A", "Unrelated", "Current B"]);
+    }
+
+    [Fact]
     public void DistinctProjectionSurfacesDoNotCancelEachOther()
     {
         FakeTimeProvider time = new();
@@ -111,9 +159,13 @@ public sealed class SurfaceAnnouncementCoordinatorTests
 
         sut.Cancel("projection", "stale:1");
         sut.Current("projection").ShouldBe("Data loaded.");
+        sut.IsCurrent("projection", "load:2", "loaded").ShouldBeTrue();
+        sut.IsCurrent("projection", "load:2", "failure").ShouldBeFalse();
+        sut.IsCurrent("projection", "stale:1", "stale").ShouldBeFalse();
 
         sut.Cancel("projection", "load:2");
         sut.Current("projection").ShouldBeEmpty();
+        sut.IsCurrent("projection", "load:2", "loaded").ShouldBeFalse();
     }
 
     [Fact]
@@ -149,4 +201,57 @@ public sealed class SurfaceAnnouncementCoordinatorTests
         delivered.Select(static entry => entry.Message).ShouldBe(["First", "Second", string.Empty]);
         delivered.Select(static entry => entry.Revision).ShouldBe([1L, 2L, 3L]);
     }
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CancelledUndeliveredIdentityCanSpeakWhenItBecomesRelevantAgain(bool decisiveCancellation)
+    {
+        FakeTimeProvider time = new();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        List<string> spoken = [];
+        using IDisposable subscription = sut.Subscribe("surface", spoken.Add);
+        sut.Announce("surface", "connection", "reconnecting", "Reconnecting");
+        if (decisiveCancellation)
+        {
+            sut.Announce("surface", "result", "failed", "Failed", terminal: true);
+        }
+        else
+        {
+            sut.Cancel("surface", "connection");
+        }
+        sut.Announce("surface", "connection", "reconnecting", "Reconnecting");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        spoken.Count(message => message == "Reconnecting").ShouldBe(1);
+        sut.Cancel("surface", "connection");
+        sut.Announce("surface", "connection", "reconnecting", "Reconnecting");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        spoken.Count(message => message == "Reconnecting").ShouldBe(1);
+    }
+
+    [Fact]
+    public void ClearedGroupCallbackCannotFlushTheReplacementGroupWithTheSameVersion()
+    {
+        var time = new Hexalith.FrontComposer.Shell.Tests.Infrastructure.QueuedTimerTimeProvider();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        sut.Announce("surface", "same-group", "old", "Old scope");
+        sut.Clear("surface");
+        sut.Announce("surface", "same-group", "new", "New scope");
+        time.Callbacks[0]();
+        sut.Current("surface").ShouldBeEmpty();
+        time.Callbacks[1]();
+        sut.Current("surface").ShouldBe("New scope");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FatalSubscriberExceptionsPropagate(bool versioned)
+    {
+        using SurfaceAnnouncementCoordinator sut = new(new FakeTimeProvider());
+        using IDisposable subscription = versioned
+            ? sut.SubscribeWithReplay("surface", (message, _) => { if (message.Length > 0) { throw (OutOfMemoryException)Activator.CreateInstance(typeof(OutOfMemoryException), "fatal")!; } })
+            : sut.Subscribe("surface", _ => throw (OutOfMemoryException)Activator.CreateInstance(typeof(OutOfMemoryException), "fatal")!);
+        Should.Throw<OutOfMemoryException>(() => sut.Announce("surface", "operation", "terminal", "Done", terminal: true));
+    }
+
 }

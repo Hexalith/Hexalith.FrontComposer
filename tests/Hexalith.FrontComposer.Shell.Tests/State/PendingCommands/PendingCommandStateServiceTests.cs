@@ -16,6 +16,27 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.State.PendingCommands;
 
 public sealed class PendingCommandStateServiceTests {
+    [Fact]
+    public void QueuedAcceptanceDeadlineCannotExpireAReplacementScopeWithReusedIdentity()
+    {
+        var time = new Hexalith.FrontComposer.Shell.Tests.Infrastructure.QueuedTimerTimeProvider();
+        IUserContextAccessor user = ScopedUser();
+        using PendingCommandStateService state = new(Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            CreateLifecycle(), user, time);
+        state.Register(Registration() with { SubmittedAt = time.GetUtcNow() });
+        Action abandoned = time.Callbacks.Single();
+        user.TenantId.Returns("replacement-tenant");
+        state.GetByMessageId(MessageId).ShouldBeNull();
+        state.Register(Registration() with { SubmittedAt = time.GetUtcNow() });
+        PendingCommandEntry replacement = state.GetByMessageId(MessageId).ShouldNotBeNull();
+        abandoned();
+        state.GetByMessageId(MessageId).ShouldBeSameAs(replacement);
+        replacement.Status.ShouldBe(PendingCommandStatus.Pending);
+        state.Clear("scope-unavailable");
+        time.Callbacks.Last()();
+        state.Snapshot().ShouldBeEmpty();
+    }
+
     private const string MessageId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
     private const string CorrelationId = "01CPZ3NDEKTSV4RRFFQ69G5FAV";
     private const string SecondCorrelationId = "01DPZ3NDEKTSV4RRFFQ69G5FAV";
@@ -702,4 +723,21 @@ public sealed class PendingCommandStateServiceTests {
             Func<TState, Exception?, string> formatter) =>
             Interlocked.Exchange(ref _callback, null)?.Invoke();
     }
+    [Theory]
+    [InlineData(120000)]
+    [InlineData(120001)]
+    public void FirstConfirmedAtTheBudgetIsStoredAsExhausted(int elapsed)
+    {
+        FakeTimeProvider time = new();
+        ILifecycleStateService lifecycle = CreateLifecycle();
+        PendingCommandStateService state = new(Microsoft.Extensions.Options.Options.Create(new FcShellOptions()), lifecycle,
+            ScopedUser(), time, NullLogger<PendingCommandStateService>.Instance);
+        state.Register(Registration() with { SubmittedAt = time.GetUtcNow() });
+        time.Advance(TimeSpan.FromMilliseconds(elapsed));
+        PendingCommandResolutionResult result = state.ResolveTerminal(PendingCommandTerminalObservation.Confirmed(MessageId));
+        result.Entry.ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.DegradedExhausted);
+        lifecycle.DidNotReceive().Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId, false);
+        lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.DegradedExhausted, MessageId, false);
+    }
+
 }

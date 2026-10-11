@@ -113,6 +113,9 @@ public sealed class LoadedPageReducers {
             ResultsByPage = changedRequest
                 ? state.ResultsByPage.RemoveRange(state.ResultsByPage.Keys.Where(key => string.Equals(key.ViewKey, action.ViewKey, StringComparison.Ordinal)))
                 : state.ResultsByPage,
+            StalePages = changedRequest
+                ? state.StalePages.Except(state.StalePages.Where(key => string.Equals(key.ViewKey, action.ViewKey, StringComparison.Ordinal)))
+                : state.StalePages,
             FailureByKey = changedRequest ? state.FailureByKey.Remove(action.ViewKey) : state.FailureByKey,
             LastResultByKey = changedRequest ? state.LastResultByKey.Remove(action.ViewKey) : state.LastResultByKey,
             LastSuccessfulPrimaryByView = changedRequest ? state.LastSuccessfulPrimaryByView.Remove(action.ViewKey) : state.LastSuccessfulPrimaryByView,
@@ -223,6 +226,7 @@ public sealed class LoadedPageReducers {
             .Select(entry => entry.Value.ErrorMessage ?? "Am30QueryFailed")
             .FirstOrDefault();
         return state with {
+            StalePages = state.StalePages.Remove((action.ViewKey, action.Skip)),
             PagesByKey = nextPages,
             TotalCountByKey = nextTotal,
             LastElapsedMsByKey = nextElapsed,
@@ -236,6 +240,8 @@ public sealed class LoadedPageReducers {
             ResultsByPage = nextResults,
             ResultMetadataLimit = cap,
             ResultSequenceByView = state.ResultSequenceByView.SetItem(action.ViewKey, completed.Identity),
+            SuccessfulReadSequenceByView = state.SuccessfulReadSequenceByView.SetItem(action.ViewKey,
+                state.SuccessfulReadSequenceByView.GetValueOrDefault(action.ViewKey) + 1),
             LastSuccessfulPrimaryByView = action.Skip == 0
                 ? state.LastSuccessfulPrimaryByView.SetItem(action.ViewKey, completed)
                 : state.LastSuccessfulPrimaryByView,
@@ -264,7 +270,9 @@ public sealed class LoadedPageReducers {
         }
 
         (string viewKey, int skip) key = (action.ViewKey, action.Skip);
-        if (!state.PendingCompletionsByKey.TryGetValue(key, out TaskCompletionSource<object>? tcs)) {
+        if (!state.PendingCompletionsByKey.TryGetValue(key, out TaskCompletionSource<object>? tcs)
+            && (action.Completion is not null || action.OriginScopeGeneration is null))
+        {
             return state;
         }
 
@@ -272,7 +280,7 @@ public sealed class LoadedPageReducers {
             return state;
         }
 
-        _ = tcs.TrySetResult(action.CachedItems);
+        _ = tcs?.TrySetResult(action.CachedItems);
         ImmutableDictionary<(string ViewKey, int Skip), LoadedPageResult> nextResults = state.ResultsByPage;
         if (nextResults.TryGetValue(key, out LoadedPageResult? priorPage) && priorPage.Failed) {
             nextResults = nextResults.Remove(key);
@@ -282,9 +290,12 @@ public sealed class LoadedPageReducers {
             .Select(entry => entry.Value.ErrorMessage ?? "Am30QueryFailed")
             .FirstOrDefault();
         return state with {
+            StalePages = state.StalePages.Remove((action.ViewKey, action.Skip)),
             PendingCompletionsByKey = state.PendingCompletionsByKey.Remove(key),
             PendingStartedAtByKey = state.PendingStartedAtByKey.Remove(key),
             ResultsByPage = nextResults,
+            SuccessfulReadSequenceByView = state.SuccessfulReadSequenceByView.SetItem(action.ViewKey,
+                state.SuccessfulReadSequenceByView.GetValueOrDefault(action.ViewKey) + 1),
             FailureByKey = remainingFailure is null
                 ? state.FailureByKey.Remove(action.ViewKey)
                 : state.FailureByKey.SetItem(action.ViewKey, remainingFailure),
@@ -293,6 +304,17 @@ public sealed class LoadedPageReducers {
                 ? state.LastResultByKey.Remove(action.ViewKey)
                 : state.LastResultByKey,
         };
+    }
+
+    /// <summary>Labels only the matching originating scope and request after a failed background read.</summary>
+    [ReducerMethod]
+    public static LoadedPageState ReduceMarkProjectionStale(LoadedPageState state, MarkProjectionStaleAction action)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        return state.ScopeGeneration != action.OriginScopeGeneration
+            || IsStaleRequest(state, action.ViewKey, action.RequestIdentity, action.RequestGeneration)
+            ? state : state with { StalePages = state.StalePages.Add((action.ViewKey, action.Skip)) };
     }
 
     /// <summary>Resolves the matching TCS via <c>TrySetException</c> and removes the entry.</summary>

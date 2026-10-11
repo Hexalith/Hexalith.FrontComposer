@@ -359,7 +359,7 @@ public sealed partial class FrontComposerMcpLifecycleStore(
 
             bool becameTerminal = false;
             lock (_gate) {
-                bool currentTerminal = _state is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected;
+                bool currentTerminal = IsTerminalState(_state);
                 if (currentTerminal && transition.NewState != _state) {
                     return;
                 }
@@ -382,11 +382,21 @@ public sealed partial class FrontComposerMcpLifecycleStore(
                     _outcome = McpTerminalOutcome.GenericRejection();
                 }
 
+                else if (transition.NewState == CommandLifecycleState.IdempotentConfirmed && _outcome is null)
+                {
+                    _outcome = McpTerminalOutcome.IdempotentSuccess(Descriptor.Title);
+                }
+                else if (transition.NewState is CommandLifecycleState.NeedsReview or CommandLifecycleState.Warning
+                    or CommandLifecycleState.DegradedExhausted && _outcome is null)
+                {
+                    _outcome = McpTerminalOutcome.Unconfirmed(transition.NewState);
+                }
+
                 if (!sameStateRedelivery) {
                     AppendHistory(transition.NewState, transition.MessageId, transition.TimestampUtc, transition.IdempotencyResolved);
                 }
 
-                if (_state is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected && !_terminalRecorded) {
+                if (IsTerminalState(_state) && !_terminalRecorded) {
                     _terminalRecorded = true;
                     Volatile.Write(ref _isTerminal, 1);
                     becameTerminal = true;
@@ -410,7 +420,7 @@ public sealed partial class FrontComposerMcpLifecycleStore(
 
         public McpLifecycleSnapshot ToSnapshot(FrontComposerMcpOptions opts) {
             lock (_gate) {
-                bool terminal = _state is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected;
+                bool terminal = IsTerminalState(_state);
                 IReadOnlyList<McpLifecycleTransitionDto> agentHistory = [
                     .. _history.Where(t => t.State is not CommandLifecycleState.Idle
                         and not CommandLifecycleState.Submitting),
@@ -442,13 +452,18 @@ public sealed partial class FrontComposerMcpLifecycleStore(
             _timeoutTimer.Dispose();
         }
 
+        private static bool IsTerminalState(CommandLifecycleState state)
+            => state is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected
+                or CommandLifecycleState.IdempotentConfirmed or CommandLifecycleState.NeedsReview
+                or CommandLifecycleState.Warning or CommandLifecycleState.DegradedExhausted;
+
         private bool MarkSyntheticTerminal(McpTerminalOutcome outcome, DateTimeOffset? observedAtUtc = null) {
             if (Volatile.Read(ref _entryDisposed) != 0) {
                 return false;
             }
 
             lock (_gate) {
-                if (_state is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected) {
+                if (IsTerminalState(_state)) {
                     return false;
                 }
 

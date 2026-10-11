@@ -71,7 +71,7 @@ test.describe('Story 4.3: one-at-a-time execution policy', () => {
     const attemptedSubmit = incrementForm.getByRole('button', { name: 'Increment', exact: true });
     // Story 13.3 BH2-06 — the polite AM-20 node exists before the first blocked attempt, so its
     // first update is announced; record every text it shows to prove one speech per attempt.
-    const blockedStatus = incrementForm.getByTestId('fc-command-blocked-status');
+    const blockedStatus = incrementForm.getByTestId('fc-surface-status');
     await expect(blockedStatus).toHaveCount(1);
     await expect(blockedStatus).toHaveText('');
     await blockedStatus.evaluate((node) => {
@@ -86,7 +86,7 @@ test.describe('Story 4.3: one-at-a-time execution policy', () => {
     await attemptedSubmit.click();
 
     await expect(incrementForm).toContainText('This command did not run. Another command is already in progress.');
-    await expect(incrementForm.getByRole('status')).toHaveCount(1);
+    await expect(incrementForm.locator('[role="status"][aria-live="polite"]')).toHaveCount(1);
     await expect(blockedStatus).toHaveAttribute('aria-live', 'polite');
     await expect(blockedStatus).toHaveAttribute('aria-atomic', 'true');
     await expect(blockedStatus).toContainText('This command did not run. Another command is already in progress.');
@@ -137,7 +137,8 @@ test.describe('Story 4.3: one-at-a-time execution policy', () => {
 
     await attemptedSubmit.focus();
     await attemptedSubmit.press('Enter');
-    await expect(incrementForm.getByText(/Submitting/u)).toBeVisible();
+    // Submitting can finish before Playwright polls; Syncing proves admission until confirmation.
+    await lifecycle.expectState(INCREMENT_COMMAND_ID, 'syncing');
     await lifecycle.expectState(INCREMENT_COMMAND_ID, 'confirmed');
     await expect(page.getByText('IncrementCommand: confirmed.', { exact: true })).toBeVisible();
     await expect(incrementForm).toBeHidden();

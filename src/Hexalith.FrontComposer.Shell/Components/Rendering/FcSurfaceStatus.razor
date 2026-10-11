@@ -2,16 +2,34 @@
 @implements IDisposable
 @inject Hexalith.FrontComposer.Shell.Services.Announcements.ISurfaceAnnouncementCoordinator Announcements
 
-<div role="status" aria-live="polite" aria-atomic="true" data-testid="fc-surface-status">
-    @if (!string.IsNullOrEmpty(_message))
+@if (_ownsStatus)
+{
+<div role="status" aria-live="polite" aria-atomic="true" data-testid="fc-surface-status"
+     data-fc-status-message="@(BrowserManaged ? _message : null)"
+     data-fc-status-revision="@(BrowserManaged ? _messageRevision : (long?)null)">
+    @if (BrowserManaged)
+    {
+        @* This static child belongs to the scoped connectivity producer while a circuit is unavailable. *@
+        <span data-fc-browser-status></span>
+    }
+    else if (!string.IsNullOrEmpty(_message))
     {
         <span @key="_messageRevision" data-message-revision="@_messageRevision">@_message</span>
     }
 </div>
+}
 
 @code {
     [Parameter, EditorRequired]
     public string Surface { get; set; } = string.Empty;
+
+    /// <summary>Shares a single node with other standalone owners of this scoped surface.</summary>
+    [Parameter]
+    public bool ExclusiveOwner { get; set; }
+
+    /// <summary>Lets the scoped browser connectivity producer render this node without a server round trip.</summary>
+    [Parameter]
+    public bool BrowserManaged { get; set; }
 
     private string _message = string.Empty;
     private long _messageRevision;
@@ -20,21 +38,41 @@
     private long _bindingGeneration;
     private long _lastAppliedRevision = -1;
     private bool _disposed;
+    private bool _ownsStatus = true;
+    private bool _boundExclusiveOwner;
+    private Hexalith.FrontComposer.Shell.Services.Announcements.SurfaceStatusLease? _ownerLease;
 
     protected override void OnParametersSet()
     {
-        if (string.Equals(Surface, _boundSurface, StringComparison.Ordinal))
+        if (string.Equals(Surface, _boundSurface, StringComparison.Ordinal) && ExclusiveOwner == _boundExclusiveOwner)
         {
             return;
         }
 
-        _subscription?.Dispose();
-        _boundSurface = Surface;
         long bindingGeneration = ++_bindingGeneration;
+        _subscription?.Dispose();
+        _ownerLease?.Dispose();
+        _ownerLease = null;
+        _boundSurface = Surface;
+        _boundExclusiveOwner = ExclusiveOwner;
         _message = string.Empty;
         _lastAppliedRevision = -1;
         ++_messageRevision;
         string boundSurface = Surface;
+        _ownsStatus = true;
+        if (ExclusiveOwner)
+        {
+            _ownerLease = Hexalith.FrontComposer.Shell.Services.Announcements.SurfaceStatusOwnership.For(Announcements)
+                .Claim(boundSurface, owns => _ = InvokeAsync(() =>
+                {
+                    if (!_disposed && _bindingGeneration == bindingGeneration)
+                    {
+                        _ownsStatus = owns;
+                        StateHasChanged();
+                    }
+                }));
+            _ownsStatus = _ownerLease.IsOwner;
+        }
         _subscription = Announcements.SubscribeWithReplay(boundSurface, (message, revision) => _ = InvokeAsync(() =>
         {
             if (!_disposed
@@ -54,5 +92,6 @@
     {
         _disposed = true;
         _subscription?.Dispose();
+        _ownerLease?.Dispose();
     }
 }

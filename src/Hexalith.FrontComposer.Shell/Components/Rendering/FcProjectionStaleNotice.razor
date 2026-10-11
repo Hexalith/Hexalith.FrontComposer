@@ -7,8 +7,11 @@
 @inject ISurfaceAnnouncementCoordinator Announcements
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FcShellResources> Localizer
 
-@if (_visible) {
-    <p role="group" aria-live="off" data-testid="fc-projection-stale-notice">@Localizer["Am04Stale"]</p>
+@if (HasCachedRows) {
+    <p role="group" aria-live="off" hidden="@(!_visible)"
+       data-testid="@(_visible ? "fc-projection-stale-notice" : null)"
+       data-fc-browser-stale data-fc-server-stale="@(_visible ? "true" : "false")"
+       data-fc-cached-result="@_confirmedFreshness">@Localizer["Am04Stale"]</p>
 }
 
 @code {
@@ -21,22 +24,46 @@
     [Parameter]
     public bool HasFailedRefresh { get; set; }
 
+    /// <summary>Identifies genuine completed reads of the retained data, independently of connectivity.</summary>
+    [Parameter]
+    public string? FreshnessIdentity { get; set; }
+
+    /// <summary>Gets or sets the group of the current eligible query failure.</summary>
+    [Parameter]
+    public string? QueryFailureGroup { get; set; }
+
+    /// <summary>Gets or sets the event identity of the current eligible query failure.</summary>
+    [Parameter]
+    public string? QueryFailureIdentity { get; set; }
+
+    private readonly string _ownerId = Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture);
+    private string _boundSurface = string.Empty;
+    private bool _disposed;
     private IDisposable? _subscription;
     private ProjectionConnectionSnapshot _snapshot = new(ProjectionConnectionStatus.Connected, DateTimeOffset.MinValue, 0, null);
     private bool _visible;
     private string? _activeGroup;
     private string? _visibleReason;
     private long _episode;
+    private string? _confirmedFreshness;
 
     protected override void OnInitialized() {
-        _subscription = Connection.Subscribe(snapshot => _ = InvokeAsync(() => {
-            if (!ReferenceEquals(Connection.Current, snapshot)) {
+        _subscription = Connection.Subscribe(snapshot => {
+            if (_disposed)
+            {
                 return;
             }
-            _snapshot = snapshot;
-            Reconcile();
-            StateHasChanged();
-        }));
+            _ = InvokeAsync(() =>
+            {
+                if (_disposed || !ReferenceEquals(Connection.Current, snapshot))
+                {
+                    return;
+                }
+                _snapshot = snapshot;
+                Reconcile();
+                StateHasChanged();
+            });
+        });
     }
 
     protected override void OnParametersSet() {
@@ -45,6 +72,26 @@
     }
 
     private void Reconcile() {
+        if (_disposed)
+        {
+            return;
+        }
+        if (!string.Equals(_boundSurface, Surface, StringComparison.Ordinal))
+        {
+            if (_activeGroup is { } abandoned)
+            {
+                Announcements.Cancel(_boundSurface, abandoned);
+                _activeGroup = null;
+            }
+            _boundSurface = Surface;
+            _visible = false;
+            _visibleReason = null;
+            _confirmedFreshness = null;
+        }
+        if (!HasFailedRefresh && FreshnessIdentity is not null)
+        {
+            _confirmedFreshness = FreshnessIdentity;
+        }
         bool visible = HasCachedRows && (_snapshot.IsDisconnected || HasFailedRefresh);
         string reason = (_snapshot.BrowserOffline ? "browser-offline" : _snapshot.IsDisconnected ? "transport" : "online")
             + ":" + HasFailedRefresh;
@@ -53,22 +100,23 @@
         }
         _visible = visible;
         _visibleReason = visible ? reason : null;
-        string group = "stale:" + _episode.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        string group = "stale:" + _ownerId + ":" + _episode.ToString(System.Globalization.CultureInfo.InvariantCulture);
         if (_activeGroup is { } prior && (! _visible || !string.Equals(prior, group, StringComparison.Ordinal))) {
-            Announcements.Cancel(Surface, prior);
+            Announcements.Cancel(_boundSurface, prior);
             _activeGroup = null;
         }
         if (_visible) {
             _activeGroup = group;
             string staleMessage = Localizer["Am04Stale"];
-            // Query-failure speech is already terminal on this surface. Queuing the stale group
-            // would let its trailing window replace that message.
+            // Only the actual current query-failure event owns precedence over a stale warning.
+            // Earlier loaded or unrelated speech must yield even when its text is still present.
             bool failureOwnsSpeech = HasFailedRefresh
-                && Announcements.Current(Surface) is { Length: > 0 } current
-                && !string.Equals(current, staleMessage, StringComparison.Ordinal);
+                && QueryFailureGroup is { } failureGroup
+                && QueryFailureIdentity is { } failureIdentity
+                && Announcements.IsCurrent(_boundSurface, failureGroup, failureIdentity);
             if (!failureOwnsSpeech) {
                 Announcements.Announce(
-                    Surface,
+                    _boundSurface,
                     group,
                     "stale",
                     staleMessage);
@@ -77,9 +125,10 @@
     }
 
     public void Dispose() {
+        _disposed = true;
         _subscription?.Dispose();
         if (_activeGroup is { } group) {
-            Announcements.Cancel(Surface, group);
+            Announcements.Cancel(_boundSurface, group);
         }
     }
 }

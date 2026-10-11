@@ -52,6 +52,9 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
 
     /// <summary>Story 13.3 AM-20: when bound, the host renders the blocked-submit outcome because this form is not perceivable (zero-field inline). Invoked with true for each blocked attempt and false when a later attempt is admitted.</summary>
     [Parameter] public EventCallback<bool> OnBlockedSubmission { get; set; }
+    /// <summary>Gets or sets the visible host's shared announcement surface for a hidden form.</summary>
+    [Parameter] public string? AnnouncementSurface { get; set; }
+    private string FormAnnouncementSurface => AnnouncementSurface ?? "command-form:" + _formDomId;
 
     [Inject] private IState<IncrementCommandLifecycleState> LifecycleState { get; set; } = default!;
     [Inject] private IDispatcher Dispatcher { get; set; } = default!;
@@ -564,6 +567,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         // One owner per dispatch prevents callbacks retained by an earlier service invocation
         // from observing or mutating a later submit's lifecycle.
         object lifecycleCallbackGate = new();
+        var acceptedObservationTimes = new System.Collections.Generic.Dictionary<string, DateTimeOffset>(StringComparer.Ordinal);
         var unacceptedTerminalMessageIds = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
         var unacceptedTerminalMessageIdOrder = new System.Collections.Generic.Queue<string>();
         int lifecycleCallbackClosed = 0;
@@ -589,6 +593,14 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                 onLifecycleObservation: observation =>
                 {
                     if (System.Threading.Volatile.Read(ref lifecycleCallbackClosed) == 1) return;
+                    if (observation.State is CommandLifecycleState.Acknowledged or CommandLifecycleState.Syncing && observation.ObservedAt is { } acceptedAt
+                        && CanonicalCommandMessageId(observation.MessageId) is { } observedMessageId)
+                    {
+                        lock (lifecycleCallbackGate)
+                        {
+                            acceptedObservationTimes.TryAdd(observedMessageId, acceptedAt);
+                        }
+                    }
                     bool dispatchTerminalAction = false;
                     bool terminalApplied = false;
                     CommandLifecycleState storedTerminalState = observation.State;
@@ -671,7 +683,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                         switch (storedTerminalState)
                         {
                             case CommandLifecycleState.Syncing:
-                                Dispatcher.Dispatch(new IncrementCommandActions.SyncingAction(correlationId));
+                                Dispatcher.Dispatch(new IncrementCommandActions.SyncingAction(correlationId) { MessageId = observation.MessageId, ObservedAt = observation.ObservedAt });
                                 break;
                             case CommandLifecycleState.Confirmed:
                                 Dispatcher.Dispatch(new IncrementCommandActions.ConfirmedAction(correlationId));
@@ -720,6 +732,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                             ExpectedStatusSlot = commandTarget?.ExpectedStatus,
                             PriorStatusSlot = commandTarget?.PriorStatus,
                             TargetSnapshot = commandTarget,
+                            SubmittedAt = CanonicalCommandMessageId(result.MessageId) is { } acceptedMessageKey && acceptedObservationTimes.TryGetValue(acceptedMessageKey, out var acceptedAt) ? acceptedAt : null,
                             OriginScope = dispatchScope,
                             RequireOriginScope = validatedScope is not null,
                         });
@@ -813,7 +826,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                 if (Logger is not null) { LogCommandAcknowledgedDispatchSkipped(Logger, pendingRegistration.Status, correlationId); }
                 return;
             }
-            Dispatcher.Dispatch(new IncrementCommandActions.AcknowledgedAction(correlationId, result.MessageId));
+            Dispatcher.Dispatch(new IncrementCommandActions.AcknowledgedAction(correlationId, result.MessageId) { ObservedAt = pendingRegistration?.Entry?.SubmittedAt });
             if (Logger is not null) { LogCommandAcknowledged(Logger, correlationId, result.MessageId); }
         }
         catch (CommandValidationException ex)
@@ -975,13 +988,15 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
 
         builder.OpenComponent<FcLifecycleWrapper>(7);
         builder.AddAttribute(8, "CorrelationId", _submittedCorrelationId);
-        builder.AddAttribute(9, "CommandId", "increment");
-        builder.AddAttribute(10, "RejectionMessage", BuildFcLifecycleRejectionCopy());
-        builder.AddAttribute(11, "RejectionTitle", BuildFcLifecycleRejectionTitle());
-        builder.AddAttribute(12, "RejectionDetails", BuildFcLifecycleRejectionDetails());
-        builder.AddAttribute(13, "MappedRejection", LifecycleState.Value.HasMappedFieldErrors);
-        builder.AddAttribute(14, "DisplayLabel", "Send IncrementCommand");
-        builder.AddAttribute(15, "ChildContent", (RenderFragment)(__wrap =>
+        builder.AddAttribute(9, "StatusSurface", FormAnnouncementSurface);
+        builder.AddAttribute(10, "RenderStatus", !OnBlockedSubmission.HasDelegate);
+        builder.AddAttribute(11, "CommandId", "increment");
+        builder.AddAttribute(12, "RejectionMessage", BuildFcLifecycleRejectionCopy());
+        builder.AddAttribute(13, "RejectionTitle", BuildFcLifecycleRejectionTitle());
+        builder.AddAttribute(14, "RejectionDetails", BuildFcLifecycleRejectionDetails());
+        builder.AddAttribute(15, "MappedRejection", LifecycleState.Value.HasMappedFieldErrors);
+        builder.AddAttribute(16, "DisplayLabel", "Send IncrementCommand");
+        builder.AddAttribute(17, "ChildContent", (RenderFragment)(__wrap =>
         {
             __wrap.OpenComponent<EditForm>(0);
             __wrap.AddAttribute(1, "EditContext", _editContext);
@@ -1035,7 +1050,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                 {
                     string body = _serverWarning.Kind == CommandWarningKind.RetryableDispatchFailed ? ShellLocalizer["RetryableDispatchFailedFallback"].Value : (_serverWarning.Detail ?? _serverWarning.EntityLabel ?? "Please review the warning and try again.");
                     __msg.AddContent(0, body);
-                    if (_serverWarning.RetryAfter is not null)
+                    if (_serverWarning.Kind != CommandWarningKind.RetryableDispatchFailed && _serverWarning.RetryAfter is not null)
                     {
                         __msg.OpenElement(1, "div");
                         __msg.AddContent(2, $"Retry after {_serverWarning.RetryAfter.Value.TotalSeconds:0} seconds.");
@@ -1117,14 +1132,15 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             __b.CloseComponent();
             }
 
-            // Story 13.3 AM-20 — one always-mounted polite, atomic status node per form surface, after the
-            // submit control so its optional "View active command" action is next in tab order. A hidden
+            // Story 13.3 AM-20 — publish through the lifecycle wrapper's persistent polite node. Keep the
+            // View active command recovery after the submit control in tab order. A hidden
             // zero-field form lets its renderer own the node beside the visible trigger instead.
             if (!OnBlockedSubmission.HasDelegate)
             {
                 __b.OpenComponent<FcCommandBlockedOutcome>(55);
                 __b.AddAttribute(56, "AttemptedControlId", _formDomId + "-submit");
-                __b.AddComponentReferenceCapture(57, instance => _blockedOutcome = (FcCommandBlockedOutcome)instance);
+                __b.AddAttribute(57, "AnnouncementSurface", FormAnnouncementSurface);
+                __b.AddComponentReferenceCapture(58, instance => _blockedOutcome = (FcCommandBlockedOutcome)instance);
                 __b.CloseComponent();
             }
         });

@@ -107,6 +107,8 @@ public sealed class AnalyzerPolicyGovernanceTests
         ("tests/Hexalith.FrontComposer.Shell.Tests/Services/DataGridFocusScopeTests.cs", "FaultedImport_IsClearedSoLaterCallCanRetry", "CA2012", "902b042a7b61380cfc7a3fb9200e813478390857276b0b78512ea2f9a7c5d102"),
         ("tests/Hexalith.FrontComposer.Shell.Tests/State/PendingCommands/PendingCommandPollingCoordinatorTests.cs", "PollOnce_ProcessesPendingCommandsOldestFirstWithinCap", "CA2012", "093ed87f1e0172954994115d22a6bdd7fe2a99bfcfa3d25667b58dd815c8d2b5"),
         ("tests/Hexalith.FrontComposer.Shell.Tests/State/PendingCommands/PendingCommandPollingCoordinatorTests.cs", "PollOnce_StatusQueryThrows_LogsAndContinues", "CA2012", "e750323b3aac474e90b1e057a2f469faf1dba28be5a77cd34e5016f9bb012f19"),
+        // Story 13.4 continuation: preserve the historical spans and add only its approved callback fixture.
+        ("tests/Hexalith.FrontComposer.Shell.Tests/State/PendingCommands/PendingCommandPollingCoordinatorTests.cs", "ConfirmationReturningAtThePollingBudgetClosesAsExhausted", "CA2012", "422a335b3c7670533de3825cb32f7514c2d929dc308a02dcf0367a1ca3ac44f7"),
         ("tests/Hexalith.FrontComposer.Shell.Tests/Services/ExceptionGuardTests.cs", "IsFatal_FourAuthoritativeFatalTypes_ReturnsTrue", "CA2201", "aeff26a709cbc1e82a3309dc208b5f87c1c43eb27eb930082860ab30fc4821e2"),
         ("tests/Hexalith.FrontComposer.Shell.Tests/Services/ExceptionGuardTests.cs", "IsFatal_FourAuthoritativeFatalTypes_ReturnsTrue", "CA2201", "ca19a7b9a86cfc3bfa63599b300818d20a125e0907cba3d18f8d2e8391f23ccb"),
         ("tests/Hexalith.FrontComposer.Shell.Tests/Services/ExceptionGuardTests.cs", "IsFatal_FourAuthoritativeFatalTypes_ReturnsTrue", "CA2201", "7f93abfbe352155a226382b86ebed10c64080d476061f4d24d4a7dbe088993a0"),
@@ -1173,6 +1175,12 @@ public sealed class AnalyzerPolicyGovernanceTests
             "story1122-ca2012-pending-poll-valuetask-fixtures",
             "CA2012",
             "tests/Hexalith.FrontComposer.Shell.Tests/State/PendingCommands/PendingCommandPollingCoordinatorTests.cs: one directive-adjacent NSubstitute Returns statement in #PollOnce_ProcessesPendingCommandsOldestFirstWithinCap and one in #PollOnce_StatusQueryThrows_LogsAndContinues",
+            errors);
+        ValidateFixtureDisposition(
+            ledger,
+            "story134-ca2012-polling-budget-valuetask-fixture",
+            "CA2012",
+            "tests/Hexalith.FrontComposer.Shell.Tests/State/PendingCommands/PendingCommandPollingCoordinatorTests.cs#ConfirmationReturningAtThePollingBudgetClosesAsExhausted: one directive-adjacent NSubstitute Returns statement",
             errors);
         ValidateFixtureDisposition(
             ledger,

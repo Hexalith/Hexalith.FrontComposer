@@ -249,7 +249,7 @@ public sealed class FcShellOptions {
 
     /// <summary>
     /// Maximum duration in milliseconds that an unresolved pending command remains eligible for
-    /// command-status polling before the shell resolves it to <c>NeedsReview</c>. Default: 120 000 ms.
+    /// command-status polling before the shell resolves it to <c>DegradedExhausted</c>. Default: 120 000 ms.
     /// </summary>
     [Range(1_000, 3_600_000, ErrorMessage = "MaxPendingCommandPollingDurationMs must be between 1000 and 3600000.")]
     public int MaxPendingCommandPollingDurationMs { get; set; } = 120_000;
@@ -263,7 +263,8 @@ public sealed class FcShellOptions {
 
     /// <summary>
     /// Enables one same-MessageId retry after EventStore has accepted a command and the response
-    /// cannot be read completely. Pre-accept transport faults are never retried.
+    /// cannot be read completely. Zero disables this optional retry; legacy positive values
+    /// from 1 through 3 enable at most that single retry. Pre-accept transport faults are never retried.
     /// </summary>
     [Range(0, 3, ErrorMessage = "CommandDispatchRetryAttempts must be between 0 and 3.")]
     public int CommandDispatchRetryAttempts { get; set; } = 1;

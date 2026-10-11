@@ -446,7 +446,10 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
 
     private string? _pendingLoadingGroup;
     private string? _activeFailureGroup;
+    private string? _activeFailureIdentity;
+    private readonly System.Collections.Generic.HashSet<string> _resultAnnouncementGroups = new(System.StringComparer.Ordinal);
     private string? _lastPageRequestIdentity;
+    private string? _resultPageRequestIdentity;
     private long _pageRequestGeneration;
     private System.Threading.CancellationTokenSource? _failedRetryCancellation;
 
@@ -472,6 +475,10 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
     private static string AnnouncementSurface => "projection:" + _viewKey;
     private void AnnounceProjectionState()
     {
+        if (System.Threading.Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
         var state = OrderProjectionState.Value;
         if (state.RequiresScopedRequest) { SetFailureGroup(null); Announcements.Clear(AnnouncementSurface); return; }
         string operation = state.ActiveCorrelationId ?? state.LastResultCorrelationId ?? "initial";
@@ -479,16 +486,20 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         if (_pendingLoadingGroup is { } prior && (!state.IsLoading || !string.Equals(prior, group, StringComparison.Ordinal)))
         { Announcements.Cancel(AnnouncementSurface, prior); _pendingLoadingGroup = null; }
         if (state.Error is not null)
-        { SetFailureGroup(group); Announcements.Announce(AnnouncementSurface, group, "failure:" + (state.LastResultCorrelationId ?? operation), FcShellLocalizer["Am30QueryFailed"].Value, terminal: true); return; }
+        { SetFailureGroup(group, "failure:" + (state.LastResultCorrelationId ?? operation)); Announcements.Announce(AnnouncementSurface, group, _activeFailureIdentity!, FcShellLocalizer["Am30QueryFailed"].Value, terminal: true); return; }
         if (state.IsLoading)
-        { SetFailureGroup(null); _pendingLoadingGroup = group; Announcements.Announce(AnnouncementSurface, group, "loading", FcShellLocalizer["Am01Loading", "orders"].Value); return; }
+        { CancelResultAnnouncements(); SetFailureGroup(null); _pendingLoadingGroup = group; Announcements.Announce(AnnouncementSurface, group, "loading", FcShellLocalizer["Am01Loading", "orders"].Value); return; }
         bool filtered = AnyRealFilterActive(CurrentGridSnapshot());
+        string currentRequestIdentity = PageRequestIdentity(CurrentGridSnapshot());
+        if (_resultPageRequestIdentity is not null && !string.Equals(_resultPageRequestIdentity, currentRequestIdentity, StringComparison.Ordinal)) { CancelResultAnnouncements(); }
+        _resultPageRequestIdentity = currentRequestIdentity;
         if (LoadedPageState.Value.LastResultByKey.TryGetValue(_viewKey, out var page))
         {
-            if (!string.Equals(page.RequestIdentity, PageRequestIdentity(CurrentGridSnapshot()), StringComparison.Ordinal)) { SetFailureGroup(null); return; }
+            if (!string.Equals(page.RequestIdentity, currentRequestIdentity, StringComparison.Ordinal)) { SetFailureGroup(null); return; }
             string pageGroup = "page:" + page.Identity.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            if (page.Failed) { SetFailureGroup(pageGroup); Announcements.Announce(AnnouncementSurface, pageGroup, "failure", page.ErrorMessage ?? FcShellLocalizer["Am30QueryFailed"].Value, terminal: true); return; }
+            if (page.Failed) { SetFailureGroup(pageGroup, "failure"); Announcements.Announce(AnnouncementSurface, pageGroup, "failure", page.ErrorMessage ?? FcShellLocalizer["Am30QueryFailed"].Value, terminal: true); return; }
             SetFailureGroup(null);
+            if (page.Skip == 0 && page.TotalCount == 0 || page.OperatorInitiated) { _resultAnnouncementGroups.Add(pageGroup); }
             if (page.Skip == 0 && page.TotalCount == 0) { Announcements.Announce(AnnouncementSurface, pageGroup, filtered ? "filtered-zero" : "empty", filtered ? FcShellLocalizer["Am27NoMatches", "orders"].Value : FcShellLocalizer["Am02Empty", "orders"].Value, terminal: true); return; }
             if (page.OperatorInitiated) { Announcements.Announce(AnnouncementSurface, pageGroup, "loaded", FcShellLocalizer["Am03Loaded", "orders"].Value); }
             return;
@@ -497,15 +508,33 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         if (filtered) { return; }
         if (state.Items is null) { return; }
         if (state.Items.Count == 0)
-        { Announcements.Announce(AnnouncementSurface, group, "empty:" + (state.LastResultCorrelationId ?? operation) + "|" + filtered, filtered ? FcShellLocalizer["Am27NoMatches", "orders"].Value : FcShellLocalizer["Am02Empty", "orders"].Value, terminal: true); return; }
+        { _resultAnnouncementGroups.Add(group); Announcements.Announce(AnnouncementSurface, group, "empty:" + (state.LastResultCorrelationId ?? operation) + "|" + filtered, filtered ? FcShellLocalizer["Am27NoMatches", "orders"].Value : FcShellLocalizer["Am02Empty", "orders"].Value, terminal: true); return; }
         if (state.LastResultOperatorInitiated)
-        { Announcements.Announce(AnnouncementSurface, group, "data:" + (state.LastResultCorrelationId ?? operation) + "|" + state.Items.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), FcShellLocalizer["Am03Loaded", "orders"].Value); }
+        { _resultAnnouncementGroups.Add(group); Announcements.Announce(AnnouncementSurface, group, "data:" + (state.LastResultCorrelationId ?? operation) + "|" + state.Items.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), FcShellLocalizer["Am03Loaded", "orders"].Value); }
     }
 
-    private void SetFailureGroup(string? next)
+    private void CancelOwnedAnnouncements()
+    {
+        if (_pendingLoadingGroup is { } loading)
+        {
+            Announcements.Cancel(AnnouncementSurface, loading);
+            _pendingLoadingGroup = null;
+        }
+        SetFailureGroup(null);
+        CancelResultAnnouncements();
+    }
+
+    private void CancelResultAnnouncements()
+    {
+        foreach (string result in _resultAnnouncementGroups) { Announcements.Cancel(AnnouncementSurface, result); }
+        _resultAnnouncementGroups.Clear();
+    }
+
+    private void SetFailureGroup(string? next, string? identity = null)
     {
         if (_activeFailureGroup is { } prior && !string.Equals(prior, next, StringComparison.Ordinal)) { Announcements.Cancel(AnnouncementSurface, prior); }
         _activeFailureGroup = next;
+        _activeFailureIdentity = identity;
     }
 
     private async Task RetryProjectionAsync()
@@ -518,13 +547,19 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
             var retryCancellation = new System.Threading.CancellationTokenSource();
             _failedRetryCancellation?.Cancel();
             _failedRetryCancellation = retryCancellation;
-            Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadPageAction(
-                _viewKey, failedPage.Skip, failedPage.Take > 0 ? failedPage.Take : ShellOptions.Value.VirtualizationServerSideThreshold,
-                QueryFilters(snapshot), snapshot?.SortColumn, snapshot?.SortDescending ?? false, SearchQuery(snapshot),
-                completion, retryCancellation.Token)
-                { RequestIdentity = failedPage.RequestIdentity, RequestGeneration = LoadedPageState.Value.ActiveRequestGenerationByView.TryGetValue(_viewKey, out var generation) ? generation : null, OperatorInitiated = true, RegisteredAt = TimeProvider.GetUtcNow() });
-            try { _ = await completion.Task.WaitAsync(retryCancellation.Token).ConfigureAwait(true); }
-            catch (System.Exception) { /* The failed result is rendered by the existing view. */ }
+            try
+            {
+                Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadPageAction(
+                    _viewKey, failedPage.Skip, failedPage.Take > 0 ? failedPage.Take : ShellOptions.Value.VirtualizationServerSideThreshold,
+                    QueryFilters(snapshot), snapshot?.SortColumn, snapshot?.SortDescending ?? false, SearchQuery(snapshot),
+                    completion, retryCancellation.Token)
+                    { RequestIdentity = failedPage.RequestIdentity, RequestGeneration = LoadedPageState.Value.ActiveRequestGenerationByView.TryGetValue(_viewKey, out var generation) ? generation : null, OperatorInitiated = true, RegisteredAt = TimeProvider.GetUtcNow() });
+                _ = await completion.Task.WaitAsync(retryCancellation.Token).ConfigureAwait(true);
+            }
+            catch (System.Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException and not System.Threading.ThreadAbortException and not AccessViolationException)
+            {
+                /* The failed result is rendered by the existing view. */
+            }
             finally { if (System.Object.ReferenceEquals(_failedRetryCancellation, retryCancellation)) { _failedRetryCancellation = null; } retryCancellation.Dispose(); }
             return;
         }
@@ -606,8 +641,16 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         var searchQuery = SearchQuery(snapshot);
         var requestIdentity = PageRequestIdentity(snapshot);
         bool operatorInitiated = _lastPageRequestIdentity is null ? AnyRealFilterActive(snapshot) : !string.Equals(_lastPageRequestIdentity, requestIdentity, StringComparison.Ordinal);
-        if (_lastPageRequestIdentity is null || !string.Equals(_lastPageRequestIdentity, requestIdentity, StringComparison.Ordinal))
-        { _pageRequestGeneration = System.Math.Max(_pageRequestGeneration, LoadedPageState.Value.ActiveRequestGenerationByView.TryGetValue(_viewKey, out var observedGeneration) ? observedGeneration : 0) + 1; }
+        long observedGeneration = LoadedPageState.Value.ActiveRequestGenerationByView.TryGetValue(_viewKey, out var persistedGeneration) ? persistedGeneration : 0;
+        if (_lastPageRequestIdentity is null && LoadedPageState.Value.ActiveRequestIdentityByView.TryGetValue(_viewKey, out var persistedIdentity)
+            && string.Equals(persistedIdentity, requestIdentity, StringComparison.Ordinal))
+        {
+            _pageRequestGeneration = observedGeneration;
+        }
+        else if (_lastPageRequestIdentity is null || !string.Equals(_lastPageRequestIdentity, requestIdentity, StringComparison.Ordinal))
+        {
+            _pageRequestGeneration = System.Math.Max(_pageRequestGeneration, observedGeneration) + 1;
+        }
         _lastPageRequestIdentity = requestIdentity;
         Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadPageAction(
             viewKey: _viewKey,
@@ -650,6 +693,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
             return;
         }
 
+        CancelOwnedAnnouncements();
         _newItemIndicatorSubscription?.Dispose();
         _failedRetryCancellation?.Cancel();
         _newItemIndicatorSubscription = null;
@@ -944,6 +988,10 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
             return;
         }
         var state = OrderProjectionState.Value;
+        if (!state.RequiresScopedRequest && state.Error is not null && state.Items is not { Count: > 0 })
+        {
+            state = state with { Items = LoadedPageState.Value.PagesByKey.Where(entry => string.Equals(entry.Key.ViewKey, _viewKey, StringComparison.Ordinal)).SelectMany(entry => entry.Value).OfType<OrderProjection>().ToArray() };
+        }
         builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcSurfaceStatus>(0);
         builder.AddAttribute(1, "Surface", AnnouncementSurface);
         builder.CloseComponent();
@@ -989,42 +1037,49 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
 
         builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionStaleNotice>(14);
         builder.AddAttribute(15, "Surface", AnnouncementSurface);
-        builder.AddAttribute(16, "HasCachedRows", state.Items is { Count: > 0 } || LoadedPageState.Value.PagesByKey.Keys.Any(key => string.Equals(key.ViewKey, _viewKey, StringComparison.Ordinal)));
-        builder.AddAttribute(17, "HasFailedRefresh", state.Error is not null || CurrentFailedPage() is not null);
+        builder.AddAttribute(16, "QueryFailureGroup", _activeFailureGroup);
+        builder.AddAttribute(17, "QueryFailureIdentity", _activeFailureIdentity);
+        builder.AddAttribute(18, "HasCachedRows", state.Items is { Count: > 0 } || LoadedPageState.Value.PagesByKey.Keys.Any(key => string.Equals(key.ViewKey, _viewKey, StringComparison.Ordinal)));
+        builder.AddAttribute(19, "HasFailedRefresh", state.Error is not null || CurrentFailedPage() is not null || LoadedPageState.Value.StalePages.Any(key => string.Equals(key.ViewKey, _viewKey, StringComparison.Ordinal)));
+        builder.AddAttribute(20, "FreshnessIdentity", state.IsLoading || state.Error is not null ? null : state.LastResultCorrelationId + "|" + LoadedPageState.Value.SuccessfulReadSequenceByView.GetValueOrDefault(_viewKey).ToString(System.Globalization.CultureInfo.InvariantCulture));
         builder.CloseComponent();
 
         var failedPage = CurrentFailedPage();
         if (state.Error is not null || (failedPage is not null && !LoadedPageState.Value.PagesByKey.Keys.Any(key => string.Equals(key.ViewKey, _viewKey, StringComparison.Ordinal))))
         {
-            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionFailure>(18);
-            builder.AddAttribute(19, "Message", failedPage?.ErrorMessage);
-            builder.AddAttribute(20, "OnRetry", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, RetryProjectionAsync));
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionFailure>(21);
+            builder.AddAttribute(22, "Message", state.Error ?? failedPage?.ErrorMessage);
+            builder.AddAttribute(23, "OnRetry", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, RetryProjectionAsync));
             builder.CloseComponent();
-            return;
+            if (state.Items is not { Count: > 0 } && !LoadedPageState.Value.PagesByKey.Keys.Any(key => string.Equals(key.ViewKey, _viewKey, StringComparison.Ordinal)))
+            {
+                return;
+            }
         }
 
-        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcSlowQueryNotice>(21);
-        builder.AddAttribute(22, "ViewKey", _viewKey);
+        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcSlowQueryNotice>(24);
+        builder.AddAttribute(25, "ViewKey", _viewKey);
+        builder.AddAttribute(26, "SharedStatusOwner", true);
         builder.CloseComponent();
         if (state.IsLoading)
         {
-            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionLoadingSkeleton>(23);
-            builder.AddAttribute(24, "ColumnCount", 3);
-            builder.AddAttribute(25, "RowCount", 5);
-            builder.AddAttribute(26, "Layout", Hexalith.FrontComposer.Shell.Components.Rendering.SkeletonLayout.DataGrid);
-            builder.AddAttribute(27, "EntityLabel", "orders");
+            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionLoadingSkeleton>(27);
+            builder.AddAttribute(28, "ColumnCount", 3);
+            builder.AddAttribute(29, "RowCount", 5);
+            builder.AddAttribute(30, "Layout", Hexalith.FrontComposer.Shell.Components.Rendering.SkeletonLayout.DataGrid);
+            builder.AddAttribute(31, "EntityLabel", "orders");
             builder.CloseComponent();
             return;
         }
 
         if (state.Items is null || state.Items.Count == 0)
         {
-            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionEmptyPlaceholder>(28);
-            builder.AddAttribute(29, "ProjectionType", typeof(OrderProjection));
-            builder.AddAttribute(30, "Role", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)null);
-            builder.AddAttribute(31, "EntityPluralOverride", "orders");
-            builder.AddAttribute(32, "CtaCommandName", (string?)null);
-            builder.AddAttribute(33, "SuppressStandaloneStatus", true);
+            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionEmptyPlaceholder>(32);
+            builder.AddAttribute(33, "ProjectionType", typeof(OrderProjection));
+            builder.AddAttribute(34, "Role", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)null);
+            builder.AddAttribute(35, "EntityPluralOverride", "orders");
+            builder.AddAttribute(36, "CtaCommandName", (string?)null);
+            builder.AddAttribute(37, "SuppressStandaloneStatus", true);
             builder.CloseComponent();
             return;
         }
@@ -1322,34 +1377,35 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         var primaryPage = PrimaryCompletedPage();
         builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice>(101);
         builder.AddAttribute(102, "ViewKey", _viewKey);
-        builder.AddAttribute(103, "ItemsCount", primaryPage?.TotalCount ?? (LoadedPageState.Value.ActiveRequestIdentityByView.ContainsKey(_viewKey) ? 0 : state.Items.Count));
-        builder.AddAttribute(104, "AnyRealFilterActive", anyRealFilterActive);
-        builder.AddAttribute(105, "ResultIdentity", primaryPage?.Identity.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? state.LastResultCorrelationId ?? "initial");
+        builder.AddAttribute(103, "SharedStatusOwner", true);
+        builder.AddAttribute(104, "ItemsCount", primaryPage?.TotalCount ?? (LoadedPageState.Value.ActiveRequestIdentityByView.ContainsKey(_viewKey) ? 0 : state.Items.Count));
+        builder.AddAttribute(105, "AnyRealFilterActive", anyRealFilterActive);
+        builder.AddAttribute(106, "ResultIdentity", primaryPage?.Identity.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? state.LastResultCorrelationId ?? "initial");
         builder.CloseComponent();
 
         var inlineFailedPage = CurrentFailedPage();
-        if (inlineFailedPage is not null
+        if (state.Error is null && inlineFailedPage is not null
             && LoadedPageState.Value.PagesByKey.Keys.Any(key => string.Equals(key.ViewKey, _viewKey, StringComparison.Ordinal)))
         {
-            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionFailure>(106);
-            builder.AddAttribute(107, "Message", inlineFailedPage.ErrorMessage);
-            builder.AddAttribute(108, "OnRetry", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, RetryProjectionAsync));
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionFailure>(107);
+            builder.AddAttribute(108, "Message", inlineFailedPage.ErrorMessage);
+            builder.AddAttribute(109, "OnRetry", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, RetryProjectionAsync));
             builder.CloseComponent();
         }
 
-        builder.OpenRegion(109);
+        builder.OpenRegion(110);
         RenderNewItemIndicators(builder);
         builder.CloseRegion();
 
-        builder.OpenElement(110, "span");
-        builder.AddAttribute(111, "class", "fc-row-count");
-        builder.AddContent(112, $"{state.Items.Count} " + "orders");
+        builder.OpenElement(111, "span");
+        builder.AddAttribute(112, "class", "fc-row-count");
+        builder.AddContent(113, $"{state.Items.Count} " + "orders");
         builder.CloseElement();
 
-        builder.OpenElement(113, "div");
-        builder.AddAttribute(114, "class", GridHostClass());
-        builder.AddAttribute(115, "data-fc-datagrid", _viewKey);
-        builder.AddAttribute(116, "onscroll", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, OnScrollAsync));
+        builder.OpenElement(114, "div");
+        builder.AddAttribute(115, "class", GridHostClass());
+        builder.AddAttribute(116, "data-fc-datagrid", _viewKey);
+        builder.AddAttribute(117, "onscroll", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, OnScrollAsync));
 
         var __viewOverrideDescriptor = ProjectionViewOverrideRegistry.Resolve(typeof(OrderProjection), (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)null);
         if (__viewOverrideDescriptor is not null)
@@ -1370,9 +1426,9 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 rowRenderer: RenderTemplateRow,
                 fieldRenderer: RenderTemplateField);
 
-            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionViewOverrideHost<OrderProjection>>(117);
-            builder.AddAttribute(118, "Descriptor", __viewOverrideDescriptor);
-            builder.AddAttribute(119, "Context", __viewOverrideContext);
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionViewOverrideHost<OrderProjection>>(118);
+            builder.AddAttribute(119, "Descriptor", __viewOverrideDescriptor);
+            builder.AddAttribute(120, "Context", __viewOverrideContext);
             builder.CloseComponent();
         }
         else
@@ -1393,9 +1449,9 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 rowRenderer: RenderTemplateRow,
                 fieldRenderer: RenderTemplateField);
 
-            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionTemplateHost<OrderProjection>>(120);
-            builder.AddAttribute(121, "Descriptor", __templateDescriptor);
-            builder.AddAttribute(122, "Context", __templateContext);
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionTemplateHost<OrderProjection>>(121);
+            builder.AddAttribute(122, "Descriptor", __templateDescriptor);
+            builder.AddAttribute(123, "Context", __templateContext);
             builder.CloseComponent();
         }
         else

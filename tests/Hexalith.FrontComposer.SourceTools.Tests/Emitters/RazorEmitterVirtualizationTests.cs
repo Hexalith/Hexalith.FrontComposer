@@ -263,6 +263,7 @@ public sealed class RazorEmitterVirtualizationTests {
             + "    public int StateRemoveCount => OrderProjectionState.RemoveCount;\r\n\r\n"
             + "    public NonGridDisposeFixture() => OrderProjectionState.StateChanged += OnStateChanged;\r\n\r\n"
             + "    private void OnStateChanged(object? sender, EventArgs e) { }\r\n\r\n"
+            + "    private void CancelOwnedAnnouncements() { }\r\n\r\n"
             + disposeMethod.ToFullString()
             + "}\r\n\r\npublic sealed class RecordingState\r\n{\r\n"
             + "    private int _removeCount;\r\n"

@@ -8,10 +8,23 @@
 
 @inject IStringLocalizer<FcShellResources> Localizer
 
-<FcSurfaceStatus Surface="projection-connection" />
+<div @ref="_presentationHost" data-fc-connectivity-binding="@_episodeScope">
+<FcSurfaceStatus Surface="projection-connection" BrowserManaged="true" />
 
-@if (_visible) {
-    <div class="fc-projection-connection-status-host">
+@* Keep the inherited Fluent warning ready for a native offline event while the circuit is unreachable. *@
+<div class="fc-projection-connection-status-host" data-fc-browser-offline hidden="@(!_offline)">
+    <FluentMessageBar Intent="MessageBarIntent.Warning"
+                      AllowDismiss="false"
+                      role="group"
+                      aria-live="off"
+                      data-testid="@(_offline ? "fc-projection-connection-status" : "fc-browser-offline-status")"
+                      Class="fc-projection-connection-status">
+        @Localizer["Am30Offline"].Value
+    </FluentMessageBar>
+</div>
+
+@if (_visible && !_offline) {
+    <div class="fc-projection-connection-status-host" data-fc-server-connectivity>
         <FluentMessageBar Intent="@Intent"
                           AllowDismiss="false"
                           role="group"
@@ -22,6 +35,7 @@
         </FluentMessageBar>
     </div>
 }
+</div>
 
 @code {
     private bool _visible => _offline || _snapshot.Status is ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected

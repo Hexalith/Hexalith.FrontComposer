@@ -170,6 +170,24 @@ public sealed class ReconnectionReconciliationCoordinatorTests {
         state.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Reconciling);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FailedEligibleReadsDoNotBecomeRefreshedButNoLanesStillRecover(bool failed)
+    {
+        ProjectionReconciliationRefreshResult expected = failed
+            ? new(0, []) { FailedViewKeys = ["orders"] } : ProjectionReconciliationRefreshResult.Empty;
+        ReconnectionReconciliationStateService state = NewState();
+        FakeDispatcher dispatcher = new();
+        using ReconnectionReconciliationCoordinator sut = new(new TestScheduler(expected), state, dispatcher,
+            new FakeTimeProvider(FixedNow), NullLogger<ReconnectionReconciliationCoordinator>.Instance);
+        _ = await sut.ReconcileAsync(TestContext.Current.CancellationToken);
+        state.Current.Status.ShouldBe(failed ? ReconnectionReconciliationStatus.Idle : ReconnectionReconciliationStatus.Refreshed);
+        state.Current.Changed.ShouldBeFalse();
+        state.Current.DataRead.ShouldBeFalse();
+        dispatcher.Actions.OfType<MarkReconciliationSweepAction>().ShouldBeEmpty();
+    }
+
     private static ReconnectionReconciliationStateService NewState()
         => new(
             new FakeTimeProvider(FixedNow),

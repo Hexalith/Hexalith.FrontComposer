@@ -79,6 +79,7 @@ public sealed class EventStoreCommandClient(
         CancellationToken cancellationToken)
         where TCommand : class {
         ArgumentNullException.ThrowIfNull(command);
+        cancellationToken.ThrowIfCancellationRequested();
 
         EventStoreOptions current = options.Value;
         FcShellOptions currentShellOptions = shellOptions?.Value ?? new FcShellOptions();
@@ -111,17 +112,17 @@ public sealed class EventStoreCommandClient(
             request.Content = EventStoreRequestContent.Create(
                 new SubmitCommandRequest(messageId, tenant, domain, aggregateId, commandTypeName, payload),
                 current.MaxRequestBytes);
+            cancellationToken.ThrowIfCancellationRequested();
             HttpResponseMessage response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-            if (cancellationToken.IsCancellationRequested) {
+            if (cancellationToken.IsCancellationRequested && response.StatusCode != HttpStatusCode.Accepted) {
                 response.Dispose();
                 cancellationToken.ThrowIfCancellationRequested();
             }
             FrontComposerTelemetry.SetHttpStatus(activity, (int)response.StatusCode);
-            EventStoreCommandClassification classification = await classifier
-                .ClassifyCommandAsync(response, cancellationToken)
-                .ConfigureAwait(false);
-
             using (response) {
+                EventStoreCommandClassification classification = await classifier
+                    .ClassifyCommandAsync(response, cancellationToken)
+                    .ConfigureAwait(false);
 
                 if (!classification.IsAccepted) {
                     string failureCategory = classification.Failure?.GetType().Name ?? "UnexpectedStatus";
@@ -142,7 +143,7 @@ public sealed class EventStoreCommandClient(
                         response.Headers.Location is not null,
                         Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
                     if (IsRetryablePreAcceptFailure(classification.Failure)) {
-                        throw CreatePreAcceptWarning(currentShellOptions);
+                        throw CreatePreAcceptWarning();
                     }
 
                     throw classification.Failure!;
@@ -160,7 +161,29 @@ public sealed class EventStoreCommandClient(
                     observedAt = null;
                 }
 
-                string? responseCorrelationId = classification.CorrelationId;
+                // Admission must be observable before optional correlation recovery starts.
+                // Consumers use this original header anchor for the 10s/120s budgets.
+                try {
+                    onLifecycleObservation?.Invoke(new CommandLifecycleObservation(
+                        CommandLifecycleState.Syncing,
+                        messageId,
+                        CommandMateriality.Unknown,
+                        observedAt));
+                }
+                catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+                    lifecycleObservationFailure = lifecycleObservationFailure is null
+                        ? ex
+                        : new AggregateException(lifecycleObservationFailure, ex);
+                }
+
+                if (lifecycleObservationFailure is not null) {
+                    FrontComposerWarningLog.EventStoreLifecycleCallbackFailed(
+                        logger,
+                        messageId,
+                        lifecycleObservationFailure);
+                }
+
+                string? responseCorrelationId = NormalizeCorrelation(classification.CorrelationId);
                 if (responseCorrelationId is null) {
                     try {
                         responseCorrelationId = await ReadAcceptedCorrelationIdAsync(response, logger, commandTypeName, messageId, timeProvider ?? TimeProvider.System, cancellationToken).ConfigureAwait(false);
@@ -172,8 +195,7 @@ public sealed class EventStoreCommandClient(
                             client, current, currentShellOptions, messageId, tenant, domain, aggregateId,
                             commandTypeName, payload, cancellationToken).ConfigureAwait(false);
                     }
-                    catch (Exception ex) when ((ex is HttpRequestException or IOException or JsonException or TimeoutException or OperationCanceledException)
-                        && !cancellationToken.IsCancellationRequested) {
+                    catch (Exception ex) when (ex is HttpRequestException or IOException or JsonException or TimeoutException or OperationCanceledException) {
                         // The headers prove acceptance; an unreadable optional body only leaves
                         // correlation unknown. Polling still starts with the original MessageId.
                         responseCorrelationId = null;
@@ -188,26 +210,6 @@ public sealed class EventStoreCommandClient(
                     classification.Location,
                     classification.RetryAfter);
 
-                try {
-                    onLifecycleObservation?.Invoke(new CommandLifecycleObservation(
-                        CommandLifecycleState.Syncing,
-                        result.MessageId,
-                        CommandMateriality.Unknown,
-                        observedAt));
-                }
-                catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-                    lifecycleObservationFailure = lifecycleObservationFailure is null
-                        ? ex
-                        : new AggregateException(lifecycleObservationFailure, ex);
-                }
-
-                if (lifecycleObservationFailure is not null) {
-                    FrontComposerWarningLog.EventStoreLifecycleCallbackFailed(
-                        logger,
-                        result.MessageId,
-                        lifecycleObservationFailure);
-                }
-
                 FrontComposerTelemetry.SetOutcome(activity, "accepted");
                 return result;
             }
@@ -215,7 +217,7 @@ public sealed class EventStoreCommandClient(
         catch (HttpRequestException ex) when (IsRetryablePreAcceptFailure(ex)) {
             FrontComposerTelemetry.SetOutcome(activity, "rejected");
             FrontComposerTelemetry.SetFailure(activity, nameof(CommandWarningException));
-            throw CreatePreAcceptWarning(currentShellOptions);
+            throw CreatePreAcceptWarning();
         }
         catch (OperationCanceledException oce) when (cancellationToken.IsCancellationRequested
             || oce.CancellationToken.IsCancellationRequested) {
@@ -274,23 +276,36 @@ public sealed class EventStoreCommandClient(
         string commandTypeName,
         JsonElement payload,
         CancellationToken cancellationToken) {
-        await DelayBeforeRetryAsync(retryOptions, timeProvider ?? TimeProvider.System, cancellationToken).ConfigureAwait(false);
+        CancellationTokenSource recoveryCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        Task<string?>? recovery = null;
         try {
+            // Bound the complete optional recovery, even if a provider/transport ignores
+            // cancellation. A normal HttpClient timeout must not extend accepted feedback.
+            recovery = RetryAsync(recoveryCancellation.Token);
+            return await recovery.WaitAsync(TimeSpan.FromSeconds(2), timeProvider ?? TimeProvider.System, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+            // The first response already proved acceptance. A failed retry remains unconfirmed.
+            return null;
+        }
+        finally {
+            ObserveAcceptedCleanup(recoveryCancellation, recovery);
+        }
+
+        async Task<string?> RetryAsync(CancellationToken recoveryToken) {
+            await DelayBeforeRetryAsync(retryOptions, timeProvider ?? TimeProvider.System, recoveryToken).ConfigureAwait(false);
             using HttpRequestMessage retry = new(HttpMethod.Post, current.CommandEndpointPath);
-            await EventStoreHttp.ApplyAuthorizationAsync(retry, current, cancellationToken).ConfigureAwait(false);
+            await EventStoreHttp.ApplyAuthorizationAsync(retry, current, recoveryToken).ConfigureAwait(false);
+            recoveryToken.ThrowIfCancellationRequested();
             retry.Content = EventStoreRequestContent.Create(
                 new SubmitCommandRequest(messageId, tenant, domain, aggregateId, commandTypeName, payload),
                 current.MaxRequestBytes);
-            using HttpResponseMessage response = await client.SendAsync(retry, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
-            EventStoreCommandClassification repeated = await classifier.ClassifyCommandAsync(response, cancellationToken).ConfigureAwait(false);
+            using HttpResponseMessage response = await client.SendAsync(retry, HttpCompletionOption.ResponseHeadersRead, recoveryToken).ConfigureAwait(false);
+            recoveryToken.ThrowIfCancellationRequested();
+            EventStoreCommandClassification repeated = await classifier.ClassifyCommandAsync(response, recoveryToken).ConfigureAwait(false);
             return repeated.IsAccepted
-                ? repeated.CorrelationId ?? await ReadAcceptedCorrelationIdAsync(response, logger, commandTypeName, messageId, timeProvider ?? TimeProvider.System, cancellationToken).ConfigureAwait(false)
+                ? NormalizeCorrelation(repeated.CorrelationId) ?? await ReadAcceptedCorrelationIdAsync(response, logger, commandTypeName, messageId, timeProvider ?? TimeProvider.System, recoveryToken).ConfigureAwait(false)
                 : null;
-        }
-        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex) && !cancellationToken.IsCancellationRequested) {
-            // The first response already proved acceptance. A failed retry remains unconfirmed.
-            return null;
         }
     }
 
@@ -311,7 +326,7 @@ public sealed class EventStoreCommandClient(
             or HttpStatusCode.GatewayTimeout;
     }
 
-    private static CommandWarningException CreatePreAcceptWarning(FcShellOptions options)
+    private static CommandWarningException CreatePreAcceptWarning()
         => new(
             CommandWarningKind.RetryableDispatchFailed,
             new ProblemDetailsPayload(
@@ -320,8 +335,10 @@ public sealed class EventStoreCommandClient(
                 null,
                 null,
                 new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal),
-                Array.Empty<string>()),
-            TimeSpan.FromMilliseconds(options.CommandDispatchRetryDelayMs));
+                Array.Empty<string>()));
+
+    private static string? NormalizeCorrelation(string? correlationId)
+        => string.IsNullOrWhiteSpace(correlationId) ? null : correlationId;
 
     private static async Task<string?> ReadAcceptedCorrelationIdAsync(
         HttpResponseMessage response,
@@ -330,13 +347,47 @@ public sealed class EventStoreCommandClient(
         string messageId,
         TimeProvider time,
         CancellationToken cancellationToken) {
-        using CancellationTokenSource bodyCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        CancellationTokenSource bodyCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        Task<string?>? reading = null;
         try {
-            return await ReadCorrelationIdAsync(response, logger, commandType, messageId, bodyCancellation.Token)
-                .WaitAsync(TimeSpan.FromSeconds(2), time, cancellationToken).ConfigureAwait(false);
+            reading = ReadCorrelationIdAsync(response, logger, commandType, messageId, bodyCancellation.Token);
+            return await reading.WaitAsync(TimeSpan.FromSeconds(2), time, cancellationToken).ConfigureAwait(false);
         }
         finally {
-            await bodyCancellation.CancelAsync().ConfigureAwait(false);
+            ObserveAcceptedCleanup(bodyCancellation, reading);
+        }
+    }
+
+    private static void ObserveAcceptedCleanup(CancellationTokenSource cancellation, Task? recovery)
+    {
+        // CancelAsync schedules provider callbacks without blocking accepted return. Keep the
+        // source alive until callbacks and abandoned work settle, and observe every fault.
+        Task cleanup = CompleteAcceptedCleanupAsync(cancellation, recovery);
+        _ = cleanup.ContinueWith(
+            static completed => { _ = completed.Exception; },
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+    }
+
+    private static async Task CompleteAcceptedCleanupAsync(CancellationTokenSource cancellation, Task? recovery)
+    {
+        try
+        {
+            Task completion = Task.WhenAll(cancellation.CancelAsync(), recovery ?? Task.CompletedTask);
+            try
+            {
+                await completion.ConfigureAwait(false);
+            }
+            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)
+                && completion.Exception?.Flatten().InnerExceptions.Any(ExceptionGuard.IsFatal) != true)
+            {
+                // Optional cleanup cannot turn proven acceptance into a dispatch failure.
+            }
+        }
+        finally
+        {
+            cancellation.Dispose();
         }
     }
 
@@ -373,7 +424,8 @@ public sealed class EventStoreCommandClient(
                 throw new JsonException("The accepted response correlation has an invalid shape.");
             }
 
-            return value.GetString();
+            string? correlationId = value.GetString();
+            return NormalizeCorrelation(correlationId);
         }
         catch (JsonException) {
             // Reason intentionally omitted — JsonException.Message can echo response body fragments.

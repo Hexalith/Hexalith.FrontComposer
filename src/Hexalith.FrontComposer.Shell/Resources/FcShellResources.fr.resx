@@ -494,10 +494,10 @@
     <value>{0} mise(s) à jour de commande supplémentaire(s)</value>
   </data>
   <data name="RetryableDispatchFailedTitle" xml:space="preserve">
-    <value>La commande n'a pas été acceptée</value>
+    <value>Résultat de la commande inconnu</value>
   </data>
   <data name="RetryableDispatchFailedFallback" xml:space="preserve">
-    <value>EventStore n'a pas accepté la commande après une nouvelle tentative liée à une erreur transitoire. Vérifiez les données actuelles, puis renvoyez la commande quand vous êtes prêt.</value>
+    <value>Nous n'avons pas pu confirmer si la commande a été acceptée. Vérifiez son état avant de l'envoyer à nouveau.</value>
   </data>
   <data name="DevModeOverlayShortcutDescription" xml:space="preserve">
     <value>Afficher ou masquer le calque développeur</value>
@@ -660,4 +660,5 @@
   <data name="Am30QueryFailed" xml:space="preserve"><value>Les données n’ont pas pu être chargées.</value></data>
   <data name="Am30Offline" xml:space="preserve"><value>Vous êtes hors ligne. Les données ne peuvent pas être actualisées.</value></data>
   <data name="ProjectionRetry" xml:space="preserve"><value>Réessayer</value></data>
+  <data name="IdempotentInfoDefault" xml:space="preserve"><value>Cette action a déjà été confirmée — aucune action nécessaire.</value></data>
 </root>

@@ -395,10 +395,10 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
         _ = retrySut.RegisterLane(DefaultLane(viewKey));
 
         (await retrySut.TriggerReconciliationOnceAsync(1, TestContext.Current.CancellationToken))
-            .ShouldBe(ProjectionReconciliationRefreshResult.Empty);
+            .FailedViewKeys.ShouldBe([viewKey]);
         (await retrySut.TriggerReconciliationOnceAsync(2, TestContext.Current.CancellationToken))
             .ChangedViewKeys.ShouldBe([viewKey]);
-        throwingDispatcher.SuccessfulDispatchCount.ShouldBe(1);
+        throwingDispatcher.SuccessfulDispatchCount.ShouldBe(2); // Stale marker, then the successful page.
 
         TaskCompletionSource<bool> replayLoadStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource<ProjectionPageResult> releaseReplayLoad = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -788,9 +788,9 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
         _ = malformedSut.RegisterLane(DefaultLane(viewKey));
 
         (await malformedSut.TriggerReconciliationOnceAsync(1, TestContext.Current.CancellationToken))
-            .ShouldBe(ProjectionReconciliationRefreshResult.Empty);
+            .FailedViewKeys.ShouldBe([viewKey]);
         (await malformedSut.TriggerReconciliationOnceAsync(2, TestContext.Current.CancellationToken))
-            .ShouldBe(ProjectionReconciliationRefreshResult.Empty);
+            .FailedViewKeys.ShouldBe([viewKey]);
         malformedDispatcher.DidNotReceive().Dispatch(Arg.Any<LoadPageSucceededAction>());
         malformedDispatcher.DidNotReceive().Dispatch(Arg.Any<LoadPageNotModifiedAction>());
     }
@@ -1041,6 +1041,30 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
         (await sut.TriggerNudgeRefreshAsync("OrdersProjection", "acme", TestContext.Current.CancellationToken)).ShouldBe(0);
         _ = sut.RegisterLane(incumbent with { TenantId = "other" });
     }
+
+    [Fact]
+    public async Task FailedEligibleReadReportsFailureAndDispatchesOnlyScopedStaleness()
+    {
+        const string view = "acme:OrdersProjection";
+        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
+        loader.LoadPageAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<IImmutableDictionary<string, string>>(),
+            Arg.Any<string?>(), Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<ProjectionPageResult>(new InvalidOperationException("transport secret")));
+        MutableLoadedPageState pages = new(PageState(view, ["cached"], 1));
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        ProjectionFallbackRefreshScheduler sut = CreateScheduler(loader, dispatcher, pages);
+        using IDisposable registration = sut.RegisterLane(DefaultLane(view));
+        ProjectionReconciliationRefreshResult result = await sut.TriggerReconciliationOnceAsync(1, TestContext.Current.CancellationToken);
+        result.RefreshedCount.ShouldBe(0);
+        result.ChangedViewKeys.ShouldBeEmpty();
+        result.FailedViewKeys.ShouldBe([view]);
+        dispatcher.Received(1).Dispatch(Arg.Is<MarkProjectionStaleAction>(action => action.ViewKey == view && action.Skip == 0
+            && action.OriginScopeGeneration == pages.Value.ScopeGeneration));
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<LoadPageFailedAction>());
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<LoadPageSucceededAction>());
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<LoadPageNotModifiedAction>());
+    }
+
 
     private static ProjectionFallbackRefreshScheduler CreateScheduler(
         IProjectionPageLoader loader,

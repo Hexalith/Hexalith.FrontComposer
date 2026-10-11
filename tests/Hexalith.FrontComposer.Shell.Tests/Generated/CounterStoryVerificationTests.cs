@@ -956,7 +956,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         using CultureScope _ = new(CultureInfo.InvariantCulture);
 
         dispatcher.Dispatch(new StatusProjectionLoadedAction(
-            Guid.NewGuid().ToString(),
+            "status-null-and-boolean-snapshot",
             [
                 new StatusProjection { Name = null, IsEnabled = true },
                 new StatusProjection { Name = "Beta", IsEnabled = false },

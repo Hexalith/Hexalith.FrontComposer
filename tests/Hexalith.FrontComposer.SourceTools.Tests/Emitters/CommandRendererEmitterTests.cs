@@ -377,6 +377,8 @@ public class CommandRendererEmitterTests {
         outcome.ShouldBeLessThan(hiddenForm);
         source.ShouldContain("builder.AddAttribute(#, \"AttemptedControlId\", _triggerButtonId);");
         source.ShouldContain("builder.AddAttribute(#, \"Inline\", true);");
+        source.ShouldContain("builder.AddAttribute(#, \"AnnouncementSurface\", \"command-renderer:\" + _triggerButtonId);");
+        source.ShouldContain("builder.AddAttribute(#, \"OwnsSurfaceStatus\", true);");
         source.ShouldContain("builder.AddAttribute(#, \"OnBlockedSubmission\", EventCallback.Factory.Create<bool>(this, OnFormBlockedSubmissionAsync));");
         source.ShouldContain("return blocked ? _blockedOutcome.PresentAsync() : _blockedOutcome.ClearAsync();");
         oneField.ShouldNotContain("FcCommandBlockedOutcome");

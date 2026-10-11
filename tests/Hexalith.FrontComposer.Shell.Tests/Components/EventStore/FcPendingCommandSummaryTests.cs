@@ -51,6 +51,7 @@ public sealed class FcPendingCommandSummaryTests : LayoutComponentTestBase {
         cut.Markup.ShouldContain("intent=\"error\"", Case.Insensitive);
         cut.Markup.ShouldContain("data-allow-dismiss=\"false\"", Case.Insensitive);
         cut.Markup.ShouldContain("Save failed: No data changed.");
+        cut.Find("fluent-message-bar").GetAttribute("aria-live").ShouldBe("off");
     }
 
     [Fact]

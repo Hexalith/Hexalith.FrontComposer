@@ -8,19 +8,22 @@ namespace Hexalith.FrontComposer.Shell.Components.Rendering;
 /// badge content while no validated tenant and user scope is current. It carries only a localized
 /// heading and message, never tenant, user, or diagnostic values.
 /// </summary>
-public partial class FcScopeBlocked {
+public partial class FcScopeBlocked : IDisposable {
     private ElementReference _heading;
     private bool _focusRequested;
+    private bool _disposed;
 
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (_focusRequested) {
+        if (_disposed || _focusRequested) {
             return;
         }
 
         try {
             await _heading.FocusAsync(preventScroll: true).ConfigureAwait(true);
-            _focusRequested = true;
+            if (!_disposed) {
+                _focusRequested = true;
+            }
         }
         catch (JSDisconnectedException) {
         }
@@ -28,5 +31,13 @@ public partial class FcScopeBlocked {
         }
         catch (InvalidOperationException) {
         }
+        catch (OperationCanceledException) {
+        }
+    }
+
+    /// <inheritdoc />
+    public void Dispose() {
+        _disposed = true;
+        GC.SuppressFinalize(this);
     }
 }

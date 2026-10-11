@@ -1,4 +1,5 @@
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -80,8 +81,7 @@ public sealed class PendingCommandPollingCoordinator : IPendingCommandPollingCoo
             }
 
             try {
-                PendingCommandOutcomeObservation? observation = await _statusQuery
-                    .QueryAsync(current, cancellationToken)
+                PendingCommandOutcomeObservation? observation = await QueryBeforeDeadlineAsync(current, cancellationToken)
                     .ConfigureAwait(false);
 
                 // A response which finishes at or after the budget cannot reopen this local
@@ -128,7 +128,18 @@ public sealed class PendingCommandPollingCoordinator : IPendingCommandPollingCoo
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 throw;
             }
-            catch (Exception ex) {
+            catch (TimeoutException) when (IsExpired(current, _options.Value)) {
+                if (_pendingCommands.GetByMessageId(current.MessageId)?.Status == PendingCommandStatus.Pending) {
+                    PendingCommandOutcomeResolutionResult exhausted = _resolver.Resolve(new PendingCommandOutcomeObservation(
+                        PendingCommandOutcomeSource.FallbackPolling,
+                        PendingCommandTerminalOutcome.DegradedExhausted,
+                        MessageId: current.MessageId));
+                    if (exhausted.Status == PendingCommandOutcomeResolutionStatus.Resolved) {
+                        processed++;
+                    }
+                }
+            }
+            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
                 // Exception objects are intentionally not passed to the logger here; status-query
                 // failures can echo transport or payload data through exception messages.
                 FrontComposerLog.PendingCommandPollingFailed(_logger, ex.GetType().Name, entry.MessageId);
@@ -141,5 +152,44 @@ public sealed class PendingCommandPollingCoordinator : IPendingCommandPollingCoo
     private bool IsExpired(PendingCommandEntry entry, FcShellOptions options) {
         TimeSpan elapsed = _timeProvider.GetUtcNow() - entry.SubmittedAt;
         return elapsed.TotalMilliseconds >= options.MaxPendingCommandPollingDurationMs;
+    }
+
+    private async Task<PendingCommandOutcomeObservation?> QueryBeforeDeadlineAsync(
+        PendingCommandEntry entry, CancellationToken cancellationToken) {
+        CancellationTokenSource queryCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        Task<PendingCommandOutcomeObservation?>? query = null;
+        try {
+            query = _statusQuery.QueryAsync(entry, queryCancellation.Token).AsTask();
+            TimeSpan remaining = TimeSpan.FromMilliseconds(_options.Value.MaxPendingCommandPollingDurationMs)
+                - (_timeProvider.GetUtcNow() - entry.SubmittedAt);
+            if (remaining <= TimeSpan.Zero) {
+                throw new TimeoutException();
+            }
+            return await query.WaitAsync(remaining, _timeProvider, cancellationToken).ConfigureAwait(false);
+        }
+        finally {
+            // Provider cancellation callbacks may block. End local polling at the deadline and
+            // observe cleanup separately, retaining the token until abandoned work settles.
+            Task cleanup = CompleteQueryCleanupAsync(queryCancellation, query);
+            _ = cleanup.ContinueWith(static completed => { _ = completed.Exception; },
+                CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+        }
+    }
+
+    private static async Task CompleteQueryCleanupAsync(CancellationTokenSource cancellation, Task? query) {
+        try {
+            Task completion = Task.WhenAll(cancellation.CancelAsync(), query ?? Task.CompletedTask);
+            try {
+                await completion.ConfigureAwait(false);
+            }
+            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)
+                && completion.Exception?.Flatten().InnerExceptions.Any(ExceptionGuard.IsFatal) != true) {
+                // Abandoned transport evidence cannot replace a closed local outcome.
+            }
+        }
+        finally {
+            cancellation.Dispose();
+        }
     }
 }

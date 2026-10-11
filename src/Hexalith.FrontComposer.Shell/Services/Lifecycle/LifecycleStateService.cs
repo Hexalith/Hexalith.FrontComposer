@@ -104,7 +104,7 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             lock (entry) {
                 current = entry.State;
                 messageId = entry.MessageId;
-                originalAt = current is CommandLifecycleState.Syncing or CommandLifecycleState.Degraded
+                originalAt = current is CommandLifecycleState.Acknowledged or CommandLifecycleState.Syncing or CommandLifecycleState.Degraded
                     ? entry.AcceptedAt ?? entry.OriginalTransitionAt
                     : entry.OriginalTransitionAt;
             }
@@ -174,20 +174,33 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
         _ = TryTransitionForScope(ScopeGeneration, correlationId, newState, messageId, idempotencyResolved);
     }
 
+    /// <summary>Applies an accepted observation without replacing its original transport timestamp.</summary>
+    /// <param name="correlationId">The caller-side correlation key.</param>
+    /// <param name="newState">The observed lifecycle state.</param>
+    /// <param name="messageId">The original accepted MessageId.</param>
+    /// <param name="observedAt">The first proven acceptance time.</param>
+    public void TransitionObserved(string correlationId, CommandLifecycleState newState, string? messageId, DateTimeOffset observedAt)
+    {
+        ArgumentNullException.ThrowIfNull(correlationId);
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, typeof(LifecycleStateService));
+        _ = TryTransitionForScope(ScopeGeneration, correlationId, newState, messageId, false, observedAt);
+    }
+
     /// <summary>Transitions only while the scope captured by the caller is still current.</summary>
     internal bool TryTransitionForScope(
         long originatingGeneration,
         string correlationId,
         CommandLifecycleState newState,
         string? messageId,
-        bool idempotencyResolved) {
+        bool idempotencyResolved,
+        DateTimeOffset? observedAt = null) {
         CommandLifecycleTransition? transition;
         lock (_scopeGate) {
             if (originatingGeneration != _scopeGeneration) {
                 return false;
             }
 
-            transition = TransitionInScope(correlationId, newState, messageId, idempotencyResolved);
+            transition = TransitionInScope(correlationId, newState, messageId, idempotencyResolved, observedAt);
         }
 
         if (transition is not null && Volatile.Read(ref _scopeGeneration) == originatingGeneration) {
@@ -212,7 +225,8 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
         string correlationId,
         CommandLifecycleState newState,
         string? messageId,
-        bool idempotencyResolved) {
+        bool idempotencyResolved,
+        DateTimeOffset? observedAt) {
 
         DateTimeOffset now = _time.GetUtcNow();
         bool entryExistedBefore = _entries.TryGetValue(correlationId, out _);
@@ -246,6 +260,21 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
         lock (entry) {
             previous = entry.State;
 
+            // Optional accepted-body recovery can arrive after active progress. Enrich
+            // missing identity without regressing progress, replaying speech, or moving
+            // the acceptance anchor. Every terminal remains fully unchanged.
+            if ((newState is CommandLifecycleState.Acknowledged or CommandLifecycleState.Syncing)
+                && previous is CommandLifecycleState.Syncing or CommandLifecycleState.Degraded) {
+                if (entry.MessageId is null && messageId is not null) {
+                    entry.MessageId = messageId;
+                    RecordMessageId(messageId);
+                    return new CommandLifecycleTransition(
+                        correlationId, previous, previous, messageId, now,
+                        entry.AcceptedAt ?? entry.OriginalTransitionAt, IdempotencyResolved: false);
+                }
+                return null;
+            }
+
             if (!IsValidTransition(previous, newState)) {
                 FrontComposerHotPathLog.LifecycleInvalidTransition(
                     _logger,
@@ -269,10 +298,12 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             entry.State = newState;
             entry.LastUpdated = now;
             entry.OriginalTransitionAt = now;
-            if (newState == CommandLifecycleState.Acknowledged) {
-                entry.AcceptedAt ??= now;
+            if (newState is CommandLifecycleState.Acknowledged or CommandLifecycleState.Syncing or CommandLifecycleState.Degraded)
+            {
+                entry.AcceptedAt ??= observedAt ?? now;
             }
-            originalAt = now;
+            originalAt = newState is CommandLifecycleState.Acknowledged or CommandLifecycleState.Syncing or CommandLifecycleState.Degraded
+                ? entry.AcceptedAt!.Value : now;
             if (messageId is not null) {
                 entry.MessageId = messageId;
             }
@@ -418,6 +449,7 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
         return from switch {
             CommandLifecycleState.Idle => to == CommandLifecycleState.Submitting,
             CommandLifecycleState.Submitting => to is CommandLifecycleState.Acknowledged
+                or CommandLifecycleState.Syncing
                 or CommandLifecycleState.Confirmed
                 or CommandLifecycleState.Rejected
                 or CommandLifecycleState.IdempotentConfirmed

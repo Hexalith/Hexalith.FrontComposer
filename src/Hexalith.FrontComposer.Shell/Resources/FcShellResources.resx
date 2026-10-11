@@ -589,12 +589,12 @@
     <comment>Story 4.5 — overflow line when bounded MaxDetails truncates the visible list.</comment>
   </data>
   <data name="RetryableDispatchFailedTitle" xml:space="preserve">
-    <value>Command was not accepted</value>
-    <comment>Story 4.5 AC3 — generated command form warning title when pre-accept retry budget is exhausted.</comment>
+    <value>Command outcome unknown</value>
+    <comment>Story 4.5 AC3 — generated command form warning title when transport admission cannot be confirmed.</comment>
   </data>
   <data name="RetryableDispatchFailedFallback" xml:space="preserve">
-    <value>EventStore did not accept the command after retrying a transient dispatch failure. Review the current data and submit again when ready.</value>
-    <comment>Story 4.5 AC3 — generated command form fallback when pre-accept retry budget is exhausted.</comment>
+    <value>We could not confirm whether the command was accepted. Check its status before submitting again.</value>
+    <comment>Story 4.5 AC3 — generated command form fallback when transport admission cannot be confirmed.</comment>
   </data>
   <data name="DevModeOverlayShortcutDescription" xml:space="preserve">
     <value>Toggle developer overlay</value>
@@ -868,4 +868,5 @@
   <data name="Am30QueryFailed" xml:space="preserve"><value>Data could not be loaded.</value></data>
   <data name="Am30Offline" xml:space="preserve"><value>You are offline. Data cannot be refreshed.</value></data>
   <data name="ProjectionRetry" xml:space="preserve"><value>Retry</value></data>
+  <data name="IdempotentInfoDefault" xml:space="preserve"><value>This was already confirmed — no action needed.</value></data>
 </root>

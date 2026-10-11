@@ -807,7 +807,8 @@ public sealed class EventStoreClientTests {
             .ConfigureAwait(true);
 
         ex.Kind.ShouldBe(CommandWarningKind.RetryableDispatchFailed);
-        ex.RetryAfter.ShouldBe(TimeSpan.FromMilliseconds(1));
+        ex.RetryAfter.ShouldBeNull();
+        ex.Problem.Detail.ShouldNotBeNull().ShouldContain("Check its status before submitting again");
         handler.Bodies.Count.ShouldBe(1);
     }
 
@@ -984,4 +985,264 @@ public sealed class EventStoreClientTests {
             return Task.FromException<int>(new IOException("post-accept body read failed"));
         }
     }
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task AcceptedBlankCorrelationIsUnknownWithoutAnotherPost(string correlation)
+    {
+        RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.Accepted) {
+            Content = new StringContent(JsonSerializer.Serialize(new { correlationId = correlation }), Encoding.UTF8, "application/json"),
+        });
+        EventStoreCommandClient sut = new(new SingleClientFactory(handler), Options(), new FixedUlidFactory(),
+            new TestUserContextAccessor("acme", "alice"), EventStoreTestSupport.CreateClassifier(), NullLogger<EventStoreCommandClient>.Instance);
+        CommandResult result = await sut.DispatchAsync(new ShipOrderCommand(), TestContext.Current.CancellationToken);
+        result.Status.ShouldBe(CommandResultStatus.Accepted);
+        result.CorrelationId.ShouldBeNull();
+        handler.Bodies.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ClassificationFailureDisposesTheResponseContent()
+    {
+        using FailingReadStream stream = new();
+        HttpResponseMessage response = new(HttpStatusCode.BadRequest) { Content = new StreamContent(stream) };
+        RecordingHandler handler = new(_ => response);
+        EventStoreCommandClient sut = new(new SingleClientFactory(handler), Options(), new FixedUlidFactory(),
+            new TestUserContextAccessor("acme", "alice"), EventStoreTestSupport.CreateClassifier(), NullLogger<EventStoreCommandClient>.Instance);
+        await Should.ThrowAsync<IOException>(() => sut.DispatchAsync(new ShipOrderCommand(), TestContext.Current.CancellationToken));
+        await Should.ThrowAsync<ObjectDisposedException>(() => response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CancellationAfterAcceptedHeadersKeepsAcceptanceAndStopsOptionalWork(bool duringRetry)
+    {
+        FakeTimeProvider time = new();
+        DateTimeOffset headersAt = time.GetUtcNow();
+        using CancellationTokenSource cancellation = new();
+        using FailingReadStream failed = new();
+        using StallingAcceptedContent stalled = new();
+        RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.Accepted)
+        {
+            Content = duringRetry ? new StreamContent(failed) : stalled,
+        });
+        EventStoreCommandClient sut = new(new SingleClientFactory(handler), Options(), new FixedUlidFactory(),
+            new TestUserContextAccessor("acme", "alice"), EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStoreCommandClient>.Instance,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { CommandDispatchRetryAttempts = 1 }), time);
+        List<CommandLifecycleObservation> observations = [];
+        Task<CommandResult> dispatch = ((ICommandServiceWithLifecycleObservations)sut).DispatchAsync(
+            new ShipOrderCommand(), observations.Add, cancellation.Token);
+        await (duringRetry ? failed.ReadAttempted.Task : stalled.ReadAttempted.Task).WaitAsync(TestContext.Current.CancellationToken);
+        if (duringRetry)
+        {
+            await Task.Delay(20, TestContext.Current.CancellationToken);
+            dispatch.IsCompleted.ShouldBeFalse();
+        }
+        await cancellation.CancelAsync();
+        CommandResult accepted = await dispatch.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        accepted.Status.ShouldBe(CommandResultStatus.Accepted);
+        accepted.CorrelationId.ShouldBeNull();
+        accepted.MessageId.ShouldBe("01HVTESTULID");
+        observations.ShouldHaveSingleItem().ObservedAt.ShouldBe(headersAt);
+        time.Advance(TimeSpan.FromSeconds(1));
+        handler.Requests.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task CancellationBeforeAdmissionPropagatesWithoutSendingOrObservingAcceptance()
+    {
+        using CancellationTokenSource cancellation = new();
+        await cancellation.CancelAsync();
+        RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.Accepted));
+        EventStoreCommandClient sut = new(new SingleClientFactory(handler), Options(), new FixedUlidFactory(),
+            new TestUserContextAccessor("acme", "alice"), EventStoreTestSupport.CreateClassifier(), NullLogger<EventStoreCommandClient>.Instance);
+        List<CommandLifecycleObservation> observations = [];
+        await Should.ThrowAsync<OperationCanceledException>(() => ((ICommandServiceWithLifecycleObservations)sut)
+            .DispatchAsync(new ShipOrderCommand(), observations.Add, cancellation.Token));
+        observations.ShouldBeEmpty();
+        handler.Requests.ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ProvenAcceptanceIsObservedBeforeStalledRetryAndEntireRecoveryIsBounded(bool stalledSend)
+    {
+        FakeTimeProvider time = new();
+        DateTimeOffset headersAt = time.GetUtcNow();
+        using StalledPostAcknowledgementHandler handler = new(stalledSend);
+        EventStoreCommandClient sut = new(new SingleClientFactory(handler), Options(), new FixedUlidFactory(),
+            new TestUserContextAccessor("acme", "alice"), EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStoreCommandClient>.Instance,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { CommandDispatchRetryAttempts = 1 }), time);
+        List<CommandLifecycleObservation> observations = [];
+        Task<CommandResult> dispatch = ((ICommandServiceWithLifecycleObservations)sut).DispatchAsync(
+            new ShipOrderCommand(), observations.Add, TestContext.Current.CancellationToken);
+        observations.ShouldHaveSingleItem().State.ShouldBe(CommandLifecycleState.Syncing);
+        observations.Single().ObservedAt.ShouldBe(headersAt);
+        dispatch.IsCompleted.ShouldBeFalse();
+        time.Advance(TimeSpan.FromMilliseconds(249));
+        handler.Bodies.Count.ShouldBe(1);
+        time.Advance(TimeSpan.FromMilliseconds(1));
+        await handler.RetryEntered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        if (!stalledSend) { await handler.StalledBody.ReadAttempted.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken); }
+        time.Advance(TimeSpan.FromMilliseconds(1749));
+        dispatch.IsCompleted.ShouldBeFalse();
+        time.Advance(TimeSpan.FromMilliseconds(1));
+        CommandResult accepted = await dispatch.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        accepted.Status.ShouldBe(CommandResultStatus.Accepted);
+        accepted.MessageId.ShouldBe("01HVTESTULID");
+        accepted.CorrelationId.ShouldBeNull();
+        observations.Count.ShouldBe(1);
+        CancellationToken abandonedToken = stalledSend ? handler.RetryToken : handler.StalledBody.ObservedToken;
+        TaskCompletionSource cancellationObserved = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using CancellationTokenRegistration cancellationRegistration = abandonedToken.Register(() => cancellationObserved.TrySetResult());
+        await cancellationObserved.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        abandonedToken.IsCancellationRequested.ShouldBeTrue();
+        handler.Bodies.Count.ShouldBe(2);
+        using JsonDocument original = JsonDocument.Parse(handler.Bodies[0]);
+        using JsonDocument retry = JsonDocument.Parse(handler.Bodies[1]);
+        retry.RootElement.GetProperty("messageId").GetString().ShouldBe(original.RootElement.GetProperty("messageId").GetString());
+        handler.ReleaseRetry.TrySetResult(new(HttpStatusCode.Accepted));
+        time.Advance(TimeSpan.FromSeconds(10));
+        handler.Bodies.Count.ShouldBe(2);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OptionalRetryDelayAndAuthorizationShareTheRecoveryBudget(bool stalledAuthorization)
+    {
+        FakeTimeProvider time = new();
+        TaskCompletionSource<string?> token = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<object> authorizing = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        int authorizationCalls = 0;
+        EventStoreOptions options = Options().Value;
+        options.AccessTokenProvider = _ => ++authorizationCalls == 1
+            ? ValueTask.FromResult<string?>("token")
+            : AwaitToken();
+        ValueTask<string?> AwaitToken()
+        {
+            authorizing.TrySetResult(new object());
+            return new(token.Task);
+        }
+        RecordingHandler handler = new(_ => new(HttpStatusCode.Accepted) { Content = new StringContent("{", Encoding.UTF8, "application/json") });
+        EventStoreCommandClient sut = new(new SingleClientFactory(handler), Microsoft.Extensions.Options.Options.Create(options), new FixedUlidFactory(),
+            new TestUserContextAccessor("acme", "alice"), EventStoreTestSupport.CreateClassifier(), NullLogger<EventStoreCommandClient>.Instance,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions {
+                CommandDispatchRetryAttempts = 1, CommandDispatchRetryDelayMs = stalledAuthorization ? 250 : 3000,
+            }), time);
+        List<CommandLifecycleObservation> observations = [];
+        Task<CommandResult> dispatch = ((ICommandServiceWithLifecycleObservations)sut).DispatchAsync(
+            new ShipOrderCommand(), observations.Add, TestContext.Current.CancellationToken);
+        observations.ShouldHaveSingleItem().ObservedAt.ShouldBe(time.GetUtcNow());
+        if (stalledAuthorization)
+        {
+            time.Advance(TimeSpan.FromMilliseconds(250));
+            await authorizing.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        }
+        time.Advance(TimeSpan.FromMilliseconds(stalledAuthorization ? 1750 : 2000));
+        CommandResult accepted = await dispatch.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        accepted.Status.ShouldBe(CommandResultStatus.Accepted);
+        accepted.CorrelationId.ShouldBeNull();
+        token.TrySetResult("late token");
+        time.Advance(TimeSpan.FromSeconds(10));
+        handler.Bodies.Count.ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task AcceptedRecoveryReturnsAtItsBoundWhileCancellationCleanupBlocksOrThrows(bool duringRetry, bool throwingCallback)
+    {
+        FakeTimeProvider time = new();
+        using BlockingAcceptedCancellationContent content = new(throwingCallback);
+        int sends = 0;
+        RecordingHandler handler = new(_ => new(HttpStatusCode.Accepted)
+        {
+            Content = duringRetry && ++sends == 1
+                ? new StringContent("{", Encoding.UTF8, "application/json") : content,
+        });
+        EventStoreCommandClient sut = new(new SingleClientFactory(handler), Options(), new FixedUlidFactory(),
+            new TestUserContextAccessor("acme", "alice"), EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStoreCommandClient>.Instance,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { CommandDispatchRetryAttempts = duringRetry ? 1 : 0 }), time);
+        List<CommandLifecycleObservation> observations = [];
+        DateTimeOffset headersAt = time.GetUtcNow();
+        Task<CommandResult> dispatch = ((ICommandServiceWithLifecycleObservations)sut).DispatchAsync(
+            new ShipOrderCommand(), observations.Add, TestContext.Current.CancellationToken);
+        try
+        {
+            if (duringRetry) { time.Advance(TimeSpan.FromMilliseconds(250)); }
+            await content.ReadAttempted.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            time.Advance(TimeSpan.FromMilliseconds(duringRetry ? 1749 : 1999));
+            dispatch.IsCompleted.ShouldBeFalse();
+            time.Advance(TimeSpan.FromMilliseconds(1));
+            await content.CancellationEntered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            content.CancellationCompleted.Task.IsCompleted.ShouldBeFalse();
+            CommandResult accepted = await dispatch.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            accepted.Status.ShouldBe(CommandResultStatus.Accepted);
+            accepted.MessageId.ShouldBe("01HVTESTULID");
+            accepted.CorrelationId.ShouldBeNull();
+            observations.ShouldHaveSingleItem().ObservedAt.ShouldBe(headersAt);
+            handler.Bodies.Count.ShouldBe(duringRetry ? 2 : 1);
+            if (duringRetry)
+            {
+                using JsonDocument first = JsonDocument.Parse(handler.Bodies[0]);
+                using JsonDocument second = JsonDocument.Parse(handler.Bodies[1]);
+                first.RootElement.GetProperty("messageId").GetString()
+                    .ShouldBe(second.RootElement.GetProperty("messageId").GetString());
+            }
+        }
+        finally
+        {
+            content.ReleaseCancellation();
+            await content.CancellationCompleted.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            await content.ReadCompleted.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        }
+        // Cleanup includes the callback fault and abandoned read before releasing the source.
+        SpinWait.SpinUntil(() =>
+        {
+            try { _ = content.ObservedToken.WaitHandle; return false; }
+            catch (ObjectDisposedException) { return true; }
+        }, TimeSpan.FromSeconds(5)).ShouldBeTrue();
+        (await dispatch.ConfigureAwait(true)).Status.ShouldBe(CommandResultStatus.Accepted);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task AcceptedCleanupDoesNotIsolateCallbackOrDirectOrNestedFatalFaults(int faultSource)
+    {
+        using CancellationTokenSource cancellation = new();
+        OutOfMemoryException fatal = (OutOfMemoryException)Activator.CreateInstance(typeof(OutOfMemoryException), "fatal cleanup")!;
+        using CancellationTokenRegistration registration = cancellation.Token.Register(() =>
+        {
+            if (faultSource == 0) { System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(fatal).Throw(); }
+        });
+        Task recovery = faultSource switch
+        {
+            1 => Task.FromException(fatal),
+            2 => Task.FromException(new AggregateException(fatal)),
+            _ => Task.CompletedTask,
+        };
+        Task cleanup = (Task)typeof(EventStoreCommandClient)
+            .GetMethod("CompleteAcceptedCleanupAsync", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!
+            .Invoke(null, [cancellation, recovery])!;
+        if (faultSource == 1)
+        {
+            (await Should.ThrowAsync<OutOfMemoryException>(() => cleanup)).ShouldBeSameAs(fatal);
+        }
+        else
+        {
+            AggregateException failure = await Should.ThrowAsync<AggregateException>(() => cleanup);
+            failure.Flatten().InnerExceptions.ShouldContain(fatal);
+        }
+    }
+
 }

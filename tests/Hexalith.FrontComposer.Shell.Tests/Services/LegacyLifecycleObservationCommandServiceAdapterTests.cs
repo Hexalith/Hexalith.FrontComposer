@@ -295,9 +295,43 @@ public sealed class LegacyLifecycleObservationCommandServiceAdapterTests {
         Should.Throw<ObjectDisposedException>(() => _ = inner.ObservedToken.WaitHandle);
     }
 
+    [Theory]
+    [InlineData(CommandLifecycleState.IdempotentConfirmed, false)]
+    [InlineData(CommandLifecycleState.NeedsReview, false)]
+    [InlineData(CommandLifecycleState.Warning, false)]
+    [InlineData(CommandLifecycleState.DegradedExhausted, false)]
+    [InlineData(CommandLifecycleState.IdempotentConfirmed, true)]
+    [InlineData(CommandLifecycleState.NeedsReview, true)]
+    [InlineData(CommandLifecycleState.Warning, true)]
+    [InlineData(CommandLifecycleState.DegradedExhausted, true)]
+    public async Task AppendedTerminalClosesMatchingProducerBeforeOrAfterAcceptance(CommandLifecycleState terminal, bool beforeAcceptance)
+    {
+        FakeTimeProvider time = new();
+        RetainedCallbackService inner = new(preAcceptTerminal: beforeAcceptance ? terminal : null);
+        LegacyLifecycleObservationCommandServiceAdapter sut = new(inner, time);
+        List<CommandLifecycleObservation> observations = [];
+        CommandResult result = await sut.DispatchAsync(new object(), observations.Add, TestContext.Current.CancellationToken);
+        if (!beforeAcceptance)
+        {
+            inner.Callback.ShouldNotBeNull()(terminal, "01BRZ3NDEKTSV4RRFFQ69G5FAV");
+            observations.ShouldBeEmpty();
+            inner.Callback(terminal, MessageId);
+        }
+        inner.Callback.ShouldNotBeNull()(CommandLifecycleState.Confirmed, MessageId);
+        inner.Callback(CommandLifecycleState.Syncing, MessageId);
+        time.Advance(TimeSpan.FromMinutes(3));
+        result.Status.ShouldBe(CommandResultStatus.Accepted);
+        observations.Select(observation => observation.State).ShouldBe([terminal]);
+        observations.Single().MessageId.ShouldBe(MessageId);
+        inner.ObservedToken.IsCancellationRequested.ShouldBeTrue();
+        Should.Throw<ObjectDisposedException>(() => _ = inner.ObservedToken.WaitHandle);
+    }
+
+
     private sealed class RetainedCallbackService(
         string status = CommandResultStatus.Accepted,
-        string? messageId = MessageId) : ICommandServiceWithLifecycle {
+        string? messageId = MessageId,
+        CommandLifecycleState? preAcceptTerminal = null) : ICommandServiceWithLifecycle {
         public Action<CommandLifecycleState, string?>? Callback { get; private set; }
 
         public CancellationToken ObservedToken { get; private set; }
@@ -314,6 +348,11 @@ public sealed class LegacyLifecycleObservationCommandServiceAdapterTests {
             where TCommand : class {
             Callback = onLifecycleChange;
             ObservedToken = cancellationToken;
+            if (preAcceptTerminal is not null)
+            {
+                onLifecycleChange?.Invoke(preAcceptTerminal.Value, "01BRZ3NDEKTSV4RRFFQ69G5FAV");
+                onLifecycleChange?.Invoke(preAcceptTerminal.Value, messageId);
+            }
             return Task.FromResult(new CommandResult(messageId!, status));
         }
     }

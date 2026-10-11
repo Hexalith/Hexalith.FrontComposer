@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Security.Claims;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
@@ -892,6 +893,51 @@ public sealed class CommandLifecycleTests {
         replayed.ToJson().ToJsonString().ShouldBe(baseline.ToJson().ToJsonString());
         replayed.ToJson().ToJsonString().ShouldNotContain(discardedIdentifier);
     }
+
+    [Theory]
+    [InlineData(CommandLifecycleState.IdempotentConfirmed, "idempotent_confirmed")]
+    [InlineData(CommandLifecycleState.NeedsReview, "needs_review")]
+    [InlineData(CommandLifecycleState.Warning, "warning")]
+    [InlineData(CommandLifecycleState.DegradedExhausted, "degraded_exhausted")]
+    public async Task AppendedTerminalSnapshotRemainsTruthfulClosedAndStable(CommandLifecycleState terminal, string category)
+    {
+        ArgumentNullException.ThrowIfNull(category);
+        FakeTimeProvider time = new();
+        FrontComposerMcpCommandInvoker invoker = Build(out LifecycleAwareCommandService service, out ServiceProvider provider,
+            configureOptions: options => options.MaxLifecycleInProgressMs = 1000, timeProvider: time);
+        using (provider)
+        {
+            service.CompleteSynchronously = false;
+            _ = await invoker.InvokeAsync("Billing.PayInvoiceCommand.Execute", Args("{\"Amount\":42}"), TestContext.Current.CancellationToken);
+            RecordObserved(provider, terminal, MessageId);
+            FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+            var first = await tracker.ReadAsync(Args($$"""{"correlationId":"{{CorrelationId}}"}"""), TestContext.Current.CancellationToken);
+            JsonObject snapshot = first.StructuredContent!;
+            snapshot["state"]!.GetValue<string>().ShouldBe(terminal.ToString());
+            snapshot["terminal"]!.GetValue<bool>().ShouldBeTrue();
+            snapshot["outcome"]!["category"]!.GetValue<string>().ShouldBe(category);
+            if (terminal == CommandLifecycleState.IdempotentConfirmed)
+            {
+                snapshot["outcome"]!["success"]!["message"]!.GetValue<string>().ShouldContain("already updated");
+            }
+            else
+            {
+                string payload = snapshot["outcome"]!.ToJsonString();
+                payload.ShouldContain("unknown");
+                payload.ShouldNotContain("were applied");
+                payload.ShouldNotContain("domain rules");
+                snapshot["outcome"]!["retryAppropriate"]!.GetValue<bool>().ShouldBeFalse();
+                snapshot["outcome"]!["rejection"]!["errorCode"]!.GetValue<string>().ShouldBe("LIFECYCLE_" + category.ToUpperInvariant());
+            }
+            RecordObserved(provider, CommandLifecycleState.Confirmed, MessageId);
+            RecordObserved(provider, CommandLifecycleState.Rejected, MessageId);
+            RecordObserved(provider, terminal, MessageId);
+            time.Advance(TimeSpan.FromSeconds(2));
+            var later = await tracker.ReadAsync(Args($$"""{"correlationId":"{{CorrelationId}}"}"""), TestContext.Current.CancellationToken);
+            later.StructuredContent!.ToJsonString().ShouldBe(snapshot.ToJsonString());
+        }
+    }
+
 
     private static FrontComposerMcpCommandInvoker Build(
         out LifecycleAwareCommandService commandService,

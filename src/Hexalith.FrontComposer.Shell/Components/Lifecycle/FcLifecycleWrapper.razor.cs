@@ -28,10 +28,13 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
     // Story 13.3 VR-03 — the Shell's never-throwing clipboard helper; it returns a structured outcome string.
     private const string ClipboardModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-devmode-clipboard.js";
     private string _boundCorrelationId = string.Empty;
+    private string _boundAnnouncementSurface = string.Empty;
+    private string _boundAnnouncementGroup = string.Empty;
     private IDisposable? _subscription;
     private IDisposable? _optionsChangeRegistration;
     private IDisposable? _projectionConnectionRegistration;
     private LifecycleThresholdTimer? _timer;
+    private Action<LifecycleTimerPhase>? _phaseChangedHandler;
     private ITimer? _dismissTimer;
     private ITimer? _deadlineTimer;
     private ITimer? _degradedTimer;
@@ -64,6 +67,14 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
     /// <summary>Gets or sets the wrapped content (typically a generated <c>EditForm</c>).</summary>
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Gets or sets the shared status surface; defaults to the bound lifecycle operation.</summary>
+    [Parameter]
+    public string? StatusSurface { get; set; }
+
+    /// <summary>Gets or sets whether this wrapper owns the persistent polite status node.</summary>
+    [Parameter]
+    public bool RenderStatus { get; set; } = true;
 
     /// <summary>Gets or sets the stable command id used by browser E2E selectors.</summary>
     [Parameter]
@@ -152,10 +163,22 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
                 BindToCorrelationId(CorrelationId);
             }
         }
+        else if (!string.IsNullOrEmpty(_boundCorrelationId)) {
+            string nextSurface = StatusSurface ?? "lifecycle:" + _boundCorrelationId;
+            if (!string.Equals(nextSurface, _boundAnnouncementSurface, StringComparison.Ordinal)) {
+                Announcements.Cancel(_boundAnnouncementSurface, _boundAnnouncementGroup);
+                _boundAnnouncementSurface = nextSurface;
+                // Keep this operation's delivered identities deduplicated when returning
+                // to a surface that already announced the same event.
+                AnnounceLifecycleState(_state.Current);
+            }
+        }
     }
 
     private void BindToCorrelationId(string correlationId) {
         _boundCorrelationId = correlationId;
+        _boundAnnouncementSurface = StatusSurface ?? "lifecycle:" + correlationId;
+        _boundAnnouncementGroup = correlationId;
         _state = LifecycleUiState.Idle;
 
         FcShellOptions opts = ShellOptions.CurrentValue;
@@ -165,7 +188,9 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
             opts.StillSyncingThresholdMs,
             opts.TimeoutActionThresholdMs,
             isDisconnected: () => ProjectionConnectionState.Current.IsDisconnected);
-        _timer.OnPhaseChanged += OnPhaseChangedFromTimer;
+        LifecycleThresholdTimer originatingTimer = _timer;
+        _phaseChangedHandler = phase => OnPhaseChangedFromTimer(originatingTimer, correlationId, phase);
+        _timer.OnPhaseChanged += _phaseChangedHandler;
         _optionsChangeRegistration = ShellOptions.OnChange((newOpts, _) => _timer?.UpdateThresholds(
                 newOpts.SyncPulseThresholdMs,
                 newOpts.StillSyncingThresholdMs,
@@ -187,7 +212,8 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
 
         LifecycleThresholdTimer? timer = Interlocked.Exchange(ref _timer, null);
         if (timer is not null) {
-            timer.OnPhaseChanged -= OnPhaseChangedFromTimer;
+            timer.OnPhaseChanged -= _phaseChangedHandler;
+            _phaseChangedHandler = null;
             timer.Dispose();
         }
 
@@ -196,9 +222,13 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
         ITimer? deadline = Interlocked.Exchange(ref _deadlineTimer, null);
         deadline?.Dispose();
         CancelDegraded();
-        Announcements.Cancel(AnnouncementSurface, _boundCorrelationId);
+        if (!string.IsNullOrEmpty(_boundAnnouncementSurface)) {
+            Announcements.Cancel(_boundAnnouncementSurface, _boundAnnouncementGroup);
+        }
 
         _boundCorrelationId = string.Empty;
+        _boundAnnouncementSurface = string.Empty;
+        _boundAnnouncementGroup = string.Empty;
         _acceptanceAt = null;
         _state = LifecycleUiState.Idle;
     }
@@ -332,20 +362,21 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
         AnnounceLifecycle(transition);
     }
 
-    private void OnPhaseChangedFromTimer(LifecycleTimerPhase phase) {
-        if (_disposed != 0) {
+    private void OnPhaseChangedFromTimer(LifecycleThresholdTimer originatingTimer, string boundCorrelationId, LifecycleTimerPhase phase) {
+        if (_disposed != 0 || !ReferenceEquals(originatingTimer, _timer)
+            || !string.Equals(boundCorrelationId, _boundCorrelationId, StringComparison.Ordinal)) {
             return;
         }
 
         // HFC2102 — timer callback runs on the thread pool; render updates must go through InvokeAsync.
         // Capture the binding before the queue so a rebind cannot apply this tick to the replacement command.
-        string boundCorrelationId = _boundCorrelationId;
         FrontComposerHotPathLog.LifecycleTimerPhaseMarshaled(
             Logger,
             FcDiagnosticIds.HFC2102_ThresholdTimerOffUiThread);
 
         _ = InvokeAsync(() => {
-            if (_disposed != 0 || !string.Equals(boundCorrelationId, _boundCorrelationId, StringComparison.Ordinal)) {
+            if (_disposed != 0 || !ReferenceEquals(originatingTimer, _timer)
+                || !string.Equals(boundCorrelationId, _boundCorrelationId, StringComparison.Ordinal)) {
                 return;
             }
 
@@ -358,10 +389,15 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
         });
     }
 
-    private string AnnouncementSurface => "lifecycle:" + _boundCorrelationId;
+    private string AnnouncementSurface => string.IsNullOrEmpty(_boundAnnouncementSurface)
+        ? StatusSurface ?? "lifecycle:" + _boundCorrelationId
+        : _boundAnnouncementSurface;
 
-    private void AnnounceLifecycle(CommandLifecycleTransition transition) {
-        string? key = transition.NewState switch {
+    private void AnnounceLifecycle(CommandLifecycleTransition transition)
+        => AnnounceLifecycleState(transition.NewState);
+
+    private void AnnounceLifecycleState(CommandLifecycleState state) {
+        string? key = state switch {
             CommandLifecycleState.Submitting => "Am10Submitting",
             CommandLifecycleState.Acknowledged => "Am11Acknowledged",
             CommandLifecycleState.Syncing => "Am12Syncing",
@@ -375,56 +411,73 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
         };
         bool terminal = _state.TimerPhase == LifecycleTimerPhase.Terminal;
         if (key is null) {
-            if (terminal) {
-                Announcements.Cancel(AnnouncementSurface, _boundCorrelationId);
+            if (terminal || state == CommandLifecycleState.Idle)
+            {
+                Announcements.Cancel(AnnouncementSurface, _boundAnnouncementGroup);
             }
             return;
         }
 
-        string message = transition.NewState is CommandLifecycleState.IdempotentConfirmed
-            || (transition.NewState is CommandLifecycleState.Confirmed && _state.IsIdempotent)
-            ? IdempotentInfoMessage ?? Localizer[key].Value
+        string message = state is CommandLifecycleState.IdempotentConfirmed
+            || (state is CommandLifecycleState.Confirmed && _state.IsIdempotent)
+            ? string.IsNullOrWhiteSpace(IdempotentInfoMessage) ? Localizer[key].Value : IdempotentInfoMessage
             : Localizer[key].Value;
         Announcements.Announce(
             AnnouncementSurface,
-            _boundCorrelationId,
-            transition.NewState.ToString(),
+            _boundAnnouncementGroup,
+            state.ToString(),
             message,
             terminal,
-            immediate: transition.NewState == CommandLifecycleState.Degraded);
+            immediate: state == CommandLifecycleState.Degraded);
     }
 
     private void ScheduleDeadline(DateTimeOffset acceptedAt) {
         CancelDeadline();
         TimeSpan due = acceptedAt.AddMilliseconds(ShellOptions.CurrentValue.MaxPendingCommandPollingDurationMs) - Time.GetUtcNow();
         string correlationId = _boundCorrelationId;
-        _deadlineTimer = Time.CreateTimer(_ => _ = InvokeAsync(() => {
-            if (_disposed == 0 && string.Equals(_boundCorrelationId, correlationId, StringComparison.Ordinal)
-                && _state.Current is CommandLifecycleState.Acknowledged or CommandLifecycleState.Syncing or CommandLifecycleState.Degraded) {
-                bool resolved = false;
-                if (_state.MessageId is { Length: > 0 } messageId
-                    && Services.GetService(typeof(IPendingCommandStateService)) is IPendingCommandStateService pending) {
-                    PendingCommandResolutionStatus status = pending.ResolveTerminal(new PendingCommandTerminalObservation(
-                        messageId, PendingCommandTerminalOutcome.DegradedExhausted)).Status;
-                    resolved = status is PendingCommandResolutionStatus.Resolved or PendingCommandResolutionStatus.DuplicateIgnored;
-                }
-                if (!resolved) {
-                    LifecycleService.Transition(correlationId, CommandLifecycleState.DegradedExhausted, _state.MessageId);
-                }
+        _deadlineTimer = Time.CreateTimer(_ =>
+        {
+            if (_disposed != 0)
+            {
+                return;
             }
-        }), null, due > TimeSpan.Zero ? due : TimeSpan.Zero, Timeout.InfiniteTimeSpan);
+            _ = InvokeAsync(() =>
+            {
+                if (_disposed == 0 && string.Equals(_boundCorrelationId, correlationId, StringComparison.Ordinal)
+                    && _state.Current is CommandLifecycleState.Acknowledged or CommandLifecycleState.Syncing or CommandLifecycleState.Degraded) {
+                    bool resolved = false;
+                    if (_state.MessageId is { Length: > 0 } messageId
+                        && Services.GetService(typeof(IPendingCommandStateService)) is IPendingCommandStateService pending) {
+                        PendingCommandResolutionStatus status = pending.ResolveTerminal(new PendingCommandTerminalObservation(
+                            messageId, PendingCommandTerminalOutcome.DegradedExhausted)).Status;
+                        resolved = status is PendingCommandResolutionStatus.Resolved or PendingCommandResolutionStatus.DuplicateIgnored;
+                    }
+                    if (!resolved) {
+                        LifecycleService.Transition(correlationId, CommandLifecycleState.DegradedExhausted, _state.MessageId);
+                    }
+                }
+            });
+        }, null, due > TimeSpan.Zero ? due : TimeSpan.Zero, Timeout.InfiniteTimeSpan);
     }
 
     private void ScheduleDegraded(DateTimeOffset acceptedAt) {
         CancelDegraded();
         TimeSpan due = acceptedAt.AddMilliseconds(DegradedAfterAcceptanceMs) - Time.GetUtcNow();
         string correlationId = _boundCorrelationId;
-        _degradedTimer = Time.CreateTimer(_ => _ = InvokeAsync(() => {
-            if (_disposed == 0 && string.Equals(_boundCorrelationId, correlationId, StringComparison.Ordinal)
-                && _state.Current is CommandLifecycleState.Acknowledged or CommandLifecycleState.Syncing) {
-                LifecycleService.Transition(correlationId, CommandLifecycleState.Degraded, _state.MessageId);
+        _degradedTimer = Time.CreateTimer(_ =>
+        {
+            if (_disposed != 0)
+            {
+                return;
             }
-        }), null, due > TimeSpan.Zero ? due : TimeSpan.Zero, Timeout.InfiniteTimeSpan);
+            _ = InvokeAsync(() =>
+            {
+                if (_disposed == 0 && string.Equals(_boundCorrelationId, correlationId, StringComparison.Ordinal)
+                    && _state.Current is CommandLifecycleState.Acknowledged or CommandLifecycleState.Syncing) {
+                    LifecycleService.Transition(correlationId, CommandLifecycleState.Degraded, _state.MessageId);
+                }
+            });
+        }, null, due > TimeSpan.Zero ? due : TimeSpan.Zero, Timeout.InfiniteTimeSpan);
     }
 
     private void CancelDegraded() {
@@ -446,6 +499,10 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
         // a coherent value through the dispatcher's serialization barrier instead of a non-volatile
         // field write from the SignalR/state-service call chain.
         _ = InvokeAsync(() => {
+            if (_disposed != 0)
+            {
+                return;
+            }
             _projectionConnectionSnapshot = snapshot;
             if (_state.Current is CommandLifecycleState.Syncing) {
                 LifecycleTimerPhase phase = _timer?.CurrentPhase ?? _state.TimerPhase;
@@ -459,17 +516,24 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
     private void ScheduleConfirmedDismiss(DateTimeOffset transitionLastAtUtc, int durationMs) {
         CancelDismissTimer();
         TimeSpan due = ComputeDueTimeFromTransitionAnchor(transitionLastAtUtc, durationMs);
+        string correlationId = _boundCorrelationId;
         _dismissTimer = Time.CreateTimer(
-            _ => {
-                if (_disposed != 0) {
+            _ =>
+            {
+                if (_disposed != 0)
+                {
                     return;
                 }
-                _ = InvokeAsync(() => {
+                _ = InvokeAsync(() =>
+                {
                     // Review 2026-04-17 P10 — guard mirrors ScheduleIdempotentDismiss: only dismiss
                     // when we are STILL in the non-idempotent Confirmed branch. Rapid transitions
                     // that flip between idempotent/non-idempotent otherwise risk the wrong timer
                     // dismissing the wrong bar.
-                    if (_state.Current == CommandLifecycleState.Confirmed && !_state.IsIdempotent) {
+                    if (_disposed == 0 && string.Equals(correlationId, _boundCorrelationId, StringComparison.Ordinal)
+                        && _state.Current == CommandLifecycleState.Confirmed && !_state.IsIdempotent)
+                    {
+                        Announcements.Cancel(AnnouncementSurface, _boundAnnouncementGroup);
                         _state = LifecycleUiState.Idle with { LastTransitionAt = _state.LastTransitionAt };
                         StateHasChanged();
                     }
@@ -483,14 +547,21 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
     private void ScheduleIdempotentDismiss(DateTimeOffset transitionLastAtUtc, int durationMs) {
         CancelDismissTimer();
         TimeSpan due = ComputeDueTimeFromTransitionAnchor(transitionLastAtUtc, durationMs);
+        string correlationId = _boundCorrelationId;
         _dismissTimer = Time.CreateTimer(
-            _ => {
-                if (_disposed != 0) {
+            _ =>
+            {
+                if (_disposed != 0)
+                {
                     return;
                 }
-                _ = InvokeAsync(() => {
-                    if (_state.Current is CommandLifecycleState.IdempotentConfirmed
-                        || (_state.Current == CommandLifecycleState.Confirmed && _state.IsIdempotent)) {
+                _ = InvokeAsync(() =>
+                {
+                    if (_disposed == 0 && string.Equals(correlationId, _boundCorrelationId, StringComparison.Ordinal)
+                        && (_state.Current is CommandLifecycleState.IdempotentConfirmed
+                            || (_state.Current == CommandLifecycleState.Confirmed && _state.IsIdempotent)))
+                    {
+                        Announcements.Cancel(AnnouncementSurface, _boundAnnouncementGroup);
                         _state = LifecycleUiState.Idle with { LastTransitionAt = _state.LastTransitionAt };
                         StateHasChanged();
                     }

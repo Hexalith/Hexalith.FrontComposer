@@ -31,9 +31,9 @@ public sealed class IncrementCommandLifecycleBridge : global::System.IDisposable
             _subscriber.SubscribeToAction<IncrementCommandActions.SubmittedAction>(this,
                 OnSubmitted);
             _subscriber.SubscribeToAction<IncrementCommandActions.AcknowledgedAction>(this,
-                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Acknowledged, a.MessageId));
+                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Acknowledged, a.MessageId, a.ObservedAt));
             _subscriber.SubscribeToAction<IncrementCommandActions.SyncingAction>(this,
-                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Syncing, null));
+                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Syncing, a.MessageId, a.ObservedAt));
             _subscriber.SubscribeToAction<IncrementCommandActions.ConfirmedAction>(this,
                 a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Confirmed, null));
             _subscriber.SubscribeToAction<IncrementCommandActions.RejectedAction>(this,
@@ -71,7 +71,7 @@ public sealed class IncrementCommandLifecycleBridge : global::System.IDisposable
         RemoveLifecycleSubscription(action.CorrelationId);
     }
 
-    private void ForwardAction(string correlationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState state, string? messageId)
+    private void ForwardAction(string correlationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState state, string? messageId, global::System.DateTimeOffset? observedAt = null)
     {
         bool closesSubscription = state is global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Confirmed
             or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Rejected
@@ -90,7 +90,14 @@ public sealed class IncrementCommandLifecycleBridge : global::System.IDisposable
         }
         try
         {
-            _service.Transition(correlationId, state, messageId);
+            if (_service is global::Hexalith.FrontComposer.Shell.Services.Lifecycle.LifecycleStateService observedService && observedAt is not null)
+            {
+                observedService.TransitionObserved(correlationId, state, messageId, observedAt.Value);
+            }
+            else
+            {
+                _service.Transition(correlationId, state, messageId);
+            }
         }
         finally
         {

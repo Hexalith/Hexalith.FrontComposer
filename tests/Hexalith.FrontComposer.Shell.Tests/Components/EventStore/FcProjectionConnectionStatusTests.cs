@@ -25,6 +25,59 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.Components.EventStore;
 
 public sealed class FcProjectionConnectionStatusTests : BunitContext {
+    [Fact]
+    public async Task LegacyBoolCallbackRetainsItsClrSignatureAndUniqueInteropIdentifier()
+    {
+        System.Reflection.MethodInfo legacy = typeof(FcProjectionConnectionStatus)
+            .GetMethod("OnBrowserConnectivityChanged", [typeof(bool)]).ShouldNotBeNull();
+        legacy.ReturnType.ShouldBe(typeof(Task));
+        legacy.GetParameters().Length.ShouldBe(1);
+        var interop = typeof(FcProjectionConnectionStatus).GetMethods()
+            .Select(method => (Method: method,
+                Attribute: System.Reflection.CustomAttributeExtensions.GetCustomAttribute<JSInvokableAttribute>(method)))
+            .Where(entry => entry.Attribute is not null)
+            .Select(entry => (entry.Method, Identifier: entry.Attribute!.Identifier ?? entry.Method.Name))
+            .ToArray();
+        interop.Select(entry => entry.Identifier).Distinct(StringComparer.Ordinal).Count().ShouldBe(interop.Length);
+        interop.Single(entry => entry.Method == legacy).Identifier.ShouldBe("OnBrowserConnectivityChanged");
+        interop.Single(entry => entry.Identifier == "OnBrowserConnectivityObserved").Method.GetParameters().Length.ShouldBe(2);
+        IRenderedComponent<FcProjectionConnectionStatus> cut = Render<FcProjectionConnectionStatus>();
+        await cut.InvokeAsync(() => ((Task)legacy.Invoke(cut.Instance, [false])!));
+        _state.Current.BrowserOffline.ShouldBeTrue();
+        Services.GetRequiredService<ISurfaceAnnouncementCoordinator>().Current("projection-connection")
+            .ShouldBe("You are offline. Data cannot be refreshed.");
+        await cut.InvokeAsync(() => ((Task)legacy.Invoke(cut.Instance, [true])!));
+        _state.Current.BrowserOffline.ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task HeldInitialConnectivityReadCannotReplaceNewerBrowserEvidenceIncludingAba(bool initialOnline)
+    {
+        ConnectivityJsRuntime js = new(watchPending: false, holdInitialRead: true);
+        Services.Replace(ServiceDescriptor.Singleton<IJSRuntime>(js));
+        IRenderedComponent<FcProjectionConnectionStatus> cut = Render<FcProjectionConnectionStatus>();
+        cut.WaitForAssertion(() => js.ReadCalls.ShouldBe(1));
+        await cut.InvokeAsync(() => cut.Instance.OnBrowserConnectivityObserved(false, 1));
+        if (!initialOnline)
+        {
+            await cut.InvokeAsync(() => cut.Instance.OnBrowserConnectivityObserved(true, 2));
+        }
+        js.CompleteInitialRead(initialOnline);
+        cut.WaitForAssertion(() => _state.Current.BrowserOffline.ShouldBe(initialOnline));
+        await cut.InvokeAsync(() => cut.Instance.OnBrowserConnectivityObserved(!initialOnline, 3));
+        // A delayed native callback is also superseded by the newer producer revision.
+        await cut.InvokeAsync(() => cut.Instance.OnBrowserConnectivityObserved(initialOnline, 1));
+        _state.Current.BrowserOffline.ShouldBe(initialOnline);
+        if (initialOnline)
+        {
+            Services.GetRequiredService<ISurfaceAnnouncementCoordinator>().Current("projection-connection")
+                .ShouldBe("You are offline. Data cannot be refreshed.");
+        }
+        await cut.Instance.DisposeAsync();
+    }
+
     private readonly FakeTimeProvider _time = new(new DateTimeOffset(2026, 4, 26, 12, 0, 0, TimeSpan.Zero));
     private readonly ProjectionConnectionStateService _state;
     private readonly ReconnectionReconciliationStateService _reconciliation;
@@ -72,8 +125,8 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
         _state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Reconnecting, "TimeoutException"));
 
         cut.WaitForAssertion(() => {
-            AngleSharp.Dom.IElement host = cut.Find(".fc-projection-connection-status-host");
             AngleSharp.Dom.IElement status = cut.Find("[data-testid='fc-projection-connection-status']");
+            AngleSharp.Dom.IElement host = status.Closest(".fc-projection-connection-status-host").ShouldNotBeNull();
             host.QuerySelector("[data-testid='fc-projection-connection-status']").ShouldNotBeNull();
             status.ClassList.Contains("fc-projection-connection-status").ShouldBeTrue();
             status.ClassList.Contains("fc-projection-connection-status-pulse").ShouldBeTrue();
@@ -341,16 +394,62 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
         cut.WaitForAssertion(() => _state.Current.BrowserOffline.ShouldBeFalse());
     }
 
-    private sealed class ConnectivityJsRuntime(bool failFirstImport = false, bool watchPending = true) : IJSRuntime, IAsyncDisposable {
-        private readonly ConnectivityModule _module = new(watchPending);
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ConnectivityInteropTimeoutRetriesOnQuietPageAndStillReceivesOfflineEvidence(bool duringWatch) {
+        ConnectivityJsRuntime js = new(watchPending: false, timeoutImport: !duringWatch, timeoutWatch: duringWatch);
+        Services.Replace(ServiceDescriptor.Singleton<IJSRuntime>(js));
+        IRenderedComponent<FcProjectionConnectionStatus> cut = Render<FcProjectionConnectionStatus>();
+        cut.WaitForAssertion(() => js.ImportCalls.ShouldBe(1));
+        _time.Advance(TimeSpan.FromSeconds(1));
+        cut.WaitForAssertion(() => {
+            js.WatchCalls.ShouldBe(duringWatch ? 2 : 1);
+            js.ImportCalls.ShouldBe(duringWatch ? 1 : 2);
+        });
+        await cut.Instance.OnBrowserConnectivityChanged(false);
+        _state.Current.BrowserOffline.ShouldBeTrue();
+        Services.GetRequiredService<ISurfaceAnnouncementCoordinator>().Current("projection-connection")
+            .ShouldBe("You are offline. Data cannot be refreshed.");
+        await cut.Instance.DisposeAsync();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ConnectivityTeardownTimeoutReleasesTheDotNetReferenceWithoutRestartingWork(bool duringModuleDisposal) {
+        ConnectivityJsRuntime js = new(watchPending: false,
+            timeoutUnwatch: !duringModuleDisposal, timeoutDispose: duringModuleDisposal);
+        Services.Replace(ServiceDescriptor.Singleton<IJSRuntime>(js));
+        IRenderedComponent<FcProjectionConnectionStatus> cut = Render<FcProjectionConnectionStatus>();
+        cut.WaitForAssertion(() => js.WatchCalls.ShouldBe(1));
+        DotNetObjectReference<FcProjectionConnectionStatus> reference = js.Reference.ShouldNotBeNull();
+        await cut.Instance.DisposeAsync();
+        Should.Throw<ObjectDisposedException>(() => reference.Value);
+        js.ModuleDisposeCalls.ShouldBe(1);
+        _time.Advance(TimeSpan.FromSeconds(2));
+        js.ImportCalls.ShouldBe(1);
+        js.WatchCalls.ShouldBe(1);
+    }
+
+    private sealed class ConnectivityJsRuntime(bool failFirstImport = false, bool watchPending = true,
+        bool timeoutImport = false, bool timeoutWatch = false, bool timeoutUnwatch = false, bool timeoutDispose = false,
+        bool holdInitialRead = false) : IJSRuntime, IAsyncDisposable {
+        private readonly ConnectivityModule _module = new(watchPending, timeoutWatch, timeoutUnwatch, timeoutDispose, holdInitialRead);
 
         public int ImportCalls { get; private set; }
 
         public int WatchCalls => _module.WatchCalls;
 
+        public int ReadCalls => _module.ReadCalls;
+
+        public void CompleteInitialRead(bool online) => _module.CompleteInitialRead(online);
+
         public int? UnwatchId => _module.UnwatchId;
 
         public int ModuleDisposeCalls => _module.DisposeCalls;
+
+        public DotNetObjectReference<FcProjectionConnectionStatus>? Reference => _module.Reference;
 
         public void CompleteWatch(int id) => _module.CompleteWatch(id);
 
@@ -365,19 +464,29 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
             }
 
             ImportCalls++;
+            if (timeoutImport && ImportCalls == 1) {
+                return ValueTask.FromException<TValue>(new TaskCanceledException("interop timeout"));
+            }
             return failFirstImport && ImportCalls == 1
                 ? ValueTask.FromException<TValue>(new JSException("module unavailable"))
                 : ValueTask.FromResult((TValue)(object)_module);
         }
 
-        private sealed class ConnectivityModule(bool watchPending) : IJSObjectReference {
+        private sealed class ConnectivityModule(bool watchPending, bool timeoutWatch, bool timeoutUnwatch, bool timeoutDispose, bool holdInitialRead) : IJSObjectReference {
             private readonly TaskCompletionSource<int> _watch = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            private readonly TaskCompletionSource<bool> _initialRead = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
             public int WatchCalls { get; private set; }
+
+            public int ReadCalls { get; private set; }
+
+            public void CompleteInitialRead(bool online) => _initialRead.TrySetResult(online);
 
             public int? UnwatchId { get; private set; }
 
             public int DisposeCalls { get; private set; }
+
+            public DotNetObjectReference<FcProjectionConnectionStatus>? Reference { get; private set; }
 
             public void CompleteWatch(int id) => _watch.TrySetResult(id);
 
@@ -388,13 +497,23 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
                 switch (identifier) {
                     case "watchConnectivity":
                         WatchCalls++;
+                        Reference = (DotNetObjectReference<FcProjectionConnectionStatus>)args![0]!;
+                        if (timeoutWatch && WatchCalls == 1) {
+                            throw new TaskCanceledException("watcher timeout");
+                        }
                         return (TValue)(object)(watchPending
                             ? await _watch.Task.WaitAsync(cancellationToken).ConfigureAwait(false)
                             : 41);
                     case "isOnline":
-                        return (TValue)(object)true;
+                        ReadCalls++;
+                        return (TValue)(object)(holdInitialRead
+                            ? await _initialRead.Task.WaitAsync(cancellationToken).ConfigureAwait(false)
+                            : true);
                     case "unwatchConnectivity":
                         UnwatchId = (int)((object?[])args!)[0]!;
+                        if (timeoutUnwatch) {
+                            throw new TaskCanceledException("unwatch timeout");
+                        }
                         return default!;
                     default:
                         throw new JSException($"Unexpected JavaScript call: {identifier}");
@@ -403,8 +522,25 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
 
             public ValueTask DisposeAsync() {
                 DisposeCalls++;
-                return ValueTask.CompletedTask;
+                return timeoutDispose
+                    ? ValueTask.FromException(new TaskCanceledException("module disposal timeout"))
+                    : ValueTask.CompletedTask;
             }
         }
     }
+    [Fact]
+    public void DisposedConnectivityRetryCallbackDoesNotImportAgain()
+    {
+        var time = new Hexalith.FrontComposer.Shell.Tests.Infrastructure.QueuedTimerTimeProvider();
+        Services.Replace(ServiceDescriptor.Singleton<TimeProvider>(time));
+        _ = JSInterop.TryGetInvokeHandler<IJSObjectReference>("import", "./_content/Hexalith.FrontComposer.Shell/js/fc-connectivity.js")!
+            .SetException(new JSException("import unavailable"));
+        IRenderedComponent<FcProjectionConnectionStatus> cut = Render<FcProjectionConnectionStatus>();
+        cut.WaitForAssertion(() => time.Callbacks.Count.ShouldBe(1));
+        cut.Instance.Dispose();
+        int imports = JSInterop.Invocations.Count(invocation => invocation.Identifier == "import");
+        Should.NotThrow(() => time.Callbacks[0]());
+        JSInterop.Invocations.Count(invocation => invocation.Identifier == "import").ShouldBe(imports);
+    }
+
 }

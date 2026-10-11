@@ -1,4 +1,7 @@
 using Hexalith.FrontComposer.Shell.Resources;
+using Hexalith.FrontComposer.Shell.Services.Announcements;
+
+using Microsoft.Extensions.DependencyInjection;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Localization;
@@ -8,7 +11,8 @@ namespace Hexalith.FrontComposer.Shell.Components.Forms;
 
 /// <summary>
 /// Story 13.3 VR-05 / FM-09 / AM-20 — presents a blocked later submit through exactly one polite,
-/// atomic status node that stays mounted for the lifetime of the command surface.
+/// atomic status node that stays mounted for the lifetime of the command surface. Generated forms
+/// share their lifecycle status; standalone controls retain their own node.
 /// </summary>
 /// <remarks>
 /// A blocked attempt keeps focus on the attempted control, never dispatches, and adds no
@@ -27,6 +31,10 @@ public partial class FcCommandBlockedOutcome : ComponentBase, IDisposable {
     public static readonly TimeSpan ReannounceDelay = TimeSpan.FromMilliseconds(100);
 
     private const string FocusModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js";
+    private readonly string _announcementOwner = "blocked:" + Guid.NewGuid().ToString("N");
+    private long _attempt;
+    private string? _activeAnnouncementGroup;
+    private string? _activeAnnouncementSurface;
     private string _message = string.Empty;
     private bool _blocked;
     private bool _viewActionAvailable;
@@ -45,6 +53,19 @@ public partial class FcCommandBlockedOutcome : ComponentBase, IDisposable {
     /// </summary>
     [Parameter]
     public bool Inline { get; set; }
+
+    /// <summary>Gets or sets the shared surface used by a generated command form.</summary>
+    [Parameter]
+    public string? AnnouncementSurface { get; set; }
+
+    /// <summary>Gets or sets whether this visible control owns the shared status node for a hidden form.</summary>
+    [Parameter]
+    public bool OwnsSurfaceStatus { get; set; }
+
+    [Inject]
+    private IServiceProvider Services { get; set; } = default!;
+
+    private ISurfaceAnnouncementCoordinator Announcements => Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
 
     /// <summary>Gets a value indicating whether a blocked outcome is currently presented.</summary>
     public bool IsBlocked => _blocked;
@@ -83,6 +104,7 @@ public partial class FcCommandBlockedOutcome : ComponentBase, IDisposable {
     public Task ClearAsync()
         => InvokeAsync(() => {
             _generation++;
+            CancelOwnedAnnouncement();
             if (_blocked || _message.Length != 0) {
                 _blocked = false;
                 _viewActionAvailable = false;
@@ -98,6 +120,7 @@ public partial class FcCommandBlockedOutcome : ComponentBase, IDisposable {
         }
 
         _generation++;
+        CancelOwnedAnnouncement();
         GC.SuppressFinalize(this);
     }
 
@@ -108,6 +131,8 @@ public partial class FcCommandBlockedOutcome : ComponentBase, IDisposable {
             return;
         }
 
+        // Clear this attempt's own speech; the original lifecycle keeps its independent group.
+        CancelOwnedAnnouncement();
         // Clear first: re-setting identical text into a live region is not announced again.
         _blocked = true;
         _viewActionAvailable = false;
@@ -126,6 +151,11 @@ public partial class FcCommandBlockedOutcome : ComponentBase, IDisposable {
         }
 
         _message = BlockedMessage;
+        if (AnnouncementSurface is { } surface) {
+            _activeAnnouncementSurface = surface;
+            _activeAnnouncementGroup = _announcementOwner + ":" + (++_attempt).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            Announcements.Announce(surface, _activeAnnouncementGroup, "blocked", _message, terminal: true);
+        }
         _viewActionAvailable = viewActionAvailable;
         StateHasChanged();
     }
@@ -191,6 +221,14 @@ public partial class FcCommandBlockedOutcome : ComponentBase, IDisposable {
         }
         catch (TaskCanceledException) {
             // A stalled dispose must not fault the serialized presentation chain either.
+        }
+    }
+
+    private void CancelOwnedAnnouncement() {
+        if (_activeAnnouncementSurface is { } surface && _activeAnnouncementGroup is { } group) {
+            Announcements.Cancel(surface, group);
+            _activeAnnouncementSurface = null;
+            _activeAnnouncementGroup = null;
         }
     }
 

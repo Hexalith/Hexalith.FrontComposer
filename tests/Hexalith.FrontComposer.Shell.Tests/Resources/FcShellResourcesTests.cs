@@ -442,4 +442,31 @@ public sealed class FcShellResourcesTests {
         _ = Shell.Extensions.ServiceCollectionExtensions.AddHexalithShellLocalization(services);
         return services.BuildServiceProvider();
     }
+    [Fact]
+    public void AnnouncementTemplatesAndAllSixSummaryCountsKeepFrenchPlaceholderParity()
+    {
+        ResourceManager manager = new(typeof(FcShellResources));
+        ResourceSet resources = manager.GetResourceSet(new CultureInfo("en"), true, true)!;
+        foreach (System.Collections.DictionaryEntry entry in resources)
+        {
+            string key = (string)entry.Key;
+            if (key.StartsWith("Am", StringComparison.Ordinal)) { AssertPlaceholderParity(key); }
+        }
+        AssertPlaceholderParity("PendingCommandSummaryCountsTemplate");
+        foreach (string culture in new[] { "en", "fr" })
+        {
+            ExtractFormatPlaceholderIndices(manager.GetString("PendingCommandSummaryCountsTemplate", new CultureInfo(culture))!).SetEquals([0, 1, 2, 3, 4, 5]).ShouldBeTrue();
+        }
+    }
+
+    [Theory]
+    [InlineData("en", "Command outcome unknown", "Check its status before submitting again.")]
+    [InlineData("fr", "Résultat de la commande inconnu", "Vérifiez son état avant de l'envoyer à nouveau.")]
+    public void AdmissionUnknownCopyKeepsStatusReviewBeforeAnotherSubmit(string culture, string title, string guidance)
+    {
+        ResourceManager manager = new(typeof(FcShellResources));
+        manager.GetString("RetryableDispatchFailedTitle", new CultureInfo(culture)).ShouldBe(title);
+        manager.GetString("RetryableDispatchFailedFallback", new CultureInfo(culture)).ShouldNotBeNull().ShouldContain(guidance);
+    }
+
 }

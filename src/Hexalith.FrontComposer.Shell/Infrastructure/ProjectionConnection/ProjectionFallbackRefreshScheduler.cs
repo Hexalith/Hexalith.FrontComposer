@@ -9,6 +9,7 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
@@ -107,7 +108,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
                 break;
             }
 
-            if (await RefreshLaneAsync(entry, cancellationToken).ConfigureAwait(false) is not ProjectionLaneRefreshResult.Skipped) {
+            if (await RefreshLaneAsync(entry, cancellationToken).ConfigureAwait(false) is ProjectionLaneRefreshResult.Changed or ProjectionLaneRefreshResult.NotModified) {
                 refreshed++;
             }
         }
@@ -137,7 +138,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
                 break;
             }
 
-            if (await RefreshLaneAsync(entry, cancellationToken).ConfigureAwait(false) is not ProjectionLaneRefreshResult.Skipped) {
+            if (await RefreshLaneAsync(entry, cancellationToken).ConfigureAwait(false) is ProjectionLaneRefreshResult.Changed or ProjectionLaneRefreshResult.NotModified) {
                 refreshed++;
             }
         }
@@ -170,12 +171,14 @@ public sealed class ProjectionFallbackRefreshScheduler(
             .ToArray();
 
         List<string> changed = [];
+        List<string> failed = [];
         int refreshed = 0;
+        int attempted = 0;
         HashSet<string> seen = new(StringComparer.Ordinal);
         foreach (LaneEntry entry in orderedLanes) {
             ProjectionFallbackLane lane = entry.Lane;
             cancellationToken.ThrowIfCancellationRequested();
-            if (refreshed >= budget) {
+            if (attempted >= budget) {
                 break;
             }
 
@@ -206,6 +209,12 @@ public sealed class ProjectionFallbackRefreshScheduler(
             if (result is ProjectionLaneRefreshResult.Skipped) {
                 continue;
             }
+            attempted++;
+            if (result is ProjectionLaneRefreshResult.Failed)
+            {
+                failed.Add(lane.ViewKey);
+                continue;
+            }
 
             refreshed++;
             if (result is ProjectionLaneRefreshResult.Changed) {
@@ -213,9 +222,9 @@ public sealed class ProjectionFallbackRefreshScheduler(
             }
         }
 
-        return refreshed == 0 && changed.Count == 0
+        return refreshed == 0 && changed.Count == 0 && failed.Count == 0
             ? ProjectionReconciliationRefreshResult.Empty
-            : new ProjectionReconciliationRefreshResult(refreshed, changed);
+            : new ProjectionReconciliationRefreshResult(refreshed, changed) { FailedViewKeys = failed };
     }
 
     private async Task<ProjectionLaneRefreshResult> RefreshLaneAsync(LaneEntry entry, CancellationToken cancellationToken) {
@@ -244,35 +253,51 @@ public sealed class ProjectionFallbackRefreshScheduler(
             ? generation : null;
 
         ProjectionLaneRefreshResult outcome;
-        try {
-            if (lane.RefreshAsync is not null) {
-                outcome = MapCustomOutcome(await lane.RefreshAsync(cancellationToken).ConfigureAwait(false));
+        try
+        {
+            try {
+                if (lane.RefreshAsync is not null) {
+                    outcome = MapCustomOutcome(await lane.RefreshAsync(cancellationToken).ConfigureAwait(false));
+                }
+                else {
+                    ProjectionPageResult result = await loader.LoadPageAsync(
+                        lane.ProjectionType,
+                        lane.Skip,
+                        lane.Take,
+                        lane.Filters,
+                        lane.SortColumn,
+                        lane.SortDescending,
+                        lane.SearchQuery,
+                        cancellationToken).ConfigureAwait(false);
+                    outcome = ClassifyRefreshResult(entry, result);
+                }
             }
-            else {
-                ProjectionPageResult result = await loader.LoadPageAsync(
-                    lane.ProjectionType,
-                    lane.Skip,
-                    lane.Take,
-                    lane.Filters,
-                    lane.SortColumn,
-                    lane.SortDescending,
-                    lane.SearchQuery,
-                    cancellationToken).ConfigureAwait(false);
-                outcome = ClassifyRefreshResult(entry, result);
+            catch (Exception ex) when (ex is not OperationCanceledException && !ExceptionGuard.IsFatal(ex)) {
+                // P5 — log only the redacted exception type. Raw exception messages can carry
+                // tenant/group/payload data; structured `FailureCategory` keeps logs bounded.
+                FrontComposerLog.ProjectionRefreshFailed(logger, lane.ProjectionType, ex.GetType().Name);
+                outcome = ProjectionLaneRefreshResult.Failed;
             }
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
-            // P5 — log only the redacted exception type. Raw exception messages can carry
-            // tenant/group/payload data; structured `FailureCategory` keeps logs bounded.
-            FrontComposerLog.ProjectionRefreshFailed(logger, lane.ProjectionType, ex.GetType().Name);
-            outcome = ProjectionLaneRefreshResult.Skipped;
-        }
-        finally {
-            _ = _inFlight.TryRemove(lane.ViewKey, out _);
-        }
+            if (!IsLaneActive(entry) || !IsCurrentRequest(entry))
+            {
+                outcome = ProjectionLaneRefreshResult.Skipped;
+            }
+            else if (outcome is ProjectionLaneRefreshResult.Failed)
+            {
+                lock (entry.DispatchGate)
+                {
+                    if (IsLaneActive(entry) && IsCurrentRequest(entry))
+                    {
+                        dispatcher.Dispatch(new MarkProjectionStaleAction(lane.ViewKey, lane.Skip, entry.OriginScopeGeneration,
+                            entry.OriginRequestIdentity, entry.OriginRequestGeneration));
+                    }
+                }
+            }
 
-        if (!IsLaneActive(entry)) {
-            outcome = ProjectionLaneRefreshResult.Skipped;
+        }
+        finally
+        {
+            _ = _inFlight.TryRemove(lane.ViewKey, out _);
         }
 
         // P1 — if a nudge arrived during the in-flight window, replay exactly once. Pending is
@@ -300,7 +325,8 @@ public sealed class ProjectionFallbackRefreshScheduler(
             return ProjectionLaneRefreshResult.NotModified;
         }
 
-        return ProjectionLaneRefreshResult.Skipped;
+        return first is ProjectionLaneRefreshResult.Failed || second is ProjectionLaneRefreshResult.Failed
+            ? ProjectionLaneRefreshResult.Failed : ProjectionLaneRefreshResult.Skipped;
     }
 
     /// <summary>
@@ -320,12 +346,12 @@ public sealed class ProjectionFallbackRefreshScheduler(
             FrontComposerHotPathLog.ProjectionRefreshNegativeCount(
                 logger,
                 lane.ViewKey);
-            return ProjectionLaneRefreshResult.Skipped;
+            return ProjectionLaneRefreshResult.Failed;
         }
 
         if (result.Items is null) {
             FrontComposerLog.ProjectionRefreshFailed(logger, lane.ProjectionType, "InvalidItems");
-            return ProjectionLaneRefreshResult.Skipped;
+            return ProjectionLaneRefreshResult.Failed;
         }
 
         bool reducerPageMissing = !HasReducerPage(lane);
@@ -646,6 +672,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
         Skipped,
         NotModified,
         Changed,
+        Failed,
     }
 
     private sealed class Registration(Action dispose) : IDisposable {
