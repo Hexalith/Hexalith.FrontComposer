@@ -1022,7 +1022,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    private double _viewportScrollTop;");
             _ = sb.AppendLine("    private string? _viewportRequestIdentity;");
             _ = sb.AppendLine("    private System.Threading.CancellationTokenSource? _failedRetryCancellation;");
-            if (model.Strategy == ProjectionRenderStrategy.StatusOverview) {
+            if (model.Strategy == ProjectionRenderStrategy.StatusOverview && RoleBodyHelpers.ResolveStatusEnumColumn(model) is not null) {
                 _ = sb.AppendLine("    private string? _statusLastCompletedResultIdentity;");
                 _ = sb.AppendLine("    private string? _statusLastCompletedRequestIdentity;");
                 _ = sb.AppendLine("    private long _statusResultScopeGeneration = long.MinValue;");

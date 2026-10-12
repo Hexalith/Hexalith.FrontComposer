@@ -51,6 +51,20 @@ public sealed class RazorEmitterExpandInRowTests {
     }
 
     [Fact]
+    public void StatusOverviewWithoutEnumUsesDefaultBodyWithoutUnusedStatusFields() {
+        string src = RazorEmitter.Emit(Model(
+            ProjectionRenderStrategy.StatusOverview,
+            Col("Id"),
+            Col("Total", TypeCategory.Numeric)));
+
+        src.ShouldNotContain("private string? _statusLastCompletedResultIdentity;");
+        src.ShouldNotContain("private string? _statusLastCompletedRequestIdentity;");
+        src.ShouldNotContain("private long _statusResultScopeGeneration");
+        src.ShouldContain("state.Items.AsQueryable()");
+        src.ShouldNotContain("var unfilteredGroupedItems = state.Items");
+    }
+
+    [Fact]
     public void ActionQueueStateRuleAloneDoesNotClaimUserFilter()
     {
         string src = RazorEmitter.Emit(Model(ProjectionRenderStrategy.ActionQueue, Col("Id"), Col("Name")));
