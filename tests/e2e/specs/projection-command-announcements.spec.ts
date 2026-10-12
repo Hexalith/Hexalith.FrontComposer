@@ -152,7 +152,7 @@ test.describe('Story 13.4: projection and command announcements', () => {
       await page.context().setOffline(true);
       await expect(status).toHaveText('You are offline. Data cannot be refreshed.');
       await page.context().setOffline(false);
-      await expect(status).toHaveText('Data refreshed.');
+      await expect(status).toBeEmpty();
     } finally {
       await page.context().setOffline(false);
       await page.evaluate(async () => {

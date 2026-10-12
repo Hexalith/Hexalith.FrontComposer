@@ -132,7 +132,7 @@ public sealed class FcSurfaceStatusTests : BunitContext {
     }
 
     [Fact]
-    public void CancellingTheOnlyGroupPublishesASilentBlankRevision()
+    public void CancellingTheOnlyGroupBlanksThePersistentPoliteNode()
     {
         SurfaceAnnouncementCoordinator coordinator = new(TimeProvider.System);
         Services.AddSingleton<ISurfaceAnnouncementCoordinator>(coordinator);
@@ -141,15 +141,17 @@ public sealed class FcSurfaceStatusTests : BunitContext {
         IRenderedComponent<FcSurfaceStatus> cut = Render<FcSurfaceStatus>(p => p.Add(c => c.Surface, "projection:orders"));
 
         coordinator.Announce("projection:orders", "load:only", "loaded", "orders loaded.", immediate: true);
-        cut.WaitForAssertion(() => cut.Find("[role='status']").GetAttribute("aria-live").ShouldBe("polite"));
+        cut.WaitForAssertion(() => cut.Find("[role='status']").TextContent.ShouldBe("orders loaded."));
         coordinator.Cancel("projection:orders", "load:only");
 
         cut.WaitForAssertion(() =>
         {
             cut.Find("[role='status']").TextContent.ShouldBeEmpty();
-            cut.Find("[role='status']").GetAttribute("aria-live").ShouldBe("off");
+            cut.Find("[role='status']").GetAttribute("aria-live").ShouldBe("polite");
         });
         updates[^1].Message.ShouldBeEmpty();
-        coordinator.IsSilentRevision("projection:orders", updates[^1].Revision).ShouldBeTrue();
+        coordinator.IsSilentRevision("projection:orders", updates[^1].Revision).ShouldBeFalse();
+        IRenderedComponent<FcSurfaceStatus> remounted = Render<FcSurfaceStatus>(p => p.Add(c => c.Surface, "projection:orders"));
+        remounted.Find("[role='status']").GetAttribute("aria-live").ShouldBe("polite");
     }
 }

@@ -1765,6 +1765,39 @@ public sealed class GeneratedProjectionAnnouncementTests : GeneratedComponentTes
     }
 
     [Fact]
+    public async Task BackgroundProjectionLoadOverSettledPageKeepsPendingLoadedSpeech()
+    {
+        FakeTimeProvider time = new();
+        Services.Replace(ServiceDescriptor.Singleton<TimeProvider>(time));
+        Services.AddSingleton(Substitute.For<Hexalith.FrontComposer.Shell.Services.IEmptyStateCtaResolver>());
+        await InitializeStoreAsync();
+        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+        string request = ProjectionRequestIdentity(cut);
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        List<string> spoken = [];
+        using IDisposable speech = announcements.Subscribe("projection:" + ViewKey, message =>
+        {
+            if (message.Length > 0) { spoken.Add(message); }
+        });
+        LoadedPageFeature pages = Services.GetRequiredService<LoadedPageFeature>();
+        LoadedPageState current = Services.GetRequiredService<IState<LoadedPageState>>().Value;
+        await cut.InvokeAsync(() => pages.RestoreState(current with
+        {
+            LastResultByKey = current.LastResultByKey.SetItem(ViewKey, new LoadedPageResult(1, request, 1, Failed: false, OperatorInitiated: true)),
+        }));
+
+        await cut.InvokeAsync(() => Services.GetRequiredService<IDispatcher>().Dispatch(new CounterProjectionLoadRequestedAction("background", false)
+        {
+            ScopeTenantId = "test-tenant",
+            ScopeUserId = "test-user",
+        }));
+        time.Advance(TimeSpan.FromMilliseconds(250));
+
+        cut.WaitForAssertion(() => announcements.Current("projection:" + ViewKey).ShouldBe("counters loaded."));
+        spoken.ShouldBe(["counters loaded."]);
+    }
+
+    [Fact]
     public async Task OffThreadResultAnnouncesAndCancelsOnTheRendererDispatcher()
     {
         RendererThreadAnnouncementCoordinator recorder = new(new SurfaceAnnouncementCoordinator(TimeProvider.System));

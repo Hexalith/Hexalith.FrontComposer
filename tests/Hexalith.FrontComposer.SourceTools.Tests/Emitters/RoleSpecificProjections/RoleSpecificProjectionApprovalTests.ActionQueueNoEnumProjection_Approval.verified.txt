@@ -534,6 +534,8 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
         { ReleaseAnnouncementGroup(prior); _pendingLoadingGroup = null; }
         if (state.Error is not null)
         { SetFailureGroup(group, "failure:" + (state.LastResultCorrelationId ?? operation)); Announcements.Announce(AnnouncementSurface, group, _activeFailureIdentity!, SafePageFailureCopy(state.Error), terminal: true); return; }
+        if (state.IsLoading && !state.ActiveOperatorInitiated && (state.Items is not null || state.LastResultCorrelationId is not null || LoadedPageState.Value.LastResultByKey.ContainsKey(_viewKey)))
+        { RetireEmptyResultAnnouncements(); SetFailureGroup(null); return; }
         if (state.IsLoading)
         { CancelResultAnnouncements(); SetFailureGroup(null); _pendingLoadingGroup = group; ClaimAnnouncementGroup(group); Announcements.Announce(AnnouncementSurface, group, "loading", FcShellLocalizer["Am01Loading", "action queue no enums"].Value); return; }
         bool filtered = AnyRealFilterActive(CurrentGridSnapshot());

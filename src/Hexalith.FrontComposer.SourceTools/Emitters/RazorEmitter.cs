@@ -1107,6 +1107,8 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        { ReleaseAnnouncementGroup(prior); _pendingLoadingGroup = null; }");
         _ = sb.AppendLine("        if (state.Error is not null)");
         _ = sb.AppendLine("        { SetFailureGroup(group, \"failure:\" + (state.LastResultCorrelationId ?? operation)); Announcements.Announce(AnnouncementSurface, group, _activeFailureIdentity!, " + "SafePageFailureCopy(state.Error)" + ", terminal: true); return; }");
+        _ = sb.AppendLine("        if (state.IsLoading && !state.ActiveOperatorInitiated && (state.Items is not null || state.LastResultCorrelationId is not null" + (isGrid ? " || LoadedPageState.Value.LastResultByKey.ContainsKey(_viewKey)" : string.Empty) + "))");
+        _ = sb.AppendLine("        { RetireEmptyResultAnnouncements(); SetFailureGroup(null); return; }");
         _ = sb.AppendLine("        if (state.IsLoading)");
         _ = sb.AppendLine("        { CancelResultAnnouncements(); SetFailureGroup(null); _pendingLoadingGroup = group; ClaimAnnouncementGroup(group); Announcements.Announce(AnnouncementSurface, group, \"loading\", " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am01Loading\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value); return; }");
         if (isGrid) {
