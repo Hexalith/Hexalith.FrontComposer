@@ -2,7 +2,7 @@
 title: 'Story 13.4: Announce Projection and Command State Without Noise'
 type: 'feature'
 created: '2026-10-04'
-status: 'done'
+status: 'in-progress'
 route: 'dispatch'
 review_loop_iteration: 43
 review_limit_override: 'Human approved continuing beyond the five-iteration limit on 2026-10-05.'
@@ -609,6 +609,71 @@ The historical patch rows below were never applied because each review loop halt
 - Given Submitting at 0ms and Acknowledged at 100ms, when time reaches 349/350ms then silence becomes AM-11; when Syncing precedes Confirmed within 250ms then the exact sequence is [AM-11, AM-13]. Given connection and load/filter groups, when 249/250ms elapse then equivalent trailing-window assertions pass.
 - Given pending work, when time crosses 1,999/2,000, 9,999/10,000 and 119,999/120,000ms then canonical states/messages occur once, status polling stays silent at 1s, exhaustion ends admission/polling, and later evidence requires new correlation. Given postack transient failure, when 249/250ms elapse then exactly one same-identity retry occurs.
 - Given reconnect/filter/grid regression scenarios, when exercised then retries cap at 30s, closed restart is within 10s, fallback polls every 15s across at most eight lanes, recovery notice lasts 3s with silent expiry, and resettable debounce, 500-row virtualization, 10,000 cap, labelled detail, column priority above 15 and icon/shape plus text remain valid.
+
+### Review Findings
+
+Review iteration 44, manual `bmad-code-review` (2026-10-12). Scope: `7dd5f7cf..0fb00863` restricted to `src/` and `samples/` (96 files). Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor, Verification Gap. No layer failed. 53 findings: 25 survive in 20 entries, 28 rejected.
+
+- [ ] [Review][Patch] Document the adopter obligation behind generated primary Retry (AA44-02, medium; decision D1 → A, 2026-10-12) [docs/how-to/test-generated-components.md:66] — Non-grid Retry (and grid Retry with only `state.Error`) dispatches `{Type}LoadRequestedAction(OperatorInitiated: true)` [src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs:1270], and no framework effect fetches on it. State in the how-to doc and the generated `LoadRequestedAction` XML doc that an adopter whose projection can fail must answer an operator-initiated request: reload, then dispatch `Loaded` or `LoadFailed` with the same correlation and scope stamp. No runtime change.
+- [ ] [Review][Patch] Hide the shared status node and give AM-20 its own visible text (BH44-01, AA44-03, medium; decision D2 → A, 2026-10-12) [src/Hexalith.FrontComposer.Shell/Components/Rendering/FcSurfaceStatus.razor:7] — Add `class="fc-sr-only"` to the `FcSurfaceStatus` live node so lifecycle, projection, slow-query, cap and connection copy stop duplicating the visible Fluent bars. Generated forms route visible AM-20 blocked text (SS-25) through the wrapper-owned form node (`StatusSurface = FormAnnouncementSurface`), so `FcCommandBlockedOutcome` must render its message in its own visible `aria-hidden` span; speech stays on the one live node. Remove the dead `.fc-lifecycle-live` rule. Re-run the Story 13.3 blocked-outcome bUnit tests and `one-at-a-time-execution-policy.spec.ts`, plus the visual baselines.
+- [ ] [Review][Patch] Focus the scope-blocked heading once per scope generation (BH44-21, AA44-08, medium; decision D3 → A, 2026-10-12) [src/Hexalith.FrontComposer.Shell/Components/Rendering/FcScopeBlocked.razor.cs:17] — Add an internal, scoped once-per-generation focus owner, following `SurfaceHiddenFocusOwnership`, keyed by the optional `ScopeBoundaryService.Generation` resolved through `IServiceProvider` so non-shell hosts keep working. Only the first blocked heading rendered in a generation takes focus; co-mounted headings stay quiet, and a new generation refocuses even a still-mounted instance. No public parameter. Add co-mounted and new-generation bUnit cases.
+- [ ] [Review][Patch] Align the generated load-reducer docs with the fail-closed guards (EC44-12, EC44-13, medium; decision D4 → A, 2026-10-12) [docs/how-to/test-generated-components.md:66] — Keep the guards at `FluxorActionsEmitter.cs:94` (scope-generation isolation and stale-result discard). Update the how-to and the generated XML docs for `LoadRequested`, `Loaded` and `LoadFailed`: after `ScopeChangedAction`, stamp `OriginScopeGeneration`, `ScopeTenantId` and `ScopeUserId` from current state; every result must carry its request's correlation; direct results are accepted only before any request has been dispatched. Add a breaking-change note that push-style direct `LoadedAction`s are now dropped once a request exists. Run `eng/validate-docs.ps1` (twice on a cold workspace).
+- [ ] [Review][Patch] Co-mounted lifecycle wrappers render two polite status nodes (AA44-01, medium) [src/Hexalith.FrontComposer.Shell/Components/Lifecycle/FcLifecycleWrapper.razor:33] — The wrapper's `FcSurfaceStatus` is not `ExclusiveOwner`, so two wrappers on one `StatusSurface`/correlation each mount a live node with the same text. The iteration-43 co-mounted test asserts coordinator speech only, not the DOM node count. Use the existing exclusive-owner lease and assert one node.
+- [ ] [Review][Patch] Generated projection speech mutates view fields off the renderer thread (BH44-02, EC44-01, medium) [src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs:1099] — `OnStateChanged` runs `AnnounceProjectionState()` before `InvokeAsync`. `LoadPageEffects` dispatches after `ConfigureAwait(false)` [src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadPageEffects.cs:111], so the callback runs on the thread pool. Meanwhile `BuildRenderTree` calls `CancelOwnedAnnouncements()` on the renderer [RazorEmitter.cs:2024], which iterates `_resultAnnouncementGroups`. A tenant switch during an in-flight page load can therefore throw "collection was modified" in render and fault the circuit. This settles the concurrency premise carried since BH8-05: the race is Fluxor thread versus renderer, not Fluxor versus Fluxor. Marshal the announcement into `InvokeAsync`, as `FcSlowQueryNotice` already does.
+- [ ] [Review][Patch] "No X available." stays current after a background refresh brings rows (AA44-04, medium) [src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs:1161] — A non-operator result with rows returns without retiring the earlier empty-result group, in both the grid branch and the non-grid branch (`:1176`). The coordinator keeps "No X available." as the surface's current text until the request identity changes. Silently retire the prior result groups on a non-operator non-empty result.
+- [ ] [Review][Patch] The 5-second fallback/nudge read bound cuts standard loader reads (AA44-05, medium) [src/Hexalith.FrontComposer.Shell/Infrastructure/ProjectionConnection/ProjectionFallbackRefreshScheduler.cs:368] — `WaitAsync(CustomSweepReadLimit)` wraps every lane whenever `reconciliationEpoch is null`, including `loader.LoadPageAsync` lanes [:661]. A projection query slower than 5 s can never refresh during fallback polling or a nudge; it is recorded as `StaleRead`. The iteration-43 decision bounded custom callbacks only. Apply the bound only when `lane.RefreshAsync is not null`.
+- [ ] [Review][Patch] Failure category re-speaks "Data may be out of date." within one disconnect (AA44-07, medium) [src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionStaleNotice.razor:111] — The stale episode key includes `LastFailureCategory`. Inside one Disconnected epoch the category moves Closed → RestartTimeout → RestartFailed [ProjectionSubscriptionService.cs:491/631/640], and each change claims a new episode and speaks AM-04 again. That contradicts the AM-04 "once per surface/connection epoch/state" rule. Remove the category from the key; query-failure evidence stays.
+- [ ] [Review][Patch] Coming back online while Reconnecting speaks AM-06 instead of AM-05 (AA44-06, low) [src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor.cs:207] — The browser-online branch announces `Am06Fallback` for any non-Connected status, while `OnConnectionChanged` maps Reconnecting to `Am05Reconnecting` [:249]. Use the same mapping.
+- [ ] [Review][Patch] Error fallback renders cached pages in hash order (BH44-09, low) [src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs:2032] — `PagesByKey` is an `ImmutableDictionary`, so `SelectMany` concatenates pages in hash order. Below the server-side threshold the grid binds `Items` [ProjectionRoleBodyEmitter.cs:523], and overrides and role bodies receive the same list. Order by `entry.Key.Skip`.
+- [ ] [Review][Patch] Binding only `OnBlockedSubmission` no longer suppresses the internal blocked outcome (EC44-14, low) [src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs:501] — The baseline treated a bound `OnBlockedSubmission` as the external owner. Now only `ExternalStatusOwner` suppresses `FcCommandBlockedOutcome` (`:549`, `:2054`). An adopter following the parameter's own doc (`:95`) therefore gets duplicate blocked outcomes. The in-repo renderer sets both flags. Honor either flag.
+- [ ] [Review][Patch] Dead and misleading artifacts (BH44-18, low) [src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs:260] — Three items:
+  - `NeedsShellLocalizer` is uncalled, and its D3 comment is stale.
+  - `FcMaxItemsCapNotice.ViewKey` is documented "reserved for future telemetry" but now forms the surface key [FcMaxItemsCapNotice.razor.cs:37].
+  - Expiry passes `RejectionTitle: "Command needs review"` for DegradedExhausted [PendingCommandPollingCoordinator.cs:111], which the state service discards.
+
+  Delete or correct each.
+- [ ] [Review][Patch] Exhausted-budget override for a late Confirmed is never exercised (VG44-01, medium) [src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandStateService.cs:233] — `FakeTimeProvider.Advance` fires the deadline timer synchronously, so `FirstConfirmedAtTheBudgetIsStoredAsExhausted` and the coordinator re-checks (`PendingCommandPollingCoordinator.cs:106/123/150`) pass without their guards. Give `QueuedTimerTimeProvider` a settable clock. Add state-service and coordinator cases where the clock is past 120 s while the deadline timer is still queued, and assert `DegradedExhausted`.
+- [ ] [Review][Patch] Pending summary priority for Warning/DegradedExhausted is untested under truncation (VG44-02, low) [src/Hexalith.FrontComposer.Shell/Components/EventStore/FcPendingCommandSummary.razor.cs:94] — Add a `MaxDetails` 1–2 case with newer confirmed entries and older warning/exhausted entries, asserting the actionable details stay visible.
+- [ ] [Review][Patch] No test for a thrown transport `HttpRequestException` before acceptance (VG44-03, medium) [src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs:219] — Add a `RecordingHandler` that throws from `SendAsync`. Assert one POST, the `RetryableDispatchFailed` outcome-unknown warning, no `RetryAfter` and no Syncing observation.
+- [ ] [Review][Patch] No test that coming back online starts reconciliation (VG44-04, medium) [src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor.cs:216] — `FcProjectionConnectionStatusTests` registers no `IReconnectionReconciliationCoordinator`, so the online → `ReconcileAsync` call never runs under test. Add a substitute and assert exactly one call per offline → online transition.
+- [x] [Review][Defer] Deleted expanded row is silent and loses focus (BH44-16, EC44-04, medium; decision D5 → defer, 2026-10-12) [src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcExpandedRowHiddenBanner.razor.cs:113] — deferred: no canonical UX-AM copy exists for an unavailable expanded item; speech and focus recovery are owner-owned and belong with Story 13.6 assistive verification. Today `IsMissing && !IsHiddenByFilter` shows a neutral `aria-live="off"` banner with no speech and no focus target, so focus inside the removed detail falls to `<body>`.
+- [x] [Review][Defer] Ratified FC-RETRY v1 contract contradicts shipped retry behavior (VG44-05, medium) [_bmad-output/contracts/fc-cmd-retry-degraded-state-contract-2026-06-05.md:9] — deferred: superseding a ratified contract is an owner action outside this story's code. The contract still says:
+  - one pre-accept retry;
+  - "accepted commands are never re-dispatched";
+  - malformed accepted bodies are non-retryable;
+  - `NeedsReview` at exhaustion;
+  - a polite summary.
+
+  `tests/e2e/specs/retry-and-degraded-state-handling.spec.ts:17` pins that stale text, so a correction must update both.
+- [x] [Review][Defer] Outcome-unknown warning resets the form with no status path (BH44-11, medium) [src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs:219] — deferred: carried BH12-03. Resetting to Idle after an unproven admission predates this story. `CreatePreAcceptWarning` registers no pending entry, so a resubmit uses a new MessageId. Already in the ledger; not re-appended.
+
+**Rejected (iteration 44):**
+- BH44-03 / EC44-07 low — circuit-lifetime coordinator group retention; carried BH13-05/EC24-02 low-impact route.
+- BH44-04 low — string-prefixed group keys could collide only with adopter identities containing `:scope:`/`:observed:`. A structured key is a refactor.
+- BH44-05 low — downcasts to concrete coordinator/lifecycle/pending types affect only hypothetical decorators. The fix adds interface members (public surface).
+- BH44-06 false/low — the polling constructor throw for a resolver without `IPendingCommandCapturedEntryResolver` is the behavior the spec requires (line 245). The default interface members are compatibility shims with no in-repo replacement implementation.
+- BH44-07 low — custom callbacks were isolated on the thread pool deliberately (iteration 43). The replay `Task.Delay(50)` affects only fake-time determinism; tests pass.
+- BH44-08 low — the reducer `UtcNow`/`Guid` fallbacks apply only to unstamped producers. Generated views stamp `RegisteredAt`.
+- BH44-10 low — a retry delay above about 2 s makes the bounded post-acceptance retry a no-op. The 250 ms default works, and the fix needs a new validation rule.
+- BH44-12 low — duplicated terminal mappings/deadline timers show no divergence beyond carried BH43-07.
+- BH44-13 low — the fixed 10 s Degraded threshold is the epic value. A sub-10 s budget exhausting first is consistent.
+- BH44-14 false — `fc-connectivity.js` republishes from `data-fc-status-*` on every revision change, so a detached Blazor text node is repaired. The subtree observer cost is low.
+- BH44-15 / EC44-05 low — the connectivity import retry only matters for a missing or blocked asset, and the gate wait is bounded by the JS interop timeout. Clear-on-dispose is carried BH12-07.
+- BH44-17 low — MCP top-level `retryAppropriate` now matches each payload, which is a fix. The `warning` category distinguishes outcomes; missing docs codes are cosmetic.
+- BH44-19 low — visible lifecycle titles predate this story (BH39-04 deferred). The entity-plural/French agreement needs localized entity labels. Literal-copy classification is cosmetic.
+- BH44-20 low — handlers invoked under locks only queue renderer work, and no deadlock was shown.
+- BH44-22 false/low — Shell and Contracts have no public API baseline (only FcTbl, which is pinned by test). The appended enum members are spec-mandated.
+- EC44-02 low — a double-click race in the Test-only Counter read proof.
+- EC44-03 false — the proof's unstamped `LoadPageSucceededAction` is accepted. The 47/47 Chromium Story run uses that exact path.
+- EC44-06 low — an empty-body 202 without Content-Length triggers one same-MessageId retry. EventStore always returns a JSON body.
+- EC44-08 low — `FrontComposerShell` remounts content per scope generation, so the non-grid initial-empty flag only matters for non-shell hosts.
+- EC44-09 low — a superseded `LoadPageAction` still issues one discarded query; only lagging co-mounted views reach it.
+- EC44-10 false — the per-entry `_queriesInFlight` set prevents duplicate status queries, so overlap is bounded by the number of pending entries.
+- EC44-11 low — no generated path transitions a terminal state to Idle (every ResetToIdle fires before acceptance). Note: the carried EC-01 premise "predates this story" is false. Baseline `IsValidTransition` accepted `→ Idle`; the guard arrived in `10fe51d4`.
+- EC44-15 false — the lifecycle service never republishes a same-state terminal, so the removed MCP upgrade branch was unreachable.
+- EC44-16 false — removing assertive alerts is the frozen Never rule. `data-fc-phase` has no remaining consumer; tests assert its absence.
+- AA44-09 low — StatusOverview has no filter UI writing its own view key, so the exact-label group filter is reachable only through programmatic restore.
+- AA44-10 low — the visible cap template copy is owner-owned, and the outcome-unknown message bar predates this story.
 
 ## Implementation Notes
 
@@ -1770,6 +1835,10 @@ Grouped Story 13.4 causes: ActionQueue state-rule versus user-filter classificat
 | VG43-02 | medium | patch | Preverified gap: the co-mounted lifecycle test releases an owner only after delivery. Extend it to release either owner inside the pending 250-ms window, assert one delivered survivor message, then final-owner withdrawal. |
 
 The three Story patches are bounded cancellation of the new incomplete-read wait (BH43-08) and the two direct rendered/fake-time verification gaps (VG43-01/02). The option-lifetime and release job-binding issues are separate pre-existing work; carried routes are not repeated in the deferred ledger. No intent gap or bad-spec entry remains in this pass.
+
+### Review iteration 44 — manual code review (2026-10-12)
+
+Interactive `bmad-code-review` over `src/` + `samples/` of the baseline diff (`7dd5f7cf..0fb00863`). Four layers; 53 findings received individual verdicts recorded under `### Review Findings` in Tasks & Acceptance: 5 decision-needed (human-resolved 2026-10-12: D1–D4 → patch, D5 → defer), 17 patch left as action items, 3 defer (one carried), 28 rejected. New evidence settles carried BH8-05 (renderer-thread race, now a patch) and corrects the carried EC-01 terminal-to-Idle premise.
 
 ## Verification
 
