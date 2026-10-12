@@ -41,6 +41,8 @@ public partial class FcCommandBlockedOutcome : ComponentBase, IDisposable {
     private int _generation;
     private int _disposed;
     private Task _presentation = Task.CompletedTask;
+    private string? _boundControlId;
+    private string? _boundSurface;
 
     /// <summary>Gets or sets the DOM id of the control whose activation was blocked.</summary>
     [Parameter]
@@ -85,6 +87,23 @@ public partial class FcCommandBlockedOutcome : ComponentBase, IDisposable {
 
     private string BlockedAttribute => _blocked ? "true" : "false";
 
+    /// <inheritdoc />
+    protected override void OnParametersSet() {
+        if (string.Equals(_boundControlId, AttemptedControlId, StringComparison.Ordinal)
+            && string.Equals(_boundSurface, AnnouncementSurface, StringComparison.Ordinal)) {
+            return;
+        }
+
+        _generation++;
+        CancelOwnedAnnouncement();
+        _boundControlId = AttemptedControlId;
+        _boundSurface = AnnouncementSurface;
+        _presentation = Task.CompletedTask;
+        _blocked = false;
+        _viewActionAvailable = false;
+        _message = string.Empty;
+    }
+
     /// <summary>
     /// Presents one blocked attempt: keeps focus on the attempted control and announces AM-20 once.
     /// </summary>
@@ -95,7 +114,7 @@ public partial class FcCommandBlockedOutcome : ComponentBase, IDisposable {
                 return Task.CompletedTask;
             }
 
-            _presentation = PresentAfterAsync(_presentation, _generation);
+            _presentation = PresentAfterAsync(_presentation, _generation, AttemptedControlId, AnnouncementSurface);
             return _presentation;
         });
 
@@ -124,7 +143,7 @@ public partial class FcCommandBlockedOutcome : ComponentBase, IDisposable {
         GC.SuppressFinalize(this);
     }
 
-    private async Task PresentAfterAsync(Task previous, int generation) {
+    private async Task PresentAfterAsync(Task previous, int generation, string attemptedControlId, string? announcementSurface) {
         // Serialize attempts so each one gets its own clear-then-set cycle.
         await previous.ConfigureAwait(true);
         if (!IsCurrent(generation)) {
@@ -138,31 +157,37 @@ public partial class FcCommandBlockedOutcome : ComponentBase, IDisposable {
         _viewActionAvailable = false;
         _message = string.Empty;
         StateHasChanged();
-        await FocusAttemptedControlAsync(force: false).ConfigureAwait(true);
+        // Focus interop may be delayed by module import. Keep the visible outcome and
+        // its shared speech on the attempt's own clock while focus completes later.
+        _ = FocusAttemptedControlAsync(attemptedControlId, force: false, generation);
 
         await Task.Delay(ReannounceDelay, Time).ConfigureAwait(true);
         if (!IsCurrent(generation)) {
             return;
         }
 
-        bool viewActionAvailable = await InvokeFocusModuleAsync("hasActiveLifecycle").ConfigureAwait(true);
-        if (!IsCurrent(generation)) {
-            return;
-        }
-
         _message = BlockedMessage;
-        if (AnnouncementSurface is { } surface) {
+        long attempt = ++_attempt;
+        if (announcementSurface is { } surface) {
             _activeAnnouncementSurface = surface;
-            _activeAnnouncementGroup = _announcementOwner + ":" + (++_attempt).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            _activeAnnouncementGroup = _announcementOwner + ":" + attempt.ToString(System.Globalization.CultureInfo.InvariantCulture);
             Announcements.Announce(surface, _activeAnnouncementGroup, "blocked", _message, terminal: true);
         }
-        _viewActionAvailable = viewActionAvailable;
         StateHasChanged();
+        _ = ProbeActiveLifecycleAsync(generation, attempt);
+    }
+
+    private async Task ProbeActiveLifecycleAsync(int generation, long attempt) {
+        bool available = await InvokeFocusModuleAsync("hasActiveLifecycle", generation).ConfigureAwait(true);
+        if (IsCurrent(generation) && _attempt == attempt && _blocked) {
+            _viewActionAvailable = available;
+            StateHasChanged();
+        }
     }
 
     private async Task FocusActiveCommandAsync() {
         int generation = _generation;
-        bool focused = await InvokeFocusModuleAsync("focusActiveLifecycle").ConfigureAwait(true);
+        bool focused = await InvokeFocusModuleAsync("focusActiveLifecycle", generation).ConfigureAwait(true);
         if (focused || !IsCurrent(generation) || !_blocked) {
             return;
         }
@@ -171,21 +196,24 @@ public partial class FcCommandBlockedOutcome : ComponentBase, IDisposable {
         // the attempted control rather than on a removed button.
         _viewActionAvailable = false;
         StateHasChanged();
-        await FocusAttemptedControlAsync(force: true).ConfigureAwait(true);
+        await FocusAttemptedControlAsync(AttemptedControlId, force: true, generation).ConfigureAwait(true);
     }
 
-    private async Task FocusAttemptedControlAsync(bool force) {
-        if (string.IsNullOrWhiteSpace(AttemptedControlId)) {
+    private async Task FocusAttemptedControlAsync(string controlId, bool force, int generation) {
+        if (string.IsNullOrWhiteSpace(controlId) || !IsCurrent(generation)) {
             return;
         }
 
-        _ = await InvokeFocusModuleAsync("focusAttemptedControl", AttemptedControlId, force).ConfigureAwait(true);
+        _ = await InvokeFocusModuleAsync("focusAttemptedControl", generation, controlId, force).ConfigureAwait(true);
     }
 
-    private async Task<bool> InvokeFocusModuleAsync(string identifier, params object?[] args) {
+    private async Task<bool> InvokeFocusModuleAsync(string identifier, int generation, params object?[] args) {
         IJSObjectReference? module = null;
         try {
             module = await JS.InvokeAsync<IJSObjectReference>("import", FocusModulePath).ConfigureAwait(true);
+            if (!IsCurrent(generation)) {
+                return false;
+            }
             return await module.InvokeAsync<bool>(identifier, args).ConfigureAwait(true);
         }
         catch (JSDisconnectedException) {

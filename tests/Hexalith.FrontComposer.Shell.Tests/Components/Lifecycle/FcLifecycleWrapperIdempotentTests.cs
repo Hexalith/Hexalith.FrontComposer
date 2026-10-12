@@ -3,6 +3,11 @@ using Bunit;
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Components.Lifecycle;
+using Hexalith.FrontComposer.Shell.Services.Announcements;
+using Hexalith.FrontComposer.Shell.Services.Lifecycle;
+
+using Microsoft.Extensions.DependencyInjection;
+
 
 using Shouldly;
 
@@ -12,6 +17,49 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Lifecycle;
 /// Story 2-5 Task 8.3 — idempotent Info MessageBar coverage (AC2 / D3 / D6 / D7 / D14).
 /// </summary>
 public sealed class FcLifecycleWrapperIdempotentTests : LifecycleWrapperTestBase {
+    [Fact]
+    public void LateMountedWrapperDoesNotRepeatDeliveredIdempotentTerminalSpeech()
+    {
+        using LifecycleStateService service = new(Microsoft.Extensions.Options.Options.Create(new LifecycleOptions()), FakeTime);
+        RegisterLifecycleService(service);
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        List<string> spoken = [];
+        using IDisposable speech = announcements.Subscribe("lifecycle:" + DefaultCorrelationId, message =>
+        {
+            if (message.Length > 0) { spoken.Add(message); }
+        });
+        IRenderedComponent<FcLifecycleWrapper> continuous = Render<FcLifecycleWrapper>(p => p
+            .Add(c => c.CorrelationId, DefaultCorrelationId));
+        service.Transition(DefaultCorrelationId, CommandLifecycleState.Submitting, "accepted-id");
+        service.Transition(DefaultCorrelationId, CommandLifecycleState.Acknowledged, "accepted-id");
+        service.Transition(DefaultCorrelationId, CommandLifecycleState.Confirmed, "accepted-id", idempotencyResolved: true);
+        continuous.WaitForAssertion(() => continuous.Find("[data-testid='fc-idempotent']").ShouldNotBeNull());
+        spoken.Count(message => message == "Command confirmed.").ShouldBe(1);
+
+        IRenderedComponent<FcLifecycleWrapper> late = Render<FcLifecycleWrapper>(p => p
+            .Add(c => c.CorrelationId, DefaultCorrelationId));
+        late.WaitForAssertion(() => late.Find("[data-testid='fc-idempotent']").ShouldNotBeNull());
+        spoken.Count(message => message == "Command confirmed.").ShouldBe(1);
+    }
+
+    [Fact]
+    public void LateMountedWrapperReplaysLegacyConfirmedIdempotentOutcome()
+    {
+        using LifecycleStateService service = new(Microsoft.Extensions.Options.Options.Create(new LifecycleOptions()), FakeTime);
+        RegisterLifecycleService(service);
+        service.Transition(DefaultCorrelationId, CommandLifecycleState.Submitting, "accepted-id");
+        service.Transition(DefaultCorrelationId, CommandLifecycleState.Acknowledged, "accepted-id");
+        service.Transition(DefaultCorrelationId, CommandLifecycleState.Confirmed, "accepted-id", idempotencyResolved: true);
+
+        IRenderedComponent<FcLifecycleWrapper> cut = Render<FcLifecycleWrapper>(p => p
+            .Add(c => c.CorrelationId, DefaultCorrelationId));
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-idempotent']").TextContent
+            .ShouldContain("Already confirmed"));
+        cut.Markup.ShouldNotContain("data-testid=\"fc-confirmed\"");
+        cut.Find("[data-testid='fc-surface-status']").TextContent
+            .ShouldBe("Command confirmed.");
+    }
+
     [Fact]
     public void Idempotent_confirmed_renders_info_bar_with_default_copy() {
         (IRenderedComponent<FcLifecycleWrapper>? cut, Action<CommandLifecycleTransition>? push) = RenderWrapperWithLiveService();

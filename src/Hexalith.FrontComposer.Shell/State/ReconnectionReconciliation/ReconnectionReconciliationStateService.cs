@@ -23,7 +23,7 @@ public sealed class ReconnectionReconciliationStateService(
             ReconnectionReconciliationStatus.Idle,
             Epoch: 0,
             Changed: false,
-            timeProvider.GetUtcNow()),
+            timeProvider.GetUtcNow()) { DataRead = false },
         ex => FrontComposerHotPathLog.ReconciliationStateSubscriberFailed(logger, ex.GetType().Name));
 
     public ReconnectionReconciliationSnapshot Current => _publisher.Current;
@@ -36,7 +36,7 @@ public sealed class ReconnectionReconciliationStateService(
             ReconnectionReconciliationStatus.Reconciling,
             epoch,
             Changed: false,
-            timeProvider.GetUtcNow()));
+            timeProvider.GetUtcNow()) { DataRead = false });
 
     /// <summary>Completes a successful reconciliation using the original public contract.</summary>
     public void Complete(long epoch, bool changed) => Complete(epoch, changed, succeeded: true, dataRead: true);
@@ -85,7 +85,7 @@ public sealed class ReconnectionReconciliationStateService(
                         ReconnectionReconciliationStatus.Idle,
                         current.Epoch,
                         Changed: false,
-                        timeProvider.GetUtcNow());
+                        timeProvider.GetUtcNow()) { DataRead = false };
                     return IsLogicalDuplicate(current, candidate) ? null : candidate;
                 },
                 out ReconnectionReconciliationSnapshot snapshot,

@@ -69,7 +69,7 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
                 Counter("counter-source", 1),
                 Counter("counter-cross-destination", 2),
                 Counter("counter-status-destination", 3),
-            ]));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
         IRenderedComponent<CounterProjectionView> grid = RenderGrid();
         await grid.WaitForAssertionAsync(() => grid.FindAll(IndicatorSelector).ShouldBeEmpty());
 
@@ -218,7 +218,7 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
         IPendingCommandStateService pending = Services.GetRequiredService<IPendingCommandStateService>();
         INewItemIndicatorStateService indicators = Services.GetRequiredService<INewItemIndicatorStateService>();
-        dispatcher.Dispatch(new CounterProjectionLoadedAction("epic-9-grid", [Counter("counter-existing", 1)]));
+        dispatcher.Dispatch(new CounterProjectionLoadedAction("epic-9-grid", [Counter("counter-existing", 1)]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
         IRenderedComponent<CounterProjectionView> grid = RenderGrid();
         await grid.WaitForAssertionAsync(() => grid.FindAll(IndicatorSelector).ShouldBeEmpty());
 
@@ -262,7 +262,7 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
         ApplyFilterRequery(time, "counter-filter");
         await grid.WaitForAssertionAsync(() =>
         {
-            _ = refreshScheduler.Received().RegisterLane(Arg.Is<ProjectionFallbackLane>(lane =>
+            _ = refreshScheduler.Received().RegisterReplacingLane(Arg.Is<ProjectionFallbackLane>(lane =>
                 HasCounterFilter(lane)));
             grid.FindAll(IndicatorSelector).ShouldBeEmpty();
         });
@@ -292,7 +292,7 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
         await grid.WaitForAssertionAsync(() => grid.FindAll(IndicatorSelector).Count.ShouldBe(1));
         await grid.InvokeAsync(() => dispatcher.Dispatch(new CounterProjectionLoadedAction(
             "epic-9-materialized",
-            [Counter("counter-existing", 1), Counter("counter-materialized", 2)])));
+            [Counter("counter-existing", 1), Counter("counter-materialized", 2)]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" }));
         await grid.WaitForAssertionAsync(() => grid.FindAll(IndicatorSelector).ShouldBeEmpty());
     }
 
@@ -314,7 +314,7 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
     private IProjectionFallbackRefreshScheduler ConfigureRefreshScheduler()
     {
         IProjectionFallbackRefreshScheduler scheduler = Substitute.For<IProjectionFallbackRefreshScheduler>();
-        scheduler.RegisterLane(Arg.Any<ProjectionFallbackLane>()).Returns(_ => Substitute.For<IDisposable>());
+        scheduler.RegisterReplacingLane(Arg.Any<ProjectionFallbackLane>()).Returns(_ => Substitute.For<IDisposable>());
         Services.Replace(ServiceDescriptor.Scoped(_ => scheduler));
         return scheduler;
     }

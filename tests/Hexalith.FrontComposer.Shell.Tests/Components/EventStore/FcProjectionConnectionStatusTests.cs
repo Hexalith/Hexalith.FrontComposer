@@ -26,6 +26,26 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.EventStore;
 
 public sealed class FcProjectionConnectionStatusTests : BunitContext {
     [Fact]
+    public void SameEpochConnectionReturnSpeaksCurrentReconnectingOnce()
+    {
+        _ = Render<FcProjectionConnectionStatus>();
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        List<string> spoken = [];
+        using IDisposable subscription = announcements.Subscribe("projection-connection", message => {
+            if (message.Length > 0) { spoken.Add(message); }
+        });
+        _state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Reconnecting));
+        _time.Advance(TimeSpan.FromMilliseconds(250));
+        _state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Disconnected));
+        _time.Advance(TimeSpan.FromMilliseconds(250));
+        _state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Reconnecting));
+        _time.Advance(TimeSpan.FromMilliseconds(250));
+        _state.Current.Epoch.ShouldBe(1);
+        spoken.ShouldBe(["Reconnecting...", "Live updates are unavailable. Checking for updates.", "Reconnecting..."]);
+        announcements.Current("projection-connection").ShouldBe("Reconnecting...");
+    }
+
+    [Fact]
     public async Task LegacyBoolCallbackRetainsItsClrSignatureAndUniqueInteropIdentifier()
     {
         System.Reflection.MethodInfo legacy = typeof(FcProjectionConnectionStatus)
@@ -154,6 +174,20 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
     }
 
     [Fact]
+    public void RenderedDisconnectedAndReconcilingStatusExposeBrowserFallbackMetadata() {
+        IRenderedComponent<FcProjectionConnectionStatus> cut = Render<FcProjectionConnectionStatus>();
+
+        _state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Disconnected));
+        cut.WaitForAssertion(() => cut.Find("[data-fc-status-revision]")
+            .GetAttribute("data-fc-status-fallback").ShouldBe("true"));
+
+        _state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Connected));
+        _reconciliation.Start(epoch: 7);
+        cut.WaitForAssertion(() => cut.Find("[data-fc-status-revision]")
+            .GetAttribute("data-fc-status-fallback").ShouldBe("true"));
+    }
+
+    [Fact]
     public void Reconciling_RendersRefreshingStatus() {
         IRenderedComponent<FcProjectionConnectionStatus> cut = Render<FcProjectionConnectionStatus>();
         // Connection-state is Connected by default (constructor seeds Connected). The component
@@ -217,6 +251,39 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
 
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Reconnecting..."));
         cut.Markup.ShouldNotContain("Reconnected -- data refreshed");
+    }
+
+    [Fact]
+    public async Task CurrentConnectionEpochDecidesRecoveryBeforeQueuedConnectionRender()
+    {
+        IProjectionConnectionState connection = Substitute.For<IProjectionConnectionState>();
+        ProjectionConnectionSnapshot current = new(ProjectionConnectionStatus.Connected, _time.GetUtcNow(), 0, null) { Epoch = 1 };
+        connection.Current.Returns(_ => current);
+        Action<ProjectionConnectionSnapshot>? callback = null;
+        connection.Subscribe(Arg.Any<Action<ProjectionConnectionSnapshot>>(), Arg.Any<bool>())
+            .Returns(call => {
+                callback = call.Arg<Action<ProjectionConnectionSnapshot>>();
+                return Substitute.For<IDisposable>();
+            });
+        Services.Replace(ServiceDescriptor.Singleton(connection));
+        IRenderedComponent<FcProjectionConnectionStatus> cut = Render<FcProjectionConnectionStatus>();
+        current = current with { Status = ProjectionConnectionStatus.Reconnecting };
+        await cut.InvokeAsync(() => callback.ShouldNotBeNull()(current));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Reconnecting..."));
+
+        // The authoritative connection is already healthy; its renderer callback has not run.
+        current = current with { Status = ProjectionConnectionStatus.Connected };
+        _reconciliation.Start(20);
+        _reconciliation.Complete(20, changed: true);
+        cut.WaitForAssertion(() => Services.GetRequiredService<ISurfaceAnnouncementCoordinator>()
+            .Current("projection-connection").ShouldBe("Reconnected -- data refreshed"));
+
+        _reconciliation.Start(21);
+        current = current with { Status = ProjectionConnectionStatus.Disconnected, Epoch = 2 };
+        current = current with { Status = ProjectionConnectionStatus.Connected };
+        _reconciliation.Complete(21, changed: true);
+        Services.GetRequiredService<ISurfaceAnnouncementCoordinator>()
+            .Current("projection-connection").ShouldNotBe("Reconnected -- data refreshed");
     }
 
     private sealed class StubShellLocalizer : IStringLocalizer<FcShellResources> {
@@ -362,6 +429,22 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
     }
 
     [Fact]
+    public async Task LostWatcherReturnDisposesByBindingBeforeRetry()
+    {
+        ConnectivityJsRuntime js = new(watchPending: false, timeoutWatch: true);
+        Services.Replace(ServiceDescriptor.Singleton<IJSRuntime>(js));
+        IRenderedComponent<FcProjectionConnectionStatus> cut = Render<FcProjectionConnectionStatus>();
+        cut.WaitForAssertion(() => js.WatchCalls.ShouldBe(1));
+        DotNetObjectReference<FcProjectionConnectionStatus> reference = js.Reference.ShouldNotBeNull();
+
+        await cut.Instance.DisposeAsync();
+
+        js.BindingUnwatchCalls.ShouldBe(1);
+        js.UnwatchId.ShouldBeNull();
+        Should.Throw<ObjectDisposedException>(() => reference.Value);
+    }
+
+    [Fact]
     public void TransientConnectivityImportFailureRetriesOnNextRender() {
         ConnectivityJsRuntime js = new(failFirstImport: true, watchPending: false);
         Services.Replace(ServiceDescriptor.Singleton<IJSRuntime>(js));
@@ -400,8 +483,12 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
     public async Task ConnectivityInteropTimeoutRetriesOnQuietPageAndStillReceivesOfflineEvidence(bool duringWatch) {
         ConnectivityJsRuntime js = new(watchPending: false, timeoutImport: !duringWatch, timeoutWatch: duringWatch);
         Services.Replace(ServiceDescriptor.Singleton<IJSRuntime>(js));
+        _state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Disconnected));
         IRenderedComponent<FcProjectionConnectionStatus> cut = Render<FcProjectionConnectionStatus>();
         cut.WaitForAssertion(() => js.ImportCalls.ShouldBe(1));
+        _time.Advance(TimeSpan.FromMilliseconds(250));
+        cut.WaitForAssertion(() => cut.Find("[data-fc-browser-status]").TextContent
+            .ShouldBe("Live updates are unavailable. Checking for updates."));
         _time.Advance(TimeSpan.FromSeconds(1));
         cut.WaitForAssertion(() => {
             js.WatchCalls.ShouldBe(duringWatch ? 2 : 1);
@@ -447,6 +534,8 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
 
         public int? UnwatchId => _module.UnwatchId;
 
+        public int BindingUnwatchCalls => _module.BindingUnwatchCalls;
+
         public int ModuleDisposeCalls => _module.DisposeCalls;
 
         public DotNetObjectReference<FcProjectionConnectionStatus>? Reference => _module.Reference;
@@ -484,6 +573,8 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
 
             public int? UnwatchId { get; private set; }
 
+            public int BindingUnwatchCalls { get; private set; }
+
             public int DisposeCalls { get; private set; }
 
             public DotNetObjectReference<FcProjectionConnectionStatus>? Reference { get; private set; }
@@ -514,6 +605,9 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
                         if (timeoutUnwatch) {
                             throw new TaskCanceledException("unwatch timeout");
                         }
+                        return default!;
+                    case "unwatchConnectivityBinding":
+                        BindingUnwatchCalls++;
                         return default!;
                     default:
                         throw new JSException($"Unexpected JavaScript call: {identifier}");

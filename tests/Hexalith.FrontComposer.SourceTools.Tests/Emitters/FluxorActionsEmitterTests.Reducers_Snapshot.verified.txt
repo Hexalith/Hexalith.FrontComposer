@@ -15,7 +15,8 @@ public static class OrderProjectionReducers
     /// </summary>
     [Fluxor.ReducerMethod]
     public static OrderProjectionState OnOrderProjectionLoadRequested(OrderProjectionState state, OrderProjectionLoadRequestedAction action)
-        => state with { IsLoading = true, Error = null, RequiresScopedRequest = false, ActiveCorrelationId = action.CorrelationId, ActiveOperatorInitiated = action.OperatorInitiated };
+        => action.OriginScopeGeneration != state.ScopeGeneration && (action.OriginScopeGeneration.HasValue || state.HasChangedScope)
+            ? state : state with { IsLoading = true, Error = null, RequiresScopedRequest = false, ActiveCorrelationId = action.CorrelationId, ActiveOperatorInitiated = action.OperatorInitiated, ScopeTenantId = action.ScopeTenantId ?? state.ScopeTenantId, ScopeUserId = action.ScopeUserId ?? state.ScopeUserId };
 
     /// <summary>
     /// Handles <see cref="OrderProjectionLoadedAction"/>. A post-transition result needs a matching request first; direct initial results remain supported.
@@ -23,7 +24,8 @@ public static class OrderProjectionReducers
     [Fluxor.ReducerMethod]
     public static OrderProjectionState OnOrderProjectionLoaded(OrderProjectionState state, OrderProjectionLoadedAction action)
         => state.RequiresScopedRequest || (state.ActiveCorrelationId is not null && state.ActiveCorrelationId != action.CorrelationId)
-            ? state : state with { IsLoading = false, Items = action.Items, Error = null, LastResultCorrelationId = action.CorrelationId, LastResultOperatorInitiated = state.ActiveOperatorInitiated };
+            || action.OriginScopeGeneration != state.ScopeGeneration && (action.OriginScopeGeneration.HasValue || state.HasChangedScope)
+            ? state : state with { IsLoading = false, Items = action.Items, Error = null, LastResultCorrelationId = action.CorrelationId, LastResultOperatorInitiated = state.ActiveOperatorInitiated, ScopeTenantId = action.ScopeTenantId ?? state.ScopeTenantId, ScopeUserId = action.ScopeUserId ?? state.ScopeUserId };
 
     /// <summary>
     /// Handles <see cref="OrderProjectionLoadFailedAction"/>. A post-transition failure needs a matching request first; direct initial failures remain supported.
@@ -31,10 +33,11 @@ public static class OrderProjectionReducers
     [Fluxor.ReducerMethod]
     public static OrderProjectionState OnOrderProjectionLoadFailed(OrderProjectionState state, OrderProjectionLoadFailedAction action)
         => state.RequiresScopedRequest || (state.ActiveCorrelationId is not null && state.ActiveCorrelationId != action.CorrelationId)
-            ? state : state with { IsLoading = false, Error = action.Error, LastResultCorrelationId = action.CorrelationId, LastResultOperatorInitiated = state.ActiveOperatorInitiated };
+            || action.OriginScopeGeneration != state.ScopeGeneration && (action.OriginScopeGeneration.HasValue || state.HasChangedScope)
+            ? state : state with { IsLoading = false, Error = action.Error, LastResultCorrelationId = action.CorrelationId, LastResultOperatorInitiated = state.ActiveOperatorInitiated, ScopeTenantId = action.ScopeTenantId ?? state.ScopeTenantId, ScopeUserId = action.ScopeUserId ?? state.ScopeUserId };
 
     /// <summary>Clears prior-scope projection rows and load provenance.</summary>
     [Fluxor.ReducerMethod]
     public static OrderProjectionState OnOrderProjectionScopeChanged(OrderProjectionState state, global::Hexalith.FrontComposer.Shell.State.Navigation.ScopeChangedAction action)
-        => new(IsLoading: false, Items: null, Error: null) { RequiresScopedRequest = true, HasChangedScope = true };
+        => new(IsLoading: false, Items: null, Error: null) { RequiresScopedRequest = true, HasChangedScope = true, ScopeGeneration = state.ScopeGeneration + 1 };
 }

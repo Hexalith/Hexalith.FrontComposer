@@ -32,10 +32,29 @@ public sealed class DataGridScrollInterop : IAsyncDisposable {
     /// <param name="scrollTop">Current scroll offset.</param>
     /// <param name="dotnetRef">Reference the JS module invokes back into via <c>HandleScrollAsync</c>.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
+    public ValueTask CaptureScrollAsync(
+        string viewKey,
+        double scrollTop,
+        DotNetObjectReference<object> dotnetRef,
+        CancellationToken cancellationToken = default)
+        => CaptureScrollAsync(viewKey, scrollTop, dotnetRef, generation: 0, cancellationToken);
+
+    /// <summary>Captures scroll work for a particular mounted view generation.</summary>
     public async ValueTask CaptureScrollAsync(
         string viewKey,
         double scrollTop,
         DotNetObjectReference<object> dotnetRef,
+        long generation,
+        CancellationToken cancellationToken = default)
+        => await CaptureScrollAsync(viewKey, scrollTop, dotnetRef, generation, string.Empty, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>Captures scroll work for one mounted DOM instance while sharing the view state.</summary>
+    public async ValueTask CaptureScrollAsync(
+        string viewKey,
+        double scrollTop,
+        DotNetObjectReference<object> dotnetRef,
+        long generation,
+        string instanceId,
         CancellationToken cancellationToken = default) {
         IJSObjectReference? module = await TryGetModuleAsync(cancellationToken).ConfigureAwait(false);
         if (module is null) {
@@ -43,7 +62,7 @@ public sealed class DataGridScrollInterop : IAsyncDisposable {
         }
 
         try {
-            await module.InvokeVoidAsync("captureScrollThrottled", cancellationToken, viewKey, scrollTop, dotnetRef).ConfigureAwait(false);
+            await module.InvokeVoidAsync("captureScrollThrottled", cancellationToken, viewKey, scrollTop, dotnetRef, generation, instanceId).ConfigureAwait(false);
         }
         catch (JSDisconnectedException) {
             // Circuit tearing down — ignore.
@@ -67,6 +86,14 @@ public sealed class DataGridScrollInterop : IAsyncDisposable {
     public async ValueTask ScrollToOffsetAsync(
         string viewKey,
         double scrollTop,
+        CancellationToken cancellationToken = default)
+        => await ScrollToOffsetAsync(viewKey, scrollTop, string.Empty, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>Restores the scroll offset on one mounted DOM instance.</summary>
+    public async ValueTask ScrollToOffsetAsync(
+        string viewKey,
+        double scrollTop,
+        string instanceId,
         CancellationToken cancellationToken = default) {
         IJSObjectReference? module = await TryGetModuleAsync(cancellationToken).ConfigureAwait(false);
         if (module is null) {
@@ -74,7 +101,7 @@ public sealed class DataGridScrollInterop : IAsyncDisposable {
         }
 
         try {
-            await module.InvokeVoidAsync("scrollToOffset", cancellationToken, viewKey, scrollTop).ConfigureAwait(false);
+            await module.InvokeVoidAsync("scrollToOffset", cancellationToken, viewKey, scrollTop, instanceId).ConfigureAwait(false);
         }
         catch (JSDisconnectedException) {
         }
@@ -110,6 +137,37 @@ public sealed class DataGridScrollInterop : IAsyncDisposable {
         }
         catch (OperationCanceledException) {
         }
+    }
+
+    /// <summary>Clears scroll work only while the released owner generation remains current.</summary>
+    public async ValueTask DisposeViewKeyAsync(string viewKey, long generation, Func<bool> stillFinalOwner,
+        CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(stillFinalOwner);
+        IJSObjectReference? module = await TryGetModuleAsync(cancellationToken).ConfigureAwait(false);
+        if (module is null || !stillFinalOwner()) {
+            return;
+        }
+        try {
+            await module.InvokeVoidAsync("disposeViewKey", cancellationToken, viewKey, generation).ConfigureAwait(false);
+        }
+        catch (JSDisconnectedException) { }
+        catch (JSException) { }
+        catch (OperationCanceledException) { }
+    }
+
+    /// <summary>Clears trailing scroll work belonging to one released DOM instance.</summary>
+    public async ValueTask DisposeInstanceAsync(string viewKey, long generation, string instanceId,
+        CancellationToken cancellationToken = default) {
+        IJSObjectReference? module = await TryGetModuleAsync(cancellationToken).ConfigureAwait(false);
+        if (module is null) {
+            return;
+        }
+        try {
+            await module.InvokeVoidAsync("disposeViewKey", cancellationToken, viewKey, generation, instanceId).ConfigureAwait(false);
+        }
+        catch (JSDisconnectedException) { }
+        catch (JSException) { }
+        catch (OperationCanceledException) { }
     }
 
     /// <inheritdoc />

@@ -52,6 +52,8 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
 
     /// <summary>Story 13.3 AM-20: when bound, the host renders the blocked-submit outcome because this form is not perceivable (zero-field inline). Invoked with true for each blocked attempt and false when a later attempt is admitted.</summary>
     [Parameter] public EventCallback<bool> OnBlockedSubmission { get; set; }
+    /// <summary>When true, a visible host provides the sole persistent status node for this hidden form.</summary>
+    [Parameter] public bool ExternalStatusOwner { get; set; }
     /// <summary>Gets or sets the visible host's shared announcement surface for a hidden form.</summary>
     [Parameter] public string? AnnouncementSurface { get; set; }
     private string FormAnnouncementSurface => AnnouncementSurface ?? "command-form:" + _formDomId;
@@ -207,7 +209,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             _hostBlockedOutcomePresented = false;
             await InvokeAsync(() => OnBlockedSubmission.InvokeAsync(false));
         }
-        else if (_blockedOutcome is not null)
+        if (!ExternalStatusOwner && _blockedOutcome is not null)
         {
             await _blockedOutcome.ClearAsync().ConfigureAwait(false);
         }
@@ -252,7 +254,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             _hostBlockedOutcomePresented = true;
             await InvokeAsync(() => OnBlockedSubmission.InvokeAsync(true));
         }
-        else if (_blockedOutcome is not null)
+        if (!ExternalStatusOwner && _blockedOutcome is not null)
         {
             await _blockedOutcome.PresentAsync().ConfigureAwait(false);
         }
@@ -989,7 +991,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         builder.OpenComponent<FcLifecycleWrapper>(7);
         builder.AddAttribute(8, "CorrelationId", _submittedCorrelationId);
         builder.AddAttribute(9, "StatusSurface", FormAnnouncementSurface);
-        builder.AddAttribute(10, "RenderStatus", !OnBlockedSubmission.HasDelegate);
+        builder.AddAttribute(10, "RenderStatus", !ExternalStatusOwner);
         builder.AddAttribute(11, "CommandId", "increment");
         builder.AddAttribute(12, "RejectionMessage", BuildFcLifecycleRejectionCopy());
         builder.AddAttribute(13, "RejectionTitle", BuildFcLifecycleRejectionTitle());
@@ -1135,7 +1137,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             // Story 13.3 AM-20 — publish through the lifecycle wrapper's persistent polite node. Keep the
             // View active command recovery after the submit control in tab order. A hidden
             // zero-field form lets its renderer own the node beside the visible trigger instead.
-            if (!OnBlockedSubmission.HasDelegate)
+            if (!ExternalStatusOwner)
             {
                 __b.OpenComponent<FcCommandBlockedOutcome>(55);
                 __b.AddAttribute(56, "AttemptedControlId", _formDomId + "-submit");

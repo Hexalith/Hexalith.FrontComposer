@@ -32,7 +32,7 @@ public sealed class BadgeProjectionRenderTests : GeneratedComponentTestBase {
             [
                 new BadgeProjection { Name = "Alpha", Status = ReviewState.Pending },
                 new BadgeProjection { Name = "Beta", Status = ReviewState.Approved },
-            ]));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
 
         IRenderedComponent<BadgeProjectionView> cut = await RenderVirtualizedAsync<BadgeProjectionView, BadgeProjection>();
 
@@ -58,7 +58,7 @@ public sealed class BadgeProjectionRenderTests : GeneratedComponentTestBase {
             [
                 new BadgeProjection { Name = "Gamma", Status = ReviewState.Cancelled },
                 new BadgeProjection { Name = "Delta", Status = (ReviewState)42 },
-            ]));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
 
         IRenderedComponent<BadgeProjectionView> cut = await RenderVirtualizedAsync<BadgeProjectionView, BadgeProjection>();
 

@@ -150,10 +150,11 @@
             return;
         }
 
-        Dispatcher.Dispatch(new CounterProjectionLoadRequestedAction(correlationId));
+        long scopeGeneration = CounterState.Value.ScopeGeneration;
+        Dispatcher.Dispatch(new CounterProjectionLoadRequestedAction(correlationId) { ScopeTenantId = tenantId, ScopeUserId = userId, OriginScopeGeneration = scopeGeneration });
         if (IsCurrentScope(tenantId, userId))
         {
-            Dispatcher.Dispatch(new CounterProjectionLoadedAction(correlationId, rows));
+            Dispatcher.Dispatch(new CounterProjectionLoadedAction(correlationId, rows) { ScopeTenantId = tenantId, ScopeUserId = userId, OriginScopeGeneration = scopeGeneration });
         }
     }
 

@@ -14,9 +14,9 @@ namespace Counter.Web;
 public sealed class CounterProjectionEffects {
     private readonly IState<CounterProjectionState> _state;
     private readonly IFrontComposerTenantContextAccessor _tenantContext;
-    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (int Amount, TenantContextSnapshot Scope)> _pendingBatchAmounts = new();
-    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (int Amount, TenantContextSnapshot Scope)> _pendingIncrementAmounts = new();
-    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, TenantContextSnapshot> _pendingConfigureScopes = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (int Amount, TenantContextSnapshot Scope, long ScopeGeneration)> _pendingBatchAmounts = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (int Amount, TenantContextSnapshot Scope, long ScopeGeneration)> _pendingIncrementAmounts = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (TenantContextSnapshot Scope, long ScopeGeneration)> _pendingConfigureScopes = new();
 
     /// <summary>Initializes a new instance of the <see cref="CounterProjectionEffects"/> class.</summary>
     public CounterProjectionEffects(IState<CounterProjectionState> state, IFrontComposerTenantContextAccessor tenantContext) {
@@ -30,7 +30,7 @@ public sealed class CounterProjectionEffects {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
         if (_tenantContext.TryGetContext(operationKind: "counter-increment-submit").Context is { } scope) {
-            _pendingIncrementAmounts[action.CorrelationId] = (action.Command.Amount, scope);
+            _pendingIncrementAmounts[action.CorrelationId] = (action.Command.Amount, scope, _state.Value.ScopeGeneration);
         }
         return Task.CompletedTask;
     }
@@ -41,7 +41,7 @@ public sealed class CounterProjectionEffects {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
         return _pendingIncrementAmounts.TryRemove(action.CorrelationId, out var pending)
-            ? BumpAndDispatch(action.CorrelationId, dispatcher, pending.Amount, pending.Scope)
+            ? BumpAndDispatch(action.CorrelationId, dispatcher, pending.Amount, pending.Scope, pending.ScopeGeneration)
             : Task.CompletedTask;
     }
 
@@ -51,7 +51,7 @@ public sealed class CounterProjectionEffects {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
         if (_tenantContext.TryGetContext(operationKind: "counter-batch-submit").Context is { } scope) {
-            _pendingBatchAmounts[action.CorrelationId] = (action.Command.Amount, scope);
+            _pendingBatchAmounts[action.CorrelationId] = (action.Command.Amount, scope, _state.Value.ScopeGeneration);
         }
         return Task.CompletedTask;
     }
@@ -62,7 +62,7 @@ public sealed class CounterProjectionEffects {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
         return _pendingBatchAmounts.TryRemove(action.CorrelationId, out var pending)
-            ? BumpAndDispatch(action.CorrelationId, dispatcher, pending.Amount, pending.Scope)
+            ? BumpAndDispatch(action.CorrelationId, dispatcher, pending.Amount, pending.Scope, pending.ScopeGeneration)
             : Task.CompletedTask;
     }
 
@@ -72,7 +72,7 @@ public sealed class CounterProjectionEffects {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
         if (_tenantContext.TryGetContext(operationKind: "counter-configure-submit").Context is { } scope) {
-            _pendingConfigureScopes[action.CorrelationId] = scope;
+            _pendingConfigureScopes[action.CorrelationId] = (scope, _state.Value.ScopeGeneration);
         }
 
         return Task.CompletedTask;
@@ -83,13 +83,14 @@ public sealed class CounterProjectionEffects {
     public Task OnConfigureCounterConfirmed(ConfigureCounterCommandActions.ConfirmedAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
-        return _pendingConfigureScopes.TryRemove(action.CorrelationId, out TenantContextSnapshot? scope)
-            ? BumpAndDispatch(action.CorrelationId, dispatcher, delta: 0, scope)
+        return _pendingConfigureScopes.TryRemove(action.CorrelationId, out var pending)
+            ? BumpAndDispatch(action.CorrelationId, dispatcher, delta: 0, pending.Scope, pending.ScopeGeneration)
             : Task.CompletedTask;
     }
 
-    private Task BumpAndDispatch(string correlationId, IDispatcher dispatcher, int delta, TenantContextSnapshot scope) {
-        if (!_tenantContext.Revalidate(scope, operationKind: "counter-projection-confirm").Succeeded) {
+    private Task BumpAndDispatch(string correlationId, IDispatcher dispatcher, int delta, TenantContextSnapshot scope, long scopeGeneration) {
+        if (_state.Value.ScopeGeneration != scopeGeneration
+            || !_tenantContext.Revalidate(scope, operationKind: "counter-projection-confirm").Succeeded) {
             return Task.CompletedTask;
         }
 
@@ -100,9 +101,9 @@ public sealed class CounterProjectionEffects {
         };
 
         if (_tenantContext.Revalidate(scope, operationKind: "counter-projection-dispatch").Succeeded) {
-            dispatcher.Dispatch(new CounterProjectionLoadRequestedAction(correlationId));
+            dispatcher.Dispatch(new CounterProjectionLoadRequestedAction(correlationId) { ScopeTenantId = scope.TenantId, ScopeUserId = scope.UserId, OriginScopeGeneration = scopeGeneration });
             if (_tenantContext.Revalidate(scope, operationKind: "counter-projection-result").Succeeded) {
-                dispatcher.Dispatch(new CounterProjectionLoadedAction(correlationId, [updated]));
+                dispatcher.Dispatch(new CounterProjectionLoadedAction(correlationId, [updated]) { ScopeTenantId = scope.TenantId, ScopeUserId = scope.UserId, OriginScopeGeneration = scopeGeneration });
             }
         }
         return Task.CompletedTask;

@@ -16,6 +16,29 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.State.PendingCommands;
 
 public sealed class PendingCommandStateServiceTests {
+    [Theory]
+    [InlineData(120_000)]
+    [InlineData(30_000)]
+    public void FutureAcceptanceAnchorClosesAtLocalObservationBudget(int duration)
+    {
+        FakeTimeProvider time = new();
+        using PendingCommandStateService state = new(
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxPendingCommandPollingDurationMs = duration }),
+            CreateLifecycle(), ScopedUser(), time);
+        DateTimeOffset localAcceptance = time.GetUtcNow();
+        PendingCommandRegistrationResult registered = state.Register(Registration() with {
+            SubmittedAt = localAcceptance.AddHours(3),
+        });
+        registered.Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
+        registered.Entry.ShouldNotBeNull().SubmittedAt.ShouldBe(localAcceptance);
+        time.Advance(TimeSpan.FromMilliseconds(duration - 1));
+        state.GetByMessageId(MessageId).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.Pending);
+        time.Advance(TimeSpan.FromMilliseconds(1));
+        state.GetByMessageId(MessageId).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.DegradedExhausted);
+        state.ResolveTerminal(PendingCommandTerminalObservation.Confirmed(MessageId)).Status
+            .ShouldBe(PendingCommandResolutionStatus.DuplicateIgnored);
+        state.GetByMessageId(MessageId).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.DegradedExhausted);
+    }
     [Fact]
     public void QueuedAcceptanceDeadlineCannotExpireAReplacementScopeWithReusedIdentity()
     {

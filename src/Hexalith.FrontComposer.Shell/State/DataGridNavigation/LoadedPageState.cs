@@ -31,7 +31,7 @@ namespace Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 /// </remarks>
 public sealed record LoadedPageState {
     /// <summary>Gets the circuit-scope generation for page completion provenance.</summary>
-    internal long ScopeGeneration { get; init; }
+    public long ScopeGeneration { get; init; }
 
     /// <summary>Gets the cached pages keyed by <c>(viewKey, skip)</c>.</summary>
     public ImmutableDictionary<(string ViewKey, int Skip), IReadOnlyList<object>> PagesByKey { get; init; }
@@ -79,6 +79,10 @@ public sealed record LoadedPageState {
     public ImmutableDictionary<string, long> SuccessfulReadSequenceByView { get; init; }
         = ImmutableDictionary<string, long>.Empty;
 
+    /// <summary>Genuine successful reads by cached page, so a different offset cannot establish freshness.</summary>
+    public ImmutableDictionary<(string ViewKey, int Skip), long> SuccessfulReadSequenceByPage { get; init; }
+        = ImmutableDictionary<(string ViewKey, int Skip), long>.Empty;
+
     /// <summary>Last successful first page for cap and hidden-detail provenance.</summary>
     public ImmutableDictionary<string, LoadedPageResult> LastSuccessfulPrimaryByView { get; init; }
         = ImmutableDictionary<string, LoadedPageResult>.Empty;
@@ -92,9 +96,25 @@ public sealed record LoadedPageState {
     public ImmutableDictionary<(string ViewKey, int Skip), TaskCompletionSource<object>> PendingCompletionsByKey { get; init; }
         = ImmutableDictionary<(string ViewKey, int Skip), TaskCompletionSource<object>>.Empty;
 
+    /// <summary>Additional live providers for the same current page request.</summary>
+    internal ImmutableDictionary<(string ViewKey, int Skip), ImmutableArray<TaskCompletionSource<object>>> AdditionalPendingCompletionsByKey { get; init; }
+        = ImmutableDictionary<(string ViewKey, int Skip), ImmutableArray<TaskCompletionSource<object>>>.Empty;
+
+    /// <summary>Requested page size for the primary and co-mounted pending providers.</summary>
+    internal ImmutableDictionary<(string ViewKey, int Skip), int> PendingTakeByKey { get; init; }
+        = ImmutableDictionary<(string ViewKey, int Skip), int>.Empty;
+
     /// <summary>Stable registration times for pending page requests, retained across component remounts.</summary>
     public ImmutableDictionary<(string ViewKey, int Skip), DateTimeOffset> PendingStartedAtByKey { get; init; }
         = ImmutableDictionary<(string ViewKey, int Skip), DateTimeOffset>.Empty;
+
+    /// <summary>Accepted registration anchor for each live provider, including co-mounted providers.</summary>
+    internal ImmutableDictionary<TaskCompletionSource<object>, DateTimeOffset> PendingStartedAtByCompletion { get; init; }
+        = ImmutableDictionary<TaskCompletionSource<object>, DateTimeOffset>.Empty;
+
+    /// <summary>One speech identity for a pending page, including its preceding result sequence and stable when its primary provider changes.</summary>
+    internal ImmutableDictionary<(string ViewKey, int Skip), string> PendingSpeechIdentityByKey { get; init; }
+        = ImmutableDictionary<(string ViewKey, int Skip), string>.Empty;
 
     /// <summary>Gets the virtualization lane decision latched per view key (Story 4-4 D2).</summary>
     public ImmutableDictionary<string, VirtualizationLane> LaneByKey { get; init; }

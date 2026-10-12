@@ -8,6 +8,7 @@ using Hexalith.FrontComposer.Shell.Services.Announcements;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 using NSubstitute;
@@ -22,6 +23,108 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.DataGrid;
 /// against <see cref="FcShellOptions.MaxUnfilteredItems"/>. The banner is non-dismissing per D11.
 /// </summary>
 public sealed class FcMaxItemsCapNoticeTests : BunitContext {
+    [Fact]
+    public void VisibleCapReturnsSilentlyAfterAnotherPageFailureWithdraws()
+    {
+        FakeTimeProvider time = new();
+        Services.AddSingleton<ISurfaceAnnouncementCoordinator>(new SurfaceAnnouncementCoordinator(time));
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        List<string> updates = [];
+        using IDisposable subscription = announcements.Subscribe("projection:" + ViewKey, updates.Add);
+        IRenderedComponent<FcMaxItemsCapNotice> cut = Render<FcMaxItemsCapNotice>(p => p
+            .Add(c => c.ViewKey, ViewKey).Add(c => c.ItemsCount, 10000)
+            .Add(c => c.AnyRealFilterActive, false).Add(c => c.ResultIdentity, "result-a"));
+
+        announcements.Announce("projection:" + ViewKey, "scope:0:page:2", "failure", "Page failed", terminal: true);
+        announcements.Cancel("projection:" + ViewKey, "scope:0:page:2");
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-surface-status']").TextContent
+            .ShouldBe("Showing the first 10000 items. Refine filters to narrow the result."));
+        cut.Render();
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        updates.Count(message => message.Contains("Showing the first", StringComparison.Ordinal)).ShouldBe(2);
+
+        cut.Render(p => p.Add(c => c.AnyRealFilterActive, true));
+        announcements.Current("projection:" + ViewKey).ShouldBeEmpty();
+        cut.Render(p => p.Add(c => c.AnyRealFilterActive, false).Add(c => c.ResultIdentity, "result-b"));
+        updates.Count(message => message.Contains("Showing the first", StringComparison.Ordinal)).ShouldBe(3);
+    }
+
+    [Fact]
+    public void SameResultRevealedAfterAFilterStartsOneNewVisibleEpisode()
+    {
+        FakeTimeProvider time = new();
+        Services.AddSingleton<ISurfaceAnnouncementCoordinator>(new SurfaceAnnouncementCoordinator(time));
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        List<string> spoken = [];
+        using IDisposable subscription = announcements.Subscribe("projection:" + ViewKey, spoken.Add);
+        IRenderedComponent<FcMaxItemsCapNotice> cut = Render<FcMaxItemsCapNotice>(p => p
+            .Add(c => c.ViewKey, ViewKey).Add(c => c.ItemsCount, 10000)
+            .Add(c => c.AnyRealFilterActive, false).Add(c => c.ResultIdentity, "same"));
+
+        cut.Render(p => p.Add(c => c.AnyRealFilterActive, true));
+        cut.Render(p => p.Add(c => c.AnyRealFilterActive, false));
+        cut.Render();
+
+        spoken.Count(message => message.Contains("Showing the first", StringComparison.Ordinal)).ShouldBe(2);
+    }
+
+    [Fact]
+    public void CoMountedCapOwnersShareOneEpisodeUntilBothHideIt()
+    {
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        List<string> spoken = [];
+        using IDisposable subscription = announcements.Subscribe("projection:" + ViewKey, spoken.Add);
+        IRenderedComponent<FcMaxItemsCapNotice> first = Render<FcMaxItemsCapNotice>(p => p
+            .Add(c => c.ViewKey, ViewKey).Add(c => c.ItemsCount, 10000)
+            .Add(c => c.AnyRealFilterActive, false).Add(c => c.ResultIdentity, "same"));
+        IRenderedComponent<FcMaxItemsCapNotice> second = Render<FcMaxItemsCapNotice>(p => p
+            .Add(c => c.ViewKey, ViewKey).Add(c => c.ItemsCount, 10000)
+            .Add(c => c.AnyRealFilterActive, false).Add(c => c.ResultIdentity, "same"));
+        first.Render(p => p.Add(c => c.AnyRealFilterActive, true));
+        first.Render(p => p.Add(c => c.AnyRealFilterActive, false));
+        spoken.Count(message => message.Contains("Showing the first", StringComparison.Ordinal)).ShouldBe(1);
+
+        first.Render(p => p.Add(c => c.AnyRealFilterActive, true));
+        second.Render(p => p.Add(c => c.AnyRealFilterActive, true));
+        first.Render(p => p.Add(c => c.AnyRealFilterActive, false));
+        first.Render();
+        spoken.Count(message => message.Contains("Showing the first", StringComparison.Ordinal)).ShouldBe(2);
+    }
+
+    [Fact]
+    public void ScopeSwitchCanAnnounceTheSameResultNumberAgain()
+    {
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        List<string> spoken = [];
+        using IDisposable subscription = announcements.Subscribe("projection:" + ViewKey, spoken.Add);
+        IRenderedComponent<FcMaxItemsCapNotice> cut = Render<FcMaxItemsCapNotice>(p => p
+            .Add(c => c.ViewKey, ViewKey).Add(c => c.ItemsCount, 10_000)
+            .Add(c => c.AnyRealFilterActive, false).Add(c => c.ResultIdentity, "1")
+            .Add(c => c.ScopeGeneration, 1));
+
+        cut.Render(p => p.Add(c => c.ScopeGeneration, 2));
+
+        spoken.Count(message => message.Contains("Showing the first", StringComparison.Ordinal)).ShouldBe(2);
+    }
+
+    [Fact]
+    public void CoMountedCapNoticesKeepSpeechUntilFinalOwnerLeaves()
+    {
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        IRenderedComponent<FcMaxItemsCapNotice> first = Render<FcMaxItemsCapNotice>(p => p
+            .Add(c => c.ViewKey, ViewKey).Add(c => c.ItemsCount, 10_000)
+            .Add(c => c.AnyRealFilterActive, false).Add(c => c.ResultIdentity, "shared-result"));
+        IRenderedComponent<FcMaxItemsCapNotice> second = Render<FcMaxItemsCapNotice>(p => p
+            .Add(c => c.ViewKey, ViewKey).Add(c => c.ItemsCount, 10_000)
+            .Add(c => c.AnyRealFilterActive, false).Add(c => c.ResultIdentity, "shared-result"));
+
+        first.Instance.Dispose();
+        announcements.Current("projection:" + ViewKey)
+            .ShouldBe("Showing the first 10000 items. Refine filters to narrow the result.");
+        second.Instance.Dispose();
+        announcements.Current("projection:" + ViewKey).ShouldBeEmpty();
+    }
+
     [Fact]
     public void DirectNoticeKeepsOnePersistentPoliteOwnerAcrossTransitionsAndRemount()
     {

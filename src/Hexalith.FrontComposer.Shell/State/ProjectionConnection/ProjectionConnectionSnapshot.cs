@@ -16,6 +16,9 @@ public sealed record ProjectionConnectionSnapshot(
     /// <summary>Gets a value indicating whether the browser reports that it is offline.</summary>
     public bool BrowserOffline { get; init; }
 
+    /// <summary>Counts distinct browser offline episodes within the current scoped connection.</summary>
+    public long BrowserOfflineEpisode { get; init; }
+
     /// <summary>Gets a value indicating whether realtime projection nudges are unavailable.</summary>
     public bool IsDisconnected => BrowserOffline || Status is ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected;
 }

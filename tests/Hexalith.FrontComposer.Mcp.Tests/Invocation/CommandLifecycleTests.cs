@@ -25,6 +25,14 @@ public sealed class CommandLifecycleTests {
     private const string OverflowUlid = "80000000000000000000000000";
 
     [Fact]
+    public void IdempotentOutcome_ControlWrappedWhitespaceUsesCanonicalItemLabel()
+    {
+        McpTerminalOutcome outcome = McpTerminalOutcome.IdempotentSuccess("\u0001   \u0002");
+        outcome.ToJson()["success"]!["message"]!.GetValue<string>()
+            .ShouldBe("This item was already updated. No action needed.");
+    }
+
+    [Fact]
     public async Task InvokeAsync_ValidCommand_ReturnsAcknowledgementWithLifecycleReference() {
         FrontComposerMcpCommandInvoker invoker = Build(out LifecycleAwareCommandService service, out _);
 
@@ -210,6 +218,7 @@ public sealed class CommandLifecycleTests {
         result.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Rejected");
         result.StructuredContent!["outcome"]!["rejection"]!["errorCode"]!.GetValue<string>().ShouldBe("COMMAND_REJECTED");
         result.StructuredContent!["outcome"]!["rejection"]!["retryAppropriate"]!.GetValue<bool>().ShouldBeFalse();
+        result.StructuredContent!["outcome"]!["retryAppropriate"]!.GetValue<bool>().ShouldBeFalse();
         result.StructuredContent!.ToJsonString().ShouldNotContain("raw domain reason");
         result.StructuredContent!.ToJsonString().ShouldNotContain("tenant-a");
         service.DispatchCount.ShouldBe(1);
@@ -266,7 +275,8 @@ public sealed class CommandLifecycleTests {
 
     [Fact]
     public async Task ReadAsync_IdempotencyResolvedTerminal_MapsToIdempotentConfirmedSuccess() {
-        FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
+        FrontComposerMcpCommandInvoker invoker = Build(out LifecycleAwareCommandService service, out ServiceProvider provider);
+        service.CompleteSynchronously = false;
         _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
@@ -314,6 +324,7 @@ public sealed class CommandLifecycleTests {
         result.StructuredContent!["outcome"]!["rejection"]!["errorCode"]!.GetValue<string>().ShouldBe("LIFECYCLE_TIMED_OUT");
         result.StructuredContent!["outcome"]!["rejection"]!["reasonCategory"]!.GetValue<string>().ShouldBe("timed_out");
         result.StructuredContent!["outcome"]!["rejection"]!["suggestedAction"]!.GetValue<string>().ShouldBe("retry");
+        result.StructuredContent!["outcome"]!["retryAppropriate"]!.GetValue<bool>().ShouldBeTrue();
         result.StructuredContent!["outcome"]!["rejection"]!["retryAppropriate"]!.GetValue<bool>().ShouldBeTrue();
         result.StructuredContent!["outcome"]!["rejection"]!["docsCode"]!.GetValue<string>().ShouldBe("HFC-MCP-LIFECYCLE-TIMED-OUT");
         result.StructuredContent!.ToJsonString().ShouldNotContain("tenant-a");
@@ -429,7 +440,9 @@ public sealed class CommandLifecycleTests {
         // D2.1 (option a): synthetic terminal carries a structured remediation payload so AC6 is met.
         result.StructuredContent!["outcome"]!["rejection"]!["errorCode"]!.GetValue<string>().ShouldBe("LIFECYCLE_NEEDS_REVIEW");
         result.StructuredContent!["outcome"]!["rejection"]!["reasonCategory"]!.GetValue<string>().ShouldBe("needs_review");
-        result.StructuredContent!["outcome"]!["rejection"]!["suggestedAction"]!.GetValue<string>().ShouldBe("poll");
+        result.StructuredContent!["outcome"]!["rejection"]!["suggestedAction"]!.GetValue<string>().ShouldBe("review");
+        result.StructuredContent!["outcome"]!["retryAppropriate"]!.GetValue<bool>().ShouldBeFalse();
+        result.StructuredContent!["outcome"]!["rejection"]!["retryAppropriate"]!.GetValue<bool>().ShouldBeFalse();
         result.StructuredContent!["outcome"]!["rejection"]!["docsCode"]!.GetValue<string>().ShouldBe("HFC-MCP-LIFECYCLE-NEEDS-REVIEW");
         service.DispatchCount.ShouldBe(2);
     }
@@ -662,6 +675,27 @@ public sealed class CommandLifecycleTests {
 
         after.StructuredContent!["transitions"]!.AsArray().Count.ShouldBe(beforeCount);
         after.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Confirmed");
+    }
+
+    [Fact]
+    public async Task ReadAsync_LateIdempotencyFlagCannotReviseFirstConfirmedTerminal() {
+        FrontComposerMcpCommandInvoker invoker = Build(out LifecycleAwareCommandService service, out ServiceProvider provider);
+        service.CompleteSynchronously = false;
+        _ = await invoker.InvokeAsync("Billing.PayInvoiceCommand.Execute", Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+
+        RecordObserved(provider, CommandLifecycleState.Confirmed, MessageId);
+        FrontComposerMcpResult first = await tracker.ReadAsync(
+            Args($$"""{"correlationId":"{{CorrelationId}}"}"""), TestContext.Current.CancellationToken);
+        string original = first.StructuredContent!.ToJsonString();
+        first.StructuredContent["outcome"]!["category"]!.GetValue<string>().ShouldBe("confirmed");
+
+        RecordObserved(provider, CommandLifecycleState.Confirmed, MessageId, idempotencyResolved: true);
+        RecordObserved(provider, CommandLifecycleState.Rejected, MessageId);
+        FrontComposerMcpResult after = await tracker.ReadAsync(
+            Args($$"""{"correlationId":"{{CorrelationId}}"}"""), TestContext.Current.CancellationToken);
+        after.StructuredContent!.ToJsonString().ShouldBe(original);
     }
 
     [Fact]
@@ -927,7 +961,21 @@ public sealed class CommandLifecycleTests {
                 payload.ShouldNotContain("were applied");
                 payload.ShouldNotContain("domain rules");
                 snapshot["outcome"]!["retryAppropriate"]!.GetValue<bool>().ShouldBeFalse();
+                snapshot["outcome"]!["rejection"]!["retryAppropriate"]!.GetValue<bool>().ShouldBeFalse();
+                snapshot["outcome"]!["rejection"]!["suggestedAction"]!.GetValue<string>().ShouldBe("review");
                 snapshot["outcome"]!["rejection"]!["errorCode"]!.GetValue<string>().ShouldBe("LIFECYCLE_" + category.ToUpperInvariant());
+                if (terminal == CommandLifecycleState.NeedsReview)
+                {
+                    snapshot["outcome"]!["rejection"]!["docsCode"]!.GetValue<string>()
+                        .ShouldBe("HFC-MCP-LIFECYCLE-NEEDS-REVIEW");
+                }
+                if (terminal == CommandLifecycleState.Warning)
+                {
+                    snapshot["outcome"]!["rejection"]!["message"]!.GetValue<string>()
+                        .ShouldBe("Command completed with a warning. Review the details. Data impact is unknown.");
+                    snapshot["outcome"]!["rejection"]!["dataImpact"]!.GetValue<string>()
+                        .ShouldBe("Data impact is unknown.");
+                }
             }
             RecordObserved(provider, CommandLifecycleState.Confirmed, MessageId);
             RecordObserved(provider, CommandLifecycleState.Rejected, MessageId);

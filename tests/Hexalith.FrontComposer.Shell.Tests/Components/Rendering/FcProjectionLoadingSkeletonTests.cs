@@ -31,6 +31,17 @@ public sealed class FcProjectionLoadingSkeletonTests : LayoutComponentTestBase {
     }
 
     [Fact]
+    public void SharedStatusOwnerKeepsAccessibleSkeletonWithoutSecondStatus() {
+        IRenderedComponent<FcProjectionLoadingSkeleton> cut = Render<FcProjectionLoadingSkeleton>(parameters => parameters
+            .Add(p => p.ColumnCount, 4)
+            .Add(p => p.EntityLabel, "orders")
+            .Add(p => p.SharedStatusOwner, true));
+
+        cut.FindAll("[role='status']").ShouldBeEmpty();
+        cut.Find("[role='group'][aria-busy='true'][aria-label='Loading orders']").ShouldNotBeNull();
+    }
+
+    [Fact]
     public void RendersCardLayoutWhenLayoutIsCard() {
         IRenderedComponent<FcProjectionLoadingSkeleton> cut = Render<FcProjectionLoadingSkeleton>(parameters => parameters
             .Add(p => p.ColumnCount, 0)

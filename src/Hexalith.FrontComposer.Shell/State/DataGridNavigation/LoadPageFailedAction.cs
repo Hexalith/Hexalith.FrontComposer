@@ -67,4 +67,7 @@ public sealed record LoadPageFailedAction {
 
     /// <summary>Original requested page size for an in-place retry.</summary>
     public int Take { get; init; }
+
+    /// <summary>Originating loaded-page scope generation.</summary>
+    public long? OriginScopeGeneration { get; init; }
 }

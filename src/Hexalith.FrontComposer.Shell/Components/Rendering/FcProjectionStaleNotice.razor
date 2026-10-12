@@ -7,16 +7,28 @@
 @inject ISurfaceAnnouncementCoordinator Announcements
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FcShellResources> Localizer
 
+@if (!SharedStatusOwner) {
+    <FcSurfaceStatus Surface="@Surface" ExclusiveOwner="true" />
+}
+
 @if (HasCachedRows) {
     <p role="group" aria-live="off" hidden="@(!_visible)"
        data-testid="@(_visible ? "fc-projection-stale-notice" : null)"
-       data-fc-browser-stale data-fc-server-stale="@(_visible ? "true" : "false")"
+       data-fc-browser-stale data-fc-stale-owner="@_browserStaleOwner" data-fc-stale-key="@Surface" data-fc-stale-scope="@ScopeGeneration" data-fc-server-stale="@(_visible ? "true" : "false")"
        data-fc-cached-result="@_confirmedFreshness">@Localizer["Am04Stale"]</p>
 }
 
 @code {
     [Parameter, EditorRequired]
     public string Surface { get; set; } = string.Empty;
+
+    /// <summary>Generation of the current scoped projection view.</summary>
+    [Parameter]
+    public long ScopeGeneration { get; set; }
+
+    /// <summary>Uses the generated projection's existing shared polite status node.</summary>
+    [Parameter]
+    public bool SharedStatusOwner { get; set; }
 
     [Parameter]
     public bool HasCachedRows { get; set; }
@@ -36,16 +48,17 @@
     [Parameter]
     public string? QueryFailureIdentity { get; set; }
 
-    private readonly string _ownerId = Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture);
     private string _boundSurface = string.Empty;
+    private long _boundScopeGeneration;
     private bool _disposed;
     private IDisposable? _subscription;
     private ProjectionConnectionSnapshot _snapshot = new(ProjectionConnectionStatus.Connected, DateTimeOffset.MinValue, 0, null);
     private bool _visible;
     private string? _activeGroup;
-    private string? _visibleReason;
-    private long _episode;
+    private string? _activeEpisodeKey;
+    private IDisposable? _activeClaim;
     private string? _confirmedFreshness;
+    private readonly string _browserStaleOwner = Guid.NewGuid().ToString("N");
 
     protected override void OnInitialized() {
         _subscription = Connection.Subscribe(snapshot => {
@@ -76,59 +89,57 @@
         {
             return;
         }
-        if (!string.Equals(_boundSurface, Surface, StringComparison.Ordinal))
+        if (!string.Equals(_boundSurface, Surface, StringComparison.Ordinal) || _boundScopeGeneration != ScopeGeneration)
         {
-            if (_activeGroup is { } abandoned)
-            {
-                Announcements.Cancel(_boundSurface, abandoned);
-                _activeGroup = null;
-            }
+            ReleaseAnnouncement();
             _boundSurface = Surface;
+            _boundScopeGeneration = ScopeGeneration;
             _visible = false;
-            _visibleReason = null;
             _confirmedFreshness = null;
         }
-        if (!HasFailedRefresh && FreshnessIdentity is not null)
+        if (FreshnessIdentity is not null)
         {
             _confirmedFreshness = FreshnessIdentity;
         }
         bool visible = HasCachedRows && (_snapshot.IsDisconnected || HasFailedRefresh);
         string reason = (_snapshot.BrowserOffline ? "browser-offline" : _snapshot.IsDisconnected ? "transport" : "online")
             + ":" + HasFailedRefresh;
-        if (visible && (!_visible || !string.Equals(reason, _visibleReason, StringComparison.Ordinal))) {
-            _episode++;
-        }
         _visible = visible;
-        _visibleReason = visible ? reason : null;
-        string group = "stale:" + _ownerId + ":" + _episode.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        if (_activeGroup is { } prior && (! _visible || !string.Equals(prior, group, StringComparison.Ordinal))) {
-            Announcements.Cancel(_boundSurface, prior);
-            _activeGroup = null;
+        string episodeKey = "stale:" + Surface + ":scope:" + ScopeGeneration.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            + ":" + _snapshot.Epoch.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            + ":" + _snapshot.BrowserOfflineEpisode.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            + ":" + reason + ":" + (_snapshot.LastFailureCategory ?? string.Empty)
+            + ":" + (QueryFailureIdentity ?? string.Empty);
+        if (_activeGroup is not null && (!_visible || !string.Equals(_activeEpisodeKey, episodeKey, StringComparison.Ordinal))) {
+            ReleaseAnnouncement();
         }
         if (_visible) {
-            _activeGroup = group;
-            string staleMessage = Localizer["Am04Stale"];
-            // Only the actual current query-failure event owns precedence over a stale warning.
-            // Earlier loaded or unrelated speech must yield even when its text is still present.
-            bool failureOwnsSpeech = HasFailedRefresh
-                && QueryFailureGroup is { } failureGroup
-                && QueryFailureIdentity is { } failureIdentity
-                && Announcements.IsCurrent(_boundSurface, failureGroup, failureIdentity);
-            if (!failureOwnsSpeech) {
-                Announcements.Announce(
-                    _boundSurface,
-                    group,
-                    "stale",
-                    staleMessage);
+            if (_activeGroup is null) {
+                _activeClaim = SurfaceAnnouncementGroupOwnership.For(Announcements)
+                    .ClaimEpisode(_boundSurface, episodeKey, out string group);
+                _activeGroup = group;
+                _activeEpisodeKey = episodeKey;
             }
+            // The coordinator retains a current stale candidate behind a failure or
+            // blocked terminal, then presents it if that terminal owner leaves.
+            Announcements.Announce(
+                _boundSurface,
+                _activeGroup,
+                "stale",
+                Localizer["Am04Stale"]);
         }
     }
 
     public void Dispose() {
         _disposed = true;
         _subscription?.Dispose();
-        if (_activeGroup is { } group) {
-            Announcements.Cancel(_boundSurface, group);
-        }
+        ReleaseAnnouncement();
+    }
+
+    private void ReleaseAnnouncement() {
+        _activeClaim?.Dispose();
+        _activeClaim = null;
+        _activeGroup = null;
+        _activeEpisodeKey = null;
     }
 }

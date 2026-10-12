@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Reflection;
 using System.Text.RegularExpressions;
 
 using Bunit;
@@ -12,6 +13,7 @@ using Counter.Web.Components.Slots;
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Registration;
+using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
@@ -42,6 +44,80 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 
 public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
+    [Theory]
+    [InlineData("tenant")]
+    [InlineData("user")]
+    [InlineData("generation")]
+    public async Task ReadProofDropsHeldPriorScopeQueryBeforeDispatchAndProofMutation(string changedScope)
+    {
+        TaskCompletionSource<QueryResult<CounterProjection>> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        IQueryService query = Substitute.For<IQueryService>();
+        query.QueryAsync<CounterProjection>(Arg.Any<QueryRequest>(), Arg.Any<CancellationToken>())
+            .Returns(_ => held.Task);
+        Services.Replace(ServiceDescriptor.Singleton(query));
+        Services.AddScoped<CounterCommandProjectionCatchUpChannel>();
+        await InitializeStoreAsync();
+        IRenderedComponent<CounterPage> cut = Render<CounterPage>();
+        TestTenantContextAccessor tenant = (TestTenantContextAccessor)Services.GetRequiredService<IFrontComposerTenantContextAccessor>();
+        LoadedPageFeature pages = Services.GetRequiredService<LoadedPageFeature>();
+        IState<LoadedPageState> pageState = Services.GetRequiredService<IState<LoadedPageState>>();
+        long origin = pageState.Value.ScopeGeneration;
+        TenantContextSnapshot captured = tenant.TryGetContext().Context.ShouldNotBeNull();
+        MethodInfo read = typeof(CounterPage).GetMethod("ReadProjectionForProofAsync", BindingFlags.Instance | BindingFlags.NonPublic)
+            .ShouldNotBeNull();
+        ValueTask<Hexalith.FrontComposer.Shell.State.ProjectionConnection.ProjectionFallbackLaneRefreshOutcome> pending = default;
+        await cut.InvokeAsync(() => {
+            pending = (ValueTask<Hexalith.FrontComposer.Shell.State.ProjectionConnection.ProjectionFallbackLaneRefreshOutcome>)
+                read.Invoke(cut.Instance, [25, captured, origin, CancellationToken.None])!;
+        });
+
+        if (changedScope == "tenant")
+        {
+            tenant.TenantId = "tenant-b";
+        }
+        else if (changedScope == "user")
+        {
+            tenant.UserId = "user-b";
+            pageState.Value.ScopeGeneration.ShouldBe(origin);
+        }
+        else
+        {
+            await cut.InvokeAsync(() => pages.RestoreState(pageState.Value with { ScopeGeneration = origin + 1 }));
+        }
+        held.SetResult(new QueryResult<CounterProjection>([new CounterProjection { Id = "old-tenant-row", Count = 7 }], 1, null));
+        (await pending.ConfigureAwait(true)).ShouldBe(Hexalith.FrontComposer.Shell.State.ProjectionConnection.ProjectionFallbackLaneRefreshOutcome.Skipped);
+        pageState.Value.PagesByKey.ShouldBeEmpty();
+        typeof(CounterPage).GetField("_readProofRowId", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .GetValue(cut.Instance).ShouldBeNull();
+        cut.Markup.ShouldNotContain("old-tenant-row");
+    }
+
+    [Fact]
+    public async Task ReadProofCurrentFullScopePublishesMatchingPage()
+    {
+        IQueryService query = Substitute.For<IQueryService>();
+        query.QueryAsync<CounterProjection>(Arg.Any<QueryRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new QueryResult<CounterProjection>(
+                [new CounterProjection { Id = "current-row", Count = 7 }], 1, null)));
+        Services.Replace(ServiceDescriptor.Singleton(query));
+        Services.AddScoped<CounterCommandProjectionCatchUpChannel>();
+        await InitializeStoreAsync();
+        IRenderedComponent<CounterPage> cut = Render<CounterPage>();
+        TestTenantContextAccessor tenant = (TestTenantContextAccessor)Services.GetRequiredService<IFrontComposerTenantContextAccessor>();
+        IState<LoadedPageState> pageState = Services.GetRequiredService<IState<LoadedPageState>>();
+        TenantContextSnapshot captured = tenant.TryGetContext().Context.ShouldNotBeNull();
+        MethodInfo read = typeof(CounterPage).GetMethod("ReadProjectionForProofAsync", BindingFlags.Instance | BindingFlags.NonPublic)
+            .ShouldNotBeNull();
+
+        var pending = (ValueTask<Hexalith.FrontComposer.Shell.State.ProjectionConnection.ProjectionFallbackLaneRefreshOutcome>)
+            read.Invoke(cut.Instance, [25, captured, pageState.Value.ScopeGeneration, CancellationToken.None])!;
+        var outcome = await pending.ConfigureAwait(true);
+
+        outcome.ShouldBe(Hexalith.FrontComposer.Shell.State.ProjectionConnection.ProjectionFallbackLaneRefreshOutcome.Changed);
+        typeof(CounterPage).GetField("_readProofRowId", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .GetValue(cut.Instance).ShouldBe("current-row");
+    }
+
     [Fact]
     public async Task CounterPage_AfterScopeReset_CurrentTenantCanSeedAgain() {
         Services.AddScoped<CounterCommandProjectionCatchUpChannel>();
@@ -62,7 +138,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         current.WaitForAssertion(() => Services.GetRequiredService<IState<CounterProjectionState>>()
             .Value.Items.ShouldNotBeNull().Single().Id.ShouldBe("counter-1"));
         ActiveLoadCorrelation().ShouldNotBe(oldCorrelation);
-        dispatcher.Dispatch(new CounterProjectionLoadedAction(oldCorrelation, [new CounterProjection { Id = "old-row" }]));
+        dispatcher.Dispatch(new CounterProjectionLoadedAction(oldCorrelation, [new CounterProjection { Id = "old-row" }]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
         Services.GetRequiredService<IState<CounterProjectionState>>().Value.Items
             .ShouldNotBeNull().Single().Id.ShouldBe("counter-1");
     }
@@ -120,7 +196,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         Services.Replace(ServiceDescriptor.Singleton(accessor));
         await InitializeStoreAsync();
         Services.GetRequiredService<IDispatcher>().Dispatch(new CounterProjectionLoadedAction(
-            "seed", [new CounterProjection { Id = "old", Count = 10 }]));
+            "seed", [new CounterProjection { Id = "old", Count = 10 }]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
 
         IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
         cut.Find("[data-testid='fc-scope-blocked'] h1").TextContent.ShouldBe("Workspace unavailable");
@@ -135,7 +211,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         string? renderTenant, string? renderUser, string? mismatch) {
         await InitializeStoreAsync();
         Services.GetRequiredService<IDispatcher>().Dispatch(new CounterProjectionLoadedAction(
-            "seed", [new CounterProjection { Id = "prior-scope-row", Count = 10 }]));
+            "seed", [new CounterProjection { Id = "prior-scope-row", Count = 10 }]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
         TestTenantContextAccessor scope = (TestTenantContextAccessor)Services.GetRequiredService<IFrontComposerTenantContextAccessor>();
         if (mismatch is null) {
             scope.TenantId = null;
@@ -170,11 +246,11 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
             new CounterProjectionLoadFailedAction("old", "prior failure")).ShouldBeSameAs(cleared);
 
         CounterProjectionState requested = CounterProjectionReducers.OnCounterProjectionLoadRequested(
-            cleared, new CounterProjectionLoadRequestedAction("new"));
+            cleared, new CounterProjectionLoadRequestedAction("new") { OriginScopeGeneration = cleared.ScopeGeneration });
         CounterProjectionReducers.OnCounterProjectionLoadFailed(requested,
             new CounterProjectionLoadFailedAction("old", "prior failure")).ShouldBeSameAs(requested);
         CounterProjectionState current = CounterProjectionReducers.OnCounterProjectionLoaded(
-            requested, new CounterProjectionLoadedAction("new", [new CounterProjection { Id = "current", Count = 3 }]));
+            requested, new CounterProjectionLoadedAction("new", [new CounterProjection { Id = "current", Count = 3 }]) { OriginScopeGeneration = cleared.ScopeGeneration });
         current.Items.ShouldNotBeNull().Single().Id.ShouldBe("current");
 
         CounterProjectionState initial = CounterProjectionReducers.OnCounterProjectionLoadRequested(
@@ -381,7 +457,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         IDispatcher dispatcher = provider.GetRequiredService<IDispatcher>();
 
         string correlationId = Guid.NewGuid().ToString();
-        dispatcher.Dispatch(new CounterProjectionLoadRequestedAction(correlationId));
+        dispatcher.Dispatch(new CounterProjectionLoadRequestedAction(correlationId) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
         SpinWait.SpinUntil(() => state.Value.IsLoading, TimeSpan.FromSeconds(1)).ShouldBeTrue();
 
         dispatcher.Dispatch(new CounterProjectionLoadedAction(
@@ -393,7 +469,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
                     Count = 2,
                     LastUpdated = DateTimeOffset.UtcNow,
                 },
-            ]));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
 
         SpinWait.SpinUntil(
             () => !state.Value.IsLoading && state.Value.Items?.Count == 1,
@@ -423,7 +499,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
                     Count = 1234,
                     LastUpdated = s_lastUpdated,
                 },
-            ]));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
 
         IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
@@ -467,7 +543,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
                     Count = 2,
                     LastUpdated = s_lastUpdated,
                 },
-            ]));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
 
         IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
         await cut.WaitForAssertionAsync(() => cut.FindAll(IndicatorSelector).ShouldBeEmpty());
@@ -500,7 +576,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
                     Count = 2,
                     LastUpdated = s_lastUpdated,
                 },
-            ])));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" }));
 
         await cut.WaitForAssertionAsync(() => {
             cut.FindAll(IndicatorSelector).ShouldBeEmpty();
@@ -577,7 +653,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
                     Count = 1,
                     LastUpdated = s_lastUpdated,
                 },
-            ]));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
 
         IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
         await cut.WaitForAssertionAsync(() => indicators.SubscribeCount.ShouldBe(1));
@@ -642,7 +718,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
                     Count = 1234,
                     LastUpdated = s_lastUpdated,
                 },
-            ]));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
 
         IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
@@ -677,7 +753,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
                     Count = 1234,
                     LastUpdated = s_lastUpdated,
                 },
-            ]));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
 
         IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
@@ -739,7 +815,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
                     Count = 1234,
                     LastUpdated = s_lastUpdated,
                 },
-            ]));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
 
         IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
@@ -798,7 +874,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
                     Count = 1234,
                     LastUpdated = s_lastUpdated,
                 },
-            ]));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
 
         IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
@@ -845,7 +921,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
                     Count = 1234,
                     LastUpdated = s_lastUpdated,
                 },
-            ]));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
 
         IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
@@ -856,6 +932,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
             markup.ShouldContain("counter-full-view-heading");
             markup.ShouldNotContain("fc-selected-template");
             markup.ShouldNotContain("fluent-data-grid");
+            cut.FindAll("[role='status'], [aria-live='polite']").Count.ShouldBe(1);
         });
     }
 
@@ -880,7 +957,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
                     Count = 1234,
                     LastUpdated = s_lastUpdated,
                 },
-            ]));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
 
         IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
@@ -924,7 +1001,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
                     Count = 1234,
                     LastUpdated = s_lastUpdated,
                 },
-            ]));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
 
         IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
@@ -961,7 +1038,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
                 new StatusProjection { Name = null, IsEnabled = true },
                 new StatusProjection { Name = "Beta", IsEnabled = false },
                 new StatusProjection { Name = "Gamma", IsEnabled = null },
-            ]));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
 
         IRenderedComponent<StatusProjectionView> cut = await RenderVirtualizedAsync<StatusProjectionView, StatusProjection>();
 
@@ -989,6 +1066,8 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         // slot so future emitter additions of any 32-hex sequence (e.g., a content hash) are
         // NOT silently masked.
         normalized = Regex.Replace(normalized, @"fc-expand-panel-([A-Za-z0-9-]+)-[0-9a-f]{32}", "fc-expand-panel-$1-{guid}");
+        normalized = Regex.Replace(normalized, "data-fc-stale-owner=\"[0-9a-f]{32}\"", "data-fc-stale-owner=\"{owner}\"");
+        normalized = Regex.Replace(normalized, "data-fc-datagrid-instance=\"[0-9a-f]{32}\"", "data-fc-datagrid-instance=\"{instance}\"");
         // Blazor CSS-isolation scope ids (` b-xxxxxxxxxx`) are an SDK implementation detail: the
         // hash salt changes across .NET SDK feature-band bumps, so the same unchanged component
         // emits a different `b-...` token and breaks the snapshot. Scrub the scope token so the

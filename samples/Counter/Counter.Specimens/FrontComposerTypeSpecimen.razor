@@ -145,10 +145,14 @@
     @if (AnnouncementFocus) {
         <section aria-label="Announcement focus fixture" data-testid="fc-announcement-focus-fixture">
             <button type="button" @onclick="() => _focusHidden = true" data-testid="fc-focus-hide-detail">Hide expanded detail</button>
+            <button type="button" @onclick="() => _focusHidden = false" data-testid="fc-focus-show-detail">Show expanded detail</button>
             <button type="button" @onclick="() => _focusResult++" data-testid="fc-focus-repeat-result">Show later hidden result</button>
+            <button type="button" @onclick="StartPendingHiddenResult" data-testid="fc-focus-pending-result">Start pending hidden result</button>
+            <button type="button" @onclick="() => _focusSettled = true" data-testid="fc-focus-settle-result">Settle hidden result</button>
             <FcExpandedRowHiddenBanner ViewKey="specimen-announcement-focus"
                                        IsHiddenByFilter="_focusHidden"
-                                       ResultIdentity="@_focusResult.ToString(System.Globalization.CultureInfo.InvariantCulture)" />
+                                       ResultIdentity="@_focusResult.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                       ResultSettled="_focusSettled" />
             <button type="button" @onclick="() => _focusBlocked = true" data-testid="fc-focus-block-scope">Block scope</button>
             @if (_focusBlocked) {
                 <FcScopeBlocked />
@@ -188,8 +192,15 @@
     public bool AnnouncementFocus { get; set; }
 
     private bool _focusHidden;
+    private bool _focusSettled = true;
     private bool _focusBlocked;
     private int _focusResult;
+
+    private void StartPendingHiddenResult()
+    {
+        _focusResult++;
+        _focusSettled = false;
+    }
 
     private string ResolvedTheme => Resolve(Theme, Themes, "light");
 

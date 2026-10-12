@@ -9,6 +9,364 @@ namespace Hexalith.FrontComposer.Shell.Tests.Services.Announcements;
 public sealed class SurfaceAnnouncementCoordinatorTests
 {
     [Fact]
+    public void LongPendingRequestRetainsItsOriginalOrderBeyondSettledObservationLimit()
+    {
+        using SurfaceAnnouncementCoordinator sut = new(new FakeTimeProvider());
+        SurfaceAnnouncementGroupOwnership ownership = SurfaceAnnouncementGroupOwnership.For(sut);
+        TaskCompletionSource<object> oldPending = new();
+        ownership.ObserveRequest("projection:orders", oldPending).ShouldBe(1);
+        for (int index = 0; index < 600; index++)
+        {
+            TaskCompletionSource<object> settled = new();
+            settled.SetResult(new object());
+            _ = ownership.ObserveRequest("projection:orders", settled);
+        }
+        ownership.ObserveRequest("projection:orders", oldPending).ShouldBe(1);
+        System.Collections.IDictionary entries = (System.Collections.IDictionary)typeof(SurfaceAnnouncementGroupOwnership)
+            .GetField("_requestOrders", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .GetValue(ownership)!;
+        entries.Count.ShouldBeLessThanOrEqualTo(512);
+
+        using IDisposable cap = ownership.ClaimTransitionEpisode("projection:orders", "limit:orders", "cap", out string capGroup);
+        sut.Announce("projection:orders", capGroup, "cap", "Results limited", terminal: true);
+        sut.Announce("projection:orders", "slow-query:orders:scope:0:started:1:old:observed:1", "old", "Still loading", immediate: true);
+        sut.Current("projection:orders").ShouldBe("Results limited");
+    }
+    [Fact]
+    public void CapFirstObservedBehindFailureSpeaksOnceAfterWithdrawal()
+    {
+        using SurfaceAnnouncementCoordinator sut = new(new FakeTimeProvider());
+        List<string> spoken = [];
+        using IDisposable subscription = sut.Subscribe("projection", spoken.Add);
+        sut.Announce("projection", "page:1", "failure", "Page failed", terminal: true);
+        sut.Announce("projection", "limit:result-a", "cap-a", "First limit", terminal: true);
+        sut.Announce("projection", "limit:result-b", "cap-b", "Newest limit", terminal: true);
+        sut.Current("projection").ShouldBe("Page failed");
+
+        sut.Cancel("projection", "page:1");
+        sut.Current("projection").ShouldBe("Newest limit");
+        spoken.ShouldBe(["Page failed", "Newest limit"]);
+        sut.Cancel("projection", "limit:result-b");
+        sut.Current("projection").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void DeliveredCapRestoresSilentlyAfterLaterSlowNoticeSettles()
+    {
+        using SurfaceAnnouncementCoordinator sut = new(new FakeTimeProvider());
+        List<(string Message, long Revision)> updates = [];
+        using IDisposable subscription = sut.SubscribeWithReplay("projection", (message, revision) => updates.Add((message, revision)));
+        sut.Announce("projection", "limit:orders:scope:1:1:episode:1:observed:1", "cap-a", "Results limited", terminal: true);
+        sut.Announce("projection", "slow-query:orders:scope:1:started:123:1:request:observed:2", "slow", "Still loading", immediate: true);
+        sut.Cancel("projection", "slow-query:orders:scope:1:started:123:1:request:observed:2");
+
+        sut.Current("projection").ShouldBe("Results limited");
+        updates.Select(static update => update.Message).ShouldBe([string.Empty, "Results limited", "Still loading", "Results limited"]);
+        sut.IsSilentRevision("projection", updates[^1].Revision).ShouldBeTrue();
+        sut.Cancel("projection", "limit:orders:scope:1:1:episode:1:observed:1");
+        sut.Current("projection").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void StillMountedFailureRegainsPriorityAfterLaterSlowNoticeSettles()
+    {
+        using SurfaceAnnouncementCoordinator sut = new(new FakeTimeProvider());
+        List<(string Message, long Revision)> updates = [];
+        using IDisposable subscription = sut.SubscribeWithReplay("projection", (message, revision) => updates.Add((message, revision)));
+        sut.Announce("projection", "limit:orders:scope:1:1:episode:1:observed:1", "cap", "Results limited", terminal: true);
+        sut.Announce("projection", "scope:1:page:2", "failure", "Page failed", terminal: true);
+        sut.Announce("projection", "slow-query:orders:scope:1:started:123:2:request:observed:3", "slow", "Still loading", immediate: true);
+        sut.Current("projection").ShouldBe("Still loading");
+
+        sut.Cancel("projection", "slow-query:orders:scope:1:started:123:2:request:observed:3");
+        sut.Current("projection").ShouldBe("Page failed");
+        sut.IsSilentRevision("projection", updates[^1].Revision).ShouldBeTrue();
+        sut.Cancel("projection", "scope:1:page:2");
+        sut.Current("projection").ShouldBe("Results limited");
+        sut.IsSilentRevision("projection", updates[^1].Revision).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void WithdrawnPageFailureRestoresStillVisibleCapSilently()
+    {
+        FakeTimeProvider time = new();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        List<(string Message, long Revision)> updates = [];
+        using IDisposable subscription = sut.SubscribeWithReplay("projection:orders", (message, revision) => updates.Add((message, revision)));
+
+        sut.Announce("projection:orders", "limit:orders:scope:1:result-a:episode:1", "cap-a", "Results limited", terminal: true);
+        sut.Announce("projection:orders", "scope:1:page:2", "failure", "Page failed", terminal: true);
+        sut.Cancel("projection:orders", "scope:1:page:2");
+
+        sut.Current("projection:orders").ShouldBe("Results limited");
+        sut.IsCurrent("projection:orders", "limit:orders:scope:1:result-a:episode:1", "cap-a").ShouldBeTrue();
+        sut.IsSilentRevision("projection:orders", updates[^1].Revision).ShouldBeTrue();
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        updates.Select(static update => update.Message).ShouldBe([string.Empty, "Results limited", "Page failed", "Results limited"]);
+
+        sut.Cancel("projection:orders", "limit:orders:scope:1:result-a:episode:1");
+        sut.Current("projection:orders").ShouldBeEmpty();
+        sut.Announce("projection:orders", "limit:orders:scope:1:result-b:episode:2", "cap-b", "New limit", terminal: true);
+        sut.Current("projection:orders").ShouldBe("New limit");
+        sut.IsSilentRevision("projection:orders", updates[^1].Revision).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void SupersededCapCannotReturnWhenLaterFailureWithdraws()
+    {
+        using SurfaceAnnouncementCoordinator sut = new(new FakeTimeProvider());
+        sut.Announce("projection:orders", "limit:orders:scope:1:result-a", "cap-a", "Old limit", terminal: true);
+        sut.Cancel("projection:orders", "limit:orders:scope:1:result-a");
+        sut.Announce("projection:orders", "limit:orders:scope:1:result-b", "cap-b", "Current limit", terminal: true);
+        sut.Announce("projection:orders", "scope:1:page:3", "failure", "Page failed", terminal: true);
+        sut.Cancel("projection:orders", "limit:orders:scope:1:result-b");
+        sut.Cancel("projection:orders", "scope:1:page:3");
+        sut.Current("projection:orders").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void WithdrawnBlockedAttemptRestoresCurrentLifecycleWithoutRepeatingSpeech()
+    {
+        FakeTimeProvider time = new();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        List<(string Message, long Revision)> updates = [];
+        using IDisposable subscription = sut.SubscribeWithReplay("command", (message, revision) => updates.Add((message, revision)));
+
+        sut.Announce("command", "lifecycle:original", "Acknowledged", "Command accepted");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        sut.Announce("command", "blocked:attempt:1", "blocked", "Second attempt did not run", terminal: true);
+        sut.Announce("command", "lifecycle:original", "Acknowledged", "Command accepted");
+        sut.Current("command").ShouldBe("Second attempt did not run");
+
+        sut.Cancel("command", "blocked:attempt:1");
+        sut.Current("command").ShouldBe("Command accepted");
+        sut.IsCurrent("command", "lifecycle:original", "Acknowledged").ShouldBeTrue();
+        sut.IsSilentRevision("command", updates[^1].Revision).ShouldBeTrue();
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        updates.Select(static update => update.Message).ShouldBe([string.Empty, "Command accepted", "Second attempt did not run", "Command accepted"]);
+
+        sut.Announce("command", "lifecycle:original", "Confirmed", "Command confirmed", terminal: true);
+        sut.Current("command").ShouldBe("Command confirmed");
+        sut.IsSilentRevision("command", updates[^1].Revision).ShouldBeFalse();
+        sut.Cancel("command", "blocked:attempt:1");
+        sut.Current("command").ShouldBe("Command confirmed");
+    }
+
+    [Fact]
+    public void WithdrawnBlockedAttemptDoesNotRestoreSupersededLifecycleWork()
+    {
+        FakeTimeProvider time = new();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        sut.Announce("command", "lifecycle:original", "Acknowledged", "Command accepted");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        sut.Announce("command", "lifecycle:original", "Syncing", "Command syncing");
+        sut.Announce("command", "blocked:attempt:1", "blocked", "Second attempt did not run", terminal: true);
+        sut.Cancel("command", "blocked:attempt:1");
+        sut.Current("command").ShouldBeEmpty();
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        sut.Current("command").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void NewerStaleCandidateKeepsItsExistingRestorationPrecedence()
+    {
+        FakeTimeProvider time = new();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        sut.Announce("shared", "lifecycle:original", "Acknowledged", "Command accepted");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        sut.Announce("shared", "blocked:attempt:1", "blocked", "Second attempt did not run", terminal: true);
+        sut.Announce("shared", "stale:episode:1", "stale", "Cached data may be old");
+
+        sut.Cancel("shared", "blocked:attempt:1");
+        sut.Current("shared").ShouldBe("Cached data may be old");
+        sut.IsCurrent("shared", "stale:episode:1", "stale").ShouldBeTrue();
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        sut.Current("shared").ShouldBe("Cached data may be old");
+    }
+
+    [Fact]
+    public void NonnumericCapUsesObservedOrderForSameTickSlowRequests()
+    {
+        FakeTimeProvider time = new();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        long tick = time.GetUtcNow().UtcTicks;
+        sut.Announce("projection:orders", "limit:orders:scope:1:result-x:10000:episode:1:observed:2",
+            "result-x", "Results limited", terminal: true);
+
+        sut.Announce("projection:orders", $"slow-query:orders:scope:1:started:{tick}:0:old:observed:1",
+            "old", "Old slow", immediate: true);
+        sut.Current("projection:orders").ShouldBe("Results limited");
+        sut.Announce("projection:orders", $"slow-query:orders:scope:0:started:{tick}:0:stale-scope:observed:99",
+            "stale-scope", "Wrong scope", immediate: true);
+        sut.Current("projection:orders").ShouldBe("Results limited");
+        sut.Announce("projection:orders", $"slow-query:orders:scope:1:started:{tick}:0:new:observed:3",
+            "new", "New slow", immediate: true);
+        sut.Current("projection:orders").ShouldBe("New slow");
+    }
+
+    [Fact]
+    public void OlderImmediateSlowRequestCannotReplaceClosedPageButNewRequestCan()
+    {
+        FakeTimeProvider time = new();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        List<string> spoken = [];
+        using IDisposable subscription = sut.Subscribe("projection:orders", spoken.Add);
+        long oldStart = time.GetUtcNow().UtcTicks;
+        time.Advance(TimeSpan.FromSeconds(1));
+        sut.Announce("projection:orders", "scope:1:page:1", "failure", "Page failed", terminal: true);
+
+        sut.Announce("projection:orders", $"slow-query:orders:started:{oldStart}:pending-b", "pending-b", "Still loading", immediate: true);
+        sut.Current("projection:orders").ShouldBe("Page failed");
+        spoken.ShouldBe(["Page failed"]);
+
+        time.Advance(TimeSpan.FromTicks(1));
+        long newStart = time.GetUtcNow().UtcTicks;
+        sut.Announce("projection:orders", $"slow-query:orders:started:{newStart}:request-c", "request-c", "Still loading", immediate: true);
+        sut.Current("projection:orders").ShouldBe("Still loading");
+        spoken.ShouldBe(["Page failed", "Still loading"]);
+    }
+
+    [Fact]
+    public void ResultSequenceDistinguishesNewRequestAtTheSameClockTick()
+    {
+        FakeTimeProvider time = new();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        long tick = time.GetUtcNow().UtcTicks;
+        sut.Announce("projection:orders", "scope:0:page:1", "failure", "Page failed", terminal: true);
+        sut.Announce("projection:orders", $"slow-query:orders:scope:0:started:{tick}:0:old", "0:old", "Old slow", immediate: true);
+        sut.Current("projection:orders").ShouldBe("Page failed");
+        sut.Announce("projection:orders", $"slow-query:orders:scope:0:started:{tick}:1:new", "1:new", "New slow", immediate: true);
+        sut.Current("projection:orders").ShouldBe("New slow");
+    }
+
+    [Fact]
+    public void CapResultAllowsOnlyANewSlowRequestAtTheSameClockTick()
+    {
+        FakeTimeProvider time = new();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        long tick = time.GetUtcNow().UtcTicks;
+        sut.Announce("projection:orders", "limit:orders:scope:0:5:10000", "cap", "Results limited", terminal: true);
+
+        sut.Announce("projection:orders", $"slow-query:orders:scope:0:started:{tick}:4:old", "4:old", "Old slow", immediate: true);
+        sut.Current("projection:orders").ShouldBe("Results limited");
+        sut.Announce("projection:orders", $"slow-query:orders:scope:0:started:{tick}:5:new", "5:new", "New slow", immediate: true);
+        sut.Current("projection:orders").ShouldBe("New slow");
+    }
+
+    [Theory]
+    [InlineData("blocked:attempt:1", "blocked")]
+    [InlineData("load:request:1", "failure")]
+    public void NewStaleCandidateBehindTerminalAppearsWhenTerminalWithdraws(string terminalGroup, string terminalIdentity)
+    {
+        FakeTimeProvider time = new();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        List<string> spoken = [];
+        using IDisposable subscription = sut.Subscribe("shared", spoken.Add);
+        sut.Announce("shared", terminalGroup, terminalIdentity, "Terminal", terminal: true);
+        sut.Announce("shared", "stale:episode:2", "stale", "Cached data may be old");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        sut.Current("shared").ShouldBe("Terminal");
+        spoken.ShouldBe(["Terminal"]);
+
+        sut.Cancel("shared", terminalGroup);
+        sut.Current("shared").ShouldBe("Cached data may be old");
+        spoken.ShouldBe(["Terminal", "Cached data may be old"]);
+        sut.Announce("shared", "stale:episode:2", "stale", "Cached data may be old");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        spoken.ShouldBe(["Terminal", "Cached data may be old"]);
+    }
+
+    [Fact]
+    public void RestoredPendingStaleCandidateSpeaksOnceAcrossItsOriginalDeadline()
+    {
+        FakeTimeProvider time = new();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        List<string> spoken = [];
+        using IDisposable subscription = sut.Subscribe("shared", spoken.Add);
+        sut.Announce("shared", "limit:result:1", "cap", "Results limited", terminal: true);
+        sut.Announce("shared", "stale:episode:1", "stale", "Cached data may be old");
+        time.Advance(TimeSpan.FromMilliseconds(249));
+        spoken.ShouldBe(["Results limited"]);
+
+        sut.Cancel("shared", "limit:result:1");
+        sut.Current("shared").ShouldBe("Cached data may be old");
+        spoken.ShouldBe(["Results limited", "Cached data may be old"]);
+        time.Advance(TimeSpan.FromMilliseconds(1));
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        sut.Current("shared").ShouldBe("Cached data may be old");
+        spoken.ShouldBe(["Results limited", "Cached data may be old"]);
+
+        sut.Cancel("shared", "stale:episode:1");
+        sut.Announce("shared", "stale:episode:2", "stale", "Cached data may be old");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        spoken.ShouldBe(["Results limited", "Cached data may be old", "", "Cached data may be old"]);
+    }
+
+    [Fact]
+    public void QueuedStaleTimerCannotReplaceMountedLimitOrLaterTerminal()
+    {
+        var time = new Hexalith.FrontComposer.Shell.Tests.Infrastructure.QueuedTimerTimeProvider();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        List<string> spoken = [];
+        using IDisposable subscription = sut.Subscribe("shared", spoken.Add);
+        sut.Announce("shared", "limit:result:1", "cap", "Results limited", terminal: true);
+        sut.Announce("shared", "stale:episode:1", "stale", "Cached data may be old");
+        time.Callbacks.Count.ShouldBe(1);
+        time.Callbacks[0]();
+        sut.Current("shared").ShouldBe("Results limited");
+        spoken.ShouldBe(["Results limited"]);
+
+        sut.Cancel("shared", "limit:result:1");
+        spoken.ShouldBe(["Results limited", "Cached data may be old"]);
+        sut.Announce("shared", "limit:result:2", "cap", "New limit", terminal: true);
+        time.Callbacks[0]();
+        sut.Current("shared").ShouldBe("New limit");
+        spoken.ShouldBe(["Results limited", "Cached data may be old", "New limit"]);
+    }
+
+    [Fact]
+    public void DeliveredStaleEpisodeCannotReclaimSharedBlockedTerminal()
+    {
+        FakeTimeProvider time = new();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        List<string> spoken = [];
+        using IDisposable subscription = sut.Subscribe("shared", spoken.Add);
+        sut.Announce("shared", "stale:episode:1", "stale", "Cached data may be old");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        sut.Announce("shared", "blocked:attempt:1", "blocked", "Another command is active", terminal: true);
+
+        sut.Announce("shared", "stale:episode:1", "stale", "Cached data may be old");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        spoken.ShouldBe(["Cached data may be old", "Another command is active"]);
+        sut.Current("shared").ShouldBe("Another command is active");
+
+        sut.Cancel("shared", "blocked:attempt:1");
+        sut.Current("shared").ShouldBe("Cached data may be old");
+        sut.IsCurrent("shared", "stale:episode:1", "stale").ShouldBeTrue();
+        sut.Announce("shared", "stale:episode:2", "stale", "Cached data may be old");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        spoken.ShouldBe(["Cached data may be old", "Another command is active", "Cached data may be old", "Cached data may be old"]);
+    }
+
+    [Fact]
+    public void ScopedPageResultAndOriginalCommandProgressCanReplaceOlderTerminalSpeech()
+    {
+        FakeTimeProvider time = new();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        sut.Announce("grid", "scope:1:page:1", "empty", "No rows", terminal: true);
+        sut.Announce("grid", "scope:1:page:2", "loaded", "Rows loaded");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        sut.Current("grid").ShouldBe("Rows loaded");
+        sut.Announce("grid", "scope:2:page:1", "empty", "New scope empty", terminal: true);
+        sut.Current("grid").ShouldBe("New scope empty");
+
+        sut.Announce("command", "blocked:attempt:1", "blocked", "Another command is active", terminal: true);
+        sut.Announce("command", "original-correlation", "syncing", "Original command syncing");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        sut.Current("command").ShouldBe("Original command syncing");
+    }
+
+    [Fact]
     public void CancellingOrdinaryAndVersionedObserversCannotSuppressHealthyListeners()
     {
         using SurfaceAnnouncementCoordinator sut = new(new FakeTimeProvider());
@@ -122,6 +480,71 @@ public sealed class SurfaceAnnouncementCoordinatorTests
         spoken.ShouldBe(["Delivered A", "Unrelated", "Current B"]);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DeliveredPageResultCannotReclaimNewerSharedSlowOrBlockedStatus(bool blocked)
+    {
+        FakeTimeProvider time = new();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        List<string> spoken = [];
+        using IDisposable subscription = sut.Subscribe("projection:orders", spoken.Add);
+        sut.Announce("projection:orders", "scope:1:page:1", "loaded", "Rows loaded");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        string group = blocked ? "blocked:attempt:2" : "slow-query:orders:scope:1:started:1:1:request-b";
+        sut.Announce("projection:orders", group, "B", blocked ? "Command blocked" : "Still loading",
+            terminal: blocked, immediate: !blocked);
+
+        sut.Announce("projection:orders", "scope:1:page:1", "loaded", "Rows loaded");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        sut.Current("projection:orders").ShouldBe(blocked ? "Command blocked" : "Still loading");
+        spoken.ShouldBe(blocked ? ["Rows loaded", "Command blocked"] : ["Rows loaded", "Still loading"]);
+
+        sut.Announce("projection:orders", "scope:1:page:2", "loaded", "New rows loaded");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        sut.Current("projection:orders").ShouldBe("New rows loaded");
+        spoken.Last().ShouldBe("New rows loaded");
+    }
+
+    [Fact]
+    public void DeliveredConnectionStateCanReturnAfterAnotherStateWasDelivered()
+    {
+        FakeTimeProvider time = new();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        List<string> spoken = [];
+        using IDisposable subscription = sut.Subscribe("connection", spoken.Add);
+
+        sut.Announce("connection", "connection:7", "A", "Reconnecting");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        sut.Announce("connection", "connection:7", "B", "Disconnected");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        sut.Announce("connection", "connection:7", "A", "Reconnecting");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        sut.Announce("connection", "connection:7", "A", "Reconnecting");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+
+        spoken.ShouldBe(["Reconnecting", "Disconnected", "Reconnecting"]);
+        sut.Current("connection").ShouldBe("Reconnecting");
+    }
+
+    [Fact]
+    public void TerminalResultBlocksRearmedStaleAndCapUntilWithdrawn()
+    {
+        FakeTimeProvider time = new();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        sut.Announce("projection", "stale:1", "stale", "Old data");
+        sut.Announce("projection", "page:2", "failure", "Query failed", terminal: true);
+        sut.Announce("projection", "stale:1", "stale", "Old data");
+        sut.Announce("projection", "limit:1", "cap", "Limited data", terminal: true);
+        time.Advance(TimeSpan.FromSeconds(1));
+        sut.Current("projection").ShouldBe("Query failed");
+
+        sut.Cancel("projection", "page:2");
+        sut.Current("projection").ShouldBe("Old data");
+        sut.Cancel("projection", "stale:1");
+        sut.Current("projection").ShouldBe("Limited data");
+    }
+
     [Fact]
     public void DistinctProjectionSurfacesDoNotCancelEachOther()
     {
@@ -214,6 +637,7 @@ public sealed class SurfaceAnnouncementCoordinatorTests
         if (decisiveCancellation)
         {
             sut.Announce("surface", "result", "failed", "Failed", terminal: true);
+            sut.Cancel("surface", "result");
         }
         else
         {

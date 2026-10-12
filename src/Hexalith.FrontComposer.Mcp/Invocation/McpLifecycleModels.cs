@@ -119,7 +119,7 @@ internal sealed record McpTerminalOutcome(
         return new McpTerminalOutcome(
             McpTerminalOutcomeKind.IdempotentConfirmed,
             SuccessPayload: new McpSuccessPayload(
-                $"This {label} was already updated (by another caller). No action needed.",
+                $"This {label} was already updated. No action needed.",
                 "No further changes are required."));
     }
 
@@ -155,7 +155,8 @@ internal sealed record McpTerminalOutcome(
             buffer[written++] = c;
         }
 
-        return written == 0 ? "item" : new string(buffer[..written]).TrimEnd();
+        string sanitized = new string(buffer[..written]).Trim();
+        return string.IsNullOrWhiteSpace(sanitized) ? "item" : sanitized;
     }
 
     public static McpTerminalOutcome GenericRejection()
@@ -196,8 +197,8 @@ internal sealed record McpTerminalOutcome(
                 EntityId: null,
                 Message: "Command outcome unconfirmed: the lifecycle handle was retained for review after eviction. Data impact is unknown.",
                 DataImpact: "Outcome is unconfirmed at the framework boundary.",
-                SuggestedAction: "poll",
-                RetryAppropriate: true,
+                SuggestedAction: "review",
+                RetryAppropriate: false,
                 ReasonCategory: "needs_review",
                 DocsCode: "HFC-MCP-LIFECYCLE-NEEDS-REVIEW"));
 
@@ -218,24 +219,25 @@ internal sealed record McpTerminalOutcome(
                 EntityId: null,
                 Message: state switch {
                     CommandLifecycleState.NeedsReview => "Command outcome unconfirmed: the command requires review. Data impact is unknown.",
-                    CommandLifecycleState.Warning => "Command outcome unconfirmed: acceptance or completion could not be verified. Data impact is unknown.",
+                    CommandLifecycleState.Warning => "Command completed with a warning. Review the details. Data impact is unknown.",
                     _ => "Command outcome unconfirmed: the observation budget ended before completion was verified. Data impact is unknown.",
                 },
-                DataImpact: "Outcome is unconfirmed at the framework boundary.",
-                SuggestedAction: "poll",
+                DataImpact: state == CommandLifecycleState.Warning
+                    ? "Data impact is unknown."
+                    : "Outcome is unconfirmed at the framework boundary.",
+                SuggestedAction: "review",
                 RetryAppropriate: false,
                 ReasonCategory: ToCategory(state switch {
                     CommandLifecycleState.NeedsReview => McpTerminalOutcomeKind.NeedsReview,
                     CommandLifecycleState.Warning => McpTerminalOutcomeKind.Warning,
                     _ => McpTerminalOutcomeKind.DegradedExhausted,
-                })));
+                }),
+                DocsCode: state == CommandLifecycleState.NeedsReview ? "HFC-MCP-LIFECYCLE-NEEDS-REVIEW" : null));
 
     public JsonObject ToJson() {
         JsonObject json = new() {
             ["category"] = ToCategory(Kind),
-            ["retryAppropriate"] = Kind is not McpTerminalOutcomeKind.Confirmed and not McpTerminalOutcomeKind.IdempotentConfirmed
-                && (Kind is not McpTerminalOutcomeKind.Warning and not McpTerminalOutcomeKind.DegradedExhausted
-                    && (Kind is not McpTerminalOutcomeKind.NeedsReview || Rejection?.RetryAppropriate != false)),
+            ["retryAppropriate"] = Rejection?.RetryAppropriate ?? false,
         };
         if (Rejection is not null) {
             json["rejection"] = Rejection.ToJson();

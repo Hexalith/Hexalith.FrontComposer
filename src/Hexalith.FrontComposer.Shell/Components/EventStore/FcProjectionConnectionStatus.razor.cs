@@ -42,6 +42,7 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, 
     private ITimer? _connectivityRetryTimer;
     private long _onlineEpisode;
     private long _recoveryEpisode;
+    private long? _reconciliationConnectionEpoch;
     private string? _recoveryGroup;
     private ElementReference _presentationHost;
     private long _browserObservationGeneration;
@@ -107,6 +108,7 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, 
             if (_connectivityWatchId == 0) {
                 _connectivityWatchId = await _connectivityModule.InvokeAsync<int>("watchConnectivity", _connectivityReference,
                     _presentationHost, AnnouncementLocalizer["Am30Offline"].Value).ConfigureAwait(true);
+                await InvokeAsync(StateHasChanged).ConfigureAwait(true);
             }
             long initialObservation = _browserObservationGeneration;
             bool online = await _connectivityModule.InvokeAsync<bool>("isOnline").ConfigureAwait(true);
@@ -229,6 +231,11 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, 
             }
 
             _snapshot = snapshot;
+            if (snapshot.IsDisconnected || _reconciliation.Status is ReconnectionReconciliationStatus.Reconciling) {
+                CancelClearTimer();
+                _showReconnected = false;
+                CancelRecoveryAnnouncement();
+            }
             if (snapshot.Status is ProjectionConnectionStatus.Connected) {
                 Announcements.Cancel(AnnouncementSurface, ScopedEpisode("connection", snapshot.Epoch));
                 Announcements.Cancel(AnnouncementSurface, ScopedEpisode("browser-online-disconnected", _onlineEpisode));
@@ -241,12 +248,6 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, 
                     AnnouncementLocalizer[snapshot.Status == ProjectionConnectionStatus.Disconnected
                         ? "Am06Fallback" : "Am05Reconnecting"]);
             }
-            if (snapshot.IsDisconnected || _reconciliation.Status is ReconnectionReconciliationStatus.Reconciling) {
-                CancelClearTimer();
-                _showReconnected = false;
-                CancelRecoveryAnnouncement();
-            }
-
             StateHasChanged();
         });
     }
@@ -254,6 +255,12 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, 
     private void OnReconciliationChanged(ReconnectionReconciliationSnapshot snapshot) {
         if (_disposed != 0) {
             return;
+        }
+
+        // Capture the connection epoch when reconciliation starts, before a renderer callback
+        // can be queued behind later connection publications.
+        if (snapshot.Status is ReconnectionReconciliationStatus.Reconciling) {
+            _reconciliationConnectionEpoch = ConnectionState.Current.Epoch;
         }
 
         _ = InvokeAsync(() => {
@@ -265,14 +272,15 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, 
                 return;
             }
 
-            // P31 — connection-status precedence wins. A late Refreshed snapshot from a
-            // superseded reconnect epoch must never reopen a cleared status while we are
-            // already disconnected/reconnecting. Stale-epoch snapshots are also ignored:
-            // if a Refreshed lands for an older epoch than what we already saw, drop it.
+            ProjectionConnectionSnapshot currentConnection = ConnectionState.Current;
+            // The local connection snapshot can lag when its renderer callback is queued.
+            // Authoritative status and the epoch captured at Start decide whether recovery
+            // still belongs to this connection episode.
             if (snapshot.Status is ReconnectionReconciliationStatus.Refreshed
                 && (_offline
-                    || _snapshot.IsDisconnected
-                    || _snapshot.Status is ProjectionConnectionStatus.Reconnecting
+                    || currentConnection.IsDisconnected
+                    || currentConnection.Status is not ProjectionConnectionStatus.Connected
+                    || (_reconciliationConnectionEpoch is { } startedEpoch && currentConnection.Epoch != startedEpoch)
                     || snapshot.Epoch < _reconciliation.Epoch)) {
                 return;
             }
@@ -382,7 +390,12 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, 
         if (_connectivityModule is not null) {
             try {
                 try {
-                    await _connectivityModule.InvokeVoidAsync("unwatchConnectivity", _connectivityWatchId).ConfigureAwait(true);
+                    if (_connectivityWatchId == 0) {
+                        await _connectivityModule.InvokeVoidAsync("unwatchConnectivityBinding", _presentationHost, _episodeScope).ConfigureAwait(true);
+                    }
+                    else {
+                        await _connectivityModule.InvokeVoidAsync("unwatchConnectivity", _connectivityWatchId).ConfigureAwait(true);
+                    }
                 }
                 finally {
                     await _connectivityModule.DisposeAsync().ConfigureAwait(true);

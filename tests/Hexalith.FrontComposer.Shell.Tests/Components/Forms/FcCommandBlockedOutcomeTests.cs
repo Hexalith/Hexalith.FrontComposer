@@ -5,6 +5,7 @@ using AngleSharp.Dom;
 using Bunit;
 
 using Hexalith.FrontComposer.Shell.Components.Forms;
+using Hexalith.FrontComposer.Shell.Services.Announcements;
 
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,6 +41,105 @@ public sealed class FcCommandBlockedOutcomeTests : BunitContext {
     }
 
     private BunitJSModuleInterop FocusModule { get; }
+
+    [Fact]
+    public async Task ClearingSharedBlockedAttemptRestoresActiveLifecycleInTheSingleStatusNode()
+    {
+        SurfaceAnnouncementCoordinator announcements = new(_time);
+        Services.AddSingleton<ISurfaceAnnouncementCoordinator>(announcements);
+        _ = FocusModule.Setup<bool>("hasActiveLifecycle", _ => true).SetResult(true);
+        IRenderedComponent<FcCommandBlockedOutcome> cut = Render<FcCommandBlockedOutcome>(p => p
+            .Add(c => c.AttemptedControlId, "submit")
+            .Add(c => c.AnnouncementSurface, "command:active")
+            .Add(c => c.OwnsSurfaceStatus, true));
+        announcements.Announce("command:active", "lifecycle:original", "Acknowledged", "Command accepted");
+        _time.Advance(TimeSpan.FromMilliseconds(250));
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-surface-status']").TextContent.ShouldBe("Command accepted"));
+
+        Task presented = cut.InvokeAsync(() => cut.Instance.PresentAsync());
+        await AdvanceUntilAsync(() => presented.IsCompleted);
+        cut.Find("[data-testid='fc-surface-status']").TextContent.ShouldBe(BlockedMessage);
+        await cut.InvokeAsync(() => cut.Instance.ClearAsync());
+
+        cut.WaitForAssertion(() => {
+            cut.Find("[data-testid='fc-surface-status']").TextContent.ShouldBe("Command accepted");
+            cut.Find("[data-testid='fc-surface-status']").GetAttribute("aria-live").ShouldBe("off");
+            cut.FindAll("[role='status']").Count.ShouldBe(1);
+        });
+        announcements.Announce("command:active", "lifecycle:original", "Confirmed", "Command confirmed", terminal: true);
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-surface-status']").TextContent.ShouldBe("Command confirmed"));
+        cut.Find("[data-testid='fc-surface-status']").GetAttribute("aria-live").ShouldBe("polite");
+    }
+
+    [Fact]
+    public async Task RebindWithdrawsOldBlockedGroupAndDoesNotAnnounceOnReplacementSurface()
+    {
+        SurfaceAnnouncementCoordinator announcements = new(_time);
+        Services.AddSingleton<ISurfaceAnnouncementCoordinator>(announcements);
+        _ = FocusModule.Setup<bool>("hasActiveLifecycle", _ => true).SetResult(false);
+        IRenderedComponent<FcCommandBlockedOutcome> cut = Render<FcCommandBlockedOutcome>(p => p
+            .Add(c => c.AttemptedControlId, "old-submit")
+            .Add(c => c.AnnouncementSurface, "command:old"));
+        Task first = cut.InvokeAsync(() => cut.Instance.PresentAsync());
+        await AdvanceUntilAsync(() => first.IsCompleted);
+        announcements.Current("command:old").ShouldBe(BlockedMessage);
+
+        cut.Render(p => p.Add(c => c.AttemptedControlId, "new-submit")
+            .Add(c => c.AnnouncementSurface, "command:new"));
+
+        announcements.Current("command:old").ShouldBeEmpty();
+        announcements.Current("command:new").ShouldBeEmpty();
+        cut.Instance.IsBlocked.ShouldBeFalse();
+        Task second = cut.InvokeAsync(() => cut.Instance.PresentAsync());
+        await AdvanceUntilAsync(() => second.IsCompleted);
+        announcements.Current("command:new").ShouldBe(BlockedMessage);
+        FocusModule.Invocations.Last(i => i.Identifier == "focusAttemptedControl").Arguments[0]
+            .ShouldBe("new-submit");
+    }
+
+    [Fact]
+    public async Task RebindWhileOldFocusWaitsCannotResumeOldAttemptOnNewControl()
+    {
+        SurfaceAnnouncementCoordinator announcements = new(_time);
+        Services.AddSingleton<ISurfaceAnnouncementCoordinator>(announcements);
+        var heldFocus = FocusModule.Setup<bool>("focusAttemptedControl", _ => true);
+        IRenderedComponent<FcCommandBlockedOutcome> cut = Render<FcCommandBlockedOutcome>(p => p
+            .Add(c => c.AttemptedControlId, "old-submit")
+            .Add(c => c.AnnouncementSurface, "command:old"));
+        Task first = cut.InvokeAsync(() => cut.Instance.PresentAsync());
+        cut.WaitForAssertion(() => FocusModule.Invocations.Count(i => i.Identifier == "focusAttemptedControl").ShouldBe(1));
+
+        cut.Render(p => p.Add(c => c.AttemptedControlId, "new-submit")
+            .Add(c => c.AnnouncementSurface, "command:new"));
+        heldFocus.SetResult(true);
+        await AdvanceUntilAsync(() => first.IsCompleted);
+
+        announcements.Current("command:old").ShouldBeEmpty();
+        announcements.Current("command:new").ShouldBeEmpty();
+        FocusModule.Invocations.Count(i => i.Identifier == "focusAttemptedControl").ShouldBe(1);
+        cut.Instance.IsBlocked.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task BlockedMessageAppearsWhileFocusAndLifecycleProbeAreStillPending()
+    {
+        SurfaceAnnouncementCoordinator announcements = new(_time);
+        Services.AddSingleton<ISurfaceAnnouncementCoordinator>(announcements);
+        _ = FocusModule.Setup<bool>("focusAttemptedControl", _ => true);
+        _ = FocusModule.Setup<bool>("hasActiveLifecycle", _ => true);
+        IRenderedComponent<FcCommandBlockedOutcome> cut = Render<FcCommandBlockedOutcome>(p => p
+            .Add(c => c.AttemptedControlId, "submit")
+            .Add(c => c.AnnouncementSurface, "command:active")
+            .Add(c => c.OwnsSurfaceStatus, true));
+
+        Task presented = cut.InvokeAsync(() => cut.Instance.PresentAsync());
+        await AdvanceUntilAsync(() => presented.IsCompleted);
+
+        cut.Find("[data-testid='fc-surface-status']").TextContent.ShouldBe(BlockedMessage);
+        announcements.Current("command:active").ShouldBe(BlockedMessage);
+        cut.FindAll("[role='status']").Count.ShouldBe(1);
+        FocusModule.Invocations.Count(i => i.Identifier == "focusAttemptedControl").ShouldBe(1);
+    }
 
     [Fact]
     public void StatusNodeIsMountedEmptyBeforeAnyBlockedAttempt() {

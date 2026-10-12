@@ -9,6 +9,9 @@
 @inject IState<Counter.Domain.CounterProjectionState> CounterState
 @inject IDispatcher Dispatcher
 @inject Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.IFrontComposerTenantContextAccessor TenantContext
+@inject IState<Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageState> LoadedPageState
+@inject IState<Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationState> GridNavigationState
+@inject IServiceProvider Services
 
 <h1 tabindex="-1">Counter</h1>
 
@@ -49,9 +52,23 @@
         <FcPageTab Id="counter-projection" Header="Projection">
     <div class="page-container" style="display: flex; flex-direction: column; gap: 24px;">
         <section class="data-section">
+            @if (IsStory13ReadProofEnabled)
+            {
+                <FluentButton OnClick="@RefreshProjectionForProofAsync"
+                              data-testid="fc-story-13-read-proof"
+                              data-fc-read-attempts="@_readProofAttempts"
+                              data-fc-read-count="@_readProofCount"
+                              data-fc-read-row-id="@_readProofRowId">Refresh projection data</FluentButton>
+            }
             @if (CounterState.Value.IsLoading || CounterState.Value.Items?.Count > 0)
             {
                 <CounterProjectionView />
+                @if (IsStory13CoMountedEnabled)
+                {
+                    <div data-testid="fc-story-13-second-grid"><CounterProjectionView /></div>
+                    <FluentButton OnClick="@CaptureCoMountedScrollTop" data-testid="fc-story-13-scroll-probe"
+                                  data-fc-scroll-top="@_coMountedScrollTop">Read grid scroll</FluentButton>
+                }
             }
             else
             {
@@ -74,6 +91,120 @@
     [Parameter]
     public string? RouteTab { get; set; }
 
+    [Parameter, SupplyParameterFromQuery(Name = "story13ReadProof")]
+    public bool Story13ReadProof { get; set; }
+
+    [Parameter, SupplyParameterFromQuery(Name = "story13CoMounted")]
+    public bool Story13CoMounted { get; set; }
+
+    private int _readProofCount;
+    private int _readProofAttempts;
+    private string? _readProofRowId;
+    private double _coMountedScrollTop;
+
+    private bool IsStory13ReadProofEnabled => Story13ReadProof
+        && Services.GetService(typeof(Microsoft.AspNetCore.Hosting.IWebHostEnvironment))
+            is Microsoft.AspNetCore.Hosting.IWebHostEnvironment { EnvironmentName: "Test" };
+
+    private bool IsStory13CoMountedEnabled => Story13CoMounted
+        && Services.GetService(typeof(Microsoft.AspNetCore.Hosting.IWebHostEnvironment))
+            is Microsoft.AspNetCore.Hosting.IWebHostEnvironment { EnvironmentName: "Test" };
+
+    private void CaptureCoMountedScrollTop()
+    {
+        const string viewKey = "Counter:Counter.Domain.CounterProjection";
+        _coMountedScrollTop = GridNavigationState.Value.ViewStates.TryGetValue(viewKey, out var snapshot)
+            ? snapshot.ScrollTop : -1d;
+    }
+
+    private async Task RefreshProjectionForProofAsync()
+    {
+        if (!IsStory13ReadProofEnabled
+            || TenantContext.TryGetContext(operationKind: "counter-story-13-read-proof").Context is not { } scope)
+        {
+            return;
+        }
+
+        var scheduler = Services.GetService(typeof(Hexalith.FrontComposer.Shell.State.ProjectionConnection.IProjectionFallbackRefreshScheduler))
+            as Hexalith.FrontComposer.Shell.State.ProjectionConnection.IProjectionFallbackRefreshScheduler
+            ?? throw new InvalidOperationException("The read proof requires the projection refresh scheduler.");
+        var reconciliation = Services.GetService(typeof(Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation.IReconnectionReconciliationCoordinator))
+            as Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation.IReconnectionReconciliationCoordinator
+            ?? throw new InvalidOperationException("The read proof requires reconciliation.");
+        var shellOptions = Services.GetService(typeof(Microsoft.Extensions.Options.IOptions<Hexalith.FrontComposer.Shell.Options.FcShellOptions>))
+            as Microsoft.Extensions.Options.IOptions<Hexalith.FrontComposer.Shell.Options.FcShellOptions>
+            ?? throw new InvalidOperationException("The read proof requires shell options.");
+        int take = shellOptions.Value.VirtualizationServerSideThreshold;
+        long scopeGeneration = LoadedPageState.Value.ScopeGeneration;
+        // This opt-in Test read uses its own lane and queries the matching primary page
+        // before publishing the result to the visible projection.
+        using IDisposable lane = scheduler.RegisterLane(new(
+            "Counter:Counter.Domain.CounterProjection:story-13-read-proof",
+            "Counter.Domain.CounterProjection",
+            scope.TenantId,
+            0,
+            take,
+            ImmutableDictionary<string, string>.Empty,
+            null,
+            false,
+            null,
+            cancellationToken => ReadProjectionForProofAsync(take, scope, scopeGeneration, cancellationToken)) {
+                UserId = scope.UserId, ScopeGeneration = scopeGeneration,
+            });
+        var result = await reconciliation.ReconcileAsync();
+        if (!IsCurrentReadProofScope(scope, scopeGeneration))
+        {
+            return;
+        }
+
+        _readProofAttempts++;
+        _readProofCount += result.RefreshedCount;
+    }
+
+    private async ValueTask<Hexalith.FrontComposer.Shell.State.ProjectionConnection.ProjectionFallbackLaneRefreshOutcome>
+        ReadProjectionForProofAsync(int take, Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.TenantContextSnapshot scope,
+            long scopeGeneration, CancellationToken cancellationToken)
+    {
+        var queries = Services.GetService(typeof(Hexalith.FrontComposer.Contracts.Communication.IQueryService))
+            as Hexalith.FrontComposer.Contracts.Communication.IQueryService
+            ?? throw new InvalidOperationException("The read proof requires the sample query service.");
+        var result = await queries.QueryAsync<CounterProjection>(
+            Hexalith.FrontComposer.Contracts.Communication.QueryRequest.Create(
+                new Hexalith.FrontComposer.Contracts.Communication.ProjectionQuery(
+                    "Counter.Domain.CounterProjection",
+                    Skip: 0,
+                    Take: take),
+                scope.TenantId),
+            cancellationToken);
+        if (!IsCurrentReadProofScope(scope, scopeGeneration))
+        {
+            return Hexalith.FrontComposer.Shell.State.ProjectionConnection.ProjectionFallbackLaneRefreshOutcome.Skipped;
+        }
+
+        if (result.Items is null || result.IsNotModified)
+        {
+            throw new InvalidOperationException("The read proof requires a successful page payload.");
+        }
+
+        _readProofRowId = result.Items.FirstOrDefault()?.Id;
+        Dispatcher.Dispatch(new Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadPageSucceededAction(
+            "Counter:Counter.Domain.CounterProjection",
+            0,
+            result.Items.Cast<object>().ToArray(),
+            result.TotalCount,
+            elapsedMs: 0)
+        {
+            OriginScopeGeneration = scopeGeneration,
+            Take = take,
+        });
+        return Hexalith.FrontComposer.Shell.State.ProjectionConnection.ProjectionFallbackLaneRefreshOutcome.Changed;
+    }
+
+    private bool IsCurrentReadProofScope(Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.TenantContextSnapshot scope,
+        long scopeGeneration)
+        => LoadedPageState.Value.ScopeGeneration == scopeGeneration
+            && TenantContext.Revalidate(scope, operationKind: "counter-story-13-read-proof-validation").Succeeded;
+
     // Story 2-2 Decision D27 — manual CascadingValue to exercise ProjectionContextProvider
     // pre-fill without Epic 4's DataGrid row cascade. Demo-only.
     private readonly Hexalith.FrontComposer.Contracts.Rendering.ProjectionContext _demoContext = new(
@@ -95,7 +226,8 @@
             }
 
             string correlationId = Guid.NewGuid().ToString("N");
-            Dispatcher.Dispatch(new CounterProjectionLoadRequestedAction(correlationId));
+            long projectionScopeGeneration = CounterState.Value.ScopeGeneration;
+            Dispatcher.Dispatch(new CounterProjectionLoadRequestedAction(correlationId) { ScopeTenantId = scope.TenantId, ScopeUserId = scope.UserId, OriginScopeGeneration = projectionScopeGeneration });
             if (TenantContext.Revalidate(scope, operationKind: "counter-page-result").Succeeded)
             {
                 Dispatcher.Dispatch(new CounterProjectionLoadedAction(
@@ -107,7 +239,7 @@
                             Count = 0,
                             LastUpdated = DateTimeOffset.UtcNow,
                         },
-                    ]));
+                    ]) { ScopeTenantId = scope.TenantId, ScopeUserId = scope.UserId, OriginScopeGeneration = projectionScopeGeneration });
             }
         }
     }

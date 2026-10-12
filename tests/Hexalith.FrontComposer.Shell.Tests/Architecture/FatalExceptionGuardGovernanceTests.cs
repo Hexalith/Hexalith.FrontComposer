@@ -8,7 +8,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Architecture;
 [Trait("Category", "Governance")]
 public sealed class FatalExceptionGuardGovernanceTests {
     // Story 13.4 adds subscriber, page-load, refresh-scheduler and accepted-cleanup shared fatal filters.
-    private const int ExpectedCatchFilterCount = 65;
+    private const int ExpectedCatchFilterCount = 78;
     private const string ExceptionGuardPath = "Services/ExceptionGuard.cs";
     private static readonly HashSet<string> FatalTypeNames = new(StringComparer.Ordinal) {
         nameof(OutOfMemoryException),

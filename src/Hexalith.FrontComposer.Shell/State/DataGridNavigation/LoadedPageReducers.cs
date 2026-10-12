@@ -28,6 +28,11 @@ public sealed class LoadedPageReducers {
         foreach (TaskCompletionSource<object> completion in state.PendingCompletionsByKey.Values) {
             _ = completion.TrySetCanceled();
         }
+        foreach (ImmutableArray<TaskCompletionSource<object>> completions in state.AdditionalPendingCompletionsByKey.Values) {
+            foreach (TaskCompletionSource<object> completion in completions) {
+                _ = completion.TrySetCanceled();
+            }
+        }
 
         return new LoadedPageState { ScopeGeneration = state.ScopeGeneration + 1 };
     }
@@ -52,14 +57,18 @@ public sealed class LoadedPageReducers {
     /// (Story 4-4 D2 / D3 double-registration idempotency).
     /// </summary>
     /// <remarks>
-    /// Double-registration idempotency: if an entry already exists for <c>(viewKey, skip)</c>,
-    /// <c>TrySetCanceled</c> is called on the existing TCS before it is replaced — preventing
-    /// silent orphan of the first TCS under rapid-scroll-and-bounce.
+    /// Identical registrations share the current page result while each provider retains its
+    /// own completion. A changed request cancels all completions from the previous request.
     /// </remarks>
     [ReducerMethod]
     public static LoadedPageState ReduceLoadPage(LoadedPageState state, LoadPageAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
+
+        if (action.OriginScopeGeneration is { } origin && origin != state.ScopeGeneration) {
+            _ = action.Completion.TrySetCanceled();
+            return state;
+        }
 
         (string viewKey, int skip) key = (action.ViewKey, action.Skip);
         long priorGeneration = state.ActiveRequestGenerationByView.TryGetValue(action.ViewKey, out long activeGeneration)
@@ -69,6 +78,8 @@ public sealed class LoadedPageReducers {
             return state;
         }
         ImmutableDictionary<(string ViewKey, int Skip), TaskCompletionSource<object>> nextPending = state.PendingCompletionsByKey;
+        ImmutableDictionary<(string ViewKey, int Skip), ImmutableArray<TaskCompletionSource<object>>> nextAdditional = state.AdditionalPendingCompletionsByKey;
+        ImmutableDictionary<(string ViewKey, int Skip), int> nextTake = state.PendingTakeByKey;
         bool changedRequest = state.ActiveRequestIdentityByView.TryGetValue(action.ViewKey, out string? priorIdentity)
             && !string.Equals(priorIdentity, action.RequestIdentity, StringComparison.Ordinal)
             || action.RequestGeneration is { } generation && generation > priorGeneration;
@@ -77,18 +88,59 @@ public sealed class LoadedPageReducers {
             foreach (KeyValuePair<(string ViewKey, int Skip), TaskCompletionSource<object>> pending in nextPending) {
                 if (string.Equals(pending.Key.ViewKey, action.ViewKey, StringComparison.Ordinal)) {
                     _ = pending.Value.TrySetCanceled();
+                    foreach (TaskCompletionSource<object> additional in AdditionalFor(nextAdditional, pending.Key)) {
+                        _ = additional.TrySetCanceled();
+                    }
                     nextPending = nextPending.Remove(pending.Key);
+                    nextAdditional = nextAdditional.Remove(pending.Key);
+                    nextTake = nextTake.Remove(pending.Key);
                 }
             }
         }
 
-        if (nextPending.TryGetValue(key, out TaskCompletionSource<object>? existing)
-            && !ReferenceEquals(existing, action.Completion)) {
-            _ = existing.TrySetCanceled();
+        bool changedPageSize = nextPending.ContainsKey(key) && nextTake.TryGetValue(key, out int previousTake)
+            && previousTake != action.Take;
+        if (changedPageSize) {
+            TaskCompletionSource<object> old = nextPending[key];
+            _ = old.TrySetCanceled();
+            foreach (TaskCompletionSource<object> additional in AdditionalFor(nextAdditional, key)) {
+                _ = additional.TrySetCanceled();
+            }
             nextPending = nextPending.SetItem(key, action.Completion);
+            nextAdditional = nextAdditional.Remove(key);
+        }
+        else if (nextPending.TryGetValue(key, out TaskCompletionSource<object>? existing)
+            && !ReferenceEquals(existing, action.Completion)) {
+            ImmutableArray<TaskCompletionSource<object>> additional = AdditionalFor(nextAdditional, key);
+            if (!additional.Contains(action.Completion)) {
+                nextAdditional = nextAdditional.SetItem(key, additional.Add(action.Completion));
+            }
         }
         else if (!nextPending.ContainsKey(key)) {
             nextPending = nextPending.SetItem(key, action.Completion);
+        }
+        nextTake = nextTake.SetItem(key, action.Take);
+        ImmutableDictionary<TaskCompletionSource<object>, DateTimeOffset> nextAnchors =
+            KeepActiveAnchors(state.PendingStartedAtByCompletion, nextPending, nextAdditional);
+        if (!nextAnchors.ContainsKey(action.Completion)) {
+            nextAnchors = nextAnchors.SetItem(action.Completion, action.RegisteredAt ?? DateTimeOffset.UtcNow);
+        }
+        if (!nextAnchors.ContainsKey(nextPending[key])) {
+            DateTimeOffset primaryAnchor = state.PendingStartedAtByKey.TryGetValue(key, out DateTimeOffset priorAnchor)
+                ? priorAnchor : action.RegisteredAt ?? DateTimeOffset.UtcNow;
+            nextAnchors = nextAnchors.SetItem(nextPending[key], primaryAnchor);
+        }
+        ImmutableDictionary<(string ViewKey, int Skip), string> nextSpeechIdentities = changedRequest
+            ? state.PendingSpeechIdentityByKey.RemoveRange(state.PendingSpeechIdentityByKey.Keys.Where(entry => string.Equals(entry.ViewKey, action.ViewKey, StringComparison.Ordinal)))
+            : state.PendingSpeechIdentityByKey;
+        if (!nextSpeechIdentities.ContainsKey(key) || changedPageSize) {
+            long resultAtRegistration = state.ResultSequenceByView.TryGetValue(action.ViewKey, out long lastResult)
+                ? lastResult
+                : state.LastResultByKey.TryGetValue(action.ViewKey, out LoadedPageResult? priorResult)
+                    ? priorResult.Identity : 0;
+            nextSpeechIdentities = nextSpeechIdentities.SetItem(key,
+                resultAtRegistration.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":"
+                + Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture));
         }
 
         ImmutableDictionary<string, VirtualizationLane> nextLane = state.LaneByKey.ContainsKey(action.ViewKey)
@@ -96,6 +148,8 @@ public sealed class LoadedPageReducers {
             : state.LaneByKey.SetItem(action.ViewKey, VirtualizationLane.ServerSide);
 
         if (ReferenceEquals(nextPending, state.PendingCompletionsByKey)
+            && ReferenceEquals(nextAdditional, state.AdditionalPendingCompletionsByKey)
+            && ReferenceEquals(nextTake, state.PendingTakeByKey)
             && ReferenceEquals(nextLane, state.LaneByKey)
             && !changedRequest
             && state.ActiveRequestIdentityByView.ContainsKey(action.ViewKey)) {
@@ -104,9 +158,13 @@ public sealed class LoadedPageReducers {
 
         return state with {
             PendingCompletionsByKey = nextPending,
+            AdditionalPendingCompletionsByKey = nextAdditional,
+            PendingTakeByKey = nextTake,
+            PendingStartedAtByCompletion = nextAnchors,
+            PendingSpeechIdentityByKey = nextSpeechIdentities,
             PendingStartedAtByKey = (changedRequest
                 ? state.PendingStartedAtByKey.RemoveRange(state.PendingStartedAtByKey.Keys.Where(entry => string.Equals(entry.ViewKey, action.ViewKey, StringComparison.Ordinal)))
-                : state.PendingStartedAtByKey).SetItem(key, action.RegisteredAt ?? DateTimeOffset.UtcNow),
+                : state.PendingStartedAtByKey).SetItem(key, nextAnchors[nextPending[key]]),
             LaneByKey = nextLane,
             ActiveRequestIdentityByView = state.ActiveRequestIdentityByView.SetItem(action.ViewKey, action.RequestIdentity),
             ActiveRequestGenerationByView = state.ActiveRequestGenerationByView.SetItem(action.ViewKey, nextGeneration),
@@ -157,7 +215,7 @@ public sealed class LoadedPageReducers {
         (string viewKey, int skip) key = (action.ViewKey, action.Skip);
         if (action.Completion is not null) {
             if (!state.PendingCompletionsByKey.TryGetValue(key, out TaskCompletionSource<object>? pending)
-                || !ReferenceEquals(pending, action.Completion)) {
+                || !MatchesCompletion(state, key, pending, action.Completion)) {
                 return state;
             }
         }
@@ -166,13 +224,26 @@ public sealed class LoadedPageReducers {
             FrontComposerWarningLog.LoadedPageNullItems(_logger, action.ViewKey, action.Skip);
 
             if (state.PendingCompletionsByKey.TryGetValue(key, out TaskCompletionSource<object>? nullTcs)) {
+                if (action.Completion is not null &&
+                    (AdditionalFor(state.AdditionalPendingCompletionsByKey, key).Length > 0
+                     || !ReferenceEquals(nullTcs, action.Completion))) {
+                    _ = action.Completion.TrySetException(new InvalidOperationException("Data could not be loaded."));
+                    return RemovePendingCompletion(state, key, action.Completion);
+                }
                 _ = nullTcs.TrySetException(new InvalidOperationException("Data could not be loaded."));
+                foreach (TaskCompletionSource<object> additional in AdditionalFor(state.AdditionalPendingCompletionsByKey, key)) {
+                    _ = additional.TrySetException(new InvalidOperationException("Data could not be loaded."));
+                }
                 LoadedPageResult failed = new(
                     NextResultIdentity(state, action.ViewKey), action.RequestIdentity, 0, true,
-                    action.OperatorInitiated, action.Skip);
+                    action.OperatorInitiated, action.Skip, action.Take);
                 return state with {
                     PendingCompletionsByKey = state.PendingCompletionsByKey.Remove(key),
+                    AdditionalPendingCompletionsByKey = state.AdditionalPendingCompletionsByKey.Remove(key),
+                    PendingTakeByKey = state.PendingTakeByKey.Remove(key),
                     PendingStartedAtByKey = state.PendingStartedAtByKey.Remove(key),
+                    PendingStartedAtByCompletion = RemoveAnchorsForKey(state, key),
+                    PendingSpeechIdentityByKey = state.PendingSpeechIdentityByKey.Remove(key),
                     FailureByKey = state.FailureByKey.SetItem(action.ViewKey, "Am30QueryFailed"),
                     LastResultByKey = state.LastResultByKey.SetItem(action.ViewKey, failed),
                     ResultsByPage = TrimResultMetadata(state.ResultsByPage.SetItem(key, failed), state.ResultMetadataLimit, action.ViewKey),
@@ -195,6 +266,9 @@ public sealed class LoadedPageReducers {
 
         if (nextPending.TryGetValue(key, out TaskCompletionSource<object>? tcs)) {
             _ = tcs.TrySetResult(action.Items);
+            foreach (TaskCompletionSource<object> additional in AdditionalFor(state.AdditionalPendingCompletionsByKey, key)) {
+                _ = additional.TrySetResult(action.Items);
+            }
             nextPending = nextPending.Remove(key);
         }
 
@@ -225,6 +299,7 @@ public sealed class LoadedPageReducers {
             .Where(entry => string.Equals(entry.Key.ViewKey, action.ViewKey, StringComparison.Ordinal) && entry.Value.Failed)
             .Select(entry => entry.Value.ErrorMessage ?? "Am30QueryFailed")
             .FirstOrDefault();
+        long successfulReadSequence = state.SuccessfulReadSequenceByView.GetValueOrDefault(action.ViewKey) + 1;
         return state with {
             StalePages = state.StalePages.Remove((action.ViewKey, action.Skip)),
             PagesByKey = nextPages,
@@ -235,13 +310,18 @@ public sealed class LoadedPageReducers {
                 : state.FailureByKey.SetItem(action.ViewKey, remainingFailure),
             PageInsertionOrder = nextOrder,
             PendingCompletionsByKey = nextPending,
+            AdditionalPendingCompletionsByKey = state.AdditionalPendingCompletionsByKey.Remove(key),
+            PendingTakeByKey = state.PendingTakeByKey.Remove(key),
             PendingStartedAtByKey = state.PendingStartedAtByKey.Remove(key),
+            PendingStartedAtByCompletion = RemoveAnchorsForKey(state, key),
+            PendingSpeechIdentityByKey = state.PendingSpeechIdentityByKey.Remove(key),
             LastResultByKey = state.LastResultByKey.SetItem(action.ViewKey, completed),
             ResultsByPage = nextResults,
             ResultMetadataLimit = cap,
             ResultSequenceByView = state.ResultSequenceByView.SetItem(action.ViewKey, completed.Identity),
-            SuccessfulReadSequenceByView = state.SuccessfulReadSequenceByView.SetItem(action.ViewKey,
-                state.SuccessfulReadSequenceByView.GetValueOrDefault(action.ViewKey) + 1),
+            SuccessfulReadSequenceByView = state.SuccessfulReadSequenceByView.SetItem(action.ViewKey, successfulReadSequence),
+            SuccessfulReadSequenceByPage = TrimSuccessfulReadSequences(
+                state.SuccessfulReadSequenceByPage.SetItem(key, successfulReadSequence), nextPages, key),
             LastSuccessfulPrimaryByView = action.Skip == 0
                 ? state.LastSuccessfulPrimaryByView.SetItem(action.ViewKey, completed)
                 : state.LastSuccessfulPrimaryByView,
@@ -276,11 +356,46 @@ public sealed class LoadedPageReducers {
             return state;
         }
 
-        if (action.Completion is not null && !ReferenceEquals(tcs, action.Completion)) {
+        if (action.Completion is not null && !MatchesCompletion(state, key, tcs!, action.Completion)) {
             return state;
         }
 
+        if (!state.PagesByKey.ContainsKey(key)) {
+            // Classification happened against an earlier snapshot. A missing page cannot
+            // be certified fresh by an unchanged response. If the read carries usable
+            // rows (or proves an empty page), restore them as a real completed read.
+            if (action.TotalCount is { } totalCount && totalCount >= 0
+                && (action.CachedItems.Count > 0 || action.Skip >= totalCount)) {
+                return RestoreMissingNotModifiedPage(state, action, key, totalCount, tcs);
+            }
+
+            if (action.TotalCount is null) {
+                _ = tcs?.TrySetResult(action.CachedItems);
+                foreach (TaskCompletionSource<object> additional in AdditionalFor(state.AdditionalPendingCompletionsByKey, key)) {
+                    _ = additional.TrySetResult(action.CachedItems);
+                }
+            }
+            else {
+                _ = tcs?.TrySetException(new InvalidOperationException("Data could not be loaded."));
+                foreach (TaskCompletionSource<object> additional in AdditionalFor(state.AdditionalPendingCompletionsByKey, key)) {
+                    _ = additional.TrySetException(new InvalidOperationException("Data could not be loaded."));
+                }
+            }
+            return state with {
+                StalePages = state.StalePages.Add(key),
+                PendingCompletionsByKey = state.PendingCompletionsByKey.Remove(key),
+                AdditionalPendingCompletionsByKey = state.AdditionalPendingCompletionsByKey.Remove(key),
+                PendingTakeByKey = state.PendingTakeByKey.Remove(key),
+                PendingStartedAtByKey = state.PendingStartedAtByKey.Remove(key),
+                PendingStartedAtByCompletion = RemoveAnchorsForKey(state, key),
+                PendingSpeechIdentityByKey = state.PendingSpeechIdentityByKey.Remove(key),
+            };
+        }
+
         _ = tcs?.TrySetResult(action.CachedItems);
+        foreach (TaskCompletionSource<object> additional in AdditionalFor(state.AdditionalPendingCompletionsByKey, key)) {
+            _ = additional.TrySetResult(action.CachedItems);
+        }
         ImmutableDictionary<(string ViewKey, int Skip), LoadedPageResult> nextResults = state.ResultsByPage;
         if (nextResults.TryGetValue(key, out LoadedPageResult? priorPage) && priorPage.Failed) {
             nextResults = nextResults.Remove(key);
@@ -289,13 +404,19 @@ public sealed class LoadedPageReducers {
             .Where(entry => string.Equals(entry.Key.ViewKey, action.ViewKey, StringComparison.Ordinal) && entry.Value.Failed)
             .Select(entry => entry.Value.ErrorMessage ?? "Am30QueryFailed")
             .FirstOrDefault();
+        long successfulReadSequence = state.SuccessfulReadSequenceByView.GetValueOrDefault(action.ViewKey) + 1;
         return state with {
             StalePages = state.StalePages.Remove((action.ViewKey, action.Skip)),
             PendingCompletionsByKey = state.PendingCompletionsByKey.Remove(key),
+            AdditionalPendingCompletionsByKey = state.AdditionalPendingCompletionsByKey.Remove(key),
+            PendingTakeByKey = state.PendingTakeByKey.Remove(key),
             PendingStartedAtByKey = state.PendingStartedAtByKey.Remove(key),
+            PendingStartedAtByCompletion = RemoveAnchorsForKey(state, key),
+            PendingSpeechIdentityByKey = state.PendingSpeechIdentityByKey.Remove(key),
             ResultsByPage = nextResults,
-            SuccessfulReadSequenceByView = state.SuccessfulReadSequenceByView.SetItem(action.ViewKey,
-                state.SuccessfulReadSequenceByView.GetValueOrDefault(action.ViewKey) + 1),
+            SuccessfulReadSequenceByView = state.SuccessfulReadSequenceByView.SetItem(action.ViewKey, successfulReadSequence),
+            SuccessfulReadSequenceByPage = TrimSuccessfulReadSequences(
+                state.SuccessfulReadSequenceByPage.SetItem(key, successfulReadSequence), state.PagesByKey, key),
             FailureByKey = remainingFailure is null
                 ? state.FailureByKey.Remove(action.ViewKey)
                 : state.FailureByKey.SetItem(action.ViewKey, remainingFailure),
@@ -303,6 +424,60 @@ public sealed class LoadedPageReducers {
                 && priorResult.Failed && priorResult.Skip == action.Skip
                 ? state.LastResultByKey.Remove(action.ViewKey)
                 : state.LastResultByKey,
+        };
+    }
+
+    private static LoadedPageState RestoreMissingNotModifiedPage(LoadedPageState state, LoadPageNotModifiedAction action,
+        (string ViewKey, int Skip) key, int totalCount, TaskCompletionSource<object>? tcs) {
+        _ = tcs?.TrySetResult(action.CachedItems);
+        foreach (TaskCompletionSource<object> additional in AdditionalFor(state.AdditionalPendingCompletionsByKey, key)) {
+            _ = additional.TrySetResult(action.CachedItems);
+        }
+
+        ImmutableDictionary<(string ViewKey, int Skip), IReadOnlyList<object>> pages = state.PagesByKey.SetItem(key, action.CachedItems);
+        ImmutableQueue<(string ViewKey, int Skip)> order = ImmutableQueue.CreateRange(
+            state.PageInsertionOrder.Where(existing => existing != key)).Enqueue(key);
+        int cap = Math.Max(1, action.MaxCachedPages);
+        while (pages.Count > cap && !order.IsEmpty) {
+            order = order.Dequeue(out (string ViewKey, int Skip) oldest);
+            pages = pages.Remove(oldest);
+        }
+        if (!pages.ContainsKey(key)) {
+            return state with { StalePages = state.StalePages.Add(key) };
+        }
+
+        long sequence = state.SuccessfulReadSequenceByView.GetValueOrDefault(action.ViewKey) + 1;
+        LoadedPageResult completed = new(NextResultIdentity(state, action.ViewKey), action.RequestIdentity,
+            totalCount, false, false, action.Skip);
+        ImmutableDictionary<(string ViewKey, int Skip), LoadedPageResult> results = TrimResultMetadata(
+            state.ResultsByPage.SetItem(key, completed), state.ResultMetadataLimit, action.ViewKey);
+        string? remainingFailure = results
+            .Where(entry => string.Equals(entry.Key.ViewKey, action.ViewKey, StringComparison.Ordinal) && entry.Value.Failed)
+            .Select(entry => entry.Value.ErrorMessage ?? "Am30QueryFailed")
+            .FirstOrDefault();
+        return state with {
+            PagesByKey = pages,
+            PageInsertionOrder = order,
+            TotalCountByKey = state.TotalCountByKey.SetItem(action.ViewKey, totalCount),
+            StalePages = state.StalePages.Remove(key),
+            PendingCompletionsByKey = state.PendingCompletionsByKey.Remove(key),
+            AdditionalPendingCompletionsByKey = state.AdditionalPendingCompletionsByKey.Remove(key),
+            PendingTakeByKey = state.PendingTakeByKey.Remove(key),
+            PendingStartedAtByKey = state.PendingStartedAtByKey.Remove(key),
+            PendingStartedAtByCompletion = RemoveAnchorsForKey(state, key),
+            PendingSpeechIdentityByKey = state.PendingSpeechIdentityByKey.Remove(key),
+            FailureByKey = remainingFailure is null
+                ? state.FailureByKey.Remove(action.ViewKey)
+                : state.FailureByKey.SetItem(action.ViewKey, remainingFailure),
+            LastResultByKey = state.LastResultByKey.SetItem(action.ViewKey, completed),
+            ResultsByPage = results,
+            ResultSequenceByView = state.ResultSequenceByView.SetItem(action.ViewKey, completed.Identity),
+            SuccessfulReadSequenceByView = state.SuccessfulReadSequenceByView.SetItem(action.ViewKey, sequence),
+            SuccessfulReadSequenceByPage = TrimSuccessfulReadSequences(
+                state.SuccessfulReadSequenceByPage.SetItem(key, sequence), pages, key),
+            LastSuccessfulPrimaryByView = action.Skip == 0
+                ? state.LastSuccessfulPrimaryByView.SetItem(action.ViewKey, completed)
+                : state.LastSuccessfulPrimaryByView,
         };
     }
 
@@ -323,6 +498,10 @@ public sealed class LoadedPageReducers {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
 
+        if (action.OriginScopeGeneration is { } origin && origin != state.ScopeGeneration) {
+            return state;
+        }
+
         (string viewKey, int skip) key = (action.ViewKey, action.Skip);
         if (IsStaleRequest(state, action.ViewKey, action.RequestIdentity, action.RequestGeneration)) {
             return state;
@@ -331,17 +510,30 @@ public sealed class LoadedPageReducers {
             return state;
         }
 
-        if (action.Completion is not null && !ReferenceEquals(tcs, action.Completion)) {
+        if (action.Completion is not null && !MatchesCompletion(state, key, tcs, action.Completion)) {
             return state;
         }
 
+        if (action.Completion is not null &&
+            (AdditionalFor(state.AdditionalPendingCompletionsByKey, key).Length > 0
+             || !ReferenceEquals(tcs, action.Completion))) {
+            _ = action.Completion.TrySetException(new InvalidOperationException(action.ErrorMessage));
+            return RemovePendingCompletion(state, key, action.Completion);
+        }
         _ = tcs.TrySetException(new InvalidOperationException(action.ErrorMessage));
+        foreach (TaskCompletionSource<object> additional in AdditionalFor(state.AdditionalPendingCompletionsByKey, key)) {
+            _ = additional.TrySetException(new InvalidOperationException(action.ErrorMessage));
+        }
         LoadedPageResult failed = new(
             NextResultIdentity(state, action.ViewKey), action.RequestIdentity, 0, true,
             false, action.Skip, action.Take) { ErrorMessage = action.ErrorMessage };
         return state with {
             PendingCompletionsByKey = state.PendingCompletionsByKey.Remove(key),
+            AdditionalPendingCompletionsByKey = state.AdditionalPendingCompletionsByKey.Remove(key),
+            PendingTakeByKey = state.PendingTakeByKey.Remove(key),
             PendingStartedAtByKey = state.PendingStartedAtByKey.Remove(key),
+            PendingStartedAtByCompletion = RemoveAnchorsForKey(state, key),
+            PendingSpeechIdentityByKey = state.PendingSpeechIdentityByKey.Remove(key),
             FailureByKey = state.FailureByKey.SetItem(action.ViewKey, action.ErrorMessage),
             LastResultByKey = state.LastResultByKey.SetItem(action.ViewKey, failed),
             ResultsByPage = TrimResultMetadata(state.ResultsByPage.SetItem(key, failed), state.ResultMetadataLimit, action.ViewKey),
@@ -360,14 +552,53 @@ public sealed class LoadedPageReducers {
             return state;
         }
 
-        if (action.Completion is not null && !ReferenceEquals(tcs, action.Completion)) {
-            return state;
+        ImmutableArray<TaskCompletionSource<object>> additional = AdditionalFor(state.AdditionalPendingCompletionsByKey, key);
+        if (action.Completion is null) {
+            _ = tcs.TrySetCanceled();
+            foreach (TaskCompletionSource<object> completion in additional) {
+                _ = completion.TrySetCanceled();
+            }
+            return state with {
+                PendingCompletionsByKey = state.PendingCompletionsByKey.Remove(key),
+                AdditionalPendingCompletionsByKey = state.AdditionalPendingCompletionsByKey.Remove(key),
+                PendingTakeByKey = state.PendingTakeByKey.Remove(key),
+                PendingStartedAtByKey = state.PendingStartedAtByKey.Remove(key),
+                PendingStartedAtByCompletion = RemoveAnchorsForKey(state, key),
+                PendingSpeechIdentityByKey = state.PendingSpeechIdentityByKey.Remove(key),
+            };
         }
 
-        _ = tcs.TrySetCanceled();
+        if (ReferenceEquals(tcs, action.Completion)) {
+            _ = tcs.TrySetCanceled();
+            if (additional.IsEmpty) {
+                return state with {
+                    PendingCompletionsByKey = state.PendingCompletionsByKey.Remove(key),
+                    PendingTakeByKey = state.PendingTakeByKey.Remove(key),
+                    PendingStartedAtByKey = state.PendingStartedAtByKey.Remove(key),
+                    PendingStartedAtByCompletion = RemoveAnchorsForKey(state, key),
+                    PendingSpeechIdentityByKey = state.PendingSpeechIdentityByKey.Remove(key),
+                };
+            }
+            return state with {
+                PendingCompletionsByKey = state.PendingCompletionsByKey.SetItem(key, additional[0]),
+                AdditionalPendingCompletionsByKey = additional.Length == 1
+                    ? state.AdditionalPendingCompletionsByKey.Remove(key)
+                    : state.AdditionalPendingCompletionsByKey.SetItem(key, additional.RemoveAt(0)),
+                PendingStartedAtByCompletion = state.PendingStartedAtByCompletion.Remove(tcs),
+                PendingStartedAtByKey = state.PendingStartedAtByKey.SetItem(key, RegistrationAnchor(state, key, additional[0])),
+            };
+        }
+
+        if (!additional.Contains(action.Completion)) {
+            return state;
+        }
+        _ = action.Completion.TrySetCanceled();
+        additional = additional.Remove(action.Completion);
         return state with {
-            PendingCompletionsByKey = state.PendingCompletionsByKey.Remove(key),
-            PendingStartedAtByKey = state.PendingStartedAtByKey.Remove(key),
+            AdditionalPendingCompletionsByKey = additional.IsEmpty
+                ? state.AdditionalPendingCompletionsByKey.Remove(key)
+                : state.AdditionalPendingCompletionsByKey.SetItem(key, additional),
+            PendingStartedAtByCompletion = state.PendingStartedAtByCompletion.Remove(action.Completion),
         };
     }
 
@@ -380,10 +611,17 @@ public sealed class LoadedPageReducers {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
 
+        if (action.StillFinalOwner is { } stillFinalOwner && !stillFinalOwner()) {
+            return state;
+        }
+
         ImmutableDictionary<(string ViewKey, int Skip), TaskCompletionSource<object>> next = state.PendingCompletionsByKey;
         foreach (KeyValuePair<(string ViewKey, int Skip), TaskCompletionSource<object>> kvp in state.PendingCompletionsByKey) {
             if (string.Equals(kvp.Key.ViewKey, action.ViewKey, StringComparison.Ordinal)) {
                 _ = kvp.Value.TrySetCanceled();
+                foreach (TaskCompletionSource<object> additional in AdditionalFor(state.AdditionalPendingCompletionsByKey, kvp.Key)) {
+                    _ = additional.TrySetCanceled();
+                }
                 next = next.Remove(kvp.Key);
             }
         }
@@ -392,7 +630,12 @@ public sealed class LoadedPageReducers {
             ? state
             : state with {
                 PendingCompletionsByKey = next,
+                AdditionalPendingCompletionsByKey = state.AdditionalPendingCompletionsByKey.RemoveRange(state.AdditionalPendingCompletionsByKey.Keys.Where(key => string.Equals(key.ViewKey, action.ViewKey, StringComparison.Ordinal))),
+                PendingTakeByKey = state.PendingTakeByKey.RemoveRange(state.PendingTakeByKey.Keys.Where(key => string.Equals(key.ViewKey, action.ViewKey, StringComparison.Ordinal))),
                 PendingStartedAtByKey = state.PendingStartedAtByKey.RemoveRange(state.PendingStartedAtByKey.Keys.Where(key => string.Equals(key.ViewKey, action.ViewKey, StringComparison.Ordinal))),
+                PendingSpeechIdentityByKey = state.PendingSpeechIdentityByKey.RemoveRange(state.PendingSpeechIdentityByKey.Keys.Where(key => string.Equals(key.ViewKey, action.ViewKey, StringComparison.Ordinal))),
+                PendingStartedAtByCompletion = KeepActiveAnchors(state.PendingStartedAtByCompletion, next,
+                    state.AdditionalPendingCompletionsByKey.RemoveRange(state.AdditionalPendingCompletionsByKey.Keys.Where(key => string.Equals(key.ViewKey, action.ViewKey, StringComparison.Ordinal)))),
             };
     }
 
@@ -402,6 +645,83 @@ public sealed class LoadedPageReducers {
             || requestGeneration is { } generation
                 && state.ActiveRequestGenerationByView.TryGetValue(viewKey, out long current)
                 && generation != current;
+
+    private static ImmutableArray<TaskCompletionSource<object>> AdditionalFor(
+        ImmutableDictionary<(string ViewKey, int Skip), ImmutableArray<TaskCompletionSource<object>>> pending,
+        (string ViewKey, int Skip) key)
+        => pending.TryGetValue(key, out ImmutableArray<TaskCompletionSource<object>> values) ? values : ImmutableArray<TaskCompletionSource<object>>.Empty;
+
+    private static bool MatchesCompletion(LoadedPageState state, (string ViewKey, int Skip) key,
+        TaskCompletionSource<object> primary, TaskCompletionSource<object> completion)
+        => ReferenceEquals(primary, completion) || AdditionalFor(state.AdditionalPendingCompletionsByKey, key).Contains(completion);
+
+    private static LoadedPageState RemovePendingCompletion(LoadedPageState state, (string ViewKey, int Skip) key,
+        TaskCompletionSource<object> completion) {
+        TaskCompletionSource<object> primary = state.PendingCompletionsByKey[key];
+        ImmutableArray<TaskCompletionSource<object>> additional = AdditionalFor(state.AdditionalPendingCompletionsByKey, key);
+        if (ReferenceEquals(primary, completion)) {
+            return additional.IsEmpty
+                ? state with {
+                    PendingCompletionsByKey = state.PendingCompletionsByKey.Remove(key),
+                    PendingTakeByKey = state.PendingTakeByKey.Remove(key),
+                    PendingStartedAtByKey = state.PendingStartedAtByKey.Remove(key),
+                    PendingStartedAtByCompletion = RemoveAnchorsForKey(state, key),
+                    PendingSpeechIdentityByKey = state.PendingSpeechIdentityByKey.Remove(key),
+                }
+                : state with {
+                    PendingCompletionsByKey = state.PendingCompletionsByKey.SetItem(key, additional[0]),
+                    AdditionalPendingCompletionsByKey = additional.Length == 1
+                        ? state.AdditionalPendingCompletionsByKey.Remove(key)
+                        : state.AdditionalPendingCompletionsByKey.SetItem(key, additional.RemoveAt(0)),
+                    PendingStartedAtByCompletion = state.PendingStartedAtByCompletion.Remove(primary),
+                    PendingStartedAtByKey = state.PendingStartedAtByKey.SetItem(key, RegistrationAnchor(state, key, additional[0])),
+                };
+        }
+
+        additional = additional.Remove(completion);
+        return state with {
+            AdditionalPendingCompletionsByKey = additional.IsEmpty
+                ? state.AdditionalPendingCompletionsByKey.Remove(key)
+                : state.AdditionalPendingCompletionsByKey.SetItem(key, additional),
+            PendingStartedAtByCompletion = state.PendingStartedAtByCompletion.Remove(completion),
+        };
+    }
+
+    private static ImmutableDictionary<TaskCompletionSource<object>, DateTimeOffset> RemoveAnchorsForKey(
+        LoadedPageState state, (string ViewKey, int Skip) key) {
+        ImmutableDictionary<TaskCompletionSource<object>, DateTimeOffset> anchors = state.PendingStartedAtByCompletion;
+        if (state.PendingCompletionsByKey.TryGetValue(key, out TaskCompletionSource<object>? primary)) {
+            anchors = anchors.Remove(primary);
+        }
+        foreach (TaskCompletionSource<object> additional in AdditionalFor(state.AdditionalPendingCompletionsByKey, key)) {
+            anchors = anchors.Remove(additional);
+        }
+        return anchors;
+    }
+
+    private static DateTimeOffset RegistrationAnchor(LoadedPageState state, (string ViewKey, int Skip) key,
+        TaskCompletionSource<object> completion)
+        => state.PendingStartedAtByCompletion.TryGetValue(completion, out DateTimeOffset anchor)
+            ? anchor : state.PendingStartedAtByKey.TryGetValue(key, out DateTimeOffset prior) ? prior : DateTimeOffset.UtcNow;
+
+    private static ImmutableDictionary<TaskCompletionSource<object>, DateTimeOffset> KeepActiveAnchors(
+        ImmutableDictionary<TaskCompletionSource<object>, DateTimeOffset> anchors,
+        ImmutableDictionary<(string ViewKey, int Skip), TaskCompletionSource<object>> pending,
+        ImmutableDictionary<(string ViewKey, int Skip), ImmutableArray<TaskCompletionSource<object>>> additional) {
+        HashSet<TaskCompletionSource<object>> live = new(pending.Values, ReferenceEqualityComparer.Instance);
+        foreach (ImmutableArray<TaskCompletionSource<object>> providers in additional.Values) {
+            foreach (TaskCompletionSource<object> provider in providers) {
+                _ = live.Add(provider);
+            }
+        }
+        return anchors.RemoveRange(anchors.Keys.Where(provider => !live.Contains(provider)));
+    }
+
+    private static ImmutableDictionary<(string ViewKey, int Skip), long> TrimSuccessfulReadSequences(
+        ImmutableDictionary<(string ViewKey, int Skip), long> sequences,
+        ImmutableDictionary<(string ViewKey, int Skip), IReadOnlyList<object>> pages,
+        (string ViewKey, int Skip) justRead)
+        => sequences.RemoveRange(sequences.Keys.Where(key => !pages.ContainsKey(key) && key != justRead));
 
     private static ImmutableDictionary<(string ViewKey, int Skip), LoadedPageResult> TrimResultMetadata(
         ImmutableDictionary<(string ViewKey, int Skip), LoadedPageResult> results, int limit, string viewKey) {

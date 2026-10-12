@@ -32,6 +32,76 @@ public sealed class LoadedPageStateCacheBoundTests {
         LoadedPageReducers.ReduceLoadPage(state, new LoadPageAction(
             ViewKey, skip, take: 20, ImmutableDictionary<string, string>.Empty, null, false, null, tcs, CancellationToken.None));
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CrossViewEvictionTrimsPerPageReadSequence(bool restoreWithNotModified)
+    {
+        const string otherView = "acme:InvoicesProjection";
+        LoadedPageReducers reducers = MakeReducers(1, new CapturingLogger());
+        LoadedPageState state = Register(new LoadedPageState(), 0, new TaskCompletionSource<object>());
+        state = reducers.ReduceLoadPageSucceeded(state,
+            new LoadPageSucceededAction(ViewKey, 0, new object[] { "orders" }, 1, 1));
+        state.SuccessfulReadSequenceByPage.ShouldContainKey((ViewKey, 0));
+
+        TaskCompletionSource<object> completion = new();
+        state = LoadedPageReducers.ReduceLoadPage(state,
+            new LoadPageAction(otherView, 0, 20, ImmutableDictionary<string, string>.Empty,
+                null, false, null, completion, CancellationToken.None));
+        state = restoreWithNotModified
+            ? LoadedPageReducers.ReduceLoadPageNotModified(state,
+                new LoadPageNotModifiedAction(otherView, 0, new object[] { "invoices" }, completion)
+                { TotalCount = 1, MaxCachedPages = 1 })
+            : reducers.ReduceLoadPageSucceeded(state,
+                new LoadPageSucceededAction(otherView, 0, new object[] { "invoices" }, 1, 1));
+
+        state.PagesByKey.ShouldNotContainKey((ViewKey, 0));
+        state.SuccessfulReadSequenceByPage.ShouldNotContainKey((ViewKey, 0));
+        state.SuccessfulReadSequenceByPage.ShouldContainKey((otherView, 0));
+        state.SuccessfulReadSequenceByView[ViewKey].ShouldBe(1);
+    }
+
+    [Fact]
+    public void MissingPageNotModifiedUsesConfiguredPageCapBeforeAnyOrdinarySuccess()
+    {
+        LoadedPageState state = new();
+        for (int skip = 1; skip <= 201; skip++)
+        {
+            TaskCompletionSource<object> completion = new();
+            state = Register(state, skip, completion);
+            state = LoadedPageReducers.ReduceLoadPageNotModified(state,
+                new LoadPageNotModifiedAction(ViewKey, skip, Array.Empty<object>(), completion)
+                { TotalCount = 1, MaxCachedPages = 200 });
+        }
+
+        state.ResultMetadataLimit.ShouldBe(10);
+        state.PagesByKey.Count.ShouldBe(200);
+        state.PagesByKey.ShouldNotContainKey((ViewKey, 1));
+        state.PagesByKey.ShouldContainKey((ViewKey, 201));
+        state.ResultsByPage.Count.ShouldBeLessThanOrEqualTo(10);
+    }
+
+    [Fact]
+    public void SuccessfulPageFreshnessIsBoundedAndEvictedPageReadUsesMonotonicVersion()
+    {
+        LoadedPageReducers reducers = MakeReducers(3, new CapturingLogger());
+        LoadedPageState state = new();
+        for (int skip = 0; skip < 600; skip += 20)
+        {
+            state = Register(state, skip, new TaskCompletionSource<object>());
+            state = reducers.ReduceLoadPageSucceeded(state,
+                new LoadPageSucceededAction(ViewKey, skip, new object[] { skip }, 600, 1));
+            state.SuccessfulReadSequenceByPage.Count.ShouldBeLessThanOrEqualTo(3);
+        }
+        state.SuccessfulReadSequenceByPage.ShouldNotContainKey((ViewKey, 0));
+        long prior = state.SuccessfulReadSequenceByView[ViewKey];
+        state = Register(state, 0, new TaskCompletionSource<object>());
+        state = LoadedPageReducers.ReduceLoadPageNotModified(state,
+            new LoadPageNotModifiedAction(ViewKey, 0, new object[] { 0 }) { TotalCount = 600 });
+        state.SuccessfulReadSequenceByPage[(ViewKey, 0)].ShouldBeGreaterThan(prior);
+        state.SuccessfulReadSequenceByPage.Count.ShouldBeLessThanOrEqualTo(4);
+    }
+
     [Fact]
     public void BoundAtN_HappyPath_20DistinctWrites_NoEviction() {
         CapturingLogger logger = new();

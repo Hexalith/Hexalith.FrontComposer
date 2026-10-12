@@ -8,11 +8,38 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 
+using NSubstitute;
+
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.PendingCommands;
 
 public sealed class PendingCommandPollingDriverTests {
+    [Fact]
+    public async Task HeldTickDoesNotPreventTheNextPollingTick()
+    {
+        FakeTimeProvider time = new();
+        TaskCompletionSource<int> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        int calls = 0;
+        IPendingCommandPollingCoordinator coordinator = NSubstitute.Substitute.For<IPendingCommandPollingCoordinator>();
+        coordinator.PollOnceAsync(NSubstitute.Arg.Any<CancellationToken>()).Returns(_ =>
+            Interlocked.Increment(ref calls) == 1 ? held.Task : Task.FromResult(0));
+        PendingCommandPollingDriver driver = new(coordinator,
+            new StaticOptionsMonitor(new FcShellOptions { PendingCommandPollingIntervalMs = 1_000 }),
+            time, NullLogger<PendingCommandPollingDriver>.Instance);
+        try {
+            driver.Start();
+            time.Advance(TimeSpan.FromSeconds(1));
+            SpinWait.SpinUntil(() => Volatile.Read(ref calls) == 1, TimeSpan.FromSeconds(2)).ShouldBeTrue();
+            time.Advance(TimeSpan.FromSeconds(1));
+            SpinWait.SpinUntil(() => Volatile.Read(ref calls) == 2, TimeSpan.FromSeconds(2)).ShouldBeTrue();
+        }
+        finally {
+            held.TrySetResult(0);
+            await driver.DisposeAsync();
+        }
+    }
+
     [Fact]
     public async Task Driver_TicksAtCommandCadence_WhileProjectionFallbackRemainsConnectedOnly() {
         FakeTimeProvider time = new(new DateTimeOffset(2026, 6, 4, 12, 0, 0, TimeSpan.Zero));

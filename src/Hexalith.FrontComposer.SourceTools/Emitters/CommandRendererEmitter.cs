@@ -994,6 +994,7 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"InitialValue\", _prefilledModel);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"RegisterExternalSubmit\", (Action<Action>)OnFormRegisteredExternalSubmit);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"OnBlockedSubmission\", EventCallback.Factory.Create<bool>(this, OnFormBlockedSubmissionAsync));");
+            _ = sb.AppendLine("                builder.AddAttribute(seq++, \"ExternalStatusOwner\", true);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"AnnouncementSurface\", \"command-renderer:\" + _triggerButtonId);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"BeforeSubmit\", " + beforeSubmitFunc + ");");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"OnConfirmed\", EventCallback.Factory.Create(this, OnConfirmedAsync));");

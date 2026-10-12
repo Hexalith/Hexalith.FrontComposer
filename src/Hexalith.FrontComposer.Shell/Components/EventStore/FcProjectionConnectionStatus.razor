@@ -9,7 +9,7 @@
 @inject IStringLocalizer<FcShellResources> Localizer
 
 <div @ref="_presentationHost" data-fc-connectivity-binding="@_episodeScope">
-<FcSurfaceStatus Surface="projection-connection" BrowserManaged="true" />
+<FcSurfaceStatus Surface="projection-connection" BrowserManaged="true" BrowserReady="@(_connectivityWatchId != 0)" ServerFallback="@(_snapshot.Status is ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected || _reconciliation.Status is ReconnectionReconciliationStatus.Reconciling)" />
 
 @* Keep the inherited Fluent warning ready for a native offline event while the circuit is unreachable. *@
 <div class="fc-projection-connection-status-host" data-fc-browser-offline hidden="@(!_offline)">

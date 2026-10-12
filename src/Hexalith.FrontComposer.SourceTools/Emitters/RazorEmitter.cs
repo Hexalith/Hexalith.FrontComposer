@@ -1049,17 +1049,36 @@ public static class RazorEmitter {
         _ = sb.AppendLine("    private string? _activeFailureGroup;");
         _ = sb.AppendLine("    private string? _activeFailureIdentity;");
         _ = sb.AppendLine("    private readonly System.Collections.Generic.HashSet<string> _resultAnnouncementGroups = new(System.StringComparer.Ordinal);");
+        _ = sb.AppendLine("    private bool _initialEmptyAnnounced;");
+        _ = sb.AppendLine("    private readonly System.Collections.Generic.Dictionary<string, System.IDisposable> _announcementClaims = new(System.StringComparer.Ordinal);");
         if (isGrid) {
+            _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Shell.Services.DataGridViewOwnership? _gridViewOwners;");
+            _ = sb.AppendLine("    private long _gridViewGeneration;");
+            _ = sb.AppendLine("    private readonly string _gridInstanceId = System.Guid.NewGuid().ToString(\"N\", System.Globalization.CultureInfo.InvariantCulture);");
+            _ = sb.AppendLine("    private long _announcementScopeGeneration = long.MinValue;");
             _ = sb.AppendLine("    private string? _lastPageRequestIdentity;");
             _ = sb.AppendLine("    private string? _resultPageRequestIdentity;");
             _ = sb.AppendLine("    private long _pageRequestGeneration;");
+            _ = sb.AppendLine("    private int _currentViewportSkip;");
+            _ = sb.AppendLine("    private double _viewportScrollTop;");
+            _ = sb.AppendLine("    private string? _viewportRequestIdentity;");
             _ = sb.AppendLine("    private System.Threading.CancellationTokenSource? _failedRetryCancellation;");
+            if (model.Strategy == ProjectionRenderStrategy.StatusOverview) {
+                _ = sb.AppendLine("    private string? _statusLastCompletedResultIdentity;");
+                _ = sb.AppendLine("    private string? _statusLastCompletedRequestIdentity;");
+                _ = sb.AppendLine("    private long _statusResultScopeGeneration = long.MinValue;");
+            }
         }
         _ = sb.AppendLine();
 
         _ = sb.AppendLine("    /// <inheritdoc />");
         _ = sb.AppendLine("    protected override void OnInitialized()");
         _ = sb.AppendLine("    {");
+        if (isGrid) {
+            _ = sb.AppendLine("        _gridViewOwners = global::Hexalith.FrontComposer.Shell.Services.DataGridViewOwnership.For(Dispatcher);");
+            _ = sb.AppendLine("        _gridViewGeneration = _gridViewOwners.Register(_viewKey);");
+            _ = sb.AppendLine("        _viewportScrollTop = CurrentGridSnapshot()?.ScrollTop ?? 0d;");
+        }
         _ = sb.AppendLine("        " + model.TypeName + "State.StateChanged += OnStateChanged;");
         _ = sb.AppendLine("        AnnounceProjectionState();");
         if (isGrid) {
@@ -1089,36 +1108,57 @@ public static class RazorEmitter {
 
         string surfaceExpression = isGrid ? "_viewKey" : "(typeof(" + model.TypeName + ").FullName ?? typeof(" + model.TypeName + ").Name)";
         _ = sb.AppendLine("    private static string AnnouncementSurface => \"projection:\" + " + surfaceExpression + ";");
+        _ = sb.AppendLine("    private static bool CanClaimUnstampedInitialState(" + model.TypeName + "State state)");
+        _ = sb.AppendLine("        => state.Items is null && state.Error is null && !state.IsLoading && !state.RequiresScopedRequest");
+        _ = sb.AppendLine("            && state.ActiveCorrelationId is null && state.LastResultCorrelationId is null;");
         _ = sb.AppendLine("    private void AnnounceProjectionState()");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        if (System.Threading.Volatile.Read(ref _disposed) != 0)");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            return;");
         _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("        global::Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.TenantContextResult currentScope;");
+        _ = sb.AppendLine("        try { currentScope = TenantContextAccessor.TryGetContext(RenderContext?.TenantId, \"projection-render\"); }");
+        _ = sb.AppendLine("        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException and not System.Threading.ThreadAbortException and not AccessViolationException) { CancelOwnedAnnouncements(); return; }");
+        _ = sb.AppendLine("        if (!currentScope.Succeeded || currentScope.Context is null || (RenderContext is not null && !string.Equals(currentScope.Context.UserId, RenderContext.UserId, StringComparison.Ordinal)))");
+        _ = sb.AppendLine("        { CancelOwnedAnnouncements(); return; }");
+        if (isGrid) {
+            _ = sb.AppendLine("        long scopeGeneration = LoadedPageState.Value.ScopeGeneration;");
+            _ = sb.AppendLine("        if (_announcementScopeGeneration != scopeGeneration)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            CancelOwnedAnnouncements();");
+            _ = sb.AppendLine("            _announcementScopeGeneration = scopeGeneration;");
+            _ = sb.AppendLine("            _lastPageRequestIdentity = null;");
+            _ = sb.AppendLine("            _resultPageRequestIdentity = null;");
+            _ = sb.AppendLine("            _initialEmptyAnnounced = false;");
+            _ = sb.AppendLine("            _pageRequestGeneration = 0;");
+            _ = sb.AppendLine("        }");
+        }
         _ = sb.AppendLine("        var state = " + model.TypeName + "State.Value;");
-        _ = sb.AppendLine("        if (state.RequiresScopedRequest) { SetFailureGroup(null); Announcements.Clear(AnnouncementSurface); return; }");
+        _ = sb.AppendLine("        if (!global::Hexalith.FrontComposer.Shell.Services.ProjectionStateScopeOwnership.For(Dispatcher).IsCurrent(AnnouncementSurface, state.ScopeTenantId, state.ScopeUserId, currentScope.Context, " + (isGrid ? "LoadedPageState.Value.ScopeGeneration" : "null") + ", CanClaimUnstampedInitialState(state))) { CancelOwnedAnnouncements(); return; }");
+        _ = sb.AppendLine("        if (state.RequiresScopedRequest) { CancelOwnedAnnouncements(); return; }");
         _ = sb.AppendLine("        string operation = state.ActiveCorrelationId ?? state.LastResultCorrelationId ?? \"initial\";");
         _ = sb.AppendLine("        string group = \"load:\" + operation;");
         _ = sb.AppendLine("        if (_pendingLoadingGroup is { } prior && (!state.IsLoading || !string.Equals(prior, group, StringComparison.Ordinal)))");
-        _ = sb.AppendLine("        { Announcements.Cancel(AnnouncementSurface, prior); _pendingLoadingGroup = null; }");
+        _ = sb.AppendLine("        { ReleaseAnnouncementGroup(prior); _pendingLoadingGroup = null; }");
         _ = sb.AppendLine("        if (state.Error is not null)");
-        _ = sb.AppendLine("        { SetFailureGroup(group, \"failure:\" + (state.LastResultCorrelationId ?? operation)); Announcements.Announce(AnnouncementSurface, group, _activeFailureIdentity!, " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am30QueryFailed\"].Value, terminal: true); return; }");
+        _ = sb.AppendLine("        { SetFailureGroup(group, \"failure:\" + (state.LastResultCorrelationId ?? operation)); Announcements.Announce(AnnouncementSurface, group, _activeFailureIdentity!, " + "SafePageFailureCopy(state.Error)" + ", terminal: true); return; }");
         _ = sb.AppendLine("        if (state.IsLoading)");
-        _ = sb.AppendLine("        { CancelResultAnnouncements(); SetFailureGroup(null); _pendingLoadingGroup = group; Announcements.Announce(AnnouncementSurface, group, \"loading\", " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am01Loading\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value); return; }");
+        _ = sb.AppendLine("        { CancelResultAnnouncements(); SetFailureGroup(null); _pendingLoadingGroup = group; ClaimAnnouncementGroup(group); Announcements.Announce(AnnouncementSurface, group, \"loading\", " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am01Loading\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value); return; }");
         if (isGrid) {
             _ = sb.AppendLine("        bool filtered = AnyRealFilterActive(CurrentGridSnapshot());");
             _ = sb.AppendLine("        string currentRequestIdentity = PageRequestIdentity(CurrentGridSnapshot());");
-            _ = sb.AppendLine("        if (_resultPageRequestIdentity is not null && !string.Equals(_resultPageRequestIdentity, currentRequestIdentity, StringComparison.Ordinal)) { CancelResultAnnouncements(); }");
+            _ = sb.AppendLine("        if (_resultPageRequestIdentity is not null && !string.Equals(_resultPageRequestIdentity, currentRequestIdentity, StringComparison.Ordinal)) { CancelResultAnnouncements(); _initialEmptyAnnounced = false; }");
             _ = sb.AppendLine("        _resultPageRequestIdentity = currentRequestIdentity;");
-            _ = sb.AppendLine("        if (LoadedPageState.Value.LastResultByKey.TryGetValue(_viewKey, out var page))");
+            _ = sb.AppendLine("        var page = CurrentFailedPage() ?? (LoadedPageState.Value.LastResultByKey.TryGetValue(_viewKey, out var lastPage) ? lastPage : null);");
+            _ = sb.AppendLine("        if (page is not null)");
             _ = sb.AppendLine("        {");
             _ = sb.AppendLine("            if (!string.Equals(page.RequestIdentity, currentRequestIdentity, StringComparison.Ordinal)) { SetFailureGroup(null); return; }");
-            _ = sb.AppendLine("            string pageGroup = \"page:\" + page.Identity.ToString(System.Globalization.CultureInfo.InvariantCulture);");
-            _ = sb.AppendLine("            if (page.Failed) { SetFailureGroup(pageGroup, \"failure\"); Announcements.Announce(AnnouncementSurface, pageGroup, \"failure\", page.ErrorMessage ?? " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am30QueryFailed\"].Value, terminal: true); return; }");
+            _ = sb.AppendLine("            string pageGroup = \"scope:\" + scopeGeneration.ToString(System.Globalization.CultureInfo.InvariantCulture) + \":page:\" + page.Identity.ToString(System.Globalization.CultureInfo.InvariantCulture);");
+            _ = sb.AppendLine("            if (page.Failed) { SetFailureGroup(pageGroup, \"failure\"); Announcements.Announce(AnnouncementSurface, pageGroup, \"failure\", SafePageFailureCopy(page.ErrorMessage), terminal: true); return; }");
             _ = sb.AppendLine("            SetFailureGroup(null);");
-            _ = sb.AppendLine("            if (page.Skip == 0 && page.TotalCount == 0 || page.OperatorInitiated) { _resultAnnouncementGroups.Add(pageGroup); }");
-            _ = sb.AppendLine("            if (page.Skip == 0 && page.TotalCount == 0) { Announcements.Announce(AnnouncementSurface, pageGroup, filtered ? \"filtered-zero\" : \"empty\", filtered ? " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am27NoMatches\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value : " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am02Empty\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value, terminal: true); return; }");
-            _ = sb.AppendLine("            if (page.OperatorInitiated) { Announcements.Announce(AnnouncementSurface, pageGroup, \"loaded\", " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am03Loaded\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value); }");
+            _ = sb.AppendLine("            if (page.Skip == 0 && page.TotalCount == 0) { if (page.OperatorInitiated || !_initialEmptyAnnounced) { SetResultAnnouncementGroup(pageGroup); _initialEmptyAnnounced = true; Announcements.Announce(AnnouncementSurface, pageGroup, filtered ? \"filtered-zero\" : \"empty\", filtered ? " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am27NoMatches\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value : " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am02Empty\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value, terminal: true); RetireOtherResultAnnouncementGroups(pageGroup); } return; }");
+            _ = sb.AppendLine("            if (page.OperatorInitiated) { SetResultAnnouncementGroup(pageGroup); Announcements.Announce(AnnouncementSurface, pageGroup, \"loaded\", " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am03Loaded\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value); RetireOtherResultAnnouncementGroups(pageGroup); }");
             _ = sb.AppendLine("            return;");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        SetFailureGroup(null);");
@@ -1130,16 +1170,29 @@ public static class RazorEmitter {
         }
         _ = sb.AppendLine("        if (state.Items is null) { return; }");
         _ = sb.AppendLine("        if (state.Items.Count == 0)");
-        _ = sb.AppendLine("        { _resultAnnouncementGroups.Add(group); Announcements.Announce(AnnouncementSurface, group, \"empty:\" + (state.LastResultCorrelationId ?? operation) + \"|\" + filtered, filtered ? " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am27NoMatches\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value : " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am02Empty\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value, terminal: true); return; }");
+        _ = sb.AppendLine("        { if (state.LastResultOperatorInitiated || !_initialEmptyAnnounced) { SetResultAnnouncementGroup(group); _initialEmptyAnnounced = true; Announcements.Announce(AnnouncementSurface, group, \"empty:\" + (state.LastResultCorrelationId ?? operation) + \"|\" + filtered, filtered ? " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am27NoMatches\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value : " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am02Empty\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value, terminal: true); RetireOtherResultAnnouncementGroups(group); } return; }");
         _ = sb.AppendLine("        if (state.LastResultOperatorInitiated)");
-        _ = sb.AppendLine("        { _resultAnnouncementGroups.Add(group); Announcements.Announce(AnnouncementSurface, group, \"data:\" + (state.LastResultCorrelationId ?? operation) + \"|\" + state.Items.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am03Loaded\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value); }");
+        _ = sb.AppendLine("        { SetResultAnnouncementGroup(group); Announcements.Announce(AnnouncementSurface, group, \"data:\" + (state.LastResultCorrelationId ?? operation) + \"|\" + state.Items.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am03Loaded\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value); RetireOtherResultAnnouncementGroups(group); }");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
+
+        {
+            _ = sb.AppendLine("    private string SafePageFailureCopy(string? error)");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        if (string.Equals(error, \"SectionUpdatingText\", StringComparison.Ordinal)");
+            _ = sb.AppendLine("            || string.Equals(error, \"This section is being updated\", StringComparison.Ordinal)");
+            _ = sb.AppendLine("            || string.Equals(error, \"Cette section est en cours de mise à jour\", StringComparison.Ordinal)");
+            _ = sb.AppendLine("            || string.Equals(error, " + ColumnEmitter.ShellLocalizerFieldName + "[\"SectionUpdatingText\"].Value, StringComparison.Ordinal))");
+            _ = sb.AppendLine("        { return " + ColumnEmitter.ShellLocalizerFieldName + "[\"SectionUpdatingText\"].Value; }");
+            _ = sb.AppendLine("        return " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am30QueryFailed\"].Value;");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+        }
         _ = sb.AppendLine("    private void CancelOwnedAnnouncements()");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        if (_pendingLoadingGroup is { } loading)");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            Announcements.Cancel(AnnouncementSurface, loading);");
+        _ = sb.AppendLine("            ReleaseAnnouncementGroup(loading);");
         _ = sb.AppendLine("            _pendingLoadingGroup = null;");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        SetFailureGroup(null);");
@@ -1148,20 +1201,46 @@ public static class RazorEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private void CancelResultAnnouncements()");
         _ = sb.AppendLine("    {");
-        _ = sb.AppendLine("        foreach (string result in _resultAnnouncementGroups) { Announcements.Cancel(AnnouncementSurface, result); }");
+        _ = sb.AppendLine("        foreach (string result in _resultAnnouncementGroups) { ReleaseAnnouncementGroup(result); }");
         _ = sb.AppendLine("        _resultAnnouncementGroups.Clear();");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private void SetResultAnnouncementGroup(string group)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        if (_resultAnnouncementGroups.Contains(group)) { return; }");
+        _ = sb.AppendLine("        _resultAnnouncementGroups.Add(group);");
+        _ = sb.AppendLine("        ClaimAnnouncementGroup(group);");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private void RetireOtherResultAnnouncementGroups(string current)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        foreach (string prior in _resultAnnouncementGroups.Where(group => !string.Equals(group, current, StringComparison.Ordinal)).ToArray())");
+        _ = sb.AppendLine("        { ReleaseAnnouncementGroup(prior); _resultAnnouncementGroups.Remove(prior); }");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private void SetFailureGroup(string? next, string? identity = null)");
         _ = sb.AppendLine("    {");
-        _ = sb.AppendLine("        if (_activeFailureGroup is { } prior && !string.Equals(prior, next, StringComparison.Ordinal)) { Announcements.Cancel(AnnouncementSurface, prior); }");
+        _ = sb.AppendLine("        if (_activeFailureGroup is { } prior && !string.Equals(prior, next, StringComparison.Ordinal)) { ReleaseAnnouncementGroup(prior); }");
+        _ = sb.AppendLine("        if (next is not null) { ClaimAnnouncementGroup(next); }");
         _ = sb.AppendLine("        _activeFailureGroup = next;");
         _ = sb.AppendLine("        _activeFailureIdentity = identity;");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
 
+        _ = sb.AppendLine("    private void ClaimAnnouncementGroup(string group)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        if (!_announcementClaims.ContainsKey(group)) { _announcementClaims[group] = Hexalith.FrontComposer.Shell.Services.Announcements.SurfaceAnnouncementGroupOwnership.For(Announcements).Claim(AnnouncementSurface, group); }");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine("    private void ReleaseAnnouncementGroup(string group)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        if (_announcementClaims.Remove(group, out var claim)) { claim.Dispose(); }");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+
         _ = sb.AppendLine("    private async Task RetryProjectionAsync()");
         _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        var requestScope = global::Hexalith.FrontComposer.Shell.Services.ProjectionStateScopeOwnership.ResolveCurrentScope(TenantContextAccessor, RenderContext?.TenantId, \"projection-retry\");");
+        _ = sb.AppendLine("        if (requestScope is null || (RenderContext is not null && !string.Equals(requestScope.UserId, RenderContext.UserId, StringComparison.Ordinal))) { return; }");
         if (isGrid) {
             _ = sb.AppendLine("        var snapshot = CurrentGridSnapshot();");
             _ = sb.AppendLine("        var failedPage = CurrentFailedPage();");
@@ -1177,7 +1256,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("                    _viewKey, failedPage.Skip, failedPage.Take > 0 ? failedPage.Take : ShellOptions.Value.VirtualizationServerSideThreshold,");
             _ = sb.AppendLine("                    QueryFilters(snapshot), snapshot?.SortColumn, snapshot?.SortDescending ?? false, SearchQuery(snapshot),");
             _ = sb.AppendLine("                    completion, retryCancellation.Token)");
-            _ = sb.AppendLine("                    { RequestIdentity = failedPage.RequestIdentity, RequestGeneration = LoadedPageState.Value.ActiveRequestGenerationByView.TryGetValue(_viewKey, out var generation) ? generation : null, OperatorInitiated = true, RegisteredAt = TimeProvider.GetUtcNow() });");
+            _ = sb.AppendLine("                    { RequestIdentity = failedPage.RequestIdentity, RequestGeneration = LoadedPageState.Value.ActiveRequestGenerationByView.TryGetValue(_viewKey, out var generation) ? generation : null, OperatorInitiated = true, RegisteredAt = TimeProvider.GetUtcNow(), OriginTenantId = requestScope.TenantId, OriginUserId = requestScope.UserId, OriginScopeGeneration = LoadedPageState.Value.ScopeGeneration });");
             _ = sb.AppendLine("                _ = await completion.Task.WaitAsync(retryCancellation.Token).ConfigureAwait(true);");
             _ = sb.AppendLine("            }");
             _ = sb.AppendLine("            catch (System.Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException and not System.Threading.ThreadAbortException and not AccessViolationException)");
@@ -1188,7 +1267,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("            return;");
             _ = sb.AppendLine("        }");
         }
-        _ = sb.AppendLine("        Dispatcher.Dispatch(new " + model.TypeName + "LoadRequestedAction(UlidFactory.NewUlid(), true));");
+        _ = sb.AppendLine("        Dispatcher.Dispatch(new " + model.TypeName + "LoadRequestedAction(UlidFactory.NewUlid(), true) { ScopeTenantId = requestScope.TenantId, ScopeUserId = requestScope.UserId, OriginScopeGeneration = " + model.TypeName + "State.Value.ScopeGeneration });");
         _ = sb.AppendLine("        await Task.CompletedTask;");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
@@ -1231,7 +1310,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("                var snapshot = CurrentGridSnapshot();");
             _ = sb.AppendLine("                if (snapshot is not null && snapshot.ScrollTop > 0)");
             _ = sb.AppendLine("                {");
-            _ = sb.AppendLine("                    await ScrollInterop.ScrollToOffsetAsync(_viewKey, snapshot.ScrollTop).ConfigureAwait(true);");
+            _ = sb.AppendLine("                    await ScrollInterop.ScrollToOffsetAsync(_viewKey, snapshot.ScrollTop, _gridInstanceId).ConfigureAwait(true);");
             _ = sb.AppendLine("                }");
             _ = sb.AppendLine("            }");
             _ = sb.AppendLine("            catch (global::Microsoft.JSInterop.JSDisconnectedException) { /* circuit teardown */ }");
@@ -1252,7 +1331,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        try");
             _ = sb.AppendLine("        {");
             _ = sb.AppendLine("            await ScrollInterop");
-            _ = sb.AppendLine("                .CaptureScrollAsync(_viewKey, scrollTop: 0d, _dotNetRef, System.Threading.CancellationToken.None)");
+            _ = sb.AppendLine("                .CaptureScrollAsync(_viewKey, scrollTop: 0d, _dotNetRef, _gridViewGeneration, _gridInstanceId, System.Threading.CancellationToken.None)");
             _ = sb.AppendLine("                .ConfigureAwait(true);");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        catch (global::Microsoft.JSInterop.JSDisconnectedException) { /* circuit teardown */ }");
@@ -1265,7 +1344,11 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    public void HandleScrollAsync(string viewKey, double scrollTop)");
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        if (!string.Equals(viewKey, _viewKey, StringComparison.Ordinal) || double.IsNaN(scrollTop) || double.IsInfinity(scrollTop) || scrollTop < 0) { return; }");
+            _ = sb.AppendLine("        _viewportScrollTop = scrollTop;");
+            _ = sb.AppendLine("        int priorViewportSkip = _currentViewportSkip;");
+            _ = sb.AppendLine("        UpdateCurrentViewportSkip();");
             _ = sb.AppendLine("        Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.ScrollCapturedAction(viewKey, scrollTop));");
+            _ = sb.AppendLine("        if (priorViewportSkip != _currentViewportSkip) { _ = InvokeAsync(StateHasChanged); }");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
 
@@ -1273,6 +1356,8 @@ public static class RazorEmitter {
             // a TaskCompletionSource via LoadPageAction; awaits the reducer-resolved result.
             _ = sb.AppendLine("    private async ValueTask<global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<" + model.TypeName + ">> LoadPageAsync(global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderRequest<" + model.TypeName + "> request)");
             _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        var requestScope = global::Hexalith.FrontComposer.Shell.Services.ProjectionStateScopeOwnership.ResolveCurrentScope(TenantContextAccessor, RenderContext?.TenantId, \"projection-page\");");
+            _ = sb.AppendLine("        if (requestScope is null || (RenderContext is not null && !string.Equals(requestScope.UserId, RenderContext.UserId, StringComparison.Ordinal))) { return new global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<" + model.TypeName + "> { Items = System.Array.Empty<" + model.TypeName + ">(), TotalItemCount = 0 }; }");
             _ = sb.AppendLine("        var ct = request.CancellationToken;");
             _ = sb.AppendLine("        var completion = new System.Threading.Tasks.TaskCompletionSource<object>(System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously);");
             _ = sb.AppendLine("        var skip = request.StartIndex;");
@@ -1283,7 +1368,8 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        var requestIdentity = PageRequestIdentity(snapshot);");
             _ = sb.AppendLine("        bool operatorInitiated = _lastPageRequestIdentity is null ? AnyRealFilterActive(snapshot) : !string.Equals(_lastPageRequestIdentity, requestIdentity, StringComparison.Ordinal);");
             _ = sb.AppendLine("        long observedGeneration = LoadedPageState.Value.ActiveRequestGenerationByView.TryGetValue(_viewKey, out var persistedGeneration) ? persistedGeneration : 0;");
-            _ = sb.AppendLine("        if (_lastPageRequestIdentity is null && LoadedPageState.Value.ActiveRequestIdentityByView.TryGetValue(_viewKey, out var persistedIdentity)");
+            _ = sb.AppendLine("        if ((_lastPageRequestIdentity is null || string.Equals(_lastPageRequestIdentity, requestIdentity, StringComparison.Ordinal))");
+            _ = sb.AppendLine("            && LoadedPageState.Value.ActiveRequestIdentityByView.TryGetValue(_viewKey, out var persistedIdentity)");
             _ = sb.AppendLine("            && string.Equals(persistedIdentity, requestIdentity, StringComparison.Ordinal))");
             _ = sb.AppendLine("        {");
             _ = sb.AppendLine("            _pageRequestGeneration = observedGeneration;");
@@ -1302,7 +1388,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("            sortDescending: snapshot?.SortDescending ?? false,");
             _ = sb.AppendLine("            searchQuery: searchQuery,");
             _ = sb.AppendLine("            completion: completion,");
-            _ = sb.AppendLine("            cancellationToken: ct) { RequestIdentity = requestIdentity, RequestGeneration = _pageRequestGeneration, OperatorInitiated = operatorInitiated, RegisteredAt = TimeProvider.GetUtcNow() });");
+            _ = sb.AppendLine("            cancellationToken: ct) { RequestIdentity = requestIdentity, RequestGeneration = _pageRequestGeneration, OperatorInitiated = operatorInitiated, RegisteredAt = TimeProvider.GetUtcNow(), OriginTenantId = requestScope.TenantId, OriginUserId = requestScope.UserId, OriginScopeGeneration = LoadedPageState.Value.ScopeGeneration });");
             _ = sb.AppendLine("        try");
             _ = sb.AppendLine("        {");
             _ = sb.AppendLine("            var resolved = await completion.Task.WaitAsync(ct).ConfigureAwait(true);");
@@ -1355,14 +1441,18 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        _projectionFallbackLaneRegistration?.Dispose();");
             _ = sb.AppendLine("        _projectionFallbackLaneRegistration = null;");
             _ = sb.AppendLine("        _registeredProjectionFallbackLaneKey = null;");
-            _ = sb.AppendLine("        try { Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.ClearPendingPagesAction(_viewKey)); }");
-            _ = sb.AppendLine("        catch (System.ObjectDisposedException) { /* store already disposed */ }");
+            _ = sb.AppendLine("        bool finalViewOwner = _gridViewOwners?.Release(_viewKey) ?? false;");
+            _ = sb.AppendLine("        if (finalViewOwner)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            try { Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.ClearPendingPagesAction(_viewKey) { StillFinalOwner = () => _gridViewOwners?.CanDispose(_viewKey, _gridViewGeneration) == true }); }");
+            _ = sb.AppendLine("            catch (System.ObjectDisposedException) { /* store already disposed */ }");
+            _ = sb.AppendLine("        }");
             if (EmitsExpandInRowMachinery(model.Strategy)) {
                 _ = sb.AppendLine("        try { Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.ExpandedRow.CollapseRowAction(_ephemeralViewKey)); }");
                 _ = sb.AppendLine("        catch (System.ObjectDisposedException) { /* store already disposed */ }");
             }
 
-            _ = sb.AppendLine("        try { await ScrollInterop.DisposeViewKeyAsync(_viewKey).ConfigureAwait(true); }");
+            _ = sb.AppendLine("        try { await ScrollInterop.DisposeInstanceAsync(_viewKey, _gridViewGeneration, _gridInstanceId).ConfigureAwait(true); }");
             _ = sb.AppendLine("        catch (global::Microsoft.JSInterop.JSDisconnectedException) { /* circuit teardown */ }");
             _ = sb.AppendLine("        catch (System.Threading.Tasks.TaskCanceledException) { /* circuit teardown */ }");
             _ = sb.AppendLine("        _dotNetRef?.Dispose();");
@@ -1437,6 +1527,21 @@ public static class RazorEmitter {
     }
 
     private static void EmitGridStateHelpers(StringBuilder sb, RazorModel model) {
+        _ = sb.AppendLine("    private void UpdateCurrentViewportSkip()");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        var snapshot = CurrentGridSnapshot();");
+        _ = sb.AppendLine("        string request = PageRequestIdentity(snapshot);");
+        _ = sb.AppendLine("        if (!string.Equals(_viewportRequestIdentity, request, StringComparison.Ordinal))");
+        _ = sb.AppendLine("        { _viewportRequestIdentity = request; _viewportScrollTop = snapshot?.ScrollTop ?? 0d; }");
+        _ = sb.AppendLine("        double rowHeight = global::Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density);");
+        _ = sb.AppendLine("        int visibleIndex = (int)System.Math.Min(int.MaxValue, System.Math.Floor(_viewportScrollTop / rowHeight));");
+        _ = sb.AppendLine("        _currentViewportSkip = LoadedPageState.Value.ResultsByPage.Keys");
+        _ = sb.AppendLine("            .Concat(LoadedPageState.Value.PendingCompletionsByKey.Keys)");
+        _ = sb.AppendLine("            .Concat(LoadedPageState.Value.SuccessfulReadSequenceByPage.Keys)");
+        _ = sb.AppendLine("            .Where(key => string.Equals(key.ViewKey, _viewKey, StringComparison.Ordinal) && key.Skip <= visibleIndex)");
+        _ = sb.AppendLine("            .Select(key => key.Skip).DefaultIfEmpty(0).Max();");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
         _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? CurrentGridSnapshot()");
         _ = sb.AppendLine("        => GridNavigationState.Value.ViewStates.TryGetValue(_viewKey, out var snapshot) ? snapshot : null;");
         _ = sb.AppendLine();
@@ -1446,7 +1551,8 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        var failed = LoadedPageState.Value.ResultsByPage");
         _ = sb.AppendLine("            .Where(entry => string.Equals(entry.Key.ViewKey, _viewKey, StringComparison.Ordinal)");
         _ = sb.AppendLine("                && entry.Value.Failed && string.Equals(entry.Value.RequestIdentity, request, StringComparison.Ordinal))");
-        _ = sb.AppendLine("            .OrderBy(entry => entry.Key.Skip).Select(entry => entry.Value).FirstOrDefault();");
+        _ = sb.AppendLine("            .OrderBy(entry => entry.Key.Skip == _currentViewportSkip ? 0 : 1)");
+        _ = sb.AppendLine("            .ThenByDescending(entry => entry.Value.Identity).Select(entry => entry.Value).FirstOrDefault();");
         _ = sb.AppendLine("        return failed ?? (LoadedPageState.Value.LastResultByKey.TryGetValue(_viewKey, out var last)");
         _ = sb.AppendLine("            && last.Failed && string.Equals(last.RequestIdentity, request, StringComparison.Ordinal) ? last : null);");
         _ = sb.AppendLine("    }");
@@ -1657,8 +1763,20 @@ public static class RazorEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private void RegisterVisibleProjectionLane()");
         _ = sb.AppendLine("    {");
-        _ = sb.AppendLine("        if (string.IsNullOrWhiteSpace(RenderContext?.TenantId))");
+        _ = sb.AppendLine("        var laneScope = global::Hexalith.FrontComposer.Shell.Services.ProjectionStateScopeOwnership.ResolveCurrentScope(TenantContextAccessor, RenderContext?.TenantId, \"projection-fallback\");");
+        _ = sb.AppendLine("        if (laneScope is null || (RenderContext is not null && !string.Equals(laneScope.UserId, RenderContext.UserId, StringComparison.Ordinal)))");
         _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            _projectionFallbackLaneRegistration?.Dispose();");
+        _ = sb.AppendLine("            _projectionFallbackLaneRegistration = null;");
+        _ = sb.AppendLine("            _registeredProjectionFallbackLaneKey = null;");
+        _ = sb.AppendLine("            return;");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("        var projectionState = " + model.TypeName + "State.Value;");
+        _ = sb.AppendLine("        if (!projectionState.RequiresScopedRequest && !global::Hexalith.FrontComposer.Shell.Services.ProjectionStateScopeOwnership.For(Dispatcher).IsCurrent(AnnouncementSurface, projectionState.ScopeTenantId, projectionState.ScopeUserId, laneScope, LoadedPageState.Value.ScopeGeneration, CanClaimUnstampedInitialState(projectionState)))");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            _projectionFallbackLaneRegistration?.Dispose();");
+        _ = sb.AppendLine("            _projectionFallbackLaneRegistration = null;");
+        _ = sb.AppendLine("            _registeredProjectionFallbackLaneKey = null;");
         _ = sb.AppendLine("            return;");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine();
@@ -1666,7 +1784,8 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        var filters = QueryFilters(snapshot);");
         _ = sb.AppendLine("        var searchQuery = SearchQuery(snapshot);");
         _ = sb.AppendLine("        int take = ShellOptions.Value.VirtualizationServerSideThreshold;");
-        _ = sb.AppendLine("        string laneKey = string.Join(\"\\u001d\", RenderContext.TenantId, ProjectionTypeFromViewKey(), \"0\", take.ToString(System.Globalization.CultureInfo.InvariantCulture), snapshot?.SortColumn ?? string.Empty, snapshot?.SortDescending == true ? \"desc\" : \"asc\", searchQuery ?? string.Empty, string.Join(\"\\u001f\", filters.OrderBy(static kv => kv.Key, StringComparer.Ordinal).Select(static kv => kv.Key + \"\\u001e\" + kv.Value)));");
+        _ = sb.AppendLine("        long laneScopeGeneration = LoadedPageState.Value.ScopeGeneration;");
+        _ = sb.AppendLine("        string laneKey = string.Concat(new string?[] { laneScope.TenantId, laneScope.UserId, laneScopeGeneration.ToString(System.Globalization.CultureInfo.InvariantCulture), ProjectionTypeFromViewKey(), \"0\", take.ToString(System.Globalization.CultureInfo.InvariantCulture), snapshot?.SortColumn, snapshot?.SortDescending == true ? \"1\" : \"0\", searchQuery }.Concat(filters.OrderBy(static kv => kv.Key, StringComparer.Ordinal).SelectMany(static kv => new string?[] { kv.Key, kv.Value })).Select(static part => part is null ? \"-1:\" : part.Length.ToString(System.Globalization.CultureInfo.InvariantCulture) + \":\" + part));");
         _ = sb.AppendLine("        if (string.Equals(_registeredProjectionFallbackLaneKey, laneKey, StringComparison.Ordinal))");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            return;");
@@ -1678,16 +1797,16 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        _projectionFallbackLaneRegistration?.Dispose();");
-        _ = sb.AppendLine("        _projectionFallbackLaneRegistration = ProjectionFallbackRefreshScheduler.RegisterLane(new global::Hexalith.FrontComposer.Shell.State.ProjectionConnection.ProjectionFallbackLane(");
+        _ = sb.AppendLine("        _projectionFallbackLaneRegistration = ProjectionFallbackRefreshScheduler.RegisterReplacingLane(new global::Hexalith.FrontComposer.Shell.State.ProjectionConnection.ProjectionFallbackLane(");
         _ = sb.AppendLine("            _viewKey,");
         _ = sb.AppendLine("            ProjectionTypeFromViewKey(),");
-        _ = sb.AppendLine("            RenderContext.TenantId,");
+        _ = sb.AppendLine("            laneScope.TenantId,");
         _ = sb.AppendLine("            0,");
         _ = sb.AppendLine("            take,");
         _ = sb.AppendLine("            filters,");
         _ = sb.AppendLine("            snapshot?.SortColumn,");
         _ = sb.AppendLine("            snapshot?.SortDescending ?? false,");
-        _ = sb.AppendLine("            searchQuery));");
+        _ = sb.AppendLine("            searchQuery) { UserId = laneScope.UserId, ScopeGeneration = laneScopeGeneration });");
         _ = sb.AppendLine("        _registeredProjectionFallbackLaneKey = laneKey;");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
@@ -1899,13 +2018,14 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        global::Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.TenantContextResult __scope;");
         _ = sb.AppendLine("        try { __scope = TenantContextAccessor.TryGetContext(RenderContext?.TenantId, \"projection-render\"); }");
         _ = sb.AppendLine("        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException and not System.Threading.ThreadAbortException and not AccessViolationException) { __scope = global::Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.TenantContextResult.Failure(global::Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.TenantContextFailureCategory.TenantMissing, string.Empty); }");
-        _ = sb.AppendLine("        if (!__scope.Succeeded || __scope.Context is null || (RenderContext is not null && !string.Equals(__scope.Context.UserId, RenderContext.UserId, StringComparison.Ordinal)))");
+        _ = sb.AppendLine("        var state = " + model.TypeName + "State.Value;");
+        _ = sb.AppendLine("        if (!__scope.Succeeded || __scope.Context is null || (RenderContext is not null && !string.Equals(__scope.Context.UserId, RenderContext.UserId, StringComparison.Ordinal)) || (__scope.Context is not null && !global::Hexalith.FrontComposer.Shell.Services.ProjectionStateScopeOwnership.For(Dispatcher).IsCurrent(AnnouncementSurface, state.ScopeTenantId, state.ScopeUserId, __scope.Context, " + (isGrid ? "LoadedPageState.Value.ScopeGeneration" : "null") + ", CanClaimUnstampedInitialState(state))))");
         _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            CancelOwnedAnnouncements();");
         _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcScopeBlocked>(0);");
         _ = sb.AppendLine("            builder.CloseComponent();");
         _ = sb.AppendLine("            return;");
         _ = sb.AppendLine("        }");
-        _ = sb.AppendLine("        var state = " + model.TypeName + "State.Value;");
         if (isGrid) {
             _ = sb.AppendLine("        if (!state.RequiresScopedRequest && state.Error is not null && state.Items is not { Count: > 0 })");
             _ = sb.AppendLine("        {");
@@ -1915,6 +2035,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        int seq = 0;");
         _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcSurfaceStatus>(seq++);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Surface\", AnnouncementSurface);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ExclusiveOwner\", true);");
         _ = sb.AppendLine("        builder.CloseComponent();");
         EmitDevModeAnnotation(
             sb,
@@ -1935,6 +2056,7 @@ public static class RazorEmitter {
             // when density actually flips.
             _ = sb.AppendLine("        _density = RenderContext?.DensityLevel ?? global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable;");
             _ = sb.AppendLine("        var gridSnapshot = CurrentGridSnapshot();");
+            _ = sb.AppendLine("        UpdateCurrentViewportSkip();");
             _ = sb.AppendLine("        var hiddenColumns = ResolveHiddenColumns(gridSnapshot);");
             _ = sb.AppendLine("        var hiddenColumnSet = new System.Collections.Generic.HashSet<string>(hiddenColumns, StringComparer.Ordinal);");
             _ = sb.AppendLine("        var anyRealFilterActive = AnyRealFilterActive(gridSnapshot);");
@@ -1950,6 +2072,7 @@ public static class RazorEmitter {
         if (isGrid) {
             _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcSlowQueryNotice>(seq++);");
             _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ViewKey\", _viewKey);");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"VisiblePageSkip\", _currentViewportSkip);");
             _ = sb.AppendLine("        builder.AddAttribute(seq++, \"SharedStatusOwner\", true);");
             _ = sb.AppendLine("        builder.CloseComponent();");
         }
@@ -2083,6 +2206,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice>(seq++);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ViewKey\", _viewKey);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"SharedStatusOwner\", true);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ScopeGeneration\", LoadedPageState.Value.ScopeGeneration);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemsCount\", primaryPage?.TotalCount ?? (LoadedPageState.Value.ActiveRequestIdentityByView.ContainsKey(_viewKey) ? 0 : state.Items.Count));");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"AnyRealFilterActive\", anyRealFilterActive);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ResultIdentity\", primaryPage?.Identity.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? state.LastResultCorrelationId ?? \"initial\");");
@@ -2093,7 +2217,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("            && LoadedPageState.Value.PagesByKey.Keys.Any(key => string.Equals(key.ViewKey, _viewKey, StringComparison.Ordinal)))");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionFailure>(seq++);");
-        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Message\", inlineFailedPage.ErrorMessage);");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Message\", SafePageFailureCopy(inlineFailedPage.ErrorMessage));");
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"OnRetry\", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, RetryProjectionAsync));");
         _ = sb.AppendLine("            builder.CloseComponent();");
         _ = sb.AppendLine("        }");
@@ -2118,6 +2242,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        builder.OpenElement(seq++, \"div\");");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"class\", GridHostClass());");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"data-fc-datagrid\", _viewKey);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"data-fc-datagrid-instance\", _gridInstanceId);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"onscroll\", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, OnScrollAsync));");
         _ = sb.AppendLine();
 
@@ -2185,12 +2310,16 @@ public static class RazorEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("        builder.OpenComponent<" + ProjectionRoleBodyEmitter.ShellRenderingNamespace + ".FcProjectionStaleNotice>(seq++);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Surface\", AnnouncementSurface);");
+        if (RoleBodyHelpers.IsGridRenderingStrategy(model.Strategy)) {
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ScopeGeneration\", LoadedPageState.Value.ScopeGeneration);");
+        }
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"QueryFailureGroup\", _activeFailureGroup);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"SharedStatusOwner\", true);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"QueryFailureIdentity\", _activeFailureIdentity);");
         if (RoleBodyHelpers.IsGridRenderingStrategy(model.Strategy)) {
             _ = sb.AppendLine("        builder.AddAttribute(seq++, \"HasCachedRows\", state.Items is { Count: > 0 } || LoadedPageState.Value.PagesByKey.Keys.Any(key => string.Equals(key.ViewKey, _viewKey, StringComparison.Ordinal)));");
             _ = sb.AppendLine("        builder.AddAttribute(seq++, \"HasFailedRefresh\", state.Error is not null || CurrentFailedPage() is not null || LoadedPageState.Value.StalePages.Any(key => string.Equals(key.ViewKey, _viewKey, StringComparison.Ordinal)));");
-            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"FreshnessIdentity\", state.IsLoading || state.Error is not null ? null : state.LastResultCorrelationId + \"|\" + LoadedPageState.Value.SuccessfulReadSequenceByView.GetValueOrDefault(_viewKey).ToString(System.Globalization.CultureInfo.InvariantCulture));");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"FreshnessIdentity\", \"pages:\" + _currentViewportSkip.ToString(System.Globalization.CultureInfo.InvariantCulture) + \"|\" + string.Join(\"|\", LoadedPageState.Value.SuccessfulReadSequenceByPage.Where(entry => string.Equals(entry.Key.ViewKey, _viewKey, StringComparison.Ordinal)).OrderBy(static entry => entry.Key.Skip).Select(static entry => entry.Key.Skip.ToString(System.Globalization.CultureInfo.InvariantCulture) + \":\" + entry.Value.ToString(System.Globalization.CultureInfo.InvariantCulture))));");
         }
         else {
             _ = sb.AppendLine("        builder.AddAttribute(seq++, \"HasCachedRows\", state.Items is { Count: > 0 });");
@@ -2281,6 +2410,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"RowCount\", 5);");
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Layout\", " + ProjectionRoleBodyEmitter.ShellRenderingNamespace + ".SkeletonLayout." + layout + ");");
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"EntityLabel\", " + entityLabelLiteral + ");");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"SharedStatusOwner\", true);");
         _ = sb.AppendLine("            builder.CloseComponent();");
         _ = sb.AppendLine("            return;");
         _ = sb.AppendLine("        }");
@@ -2299,7 +2429,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        if (" + failedCondition + ")");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionFailure>(seq++);");
-        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Message\", " + (isGrid ? "state.Error ?? failedPage?.ErrorMessage" : "state.Error") + ");");
+            _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Message\", " + (isGrid ? "SafePageFailureCopy(state.Error ?? failedPage?.ErrorMessage)" : "SafePageFailureCopy(state.Error)") + ");");
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"OnRetry\", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, RetryProjectionAsync));");
         _ = sb.AppendLine("            builder.CloseComponent();");
         if (isGrid) {

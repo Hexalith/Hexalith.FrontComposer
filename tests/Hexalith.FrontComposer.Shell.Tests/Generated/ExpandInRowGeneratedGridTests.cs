@@ -44,7 +44,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
             [
                 Counter("counter-1", 1),
                 Counter("counter-2", 2),
-            ]));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
 
         IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
@@ -78,7 +78,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
     }
 
     [Fact]
-    public async Task CounterProjectionView_FilterHidesExpandedRow_RendersBannerAndSuppressedAnnouncement() {
+    public async Task CounterProjectionView_MissingExpandedRow_UsesNeutralFeedbackWithoutFilterSpeech() {
         SetupExpandInRowModule();
         using CultureScope cultureScope = new("en");
         await InitializeStoreAsync();
@@ -90,7 +90,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
             [
                 Counter("counter-1", 1),
                 Counter("counter-2", 2),
-            ]));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
 
         IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
@@ -104,14 +104,14 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
             "story-2-4-filtered",
             [
                 Counter("counter-2", 2),
-            ])));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" }));
 
         await cut.WaitForAssertionAsync(() => {
             IElement banner = cut.Find("[data-testid='fc-expanded-row-hidden-banner']");
             banner.GetAttribute("role").ShouldBe("group");
             banner.GetAttribute("aria-live").ShouldBe("off");
-            banner.TextContent.ShouldContain("1 expanded item hidden by current filter");
-            banner.TextContent.ShouldContain("Clear filter");
+            banner.TextContent.ShouldContain("not in the current results");
+            banner.TextContent.ShouldNotContain("Clear filter");
 
             IElement region = cut.Find(".fc-expand-in-row-detail");
             region.GetAttribute("role").ShouldBe("region");
@@ -124,20 +124,15 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
             liveRegion.GetAttribute("aria-atomic").ShouldBe("true");
             liveRegion.TextContent.ShouldBeEmpty();
         });
-        _ = JSInterop.VerifyInvoke("focusFirstButtonWithin", 1);
+        JSInterop.Invocations.Count(x => x.Identifier == "focusFirstButtonWithin").ShouldBe(0);
 
-        long firstRevision = 0;
         await cut.InvokeAsync(() => dispatcher.Dispatch(new CounterProjectionLoadedAction(
             "story-2-4-filtered-again",
-            [Counter("counter-2", 3)])));
+            [Counter("counter-2", 3)]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" }));
         await cut.WaitForAssertionAsync(() => {
-            long secondRevision = long.Parse(
-                cut.Find("[data-testid='fc-surface-status'] span").GetAttribute("data-message-revision")!,
-                CultureInfo.InvariantCulture);
-            secondRevision.ShouldBeGreaterThan(firstRevision);
             cut.FindAll("[data-testid='fc-surface-status']").Count.ShouldBe(1);
-            cut.Find("[data-testid='fc-surface-status']").TextContent.ShouldContain("The expanded row is hidden by the current filters");
-            cut.Find("[data-testid='fc-expanded-row-hidden-banner']").TextContent.ShouldContain("Clear filter");
+            cut.Find("[data-testid='fc-surface-status']").TextContent.ShouldNotContain("hidden by the current filters");
+            cut.Find("[data-testid='fc-expanded-row-hidden-banner']").TextContent.ShouldContain("not in the current results");
         });
     }
 
@@ -154,7 +149,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
             [
                 Counter("counter-1", 1),
                 Counter("counter-2", 2),
-            ]));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
 
         IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
@@ -195,7 +190,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
             [
                 Counter("counter-1", 1),
                 Counter("counter-2", 2),
-            ]));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
 
         IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
@@ -237,7 +232,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
             [
                 Counter("counter-1", 1),
                 Counter("counter-2", 2),
-            ]));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
 
         IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
         await cut.WaitForAssertionAsync(() => _ = ExpandButton(cut, "counter-1"));
@@ -313,6 +308,8 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
     private void SetupExpandInRowModule() {
         BunitJSModuleInterop module = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-expandinrow.js");
         _ = module.SetupVoid("initializeExpandInRow", _ => true).SetVoidResult();
+        _ = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js")
+            .Setup<bool>("focusFirstButtonWithin", _ => true).SetResult(true);
     }
 
     private static CounterProjection Counter(string id, int count)

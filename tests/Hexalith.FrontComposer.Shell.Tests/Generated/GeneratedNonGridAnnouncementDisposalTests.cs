@@ -5,6 +5,7 @@ using Bunit;
 using Fluxor;
 
 using Hexalith.FrontComposer.Shell.Services.Announcements;
+using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -18,6 +19,59 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 
 public sealed class GeneratedNonGridAnnouncementDisposalTests : GeneratedComponentTestBase
 {
+    [Fact]
+    public void ScopeGenerationRejectsDelayedFirstScopeActionsAfterReturningToSameUser()
+    {
+        NoticeDetailProjectionState initial = new(false, null, null);
+        NoticeDetailProjectionLoadRequestedAction firstRequest = new("first-a", true) {
+            ScopeTenantId = "tenant-a", ScopeUserId = "user-a", OriginScopeGeneration = initial.ScopeGeneration,
+        };
+        NoticeDetailProjectionState first = NoticeDetailProjectionReducers.OnNoticeDetailProjectionLoadRequested(initial, firstRequest);
+        NoticeDetailProjectionState secondScope = NoticeDetailProjectionReducers.OnNoticeDetailProjectionScopeChanged(first, new ScopeChangedAction());
+        NoticeDetailProjectionState thirdScope = NoticeDetailProjectionReducers.OnNoticeDetailProjectionScopeChanged(secondScope, new ScopeChangedAction());
+        thirdScope.ScopeGeneration.ShouldBe(2);
+        NoticeDetailProjectionReducers.OnNoticeDetailProjectionLoadRequested(thirdScope, firstRequest).ShouldBeSameAs(thirdScope);
+        NoticeDetailProjectionReducers.OnNoticeDetailProjectionLoaded(thirdScope,
+            new NoticeDetailProjectionLoadedAction("first-a", [new NoticeDetailProjection { Id = "old-a" }]) {
+                ScopeTenantId = "tenant-a", ScopeUserId = "user-a", OriginScopeGeneration = 0,
+            }).ShouldBeSameAs(thirdScope);
+        NoticeDetailProjectionReducers.OnNoticeDetailProjectionLoadFailed(thirdScope,
+            new NoticeDetailProjectionLoadFailedAction("first-a", "old failure") { OriginScopeGeneration = 0 })
+            .ShouldBeSameAs(thirdScope);
+        NoticeDetailProjectionReducers.OnNoticeDetailProjectionLoadRequested(thirdScope,
+            new NoticeDetailProjectionLoadRequestedAction("unstamped-old")).ShouldBeSameAs(thirdScope);
+
+        NoticeDetailProjectionState current = NoticeDetailProjectionReducers.OnNoticeDetailProjectionLoadRequested(thirdScope,
+            new NoticeDetailProjectionLoadRequestedAction("second-a", true) {
+                ScopeTenantId = "tenant-a", ScopeUserId = "user-a", OriginScopeGeneration = thirdScope.ScopeGeneration,
+            });
+        current.RequiresScopedRequest.ShouldBeFalse();
+        current = NoticeDetailProjectionReducers.OnNoticeDetailProjectionLoaded(current,
+            new NoticeDetailProjectionLoadedAction("second-a", [new NoticeDetailProjection { Id = "current-a" }]) {
+                ScopeTenantId = "tenant-a", ScopeUserId = "user-a", OriginScopeGeneration = thirdScope.ScopeGeneration,
+            });
+        current.Items.ShouldNotBeNull().Single().Id.ShouldBe("current-a");
+    }
+    [Theory]
+    [InlineData("tenant-secret backend exception", "Data could not be loaded.")]
+    [InlineData("This section is being updated", "This section is being updated")]
+    public async Task NonGridFailureCardAndSpeechUseTheSameSafeCopy(string raw, string expected)
+    {
+        Services.AddSingleton(Substitute.For<Hexalith.FrontComposer.Shell.Services.IEmptyStateCtaResolver>());
+        await InitializeStoreAsync();
+        IRenderedComponent<NoticeDetailProjectionView> cut = Render<NoticeDetailProjectionView>();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        await cut.InvokeAsync(() => dispatcher.Dispatch(new NoticeDetailProjectionLoadRequestedAction("failure", true)));
+        await cut.InvokeAsync(() => dispatcher.Dispatch(new NoticeDetailProjectionLoadFailedAction("failure", raw)));
+        cut.WaitForAssertion(() =>
+        {
+            cut.Find("[data-testid='fc-projection-failure']").TextContent.ShouldContain(expected);
+            cut.Find("[data-testid='fc-projection-failure']").TextContent.ShouldContain("Retry");
+            cut.Find("[data-testid='fc-surface-status']").TextContent.ShouldBe(expected);
+            cut.Markup.ShouldNotContain("tenant-secret");
+        });
+    }
+
     public GeneratedNonGridAnnouncementDisposalTests() : base(typeof(NoticeDetailProjection).Assembly) { }
 
     [Theory]
@@ -69,6 +123,11 @@ public sealed class GeneratedNonGridAnnouncementDisposalTests : GeneratedCompone
         string surface = (string)typeof(NoticeDetailProjectionView).GetProperty("AnnouncementSurface", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!;
         ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
         if (empty) { announcements.Current(surface).ShouldNotBeEmpty(); }
+        else {
+            time.Advance(TimeSpan.FromMilliseconds(250));
+            cut.WaitForAssertion(() => announcements.Current(surface).ShouldContain("loaded.", Case.Insensitive));
+            cut.Find("[data-testid='fc-surface-status']").TextContent.ShouldContain("loaded.", Case.Insensitive);
+        }
         cut.Instance.Dispose();
         time.Advance(TimeSpan.FromMilliseconds(250));
         announcements.Current(surface).ShouldBeEmpty();

@@ -5,7 +5,7 @@
 @using Microsoft.FluentUI.AspNetCore.Components
 
 <div role="@(SuppressStandaloneStatus ? null : "status")"
-     aria-label="@ResolvedAriaLabel"
+     aria-label="@(SuppressStandaloneStatus ? null : ResolvedAriaLabel)"
      class="fc-empty-state-body fc-projection-empty-placeholder">
     <FluentIcon Value="@FcFluentIcons.DocumentSearch48()" Color="Color.Default" Class="fc-empty-state-body__icon" />
     <FluentLabel Typography="Typography.Body1" Class="fc-projection-empty-placeholder-text">@DisplayMessage</FluentLabel>

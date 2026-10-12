@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 namespace Hexalith.FrontComposer.Shell.State.PendingCommands;
 
 /// <inheritdoc />
-public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordinator, IDisposable {
+public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordinator, IPendingCommandCapturedEntryResolver, IDisposable {
     private static readonly TimeSpan MaximumFutureSkew = TimeSpan.FromSeconds(5);
     private readonly object _gate = new();
     private readonly Dictionary<string, PendingCommandOutcomeObservation> _earlyByOwner = new(StringComparer.Ordinal);
@@ -100,6 +100,9 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
         _options = options?.Value ?? new FcShellOptions();
         _userContext = userContext;
     }
+
+    internal bool SupportsCapturedEntryResolution => _terminalResolver is IPendingCommandCapturedEntryResolver
+        || _terminalResolver is null && _pendingCommands is PendingCommandStateService;
 
     /// <inheritdoc />
     public PendingCommandOutcomeResolutionResult BufferBeforeAccepted(
@@ -248,6 +251,28 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
     }
 
     /// <inheritdoc />
+    public PendingCommandOutcomeResolutionResult ResolveForEntry(
+        PendingCommandOutcomeObservation observation, PendingCommandEntry expectedEntry) {
+        ArgumentNullException.ThrowIfNull(observation);
+        ArgumentNullException.ThrowIfNull(expectedEntry);
+
+        NewItemIndicatorEntry? publication;
+        PendingCommandOutcomeResolutionResult result;
+        lock (_gate) {
+            if (_disposed || !SupportsCapturedEntryResolution
+                || !ReferenceEquals(_pendingCommands.GetByMessageId(expectedEntry.MessageId), expectedEntry)) {
+                return new PendingCommandOutcomeResolutionResult(PendingCommandOutcomeResolutionStatus.Unknown);
+            }
+
+            EnforceScopeBoundaryLocked();
+            result = ApplyObservation(observation, out publication, expectedEntry);
+        }
+
+        TryPublishIndicator(publication);
+        return result;
+    }
+
+    /// <inheritdoc />
     public void DiscardBuffered(string? messageId) {
         if (string.IsNullOrWhiteSpace(messageId)) {
             return;
@@ -310,7 +335,8 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
 
     private PendingCommandOutcomeResolutionResult ApplyObservation(
         PendingCommandOutcomeObservation observation,
-        out NewItemIndicatorEntry? publication) {
+        out NewItemIndicatorEntry? publication,
+        PendingCommandEntry? expectedEntry = null) {
         publication = null;
         if (string.IsNullOrWhiteSpace(observation.MessageId)) {
             FrontComposerHotPathLog.PendingOutcomeMissingIdentity(
@@ -326,7 +352,9 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
 
         PendingCommandOutcomeObservation canonicalObservation = observation with { MessageId = canonicalMessageId };
         if (_terminalResolver is not null) {
-            PendingCommandOutcomeResolutionResult delegated = _terminalResolver.Resolve(canonicalObservation);
+            PendingCommandOutcomeResolutionResult delegated = expectedEntry is null
+                ? _terminalResolver.Resolve(canonicalObservation)
+                : ((IPendingCommandCapturedEntryResolver)_terminalResolver).ResolveForEntry(canonicalObservation, expectedEntry);
             if (delegated.Status is PendingCommandOutcomeResolutionStatus.Resolved
                     or PendingCommandOutcomeResolutionStatus.LifecycleDispatchFailed
                 && delegated.Entry is null) {
@@ -350,8 +378,15 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
             return delegated;
         }
 
+        if (expectedEntry is not null && _pendingCommands is not PendingCommandStateService) {
+            return new PendingCommandOutcomeResolutionResult(PendingCommandOutcomeResolutionStatus.Unknown);
+        }
+
+        PendingCommandTerminalObservation terminal = ToTerminalObservation(canonicalObservation, canonicalMessageId!);
         PendingCommandOutcomeResolutionResult result = PendingCommandOutcomeResolutionResult.From(
-            _pendingCommands.ResolveTerminal(ToTerminalObservation(canonicalObservation, canonicalMessageId!)));
+            expectedEntry is not null && _pendingCommands is PendingCommandStateService concrete
+                ? concrete.ResolveTerminalIfCurrent(terminal, expectedEntry)
+                : _pendingCommands.ResolveTerminal(terminal));
         try {
             publication = DecideNewItemIndicator(canonicalObservation, result);
         }

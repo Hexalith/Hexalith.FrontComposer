@@ -27,10 +27,147 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.DataGrid;
 /// </summary>
 public sealed class FcSlowQueryNoticeTests : BunitContext {
     [Fact]
-    public void DirectSlowAndCapNoticesShareOnePersistentStatusAndPromoteTheRemainingOwner()
+    public void OlderPendingPageSlowThresholdKeepsCurrentFailureAndNewRequestCanSpeak()
+    {
+        const string view = "acme:OrdersProjection";
+        TaskCompletionSource<object> failed = new();
+        TaskCompletionSource<object> olderPending = new();
+        _stateValue = LoadedPageReducers.ReduceLoadPage(_stateValue, PageAction(view, failed, _time.GetUtcNow()));
+        _stateValue = LoadedPageReducers.ReduceLoadPage(_stateValue,
+            new LoadPageAction(view, 20, 20, System.Collections.Immutable.ImmutableDictionary<string, string>.Empty,
+                null, false, null, olderPending, CancellationToken.None) { RegisteredAt = _time.GetUtcNow() });
+        IRenderedComponent<FcSlowQueryNotice> notice = Render<FcSlowQueryNotice>(p => p
+            .Add(c => c.ViewKey, view).Add(c => c.SharedStatusOwner, true));
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        List<string> spoken = [];
+        using IDisposable subscription = announcements.Subscribe("projection:" + view, spoken.Add);
+        _time.Advance(TimeSpan.FromSeconds(1));
+        _stateValue = LoadedPageReducers.ReduceLoadPageFailed(_stateValue,
+            new LoadPageFailedAction(view, 0, "safe failure", failed) { Take = 20 });
+        notice.Render();
+        string failureGroup = "scope:0:page:" + _stateValue.LastResultByKey[view].Identity;
+        announcements.Announce("projection:" + view, failureGroup, "failure", "Page failed", terminal: true);
+
+        _time.Advance(TimeSpan.FromSeconds(1));
+        notice.WaitForAssertion(() => notice.FindAll("[data-testid='fc-slow-query-notice']").Count.ShouldBe(1));
+        announcements.Current("projection:" + view).ShouldBe("Page failed");
+        spoken.ShouldBe(["Page failed"]);
+
+        _stateValue = LoadedPageReducers.ReduceLoadPageCancelled(_stateValue,
+            new LoadPageCancelledAction(view, 20, olderPending));
+        _time.Advance(TimeSpan.FromTicks(1));
+        TaskCompletionSource<object> newRequest = new();
+        _stateValue = LoadedPageReducers.ReduceLoadPage(_stateValue, PageAction(view, newRequest, _time.GetUtcNow()));
+        notice.Render();
+        _time.Advance(TimeSpan.FromSeconds(2));
+        notice.WaitForAssertion(() => announcements.Current("projection:" + view)
+            .ShouldBe("This is taking longer than expected."));
+        spoken.ShouldBe(["Page failed", "This is taking longer than expected."]);
+        notice.FindAll("[role='status'][aria-live='polite']").Count.ShouldBe(0);
+    }
+
+    [Fact]
+    public void CoMountedPrimaryCancellationKeepsOneSlowAnnouncement()
+    {
+        const string view = "acme:OrdersProjection";
+        TaskCompletionSource<object> first = new();
+        TaskCompletionSource<object> second = new();
+        _stateValue = LoadedPageReducers.ReduceLoadPage(_stateValue, PageAction(view, first, _time.GetUtcNow()));
+        IRenderedComponent<FcSlowQueryNotice> notice = Render<FcSlowQueryNotice>(p => p.Add(c => c.ViewKey, view));
+        _time.Advance(TimeSpan.FromMilliseconds(500));
+        _stateValue = LoadedPageReducers.ReduceLoadPage(_stateValue, PageAction(view, second, _time.GetUtcNow()));
+        notice.Render();
+        _time.Advance(TimeSpan.FromMilliseconds(1500));
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        notice.WaitForAssertion(() => announcements.Current("projection:" + view).ShouldBe("This is taking longer than expected."));
+        _stateValue = LoadedPageReducers.ReduceLoadPageCancelled(_stateValue, new LoadPageCancelledAction(view, 0, first));
+        notice.Render();
+        announcements.Current("projection:" + view).ShouldBeEmpty();
+        notice.FindAll("[data-testid='fc-slow-query-notice']").ShouldBeEmpty();
+        _time.Advance(TimeSpan.FromMilliseconds(499));
+        notice.FindAll("[data-testid='fc-slow-query-notice']").ShouldBeEmpty();
+        _time.Advance(TimeSpan.FromMilliseconds(1));
+        notice.WaitForAssertion(() => notice.FindAll("[data-testid='fc-slow-query-notice']").Count.ShouldBe(1));
+        announcements.Current("projection:" + view).ShouldBeEmpty();
+        first.Task.IsCanceled.ShouldBeTrue();
+        second.Task.IsCompleted.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void PromotedProviderUsesItsOwnRegistrationDeadline()
+    {
+        const string view = "acme:OrdersProjection";
+        TaskCompletionSource<object> first = new();
+        TaskCompletionSource<object> second = new();
+        _stateValue = LoadedPageReducers.ReduceLoadPage(_stateValue, PageAction(view, first, _time.GetUtcNow()));
+        IRenderedComponent<FcSlowQueryNotice> notice = Render<FcSlowQueryNotice>(p => p.Add(c => c.ViewKey, view));
+        _time.Advance(TimeSpan.FromMilliseconds(1500));
+        _stateValue = LoadedPageReducers.ReduceLoadPage(_stateValue, PageAction(view, second, _time.GetUtcNow()));
+        _stateValue = LoadedPageReducers.ReduceLoadPageCancelled(_stateValue, new LoadPageCancelledAction(view, 0, first));
+        notice.Render();
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        _time.Advance(TimeSpan.FromMilliseconds(1999));
+        announcements.Current("projection:" + view).ShouldBeEmpty();
+        _time.Advance(TimeSpan.FromMilliseconds(1));
+        notice.WaitForAssertion(() => announcements.Current("projection:" + view).ShouldBe("This is taking longer than expected."));
+    }
+
+    private static LoadPageAction PageAction(string view, TaskCompletionSource<object> completion, DateTimeOffset registeredAt)
+        => new(view, 0, 20, System.Collections.Immutable.ImmutableDictionary<string, string>.Empty,
+            null, false, null, completion, CancellationToken.None) { RegisteredAt = registeredAt };
+
+    [Fact]
+    public void NewlyEarlierRequestReleasesItsPredecessorClaim()
+    {
+        const string view = "acme:OrdersProjection";
+        TaskCompletionSource<object> original = SetPending(view);
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        IRenderedComponent<FcSlowQueryNotice> notice = Render<FcSlowQueryNotice>(p => p.Add(c => c.ViewKey, view));
+        _time.Advance(TimeSpan.FromSeconds(2));
+        notice.WaitForAssertion(() => announcements.Current("projection:" + view).ShouldBe("This is taking longer than expected."));
+
+        TaskCompletionSource<object> earlier = new();
+        _stateValue = _stateValue with {
+            PendingCompletionsByKey = _stateValue.PendingCompletionsByKey.Add((view, 20), earlier),
+            PendingStartedAtByKey = _stateValue.PendingStartedAtByKey
+                .SetItem((view, 0), _time.GetUtcNow())
+                .Add((view, 20), _time.GetUtcNow().AddSeconds(-3)),
+        };
+        notice.Render();
+        _stateValue = _stateValue with {
+            PendingCompletionsByKey = _stateValue.PendingCompletionsByKey.Remove((view, 20)),
+            PendingStartedAtByKey = _stateValue.PendingStartedAtByKey.Remove((view, 20)),
+        };
+        earlier.SetResult(new object());
+        notice.Render();
+        announcements.Current("projection:" + view).ShouldBeEmpty();
+        original.SetResult(new object());
+    }
+
+    [Fact]
+    public void CoMountedSlowNoticesRetainSpeechUntilTheLastOwnerLeaves()
     {
         const string view = "acme:OrdersProjection";
         _ = SetPending(view);
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        IRenderedComponent<FcSlowQueryNotice> first = Render<FcSlowQueryNotice>(p => p
+            .Add(c => c.ViewKey, view).Add(c => c.SharedStatusOwner, true));
+        IRenderedComponent<FcSlowQueryNotice> second = Render<FcSlowQueryNotice>(p => p
+            .Add(c => c.ViewKey, view).Add(c => c.SharedStatusOwner, true));
+        _time.Advance(TimeSpan.FromSeconds(2));
+        first.WaitForAssertion(() => announcements.Current("projection:" + view)
+            .ShouldBe("This is taking longer than expected."));
+        first.Instance.Dispose();
+        announcements.Current("projection:" + view).ShouldBe("This is taking longer than expected.");
+        second.Instance.Dispose();
+        announcements.Current("projection:" + view).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void DirectSlowAndCapNoticesKeepTerminalThenNewRequestUsesOnePersistentStatus()
+    {
+        const string view = "acme:OrdersProjection";
+        TaskCompletionSource<object> oldRequest = SetPending(view);
         IRenderedComponent<FcMaxItemsCapNotice> cap = Render<FcMaxItemsCapNotice>(p => p
             .Add(c => c.ViewKey, view).Add(c => c.ItemsCount, 10000).Add(c => c.AnyRealFilterActive, false)
             .Add(c => c.ResultIdentity, "initial"));
@@ -41,6 +178,13 @@ public sealed class FcSlowQueryNoticeTests : BunitContext {
         _time.Advance(TimeSpan.FromMilliseconds(1999));
         cap.Find("[data-testid='fc-surface-status']").TextContent.ShouldNotContain("taking longer");
         _time.Advance(TimeSpan.FromMilliseconds(1));
+        cap.Find("[data-testid='fc-surface-status']").TextContent.ShouldContain("Showing the first 10000 items");
+        slow.FindAll("[data-testid='fc-slow-query-notice']").Count.ShouldBe(1);
+        oldRequest.TrySetResult(new object());
+        _ = SetPending(view);
+        _stateValue = _stateValue with { PendingStartedAtByKey = _stateValue.PendingStartedAtByKey.SetItem((view, 0), _time.GetUtcNow()) };
+        slow.Render();
+        _time.Advance(TimeSpan.FromSeconds(2));
         cap.WaitForAssertion(() => cap.Find("[data-testid='fc-surface-status']").TextContent
             .ShouldBe("This is taking longer than expected."));
         cap.FindComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcSurfaceStatus>().Instance.Dispose();
@@ -174,6 +318,32 @@ public sealed class FcSlowQueryNoticeTests : BunitContext {
         _time.Advance(TimeSpan.FromMilliseconds(1));
         cut.WaitForAssertion(() => announcements.Current("projection:acme:OrdersProjection")
             .ShouldBe("This is taking longer than expected."));
+    }
+
+    [Fact]
+    public void OffscreenPrefetchCannotTakeStatusWhileDisplayedPageIsReady()
+    {
+        const string view = "acme:OrdersProjection";
+        TaskCompletionSource<object> offscreen = new();
+        _stateValue = _stateValue with {
+            PendingCompletionsByKey = _stateValue.PendingCompletionsByKey.SetItem((view, 40), offscreen),
+        };
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        IRenderedComponent<FcSlowQueryNotice> cut = Render<FcSlowQueryNotice>(p => p
+            .Add(c => c.ViewKey, view).Add(c => c.VisiblePageSkip, 20));
+        _time.Advance(TimeSpan.FromSeconds(3));
+        cut.FindAll("[data-testid='fc-slow-query-notice']").ShouldBeEmpty();
+        announcements.Current("projection:" + view).ShouldBeEmpty();
+
+        TaskCompletionSource<object> displayed = new();
+        _stateValue = _stateValue with {
+            PendingCompletionsByKey = _stateValue.PendingCompletionsByKey.SetItem((view, 20), displayed),
+            PendingStartedAtByKey = _stateValue.PendingStartedAtByKey.SetItem((view, 20), _time.GetUtcNow()),
+        };
+        cut.Render(p => p.Add(c => c.ViewKey, view).Add(c => c.VisiblePageSkip, 20));
+        _time.Advance(TimeSpan.FromMilliseconds(2_000));
+        cut.WaitForAssertion(() => cut.FindAll("[data-testid='fc-slow-query-notice']").Count.ShouldBe(1));
+        announcements.Current("projection:" + view).ShouldBe("This is taking longer than expected.");
     }
     [Theory]
     [InlineData(1999)]

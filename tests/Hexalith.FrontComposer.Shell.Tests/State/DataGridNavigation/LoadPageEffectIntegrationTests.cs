@@ -68,6 +68,31 @@ public sealed class LoadPageEffectIntegrationTests {
         succeeded.Skip.ShouldBe(0);
         succeeded.Items.ShouldBe(items);
         succeeded.TotalCount.ShouldBe(42);
+        succeeded.Take.ShouldBe(20);
+    }
+
+    [Fact]
+    public async Task NullItemsSuccessCarriesRequestedPageSizeIntoFailureReducer() {
+        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
+        loader.LoadPageAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<int>(),
+            Arg.Any<IImmutableDictionary<string, string>>(), Arg.Any<string?>(), Arg.Any<bool>(),
+            Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new ProjectionPageResult(null!, 0, null)));
+        TaskCompletionSource<object> completion = new();
+        LoadPageAction request = new(ViewKey, 500, 37, ImmutableDictionary<string, string>.Empty,
+            null, false, null, completion, CancellationToken.None);
+        RecordingDispatcher dispatcher = new();
+
+        await MakeSut(loader).HandleLoadPageAsync(request, dispatcher);
+        LoadPageSucceededAction success = dispatcher.Single<LoadPageSucceededAction>();
+        success.Take.ShouldBe(37);
+        LoadedPageState registered = LoadedPageReducers.ReduceLoadPage(new LoadedPageState(), request);
+        IOptionsMonitor<FcShellOptions> monitor = Substitute.For<IOptionsMonitor<FcShellOptions>>();
+        monitor.CurrentValue.Returns(new FcShellOptions());
+        LoadedPageReducers reducers = new(monitor, NullLogger<LoadedPageReducers>.Instance);
+        LoadedPageState failed = reducers.ReduceLoadPageSucceeded(registered, success);
+        failed.ResultsByPage[(ViewKey, 500)].Take.ShouldBe(37);
+        _ = await Should.ThrowAsync<InvalidOperationException>(async () => await completion.Task);
     }
 
     [Fact]

@@ -70,13 +70,16 @@ public sealed record LoadPageSucceededAction {
     public TaskCompletionSource<object>? Completion { get; init; }
 
     /// <summary>Gets the originating scope generation for a fallback refresh.</summary>
-    internal long? OriginScopeGeneration { get; init; }
+    public long? OriginScopeGeneration { get; init; }
 
     /// <summary>Gets the server-reported total row count across pages.</summary>
     public int TotalCount { get; init; }
 
     /// <summary>Gets the measured elapsed milliseconds.</summary>
     public long ElapsedMs { get; init; }
+
+    /// <summary>Gets the original requested page size for a null-items failure retry.</summary>
+    public int Take { get; init; }
 
     /// <summary>Originating normalized request identity.</summary>
     public string RequestIdentity { get; init; } = string.Empty;

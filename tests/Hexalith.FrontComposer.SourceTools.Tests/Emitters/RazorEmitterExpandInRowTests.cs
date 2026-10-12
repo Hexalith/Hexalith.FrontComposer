@@ -34,6 +34,29 @@ public sealed class RazorEmitterExpandInRowTests {
         src.ShouldContain("HandleRowClickAsync(row.Item)");
         src.ShouldContain("FcExpandedRowHiddenBanner");
         src.ShouldContain("\"IsHiddenByFilter\", _expandedItemHiddenByFilter");
+        src.ShouldContain("bool _expandedItemHiddenByFilter = false;");
+        src.ShouldContain("\"IsMissing\", _expandedResultSettled && _expandedItemMissing");
+    }
+
+    [Fact]
+    public void StatusOverviewUsesCurrentSourceAndExplicitStatusPredicateForFilterReason()
+    {
+        string src = RazorEmitter.Emit(Model(ProjectionRenderStrategy.StatusOverview,
+            Col("Id"), Col("Status", TypeCategory.Enum)));
+
+        src.ShouldContain("unfilteredGroupedItems.Any(group => string.Equals(group.StatusLabel, _expandedStatusKey, StringComparison.Ordinal))");
+        src.ShouldContain("!string.IsNullOrWhiteSpace(_activeStatusFilter)");
+        src.ShouldContain("_statusLastCompletedRequestIdentity");
+        src.ShouldNotContain("_expandedStatusHiddenByChangedFilter");
+    }
+
+    [Fact]
+    public void ActionQueueStateRuleAloneDoesNotClaimUserFilter()
+    {
+        string src = RazorEmitter.Emit(Model(ProjectionRenderStrategy.ActionQueue, Col("Id"), Col("Name")));
+
+        src.ShouldContain("bool _expandedItemHiddenByFilter = false;");
+        src.ShouldNotContain("state.Items.Any(row => _itemKeyAccessor(row).Equals(_expandedItemKey))");
     }
 
     [Fact]

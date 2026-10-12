@@ -49,7 +49,7 @@ public sealed class LoadPageTCSLifecycleTests {
     }
 
     [Fact]
-    public async Task RapidScroll_SameKey_DoubleRegisterCancelsFirstTcs_NoThrow() {
+    public async Task CoMountedSameRequest_CompletionSettlesBothProviders() {
         TaskCompletionSource<object> first = new();
         TaskCompletionSource<object> second = new();
         LoadedPageState state = LoadedPageReducers.ReduceLoadPage(
@@ -58,10 +58,112 @@ public sealed class LoadPageTCSLifecycleTests {
         // Second LoadPageAction for the same (viewKey, skip) BEFORE first resolves.
         state = LoadedPageReducers.ReduceLoadPage(state, MakeLoadPage(ViewKey, 0, second));
 
-        // First TCS is canceled; second is registered in its place.
-        _ = await Should.ThrowAsync<TaskCanceledException>(async () => await first.Task);
-        state.PendingCompletionsByKey[(ViewKey, 0)].ShouldBe(second);
+        state.PendingCompletionsByKey[(ViewKey, 0)].ShouldBe(first);
+        first.Task.IsCompleted.ShouldBeFalse();
         second.Task.IsCompleted.ShouldBeFalse();
+        IReadOnlyList<object> rows = ["row"];
+        state = MakeReducers().ReduceLoadPageSucceeded(state,
+            new LoadPageSucceededAction(ViewKey, 0, rows, 1, 1, second));
+        (await first.Task).ShouldBe(rows);
+        (await second.Task).ShouldBe(rows);
+        state.PendingCompletionsByKey.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task CoMountedSameRequest_FirstFailureLeavesOtherProviderAbleToSucceed() {
+        TaskCompletionSource<object> first = new();
+        TaskCompletionSource<object> second = new();
+        LoadedPageState state = LoadedPageReducers.ReduceLoadPage(new LoadedPageState(), MakeLoadPage(ViewKey, 0, first));
+        state = LoadedPageReducers.ReduceLoadPage(state, MakeLoadPage(ViewKey, 0, second));
+
+        state = LoadedPageReducers.ReduceLoadPageFailed(state,
+            new LoadPageFailedAction(ViewKey, 0, "first read failed", first));
+        (await Should.ThrowAsync<InvalidOperationException>(async () => await first.Task)).Message.ShouldBe("first read failed");
+        second.Task.IsCompleted.ShouldBeFalse();
+        state.PendingCompletionsByKey[(ViewKey, 0)].ShouldBe(second);
+        state.FailureByKey.ShouldNotContainKey(ViewKey);
+
+        IReadOnlyList<object> rows = ["second read succeeded"];
+        state = MakeReducers().ReduceLoadPageSucceeded(state,
+            new LoadPageSucceededAction(ViewKey, 0, rows, 1, 1, second));
+        (await second.Task).ShouldBe(rows);
+        state.PagesByKey[(ViewKey, 0)].ShouldBe(rows);
+        state.PendingCompletionsByKey.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task CoMountedSameRequest_NullItemsFirstLeavesOtherProviderAbleToSucceed() {
+        TaskCompletionSource<object> first = new();
+        TaskCompletionSource<object> second = new();
+        LoadedPageState state = LoadedPageReducers.ReduceLoadPage(new LoadedPageState(), MakeLoadPage(ViewKey, 0, first));
+        state = LoadedPageReducers.ReduceLoadPage(state, MakeLoadPage(ViewKey, 0, second));
+
+        state = MakeReducers().ReduceLoadPageSucceeded(state,
+            new LoadPageSucceededAction(ViewKey, 0, null, 0, 1, first));
+        (await Should.ThrowAsync<InvalidOperationException>(async () => await first.Task)).Message.ShouldBe("Data could not be loaded.");
+        second.Task.IsCompleted.ShouldBeFalse();
+        state.FailureByKey.ShouldNotContainKey(ViewKey);
+
+        IReadOnlyList<object> rows = ["second read succeeded"];
+        state = MakeReducers().ReduceLoadPageSucceeded(state,
+            new LoadPageSucceededAction(ViewKey, 0, rows, 1, 1, second));
+        (await second.Task).ShouldBe(rows);
+        state.PagesByKey[(ViewKey, 0)].ShouldBe(rows);
+    }
+
+    [Fact]
+    public async Task CoMountedSameRequest_AllProvidersFailPublishesFailureAfterLastRead() {
+        TaskCompletionSource<object> first = new();
+        TaskCompletionSource<object> second = new();
+        LoadedPageState state = LoadedPageReducers.ReduceLoadPage(new LoadedPageState(), MakeLoadPage(ViewKey, 0, first));
+        state = LoadedPageReducers.ReduceLoadPage(state, MakeLoadPage(ViewKey, 0, second));
+
+        state = LoadedPageReducers.ReduceLoadPageFailed(state,
+            new LoadPageFailedAction(ViewKey, 0, "first read failed", first));
+        state.FailureByKey.ShouldNotContainKey(ViewKey);
+        state = LoadedPageReducers.ReduceLoadPageFailed(state,
+            new LoadPageFailedAction(ViewKey, 0, "second read failed", second));
+        _ = await Should.ThrowAsync<InvalidOperationException>(async () => await first.Task);
+        (await Should.ThrowAsync<InvalidOperationException>(async () => await second.Task)).Message.ShouldBe("second read failed");
+        state.FailureByKey[ViewKey].ShouldBe("second read failed");
+        state.PendingCompletionsByKey.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task CoMountedSameRequest_CancellingOneProviderKeepsTheOtherPending()
+    {
+        TaskCompletionSource<object> first = new();
+        TaskCompletionSource<object> second = new();
+        LoadedPageState state = LoadedPageReducers.ReduceLoadPage(new LoadedPageState(), MakeLoadPage(ViewKey, 0, first));
+        state = LoadedPageReducers.ReduceLoadPage(state, MakeLoadPage(ViewKey, 0, second));
+        state = LoadedPageReducers.ReduceLoadPageCancelled(state, new LoadPageCancelledAction(ViewKey, 0, first));
+        _ = await Should.ThrowAsync<TaskCanceledException>(async () => await first.Task);
+        second.Task.IsCompleted.ShouldBeFalse();
+        state.PendingCompletionsByKey[(ViewKey, 0)].ShouldBe(second);
+
+        IReadOnlyList<object> rows = ["survivor"];
+        state = MakeReducers().ReduceLoadPageSucceeded(state,
+            new LoadPageSucceededAction(ViewKey, 0, rows, 1, 1, second));
+        (await second.Task).ShouldBe(rows);
+        state.PendingCompletionsByKey.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task SameOffsetWithChangedPageSizeCancelsTheOldProvider()
+    {
+        TaskCompletionSource<object> old = new();
+        TaskCompletionSource<object> current = new();
+        LoadedPageState state = LoadedPageReducers.ReduceLoadPage(new LoadedPageState(), MakeLoadPage(ViewKey, 0, old));
+        state = LoadedPageReducers.ReduceLoadPage(state,
+            new LoadPageAction(ViewKey, 0, 37, ImmutableDictionary<string, string>.Empty,
+                null, false, null, current, CancellationToken.None));
+        _ = await Should.ThrowAsync<TaskCanceledException>(async () => await old.Task);
+        state.PendingCompletionsByKey[(ViewKey, 0)].ShouldBe(current);
+        LoadedPageReducers reducers = MakeReducers();
+        reducers.ReduceLoadPageSucceeded(state, new LoadPageSucceededAction(ViewKey, 0, ["obsolete"], 1, 1, old))
+            .ShouldBeSameAs(state);
+        state = reducers.ReduceLoadPageSucceeded(state, new LoadPageSucceededAction(ViewKey, 0, ["current"], 1, 1, current));
+        ((IReadOnlyList<object>)await current.Task).Single().ShouldBe("current");
     }
 
     [Fact]
@@ -131,14 +233,14 @@ public sealed class LoadPageTCSLifecycleTests {
     // EffectException_PropagatesViaTrySetException_IntoProvider above.
 
     [Fact]
-    public void DoubleRegistrationIdempotency_StaleSuccessForReplacedEntry_DoesNotResolveNewTcs() {
+    public void ChangedRequest_StaleSuccessDoesNotResolveNewProvider() {
         TaskCompletionSource<object> first = new();
         TaskCompletionSource<object> second = new();
         LoadedPageState state = LoadedPageReducers.ReduceLoadPage(new LoadedPageState(), MakeLoadPage(ViewKey, 0, first));
-        LoadPageAction secondAction = MakeLoadPage(ViewKey, 0, second);
+        LoadPageAction secondAction = MakeLoadPage(ViewKey, 0, second, "new-request");
         state = LoadedPageReducers.ReduceLoadPage(state, secondAction);
 
-        // A stale success from the replaced first request must not resolve the newer pending TCS.
+        // A stale success from the previous criteria cannot resolve the newer provider.
         LoadedPageReducers reducers = MakeReducers();
         IReadOnlyList<object> items = new object[] { "x" };
         state = reducers.ReduceLoadPageSucceeded(
@@ -151,7 +253,7 @@ public sealed class LoadPageTCSLifecycleTests {
 
         _ = reducers.ReduceLoadPageSucceeded(
             state,
-            new LoadPageSucceededAction(ViewKey, 0, items, totalCount: 1, elapsedMs: 1, completion: secondAction.Completion));
+            new LoadPageSucceededAction(ViewKey, 0, items, totalCount: 1, elapsedMs: 1, completion: secondAction.Completion) { RequestIdentity = "new-request" });
 
         second.Task.IsCompletedSuccessfully.ShouldBeTrue();
     }
@@ -171,6 +273,26 @@ public sealed class LoadPageTCSLifecycleTests {
         InvalidOperationException ex = await Should.ThrowAsync<InvalidOperationException>(async () => await tcs.Task);
         ex.Message.ShouldBe("Data could not be loaded.");
         logger.Messages.ShouldContain(m => m.Contains("null Items payload") && m.Contains("Warning"));
+    }
+
+    [Fact]
+    public async Task NullItemsFailureRetainsOriginalPageSizeAcrossAnotherOffsetSuccess() {
+        LoadedPageReducers reducers = MakeReducers();
+        TaskCompletionSource<object> failedCompletion = new();
+        TaskCompletionSource<object> otherCompletion = new();
+        LoadedPageState state = LoadedPageReducers.ReduceLoadPage(new LoadedPageState(),
+            new LoadPageAction(ViewKey, 500, 37, ImmutableDictionary<string, string>.Empty,
+                null, false, null, failedCompletion, CancellationToken.None));
+        state = LoadedPageReducers.ReduceLoadPage(state, MakeLoadPage(ViewKey, 0, otherCompletion));
+
+        state = reducers.ReduceLoadPageSucceeded(state,
+            new LoadPageSucceededAction(ViewKey, 500, null, 0, 1, failedCompletion) { Take = 37 });
+        _ = await Should.ThrowAsync<InvalidOperationException>(async () => await failedCompletion.Task);
+        state = reducers.ReduceLoadPageSucceeded(state,
+            new LoadPageSucceededAction(ViewKey, 0, ["row"], 1, 1, otherCompletion) { Take = 20 });
+
+        state.ResultsByPage[(ViewKey, 500)].Failed.ShouldBeTrue();
+        state.ResultsByPage[(ViewKey, 500)].Take.ShouldBe(37);
     }
 
     [Fact]
@@ -242,8 +364,9 @@ public sealed class LoadPageTCSLifecycleTests {
         TaskCompletionSource<object> retry = new();
         state = LoadedPageReducers.ReduceLoadPage(state, MakeLoadPage(ViewKey, 500, retry, "filter-a"));
         state = LoadedPageReducers.ReduceLoadPageNotModified(state,
-            new LoadPageNotModifiedAction(ViewKey, 500, ["cached"], retry) { RequestIdentity = "filter-a" });
-        state.ResultsByPage.ShouldNotContainKey((ViewKey, 500));
+            new LoadPageNotModifiedAction(ViewKey, 500, ["cached"], retry) { RequestIdentity = "filter-a", TotalCount = 1 });
+        state.ResultsByPage[(ViewKey, 500)].Failed.ShouldBeFalse();
+        state.PagesByKey[(ViewKey, 500)].ShouldBe(["cached"]);
         state.FailureByKey.ShouldNotContainKey(ViewKey);
         state.ResultsByPage[(ViewKey, 0)].Failed.ShouldBeFalse();
     }

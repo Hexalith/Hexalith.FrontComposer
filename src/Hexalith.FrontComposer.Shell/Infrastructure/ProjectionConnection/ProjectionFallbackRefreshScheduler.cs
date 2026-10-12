@@ -1,13 +1,13 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Text.Json;
 
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
@@ -25,18 +25,27 @@ public sealed class ProjectionFallbackRefreshScheduler(
     IDispatcher dispatcher,
     IState<LoadedPageState> loadedPages,
     IOptionsMonitor<FcShellOptions> options,
-    ILogger<ProjectionFallbackRefreshScheduler> logger) : IProjectionFallbackRefreshScheduler {
+    ILogger<ProjectionFallbackRefreshScheduler> logger,
+    IFrontComposerTenantContextAccessor? tenantContextAccessor = null,
+    TimeProvider? timeProvider = null) : IProjectionFallbackRefreshScheduler, IProjectionIncompleteReadWaiter, IProjectionAbandonedReadRetirer {
+    private static readonly TimeSpan CustomSweepReadLimit = TimeSpan.FromSeconds(5);
     private readonly ConcurrentDictionary<string, LaneEntry> _lanes = new(StringComparer.Ordinal);
-    private readonly ConcurrentDictionary<string, byte> _inFlight = new(StringComparer.Ordinal);
-    private readonly ConcurrentDictionary<string, LaneEntry> _pendingRetry = new(StringComparer.Ordinal);
-    private readonly ConcurrentDictionary<ProjectionFallbackGroupKey, bool> _activeGroups = new();
+    private readonly ConcurrentDictionary<string, TaskCompletionSource<bool>> _inFlight = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<TaskCompletionSource<bool>, (long Epoch, LaneEntry Entry)> _reconciliationAdmissions = new();
+    private readonly ConcurrentDictionary<string, (LaneEntry Entry, bool RequiresDisconnected)> _pendingRetry = new(StringComparer.Ordinal);
+    private ImmutableDictionary<ProjectionFallbackGroupKey, bool> _activeGroups = ImmutableDictionary<ProjectionFallbackGroupKey, bool>.Empty;
     // DN4=b — last-known ETag per lane key. Compared against the response ETag on each refresh
     // to detect a wire-level data change without relying on per-item Equals (which falls back
     // to reference equality for class-typed adopter projections).
     private readonly ConcurrentDictionary<string, string> _lastEtagByLane = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, string> _lastNoEtagSignatureByLane = new(StringComparer.Ordinal);
     private readonly object _laneGate = new();
+    private TaskCompletionSource<bool> _replayQueueChanged = NewReplaySignal();
     private long _latestObservedEpoch;
+    private long _fallbackSweepCursor;
+    private long _nudgeSweepCursor;
+    private long _reconciliationSweepCursor;
+    private int _replayPumpRunning;
 
     public ProjectionFallbackRefreshScheduler(
         IProjectionConnectionState connectionState,
@@ -47,38 +56,62 @@ public sealed class ProjectionFallbackRefreshScheduler(
     }
 
     /// <inheritdoc />
-    public IDisposable RegisterLane(ProjectionFallbackLane lane) {
+    public IDisposable RegisterLane(ProjectionFallbackLane lane) => RegisterLaneCore(lane, allowReplacement: false);
+
+    /// <inheritdoc />
+    public IDisposable RegisterReplacingLane(ProjectionFallbackLane lane) => RegisterLaneCore(lane, allowReplacement: true);
+
+    private Registration RegisterLaneCore(ProjectionFallbackLane lane, bool allowReplacement) {
         ArgumentNullException.ThrowIfNull(lane);
         ValidateLane(lane);
+        (long registeredGeneration, string? registeredUser, bool hasScopeProof) = CaptureRegistrationScope(lane);
 
-        LaneEntry entry;
-        lock (_laneGate) {
-            if (_lanes.TryGetValue(lane.ViewKey, out LaneEntry? existing)) {
-                if (!LaneContractsAreEquivalent(existing.Lane, lane)) {
+        while (true) {
+            LaneEntry? observed;
+            lock (_laneGate) {
+                if (!_lanes.TryGetValue(lane.ViewKey, out observed)) {
+                    LaneEntry added = new(lane, registeredGeneration, registeredUser, hasScopeProof);
+                    _lanes[lane.ViewKey] = added;
+                    return new Registration(() => DecrementLane(lane.ViewKey, added));
+                }
+                if (LaneContractsAreEquivalent(observed.Lane, lane)
+                    && observed.RegisteredGeneration == registeredGeneration
+                    && string.Equals(observed.RegisteredUser, registeredUser, StringComparison.Ordinal)
+                    && observed.HasScopeProof == hasScopeProof) {
+                    observed.RefCount++;
+                    return new Registration(() => DecrementLane(lane.ViewKey, observed));
+                }
+                if (!allowReplacement) {
                     throw new InvalidOperationException("A conflicting fallback lane contract is already registered for this view.");
                 }
-
-                existing.RefCount++;
-                entry = existing;
             }
-            else {
-                entry = new LaneEntry(lane);
-                if (!_lanes.TryAdd(lane.ViewKey, entry)) {
-                    throw new InvalidOperationException("The fallback lane registration could not be completed.");
+
+            // A co-mounted view can move to new criteria before its other owner does.
+            // Lock the old dispatch gate before replacing it so an old read cannot
+            // publish after the replacement becomes current.
+            lock (observed.DispatchGate) {
+                lock (_laneGate) {
+                    if (!_lanes.TryGetValue(lane.ViewKey, out LaneEntry? current) || !ReferenceEquals(current, observed)) {
+                        continue;
+                    }
+                    LaneEntry replacement = new(lane, registeredGeneration, registeredUser, hasScopeProof);
+                    _lanes[lane.ViewKey] = replacement;
+                    _ = _lastEtagByLane.TryRemove(lane.ViewKey, out _);
+                    _ = _lastNoEtagSignatureByLane.TryRemove(lane.ViewKey, out _);
+                    _ = _pendingRetry.TryRemove(lane.ViewKey, out _);
+                    if (_inFlight.TryRemove(lane.ViewKey, out TaskCompletionSource<bool>? inFlight)) {
+                        inFlight.TrySetResult(true);
+                    }
+                    return new Registration(() => DecrementLane(lane.ViewKey, replacement));
                 }
             }
         }
-
-        return new Registration(() => DecrementLane(lane.ViewKey, entry));
     }
 
     /// <inheritdoc />
     public void SetReconciliationGroupHealth(IReadOnlyDictionary<ProjectionFallbackGroupKey, bool> activeGroups) {
         ArgumentNullException.ThrowIfNull(activeGroups);
-        _activeGroups.Clear();
-        foreach (KeyValuePair<ProjectionFallbackGroupKey, bool> group in activeGroups) {
-            _activeGroups[group.Key] = group.Value;
-        }
+        Volatile.Write(ref _activeGroups, activeGroups.ToImmutableDictionary());
     }
 
     /// <inheritdoc />
@@ -91,13 +124,14 @@ public sealed class ProjectionFallbackRefreshScheduler(
         }
 
         int refreshed = 0;
+        int attempted = 0;
         int budget = Math.Max(0, current.MaxProjectionFallbackPollingLanes);
         // F12 — track whether the hub reconnected mid-loop so the outer span can be tagged
         // `outcome=stale_after_reconnect` when an in-progress sweep stopped due to
         // reconnection rather than hitting the budget cap.
         bool reconnectedDuringLoop = false;
-        foreach (LaneEntry entry in _lanes.Values.OrderBy(static x => x.Lane.ViewKey, StringComparer.Ordinal)) {
-            if (refreshed >= budget) {
+        foreach (LaneEntry entry in RotateLanes(_lanes.Values, ref _fallbackSweepCursor, budget)) {
+            if (attempted >= budget) {
                 break;
             }
 
@@ -108,8 +142,15 @@ public sealed class ProjectionFallbackRefreshScheduler(
                 break;
             }
 
-            if (await RefreshLaneAsync(entry, cancellationToken).ConfigureAwait(false) is ProjectionLaneRefreshResult.Changed or ProjectionLaneRefreshResult.NotModified) {
+            IReadOnlyList<ProjectionLaneRefreshResult> results = await RefreshLaneSequenceAsync(
+                entry, budget - attempted, cancellationToken, () => connectionState.Current.IsDisconnected, requiresDisconnected: true).ConfigureAwait(false);
+            attempted += results.Count;
+            if (results.Any(static result => result is ProjectionLaneRefreshResult.Changed or ProjectionLaneRefreshResult.NotModified)) {
                 refreshed++;
+            }
+            if (!connectionState.Current.IsDisconnected) {
+                reconnectedDuringLoop = true;
+                break;
             }
         }
 
@@ -129,16 +170,18 @@ public sealed class ProjectionFallbackRefreshScheduler(
             FrontComposerTelemetry.TenantMarker(safeTenantId));
         int budget = Math.Max(0, options.CurrentValue.MaxProjectionFallbackPollingLanes);
         int refreshed = 0;
+        int attempted = 0;
         IEnumerable<LaneEntry> matches = _lanes.Values
             .Where(entry => string.Equals(entry.Lane.ProjectionType, safeProjectionType, StringComparison.Ordinal)
-                && string.Equals(entry.Lane.TenantId, safeTenantId, StringComparison.Ordinal))
-            .OrderBy(static entry => entry.Lane.ViewKey, StringComparer.Ordinal);
-        foreach (LaneEntry entry in matches) {
-            if (refreshed >= budget) {
+                && string.Equals(entry.Lane.TenantId, safeTenantId, StringComparison.Ordinal));
+        foreach (LaneEntry entry in RotateLanes(matches, ref _nudgeSweepCursor, budget)) {
+            if (attempted >= budget) {
                 break;
             }
 
-            if (await RefreshLaneAsync(entry, cancellationToken).ConfigureAwait(false) is ProjectionLaneRefreshResult.Changed or ProjectionLaneRefreshResult.NotModified) {
+            IReadOnlyList<ProjectionLaneRefreshResult> results = await RefreshLaneSequenceAsync(entry, budget - attempted, cancellationToken).ConfigureAwait(false);
+            attempted += results.Count;
+            if (results.Any(static result => result is ProjectionLaneRefreshResult.Changed or ProjectionLaneRefreshResult.NotModified)) {
                 refreshed++;
             }
         }
@@ -148,7 +191,15 @@ public sealed class ProjectionFallbackRefreshScheduler(
     }
 
     /// <inheritdoc />
-    public async Task<ProjectionReconciliationRefreshResult> TriggerReconciliationOnceAsync(long epoch, CancellationToken cancellationToken = default) {
+    public Task<ProjectionReconciliationRefreshResult> TriggerReconciliationOnceAsync(long epoch, CancellationToken cancellationToken = default)
+        => TriggerReconciliationCoreAsync(epoch, null, cancellationToken);
+
+    Task<ProjectionReconciliationRefreshResult> IProjectionIncompleteReadWaiter.RecheckIncompleteReadsAsync(
+        long epoch, IReadOnlyCollection<string> viewKeys, CancellationToken cancellationToken)
+        => TriggerReconciliationCoreAsync(epoch, viewKeys, cancellationToken);
+
+    private async Task<ProjectionReconciliationRefreshResult> TriggerReconciliationCoreAsync(
+        long epoch, IReadOnlyCollection<string>? priorityViewKeys, CancellationToken cancellationToken) {
         cancellationToken.ThrowIfCancellationRequested();
         if (!TryObserveEpoch(epoch)) {
             return ProjectionReconciliationRefreshResult.Empty;
@@ -164,24 +215,29 @@ public sealed class ProjectionFallbackRefreshScheduler(
             return ProjectionReconciliationRefreshResult.Empty;
         }
 
-        // P28 — apply lane cap AFTER dedupe so two lanes that hash to the same dedupe key do
-        // not consume the budget twice.
-        LaneEntry[] orderedLanes = _lanes.Values
-            .OrderBy(static entry => entry.Lane.ViewKey, StringComparer.Ordinal)
-            .ToArray();
+        // Registrations already share one entry per view key. Distinct views must each receive
+        // their own current dispatch and freshness evidence, even when query criteria match.
+        HashSet<string> priority = priorityViewKeys is null
+            ? new(StringComparer.Ordinal) : new(priorityViewKeys, StringComparer.Ordinal);
+        LaneEntry[] orderedLanes = priority.Count == 0
+            ? RotateLanes(_lanes.Values, ref _reconciliationSweepCursor, budget)
+            : [.. RotateLanes(_lanes.Values.Where(entry => priority.Contains(entry.Lane.ViewKey)),
+                    ref _reconciliationSweepCursor, budget),
+                .. _lanes.Values.Where(entry => !priority.Contains(entry.Lane.ViewKey))
+                    .OrderBy(static entry => entry.Lane.ViewKey, StringComparer.Ordinal)];
 
         List<string> changed = [];
         List<string> failed = [];
+        List<string> successful = [];
+        List<string> skipped = [];
         int refreshed = 0;
-        int attempted = 0;
-        HashSet<string> seen = new(StringComparer.Ordinal);
+        bool incompleteEligibleRead = false;
+        List<string> incompleteViewKeys = [];
+        ConcurrentBag<Task> incompleteReadTasks = [];
+        List<LaneEntry> eligible = [];
         foreach (LaneEntry entry in orderedLanes) {
             ProjectionFallbackLane lane = entry.Lane;
             cancellationToken.ThrowIfCancellationRequested();
-            if (attempted >= budget) {
-                break;
-            }
-
             // P29 — fail-closed: lanes without a tenant must not enter the reconciliation pass.
             // The cache layer would itself fail-closed on missing tenant, but we want this to
             // surface as a structured "lane skipped" diagnostic rather than as a silent miss.
@@ -193,10 +249,6 @@ public sealed class ProjectionFallbackRefreshScheduler(
                 continue;
             }
 
-            if (!seen.Add(BuildDedupeKey(lane))) {
-                continue;
-            }
-
             if (!IsGroupEligibleForReconciliation(lane)) {
                 FrontComposerHotPathLog.ReconciliationLaneDegraded(
                     logger,
@@ -205,48 +257,386 @@ public sealed class ProjectionFallbackRefreshScheduler(
                 continue;
             }
 
-            ProjectionLaneRefreshResult result = await RefreshLaneAsync(entry, cancellationToken).ConfigureAwait(false);
-            if (result is ProjectionLaneRefreshResult.Skipped) {
+            if (eligible.Count < budget) {
+                eligible.Add(entry);
+            }
+            else if (priorityViewKeys is null || priority.Contains(lane.ViewKey)) {
+                // Reconciliation must not certify recovery while eligible views outside
+                // this finite sweep still have no current read evidence. The coordinator
+                // rechecks these exact keys through newly budgeted passes.
+                incompleteEligibleRead = true;
+                incompleteViewKeys.Add(lane.ViewKey);
+            }
+        }
+
+        // Admit each selected view before awaiting any provider. Reserve one physical attempt
+        // for every view and give the remaining finite budget to the first view's same-pass replay.
+        Task<IReadOnlyList<ProjectionLaneRefreshResult>>[] reads = new Task<IReadOnlyList<ProjectionLaneRefreshResult>>[eligible.Count];
+        for (int index = 0; index < eligible.Count; index++) {
+            int laneBudget = index == 0 ? budget - eligible.Count + 1 : 1;
+            reads[index] = RefreshLaneSequenceAsync(eligible[index], laneBudget, cancellationToken,
+                onSkippedRead: incompleteReadTasks.Add, reconciliationEpoch: epoch,
+                queueSkippedReconciliationReplay: priorityViewKeys is null);
+        }
+        IReadOnlyList<ProjectionLaneRefreshResult>[] completed = await Task.WhenAll(reads).ConfigureAwait(false);
+        for (int index = 0; index < eligible.Count; index++) {
+            ProjectionFallbackLane lane = eligible[index].Lane;
+            IReadOnlyList<ProjectionLaneRefreshResult> results = completed[index];
+            if (results.Count == 0) {
+                incompleteEligibleRead = true;
+                incompleteViewKeys.Add(lane.ViewKey);
                 continue;
             }
-            attempted++;
-            if (result is ProjectionLaneRefreshResult.Failed)
-            {
+            ProjectionLaneRefreshResult final = results[^1];
+            if (final is ProjectionLaneRefreshResult.Failed) {
                 failed.Add(lane.ViewKey);
-                continue;
             }
-
-            refreshed++;
-            if (result is ProjectionLaneRefreshResult.Changed) {
-                changed.Add(lane.ViewKey);
+            if (final is ProjectionLaneRefreshResult.ReadSkipped or ProjectionLaneRefreshResult.StaleRead) {
+                skipped.Add(lane.ViewKey);
             }
-        }
-
-        return refreshed == 0 && changed.Count == 0 && failed.Count == 0
-            ? ProjectionReconciliationRefreshResult.Empty
-            : new ProjectionReconciliationRefreshResult(refreshed, changed) { FailedViewKeys = failed };
-    }
-
-    private async Task<ProjectionLaneRefreshResult> RefreshLaneAsync(LaneEntry entry, CancellationToken cancellationToken) {
-        cancellationToken.ThrowIfCancellationRequested();
-        ProjectionFallbackLane lane = entry.Lane;
-        if (!IsLaneActive(entry)) {
-            return ProjectionLaneRefreshResult.Skipped;
-        }
-
-        if (!_inFlight.TryAdd(lane.ViewKey, 0)) {
-            // P1 — mark pending so the final nudge gets a replay after the in-flight refresh
-            // resolves. The dedupe window must not drop the last nudge after a failure.
-            lock (_laneGate) {
-                if (IsLaneActiveWithoutLock(entry)) {
-                    _pendingRetry[lane.ViewKey] = entry;
+            if (final is ProjectionLaneRefreshResult.Changed or ProjectionLaneRefreshResult.NotModified) {
+                refreshed++;
+                successful.Add(lane.ViewKey);
+                if (results.Contains(ProjectionLaneRefreshResult.Changed)) {
+                    changed.Add(lane.ViewKey);
                 }
             }
+        }
 
+        return refreshed == 0 && changed.Count == 0 && failed.Count == 0 && skipped.Count == 0 && !incompleteEligibleRead
+            ? ProjectionReconciliationRefreshResult.Empty
+            : new ProjectionReconciliationRefreshResult(refreshed, changed) {
+                FailedViewKeys = failed,
+                RefreshedViewKeys = successful,
+                SkippedViewKeys = skipped,
+                HasIncompleteEligibleReads = incompleteEligibleRead,
+                IncompleteViewKeys = incompleteViewKeys,
+                IncompleteReadTasks = incompleteReadTasks.ToArray(),
+            };
+    }
+
+    async Task<bool> IProjectionIncompleteReadWaiter.WaitForIncompleteReadAsync(long epoch, ProjectionReconciliationRefreshResult pass, CancellationToken cancellationToken) {
+        if (epoch != Volatile.Read(ref _latestObservedEpoch)) {
+            return false;
+        }
+        Task[] held = pass.IncompleteReadTasks.ToArray();
+        if (held.Length > 0) {
+            await Task.WhenAny(held).WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        return epoch == Volatile.Read(ref _latestObservedEpoch);
+    }
+
+    void IProjectionAbandonedReadRetirer.RetireAbandonedReads(long epoch) {
+        foreach (KeyValuePair<TaskCompletionSource<bool>, (long Epoch, LaneEntry Entry)> admission in _reconciliationAdmissions) {
+            if (admission.Value.Epoch == epoch) {
+                lock (admission.Value.Entry.DispatchGate) {
+                    if (_reconciliationAdmissions.TryGetValue(admission.Key, out var current)
+                        && current.Epoch == epoch && ReferenceEquals(current.Entry, admission.Value.Entry)) {
+                        RetireInFlight(admission.Value.Entry, admission.Key);
+                    }
+                }
+            }
+        }
+    }
+
+    private static LaneEntry[] RotateLanes(IEnumerable<LaneEntry> lanes, ref long cursor, int budget) {
+        LaneEntry[] ordered = lanes.OrderBy(static entry => entry.Lane.ViewKey, StringComparer.Ordinal).ToArray();
+        if (ordered.Length <= 1) {
+            return ordered;
+        }
+        long ticket = Interlocked.Add(ref cursor, Math.Max(1, budget)) - Math.Max(1, budget);
+        int start = (int)((ulong)ticket % (ulong)ordered.Length);
+        return [.. ordered.Skip(start), .. ordered.Take(start)];
+    }
+
+    private async Task<IReadOnlyList<ProjectionLaneRefreshResult>> RefreshLaneSequenceAsync(
+        LaneEntry entry, int remainingBudget, CancellationToken cancellationToken, Func<bool>? mayContinue = null,
+        Action<Task>? onSkippedRead = null, bool requiresDisconnected = false, long? reconciliationEpoch = null,
+        bool queueSkippedReconciliationReplay = true) {
+        List<ProjectionLaneRefreshResult> results = [];
+        while (remainingBudget > 0) {
+            if (mayContinue is not null && !mayContinue()) {
+                break;
+            }
+            if (reconciliationEpoch is null && results.Count == 0
+                && _pendingRetry.TryGetValue(entry.Lane.ViewKey, out var queued)
+                && ReferenceEquals(queued.Entry, entry)) {
+                _ = _pendingRetry.TryRemove(new KeyValuePair<string, (LaneEntry Entry, bool RequiresDisconnected)>(entry.Lane.ViewKey, queued));
+            }
+            ProjectionLaneRefreshResult result;
+            try {
+                if (reconciliationEpoch is null)
+                {
+                    // A custom callback may ignore cancellation. Bound this physical
+                    // admission before the next fallback/nudge lane is considered.
+                    CancellationTokenSource bounded = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    TaskCompletionSource<bool>? admission = null;
+                    Task<ProjectionLaneRefreshResult> read = RefreshLaneOnceAsync(entry, bounded.Token,
+                        onSkippedRead, requiresDisconnected, reconciliationEpoch,
+                        current => Volatile.Write(ref admission, current), queueSkippedReconciliationReplay);
+                    bool abandonedRead = false;
+                    try
+                    {
+                        result = await read.WaitAsync(CustomSweepReadLimit, timeProvider ?? TimeProvider.System,
+                            cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (TimeoutException)
+                    {
+                        abandonedRead = true;
+                        if (Volatile.Read(ref admission) is { } abandoned)
+                        {
+                            RetireInFlight(entry, abandoned);
+                        }
+                        _ = CancelAndDisposeAsync(bounded);
+                        _ = ObserveAbandonedReadAsync(read);
+                        result = ProjectionLaneRefreshResult.StaleRead;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        abandonedRead = true;
+                        if (Volatile.Read(ref admission) is { } abandoned)
+                        {
+                            RetireInFlight(entry, abandoned);
+                        }
+                        _ = CancelAndDisposeAsync(bounded);
+                        _ = ObserveAbandonedReadAsync(read);
+                        throw;
+                    }
+                    finally
+                    {
+                        if (!abandonedRead)
+                        {
+                            bounded.Dispose();
+                        }
+                    }
+                }
+                else
+                {
+                    // The coordinator owns reconciliation's 30-second deadline.
+                    // The lane admission completes before this Task is returned. The custom
+                    // callback itself runs separately so a synchronous provider cannot hold
+                    // the coordinator before it applies the reconciliation deadline.
+                    Task<ProjectionLaneRefreshResult> read = RefreshLaneOnceAsync(entry,
+                        cancellationToken, onSkippedRead, requiresDisconnected, reconciliationEpoch,
+                        queueSkippedReconciliationReplay: queueSkippedReconciliationReplay);
+                    result = await read.ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException) {
+                // Cancellation of the original read must not strand a nudge from another
+                // caller. The replay still rechecks current lane and request ownership.
+                if (_pendingRetry.ContainsKey(entry.Lane.ViewKey)) {
+                    SchedulePendingReplay();
+                }
+                throw;
+            }
+            if (result is ProjectionLaneRefreshResult.Skipped) {
+                if (!_inFlight.ContainsKey(entry.Lane.ViewKey) && _pendingRetry.ContainsKey(entry.Lane.ViewKey)) {
+                    SchedulePendingReplay();
+                }
+                break;
+            }
+            results.Add(result);
+            remainingBudget--;
+            if (result is ProjectionLaneRefreshResult.ReadSkipped or ProjectionLaneRefreshResult.StaleRead) {
+                // A skipped read has no successful lane result to continue from. Preserve
+                // the pending retry for a new sweep, especially when ownership changed.
+                if (_pendingRetry.ContainsKey(entry.Lane.ViewKey)) {
+                    SchedulePendingReplay();
+                }
+                break;
+            }
+            if (!_pendingRetry.TryRemove(entry.Lane.ViewKey, out var pending) || !IsLaneActive(pending.Entry)) {
+                break;
+            }
+            if (pending.RequiresDisconnected && !connectionState.Current.IsDisconnected) {
+                break;
+            }
+            if (remainingBudget == 0 || (mayContinue is not null && !mayContinue())) {
+                _pendingRetry[entry.Lane.ViewKey] = pending;
+                SchedulePendingReplay();
+                break;
+            }
+            entry = pending.Entry;
+            requiresDisconnected = pending.RequiresDisconnected;
+        }
+        return results;
+    }
+
+    private static async Task ObserveAbandonedReadAsync(Task read)
+    {
+        try
+        {
+            await read.ConfigureAwait(false);
+        }
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex))
+        {
+            // The bounded sweep has already retired this admission. Its late
+            // exception must not become an unobserved task failure.
+        }
+    }
+
+    private async Task CancelAndDisposeAsync(CancellationTokenSource source)
+    {
+        Task? cancellation = null;
+        try
+        {
+            cancellation = source.CancelAsync();
+            await cancellation.WaitAsync(CustomSweepReadLimit, timeProvider ?? TimeProvider.System).ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+            if (cancellation is not null)
+            {
+                _ = ObserveAbandonedReadAsync(cancellation);
+            }
+        }
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex))
+        {
+            // An adopter callback may reject cancellation after this admission
+            // has already been retired from the visible sweep.
+        }
+        finally
+        {
+            source.Dispose();
+        }
+    }
+
+    private void SchedulePendingReplay() {
+        Interlocked.Exchange(ref _replayQueueChanged, NewReplaySignal()).TrySetResult(true);
+        if (Interlocked.CompareExchange(ref _replayPumpRunning, 1, 0) != 0) {
+            return;
+        }
+        _ = Task.Run(async () => {
+            try {
+                // A replay is a separately budgeted sweep, never a recursive continuation of
+                // the read that received the nudge. A short yield also coalesces later nudges.
+                await Task.Delay(50).ConfigureAwait(false);
+                int budget = Math.Max(0, options.CurrentValue.MaxProjectionFallbackPollingLanes);
+                int attempted = 0;
+                while (attempted < budget && !_pendingRetry.IsEmpty) {
+                    Task queueChanged = Volatile.Read(ref _replayQueueChanged).Task;
+                    List<Task> held = [];
+                    bool processedReady = false;
+                    foreach (KeyValuePair<string, (LaneEntry Entry, bool RequiresDisconnected)> pending in _pendingRetry.OrderBy(static pair => pair.Key, StringComparer.Ordinal)) {
+                        if (attempted >= budget) {
+                            break;
+                        }
+                        if (_inFlight.TryGetValue(pending.Key, out TaskCompletionSource<bool>? inFlight)) {
+                            held.Add(inFlight.Task);
+                            continue;
+                        }
+                        if (!_pendingRetry.TryRemove(pending) || !IsLaneActive(pending.Value.Entry)
+                            || (pending.Value.RequiresDisconnected && !connectionState.Current.IsDisconnected)) {
+                            continue;
+                        }
+                        processedReady = true;
+                        // Admit before awaiting. A newly stalled B must not prevent a ready
+                        // C from entering this finite sweep's remaining physical slot.
+                        attempted++;
+                        _ = ObservePendingReplayAsync(pending.Value);
+                    }
+                    if (!processedReady) {
+                        if (held.Count == 0) {
+                            break;
+                        }
+                        // Await one completion only after every ready lane has been serviced.
+                        // A distinct ready lane can arrive after this scan while every
+                        // currently known read remains held.
+                        held.Add(queueChanged);
+                        await Task.WhenAny(held).ConfigureAwait(false);
+                    }
+                }
+            }
+            catch (OperationCanceledException) {
+                // A lane can cancel its own read after admission. Its completion has
+                // already woken the pump; the next sweep rechecks lane ownership.
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException && !ExceptionGuard.IsFatal(ex)) {
+                FrontComposerLog.ProjectionRefreshFailed(logger, "pending-nudge", ex.GetType().Name);
+            }
+            finally {
+                Volatile.Write(ref _replayPumpRunning, 0);
+                if (_pendingRetry.Any(pending => !_inFlight.ContainsKey(pending.Key))
+                    && options.CurrentValue.MaxProjectionFallbackPollingLanes > 0) {
+                    SchedulePendingReplay();
+                }
+            }
+        });
+    }
+
+    private static TaskCompletionSource<bool> NewReplaySignal()
+        => new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    private async Task ObservePendingReplayAsync((LaneEntry Entry, bool RequiresDisconnected) pending) {
+        try {
+            _ = await RefreshLaneSequenceAsync(pending.Entry, 1, CancellationToken.None,
+                pending.RequiresDisconnected ? () => connectionState.Current.IsDisconnected : null,
+                requiresDisconnected: pending.RequiresDisconnected).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            // The replay was explicitly canceled by its lane; pending ownership was
+            // already reconsidered by RefreshLaneSequenceAsync.
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException && !ExceptionGuard.IsFatal(ex)) {
+            FrontComposerLog.ProjectionRefreshFailed(logger, "pending-nudge", ex.GetType().Name);
+        }
+    }
+
+    private async Task<ProjectionLaneRefreshResult> RefreshLaneOnceAsync(LaneEntry entry, CancellationToken cancellationToken,
+        Action<Task>? onSkippedRead = null, bool requiresDisconnected = false, long? reconciliationEpoch = null,
+        Action<TaskCompletionSource<bool>>? onAdmission = null, bool queueSkippedReconciliationReplay = true) {
+        cancellationToken.ThrowIfCancellationRequested();
+        ProjectionFallbackLane lane = entry.Lane;
+        if (!IsLaneActive(entry) || !IsLaneCurrentScope(entry) || (requiresDisconnected && !connectionState.Current.IsDisconnected)) {
             return ProjectionLaneRefreshResult.Skipped;
         }
 
-        entry.OriginScopeGeneration = loadedPages.Value.ScopeGeneration;
+        TaskCompletionSource<bool> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!_inFlight.TryAdd(lane.ViewKey, completion)) {
+            if (_inFlight.TryGetValue(lane.ViewKey, out TaskCompletionSource<bool>? owner)) {
+                if (reconciliationEpoch is { } observedEpoch) {
+                    lock (entry.DispatchGate) {
+                        if (_inFlight.TryGetValue(lane.ViewKey, out TaskCompletionSource<bool>? current)
+                            && ReferenceEquals(current, owner) && IsLaneActive(entry)) {
+                            _reconciliationAdmissions[owner] = (observedEpoch, entry);
+                        }
+                    }
+                }
+                onSkippedRead?.Invoke(owner.Task);
+            }
+            if (reconciliationEpoch is null || queueSkippedReconciliationReplay) {
+                // P1 — mark pending so the final nudge gets a replay after the in-flight refresh
+                // resolves. The first reconciliation pass can queue one recovery replay;
+                // targeted rechecks wait for it without queuing a competing chain.
+                lock (_laneGate) {
+                    if (IsLaneActiveWithoutLock(entry)) {
+                        _pendingRetry.AddOrUpdate(lane.ViewKey,
+                            (entry, requiresDisconnected),
+                            (_, prior) => ReferenceEquals(prior.Entry, entry)
+                                ? (entry, prior.RequiresDisconnected && requiresDisconnected)
+                                : (entry, requiresDisconnected));
+                    }
+                }
+
+                SchedulePendingReplay();
+            }
+
+            return ProjectionLaneRefreshResult.Skipped;
+        }
+        if (reconciliationEpoch is { } admittedEpoch) {
+            _reconciliationAdmissions[completion] = (admittedEpoch, entry);
+        }
+        onAdmission?.Invoke(completion);
+
+        // Reconciliation has a finite deadline even when a provider ignores its
+        // token. Retire this exact admission on cancellation so a later current
+        // read can use the still-mounted lane. The old continuation remains
+        // canceled and cannot remove a replacement admission in its finally.
+        using CancellationTokenRegistration cancellationRegistration = cancellationToken.Register(
+            () => RetireInFlight(entry, completion));
+
+        entry.OriginScopeGeneration = entry.RegisteredGeneration;
         entry.OriginRequestIdentity = loadedPages.Value.ActiveRequestIdentityByView.TryGetValue(lane.ViewKey, out string? identity)
             ? identity : string.Empty;
         entry.OriginRequestGeneration = loadedPages.Value.ActiveRequestGenerationByView.TryGetValue(lane.ViewKey, out long generation)
@@ -256,8 +646,16 @@ public sealed class ProjectionFallbackRefreshScheduler(
         try
         {
             try {
+                if (requiresDisconnected && !connectionState.Current.IsDisconnected) {
+                    return ProjectionLaneRefreshResult.Skipped;
+                }
                 if (lane.RefreshAsync is not null) {
-                    outcome = MapCustomOutcome(await lane.RefreshAsync(cancellationToken).ConfigureAwait(false));
+                    ProjectionFallbackLaneRefreshOutcome refreshed = await Task.Run(async () => {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        return await lane.RefreshAsync(cancellationToken).ConfigureAwait(false);
+                    }).ConfigureAwait(false);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    outcome = MapCustomOutcome(refreshed);
                 }
                 else {
                     ProjectionPageResult result = await loader.LoadPageAsync(
@@ -269,7 +667,11 @@ public sealed class ProjectionFallbackRefreshScheduler(
                         lane.SortDescending,
                         lane.SearchQuery,
                         cancellationToken).ConfigureAwait(false);
-                    outcome = ClassifyRefreshResult(entry, result);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (!IsCurrentAdmission(entry, completion)) {
+                        return ProjectionLaneRefreshResult.StaleRead;
+                    }
+                    outcome = ClassifyRefreshResult(entry, result, completion);
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException && !ExceptionGuard.IsFatal(ex)) {
@@ -278,15 +680,23 @@ public sealed class ProjectionFallbackRefreshScheduler(
                 FrontComposerLog.ProjectionRefreshFailed(logger, lane.ProjectionType, ex.GetType().Name);
                 outcome = ProjectionLaneRefreshResult.Failed;
             }
-            if (!IsLaneActive(entry) || !IsCurrentRequest(entry))
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!IsCurrentAdmission(entry, completion) || !IsLaneActive(entry) || !IsCurrentRequest(entry))
             {
-                outcome = ProjectionLaneRefreshResult.Skipped;
+                // The read was admitted and must consume this sweep's physical-read budget,
+                // even though its result no longer belongs to the active lane/request.
+                outcome = ProjectionLaneRefreshResult.StaleRead;
+            }
+            else if (outcome is ProjectionLaneRefreshResult.Skipped)
+            {
+                // Callback and loader classification skips still followed an admitted read.
+                outcome = ProjectionLaneRefreshResult.ReadSkipped;
             }
             else if (outcome is ProjectionLaneRefreshResult.Failed)
             {
                 lock (entry.DispatchGate)
                 {
-                    if (IsLaneActive(entry) && IsCurrentRequest(entry))
+                    if (IsCurrentAdmission(entry, completion) && IsLaneActive(entry) && IsCurrentRequest(entry))
                     {
                         dispatcher.Dispatch(new MarkProjectionStaleAction(lane.ViewKey, lane.Skip, entry.OriginScopeGeneration,
                             entry.OriginRequestIdentity, entry.OriginRequestGeneration));
@@ -297,36 +707,29 @@ public sealed class ProjectionFallbackRefreshScheduler(
         }
         finally
         {
-            _ = _inFlight.TryRemove(lane.ViewKey, out _);
-        }
-
-        // P1 — if a nudge arrived during the in-flight window, replay exactly once. Pending is
-        // cleared before retry so further bursts during the retry can themselves enqueue a
-        // single follow-up. P24 — recursion is bounded to depth 1 because _pendingRetry is
-        // cleared atomically and only one replay token can be set per lane.
-        if (_pendingRetry.TryRemove(lane.ViewKey, out LaneEntry? retryEntry)
-            && !cancellationToken.IsCancellationRequested
-            && IsLaneActive(retryEntry)) {
-            ProjectionLaneRefreshResult replayOutcome = await RefreshLaneAsync(retryEntry, cancellationToken).ConfigureAwait(false);
-            return StrongestOutcome(outcome, replayOutcome);
+            RetireInFlight(entry, completion);
         }
 
         return outcome;
     }
 
-    private static ProjectionLaneRefreshResult StrongestOutcome(
-        ProjectionLaneRefreshResult first,
-        ProjectionLaneRefreshResult second) {
-        if (first is ProjectionLaneRefreshResult.Changed || second is ProjectionLaneRefreshResult.Changed) {
-            return ProjectionLaneRefreshResult.Changed;
-        }
+    private bool IsCurrentAdmission(LaneEntry entry, TaskCompletionSource<bool> completion)
+        => _inFlight.TryGetValue(entry.Lane.ViewKey, out TaskCompletionSource<bool>? current)
+            && ReferenceEquals(current, completion);
 
-        if (first is ProjectionLaneRefreshResult.NotModified || second is ProjectionLaneRefreshResult.NotModified) {
-            return ProjectionLaneRefreshResult.NotModified;
-        }
+    private void RetireInFlight(LaneEntry entry, TaskCompletionSource<bool> completion) {
+        lock (entry.DispatchGate) {
+            _ = _reconciliationAdmissions.TryRemove(completion, out _);
+            string viewKey = entry.Lane.ViewKey;
+            if (!_inFlight.TryRemove(new KeyValuePair<string, TaskCompletionSource<bool>>(viewKey, completion))) {
+                return;
+            }
 
-        return first is ProjectionLaneRefreshResult.Failed || second is ProjectionLaneRefreshResult.Failed
-            ? ProjectionLaneRefreshResult.Failed : ProjectionLaneRefreshResult.Skipped;
+            completion.TrySetResult(true);
+            if (_pendingRetry.ContainsKey(viewKey)) {
+                SchedulePendingReplay();
+            }
+        }
     }
 
     /// <summary>
@@ -335,7 +738,8 @@ public sealed class ProjectionFallbackRefreshScheduler(
     /// protocol failure rather than data, and never let a malformed value drive a Changed.
     /// P23 — null-guard before any dereference of result.Items in the comparison branches.
     /// </summary>
-    private ProjectionLaneRefreshResult ClassifyRefreshResult(LaneEntry entry, ProjectionPageResult result) {
+    private ProjectionLaneRefreshResult ClassifyRefreshResult(LaneEntry entry, ProjectionPageResult result,
+        TaskCompletionSource<bool> completion) {
         ProjectionFallbackLane lane = entry.Lane;
         if (!IsLaneActive(entry)) {
             return ProjectionLaneRefreshResult.Skipped;
@@ -355,14 +759,17 @@ public sealed class ProjectionFallbackRefreshScheduler(
         }
 
         bool reducerPageMissing = !HasReducerPage(lane);
+        if (reducerPageMissing && result.Items.Count == 0 && lane.Skip < result.TotalCount) {
+            return ProjectionLaneRefreshResult.Failed;
+        }
         if (result.IsNotModified) {
             if (reducerPageMissing) {
-                return TryDispatchPageSuccess(entry, result)
+                return TryDispatchPageSuccess(entry, result, completion)
                     ? ProjectionLaneRefreshResult.Changed
                     : ProjectionLaneRefreshResult.Skipped;
             }
 
-            return TryDispatchPageNotModified(entry, result)
+            return TryDispatchPageNotModified(entry, result, completion)
                 ? ProjectionLaneRefreshResult.NotModified
                 : ProjectionLaneRefreshResult.Skipped;
         }
@@ -383,12 +790,14 @@ public sealed class ProjectionFallbackRefreshScheduler(
             }
 
             if (signatureChanged || reducerPageMissing) {
-                return TryDispatchPageSuccess(entry, result, signature)
+                return TryDispatchPageSuccess(entry, result, completion, signature)
                     ? ProjectionLaneRefreshResult.Changed
                     : ProjectionLaneRefreshResult.Skipped;
             }
 
-            return ProjectionLaneRefreshResult.NotModified;
+            return TryDispatchPageNotModified(entry, result, completion)
+                ? ProjectionLaneRefreshResult.NotModified
+                : ProjectionLaneRefreshResult.Skipped;
         }
 
         bool etagChanged;
@@ -402,27 +811,35 @@ public sealed class ProjectionFallbackRefreshScheduler(
         }
 
         if (etagChanged || reducerPageMissing) {
-            return TryDispatchPageSuccess(entry, result)
+            return TryDispatchPageSuccess(entry, result, completion)
                 ? ProjectionLaneRefreshResult.Changed
                 : ProjectionLaneRefreshResult.Skipped;
         }
 
-        return ProjectionLaneRefreshResult.NotModified;
+        return TryDispatchPageNotModified(entry, result, completion)
+            ? ProjectionLaneRefreshResult.NotModified
+            : ProjectionLaneRefreshResult.Skipped;
     }
 
     private void DecrementLane(string viewKey, LaneEntry expected) {
         lock (expected.DispatchGate) {
             lock (_laneGate) {
+                expected.RefCount--;
                 if (!_lanes.TryGetValue(viewKey, out LaneEntry? current) || !ReferenceEquals(current, expected)) {
                     return;
                 }
 
-                current.RefCount--;
                 if (current.RefCount == 0) {
                     _ = _lanes.TryRemove(new KeyValuePair<string, LaneEntry>(viewKey, current));
                     _ = _lastEtagByLane.TryRemove(viewKey, out _);
                     _ = _lastNoEtagSignatureByLane.TryRemove(viewKey, out _);
                     _ = _pendingRetry.TryRemove(viewKey, out _);
+                    // A transport may ignore cancellation indefinitely. Wake a replay pump
+                    // waiting on this lane's completion when its final owner leaves.
+                    if (_inFlight.TryGetValue(viewKey, out TaskCompletionSource<bool>? inFlight)) {
+                        _ = _inFlight.TryRemove(new KeyValuePair<string, TaskCompletionSource<bool>>(viewKey, inFlight));
+                        inFlight.TrySetResult(true);
+                    }
                 }
             }
         }
@@ -448,6 +865,8 @@ public sealed class ProjectionFallbackRefreshScheduler(
         => string.Equals(first.ViewKey, second.ViewKey, StringComparison.Ordinal)
             && string.Equals(first.ProjectionType, second.ProjectionType, StringComparison.Ordinal)
             && string.Equals(first.TenantId, second.TenantId, StringComparison.Ordinal)
+            && string.Equals(first.UserId, second.UserId, StringComparison.Ordinal)
+            && first.ScopeGeneration == second.ScopeGeneration
             && first.Skip == second.Skip
             && first.Take == second.Take
             && FiltersAreEquivalent(first.Filters, second.Filters)
@@ -507,44 +926,6 @@ public sealed class ProjectionFallbackRefreshScheduler(
         }
     }
 
-    /// <summary>
-    /// P26 — include sort/filter/search state in the dedupe key so two lanes against the same
-    /// projection-type/tenant/page-window but different filters do not coalesce. P27 — fail-closed
-    /// on missing TenantId at the dedupe layer (defence-in-depth on top of the explicit lane skip
-    /// in <see cref="TriggerReconciliationOnceAsync"/>).
-    /// </summary>
-    private static string BuildDedupeKey(ProjectionFallbackLane lane) {
-        if (string.IsNullOrWhiteSpace(lane.TenantId)) {
-            // The reconciliation pass already filters these out; this is defence-in-depth. The
-            // unique key prevents two no-tenant lanes from accidentally collapsing.
-            return string.Concat("__no-tenant__|", JsonEncodedText.Encode(lane.ViewKey).ToString());
-        }
-
-        // Stable filter representation with JSON escaping so delimiter characters in keys/values
-        // cannot collapse distinct logical lanes.
-        string filtersFingerprint = lane.Filters is { Count: > 0 }
-            ? string.Join(
-                "\u001f",
-                lane.Filters
-                    .OrderBy(static kv => kv.Key, StringComparer.Ordinal)
-                    .Select(static kv => string.Concat(
-                        JsonEncodedText.Encode(kv.Key).ToString(),
-                        "\u001e",
-                        JsonEncodedText.Encode(kv.Value).ToString())))
-            : string.Empty;
-
-        return string.Join(
-            "\u001d",
-            JsonEncodedText.Encode(lane.TenantId!).ToString(),
-            JsonEncodedText.Encode(lane.ProjectionType).ToString(),
-            lane.Skip.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            lane.Take.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            JsonEncodedText.Encode(lane.SortColumn ?? string.Empty).ToString(),
-            lane.SortDescending ? "desc" : "asc",
-            JsonEncodedText.Encode(lane.SearchQuery ?? string.Empty).ToString(),
-            filtersFingerprint);
-    }
-
     private bool TryObserveEpoch(long epoch) {
         while (true) {
             long observed = Volatile.Read(ref _latestObservedEpoch);
@@ -559,12 +940,13 @@ public sealed class ProjectionFallbackRefreshScheduler(
     }
 
     private bool IsGroupEligibleForReconciliation(ProjectionFallbackLane lane) {
-        if (string.IsNullOrWhiteSpace(lane.TenantId) || _activeGroups.IsEmpty) {
+        ImmutableDictionary<ProjectionFallbackGroupKey, bool> groups = Volatile.Read(ref _activeGroups);
+        if (string.IsNullOrWhiteSpace(lane.TenantId) || groups.IsEmpty) {
             return true;
         }
 
         ProjectionFallbackGroupKey key = new(lane.ProjectionType, lane.TenantId);
-        return !_activeGroups.TryGetValue(key, out bool active) || active;
+        return !groups.TryGetValue(key, out bool active) || active;
     }
 
     private bool HasReducerPage(ProjectionFallbackLane lane) {
@@ -573,10 +955,51 @@ public sealed class ProjectionFallbackRefreshScheduler(
     }
 
     private bool IsCurrentRequest(LaneEntry entry)
-        => loadedPages.Value.ScopeGeneration == entry.OriginScopeGeneration
+        => IsLaneCurrentScope(entry)
+            && loadedPages.Value.ScopeGeneration == entry.OriginScopeGeneration
+            && string.Equals(
+                loadedPages.Value.ActiveRequestIdentityByView.TryGetValue(entry.Lane.ViewKey, out string? identity) ? identity : string.Empty,
+                entry.OriginRequestIdentity,
+                StringComparison.Ordinal)
             && (!loadedPages.Value.ActiveRequestGenerationByView.TryGetValue(entry.Lane.ViewKey, out long generation)
                 ? entry.OriginRequestGeneration is null
                 : generation == entry.OriginRequestGeneration);
+
+    private (long Generation, string? User, bool HasProof) CaptureRegistrationScope(ProjectionFallbackLane lane) {
+        long generation = loadedPages.Value.ScopeGeneration;
+        if (tenantContextAccessor is null) {
+            return (generation, null, true);
+        }
+        try {
+            TenantContextResult current = tenantContextAccessor.TryGetContext(lane.TenantId, "projection-fallback");
+            return current.Succeeded && current.Context is not null
+                ? (generation, current.Context.UserId, true)
+                : (generation, null, false);
+        }
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+            return (generation, null, false);
+        }
+    }
+
+    private bool IsLaneCurrentScope(LaneEntry entry) {
+        ProjectionFallbackLane lane = entry.Lane;
+        if (!entry.HasScopeProof || loadedPages.Value.ScopeGeneration != entry.RegisteredGeneration
+            || lane.ScopeGeneration is { } generation && loadedPages.Value.ScopeGeneration != generation) {
+            return false;
+        }
+        if (tenantContextAccessor is null) {
+            return lane.UserId is null;
+        }
+        try {
+            TenantContextResult current = tenantContextAccessor.TryGetContext(lane.TenantId, "projection-fallback");
+            return current.Succeeded && current.Context is not null
+                && string.Equals(current.Context.UserId, entry.RegisteredUser, StringComparison.Ordinal)
+                && (lane.UserId is null || string.Equals(current.Context.UserId, lane.UserId, StringComparison.Ordinal));
+        }
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+            return false;
+        }
+    }
 
     private bool TryRecordValidatorState(
         LaneEntry entry,
@@ -608,10 +1031,11 @@ public sealed class ProjectionFallbackRefreshScheduler(
     private bool TryDispatchPageSuccess(
         LaneEntry entry,
         ProjectionPageResult result,
+        TaskCompletionSource<bool> completion,
         string? noEtagSignature = null) {
         lock (entry.DispatchGate) {
             lock (_laneGate) {
-                if (!IsLaneActiveWithoutLock(entry) || !IsCurrentRequest(entry)) {
+                if (!IsCurrentAdmission(entry, completion) || !IsLaneActiveWithoutLock(entry) || !IsCurrentRequest(entry)) {
                     return false;
                 }
             }
@@ -621,11 +1045,12 @@ public sealed class ProjectionFallbackRefreshScheduler(
         }
     }
 
-    private bool TryDispatchPageNotModified(LaneEntry entry, ProjectionPageResult result) {
+    private bool TryDispatchPageNotModified(LaneEntry entry, ProjectionPageResult result,
+        TaskCompletionSource<bool> completion) {
         lock (entry.DispatchGate) {
             bool hadValidatorState;
             lock (_laneGate) {
-                if (!IsLaneActiveWithoutLock(entry) || !IsCurrentRequest(entry)) {
+                if (!IsCurrentAdmission(entry, completion) || !IsLaneActiveWithoutLock(entry) || !IsCurrentRequest(entry)) {
                     return false;
                 }
 
@@ -639,7 +1064,12 @@ public sealed class ProjectionFallbackRefreshScheduler(
                 OriginScopeGeneration = entry.OriginScopeGeneration,
                 RequestIdentity = entry.OriginRequestIdentity,
                 RequestGeneration = entry.OriginRequestGeneration,
+                TotalCount = result.TotalCount,
+                MaxCachedPages = options.CurrentValue.MaxCachedPages,
             });
+            if (!HasReducerPage(lane)) {
+                return false;
+            }
             return !hadValidatorState || TryRecordValidatorState(entry, result);
         }
     }
@@ -659,9 +1089,12 @@ public sealed class ProjectionFallbackRefreshScheduler(
             _ => ProjectionLaneRefreshResult.Skipped,
         };
 
-    private sealed class LaneEntry(ProjectionFallbackLane lane) {
+    private sealed class LaneEntry(ProjectionFallbackLane lane, long registeredGeneration, string? registeredUser, bool hasScopeProof) {
         public object DispatchGate { get; } = new();
         public ProjectionFallbackLane Lane { get; } = lane;
+        public long RegisteredGeneration { get; } = registeredGeneration;
+        public string? RegisteredUser { get; } = registeredUser;
+        public bool HasScopeProof { get; } = hasScopeProof;
         public long OriginScopeGeneration { get; set; }
         public string OriginRequestIdentity { get; set; } = string.Empty;
         public long? OriginRequestGeneration { get; set; }
@@ -670,6 +1103,8 @@ public sealed class ProjectionFallbackRefreshScheduler(
 
     private enum ProjectionLaneRefreshResult {
         Skipped,
+        ReadSkipped,
+        StaleRead,
         NotModified,
         Changed,
         Failed,

@@ -14,19 +14,20 @@ using Microsoft.Extensions.Options;
 namespace Hexalith.FrontComposer.Shell.Components.DataGrid;
 
 /// <summary>
-/// Story 4-4 T1.2 / D8 / D11 / AC3 — auto-dismissing <c>FluentMessageBar Intent="Info"</c> surfaced
-/// when <c>LoadedPageState.LastElapsedMsByKey[ViewKey]</c> exceeds
-/// <c>FcShellOptions.SlowQueryThresholdMs</c>. Auto-dismisses after 5 s via the injected
-/// <see cref="TimeProvider"/> (<c>FakeTimeProvider.Advance(5_000)</c> in tests); dismiss state is
-/// scoped to this component instance (not persisted across navigations).
+/// Shows a slow-query notice when a pending page request reaches
+/// <see cref="FcShellOptions.SlowQueryThresholdMs"/> from its registration time.
+/// The notice remains until that request settles; its timing and visibility are scoped
+/// to the current view and the injected <see cref="TimeProvider"/>.
 /// </summary>
 public partial class FcSlowQueryNotice : ComponentBase, IDisposable {
     private static readonly ConditionalWeakTable<TaskCompletionSource<object>, string> RequestIdentities = new();
     private bool _visible;
     private readonly Dictionary<TaskCompletionSource<object>, DateTimeOffset> _startedAt = new(ReferenceEqualityComparer.Instance);
-    private readonly HashSet<TaskCompletionSource<object>> _announced = new(ReferenceEqualityComparer.Instance);
+    private readonly HashSet<string> _announced = new(StringComparer.Ordinal);
     private TaskCompletionSource<object>? _earliest;
+    private string? _earliestIdentity;
     private string? _activeSlowGroup;
+    private IDisposable? _activeClaim;
     private string _boundViewKey = string.Empty;
     private ITimer? _slowTimer;
     private long _generation;
@@ -36,6 +37,10 @@ public partial class FcSlowQueryNotice : ComponentBase, IDisposable {
     [Parameter]
     [EditorRequired]
     public string ViewKey { get; set; } = string.Empty;
+
+    /// <summary>Displayed page offset from the grid's actual scroll position; null keeps standalone view-wide behavior.</summary>
+    [Parameter]
+    public int? VisiblePageSkip { get; set; }
 
     /// <summary>Uses the parent surface's persistent status node when true; direct callers own one by default.</summary>
     [Parameter]
@@ -92,6 +97,7 @@ public partial class FcSlowQueryNotice : ComponentBase, IDisposable {
             _startedAt.Clear();
             _announced.Clear();
             _earliest = null;
+            _earliestIdentity = null;
             _visible = false;
             _boundViewKey = ViewKey;
         }
@@ -101,36 +107,39 @@ public partial class FcSlowQueryNotice : ComponentBase, IDisposable {
         }
 
         KeyValuePair<(string ViewKey, int Skip), TaskCompletionSource<object>>[] pendingEntries = LoadedPage.Value.PendingCompletionsByKey
-            .Where(entry => string.Equals(entry.Key.ViewKey, ViewKey, StringComparison.Ordinal))
+            .Where(entry => string.Equals(entry.Key.ViewKey, ViewKey, StringComparison.Ordinal)
+                && (VisiblePageSkip is null || entry.Key.Skip == VisiblePageSkip.Value))
             .ToArray();
-        TaskCompletionSource<object>[] pending = pendingEntries.Select(static entry => entry.Value).ToArray();
-        var active = new HashSet<TaskCompletionSource<object>>(pending, ReferenceEqualityComparer.Instance);
+        var active = new HashSet<TaskCompletionSource<object>>(pendingEntries.Select(static entry => entry.Value), ReferenceEqualityComparer.Instance);
+        HashSet<string> activeIdentities = new(pendingEntries.Select(entry => SpeechIdentity(entry.Key, entry.Value)), StringComparer.Ordinal);
         foreach (TaskCompletionSource<object> obsolete in _startedAt.Keys.Where(key => !active.Contains(key)).ToArray()) {
             _startedAt.Remove(obsolete);
-            _announced.Remove(obsolete);
-            if (ReferenceEquals(obsolete, _earliest) && _activeSlowGroup is { } group) {
-                Announcements.Cancel("projection:" + _boundViewKey, group);
-                _activeSlowGroup = null;
-                _visible = false;
-            }
+        }
+        _announced.RemoveWhere(identity => !activeIdentities.Contains(identity));
+        if (_activeSlowGroup is not null && !activeIdentities.Any(identity =>
+            _activeSlowGroup.Contains(":" + identity + ":observed:", StringComparison.Ordinal))) {
+            CancelActiveSlow();
+            _visible = false;
         }
 
         DateTimeOffset now = TimeProvider.GetUtcNow();
         foreach (KeyValuePair<(string ViewKey, int Skip), TaskCompletionSource<object>> entry in pendingEntries) {
-            DateTimeOffset registeredAt = LoadedPage.Value.PendingStartedAtByKey.TryGetValue(entry.Key, out DateTimeOffset anchor)
+            _ = SurfaceAnnouncementGroupOwnership.For(Announcements)
+                .ObserveRequest("projection:" + _boundViewKey, entry.Value);
+            DateTimeOffset registeredAt = LoadedPage.Value.PendingStartedAtByCompletion.TryGetValue(entry.Value, out DateTimeOffset providerAnchor)
+                ? providerAnchor : LoadedPage.Value.PendingStartedAtByKey.TryGetValue(entry.Key, out DateTimeOffset anchor)
                 ? anchor : now;
             _startedAt.TryAdd(entry.Value, registeredAt);
         }
-        _earliest = _startedAt.Count == 0 ? null : _startedAt.MinBy(static entry => entry.Value).Key;
+        KeyValuePair<(string ViewKey, int Skip), TaskCompletionSource<object>> earliestEntry = pendingEntries.Length == 0
+            ? default : pendingEntries.MinBy(entry => _startedAt[entry.Value]);
+        _earliest = earliestEntry.Value;
+        _earliestIdentity = _earliest is null ? null : SpeechIdentity(earliestEntry.Key, _earliest);
         _slowTimer?.Dispose();
         _slowTimer = null;
         long generation = ++_generation;
         if (_earliest is null) {
             _visible = false;
-            return;
-        }
-
-        if (_announced.Contains(_earliest)) {
             return;
         }
 
@@ -140,6 +149,10 @@ public partial class FcSlowQueryNotice : ComponentBase, IDisposable {
             ShowSlowQuery(generation);
             return;
         }
+        // A promoted co-mounted provider keeps the page's speech identity, but its
+        // visible slow threshold belongs to its own registration time.
+        _visible = false;
+        CancelActiveSlow();
         _slowTimer = TimeProvider.CreateTimer(
             _ =>
             {
@@ -158,10 +171,23 @@ public partial class FcSlowQueryNotice : ComponentBase, IDisposable {
             return;
         }
 
-        _announced.Add(_earliest);
+        string requestIdentity = _earliestIdentity ?? RequestIdentities.GetValue(_earliest, static _ => Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture));
+        long requestOrder = SurfaceAnnouncementGroupOwnership.For(Announcements)
+            .ObserveRequest("projection:" + _boundViewKey, _earliest);
         _visible = true;
-        string requestIdentity = RequestIdentities.GetValue(_earliest, static _ => Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture));
-        _activeSlowGroup = "slow-query:" + _boundViewKey + ":" + requestIdentity;
+        if (!_announced.Add(requestIdentity)) {
+            StateHasChanged();
+            return;
+        }
+        // A newly earlier request supersedes this component's old claim. Other mounted
+        // owners retain their own claim on the previous request.
+        CancelActiveSlow();
+        _activeSlowGroup = "slow-query:" + _boundViewKey + ":scope:"
+            + LoadedPage.Value.ScopeGeneration.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":started:"
+            + _startedAt[_earliest].UtcTicks.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            + ":" + requestIdentity + ":observed:"
+            + requestOrder.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        _activeClaim = SurfaceAnnouncementGroupOwnership.For(Announcements).Claim("projection:" + _boundViewKey, _activeSlowGroup);
         Announcements.Announce(
             "projection:" + ViewKey,
             _activeSlowGroup,
@@ -171,11 +197,16 @@ public partial class FcSlowQueryNotice : ComponentBase, IDisposable {
         StateHasChanged();
     }
 
+    private string SpeechIdentity((string ViewKey, int Skip) key, TaskCompletionSource<object> completion)
+        => LoadedPage.Value.PendingSpeechIdentityByKey.TryGetValue(key, out string? identity)
+            ? identity : RequestIdentities.GetValue(completion, static _ => Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture));
+
     private void CancelActiveSlow()
     {
         if (_activeSlowGroup is { } group)
         {
-            Announcements.Cancel("projection:" + _boundViewKey, group);
+            _activeClaim?.Dispose();
+            _activeClaim = null;
             _activeSlowGroup = null;
         }
     }

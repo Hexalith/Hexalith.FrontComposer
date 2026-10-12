@@ -4,13 +4,14 @@
 
 @if (_ownsStatus)
 {
-<div role="status" aria-live="polite" aria-atomic="true" data-testid="fc-surface-status"
+<div role="status" aria-live="@(_suppressSpeech ? "off" : "polite")" aria-atomic="true" data-testid="fc-surface-status"
      data-fc-status-message="@(BrowserManaged ? _message : null)"
+     data-fc-status-fallback="@(BrowserManaged ? ServerFallback.ToString().ToLowerInvariant() : null)"
      data-fc-status-revision="@(BrowserManaged ? _messageRevision : (long?)null)">
     @if (BrowserManaged)
     {
         @* This static child belongs to the scoped connectivity producer while a circuit is unavailable. *@
-        <span data-fc-browser-status></span>
+        <span data-fc-browser-status>@_browserRenderedMessage</span>
     }
     else if (!string.IsNullOrEmpty(_message))
     {
@@ -31,7 +32,16 @@
     [Parameter]
     public bool BrowserManaged { get; set; }
 
+    /// <summary>Whether the native connectivity watcher now owns the status text.</summary>
+    [Parameter]
+    public bool BrowserReady { get; set; }
+
+    /// <summary>Whether retained server copy still describes an active connection fallback.</summary>
+    [Parameter]
+    public bool ServerFallback { get; set; }
+
     private string _message = string.Empty;
+    private string _browserRenderedMessage = string.Empty;
     private long _messageRevision;
     private IDisposable? _subscription;
     private string? _boundSurface;
@@ -39,6 +49,7 @@
     private long _lastAppliedRevision = -1;
     private bool _disposed;
     private bool _ownsStatus = true;
+    private bool _suppressSpeech;
     private bool _boundExclusiveOwner;
     private Hexalith.FrontComposer.Shell.Services.Announcements.SurfaceStatusLease? _ownerLease;
 
@@ -56,6 +67,8 @@
         _boundSurface = Surface;
         _boundExclusiveOwner = ExclusiveOwner;
         _message = string.Empty;
+        _browserRenderedMessage = string.Empty;
+        _suppressSpeech = false;
         _lastAppliedRevision = -1;
         ++_messageRevision;
         string boundSurface = Surface;
@@ -82,6 +95,12 @@
             {
                 _lastAppliedRevision = revision;
                 _message = message;
+                if (!BrowserReady)
+                {
+                    _browserRenderedMessage = message;
+                }
+                _suppressSpeech = Announcements is Hexalith.FrontComposer.Shell.Services.Announcements.SurfaceAnnouncementCoordinator coordinator
+                    && coordinator.IsSilentRevision(boundSurface, revision);
                 ++_messageRevision;
                 StateHasChanged();
             }

@@ -1,24 +1,32 @@
 // Story 4-4 T1.5 / D4 re-revised — setTimeout+timestamp throttle (~30 Hz cap) with
-// guaranteed trailing-edge dispatch, scroll-to-offset restore, and per-viewKey dispose.
+// guaranteed trailing-edge dispatch, scroll-to-offset restore, and per-instance dispose.
 //
 // The JS side caps raw @onscroll → HandleScrollAsync dispatch rate so Fluxor subscribers
 // don't re-compute 60×/s during active scroll bursts. The 150 ms semantic debounce lives
 // in ScrollPersistenceEffect on the .NET side.
 
 const THROTTLE_INTERVAL_MS = 33; // ≈ 30 Hz
-const perViewKey = new Map();
+const perInstance = new Map();
 
-export function captureScrollThrottled(viewKey, scrollTop, dotnetRef) {
+export function captureScrollThrottled(viewKey, scrollTop, dotnetRef, generation = 0, instanceId = '') {
     if (!viewKey) {
         return;
     }
 
-    const actualScrollTop = readScrollTop(viewKey, scrollTop);
+    const key = instanceId || viewKey;
+    const actualScrollTop = readScrollTop(viewKey, scrollTop, instanceId);
     const now = performance.now();
-    let entry = perViewKey.get(viewKey);
+    let entry = perInstance.get(key);
+    if (entry && entry.generation > generation) {
+        return;
+    }
+    if (entry && entry.generation < generation) {
+        if (entry.timeoutId !== null) { clearTimeout(entry.timeoutId); }
+        entry = null;
+    }
     if (!entry) {
-        entry = { lastTs: 0, timeoutId: null, pendingScrollTop: 0, dotnetRef };
-        perViewKey.set(viewKey, entry);
+        entry = { lastTs: 0, timeoutId: null, pendingScrollTop: 0, dotnetRef, generation };
+        perInstance.set(key, entry);
     }
 
     // Always update pending to the latest value; store the dotnetRef so trailing-edge
@@ -42,8 +50,8 @@ export function captureScrollThrottled(viewKey, scrollTop, dotnetRef) {
 
     const remaining = Math.max(0, THROTTLE_INTERVAL_MS - elapsed);
     entry.timeoutId = setTimeout(() => {
-        const current = perViewKey.get(viewKey);
-        if (!current) {
+        const current = perInstance.get(key);
+        if (current !== entry) {
             return;
         }
         current.lastTs = performance.now();
@@ -52,7 +60,7 @@ export function captureScrollThrottled(viewKey, scrollTop, dotnetRef) {
     }, remaining);
 }
 
-export function scrollToOffset(viewKey, scrollTop) {
+export function scrollToOffset(viewKey, scrollTop, instanceId = '') {
     if (!viewKey) {
         return;
     }
@@ -60,7 +68,7 @@ export function scrollToOffset(viewKey, scrollTop) {
     // Fluent DataGrid internally renders a scrollable div; the outer container carries
     // data-fc-datagrid. Try the scroll container first; if the Fluent internal selector
     // shifted (minor-version drift) fall back to the container itself.
-    const container = findContainer(viewKey);
+    const container = findContainer(viewKey, instanceId);
     if (!container) {
         console.warn(
             `fc-datagrid: container selector missed for viewKey=${viewKey}. ` +
@@ -81,20 +89,25 @@ export function scrollToOffset(viewKey, scrollTop) {
     scroller.scrollTop = scrollTop;
 }
 
-export function disposeViewKey(viewKey) {
+export function disposeViewKey(viewKey, generation, instanceId = '') {
     if (!viewKey) {
         return;
     }
 
-    const entry = perViewKey.get(viewKey);
+    const key = instanceId || viewKey;
+    const entry = perInstance.get(key);
     if (!entry) {
+        return;
+    }
+
+    if (generation !== undefined && entry.generation !== undefined && entry.generation > generation) {
         return;
     }
 
     if (entry.timeoutId !== null) {
         clearTimeout(entry.timeoutId);
     }
-    perViewKey.delete(viewKey);
+    perInstance.delete(key);
 }
 
 function invokeHandleScroll(dotnetRef, viewKey, scrollTop) {
@@ -109,8 +122,8 @@ function invokeHandleScroll(dotnetRef, viewKey, scrollTop) {
     }
 }
 
-function readScrollTop(viewKey, fallback) {
-    const container = findContainer(viewKey);
+function readScrollTop(viewKey, fallback, instanceId) {
+    const container = findContainer(viewKey, instanceId);
     if (!container) {
         return fallback;
     }
@@ -118,8 +131,13 @@ function readScrollTop(viewKey, fallback) {
     return findScroller(container)?.scrollTop ?? fallback;
 }
 
-function findContainer(viewKey) {
-    return document.querySelector(`[data-fc-datagrid="${escapeSelector(viewKey)}"]`);
+function findContainer(viewKey, instanceId) {
+    const selector = `[data-fc-datagrid="${escapeSelector(viewKey)}"]`;
+    if (instanceId) {
+        return [...document.querySelectorAll(selector)].find(container =>
+            container.getAttribute('data-fc-datagrid-instance') === instanceId);
+    }
+    return document.querySelector(selector);
 }
 
 function findScroller(container) {

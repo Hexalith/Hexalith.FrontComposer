@@ -322,6 +322,32 @@ public sealed class FrontComposerServiceGraphTests {
     }
 
     [Fact]
+    public void UnsupportedPollingResolverFailsClearlyAtActivation() {
+        ServiceCollection services = [];
+        services.AddScoped<IPendingCommandOutcomeResolver, ResolverOnly>();
+        _ = services.AddHexalithFrontComposerQuickstart();
+        services.Replace(ServiceDescriptor.Scoped<IStorageService, InMemoryStorageService>());
+        using ServiceProvider provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        using IServiceScope scope = provider.CreateScope();
+
+        InvalidOperationException error = Should.Throw<InvalidOperationException>(() =>
+            scope.ServiceProvider.GetRequiredService<IPendingCommandPollingCoordinator>());
+        error.Message.ShouldContain(nameof(IPendingCommandCapturedEntryResolver));
+    }
+
+    [Fact]
+    public void CapturedEntryResolverSupportsPollingActivation() {
+        ServiceCollection services = [];
+        services.AddScoped<IPendingCommandOutcomeResolver, SafeResolverOnly>();
+        _ = services.AddHexalithFrontComposerQuickstart();
+        services.Replace(ServiceDescriptor.Scoped<IStorageService, InMemoryStorageService>());
+        using ServiceProvider provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        using IServiceScope scope = provider.CreateScope();
+
+        scope.ServiceProvider.GetRequiredService<IPendingCommandPollingCoordinator>().ShouldNotBeNull();
+    }
+
+    [Fact]
     public void ThreeCallGraph_ResolvesEndToEndUnderScopeValidation() {
         // The full AC1 ordering: Quickstart → Domain → EventStore. EventStore swaps the stub command
         // path for the real client; the rest of the graph must still resolve cleanly.
@@ -502,5 +528,14 @@ public sealed class FrontComposerServiceGraphTests {
             ResolveCount++;
             return new(PendingCommandOutcomeResolutionStatus.Unknown);
         }
+    }
+
+    private sealed class SafeResolverOnly : IPendingCommandCapturedEntryResolver {
+        public PendingCommandOutcomeResolutionResult Resolve(PendingCommandOutcomeObservation observation) =>
+            new(PendingCommandOutcomeResolutionStatus.Unknown);
+
+        public PendingCommandOutcomeResolutionResult ResolveForEntry(
+            PendingCommandOutcomeObservation observation, PendingCommandEntry expectedEntry) =>
+            new(PendingCommandOutcomeResolutionStatus.Unknown);
     }
 }

@@ -28,6 +28,121 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Lifecycle;
 /// </summary>
 public sealed class FcLifecycleWrapperThresholdTests : LifecycleWrapperTestBase {
     [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void CoMountedWrappersKeepSharedLifecycleStatusUntilFinalOwnerLeaves(bool firstLeaves)
+    {
+        using LifecycleStateService lifecycle = new(Microsoft.Extensions.Options.Options.Create(new LifecycleOptions()), FakeTime);
+        RegisterLifecycleService(lifecycle);
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        List<string> spoken = [];
+        using IDisposable subscription = announcements.Subscribe("shared-command", spoken.Add);
+        IRenderedComponent<FcLifecycleWrapper> first = Render<FcLifecycleWrapper>(p => p
+            .Add(c => c.CorrelationId, DefaultCorrelationId).Add(c => c.StatusSurface, "shared-command"));
+        IRenderedComponent<FcLifecycleWrapper> second = Render<FcLifecycleWrapper>(p => p
+            .Add(c => c.CorrelationId, DefaultCorrelationId).Add(c => c.StatusSurface, "shared-command"));
+        lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Submitting, "message");
+        lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Acknowledged, "message");
+        FakeTime.Advance(TimeSpan.FromMilliseconds(249));
+        spoken.ShouldBeEmpty();
+        (firstLeaves ? first : second).Instance.Dispose();
+        FakeTime.Advance(TimeSpan.FromMilliseconds(1));
+        (firstLeaves ? second : first).WaitForAssertion(() => {
+            announcements.Current("shared-command").ShouldBe("Command accepted. Waiting for confirmation.");
+            spoken.ShouldBe(["Command accepted. Waiting for confirmation."]);
+        });
+        (firstLeaves ? second : first).Instance.Dispose();
+        announcements.Current("shared-command").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void OldMountedDeadlineCannotRecreateLifecycleAfterScopeReset()
+    {
+        LifecycleStateService lifecycle = new(Microsoft.Extensions.Options.Options.Create(new LifecycleOptions()), FakeTime);
+        RegisterLifecycleService(lifecycle);
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        IRenderedComponent<FcLifecycleWrapper> cut = Render<FcLifecycleWrapper>(p => p.Add(c => c.CorrelationId, DefaultCorrelationId));
+        lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Submitting, "old-message");
+        lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Acknowledged, "old-message");
+        FakeTime.Advance(TimeSpan.FromMilliseconds(250));
+        cut.WaitForAssertion(() => announcements.Current("lifecycle:" + DefaultCorrelationId).ShouldNotBeEmpty());
+
+        lifecycle.ResetScope();
+        cut.WaitForAssertion(() =>
+        {
+            cut.Find(".fc-lifecycle-wrapper").GetAttribute("data-lifecycle-state").ShouldBe("idle");
+            announcements.Current("lifecycle:" + DefaultCorrelationId).ShouldBeEmpty();
+        });
+        FakeTime.Advance(TimeSpan.FromSeconds(120));
+        lifecycle.GetState(DefaultCorrelationId).ShouldBe(CommandLifecycleState.Idle);
+        announcements.Current("lifecycle:" + DefaultCorrelationId).ShouldBeEmpty();
+
+        const string currentCorrelation = "01DPZ3NDEKTSV4RRFFQ69G5FAV";
+        cut.Render(p => p.Add(c => c.CorrelationId, currentCorrelation));
+        lifecycle.Transition(currentCorrelation, CommandLifecycleState.Submitting, "current-message");
+        lifecycle.Transition(currentCorrelation, CommandLifecycleState.Acknowledged, "current-message");
+        FakeTime.Advance(TimeSpan.FromSeconds(120));
+        cut.WaitForAssertion(() => lifecycle.GetState(currentCorrelation).ShouldBe(CommandLifecycleState.DegradedExhausted));
+    }
+    [Fact]
+    public void StoredTerminalWithDelayedLifecycleDispatchReplacesActiveWrapperAtAcceptanceDeadline()
+    {
+        const string correlation = "01CPZ3NDEKTSV4RRFFQ69G5FAV";
+        const string message = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        LifecycleStateService actual = new(Microsoft.Extensions.Options.Options.Create(new LifecycleOptions()), FakeTime);
+        ILifecycleStateService delayed = Substitute.For<ILifecycleStateService>();
+        delayed.Subscribe(Arg.Any<string>(), Arg.Any<Action<CommandLifecycleTransition>>())
+            .Returns(call => actual.Subscribe(call.ArgAt<string>(0), call.ArgAt<Action<CommandLifecycleTransition>>(1)));
+        delayed.GetState(Arg.Any<string>()).Returns(call => actual.GetState(call.ArgAt<string>(0)));
+        delayed.GetMessageId(Arg.Any<string>()).Returns(call => actual.GetMessageId(call.ArgAt<string>(0)));
+        delayed.When(service => service.Transition(Arg.Any<string>(), Arg.Any<CommandLifecycleState>(), Arg.Any<string?>()))
+            .Do(call => actual.Transition(call.ArgAt<string>(0), call.ArgAt<CommandLifecycleState>(1), call.ArgAt<string?>(2)));
+        bool releaseTerminal = false;
+        delayed.When(service => service.Transition(Arg.Any<string>(), Arg.Any<CommandLifecycleState>(), Arg.Any<string?>(), Arg.Any<bool>()))
+            .Do(call =>
+            {
+                if (!releaseTerminal)
+                {
+                    throw new InvalidOperationException("held lifecycle dispatch");
+                }
+                actual.Transition(call.ArgAt<string>(0), call.ArgAt<CommandLifecycleState>(1),
+                    call.ArgAt<string?>(2), call.ArgAt<bool>(3));
+            });
+        RegisterLifecycleService(delayed);
+        IUserContextAccessor user = Substitute.For<IUserContextAccessor>();
+        user.TenantId.Returns("tenant-a");
+        user.UserId.Returns("user-a");
+        PendingCommandStateService pending = new(Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            delayed, user, time: FakeTime);
+        Services.AddSingleton<IPendingCommandStateService>(pending);
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        List<string> spoken = [];
+        using IDisposable subscription = announcements.Subscribe("lifecycle:" + correlation, spoken.Add);
+        IRenderedComponent<FcLifecycleWrapper> cut = Render<FcLifecycleWrapper>(p => p.Add(c => c.CorrelationId, correlation));
+        DateTimeOffset acceptedAt = FakeTime.GetUtcNow();
+        actual.Transition(correlation, CommandLifecycleState.Submitting, message);
+        actual.Transition(correlation, CommandLifecycleState.Acknowledged, message);
+        pending.Register(new(correlation, message, "Counter.Increment", "Counter.Count", "counter-counts",
+            "counter-1", null, null, acceptedAt)).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
+        FakeTime.Advance(TimeSpan.FromSeconds(30));
+        pending.ResolveTerminal(PendingCommandTerminalObservation.Confirmed(message)).Status
+            .ShouldBe(PendingCommandResolutionStatus.LifecycleDispatchFailed);
+        actual.GetState(correlation).ShouldBe(CommandLifecycleState.Degraded);
+
+        FakeTime.Advance(TimeSpan.FromMilliseconds(89_999));
+        cut.Find(".fc-lifecycle-wrapper").GetAttribute("data-lifecycle-state").ShouldBe("degraded");
+        FakeTime.Advance(TimeSpan.FromMilliseconds(1));
+        cut.WaitForAssertion(() => cut.Find(".fc-lifecycle-wrapper")
+            .GetAttribute("data-lifecycle-state").ShouldBe("confirmed"));
+        pending.GetByMessageId(message).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.Confirmed);
+        actual.GetState(correlation).ShouldBe(CommandLifecycleState.Degraded);
+        releaseTerminal = true;
+        pending.ConvergeLifecycle(1).Converged.ShouldBe(1);
+        actual.GetState(correlation).ShouldBe(CommandLifecycleState.Confirmed);
+        spoken.Count(text => text == "Command confirmed.").ShouldBe(1);
+    }
+
+    [Theory]
     [InlineData(120000, false)]
     [InlineData(30000, true)]
     public async Task UnmountedAcceptedCommandClosesAtItsHeaderDeadlineWhileTheQueryAndCleanupAreHeld(int duration, bool blockingCleanup)
@@ -359,6 +474,35 @@ public sealed class FcLifecycleWrapperThresholdTests : LifecycleWrapperTestBase 
         lifecycle.GetState(DefaultCorrelationId).ShouldBe(CommandLifecycleState.Acknowledged);
     }
 
+    [Fact]
+    public async Task QueuedDeadlineAndDegradedCallbacksCannotMutateReboundSameCorrelation()
+    {
+        var time = new Hexalith.FrontComposer.Shell.Tests.Infrastructure.QueuedTimerTimeProvider();
+        Services.AddSingleton<TimeProvider>(time);
+        ILifecycleStateService service = Substitute.For<ILifecycleStateService>();
+        Action<CommandLifecycleTransition>? current = null;
+        _ = service.Subscribe(Arg.Any<string>(), Arg.Do<Action<CommandLifecycleTransition>>(callback => current = callback))
+            .Returns(Substitute.For<IDisposable>());
+        RegisterLifecycleService(service);
+        IRenderedComponent<FcLifecycleWrapper> cut = Render<FcLifecycleWrapper>(p => p.Add(c => c.CorrelationId, DefaultCorrelationId));
+        await cut.InvokeAsync(() => current!(TransitionAt(CommandLifecycleState.Submitting,
+            CommandLifecycleState.Acknowledged, time.GetUtcNow())));
+        Action[] oldCallbacks = [.. time.Callbacks];
+
+        cut.Render(p => p.Add(c => c.CorrelationId, "other"));
+        cut.Render(p => p.Add(c => c.CorrelationId, DefaultCorrelationId));
+        await cut.InvokeAsync(() => current!(TransitionAt(CommandLifecycleState.Submitting,
+            CommandLifecycleState.Acknowledged, time.GetUtcNow())));
+        foreach (Action callback in oldCallbacks)
+        {
+            callback();
+        }
+
+        cut.Find(".fc-lifecycle-wrapper").GetAttribute("data-lifecycle-state").ShouldBe("acknowledged");
+        service.DidNotReceive().Transition(DefaultCorrelationId, CommandLifecycleState.Degraded, Arg.Any<string?>());
+        service.DidNotReceive().Transition(DefaultCorrelationId, CommandLifecycleState.DegradedExhausted, Arg.Any<string?>());
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -396,8 +540,10 @@ public sealed class FcLifecycleWrapperThresholdTests : LifecycleWrapperTestBase 
         ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
         List<string> originalSpeech = [];
         List<string> replacementSpeech = [];
+        List<long> originalRevisions = [];
         using IDisposable originalSubscription = announcements.Subscribe("original", originalSpeech.Add);
         using IDisposable replacementSubscription = announcements.Subscribe("replacement", replacementSpeech.Add);
+        using IDisposable revisionSubscription = announcements.SubscribeWithReplay("original", (_, revision) => originalRevisions.Add(revision));
         IRenderedComponent<FcLifecycleWrapper> cut = Render<FcLifecycleWrapper>(p => p
             .Add(c => c.CorrelationId, DefaultCorrelationId).Add(c => c.StatusSurface, "original"));
         lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Submitting, "message");
@@ -414,9 +560,10 @@ public sealed class FcLifecycleWrapperThresholdTests : LifecycleWrapperTestBase 
         typeof(FcLifecycleWrapper).GetField("_timer", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(cut.Instance).ShouldBeSameAs(timer);
         cut.Render(p => p.Add(c => c.StatusSurface, "original"));
         FakeTime.Advance(TimeSpan.FromMilliseconds(250));
-        cut.WaitForAssertion(() => announcements.Current("original").ShouldBeEmpty());
+        cut.WaitForAssertion(() => announcements.Current("original").ShouldBe(expected));
         announcements.Current("replacement").ShouldBeEmpty();
-        originalSpeech.Count(message => message == expected).ShouldBe(1);
+        originalSpeech.Count(message => message == expected).ShouldBe(2);
+        ((SurfaceAnnouncementCoordinator)announcements).IsSilentRevision("original", originalRevisions[^1]).ShouldBeTrue();
         replacementSpeech.Count(message => message == expected).ShouldBe(1);
         cut.Find(".fc-lifecycle-wrapper").GetAttribute("data-lifecycle-state").ShouldBe(terminal ? "confirmed" : "acknowledged");
         if (terminal)
@@ -439,6 +586,35 @@ public sealed class FcLifecycleWrapperThresholdTests : LifecycleWrapperTestBase 
         cut.Instance.Dispose();
         announcements.Current("original").ShouldBe("Other owner remains");
         announcements.Current("replacement").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void ActiveLifecycleReturnsAfterAnotherSurfaceOwnerWithdrawsWithoutRepeatingSpeech()
+    {
+        using LifecycleStateService lifecycle = new(Microsoft.Extensions.Options.Options.Create(new LifecycleOptions()), FakeTime);
+        RegisterLifecycleService(lifecycle);
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        List<string> spoken = [];
+        List<long> revisions = [];
+        using IDisposable speech = announcements.Subscribe("original", spoken.Add);
+        using IDisposable version = announcements.SubscribeWithReplay("original", (_, revision) => revisions.Add(revision));
+        IRenderedComponent<FcLifecycleWrapper> cut = Render<FcLifecycleWrapper>(p => p
+            .Add(c => c.CorrelationId, DefaultCorrelationId).Add(c => c.StatusSurface, "original"));
+        lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Submitting, "message");
+        lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Acknowledged, "message");
+        FakeTime.Advance(TimeSpan.FromMilliseconds(250));
+        cut.WaitForAssertion(() => announcements.Current("original").ShouldBe("Command accepted. Waiting for confirmation."));
+        cut.Render(p => p.Add(c => c.StatusSurface, "replacement"));
+        announcements.Announce("original", "other:operation", "current", "Other current status", immediate: true);
+        cut.Render(p => p.Add(c => c.StatusSurface, "original"));
+        announcements.Current("original").ShouldBe("Other current status");
+        announcements.Cancel("original", "other:operation");
+        cut.WaitForAssertion(() => announcements.Current("original").ShouldBe("Command accepted. Waiting for confirmation."));
+        ((SurfaceAnnouncementCoordinator)announcements).IsSilentRevision("original", revisions[^1]).ShouldBeTrue();
+        spoken.Count(message => message == "Command accepted. Waiting for confirmation.").ShouldBe(2);
+        lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Degraded, "message");
+        cut.WaitForAssertion(() => announcements.Current("original")
+            .ShouldBe("Confirmation is taking longer than expected. Review status or continue working."));
     }
 
 }

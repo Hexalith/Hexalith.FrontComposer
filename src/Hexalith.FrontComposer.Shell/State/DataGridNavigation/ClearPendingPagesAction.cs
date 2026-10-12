@@ -23,4 +23,10 @@ public sealed record ClearPendingPagesAction {
             field = value;
         }
     } = string.Empty;
+
+    /// <summary>
+    /// Optional release-generation guard. Generated views supply a predicate that remains
+    /// false after a replacement owner registers, even if this action reduces later.
+    /// </summary>
+    public Func<bool>? StillFinalOwner { get; init; }
 }

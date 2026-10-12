@@ -40,7 +40,7 @@ public sealed class WidePriorityProjectionRenderTests : GeneratedComponentTestBa
             [
                 Row("row-1"),
                 Row("row-2"),
-            ]));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
 
         IRenderedComponent<WidePriorityProjectionView> cut = await RenderVirtualizedAsync<WidePriorityProjectionView, WidePriorityProjection>();
 
@@ -68,7 +68,7 @@ public sealed class WidePriorityProjectionRenderTests : GeneratedComponentTestBa
             Guid.NewGuid().ToString(),
             [
                 Row("row-1"),
-            ]));
+            ]) { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
 
         IRenderedComponent<WidePriorityProjectionView> cut = await RenderVirtualizedAsync<WidePriorityProjectionView, WidePriorityProjection>();
 

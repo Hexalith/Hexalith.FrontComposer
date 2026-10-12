@@ -124,6 +124,40 @@ public sealed class CounterProjectionEffectsTests {
     }
 
     [Fact]
+    public async Task IncrementConfirmed_AfterReturningToSubmittedScope_DoesNotLoadOldProjection() {
+        ServiceCollection services = [];
+        _ = services.AddLogging();
+        _ = services.AddHexalithFrontComposer(
+            o => o.ScanAssemblies(typeof(CounterProjection).Assembly, typeof(CounterProjectionEffects).Assembly));
+        _ = services.AddHexalithDomain<CounterDomain>();
+        services.Replace(ServiceDescriptor.Scoped<IStorageService, InMemoryStorageService>());
+        TestTenantContextAccessor scope = new();
+        services.Replace(ServiceDescriptor.Singleton<IFrontComposerTenantContextAccessor>(scope));
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IStore store = provider.GetRequiredService<IStore>();
+        await store.InitializeAsync();
+        IDispatcher dispatcher = provider.GetRequiredService<IDispatcher>();
+        IState<CounterProjectionState> state = provider.GetRequiredService<IState<CounterProjectionState>>();
+        CounterProjectionEffects effects = new(state, scope);
+
+        string correlationId = Guid.NewGuid().ToString();
+        await effects.OnIncrementSubmitted(new IncrementCommandActions.SubmittedAction(
+            correlationId,
+            new IncrementCommand { MessageId = "inc-old-a", TenantId = "tenant-a", Amount = 5 }), dispatcher);
+        scope.TenantId = "tenant-b";
+        dispatcher.Dispatch(new ScopeChangedAction());
+        scope.TenantId = "tenant-a";
+        dispatcher.Dispatch(new ScopeChangedAction());
+        state.Value.ScopeGeneration.ShouldBe(2);
+
+        await effects.OnCommandConfirmed(new IncrementCommandActions.ConfirmedAction(correlationId), dispatcher);
+
+        state.Value.Items.ShouldBeNull();
+        state.Value.IsLoading.ShouldBeFalse();
+    }
+
+    [Fact]
     public async Task ConfigureConfirmed_AfterScopeSwitch_DoesNotRequestOrLoadProjection() {
         ServiceCollection services = [];
         _ = services.AddLogging();

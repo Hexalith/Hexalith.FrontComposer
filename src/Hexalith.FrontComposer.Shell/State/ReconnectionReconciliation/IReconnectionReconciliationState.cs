@@ -13,7 +13,18 @@ public interface IReconnectionReconciliationState {
 
     /// <summary>Completes a reconciliation with its outcome and data-read result.</summary>
     void Complete(long epoch, bool changed, bool succeeded = true, bool dataRead = true)
-        => Complete(epoch, changed);
+    {
+        // The legacy overload cannot express a successful pass without a data read.
+        // Reset conservatively instead of publishing Refreshed with DataRead=true.
+        if (succeeded && dataRead)
+        {
+            Complete(epoch, changed);
+        }
+        else
+        {
+            Reset(epoch);
+        }
+    }
 
     void Reset(long? expectedEpoch = null);
 }

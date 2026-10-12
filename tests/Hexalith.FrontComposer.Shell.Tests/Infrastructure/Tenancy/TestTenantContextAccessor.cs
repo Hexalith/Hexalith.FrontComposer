@@ -7,7 +7,13 @@ internal sealed class TestTenantContextAccessor : IFrontComposerTenantContextAcc
 
     public string? UserId { get; set; } = "user-a";
 
+    public string? ThrowForOperationKind { get; set; }
+
     public TenantContextResult TryGetContext(string? requestedTenant = null, string operationKind = "tenant-scoped") {
+        if (string.Equals(ThrowForOperationKind, operationKind, StringComparison.Ordinal)
+            || string.Equals(ThrowForOperationKind, "*", StringComparison.Ordinal)) {
+            throw new InvalidOperationException("test scope provider failure");
+        }
         if (string.IsNullOrWhiteSpace(TenantId)) {
             return TenantContextResult.Failure(TenantContextFailureCategory.TenantMissing, "test-correlation");
         }

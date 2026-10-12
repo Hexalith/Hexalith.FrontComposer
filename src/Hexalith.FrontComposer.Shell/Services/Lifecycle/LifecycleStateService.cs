@@ -33,6 +33,9 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
     private long _scopeGeneration;
     internal long ScopeGeneration => Volatile.Read(ref _scopeGeneration);
 
+    /// <summary>Signals mounted consumers when their captured lifecycle scope has been retired.</summary>
+    internal event Action<long>? ScopeReset;
+
     /// <summary>
     /// Per-correlation subscriber lists (Decision D6). Mutated only via
     /// <see cref="ImmutableInterlocked"/> so concurrent Subscribe/Dispose races cannot lose updates.
@@ -101,12 +104,14 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             CommandLifecycleState current;
             string? messageId;
             DateTimeOffset originalAt;
+            bool idempotencyResolved;
             lock (entry) {
                 current = entry.State;
                 messageId = entry.MessageId;
                 originalAt = current is CommandLifecycleState.Acknowledged or CommandLifecycleState.Syncing or CommandLifecycleState.Degraded
                     ? entry.AcceptedAt ?? entry.OriginalTransitionAt
                     : entry.OriginalTransitionAt;
+                idempotencyResolved = entry.IdempotencyResolved;
             }
 
             try {
@@ -117,7 +122,7 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
                     MessageId: messageId,
                     TimestampUtc: _time.GetUtcNow(),
                     LastTransitionAt: originalAt,
-                    IdempotencyResolved: false));
+                    IdempotencyResolved: idempotencyResolved));
             }
             catch (Exception ex) when (ex is not OperationCanceledException) {
                 FrontComposerHotPathLog.LifecycleReplayCallbackFaulted(
@@ -212,12 +217,28 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
 
     /// <summary>Clears the correlation index and replay when the circuit scope changes.</summary>
     internal void ResetScope() {
+        long generation;
         lock (_scopeGate) {
-            _scopeGeneration++;
+            generation = ++_scopeGeneration;
             _entries.Clear();
             _subs = ImmutableDictionary<string, ImmutableList<Subscription>>.Empty.WithComparers(StringComparer.Ordinal);
             _seenMessageIds.Clear();
             while (_seenOrder.TryDequeue(out _)) { }
+        }
+        // Call outside the gate: subscribers may dispose and query this service.
+        if (ScopeReset is { } callbacks)
+        {
+            foreach (Action<long> callback in callbacks.GetInvocationList().Cast<Action<long>>())
+            {
+                try
+                {
+                    callback(generation);
+                }
+                catch (Exception ex) when (!ExceptionGuard.IsFatal(ex))
+                {
+                    // A removed UI subscriber cannot keep another old-scope view mounted.
+                }
+            }
         }
     }
 
@@ -312,12 +333,17 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
                 entry.MessageId = null;
                 entry.OutcomeNotifications = 0;
                 entry.AcceptedAt = null;
+                entry.IdempotencyResolved = false;
             }
 
             if (IsTerminal(newState)) {
                 int prior = Interlocked.CompareExchange(ref entry.OutcomeNotifications, 1, 0);
                 isTerminalFirstEntry = prior == 0;
                 computedIdempotencyResolved = !isTerminalFirstEntry;
+                if (isTerminalFirstEntry)
+                {
+                    entry.IdempotencyResolved = idempotencyResolved || newState == CommandLifecycleState.IdempotentConfirmed;
+                }
                 // Decision D8 — duplicate terminal for same CorrelationId is silently absorbed
                 // (no second outcome notification). FR30 "≤1 user-visible outcome" invariant.
                 dropped = prior != 0 && previous == newState;
@@ -340,7 +366,8 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
         // P8 — caller-supplied flag wins over the auto-detected duplicate-terminal flag so the
         // pending-command resolver can mark IdempotentConfirmed outcomes as already-applied even
         // on the first observed terminal for this correlation.
-        bool effectiveIdempotencyResolved = computedIdempotencyResolved || idempotencyResolved;
+        bool effectiveIdempotencyResolved = computedIdempotencyResolved || idempotencyResolved
+            || newState == CommandLifecycleState.IdempotentConfirmed;
 
         return new CommandLifecycleTransition(
             CorrelationId: correlationId,
@@ -508,6 +535,7 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
         public DateTimeOffset OriginalTransitionAt;
         public DateTimeOffset? AcceptedAt;
         public int OutcomeNotifications;
+        public bool IdempotencyResolved;
     }
 
     internal sealed class Subscription {

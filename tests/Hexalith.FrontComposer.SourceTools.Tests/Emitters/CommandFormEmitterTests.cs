@@ -116,7 +116,7 @@ public class CommandFormEmitterTests {
         masked.ShouldContain("__b.AddAttribute(#, \"AttemptedControlId\", _formDomId + \"-submit\");");
         masked.ShouldContain("__b.AddAttribute(#, \"AnnouncementSurface\", FormAnnouncementSurface);");
         masked.ShouldContain("builder.AddAttribute(#, \"StatusSurface\", FormAnnouncementSurface);");
-        masked.ShouldContain("builder.AddAttribute(#, \"RenderStatus\", !OnBlockedSubmission.HasDelegate);");
+        masked.ShouldContain("builder.AddAttribute(#, \"RenderStatus\", !ExternalStatusOwner);");
     }
 
     [Theory]
@@ -1302,9 +1302,10 @@ public class CommandFormEmitterTests {
 
         // VG2-13 — a hidden zero-field form hands its AM-20 outcome to the renderer.
         source.ShouldContain("[Parameter] public EventCallback<bool> OnBlockedSubmission { get; set; }");
+        source.ShouldContain("[Parameter] public bool ExternalStatusOwner { get; set; }");
         source.ShouldContain("await InvokeAsync(() => OnBlockedSubmission.InvokeAsync(true));");
         source.ShouldContain("await InvokeAsync(() => OnBlockedSubmission.InvokeAsync(false));");
-        masked.ShouldContain("if (!OnBlockedSubmission.HasDelegate)");
+        masked.ShouldContain("if (!ExternalStatusOwner)");
         int present = source.IndexOf("private async Task PresentBlockedSubmissionAsync(", StringComparison.Ordinal);
         int presentEnd = source.IndexOf("private async Task FocusElementAsync(", present, StringComparison.Ordinal);
         string presentBody = source[present..presentEnd];

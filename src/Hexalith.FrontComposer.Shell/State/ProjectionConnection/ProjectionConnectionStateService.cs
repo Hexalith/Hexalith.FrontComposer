@@ -47,7 +47,10 @@ public sealed class ProjectionConnectionStateService(
     /// <inheritdoc />
     public void SetBrowserOffline(bool offline) {
         if (_publisher.TryApply(
-                current => current.BrowserOffline == offline ? null : current with { BrowserOffline = offline },
+                current => current.BrowserOffline == offline ? null : current with {
+                    BrowserOffline = offline,
+                    BrowserOfflineEpisode = current.BrowserOfflineEpisode + (offline ? 1 : 0),
+                },
                 out ProjectionConnectionSnapshot snapshot,
                 out Action<ProjectionConnectionSnapshot>[] handlers)) {
             _publisher.Deliver(handlers, snapshot);
@@ -85,6 +88,7 @@ public sealed class ProjectionConnectionStateService(
                                 ? current.Epoch + 1
                                 : current.Epoch,
                         BrowserOffline = current.BrowserOffline,
+                        BrowserOfflineEpisode = current.BrowserOfflineEpisode,
                     };
 
                     // P9 — short-circuit when no logical change occurred (status / attempt / category).

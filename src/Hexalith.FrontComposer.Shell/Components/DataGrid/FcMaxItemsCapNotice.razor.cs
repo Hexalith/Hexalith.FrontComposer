@@ -1,8 +1,11 @@
 using System.Globalization;
 
+using Fluxor;
+
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.Services.Announcements;
+using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Localization;
@@ -26,7 +29,9 @@ public partial class FcMaxItemsCapNotice : ComponentBase, IDisposable {
     private string? _lastAnnouncedResult;
     private long _visibleEpisode;
     private string? _activeGroup;
+    private IDisposable? _activeClaim;
     private string _boundSurface = string.Empty;
+    private long _boundScopeGeneration;
     private bool _disposed;
 
     /// <summary>Stable per-view key (reserved for future telemetry).</summary>
@@ -52,6 +57,10 @@ public partial class FcMaxItemsCapNotice : ComponentBase, IDisposable {
     [Parameter]
     public string? ResultIdentity { get; set; }
 
+    /// <summary>Generation of the current tenant and user scope.</summary>
+    [Parameter]
+    public long ScopeGeneration { get; set; }
+
     /// <summary>Uses the parent surface's persistent status node when true; direct callers own one by default.</summary>
     [Parameter]
     public bool SharedStatusOwner { get; set; }
@@ -64,6 +73,9 @@ public partial class FcMaxItemsCapNotice : ComponentBase, IDisposable {
 
     [Inject]
     private ISurfaceAnnouncementCoordinator Announcements { get; set; } = default!;
+
+    [Inject]
+    private IServiceProvider Services { get; set; } = default!;
 
     /// <summary>Visible iff <c>ItemsCount &gt;= MaxUnfilteredItems</c> AND no real filter is active.</summary>
     public bool Visible {
@@ -80,14 +92,16 @@ public partial class FcMaxItemsCapNotice : ComponentBase, IDisposable {
             return;
         }
         string surface = "projection:" + ViewKey;
-        if (!string.Equals(_boundSurface, surface, StringComparison.Ordinal))
+        if (!string.Equals(_boundSurface, surface, StringComparison.Ordinal) || _boundScopeGeneration != ScopeGeneration)
         {
-            if (_activeGroup is { } abandoned)
+            if (_activeGroup is not null)
             {
-                Announcements.Cancel(_boundSurface, abandoned);
+                _activeClaim?.Dispose();
+                _activeClaim = null;
                 _activeGroup = null;
             }
             _boundSurface = surface;
+            _boundScopeGeneration = ScopeGeneration;
             _wasVisible = false;
             _lastAnnouncedResult = null;
         }
@@ -101,12 +115,36 @@ public partial class FcMaxItemsCapNotice : ComponentBase, IDisposable {
             _visibleEpisode++;
         }
         string result = (ResultIdentity ?? _visibleEpisode.ToString(CultureInfo.InvariantCulture)) + ":" + cap.ToString(CultureInfo.InvariantCulture);
-        if (_activeGroup is { } prior && (!visible || !string.Equals(_lastAnnouncedResult, result, StringComparison.Ordinal))) {
-            Announcements.Cancel(_boundSurface, prior);
+        if (_activeGroup is not null && (!visible || !string.Equals(_lastAnnouncedResult, result, StringComparison.Ordinal))) {
+            string formerGroup = _activeGroup;
+            _activeClaim?.Dispose();
+            _activeClaim = null;
             _activeGroup = null;
+            if (!visible)
+            {
+                SurfaceAnnouncementGroupOwnership.For(Announcements).EndTransitionEpisode(
+                    _boundSurface, "limit:" + ViewKey, formerGroup);
+            }
         }
         if (visible && (!_wasVisible || !string.Equals(_lastAnnouncedResult, result, StringComparison.Ordinal))) {
-            _activeGroup = "limit:" + ViewKey + ":" + _visibleEpisode.ToString(CultureInfo.InvariantCulture) + ":" + result;
+            // Observe already pending requests before closing the cap. A slow notice
+            // can mount later in this same clock tick and must retain its older order.
+            if (Services.GetService(typeof(IState<LoadedPageState>)) is IState<LoadedPageState> pages)
+            {
+                foreach (var pending in pages.Value.PendingCompletionsByKey)
+                {
+                    if (string.Equals(pending.Key.ViewKey, ViewKey, StringComparison.Ordinal))
+                    {
+                        _ = SurfaceAnnouncementGroupOwnership.For(Announcements).ObserveRequest(_boundSurface, pending.Value);
+                    }
+                }
+            }
+            string family = "limit:" + ViewKey;
+            _activeClaim = SurfaceAnnouncementGroupOwnership.For(Announcements)
+                .ClaimTransitionEpisode(_boundSurface, family,
+                    family + ":scope:" + ScopeGeneration.ToString(CultureInfo.InvariantCulture) + ":" + result,
+                    out string group);
+            _activeGroup = group;
             Announcements.Announce(
                 _boundSurface,
                 _activeGroup,
@@ -121,8 +159,9 @@ public partial class FcMaxItemsCapNotice : ComponentBase, IDisposable {
     /// <inheritdoc />
     public void Dispose() {
         _disposed = true;
-        if (_activeGroup is { } group) {
-            Announcements.Cancel(_boundSurface, group);
+        if (_activeGroup is not null) {
+            _activeClaim?.Dispose();
+            _activeClaim = null;
             _activeGroup = null;
         }
         GC.SuppressFinalize(this);

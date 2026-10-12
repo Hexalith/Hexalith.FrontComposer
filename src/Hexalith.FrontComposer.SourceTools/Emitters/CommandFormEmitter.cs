@@ -94,6 +94,8 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("    /// <summary>Story 13.3 AM-20: when bound, the host renders the blocked-submit outcome because this form is not perceivable (zero-field inline). Invoked with true for each blocked attempt and false when a later attempt is admitted.</summary>");
         _ = sb.AppendLine("    [Parameter] public EventCallback<bool> OnBlockedSubmission { get; set; }");
+        _ = sb.AppendLine("    /// <summary>When true, a visible host provides the sole persistent status node for this hidden form.</summary>");
+        _ = sb.AppendLine("    [Parameter] public bool ExternalStatusOwner { get; set; }");
         _ = sb.AppendLine("    /// <summary>Gets or sets the visible host's shared announcement surface for a hidden form.</summary>");
         _ = sb.AppendLine("    [Parameter] public string? AnnouncementSurface { get; set; }");
         _ = sb.AppendLine("    private string FormAnnouncementSurface => AnnouncementSurface ?? \"command-form:\" + _formDomId;");
@@ -496,7 +498,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            _hostBlockedOutcomePresented = false;");
         _ = sb.AppendLine("            await InvokeAsync(() => OnBlockedSubmission.InvokeAsync(false));");
         _ = sb.AppendLine("        }");
-        _ = sb.AppendLine("        else if (_blockedOutcome is not null)");
+        _ = sb.AppendLine("        if (!ExternalStatusOwner && _blockedOutcome is not null)");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            await _blockedOutcome.ClearAsync().ConfigureAwait(false);");
         _ = sb.AppendLine("        }");
@@ -544,7 +546,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            _hostBlockedOutcomePresented = true;");
         _ = sb.AppendLine("            await InvokeAsync(() => OnBlockedSubmission.InvokeAsync(true));");
         _ = sb.AppendLine("        }");
-        _ = sb.AppendLine("        else if (_blockedOutcome is not null)");
+        _ = sb.AppendLine("        if (!ExternalStatusOwner && _blockedOutcome is not null)");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            await _blockedOutcome.PresentAsync().ConfigureAwait(false);");
         _ = sb.AppendLine("        }");
@@ -1931,7 +1933,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        builder.OpenComponent<FcLifecycleWrapper>(seq++);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"CorrelationId\", _submittedCorrelationId);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"StatusSurface\", FormAnnouncementSurface);");
-        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"RenderStatus\", !OnBlockedSubmission.HasDelegate);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"RenderStatus\", !ExternalStatusOwner);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"CommandId\", \"" + lifecycleCommandId + "\");");
         // Story 2-5 Task 5.2 + D4 — emitted attributes forward rejection copy + domain-language title
         // computed from the Fluxor feature state's RejectionReason/RejectionResolution fields.
@@ -2049,7 +2051,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            // Story 13.3 AM-20 — publish through the lifecycle wrapper's persistent polite node. Keep the");
         _ = sb.AppendLine("            // View active command recovery after the submit control in tab order. A hidden");
         _ = sb.AppendLine("            // zero-field form lets its renderer own the node beside the visible trigger instead.");
-        _ = sb.AppendLine("            if (!OnBlockedSubmission.HasDelegate)");
+        _ = sb.AppendLine("            if (!ExternalStatusOwner)");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                __b.OpenComponent<FcCommandBlockedOutcome>(cseq++);");
         _ = sb.AppendLine("                __b.AddAttribute(cseq++, \"AttemptedControlId\", _formDomId + \"-submit\");");

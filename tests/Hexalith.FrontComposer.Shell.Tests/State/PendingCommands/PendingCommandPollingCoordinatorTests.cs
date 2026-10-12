@@ -21,6 +21,346 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.PendingCommands;
 
 public sealed class PendingCommandPollingCoordinatorTests {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task HeldProviderCannotRetainQueryCleanupOrReopenDeadline(bool faultAfterDeadline)
+    {
+        const string message = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        FakeTimeProvider time = new();
+        FcShellOptions options = new() { MaxPendingCommandPollingDurationMs = 120_000 };
+        using PendingCommandStateService state = new(Microsoft.Extensions.Options.Options.Create(options),
+            CreateLifecycle(), new FixedUserContext(), time);
+        state.Register(Registration(CorrelationId, message, time.GetUtcNow()));
+        TaskCompletionSource<PendingCommandOutcomeObservation?> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken queryToken = default;
+        IPendingCommandStatusQuery query = new CallbackStatusQuery((_, token) => {
+            queryToken = token;
+            return new ValueTask<PendingCommandOutcomeObservation?>(held.Task);
+        });
+        PendingCommandPollingCoordinator sut = new(state, new PendingCommandOutcomeResolver(state), query,
+            Microsoft.Extensions.Options.Options.Create(options), timeProvider: time);
+
+        Task<int> tick = sut.PollOnceAsync(TestContext.Current.CancellationToken);
+        queryToken.CanBeCanceled.ShouldBeTrue();
+        time.Advance(TimeSpan.FromMilliseconds(119_999));
+        tick.IsCompleted.ShouldBeFalse();
+        time.Advance(TimeSpan.FromMilliseconds(1));
+        // The state service and poller can race to close the same deadline; only
+        // the stored first terminal matters here.
+        _ = await tick.ConfigureAwait(true);
+        state.GetByMessageId(message).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.DegradedExhausted);
+        // Cleanup owns the token only for its bounded cancellation phase, not for
+        // the provider's potentially unbounded task lifetime.
+        SpinWait.SpinUntil(() => {
+            try { _ = queryToken.WaitHandle; return false; }
+            catch (ObjectDisposedException) { return true; }
+        }, TimeSpan.FromSeconds(2)).ShouldBeTrue();
+
+        if (faultAfterDeadline) { held.SetException(new InvalidOperationException("late provider fault")); }
+        else { held.SetResult(new(PendingCommandOutcomeSource.FallbackPolling,
+            PendingCommandTerminalOutcome.Confirmed, MessageId: message)); }
+        await Task.Yield();
+        state.GetByMessageId(message).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.DegradedExhausted);
+        (await sut.PollOnceAsync(TestContext.Current.CancellationToken)).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task BudgetOneAlternatesTransportAndTerminalConvergenceWhilePendingPersists()
+    {
+        const string terminalMessage = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        const string pendingMessage = "01BRZ3NDEKTSV4RRFFQ69G5FAV";
+        FakeTimeProvider time = new();
+        FcShellOptions options = new() { MaxPendingCommandPollingPerTick = 1 };
+        bool acceptLifecycle = false;
+        CommandLifecycleState lifecycleState = CommandLifecycleState.Idle;
+        string? lifecycleMessage = null;
+        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        lifecycle.GetState(CorrelationId).Returns(_ => lifecycleState);
+        lifecycle.GetMessageId(CorrelationId).Returns(_ => lifecycleMessage);
+        lifecycle.When(x => x.Transition(CorrelationId, Arg.Any<CommandLifecycleState>(), Arg.Any<string?>(), Arg.Any<bool>()))
+            .Do(call => {
+                if (acceptLifecycle) {
+                    lifecycleState = call.ArgAt<CommandLifecycleState>(1);
+                    lifecycleMessage = call.ArgAt<string?>(2);
+                }
+            });
+        using PendingCommandStateService state = new(Microsoft.Extensions.Options.Options.Create(options),
+            lifecycle, new FixedUserContext(), time);
+        state.Register(Registration(CorrelationId, terminalMessage, time.GetUtcNow()));
+        state.ResolveTerminal(PendingCommandTerminalObservation.Confirmed(terminalMessage)).Status
+            .ShouldBe(PendingCommandResolutionStatus.LifecycleDispatchFailed);
+        state.Register(Registration(SecondCorrelationId, pendingMessage, time.GetUtcNow()));
+        acceptLifecycle = true;
+        int transportQueries = 0;
+        IPendingCommandStatusQuery query = new CallbackStatusQuery((_, _) => {
+            transportQueries++;
+            return ValueTask.FromResult<PendingCommandOutcomeObservation?>(null);
+        });
+        PendingCommandPollingCoordinator sut = new(state, new PendingCommandOutcomeResolver(state), query,
+            Microsoft.Extensions.Options.Options.Create(options), timeProvider: time);
+
+        (await sut.PollOnceAsync(TestContext.Current.CancellationToken)).ShouldBe(0);
+        transportQueries.ShouldBe(1);
+        (await sut.PollOnceAsync(TestContext.Current.CancellationToken)).ShouldBe(1);
+        lifecycleState.ShouldBe(CommandLifecycleState.Confirmed);
+        lifecycleMessage.ShouldBe(terminalMessage);
+        transportQueries.ShouldBe(1);
+        (await sut.PollOnceAsync(TestContext.Current.CancellationToken)).ShouldBe(0);
+        transportQueries.ShouldBe(2);
+        state.GetByMessageId(pendingMessage).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.Pending);
+    }
+
+    [Fact]
+    public async Task LaterAcceptedCommandUsesNextTickWhileFirstQueryIsHeld()
+    {
+        FakeTimeProvider time = new();
+        FcShellOptions options = new() { MaxPendingCommandPollingPerTick = 2 };
+        using PendingCommandStateService state = new(Microsoft.Extensions.Options.Options.Create(options),
+            CreateLifecycle(), new FixedUserContext(), time);
+        const string first = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        const string second = "01BRZ3NDEKTSV4RRFFQ69G5FAV";
+        state.Register(Registration(CorrelationId, first, time.GetUtcNow()));
+        TaskCompletionSource<PendingCommandOutcomeObservation?> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        int firstQueries = 0;
+        IPendingCommandStatusQuery query = new CallbackStatusQuery((entry, _) => entry.MessageId == first
+            ? FirstQuery()
+            : ValueTask.FromResult<PendingCommandOutcomeObservation?>(new(
+                PendingCommandOutcomeSource.FallbackPolling, PendingCommandTerminalOutcome.Confirmed,
+                MessageId: second)));
+        ValueTask<PendingCommandOutcomeObservation?> FirstQuery()
+        {
+            Interlocked.Increment(ref firstQueries);
+            return new ValueTask<PendingCommandOutcomeObservation?>(held.Task);
+        }
+        PendingCommandPollingCoordinator polling = new(state, new PendingCommandOutcomeResolver(state), query,
+            Microsoft.Extensions.Options.Options.Create(options), timeProvider: time);
+
+        Task<int> firstTick = polling.PollOnceAsync(TestContext.Current.CancellationToken);
+        state.Register(Registration(SecondCorrelationId, second, time.GetUtcNow()));
+        (await polling.PollOnceAsync(TestContext.Current.CancellationToken).ConfigureAwait(true)).ShouldBe(1);
+        state.GetByMessageId(second).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.Confirmed);
+        firstQueries.ShouldBe(1);
+        held.TrySetResult(null);
+        (await firstTick.ConfigureAwait(true)).ShouldBe(0);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PollingRejectsResolverWithoutCapturedEntryCapability(bool delegated)
+    {
+        FakeTimeProvider time = new();
+        FcShellOptions options = new();
+        using PendingCommandStateService state = new(Microsoft.Extensions.Options.Options.Create(options),
+            CreateLifecycle(), new FixedUserContext(), time);
+        const string message = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        state.Register(Registration(CorrelationId, message, time.GetUtcNow()));
+        PendingCommandEntry original = state.GetByMessageId(message).ShouldNotBeNull();
+        IPendingCommandOutcomeResolver unsafeResolver = Substitute.For<IPendingCommandOutcomeResolver>();
+        unsafeResolver.Resolve(Arg.Any<PendingCommandOutcomeObservation>()).Returns(call =>
+        {
+            // A resolver allowed past the separate precheck could replace and close this identity.
+            state.Clear("replacement during resolve");
+            state.Register(Registration(SecondCorrelationId, message, time.GetUtcNow()));
+            state.ResolveTerminal(PendingCommandTerminalObservation.Confirmed(message));
+            return new PendingCommandOutcomeResolutionResult(PendingCommandOutcomeResolutionStatus.Resolved);
+        });
+        IPendingCommandOutcomeResolver resolver = delegated
+            ? new PendingCommandOutcomeResolver(unsafeResolver, state, null, null, time, null, null)
+            : unsafeResolver;
+        IPendingCommandStatusQuery query = new CallbackStatusQuery((pendingCommand, cancellationToken) =>
+            ValueTask.FromResult<PendingCommandOutcomeObservation?>(new(
+                PendingCommandOutcomeSource.FallbackPolling, PendingCommandTerminalOutcome.Confirmed,
+                MessageId: message)));
+        InvalidOperationException error = Should.Throw<InvalidOperationException>(() => new PendingCommandPollingCoordinator(
+            state, resolver, query, Microsoft.Extensions.Options.Options.Create(options), timeProvider: time));
+        error.Message.ShouldContain(nameof(IPendingCommandCapturedEntryResolver));
+        unsafeResolver.DidNotReceive().Resolve(Arg.Any<PendingCommandOutcomeObservation>());
+        state.GetByMessageId(message).ShouldBeSameAs(original);
+        original.Status.ShouldBe(PendingCommandStatus.Pending);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CustomCapturedEntryResolverClosesTheOriginalPendingCommand(bool delegated)
+    {
+        FakeTimeProvider time = new();
+        FcShellOptions options = new();
+        using PendingCommandStateService state = new(Microsoft.Extensions.Options.Options.Create(options),
+            CreateLifecycle(), new FixedUserContext(), time);
+        const string message = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        state.Register(Registration(CorrelationId, message, time.GetUtcNow()));
+        PendingCommandEntry original = state.GetByMessageId(message).ShouldNotBeNull();
+        IPendingCommandCapturedEntryResolver custom = Substitute.For<IPendingCommandCapturedEntryResolver>();
+        custom.ResolveForEntry(Arg.Any<PendingCommandOutcomeObservation>(), Arg.Any<PendingCommandEntry>())
+            .Returns(call => {
+                PendingCommandOutcomeObservation observation = call.ArgAt<PendingCommandOutcomeObservation>(0);
+                PendingCommandEntry expected = call.ArgAt<PendingCommandEntry>(1);
+                return PendingCommandOutcomeResolutionResult.From(state.ResolveTerminalIfCurrent(
+                    new PendingCommandTerminalObservation(observation.MessageId!, observation.Outcome), expected));
+            });
+        IPendingCommandOutcomeResolver resolver = delegated
+            ? new PendingCommandOutcomeResolver(custom, state, null, null, time, null, null)
+            : custom;
+        IPendingCommandStatusQuery query = new CallbackStatusQuery((_, _) =>
+            ValueTask.FromResult<PendingCommandOutcomeObservation?>(new(
+                PendingCommandOutcomeSource.FallbackPolling, PendingCommandTerminalOutcome.Confirmed,
+                MessageId: message)));
+        PendingCommandPollingCoordinator polling = new(state, resolver, query,
+            Microsoft.Extensions.Options.Options.Create(options), timeProvider: time);
+
+        (await polling.PollOnceAsync(TestContext.Current.CancellationToken)).ShouldBe(1);
+        custom.Received(1).ResolveForEntry(Arg.Any<PendingCommandOutcomeObservation>(), original);
+        state.GetByMessageId(message).ShouldNotBeSameAs(original);
+        state.GetByMessageId(message)!.Status.ShouldBe(PendingCommandStatus.Confirmed);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CustomCapturedEntryResolverCannotCloseReplacementWithTheSameMessageId(bool delegated)
+    {
+        FakeTimeProvider time = new();
+        FcShellOptions options = new();
+        using PendingCommandStateService state = new(Microsoft.Extensions.Options.Options.Create(options),
+            CreateLifecycle(), new FixedUserContext(), time);
+        const string message = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        state.Register(Registration(CorrelationId, message, time.GetUtcNow()));
+        IPendingCommandCapturedEntryResolver custom = Substitute.For<IPendingCommandCapturedEntryResolver>();
+        custom.ResolveForEntry(Arg.Any<PendingCommandOutcomeObservation>(), Arg.Any<PendingCommandEntry>())
+            .Returns(call => PendingCommandOutcomeResolutionResult.From(state.ResolveTerminalIfCurrent(
+                PendingCommandTerminalObservation.Confirmed(message), call.ArgAt<PendingCommandEntry>(1))));
+        IPendingCommandOutcomeResolver resolver = delegated
+            ? new PendingCommandOutcomeResolver(custom, state, null, null, time, null, null)
+            : custom;
+        TaskCompletionSource<PendingCommandOutcomeObservation?> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        IPendingCommandStatusQuery query = new CallbackStatusQuery((_, _) => new(held.Task));
+        PendingCommandPollingCoordinator polling = new(state, resolver, query,
+            Microsoft.Extensions.Options.Options.Create(options), timeProvider: time);
+        Task<int> poll = polling.PollOnceAsync(TestContext.Current.CancellationToken);
+
+        state.Clear("scope reset");
+        state.Register(Registration(SecondCorrelationId, message, time.GetUtcNow()));
+        PendingCommandEntry replacement = state.GetByMessageId(message).ShouldNotBeNull();
+        held.SetResult(new PendingCommandOutcomeObservation(PendingCommandOutcomeSource.FallbackPolling,
+            PendingCommandTerminalOutcome.Confirmed, MessageId: message));
+
+        (await poll.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).ShouldBe(0);
+        custom.DidNotReceive().ResolveForEntry(Arg.Any<PendingCommandOutcomeObservation>(), Arg.Any<PendingCommandEntry>());
+        state.GetByMessageId(message).ShouldBeSameAs(replacement);
+        replacement.Status.ShouldBe(PendingCommandStatus.Pending);
+    }
+
+    [Fact]
+    public async Task CapturedResolverCanUseApplicationStateAdapterWithoutLosingTerminalEvidence()
+    {
+        FakeTimeProvider time = new();
+        FcShellOptions options = new();
+        using PendingCommandStateService backing = new(Microsoft.Extensions.Options.Options.Create(options),
+            CreateLifecycle(), new FixedUserContext(), time);
+        const string message = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        backing.Register(Registration(CorrelationId, message, time.GetUtcNow()));
+        IPendingCommandStateService state = Substitute.For<IPendingCommandStateService>();
+        state.Snapshot().Returns(_ => backing.Snapshot());
+        state.GetByMessageId(message).Returns(_ => backing.GetByMessageId(message));
+        IPendingCommandCapturedEntryResolver custom = Substitute.For<IPendingCommandCapturedEntryResolver>();
+        custom.ResolveForEntry(Arg.Any<PendingCommandOutcomeObservation>(), Arg.Any<PendingCommandEntry>())
+            .Returns(call => PendingCommandOutcomeResolutionResult.From(backing.ResolveTerminalIfCurrent(
+                PendingCommandTerminalObservation.Confirmed(message), call.ArgAt<PendingCommandEntry>(1))));
+        PendingCommandOutcomeResolver adapted = new(custom, state, null, null, time, null, null);
+        IPendingCommandStatusQuery query = new CallbackStatusQuery((_, _) =>
+            ValueTask.FromResult<PendingCommandOutcomeObservation?>(new(
+                PendingCommandOutcomeSource.FallbackPolling, PendingCommandTerminalOutcome.Confirmed,
+                MessageId: message)));
+        Should.Throw<InvalidOperationException>(() => new PendingCommandPollingCoordinator(state,
+            new PendingCommandOutcomeResolver(state), query, Microsoft.Extensions.Options.Options.Create(options),
+            timeProvider: time)).Message.ShouldContain(nameof(IPendingCommandCapturedEntryResolver));
+        PendingCommandPollingCoordinator polling = new(state, adapted, query,
+            Microsoft.Extensions.Options.Options.Create(options), timeProvider: time);
+
+        (await polling.PollOnceAsync(TestContext.Current.CancellationToken)).ShouldBe(1);
+        backing.GetByMessageId(message)!.Status.ShouldBe(PendingCommandStatus.Confirmed);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OldStatusQueryCannotResolveReplacementWithTheSameMessageId(bool timeout)
+    {
+        FakeTimeProvider time = new();
+        FcShellOptions options = new() { MaxPendingCommandPollingDurationMs = 30_000 };
+        ILifecycleStateService lifecycle = CreateLifecycle();
+        using PendingCommandStateService state = new(Microsoft.Extensions.Options.Options.Create(options),
+            lifecycle, new FixedUserContext(), time);
+        const string message = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        state.Register(Registration(CorrelationId, message, time.GetUtcNow()));
+        TaskCompletionSource<PendingCommandOutcomeObservation?> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        IPendingCommandStatusQuery query = new CallbackStatusQuery((pendingCommand, cancellationToken) => new(held.Task));
+        PendingCommandPollingCoordinator polling = new(state, new PendingCommandOutcomeResolver(state), query,
+            Microsoft.Extensions.Options.Options.Create(options), timeProvider: time);
+        Task<int> poll = polling.PollOnceAsync(TestContext.Current.CancellationToken);
+
+        time.Advance(TimeSpan.FromSeconds(1));
+        state.Clear("scope reset");
+        state.Register(Registration(SecondCorrelationId, message, time.GetUtcNow()));
+        PendingCommandEntry replacement = state.GetByMessageId(message).ShouldNotBeNull();
+        if (timeout)
+        {
+            time.Advance(TimeSpan.FromMilliseconds(29_000));
+        }
+        else
+        {
+            held.SetResult(new PendingCommandOutcomeObservation(PendingCommandOutcomeSource.FallbackPolling,
+                PendingCommandTerminalOutcome.Confirmed, MessageId: message));
+        }
+
+        (await poll.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).ShouldBe(0);
+        state.GetByMessageId(message).ShouldBeSameAs(replacement);
+        replacement.Status.ShouldBe(PendingCommandStatus.Pending);
+        lifecycle.DidNotReceive().Transition(SecondCorrelationId, CommandLifecycleState.Confirmed, message, false);
+        lifecycle.DidNotReceive().Transition(SecondCorrelationId, CommandLifecycleState.DegradedExhausted, message, false);
+        held.TrySetResult(null);
+    }
+
+    [Fact]
+    public async Task HeldOldestStatusQueryDoesNotStarveLaterEligibleEntry()
+    {
+        FakeTimeProvider time = new();
+        FcShellOptions options = new() { MaxPendingCommandPollingPerTick = 2 };
+        using PendingCommandStateService state = new(Microsoft.Extensions.Options.Options.Create(options),
+            CreateLifecycle(), new FixedUserContext(), time);
+        const string first = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        const string second = "01BRZ3NDEKTSV4RRFFQ69G5FAV";
+        state.Register(Registration(CorrelationId, first, time.GetUtcNow()));
+        time.Advance(TimeSpan.FromMilliseconds(1));
+        state.Register(Registration(SecondCorrelationId, second, time.GetUtcNow()));
+        TaskCompletionSource<PendingCommandOutcomeObservation?> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource laterResolved = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        state.Changed += (_, _) =>
+        {
+            if (state.GetByMessageId(second)?.Status == PendingCommandStatus.Confirmed)
+            {
+                laterResolved.TrySetResult();
+            }
+        };
+        IPendingCommandStatusQuery query = new CallbackStatusQuery((entry, cancellationToken) =>
+            entry.MessageId == first
+                ? new ValueTask<PendingCommandOutcomeObservation?>(held.Task)
+                : ValueTask.FromResult<PendingCommandOutcomeObservation?>(new(
+                    PendingCommandOutcomeSource.FallbackPolling, PendingCommandTerminalOutcome.Confirmed,
+                    MessageId: second)));
+        PendingCommandPollingCoordinator polling = new(state, new PendingCommandOutcomeResolver(state), query,
+            Microsoft.Extensions.Options.Options.Create(options), timeProvider: time);
+
+        Task<int> poll = polling.PollOnceAsync(TestContext.Current.CancellationToken);
+        await laterResolved.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        state.GetByMessageId(first).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.Pending);
+        held.SetResult(null);
+        (await poll.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken)).ShouldBe(1);
+    }
+
+    [Theory]
     [InlineData(120000)]
     [InlineData(30000)]
     public async Task HeaderDeadlineClosesTheQuietIntervalAfterANonterminalQuery(int duration)
@@ -711,6 +1051,15 @@ public sealed class PendingCommandPollingCoordinatorTests {
                 PendingCommandTerminalOutcome.Confirmed,
                 terminalMessageId));
         }
+    }
+
+    private sealed class CallbackStatusQuery(
+        Func<PendingCommandEntry, CancellationToken, ValueTask<PendingCommandOutcomeObservation?>> query)
+        : IPendingCommandStatusQuery {
+        public ValueTask<PendingCommandOutcomeObservation?> QueryAsync(
+            PendingCommandEntry pendingCommand,
+            CancellationToken cancellationToken = default)
+            => query(pendingCommand, cancellationToken);
     }
     [Theory]
     [InlineData(120000)]

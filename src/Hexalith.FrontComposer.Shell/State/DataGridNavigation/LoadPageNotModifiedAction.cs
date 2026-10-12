@@ -56,6 +56,12 @@ public sealed record LoadPageNotModifiedAction {
     /// <summary>Gets the cached row payload reused from the ETag cache (never null).</summary>
     public IReadOnlyList<object> CachedItems { get; init; } = System.Array.Empty<object>();
 
+    /// <summary>Read total used to restore a page evicted before this action reduces.</summary>
+    public int? TotalCount { get; init; }
+
+    /// <summary>Configured FIFO page capacity for a missing-page restoration.</summary>
+    public int MaxCachedPages { get; init; } = 200;
+
     /// <summary>Gets the originating TCS, used to reject stale terminal actions for superseded same-page requests.</summary>
     public TaskCompletionSource<object>? Completion { get; init; }
 

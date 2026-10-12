@@ -19,6 +19,31 @@ namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 
 public sealed class EventStoreClientTests {
     [Fact]
+    public async Task StalledInitialAcceptedBodyUsesOneHeaderAnchoredRecoveryDeadline()
+    {
+        FakeTimeProvider time = new();
+        StallingAcceptedContent body = new();
+        RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.Accepted) { Content = body });
+        EventStoreCommandClient sut = new(new SingleClientFactory(handler), Options(), new FixedUlidFactory(),
+            new TestUserContextAccessor("acme", "alice"), EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStoreCommandClient>.Instance,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { CommandDispatchRetryAttempts = 1 }), time);
+        List<CommandLifecycleObservation> observations = [];
+        Task<CommandResult> dispatch = ((ICommandServiceWithLifecycleObservations)sut).DispatchAsync(
+            new ShipOrderCommand(), observations.Add, TestContext.Current.CancellationToken);
+        await body.ReadAttempted.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken).ConfigureAwait(true);
+        observations.ShouldHaveSingleItem().State.ShouldBe(CommandLifecycleState.Syncing);
+        time.Advance(TimeSpan.FromMilliseconds(1999));
+        dispatch.IsCompleted.ShouldBeFalse();
+        time.Advance(TimeSpan.FromMilliseconds(1));
+        CommandResult accepted = await dispatch.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken).ConfigureAwait(true);
+        accepted.Status.ShouldBe(CommandResultStatus.Accepted);
+        accepted.MessageId.ShouldBe("01HVTESTULID");
+        accepted.CorrelationId.ShouldBeNull();
+        handler.Requests.Count.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task CommandClient_AcceptedTypedDispatchEmitsExactlyOneSyncingObservationUsingInjectedClock() {
         DateTimeOffset now = new(2026, 8, 13, 12, 0, 0, TimeSpan.Zero);
         RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.Accepted));
@@ -749,6 +774,30 @@ public sealed class EventStoreClientTests {
         handler.Bodies.Count.ShouldBe(1);
     }
 
+    [Fact]
+    public async Task DisposedOptionalAcceptedBodyKeepsOriginalAcceptedMessageId()
+    {
+        MemoryStream disposedBody = new(Encoding.UTF8.GetBytes("{}"));
+        disposedBody.Dispose();
+        RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.Accepted) {
+            Content = new StreamContent(disposedBody),
+        });
+        EventStoreCommandClient sut = new(
+            new SingleClientFactory(handler), Options(), new FixedUlidFactory(),
+            new TestUserContextAccessor("acme", "alice"), EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStoreCommandClient>.Instance,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { CommandDispatchRetryAttempts = 0 }));
+        List<CommandLifecycleObservation> observations = [];
+
+        CommandResult result = await ((ICommandServiceWithLifecycleObservations)sut).DispatchAsync(
+            new ShipOrderCommand(), observations.Add, TestContext.Current.CancellationToken);
+        result.Status.ShouldBe(CommandResultStatus.Accepted);
+        result.MessageId.ShouldBe("01HVTESTULID");
+        result.CorrelationId.ShouldBeNull();
+        observations.Single().MessageId.ShouldBe(result.MessageId);
+        handler.Bodies.Count.ShouldBe(1);
+    }
+
     [Theory]
     [InlineData("[]")]
     [InlineData("{\"correlationId\":42}")]
@@ -1214,6 +1263,61 @@ public sealed class EventStoreClientTests {
     }
 
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task UncooperativeAcceptedRecoveryReleasesCleanupAfterFiniteBoundAndIgnoresLateEvidence(bool duringRetry, bool lateFault)
+    {
+        FakeTimeProvider time = new();
+        using UncooperativeAcceptedContent content = new();
+        int sends = 0;
+        RecordingHandler handler = new(_ => new(HttpStatusCode.Accepted)
+        {
+            Content = duringRetry && ++sends == 1
+                ? new StringContent("{", Encoding.UTF8, "application/json") : content,
+        });
+        EventStoreCommandClient sut = new(new SingleClientFactory(handler), Options(), new FixedUlidFactory(),
+            new TestUserContextAccessor("acme", "alice"), EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStoreCommandClient>.Instance,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { CommandDispatchRetryAttempts = duringRetry ? 1 : 0 }), time);
+
+        Task<CommandResult> dispatch = sut.DispatchAsync(new ShipOrderCommand(), TestContext.Current.CancellationToken);
+        if (duringRetry)
+        {
+            time.Advance(TimeSpan.FromMilliseconds(250));
+        }
+        await content.ReadAttempted.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        time.Advance(TimeSpan.FromMilliseconds(duringRetry ? 1750 : 2000));
+        CommandResult accepted = await dispatch.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        accepted.Status.ShouldBe(CommandResultStatus.Accepted);
+        accepted.MessageId.ShouldBe("01HVTESTULID");
+        accepted.CorrelationId.ShouldBeNull();
+        content.ObservedToken.IsCancellationRequested.ShouldBeTrue();
+        content.ReadCompleted.Task.IsCompleted.ShouldBeFalse();
+        handler.Bodies.Count.ShouldBe(duringRetry ? 2 : 1);
+
+        time.Advance(TimeSpan.FromSeconds(1));
+        SpinWait.SpinUntil(() =>
+        {
+            try { _ = content.ObservedToken.WaitHandle; return false; }
+            catch (ObjectDisposedException) { return true; }
+        }, TimeSpan.FromSeconds(5)).ShouldBeTrue();
+        content.ReadCompleted.Task.IsCompleted.ShouldBeFalse();
+
+        if (lateFault)
+        {
+            content.FailLate();
+        }
+        else
+        {
+            content.CompleteSuccessfully();
+        }
+        await content.ReadCompleted.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        (await dispatch.ConfigureAwait(true)).ShouldBe(accepted);
+    }
+
+    [Theory]
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
@@ -1233,7 +1337,7 @@ public sealed class EventStoreClientTests {
         };
         Task cleanup = (Task)typeof(EventStoreCommandClient)
             .GetMethod("CompleteAcceptedCleanupAsync", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!
-            .Invoke(null, [cancellation, recovery])!;
+            .Invoke(null, [cancellation, recovery, TimeProvider.System])!;
         if (faultSource == 1)
         {
             (await Should.ThrowAsync<OutOfMemoryException>(() => cleanup)).ShouldBeSameAs(fatal);

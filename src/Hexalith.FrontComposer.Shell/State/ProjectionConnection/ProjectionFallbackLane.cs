@@ -23,4 +23,11 @@ public sealed record ProjectionFallbackLane(
     string? SortColumn,
     bool SortDescending,
     string? SearchQuery,
-    Func<CancellationToken, ValueTask<ProjectionFallbackLaneRefreshOutcome>>? RefreshAsync = null);
+    Func<CancellationToken, ValueTask<ProjectionFallbackLaneRefreshOutcome>>? RefreshAsync = null)
+{
+    /// <summary>Authenticated user that owns a generated lane, when known.</summary>
+    public string? UserId { get; init; }
+
+    /// <summary>Loaded-page scope generation captured by a generated lane.</summary>
+    public long? ScopeGeneration { get; init; }
+}

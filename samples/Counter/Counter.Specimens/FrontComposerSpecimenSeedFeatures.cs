@@ -14,7 +14,9 @@ public sealed class SpecimenStatusProjectionSeedFeature : Feature<SpecimenStatus
     public override string GetName() => nameof(SpecimenStatusProjectionState);
 
     protected override SpecimenStatusProjectionState GetInitialState()
-        => new(IsLoading: false, Items: FrontComposerSpecimenSeedData.StatusRows, Error: null);
+        => new(IsLoading: false, Items: FrontComposerSpecimenSeedData.StatusRows, Error: null) {
+            ScopeTenantId = "counter-demo", ScopeUserId = "demo-user",
+        };
 }
 
 /// <summary>
@@ -24,7 +26,9 @@ public sealed class CounterProjectionSeedFeature : Feature<CounterProjectionStat
     public override string GetName() => nameof(CounterProjectionState);
 
     protected override CounterProjectionState GetInitialState()
-        => new(IsLoading: false, Items: FrontComposerSpecimenSeedData.CounterRows, Error: null);
+        => new(IsLoading: false, Items: FrontComposerSpecimenSeedData.CounterRows, Error: null) {
+            ScopeTenantId = "counter-demo", ScopeUserId = "demo-user",
+        };
 }
 
 /// <summary>
@@ -34,7 +38,9 @@ public sealed class SpecimenFormattingProjectionSeedFeature : Feature<SpecimenFo
     public override string GetName() => nameof(SpecimenFormattingProjectionState);
 
     protected override SpecimenFormattingProjectionState GetInitialState()
-        => new(IsLoading: false, Items: FrontComposerSpecimenSeedData.FormattingRows, Error: null);
+        => new(IsLoading: false, Items: FrontComposerSpecimenSeedData.FormattingRows, Error: null) {
+            ScopeTenantId = "counter-demo", ScopeUserId = "demo-user",
+        };
 }
 
 internal static class FrontComposerSpecimenSeedData {

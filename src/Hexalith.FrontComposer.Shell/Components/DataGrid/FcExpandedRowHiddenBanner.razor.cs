@@ -27,11 +27,18 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
     private string _bannerMessage = string.Empty;
     private ElementReference _bannerRef;
     private bool _wasHidden;
+    private bool _awaitingSettlement;
     private bool _focusPending;
+    private bool _focusInFlight;
+    private int _focusTimeoutRetriesRemaining;
     private string? _lastAnnouncedResult;
     private long _hiddenEpisode;
     private string? _activeGroup;
+    private IDisposable? _activeClaim;
+    private SurfaceHiddenFocusOwnership? _focusOwnership;
+    private string? _focusGroupKey;
     private string _boundSurface = string.Empty;
+    private long _boundScopeGeneration;
     private bool _disposed;
     private readonly string _descriptionId = "fc-hidden-detail-reason-" + Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture);
 
@@ -49,13 +56,25 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
     [EditorRequired]
     public bool IsHiddenByFilter { get; set; }
 
+    /// <summary>Whether the expanded item is absent from the completed visible result, regardless of cause.</summary>
+    [Parameter]
+    public bool IsMissing { get; set; }
+
     /// <summary>Stable filter/result identity for one hidden-detail transition.</summary>
     [Parameter]
     public string? ResultIdentity { get; set; }
 
+    /// <summary>Generation of the current tenant and user scope.</summary>
+    [Parameter]
+    public long ScopeGeneration { get; set; }
+
     /// <summary>Whether the filter result that hides this detail has completed.</summary>
     [Parameter]
     public bool ResultSettled { get; set; } = true;
+
+    /// <summary>Uses the generated projection's existing shared polite status node.</summary>
+    [Parameter]
+    public bool SharedStatusOwner { get; set; }
 
     [Inject]
     private IDispatcher Dispatcher { get; set; } = default!;
@@ -76,43 +95,83 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
             return;
         }
         string surface = "projection:" + ViewKey;
-        if (!string.Equals(_boundSurface, surface, StringComparison.Ordinal))
+        if (!string.Equals(_boundSurface, surface, StringComparison.Ordinal) || _boundScopeGeneration != ScopeGeneration)
         {
-            if (_activeGroup is { } abandoned)
-            {
-                Announcements.Cancel(_boundSurface, abandoned);
-                _activeGroup = null;
-            }
+            ReleaseAnnouncement();
+            ReleaseFocusClaim();
             _boundSurface = surface;
+            _boundScopeGeneration = ScopeGeneration;
             _wasHidden = false;
+            _awaitingSettlement = false;
             _lastAnnouncedResult = null;
             _focusPending = false;
+            _focusTimeoutRetriesRemaining = 0;
         }
 
-        _bannerMessage = Localizer["ExpandedRowHiddenByFilterBanner", "1"].Value;
+        _bannerMessage = IsHiddenByFilter
+            ? Localizer["ExpandedRowHiddenByFilterBanner", "1"].Value
+            : IsMissing ? Localizer["ExpandedRowUnavailableBanner"].Value : string.Empty;
         bool settledHidden = IsHiddenByFilter && ResultSettled;
+        string family = "filter:" + ViewKey;
         if (!settledHidden)
         {
+            ReleaseFocusClaim();
             _focusPending = false;
+            _focusTimeoutRetriesRemaining = 0;
+            _awaitingSettlement = IsHiddenByFilter && _wasHidden;
         }
         if (settledHidden && !_wasHidden) {
             _hiddenEpisode++;
         }
         string result = ResultIdentity ?? _hiddenEpisode.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        if (_activeGroup is { } prior && (!settledHidden || !string.Equals(_lastAnnouncedResult, result, StringComparison.Ordinal))) {
-            Announcements.Cancel(_boundSurface, prior);
-            _activeGroup = null;
+        bool newSettledResult = settledHidden && (_awaitingSettlement || !_wasHidden
+            || !string.Equals(_lastAnnouncedResult, result, StringComparison.Ordinal));
+        if (_activeGroup is not null && (!settledHidden || newSettledResult))
+        {
+            string formerGroup = _activeGroup;
+            ReleaseAnnouncement();
+            if (!settledHidden)
+            {
+                SurfaceAnnouncementGroupOwnership.For(Announcements).EndTransitionEpisode(_boundSurface, family, formerGroup);
+            }
         }
-        if (settledHidden && (!_wasHidden || !string.Equals(_lastAnnouncedResult, result, StringComparison.Ordinal))) {
+        if (newSettledResult)
+        {
+            _activeClaim = SurfaceAnnouncementGroupOwnership.For(Announcements)
+                .ClaimTransitionEpisode(_boundSurface, family,
+                    family + ":scope:" + ScopeGeneration.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                        + ":result:" + result, out string group);
+            _activeGroup = group;
+            _awaitingSettlement = false;
+        }
+        string focusKey = _activeGroup ?? string.Empty;
+        bool focusEligible = true;
+        if (settledHidden && _activeGroup is not null && !string.Equals(_focusGroupKey, focusKey, StringComparison.Ordinal))
+        {
+            ReleaseFocusClaim();
+            _focusOwnership = SurfaceHiddenFocusOwnership.For(Announcements);
+            if (_wasHidden)
+            {
+                _focusOwnership.MarkSpeechOnly(focusKey);
+            }
+            focusEligible = _focusOwnership.Claim(focusKey, this, OnFocusHandoff);
+            _focusGroupKey = focusKey;
+            if (!_wasHidden && !focusEligible)
+            {
+                _focusPending = false;
+            }
+        }
+        if (newSettledResult) {
             if (!_wasHidden) {
-                _focusPending = true;
+                _focusPending = focusEligible;
+                _focusTimeoutRetriesRemaining = _focusPending ? 1 : 0;
             }
             else {
                 _focusPending = false;
-                _activeGroup = "filter:" + ViewKey + ":" + _hiddenEpisode.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":" + result;
+                _focusTimeoutRetriesRemaining = 0;
                 Announcements.Announce(
                     _boundSurface,
-                    _activeGroup,
+                    _activeGroup!,
                     "hidden-detail:" + result,
                     Localizer["Am22DetailHidden"],
                     terminal: true);
@@ -120,43 +179,73 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
             _lastAnnouncedResult = result;
         }
 
-        _wasHidden = settledHidden;
+        // An unsettled result cannot erase a previously completed hidden episode.
+        // A first hidden result still waits until settlement before taking focus.
+        _wasHidden = IsHiddenByFilter && (_wasHidden || ResultSettled);
     }
 
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (_disposed || !_focusPending || !IsHiddenByFilter || !ResultSettled) {
+        if (_disposed || !_focusPending || _focusInFlight || !IsHiddenByFilter || !ResultSettled) {
             return;
         }
 
+        if (_focusGroupKey is null || _focusOwnership?.TryOwn(_focusGroupKey, this) != true)
+        {
+            // Keep this episode eligible if the current owner leaves before focus
+            // or fallback completes. The ownership callback schedules that render.
+            return;
+        }
+
+        _focusInFlight = true;
         string boundSurface = _boundSurface;
         string? boundResult = _lastAnnouncedResult;
+        long boundEpisode = _hiddenEpisode;
         ElementReference banner = _bannerRef;
         IJSObjectReference? focus = null;
+        bool retryAfterCleanup = false;
         try {
             focus = await JS.InvokeAsync<IJSObjectReference>(
                 "import", "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js").ConfigureAwait(true);
-            if (_disposed || !_focusPending || !IsHiddenByFilter || !ResultSettled
-                || !string.Equals(boundSurface, _boundSurface, StringComparison.Ordinal)
-                || !string.Equals(boundResult, _lastAnnouncedResult, StringComparison.Ordinal))
+            if (IsCurrentFocus(boundSurface, boundResult, boundEpisode))
             {
-                return;
-            }
-            bool focused = await focus.InvokeAsync<bool>("focusFirstButtonWithin", banner).ConfigureAwait(true);
-            if (!_disposed && _focusPending && IsHiddenByFilter && ResultSettled
-                && string.Equals(boundSurface, _boundSurface, StringComparison.Ordinal)
-                && string.Equals(boundResult, _lastAnnouncedResult, StringComparison.Ordinal))
-            {
-                _focusPending = !focused;
+                bool focused = await focus.InvokeAsync<bool>("focusFirstButtonWithin", banner).ConfigureAwait(true);
+                if (IsCurrentFocus(boundSurface, boundResult, boundEpisode))
+                {
+                    if (focused)
+                    {
+                        _focusPending = false;
+                        _focusOwnership?.Complete(_focusGroupKey!, this);
+                    }
+                    else
+                    {
+                        AnnounceFailedFocus(boundSurface, boundResult, boundEpisode);
+                    }
+                }
             }
         }
         catch (JSDisconnectedException) {
+            AnnounceFailedFocus(boundSurface, boundResult, boundEpisode);
         }
         catch (JSException) {
+            AnnounceFailedFocus(boundSurface, boundResult, boundEpisode);
         }
         catch (InvalidOperationException) {
+            AnnounceFailedFocus(boundSurface, boundResult, boundEpisode);
         }
         catch (OperationCanceledException) {
+            if (IsCurrentFocus(boundSurface, boundResult, boundEpisode))
+            {
+                if (_focusTimeoutRetriesRemaining > 0)
+                {
+                    _focusTimeoutRetriesRemaining--;
+                    retryAfterCleanup = true;
+                }
+                else
+                {
+                    AnnounceFailedFocus(boundSurface, boundResult, boundEpisode);
+                }
+            }
         }
         finally {
             if (focus is not null) {
@@ -167,10 +256,40 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
                 }
                 catch (JSException) {
                 }
+                catch (InvalidOperationException) {
+                }
                 catch (OperationCanceledException) {
                 }
             }
+            _focusInFlight = false;
+            if (_focusPending && IsHiddenByFilter && ResultSettled && !_disposed)
+            {
+                retryAfterCleanup = true;
+            }
         }
+        if (retryAfterCleanup && !_disposed)
+        {
+            await InvokeAsync(StateHasChanged).ConfigureAwait(true);
+        }
+    }
+
+    private bool IsCurrentFocus(string boundSurface, string? boundResult, long boundEpisode)
+        => !_disposed && _focusPending && IsHiddenByFilter && ResultSettled
+            && boundEpisode == _hiddenEpisode
+            && string.Equals(boundSurface, _boundSurface, StringComparison.Ordinal)
+            && string.Equals(boundResult, _lastAnnouncedResult, StringComparison.Ordinal);
+
+    private void AnnounceFailedFocus(string boundSurface, string? boundResult, long boundEpisode)
+    {
+        if (!IsCurrentFocus(boundSurface, boundResult, boundEpisode))
+        {
+            return;
+        }
+
+        _focusPending = false;
+        _focusOwnership?.Complete(_focusGroupKey!, this);
+        Announcements.Announce(_boundSurface, _activeGroup!, "hidden-detail:" + boundResult,
+            Localizer["Am22DetailHidden"], terminal: true);
     }
 
     private Task OnClearFilterClickedAsync() {
@@ -178,13 +297,43 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
         return Task.CompletedTask;
     }
 
+    private void ReleaseAnnouncement() {
+        _activeClaim?.Dispose();
+        _activeClaim = null;
+        _activeGroup = null;
+    }
+
+    private void ReleaseFocusClaim()
+    {
+        if (_focusGroupKey is { } group)
+        {
+            _focusOwnership?.Release(group, this);
+            _focusGroupKey = null;
+        }
+    }
+
+    private void OnFocusHandoff(string group)
+    {
+        if (_disposed || !_focusPending || _focusInFlight || !string.Equals(_focusGroupKey, group, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _ = InvokeAsync(() =>
+        {
+            if (!_disposed && _focusPending && !_focusInFlight && IsHiddenByFilter && ResultSettled
+                && string.Equals(_focusGroupKey, group, StringComparison.Ordinal))
+            {
+                StateHasChanged();
+            }
+        });
+    }
+
     /// <inheritdoc />
     public void Dispose() {
         _disposed = true;
-        if (_activeGroup is { } group) {
-            Announcements.Cancel(_boundSurface, group);
-            _activeGroup = null;
-        }
+        ReleaseAnnouncement();
+        ReleaseFocusClaim();
         GC.SuppressFinalize(this);
     }
 }

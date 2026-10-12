@@ -27,6 +27,19 @@ public class RazorEmitterTests {
     }
 
     [Fact]
+    public void GeneratedFallbackLaneIdentityPreservesNullAndDelimiterBearingCriteria()
+    {
+        var model = new RazorModel("OrderProjection", "TestDomain", "Orders",
+            new EquatableArray<ColumnModel>(ImmutableArray.Create(Col("Name", "Name", TypeCategory.Text))));
+        string source = RazorEmitter.Emit(model);
+
+        source.ShouldContain("snapshot?.SortColumn, snapshot?.SortDescending");
+        source.ShouldContain("searchQuery }.Concat(filters");
+        source.ShouldContain("part is null ? \"-1:\"");
+        source.ShouldContain("part.Length.ToString(System.Globalization.CultureInfo.InvariantCulture) + \":\" + part");
+    }
+
+    [Fact]
     public Task DisplayNameOverrides_Snapshot() {
         var model = new RazorModel("OrderProjection", "TestDomain", "Orders",
             new EquatableArray<ColumnModel>(ImmutableArray.Create(
@@ -99,7 +112,7 @@ public class RazorEmitterTests {
         source.ShouldContain("foreach (var entry in NewItemIndicators.Snapshot(_viewKey))");
         source.ShouldContain("builder.SetKey(entry.EntityKey);");
         int subscriptionDispose = source.IndexOf("_newItemIndicatorSubscription?.Dispose();", StringComparison.Ordinal);
-        int asynchronousDispose = source.IndexOf("await ScrollInterop.DisposeViewKeyAsync", StringComparison.Ordinal);
+        int asynchronousDispose = source.IndexOf("await ScrollInterop.DisposeInstanceAsync", StringComparison.Ordinal);
         subscriptionDispose.ShouldBeGreaterThan(0);
         subscriptionDispose.ShouldBeLessThan(asynchronousDispose);
 

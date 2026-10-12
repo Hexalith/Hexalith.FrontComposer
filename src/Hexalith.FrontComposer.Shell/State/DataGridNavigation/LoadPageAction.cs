@@ -115,4 +115,13 @@ public sealed record LoadPageAction {
 
     /// <summary>Request registration time captured by the view for stable slow-query timing.</summary>
     public DateTimeOffset? RegisteredAt { get; init; }
+
+    /// <summary>Authenticated tenant captured by a generated page producer.</summary>
+    public string? OriginTenantId { get; init; }
+
+    /// <summary>Authenticated user captured by a generated page producer.</summary>
+    public string? OriginUserId { get; init; }
+
+    /// <summary>Loaded-page scope generation captured by a generated page producer.</summary>
+    public long? OriginScopeGeneration { get; init; }
 }

@@ -9,7 +9,8 @@ namespace Hexalith.FrontComposer.Shell.Components.Rendering;
 /// Story 4-1 T4.1 / D6 / AC8 — role-aware loading skeleton rendered by every generated
 /// projection view during <c>state.IsLoading</c>. <see cref="Layout"/> picks the
 /// role-specific visual shape (table / card / timeline) so the skeleton previews the
-/// body it replaces. Outer container carries <c>role="status"</c> + <c>aria-busy="true"</c>.
+/// body it replaces. Standalone use carries <c>role="status"</c>; shared-status use
+/// retains an accessible labelled group. Both carry <c>aria-busy="true"</c>.
 /// </summary>
 /// <remarks>
 /// Frozen parameter shape for v1 (Story 4-1 cross-story contract). Story 4.4 column
@@ -53,6 +54,10 @@ public partial class FcProjectionLoadingSkeleton {
     /// </summary>
     [Parameter]
     public string EntityLabel { get; set; } = "items";
+
+    /// <summary>Uses a containing projection's persistent status node for speech.</summary>
+    [Parameter]
+    public bool SharedStatusOwner { get; set; }
 
     private string ResolvedAriaLabel => AriaLabel ?? string.Format(
         System.Globalization.CultureInfo.CurrentCulture,

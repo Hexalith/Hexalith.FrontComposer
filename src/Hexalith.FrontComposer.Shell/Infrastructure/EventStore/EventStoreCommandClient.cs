@@ -185,17 +185,19 @@ public sealed class EventStoreCommandClient(
 
                 string? responseCorrelationId = NormalizeCorrelation(classification.CorrelationId);
                 if (responseCorrelationId is null) {
+                    TimeProvider recoveryTime = observedAt is null ? TimeProvider.System : timeProvider ?? TimeProvider.System;
+                    DateTimeOffset recoveryDeadline = (observedAt ?? recoveryTime.GetUtcNow()) + TimeSpan.FromSeconds(2);
                     try {
-                        responseCorrelationId = await ReadAcceptedCorrelationIdAsync(response, logger, commandTypeName, messageId, timeProvider ?? TimeProvider.System, cancellationToken).ConfigureAwait(false);
+                        responseCorrelationId = await ReadAcceptedCorrelationIdAsync(response, logger, commandTypeName, messageId, recoveryTime, recoveryDeadline, cancellationToken).ConfigureAwait(false);
                     }
-                    catch (Exception ex) when ((ex is HttpRequestException or IOException or JsonException or TimeoutException or OperationCanceledException)
+                    catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)
                         && !cancellationToken.IsCancellationRequested
                         && currentShellOptions.CommandDispatchRetryAttempts > 0) {
                         responseCorrelationId = await RetryAcceptedCorrelationAsync(
                             client, current, currentShellOptions, messageId, tenant, domain, aggregateId,
-                            commandTypeName, payload, cancellationToken).ConfigureAwait(false);
+                            commandTypeName, payload, recoveryDeadline, cancellationToken).ConfigureAwait(false);
                     }
-                    catch (Exception ex) when (ex is HttpRequestException or IOException or JsonException or TimeoutException or OperationCanceledException) {
+                    catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
                         // The headers prove acceptance; an unreadable optional body only leaves
                         // correlation unknown. Polling still starts with the original MessageId.
                         responseCorrelationId = null;
@@ -275,21 +277,27 @@ public sealed class EventStoreCommandClient(
         string aggregateId,
         string commandTypeName,
         JsonElement payload,
+        DateTimeOffset recoveryDeadline,
         CancellationToken cancellationToken) {
         CancellationTokenSource recoveryCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         Task<string?>? recovery = null;
         try {
             // Bound the complete optional recovery, even if a provider/transport ignores
             // cancellation. A normal HttpClient timeout must not extend accepted feedback.
+            TimeProvider recoveryTime = timeProvider ?? TimeProvider.System;
+            TimeSpan remaining = recoveryDeadline - recoveryTime.GetUtcNow();
+            if (remaining <= TimeSpan.Zero) {
+                return null;
+            }
             recovery = RetryAsync(recoveryCancellation.Token);
-            return await recovery.WaitAsync(TimeSpan.FromSeconds(2), timeProvider ?? TimeProvider.System, cancellationToken).ConfigureAwait(false);
+            return await recovery.WaitAsync(remaining, recoveryTime, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             // The first response already proved acceptance. A failed retry remains unconfirmed.
             return null;
         }
         finally {
-            ObserveAcceptedCleanup(recoveryCancellation, recovery);
+            ObserveAcceptedCleanup(recoveryCancellation, recovery, timeProvider ?? TimeProvider.System);
         }
 
         async Task<string?> RetryAsync(CancellationToken recoveryToken) {
@@ -304,7 +312,7 @@ public sealed class EventStoreCommandClient(
             recoveryToken.ThrowIfCancellationRequested();
             EventStoreCommandClassification repeated = await classifier.ClassifyCommandAsync(response, recoveryToken).ConfigureAwait(false);
             return repeated.IsAccepted
-                ? NormalizeCorrelation(repeated.CorrelationId) ?? await ReadAcceptedCorrelationIdAsync(response, logger, commandTypeName, messageId, timeProvider ?? TimeProvider.System, recoveryToken).ConfigureAwait(false)
+                ? NormalizeCorrelation(repeated.CorrelationId) ?? await ReadAcceptedCorrelationIdAsync(response, logger, commandTypeName, messageId, timeProvider ?? TimeProvider.System, recoveryDeadline, recoveryToken).ConfigureAwait(false)
                 : null;
         }
     }
@@ -346,23 +354,28 @@ public sealed class EventStoreCommandClient(
         string commandType,
         string messageId,
         TimeProvider time,
+        DateTimeOffset recoveryDeadline,
         CancellationToken cancellationToken) {
         CancellationTokenSource bodyCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         Task<string?>? reading = null;
         try {
+            TimeSpan remaining = recoveryDeadline - time.GetUtcNow();
+            if (remaining <= TimeSpan.Zero) {
+                throw new TimeoutException("Accepted correlation recovery expired.");
+            }
             reading = ReadCorrelationIdAsync(response, logger, commandType, messageId, bodyCancellation.Token);
-            return await reading.WaitAsync(TimeSpan.FromSeconds(2), time, cancellationToken).ConfigureAwait(false);
+            return await reading.WaitAsync(remaining, time, cancellationToken).ConfigureAwait(false);
         }
         finally {
-            ObserveAcceptedCleanup(bodyCancellation, reading);
+            ObserveAcceptedCleanup(bodyCancellation, reading, time);
         }
     }
 
-    private static void ObserveAcceptedCleanup(CancellationTokenSource cancellation, Task? recovery)
+    private static void ObserveAcceptedCleanup(CancellationTokenSource cancellation, Task? recovery, TimeProvider time)
     {
-        // CancelAsync schedules provider callbacks without blocking accepted return. Keep the
-        // source alive until callbacks and abandoned work settle, and observe every fault.
-        Task cleanup = CompleteAcceptedCleanupAsync(cancellation, recovery);
+        // Accepted return cannot wait for a provider that ignores cancellation. Cleanup has
+        // its own finite lifetime, while late provider faults remain observed.
+        Task cleanup = CompleteAcceptedCleanupAsync(cancellation, recovery, time);
         _ = cleanup.ContinueWith(
             static completed => { _ = completed.Exception; },
             CancellationToken.None,
@@ -370,25 +383,51 @@ public sealed class EventStoreCommandClient(
             TaskScheduler.Default);
     }
 
-    private static async Task CompleteAcceptedCleanupAsync(CancellationTokenSource cancellation, Task? recovery)
+    private static async Task CompleteAcceptedCleanupAsync(CancellationTokenSource cancellation, Task? recovery, TimeProvider time)
     {
+        ObserveLateAcceptedFault(recovery);
         try
         {
-            Task completion = Task.WhenAll(cancellation.CancelAsync(), recovery ?? Task.CompletedTask);
+            Task cancellationTask = cancellation.CancelAsync();
+            ObserveLateAcceptedFault(cancellationTask);
             try
             {
-                await completion.ConfigureAwait(false);
+                await cancellationTask.WaitAsync(TimeSpan.FromSeconds(1), time).ConfigureAwait(false);
             }
             catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)
-                && completion.Exception?.Flatten().InnerExceptions.Any(ExceptionGuard.IsFatal) != true)
+                && cancellationTask.Exception?.Flatten().InnerExceptions.Any(ExceptionGuard.IsFatal) != true)
             {
-                // Optional cleanup cannot turn proven acceptance into a dispatch failure.
+                // Optional cleanup cannot turn proven acceptance into a dispatch failure;
+                // abandoned work is observed independently after this bound.
+            }
+            if (recovery?.IsCompleted == true)
+            {
+                try
+                {
+                    await recovery.ConfigureAwait(false);
+                }
+                catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)
+                    && recovery.Exception?.Flatten().InnerExceptions.Any(ExceptionGuard.IsFatal) != true)
+                {
+                    // A prompt optional-read fault is harmless once headers prove acceptance.
+                }
             }
         }
         finally
         {
             cancellation.Dispose();
         }
+    }
+
+    private static void ObserveLateAcceptedFault(Task? task)
+    {
+        if (task is null)
+        {
+            return;
+        }
+        _ = task.ContinueWith(static completed => { _ = completed.Exception; },
+            CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     private static async Task<string?> ReadCorrelationIdAsync(

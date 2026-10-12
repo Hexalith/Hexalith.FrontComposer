@@ -360,11 +360,9 @@ public sealed partial class FrontComposerMcpLifecycleStore(
             bool becameTerminal = false;
             lock (_gate) {
                 bool currentTerminal = IsTerminalState(_state);
-                if (currentTerminal && transition.NewState != _state) {
+                if (currentTerminal) {
                     return;
                 }
-
-                bool sameStateRedelivery = currentTerminal && transition.NewState == _state;
 
                 _state = transition.NewState;
                 if (transition.NewState == CommandLifecycleState.Confirmed) {
@@ -372,10 +370,6 @@ public sealed partial class FrontComposerMcpLifecycleStore(
                         _outcome = transition.IdempotencyResolved
                             ? McpTerminalOutcome.IdempotentSuccess(Descriptor.Title)
                             : McpTerminalOutcome.Success();
-                    }
-                    else if (transition.IdempotencyResolved
-                        && _outcome.Kind == McpTerminalOutcomeKind.Confirmed) {
-                        _outcome = McpTerminalOutcome.IdempotentSuccess(Descriptor.Title);
                     }
                 }
                 else if (transition.NewState == CommandLifecycleState.Rejected && _outcome is null) {
@@ -392,9 +386,7 @@ public sealed partial class FrontComposerMcpLifecycleStore(
                     _outcome = McpTerminalOutcome.Unconfirmed(transition.NewState);
                 }
 
-                if (!sameStateRedelivery) {
-                    AppendHistory(transition.NewState, transition.MessageId, transition.TimestampUtc, transition.IdempotencyResolved);
-                }
+                AppendHistory(transition.NewState, transition.MessageId, transition.TimestampUtc, transition.IdempotencyResolved);
 
                 if (IsTerminalState(_state) && !_terminalRecorded) {
                     _terminalRecorded = true;

@@ -1,5 +1,6 @@
 @namespace Hexalith.FrontComposer.Shell.Components.DataGrid
 @using Microsoft.FluentUI.AspNetCore.Components
+@using Hexalith.FrontComposer.Shell.Components.Rendering
 
 @* Story 4-5 AC8 / D19 / Review-revision — breadcrumb banner shown above the FluentDataGrid when
    the user has an expanded row that the current filter predicate has hidden from state.Items.
@@ -7,18 +8,24 @@
    IsHiddenByFilter (it has typed access to state.Items + _expandedItem) and passes the bool
    to this banner — the banner does not need to recompute the filter predicate itself. *@
 
-@if (IsHiddenByFilter) {
+@if (!SharedStatusOwner) {
+    <FcSurfaceStatus Surface="@("projection:" + ViewKey)" ExclusiveOwner="true" />
+}
+
+@if (IsMissing || IsHiddenByFilter) {
     <div role="group"
          aria-live="off"
          @ref="_bannerRef"
          class="fc-expanded-row-hidden-banner"
          data-testid="fc-expanded-row-hidden-banner">
         <span id="@_descriptionId" class="fc-expanded-row-hidden-banner-text">@_bannerMessage</span>
-        <FluentButton Appearance="ButtonAppearance.Subtle"
-                      aria-describedby="@_descriptionId"
-                      OnClick="@OnClearFilterClickedAsync"
-                      data-testid="fc-expanded-row-hidden-banner-clear">
-            @Localizer["ExpandedRowHiddenByFilterBannerClearLink"].Value
-        </FluentButton>
+        @if (IsHiddenByFilter) {
+            <FluentButton Appearance="ButtonAppearance.Subtle"
+                          aria-describedby="@_descriptionId"
+                          OnClick="@OnClearFilterClickedAsync"
+                          data-testid="fc-expanded-row-hidden-banner-clear">
+                @Localizer["ExpandedRowHiddenByFilterBannerClearLink"].Value
+            </FluentButton>
+        }
     </div>
 }

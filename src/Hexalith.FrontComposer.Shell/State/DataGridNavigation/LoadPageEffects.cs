@@ -30,6 +30,7 @@ public sealed class LoadPageEffects {
     private readonly IOptionsMonitor<FcShellOptions> _options;
     private readonly TimeProvider _timeProvider;
     private readonly IStringLocalizer<FcShellResources>? _localizer;
+    private readonly IUserContextAccessor? _userContextAccessor;
 
     /// <summary>Initializes a new instance of the <see cref="LoadPageEffects"/> class.</summary>
     /// <param name="state">Read-only <see cref="LoadedPageState"/> for the defensive-finally guard.</param>
@@ -44,7 +45,8 @@ public sealed class LoadPageEffects {
         ILogger<LoadPageEffects> logger,
         IOptionsMonitor<FcShellOptions> options,
         TimeProvider? timeProvider = null,
-        IStringLocalizer<FcShellResources>? localizer = null) {
+        IStringLocalizer<FcShellResources>? localizer = null,
+        IUserContextAccessor? userContextAccessor = null) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(loader);
         ArgumentNullException.ThrowIfNull(logger);
@@ -55,6 +57,7 @@ public sealed class LoadPageEffects {
         _options = options;
         _timeProvider = timeProvider ?? TimeProvider.System;
         _localizer = localizer;
+        _userContextAccessor = userContextAccessor;
     }
 
     /// <summary>Handles <see cref="LoadPageAction"/> per Story 4-4 D3 re-revised.</summary>
@@ -67,6 +70,10 @@ public sealed class LoadPageEffects {
         CancellationTokenRegistration ctr = default;
 
         try {
+            if (!IsCurrentOrigin(action)) {
+                dispatcher.Dispatch(new LoadPageCancelledAction(action.ViewKey, action.Skip, action.Completion));
+                return;
+            }
             // Route cancellation through the Fluxor pipeline — the reducer handles TCS cleanup.
             ctr = action.CancellationToken.Register(() => {
                 try {
@@ -88,7 +95,7 @@ public sealed class LoadPageEffects {
                     items: Array.Empty<object>(),
                     totalCount: maxUnfilteredItems,
                     elapsedMs: 0,
-                    completion: action.Completion) { RequestIdentity = action.RequestIdentity, RequestGeneration = action.RequestGeneration, OperatorInitiated = action.OperatorInitiated });
+                    completion: action.Completion) { RequestIdentity = action.RequestIdentity, RequestGeneration = action.RequestGeneration, OperatorInitiated = action.OperatorInitiated, Take = action.Take, OriginScopeGeneration = action.OriginScopeGeneration });
                 return;
             }
 
@@ -104,6 +111,11 @@ public sealed class LoadPageEffects {
                 action.CancellationToken).ConfigureAwait(false);
             long elapsedMs = (long)_timeProvider.GetElapsedTime(startTicks).TotalMilliseconds;
 
+            if (!IsCurrentOrigin(action)) {
+                dispatcher.Dispatch(new LoadPageCancelledAction(action.ViewKey, action.Skip, action.Completion));
+                return;
+            }
+
             // Story 5-2 D4 / AC4 — 304 Not Modified takes the explicit no-change path. The
             // reducer resolves the TCS from cached items WITHOUT state mutation so the
             // DataGrid emits no loading flash / synthetic success / badge animation.
@@ -112,7 +124,7 @@ public sealed class LoadPageEffects {
                     viewKey: action.ViewKey,
                     skip: action.Skip,
                     cachedItems: result.Items,
-                    completion: action.Completion) { RequestIdentity = action.RequestIdentity, RequestGeneration = action.RequestGeneration });
+                    completion: action.Completion) { RequestIdentity = action.RequestIdentity, RequestGeneration = action.RequestGeneration, OriginScopeGeneration = action.OriginScopeGeneration, TotalCount = result.TotalCount, MaxCachedPages = _options.CurrentValue.MaxCachedPages });
                 return;
             }
 
@@ -126,12 +138,16 @@ public sealed class LoadPageEffects {
                 items: result.Items,
                 totalCount: totalCount,
                 elapsedMs: elapsedMs,
-                completion: action.Completion) { RequestIdentity = action.RequestIdentity, RequestGeneration = action.RequestGeneration, OperatorInitiated = action.OperatorInitiated });
+                completion: action.Completion) { RequestIdentity = action.RequestIdentity, RequestGeneration = action.RequestGeneration, OperatorInitiated = action.OperatorInitiated, Take = action.Take, OriginScopeGeneration = action.OriginScopeGeneration });
         }
         catch (OperationCanceledException) {
             dispatcher.Dispatch(new LoadPageCancelledAction(action.ViewKey, action.Skip, action.Completion));
         }
         catch (ProjectionSchemaMismatchException ex) {
+            if (!IsCurrentOrigin(action)) {
+                dispatcher.Dispatch(new LoadPageCancelledAction(action.ViewKey, action.Skip, action.Completion));
+                return;
+            }
             // P36 — resolve the user-visible copy through IStringLocalizer when registered so
             // French-locale users see the translated `SectionUpdatingText` instead of the
             // English literal. The localizer is optional: hosts that have not opted in to
@@ -146,12 +162,16 @@ public sealed class LoadPageEffects {
                 _logger,
                 ex.ProjectionType,
                 ex.GetType().Name);
-            dispatcher.Dispatch(new LoadPageFailedAction(action.ViewKey, action.Skip, sectionUpdatingCopy, action.Completion) { RequestIdentity = action.RequestIdentity, RequestGeneration = action.RequestGeneration, Take = action.Take });
+            dispatcher.Dispatch(new LoadPageFailedAction(action.ViewKey, action.Skip, sectionUpdatingCopy, action.Completion) { RequestIdentity = action.RequestIdentity, RequestGeneration = action.RequestGeneration, Take = action.Take, OriginScopeGeneration = action.OriginScopeGeneration });
         }
         catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+            if (!IsCurrentOrigin(action)) {
+                dispatcher.Dispatch(new LoadPageCancelledAction(action.ViewKey, action.Skip, action.Completion));
+                return;
+            }
             // Transport exception text can contain endpoint, tenant, or response fragments.
             string message = _localizer is null ? "Data could not be loaded." : _localizer["Am30QueryFailed"];
-            dispatcher.Dispatch(new LoadPageFailedAction(action.ViewKey, action.Skip, message, action.Completion) { RequestIdentity = action.RequestIdentity, RequestGeneration = action.RequestGeneration, Take = action.Take });
+            dispatcher.Dispatch(new LoadPageFailedAction(action.ViewKey, action.Skip, message, action.Completion) { RequestIdentity = action.RequestIdentity, RequestGeneration = action.RequestGeneration, Take = action.Take, OriginScopeGeneration = action.OriginScopeGeneration });
         }
         finally {
             ctr.Dispose();
@@ -159,13 +179,22 @@ public sealed class LoadPageEffects {
             // Defensive guarantee-terminal-dispatch per D3 re-revised. If the TCS is still in
             // PendingCompletionsByKey the effect somehow exited without a terminal action.
             // Wrap the dispatch so a store-disposal ObjectDisposedException doesn't re-propagate.
-            if (_state.Value.PendingCompletionsByKey.ContainsKey(key)) {
+            bool ownsPending = _state.Value.PendingCompletionsByKey.TryGetValue(key, out TaskCompletionSource<object>? primary)
+                && (ReferenceEquals(primary, action.Completion)
+                    || _state.Value.AdditionalPendingCompletionsByKey.TryGetValue(key, out var additional)
+                        && additional.Contains(action.Completion));
+            if (ownsPending) {
                 try {
-                    dispatcher.Dispatch(new LoadPageFailedAction(
-                        viewKey: action.ViewKey,
-                        skip: action.Skip,
-                        errorMessage: _localizer is null ? "Data could not be loaded." : _localizer["Am30QueryFailed"].Value,
-                        completion: action.Completion) { RequestIdentity = action.RequestIdentity, RequestGeneration = action.RequestGeneration, Take = action.Take });
+                    if (!IsCurrentOrigin(action)) {
+                        dispatcher.Dispatch(new LoadPageCancelledAction(action.ViewKey, action.Skip, action.Completion));
+                    }
+                    else {
+                        dispatcher.Dispatch(new LoadPageFailedAction(
+                            viewKey: action.ViewKey,
+                            skip: action.Skip,
+                            errorMessage: _localizer is null ? "Data could not be loaded." : _localizer["Am30QueryFailed"].Value,
+                            completion: action.Completion) { RequestIdentity = action.RequestIdentity, RequestGeneration = action.RequestGeneration, Take = action.Take, OriginScopeGeneration = action.OriginScopeGeneration });
+                    }
                 }
                 catch (Exception defensiveEx) when (!ExceptionGuard.IsFatal(defensiveEx)) {
                     FrontComposerWarningLog.ProjectionLoadTerminalDispatchFailed(
@@ -175,6 +204,27 @@ public sealed class LoadPageEffects {
                         defensiveEx);
                 }
             }
+        }
+    }
+
+    private bool IsCurrentOrigin(LoadPageAction action) {
+        if (action.OriginScopeGeneration is { } generation && _state.Value.ScopeGeneration != generation) {
+            return false;
+        }
+        if (action.OriginTenantId is null && action.OriginUserId is null) {
+            return true;
+        }
+        if (string.IsNullOrWhiteSpace(action.OriginTenantId)
+            || string.IsNullOrWhiteSpace(action.OriginUserId)
+            || _userContextAccessor is null) {
+            return false;
+        }
+        try {
+            return string.Equals(_userContextAccessor.TenantId, action.OriginTenantId, StringComparison.Ordinal)
+                && string.Equals(_userContextAccessor.UserId, action.OriginUserId, StringComparison.Ordinal);
+        }
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+            return false;
         }
     }
 

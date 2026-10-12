@@ -380,6 +380,7 @@ public class CommandRendererEmitterTests {
         source.ShouldContain("builder.AddAttribute(#, \"AnnouncementSurface\", \"command-renderer:\" + _triggerButtonId);");
         source.ShouldContain("builder.AddAttribute(#, \"OwnsSurfaceStatus\", true);");
         source.ShouldContain("builder.AddAttribute(#, \"OnBlockedSubmission\", EventCallback.Factory.Create<bool>(this, OnFormBlockedSubmissionAsync));");
+        source.ShouldContain("builder.AddAttribute(#, \"ExternalStatusOwner\", true);");
         source.ShouldContain("return blocked ? _blockedOutcome.PresentAsync() : _blockedOutcome.ClearAsync();");
         oneField.ShouldNotContain("FcCommandBlockedOutcome");
         oneField.ShouldNotContain("OnBlockedSubmission");

@@ -22,6 +22,74 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.DataGridNavigation;
 /// </summary>
 public sealed class LoadPageReducerTests {
     [Fact]
+    public async Task EvictedOutOfRangeEmptyPageIsRestoredByCurrentUnchangedRead()
+    {
+        LoadedPageReducers reducers = MakeReducers(maxCachedPages: 1);
+        LoadedPageState state = new() { ScopeGeneration = 3 };
+        state = reducers.ReduceLoadPageSucceeded(state,
+            new LoadPageSucceededAction(ViewKey, 10, [], 5, 0) { OriginScopeGeneration = 3 });
+        state = reducers.ReduceLoadPageSucceeded(state,
+            new LoadPageSucceededAction(ViewKey, 0, ["row"], 5, 0) { OriginScopeGeneration = 3 });
+        state.PagesByKey.ShouldNotContainKey((ViewKey, 10));
+        state = LoadedPageReducers.ReduceMarkProjectionStale(state,
+            new MarkProjectionStaleAction(ViewKey, 10, 3, string.Empty, null));
+        TaskCompletionSource<object> completion = new();
+        state = LoadedPageReducers.ReduceLoadPage(state,
+            MakeLoadPage(ViewKey, 10, completion) with { OriginScopeGeneration = 3 });
+        LoadPageNotModifiedAction unchanged = new(ViewKey, 10, [], completion)
+            { OriginScopeGeneration = 3, TotalCount = 5 };
+
+        LoadedPageState restored = LoadedPageReducers.ReduceLoadPageNotModified(state, unchanged);
+
+        restored.PagesByKey[(ViewKey, 10)].ShouldBeEmpty();
+        restored.TotalCountByKey[ViewKey].ShouldBe(5);
+        restored.StalePages.ShouldNotContain((ViewKey, 10));
+        restored.SuccessfulReadSequenceByPage.ShouldContainKey((ViewKey, 10));
+        restored.PendingCompletionsByKey.ShouldNotContainKey((ViewKey, 10));
+        ((IReadOnlyList<object>)await completion.Task).ShouldBeEmpty();
+        LoadedPageReducers.ReduceLoadPageNotModified(restored, unchanged).ShouldBeSameAs(restored);
+    }
+
+    [Fact]
+    public async Task EvictedInRangeEmptyPageDoesNotBecomeFreshWithoutRowEvidence()
+    {
+        LoadedPageState state = new() { ScopeGeneration = 3 };
+        TaskCompletionSource<object> completion = new();
+        state = LoadedPageReducers.ReduceLoadPage(state,
+            MakeLoadPage(ViewKey, 0, completion) with { OriginScopeGeneration = 3 });
+        LoadPageNotModifiedAction unchanged = new(ViewKey, 0, [], completion)
+            { OriginScopeGeneration = 3, TotalCount = 5 };
+
+        LoadedPageState unresolved = LoadedPageReducers.ReduceLoadPageNotModified(state, unchanged);
+
+        unresolved.PagesByKey.ShouldNotContainKey((ViewKey, 0));
+        unresolved.StalePages.ShouldContain((ViewKey, 0));
+        unresolved.SuccessfulReadSequenceByPage.ShouldNotContainKey((ViewKey, 0));
+        unresolved.PendingCompletionsByKey.ShouldNotContainKey((ViewKey, 0));
+        _ = await Should.ThrowAsync<InvalidOperationException>(async () => await completion.Task);
+    }
+
+    [Fact]
+    public void RestoringOutOfRangeEmptyPageKeepsAnotherFailedOffsetAvailableForRetry()
+    {
+        LoadedPageResult failed = new(1, string.Empty, 0, true, false, 20, 20)
+            { ErrorMessage = "Am30QueryFailed" };
+        LoadedPageState state = new() {
+            ScopeGeneration = 2,
+            ResultsByPage = ImmutableDictionary<(string ViewKey, int Skip), LoadedPageResult>.Empty
+                .Add((ViewKey, 20), failed),
+            FailureByKey = ImmutableDictionary<string, string>.Empty.Add(ViewKey, "Am30QueryFailed"),
+        };
+
+        LoadedPageState restored = LoadedPageReducers.ReduceLoadPageNotModified(state,
+            new LoadPageNotModifiedAction(ViewKey, 10, []) { OriginScopeGeneration = 2, TotalCount = 5 });
+
+        restored.PagesByKey[(ViewKey, 10)].ShouldBeEmpty();
+        restored.ResultsByPage[(ViewKey, 20)].ShouldBe(failed);
+        restored.FailureByKey[ViewKey].ShouldBe("Am30QueryFailed");
+    }
+
+    [Fact]
     public void GenuineReadSequenceSurvivesCriteriaInvalidationAndAdvancesForMatchingUnchangedReadsOnly()
     {
         LoadedPageReducers reducers = MakeReducers();
@@ -37,7 +105,7 @@ public sealed class LoadPageReducerTests {
         state.ResultsByPage.Keys.ShouldNotContain(key => key.ViewKey == ViewKey);
         state.SuccessfulReadSequenceByView[ViewKey].ShouldBe(1);
         LoadPageNotModifiedAction matching = new(ViewKey, 0, ["cached"], pending)
-            { OriginScopeGeneration = 2, RequestIdentity = "b", RequestGeneration = 2 };
+            { OriginScopeGeneration = 2, RequestIdentity = "b", RequestGeneration = 2, TotalCount = 1 };
         LoadedPageReducers.ReduceLoadPageNotModified(state, matching with { RequestGeneration = 1 }).ShouldBeSameAs(state);
         LoadedPageReducers.ReduceLoadPageNotModified(state, matching with { OriginScopeGeneration = 1 }).ShouldBeSameAs(state);
         state = LoadedPageReducers.ReduceLoadPageNotModified(state, matching);
@@ -164,6 +232,25 @@ public sealed class LoadPageReducerTests {
         _ = await Should.ThrowAsync<TaskCanceledException>(async () => await tcs0.Task);
         _ = await Should.ThrowAsync<TaskCanceledException>(async () => await tcs20.Task);
         tcsOther.Task.IsCompleted.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void ReleasedGenerationCannotClearReplacementPendingPage()
+    {
+        var owners = Hexalith.FrontComposer.Shell.Services.DataGridViewOwnership.For(NSubstitute.Substitute.For<Fluxor.IDispatcher>());
+        long first = owners.Register(ViewKey);
+        owners.Release(ViewKey).ShouldBeTrue();
+        ClearPendingPagesAction oldCleanup = new(ViewKey) { StillFinalOwner = () => owners.CanDispose(ViewKey, first) };
+
+        long replacement = owners.Register(ViewKey);
+        TaskCompletionSource<object> pending = new();
+        LoadedPageState state = LoadedPageReducers.ReduceLoadPage(new LoadedPageState(), MakeLoadPage(ViewKey, 0, pending));
+        LoadedPageReducers.ReduceClearPendingPages(state, oldCleanup).ShouldBeSameAs(state);
+        pending.Task.IsCompleted.ShouldBeFalse();
+        owners.Release(ViewKey).ShouldBeTrue();
+        LoadedPageReducers.ReduceClearPendingPages(state,
+            new ClearPendingPagesAction(ViewKey) { StillFinalOwner = () => owners.CanDispose(ViewKey, replacement) })
+            .PendingCompletionsByKey.ShouldBeEmpty();
     }
 
     [Fact]

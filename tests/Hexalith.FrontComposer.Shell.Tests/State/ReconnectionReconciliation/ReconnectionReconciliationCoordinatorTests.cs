@@ -11,6 +11,113 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.State.ReconnectionReconciliation;
 
 public sealed class ReconnectionReconciliationCoordinatorTests {
+    [Fact]
+    public async Task HeldWaitCancellationCallbackCannotExtendThirtySecondDeadline()
+    {
+        FakeTimeProvider time = new(FixedNow);
+        ReconnectionReconciliationStateService state = NewState();
+        using ManualResetEventSlim releaseCancellation = new(false);
+        HeldIncompleteReadScheduler scheduler = new() { CancellationRelease = releaseCancellation };
+        using ReconnectionReconciliationCoordinator sut = new(scheduler, state, new FakeDispatcher(), time,
+            NullLogger<ReconnectionReconciliationCoordinator>.Instance);
+        try
+        {
+            Task<ProjectionReconciliationRefreshResult> recovery = sut.ReconcileAsync(TestContext.Current.CancellationToken);
+            await scheduler.WaitStarted.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+            Task advance = Task.Run(() => time.Advance(TimeSpan.FromSeconds(30)), TestContext.Current.CancellationToken);
+            await advance.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+            ProjectionReconciliationRefreshResult expired = await recovery.WaitAsync(
+                TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+            expired.HasIncompleteEligibleReads.ShouldBeTrue();
+            state.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Idle);
+            await scheduler.CancellationEntered.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        }
+        finally
+        {
+            releaseCancellation.Set();
+            scheduler.Release();
+        }
+    }
+
+    [Fact]
+    public async Task ReleasedLaneRecheckThatIgnoresCancellationCannotClaimRecoveryAfterDeadline()
+    {
+        FakeTimeProvider time = new(FixedNow);
+        ReconnectionReconciliationStateService state = NewState();
+        HeldIncompleteReadScheduler scheduler = new(holdRecheck: true);
+        using ReconnectionReconciliationCoordinator sut = new(scheduler, state, new FakeDispatcher(), time,
+            NullLogger<ReconnectionReconciliationCoordinator>.Instance);
+
+        Task<ProjectionReconciliationRefreshResult> recovery = sut.ReconcileAsync(TestContext.Current.CancellationToken);
+        scheduler.Release();
+        await scheduler.RecheckStarted.Task.WaitAsync(TestContext.Current.CancellationToken);
+        time.Advance(TimeSpan.FromMilliseconds(29_999));
+        recovery.IsCompleted.ShouldBeFalse();
+        time.Advance(TimeSpan.FromMilliseconds(1));
+        ProjectionReconciliationRefreshResult expired = await recovery.WaitAsync(TestContext.Current.CancellationToken);
+        expired.HasIncompleteEligibleReads.ShouldBeTrue();
+        state.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Idle);
+        scheduler.ReleaseRecheck();
+        state.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Idle);
+    }
+
+    [Fact]
+    public async Task EligibleReadIgnoringCancellationTimesOutWithoutRecoveryThenLaterReadCanRecover()
+    {
+        FakeTimeProvider time = new(FixedNow);
+        ReconnectionReconciliationStateService state = NewState();
+        HeldIncompleteReadScheduler scheduler = new();
+        using ReconnectionReconciliationCoordinator sut = new(scheduler, state, new FakeDispatcher(), time,
+            NullLogger<ReconnectionReconciliationCoordinator>.Instance);
+
+        Task<ProjectionReconciliationRefreshResult> first = sut.ReconcileAsync(TestContext.Current.CancellationToken);
+        state.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Reconciling);
+        time.Advance(TimeSpan.FromMilliseconds(29_999));
+        first.IsCompleted.ShouldBeFalse();
+        time.Advance(TimeSpan.FromMilliseconds(1));
+        ProjectionReconciliationRefreshResult expired = await first.WaitAsync(TestContext.Current.CancellationToken);
+        expired.HasIncompleteEligibleReads.ShouldBeTrue();
+        state.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Idle);
+        state.Current.DataRead.ShouldBeFalse();
+
+        scheduler.Release();
+        ProjectionReconciliationRefreshResult recovered = await sut.ReconcileAsync(TestContext.Current.CancellationToken);
+        recovered.ChangedViewKeys.ShouldBe(["orders"]);
+        state.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Refreshed);
+    }
+
+    [Fact]
+    public async Task EligibleReadStillInFlightDoesNotPublishRecovery()
+    {
+        TestScheduler scheduler = new(new ProjectionReconciliationRefreshResult(0, []) { HasIncompleteEligibleReads = true });
+        ReconnectionReconciliationStateService state = NewState();
+        ReconnectionReconciliationCoordinator sut = new(scheduler, state, new FakeDispatcher(),
+            new FakeTimeProvider(FixedNow), NullLogger<ReconnectionReconciliationCoordinator>.Instance);
+
+        _ = await sut.ReconcileAsync(TestContext.Current.CancellationToken);
+
+        state.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Idle);
+    }
+
+    [Fact]
+    public async Task AdmittedSkippedReadCannotClaimRecoveryUntilLaterSuccessfulRead()
+    {
+        TestScheduler scheduler = new(new ProjectionReconciliationRefreshResult(0, []) { SkippedViewKeys = ["orders"] });
+        ReconnectionReconciliationStateService state = NewState();
+        using ReconnectionReconciliationCoordinator sut = new(scheduler, state, new FakeDispatcher(),
+            new FakeTimeProvider(FixedNow), NullLogger<ReconnectionReconciliationCoordinator>.Instance);
+
+        ProjectionReconciliationRefreshResult first = await sut.ReconcileAsync(TestContext.Current.CancellationToken);
+        first.SkippedViewKeys.ShouldBe(["orders"]);
+        state.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Idle);
+        state.Current.DataRead.ShouldBeFalse();
+
+        scheduler.Result = new ProjectionReconciliationRefreshResult(1, ["orders"]) { RefreshedViewKeys = ["orders"] };
+        _ = await sut.ReconcileAsync(TestContext.Current.CancellationToken);
+        state.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Refreshed);
+        state.Current.DataRead.ShouldBeTrue();
+    }
+
     private static readonly DateTimeOffset FixedNow = new(2026, 4, 26, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
@@ -188,6 +295,37 @@ public sealed class ReconnectionReconciliationCoordinatorTests {
         dispatcher.Actions.OfType<MarkReconciliationSweepAction>().ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task LegacyTwoArgumentStateCannotPublishFailedEligibleReadAsSuccess()
+    {
+        LegacyReconciliationState legacy = new(NewState());
+        ProjectionReconciliationRefreshResult failure = new(0, []) { FailedViewKeys = ["orders"] };
+        using ReconnectionReconciliationCoordinator coordinator = new(new TestScheduler(failure), legacy,
+            new FakeDispatcher(), new FakeTimeProvider(FixedNow),
+            NullLogger<ReconnectionReconciliationCoordinator>.Instance);
+
+        _ = await coordinator.ReconcileAsync(TestContext.Current.CancellationToken);
+
+        legacy.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Idle);
+        legacy.SuccessfulCompletions.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task LegacyTwoArgumentStateCannotClaimDataReadForSuccessfulNoLanePass()
+    {
+        LegacyReconciliationState legacy = new(NewState());
+        using ReconnectionReconciliationCoordinator coordinator = new(
+            new TestScheduler(ProjectionReconciliationRefreshResult.Empty), legacy,
+            new FakeDispatcher(), new FakeTimeProvider(FixedNow),
+            NullLogger<ReconnectionReconciliationCoordinator>.Instance);
+
+        _ = await coordinator.ReconcileAsync(TestContext.Current.CancellationToken);
+
+        legacy.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Idle);
+        legacy.Current.DataRead.ShouldBeFalse();
+        legacy.SuccessfulCompletions.ShouldBe(0);
+    }
+
     private static ReconnectionReconciliationStateService NewState()
         => new(
             new FakeTimeProvider(FixedNow),
@@ -195,6 +333,8 @@ public sealed class ReconnectionReconciliationCoordinatorTests {
 
     private sealed class TestScheduler(ProjectionReconciliationRefreshResult result) : IProjectionFallbackRefreshScheduler {
         public List<long> Epochs { get; } = [];
+
+        public ProjectionReconciliationRefreshResult Result { get; set; } = result;
 
         public IDisposable RegisterLane(ProjectionFallbackLane lane) => new Registration();
 
@@ -205,7 +345,7 @@ public sealed class ReconnectionReconciliationCoordinatorTests {
 
         public Task<ProjectionReconciliationRefreshResult> TriggerReconciliationOnceAsync(long epoch, CancellationToken cancellationToken = default) {
             Epochs.Add(epoch);
-            return Task.FromResult(result);
+            return Task.FromResult(Result);
         }
     }
 

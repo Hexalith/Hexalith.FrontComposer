@@ -98,7 +98,7 @@ public static class ProjectionRoleBodyEmitter {
         string recordTypeName = model.TypeName + "StatusOverviewRow";
         string statusProperty = statusColumn.PropertyName;
 
-        _ = sb.AppendLine("        var groupedItems = state.Items");
+        _ = sb.AppendLine("        var unfilteredGroupedItems = state.Items");
         _ = sb.AppendLine("            .GroupBy(x => x." + statusProperty + ")");
         _ = sb.AppendLine(
             statusColumn.IsNullable
@@ -107,6 +107,9 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("            .OrderByDescending(g => g.Count)");
         _ = sb.AppendLine("            .ThenBy(g => g.SortOrder)");
         _ = sb.AppendLine("            .ToList();");
+        _ = sb.AppendLine("        string? _activeStatusFilter = gridSnapshot?.Filters.TryGetValue(\"" + statusProperty + "\", out string? __selectedStatus) == true ? __selectedStatus : null;");
+        _ = sb.AppendLine("        var groupedItems = string.IsNullOrWhiteSpace(_activeStatusFilter) ? unfilteredGroupedItems");
+        _ = sb.AppendLine("            : unfilteredGroupedItems.Where(group => string.Equals(group.StatusLabel, _activeStatusFilter, StringComparison.OrdinalIgnoreCase)).ToList();");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        // Story 4-5 — resolve expanded-row state for this StatusOverview render pass.");
         _ = sb.AppendLine("        global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowEntry? _expandedEntry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);");
@@ -123,12 +126,33 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("                }");
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine("        }");
-        _ = sb.AppendLine("        bool _expandedItemHiddenByFilter = _expandedItemKey is not null && _expandedStatusOverviewItem is null;");
+        _ = sb.AppendLine("        string? _expandedStatusKey = _expandedItemKey?.ToString();");
+        _ = sb.AppendLine("        string _statusResultIdentity = PrimaryCompletedPage()?.Identity.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? state.LastResultCorrelationId ?? \"initial\";");
+        _ = sb.AppendLine("        string _statusRequestIdentity = PageRequestIdentity(CurrentGridSnapshot());");
+        _ = sb.AppendLine("        if (_statusResultScopeGeneration != LoadedPageState.Value.ScopeGeneration)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            _statusResultScopeGeneration = LoadedPageState.Value.ScopeGeneration;");
+        _ = sb.AppendLine("            _statusLastCompletedResultIdentity = null;");
+        _ = sb.AppendLine("            _statusLastCompletedRequestIdentity = null;");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("        if (!string.Equals(_statusLastCompletedResultIdentity, _statusResultIdentity, StringComparison.Ordinal))");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            _statusLastCompletedResultIdentity = _statusResultIdentity;");
+        _ = sb.AppendLine("            _statusLastCompletedRequestIdentity = _statusRequestIdentity;");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("        bool _statusResultSettled = (!LoadedPageState.Value.ActiveRequestIdentityByView.ContainsKey(_viewKey) || PrimaryCompletedPage() is not null)");
+        _ = sb.AppendLine("            && string.Equals(_statusLastCompletedRequestIdentity, _statusRequestIdentity, StringComparison.Ordinal);");
+        _ = sb.AppendLine("        bool _expandedItemMissing = _expandedStatusKey is not null && _expandedStatusOverviewItem is null;");
+        _ = sb.AppendLine("        bool _expandedItemHiddenByFilter = _statusResultSettled && _expandedItemMissing && !string.IsNullOrWhiteSpace(_activeStatusFilter)");
+        _ = sb.AppendLine("            && unfilteredGroupedItems.Any(group => string.Equals(group.StatusLabel, _expandedStatusKey, StringComparison.Ordinal));");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandedRowHiddenBanner>(seq++);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ViewKey\", _viewKey);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"IsHiddenByFilter\", _expandedItemHiddenByFilter);");
-        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ResultSettled\", !LoadedPageState.Value.ActiveRequestIdentityByView.ContainsKey(_viewKey) || PrimaryCompletedPage() is not null);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"IsMissing\", _statusResultSettled && _expandedItemMissing);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"SharedStatusOwner\", true);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ScopeGeneration\", LoadedPageState.Value.ScopeGeneration);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ResultSettled\", _statusResultSettled);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ResultIdentity\", PageRequestIdentity(CurrentGridSnapshot()) + \"|\" + (_expandedItemKey?.ToString() ?? \"none\") + \"|\" + (PrimaryCompletedPage()?.Identity.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? state.LastResultCorrelationId ?? \"initial\"));");
         _ = sb.AppendLine("        builder.CloseComponent();");
 
@@ -149,11 +173,17 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("            int colSeq = 300;");
         _ = sb.AppendLine();
         string statusHeaderLiteral = "\"" + RoleBodyHelpers.EscapeString(statusColumn.Header) + "\"";
-        _ = sb.AppendLine("            b.OpenComponent<PropertyColumn<" + recordTypeName + ", string?>>(colSeq++);");
-        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", " + statusHeaderLiteral + ");");
-        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + recordTypeName + ", string?>>)(x => x.StatusLabel));");
         if (statusColumn.BadgeMappings.Count > 0) {
+            // Fluent's PropertyColumn has no ChildContent parameter. Badge cells need a
+            // TemplateColumn so the generated StatusOverview can actually render.
+            _ = sb.AppendLine("            b.OpenComponent<TemplateColumn<" + recordTypeName + ">>(colSeq++);");
+            _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", " + statusHeaderLiteral + ");");
             EmitStatusOverviewBadgeChildContent(sb, statusColumn, recordTypeName, statusHeaderLiteral);
+        }
+        else {
+            _ = sb.AppendLine("            b.OpenComponent<PropertyColumn<" + recordTypeName + ", string?>>(colSeq++);");
+            _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", " + statusHeaderLiteral + ");");
+            _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + recordTypeName + ", string?>>)(x => x.StatusLabel));");
         }
         _ = sb.AppendLine("            b.CloseComponent();");
         _ = sb.AppendLine();
@@ -424,7 +454,8 @@ public static class ProjectionRoleBodyEmitter {
         bool emitExpandableRows = false) {
         bool hasBadgeMappings = HasBadgeMappings(model);
         string effectiveItemsExpression = hasBadgeMappings ? "_gridItems" : filteredItemsExpression;
-        string expansionItemsExpression = hasBadgeMappings ? "_statusFilteredItems" : "state.Items";
+        string expansionItemsExpression = hasBadgeMappings ? "_statusFilteredItems"
+            : model.Strategy == ProjectionRenderStrategy.ActionQueue ? "filteredItems" : "state.Items";
 
         if (hasBadgeMappings) {
             _ = sb.AppendLine("        var _statusFilteredItems = StatusFilteredItems(" + filteredItemsExpression + ", gridSnapshot).ToList();");
@@ -454,14 +485,26 @@ public static class ProjectionRoleBodyEmitter {
             _ = sb.AppendLine("                }");
             _ = sb.AppendLine("            }");
             _ = sb.AppendLine("        }");
-            _ = sb.AppendLine("        bool _expandedItemHiddenByFilter = _expandedItemKey is not null && _expandedItem is null;");
+            _ = sb.AppendLine("        bool _expandedItemMissing = _expandedItemKey is not null && _expandedItem is null;");
+            _ = sb.AppendLine("        bool _expandedResultSettled = !LoadedPageState.Value.ActiveRequestIdentityByView.ContainsKey(_viewKey) || PrimaryCompletedPage() is not null;");
+            // ActionQueue's WhenStates predicate is an application rule. Only the
+            // subsequent operator badge filter can justify Clear Filter feedback.
+            _ = sb.AppendLine(hasBadgeMappings
+                ? "        bool _expandedItemHiddenByFilter = _expandedResultSettled && _expandedItemMissing && " +
+                    (model.Strategy == ProjectionRenderStrategy.ActionQueue ? "filteredItems" : "state.Items") +
+                    ".Any(row => _itemKeyAccessor(row).Equals(_expandedItemKey)) && " +
+                    "!_statusFilteredItems.Any(row => _itemKeyAccessor(row).Equals(_expandedItemKey));"
+                : "        bool _expandedItemHiddenByFilter = false;");
             _ = sb.AppendLine();
 
             // Banner above the grid (AC8 breadcrumb).
             _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandedRowHiddenBanner>(seq++);");
             _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ViewKey\", _viewKey);");
             _ = sb.AppendLine("        builder.AddAttribute(seq++, \"IsHiddenByFilter\", _expandedItemHiddenByFilter);");
-            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ResultSettled\", !LoadedPageState.Value.ActiveRequestIdentityByView.ContainsKey(_viewKey) || PrimaryCompletedPage() is not null);");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"IsMissing\", _expandedResultSettled && _expandedItemMissing);");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"SharedStatusOwner\", true);");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ScopeGeneration\", LoadedPageState.Value.ScopeGeneration);");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ResultSettled\", _expandedResultSettled);");
             _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ResultIdentity\", PageRequestIdentity(CurrentGridSnapshot()) + \"|\" + (_expandedItemKey?.ToString() ?? \"none\") + \"|\" + (PrimaryCompletedPage()?.Identity.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? state.LastResultCorrelationId ?? \"initial\"));");
             _ = sb.AppendLine("        builder.CloseComponent();");
             _ = sb.AppendLine();

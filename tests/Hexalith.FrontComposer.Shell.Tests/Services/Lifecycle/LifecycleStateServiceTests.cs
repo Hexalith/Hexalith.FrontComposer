@@ -14,6 +14,24 @@ namespace Hexalith.FrontComposer.Shell.Tests.Services.Lifecycle;
 /// <see cref="LifecycleStateService"/>.
 /// </summary>
 public class LifecycleStateServiceTests {
+    [Theory]
+    [InlineData(CommandLifecycleState.Confirmed, true)]
+    [InlineData(CommandLifecycleState.IdempotentConfirmed, false)]
+    public void SubscribeAfterFirstIdempotentTerminalReplaysItsImmutableFlag(CommandLifecycleState terminal, bool flag)
+    {
+        using LifecycleStateService service = Create();
+        service.Transition("idempotent", CommandLifecycleState.Submitting, "accepted-id");
+        service.Transition("idempotent", terminal, "accepted-id", idempotencyResolved: flag);
+        service.Transition("idempotent", CommandLifecycleState.Confirmed, "other-id", idempotencyResolved: false);
+
+        List<CommandLifecycleTransition> replay = [];
+        using IDisposable _ = service.Subscribe("idempotent", replay.Add);
+        replay.Count.ShouldBe(1);
+        replay[0].NewState.ShouldBe(terminal);
+        replay[0].MessageId.ShouldBe("accepted-id");
+        replay[0].IdempotencyResolved.ShouldBeTrue();
+    }
+
     [Fact]
     public async Task ResetScope_WhilePriorSubscriberIsHeld_ClearsWithoutWaitingForCallback() {
         using LifecycleStateService service = Create();

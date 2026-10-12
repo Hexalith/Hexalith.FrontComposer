@@ -81,6 +81,9 @@ public class RazorEmitterStrategyDispatchTests {
         output.ShouldContain(".Where(x => ");
         output.ShouldContain("\"Pending\"");
         output.ShouldContain("\"Submitted\"");
+        output.ShouldContain("filteredItems.Any(row => _itemKeyAccessor(row).Equals(_expandedItemKey))");
+        output.ShouldContain("!_statusFilteredItems.Any(row => _itemKeyAccessor(row).Equals(_expandedItemKey))");
+        output.ShouldNotContain("state.Items.Any(row => _itemKeyAccessor(row).Equals(_expandedItemKey)) && !_statusFilteredItems.Any");
     }
 
     [Fact]

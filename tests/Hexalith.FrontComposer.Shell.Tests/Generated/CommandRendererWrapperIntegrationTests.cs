@@ -1096,6 +1096,46 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
     }
 
     [Fact]
+    public async Task OrdinaryFormBlockedCallbackKeepsItsOwnSingleLifecycleStatus()
+    {
+        HeldRejectingCommandService service = new();
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        List<bool> callbackStates = [];
+        IRenderedComponent<FourFieldCompactCommandForm> first = Render<FourFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new FourFieldCompactCommand { Name = "first" }));
+        IRenderedComponent<TwoFieldCompactCommandForm> adopter = Render<TwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new TwoFieldCompactCommand { Name = "later", Amount = 2 })
+            .Add(p => p.OnBlockedSubmission, Microsoft.AspNetCore.Components.EventCallback.Factory.Create<bool>(this,
+                blocked => callbackStates.Add(blocked))));
+
+        first.Find("form").Submit();
+        await service.DispatchStarted.Task.WaitAsync(TimeSpan.FromSeconds(2), Xunit.TestContext.Current.CancellationToken);
+        adopter.Find("form").Submit();
+        adopter.WaitForAssertion(() => {
+            callbackStates.ShouldBe([true]);
+            adopter.FindAll("[role='status'][aria-live='polite']").Count.ShouldBe(1);
+            adopter.Find("[data-testid='fc-surface-status']").TextContent.ShouldBe(BlockedMessage);
+            adopter.Find("[data-testid='fc-command-blocked-outcome']").GetAttribute("data-fc-blocked").ShouldBe("true");
+            service.DispatchCount.ShouldBe(1);
+        });
+
+        service.AllowDispatch.SetResult();
+        ICommandExecutionAdmissionGate gate = Services.GetRequiredService<ICommandExecutionAdmissionGate>();
+        SpinWait.SpinUntil(() => {
+            using CommandExecutionAdmission probe = gate.TryAcquire(new CommandExecutionAdmissionRequest("settlement-probe"));
+            return probe.IsAdmitted;
+        }, TimeSpan.FromSeconds(2)).ShouldBeTrue();
+        adopter.Find("form").Submit();
+        adopter.WaitForAssertion(() => {
+            callbackStates.ShouldBe([true, false]);
+            service.DispatchCount.ShouldBe(2);
+            adopter.FindAll("[role='status'][aria-live='polite']").Count.ShouldBe(1);
+            adopter.Find("[data-testid='fc-surface-status']").TextContent.ShouldNotBe(BlockedMessage);
+        });
+    }
+
+    [Fact]
     public async Task GeneratedFormNumericParseErrorReachesTheSummaryAndClearsOnAValidNumber() {
         await InitializeStoreAsync();
         IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>(parameters => parameters

@@ -15,6 +15,16 @@ namespace Hexalith.FrontComposer.Shell.Tests.Resources;
 /// </summary>
 public sealed class FcShellResourcesTests {
     [Fact]
+    public void Am16WarningRetainsApprovedEnglishAndFrenchCopy()
+    {
+        ResourceManager manager = new(typeof(FcShellResources));
+        manager.GetString("Am16Warning", new CultureInfo("en"))
+            .ShouldBe("Command completed with a warning. Review the details.");
+        manager.GetString("Am16Warning", new CultureInfo("fr"))
+            .ShouldBe("Commande terminée avec un avertissement. Consultez les détails.");
+    }
+
+    [Fact]
     public void CanonicalKeysHaveFrenchCounterparts() {
         ResourceManager manager = new(typeof(FcShellResources));
         ResourceSet enSet = manager.GetResourceSet(new CultureInfo("en"), createIfNotExists: true, tryParents: true)!;

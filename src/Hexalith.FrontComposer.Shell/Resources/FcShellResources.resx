@@ -487,6 +487,10 @@
     <value>{0} expanded item hidden by current filter</value>
     <comment>Story 4-5 D15 / AC8 — banner copy above FluentDataGrid when expanded row is suppressed by filter. {0}=count (always "1" in v1; ICU pluralization bundles with multi-expand v2 commit).</comment>
   </data>
+  <data name="ExpandedRowUnavailableBanner" xml:space="preserve">
+    <value>The expanded item is not in the current results.</value>
+    <comment>Neutral detail feedback when the current result does not prove that a filter hid the item.</comment>
+  </data>
   <data name="ExpandedRowHiddenByFilterBannerClearLink" xml:space="preserve">
     <value>Clear filter</value>
     <comment>Story 4-5 D15 / AC8 — banner action link dispatching FiltersResetAction (Story 4-3).</comment>

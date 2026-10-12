@@ -39,6 +39,7 @@ public sealed class RazorEmitterBannersTests {
         string src = RazorEmitter.Emit(Model());
         src.ShouldContain("<!-- Phone-viewport layout (UX-DR7 phone variant) deferred to Story 10-2 -->");
         src.ShouldContain("\"data-fc-datagrid\", _viewKey");
+        src.ShouldContain("\"data-fc-datagrid-instance\", _gridInstanceId");
         src.ShouldContain("\"onscroll\"");
         src.ShouldContain("\"fc-datagrid-host fc-projection-grid\"");
     }

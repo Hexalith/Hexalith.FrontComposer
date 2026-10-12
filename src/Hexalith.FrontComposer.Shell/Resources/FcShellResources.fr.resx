@@ -416,6 +416,9 @@
   <data name="ExpandedRowHiddenByFilterBanner" xml:space="preserve">
     <value>{0} élément développé masqué par le filtre actuel</value>
   </data>
+  <data name="ExpandedRowUnavailableBanner" xml:space="preserve">
+    <value>L’élément développé ne figure pas dans les résultats actuels.</value>
+  </data>
   <data name="ExpandedRowHiddenByFilterBannerClearLink" xml:space="preserve">
     <value>Effacer le filtre</value>
   </data>

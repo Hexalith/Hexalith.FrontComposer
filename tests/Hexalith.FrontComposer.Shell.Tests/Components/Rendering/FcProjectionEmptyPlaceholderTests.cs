@@ -74,6 +74,7 @@ public sealed class FcProjectionEmptyPlaceholderTests : LayoutComponentTestBase 
             .Add(p => p.SuppressStandaloneStatus, true));
 
         cut.FindAll("[role='status']").ShouldBeEmpty();
+        cut.FindAll("[aria-label]").ShouldBeEmpty();
         cut.Markup.ShouldContain("No orders yet.");
     }
 

@@ -134,6 +134,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
                     : PendingCommandRegistrationResult.Merged(existing);
             }
 
+            DateTimeOffset acceptedLocallyAt = _time.GetUtcNow();
             PendingCommandEntry entry = new(
                 CorrelationId: normalized.CorrelationId,
                 MessageId: canonicalMessageId,
@@ -143,7 +144,8 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
                 EntityKey: normalized.EntityKey,
                 ExpectedStatusSlot: normalized.ExpectedStatusSlot,
                 PriorStatusSlot: normalized.PriorStatusSlot,
-                SubmittedAt: normalized.SubmittedAt ?? _time.GetUtcNow(),
+                SubmittedAt: normalized.SubmittedAt is { } submittedAt && submittedAt <= acceptedLocallyAt
+                    ? submittedAt : acceptedLocallyAt,
                 Status: PendingCommandStatus.Pending) {
                 TargetSnapshot = normalized.TargetSnapshot,
                 RegistrationScope = _scopeSnapshot is { } registrationScope
@@ -178,6 +180,12 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
     /// <inheritdoc />
     public PendingCommandResolutionResult ResolveTerminal(PendingCommandTerminalObservation observation)
         => ResolveTerminalCore(observation, expectedEntry: null);
+
+    /// <summary>Atomically resolves a terminal observation only if the captured entry still owns its MessageId.</summary>
+    /// <remarks>Custom polling resolvers can use this operation to reject stale evidence after a scope reset or identity reuse.</remarks>
+    public PendingCommandResolutionResult ResolveTerminalIfCurrent(
+        PendingCommandTerminalObservation observation, PendingCommandEntry expectedEntry)
+        => ResolveTerminalCore(observation, expectedEntry);
 
     private PendingCommandResolutionResult ResolveTerminalCore(PendingCommandTerminalObservation observation, PendingCommandEntry? expectedEntry) {
         ArgumentNullException.ThrowIfNull(observation);

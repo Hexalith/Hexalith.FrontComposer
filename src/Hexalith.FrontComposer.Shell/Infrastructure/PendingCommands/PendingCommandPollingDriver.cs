@@ -23,8 +23,7 @@ public sealed class PendingCommandPollingDriver : IAsyncDisposable {
     private readonly object _sync = new();
     private IDisposable? _optionsChangeRegistration;
     private ITimer? _timer;
-    private Task? _pollTask;
-    private int _pollInFlight;
+    private readonly HashSet<Task> _pollTasks = [];
     private int _disposed;
 
     public PendingCommandPollingDriver(
@@ -73,13 +72,13 @@ public sealed class PendingCommandPollingDriver : IAsyncDisposable {
 
         ITimer? timer;
         IDisposable? optionsRegistration;
-        Task? pollTask;
+        Task[] pollTasks;
         lock (_sync) {
             timer = _timer;
             _timer = null;
             optionsRegistration = _optionsChangeRegistration;
             _optionsChangeRegistration = null;
-            pollTask = _pollTask;
+            pollTasks = [.. _pollTasks];
         }
 
         optionsRegistration?.Dispose();
@@ -87,14 +86,14 @@ public sealed class PendingCommandPollingDriver : IAsyncDisposable {
 
         bool pollCompleted = false;
         try {
-            pollCompleted = await WaitForInFlightPollAsync(pollTask).ConfigureAwait(false);
+            pollCompleted = await WaitForInFlightPollAsync(Task.WhenAll(pollTasks)).ConfigureAwait(false);
         }
         finally {
-            if (pollCompleted || pollTask is null || pollTask.IsCompleted) {
+            if (pollCompleted || pollTasks.All(static task => task.IsCompleted)) {
                 _disposalCts.Dispose();
             }
             else {
-                _ = pollTask.ContinueWith(
+                _ = Task.WhenAll(pollTasks).ContinueWith(
                     _ => _disposalCts.Dispose(),
                     CancellationToken.None,
                     TaskContinuationOptions.ExecuteSynchronously,
@@ -132,19 +131,21 @@ public sealed class PendingCommandPollingDriver : IAsyncDisposable {
             return;
         }
 
-        if (Interlocked.CompareExchange(ref _pollInFlight, 1, 0) != 0) {
-            return;
-        }
-
         TaskCompletionSource start = new(TaskCreationOptions.RunContinuationsAsynchronously);
         lock (_sync) {
             if (_disposed != 0) {
-                _ = Interlocked.Exchange(ref _pollInFlight, 0);
                 return;
             }
 
             Task pollTask = PollOnceSafelyAsync(start.Task);
-            _pollTask = pollTask;
+            _pollTasks.Add(pollTask);
+            _ = pollTask.ContinueWith(completed => {
+                if (!completed.IsFaulted) {
+                    lock (_sync) {
+                        _pollTasks.Remove(completed);
+                    }
+                }
+            }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         }
 
         _ = start.TrySetResult();
@@ -161,9 +162,6 @@ public sealed class PendingCommandPollingDriver : IAsyncDisposable {
             FrontComposerHotPathLog.PendingPollingTickFailed(
                 _logger,
                 ex.GetType().Name);
-        }
-        finally {
-            _ = Interlocked.Exchange(ref _pollInFlight, 0);
         }
     }
 

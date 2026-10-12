@@ -5,6 +5,7 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.Services.Announcements;
+using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
@@ -30,6 +31,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
     private string _boundCorrelationId = string.Empty;
     private string _boundAnnouncementSurface = string.Empty;
     private string _boundAnnouncementGroup = string.Empty;
+    private IDisposable? _announcementClaim;
     private IDisposable? _subscription;
     private IDisposable? _optionsChangeRegistration;
     private IDisposable? _projectionConnectionRegistration;
@@ -39,6 +41,11 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
     private ITimer? _deadlineTimer;
     private ITimer? _degradedTimer;
     private DateTimeOffset? _acceptanceAt;
+    private long _bindingGeneration;
+    private long _deadlineGeneration;
+    private long _degradedGeneration;
+    private long? _boundLifecycleScopeGeneration;
+    private bool _scopeRetired;
     private LifecycleUiState _state = LifecycleUiState.Idle;
     private ProjectionConnectionSnapshot _projectionConnectionSnapshot = new(
         ProjectionConnectionStatus.Connected,
@@ -156,6 +163,14 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
 
     /// <inheritdoc />
     protected override void OnParametersSet() {
+        if (!IsBoundScopeCurrent())
+        {
+            RetireOldScope();
+        }
+        if (_scopeRetired && string.Equals(CorrelationId, _boundCorrelationId, StringComparison.Ordinal))
+        {
+            return;
+        }
         // D15 — if CorrelationId changes between renders, dispose old subscription and re-bind.
         if (!string.Equals(CorrelationId, _boundCorrelationId, StringComparison.Ordinal)) {
             UnbindCurrent();
@@ -166,19 +181,28 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
         else if (!string.IsNullOrEmpty(_boundCorrelationId)) {
             string nextSurface = StatusSurface ?? "lifecycle:" + _boundCorrelationId;
             if (!string.Equals(nextSurface, _boundAnnouncementSurface, StringComparison.Ordinal)) {
-                Announcements.Cancel(_boundAnnouncementSurface, _boundAnnouncementGroup);
+                ReleaseAnnouncementClaim();
                 _boundAnnouncementSurface = nextSurface;
+                ClaimAnnouncementGroup();
                 // Keep this operation's delivered identities deduplicated when returning
                 // to a surface that already announced the same event.
-                AnnounceLifecycleState(_state.Current);
+                AnnounceLifecycleState(_state.Current, restoreDelivered: true);
             }
         }
     }
 
     private void BindToCorrelationId(string correlationId) {
+        long bindingGeneration = ++_bindingGeneration;
         _boundCorrelationId = correlationId;
+        _boundLifecycleScopeGeneration = (LifecycleService as LifecycleStateService)?.ScopeGeneration;
+        if (LifecycleService is LifecycleStateService scopedLifecycle)
+        {
+            scopedLifecycle.ScopeReset += OnLifecycleScopeReset;
+        }
+        _scopeRetired = false;
         _boundAnnouncementSurface = StatusSurface ?? "lifecycle:" + correlationId;
-        _boundAnnouncementGroup = correlationId;
+        _boundAnnouncementGroup = "lifecycle:" + correlationId;
+        ClaimAnnouncementGroup();
         _state = LifecycleUiState.Idle;
 
         FcShellOptions opts = ShellOptions.CurrentValue;
@@ -196,11 +220,16 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
                 newOpts.StillSyncingThresholdMs,
                 newOpts.TimeoutActionThresholdMs));
 
-        _subscription = LifecycleService.Subscribe(correlationId, OnTransitionFromService);
+        _subscription = LifecycleService.Subscribe(correlationId, transition => OnTransitionFromService(transition, bindingGeneration));
         _projectionConnectionRegistration = ProjectionConnectionState.Subscribe(OnProjectionConnectionChanged);
     }
 
     private void UnbindCurrent() {
+        ++_bindingGeneration;
+        if (LifecycleService is LifecycleStateService scopedLifecycle)
+        {
+            scopedLifecycle.ScopeReset -= OnLifecycleScopeReset;
+        }
         IDisposable? sub = Interlocked.Exchange(ref _subscription, null);
         sub?.Dispose();
 
@@ -222,19 +251,61 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
         ITimer? deadline = Interlocked.Exchange(ref _deadlineTimer, null);
         deadline?.Dispose();
         CancelDegraded();
-        if (!string.IsNullOrEmpty(_boundAnnouncementSurface)) {
-            Announcements.Cancel(_boundAnnouncementSurface, _boundAnnouncementGroup);
-        }
+        ReleaseAnnouncementClaim();
 
         _boundCorrelationId = string.Empty;
+        _boundLifecycleScopeGeneration = null;
+        _scopeRetired = false;
         _boundAnnouncementSurface = string.Empty;
         _boundAnnouncementGroup = string.Empty;
         _acceptanceAt = null;
         _state = LifecycleUiState.Idle;
     }
 
-    private void OnTransitionFromService(CommandLifecycleTransition transition) {
-        if (_disposed != 0) {
+    private bool IsBoundScopeCurrent()
+        => _boundLifecycleScopeGeneration is null
+            || LifecycleService is not LifecycleStateService service
+            || service.ScopeGeneration == _boundLifecycleScopeGeneration.Value;
+
+    private void RetireOldScope()
+    {
+        string correlationId = _boundCorrelationId;
+        UnbindCurrent();
+        _boundCorrelationId = correlationId;
+        _scopeRetired = true;
+    }
+
+    private void OnLifecycleScopeReset(long generation)
+    {
+        if (_disposed != 0 || _boundLifecycleScopeGeneration is not { } bound || generation == bound)
+        {
+            return;
+        }
+        long bindingGeneration = _bindingGeneration;
+        _ = InvokeAsync(() =>
+        {
+            if (_disposed == 0 && bindingGeneration == _bindingGeneration && !IsBoundScopeCurrent())
+            {
+                RetireOldScope();
+                StateHasChanged();
+            }
+        });
+    }
+
+    private void TransitionForBoundScope(string correlationId, CommandLifecycleState state)
+    {
+        if (LifecycleService is LifecycleStateService service && _boundLifecycleScopeGeneration is { } generation)
+        {
+            _ = service.TryTransitionForScope(generation, correlationId, state, _state.MessageId, false);
+        }
+        else if (IsBoundScopeCurrent())
+        {
+            LifecycleService.Transition(correlationId, state, _state.MessageId);
+        }
+    }
+
+    private void OnTransitionFromService(CommandLifecycleTransition transition, long bindingGeneration) {
+        if (_disposed != 0 || bindingGeneration != _bindingGeneration || !IsBoundScopeCurrent()) {
             return;
         }
 
@@ -256,7 +327,8 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
 
         string boundCorrelationId = _boundCorrelationId;
         _ = InvokeAsync(() => {
-            if (_disposed != 0 || !string.Equals(boundCorrelationId, _boundCorrelationId, StringComparison.Ordinal)
+            if (_disposed != 0 || bindingGeneration != _bindingGeneration || !IsBoundScopeCurrent()
+                || !string.Equals(boundCorrelationId, _boundCorrelationId, StringComparison.Ordinal)
                 || !string.Equals(transition.CorrelationId, _boundCorrelationId, StringComparison.Ordinal)) {
                 return;
             }
@@ -364,7 +436,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
 
     private void OnPhaseChangedFromTimer(LifecycleThresholdTimer originatingTimer, string boundCorrelationId, LifecycleTimerPhase phase) {
         if (_disposed != 0 || !ReferenceEquals(originatingTimer, _timer)
-            || !string.Equals(boundCorrelationId, _boundCorrelationId, StringComparison.Ordinal)) {
+            || !string.Equals(boundCorrelationId, _boundCorrelationId, StringComparison.Ordinal) || !IsBoundScopeCurrent()) {
             return;
         }
 
@@ -376,7 +448,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
 
         _ = InvokeAsync(() => {
             if (_disposed != 0 || !ReferenceEquals(originatingTimer, _timer)
-                || !string.Equals(boundCorrelationId, _boundCorrelationId, StringComparison.Ordinal)) {
+                || !string.Equals(boundCorrelationId, _boundCorrelationId, StringComparison.Ordinal) || !IsBoundScopeCurrent()) {
                 return;
             }
 
@@ -396,7 +468,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
     private void AnnounceLifecycle(CommandLifecycleTransition transition)
         => AnnounceLifecycleState(transition.NewState);
 
-    private void AnnounceLifecycleState(CommandLifecycleState state) {
+    private void AnnounceLifecycleState(CommandLifecycleState state, bool restoreDelivered = false) {
         string? key = state switch {
             CommandLifecycleState.Submitting => "Am10Submitting",
             CommandLifecycleState.Acknowledged => "Am11Acknowledged",
@@ -413,15 +485,22 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
         if (key is null) {
             if (terminal || state == CommandLifecycleState.Idle)
             {
-                Announcements.Cancel(AnnouncementSurface, _boundAnnouncementGroup);
+                ReleaseAnnouncementClaim();
             }
             return;
         }
+
+        ClaimAnnouncementGroup();
 
         string message = state is CommandLifecycleState.IdempotentConfirmed
             || (state is CommandLifecycleState.Confirmed && _state.IsIdempotent)
             ? string.IsNullOrWhiteSpace(IdempotentInfoMessage) ? Localizer[key].Value : IdempotentInfoMessage
             : Localizer[key].Value;
+        if (restoreDelivered && Announcements is SurfaceAnnouncementCoordinator coordinator
+            && coordinator.RestoreDelivered(AnnouncementSurface, _boundAnnouncementGroup, state.ToString(), message))
+        {
+            return;
+        }
         Announcements.Announce(
             AnnouncementSurface,
             _boundAnnouncementGroup,
@@ -431,29 +510,79 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
             immediate: state == CommandLifecycleState.Degraded);
     }
 
+    private void ClaimAnnouncementGroup()
+    {
+        if (_announcementClaim is null && !string.IsNullOrEmpty(_boundAnnouncementSurface))
+        {
+            _announcementClaim = SurfaceAnnouncementGroupOwnership.For(Announcements)
+                .Claim(_boundAnnouncementSurface, _boundAnnouncementGroup);
+        }
+    }
+
+    private void ReleaseAnnouncementClaim()
+    {
+        Interlocked.Exchange(ref _announcementClaim, null)?.Dispose();
+    }
+
     private void ScheduleDeadline(DateTimeOffset acceptedAt) {
         CancelDeadline();
+        long bindingGeneration = _bindingGeneration;
+        long timerGeneration = ++_deadlineGeneration;
         TimeSpan due = acceptedAt.AddMilliseconds(ShellOptions.CurrentValue.MaxPendingCommandPollingDurationMs) - Time.GetUtcNow();
         string correlationId = _boundCorrelationId;
         _deadlineTimer = Time.CreateTimer(_ =>
         {
-            if (_disposed != 0)
+            if (_disposed != 0 || bindingGeneration != _bindingGeneration || timerGeneration != _deadlineGeneration
+                || !IsBoundScopeCurrent())
             {
                 return;
             }
             _ = InvokeAsync(() =>
             {
-                if (_disposed == 0 && string.Equals(_boundCorrelationId, correlationId, StringComparison.Ordinal)
+                if (_disposed == 0 && bindingGeneration == _bindingGeneration && timerGeneration == _deadlineGeneration
+                    && IsBoundScopeCurrent()
+                    && string.Equals(_boundCorrelationId, correlationId, StringComparison.Ordinal)
                     && _state.Current is CommandLifecycleState.Acknowledged or CommandLifecycleState.Syncing or CommandLifecycleState.Degraded) {
                     bool resolved = false;
                     if (_state.MessageId is { Length: > 0 } messageId
                         && Services.GetService(typeof(IPendingCommandStateService)) is IPendingCommandStateService pending) {
-                        PendingCommandResolutionStatus status = pending.ResolveTerminal(new PendingCommandTerminalObservation(
-                            messageId, PendingCommandTerminalOutcome.DegradedExhausted)).Status;
-                        resolved = status is PendingCommandResolutionStatus.Resolved or PendingCommandResolutionStatus.DuplicateIgnored;
+                        PendingCommandResolutionResult result = pending.ResolveTerminal(new PendingCommandTerminalObservation(
+                            messageId, PendingCommandTerminalOutcome.DegradedExhausted));
+                        // A stored first terminal is authoritative even when its lifecycle
+                        // dispatch is delayed. DuplicateIgnored alone does not mean the
+                        // mounted wrapper has stopped showing an active command.
+                        if (result.Entry is { } terminal
+                            && string.Equals(terminal.CorrelationId, correlationId, StringComparison.Ordinal)
+                            && string.Equals(terminal.MessageId, messageId, StringComparison.Ordinal)
+                            && ReferenceEquals(pending.GetByMessageId(messageId), terminal)
+                            && terminal.Status != PendingCommandStatus.Pending)
+                        {
+                            CommandLifecycleState lifecycleTerminal = terminal.Status switch {
+                                PendingCommandStatus.Rejected => CommandLifecycleState.Rejected,
+                                PendingCommandStatus.NeedsReview => CommandLifecycleState.NeedsReview,
+                                PendingCommandStatus.IdempotentConfirmed => CommandLifecycleState.IdempotentConfirmed,
+                                PendingCommandStatus.Warning => CommandLifecycleState.Warning,
+                                PendingCommandStatus.DegradedExhausted => CommandLifecycleState.DegradedExhausted,
+                                _ => CommandLifecycleState.Confirmed,
+                            };
+                            CommandLifecycleState serviceState = LifecycleService.GetState(correlationId);
+                            if (serviceState is CommandLifecycleState.Acknowledged or CommandLifecycleState.Syncing or CommandLifecycleState.Degraded
+                                || serviceState == lifecycleTerminal)
+                            {
+                                if (_state.Current != lifecycleTerminal)
+                                {
+                                    DateTimeOffset now = Time.GetUtcNow();
+                                    ApplyTransition(new CommandLifecycleTransition(correlationId, _state.Current,
+                                        lifecycleTerminal, messageId, now, now,
+                                        terminal.Status == PendingCommandStatus.IdempotentConfirmed));
+                                    StateHasChanged();
+                                }
+                                resolved = _state.Current == lifecycleTerminal;
+                            }
+                        }
                     }
                     if (!resolved) {
-                        LifecycleService.Transition(correlationId, CommandLifecycleState.DegradedExhausted, _state.MessageId);
+                        TransitionForBoundScope(correlationId, CommandLifecycleState.DegradedExhausted);
                     }
                 }
             });
@@ -462,44 +591,53 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
 
     private void ScheduleDegraded(DateTimeOffset acceptedAt) {
         CancelDegraded();
+        long bindingGeneration = _bindingGeneration;
+        long timerGeneration = ++_degradedGeneration;
         TimeSpan due = acceptedAt.AddMilliseconds(DegradedAfterAcceptanceMs) - Time.GetUtcNow();
         string correlationId = _boundCorrelationId;
         _degradedTimer = Time.CreateTimer(_ =>
         {
-            if (_disposed != 0)
+            if (_disposed != 0 || bindingGeneration != _bindingGeneration || timerGeneration != _degradedGeneration
+                || !IsBoundScopeCurrent())
             {
                 return;
             }
             _ = InvokeAsync(() =>
             {
-                if (_disposed == 0 && string.Equals(_boundCorrelationId, correlationId, StringComparison.Ordinal)
+                if (_disposed == 0 && bindingGeneration == _bindingGeneration && timerGeneration == _degradedGeneration
+                    && IsBoundScopeCurrent()
+                    && string.Equals(_boundCorrelationId, correlationId, StringComparison.Ordinal)
                     && _state.Current is CommandLifecycleState.Acknowledged or CommandLifecycleState.Syncing) {
-                    LifecycleService.Transition(correlationId, CommandLifecycleState.Degraded, _state.MessageId);
+                    TransitionForBoundScope(correlationId, CommandLifecycleState.Degraded);
                 }
             });
         }, null, due > TimeSpan.Zero ? due : TimeSpan.Zero, Timeout.InfiniteTimeSpan);
     }
 
     private void CancelDegraded() {
+        ++_degradedGeneration;
         ITimer? timer = Interlocked.Exchange(ref _degradedTimer, null);
         timer?.Dispose();
     }
 
     private void CancelDeadline() {
+        ++_deadlineGeneration;
         ITimer? timer = Interlocked.Exchange(ref _deadlineTimer, null);
         timer?.Dispose();
     }
 
     private void OnProjectionConnectionChanged(ProjectionConnectionSnapshot snapshot) {
-        if (_disposed != 0) {
+        if (_disposed != 0 || !IsBoundScopeCurrent()) {
             return;
         }
+
+        long bindingGeneration = _bindingGeneration;
 
         // P10 — capture the snapshot inside the InvokeAsync lambda so the renderer thread sees
         // a coherent value through the dispatcher's serialization barrier instead of a non-volatile
         // field write from the SignalR/state-service call chain.
         _ = InvokeAsync(() => {
-            if (_disposed != 0)
+            if (_disposed != 0 || bindingGeneration != _bindingGeneration || !IsBoundScopeCurrent())
             {
                 return;
             }
@@ -517,6 +655,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
         CancelDismissTimer();
         TimeSpan due = ComputeDueTimeFromTransitionAnchor(transitionLastAtUtc, durationMs);
         string correlationId = _boundCorrelationId;
+        long bindingGeneration = _bindingGeneration;
         _dismissTimer = Time.CreateTimer(
             _ =>
             {
@@ -530,10 +669,11 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
                     // when we are STILL in the non-idempotent Confirmed branch. Rapid transitions
                     // that flip between idempotent/non-idempotent otherwise risk the wrong timer
                     // dismissing the wrong bar.
-                    if (_disposed == 0 && string.Equals(correlationId, _boundCorrelationId, StringComparison.Ordinal)
+                    if (_disposed == 0 && bindingGeneration == _bindingGeneration
+                        && string.Equals(correlationId, _boundCorrelationId, StringComparison.Ordinal)
                         && _state.Current == CommandLifecycleState.Confirmed && !_state.IsIdempotent)
                     {
-                        Announcements.Cancel(AnnouncementSurface, _boundAnnouncementGroup);
+                        ReleaseAnnouncementClaim();
                         _state = LifecycleUiState.Idle with { LastTransitionAt = _state.LastTransitionAt };
                         StateHasChanged();
                     }
@@ -548,6 +688,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
         CancelDismissTimer();
         TimeSpan due = ComputeDueTimeFromTransitionAnchor(transitionLastAtUtc, durationMs);
         string correlationId = _boundCorrelationId;
+        long bindingGeneration = _bindingGeneration;
         _dismissTimer = Time.CreateTimer(
             _ =>
             {
@@ -557,11 +698,12 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
                 }
                 _ = InvokeAsync(() =>
                 {
-                    if (_disposed == 0 && string.Equals(correlationId, _boundCorrelationId, StringComparison.Ordinal)
+                    if (_disposed == 0 && bindingGeneration == _bindingGeneration
+                        && string.Equals(correlationId, _boundCorrelationId, StringComparison.Ordinal)
                         && (_state.Current is CommandLifecycleState.IdempotentConfirmed
                             || (_state.Current == CommandLifecycleState.Confirmed && _state.IsIdempotent)))
                     {
-                        Announcements.Cancel(AnnouncementSurface, _boundAnnouncementGroup);
+                        ReleaseAnnouncementClaim();
                         _state = LifecycleUiState.Idle with { LastTransitionAt = _state.LastTransitionAt };
                         StateHasChanged();
                     }

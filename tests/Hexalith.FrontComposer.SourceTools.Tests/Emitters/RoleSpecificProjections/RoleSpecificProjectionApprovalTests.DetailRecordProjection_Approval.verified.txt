@@ -396,6 +396,8 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
     private string? _activeFailureGroup;
     private string? _activeFailureIdentity;
     private readonly System.Collections.Generic.HashSet<string> _resultAnnouncementGroups = new(System.StringComparer.Ordinal);
+    private bool _initialEmptyAnnounced;
+    private readonly System.Collections.Generic.Dictionary<string, System.IDisposable> _announcementClaims = new(System.StringComparer.Ordinal);
 
     /// <inheritdoc />
     protected override void OnInitialized()
@@ -408,36 +410,55 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
     { AnnounceProjectionState(); _ = InvokeAsync(StateHasChanged); }
 
     private static string AnnouncementSurface => "projection:" + (typeof(DetailRecordProjection).FullName ?? typeof(DetailRecordProjection).Name);
+    private static bool CanClaimUnstampedInitialState(DetailRecordProjectionState state)
+        => state.Items is null && state.Error is null && !state.IsLoading && !state.RequiresScopedRequest
+            && state.ActiveCorrelationId is null && state.LastResultCorrelationId is null;
     private void AnnounceProjectionState()
     {
         if (System.Threading.Volatile.Read(ref _disposed) != 0)
         {
             return;
         }
+        global::Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.TenantContextResult currentScope;
+        try { currentScope = TenantContextAccessor.TryGetContext(RenderContext?.TenantId, "projection-render"); }
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException and not System.Threading.ThreadAbortException and not AccessViolationException) { CancelOwnedAnnouncements(); return; }
+        if (!currentScope.Succeeded || currentScope.Context is null || (RenderContext is not null && !string.Equals(currentScope.Context.UserId, RenderContext.UserId, StringComparison.Ordinal)))
+        { CancelOwnedAnnouncements(); return; }
         var state = DetailRecordProjectionState.Value;
-        if (state.RequiresScopedRequest) { SetFailureGroup(null); Announcements.Clear(AnnouncementSurface); return; }
+        if (!global::Hexalith.FrontComposer.Shell.Services.ProjectionStateScopeOwnership.For(Dispatcher).IsCurrent(AnnouncementSurface, state.ScopeTenantId, state.ScopeUserId, currentScope.Context, null, CanClaimUnstampedInitialState(state))) { CancelOwnedAnnouncements(); return; }
+        if (state.RequiresScopedRequest) { CancelOwnedAnnouncements(); return; }
         string operation = state.ActiveCorrelationId ?? state.LastResultCorrelationId ?? "initial";
         string group = "load:" + operation;
         if (_pendingLoadingGroup is { } prior && (!state.IsLoading || !string.Equals(prior, group, StringComparison.Ordinal)))
-        { Announcements.Cancel(AnnouncementSurface, prior); _pendingLoadingGroup = null; }
+        { ReleaseAnnouncementGroup(prior); _pendingLoadingGroup = null; }
         if (state.Error is not null)
-        { SetFailureGroup(group, "failure:" + (state.LastResultCorrelationId ?? operation)); Announcements.Announce(AnnouncementSurface, group, _activeFailureIdentity!, FcShellLocalizer["Am30QueryFailed"].Value, terminal: true); return; }
+        { SetFailureGroup(group, "failure:" + (state.LastResultCorrelationId ?? operation)); Announcements.Announce(AnnouncementSurface, group, _activeFailureIdentity!, SafePageFailureCopy(state.Error), terminal: true); return; }
         if (state.IsLoading)
-        { CancelResultAnnouncements(); SetFailureGroup(null); _pendingLoadingGroup = group; Announcements.Announce(AnnouncementSurface, group, "loading", FcShellLocalizer["Am01Loading", "detail records"].Value); return; }
+        { CancelResultAnnouncements(); SetFailureGroup(null); _pendingLoadingGroup = group; ClaimAnnouncementGroup(group); Announcements.Announce(AnnouncementSurface, group, "loading", FcShellLocalizer["Am01Loading", "detail records"].Value); return; }
         bool filtered = false;
         SetFailureGroup(null);
         if (state.Items is null) { return; }
         if (state.Items.Count == 0)
-        { _resultAnnouncementGroups.Add(group); Announcements.Announce(AnnouncementSurface, group, "empty:" + (state.LastResultCorrelationId ?? operation) + "|" + filtered, filtered ? FcShellLocalizer["Am27NoMatches", "detail records"].Value : FcShellLocalizer["Am02Empty", "detail records"].Value, terminal: true); return; }
+        { if (state.LastResultOperatorInitiated || !_initialEmptyAnnounced) { SetResultAnnouncementGroup(group); _initialEmptyAnnounced = true; Announcements.Announce(AnnouncementSurface, group, "empty:" + (state.LastResultCorrelationId ?? operation) + "|" + filtered, filtered ? FcShellLocalizer["Am27NoMatches", "detail records"].Value : FcShellLocalizer["Am02Empty", "detail records"].Value, terminal: true); RetireOtherResultAnnouncementGroups(group); } return; }
         if (state.LastResultOperatorInitiated)
-        { _resultAnnouncementGroups.Add(group); Announcements.Announce(AnnouncementSurface, group, "data:" + (state.LastResultCorrelationId ?? operation) + "|" + state.Items.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), FcShellLocalizer["Am03Loaded", "detail records"].Value); }
+        { SetResultAnnouncementGroup(group); Announcements.Announce(AnnouncementSurface, group, "data:" + (state.LastResultCorrelationId ?? operation) + "|" + state.Items.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), FcShellLocalizer["Am03Loaded", "detail records"].Value); RetireOtherResultAnnouncementGroups(group); }
+    }
+
+    private string SafePageFailureCopy(string? error)
+    {
+        if (string.Equals(error, "SectionUpdatingText", StringComparison.Ordinal)
+            || string.Equals(error, "This section is being updated", StringComparison.Ordinal)
+            || string.Equals(error, "Cette section est en cours de mise à jour", StringComparison.Ordinal)
+            || string.Equals(error, FcShellLocalizer["SectionUpdatingText"].Value, StringComparison.Ordinal))
+        { return FcShellLocalizer["SectionUpdatingText"].Value; }
+        return FcShellLocalizer["Am30QueryFailed"].Value;
     }
 
     private void CancelOwnedAnnouncements()
     {
         if (_pendingLoadingGroup is { } loading)
         {
-            Announcements.Cancel(AnnouncementSurface, loading);
+            ReleaseAnnouncementGroup(loading);
             _pendingLoadingGroup = null;
         }
         SetFailureGroup(null);
@@ -446,20 +467,45 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
 
     private void CancelResultAnnouncements()
     {
-        foreach (string result in _resultAnnouncementGroups) { Announcements.Cancel(AnnouncementSurface, result); }
+        foreach (string result in _resultAnnouncementGroups) { ReleaseAnnouncementGroup(result); }
         _resultAnnouncementGroups.Clear();
+    }
+
+    private void SetResultAnnouncementGroup(string group)
+    {
+        if (_resultAnnouncementGroups.Contains(group)) { return; }
+        _resultAnnouncementGroups.Add(group);
+        ClaimAnnouncementGroup(group);
+    }
+
+    private void RetireOtherResultAnnouncementGroups(string current)
+    {
+        foreach (string prior in _resultAnnouncementGroups.Where(group => !string.Equals(group, current, StringComparison.Ordinal)).ToArray())
+        { ReleaseAnnouncementGroup(prior); _resultAnnouncementGroups.Remove(prior); }
     }
 
     private void SetFailureGroup(string? next, string? identity = null)
     {
-        if (_activeFailureGroup is { } prior && !string.Equals(prior, next, StringComparison.Ordinal)) { Announcements.Cancel(AnnouncementSurface, prior); }
+        if (_activeFailureGroup is { } prior && !string.Equals(prior, next, StringComparison.Ordinal)) { ReleaseAnnouncementGroup(prior); }
+        if (next is not null) { ClaimAnnouncementGroup(next); }
         _activeFailureGroup = next;
         _activeFailureIdentity = identity;
     }
 
+    private void ClaimAnnouncementGroup(string group)
+    {
+        if (!_announcementClaims.ContainsKey(group)) { _announcementClaims[group] = Hexalith.FrontComposer.Shell.Services.Announcements.SurfaceAnnouncementGroupOwnership.For(Announcements).Claim(AnnouncementSurface, group); }
+    }
+    private void ReleaseAnnouncementGroup(string group)
+    {
+        if (_announcementClaims.Remove(group, out var claim)) { claim.Dispose(); }
+    }
+
     private async Task RetryProjectionAsync()
     {
-        Dispatcher.Dispatch(new DetailRecordProjectionLoadRequestedAction(UlidFactory.NewUlid(), true));
+        var requestScope = global::Hexalith.FrontComposer.Shell.Services.ProjectionStateScopeOwnership.ResolveCurrentScope(TenantContextAccessor, RenderContext?.TenantId, "projection-retry");
+        if (requestScope is null || (RenderContext is not null && !string.Equals(requestScope.UserId, RenderContext.UserId, StringComparison.Ordinal))) { return; }
+        Dispatcher.Dispatch(new DetailRecordProjectionLoadRequestedAction(UlidFactory.NewUlid(), true) { ScopeTenantId = requestScope.TenantId, ScopeUserId = requestScope.UserId, OriginScopeGeneration = DetailRecordProjectionState.Value.ScopeGeneration });
         await Task.CompletedTask;
     }
 
@@ -557,21 +603,23 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
         global::Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.TenantContextResult __scope;
         try { __scope = TenantContextAccessor.TryGetContext(RenderContext?.TenantId, "projection-render"); }
         catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException and not System.Threading.ThreadAbortException and not AccessViolationException) { __scope = global::Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.TenantContextResult.Failure(global::Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.TenantContextFailureCategory.TenantMissing, string.Empty); }
-        if (!__scope.Succeeded || __scope.Context is null || (RenderContext is not null && !string.Equals(__scope.Context.UserId, RenderContext.UserId, StringComparison.Ordinal)))
+        var state = DetailRecordProjectionState.Value;
+        if (!__scope.Succeeded || __scope.Context is null || (RenderContext is not null && !string.Equals(__scope.Context.UserId, RenderContext.UserId, StringComparison.Ordinal)) || (__scope.Context is not null && !global::Hexalith.FrontComposer.Shell.Services.ProjectionStateScopeOwnership.For(Dispatcher).IsCurrent(AnnouncementSurface, state.ScopeTenantId, state.ScopeUserId, __scope.Context, null, CanClaimUnstampedInitialState(state))))
         {
+            CancelOwnedAnnouncements();
             builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcScopeBlocked>(0);
             builder.CloseComponent();
             return;
         }
-        var state = DetailRecordProjectionState.Value;
         builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcSurfaceStatus>(0);
         builder.AddAttribute(1, "Surface", AnnouncementSurface);
+        builder.AddAttribute(2, "ExclusiveOwner", true);
         builder.CloseComponent();
         #if DEBUG
         if (DevModeServices.GetService(typeof(global::Hexalith.FrontComposer.Shell.Services.DevMode.IDevModeOverlayController)) is global::Hexalith.FrontComposer.Shell.Services.DevMode.IDevModeOverlayController)
         {
-            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DevMode.FcDevModeAnnotation>(2);
-            builder.AddAttribute(3, "Node", new global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeNode(
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DevMode.FcDevModeAnnotation>(3);
+            builder.AddAttribute(4, "Node", new global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeNode(
                 AnnotationKey: "DetailRecordProjection-view",
                 Convention: new global::Hexalith.FrontComposer.Contracts.DevMode.ConventionDescriptor("DetailRecordProjection generated projection view", "Generated projection view surface.", "Use a Level 2 template for body changes, Level 4 for full replacement.", global::Hexalith.FrontComposer.Contracts.DevMode.CustomizationLevel.Default),
                 ContractTypeName: "DetailRecordProjection",
@@ -586,36 +634,37 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
                 SourceComponentIdentity: "DetailRecordProjection.DetailRecordProjection-view",
                 StaleReasons: global::System.Collections.Immutable.ImmutableArray<global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeStaleReason>.Empty,
                 IsUnsupported: false));
-            builder.AddAttribute(4, "CssClass", "fc-devmode-annotation");
+            builder.AddAttribute(5, "CssClass", "fc-devmode-annotation");
             builder.CloseComponent();
         }
         #endif
 
-        builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionSubtitle>(5);
-        builder.AddAttribute(6, "ProjectionType", typeof(DetailRecordProjection));
-        builder.AddAttribute(7, "Role", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.DetailRecord);
-        builder.AddAttribute(8, "WhenState", (string?)null);
-        builder.AddAttribute(9, "FallbackCount", state.Items?.Count ?? 0);
-        builder.AddAttribute(10, "DistinctStatusCount", (int?)null);
-        builder.AddAttribute(11, "EntityLabel", "Detail Record");
-        builder.AddAttribute(12, "EntityPluralLabel", "detail records");
-        builder.AddAttribute(13, "IsLoading", state.IsLoading);
+        builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionSubtitle>(6);
+        builder.AddAttribute(7, "ProjectionType", typeof(DetailRecordProjection));
+        builder.AddAttribute(8, "Role", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.DetailRecord);
+        builder.AddAttribute(9, "WhenState", (string?)null);
+        builder.AddAttribute(10, "FallbackCount", state.Items?.Count ?? 0);
+        builder.AddAttribute(11, "DistinctStatusCount", (int?)null);
+        builder.AddAttribute(12, "EntityLabel", "Detail Record");
+        builder.AddAttribute(13, "EntityPluralLabel", "detail records");
+        builder.AddAttribute(14, "IsLoading", state.IsLoading);
         builder.CloseComponent();
 
-        builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionStaleNotice>(14);
-        builder.AddAttribute(15, "Surface", AnnouncementSurface);
-        builder.AddAttribute(16, "QueryFailureGroup", _activeFailureGroup);
-        builder.AddAttribute(17, "QueryFailureIdentity", _activeFailureIdentity);
-        builder.AddAttribute(18, "HasCachedRows", state.Items is { Count: > 0 });
-        builder.AddAttribute(19, "HasFailedRefresh", state.Error is not null);
-        builder.AddAttribute(20, "FreshnessIdentity", state.IsLoading || state.Error is not null ? null : state.LastResultCorrelationId);
+        builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionStaleNotice>(15);
+        builder.AddAttribute(16, "Surface", AnnouncementSurface);
+        builder.AddAttribute(17, "QueryFailureGroup", _activeFailureGroup);
+        builder.AddAttribute(18, "SharedStatusOwner", true);
+        builder.AddAttribute(19, "QueryFailureIdentity", _activeFailureIdentity);
+        builder.AddAttribute(20, "HasCachedRows", state.Items is { Count: > 0 });
+        builder.AddAttribute(21, "HasFailedRefresh", state.Error is not null);
+        builder.AddAttribute(22, "FreshnessIdentity", state.IsLoading || state.Error is not null ? null : state.LastResultCorrelationId);
         builder.CloseComponent();
 
         if (state.Error is not null)
         {
-            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionFailure>(21);
-            builder.AddAttribute(22, "Message", state.Error);
-            builder.AddAttribute(23, "OnRetry", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, RetryProjectionAsync));
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionFailure>(23);
+            builder.AddAttribute(24, "Message", SafePageFailureCopy(state.Error));
+            builder.AddAttribute(25, "OnRetry", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, RetryProjectionAsync));
             builder.CloseComponent();
             if (state.Items is not { Count: > 0 })
             {
@@ -625,23 +674,24 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
 
         if (state.IsLoading)
         {
-            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionLoadingSkeleton>(24);
-            builder.AddAttribute(25, "ColumnCount", 8);
-            builder.AddAttribute(26, "RowCount", 5);
-            builder.AddAttribute(27, "Layout", Hexalith.FrontComposer.Shell.Components.Rendering.SkeletonLayout.Card);
-            builder.AddAttribute(28, "EntityLabel", "detail records");
+            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionLoadingSkeleton>(26);
+            builder.AddAttribute(27, "ColumnCount", 8);
+            builder.AddAttribute(28, "RowCount", 5);
+            builder.AddAttribute(29, "Layout", Hexalith.FrontComposer.Shell.Components.Rendering.SkeletonLayout.Card);
+            builder.AddAttribute(30, "EntityLabel", "detail records");
+            builder.AddAttribute(31, "SharedStatusOwner", true);
             builder.CloseComponent();
             return;
         }
 
         if (state.Items is null || state.Items.Count == 0)
         {
-            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionEmptyPlaceholder>(29);
-            builder.AddAttribute(30, "ProjectionType", typeof(DetailRecordProjection));
-            builder.AddAttribute(31, "Role", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.DetailRecord);
-            builder.AddAttribute(32, "EntityPluralOverride", "detail records");
-            builder.AddAttribute(33, "CtaCommandName", (string?)null);
-            builder.AddAttribute(34, "SuppressStandaloneStatus", true);
+            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionEmptyPlaceholder>(32);
+            builder.AddAttribute(33, "ProjectionType", typeof(DetailRecordProjection));
+            builder.AddAttribute(34, "Role", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.DetailRecord);
+            builder.AddAttribute(35, "EntityPluralOverride", "detail records");
+            builder.AddAttribute(36, "CtaCommandName", (string?)null);
+            builder.AddAttribute(37, "SuppressStandaloneStatus", true);
             builder.CloseComponent();
             return;
         }

@@ -31,6 +31,52 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
         }
     }
 
+    /// <summary>Restores an already delivered operation when it returns to a vacant surface.</summary>
+    internal bool RestoreDelivered(string surface, string group, string identity, string message)
+    {
+        Action<string>[] handlers;
+        Action<string, long>[] versionedHandlers;
+        long revision;
+        lock (_gate)
+        {
+            if (_disposed || !_surfaces.TryGetValue(surface, out Surface? owner)
+                || !owner.Groups.TryGetValue(group, out Group? state)
+                || !state.Delivered.Contains(identity))
+            {
+                return false;
+            }
+
+            state.Cancelled = false;
+            state.LastMessage = message;
+            state.LastIdentity = identity;
+            state.Restorable = !state.Closed;
+            if (owner.CurrentGroup is not null)
+            {
+                return true;
+            }
+
+            owner.Message = message;
+            owner.CurrentGroup = group;
+            owner.CurrentIdentity = identity;
+            revision = ++owner.Revision;
+            owner.SilentRevisions.Add(revision);
+            handlers = [.. owner.Handlers];
+            versionedHandlers = [.. owner.VersionedHandlers];
+        }
+
+        Deliver(handlers, versionedHandlers, message, revision);
+        return true;
+    }
+
+    internal bool IsSilentRevision(string surface, long revision)
+    {
+        lock (_gate)
+        {
+            return _surfaces.TryGetValue(surface, out Surface? owner)
+                && owner.SilentRevisions.Contains(revision);
+        }
+    }
+
     /// <inheritdoc />
     public IDisposable Subscribe(string surface, Action<string> handler)
     {
@@ -85,8 +131,75 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
             {
                 return;
             }
+            // An old request's immediate slow notice cannot displace a later
+            // decisive outcome. The registration anchor allows a genuinely new
+            // request to take the surface after that outcome.
+            if (group.StartsWith("slow-query:", StringComparison.Ordinal)
+                && owner.CurrentGroup is { } currentSlowBarrier
+                && owner.Groups.TryGetValue(currentSlowBarrier, out Group? currentSlowOwner)
+                && currentSlowOwner.Closed
+                && !SlowRequestStartedAfter(group, currentSlowBarrier, currentSlowOwner.ClosedAt))
+            {
+                return;
+            }
+            if (group.StartsWith("stale:", StringComparison.Ordinal) && !state.HasStaleCandidate)
+            {
+                state.HasStaleCandidate = true;
+                state.LastMessage = message;
+                state.DeliveryOrder = ++owner.DeliveryOrder;
+            }
+            // A stale episode has a unique group. Once it spoke, a rerender of that
+            // episode must never reclaim a shared surface from a later outcome.
+            if (group.StartsWith("stale:", StringComparison.Ordinal) && state.Delivered.Contains(identity))
+            {
+                return;
+            }
+            // The current lifecycle state may rerender while a blocked attempt owns the
+            // shared node. An already spoken state must remain available for silent
+            // restoration without displacing the blocked attempt on that rerender.
+            if (group.StartsWith("lifecycle:", StringComparison.Ordinal) && state.Delivered.Contains(identity))
+            {
+                return;
+            }
+            if (owner.CurrentGroup is { } decisiveGroup
+                && owner.Groups.TryGetValue(decisiveGroup, out Group? decisive)
+                && decisive.Closed
+                && !string.Equals(decisiveGroup, group, StringComparison.Ordinal)
+                && (group.StartsWith("limit:", StringComparison.Ordinal)
+                    || (group.StartsWith("stale:", StringComparison.Ordinal)
+                        && (owner.CurrentIdentity?.StartsWith("failure", StringComparison.Ordinal) == true
+                            || decisiveGroup.StartsWith("blocked:", StringComparison.Ordinal)))))
+            {
+                if (group.StartsWith("limit:", StringComparison.Ordinal)
+                    && owner.CurrentIdentity?.StartsWith("failure", StringComparison.Ordinal) == true)
+                {
+                    // The cap is still visible, but the page failure has speech priority.
+                    // Keep the newest candidate so withdrawing the failure can reveal it.
+                    foreach (KeyValuePair<string, Group> prior in owner.Groups)
+                    {
+                        if (!string.Equals(prior.Key, group, StringComparison.Ordinal)
+                            && prior.Key.StartsWith("limit:", StringComparison.Ordinal))
+                        {
+                            prior.Value.Restorable = false;
+                        }
+                    }
+                    state.LastMessage = message;
+                    state.LastIdentity = identity;
+                    state.Restorable = true;
+                    state.DeliveryOrder = ++owner.DeliveryOrder;
+                    state.Closed = true;
+                    state.ClosedAt = time.GetUtcNow();
+                }
+                return;
+            }
+            // A later owner may queue work while a terminal owner is still mounted.
+            // Flush checks that the terminal was withdrawn before publishing it.
             // A delivered A returning while B is queued cancels B without replaying A.
-            if (state.Delivered.Contains(identity))
+            if (state.Delivered.Contains(identity)
+                && (TryParsePageGroup(group, out _, out _)
+                    || owner.CurrentGroup is null
+                    || (string.Equals(owner.CurrentGroup, group, StringComparison.Ordinal)
+                        && string.Equals(owner.CurrentIdentity, identity, StringComparison.Ordinal))))
             {
                 ++state.Version;
                 state.Timer?.Dispose();
@@ -100,7 +213,7 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
             }
             // A repeated render is silent, but an A -> B -> A burst must end in A.
             // The earlier A was superseded before it was delivered.
-            if (state.Seen.Contains(identity)
+            if (state.Seen.Contains(identity) && !state.Delivered.Contains(identity)
                 && (state.PendingIdentity is null || string.Equals(state.PendingIdentity, identity, StringComparison.Ordinal)))
             {
                 return;
@@ -109,7 +222,12 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
             {
                 state.Seen.Remove(superseded);
             }
+            state.Cancelled = false;
             _ = state.Seen.Add(identity);
+            if (group.StartsWith("lifecycle:", StringComparison.Ordinal))
+            {
+                state.Restorable = false;
+            }
 
             state.Timer?.Dispose();
             state.Timer = null;
@@ -134,7 +252,24 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
                     }
                 }
                 state.Delivered.Add(identity);
+                state.LastMessage = message;
+                state.LastIdentity = identity;
+                if (group.StartsWith("limit:", StringComparison.Ordinal))
+                {
+                    foreach (KeyValuePair<string, Group> prior in owner.Groups)
+                    {
+                        if (!string.Equals(prior.Key, group, StringComparison.Ordinal)
+                            && prior.Key.StartsWith("limit:", StringComparison.Ordinal))
+                        {
+                            prior.Value.Restorable = false;
+                        }
+                    }
+                }
+                state.Restorable = group.StartsWith("limit:", StringComparison.Ordinal)
+                    || group.StartsWith("lifecycle:", StringComparison.Ordinal) && !terminal;
+                state.DeliveryOrder = ++owner.DeliveryOrder;
                 state.Closed = terminal;
+                state.ClosedAt = terminal ? time.GetUtcNow() : null;
                 owner.Message = message;
                 owner.CurrentGroup = group;
                 owner.CurrentIdentity = identity;
@@ -158,14 +293,17 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
     /// <inheritdoc />
     public void Cancel(string surface, string group)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(group);
         Action<string>[] handlers = [];
         Action<string, long>[] versionedHandlers = [];
         long revision = 0;
+        string message = string.Empty;
         lock (_gate)
         {
             if (_surfaces.TryGetValue(surface, out Surface? owner)
                 && owner.Groups.TryGetValue(group, out Group? state))
             {
+                state.Cancelled = true;
                 ++state.Version;
                 state.Timer?.Dispose();
                 state.Timer = null;
@@ -174,19 +312,90 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
                     state.Seen.Remove(cancelled);
                 }
                 state.PendingIdentity = null;
+                state.Restorable = false;
                 if (string.Equals(owner.CurrentGroup, group, StringComparison.Ordinal))
                 {
-                    owner.Message = string.Empty;
-                    owner.CurrentGroup = null;
-                    owner.CurrentIdentity = null;
+                    KeyValuePair<string, Group>? lifecycle = owner.Groups
+                            .Where(static pair => pair.Key.StartsWith("lifecycle:", StringComparison.Ordinal)
+                                && !pair.Value.Cancelled && pair.Value.Restorable
+                                && !string.IsNullOrEmpty(pair.Value.LastMessage))
+                            .OrderByDescending(static pair => pair.Value.DeliveryOrder)
+                            .Select(static pair => (KeyValuePair<string, Group>?)pair)
+                            .FirstOrDefault();
+                    KeyValuePair<string, Group>? stale = owner.Groups
+                        .Where(static pair => pair.Key.StartsWith("stale:", StringComparison.Ordinal)
+                            && !pair.Value.Cancelled && pair.Value.HasStaleCandidate
+                            && !string.IsNullOrEmpty(pair.Value.LastMessage))
+                        .OrderByDescending(static pair => pair.Value.DeliveryOrder)
+                        .Select(static pair => (KeyValuePair<string, Group>?)pair)
+                        .FirstOrDefault();
+                    KeyValuePair<string, Group>? failure = owner.Groups
+                        .Where(static pair => !pair.Value.Cancelled && pair.Value.Closed
+                            && pair.Value.LastIdentity?.StartsWith("failure", StringComparison.Ordinal) == true
+                            && !string.IsNullOrEmpty(pair.Value.LastMessage))
+                        .OrderByDescending(static pair => pair.Value.DeliveryOrder)
+                        .Select(static pair => (KeyValuePair<string, Group>?)pair)
+                        .FirstOrDefault();
+                    KeyValuePair<string, Group>? cap = owner.Groups
+                            .Where(static pair => pair.Key.StartsWith("limit:", StringComparison.Ordinal)
+                                && !pair.Value.Cancelled && pair.Value.Restorable
+                                && !string.IsNullOrEmpty(pair.Value.LastMessage))
+                            .OrderByDescending(static pair => pair.Value.DeliveryOrder)
+                            .Select(static pair => (KeyValuePair<string, Group>?)pair)
+                            .FirstOrDefault();
+                    bool restoreLifecycle = lifecycle is not null && failure is null
+                        && (stale is null || lifecycle.Value.Value.DeliveryOrder >= stale.Value.Value.DeliveryOrder)
+                        && (cap is null || lifecycle.Value.Value.DeliveryOrder >= cap.Value.Value.DeliveryOrder);
+                    owner.Message = restoreLifecycle ? lifecycle!.Value.Value.LastMessage!
+                        : failure?.Value.LastMessage ?? stale?.Value.LastMessage ?? cap?.Value.LastMessage ?? string.Empty;
+                    message = owner.Message;
+                    owner.CurrentGroup = restoreLifecycle ? lifecycle!.Value.Key : failure?.Key ?? stale?.Key ?? cap?.Key;
+                    owner.CurrentIdentity = restoreLifecycle ? lifecycle!.Value.Value.LastIdentity
+                        : failure?.Value.LastIdentity ?? (stale is not null ? "stale" : cap?.Value.LastIdentity);
                     handlers = [.. owner.Handlers];
                     versionedHandlers = [.. owner.VersionedHandlers];
                     revision = ++owner.Revision;
+                    if (restoreLifecycle)
+                    {
+                        // The still-current lifecycle state already spoke before the
+                        // blocked attempt. Rebind the status text without speaking it again.
+                        owner.SilentRevisions.Add(revision);
+                    }
+                    else if (failure is not null)
+                    {
+                        // The mounted page failure already spoke before the slow notice.
+                        owner.SilentRevisions.Add(revision);
+                    }
+                    else if (cap is not null && stale is null)
+                    {
+                        // A cap first observed behind the failure speaks here. A cap that
+                        // already spoke returns as status text without a second utterance.
+                        if (!cap.Value.Value.Delivered.Add(cap.Value.Value.LastIdentity!))
+                        {
+                            owner.SilentRevisions.Add(revision);
+                        }
+                    }
+                    else if (stale is not null)
+                    {
+                        Group staleState = stale.Value.Value;
+                        // Restoring the current candidate completes its pending delivery.
+                        // Its old trailing callback must neither repeat it nor outlive a
+                        // later terminal that takes this shared surface.
+                        ++staleState.Version;
+                        staleState.Timer?.Dispose();
+                        staleState.Timer = null;
+                        staleState.PendingIdentity = null;
+                        bool alreadySpoken = !staleState.Delivered.Add("stale");
+                        if (alreadySpoken)
+                        {
+                            owner.SilentRevisions.Add(revision);
+                        }
+                    }
                 }
             }
         }
 
-        Deliver(handlers, versionedHandlers, string.Empty, revision);
+        Deliver(handlers, versionedHandlers, message, revision);
     }
 
     /// <inheritdoc />
@@ -209,6 +418,7 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
             }
 
             owner.Groups.Clear();
+            owner.SilentRevisions.Clear();
             owner.Message = string.Empty;
             owner.CurrentGroup = null;
             owner.CurrentIdentity = null;
@@ -233,10 +443,34 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
                 return;
             }
 
+            if (owner.CurrentGroup is { } currentGroup
+                && owner.Groups.TryGetValue(currentGroup, out Group? currentState)
+                && currentState.Closed
+                && !string.Equals(currentGroup, group, StringComparison.Ordinal)
+                && !group.StartsWith("load:", StringComparison.Ordinal)
+                && !(currentGroup.StartsWith("blocked:", StringComparison.Ordinal)
+                    && !group.StartsWith("stale:", StringComparison.Ordinal))
+                && !(group.StartsWith("stale:", StringComparison.Ordinal)
+                    && owner.CurrentIdentity?.StartsWith("failure", StringComparison.Ordinal) != true
+                    && !currentGroup.StartsWith("blocked:", StringComparison.Ordinal)
+                    && !currentGroup.StartsWith("limit:", StringComparison.Ordinal))
+                && !IsNewPageOperation(currentGroup, group))
+            {
+                state.Timer?.Dispose();
+                state.Timer = null;
+                state.PendingIdentity = null;
+                state.Seen.Remove(identity);
+                return;
+            }
+
             state.Timer?.Dispose();
             state.Timer = null;
             state.PendingIdentity = null;
             state.Delivered.Add(identity);
+            state.LastMessage = message;
+            state.LastIdentity = identity;
+            state.Restorable = group.StartsWith("lifecycle:", StringComparison.Ordinal);
+            state.DeliveryOrder = ++owner.DeliveryOrder;
             owner.Message = message;
             owner.CurrentGroup = group;
             owner.CurrentIdentity = identity;
@@ -272,6 +506,156 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
                 // A disposed subscriber cannot suppress other listeners.
             }
         }
+    }
+
+    private static bool IsNewPageOperation(string currentGroup, string group)
+        => TryParsePageGroup(currentGroup, out long currentScope, out long currentPage)
+            && TryParsePageGroup(group, out long nextScope, out long nextPage)
+            && (nextScope > currentScope || (nextScope == currentScope && nextPage > currentPage));
+
+    private static bool SlowRequestStartedAfter(string group, string currentGroup, DateTimeOffset? terminalAt)
+    {
+        if (TryParsePageGroup(currentGroup, out long terminalScope, out long terminalPage)
+            && TryParseSlowRegistration(group, out long requestScope, out long resultAtRegistration))
+        {
+            return requestScope > terminalScope
+                || (requestScope == terminalScope && resultAtRegistration >= terminalPage);
+        }
+
+        // A cap closes the completed result. The next request can register in the
+        // same clock tick, so compare its observed result sequence before UTC time.
+        if (TryParseLimitGroup(currentGroup, out long capScope, out long capResult)
+            && TryParseSlowRegistration(group, out long slowScope, out long priorResult))
+        {
+            return slowScope > capScope || slowScope == capScope && priorResult >= capResult;
+        }
+
+        // Standalone cap results can use a nonnumeric identity. Their shared
+        // observation order still distinguishes requests registered within one clock tick.
+        if (currentGroup.StartsWith("limit:", StringComparison.Ordinal)
+            && TryParseObservedOrder(currentGroup, out long capOrder)
+            && TryParseObservedOrder(group, out long requestOrder))
+        {
+            if (TryParseScope(currentGroup, out long currentScope)
+                && TryParseSlowRegistration(group, out long pendingScope, out _)
+                && pendingScope != currentScope)
+            {
+                return pendingScope > currentScope;
+            }
+            return requestOrder > capOrder;
+        }
+
+        const string marker = ":started:";
+        int start = group.LastIndexOf(marker, StringComparison.Ordinal);
+        if (start < 0 || terminalAt is null)
+        {
+            return false;
+        }
+
+        ReadOnlySpan<char> suffix = group.AsSpan(start + marker.Length);
+        int end = suffix.IndexOf(':');
+        return end > 0
+            && long.TryParse(suffix[..end], System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture, out long ticks)
+            && ticks > terminalAt.Value.UtcTicks;
+    }
+
+    private static bool TryParseObservedOrder(string group, out long order)
+    {
+        const string marker = ":observed:";
+        int start = group.LastIndexOf(marker, StringComparison.Ordinal);
+        return long.TryParse(start < 0 ? ReadOnlySpan<char>.Empty : group.AsSpan(start + marker.Length),
+            System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out order);
+    }
+
+    private static bool TryParseScope(string group, out long scope)
+    {
+        scope = 0;
+        int marker = group.LastIndexOf(":scope:", StringComparison.Ordinal);
+        if (marker < 0)
+        {
+            return false;
+        }
+        ReadOnlySpan<char> suffix = group.AsSpan(marker + 7);
+        int end = suffix.IndexOf(':');
+        return end > 0 && long.TryParse(suffix[..end], System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture, out scope);
+    }
+
+    private static bool TryParseSlowRegistration(string group, out long scope, out long resultAtRegistration)
+    {
+        scope = 0;
+        resultAtRegistration = 0;
+        int scopeMarker = group.LastIndexOf(":scope:", StringComparison.Ordinal);
+        int startMarker = group.LastIndexOf(":started:", StringComparison.Ordinal);
+        if (scopeMarker < 0 || startMarker <= scopeMarker + 7
+            || !long.TryParse(group.AsSpan(scopeMarker + 7, startMarker - scopeMarker - 7),
+                System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out scope))
+        {
+            return false;
+        }
+
+        ReadOnlySpan<char> afterStart = group.AsSpan(startMarker + 9);
+        int firstSeparator = afterStart.IndexOf(':');
+        if (firstSeparator < 0)
+        {
+            return false;
+        }
+
+        ReadOnlySpan<char> afterTicks = afterStart[(firstSeparator + 1)..];
+        int secondSeparator = afterTicks.IndexOf(':');
+        return secondSeparator > 0
+            && long.TryParse(afterTicks[..secondSeparator], System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture, out resultAtRegistration);
+    }
+
+    private static bool TryParseLimitGroup(string group, out long scope, out long result)
+    {
+        scope = 0;
+        result = 0;
+        if (!group.StartsWith("limit:", StringComparison.Ordinal))
+        {
+            return false;
+        }
+        int scopeMarker = group.LastIndexOf(":scope:", StringComparison.Ordinal);
+        if (scopeMarker < 0)
+        {
+            return false;
+        }
+        ReadOnlySpan<char> suffix = group.AsSpan(scopeMarker + 7);
+        int separator = suffix.IndexOf(':');
+        if (separator < 0 || !long.TryParse(suffix[..separator], System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture, out scope))
+        {
+            return false;
+        }
+        suffix = suffix[(separator + 1)..];
+        separator = suffix.IndexOf(':');
+        return separator > 0 && long.TryParse(suffix[..separator], System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture, out result);
+    }
+
+    private static bool TryParsePageGroup(string group, out long scope, out long page)
+    {
+        scope = 0;
+        page = 0;
+        if (group.StartsWith("page:", StringComparison.Ordinal))
+        {
+            return long.TryParse(group.AsSpan(5), System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture, out page);
+        }
+
+        if (!group.StartsWith("scope:", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        int marker = group.IndexOf(":page:", StringComparison.Ordinal);
+        return marker > 6
+            && long.TryParse(group.AsSpan(6, marker - 6), System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture, out scope)
+            && long.TryParse(group.AsSpan(marker + 6), System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture, out page);
     }
 
     private Surface GetSurface(string surface)
@@ -332,6 +716,8 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
         public List<Action<string>> Handlers { get; } = [];
         public List<Action<string, long>> VersionedHandlers { get; } = [];
         public long Revision { get; set; }
+        public long DeliveryOrder { get; set; }
+        public HashSet<long> SilentRevisions { get; } = [];
         public Dictionary<string, Group> Groups { get; } = new(StringComparer.Ordinal);
     }
 
@@ -343,6 +729,13 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
         public ITimer? Timer { get; set; }
         public long Version { get; set; }
         public bool Closed { get; set; }
+        public DateTimeOffset? ClosedAt { get; set; }
+        public bool Cancelled { get; set; }
+        public bool HasStaleCandidate { get; set; }
+        public string? LastMessage { get; set; }
+        public string? LastIdentity { get; set; }
+        public bool Restorable { get; set; }
+        public long DeliveryOrder { get; set; }
     }
 
     private sealed class Subscription(SurfaceAnnouncementCoordinator owner, string surface, Action<string> handler) : IDisposable

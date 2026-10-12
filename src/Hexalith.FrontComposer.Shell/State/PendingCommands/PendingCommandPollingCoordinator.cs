@@ -15,6 +15,9 @@ public sealed class PendingCommandPollingCoordinator : IPendingCommandPollingCoo
     private readonly IOptions<FcShellOptions> _options;
     private readonly ILogger<PendingCommandPollingCoordinator> _logger;
     private readonly TimeProvider _timeProvider;
+    private readonly object _queryGate = new();
+    private readonly HashSet<PendingCommandEntry> _queriesInFlight = new(ReferenceEqualityComparer.Instance);
+    private int _singleSlotTurn;
 
     public PendingCommandPollingCoordinator(
         IPendingCommandStateService pendingCommands,
@@ -25,6 +28,10 @@ public sealed class PendingCommandPollingCoordinator : IPendingCommandPollingCoo
         TimeProvider? timeProvider = null) {
         _pendingCommands = pendingCommands ?? throw new ArgumentNullException(nameof(pendingCommands));
         _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
+        if (_resolver is not IPendingCommandCapturedEntryResolver
+            || _resolver is PendingCommandOutcomeResolver concrete && !concrete.SupportsCapturedEntryResolution) {
+            throw new InvalidOperationException($"Polling requires {nameof(IPendingCommandCapturedEntryResolver)} so terminal outcomes can be applied to the captured pending entry.");
+        }
         _statusQuery = statusQuery ?? throw new ArgumentNullException(nameof(statusQuery));
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? NullLogger<PendingCommandPollingCoordinator>.Instance;
@@ -42,7 +49,14 @@ public sealed class PendingCommandPollingCoordinator : IPendingCommandPollingCoo
         bool hasPendingTransport = _pendingCommands.Snapshot()
             .Any(static entry => entry.Status == PendingCommandStatus.Pending);
         if (_pendingCommands is PendingCommandStateService concreteState) {
-            int convergenceBudget = hasPendingTransport ? Math.Max(0, budget - 1) : budget;
+            // With one slot, reserving a transport slot on every tick strands
+            // terminal lifecycle convergence. Alternate priority; an empty
+            // convergence turn falls through to transport without wasting a slot.
+            int convergenceBudget = hasPendingTransport
+                ? budget == 1
+                    ? (Interlocked.Increment(ref _singleSlotTurn) & 1) == 0 ? 1 : 0
+                    : budget - 1
+                : budget;
             (int attempts, int converged) = concreteState.ConvergeLifecycle(convergenceBudget);
             budget -= attempts;
             processed += converged;
@@ -53,100 +67,121 @@ public sealed class PendingCommandPollingCoordinator : IPendingCommandPollingCoo
 
         PendingCommandEntry[] pending = [.. _pendingCommands.Snapshot()
             .Where(static entry => entry.Status == PendingCommandStatus.Pending)
+            .Where(entry => !IsQueryInFlight(entry))
             .OrderBy(static entry => entry.SubmittedAt)
             .Take(budget)];
 
-        foreach (PendingCommandEntry entry in pending) {
-            cancellationToken.ThrowIfCancellationRequested();
+        // Independent bounded queries may settle in any order. A held oldest query must not
+        // delay a later entry's eligible check or its own acceptance deadline.
+        int[] outcomes = await Task.WhenAll(pending.Select(entry => PollEntryAsync(entry, cancellationToken)))
+            .ConfigureAwait(false);
+        return processed + outcomes.Sum();
+    }
 
-            // P16 — a live nudge or reconnect reconciliation may have resolved the entry between
-            // snapshot and query; re-check the current state to avoid wasted HTTP load.
-            PendingCommandEntry? current = _pendingCommands.GetByMessageId(entry.MessageId);
-            if (current is null || current.Status != PendingCommandStatus.Pending) {
-                continue;
-            }
-
-            if (IsExpired(current, _options.Value)) {
-                PendingCommandOutcomeResolutionResult expiryResult = _resolver.Resolve(new PendingCommandOutcomeObservation(
-                    PendingCommandOutcomeSource.FallbackPolling,
-                    PendingCommandTerminalOutcome.DegradedExhausted,
-                    MessageId: current.MessageId,
-                    RejectionTitle: "Command needs review",
-                    RejectionDetail: "Command status polling reached the configured maximum duration before a terminal EventStore status arrived."));
-                if (expiryResult.Status == PendingCommandOutcomeResolutionStatus.Resolved) {
-                    processed++;
-                }
-
-                continue;
-            }
-
-            try {
-                PendingCommandOutcomeObservation? observation = await QueryBeforeDeadlineAsync(current, cancellationToken)
-                    .ConfigureAwait(false);
-
-                // A response which finishes at or after the budget cannot reopen this local
-                // lifecycle. The same identity is closed before any observed outcome is applied.
-                PendingCommandEntry? afterAwait = _pendingCommands.GetByMessageId(current.MessageId);
-                if (afterAwait is null || afterAwait.Status != PendingCommandStatus.Pending) {
-                    continue;
-                }
-                if (IsExpired(afterAwait, _options.Value)) {
-                    PendingCommandOutcomeResolutionResult exhausted = _resolver.Resolve(new PendingCommandOutcomeObservation(
-                        PendingCommandOutcomeSource.FallbackPolling,
-                        PendingCommandTerminalOutcome.DegradedExhausted,
-                        MessageId: afterAwait.MessageId));
-                    if (exhausted.Status == PendingCommandOutcomeResolutionStatus.Resolved) {
-                        processed++;
-                    }
-                    continue;
-                }
-
-                if (observation is null) {
-                    continue;
-                }
-
-                PendingCommandOutcomeResolutionResult result = _resolver.Resolve(observation);
-                switch (result.Status) {
-                    case PendingCommandOutcomeResolutionStatus.Resolved:
-                        // P7 — count only successful terminal applications toward the success
-                        // tally. Duplicate observations are healthy idempotency, not throughput.
-                        processed++;
-                        break;
-                    case PendingCommandOutcomeResolutionStatus.DuplicateIgnored:
-                        FrontComposerHotPathLog.PendingPollDuplicateTerminal(
-                            _logger,
-                            entry.MessageId);
-                        break;
-                    default:
-                        FrontComposerHotPathLog.PendingPollNonResolved(
-                            _logger,
-                            result.Status,
-                            entry.MessageId);
-                        break;
-                }
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-                throw;
-            }
-            catch (TimeoutException) when (IsExpired(current, _options.Value)) {
-                if (_pendingCommands.GetByMessageId(current.MessageId)?.Status == PendingCommandStatus.Pending) {
-                    PendingCommandOutcomeResolutionResult exhausted = _resolver.Resolve(new PendingCommandOutcomeObservation(
-                        PendingCommandOutcomeSource.FallbackPolling,
-                        PendingCommandTerminalOutcome.DegradedExhausted,
-                        MessageId: current.MessageId));
-                    if (exhausted.Status == PendingCommandOutcomeResolutionStatus.Resolved) {
-                        processed++;
-                    }
-                }
-            }
-            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-                // Exception objects are intentionally not passed to the logger here; status-query
-                // failures can echo transport or payload data through exception messages.
-                FrontComposerLog.PendingCommandPollingFailed(_logger, ex.GetType().Name, entry.MessageId);
+    private async Task<int> PollEntryAsync(PendingCommandEntry entry, CancellationToken cancellationToken) {
+        lock (_queryGate) {
+            if (!_queriesInFlight.Add(entry)) {
+                return 0;
             }
         }
+        try {
+            return await PollOwnedEntryAsync(entry, cancellationToken).ConfigureAwait(false);
+        }
+        finally {
+            lock (_queryGate) {
+                _queriesInFlight.Remove(entry);
+            }
+        }
+    }
 
-        return processed;
+    private async Task<int> PollOwnedEntryAsync(PendingCommandEntry entry, CancellationToken cancellationToken) {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // The snapshot entry owns this poll. Reusing its MessageId after scope reset cannot
+        // make an old query, timeout, or pre-query decision act on a replacement.
+        if (!IsCurrentPending(entry)) {
+            return 0;
+        }
+
+        if (IsExpired(entry, _options.Value)) {
+            PendingCommandOutcomeResolutionResult expiryResult = ResolveForEntry(entry, new PendingCommandOutcomeObservation(
+                    PendingCommandOutcomeSource.FallbackPolling,
+                    PendingCommandTerminalOutcome.DegradedExhausted,
+                    MessageId: entry.MessageId,
+                    RejectionTitle: "Command needs review",
+                    RejectionDetail: "Command status polling reached the configured maximum duration before a terminal EventStore status arrived."));
+            return expiryResult.Status == PendingCommandOutcomeResolutionStatus.Resolved ? 1 : 0;
+        }
+
+        try {
+            PendingCommandOutcomeObservation? observation = await QueryBeforeDeadlineAsync(entry, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!IsCurrentPending(entry)) {
+                return 0;
+            }
+            if (IsExpired(entry, _options.Value)) {
+                PendingCommandOutcomeResolutionResult exhausted = ResolveForEntry(entry, new PendingCommandOutcomeObservation(
+                        PendingCommandOutcomeSource.FallbackPolling,
+                        PendingCommandTerminalOutcome.DegradedExhausted,
+                        MessageId: entry.MessageId));
+                return exhausted.Status == PendingCommandOutcomeResolutionStatus.Resolved ? 1 : 0;
+            }
+
+            if (observation is null) {
+                return 0;
+            }
+
+            PendingCommandOutcomeResolutionResult result = ResolveForEntry(entry, observation);
+            switch (result.Status) {
+                case PendingCommandOutcomeResolutionStatus.Resolved:
+                    return 1;
+                case PendingCommandOutcomeResolutionStatus.DuplicateIgnored:
+                    FrontComposerHotPathLog.PendingPollDuplicateTerminal(_logger, entry.MessageId);
+                    break;
+                default:
+                    FrontComposerHotPathLog.PendingPollNonResolved(_logger, result.Status, entry.MessageId);
+                    break;
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+            throw;
+        }
+        catch (TimeoutException) when (IsExpired(entry, _options.Value)) {
+            if (IsCurrentPending(entry)) {
+                PendingCommandOutcomeResolutionResult exhausted = ResolveForEntry(entry, new PendingCommandOutcomeObservation(
+                    PendingCommandOutcomeSource.FallbackPolling,
+                    PendingCommandTerminalOutcome.DegradedExhausted,
+                    MessageId: entry.MessageId));
+                return exhausted.Status == PendingCommandOutcomeResolutionStatus.Resolved ? 1 : 0;
+            }
+        }
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+            // Exception objects are intentionally not passed to the logger here; status-query
+            // failures can echo transport or payload data through exception messages.
+            FrontComposerLog.PendingCommandPollingFailed(_logger, ex.GetType().Name, entry.MessageId);
+        }
+
+        return 0;
+    }
+
+    private bool IsCurrentPending(PendingCommandEntry entry)
+        => ReferenceEquals(_pendingCommands.GetByMessageId(entry.MessageId), entry)
+            && entry.Status == PendingCommandStatus.Pending;
+
+    private bool IsQueryInFlight(PendingCommandEntry entry) {
+        lock (_queryGate) {
+            return _queriesInFlight.Contains(entry);
+        }
+    }
+
+    private PendingCommandOutcomeResolutionResult ResolveForEntry(
+        PendingCommandEntry entry, PendingCommandOutcomeObservation observation) {
+        if (!IsCurrentPending(entry)) {
+            return new PendingCommandOutcomeResolutionResult(PendingCommandOutcomeResolutionStatus.Unknown);
+        }
+
+        return ((IPendingCommandCapturedEntryResolver)_resolver).ResolveForEntry(observation, entry);
     }
 
     private bool IsExpired(PendingCommandEntry entry, FcShellOptions options) {
@@ -169,7 +204,7 @@ public sealed class PendingCommandPollingCoordinator : IPendingCommandPollingCoo
         }
         finally {
             // Provider cancellation callbacks may block. End local polling at the deadline and
-            // observe cleanup separately, retaining the token until abandoned work settles.
+            // retire cleanup ownership after a bounded wait even if abandoned work never settles.
             Task cleanup = CompleteQueryCleanupAsync(queryCancellation, query);
             _ = cleanup.ContinueWith(static completed => { _ = completed.Exception; },
                 CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
@@ -177,19 +212,30 @@ public sealed class PendingCommandPollingCoordinator : IPendingCommandPollingCoo
         }
     }
 
-    private static async Task CompleteQueryCleanupAsync(CancellationTokenSource cancellation, Task? query) {
+    private async Task CompleteQueryCleanupAsync(CancellationTokenSource cancellation, Task? query) {
+        ObserveLateFault(query);
         try {
-            Task completion = Task.WhenAll(cancellation.CancelAsync(), query ?? Task.CompletedTask);
+            Task cancellationTask = cancellation.CancelAsync();
+            ObserveLateFault(cancellationTask);
             try {
-                await completion.ConfigureAwait(false);
+                await cancellationTask.WaitAsync(TimeSpan.FromSeconds(1), _timeProvider).ConfigureAwait(false);
             }
             catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)
-                && completion.Exception?.Flatten().InnerExceptions.Any(ExceptionGuard.IsFatal) != true) {
+                && cancellationTask.Exception?.Flatten().InnerExceptions.Any(ExceptionGuard.IsFatal) != true) {
                 // Abandoned transport evidence cannot replace a closed local outcome.
             }
         }
         finally {
             cancellation.Dispose();
         }
+    }
+
+    private static void ObserveLateFault(Task? task) {
+        if (task is null) {
+            return;
+        }
+        _ = task.ContinueWith(static completed => { _ = completed.Exception; },
+            CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 }

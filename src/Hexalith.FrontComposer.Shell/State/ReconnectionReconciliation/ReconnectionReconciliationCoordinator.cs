@@ -16,6 +16,7 @@ namespace Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
 public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconciliationCoordinator, IDisposable {
     /// <summary>Default sweep TTL applied to <see cref="MarkReconciliationSweepAction"/>. AC3: ≤ 700ms.</summary>
     private static readonly TimeSpan SweepTtl = TimeSpan.FromMilliseconds(700);
+    private static readonly TimeSpan IncompleteReadWaitLimit = TimeSpan.FromSeconds(30);
 
     private readonly IProjectionFallbackRefreshScheduler _refreshScheduler;
     private readonly IReconnectionReconciliationState _state;
@@ -87,9 +88,113 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
 
         ProjectionReconciliationRefreshResult result;
         try {
-            result = await _refreshScheduler
-                .TriggerReconciliationOnceAsync(epoch, linked.Token)
-                .ConfigureAwait(false);
+            DateTimeOffset waitDeadline = _timeProvider.GetUtcNow() + IncompleteReadWaitLimit;
+            using CancellationTokenSource scopedInitial = CancellationTokenSource.CreateLinkedTokenSource(linked.Token);
+            Task<ProjectionReconciliationRefreshResult> initialRead = _refreshScheduler
+                .TriggerReconciliationOnceAsync(epoch, scopedInitial.Token);
+            try {
+                result = await initialRead.WaitAsync(IncompleteReadWaitLimit, _timeProvider, linked.Token)
+                    .ConfigureAwait(false);
+            }
+            catch (TimeoutException) {
+                Task cancellation = scopedInitial.CancelAsync();
+                if (_refreshScheduler is IProjectionAbandonedReadRetirer retirer) {
+                    retirer.RetireAbandonedReads(epoch);
+                }
+                _ = cancellation.ContinueWith(static task => _ = task.Exception,
+                    CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+                _ = initialRead.ContinueWith(static task => _ = task.Exception,
+                    CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+                result = new ProjectionReconciliationRefreshResult(0, []) { HasIncompleteEligibleReads = true };
+            }
+            int refreshedCount = result.RefreshedCount;
+            HashSet<string> changed = new(result.ChangedViewKeys, StringComparer.Ordinal);
+            HashSet<string> failed = new(result.FailedViewKeys, StringComparer.Ordinal);
+            HashSet<string> skipped = new(result.SkippedViewKeys, StringComparer.Ordinal);
+            HashSet<string> incomplete = new(result.IncompleteViewKeys, StringComparer.Ordinal);
+            bool unknownIncomplete = result.HasIncompleteEligibleReads && incomplete.Count == 0;
+            // An eligible lane already owned by another read is still unresolved. Keep the
+            // reconciliation episode open until that read (or its pending replay) releases the
+            // lane, then run one newly budgeted pass against current scope and epoch state.
+            while (incomplete.Count > 0 && _refreshScheduler is IProjectionIncompleteReadWaiter waiter) {
+                TimeSpan remaining = waitDeadline - _timeProvider.GetUtcNow();
+                if (remaining <= TimeSpan.Zero) {
+                    break;
+                }
+                CancellationTokenSource scopedWait = CancellationTokenSource.CreateLinkedTokenSource(linked.Token);
+                bool cancellationDetached = false;
+                bool released;
+                try {
+                    released = result.IncompleteReadTasks.Count == 0
+                        || await waiter.WaitForIncompleteReadAsync(epoch, result, scopedWait.Token)
+                            .WaitAsync(remaining, _timeProvider, linked.Token).ConfigureAwait(false);
+                }
+                catch (TimeoutException) {
+                    Task cancellation = scopedWait.CancelAsync();
+                    cancellationDetached = true;
+                    _ = CompleteTimedOutWaitCancellationAsync(scopedWait, cancellation);
+                    break;
+                }
+                finally {
+                    if (!cancellationDetached) {
+                        scopedWait.Dispose();
+                    }
+                }
+                if (!released) {
+                    break;
+                }
+                TimeSpan recheckRemaining = waitDeadline - _timeProvider.GetUtcNow();
+                if (recheckRemaining <= TimeSpan.Zero) {
+                    break;
+                }
+                using CancellationTokenSource scopedPass = CancellationTokenSource.CreateLinkedTokenSource(linked.Token);
+                Task<ProjectionReconciliationRefreshResult> recheck = waiter.RecheckIncompleteReadsAsync(
+                    epoch, incomplete, scopedPass.Token);
+                try {
+                    result = await recheck.WaitAsync(recheckRemaining, _timeProvider, linked.Token)
+                        .ConfigureAwait(false);
+                }
+                catch (TimeoutException) {
+                    Task cancellation = scopedPass.CancelAsync();
+                    if (_refreshScheduler is IProjectionAbandonedReadRetirer retirer) {
+                        retirer.RetireAbandonedReads(epoch);
+                    }
+                    _ = cancellation.ContinueWith(static task => _ = task.Exception,
+                        CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+                    _ = recheck.ContinueWith(static task => _ = task.Exception,
+                        CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+                    break;
+                }
+                refreshedCount += result.RefreshedCount;
+                changed.UnionWith(result.ChangedViewKeys);
+                failed.ExceptWith(result.RefreshedViewKeys);
+                failed.UnionWith(result.FailedViewKeys);
+                skipped.ExceptWith(result.RefreshedViewKeys);
+                skipped.UnionWith(result.SkippedViewKeys);
+                HashSet<string> unresolvedBefore = new(incomplete, StringComparer.Ordinal);
+                incomplete.ExceptWith(result.RefreshedViewKeys);
+                incomplete.ExceptWith(result.FailedViewKeys);
+                incomplete.UnionWith(result.IncompleteViewKeys);
+                if (incomplete.SetEquals(unresolvedBefore) && result.IncompleteReadTasks.Count == 0) {
+                    // No eligible held read was found for these exact keys. Keep the
+                    // recovery unresolved instead of spinning or claiming freshness.
+                    break;
+                }
+            }
+            if (incomplete.Count > 0 && _timeProvider.GetUtcNow() >= waitDeadline
+                && _refreshScheduler is IProjectionAbandonedReadRetirer expiredReadRetirer) {
+                // A held nudge/fallback read was not started with scopedPass's token.
+                // Retire the exact observed admission before a later current sweep.
+                expiredReadRetirer.RetireAbandonedReads(epoch);
+            }
+            result = result with {
+                RefreshedCount = refreshedCount,
+                ChangedViewKeys = changed.ToArray(),
+                FailedViewKeys = failed.ToArray(),
+                SkippedViewKeys = skipped.ToArray(),
+                HasIncompleteEligibleReads = unknownIncomplete || incomplete.Count > 0,
+                IncompleteViewKeys = incomplete.ToArray(),
+            };
         }
         // P11 — accept caller-side cancellation as well as linked cancellation.
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested || linked.IsCancellationRequested) {
@@ -131,7 +236,8 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
             }
 
             _state.Complete(epoch, result.ChangedViewKeys.Count > 0,
-                succeeded: result.RefreshedCount > 0 || result.FailedViewKeys.Count == 0, dataRead: result.RefreshedCount > 0);
+                succeeded: result.FailedViewKeys.Count == 0 && result.SkippedViewKeys.Count == 0 && !result.HasIncompleteEligibleReads,
+                dataRead: result.RefreshedCount > 0);
 
             ScheduleSweepCleanup(epoch);
 
@@ -157,6 +263,21 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
 
         DisposeCompletedCts(linked);
         return result;
+    }
+
+    private static async Task CompleteTimedOutWaitCancellationAsync(CancellationTokenSource source, Task cancellation) {
+        _ = cancellation.ContinueWith(static task => _ = task.Exception,
+            CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+        try {
+            await cancellation.WaitAsync(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)
+            && cancellation.Exception?.Flatten().InnerExceptions.Any(ExceptionGuard.IsFatal) != true) {
+            // The visible deadline has expired; a held callback cannot retain cleanup forever.
+        }
+        finally {
+            source.Dispose();
+        }
     }
 
     public void Dispose() {
