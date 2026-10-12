@@ -208,7 +208,9 @@ test.describe('Story 13.3: mapped rejection recovery focus', () => {
     await expect(summary).toBeFocused();
     await expect(summary.locator('[data-fc-validation-target]')).toHaveText(error);
     await expect(summary).not.toHaveAttribute('aria-live');
-    await expect(form.locator('.fc-lifecycle-live')).toHaveCount(0);
+    const liveStatus = form.locator("[data-testid='fc-surface-status']");
+    await expect(liveStatus).toHaveCount(1);
+    await expect(liveStatus).not.toContainText(error);
     await expect(amount).toHaveAttribute('aria-invalid', 'true');
     if (browserName === 'chromium') {
       // ARIA element reflection crosses Fluent's shadow boundary in the native accessibility tree;

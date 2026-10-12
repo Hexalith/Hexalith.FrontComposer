@@ -1678,6 +1678,163 @@ public sealed class GeneratedProjectionAnnouncementTests : GeneratedComponentTes
         pages.Value.ResultsByPage[(ViewKey, 0)].Failed.ShouldBeFalse();
     }
 
+    [Theory]
+    [InlineData(false, "No counters available.")]
+    [InlineData(true, "No counters match these filters.")]
+    public async Task ZeroCountPageBeyondTheFirstOffsetSpeaksEmptyOrFilteredZeroNotLoaded(bool filtered, string expected)
+    {
+        await InitializeStoreAsync();
+        Services.GetRequiredService<IDispatcher>().Dispatch(new CounterProjectionLoadedAction("seed",
+            [new CounterProjection { Id = "present-row", Count = 1 }])
+            { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
+        if (filtered)
+        {
+            DataGridNavigationFeature navigation = Services.GetRequiredService<DataGridNavigationFeature>();
+            DataGridNavigationState navigationState = Services.GetRequiredService<IState<DataGridNavigationState>>().Value;
+            navigation.RestoreState(navigationState with
+            {
+                ViewStates = navigationState.ViewStates.SetItem(ViewKey, new GridViewSnapshot(
+                    0, ImmutableDictionary<string, string>.Empty.Add("Id", "missing-row"),
+                    null, false, null, null, DateTimeOffset.UnixEpoch)),
+            });
+        }
+
+        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+        string request = ProjectionRequestIdentity(cut);
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        List<string> spoken = [];
+        using IDisposable speech = announcements.Subscribe("projection:" + ViewKey, message =>
+        {
+            if (message.Length > 0) { spoken.Add(message); }
+        });
+        LoadedPageFeature pages = Services.GetRequiredService<LoadedPageFeature>();
+        LoadedPageState current = Services.GetRequiredService<IState<LoadedPageState>>().Value;
+        await cut.InvokeAsync(() => pages.RestoreState(current with
+        {
+            LastResultByKey = current.LastResultByKey.SetItem(ViewKey,
+                new LoadedPageResult(8, request, 0, Failed: false, OperatorInitiated: true, Skip: 500, Take: 25)),
+        }));
+
+        cut.WaitForAssertion(() => announcements.Current("projection:" + ViewKey).ShouldBe(expected));
+        spoken.ShouldBe([expected]);
+        spoken.ShouldNotContain("counters loaded.");
+    }
+
+    [Fact]
+    public async Task BackgroundRowsRetireEmptySpeechAndKeepPendingLoadedAnnouncement()
+    {
+        FakeTimeProvider time = new();
+        Services.Replace(ServiceDescriptor.Singleton<TimeProvider>(time));
+        await InitializeStoreAsync();
+        Services.GetRequiredService<IDispatcher>().Dispatch(new CounterProjectionLoadedAction("seed",
+            [new CounterProjection { Id = "present-row", Count = 1 }])
+            { ScopeTenantId = "test-tenant", ScopeUserId = "test-user" });
+        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+        string request = ProjectionRequestIdentity(cut);
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        List<string> spoken = [];
+        using IDisposable speech = announcements.Subscribe("projection:" + ViewKey, message =>
+        {
+            if (message.Length > 0) { spoken.Add(message); }
+        });
+        LoadedPageFeature pages = Services.GetRequiredService<LoadedPageFeature>();
+
+        async Task Publish(LoadedPageResult result)
+        {
+            LoadedPageState current = Services.GetRequiredService<IState<LoadedPageState>>().Value;
+            await cut.InvokeAsync(() => pages.RestoreState(current with
+            {
+                LastResultByKey = current.LastResultByKey.SetItem(ViewKey, result),
+            })).ConfigureAwait(true);
+        }
+
+        await Publish(new LoadedPageResult(1, request, 0, Failed: false, OperatorInitiated: true));
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        cut.WaitForAssertion(() => announcements.Current("projection:" + ViewKey).ShouldBe("No counters available."));
+
+        await Publish(new LoadedPageResult(2, request, 1, Failed: false, OperatorInitiated: false));
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        announcements.Current("projection:" + ViewKey).ShouldBeEmpty();
+        spoken.ShouldBe(["No counters available."]);
+
+        await Publish(new LoadedPageResult(3, request, 1, Failed: false, OperatorInitiated: true));
+        await Publish(new LoadedPageResult(4, request, 1, Failed: false, OperatorInitiated: false));
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        cut.WaitForAssertion(() => announcements.Current("projection:" + ViewKey).ShouldBe("counters loaded."));
+        spoken.Count(message => message == "counters loaded.").ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task OffThreadResultAnnouncesAndCancelsOnTheRendererDispatcher()
+    {
+        RendererThreadAnnouncementCoordinator recorder = new(new SurfaceAnnouncementCoordinator(TimeProvider.System));
+        Services.AddSingleton(Substitute.For<Hexalith.FrontComposer.Shell.Services.IEmptyStateCtaResolver>());
+        Services.Replace(ServiceDescriptor.Singleton<ISurfaceAnnouncementCoordinator>(recorder));
+        await InitializeStoreAsync();
+        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        SynchronizationContext renderer = null!;
+        await cut.InvokeAsync(() =>
+        {
+            renderer = SynchronizationContext.Current!;
+            dispatcher.Dispatch(new CounterProjectionLoadRequestedAction("renderer-load", true)
+            {
+                ScopeTenantId = "test-tenant",
+                ScopeUserId = "test-user",
+            });
+        });
+        recorder.Reset();
+        await Task.Factory.StartNew(
+            () => dispatcher.Dispatch(new CounterProjectionLoadedAction("renderer-load",
+                [new CounterProjection { Id = "off-thread", Count = 1 }])
+            {
+                ScopeTenantId = "test-tenant",
+                ScopeUserId = "test-user",
+            }),
+            CancellationToken.None,
+            TaskCreationOptions.None,
+            TaskScheduler.Default);
+        cut.WaitForAssertion(() =>
+        {
+            recorder.AnnounceCount.ShouldBeGreaterThan(0);
+            recorder.CancelCount.ShouldBeGreaterThan(0);
+            recorder.Contexts.ShouldAllBe(context => ReferenceEquals(context, renderer));
+        });
+    }
+
+    [Fact]
+    public async Task CachedFallbackPagesRenderInOffsetOrderWhenTheProjectionFailed()
+    {
+        Services.AddSingleton(Substitute.For<Hexalith.FrontComposer.Shell.Services.IEmptyStateCtaResolver>());
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        dispatcher.Dispatch(new CounterProjectionLoadFailedAction("failed-order", "SectionUpdatingText")
+        {
+            ScopeTenantId = "test-tenant",
+            ScopeUserId = "test-user",
+        });
+        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+        LoadedPageFeature pages = Services.GetRequiredService<LoadedPageFeature>();
+        LoadedPageState current = Services.GetRequiredService<IState<LoadedPageState>>().Value;
+        CounterProjection later = new() { Id = "offset-three", Count = 3 };
+        CounterProjection earlier = new() { Id = "offset-zero", Count = 0 };
+        await cut.InvokeAsync(() => pages.RestoreState(current with
+        {
+            PagesByKey = current.PagesByKey
+                .Add((ViewKey, 3), [later])
+                .Add((ViewKey, 0), [earlier]),
+        }));
+
+        cut.WaitForAssertion(() =>
+        {
+            string markup = cut.Markup;
+            int zero = markup.IndexOf("offset-zero", StringComparison.Ordinal);
+            int three = markup.IndexOf("offset-three", StringComparison.Ordinal);
+            zero.ShouldBeGreaterThanOrEqualTo(0);
+            three.ShouldBeGreaterThan(zero);
+        });
+    }
+
     private static async Task RequestGeneratedPage(IRenderedComponent<CounterProjectionView> cut)
     {
         ValueTask<Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<CounterProjection>> pending = default;

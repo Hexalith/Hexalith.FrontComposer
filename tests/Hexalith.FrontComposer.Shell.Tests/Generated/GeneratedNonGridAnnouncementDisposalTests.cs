@@ -156,4 +156,125 @@ public sealed class GeneratedNonGridAnnouncementDisposalTests : GeneratedCompone
         time.Advance(TimeSpan.FromMilliseconds(250));
         announcements.Current(surface).ShouldBe("Other owner remains");
     }
+
+    [Fact]
+    public async Task BackgroundRowsRetireEmptySpeechAndKeepPendingLoadedAnnouncement()
+    {
+        FakeTimeProvider time = new();
+        Services.Replace(ServiceDescriptor.Singleton<TimeProvider>(time));
+        Services.AddSingleton(Substitute.For<Hexalith.FrontComposer.Shell.Services.IEmptyStateCtaResolver>());
+        await InitializeStoreAsync();
+        IRenderedComponent<NoticeDetailProjectionView> cut = Render<NoticeDetailProjectionView>();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        string surface = (string)typeof(NoticeDetailProjectionView).GetProperty("AnnouncementSurface", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!;
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        List<string> spoken = [];
+        using IDisposable speech = announcements.Subscribe(surface, message =>
+        {
+            if (message.Length > 0) { spoken.Add(message); }
+        });
+        NoticeDetailProjection row = new() { Id = "background-row", Name = "Background row" };
+
+        await cut.InvokeAsync(() =>
+        {
+            dispatcher.Dispatch(new NoticeDetailProjectionLoadRequestedAction("empty-owner", true)
+            {
+                ScopeTenantId = "test-tenant",
+                ScopeUserId = "test-user",
+            });
+            dispatcher.Dispatch(new NoticeDetailProjectionLoadedAction("empty-owner", [])
+            {
+                ScopeTenantId = "test-tenant",
+                ScopeUserId = "test-user",
+            });
+        });
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        string empty = announcements.Current(surface);
+        empty.ShouldContain("available.");
+        spoken.ShouldBe([empty]);
+
+        await DispatchFinalStateWhileRendererIsBusy(cut, () =>
+        {
+            dispatcher.Dispatch(new NoticeDetailProjectionLoadRequestedAction("background-rows", false)
+            {
+                ScopeTenantId = "test-tenant",
+                ScopeUserId = "test-user",
+            });
+            dispatcher.Dispatch(new NoticeDetailProjectionLoadedAction("background-rows", [row])
+            {
+                ScopeTenantId = "test-tenant",
+                ScopeUserId = "test-user",
+            });
+        }).ConfigureAwait(true);
+        cut.WaitForAssertion(() => announcements.Current(surface).ShouldBeEmpty());
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        spoken.ShouldBe([empty]);
+
+        await cut.InvokeAsync(() =>
+        {
+            dispatcher.Dispatch(new NoticeDetailProjectionLoadRequestedAction("operator-loaded", true)
+            {
+                ScopeTenantId = "test-tenant",
+                ScopeUserId = "test-user",
+            });
+            dispatcher.Dispatch(new NoticeDetailProjectionLoadedAction("operator-loaded", [row])
+            {
+                ScopeTenantId = "test-tenant",
+                ScopeUserId = "test-user",
+            });
+        });
+        await DispatchFinalStateWhileRendererIsBusy(cut, () =>
+        {
+            dispatcher.Dispatch(new NoticeDetailProjectionLoadRequestedAction("background-again", false)
+            {
+                ScopeTenantId = "test-tenant",
+                ScopeUserId = "test-user",
+            });
+            dispatcher.Dispatch(new NoticeDetailProjectionLoadedAction("background-again", [row])
+            {
+                ScopeTenantId = "test-tenant",
+                ScopeUserId = "test-user",
+            });
+        }).ConfigureAwait(true);
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        cut.WaitForAssertion(() => announcements.Current(surface).ShouldContain("loaded."));
+        spoken.Count(message => message.Contains("loaded.", StringComparison.Ordinal)).ShouldBe(1);
+    }
+
+    private static async Task DispatchFinalStateWhileRendererIsBusy(
+        IRenderedComponent<NoticeDetailProjectionView> cut,
+        Action dispatch)
+    {
+        // A quiesced renderer runs InvokeAsync inline, so a background load would
+        // be observed while IsLoading and cancel every result group. Hold the
+        // renderer queue across both dispatches; the view then sees only the
+        // completed non-operator result.
+        SynchronizationContext renderer = null!;
+        await cut.InvokeAsync(() => renderer = SynchronizationContext.Current!).ConfigureAwait(true);
+        using ManualResetEventSlim release = new(false);
+        renderer.Post(_ => release.Wait(), null);
+        using ManualResetEventSlim completed = new(false);
+        Exception? error = null;
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            try
+            {
+                dispatch();
+            }
+            catch (Exception ex)
+            {
+                error = ex;
+            }
+            finally
+            {
+                completed.Set();
+            }
+        });
+        completed.Wait();
+        release.Set();
+        if (error is not null)
+        {
+            throw new InvalidOperationException("Background dispatch failed.", error);
+        }
+    }
 }

@@ -320,6 +320,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
     private string? _activeFailureGroup;
     private string? _activeFailureIdentity;
     private readonly System.Collections.Generic.HashSet<string> _resultAnnouncementGroups = new(System.StringComparer.Ordinal);
+    private readonly System.Collections.Generic.HashSet<string> _emptyResultAnnouncementGroups = new(System.StringComparer.Ordinal);
     private bool _initialEmptyAnnounced;
     private readonly System.Collections.Generic.Dictionary<string, System.IDisposable> _announcementClaims = new(System.StringComparer.Ordinal);
     private global::Hexalith.FrontComposer.Shell.Services.DataGridViewOwnership? _gridViewOwners;
@@ -407,18 +408,18 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
             string pageGroup = "scope:" + scopeGeneration.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":page:" + page.Identity.ToString(System.Globalization.CultureInfo.InvariantCulture);
             if (page.Failed) { SetFailureGroup(pageGroup, "failure"); Announcements.Announce(AnnouncementSurface, pageGroup, "failure", SafePageFailureCopy(page.ErrorMessage), terminal: true); return; }
             SetFailureGroup(null);
-            if (page.TotalCount == 0) { if (page.OperatorInitiated || !_initialEmptyAnnounced) { SetResultAnnouncementGroup(pageGroup); _initialEmptyAnnounced = true; Announcements.Announce(AnnouncementSurface, pageGroup, filtered ? "filtered-zero" : "empty", filtered ? FcShellLocalizer["Am27NoMatches", "orders"].Value : FcShellLocalizer["Am02Empty", "orders"].Value, terminal: true); RetireOtherResultAnnouncementGroups(pageGroup); } return; }
-            if (page.OperatorInitiated) { SetResultAnnouncementGroup(pageGroup); Announcements.Announce(AnnouncementSurface, pageGroup, "loaded", FcShellLocalizer["Am03Loaded", "orders"].Value); RetireOtherResultAnnouncementGroups(pageGroup); } else { CancelResultAnnouncements(); }
+            if (page.TotalCount == 0) { if (page.OperatorInitiated || !_initialEmptyAnnounced) { SetEmptyResultAnnouncementGroup(pageGroup); _initialEmptyAnnounced = true; Announcements.Announce(AnnouncementSurface, pageGroup, filtered ? "filtered-zero" : "empty", filtered ? FcShellLocalizer["Am27NoMatches", "orders"].Value : FcShellLocalizer["Am02Empty", "orders"].Value, terminal: true); RetireOtherResultAnnouncementGroups(pageGroup); } return; }
+            if (page.OperatorInitiated) { SetLoadedResultAnnouncementGroup(pageGroup); Announcements.Announce(AnnouncementSurface, pageGroup, "loaded", FcShellLocalizer["Am03Loaded", "orders"].Value); RetireOtherResultAnnouncementGroups(pageGroup); } else { RetireEmptyResultAnnouncements(); }
             return;
         }
         SetFailureGroup(null);
         if (filtered) { return; }
         if (state.Items is null) { return; }
         if (state.Items.Count == 0)
-        { if (state.LastResultOperatorInitiated || !_initialEmptyAnnounced) { SetResultAnnouncementGroup(group); _initialEmptyAnnounced = true; Announcements.Announce(AnnouncementSurface, group, "empty:" + (state.LastResultCorrelationId ?? operation) + "|" + filtered, filtered ? FcShellLocalizer["Am27NoMatches", "orders"].Value : FcShellLocalizer["Am02Empty", "orders"].Value, terminal: true); RetireOtherResultAnnouncementGroups(group); } return; }
+        { if (state.LastResultOperatorInitiated || !_initialEmptyAnnounced) { SetEmptyResultAnnouncementGroup(group); _initialEmptyAnnounced = true; Announcements.Announce(AnnouncementSurface, group, "empty:" + (state.LastResultCorrelationId ?? operation) + "|" + filtered, filtered ? FcShellLocalizer["Am27NoMatches", "orders"].Value : FcShellLocalizer["Am02Empty", "orders"].Value, terminal: true); RetireOtherResultAnnouncementGroups(group); } return; }
         if (state.LastResultOperatorInitiated)
-        { SetResultAnnouncementGroup(group); Announcements.Announce(AnnouncementSurface, group, "data:" + (state.LastResultCorrelationId ?? operation) + "|" + state.Items.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), FcShellLocalizer["Am03Loaded", "orders"].Value); RetireOtherResultAnnouncementGroups(group); }
-        else { CancelResultAnnouncements(); }
+        { SetLoadedResultAnnouncementGroup(group); Announcements.Announce(AnnouncementSurface, group, "data:" + (state.LastResultCorrelationId ?? operation) + "|" + state.Items.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), FcShellLocalizer["Am03Loaded", "orders"].Value); RetireOtherResultAnnouncementGroups(group); }
+        else { RetireEmptyResultAnnouncements(); }
     }
 
     private string SafePageFailureCopy(string? error)
@@ -446,6 +447,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
     {
         foreach (string result in _resultAnnouncementGroups) { ReleaseAnnouncementGroup(result); }
         _resultAnnouncementGroups.Clear();
+        _emptyResultAnnouncementGroups.Clear();
     }
 
     private void SetResultAnnouncementGroup(string group)
@@ -455,10 +457,28 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         ClaimAnnouncementGroup(group);
     }
 
+    private void SetEmptyResultAnnouncementGroup(string group)
+    {
+        SetResultAnnouncementGroup(group);
+        _emptyResultAnnouncementGroups.Add(group);
+    }
+
+    private void SetLoadedResultAnnouncementGroup(string group)
+    {
+        SetResultAnnouncementGroup(group);
+        _emptyResultAnnouncementGroups.Remove(group);
+    }
+
+    private void RetireEmptyResultAnnouncements()
+    {
+        foreach (string result in _emptyResultAnnouncementGroups.ToArray())
+        { ReleaseAnnouncementGroup(result); _emptyResultAnnouncementGroups.Remove(result); _resultAnnouncementGroups.Remove(result); }
+    }
+
     private void RetireOtherResultAnnouncementGroups(string current)
     {
         foreach (string prior in _resultAnnouncementGroups.Where(group => !string.Equals(group, current, StringComparison.Ordinal)).ToArray())
-        { ReleaseAnnouncementGroup(prior); _resultAnnouncementGroups.Remove(prior); }
+        { ReleaseAnnouncementGroup(prior); _resultAnnouncementGroups.Remove(prior); _emptyResultAnnouncementGroups.Remove(prior); }
     }
 
     private void SetFailureGroup(string? next, string? identity = null)

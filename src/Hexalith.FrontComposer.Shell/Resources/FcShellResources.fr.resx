@@ -640,8 +640,8 @@
   <data name="ModuleOverviewLabel" xml:space="preserve"><value>Vue d'ensemble</value></data>
   <data name="ModuleOverviewDescription" xml:space="preserve"><value>Choisissez une destination dans le menu de navigation ou utilisez la palette de commandes.</value></data>
   <data name="Am01Loading" xml:space="preserve"><value>Chargement de {0}.</value></data>
-  <data name="Am02Empty" xml:space="preserve"><value>Aucun élément {0} disponible.</value></data>
-  <data name="Am03Loaded" xml:space="preserve"><value>{0} chargé.</value></data>
+  <data name="Am02Empty" xml:space="preserve"><value>Aucun des {0} n'est disponible.</value></data>
+  <data name="Am03Loaded" xml:space="preserve"><value>Les {0} sont chargés.</value></data>
   <data name="Am04Stale" xml:space="preserve"><value>Les données peuvent être obsolètes.</value></data>
   <data name="Am05Reconnecting" xml:space="preserve"><value>Connexion perdue. Reconnexion en cours.</value></data>
   <data name="Am06Fallback" xml:space="preserve"><value>Les mises à jour en direct sont indisponibles. Recherche de mises à jour.</value></data>
@@ -659,7 +659,7 @@
   <data name="Am17Degraded" xml:space="preserve"><value>La confirmation prend plus de temps que prévu. Consultez l’état ou poursuivez votre travail.</value></data>
   <data name="Am22DetailHidden" xml:space="preserve"><value>La ligne développée est masquée par les filtres actuels.</value></data>
   <data name="Am24Exhausted" xml:space="preserve"><value>Confirmation non reçue. Consultez l’état plus tard ou poursuivez votre travail.</value></data>
-  <data name="Am27NoMatches" xml:space="preserve"><value>Aucun élément {0} ne correspond à ces filtres.</value></data>
+  <data name="Am27NoMatches" xml:space="preserve"><value>Aucun des {0} ne correspond à ces filtres.</value></data>
   <data name="Am30QueryFailed" xml:space="preserve"><value>Les données n’ont pas pu être chargées.</value></data>
   <data name="Am30Offline" xml:space="preserve"><value>Vous êtes hors ligne. Les données ne peuvent pas être actualisées.</value></data>
   <data name="ProjectionRetry" xml:space="preserve"><value>Réessayer</value></data>

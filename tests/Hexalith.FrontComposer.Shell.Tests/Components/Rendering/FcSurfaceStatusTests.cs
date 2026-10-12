@@ -130,4 +130,26 @@ public sealed class FcSurfaceStatusTests : BunitContext {
 
         cut.Find("[data-testid='fc-surface-status']").TextContent.ShouldBe("Command confirmed.");
     }
+
+    [Fact]
+    public void CancellingTheOnlyGroupPublishesASilentBlankRevision()
+    {
+        SurfaceAnnouncementCoordinator coordinator = new(TimeProvider.System);
+        Services.AddSingleton<ISurfaceAnnouncementCoordinator>(coordinator);
+        List<(string Message, long Revision)> updates = [];
+        using IDisposable subscription = coordinator.SubscribeWithReplay("projection:orders", (message, revision) => updates.Add((message, revision)));
+        IRenderedComponent<FcSurfaceStatus> cut = Render<FcSurfaceStatus>(p => p.Add(c => c.Surface, "projection:orders"));
+
+        coordinator.Announce("projection:orders", "load:only", "loaded", "orders loaded.", immediate: true);
+        cut.WaitForAssertion(() => cut.Find("[role='status']").GetAttribute("aria-live").ShouldBe("polite"));
+        coordinator.Cancel("projection:orders", "load:only");
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Find("[role='status']").TextContent.ShouldBeEmpty();
+            cut.Find("[role='status']").GetAttribute("aria-live").ShouldBe("off");
+        });
+        updates[^1].Message.ShouldBeEmpty();
+        coordinator.IsSilentRevision("projection:orders", updates[^1].Revision).ShouldBeTrue();
+    }
 }

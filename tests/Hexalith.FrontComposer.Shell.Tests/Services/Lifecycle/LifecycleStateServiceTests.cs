@@ -56,6 +56,23 @@ public class LifecycleStateServiceTests {
     }
 
     [Fact]
+    public void ResetScope_WhenFirstScopeResetHandlerThrows_StillRunsLaterHandlersAndClears()
+    {
+        using LifecycleStateService service = Create();
+        service.Transition("old", CommandLifecycleState.Submitting, "message-old");
+        bool secondRan = false;
+        service.ScopeReset += _ => throw new InvalidOperationException("retired wrapper");
+        service.ScopeReset += _ => secondRan = true;
+
+        service.ResetScope();
+
+        secondRan.ShouldBeTrue();
+        service.GetActiveCorrelationIds().ShouldBeEmpty();
+        service.GetState("old").ShouldBe(CommandLifecycleState.Idle);
+        service.GetMessageId("old").ShouldBeNull();
+    }
+
+    [Fact]
     public void ResetScope_ClearsActiveIdsMessageAndReplay() {
         using LifecycleStateService service = Create();
         service.Transition("old", CommandLifecycleState.Submitting, "message-old");

@@ -110,8 +110,9 @@ export function watchConnectivity(dotNet, host, offlineMessage) {
             serverRevision = revision;
         } else if (revision !== serverRevision) {
             serverRevision = revision;
-            // An offline callback can arrive after online evidence. It cannot resurrect AM-30.
-            if (message !== offlineMessage && (!awaitingFreshServerEvidence || serverFallback)) {
+            // The offline copy cannot return after online evidence. A non-empty server
+            // message is restored on that transition even when it is not the fallback copy.
+            if (message !== offlineMessage && (!awaitingFreshServerEvidence || serverFallback || message)) {
                 publish(message, `server:${revision}`, true);
             }
             awaitingFreshServerEvidence = false;
@@ -187,7 +188,7 @@ export function watchConnectivity(dotNet, host, offlineMessage) {
             publish("", `online:${observation}`);
             awaitingFreshServerEvidence = true;
             // Offline presentation displaced the server message even when its revision stayed put.
-            // Let present() replay the current disconnected/fallback copy on this same node.
+            // Let present() restore the current non-empty server message on this same node.
             serverRevision = undefined;
         }
         present();

@@ -10256,3 +10256,12 @@ Reconfirmed existing open items without new ids: AA25-01 (Story 13.4 AM-14 hand-
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-4-announce-projection-and-command-state-without-noise.md`
   summary: A zero-field inline command that fails before acceptance shows no visible outcome beside its trigger; the outcome is only spoken.
   evidence: AA46-02/EC46-04 (medium; decision D6 accept-and-defer, 2026-10-12): the hidden form renders in `display:none` (`CommandRendererEmitter.cs:992`), and the renderer-owned status node (`:987`) is now `fc-sr-only`. This matches baseline `7dd5f7cf`, where these outcomes were neither visible nor spoken. Accepted commands surface in `FcPendingCommandSummary`. Visible placement in toolbars and grid row-action cells is owner-owned visual design; route it to the owner and Story 13.6 visual/assistive verification.
+
+## Deferred from: code review of spec-13-4-announce-projection-and-command-state-without-noise.md (2026-10-12, iteration 47)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-4-announce-projection-and-command-state-without-noise.md`
+  summary: A non-grid projection may keep its stale label after a successful refresh that reuses the same result correlation.
+  evidence: BH47-11 (maybe-false; medium if true): non-grid `FreshnessIdentity` is `state.LastResultCorrelationId` (`RazorEmitter.cs` stale-notice attributes). The browser stale marker clears when that attribute changes. A production non-grid reload that succeeds without a new correlation would settle whether the label stays.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-4-announce-projection-and-command-state-without-noise.md`
+  summary: The release workflow still executes an older Hexalith.Builds commit than the Builds submodule.
+  evidence: BH47-12 (medium): `.github/workflows/release.yml` pins `360a2b9c4e96809365a7de785be9a68152d5ac28`, and `references/Hexalith.Builds` is `608c164c3637240fed2dd92dbfdaaf581ba9846d`. Changing either value is a release-policy decision this announcement story was required to preserve.

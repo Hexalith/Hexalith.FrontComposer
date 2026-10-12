@@ -2774,6 +2774,59 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
     }
 
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LoaderLaneReadSlowerThanFiveSecondsIsStillApplied(bool fallback)
+    {
+        const string view = "acme:OrdersProjection";
+        FakeTimeProvider time = new();
+        TaskCompletionSource started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<ProjectionPageResult> read = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
+        loader.LoadPageAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<int>(),
+                Arg.Any<IImmutableDictionary<string, string>>(), Arg.Any<string?>(), Arg.Any<bool>(),
+                Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                started.TrySetResult();
+                return read.Task;
+            });
+        MutableLoadedPageState pages = new(PageState(view, ["cached"], 1));
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        ProjectionFallbackRefreshScheduler scheduler = new(
+            new TestConnectionState(new ProjectionConnectionSnapshot(
+                fallback ? ProjectionConnectionStatus.Disconnected : ProjectionConnectionStatus.Connected,
+                time.GetUtcNow(),
+                fallback ? 1 : 0,
+                fallback ? "Closed" : null)),
+            loader,
+            dispatcher,
+            pages,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions
+            {
+                ProjectionFallbackPollingIntervalSeconds = 15,
+                MaxProjectionFallbackPollingLanes = 10,
+            }).ToMonitor(),
+            NullLogger<ProjectionFallbackRefreshScheduler>.Instance,
+            tenantContextAccessor: null,
+            timeProvider: time);
+        using IDisposable lane = scheduler.RegisterLane(DefaultLane(view));
+        Task<int> sweep = fallback
+            ? scheduler.TriggerFallbackOnceAsync(TestContext.Current.CancellationToken)
+            : scheduler.TriggerNudgeRefreshAsync("OrdersProjection", "acme", TestContext.Current.CancellationToken);
+
+        await started.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await Task.Delay(50, TestContext.Current.CancellationToken);
+        time.Advance(TimeSpan.FromSeconds(6));
+        sweep.IsCompleted.ShouldBeFalse();
+        read.SetResult(new ProjectionPageResult(["slow-fresh"], 1, "\"slow-fresh\""));
+
+        (await sweep.WaitAsync(TestContext.Current.CancellationToken)).ShouldBe(1);
+        dispatcher.Received(1).Dispatch(Arg.Is<LoadPageSucceededAction>(action =>
+            action.ViewKey == view && action.Items != null && action.Items.Contains("slow-fresh")));
+    }
+
     private static ProjectionFallbackRefreshScheduler CreateScheduler(
         IProjectionPageLoader loader,
         IDispatcher dispatcher,

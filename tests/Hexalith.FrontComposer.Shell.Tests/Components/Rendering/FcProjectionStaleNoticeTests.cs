@@ -269,6 +269,30 @@ public sealed class FcProjectionStaleNoticeTests : BunitContext {
     }
 
     [Fact]
+    public void FailedRefreshInsideOneDisconnectSpeaksStaleOnce()
+    {
+        List<string> spoken = [];
+        using IDisposable subscription = _announcements.Subscribe("projection:test", spoken.Add);
+        IRenderedComponent<FcProjectionStaleNotice> cut = Render<FcProjectionStaleNotice>(p => p
+            .Add(c => c.Surface, "projection:test")
+            .Add(c => c.HasCachedRows, true)
+            .Add(c => c.SharedStatusOwner, true));
+        _connection.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Disconnected));
+        _time.Advance(TimeSpan.FromMilliseconds(250));
+        cut.WaitForAssertion(() => spoken.Count(message => message == "Data may be out of date.").ShouldBe(1));
+
+        cut.Render(p => p
+            .Add(c => c.Surface, "projection:test")
+            .Add(c => c.HasCachedRows, true)
+            .Add(c => c.HasFailedRefresh, true)
+            .Add(c => c.SharedStatusOwner, true));
+        _time.Advance(TimeSpan.FromMilliseconds(250));
+
+        spoken.Count(message => message == "Data may be out of date.").ShouldBe(1);
+        _announcements.Current("projection:test").ShouldBe("Data may be out of date.");
+    }
+
+    [Fact]
     public void DirectStaleNoticeKeepsOnePoliteNodeAcrossDistinctEpisodes()
     {
         IRenderedComponent<FcProjectionStaleNotice> cut = Render<FcProjectionStaleNotice>(p => p

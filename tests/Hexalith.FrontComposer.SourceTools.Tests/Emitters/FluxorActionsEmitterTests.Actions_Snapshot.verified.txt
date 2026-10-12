@@ -10,8 +10,9 @@ namespace TestDomain;
 /// <summary>
 /// Starts a load cycle for <see cref="OrderProjection"/>. No framework effect fetches on this action.
 /// An adopter whose projection can fail must answer an operator-initiated request by reloading, then dispatching
-/// <see cref="OrderProjectionLoadedAction"/> or <see cref="OrderProjectionLoadFailedAction"/> with this correlation and the current scope stamp.
-/// After <c>ScopeChangedAction</c>, stamp <c>OriginScopeGeneration</c>, <c>ScopeTenantId</c>, and <c>ScopeUserId</c> from current state.
+/// <see cref="OrderProjectionLoadedAction"/> or <see cref="OrderProjectionLoadFailedAction"/> with this correlation and the scope stamp below.
+/// After <c>ScopeChangedAction</c>, stamp <c>OriginScopeGeneration</c> from <c>state.ScopeGeneration</c>.
+/// Stamp <c>ScopeTenantId</c> and <c>ScopeUserId</c> from the resolved tenant context, as generated Retry does. A scope change clears those fields on projection state.
 /// </summary>
 /// <param name="CorrelationId">Trace identifier shared by this request and its <see cref="OrderProjectionLoadedAction"/> or <see cref="OrderProjectionLoadFailedAction"/>.</param>
 /// <param name="OperatorInitiated">True when the operator retried a failed projection. The adopter must answer that request.</param>
@@ -22,7 +23,8 @@ public record OrderProjectionLoadRequestedAction(string CorrelationId, bool Oper
 /// Data arrived for <see cref="OrderProjection"/>. Every result must carry its request's correlation.
 /// Direct results are accepted only before any request has been dispatched.
 /// Breaking change: push-style direct <see cref="OrderProjectionLoadedAction"/> values are dropped once a request exists.
-/// After <c>ScopeChangedAction</c>, stamp <c>OriginScopeGeneration</c>, <c>ScopeTenantId</c>, and <c>ScopeUserId</c> from current state.
+/// After <c>ScopeChangedAction</c>, stamp <c>OriginScopeGeneration</c> from <c>state.ScopeGeneration</c>.
+/// Stamp <c>ScopeTenantId</c> and <c>ScopeUserId</c> from the resolved tenant context, as generated Retry does. A scope change clears those fields on projection state.
 /// </summary>
 /// <param name="CorrelationId">Trace identifier shared with the originating <see cref="OrderProjectionLoadRequestedAction"/>.</param>
 /// <param name="Items">The loaded projection items.</param>
@@ -32,7 +34,9 @@ public record OrderProjectionLoadedAction(string CorrelationId, IReadOnlyList<Or
 /// <summary>
 /// Data fetch failed for <see cref="OrderProjection"/>. Every result must carry its request's correlation.
 /// Direct results are accepted only before any request has been dispatched.
-/// After <c>ScopeChangedAction</c>, stamp <c>OriginScopeGeneration</c>, <c>ScopeTenantId</c>, and <c>ScopeUserId</c> from current state.
+/// Breaking change: push-style direct <see cref="OrderProjectionLoadFailedAction"/> values are dropped once a request exists.
+/// After <c>ScopeChangedAction</c>, stamp <c>OriginScopeGeneration</c> from <c>state.ScopeGeneration</c>.
+/// Stamp <c>ScopeTenantId</c> and <c>ScopeUserId</c> from the resolved tenant context, as generated Retry does. A scope change clears those fields on projection state.
 /// </summary>
 /// <param name="CorrelationId">Trace identifier shared with the originating <see cref="OrderProjectionLoadRequestedAction"/>.</param>
 /// <param name="Error">The failure reason.</param>

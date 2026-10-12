@@ -19,7 +19,7 @@ public static class OrderProjectionReducers
             ? state : state with { IsLoading = true, Error = null, RequiresScopedRequest = false, ActiveCorrelationId = action.CorrelationId, ActiveOperatorInitiated = action.OperatorInitiated, ScopeTenantId = action.ScopeTenantId ?? state.ScopeTenantId, ScopeUserId = action.ScopeUserId ?? state.ScopeUserId };
 
     /// <summary>
-    /// Handles <see cref="OrderProjectionLoadedAction"/>. A post-transition result needs a matching request first; direct initial results remain supported.
+    /// Handles <see cref="OrderProjectionLoadedAction"/>. Once a request exists, a mismatched correlation is dropped. Direct initial results are accepted only before any request has been dispatched.
     /// </summary>
     [Fluxor.ReducerMethod]
     public static OrderProjectionState OnOrderProjectionLoaded(OrderProjectionState state, OrderProjectionLoadedAction action)
@@ -28,7 +28,7 @@ public static class OrderProjectionReducers
             ? state : state with { IsLoading = false, Items = action.Items, Error = null, LastResultCorrelationId = action.CorrelationId, LastResultOperatorInitiated = state.ActiveOperatorInitiated, ScopeTenantId = action.ScopeTenantId ?? state.ScopeTenantId, ScopeUserId = action.ScopeUserId ?? state.ScopeUserId };
 
     /// <summary>
-    /// Handles <see cref="OrderProjectionLoadFailedAction"/>. A post-transition failure needs a matching request first; direct initial failures remain supported.
+    /// Handles <see cref="OrderProjectionLoadFailedAction"/>. Once a request exists, a mismatched correlation is dropped. Direct initial failures are accepted only before any request has been dispatched.
     /// </summary>
     [Fluxor.ReducerMethod]
     public static OrderProjectionState OnOrderProjectionLoadFailed(OrderProjectionState state, OrderProjectionLoadFailedAction action)

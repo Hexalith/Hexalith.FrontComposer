@@ -1008,6 +1008,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("    private string? _activeFailureGroup;");
         _ = sb.AppendLine("    private string? _activeFailureIdentity;");
         _ = sb.AppendLine("    private readonly System.Collections.Generic.HashSet<string> _resultAnnouncementGroups = new(System.StringComparer.Ordinal);");
+        _ = sb.AppendLine("    private readonly System.Collections.Generic.HashSet<string> _emptyResultAnnouncementGroups = new(System.StringComparer.Ordinal);");
         _ = sb.AppendLine("    private bool _initialEmptyAnnounced;");
         _ = sb.AppendLine("    private readonly System.Collections.Generic.Dictionary<string, System.IDisposable> _announcementClaims = new(System.StringComparer.Ordinal);");
         if (isGrid) {
@@ -1120,8 +1121,8 @@ public static class RazorEmitter {
             _ = sb.AppendLine("            string pageGroup = \"scope:\" + scopeGeneration.ToString(System.Globalization.CultureInfo.InvariantCulture) + \":page:\" + page.Identity.ToString(System.Globalization.CultureInfo.InvariantCulture);");
             _ = sb.AppendLine("            if (page.Failed) { SetFailureGroup(pageGroup, \"failure\"); Announcements.Announce(AnnouncementSurface, pageGroup, \"failure\", SafePageFailureCopy(page.ErrorMessage), terminal: true); return; }");
             _ = sb.AppendLine("            SetFailureGroup(null);");
-            _ = sb.AppendLine("            if (page.TotalCount == 0) { if (page.OperatorInitiated || !_initialEmptyAnnounced) { SetResultAnnouncementGroup(pageGroup); _initialEmptyAnnounced = true; Announcements.Announce(AnnouncementSurface, pageGroup, filtered ? \"filtered-zero\" : \"empty\", filtered ? " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am27NoMatches\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value : " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am02Empty\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value, terminal: true); RetireOtherResultAnnouncementGroups(pageGroup); } return; }");
-            _ = sb.AppendLine("            if (page.OperatorInitiated) { SetResultAnnouncementGroup(pageGroup); Announcements.Announce(AnnouncementSurface, pageGroup, \"loaded\", " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am03Loaded\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value); RetireOtherResultAnnouncementGroups(pageGroup); } else { CancelResultAnnouncements(); }");
+            _ = sb.AppendLine("            if (page.TotalCount == 0) { if (page.OperatorInitiated || !_initialEmptyAnnounced) { SetEmptyResultAnnouncementGroup(pageGroup); _initialEmptyAnnounced = true; Announcements.Announce(AnnouncementSurface, pageGroup, filtered ? \"filtered-zero\" : \"empty\", filtered ? " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am27NoMatches\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value : " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am02Empty\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value, terminal: true); RetireOtherResultAnnouncementGroups(pageGroup); } return; }");
+            _ = sb.AppendLine("            if (page.OperatorInitiated) { SetLoadedResultAnnouncementGroup(pageGroup); Announcements.Announce(AnnouncementSurface, pageGroup, \"loaded\", " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am03Loaded\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value); RetireOtherResultAnnouncementGroups(pageGroup); } else { RetireEmptyResultAnnouncements(); }");
             _ = sb.AppendLine("            return;");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        SetFailureGroup(null);");
@@ -1133,10 +1134,10 @@ public static class RazorEmitter {
         }
         _ = sb.AppendLine("        if (state.Items is null) { return; }");
         _ = sb.AppendLine("        if (state.Items.Count == 0)");
-        _ = sb.AppendLine("        { if (state.LastResultOperatorInitiated || !_initialEmptyAnnounced) { SetResultAnnouncementGroup(group); _initialEmptyAnnounced = true; Announcements.Announce(AnnouncementSurface, group, \"empty:\" + (state.LastResultCorrelationId ?? operation) + \"|\" + filtered, filtered ? " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am27NoMatches\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value : " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am02Empty\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value, terminal: true); RetireOtherResultAnnouncementGroups(group); } return; }");
+        _ = sb.AppendLine("        { if (state.LastResultOperatorInitiated || !_initialEmptyAnnounced) { SetEmptyResultAnnouncementGroup(group); _initialEmptyAnnounced = true; Announcements.Announce(AnnouncementSurface, group, \"empty:\" + (state.LastResultCorrelationId ?? operation) + \"|\" + filtered, filtered ? " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am27NoMatches\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value : " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am02Empty\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value, terminal: true); RetireOtherResultAnnouncementGroups(group); } return; }");
         _ = sb.AppendLine("        if (state.LastResultOperatorInitiated)");
-        _ = sb.AppendLine("        { SetResultAnnouncementGroup(group); Announcements.Announce(AnnouncementSurface, group, \"data:\" + (state.LastResultCorrelationId ?? operation) + \"|\" + state.Items.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am03Loaded\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value); RetireOtherResultAnnouncementGroups(group); }");
-        _ = sb.AppendLine("        else { CancelResultAnnouncements(); }");
+        _ = sb.AppendLine("        { SetLoadedResultAnnouncementGroup(group); Announcements.Announce(AnnouncementSurface, group, \"data:\" + (state.LastResultCorrelationId ?? operation) + \"|\" + state.Items.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am03Loaded\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value); RetireOtherResultAnnouncementGroups(group); }");
+        _ = sb.AppendLine("        else { RetireEmptyResultAnnouncements(); }");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
 
@@ -1167,6 +1168,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        foreach (string result in _resultAnnouncementGroups) { ReleaseAnnouncementGroup(result); }");
         _ = sb.AppendLine("        _resultAnnouncementGroups.Clear();");
+        _ = sb.AppendLine("        _emptyResultAnnouncementGroups.Clear();");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private void SetResultAnnouncementGroup(string group)");
@@ -1176,10 +1178,28 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        ClaimAnnouncementGroup(group);");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
+        _ = sb.AppendLine("    private void SetEmptyResultAnnouncementGroup(string group)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        SetResultAnnouncementGroup(group);");
+        _ = sb.AppendLine("        _emptyResultAnnouncementGroups.Add(group);");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private void SetLoadedResultAnnouncementGroup(string group)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        SetResultAnnouncementGroup(group);");
+        _ = sb.AppendLine("        _emptyResultAnnouncementGroups.Remove(group);");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private void RetireEmptyResultAnnouncements()");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        foreach (string result in _emptyResultAnnouncementGroups.ToArray())");
+        _ = sb.AppendLine("        { ReleaseAnnouncementGroup(result); _emptyResultAnnouncementGroups.Remove(result); _resultAnnouncementGroups.Remove(result); }");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
         _ = sb.AppendLine("    private void RetireOtherResultAnnouncementGroups(string current)");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        foreach (string prior in _resultAnnouncementGroups.Where(group => !string.Equals(group, current, StringComparison.Ordinal)).ToArray())");
-        _ = sb.AppendLine("        { ReleaseAnnouncementGroup(prior); _resultAnnouncementGroups.Remove(prior); }");
+        _ = sb.AppendLine("        { ReleaseAnnouncementGroup(prior); _resultAnnouncementGroups.Remove(prior); _emptyResultAnnouncementGroups.Remove(prior); }");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private void SetFailureGroup(string? next, string? identity = null)");
