@@ -2,7 +2,7 @@
 title: 'Story 13.4: Announce Projection and Command State Without Noise'
 type: 'feature'
 created: '2026-10-04'
-status: 'done'
+status: 'in-progress'
 route: 'dispatch'
 review_loop_iteration: 43
 review_limit_override: 'Human approved continuing beyond the five-iteration limit on 2026-10-05.'
@@ -674,6 +674,51 @@ Review iteration 44, manual `bmad-code-review` (2026-10-12). Scope: `7dd5f7cf..0
 - EC44-16 false — removing assertive alerts is the frozen Never rule. `data-fc-phase` has no remaining consumer; tests assert its absence.
 - AA44-09 low — StatusOverview has no filter UI writing its own view key, so the exact-label group filter is reachable only through programmatic restore.
 - AA44-10 low — the visible cap template copy is owner-owned, and the outcome-unknown message bar predates this story.
+
+#### Review iteration 46 — manual code review (2026-10-12)
+
+Scope: commit `29c95846` (iteration 44/45 patch application), excluding `_bmad-output` (50 files, 1,772 diff lines). Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor. No layer failed. 50 findings: 25 survive in 8 entries, 25 rejected. Triage evidence: a Debug run of the 14 changed and adjacent Shell classes failed **1/423** (`AnalyzerPolicy_IdentifierInventory_MatchesSeal`); full SourceTools passed **1,312/1,312**.
+
+- [x] [Review][Defer] Screen-reader-only status shows no visible lifecycle text where no Fluent bar exists (AA46-02, EC46-04, medium; decision D6 → accept and defer, 2026-10-12) [src/Hexalith.FrontComposer.SourceTools/Emitters/CommandRendererEmitter.cs:987] — Zero-field inline commands render their form inside `display:none`, and visible forms show no bar during Submitting or pulse-phase Syncing.
+  - deferred: both cases match baseline `7dd5f7cf`. There, the wrapper's `.fc-lifecycle-live` node was already visually hidden, and the hidden form's lifecycle region was neither visible nor spoken. Only the `10fe51d4` intermediate state showed this text, and D2 restored baseline visuals while keeping the new inline speech.
+  - The remaining pre-existing gap is that a zero-field inline command failing before acceptance has no visible outcome; accepted commands surface in `FcPendingCommandSummary`. Its placement in toolbars and grid row-action cells is owner-owned visual design, so it goes to the owner and Story 13.6 visual/assistive verification.
+- [ ] [Review][Patch] Iteration 44/45 shipped without verification, and the CA1707 identifier inventory seal is red (AA46-03, high) [tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreClientTests.cs:648] — The new `CommandClient_TransportExceptionBeforeAcceptance_IsOutcomeUnknownWithoutSyncing` makes `AnalyzerPolicy_IdentifierInventory_MatchesSeal` fail. The inventory is 3546 with sha256 `d9d281b1f2f9301c7711967c357da93ee8f05b0f65f2118acbda60ff11998609`, against the sealed 3545 / `8029300459e6…` in `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json:100`. Fix it one of two ways: reseal 3545 → 3546 with an evidence note, or rename the method to PascalCase. Separately, no iteration 44/45 verification is recorded. Run what D2 and D4 require: the Story 13.3 blocked-outcome bUnit tests, `one-at-a-time-execution-policy.spec.ts`, the visual baselines (the status text moved from visible to screen-reader-only), and `eng/validate-docs.ps1` (run it twice on a cold workspace). Also run the broad Shell lane.
+- [ ] [Review][Patch] A background page cancels the operator's pending "loaded" announcement (BH46-09, EC46-09, AA46-01, medium) [src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs:1124] — `page` is the view's last result (`LoadedPageReducers.cs:318`), and only the first page after a request-identity change is operator-initiated (`RazorEmitter.cs:1333`). A scroll, prefetch or range-refinement page that completes inside the 250 ms window reaches `else { CancelResultAnnouncements(); }`, which releases the operator group, so the coordinator drops the pending AM-03. The non-grid `else` at `:1139` does the same with a background refresh. AA44-04 only required retiring the earlier empty or filtered-zero group. Release only result groups that announced AM-02/AM-27, and keep a pending operator AM-03 group.
+- [ ] [Review][Patch] The D4 load-cycle docs misstate the contract (BH46-01, BH46-03, EC46-12, EC46-13, AA46-08, medium) [docs/how-to/test-generated-components.md:66] — The how-to and the generated `LoadRequested`/`Loaded`/`LoadFailed` XML docs [FluxorActionsEmitter.cs:38-61] say to stamp `ScopeTenantId`/`ScopeUserId` "from current state". After `ScopeChangedAction`, the reducer resets them to null, so `ProjectionStateScopeOwnership.IsCurrent` keeps an adopter's view blocked. State the real sources:
+  - `OriginScopeGeneration` comes from `state.ScopeGeneration`.
+  - Tenant and user come from the resolved tenant context, as the generated Retry does (`RazorEmitter.cs:1234`).
+
+  Also align the reducer summaries ("direct initial results remain supported" contradicts dropping any mismatched correlation once a request exists) and the `LoadFailed` breaking-change note. Refresh the approvals.
+- [ ] [Review][Patch] The iteration 44/45 runtime behaviour has only snapshot evidence (VG46-01…07, BH46-15, BH46-20, AA46-04, medium) [tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedProjectionAnnouncementTests.cs] — Each change below can be reverted without failing any runtime test. Add these regressions:
+  - Turning `HasFailedRefresh` true inside one disconnect still yields one AM-04 (`FcProjectionStaleNoticeTests`).
+  - A loader-lane read slower than 5 s on the fake clock is still applied, for both fallback and nudge (`ProjectionFallbackRefreshSchedulerTests`).
+  - Background rows retire "No X available." on the grid and non-grid paths; write this against the corrected behaviour from the previous patch.
+  - Cancelling a surface's only group gives a silent blank revision (`IsSilentRevision` and `aria-live="off"`).
+  - A zero-count result at `Skip > 0` speaks AM-02/AM-27, not AM-03.
+  - Generated `Announce`/`Cancel` calls run on the renderer dispatcher when a result is dispatched off-thread.
+  - Cached fallback pages render in offset order when `state.Error` is set.
+- [ ] [Review][Patch] The e2e no-second-live-node guard is vacuous (BH46-13, low) [tests/e2e/specs/policy-gated-command-authorization.spec.ts:211] — `.fc-lifecycle-live` no longer exists anywhere (the markup was removed in `10fe51d4` and the CSS in this commit), so `toHaveCount(0)` always passes. Target `[data-testid='fc-surface-status']` and assert it does not carry the mapped rejection text.
+- [x] [Review][Defer] Off→polite `aria-live` flip after a silent blank may drop the next message (EC46-08, VG46-O1, maybe-false; medium if true) [src/Hexalith.FrontComposer.Shell/Services/Announcements/SurfaceAnnouncementCoordinator.cs:394] — deferred: every blank withdrawal now renders `aria-live="off"` [FcSurfaceStatus.razor:7], so the next message switches the node to polite in the same render that inserts its text. A browser assistive-technology check of "No X available." → background rows → operator Retry would settle whether that first message is spoken. This is the same class as BH45-04.
+- [x] [Review][Defer] The push-style `LoadedAction` breaking change has no migration-guide edge or breaking release signal (BH46-02, medium) [docs/migrations/index.md] — deferred: the drop behaviour came from earlier Story 13.4 commits, and D4 required only the note. The versioned migration edges (`docs/migrations/*.md`, `fromVersion`/`toVersion`) need an owner choice of version. The `fix(shell)` commits would publish a patch release, and dropped results leave `IsLoading` set with no diagnostic.
+
+**Rejected (iteration 46):**
+- BH46-04 / EC46-01 / AA46-07 low — a later blocked heading in the same generation stays unfocused. This is the decided D3 contract ("only the first blocked heading rendered in a generation takes focus"), and navigation focus belongs to the route-focus targeting in `fc-focus.js:211`. A release protocol would be new logic.
+- EC46-02 low — when the owner's focus fails and the owner then unmounts, a co-mounted non-owner never retries. This is rare and needs a release/retry protocol.
+- BH46-05 / EC46-03 / AA46-06 low — `AdvanceGeneration` is a test-only seam with no production caller. It raises the same Changed-after-increment as the real transition (`ScopeBoundaryService.cs:127-137`).
+- BH46-06 false — bUnit dispatch and the void JS mock are synchronous, so a duplicate focus would reach a count of 3 and fail `WaitForAssertion(== 2)`.
+- BH46-07 / EC46-11 low — an unbounded loader read stalls the sweep only if an adopter loader both hangs and ignores cancellation. Bounding only custom callbacks is the AA44-05 decision; a new loader bound would be new policy.
+- BH46-08 low — the `ReadSkipped` budget use needs the connection to flip between two synchronous checks, and it is the outcome BH45-08 decided.
+- EC46-10 low — a queued callback can skip an intermediate operator page only when two pages complete within the renderer-queue latency. Capturing per-event state would be new design.
+- BH46-10 / EC46-06 false — only the form's own wrapper and its blocked outcome publish on a generated form's surface, and a blocked attempt dispatches nothing. `ClearAsync` clears `_message` and cancels the group together (`FcCommandBlockedOutcome.razor.cs:123-130, 256-258`).
+- BH46-11 / EC46-07 false — a bound `OnBlockedSubmission` makes the host own presentation, per `docs/migrations/4.5-to-4.6.md:131`. This is EC44-14's restoration of baseline behaviour.
+- BH46-12 / EC46-05 low — every browser host mounts `FrontComposerShell`, which loads `fc-density.css`. Outside it, the node was visible before this commit anyway.
+- BH46-14 low — proving the screen-reader-only clip needs a computed-style check; bUnit already asserts the class.
+- BH46-16 low — the test name does not match the `maxDetails = 1` case; cosmetic.
+- BH46-17 low — 120,000 is the option default, and the busy-wait exits on a synchronously created timer.
+- BH46-18 false — `PendingCommandStateService.cs:233-237` nulls the title and detail whenever the budget is exhausted, so all three paths store the same payload.
+- BH46-19 low — pattern and naming nits in `FcProjectionConnectionStatus`.
+- BH46-21 low — each touched file keeps its own existing brace style, and the style is not enforced at build.
+- AA46-05 false — the exclusive-owner handoff is verified by `FcSurfaceStatusTests.ExclusiveOwnersShareOnePersistentNodeAndTransferTheCurrentMessage` (`:36`), and the new count assertion guards the wrapper attribute.
 
 ## Implementation Notes
 
@@ -1862,6 +1907,14 @@ Three layers reviewed `/tmp/fc-13-4-review-41530feb.diff`. No intent-gap or bad-
 | EC45-03 | false | reject | `Cancel` rejects a blank group first. A null surface fails the dictionary lookup. No production caller passes a null surface, and that loud failure is the guard. |
 | EC45-04 | false | reject | A whitespace `IdempotentInfoMessage` selects `Localizer["Am13Confirmed"]`, not `IdempotentInfoDefault`. Speech for that outcome is the confirmed resource. |
 | VG45-01 | medium | defer | Preverified: `RefreshProjectionForProofAsync` rechecks scope before incrementing the Test-only counters, and no test enters that method. Deleting the guard would still leave the reflection and stable-scope browser tests green. The untested branch only updates the sample proof button. |
+
+### Review iteration 46 — manual code review (2026-10-12)
+
+Interactive `bmad-code-review` of commit `29c95846`, the iteration 44/45 patch application (excluding `_bmad-output`), with four layers. All 50 findings received individual verdicts, recorded under `#### Review iteration 46` in `### Review Findings`:
+- 1 decision, human-resolved 2026-10-12: D6 → accept and defer, because the visible lifecycle text matches baseline
+- 5 patches (red CA1707 identifier seal and missing verification; operator AM-03 cancelled by a background page; D4 docs misstate the stamp sources; missing runtime regressions; vacuous e2e guard)
+- 3 defers
+- 25 rejected
 
 ## Verification
 

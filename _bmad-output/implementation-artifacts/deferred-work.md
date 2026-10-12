@@ -10244,3 +10244,15 @@ Reconfirmed existing open items without new ids: AA25-01 (Story 13.4 AM-14 hand-
 - source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-4-announce-projection-and-command-state-without-noise.md`
   summary: The Test-only read-proof refresh counter is not asserted when the tenant scope changes during reconciliation.
   evidence: VG45-01 (medium): `RefreshProjectionForProofAsync` returns before incrementing `_readProofAttempts` and `_readProofCount` when the captured scope is no longer current. Existing tests call `ReadProjectionForProofAsync` or click through a stable scope, so deleting that return would still pass. The untested branch only updates the sample proof button.
+
+## Deferred from: code review of spec-13-4-announce-projection-and-command-state-without-noise.md (2026-10-12, iteration 46)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-4-announce-projection-and-command-state-without-noise.md`
+  summary: After a silent blank status revision, the next announcement switches the status node from aria-live off to polite in the same render that inserts its text, and it is unverified whether assistive technology speaks that first message.
+  evidence: EC46-08/VG46-O1 (maybe-false; medium if true): commit 29c95846 adds a SilentRevisions entry for every blank Cancel (`SurfaceAnnouncementCoordinator.cs:394`), so `FcSurfaceStatus.razor:7` renders aria-live="off" after background rows retire "No X available." A browser assistive-technology check of that withdrawal followed by an operator Retry would settle it. Same class as BH45-04.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-4-announce-projection-and-command-state-without-noise.md`
+  summary: The push-style direct LoadedAction breaking change has no versioned migration-guide edge and no breaking release signal.
+  evidence: BH46-02 (medium): D4 put the breaking-change note only in `docs/how-to/test-generated-components.md` and in the generated XML docs. `docs/migrations/*.md` edges need an owner-chosen fromVersion/toVersion. The Story 13.4 commits are `fix(...)`, so semantic-release would publish a patch, and dropped results leave IsLoading set with no diagnostic.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-4-announce-projection-and-command-state-without-noise.md`
+  summary: A zero-field inline command that fails before acceptance shows no visible outcome beside its trigger; the outcome is only spoken.
+  evidence: AA46-02/EC46-04 (medium; decision D6 accept-and-defer, 2026-10-12): the hidden form renders in `display:none` (`CommandRendererEmitter.cs:992`), and the renderer-owned status node (`:987`) is now `fc-sr-only`. This matches baseline `7dd5f7cf`, where these outcomes were neither visible nor spoken. Accepted commands surface in `FcPendingCommandSummary`. Visible placement in toolbars and grid row-action cells is owner-owned visual design; route it to the owner and Story 13.6 visual/assistive verification.
