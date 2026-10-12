@@ -556,9 +556,9 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
 
         await cut.WaitForAssertionAsync(() => {
             AngleSharp.Dom.IElement indicator = cut.Find(IndicatorSelector);
-            indicator.GetAttribute("role").ShouldBe("status");
-            indicator.GetAttribute("aria-live").ShouldBe("polite");
-            indicator.TextContent.Trim().ShouldBe("New item. It may not match current filters yet.");
+            indicator.GetAttribute("role").ShouldBeNull();
+            indicator.GetAttribute("aria-live").ShouldBeNull();
+            indicator.TextContent.Trim().ShouldBe("Updated row: counter-1.");
         });
 
         await cut.InvokeAsync(() => dispatcher.Dispatch(new CounterProjectionLoadedAction(

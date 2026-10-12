@@ -88,10 +88,10 @@ public sealed class Epic9CompositionTests : GeneratedComponentTestBase
             entry.Status.ShouldBe(PendingCommandStatus.Confirmed);
             entry.TargetSnapshot.ShouldNotBeNull().EntityKey.ShouldBe(CreatedKey);
             AngleSharp.Dom.IElement indicator = grid.Find(IndicatorSelector);
-            indicator.GetAttribute("role").ShouldBe("status");
-            indicator.GetAttribute("aria-live").ShouldBe("polite");
-            indicator.GetAttribute("aria-label").ShouldBe("New item added outside current filters");
-            indicator.TextContent.Trim().ShouldBe("New item. It may not match current filters yet.");
+            indicator.GetAttribute("role").ShouldBeNull();
+            indicator.GetAttribute("aria-live").ShouldBeNull();
+            indicator.GetAttribute("aria-label").ShouldBeNull();
+            indicator.TextContent.Trim().ShouldBe($"Updated row: {CreatedKey}.");
         });
         CreateCounterCommand dispatchedCreate = commands.DispatchedCommands
             .OfType<CreateCounterCommand>()

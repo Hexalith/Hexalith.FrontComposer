@@ -28,7 +28,9 @@
                        Tooltip="@tab.Tooltip">
                 @if (tab.ShouldRenderContent(SelectedTabId))
                 {
-                    @tab.ChildContent
+                    <CascadingValue Value="@VisibilityFor(tab)">
+                        @tab.ChildContent
+                    </CascadingValue>
                 }
             </FluentTab>
         }

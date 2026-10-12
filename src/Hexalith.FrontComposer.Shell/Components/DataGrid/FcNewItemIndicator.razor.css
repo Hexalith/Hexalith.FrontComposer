@@ -12,3 +12,9 @@
         transition: none;
     }
 }
+
+@media (forced-colors: active) {
+    .fc-new-item-indicator {
+        border-inline-start-color: CanvasText;
+    }
+}

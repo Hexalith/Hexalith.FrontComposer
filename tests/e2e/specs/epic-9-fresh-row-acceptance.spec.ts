@@ -4,8 +4,6 @@ import { expect, test } from '../fixtures/index.js';
 import { fillFieldByLabel } from '../helpers/fluent-fields.js';
 
 const VIEW_KEY = 'Counter:Counter.Domain.CounterProjection';
-const INDICATOR_COPY = 'New item. It may not match current filters yet.';
-const INDICATOR_ARIA_LABEL = 'New item added outside current filters';
 const INTERACTIVE_READY_TIMEOUT_MS = 30_000;
 
 test.describe('Epic 9 composed and live acceptance', () => {
@@ -14,6 +12,7 @@ test.describe('Epic 9 composed and live acceptance', () => {
     tenant,
   }, testInfo) => {
     const exactKey = `counter-e9-${Date.now()}`;
+    const indicatorCopy = `Updated row: ${exactKey}.`;
     const createForm = page.locator('.fc-command-form[aria-label="Create Counter command form"]');
     const updateForm = page.locator('.fc-command-form[aria-label="Update Counter command form"]');
     const grid = page.locator(`[data-fc-datagrid="${VIEW_KEY}"]`);
@@ -50,25 +49,81 @@ test.describe('Epic 9 composed and live acceptance', () => {
     const gridWasRenderedBeforeDispatch = await grid.isVisible();
     const exactKeyCountBeforeDispatch = await grid.getByText(exactKey, { exact: true }).count();
 
+    await page.evaluate((copy) => {
+      const state = window as Window & { freshRowSpeech?: string[] };
+      state.freshRowSpeech = [];
+      const revisions = new WeakMap<Element, string>();
+      for (const node of document.querySelectorAll('[data-testid="fc-surface-status"]')) {
+        const revision = node.querySelector('[data-message-revision]')?.getAttribute('data-message-revision');
+        if (revision) revisions.set(node, revision);
+      }
+      new MutationObserver(() => {
+        for (const node of document.querySelectorAll('[data-testid="fc-surface-status"]')) {
+          const revision = node.querySelector('[data-message-revision]')?.getAttribute('data-message-revision');
+          const changed = revision && revisions.get(node) !== revision;
+          if (revision) revisions.set(node, revision);
+          // Exposure alone must not count a revision that was already observed while hidden.
+          if (!changed || node.getAttribute('aria-live') !== 'polite' || node.closest('[hidden], [inert], [aria-hidden="true"]')
+            || node.getClientRects().length === 0
+            || getComputedStyle(node).visibility !== 'visible') continue;
+          if (node.textContent?.trim() === copy) state.freshRowSpeech!.push(copy);
+        }
+      }).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+    }, indicatorCopy);
+    const speechCount = () => page.evaluate(() =>
+      (window as Window & { freshRowSpeech?: string[] }).freshRowSpeech?.length ?? 0);
+
     await showOverview();
     await fillFieldByLabel(createForm, 'Counter key', exactKey);
     await fillFieldByLabel(createForm, 'Initial Value', '41');
     await createForm.getByRole('button', { name: 'Create Counter', exact: true }).click();
+    // The grid was mounted above and remains retained in its inactive panel.
+    await expect(indicator).toHaveCount(1);
+    expect(await speechCount()).toBe(0);
+    const hiddenBeforeActivationAnnouncementCount = await speechCount();
 
+    await page.emulateMedia({ forcedColors: 'active', reducedMotion: 'reduce' });
     await showProjection();
     await expect(indicator).toBeVisible();
     await expect(indicator).toHaveCount(1);
-    await expect(indicator).toHaveAttribute('role', 'status');
-    await expect(indicator).toHaveAttribute('aria-live', 'polite');
-    await expect(indicator).toHaveAttribute('aria-label', INDICATOR_ARIA_LABEL);
-    await expect(indicator).toHaveText(INDICATOR_COPY);
+    await expect(indicator).not.toHaveAttribute('role');
+    await expect(indicator).not.toHaveAttribute('aria-live');
+    await expect(indicator).not.toHaveAttribute('aria-label');
+    await expect(indicator).toHaveText(indicatorCopy);
+    const cueModes = await indicator.evaluate((cue) => {
+      const style = getComputedStyle(cue);
+      const systemProbe = document.createElement('span');
+      systemProbe.style.color = 'CanvasText';
+      document.body.append(systemProbe);
+      const systemColor = getComputedStyle(systemProbe).color;
+      systemProbe.remove();
+      const icon = cue.querySelector('[aria-hidden="true"]');
+      return {
+        indicatorSystemBorder: style.borderInlineStartColor === systemColor
+          && parseFloat(style.borderInlineStartWidth) > 0 && style.borderInlineStartStyle === 'solid',
+        indicatorIconVisible: !!icon && icon.getBoundingClientRect().width > 0
+          && icon.getBoundingClientRect().height > 0 && getComputedStyle(icon).visibility === 'visible',
+        indicatorBackgroundImage: style.backgroundImage,
+        indicatorAnimationName: style.animationName,
+        indicatorTransitionDuration: style.transitionDuration,
+      };
+    });
+    expect(cueModes).toEqual({ indicatorSystemBorder: true, indicatorIconVisible: true,
+      indicatorBackgroundImage: 'none', indicatorAnimationName: 'none', indicatorTransitionDuration: '0s' });
+    await page.emulateMedia({ forcedColors: 'none', reducedMotion: 'no-preference' });
     const createAnnouncement = (await indicator.textContent())?.trim() ?? '';
     const createAriaLabel = (await indicator.getAttribute('aria-label'))?.trim() ?? '';
     const indicatorRole = (await indicator.getAttribute('role'))?.trim() ?? '';
     const indicatorAriaLive = (await indicator.getAttribute('aria-live'))?.trim() ?? '';
     const createIndicatorVisibleCount = await indicator.count();
-    expect(createAnnouncement).toBe(INDICATOR_COPY);
-    expect(createAriaLabel).toBe(INDICATOR_ARIA_LABEL);
+    expect(createAnnouncement).toBe(indicatorCopy);
+    expect(createAriaLabel).toBe('');
+    const sharedStatus = grid.locator('..').locator('[data-testid="fc-surface-status"][aria-live="polite"]');
+    await expect(sharedStatus).toHaveCount(1);
+    await expect(sharedStatus).toBeVisible();
+    const sharedPoliteNodeCount = await sharedStatus.count();
+    await expect.poll(speechCount).toBe(1);
+    const createAnnouncementCount = await speechCount();
     await expect(catchUp).toHaveAttribute('data-captured', '1');
     await expect(catchUp).toHaveAttribute('data-published', '1');
     await expect(catchUp).toHaveAttribute('data-received', '1');
@@ -95,7 +150,14 @@ test.describe('Epic 9 composed and live acceptance', () => {
     await expect(indicator).toBeVisible();
     await expect(indicator).toHaveCount(1);
     const firstUpdateAnnouncement = (await indicator.textContent())?.trim() ?? '';
-    expect(firstUpdateAnnouncement).toBe(INDICATOR_COPY);
+    expect(firstUpdateAnnouncement).toBe(indicatorCopy);
+    await expect.poll(speechCount).toBe(2);
+    const speechBeforeTabSwitch = await speechCount();
+    await showOverview();
+    await showProjection();
+    await expect(indicator).toBeVisible();
+    expect(await speechCount()).toBe(speechBeforeTabSwitch);
+    const tabSwitchAnnouncementCount = (await speechCount()) - speechBeforeTabSwitch;
     const firstUpdateIndicatorElement = await indicator.elementHandle();
     expect(firstUpdateIndicatorElement).not.toBeNull();
     const overlapIndicatorCountBeforeSecondDispatch = await indicator.count();
@@ -120,6 +182,8 @@ test.describe('Epic 9 composed and live acceptance', () => {
       secondUpdateIndicatorElement,
     );
     expect(overlapIndicatorElementRetained).toBe(true);
+    expect(await speechCount()).toBe(2);
+    const duplicateAnnouncementCount = (await speechCount()) - speechBeforeTabSwitch;
     const overlapIndicatorCountAfterSecondDispatch = await indicator.count();
     const overlapIndicatorCopyAfterSecondDispatch = (await indicator.textContent())?.trim() ?? '';
     await expect(catchUp).toHaveAttribute('data-published', '3');
@@ -137,6 +201,7 @@ test.describe('Epic 9 composed and live acceptance', () => {
     await showProjection();
     await expect(indicator).toBeVisible();
     await expect(indicator).toHaveCount(1);
+    await expect.poll(speechCount).toBe(3);
     const laterUpdateIndicatorVisibleCount = await indicator.count();
     await expect(catchUp).toHaveAttribute('data-published', '4');
     await expect(createdCount).toHaveText('52');
@@ -152,8 +217,8 @@ test.describe('Epic 9 composed and live acceptance', () => {
       { commandType: 'Counter.Domain.UpdateCounterCommand', counterId: exactKey, amount: '[REDACTED]' },
     ];
     const evidence = {
-      schemaVersion: 1,
-      story: '9.8',
+      schemaVersion: 2,
+      story: '13.5',
       candidateCommit: process.env.FC_E2E_CANDIDATE_COMMIT ?? 'unknown',
       baseUrl: process.env.BASE_URL ?? 'unknown',
       tenantScope: tenant.tenantId,
@@ -169,6 +234,14 @@ test.describe('Epic 9 composed and live acceptance', () => {
         tenantScopeLength: tenant.tenantId.length,
         userScopeLength: tenant.userId.length,
         createIndicatorVisibleCount,
+        sharedPoliteNodeCount,
+        createAnnouncementCount,
+        hiddenBeforeActivationAnnouncementCount,
+        firstActivationAnnouncementCount: createAnnouncementCount,
+        ...cueModes,
+        tabSwitchAnnouncementCount,
+        duplicateAnnouncementCount,
+        freshRowAnnouncementCount: await speechCount(),
         indicatorRole,
         indicatorAriaLive,
         indicatorAriaLabel: createAriaLabel,

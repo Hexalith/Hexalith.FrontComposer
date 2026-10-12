@@ -419,6 +419,42 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
     expect(await page.evaluate(() => matchMedia('(forced-colors: active)').matches)).toBe(true);
     expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(true);
 
+    const freshRowProof = await page.evaluate(() => {
+      const collect = (rules: CSSRuleList): CSSRule[] => Array.from(rules).flatMap((rule) =>
+        'cssRules' in rule ? [rule, ...collect((rule as CSSGroupingRule).cssRules)] : [rule]);
+      const rules = Array.from(document.styleSheets).flatMap((sheet) => {
+        try { return collect(sheet.cssRules); } catch { return []; }
+      });
+      const selector = rules.filter((rule): rule is CSSStyleRule => rule instanceof CSSStyleRule)
+        .map((rule) => rule.selectorText).find((text) => text.includes('.fc-new-item-indicator['));
+      const scope = selector?.match(/\.fc-new-item-indicator\[([^\]=]+)(?:=[^\]]+)?\]/u)?.[1];
+      if (!scope) throw new Error('Fresh-row indicator scoped CSS is absent.');
+      const cue = document.createElement('div');
+      cue.className = 'fc-new-item-indicator';
+      cue.setAttribute(scope, '');
+      cue.textContent = 'Updated row: forced-colors-proof.';
+      document.body.append(cue);
+      try {
+        const styles = getComputedStyle(cue);
+        const system = document.createElement('div');
+        system.style.borderInlineStart = '3px solid CanvasText';
+        document.body.append(system);
+        const systemColor = getComputedStyle(system).borderInlineStartColor;
+        system.remove();
+        return { borderColor: styles.borderInlineStartColor, systemColor,
+          borderStyle: styles.borderInlineStartStyle, borderWidth: styles.borderInlineStartWidth,
+          backgroundImage: styles.backgroundImage, animationName: styles.animationName,
+          transitionDuration: styles.transitionDuration, forcedColorAdjust: styles.forcedColorAdjust };
+      } finally { cue.remove(); }
+    });
+    expect(freshRowProof.borderColor).toBe(freshRowProof.systemColor);
+    expect(freshRowProof.borderStyle).toBe('solid');
+    expect(freshRowProof.borderWidth).toBe('3px');
+    expect(freshRowProof.backgroundImage).toBe('none');
+    expect(freshRowProof.animationName).toBe('none');
+    expect(freshRowProof.transitionDuration).toBe('0s');
+    expect(freshRowProof.forcedColorAdjust).not.toBe('none');
+
     await page.getByTestId('fc-command-submit').focus();
     const outlineColor = await page.getByTestId('fc-command-submit').evaluate((element) => getComputedStyle(element).outlineColor);
     expect(outlineColor).toBeTruthy();

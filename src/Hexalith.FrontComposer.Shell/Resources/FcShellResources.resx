@@ -873,4 +873,5 @@
   <data name="Am30Offline" xml:space="preserve"><value>You are offline. Data cannot be refreshed.</value></data>
   <data name="ProjectionRetry" xml:space="preserve"><value>Retry</value></data>
   <data name="IdempotentInfoDefault" xml:space="preserve"><value>This was already confirmed — no action needed.</value></data>
+  <data name="Am21UpdatedRow" xml:space="preserve"><value>Updated row: {0}.</value></data>
 </root>

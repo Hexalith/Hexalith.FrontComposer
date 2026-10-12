@@ -114,6 +114,7 @@ public abstract class GeneratedComponentTestBase : BunitContext {
         // so generated-form rendering doesn't block on a fake clock that never ticks.
         _ = Services.AddSingleton(TimeProvider.System);
         _ = Services.AddScoped<ISurfaceAnnouncementCoordinator, SurfaceAnnouncementCoordinator>();
+        _ = Services.AddScoped<FreshRowAnnouncementLedger>();
         _ = Services.AddScoped<IProjectionConnectionState, ProjectionConnectionStateService>();
 
         // Story 4-4 T2.1 / T2.5 — generated grid views inject DataGridScrollInterop and

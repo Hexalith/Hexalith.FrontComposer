@@ -78,7 +78,7 @@ The focused FC-TBL public baseline currently covers these public types under
 | `FcExpandedRowHiddenBanner` | Live notice when a filter hides an expanded row. | `ViewKey`, `IsHiddenByFilter`. |
 | `FcSlowQueryNotice` | Slow-query grid notice. | `ViewKey`. |
 | `FcMaxItemsCapNotice` | Max-items cap notice. | `ViewKey`, `ItemsCount`, `AnyRealFilterActive`, `Visible`. |
-| `FcNewItemIndicator` | Accessible fresh-row indicator component. | `Text`, `AriaLabelOverride`. |
+| `FcNewItemIndicator` | Accessible fresh-row indicator component. | `Text`, `AriaLabelOverride`, `Entry`, `SharedStatusOwner`. |
 
 `FcNewItemIndicator` producer wiring uses an explicit command-to-projection `[CommandTarget]`
 declaration. The FC-NIP base record was created on 2026-07-04; its decision was approved and the
@@ -162,3 +162,7 @@ and `[Display(Name=...)]`.
 - [FrontComposerShell](front-composer-shell.md) - shell layout, shortcuts, and status chrome.
 - [Components](index.md) - component reference index.
 - [Generated output](../generated-output.md) - generator output path and inspection guidance.
+
+With `Entry`, `FcNewItemIndicator` displays an info icon and the localized “Updated row: {EntityKey}.” cue. Generated grids set `SharedStatusOwner=true` and deliver AM-21 through their single projection status node once per tenant, user, entity and message across views and remounts. Removal, expiry and dismissal are silent. Direct entry-aware callers own a projection status node by default; callers without `Entry` retain the original role, live label and copy.
+
+Entry-aware cues retain the resolved scope in which their entry was first observed. In retained page tabs, a hidden cue waits until its panel and every containing panel are active before claiming AM-21. Direct entries expire ten seconds after `CreatedAt`; generated entries retain the state service's ten-second window from publication. Invalid or unresolved provenance suppresses the cue before speech is claimed.

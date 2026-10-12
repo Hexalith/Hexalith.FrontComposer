@@ -261,6 +261,7 @@ public static class ServiceCollectionExtensions {
         // Register the system provider if the adopter has not already.
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddScoped<ISurfaceAnnouncementCoordinator, SurfaceAnnouncementCoordinator>();
+        services.TryAddScoped<FreshRowAnnouncementLedger>();
 
         // Story 2-2 Task 3.5a — dev diagnostic sink (per-circuit scope).
         services.TryAddScoped<IDiagnosticSink, InMemoryDiagnosticSink>();

@@ -826,6 +826,8 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         {
             builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcNewItemIndicator>(0);
             builder.SetKey(entry.EntityKey);
+            builder.AddAttribute(1, "Entry", entry);
+            builder.AddAttribute(2, "SharedStatusOwner", true);
             builder.CloseComponent();
         }
     }

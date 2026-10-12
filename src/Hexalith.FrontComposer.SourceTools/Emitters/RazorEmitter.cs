@@ -1743,6 +1743,8 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcNewItemIndicator>(seq++);");
         _ = sb.AppendLine("            builder.SetKey(entry.EntityKey);");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Entry\", entry);");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"SharedStatusOwner\", true);");
         _ = sb.AppendLine("            builder.CloseComponent();");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("    }");

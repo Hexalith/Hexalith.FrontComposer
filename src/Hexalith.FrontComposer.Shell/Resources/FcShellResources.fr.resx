@@ -664,4 +664,5 @@
   <data name="Am30Offline" xml:space="preserve"><value>Vous êtes hors ligne. Les données ne peuvent pas être actualisées.</value></data>
   <data name="ProjectionRetry" xml:space="preserve"><value>Réessayer</value></data>
   <data name="IdempotentInfoDefault" xml:space="preserve"><value>Cette action a déjà été confirmée — aucune action nécessaire.</value></data>
+  <data name="Am21UpdatedRow" xml:space="preserve"><value>Ligne mise à jour : {0}.</value></data>
 </root>

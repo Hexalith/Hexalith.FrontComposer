@@ -23,6 +23,7 @@ public sealed partial class FcPageTabs : ComponentBase, IAsyncDisposable
     private IJSObjectReference? _focusModule;
     private string? _announcedFallback;
     private string? _pendingFallback;
+    private string? _localSelectedTabId;
     private string? FallbackDestination
     {
         get => NavigationFailure.TabFallbackDestination;
@@ -43,6 +44,13 @@ public sealed partial class FcPageTabs : ComponentBase, IAsyncDisposable
     [Inject] private NavigationFailureNotifier NavigationFailure { get; set; } = default!;
 
     [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    [CascadingParameter]
+    private PagePanelVisibility? ParentPanelVisibility { get; set; }
+
+    private PagePanelVisibility VisibilityFor(FcPageTab tab) => new(
+        ParentPanelVisibility?.IsVisible != false && string.Equals(tab.Id,
+            SelectedTabId ?? _tabs.FirstOrDefault(candidate => !candidate.Disabled)?.Id, StringComparison.Ordinal));
 
     private IReadOnlyList<FcPageTab> Tabs => _tabs;
 
@@ -96,7 +104,7 @@ public sealed partial class FcPageTabs : ComponentBase, IAsyncDisposable
         {
             if (string.IsNullOrWhiteSpace(ModuleRoute))
             {
-                return ActiveTabId;
+                return ActiveTabId ?? _localSelectedTabId;
             }
 
             if (string.IsNullOrWhiteSpace(DefaultTabId))
@@ -371,6 +379,7 @@ public sealed partial class FcPageTabs : ComponentBase, IAsyncDisposable
         }
         else
         {
+            _localSelectedTabId = selected.Id;
             await ActiveTabIdChanged.InvokeAsync(selected.Id);
         }
     }

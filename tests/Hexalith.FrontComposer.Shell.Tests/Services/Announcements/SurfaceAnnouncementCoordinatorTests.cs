@@ -1,3 +1,6 @@
+using System.Collections.Concurrent;
+using System.Reflection;
+
 using Hexalith.FrontComposer.Shell.Services.Announcements;
 
 using Microsoft.Extensions.Time.Testing;
@@ -8,6 +11,104 @@ namespace Hexalith.FrontComposer.Shell.Tests.Services.Announcements;
 
 public sealed class SurfaceAnnouncementCoordinatorTests
 {
+    [Theory]
+    [InlineData("scope:0:page:2", "failure:page")]
+    [InlineData("blocked:attempt", "blocked")]
+    public void FreshOverlayRetainsUnderlyingFailureAndBlockedPrecedence(string terminalGroup, string identity)
+    {
+        FakeTimeProvider time = new();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        const string surface = "projection:one";
+        sut.Announce(surface, terminalGroup, identity, "Terminal barrier.", terminal: true);
+        sut.Announce(surface, "fresh-row:A", "message", "Updated row: row.", immediate: true);
+        List<string> messages = [];
+        using var subscription = sut.Subscribe(surface, messages.Add);
+        sut.Announce(surface, "limit:later", "cap", "Later cap.", immediate: true);
+        sut.Announce(surface, "stale:later", "stale", "Later stale.");
+        sut.Announce(surface, "slow-query:old", "slow", "Old slow.", immediate: true);
+        if (identity == "failure:page")
+            sut.Announce(surface, "page:1", "ready", "Old page ready.");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        messages.ShouldBeEmpty();
+        sut.Current(surface).ShouldBe("Updated row: row.");
+        sut.Cancel(surface, "fresh-row:A");
+        sut.Current(surface).ShouldBe("Terminal barrier.");
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void InvalidatedOldCapIsNeverRestoredThroughFreshPreviousOrFallback(bool olderFirst)
+    {
+        using SurfaceAnnouncementCoordinator sut = new(new FakeTimeProvider());
+        const string surface = "projection:one";
+        sut.Announce(surface, "limit:old", "old-cap", "Old cap.", immediate: true);
+        sut.Announce(surface, "fresh-row:A", "a", "Updated row: A.", immediate: true);
+        sut.Announce(surface, "limit:new", "new-cap", "New cap.", immediate: true);
+        sut.Current(surface).ShouldBe("New cap.");
+        sut.Announce(surface, "fresh-row:B", "b", "Updated row: B.", immediate: true);
+        sut.Cancel(surface, "limit:new");
+        if (olderFirst)
+        {
+            sut.Cancel(surface, "fresh-row:A");
+            sut.Current(surface).ShouldBe("Updated row: B.");
+            sut.Cancel(surface, "fresh-row:B");
+        }
+        else
+        {
+            sut.Cancel(surface, "fresh-row:B");
+            sut.Current(surface).ShouldBe("Updated row: A.");
+            sut.Cancel(surface, "fresh-row:A");
+        }
+        sut.Current(surface).ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task InFlightWithdrawalRevisionsRemainSilentAcrossConcurrentAndReentrantDelivery(bool concurrent)
+    {
+        using SurfaceAnnouncementCoordinator sut = new(new FakeTimeProvider());
+        const string surface = "projection:one";
+        sut.Announce(surface, "limit:prior", "cap", "Prior cap.", immediate: true);
+        sut.Announce(surface, "fresh-row:A", "a", "Updated row: A.", immediate: true);
+        sut.Announce(surface, "fresh-row:B", "b", "Updated row: B.", immediate: true);
+        using ManualResetEventSlim entered = new();
+        using ManualResetEventSlim resume = new();
+        using var blocker = sut.Subscribe(surface, message => {
+            if (message != "Updated row: A.") return;
+            if (concurrent)
+            {
+                entered.Set();
+                resume.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken).ShouldBeTrue();
+            }
+            else sut.Cancel(surface, "fresh-row:A");
+        });
+        ConcurrentBag<(string Message, bool Silent, bool ForwardedSilent)> delivered = [];
+        using var subscription = sut.SubscribeWithReplay(surface, (message, revision) => {
+            if (message is "Updated row: A." or "Prior cap.")
+                delivered.Add((message, sut.IsSilentRevision(surface, revision), SurfaceAnnouncementDelivery.IsSilent(surface, revision)));
+        });
+        if (concurrent)
+        {
+            Task first = Task.Run(() => sut.Cancel(surface, "fresh-row:B"), TestContext.Current.CancellationToken);
+            try
+            {
+                entered.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken).ShouldBeTrue();
+                sut.Cancel(surface, "fresh-row:A");
+            }
+            finally { resume.Set(); }
+            await first.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken).ConfigureAwait(true);
+        }
+        else sut.Cancel(surface, "fresh-row:B");
+        delivered.Count.ShouldBe(2);
+        delivered.All(static delivery => delivery.Silent && delivery.ForwardedSilent).ShouldBeTrue();
+        var surfaces = (System.Collections.IDictionary)typeof(SurfaceAnnouncementCoordinator)
+            .GetField("_surfaces", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(sut)!;
+        object owner = surfaces[surface]!;
+        ((HashSet<long>)owner.GetType().GetProperty("PendingFreshSilentRevisions")!.GetValue(owner)!).ShouldBeEmpty();
+    }
+
     [Fact]
     public void LongPendingRequestRetainsItsOriginalOrderBeyondSettledObservationLimit()
     {

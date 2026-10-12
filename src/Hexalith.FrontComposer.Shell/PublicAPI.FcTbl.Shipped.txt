@@ -81,6 +81,9 @@ Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice.Visible:Sys
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcNewItemIndicator
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcNewItemIndicator.#ctor()
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcNewItemIndicator.AriaLabelOverride:System.String:get/set
+Hexalith.FrontComposer.Shell.Components.DataGrid.FcNewItemIndicator.Dispose():void
+Hexalith.FrontComposer.Shell.Components.DataGrid.FcNewItemIndicator.Entry:Hexalith.FrontComposer.Shell.State.PendingCommands.NewItemIndicatorEntry:get/set
+Hexalith.FrontComposer.Shell.Components.DataGrid.FcNewItemIndicator.SharedStatusOwner:System.Boolean:get/set
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcNewItemIndicator.Text:System.String:get/set
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcProjectionGlobalSearch
 Hexalith.FrontComposer.Shell.Components.DataGrid.FcProjectionGlobalSearch.#ctor()

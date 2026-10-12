@@ -352,8 +352,8 @@ export const validateEpic9Artifacts = async (
 
   const evidence = await readJson(evidencePath, 'epic-9-command-evidence.json');
   assertSensitiveValuesRedacted(evidence, 'epic-9-command-evidence.json');
-  assertClaim(evidence.schemaVersion === 1, 'Browser evidence schemaVersion must equal 1.');
-  assertClaim(evidence.story === '9.8', 'Browser evidence story must equal 9.8.');
+  const freshRowV2 = evidence.schemaVersion === 2 && evidence.story === '13.5';
+  assertClaim(freshRowV2 || (evidence.schemaVersion === 1 && evidence.story === '9.8'), 'Browser evidence must be schemaVersion 1/story 9.8 or schemaVersion 2/story 13.5.');
   assertClaim(evidence.candidateCommit === metadata.candidateCommit, 'Browser evidence candidate does not match runtime metadata.');
   assertClaim(evidence.baseUrl === metadata.baseUrl, 'Browser evidence endpoint does not match runtime metadata.');
   requireNonEmptyString(evidence.tenantScope, 'Browser evidence tenantScope');
@@ -383,10 +383,28 @@ export const validateEpic9Artifacts = async (
   assertClaim(observed.tenantScopeLength === evidence.tenantScope.length && observed.tenantScopeLength > 0, 'Browser evidence tenant scope length is not measured correctly.');
   assertClaim(observed.userScopeLength === evidence.userScope.length && observed.userScopeLength > 0, 'Browser evidence user scope length is not measured correctly.');
   assertClaim(observed.createIndicatorVisibleCount === 1, 'Browser evidence create indicator visible count must equal 1.');
-  assertClaim(observed.indicatorRole === 'status', 'Browser evidence indicator role must equal status.');
-  assertClaim(observed.indicatorAriaLive === 'polite', 'Browser evidence indicator aria-live must equal polite.');
-  assertClaim(observed.indicatorAriaLabel === INDICATOR_ARIA_LABEL, 'Browser evidence indicator aria-label is not localized copy.');
-  assertClaim(observed.createIndicatorCopy === INDICATOR_COPY, 'Browser evidence create announcement is not localized copy.');
+  const indicatorCopy = freshRowV2 ? `Updated row: ${evidence.exactTargetKey}.` : INDICATOR_COPY;
+  if (freshRowV2) {
+    assertClaim(observed.indicatorRole === '', 'Browser evidence v2 cue must have no live role.');
+    assertClaim(observed.indicatorAriaLive === '', 'Browser evidence v2 cue must have no aria-live.');
+    assertClaim(observed.indicatorAriaLabel === '', 'Browser evidence v2 cue must have no aria-label.');
+    assertClaim(observed.sharedPoliteNodeCount === 1, 'Browser evidence v2 must have one shared polite node.');
+    assertClaim(observed.hiddenBeforeActivationAnnouncementCount === 0, 'Hidden grid must not announce before activation.');
+    assertClaim(observed.firstActivationAnnouncementCount === 1, 'First exposed activation must announce exactly once.');
+    assertClaim(observed.indicatorSystemBorder === true && observed.indicatorIconVisible === true,
+      'Actual fresh cue must retain its system border and visible icon under accessibility modes.');
+    assertClaim(observed.indicatorBackgroundImage === 'none' && observed.indicatorAnimationName === 'none'
+      && observed.indicatorTransitionDuration === '0s', 'Actual fresh cue must not depend on background images or motion.');
+    assertClaim(observed.createAnnouncementCount === 1, 'Browser evidence v2 must speak AM-21 once on create.');
+    assertClaim(observed.tabSwitchAnnouncementCount === 0, 'Browser evidence v2 tab switch must not repeat AM-21.');
+    assertClaim(observed.duplicateAnnouncementCount === 0, 'Browser evidence v2 duplicate must not repeat AM-21.');
+    assertClaim(observed.freshRowAnnouncementCount === 3, 'Browser evidence v2 must speak exactly three eligible transitions.');
+  } else {
+    assertClaim(observed.indicatorRole === 'status', 'Browser evidence indicator role must equal status.');
+    assertClaim(observed.indicatorAriaLive === 'polite', 'Browser evidence indicator aria-live must equal polite.');
+    assertClaim(observed.indicatorAriaLabel === INDICATOR_ARIA_LABEL, 'Browser evidence indicator aria-label is not localized copy.');
+  }
+  assertClaim(observed.createIndicatorCopy === indicatorCopy, 'Browser evidence create announcement is not localized copy.');
   for (const stage of ['catchUpCaptured', 'catchUpPublished', 'catchUpReceived']) {
     assertClaim(observed[stage] === 1, `Browser evidence observed.${stage} must equal the DOM counter 1.`);
   }
@@ -396,8 +414,8 @@ export const validateEpic9Artifacts = async (
   assertClaim(observed.materializedCountBeforeSecondDispatch === 41, 'Browser evidence row count must remain 41 immediately before the second dispatch.');
   assertClaim(observed.overlapIndicatorCountAfterSecondDispatch === 1, 'Browser evidence must observe one indicator after the overlapping dispatch.');
   assertClaim(observed.overlapIndicatorElementRetained === true, 'Browser evidence must retain the same connected indicator element through the second observation.');
-  assertClaim(observed.overlapIndicatorCopyBeforeSecondDispatch === INDICATOR_COPY, 'Browser evidence overlap announcement before dispatch is not localized copy.');
-  assertClaim(observed.overlapIndicatorCopyAfterSecondDispatch === INDICATOR_COPY, 'Browser evidence overlap announcement after dispatch is not localized copy.');
+  assertClaim(observed.overlapIndicatorCopyBeforeSecondDispatch === indicatorCopy, 'Browser evidence overlap announcement before dispatch is not localized copy.');
+  assertClaim(observed.overlapIndicatorCopyAfterSecondDispatch === indicatorCopy, 'Browser evidence overlap announcement after dispatch is not localized copy.');
   assertClaim(observed.materializedCountAfterOverlappingUpdates === 44, 'Browser evidence overlapping-update count must equal 44.');
   assertClaim(observed.overlappingIndicatorCountAfterMaterialization === 0, 'Browser evidence overlapping indicator must be dismissed by materialization.');
   assertClaim(observed.laterUpdateIndicatorVisibleCount === 1, 'Browser evidence later-update indicator visible count must equal 1.');

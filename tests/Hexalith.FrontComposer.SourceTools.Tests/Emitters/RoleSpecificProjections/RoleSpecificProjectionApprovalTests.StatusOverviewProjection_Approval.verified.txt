@@ -955,6 +955,8 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
         {
             builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcNewItemIndicator>(0);
             builder.SetKey(entry.EntityKey);
+            builder.AddAttribute(1, "Entry", entry);
+            builder.AddAttribute(2, "SharedStatusOwner", true);
             builder.CloseComponent();
         }
     }

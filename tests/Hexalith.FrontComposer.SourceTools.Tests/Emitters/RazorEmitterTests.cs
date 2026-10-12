@@ -120,6 +120,8 @@ public class RazorEmitterTests {
         // renders inside an explicit region so its own literals stay in their own sequence scope.
         string masked = GeneratedRenderTreeText.MaskSequenceArguments(source);
         masked.ShouldContain("builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcNewItemIndicator>(#);");
+        masked.ShouldContain("builder.AddAttribute(#, \"Entry\", entry);");
+        masked.ShouldContain("builder.AddAttribute(#, \"SharedStatusOwner\", true);");
         masked.ShouldContain("builder.OpenRegion(#);");
         masked.ShouldContain("RenderNewItemIndicators(builder);");
         masked.ShouldContain("builder.CloseRegion();");

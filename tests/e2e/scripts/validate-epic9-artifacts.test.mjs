@@ -413,3 +413,57 @@ test('Epic 9 artifact validator verifies a complete sorted checksum manifest and
     await assert.rejects(validateEpic9Artifacts(root), /only at the artifact root/u);
   });
 });
+
+function useFreshRowV2(fixture) {
+  fixture.evidence.schemaVersion = 2;
+  fixture.evidence.story = '13.5';
+  const observed = fixture.evidence.observed;
+  observed.indicatorRole = '';
+  observed.indicatorAriaLive = '';
+  observed.indicatorAriaLabel = '';
+  observed.createIndicatorCopy = `Updated row: ${EXACT_KEY}.`;
+  observed.overlapIndicatorCopyBeforeSecondDispatch = observed.createIndicatorCopy;
+  observed.overlapIndicatorCopyAfterSecondDispatch = observed.createIndicatorCopy;
+  observed.sharedPoliteNodeCount = 1;
+  observed.hiddenBeforeActivationAnnouncementCount = 0;
+  observed.firstActivationAnnouncementCount = 1;
+  observed.indicatorSystemBorder = true;
+  observed.indicatorIconVisible = true;
+  observed.indicatorBackgroundImage = 'none';
+  observed.indicatorAnimationName = 'none';
+  observed.indicatorTransitionDuration = '0s';
+  observed.createAnnouncementCount = 1;
+  observed.tabSwitchAnnouncementCount = 0;
+  observed.duplicateAnnouncementCount = 0;
+  observed.freshRowAnnouncementCount = 3;
+}
+
+test('Fresh-row v2 browser evidence passes while archived v1 remains accepted', async (t) => {
+  await runFixture(t, useFreshRowV2);
+});
+
+test('Fresh-row v2 rejects incorrect cue, channel and repeat-speech evidence', async (t) => {
+  const cases = [
+    ['indicatorRole', 'status'], ['indicatorAriaLive', 'polite'], ['indicatorAriaLabel', 'New item'],
+    ['createIndicatorCopy', 'Updated row: wrong-row.'], ['sharedPoliteNodeCount', 2],
+    ['hiddenBeforeActivationAnnouncementCount', 1], ['firstActivationAnnouncementCount', 0],
+    ['indicatorSystemBorder', false], ['indicatorIconVisible', false], ['indicatorBackgroundImage', 'url(image.png)'],
+    ['indicatorAnimationName', 'pulse'], ['indicatorTransitionDuration', '0.2s'],
+    ['createAnnouncementCount', 2], ['tabSwitchAnnouncementCount', 1],
+    ['duplicateAnnouncementCount', 1], ['freshRowAnnouncementCount', 4],
+  ];
+  for (const [field, value] of cases) {
+    await t.test(field, async (subtest) => {
+      await assert.rejects(runFixture(subtest, (fixture) => {
+        useFreshRowV2(fixture);
+        fixture.evidence.observed[field] = value;
+      }));
+    });
+  }
+  await t.test('mismatched story', async (subtest) => {
+    await assert.rejects(runFixture(subtest, (fixture) => {
+      useFreshRowV2(fixture);
+      fixture.evidence.story = '9.8';
+    }));
+  });
+});

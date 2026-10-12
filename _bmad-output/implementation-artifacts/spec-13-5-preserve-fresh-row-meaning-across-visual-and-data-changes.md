@@ -2,9 +2,10 @@
 title: 'Story 13.5: Preserve Fresh-Row Meaning Across Visual and Data Changes'
 type: 'feature'
 created: '2026-10-12'
-status: 'ready-for-dev'
+status: 'done'
 route: 'dispatch'
-review_loop_iteration: 0
+review_loop_iteration: 1
+baseline_commit: '985d3e70ac8e9d5492fa857bc3a31208a9543670'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-13-context.md'
 ---
@@ -42,7 +43,7 @@ context:
 
 - `src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcNewItemIndicator.razor{,.cs,.css}` -- public FcTbl component: div with its own `role=status`/`aria-live=polite`, `Text`/`AriaLabelOverride`, keys `NewItemIndicatorText`/`NewItemIndicatorAriaLabel`; CSS brand border plus `color-mix` background, 200 ms transition disabled under reduced motion; no forced-colors rule or icon. Shared-mode precedent: `FcSlowQueryNotice` (`SharedStatusOwner`; renders `FcSurfaceStatus Surface="projection:"+ViewKey ExclusiveOwner` only when standalone).
 - `src/Hexalith.FrontComposer.Shell/State/PendingCommands/NewItemIndicatorStateService.cs`, `NewItemIndicatorEntry.cs` -- first-wins `(ViewKey, EntityKey)`, `TimeProvider` ten-second timer, scope clearing in `Add`/`Snapshot`; entry has ViewKey, EntityKey, MessageId, CreatedAt. Do not change.
-- `src/Hexalith.FrontComposer.Shell/Services/Announcements/SurfaceAnnouncementCoordinator.cs` -- dedupe is per surface/group only, hence a separate ledger. Use `immediate: true` (not `terminal`: closed groups suppress later `limit:`/`stale:` speech). `Cancel` silently restores already-spoken states. Avoid group prefixes `page:`, `scope:`, `limit:`, `stale:`, `lifecycle:`, `slow-query:`, `blocked:`.
+- `src/Hexalith.FrontComposer.Shell/Services/Announcements/SurfaceAnnouncementCoordinator.cs` -- dedupe is per surface/group only, hence a separate ledger. Existing `Announce`/`Cancel` operations and their precedence must retain their behavior. Add internal fresh-row transient operations: immediate speech, silent cancellation of its own group, and selective group retirement. Do not close a terminal group or cancel unrelated projection timers. Public coordinator contract and existing-family semantics remain unchanged. Avoid group prefixes `page:`, `scope:`, `limit:`, `stale:`, `lifecycle:`, `slow-query:`, `blocked:`.
 - `src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs` (~263, ~441) -- scoped coordinator and indicator registrations.
 - `src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs` -- `RenderNewItemIndicators` (~1739) emits bare keyed indicators; surface `"projection:" + _viewKey` (~1074) and its `FcSurfaceStatus` (~2022); subscription → `StateHasChanged` (~1262) already avoids waiting for unrelated renders; dismissal paths (~1724, ~1782) unchanged. Row names use `_itemKeyAccessor(item).ToString()` (`ProjectionRoleBodyEmitter.cs` ~609).
 - `src/Hexalith.FrontComposer.Shell/Resources/FcShellResources{,.fr}.resx` -- `AmNN` key style (`Am08SlowQuery`); FR spaces before ':'.
@@ -54,14 +55,19 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `src/Hexalith.FrontComposer.Shell/Services/Announcements/FreshRowAnnouncementLedger.cs` (new, internal, scoped) and `ServiceCollectionExtensions.cs` -- `TryClaim(entry)` is true once per tenant + user + EntityKey + MessageId, false for blank scope, pruning claims older than ten seconds -- ViewKey-independent dedupe without public contract changes.
-- [ ] `FcNewItemIndicator.razor{,.cs,.css}`, `PublicAPI.FcTbl.Shipped.txt` -- add documented `Entry` and `SharedStatusOwner`. With `Entry`: decorative `FcFluentIcons.InfoCircle16()`, text from `Text` or `Am21UpdatedRow`, no live role or label; after rendering a new MessageId, announce AM-21 immediately when claimed; cancel its group on dispose; own `FcSurfaceStatus` only when not shared. Without `Entry`: legacy semantics. CSS: forced-colors `CanvasText` inline-start border, no `forced-color-adjust: none`, reduced motion unchanged.
-- [ ] `FcShellResources.resx`, `FcShellResources.fr.resx` -- add `Am21UpdatedRow`.
-- [ ] `RazorEmitter.cs` -- pass `Entry` and `SharedStatusOwner=true`; refresh affected `.verified.txt` snapshots and emitter assertions.
-- [ ] `tests/Hexalith.FrontComposer.Shell.Tests/` -- ledger and component tests; update generated-copy assertions; cover every I/O row with fake time, polite-node and announcement counts, two views, unrelated-render absence, and suppressed Unknown/NoOp/Delete/Rejected/NeedsReview/server-allocated outcomes.
-- [ ] `tests/e2e/specs/epic-9-fresh-row-acceptance.spec.ts`, `tests/e2e/scripts/validate-epic9-artifacts{,.test}.mjs` -- assert visible AM-21, no cue live role, one shared node, no tab-switch repeat; emit evidence v2/story 13.5; validator keeps v1 pins and accepts v2.
-- [ ] `tests/e2e/specs/specimen-accessibility.spec.ts` -- scoped indicator proof: border survives, no background image, animation or transition.
-- [ ] `docs/reference/components/datagrid.md` -- append the new parameters and shared-channel behavior; keep fixture-guarded sentences.
+- [x] `src/Hexalith.FrontComposer.Shell/Services/Announcements/FreshRowAnnouncementLedger.cs` (new, internal, scoped) and `ServiceCollectionExtensions.cs` -- `TryClaim(entry)` is true once per tenant + user + EntityKey + MessageId, false for blank scope, pruning claims older than ten seconds -- ViewKey-independent dedupe without public contract changes.
+- [x] `FcNewItemIndicator.razor{,.cs,.css}`, `PublicAPI.FcTbl.Shipped.txt` -- add documented `Entry` and `SharedStatusOwner`. With `Entry`: decorative `FcFluentIcons.InfoCircle16()`, text from `Text` or `Am21UpdatedRow`, no live role or label; bind the entry to its resolved originating scope, suppress blank provenance before claiming, defer claims while a containing page tab is hidden, announce AM-21 immediately when claimed through the fresh-row transient path, and silently retire its group on removal/dispose; for direct entries, enforce a ten-second lifecycle without shortening the state service lifetime of generated entries; own `FcSurfaceStatus` only when not shared. Without `Entry`: legacy semantics. CSS: forced-colors `CanvasText` inline-start border, no `forced-color-adjust: none`, reduced motion unchanged.
+- [x] `FcShellResources.resx`, `FcShellResources.fr.resx` -- add `Am21UpdatedRow`.
+- [x] `RazorEmitter.cs` -- pass `Entry` and `SharedStatusOwner=true`; refresh affected `.verified.txt` snapshots and emitter assertions.
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/` -- ledger and component tests; update generated-copy assertions; cover every I/O row with fake time, polite-node and announcement counts, two views, unrelated-render absence, and suppressed Unknown/NoOp/Delete/Rejected/NeedsReview/server-allocated outcomes.
+- [x] `tests/e2e/specs/epic-9-fresh-row-acceptance.spec.ts`, `tests/e2e/scripts/validate-epic9-artifacts{,.test}.mjs` -- assert visible AM-21, no cue live role, one shared node, no tab-switch repeat; emit evidence v2/story 13.5; validator keeps v1 pins and accepts v2.
+- [x] `tests/e2e/specs/specimen-accessibility.spec.ts` -- scoped indicator proof: border survives, no background image, animation or transition.
+- [x] `docs/reference/components/datagrid.md` -- append the new parameters and shared-channel behavior; keep fixture-guarded sentences.
+
+- [x] `SurfaceAnnouncementCoordinator.cs` -- add internal fresh-row transient publish/withdraw helpers, leaving existing public operations and all other announcement families behaviorally unchanged. Immediate transient publication must preserve unrelated pending timers; withdrawing a fresh group restores status text silently and removes only that group/history. Cover pending stale/limit/page outcomes and repeated fresh-row cycles.
+- [x] `Components/Layout/FcPageTabs.razor` and a new internal panel-visibility context if needed -- cascade effective active-panel exposure (including nested inactive ancestors), without changing retained panel content or tab/public contracts. `FcNewItemIndicator` uses this to leave hidden transitions unclaimed until first visible delivery; visibility toggles after delivery do not repeat speech.
+- [x] `GeneratedFreshRowAnnouncementTests.cs` -- complete a real page result and drive the generated filter/requery action; assert original provenance/TTL and silent cue removal. `FcFreshRowIndicatorTests.cs` -- add direct resolved-scope swaps, invalid identity, direct expiry/remount, hidden-first-visible delivery and pending-status cancellation regressions.
+- [x] `epic-9-fresh-row-acceptance.spec.ts` -- count AM-21 only when the shared status node is exposed (no hidden/inert/aria-hidden ancestor and visible layout); prove hidden grid receives zero speech before activation and exactly one on first activation; inspect the actual cue text/icon/system border under forced colors/reduced motion without adding specimen content.
 
 **Acceptance Criteria:**
 - Given a standalone `FcNewItemIndicator` without `Entry`, when rendered, then its role, live, label and copy are unchanged.
@@ -69,9 +75,56 @@ context:
 
 ## Implementation Notes
 
+This is a step-03 implementation handoff inside an active bmad-build workflow. The parent owns orchestration and review; implement the spec directly without starting or rendering another build workflow.
+
 ## Spec Change Log
 
+- Review iteration 1: corrected the non-frozen plan for originating-scope binding, direct-entry lifecycle/validation, panel exposure, silent transient withdrawal, bounded fresh-group history and real filter/page completion coverage. Avoid the demonstrated old-scope leak, hidden-only first delivery, pending-stale speech on removal and retained fresh history. KEEP canonical EN/FR copy, icon, grid-adjacent placement, legacy standalone localization-only compatibility, scoped view-independent claim identity, unchanged resolver/state service/public coordinator behavior, forced-colors/reduced-motion CSS, generator wiring and snapshots, v1 evidence compatibility, and all existing passing regression tests. Implement the transient support as internal operations; retain all existing public coordinator semantics and regression expectations.
+
 ## Review Triage Log
+
+| Finding | Verdict | Route | Evidence |
+|---|---|---|---|
+| BH-1 | high | bad_spec | A resolved tenant/user swap keeps an unchanged direct Entry visible; OnParametersSet checks only scope validity and entry equality, not originating scope. |
+| BH-2 | medium | bad_spec | Cancel restores an undelivered stale candidate as a non-silent revision; the existing restoration test exercises only an already-spoken limit. |
+| BH-3 | medium | patch | Add validates view/entity only; blank MessageId reaches Announce identity validation after TryClaim, so an accepted entry can break rendering. |
+| BH-4 | medium | bad_spec | Direct Entry callers have no state-owned expiry and can remount an expired transition after claim pruning. |
+| BH-5 | high | bad_spec | FcPageTab retains inactive rendered content. The component claims a transition while the status node is hidden, consuming its only accessible delivery. |
+| BH-6 | medium | bad_spec | The browser observer counts polite nodes in hidden panels, so hidden delivery is accepted as speech. |
+| BH-7 | false | reject | Immediate terminal-outcome speech intentionally cancels superseded intermediate page speech under epic-13 canonical coalescing. A pending Page ready message need not follow its newer row outcome; cancellation alone is not a defect. |
+| BH-8 | medium | bad_spec | A new GUID group is retained after every cue cancellation. The new fresh-row family needs bounded retirement without changing other families or public operations. |
+| BH-9 | false | reject | The scoped CSS probe exercises the compiled indicator selector and fails if it is absent. The actual cue/icon and scoped attributes are covered by component rendering; no missing or invisible production icon was demonstrated. The new visible live proof will additionally inspect the real icon under modes. |
+| BH-10 | medium | bad_spec | The new test calls dismissal directly and scrolls without completing a page load, leaving the fresh-row behavior across real generated filter/requery and page completion unproved. |
+| EC-1 | medium | patch | Same confirmed blank-message rendering failure as BH-3; the state service accepts this reachable input. |
+| EC-2 | high | bad_spec | Same confirmed originating-scope omission as BH-1; validity remains true after a resolved scope swap. |
+| EC-3 | medium | bad_spec | Same confirmed retained fresh-group history as BH-8; the proof counted 100 cancelled groups. |
+| EC-4 | medium | bad_spec | Same confirmed pending-stale restoration as BH-2; the proof observed a non-silent revision during cue cancellation. |
+
+Verification-gap reviewer: no grounded verification gaps reported. Findings were classified individually before grouping. Shared roots: BH-1/EC-2; BH-2/EC-4; BH-3/EC-1; BH-8/EC-3. Plan gaps require re-derivation, so lower patch entries are carried into the amended implementation tasks.
+
+Second review: every finding was individually classified after all layers returned. The code at each affected location was checked; no unchanged-location finding is carried from the first implementation.
+
+| Finding | Verdict | Route | Evidence |
+|---|---|---|---|
+| R2-BH-1 | high | patch | Equivalent record copies bypass reference-only origin binding. Preserve the demonstrated origin across equal transition copies/remounts with bounded metadata, without changing producer semantics. |
+| R2-BH-2 | high | patch | Exclusive status ownership ignores panel exposure, so a visible same-view cue publishes into the hidden first owner. Status leases must follow the existing visibility context. |
+| R2-BH-3 | medium | patch | A forwarding decorator takes the public immediate path and cancels unrelated timers; default fresh-family dispatch and delivered silence must survive forwarding while retaining other-family behavior. |
+| R2-BH-4 | low | reject | DateTimeOffset.MaxValue cannot support a ten-second expiry and throws for this unsupported direct timestamp. Production provenance is the clock timestamp; extra timestamp/timer guards for this rare malformed caller input exceed a direct correction. |
+| R2-BH-5 | false | reject | The probe publishes the same MessageId into a second view nine seconds later, bypassing the sole eligible publisher. PendingCommandOutcomeResolver fixes target.ViewKey, records a once-per-MessageId decision before Add, and validates observation provenance against the current clock; valid production publication cannot extend the same transition into another Add lifetime. Direct alternate-view entries expire by the original CreatedAt. |
+| R2-BH-6 | medium | patch | The transient CurrentGroup hides the prior terminal failure from Announce/Flush guards. Resolve the underlying owner for precedence while retaining the transient message as current output. |
+| R2-BH-7 | medium | patch | WithdrawFreshRow accepts an invalidated cap through both PreviousGroup and Delivered fallback. Check each prior candidate against existing family restoration eligibility. |
+| R2-BH-8 | medium | patch | Concurrent or reentrant withdrawal delivery can supersede the sole silent marker before its subscriber runs. Preserve silence for revisions still being delivered with bounded lifetime. |
+| R2-BH-9 | medium | patch | Hidden revisions are skipped before WeakMap tracking, so visibility alone can count an old message. Track every observed revision and count only exposed fresh mutations. |
+| R2-BH-10 | medium | patch | All new generated fresh-row cases have one active entity. Add actual shared-node coverage for multiple fresh entries, including a same-render burst and both withdrawal orders; each row must produce a status mutation. |
+| R2-EC-1 | high | patch | Same demonstrated hidden exclusive owner as R2-BH-2; PanelVisibility alone checks the cue rather than the selected status owner. |
+| R2-EC-2 | low | reject | Same unsupported DateTimeOffset overflow as R2-BH-4; no production clock/producer creates this timestamp, and additional rare-input guards are not justified. |
+| R2-EC-3 | medium | patch | Same demonstrated underlying terminal barrier omission as R2-BH-6, with a limit becoming spoken behind a still-mounted failure. |
+| R2-EC-4 | high | patch | Same verified hidden-owner path as R2-BH-2/EC-1; it violates first-visible delivery despite a visible cue. |
+| R2-EC-5 | medium | patch | Same verified precedence omission as R2-BH-6/EC-3; other-family guards must see the underlying owner. |
+| R2-VG-1 | medium | patch | Pre-verified broken-verification gap: hidden unchanged revisions count on exposure, and the component cases omit ModuleRoute. Add route-backed coverage and record hidden revisions. |
+| R2-VG-2 | medium | patch | Pre-verified regression gap: no simultaneous A/B ownership case guards the noncurrent withdrawal return. Remove the older cue and assert the newer status remains with no extra speech. |
+
+Grouped shared roots: origin copies; exposed status leases; forwarding decorators; terminal precedence (BH-6/EC-3/EC-5); restoration eligibility; in-flight silence; browser revision tracking (BH-9/VG-1); overlapping generated entries (BH-10/VG-2). All surviving fixes add no public surface and guard the demonstrated state, so they route to patch. Unsupported timestamp guards are rejected as rare low-impact complexity, and the duplicate-publication probe is rejected on the sole-producer contract.
 
 ## Design Notes
 
@@ -85,3 +138,170 @@ Pruning claims after ten seconds cannot re-announce: a claim happens after `Add`
 - `cd tests/e2e && node --test scripts/validate-epic9-artifacts.test.mjs` -- expected: pass.
 - `cd tests/e2e && npx playwright test specs/specimen-accessibility.spec.ts --project=chromium` -- expected: pass, or record the exact environment blocker.
 - From the repository root, `./eng/run-epic9-live-proof.sh` -- expected: pass, or record the exact environment blocker.
+
+### Implementation evidence (2026-10-12)
+
+The implementation preserves FC-NIP publication/state/coordinator semantics. Generated cues now name `EntityKey`, include the decorative info icon, and claim AM-21 through a scoped view-independent ledger. Standalone callers without `Entry` retain their original localization-only dependency, role, live label and copy. Browser evidence now emits schema version 2/story 13.5 while the validator retains the archived version 1/story 9.8 pins. OI-16, G-4, FLUENT-APP-1 and Product approval remain open.
+
+Executed build commands:
+
+```bash
+dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Debug -m:1 -p:NuGetAudit=false
+dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj -c Debug -m:1 -p:NuGetAudit=false
+```
+
+Both completed successfully with `0 Warning(s)` and `0 Error(s)`. Logs: `/tmp/frontcomposer-story13-5-shell-build.log` and `/tmp/frontcomposer-story13-5-source-build.log`.
+
+Executed Shell test command:
+
+```bash
+dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -class '*FreshRowAnnouncementLedgerTests' -class '*FcFreshRowIndicatorTests' -class '*FcNewItemIndicatorTests' -class '*FcNewItemIndicatorLaneIntegrationTests' -class '*GeneratedFreshRowAnnouncementTests' -class '*Epic9CompositionTests' -class '*CounterStoryVerificationTests' -class '*GeneratedProjectionAnnouncementTests' -class '*ShellTypeOrganizationGovernanceTests' -class '*FcShellResourcesTests' -class '*FcTblPackageBoundaryTests' -class '*PendingCommandOutcomeResolverTests' -xml /tmp/frontcomposer-story13-5-shell-results.xml
+```
+
+Result: `Total: 328, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0`. The runner reported that `-xml` is deprecated in favor of `-result-xml`; the requested XML was produced. Output: `/tmp/frontcomposer-story13-5-shell-focused.log`.
+
+| Covering class | Passed | Evidence coverage |
+|---|---:|---|
+| FreshRowAnnouncementLedgerTests | 9 | View-independent transition claims, distinct entity/message identity, 9.999/10-second claim pruning, missing/changed tenant and user |
+| FcFreshRowIndicatorTests | 7 | Exact EN/FR AM-21, decorative icon, no cue live semantics, one node, no focus calls, visible override with canonical speech, cross-view/remount dedupe, silent restoration, standalone dependency compatibility |
+| GeneratedFreshRowAnnouncementTests | 13 | Already-rendered grid reacts without unrelated render; paging, later message and remount keep first provenance/TTL; cue present at 9.999 seconds and absent at 10; silent materialization/filter/requery/dismiss/scope removal; suppressed Unknown identity/materiality, NoOp, Delete, Rejected, NeedsReview and server-allocated outcomes |
+| FcNewItemIndicatorTests | 19 | Unchanged standalone copy/ARIA and indicator-state mutation, provenance and expiry behavior |
+| FcNewItemIndicatorLaneIntegrationTests | 6 | Unchanged standalone lane composition and automatic disappearance |
+| Epic9CompositionTests | 2 | Production generated-command publication, callback/polling, first-wins provenance and removal paths |
+| CounterStoryVerificationTests | 28 | Existing generated Counter behavior and new generated cue copy |
+| GeneratedProjectionAnnouncementTests | 60 | Story 13.4 one-node, cancellation, co-mounted ownership and precedence regressions |
+| PendingCommandOutcomeResolverTests | 65 | Unchanged resolver eligibility and once-per-message publication decisions |
+| ShellTypeOrganizationGovernanceTests | 30 | Shell type and layer organization |
+| FcShellResourcesTests | 88 | Localization parity and resource contracts |
+| FcTblPackageBoundaryTests | 1 | Intentional public API baseline |
+
+Executed SourceTools test command:
+
+```bash
+dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll -class '*RazorEmitterTests' -class '*RoleSpecificProjectionApprovalTests' -class '*FcNipCommandTargetIdentityContractTests' -xml /tmp/frontcomposer-story13-5-source-results.xml
+```
+
+Result: `Total: 41, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0` (`RazorEmitterTests`: 18; `RoleSpecificProjectionApprovalTests`: 16; `FcNipCommandTargetIdentityContractTests`: 7). Output: `/tmp/frontcomposer-story13-5-source-tests.log`. All affected generated snapshots pass, including the emitter's normalized sequence literals for `Entry` and `SharedStatusOwner`.
+
+Executed focused analyzer governance command:
+
+```bash
+dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -method '*AnalyzerPolicy_GovernanceContract_FailsClosed' -method '*AnalyzerPolicy_IdentifierInventory_MatchesSeal' -method '*AnalyzerPolicy_SolutionBuildArguments_ForceRecommendedWithoutWeakeningWarnings'
+```
+
+Result: `Total: 3, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0`. Output: `/tmp/frontcomposer-story13-5-analyzer-tests.log`. No CA1707 seal changes were needed.
+
+Executed browser and artifact checks from `tests/e2e`:
+
+```bash
+node --test scripts/validate-epic9-artifacts.test.mjs
+npx tsc --noEmit
+npx playwright test specs/specimen-accessibility.spec.ts --project=chromium
+```
+
+Results: artifact validator `101 passed, 0 failed`; TypeScript exit 0; Chromium specimen suite `22 passed`, including the scoped fresh-row forced-colors/reduced-motion proof (system inline-start border, no background image, no animation, no transition, no forced-color opt-out). Existing visual baselines remained unchanged. All browser assertions in this suite ran. Browser results: `tests/e2e/test-results/junit.xml` and `tests/e2e/playwright-report/`; the forced-colors/reduced-motion testcase passed.
+
+Executed live proof from the repository root:
+
+```bash
+./eng/run-epic9-live-proof.sh
+FC_EPIC9_ARTIFACT_ROOT=/tmp/frontcomposer-story13-5-live-proof-final ./eng/run-epic9-live-proof.sh
+```
+
+The default command exited 2 before browser assertions: `Epic 9 artifact directory must be empty: /home/administrator/projects/hexalith/frontcomposer/artifacts/epic-9`. Existing artifacts were preserved. The fresh-directory development run completed successfully: source-graph build `0 Warning(s), 0 Error(s)`; browser `1 passed`; artifact validator `Validated Epic 9 proof artifacts`; `Epic 9 live proof passed: /tmp/frontcomposer-story13-5-live-proof-final`. Aspire started, discovered the endpoint, and stopped successfully. Browser v2 evidence measured one shared polite node, one create announcement, zero tab-switch repeats, zero duplicate announcements, and three eligible transition announcements overall. This dirty-tree development packet does not replace archived final evidence or close Product acceptance.
+
+Broad analyzer-gate limitation: the earlier combined Shell command included `-class '*AnalyzerPolicyGovernanceTests'` together with the twelve Shell class filters above. `AnalyzerPolicy_ActivatedReleaseBuild_MatchesForcedRecommendedCandidate` failed because its zero-warning assertion observed `8 Warning(s), 0 Error(s)` from MSB3277 conflicts between `Microsoft.IdentityModel.Protocols.OpenIdConnect`/`Microsoft.IdentityModel.Tokens` versions 8.19.2 and 8.23.0 in the existing Release dependency graph. Its nested command was `dotnet build Hexalith.FrontComposer.slnx -c Release --no-restore --no-incremental -m:1 /nr:false -p:NuGetAudit=false -p:MinVerVersionOverride=4.0.0 -p:AnalysisMode=Recommended`. The combined run was interrupted after exposing the blocker, so its hidden-control Release probe also reported cancellation. The focused checks and final Debug builds above all passed; the broad Release gate was not weakened. Diagnostic output: `/tmp/frontcomposer-story13-5-shell-tests.log`.
+
+The initial `aspire start --non-interactive --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj` returned without a running AppHost; `aspire describe` reported no running AppHost. A foreground `aspire run --non-interactive --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj` remained at `Building AppHost` and was stopped through its own session. The completed source-graph live proof above supplies the runtime verification.
+
+An additional direct-server diagnostic was attempted from `tests/e2e`:
+
+```bash
+FC_E2E_OUTPUT_DIR=/tmp/frontcomposer-story13-5-browser-results FC_E2E_HTML_REPORT_DIR=/tmp/frontcomposer-story13-5-browser-report FC_E2E_CANDIDATE_COMMIT=985d3e70ac8e9d5492fa857bc3a31208a9543670 npx playwright test specs/epic-9-fresh-row-acceptance.spec.ts --project=chromium
+```
+
+It ran browser assertions and failed at the final AM-21 count (`Expected: 3; Received: 4`). This optional server configuration defaults to a 6.5-second command-confirm delay against the sample's 5-second projection catch-up window, allowing the second update to settle after the first cue materializes. The required Aspire run above passed the overlap scenario and all speech counts. A diagnostic retry with `FC_E2E_STORY_3_6_CONFIRM_DELAY_MS=500` and output roots `/tmp/frontcomposer-story13-5-browser-pinned-results` and `/tmp/frontcomposer-story13-5-browser-pinned-report` was stopped at the parent workflow's instruction (exit 130); it supplies no acceptance evidence. The green required packet was preserved.
+
+### Parent matrix audit (initial implementation, before review iteration 1, 2026-10-12)
+
+Read the unified tracked and untracked diff against the recorded baseline and checked the actual xUnit/JUnit results. All tasks are complete. Appear and Re-view pass in `FcFreshRowIndicatorTests` and `GeneratedFreshRowAnnouncementTests`; Data change, Scope and Expiry pass in `GeneratedFreshRowAnnouncementTests`; Modes passes in the Chromium forced-colors/reduced-motion testcase. Every covering test ran without skips. Standalone compatibility passes. No readiness or Product gate was closed.
+
+### Review iteration 1 implementation evidence (2026-10-12)
+
+All amended execution tasks are complete. The default coordinator now has internal fresh-row publication and withdrawal operations; its public operations and other families keep their existing behavior. Immediate AM-21 preserves unrelated timers; withdrawing the cue restores status silently and retires that fresh group and its identity history. Status owners capture silence synchronously before queued renderer work. Adopter-supplied coordinators retain the existing interface `Announce`/`Cancel` fallback.
+
+Entry provenance binds to the first observed tenant/user scope generation through weak entry ownership. Unresolved or invalid provenance never renders or claims speech; a resolved scope swap and a later return cannot reuse an old entry. Direct entries expire at `CreatedAt + 10 seconds`; state-owned entries retain the state service's Add-anchored window and observe its silent removals. Retained page panels cascade effective exposure, including nested inactive ancestors, so hidden cues wait for first visible delivery. Existing retained content and tab contracts remain intact.
+
+Final commands and results:
+
+```bash
+dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Debug -m:1 -p:NuGetAudit=false
+dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -class '*FreshRowAnnouncementLedgerTests' -class '*FcFreshRowIndicatorTests' -class '*FcNewItemIndicatorTests' -class '*FcNewItemIndicatorLaneIntegrationTests' -class '*GeneratedFreshRowAnnouncementTests' -class '*Epic9CompositionTests' -class '*CounterStoryVerificationTests' -class '*GeneratedProjectionAnnouncementTests' -class '*FcPageTabsTests' -class '*SurfaceAnnouncementCoordinatorTests' -class '*ShellTypeOrganizationGovernanceTests' -class '*FcShellResourcesTests' -class '*FcTblPackageBoundaryTests' -class '*PendingCommandOutcomeResolverTests' -result-xml /tmp/frontcomposer-story13-5-iteration1-shell-results.xml
+
+dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj -c Debug -m:1 -p:NuGetAudit=false
+dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll -class '*RazorEmitterTests' -class '*RoleSpecificProjectionApprovalTests' -class '*FcNipCommandTargetIdentityContractTests' -result-xml /tmp/frontcomposer-story13-5-iteration1-source-results.xml
+```
+
+Both Debug builds passed with `0 Warning(s), 0 Error(s)`. Shell: `410 passed, 0 failed, 0 skipped`; SourceTools: `41 passed, 0 failed, 0 skipped`. Logs: `/tmp/frontcomposer-story13-5-iteration1-shell-build.log`, `/tmp/frontcomposer-story13-5-iteration1-shell-tests.log`, `/tmp/frontcomposer-story13-5-iteration1-source-build.log`, `/tmp/frontcomposer-story13-5-iteration1-source-tests.log`.
+
+The Shell lane includes 22 `FcFreshRowIndicatorTests`, 14 `GeneratedFreshRowAnnouncementTests`, 9 ledger tests, 27 page-tab tests, 39 existing coordinator tests, 60 Story 13.4 generated-announcement tests, and all prior standalone/lane/resolver/localization/API/layering checks listed in the command. New regressions cover direct resolved-scope swaps and returns, malformed identity, direct expiry/remount, Add-anchored generated expiry, hidden-first delivery and nested ancestors, pending stale/limit/page delivery after silent withdrawal, 100 bounded retirement cycles, and a custom-coordinator fallback. Generated tests complete actual page loads, assert cached page end-state and original provenance/TTL, dispatch the actual column-filter action, and complete the resulting provider requery without fresh-row removal speech or deletion wording.
+
+From `tests/e2e`:
+
+```bash
+node --test scripts/validate-epic9-artifacts.test.mjs
+npx tsc --noEmit
+npx playwright test specs/specimen-accessibility.spec.ts --project=chromium
+```
+
+Artifact validator: `108 passed, 0 failed, 0 skipped`; TypeScript: exit 0; Chromium specimens: `22 passed`, including scoped fresh-row forced-colors/reduced-motion proof. Existing visual baselines were unchanged. Logs: `/tmp/frontcomposer-story13-5-iteration1-artifact-tests.log`, `/tmp/frontcomposer-story13-5-iteration1-typecheck.log`, `/tmp/frontcomposer-story13-5-iteration1-specimen-tests.log`. Final specimen JUnit: `tests/e2e/test-results/junit.xml`.
+
+From the repository root:
+
+```bash
+./eng/run-epic9-live-proof.sh
+FC_EPIC9_ARTIFACT_ROOT=/tmp/frontcomposer-story13-5-iteration1-live-proof ./eng/run-epic9-live-proof.sh
+```
+
+The default command exited 2 before browser assertions: `Epic 9 artifact directory must be empty: /home/administrator/projects/hexalith/frontcomposer/artifacts/epic-9`. Existing artifacts were preserved. The fresh-directory development run passed: complete Debug source-graph build `0 Warning(s), 0 Error(s)`, Chromium live browser `1 passed`, artifact validation passed, and Aspire stopped successfully. Log: `/tmp/frontcomposer-story13-5-iteration1-live-proof.log`; complete packet: `/tmp/frontcomposer-story13-5-iteration1-live-proof`.
+
+The v2 browser evidence counts only exposed status nodes, excluding hidden, inert, aria-hidden and non-visible layout ancestors. It records one shared polite node, zero AM-21 before first activation, exactly one on first activation, zero tab-switch/duplicate repeats, and three eligible announcements overall. The actual cue in forced colors/reduced motion has a visible icon, a solid system-color inline-start border, background image `none`, animation `none`, and transition duration `0s`. Validator v1/story 9.8 compatibility remains covered.
+
+The earlier Release analyzer blocker was rechecked without changing any package pins or warning policy:
+
+```bash
+dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release -m:1 -p:NuGetAudit=false
+dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -method '*AnalyzerPolicy_ActivatedReleaseBuild_MatchesForcedRecommendedCandidate' -method '*AnalyzerPolicy_GovernanceContract_FailsClosed' -method '*AnalyzerPolicy_IdentifierInventory_MatchesSeal' -method '*AnalyzerPolicy_SolutionBuildArguments_ForceRecommendedWithoutWeakeningWarnings' -result-xml /tmp/frontcomposer-story13-5-iteration1-analyzer-results.xml
+```
+
+Restore succeeded. Analyzer lane: `4 passed, 0 failed, 0 skipped`; both the exact canonical and forced-Recommended Release/NuGet solution builds satisfied their zero-warning/zero-error assertions. The earlier MSB3277 conflict did not reproduce after the serialized Release restore. Logs: `/tmp/frontcomposer-story13-5-iteration1-release-restore.log` and `/tmp/frontcomposer-story13-5-iteration1-analyzer-tests.log`.
+
+`git diff --check` passed. OI-16, G-4, FLUENT-APP-1 and Product approval remain open; this development packet does not replace archived final evidence or owner acceptance.
+
+### Parent matrix audit after re-derivation (2026-10-12)
+
+Read the final unified diff and parsed the actual Shell/SourceTools/analyzer xUnit results, specimen JUnit and v2 live evidence. All 12 execution tasks are complete. All matrix rows are covered by executed passing tests with no skips: Appear/Re-view (entry/component/generated/visible live tests), Data change (actual filter action/requery/page completion and materialization/dismissal), Scope (direct and generated scope swaps/clears), Expiry (direct and state-owned exact boundaries), Modes (compiled CSS and actual live icon/border/motion). Legacy standalone and existing public coordinator/tab regressions pass. The approved frozen intent is unchanged after normal Git EOL normalization; resolver and indicator state service source are unchanged. The prior Release warning is resolved by a proper Release restore and the exact gate now passes.
+
+### Final review patches and parent verification (2026-10-12)
+
+All eight surviving second-review root causes were patched. Equivalent transition copies retain their originating scope and original expiry; exclusive status leases follow effective panel exposure; forwarding coordinators preserve fresh-family dispatch and delivery silence; terminal guards resolve their underlying owner; restoration respects existing family eligibility; silent metadata survives each in-flight delivery; browser tracking records hidden revisions; and overlapping generated cues each mutate the view's own shared node once. No findings were deferred. The exact cap-retirement regression uses supported nonterminal immediate caps; terminal cap guards remain intact.
+
+The deferred render continuation rechecks entry eligibility before claiming. A focused equivalent-copy regression pins original direct expiry. The standalone EN/FR tests inspect the actual child node and freshly parsed renderer markup because bUnit's parent query cache can predate a deferred child render; assertions still require canonical text and exactly one polite node. Ordinary nonexclusive initial replay retains coordinator speech policy.
+
+Parent full verification ran after patch completion, using the exact commands preserved in `/tmp/frontcomposer-story13-5-final-verify.py` and their corresponding `/tmp/frontcomposer-story13-5-final-*.log` files:
+
+| Check | Result | Evidence |
+|---|---|---|
+| Debug Shell build and all touched/regression class lanes | 0 warnings/errors; 428 passed, 0 failed/skipped | `/tmp/frontcomposer-story13-5-final-shell-results.xml` |
+| Debug SourceTools build, emitter/snapshot/identity lanes | 0 warnings/errors; 41 passed, 0 failed/skipped | `/tmp/frontcomposer-story13-5-final-source-results.xml` |
+| Serialized Release restore and four exact analyzer gates | 4 passed, 0 failed/skipped; canonical and forced Recommended builds satisfy zero-warning/error policy | `/tmp/frontcomposer-story13-5-final-analyzer-results.xml` |
+| Artifact validator | 108 passed, 0 failed/skipped | `/tmp/frontcomposer-story13-5-final-artifact-tests.log` |
+| TypeScript | `npx tsc --noEmit` exit 0 | `/tmp/frontcomposer-story13-5-final-typecheck.log` |
+| Chromium accessibility/visual specimens | 22 passed, 0 failed/skipped | `tests/e2e/test-results/junit.xml` |
+| Fresh source Aspire/live acceptance proof and artifact validation | 1 passed, 0 failed/skipped; source graph 0 warnings/errors; owned AppHost stopped | `/tmp/frontcomposer-story13-5-final-live-proof/junit.xml` and v2 command evidence |
+| Whitespace | `git diff --check` exit 0 | `/tmp/frontcomposer-story13-5-final-diff-check.log` |
+| Exact full local commit message | Pinned commitlint 21.2.2: 0 errors, 0 warnings | `/tmp/frontcomposer-story13-5-final-commitlint.log` |
+
+The live proof command was `FC_EPIC9_ARTIFACT_ROOT=/tmp/frontcomposer-story13-5-final-live-proof ./eng/run-epic9-live-proof.sh`; the default artifact directory remains preserved. Its schema 2/story 13.5 evidence records zero announcements before hidden-panel activation, one on first activation, one shared polite node, zero tab-switch/duplicate repeats, and three eligible fresh transitions overall. The real cue has a visible icon and system border, with no background image, animation, or transition under the required modes. This is development evidence from the dirty working tree, not archived final Product acceptance.
+
+Final parent matrix audit: every row has executed passing assertions and no skips. Appear/Re-view cover canonical EN/FR copy, icon, shared node, remount/view-independent dedupe and hidden-first delivery; Data change covers actual generated filter/requery/page completion, first-wins overlap, both withdrawal orders and silent removal; Scope covers direct/generated tenant/user changes and equivalent copies; Expiry covers exact 9.999/10-second direct and Add-anchored state lifetimes; Modes cover compiled CSS and the actual live cue. Parsed xUnit/JUnit and live JSON support these results. All 12 execution tasks remain checked. The approved frozen intent is unchanged after Git EOL normalization, and resolver/state-service sources are unchanged. OI-16, G-4, FLUENT-APP-1 and Product approval remain open.

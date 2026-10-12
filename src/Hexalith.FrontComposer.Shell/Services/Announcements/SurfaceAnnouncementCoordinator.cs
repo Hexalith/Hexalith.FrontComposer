@@ -64,7 +64,7 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
             versionedHandlers = [.. owner.VersionedHandlers];
         }
 
-        Deliver(handlers, versionedHandlers, message, revision);
+        Deliver(surface, handlers, versionedHandlers, message, revision);
         return true;
     }
 
@@ -73,7 +73,8 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
         lock (_gate)
         {
             return _surfaces.TryGetValue(surface, out Surface? owner)
-                && owner.SilentRevisions.Contains(revision);
+                && (owner.SilentRevisions.Contains(revision) || owner.FreshSilentRevision == revision
+                    || owner.PendingFreshSilentRevisions.Contains(revision));
         }
     }
 
@@ -101,7 +102,9 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
             ObjectDisposedException.ThrowIf(_disposed, this);
             Surface owner = GetSurface(surface);
             owner.VersionedHandlers.Add(handler);
-            handler(owner.Message, owner.Revision);
+            SurfaceAnnouncementDelivery.Run(surface, owner.Revision, IsSilentRevision(surface, owner.Revision),
+                () => handler(owner.Message, owner.Revision),
+                owner.CurrentGroup is { } current && owner.Groups.TryGetValue(current, out Group? currentState) && currentState.FreshRow);
             return new VersionedSubscription(this, surface, handler);
         }
     }
@@ -113,6 +116,11 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
         ArgumentException.ThrowIfNullOrWhiteSpace(group);
         ArgumentException.ThrowIfNullOrWhiteSpace(identity);
         ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        if (group.StartsWith("fresh-row:", StringComparison.Ordinal))
+        {
+            PublishFreshRow(surface, group, identity, message);
+            return;
+        }
         Action<string>[] handlers = [];
         Action<string, long>[] versionedHandlers = [];
         long revision = 0;
@@ -131,12 +139,12 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
             {
                 return;
             }
+            KeyValuePair<string, Group>? precedence = NonFreshOwner(owner);
             // An old request's immediate slow notice cannot displace a later
             // decisive outcome. The registration anchor allows a genuinely new
             // request to take the surface after that outcome.
             if (group.StartsWith("slow-query:", StringComparison.Ordinal)
-                && owner.CurrentGroup is { } currentSlowBarrier
-                && owner.Groups.TryGetValue(currentSlowBarrier, out Group? currentSlowOwner)
+                && precedence is { Key: var currentSlowBarrier, Value: var currentSlowOwner }
                 && currentSlowOwner.Closed
                 && !SlowRequestStartedAfter(group, currentSlowBarrier, currentSlowOwner.ClosedAt))
             {
@@ -161,17 +169,16 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
             {
                 return;
             }
-            if (owner.CurrentGroup is { } decisiveGroup
-                && owner.Groups.TryGetValue(decisiveGroup, out Group? decisive)
+            if (precedence is { Key: var decisiveGroup, Value: var decisive }
                 && decisive.Closed
                 && !string.Equals(decisiveGroup, group, StringComparison.Ordinal)
                 && (group.StartsWith("limit:", StringComparison.Ordinal)
                     || (group.StartsWith("stale:", StringComparison.Ordinal)
-                        && (owner.CurrentIdentity?.StartsWith("failure", StringComparison.Ordinal) == true
+                        && (decisive.LastIdentity?.StartsWith("failure", StringComparison.Ordinal) == true
                             || decisiveGroup.StartsWith("blocked:", StringComparison.Ordinal)))))
             {
                 if (group.StartsWith("limit:", StringComparison.Ordinal)
-                    && owner.CurrentIdentity?.StartsWith("failure", StringComparison.Ordinal) == true)
+                    && decisive.LastIdentity?.StartsWith("failure", StringComparison.Ordinal) == true)
                 {
                     // The cap is still visible, but the page failure has speech priority.
                     // Keep the newest candidate so withdrawing the failure can reveal it.
@@ -287,13 +294,101 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
             }
         }
 
-        Deliver(handlers, versionedHandlers, message, revision);
+        Deliver(surface, handlers, versionedHandlers, message, revision);
+    }
+
+    /// <summary>Immediately publishes a transient fresh-row message without changing other groups or timers.</summary>
+    internal void PublishFreshRow(string surface, string group, string identity, string message)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(surface);
+        ArgumentException.ThrowIfNullOrWhiteSpace(group);
+        ArgumentException.ThrowIfNullOrWhiteSpace(identity);
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        Action<string>[] handlers;
+        Action<string, long>[] versionedHandlers;
+        long revision;
+        lock (_gate)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+            Surface owner = GetSurface(surface);
+            if (owner.Groups.ContainsKey(group))
+            {
+                return;
+            }
+            Group state = new()
+            {
+                FreshRow = true,
+                PreviousGroup = owner.CurrentGroup,
+                UnderlyingGroup = NonFreshOwner(owner)?.Key,
+                LastIdentity = identity,
+                LastMessage = message,
+                DeliveryOrder = ++owner.DeliveryOrder,
+            };
+            state.Delivered.Add(identity);
+            owner.Groups.Add(group, state);
+            owner.Message = message;
+            owner.CurrentGroup = group;
+            owner.CurrentIdentity = identity;
+            revision = ++owner.Revision;
+            handlers = [.. owner.Handlers];
+            versionedHandlers = [.. owner.VersionedHandlers];
+        }
+        Deliver(surface, handlers, versionedHandlers, message, revision, freshRow: true);
+    }
+
+    /// <summary>Silently withdraws and retires only this fresh-row group, leaving unrelated pending work intact.</summary>
+    internal void WithdrawFreshRow(string surface, string group)
+    {
+        Action<string>[] handlers = [];
+        Action<string, long>[] versionedHandlers = [];
+        string message = string.Empty;
+        long revision = 0;
+        lock (_gate)
+        {
+            if (_disposed || !_surfaces.TryGetValue(surface, out Surface? owner)
+                || !owner.Groups.TryGetValue(group, out Group? state) || !state.FreshRow)
+            {
+                return;
+            }
+            owner.Groups.Remove(group);
+            if (!string.Equals(owner.CurrentGroup, group, StringComparison.Ordinal))
+            {
+                return;
+            }
+            KeyValuePair<string, Group>? previous = state.PreviousGroup is { } prior
+                && owner.Groups.TryGetValue(prior, out Group? candidate)
+                && IsRestorable(new KeyValuePair<string, Group>(prior, candidate))
+                    ? new KeyValuePair<string, Group>(prior, candidate) : null;
+            previous ??= owner.Groups
+                .Where(IsRestorable)
+                .OrderByDescending(static pair => pair.Value.DeliveryOrder)
+                .Select(static pair => (KeyValuePair<string, Group>?)pair).FirstOrDefault();
+            owner.Message = message = previous?.Value.LastMessage ?? string.Empty;
+            owner.CurrentGroup = previous?.Key;
+            owner.CurrentIdentity = previous?.Value.LastIdentity ?? (previous?.Value.HasStaleCandidate == true ? "stale" : null);
+            revision = ++owner.Revision;
+            // Status subscribers capture silence synchronously at delivery. Only the current
+            // replay marker is needed after a fresh group and its identity history retire.
+            owner.FreshSilentRevision = revision;
+            owner.PendingFreshSilentRevisions.Add(revision);
+            handlers = [.. owner.Handlers];
+            versionedHandlers = [.. owner.VersionedHandlers];
+        }
+        Deliver(surface, handlers, versionedHandlers, message, revision);
     }
 
     /// <inheritdoc />
     public void Cancel(string surface, string group)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(group);
+        if (group.StartsWith("fresh-row:", StringComparison.Ordinal))
+        {
+            WithdrawFreshRow(surface, group);
+            return;
+        }
         Action<string>[] handlers = [];
         Action<string, long>[] versionedHandlers = [];
         long revision = 0;
@@ -395,7 +490,7 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
             }
         }
 
-        Deliver(handlers, versionedHandlers, message, revision);
+        Deliver(surface, handlers, versionedHandlers, message, revision);
     }
 
     /// <inheritdoc />
@@ -419,6 +514,8 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
 
             owner.Groups.Clear();
             owner.SilentRevisions.Clear();
+            owner.FreshSilentRevision = null;
+            owner.PendingFreshSilentRevisions.Clear();
             owner.Message = string.Empty;
             owner.CurrentGroup = null;
             owner.CurrentIdentity = null;
@@ -427,7 +524,7 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
             revision = ++owner.Revision;
         }
 
-        Deliver(handlers, versionedHandlers, string.Empty, revision);
+        Deliver(surface, handlers, versionedHandlers, string.Empty, revision);
     }
 
     private void Flush(string surface, string group, Group captured, string identity, long version, string message)
@@ -443,15 +540,14 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
                 return;
             }
 
-            if (owner.CurrentGroup is { } currentGroup
-                && owner.Groups.TryGetValue(currentGroup, out Group? currentState)
+            if (NonFreshOwner(owner) is { Key: var currentGroup, Value: var currentState }
                 && currentState.Closed
                 && !string.Equals(currentGroup, group, StringComparison.Ordinal)
                 && !group.StartsWith("load:", StringComparison.Ordinal)
                 && !(currentGroup.StartsWith("blocked:", StringComparison.Ordinal)
                     && !group.StartsWith("stale:", StringComparison.Ordinal))
                 && !(group.StartsWith("stale:", StringComparison.Ordinal)
-                    && owner.CurrentIdentity?.StartsWith("failure", StringComparison.Ordinal) != true
+                    && currentState.LastIdentity?.StartsWith("failure", StringComparison.Ordinal) != true
                     && !currentGroup.StartsWith("blocked:", StringComparison.Ordinal)
                     && !currentGroup.StartsWith("limit:", StringComparison.Ordinal))
                 && !IsNewPageOperation(currentGroup, group))
@@ -479,33 +575,89 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
             revision = ++owner.Revision;
         }
 
-        Deliver(handlers, versionedHandlers, message, revision);
+        Deliver(surface, handlers, versionedHandlers, message, revision);
     }
 
-    private static void Deliver(Action<string>[] handlers, Action<string, long>[] versionedHandlers, string message, long revision)
+    private void Deliver(string surface, Action<string>[] handlers, Action<string, long>[] versionedHandlers, string message, long revision, bool freshRow = false)
     {
-        foreach (Action<string> handler in handlers)
+        bool silent = IsSilentRevision(surface, revision);
+        try
         {
-            try
+            SurfaceAnnouncementDelivery.Run(surface, revision, silent, () =>
             {
-                handler(message);
-            }
-            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex))
+                foreach (Action<string> handler in handlers)
+                {
+                    try
+                    {
+                        handler(message);
+                    }
+                    catch (Exception ex) when (!ExceptionGuard.IsFatal(ex))
+                    {
+                        // One removed or failing component cannot suppress the other listeners.
+                    }
+                }
+                foreach (Action<string, long> handler in versionedHandlers)
+                {
+                    try
+                    {
+                        handler(message, revision);
+                    }
+                    catch (Exception ex) when (!ExceptionGuard.IsFatal(ex))
+                    {
+                        // A disposed subscriber cannot suppress other listeners.
+                    }
+                }
+            }, freshRow);
+        }
+        finally
+        {
+            lock (_gate)
             {
-                // One removed or failing component cannot suppress the other listeners.
+                if (_surfaces.TryGetValue(surface, out Surface? owner))
+                {
+                    owner.PendingFreshSilentRevisions.Remove(revision);
+                }
             }
         }
-        foreach (Action<string, long> handler in versionedHandlers)
+    }
+
+    private static bool IsRestorable(KeyValuePair<string, Group> candidate)
+    {
+        Group state = candidate.Value;
+        if (state.Cancelled || string.IsNullOrEmpty(state.LastMessage))
         {
-            try
+            return false;
+        }
+        if (candidate.Key.StartsWith("limit:", StringComparison.Ordinal)
+            || candidate.Key.StartsWith("lifecycle:", StringComparison.Ordinal))
+        {
+            return state.Restorable;
+        }
+        return state.FreshRow || state.HasStaleCandidate
+            || state.LastIdentity is { } identity && state.Delivered.Contains(identity);
+    }
+
+    private static KeyValuePair<string, Group>? NonFreshOwner(Surface owner)
+    {
+        if (owner.CurrentGroup is { } current && owner.Groups.TryGetValue(current, out Group? state))
+        {
+            if (!state.FreshRow)
             {
-                handler(message, revision);
+                return new KeyValuePair<string, Group>(current, state);
             }
-            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex))
+            if (state.UnderlyingGroup is { } underlying && owner.Groups.TryGetValue(underlying, out Group? prior)
+                && IsRestorable(new KeyValuePair<string, Group>(underlying, prior)))
             {
-                // A disposed subscriber cannot suppress other listeners.
+                return new KeyValuePair<string, Group>(underlying, prior);
             }
         }
+        if (owner.CurrentGroup is not { } fresh || !owner.Groups.TryGetValue(fresh, out Group? overlay) || !overlay.FreshRow)
+        {
+            return null;
+        }
+        return owner.Groups.Where(static pair => !pair.Value.FreshRow).Where(IsRestorable)
+            .OrderByDescending(static pair => pair.Value.DeliveryOrder)
+            .Select(static pair => (KeyValuePair<string, Group>?)pair).FirstOrDefault();
     }
 
     private static bool IsNewPageOperation(string currentGroup, string group)
@@ -718,6 +870,8 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
         public long Revision { get; set; }
         public long DeliveryOrder { get; set; }
         public HashSet<long> SilentRevisions { get; } = [];
+        public long? FreshSilentRevision { get; set; }
+        public HashSet<long> PendingFreshSilentRevisions { get; } = [];
         public Dictionary<string, Group> Groups { get; } = new(StringComparer.Ordinal);
     }
 
@@ -729,6 +883,9 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
         public ITimer? Timer { get; set; }
         public long Version { get; set; }
         public bool Closed { get; set; }
+        public bool FreshRow { get; set; }
+        public string? PreviousGroup { get; set; }
+        public string? UnderlyingGroup { get; set; }
         public DateTimeOffset? ClosedAt { get; set; }
         public bool Cancelled { get; set; }
         public bool HasStaleCandidate { get; set; }
