@@ -487,9 +487,13 @@ public partial class DashboardProjectionView : ComponentBase, IAsyncDisposable
 
     private void OnStateChanged(object? sender, EventArgs e)
     {
-        AnnounceProjectionState();
-        DismissMaterializedIndicators(DashboardProjectionState.Value.Items);
-        _ = InvokeAsync(StateHasChanged);
+        _ = InvokeAsync(() =>
+        {
+            if (System.Threading.Volatile.Read(ref _disposed) != 0) { return; }
+            AnnounceProjectionState();
+            DismissMaterializedIndicators(DashboardProjectionState.Value.Items);
+            StateHasChanged();
+        });
     }
 
     private static string AnnouncementSurface => "projection:" + _viewKey;
@@ -539,8 +543,8 @@ public partial class DashboardProjectionView : ComponentBase, IAsyncDisposable
             string pageGroup = "scope:" + scopeGeneration.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":page:" + page.Identity.ToString(System.Globalization.CultureInfo.InvariantCulture);
             if (page.Failed) { SetFailureGroup(pageGroup, "failure"); Announcements.Announce(AnnouncementSurface, pageGroup, "failure", SafePageFailureCopy(page.ErrorMessage), terminal: true); return; }
             SetFailureGroup(null);
-            if (page.Skip == 0 && page.TotalCount == 0) { if (page.OperatorInitiated || !_initialEmptyAnnounced) { SetResultAnnouncementGroup(pageGroup); _initialEmptyAnnounced = true; Announcements.Announce(AnnouncementSurface, pageGroup, filtered ? "filtered-zero" : "empty", filtered ? FcShellLocalizer["Am27NoMatches", "dashboards"].Value : FcShellLocalizer["Am02Empty", "dashboards"].Value, terminal: true); RetireOtherResultAnnouncementGroups(pageGroup); } return; }
-            if (page.OperatorInitiated) { SetResultAnnouncementGroup(pageGroup); Announcements.Announce(AnnouncementSurface, pageGroup, "loaded", FcShellLocalizer["Am03Loaded", "dashboards"].Value); RetireOtherResultAnnouncementGroups(pageGroup); }
+            if (page.TotalCount == 0) { if (page.OperatorInitiated || !_initialEmptyAnnounced) { SetResultAnnouncementGroup(pageGroup); _initialEmptyAnnounced = true; Announcements.Announce(AnnouncementSurface, pageGroup, filtered ? "filtered-zero" : "empty", filtered ? FcShellLocalizer["Am27NoMatches", "dashboards"].Value : FcShellLocalizer["Am02Empty", "dashboards"].Value, terminal: true); RetireOtherResultAnnouncementGroups(pageGroup); } return; }
+            if (page.OperatorInitiated) { SetResultAnnouncementGroup(pageGroup); Announcements.Announce(AnnouncementSurface, pageGroup, "loaded", FcShellLocalizer["Am03Loaded", "dashboards"].Value); RetireOtherResultAnnouncementGroups(pageGroup); } else { CancelResultAnnouncements(); }
             return;
         }
         SetFailureGroup(null);
@@ -550,6 +554,7 @@ public partial class DashboardProjectionView : ComponentBase, IAsyncDisposable
         { if (state.LastResultOperatorInitiated || !_initialEmptyAnnounced) { SetResultAnnouncementGroup(group); _initialEmptyAnnounced = true; Announcements.Announce(AnnouncementSurface, group, "empty:" + (state.LastResultCorrelationId ?? operation) + "|" + filtered, filtered ? FcShellLocalizer["Am27NoMatches", "dashboards"].Value : FcShellLocalizer["Am02Empty", "dashboards"].Value, terminal: true); RetireOtherResultAnnouncementGroups(group); } return; }
         if (state.LastResultOperatorInitiated)
         { SetResultAnnouncementGroup(group); Announcements.Announce(AnnouncementSurface, group, "data:" + (state.LastResultCorrelationId ?? operation) + "|" + state.Items.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), FcShellLocalizer["Am03Loaded", "dashboards"].Value); RetireOtherResultAnnouncementGroups(group); }
+        else { CancelResultAnnouncements(); }
     }
 
     private string SafePageFailureCopy(string? error)
@@ -1113,7 +1118,7 @@ public partial class DashboardProjectionView : ComponentBase, IAsyncDisposable
         }
         if (!state.RequiresScopedRequest && state.Error is not null && state.Items is not { Count: > 0 })
         {
-            state = state with { Items = LoadedPageState.Value.PagesByKey.Where(entry => string.Equals(entry.Key.ViewKey, _viewKey, StringComparison.Ordinal)).SelectMany(entry => entry.Value).OfType<DashboardProjection>().ToArray() };
+            state = state with { Items = LoadedPageState.Value.PagesByKey.Where(entry => string.Equals(entry.Key.ViewKey, _viewKey, StringComparison.Ordinal)).OrderBy(entry => entry.Key.Skip).SelectMany(entry => entry.Value).OfType<DashboardProjection>().ToArray() };
         }
         builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcSurfaceStatus>(0);
         builder.AddAttribute(1, "Surface", AnnouncementSurface);

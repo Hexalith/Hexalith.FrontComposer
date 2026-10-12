@@ -32,15 +32,22 @@ public static class FluxorActionsEmitter {
 
         // Actions (past-tense naming convention, CorrelationId carries the per-dispatch trace id -- ADR-008)
         _ = sb.AppendLine("/// <summary>");
-        _ = sb.AppendLine("/// Triggers data fetch for <see cref=\"" + model.TypeName + "\"/>. After a scope change, dispatch this request before its result.");
+        _ = sb.AppendLine("/// Starts a load cycle for <see cref=\"" + model.TypeName + "\"/>. No framework effect fetches on this action.");
+        _ = sb.AppendLine("/// An adopter whose projection can fail must answer an operator-initiated request by reloading, then dispatching");
+        _ = sb.AppendLine("/// <see cref=\"" + model.TypeName + "LoadedAction\"/> or <see cref=\"" + model.TypeName + "LoadFailedAction\"/> with this correlation and the current scope stamp.");
+        _ = sb.AppendLine("/// After <c>ScopeChangedAction</c>, stamp <c>OriginScopeGeneration</c>, <c>ScopeTenantId</c>, and <c>ScopeUserId</c> from current state.");
         _ = sb.AppendLine("/// </summary>");
-        _ = sb.AppendLine("/// <param name=\"CorrelationId\">Trace identifier shared by all actions in this load cycle.</param>");
+        _ = sb.AppendLine("/// <param name=\"CorrelationId\">Trace identifier shared by this request and its <see cref=\"" + model.TypeName + "LoadedAction\"/> or <see cref=\"" + model.TypeName + "LoadFailedAction\"/>.</param>");
+        _ = sb.AppendLine("/// <param name=\"OperatorInitiated\">True when the operator retried a failed projection. The adopter must answer that request.</param>");
         _ = sb.AppendLine("public record " + model.TypeName + "LoadRequestedAction(string CorrelationId, bool OperatorInitiated = false)");
         _ = sb.AppendLine("{ public string? ScopeTenantId { get; init; } public string? ScopeUserId { get; init; } public long? OriginScopeGeneration { get; init; } }");
         _ = sb.AppendLine();
 
         _ = sb.AppendLine("/// <summary>");
-        _ = sb.AppendLine("/// Data arrived for <see cref=\"" + model.TypeName + "\"/>. After a scope change, only a result matching a new load request is accepted.");
+        _ = sb.AppendLine("/// Data arrived for <see cref=\"" + model.TypeName + "\"/>. Every result must carry its request's correlation.");
+        _ = sb.AppendLine("/// Direct results are accepted only before any request has been dispatched.");
+        _ = sb.AppendLine("/// Breaking change: push-style direct <see cref=\"" + model.TypeName + "LoadedAction\"/> values are dropped once a request exists.");
+        _ = sb.AppendLine("/// After <c>ScopeChangedAction</c>, stamp <c>OriginScopeGeneration</c>, <c>ScopeTenantId</c>, and <c>ScopeUserId</c> from current state.");
         _ = sb.AppendLine("/// </summary>");
         _ = sb.AppendLine("/// <param name=\"CorrelationId\">Trace identifier shared with the originating <see cref=\"" + model.TypeName + "LoadRequestedAction\"/>.</param>");
         _ = sb.AppendLine("/// <param name=\"Items\">The loaded projection items.</param>");
@@ -49,7 +56,9 @@ public static class FluxorActionsEmitter {
         _ = sb.AppendLine();
 
         _ = sb.AppendLine("/// <summary>");
-        _ = sb.AppendLine("/// Data fetch failed for <see cref=\"" + model.TypeName + "\"/>. After a scope change, only a failure matching a new load request is accepted.");
+        _ = sb.AppendLine("/// Data fetch failed for <see cref=\"" + model.TypeName + "\"/>. Every result must carry its request's correlation.");
+        _ = sb.AppendLine("/// Direct results are accepted only before any request has been dispatched.");
+        _ = sb.AppendLine("/// After <c>ScopeChangedAction</c>, stamp <c>OriginScopeGeneration</c>, <c>ScopeTenantId</c>, and <c>ScopeUserId</c> from current state.");
         _ = sb.AppendLine("/// </summary>");
         _ = sb.AppendLine("/// <param name=\"CorrelationId\">Trace identifier shared with the originating <see cref=\"" + model.TypeName + "LoadRequestedAction\"/>.</param>");
         _ = sb.AppendLine("/// <param name=\"Error\">The failure reason.</param>");

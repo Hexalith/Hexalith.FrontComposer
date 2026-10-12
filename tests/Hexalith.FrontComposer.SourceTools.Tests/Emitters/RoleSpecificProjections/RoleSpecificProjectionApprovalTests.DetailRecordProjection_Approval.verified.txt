@@ -407,7 +407,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
     }
 
     private void OnStateChanged(object? sender, EventArgs e)
-    { AnnounceProjectionState(); _ = InvokeAsync(StateHasChanged); }
+    { _ = InvokeAsync(() => { if (System.Threading.Volatile.Read(ref _disposed) != 0) { return; } AnnounceProjectionState(); StateHasChanged(); }); }
 
     private static string AnnouncementSurface => "projection:" + (typeof(DetailRecordProjection).FullName ?? typeof(DetailRecordProjection).Name);
     private static bool CanClaimUnstampedInitialState(DetailRecordProjectionState state)
@@ -442,6 +442,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
         { if (state.LastResultOperatorInitiated || !_initialEmptyAnnounced) { SetResultAnnouncementGroup(group); _initialEmptyAnnounced = true; Announcements.Announce(AnnouncementSurface, group, "empty:" + (state.LastResultCorrelationId ?? operation) + "|" + filtered, filtered ? FcShellLocalizer["Am27NoMatches", "detail records"].Value : FcShellLocalizer["Am02Empty", "detail records"].Value, terminal: true); RetireOtherResultAnnouncementGroups(group); } return; }
         if (state.LastResultOperatorInitiated)
         { SetResultAnnouncementGroup(group); Announcements.Announce(AnnouncementSurface, group, "data:" + (state.LastResultCorrelationId ?? operation) + "|" + state.Items.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), FcShellLocalizer["Am03Loaded", "detail records"].Value); RetireOtherResultAnnouncementGroups(group); }
+        else { CancelResultAnnouncements(); }
     }
 
     private string SafePageFailureCopy(string? error)

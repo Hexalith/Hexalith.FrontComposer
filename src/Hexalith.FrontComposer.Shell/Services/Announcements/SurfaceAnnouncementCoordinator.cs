@@ -391,6 +391,10 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
                             owner.SilentRevisions.Add(revision);
                         }
                     }
+                    else if (string.IsNullOrEmpty(message))
+                    {
+                        owner.SilentRevisions.Add(revision);
+                    }
                 }
             }
         }

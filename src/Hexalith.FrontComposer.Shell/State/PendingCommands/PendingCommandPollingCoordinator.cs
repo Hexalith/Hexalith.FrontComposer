@@ -108,7 +108,6 @@ public sealed class PendingCommandPollingCoordinator : IPendingCommandPollingCoo
                     PendingCommandOutcomeSource.FallbackPolling,
                     PendingCommandTerminalOutcome.DegradedExhausted,
                     MessageId: entry.MessageId,
-                    RejectionTitle: "Command needs review",
                     RejectionDetail: "Command status polling reached the configured maximum duration before a terminal EventStore status arrived."));
             return expiryResult.Status == PendingCommandOutcomeResolutionStatus.Resolved ? 1 : 0;
         }

@@ -34,7 +34,7 @@ public partial class FcMaxItemsCapNotice : ComponentBase, IDisposable {
     private long _boundScopeGeneration;
     private bool _disposed;
 
-    /// <summary>Stable per-view key (reserved for future telemetry).</summary>
+    /// <summary>Stable per-view key. It forms this notice's announcement surface.</summary>
     [Parameter]
     [EditorRequired]
     public string ViewKey { get; set; } = string.Empty;

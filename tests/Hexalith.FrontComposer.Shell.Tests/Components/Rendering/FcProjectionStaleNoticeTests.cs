@@ -77,6 +77,24 @@ public sealed class FcProjectionStaleNoticeTests : BunitContext {
     }
 
     [Fact]
+    public void FailureCategoryChangesInsideOneDisconnectDoNotRepeatStaleSpeech()
+    {
+        List<string> spoken = [];
+        using IDisposable subscription = _announcements.Subscribe("projection:test", spoken.Add);
+        IRenderedComponent<FcProjectionStaleNotice> cut = Render<FcProjectionStaleNotice>(p => p
+            .Add(c => c.Surface, "projection:test").Add(c => c.HasCachedRows, true));
+        _connection.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Disconnected, FailureCategory: "Closed"));
+        _time.Advance(TimeSpan.FromMilliseconds(250));
+        cut.WaitForAssertion(() => spoken.Count(message => message == "Data may be out of date.").ShouldBe(1));
+
+        _connection.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Disconnected, FailureCategory: "RestartTimeout"));
+        _connection.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Disconnected, FailureCategory: "RestartFailed"));
+        cut.Render();
+        _time.Advance(TimeSpan.FromMilliseconds(250));
+        spoken.Count(message => message == "Data may be out of date.").ShouldBe(1);
+    }
+
+    [Fact]
     public void OwnerMountedDuringSecondOfflineEpisodeSharesExistingSpeech()
     {
         List<string> spoken = [];

@@ -257,47 +257,6 @@ public static class RazorEmitter {
         return [.. slots];
     }
 
-    private static bool NeedsShellLocalizer(RazorModel model)
-        // Story 4-6 review fix (D3): revert to conditional emission so non-using views do not
-        // ship a superfluous DI injection. Empty-state secondary text now resolves inside
-        // FcProjectionEmptyPlaceholder itself (D17 follow-up), so views without enum fallback,
-        // descriptions, or unsupported columns no longer pull in IStringLocalizer.
-        => HasBadgeMappings(model)
-            || HasEnumColumns(model)
-            || EmitsExpandInRowMachinery(model.Strategy)
-            || HasUnsupportedColumns(model)
-            || HasColumnDescriptions(model);
-
-    private static bool HasEnumColumns(RazorModel model) {
-        foreach (ColumnModel col in model.Columns) {
-            if (col.TypeCategory == TypeCategory.Enum) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static bool HasUnsupportedColumns(RazorModel model) {
-        foreach (ColumnModel col in model.Columns) {
-            if (col.TypeCategory == TypeCategory.Unsupported) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static bool HasColumnDescriptions(RazorModel model) {
-        foreach (ColumnModel col in model.Columns) {
-            if (!string.IsNullOrWhiteSpace(col.Description)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     private static bool HasRelativeTimeColumns(RazorModel model) {
         foreach (ColumnModel col in model.Columns) {
             if (col.DisplayFormat == FieldDisplayFormat.RelativeTime) {
@@ -1096,13 +1055,17 @@ public static class RazorEmitter {
         _ = sb.AppendLine("    private void OnStateChanged(object? sender, EventArgs e)");
         if (isGrid) {
             _ = sb.AppendLine("    {");
-            _ = sb.AppendLine("        AnnounceProjectionState();");
-            _ = sb.AppendLine("        DismissMaterializedIndicators(" + model.TypeName + "State.Value.Items);");
-            _ = sb.AppendLine("        _ = InvokeAsync(StateHasChanged);");
+            _ = sb.AppendLine("        _ = InvokeAsync(() =>");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            if (System.Threading.Volatile.Read(ref _disposed) != 0) { return; }");
+            _ = sb.AppendLine("            AnnounceProjectionState();");
+            _ = sb.AppendLine("            DismissMaterializedIndicators(" + model.TypeName + "State.Value.Items);");
+            _ = sb.AppendLine("            StateHasChanged();");
+            _ = sb.AppendLine("        });");
             _ = sb.AppendLine("    }");
         }
         else {
-            _ = sb.AppendLine("    { AnnounceProjectionState(); _ = InvokeAsync(StateHasChanged); }");
+            _ = sb.AppendLine("    { _ = InvokeAsync(() => { if (System.Threading.Volatile.Read(ref _disposed) != 0) { return; } AnnounceProjectionState(); StateHasChanged(); }); }");
         }
         _ = sb.AppendLine();
 
@@ -1157,8 +1120,8 @@ public static class RazorEmitter {
             _ = sb.AppendLine("            string pageGroup = \"scope:\" + scopeGeneration.ToString(System.Globalization.CultureInfo.InvariantCulture) + \":page:\" + page.Identity.ToString(System.Globalization.CultureInfo.InvariantCulture);");
             _ = sb.AppendLine("            if (page.Failed) { SetFailureGroup(pageGroup, \"failure\"); Announcements.Announce(AnnouncementSurface, pageGroup, \"failure\", SafePageFailureCopy(page.ErrorMessage), terminal: true); return; }");
             _ = sb.AppendLine("            SetFailureGroup(null);");
-            _ = sb.AppendLine("            if (page.Skip == 0 && page.TotalCount == 0) { if (page.OperatorInitiated || !_initialEmptyAnnounced) { SetResultAnnouncementGroup(pageGroup); _initialEmptyAnnounced = true; Announcements.Announce(AnnouncementSurface, pageGroup, filtered ? \"filtered-zero\" : \"empty\", filtered ? " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am27NoMatches\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value : " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am02Empty\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value, terminal: true); RetireOtherResultAnnouncementGroups(pageGroup); } return; }");
-            _ = sb.AppendLine("            if (page.OperatorInitiated) { SetResultAnnouncementGroup(pageGroup); Announcements.Announce(AnnouncementSurface, pageGroup, \"loaded\", " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am03Loaded\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value); RetireOtherResultAnnouncementGroups(pageGroup); }");
+            _ = sb.AppendLine("            if (page.TotalCount == 0) { if (page.OperatorInitiated || !_initialEmptyAnnounced) { SetResultAnnouncementGroup(pageGroup); _initialEmptyAnnounced = true; Announcements.Announce(AnnouncementSurface, pageGroup, filtered ? \"filtered-zero\" : \"empty\", filtered ? " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am27NoMatches\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value : " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am02Empty\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value, terminal: true); RetireOtherResultAnnouncementGroups(pageGroup); } return; }");
+            _ = sb.AppendLine("            if (page.OperatorInitiated) { SetResultAnnouncementGroup(pageGroup); Announcements.Announce(AnnouncementSurface, pageGroup, \"loaded\", " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am03Loaded\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value); RetireOtherResultAnnouncementGroups(pageGroup); } else { CancelResultAnnouncements(); }");
             _ = sb.AppendLine("            return;");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        SetFailureGroup(null);");
@@ -1173,6 +1136,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        { if (state.LastResultOperatorInitiated || !_initialEmptyAnnounced) { SetResultAnnouncementGroup(group); _initialEmptyAnnounced = true; Announcements.Announce(AnnouncementSurface, group, \"empty:\" + (state.LastResultCorrelationId ?? operation) + \"|\" + filtered, filtered ? " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am27NoMatches\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value : " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am02Empty\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value, terminal: true); RetireOtherResultAnnouncementGroups(group); } return; }");
         _ = sb.AppendLine("        if (state.LastResultOperatorInitiated)");
         _ = sb.AppendLine("        { SetResultAnnouncementGroup(group); Announcements.Announce(AnnouncementSurface, group, \"data:\" + (state.LastResultCorrelationId ?? operation) + \"|\" + state.Items.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), " + ColumnEmitter.ShellLocalizerFieldName + "[\"Am03Loaded\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"].Value); RetireOtherResultAnnouncementGroups(group); }");
+        _ = sb.AppendLine("        else { CancelResultAnnouncements(); }");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
 
@@ -2029,7 +1993,7 @@ public static class RazorEmitter {
         if (isGrid) {
             _ = sb.AppendLine("        if (!state.RequiresScopedRequest && state.Error is not null && state.Items is not { Count: > 0 })");
             _ = sb.AppendLine("        {");
-            _ = sb.AppendLine("            state = state with { Items = LoadedPageState.Value.PagesByKey.Where(entry => string.Equals(entry.Key.ViewKey, _viewKey, StringComparison.Ordinal)).SelectMany(entry => entry.Value).OfType<" + model.TypeName + ">().ToArray() };");
+            _ = sb.AppendLine("            state = state with { Items = LoadedPageState.Value.PagesByKey.Where(entry => string.Equals(entry.Key.ViewKey, _viewKey, StringComparison.Ordinal)).OrderBy(entry => entry.Key.Skip).SelectMany(entry => entry.Value).OfType<" + model.TypeName + ">().ToArray() };");
             _ = sb.AppendLine("        }");
         }
         _ = sb.AppendLine("        int seq = 0;");

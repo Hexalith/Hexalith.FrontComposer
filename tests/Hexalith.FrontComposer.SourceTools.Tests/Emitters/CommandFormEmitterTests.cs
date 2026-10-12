@@ -1305,10 +1305,11 @@ public class CommandFormEmitterTests {
         source.ShouldContain("[Parameter] public bool ExternalStatusOwner { get; set; }");
         source.ShouldContain("await InvokeAsync(() => OnBlockedSubmission.InvokeAsync(true));");
         source.ShouldContain("await InvokeAsync(() => OnBlockedSubmission.InvokeAsync(false));");
-        masked.ShouldContain("if (!ExternalStatusOwner)");
+        masked.ShouldContain("if (!ExternalStatusOwner && !OnBlockedSubmission.HasDelegate)");
         int present = source.IndexOf("private async Task PresentBlockedSubmissionAsync(", StringComparison.Ordinal);
         int presentEnd = source.IndexOf("private async Task FocusElementAsync(", present, StringComparison.Ordinal);
         string presentBody = source[present..presentEnd];
+        presentBody.ShouldContain("!OnBlockedSubmission.HasDelegate");
         presentBody.ShouldNotContain("Validate()");
         presentBody.ShouldNotContain("Dispatcher.Dispatch");
         presentBody.ShouldNotContain("ShowAndFocusAsync");

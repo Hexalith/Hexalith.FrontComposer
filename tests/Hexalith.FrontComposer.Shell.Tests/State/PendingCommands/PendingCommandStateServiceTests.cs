@@ -4,6 +4,7 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -758,6 +759,28 @@ public sealed class PendingCommandStateServiceTests {
         state.Register(Registration() with { SubmittedAt = time.GetUtcNow() });
         time.Advance(TimeSpan.FromMilliseconds(elapsed));
         PendingCommandResolutionResult result = state.ResolveTerminal(PendingCommandTerminalObservation.Confirmed(MessageId));
+        result.Entry.ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.DegradedExhausted);
+        lifecycle.DidNotReceive().Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId, false);
+        lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.DegradedExhausted, MessageId, false);
+    }
+
+    [Theory]
+    [InlineData(120_000)]
+    [InlineData(120_001)]
+    public void LateConfirmedWhileTheDeadlineTimerIsStillQueuedIsStoredAsExhausted(int elapsed)
+    {
+        DateTimeOffset start = new(2026, 4, 26, 12, 0, 0, TimeSpan.Zero);
+        QueuedTimerTimeProvider time = new() { UtcNow = start };
+        ILifecycleStateService lifecycle = CreateLifecycle();
+        PendingCommandStateService state = new(Microsoft.Extensions.Options.Options.Create(new FcShellOptions()), lifecycle,
+            ScopedUser(), time, NullLogger<PendingCommandStateService>.Instance);
+        state.Register(Registration() with { SubmittedAt = start });
+        time.Callbacks.ShouldNotBeEmpty();
+        time.UtcNow = start.AddMilliseconds(elapsed);
+        state.GetByMessageId(MessageId).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.Pending);
+
+        PendingCommandResolutionResult result = state.ResolveTerminal(PendingCommandTerminalObservation.Confirmed(MessageId));
+
         result.Entry.ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.DegradedExhausted);
         lifecycle.DidNotReceive().Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId, false);
         lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.DegradedExhausted, MessageId, false);

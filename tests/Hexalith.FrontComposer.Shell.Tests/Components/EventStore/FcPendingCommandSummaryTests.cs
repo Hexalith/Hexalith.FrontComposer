@@ -83,6 +83,31 @@ public sealed class FcPendingCommandSummaryTests : LayoutComponentTestBase {
         cut.Markup.ShouldNotContain("Increment: confirmed.");
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void TruncationKeepsOlderWarningAndExhaustionAheadOfNewerConfirmations(int maxDetails)
+    {
+        DateTimeOffset older = new(2026, 4, 26, 12, 0, 0, TimeSpan.Zero);
+        PendingCommandEntry[] entries = [
+            Entry("warning", PendingCommandStatus.Warning) with { TerminalAt = older },
+            Entry("expired", PendingCommandStatus.DegradedExhausted) with { TerminalAt = older.AddSeconds(1) },
+            Entry("confirmed", PendingCommandStatus.Confirmed) with { TerminalAt = older.AddHours(1) },
+            Entry("confirmed-later", PendingCommandStatus.Confirmed) with { TerminalAt = older.AddHours(2) },
+        ];
+
+        IRenderedComponent<FcPendingCommandSummary> cut = Render<FcPendingCommandSummary>(parameters => parameters
+            .Add(p => p.Entries, entries)
+            .Add(p => p.MaxDetails, maxDetails));
+
+        cut.Markup.ShouldContain("status check expired");
+        cut.Markup.ShouldNotContain("Increment: confirmed.");
+        if (maxDetails == 2)
+        {
+            cut.Markup.ShouldContain("Increment: warning.");
+        }
+    }
+
     private static PendingCommandEntry Entry(
         string messageId,
         PendingCommandStatus status,

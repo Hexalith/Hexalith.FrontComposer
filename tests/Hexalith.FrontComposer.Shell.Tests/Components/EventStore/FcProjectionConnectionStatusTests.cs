@@ -70,6 +70,25 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
         _state.Current.BrowserOffline.ShouldBeFalse();
     }
 
+    [Fact]
+    public async Task ComingOnlineWhileReconnectingStartsOneReconciliationAndSpeaksAm05()
+    {
+        IReconnectionReconciliationCoordinator coordinator = Substitute.For<IReconnectionReconciliationCoordinator>();
+        coordinator.ReconcileAsync(Arg.Any<CancellationToken>())
+            .Returns(new ProjectionReconciliationRefreshResult(0, []));
+        Services.AddSingleton(coordinator);
+        IRenderedComponent<FcProjectionConnectionStatus> cut = Render<FcProjectionConnectionStatus>();
+        _state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Reconnecting));
+        await cut.InvokeAsync(() => cut.Instance.OnBrowserConnectivityChanged(false));
+        await cut.InvokeAsync(() => cut.Instance.OnBrowserConnectivityChanged(true));
+
+        await coordinator.Received(1).ReconcileAsync(Arg.Any<CancellationToken>());
+        Services.GetRequiredService<ISurfaceAnnouncementCoordinator>().Current("projection-connection")
+            .ShouldBe("Reconnecting...");
+        Services.GetRequiredService<ISurfaceAnnouncementCoordinator>().Current("projection-connection")
+            .ShouldNotBe("Live updates are unavailable. Checking for updates.");
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

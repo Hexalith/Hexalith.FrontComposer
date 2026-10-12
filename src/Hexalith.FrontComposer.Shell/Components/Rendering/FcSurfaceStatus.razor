@@ -4,7 +4,7 @@
 
 @if (_ownsStatus)
 {
-<div role="status" aria-live="@(_suppressSpeech ? "off" : "polite")" aria-atomic="true" data-testid="fc-surface-status"
+<div role="status" aria-live="@(_suppressSpeech ? "off" : "polite")" aria-atomic="true" class="fc-sr-only" data-testid="fc-surface-status"
      data-fc-status-message="@(BrowserManaged ? _message : null)"
      data-fc-status-fallback="@(BrowserManaged ? ServerFallback.ToString().ToLowerInvariant() : null)"
      data-fc-status-revision="@(BrowserManaged ? _messageRevision : (long?)null)">

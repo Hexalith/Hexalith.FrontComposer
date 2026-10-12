@@ -9,6 +9,9 @@
     <span class="fc-command-blocked-outcome fc-command-blocked-outcome--inline"
           data-testid="fc-command-blocked-outcome"
           data-fc-blocked="@BlockedAttribute">
+        @if (AnnouncementSurface is not null) {
+            <span aria-hidden="true" data-testid="fc-command-blocked-visible">@_message</span>
+        }
         @if (AnnouncementSurface is null) {
             <span role="status" aria-live="polite" aria-atomic="true"
                   class="fc-command-blocked-status" data-testid="fc-command-blocked-status">@_message</span>
@@ -34,6 +37,9 @@ else {
                  Class="fc-command-blocked-outcome"
                  data-testid="fc-command-blocked-outcome"
                  data-fc-blocked="@BlockedAttribute">
+        @if (AnnouncementSurface is not null) {
+            <span aria-hidden="true" data-testid="fc-command-blocked-visible">@_message</span>
+        }
         @if (AnnouncementSurface is null) {
             <div role="status" aria-live="polite" aria-atomic="true"
                  class="fc-command-blocked-status" data-testid="fc-command-blocked-status">@_message</div>

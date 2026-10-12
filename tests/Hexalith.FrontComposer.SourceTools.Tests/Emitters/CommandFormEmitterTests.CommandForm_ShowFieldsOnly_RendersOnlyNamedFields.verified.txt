@@ -209,7 +209,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             _hostBlockedOutcomePresented = false;
             await InvokeAsync(() => OnBlockedSubmission.InvokeAsync(false));
         }
-        if (!ExternalStatusOwner && _blockedOutcome is not null)
+        if (!ExternalStatusOwner && !OnBlockedSubmission.HasDelegate && _blockedOutcome is not null)
         {
             await _blockedOutcome.ClearAsync().ConfigureAwait(false);
         }
@@ -254,7 +254,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             _hostBlockedOutcomePresented = true;
             await InvokeAsync(() => OnBlockedSubmission.InvokeAsync(true));
         }
-        if (!ExternalStatusOwner && _blockedOutcome is not null)
+        if (!ExternalStatusOwner && !OnBlockedSubmission.HasDelegate && _blockedOutcome is not null)
         {
             await _blockedOutcome.PresentAsync().ConfigureAwait(false);
         }
@@ -1137,7 +1137,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             // Story 13.3 AM-20 — publish through the lifecycle wrapper's persistent polite node. Keep the
             // View active command recovery after the submit control in tab order. A hidden
             // zero-field form lets its renderer own the node beside the visible trigger instead.
-            if (!ExternalStatusOwner)
+            if (!ExternalStatusOwner && !OnBlockedSubmission.HasDelegate)
             {
                 __b.OpenComponent<FcCommandBlockedOutcome>(55);
                 __b.AddAttribute(56, "AttemptedControlId", _formDomId + "-submit");

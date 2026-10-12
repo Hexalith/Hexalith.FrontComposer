@@ -136,6 +136,10 @@ public sealed class FcCommandBlockedOutcomeTests : BunitContext {
         await AdvanceUntilAsync(() => presented.IsCompleted);
 
         cut.Find("[data-testid='fc-surface-status']").TextContent.ShouldBe(BlockedMessage);
+        cut.Find("[data-testid='fc-surface-status']").ClassList.ShouldContain("fc-sr-only");
+        IElement visible = cut.Find("[data-testid='fc-command-blocked-visible']");
+        visible.GetAttribute("aria-hidden").ShouldBe("true");
+        visible.TextContent.ShouldBe(BlockedMessage);
         announcements.Current("command:active").ShouldBe(BlockedMessage);
         cut.FindAll("[role='status']").Count.ShouldBe(1);
         FocusModule.Invocations.Count(i => i.Identifier == "focusAttemptedControl").ShouldBe(1);

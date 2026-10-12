@@ -204,12 +204,13 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, 
         else {
             Announcements.Cancel(AnnouncementSurface, ScopedEpisode("browser-offline", _offlineEpisode));
             _onlineEpisode++;
-            if (ConnectionState.Current.Status is not ProjectionConnectionStatus.Connected) {
+            if (ConnectionState.Current.Status is ProjectionConnectionStatus status
+                && status is (ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected)) {
                 Announcements.Announce(
                     AnnouncementSurface,
                     ScopedEpisode("browser-online-disconnected", _onlineEpisode),
                     "fallback",
-                    AnnouncementLocalizer["Am06Fallback"],
+                    AnnouncementLocalizer[ConnectionStatusCopyKey(status)],
                     immediate: true);
             }
             if (Services.GetService(typeof(IReconnectionReconciliationCoordinator)) is IReconnectionReconciliationCoordinator coordinator) {
@@ -245,8 +246,7 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, 
                     AnnouncementSurface,
                     ScopedEpisode("connection", snapshot.Epoch),
                     snapshot.Status.ToString(),
-                    AnnouncementLocalizer[snapshot.Status == ProjectionConnectionStatus.Disconnected
-                        ? "Am06Fallback" : "Am05Reconnecting"]);
+                    AnnouncementLocalizer[ConnectionStatusCopyKey(snapshot.Status)]);
             }
             StateHasChanged();
         });
@@ -417,4 +417,7 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable, 
         }
         GC.SuppressFinalize(this);
     }
+
+    private static string ConnectionStatusCopyKey(ProjectionConnectionStatus status)
+        => status == ProjectionConnectionStatus.Disconnected ? "Am06Fallback" : "Am05Reconnecting";
 }

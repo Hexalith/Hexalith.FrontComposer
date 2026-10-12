@@ -1,10 +1,21 @@
 using Bunit;
 
-using Hexalith.FrontComposer.Shell.Components.Rendering;
+using Fluxor;
 
+using Hexalith.FrontComposer.Contracts.Badges;
+using Hexalith.FrontComposer.Contracts.Lifecycle;
+using Hexalith.FrontComposer.Shell.Components.Rendering;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
+using Hexalith.FrontComposer.Shell.Services;
+using Hexalith.FrontComposer.Shell.State.Navigation;
+using Hexalith.FrontComposer.Shell.State.PendingCommands;
+
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.JSInterop;
+
+using NSubstitute;
 
 using Shouldly;
 
@@ -39,5 +50,31 @@ public sealed class FcScopeBlockedTests : BunitContext {
         cut.Markup.ShouldNotContain("user-a");
         cut.Markup.ShouldNotContain("aria-live");
         cut.Markup.ShouldNotContain("autofocus");
+    }
+
+    [Fact]
+    public void CoMountedHeadingsFocusOnceUntilTheScopeGenerationChanges()
+    {
+        Services.AddLocalization();
+        Services.AddFluentUIComponents();
+        Services.AddSingleton(new ScopeBoundaryService(
+            Substitute.For<AuthenticationStateProvider>(),
+            Substitute.For<IFrontComposerTenantContextAccessor>(),
+            Substitute.For<IDispatcher>(),
+            Substitute.For<IScopeReadinessGate>(),
+            Substitute.For<IPendingCommandStateService>(),
+            Substitute.For<INewItemIndicatorStateService>(),
+            Substitute.For<IBadgeCountService>(),
+            Substitute.For<ICommandExecutionAdmissionGate>(),
+            Substitute.For<IServiceProvider>()));
+        _ = JSInterop.SetupVoid("Blazor._internal.domWrapper.focus", _ => true);
+        IRenderedComponent<FcScopeBlocked> first = Render<FcScopeBlocked>();
+        IRenderedComponent<FcScopeBlocked> second = Render<FcScopeBlocked>();
+        int FocusCount() => JSInterop.Invocations.Count(invocation => invocation.Identifier == "Blazor._internal.domWrapper.focus");
+        FocusCount().ShouldBe(1);
+
+        Services.GetRequiredService<ScopeBoundaryService>().AdvanceGeneration();
+        first.WaitForAssertion(() => FocusCount().ShouldBe(2));
+        second.WaitForAssertion(() => FocusCount().ShouldBe(2));
     }
 }

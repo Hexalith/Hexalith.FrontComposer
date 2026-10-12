@@ -36,6 +36,22 @@ public sealed class ScopeBoundaryService(
     /// <summary>Changes whenever a new scope replaces the rendered subtree.</summary>
     internal int Generation { get; private set; }
 
+    /// <summary>Advances the rendered generation and notifies mounted scope-blocked headings.</summary>
+    internal void AdvanceGeneration()
+    {
+        lock (_gate)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            Generation++;
+        }
+
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
     /// <summary>Raised after a scope transition has cleared circuit state.</summary>
     public event EventHandler? Changed;
 

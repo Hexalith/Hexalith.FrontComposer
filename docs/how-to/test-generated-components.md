@@ -63,7 +63,9 @@ public sealed class CounterViewTests : FrontComposerTestBase
 }
 ```
 
-Generated projection reducers accept direct `LoadedAction` results before the first scope transition, as in the example above. After `ScopeChangedAction`, dispatch a new `LoadRequestedAction` with a fresh correlation ID before `LoadedAction` or `LoadFailedAction` with that same ID. A result without a new matching request is discarded so a late response from the prior tenant cannot refill the view. The adopter owns the request and its result; a scope change does not start a load automatically.
+Generated projection reducers accept a direct `LoadedAction` or `LoadFailedAction` only before any load request has been dispatched, as in the example above. **Breaking change:** once a request exists, push-style direct `LoadedAction` values are dropped. After `ScopeChangedAction`, stamp `OriginScopeGeneration`, `ScopeTenantId`, and `ScopeUserId` from the current state, then dispatch a new `LoadRequestedAction` before `LoadedAction` or `LoadFailedAction`. Every result must carry that request's correlation. A result without a matching request is discarded so a late response from the prior tenant cannot refill the view. The adopter owns the request and its result; a scope change does not start a load automatically.
+
+Non-grid Retry, and grid Retry when the only failure is `state.Error`, dispatches `{Type}LoadRequestedAction` with `OperatorInitiated: true`. No framework effect fetches on that action. An adopter whose projection can fail must answer the operator-initiated request: reload, then dispatch `Loaded` or `LoadFailed` with the same correlation and the current scope stamp.
 
 ## Compose the host directly
 

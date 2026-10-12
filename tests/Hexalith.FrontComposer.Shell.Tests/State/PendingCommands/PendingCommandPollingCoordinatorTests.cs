@@ -7,6 +7,7 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Tenancy;
 
@@ -1083,6 +1084,99 @@ public sealed class PendingCommandPollingCoordinatorTests {
         PendingCommandPollingCoordinator sut = new(state, new PendingCommandOutcomeResolver(state), query,
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions()), NullLogger<PendingCommandPollingCoordinator>.Instance, time);
         (await sut.PollOnceAsync(TestContext.Current.CancellationToken)).ShouldBe(0);
+        state.GetByMessageId(message).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.DegradedExhausted);
+        lifecycle.DidNotReceive().Transition(CorrelationId, CommandLifecycleState.Confirmed, message, false);
+    }
+
+    [Fact]
+    public async Task ExpiredClockClosesBeforeTheQueuedDeadlineTimerOrStatusQuery()
+    {
+        const string message = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        DateTimeOffset start = new(2026, 4, 26, 12, 0, 0, TimeSpan.Zero);
+        QueuedTimerTimeProvider time = new() { UtcNow = start };
+        ILifecycleStateService lifecycle = CreateLifecycle();
+        PendingCommandStateService state = new(Microsoft.Extensions.Options.Options.Create(new FcShellOptions()), lifecycle,
+            new FixedUserContext(), time, NullLogger<PendingCommandStateService>.Instance);
+        state.Register(Registration(CorrelationId, message, start));
+        time.Callbacks.ShouldNotBeEmpty();
+        time.UtcNow = start.AddMilliseconds(120_000);
+        state.GetByMessageId(message).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.Pending);
+        int queries = 0;
+        IPendingCommandStatusQuery query = new CallbackStatusQuery((_, _) => {
+            queries++;
+            return ValueTask.FromResult<PendingCommandOutcomeObservation?>(new(
+                PendingCommandOutcomeSource.FallbackPolling,
+                PendingCommandTerminalOutcome.Confirmed,
+                message));
+        });
+        PendingCommandPollingCoordinator sut = new(state, new PendingCommandOutcomeResolver(state), query,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()), NullLogger<PendingCommandPollingCoordinator>.Instance, time);
+
+        (await sut.PollOnceAsync(TestContext.Current.CancellationToken)).ShouldBe(1);
+
+        queries.ShouldBe(0);
+        state.GetByMessageId(message).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.DegradedExhausted);
+        lifecycle.DidNotReceive().Transition(CorrelationId, CommandLifecycleState.Confirmed, message, false);
+    }
+
+    [Fact]
+    public async Task ConfirmedQueryAfterTheClockPassesTheBudgetClosesAsExhaustedWhileTheDeadlineTimerStaysQueued()
+    {
+        const string message = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        DateTimeOffset start = new(2026, 4, 26, 12, 0, 0, TimeSpan.Zero);
+        QueuedTimerTimeProvider time = new() { UtcNow = start };
+        ILifecycleStateService lifecycle = CreateLifecycle();
+        PendingCommandStateService state = new(Microsoft.Extensions.Options.Options.Create(new FcShellOptions()), lifecycle,
+            new FixedUserContext(), time, NullLogger<PendingCommandStateService>.Instance);
+        state.Register(Registration(CorrelationId, message, start));
+        int queuedDeadlineTimers = time.Callbacks.Count;
+        queuedDeadlineTimers.ShouldBeGreaterThan(0);
+        IPendingCommandStatusQuery query = new CallbackStatusQuery((_, _) => {
+            time.UtcNow = start.AddMilliseconds(120_000);
+            return ValueTask.FromResult<PendingCommandOutcomeObservation?>(new(
+                PendingCommandOutcomeSource.FallbackPolling,
+                PendingCommandTerminalOutcome.Confirmed,
+                message));
+        });
+        PendingCommandPollingCoordinator sut = new(state, new PendingCommandOutcomeResolver(state), query,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()), NullLogger<PendingCommandPollingCoordinator>.Instance, time);
+
+        (await sut.PollOnceAsync(TestContext.Current.CancellationToken)).ShouldBe(1);
+
+        time.Callbacks.Count.ShouldBe(queuedDeadlineTimers);
+        state.GetByMessageId(message).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.DegradedExhausted);
+        lifecycle.DidNotReceive().Transition(CorrelationId, CommandLifecycleState.Confirmed, message, false);
+    }
+
+    [Fact]
+    public async Task WaitTimeoutAfterTheClockPassesTheBudgetClosesAsExhaustedWhileTheDeadlineTimerStaysQueued()
+    {
+        const string message = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        DateTimeOffset start = new(2026, 4, 26, 12, 0, 0, TimeSpan.Zero);
+        QueuedTimerTimeProvider time = new() { UtcNow = start };
+        ILifecycleStateService lifecycle = CreateLifecycle();
+        PendingCommandStateService state = new(Microsoft.Extensions.Options.Options.Create(new FcShellOptions()), lifecycle,
+            new FixedUserContext(), time, NullLogger<PendingCommandStateService>.Instance);
+        state.Register(Registration(CorrelationId, message, start));
+        int deadlineTimers = time.Callbacks.Count;
+        deadlineTimers.ShouldBeGreaterThan(0);
+        TaskCompletionSource<PendingCommandOutcomeObservation?> held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        IPendingCommandStatusQuery query = new CallbackStatusQuery((_, _) => new ValueTask<PendingCommandOutcomeObservation?>(held.Task));
+        PendingCommandPollingCoordinator sut = new(state, new PendingCommandOutcomeResolver(state), query,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()), NullLogger<PendingCommandPollingCoordinator>.Instance, time);
+
+        Task<int> poll = sut.PollOnceAsync(TestContext.Current.CancellationToken);
+        DateTimeOffset giveUp = DateTimeOffset.UtcNow.AddSeconds(2);
+        while (time.Callbacks.Count == deadlineTimers && DateTimeOffset.UtcNow < giveUp)
+        {
+            await Task.Delay(1, TestContext.Current.CancellationToken);
+        }
+
+        time.Callbacks.Count.ShouldBe(deadlineTimers + 1);
+        time.UtcNow = start.AddMilliseconds(120_000);
+        time.Callbacks[deadlineTimers]();
+
+        (await poll.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken)).ShouldBe(1);
         state.GetByMessageId(message).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.DegradedExhausted);
         lifecycle.DidNotReceive().Transition(CorrelationId, CommandLifecycleState.Confirmed, message, false);
     }

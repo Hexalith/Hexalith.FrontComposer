@@ -94,7 +94,10 @@ test.describe('Story 4.3: one-at-a-time execution policy', () => {
     await expectFieldValue(incrementForm, 'Amount', '7');
     await expect(attemptedSubmit).toBeEnabled();
     await expect(attemptedSubmit).toBeFocused();
-    await expect(page.getByText('This command did not run. Another command is already in progress.', { exact: true })).toHaveCount(1);
+    const blockedMessage = 'This command did not run. Another command is already in progress.';
+    await expect(incrementForm.getByTestId('fc-command-blocked-visible')).toHaveCount(1);
+    await expect(incrementForm.getByTestId('fc-command-blocked-visible')).toHaveText(blockedMessage);
+    await expect(page.getByText(blockedMessage, { exact: true })).toHaveCount(2);
     await lifecycle.expectState(INCREMENT_COMMAND_ID, 'idle');
     await lifecycle.expectState(BATCH_COMMAND_ID, 'syncing');
 

@@ -498,7 +498,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            _hostBlockedOutcomePresented = false;");
         _ = sb.AppendLine("            await InvokeAsync(() => OnBlockedSubmission.InvokeAsync(false));");
         _ = sb.AppendLine("        }");
-        _ = sb.AppendLine("        if (!ExternalStatusOwner && _blockedOutcome is not null)");
+        _ = sb.AppendLine("        if (!ExternalStatusOwner && !OnBlockedSubmission.HasDelegate && _blockedOutcome is not null)");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            await _blockedOutcome.ClearAsync().ConfigureAwait(false);");
         _ = sb.AppendLine("        }");
@@ -546,7 +546,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            _hostBlockedOutcomePresented = true;");
         _ = sb.AppendLine("            await InvokeAsync(() => OnBlockedSubmission.InvokeAsync(true));");
         _ = sb.AppendLine("        }");
-        _ = sb.AppendLine("        if (!ExternalStatusOwner && _blockedOutcome is not null)");
+        _ = sb.AppendLine("        if (!ExternalStatusOwner && !OnBlockedSubmission.HasDelegate && _blockedOutcome is not null)");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            await _blockedOutcome.PresentAsync().ConfigureAwait(false);");
         _ = sb.AppendLine("        }");
@@ -2051,7 +2051,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            // Story 13.3 AM-20 — publish through the lifecycle wrapper's persistent polite node. Keep the");
         _ = sb.AppendLine("            // View active command recovery after the submit control in tab order. A hidden");
         _ = sb.AppendLine("            // zero-field form lets its renderer own the node beside the visible trigger instead.");
-        _ = sb.AppendLine("            if (!ExternalStatusOwner)");
+        _ = sb.AppendLine("            if (!ExternalStatusOwner && !OnBlockedSubmission.HasDelegate)");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                __b.OpenComponent<FcCommandBlockedOutcome>(cseq++);");
         _ = sb.AppendLine("                __b.AddAttribute(cseq++, \"AttemptedControlId\", _formDomId + \"-submit\");");

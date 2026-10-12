@@ -41,6 +41,8 @@ public sealed class FcLifecycleWrapperThresholdTests : LifecycleWrapperTestBase 
             .Add(c => c.CorrelationId, DefaultCorrelationId).Add(c => c.StatusSurface, "shared-command"));
         IRenderedComponent<FcLifecycleWrapper> second = Render<FcLifecycleWrapper>(p => p
             .Add(c => c.CorrelationId, DefaultCorrelationId).Add(c => c.StatusSurface, "shared-command"));
+        (first.FindAll("[data-testid='fc-surface-status']").Count
+            + second.FindAll("[data-testid='fc-surface-status']").Count).ShouldBe(1);
         lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Submitting, "message");
         lifecycle.Transition(DefaultCorrelationId, CommandLifecycleState.Acknowledged, "message");
         FakeTime.Advance(TimeSpan.FromMilliseconds(249));

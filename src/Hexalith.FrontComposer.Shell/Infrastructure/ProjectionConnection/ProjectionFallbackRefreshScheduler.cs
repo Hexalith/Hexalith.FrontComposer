@@ -365,10 +365,10 @@ public sealed class ProjectionFallbackRefreshScheduler(
             }
             ProjectionLaneRefreshResult result;
             try {
-                if (reconciliationEpoch is null)
+                if (reconciliationEpoch is null && entry.Lane.RefreshAsync is not null)
                 {
-                    // A custom callback may ignore cancellation. Bound this physical
-                    // admission before the next fallback/nudge lane is considered.
+                    // A custom callback may ignore cancellation. Bound only that
+                    // callback; a standard loader read keeps its own transport budget.
                     CancellationTokenSource bounded = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                     TaskCompletionSource<bool>? admission = null;
                     Task<ProjectionLaneRefreshResult> read = RefreshLaneOnceAsync(entry, bounded.Token,
@@ -412,10 +412,11 @@ public sealed class ProjectionFallbackRefreshScheduler(
                 }
                 else
                 {
-                    // The coordinator owns reconciliation's 30-second deadline.
-                    // The lane admission completes before this Task is returned. The custom
-                    // callback itself runs separately so a synchronous provider cannot hold
-                    // the coordinator before it applies the reconciliation deadline.
+                    // Reconciliation keeps its 30-second deadline. A standard loader
+                    // read is not cut by the custom-callback bound. The lane admission
+                    // completes before this Task is returned. A custom callback itself
+                    // runs separately so a synchronous provider cannot hold the
+                    // coordinator before it applies the reconciliation deadline.
                     Task<ProjectionLaneRefreshResult> read = RefreshLaneOnceAsync(entry,
                         cancellationToken, onSkippedRead, requiresDisconnected, reconciliationEpoch,
                         queueSkippedReconciliationReplay: queueSkippedReconciliationReplay);
@@ -647,7 +648,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
         {
             try {
                 if (requiresDisconnected && !connectionState.Current.IsDisconnected) {
-                    return ProjectionLaneRefreshResult.Skipped;
+                    return ProjectionLaneRefreshResult.ReadSkipped;
                 }
                 if (lane.RefreshAsync is not null) {
                     ProjectionFallbackLaneRefreshOutcome refreshed = await Task.Run(async () => {

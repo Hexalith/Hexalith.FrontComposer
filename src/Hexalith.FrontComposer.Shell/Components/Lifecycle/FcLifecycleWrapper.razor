@@ -30,7 +30,7 @@
     @ChildContent
 
     @if (RenderStatus) {
-        <FcSurfaceStatus Surface="@AnnouncementSurface" />
+        <FcSurfaceStatus Surface="@AnnouncementSurface" ExclusiveOwner="true" />
     }
 
     @if (_state.Current is CommandLifecycleState.Syncing

@@ -645,6 +645,34 @@ public sealed class EventStoreClientTests {
     }
 
     [Fact]
+    public async Task CommandClient_TransportExceptionBeforeAcceptance_IsOutcomeUnknownWithoutSyncing()
+    {
+        ThrowingSendHandler handler = new();
+        EventStoreCommandClient sut = new(
+            new SingleClientFactory(handler),
+            Options(),
+            new FixedUlidFactory(),
+            new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStoreCommandClient>.Instance,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions {
+                CommandDispatchRetryAttempts = 1,
+                CommandDispatchRetryDelayMs = 1,
+            }));
+        List<CommandLifecycleObservation> observations = [];
+
+        CommandWarningException warning = await Should.ThrowAsync<CommandWarningException>(() =>
+            ((ICommandServiceWithLifecycleObservations)sut).DispatchAsync(
+                new ShipOrderCommand(), observations.Add, TestContext.Current.CancellationToken));
+
+        warning.Kind.ShouldBe(CommandWarningKind.RetryableDispatchFailed);
+        warning.RetryAfter.ShouldBeNull();
+        warning.Problem.Title.ShouldBe("Command outcome unknown");
+        handler.Sends.ShouldBe(1);
+        observations.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task CommandClient_PostAcceptReadFailure_RetriesOnceAfter250MillisecondsWithSameMessageId() {
         FakeTimeProvider time = new();
         FailingReadStream failingBody = new();
@@ -1001,6 +1029,15 @@ public sealed class EventStoreClientTests {
                 "fatal test exception")!)
             .Throw();
         return default!;
+    }
+
+    private sealed class ThrowingSendHandler : HttpMessageHandler {
+        public int Sends { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
+            Sends++;
+            throw new HttpRequestException("transport failed before a response");
+        }
     }
 
     private sealed class RecordingHandler(Func<HttpRequestMessage, HttpResponseMessage> responseFactory) : HttpMessageHandler {

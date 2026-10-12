@@ -102,13 +102,12 @@
             _confirmedFreshness = FreshnessIdentity;
         }
         bool visible = HasCachedRows && (_snapshot.IsDisconnected || HasFailedRefresh);
-        string reason = (_snapshot.BrowserOffline ? "browser-offline" : _snapshot.IsDisconnected ? "transport" : "online")
-            + ":" + HasFailedRefresh;
+        string reason = _snapshot.BrowserOffline ? "browser-offline" : _snapshot.IsDisconnected ? "transport" : "online";
         _visible = visible;
         string episodeKey = "stale:" + Surface + ":scope:" + ScopeGeneration.ToString(System.Globalization.CultureInfo.InvariantCulture)
             + ":" + _snapshot.Epoch.ToString(System.Globalization.CultureInfo.InvariantCulture)
             + ":" + _snapshot.BrowserOfflineEpisode.ToString(System.Globalization.CultureInfo.InvariantCulture)
-            + ":" + reason + ":" + (_snapshot.LastFailureCategory ?? string.Empty)
+            + ":" + reason
             + ":" + (QueryFailureIdentity ?? string.Empty);
         if (_activeGroup is not null && (!_visible || !string.Equals(_activeEpisodeKey, episodeKey, StringComparison.Ordinal))) {
             ReleaseAnnouncement();

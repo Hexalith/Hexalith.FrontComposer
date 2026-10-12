@@ -1115,8 +1115,8 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         adopter.WaitForAssertion(() => {
             callbackStates.ShouldBe([true]);
             adopter.FindAll("[role='status'][aria-live='polite']").Count.ShouldBe(1);
-            adopter.Find("[data-testid='fc-surface-status']").TextContent.ShouldBe(BlockedMessage);
-            adopter.Find("[data-testid='fc-command-blocked-outcome']").GetAttribute("data-fc-blocked").ShouldBe("true");
+            adopter.FindAll("[data-testid='fc-command-blocked-outcome']").ShouldBeEmpty();
+            adopter.Find("[data-testid='fc-surface-status']").TextContent.ShouldNotBe(BlockedMessage);
             service.DispatchCount.ShouldBe(1);
         });
 
