@@ -168,7 +168,10 @@ public sealed class GeneratedFreshRowAnnouncementTests : GeneratedComponentTestB
         foreach (string removal in new[] { "materialize", "filter-requery", "dismiss" })
         {
             indicators.Add(Entry(removal, removal));
-            grid.WaitForAssertion(() => grid.FindAll(Cue).Count.ShouldBe(1));
+            grid.WaitForAssertion(() => {
+                grid.FindAll(Cue).Count.ShouldBe(1);
+                spoken.ShouldContain($"Updated row: {removal}.");
+            });
             int before = audible.Count;
             if (removal == "materialize") await grid.InvokeAsync(() => Seed(removal));
             else if (removal == "filter-requery")

@@ -210,7 +210,9 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
                     || (owner.Groups.TryGetValue(owner.CurrentGroup, out Group? overlay) && overlay.FreshRow
                         && precedence is { Key: var underlying, Value: var underlyingState }
                         && string.Equals(underlying, group, StringComparison.Ordinal)
-                        && string.Equals(underlyingState.LastIdentity, identity, StringComparison.Ordinal))))
+                        && string.Equals(underlyingState.LastIdentity, identity, StringComparison.Ordinal)
+                        && (underlyingState.PendingIdentity is null
+                            || string.Equals(underlyingState.PendingIdentity, identity, StringComparison.Ordinal)))))
             {
                 ++state.Version;
                 state.Timer?.Dispose();
@@ -322,11 +324,14 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
             {
                 return;
             }
+            string? underlyingGroup = owner.CurrentGroup is { } current
+                && owner.Groups.TryGetValue(current, out Group? overlay) && overlay.FreshRow
+                    ? overlay.UnderlyingGroup : NonFreshOwner(owner)?.Key;
             Group state = new()
             {
                 FreshRow = true,
                 PreviousGroup = owner.CurrentGroup,
-                UnderlyingGroup = NonFreshOwner(owner)?.Key,
+                UnderlyingGroup = underlyingGroup,
                 LastIdentity = identity,
                 LastMessage = message,
                 DeliveryOrder = ++owner.DeliveryOrder,
@@ -343,7 +348,7 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
         Deliver(surface, handlers, versionedHandlers, message, revision, freshRow: true);
     }
 
-    /// <summary>Silently withdraws and retires only this fresh-row group, leaving unrelated pending work intact.</summary>
+    /// <summary>Withdraws and retires only this fresh-row group, preserving unrelated work and fallback delivery rules.</summary>
     internal void WithdrawFreshRow(string surface, string group)
     {
         Action<string>[] handlers = [];
@@ -368,19 +373,26 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
                 .OrderByDescending(static pair => pair.Value.DeliveryOrder)
                 .Select(static pair => (KeyValuePair<string, Group>?)pair).FirstOrDefault();
             previous ??= RestorableGroup(owner, state.UnderlyingGroup);
-            if (previous is null)
+            bool silent = true;
+            if (previous is not null)
             {
-                var (lifecycle, stale, failure, cap, restoreLifecycle) = RestorationCandidates(owner);
-                previous = restoreLifecycle ? lifecycle : failure ?? stale ?? cap;
+                owner.Message = previous.Value.Value.LastMessage!;
+                owner.CurrentGroup = previous.Value.Key;
+                owner.CurrentIdentity = previous.Value.Value.LastIdentity ?? (previous.Value.Value.HasStaleCandidate ? "stale" : null);
             }
-            owner.Message = message = previous?.Value.LastMessage ?? string.Empty;
-            owner.CurrentGroup = previous?.Key;
-            owner.CurrentIdentity = previous?.Value.LastIdentity ?? (previous?.Value.HasStaleCandidate == true ? "stale" : null);
+            else
+            {
+                silent = RestoreCancellationFallback(owner) || string.IsNullOrEmpty(owner.Message);
+            }
+            message = owner.Message;
             revision = ++owner.Revision;
-            // Status subscribers capture silence synchronously at delivery. Only the current
-            // replay marker is needed after a fresh group and its identity history retire.
-            owner.FreshSilentRevision = revision;
-            owner.PendingFreshSilentRevisions.Add(revision);
+            if (silent)
+            {
+                // Status subscribers capture silence synchronously at delivery. Only the current
+                // replay marker is needed after a fresh group and its identity history retire.
+                owner.FreshSilentRevision = revision;
+                owner.PendingFreshSilentRevisions.Add(revision);
+            }
             handlers = [.. owner.Handlers];
             versionedHandlers = [.. owner.VersionedHandlers];
         }
@@ -417,51 +429,14 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
                 state.Restorable = false;
                 if (string.Equals(owner.CurrentGroup, group, StringComparison.Ordinal))
                 {
-                    var (lifecycle, stale, failure, cap, restoreLifecycle) = RestorationCandidates(owner);
-                    owner.Message = restoreLifecycle ? lifecycle!.Value.Value.LastMessage!
-                        : failure?.Value.LastMessage ?? stale?.Value.LastMessage ?? cap?.Value.LastMessage ?? string.Empty;
+                    bool silent = RestoreCancellationFallback(owner);
                     message = owner.Message;
-                    owner.CurrentGroup = restoreLifecycle ? lifecycle!.Value.Key : failure?.Key ?? stale?.Key ?? cap?.Key;
-                    owner.CurrentIdentity = restoreLifecycle ? lifecycle!.Value.Value.LastIdentity
-                        : failure?.Value.LastIdentity ?? (stale is not null ? "stale" : cap?.Value.LastIdentity);
                     handlers = [.. owner.Handlers];
                     versionedHandlers = [.. owner.VersionedHandlers];
                     revision = ++owner.Revision;
-                    if (restoreLifecycle)
+                    if (silent)
                     {
-                        // The still-current lifecycle state already spoke before the
-                        // blocked attempt. Rebind the status text without speaking it again.
                         owner.SilentRevisions.Add(revision);
-                    }
-                    else if (failure is not null)
-                    {
-                        // The mounted page failure already spoke before the slow notice.
-                        owner.SilentRevisions.Add(revision);
-                    }
-                    else if (cap is not null && stale is null)
-                    {
-                        // A cap first observed behind the failure speaks here. A cap that
-                        // already spoke returns as status text without a second utterance.
-                        if (!cap.Value.Value.Delivered.Add(cap.Value.Value.LastIdentity!))
-                        {
-                            owner.SilentRevisions.Add(revision);
-                        }
-                    }
-                    else if (stale is not null)
-                    {
-                        Group staleState = stale.Value.Value;
-                        // Restoring the current candidate completes its pending delivery.
-                        // Its old trailing callback must neither repeat it nor outlive a
-                        // later terminal that takes this shared surface.
-                        ++staleState.Version;
-                        staleState.Timer?.Dispose();
-                        staleState.Timer = null;
-                        staleState.PendingIdentity = null;
-                        bool alreadySpoken = !staleState.Delivered.Add("stale");
-                        if (alreadySpoken)
-                        {
-                            owner.SilentRevisions.Add(revision);
-                        }
                     }
                 }
             }
@@ -654,6 +629,46 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
             && (stale is null || lifecycle.Value.Value.DeliveryOrder >= stale.Value.Value.DeliveryOrder)
             && (cap is null || lifecycle.Value.Value.DeliveryOrder >= cap.Value.Value.DeliveryOrder);
         return (lifecycle, stale, failure, cap, restoreLifecycle);
+    }
+
+    private static bool RestoreCancellationFallback(Surface owner)
+    {
+        var (lifecycle, stale, failure, cap, restoreLifecycle) = RestorationCandidates(owner);
+        owner.Message = restoreLifecycle ? lifecycle!.Value.Value.LastMessage!
+            : failure?.Value.LastMessage ?? stale?.Value.LastMessage ?? cap?.Value.LastMessage ?? string.Empty;
+        owner.CurrentGroup = restoreLifecycle ? lifecycle!.Value.Key : failure?.Key ?? stale?.Key ?? cap?.Key;
+        owner.CurrentIdentity = restoreLifecycle ? lifecycle!.Value.Value.LastIdentity
+            : failure?.Value.LastIdentity ?? (stale is not null ? "stale" : cap?.Value.LastIdentity);
+        if (restoreLifecycle)
+        {
+            // The still-current lifecycle state already spoke before the
+            // blocked attempt. Rebind the status text without speaking it again.
+            return true;
+        }
+        if (failure is not null)
+        {
+            // The mounted page failure already spoke before the slow notice.
+            return true;
+        }
+        if (cap is not null && stale is null)
+        {
+            // A cap first observed behind the failure speaks here. A cap that
+            // already spoke returns as status text without a second utterance.
+            return !cap.Value.Value.Delivered.Add(cap.Value.Value.LastIdentity!);
+        }
+        if (stale is not null)
+        {
+            Group staleState = stale.Value.Value;
+            // Restoring the current candidate completes its pending delivery.
+            // Its old trailing callback must neither repeat it nor outlive a
+            // later terminal that takes this shared surface.
+            ++staleState.Version;
+            staleState.Timer?.Dispose();
+            staleState.Timer = null;
+            staleState.PendingIdentity = null;
+            return !staleState.Delivered.Add("stale");
+        }
+        return false;
     }
 
     private static KeyValuePair<string, Group>? NonFreshOwner(Surface owner)

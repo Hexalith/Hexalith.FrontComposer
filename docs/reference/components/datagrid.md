@@ -120,12 +120,12 @@ With `Entry`, `FcNewItemIndicator` displays an info icon and the localized “Up
 {EntityKey}.” cue. `Text` replaces only that visible copy; speech always uses the canonical localized
 message, and `AriaLabelOverride` is ignored. Callers without `Entry` keep the original
 `role="status"`, `aria-live="polite"`, live label, and copy. Generated grids now pass `Entry` with
-`SharedStatusOwner=true`, so their cues no longer render that role, live label, or the previous
-“New item” copy; host styles or tests that targeted those attributes should select the
-`fc-new-item-indicator` class instead. Entry-aware cues retain the resolved scope in which their entry was
-first observed. Direct entries expire ten seconds after `CreatedAt`; generated entries retain the
-state service's ten-second window from publication. Invalid or unresolved provenance suppresses the
-cue before speech is claimed.
+`SharedStatusOwner=true`, so their cues no longer render `role="status"`, `aria-live`, `aria-label`,
+or the previous “New item” copy. Host styles or tests that targeted those attributes should select the
+`data-testid="fc-new-item-indicator"` hook or `fc-new-item-indicator` class instead. Entry-aware cues retain
+the resolved scope in which their entry was first observed. Direct entries expire ten seconds after
+`CreatedAt`; generated entries retain the state service's ten-second window from publication. Invalid
+or unresolved provenance suppresses the cue before speech is claimed.
 
 Reserved filter keys remain framework-owned: `__status` for status filters, `__search` for in-grid
 search, and `__hidden` for hidden-column persistence. Column filter keys beginning with `__` are
@@ -147,16 +147,17 @@ max-item notices are rendered as grid-adjacent status surfaces rather than cells
 
 - `FcColumnFilterCell`, `FcFilterResetButton`, and `FcStatusFilterChips` expose labelled controls and
   dispatch Fluxor actions instead of mutating grid state directly.
-- `FcFilterSummary`, `FcFilterEmptyState`, `FcExpandedRowHiddenBanner`, and `FcNewItemIndicator`
-  render status regions for assistive technology.
+- `FcFilterSummary`, `FcFilterEmptyState`, and `FcExpandedRowHiddenBanner` render status regions
+  for assistive technology. `FcNewItemIndicator` renders its own status region when `Entry` is omitted.
 - An entry-aware `FcNewItemIndicator` cue is not itself a live region; its icon is hidden from
-  assistive technology. AM-21 speech is delivered through the single projection status node once per
-  tenant, user, entity, and message across views and remounts. Generated grids share their grid's
-  status node; direct entry-aware callers own one by default. Removal, expiry, and dismissal are
-  silent.
+  assistive technology. The localized updated-row message is delivered through the single projection
+  status node once per tenant, user, entity, and message across views and remounts. Generated grids
+  share their grid's status node; direct entry-aware callers own one by default. Set `SharedStatusOwner=true`
+  only when the page already renders a status node for that same projection surface, as generated grids do.
+  Removal, expiry, and dismissal are silent.
 - Inside `FcPageTabs`, a cue in an inactive panel waits until its panel and every containing panel
-  are active before claiming AM-21, and a reactivated panel shows its retained status without
-  speaking it again. This deferral applies only to `FcPageTabs` panels; a cue hidden any other way
+  are active before claiming its first announcement, and a reactivated panel shows its retained status
+  without speaking it again. This deferral applies only to `FcPageTabs` panels; a cue hidden any other way
   claims speech as soon as it renders.
 - `FcExpandInRowDetail` always renders a `role="region"` panel. Expand triggers point
   `aria-controls` at that always-present panel, and filter-hidden expansions are announced through a

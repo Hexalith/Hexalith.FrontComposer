@@ -93,6 +93,169 @@ public sealed class SurfaceAnnouncementCoordinatorTests
         sut.Current(surface).ShouldBeEmpty();
     }
 
+    [Fact]
+    public void OldestFirstFreshWithdrawalRestoresBlockedOwnerAndKeepsLaterCapSilent()
+    {
+        using SurfaceAnnouncementCoordinator sut = new(new FakeTimeProvider());
+        const string surface = "projection:one";
+        List<(string Message, bool Silent)> delivered = [];
+        using IDisposable subscription = sut.SubscribeWithReplay(surface, (message, revision) =>
+            delivered.Add((message, sut.IsSilentRevision(surface, revision))));
+        sut.Announce(surface, "blocked:attempt", "blocked", "Second attempt did not run.", terminal: true);
+        sut.Announce(surface, "fresh-row:A", "a", "Updated row: A.", immediate: true);
+        sut.Announce(surface, "fresh-row:B", "b", "Updated row: B.", immediate: true);
+
+        sut.Cancel(surface, "fresh-row:A");
+        sut.Current(surface).ShouldBe("Updated row: B.");
+        sut.Cancel(surface, "fresh-row:B");
+        sut.Current(surface).ShouldBe("Second attempt did not run.");
+        sut.IsCurrent(surface, "blocked:attempt", "blocked").ShouldBeTrue();
+        delivered[^1].ShouldBe(("Second attempt did not run.", true));
+        int before = delivered.Count;
+        sut.Announce(surface, "limit:later", "cap", "Later cap.", immediate: true);
+        sut.Current(surface).ShouldBe("Second attempt did not run.");
+        delivered.Count.ShouldBe(before);
+    }
+
+    [Fact]
+    public void MiddleThenNewestFreshWithdrawalRestoresRemainingOverlayBeforeUnderlyingLoad()
+    {
+        using SurfaceAnnouncementCoordinator sut = new(new FakeTimeProvider());
+        const string surface = "projection:one";
+        List<(string Message, bool Silent)> delivered = [];
+        using IDisposable subscription = sut.SubscribeWithReplay(surface, (message, revision) =>
+            delivered.Add((message, sut.IsSilentRevision(surface, revision))));
+        sut.Announce(surface, "load:page", "data", "Loaded page.", terminal: true);
+        sut.Announce(surface, "fresh-row:A", "a", "Updated row: A.", immediate: true);
+        sut.Announce(surface, "fresh-row:B", "b", "Updated row: B.", immediate: true);
+        sut.Announce(surface, "fresh-row:C", "c", "Updated row: C.", immediate: true);
+
+        sut.Cancel(surface, "fresh-row:B");
+        sut.Current(surface).ShouldBe("Updated row: C.");
+        sut.Cancel(surface, "fresh-row:C");
+        sut.Current(surface).ShouldBe("Updated row: A.");
+        sut.IsCurrent(surface, "fresh-row:A", "a").ShouldBeTrue();
+        delivered[^1].ShouldBe(("Updated row: A.", true));
+    }
+
+    [Fact]
+    public void StackedFreshOverlaysKeepTheirCancelledUnderlyingOwnerWithoutRestoringOlderLoad()
+    {
+        using SurfaceAnnouncementCoordinator sut = new(new FakeTimeProvider());
+        const string surface = "projection:one";
+        List<(string Message, bool Silent)> delivered = [];
+        using IDisposable subscription = sut.SubscribeWithReplay(surface, (message, revision) =>
+            delivered.Add((message, sut.IsSilentRevision(surface, revision))));
+        sut.Announce(surface, "load:first", "data:first", "Loaded first page.", terminal: true);
+        sut.Announce(surface, "load:second", "data:second", "Loaded second page.", terminal: true);
+        sut.Announce(surface, "fresh-row:A", "a", "Updated row: A.", immediate: true);
+        sut.Cancel(surface, "load:second");
+        sut.Announce(surface, "fresh-row:B", "b", "Updated row: B.", immediate: true);
+
+        sut.Cancel(surface, "fresh-row:A");
+        sut.Current(surface).ShouldBe("Updated row: B.");
+        sut.Cancel(surface, "fresh-row:B");
+        sut.Current(surface).ShouldBeEmpty();
+        delivered[^1].ShouldBe((string.Empty, true));
+    }
+
+    [Fact]
+    public void FreshWithdrawalFallbackDeliversCapFirstObservedBehindCancelledFailure()
+    {
+        FakeTimeProvider time = new();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        const string surface = "projection:one";
+        List<(string Message, bool Silent)> delivered = [];
+        using IDisposable subscription = sut.SubscribeWithReplay(surface, (message, revision) =>
+            delivered.Add((message, sut.IsSilentRevision(surface, revision))));
+        sut.Announce(surface, "scope:0:page:1", "failure:page", "Page failed.", terminal: true);
+        sut.Announce(surface, "limit:cap", "cap", "Results limited.", immediate: true);
+        sut.Current(surface).ShouldBe("Page failed.");
+        sut.Announce(surface, "fresh-row:A", "a", "Updated row: A.", immediate: true);
+        sut.Cancel(surface, "scope:0:page:1");
+
+        sut.Cancel(surface, "fresh-row:A");
+        sut.Current(surface).ShouldBe("Results limited.");
+        sut.IsCurrent(surface, "limit:cap", "cap").ShouldBeTrue();
+        delivered[^1].ShouldBe(("Results limited.", false));
+        delivered.Where(static update => !update.Silent && update.Message.Length > 0)
+            .Select(static update => update.Message).ShouldBe(["Page failed.", "Updated row: A.", "Results limited."]);
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        sut.Announce(surface, "limit:cap", "cap", "Results limited.", immediate: true);
+        delivered.Count(static update => !update.Silent && update.Message == "Results limited.").ShouldBe(1);
+        sut.Cancel(surface, "limit:cap");
+        sut.Current(surface).ShouldBeEmpty();
+        delivered[^1].ShouldBe((string.Empty, false));
+    }
+
+    [Fact]
+    public void FreshWithdrawalFallbackCompletesPendingStaleIdentityAndCancelsItsOriginalTimer()
+    {
+        FakeTimeProvider time = new();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        const string surface = "projection:one";
+        List<(string Message, bool Silent)> delivered = [];
+        using IDisposable subscription = sut.SubscribeWithReplay(surface, (message, revision) =>
+            delivered.Add((message, sut.IsSilentRevision(surface, revision))));
+        sut.Announce(surface, "load:page", "data", "Loaded page.", terminal: true);
+        sut.Announce(surface, "fresh-row:A", "a", "Updated row: A.", immediate: true);
+        sut.Announce(surface, "stale:pending", "pending-stale", "Data may be out of date.");
+        sut.Cancel(surface, "load:page");
+
+        sut.Cancel(surface, "fresh-row:A");
+        sut.Current(surface).ShouldBe("Data may be out of date.");
+        sut.IsCurrent(surface, "stale:pending", "stale").ShouldBeTrue();
+        delivered[^1].ShouldBe(("Data may be out of date.", false));
+        int before = delivered.Count;
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        delivered.Count.ShouldBe(before);
+        sut.IsCurrent(surface, "stale:pending", "stale").ShouldBeTrue();
+        sut.Announce(surface, "stale:pending", "stale", "Data may be out of date.");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        delivered.Count.ShouldBe(before);
+    }
+
+    [Fact]
+    public void FreshOverlayAllowsDeliveredLoadingToReturnAfterDifferentPendingUnderlyingIdentity()
+    {
+        FakeTimeProvider time = new();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        const string surface = "projection:one";
+        List<string> delivered = [];
+        using IDisposable subscription = sut.Subscribe(surface, delivered.Add);
+        sut.Announce(surface, "load:page", "loading", "Loading.");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        sut.Announce(surface, "fresh-row:A", "a", "Updated row: A.", immediate: true);
+        sut.Announce(surface, "load:page", "refreshing", "Refreshing.");
+        sut.Announce(surface, "load:page", "loading", "Loading.");
+
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        delivered.ShouldBe(["Loading.", "Updated row: A.", "Loading."]);
+        sut.Current(surface).ShouldBe("Loading.");
+        sut.IsCurrent(surface, "load:page", "loading").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void FreshOverlayAllowsDeliveredLoadingToReturnAfterDifferentDeliveredUnderlyingIdentity()
+    {
+        FakeTimeProvider time = new();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        const string surface = "projection:one";
+        List<string> delivered = [];
+        using IDisposable subscription = sut.Subscribe(surface, delivered.Add);
+        sut.Announce(surface, "load:page", "loading", "Loading.");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        sut.Announce(surface, "load:page", "refreshing", "Refreshing.");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        sut.Announce(surface, "fresh-row:A", "a", "Updated row: A.", immediate: true);
+        sut.Announce(surface, "load:page", "loading", "Loading.");
+
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        delivered.ShouldBe(["Loading.", "Refreshing.", "Updated row: A.", "Loading."]);
+        sut.Current(surface).ShouldBe("Loading.");
+        sut.IsCurrent(surface, "load:page", "loading").ShouldBeTrue();
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

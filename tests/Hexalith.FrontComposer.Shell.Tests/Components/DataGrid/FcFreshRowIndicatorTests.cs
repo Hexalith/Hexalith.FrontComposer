@@ -154,6 +154,25 @@ public sealed class FcFreshRowIndicatorTests : LayoutComponentTestBase
         });
     }
 
+    [Fact]
+    public async Task FreshMessageDeliveredToNonOwnerRemainsSilentWhenItsStatusNodeIsPromoted()
+    {
+        var first = Render<FcSurfaceStatus>(p => p.Add(c => c.Surface, "projection:view-one")
+            .Add(c => c.ExclusiveOwner, true));
+        var cue = Render<FcNewItemIndicator>(p => p.Add(c => c.Entry, Entry()));
+        var promoted = cue.FindComponent<FcSurfaceStatus>();
+        promoted.FindAll("[data-testid=fc-surface-status]").ShouldBeEmpty();
+        first.WaitForAssertion(() => first.Find("[data-testid=fc-surface-status][aria-live=polite]")
+            .TextContent.ShouldBe("Updated row: row-one."));
+
+        await first.InvokeAsync(first.Instance.Dispose);
+        promoted.WaitForAssertion(() => {
+            var node = promoted.Find("[data-testid=fc-surface-status]");
+            node.TextContent.ShouldBe("Updated row: row-one.");
+            node.GetAttribute("aria-live").ShouldBe("off");
+        });
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -297,6 +316,9 @@ public sealed class FcFreshRowIndicatorTests : LayoutComponentTestBase
             node.TextContent.ShouldBe("Loaded 3 items.");
             node.GetAttribute("aria-live").ShouldBe("off");
         });
+        speech.Announce("projection:view-one", "load:next", "data:2", "Loaded 4 items.", terminal: true);
+        tabs.WaitForAssertion(() => tabs.Find("[data-testid=fc-surface-status][aria-live=polite]")
+            .TextContent.ShouldBe("Loaded 4 items."));
     }
 
     [Fact]
@@ -387,18 +409,19 @@ public sealed class FcFreshRowIndicatorTests : LayoutComponentTestBase
         using SurfaceAnnouncementCoordinator inner = new(_time);
         RendererThreadAnnouncementCoordinator forwarding = new(inner);
         context.Services.AddSingleton<ISurfaceAnnouncementCoordinator>(forwarding);
+        forwarding.Announce("projection:view-one", "limit:prior", "limit", "Prior limit.", immediate: true);
         var status = context.Render<FcSurfaceStatus>(p => p.Add(c => c.Surface, "projection:view-one"));
         forwarding.Announce("projection:view-one", "stale:pending", "stale", "Pending projection.");
         var cut = context.Render<FcNewItemIndicator>(p => p.Add(c => c.Entry, Entry()).Add(c => c.SharedStatusOwner, true));
         status.WaitForAssertion(() => status.Find("[role=status][aria-live=polite]").TextContent.ShouldBe("Updated row: row-one."));
         await cut.InvokeAsync(cut.Instance.Dispose);
         status.WaitForAssertion(() => {
-            status.Find("[role=status]").TextContent.ShouldBe("Pending projection.");
+            status.Find("[role=status]").TextContent.ShouldBe("Prior limit.");
             status.Find("[role=status]").GetAttribute("aria-live").ShouldBe("off");
         });
         _time.Advance(TimeSpan.FromMilliseconds(250));
         status.WaitForAssertion(() => status.Find("[role=status][aria-live=polite]").TextContent.ShouldBe("Pending projection."));
-        forwarding.AnnounceCount.ShouldBe(2);
+        forwarding.AnnounceCount.ShouldBe(3);
         forwarding.CancelCount.ShouldBe(1);
     }
 
@@ -412,6 +435,7 @@ public sealed class FcFreshRowIndicatorTests : LayoutComponentTestBase
         List<(string Message, bool Silent)> messages = [];
         using var subscription = speech.SubscribeWithReplay("projection:view-one", (message, revision) =>
             messages.Add((message, speech.IsSilentRevision("projection:view-one", revision))));
+        speech.Announce("projection:view-one", "limit:prior", "prior-limit", "Prior limit.", immediate: true);
         var status = Render<FcSurfaceStatus>(p => p.Add(c => c.Surface, "projection:view-one"));
         speech.Announce("projection:view-one", group, identity, "Pending projection.");
         var cut = Render<FcNewItemIndicator>(p => p.Add(c => c.Entry, Entry()).Add(c => c.SharedStatusOwner, true));

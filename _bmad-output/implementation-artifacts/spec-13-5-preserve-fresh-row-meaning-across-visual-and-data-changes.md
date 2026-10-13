@@ -115,6 +115,43 @@ Rejected:
 - AA-8e (low): the forced-colors-only transition is non-essential, and meaning never depends on it.
 - AA-9 (reject, spec edit): the frozen FR literal uses U+0020 before ':'. Switching to U+00A0 would renegotiate frozen copy.
 
+Re-review of the fix delta (`8ee70a64`, 2026-10-12): Blind Hunter, Edge Case Hunter, Verification Gap and Acceptance Auditor layers (IDs prefixed `RR-`); no layer failed.
+
+- [x] [Review][Patch] Withdrawal restores `Cancel`'s fallback silently and skips its delivery bookkeeping — medium (RR-BH-1 + RR-EC-1 + RR-VG-O1 + RR-AA-2) [src/Hexalith.FrontComposer.Shell/Services/Announcements/SurfaceAnnouncementCoordinator.cs:371-387]. Scenario: a cap first observed behind a page failure, the failure cancelled while a fresh-row overlay is current, then the overlay withdrawn. `Cancel` would speak the cap; withdrawal shows it silently and never marks it delivered. A restored stale candidate also keeps its pending timer, and its `CurrentIdentity` differs from `Cancel`'s `"stale"`. Share one restore helper (selection, identity and speech) between both paths.
+- [x] [Review][Patch] Stacked overlays record a fallback underlying owner and restore an outdated page message — medium (RR-EC-4 + RR-AA-1) [src/Hexalith.FrontComposer.Shell/Services/Announcements/SurfaceAnnouncementCoordinator.cs:329,677-679]. Sequence: terminal `load:first` and `load:second`, overlay A, `Cancel(load:second)`, overlay B, then withdraw A and B. The status ends on "Loaded first page.", while a plain `Cancel(load:second)` clears it. B takes its `UnderlyingGroup` from `NonFreshOwner`'s any-restorable fallback; it should inherit the current overlay's underlying group.
+- [x] [Review][Patch] The withdrawal fallback order is unpinned for stacked overlays — medium (RR-VG-2 + RR-BH-2) [tests/Hexalith.FrontComposer.Shell.Tests/Services/Announcements/SurfaceAnnouncementCoordinatorTests.cs:83-94]. Deleting the underlying-group step, or moving it ahead of the remaining overlays, passes every test. Add two facts: overlays stacked over a blocked terminal and withdrawn oldest-first (a later cap stays silent), and three overlays over a terminal load withdrawn middle then newest ("Updated row: A.").
+- [x] [Review][Patch] An A→B→A return under an overlay is unpinned — medium (RR-VG-3) [src/Hexalith.FrontComposer.Shell/Services/Announcements/SurfaceAnnouncementCoordinator.cs:210-213]. Dropping the `LastIdentity == identity` comparison passes every test, swallows the return to "Loading." and later restores the outdated "Refreshing.". Add the fact.
+- [x] [Review][Patch] No test transfers ownership while a fresh-row message is current — medium (RR-VG-1 + RR-AA-4 + RR-EC-6 + RR-BH-4a) [src/Hexalith.FrontComposer.Shell/Components/Rendering/FcSurfaceStatus.razor:107]. The non-owner fresh-row clause is the only guard against exposing AM-21 a second time after a handoff. Add a case where AM-21 is delivered live to a non-owner, ownership then transfers, and the promoted node shows the text with `aria-live="off"`.
+- [x] [Review][Patch] The materialization removal test reads its baseline before that iteration's deferred claim lands — medium (RR-BH-6 + RR-EC-2) [tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedFreshRowAnnouncementTests.cs:171-172]. Wait for the iteration's AM-21 before capturing `before`.
+- [x] [Review][Patch] The reactivation test never checks that the node speaks again — low (RR-BH-5) [tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcFreshRowIndicatorTests.cs:279-300]. Announce a new message after reactivation and assert it is polite.
+- [x] [Review][Patch] The coordinator interface remarks overstate the contract — low (RR-BH-3 + RR-AA-3) [src/Hexalith.FrontComposer.Shell/Services/Announcements/ISurfaceAnnouncementCoordinator.cs:18-34]. Three problems:
+  - "Once" holds only while the group exists.
+  - Withdrawal does not always restore "the status it covered".
+  - Adopter coordinators keep ordinary behaviour.
+
+  Reserve the prefix on the interface and attribute the overlay behaviour to the built-in coordinator.
+- [x] [Review][Patch] `datagrid.md` contradicts itself and exposes internal IDs — low (RR-BH-10 + RR-BH-11 + RR-BH-12c + RR-BH-13 + RR-AA-7) [docs/reference/components/datagrid.md:119-128,150-160]. Fixes:
+  - Limit the "render status regions" bullet to cues without `Entry`.
+  - Replace "AM-21" with plain wording.
+  - Name `aria-live` and the `data-testid` hook.
+  - Say that `SharedStatusOwner=true` needs a status node the page already provides.
+- [x] [Review][Defer] After any silent revision, the `aria-live` change from off to polite and the new text land in one update [src/Hexalith.FrontComposer.Shell/Components/Rendering/FcSurfaceStatus.razor:9,124] — deferred: maybe-false, medium if true. This is the pre-existing silent-revision design, not specific to this delta. Settle it with NVDA, JAWS and VoiceOver on a silent restore followed by a new message.
+- [x] [Review][Defer] No migration note tells adopters that generated cues dropped `role`, `aria-live`, `aria-label` and the "New item" copy [docs/migrations/] — deferred: pre-existing (introduced by `99d31eda`); it needs the target release's migration file.
+
+Rejected (re-review):
+
+- RR-EC-3 (false): a status node inserted with its text already present is not announced (AM-31). Story 13.4's one-node test requires a polite node after transfer, and 13.4 had no transfer-time silencing.
+- RR-EC-5 (false): restoring a still-mounted cue's text is the pinned intent (`InvalidatedOldCapIsNeverRestoredThroughFreshPreviousOrFallback`). The displaced outcome was cancelled, and `Cancel` never restores it either.
+- RR-BH-7 (low): the untested re-arm variants (hidden panel, another view, `null`, A→B→A) reuse the existing deferral and equality paths, and no failing case was shown.
+- RR-BH-8 + RR-EC-7 + RR-AA-6 (low): CI gating is correct; the default job skips the spec, and the live lane runs it and requires `skipped="0"`. Only manual stub-host runs of this spec still hit the count, and a precise flag would change the live-proof script contract.
+- RR-BH-9 (reject, decided): dropping the spec from the stub job, Firefox and WebKit included, follows the user's live-only decision of 2026-10-12.
+- RR-BH-12a/b (low): the front-matter `reviewed` date marks a whole-page review, and the validator passes. The direct-caller warning would document an unverified deferred item.
+- RR-BH-14 (low): the ledger's free-text evidence chain predates this change, and restructuring it is out of scope.
+- RR-BH-15 (low): pinning fatal-filter sites instead of a count is a governance redesign with no demonstrated miss.
+- RR-BH-16 (low): the uncontrolled-tabs test fails on both regressions it targets. Asserting the previous panel's exposure would need a second status node.
+- RR-AA-5 (low): the reactivation guard is pinned through controlled selection, and `RouteBackedHiddenPanelDefersFirstDeliveryAndRouteReactivationIsSilent` already exercises route-driven visibility.
+- RR-AA-note (no action): the live proof that predates `Color.Primary` re-runs in CI on the pushed commit, and its check asserts only that the icon is visible.
+
 ## Implementation Notes
 
 This is a step-03 implementation handoff inside an active bmad-build workflow. The parent owns orchestration and review; implement the spec directly without starting or rendering another build workflow.
@@ -347,3 +384,30 @@ Parent full verification ran after patch completion, using the exact commands pr
 The live proof command was `FC_EPIC9_ARTIFACT_ROOT=/tmp/frontcomposer-story13-5-final-live-proof ./eng/run-epic9-live-proof.sh`; the default artifact directory remains preserved. Its schema 2/story 13.5 evidence records zero announcements before hidden-panel activation, one on first activation, one shared polite node, zero tab-switch/duplicate repeats, and three eligible fresh transitions overall. The real cue has a visible icon and system border, with no background image, animation, or transition under the required modes. This is development evidence from the dirty working tree, not archived final Product acceptance.
 
 Final parent matrix audit: every row has executed passing assertions and no skips. Appear/Re-view cover canonical EN/FR copy, icon, shared node, remount/view-independent dedupe and hidden-first delivery; Data change covers actual generated filter/requery/page completion, first-wins overlap, both withdrawal orders and silent removal; Scope covers direct/generated tenant/user changes and equivalent copies; Expiry covers exact 9.999/10-second direct and Add-anchored state lifetimes; Modes cover compiled CSS and the actual live cue. Parsed xUnit/JUnit and live JSON support these results. All 12 execution tasks remain checked. The approved frozen intent is unchanged after Git EOL normalization, and resolver/state-service sources are unchanged. OI-16, G-4, FLUENT-APP-1 and Product approval remain open.
+
+### RR patch verification and fix-delta review (2026-10-13)
+
+All nine RR-prefixed patch items are checked off. Existing deferred items, rejected lists, frozen intent, and user tracking changes are preserved. No files were staged or committed; all six edited implementation/docs files retain CRLF.
+
+- Debug Shell and SourceTools builds passed with zero warnings/errors using `-c Debug -m:1 -p:NuGetAudit=false`.
+- The requested 18-class focused Shell lane passed three consecutive runs: 486 passed, zero failed/skipped per run. Evidence: `/tmp/frontcomposer-13-5-rr-13b4bbm7/focused-{1,2,3}.xml` and `.log`.
+- Old-coordinator proof: backed up the fixed file, replaced only the coordinator with `git show HEAD:src/Hexalith.FrontComposer.Shell/Services/Announcements/SurfaceAnnouncementCoordinator.cs`, rebuilt, and ran all coordinator tests. Four of 54 failed: cancelled stacked underlying owner (case 3c), cap first restoration (3d), stale fallback delivery, and queued A→B→A return (3e). Restored the fixed CRLF source, refreshed its timestamp so MSBuild rebuilt the fixed binary, and confirmed `git diff --stat`. Evidence: `/tmp/frontcomposer-13-5-rr-13b4bbm7/old-coordinator-tests.xml` and `.log`.
+- Full Shell command: `DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -result-xml /tmp/frontcomposer-13-5-rr-13b4bbm7/full-shell.xml`. Result: 3653 passed, two known pin failures (`CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds`, `ToolchainPins_MatchApprovedDotnetAndAspireVersions`), and one existing live two-tenant test skipped because its endpoint, identities and bearer tokens are not configured. No other failures; the deferred scheduler tests passed.
+- CA1707 identifier seal and fatal-guard governance passed unchanged; new public test names contain no underscores and no fatal catch filters were added.
+- `pwsh ./eng/validate-docs.ps1 -SkipDocFx -SkipSnippetBuild` passed; `FcNipCommandTargetIdentityContractTests` passed all seven tests. `git diff --check` passed.
+- Repository baseline runtime limitation: `aspire start --non-interactive --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj` stalled before registration; exact-target `aspire describe` and `aspire stop` reported no running AppHost. The owned startup command was interrupted; the unrelated platform AppHost was left untouched. Logs: `/tmp/frontcomposer-13-5-rr-13b4bbm7/aspire-{start,describe,stop}.log`.
+
+BMAD code review ran on `git diff HEAD -- src tests docs _bmad-output/contracts`: six files, 285 additions and 76 deletions. The spec and tracking files were excluded; the verbatim Review Findings section was supplied only as the Edge Case Hunter's claims file. Blind Hunter, Edge Case Hunter, Verification Gap, and Acceptance Auditor all completed. No new actionable findings survived triage.
+
+New review triage (existing rejected lists above remain unchanged):
+
+| Finding | Verdict | Evidence |
+|---|---|---|
+| BH-1: different overlay anchors restore older load | false, rejected | A still-mounted cue retains its own uncancelled previous owner; the requested restoration order deliberately returns it. RR-EC-4's cancelled common anchor is covered separately. |
+| BH-2: older terminal suppresses cap before withdrawal | false, rejected | The older group remains uncancelled. This is the existing `NonFreshOwner` terminal barrier, which the user expressly requires preserving; the same suppression exists at HEAD. |
+| BH-3: queued A→B→A under overlay speaks A | false, rejected | This is the user's exact required case 3e. Ordinary cancellation-without-replay remains unchanged and passes. |
+| BH-4: stale fallback speaks before original deadline | false, rejected | The user expressly requires first fallback delivery and pending timer retirement. Retained-owner restoration still leaves unrelated pending work intact. |
+| BH-5: noncanonical stale identity can repeat | low, rejected | Ordinary `Cancel` already uses the canonical literal at HEAD; framework stale producers use it, and the user requires it. Supporting custom stale identities would add a separate identity policy. |
+| BH-6: direct disposal leaves old bUnit DOM | false, rejected | The test follows the requested `InvokeAsync` disposal and exercises the real lease-release/promotion callback, requiring the promoted cue node to remain silent. |
+
+Full triage evidence: `/tmp/frontcomposer-13-5-rr-13b4bbm7/review-triage.txt`. Review result: zero decisions, zero patches, zero new deferrals; six rejected. Story and sprint statuses remain `in-progress`; Product and owner acceptance gates remain open.

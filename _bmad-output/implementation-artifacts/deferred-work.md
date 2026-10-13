@@ -10274,3 +10274,12 @@ Reconfirmed existing open items without new ids: AA25-01 (Story 13.4 AM-14 hand-
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-5-preserve-fresh-row-meaning-across-visual-and-data-changes.md`
   summary: `ProjectionFallbackRefreshSchedulerTests.ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget` is intermittently flaky.
   evidence: VG-O3 (pre-existing): it failed once in a full default-lane run (`readsB` was 1, expected 2, at `ProjectionFallbackRefreshSchedulerTests.cs:1036`) and passed 3/3 in isolation. The Story 13.5 diff does not touch the scheduler.
+
+## Deferred from: code re-review of spec-13-5-preserve-fresh-row-meaning-across-visual-and-data-changes.md (2026-10-12)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-5-preserve-fresh-row-meaning-across-visual-and-data-changes.md`
+  summary: After any silent revision, `FcSurfaceStatus` changes `aria-live` from `off` to `polite` and renders the next message in the same update, so that message may not be spoken.
+  evidence: RR-BH-4b (maybe-false; medium if true): `FcSurfaceStatus.razor:9,124` binds `aria-live` to the per-message `_suppressSpeech`. This is the pre-existing silent-revision design (restores, replays, reactivation and handoff), not specific to the 13.5 fix delta. Settle it with NVDA, JAWS and VoiceOver on a silent restore followed by a new message.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-5-preserve-fresh-row-meaning-across-visual-and-data-changes.md`
+  summary: No migration note tells adopters that generated `FcNewItemIndicator` cues no longer render `role="status"`, `aria-live`, `aria-label` or the "New item" copy.
+  evidence: RR-BH-12 (pre-existing, introduced by `99d31eda`): `docs/reference/components/datagrid.md` describes the change, but `docs/migrations/` has no entry. Host styles or tests that select those attributes break on upgrade. It needs the target release's migration file.

@@ -17,18 +17,21 @@ public interface ISurfaceAnnouncementCoordinator
 
     /// <summary>Queues an intermediate message or publishes a terminal message immediately.</summary>
     /// <remarks>
-    /// Groups prefixed with <c>fresh-row:</c> are reserved for fresh-row announcements. Such a group is published
-    /// immediately, once, whatever <paramref name="terminal"/> and <paramref name="immediate"/> say; a repeated
-    /// announcement for an existing group is ignored. It overlays the current status without changing other groups or
-    /// their timers, and the underlying owner keeps its precedence, so messages that owner would have suppressed stay
-    /// silent while the overlay is current.
+    /// Groups prefixed with <c>fresh-row:</c> are reserved for framework fresh-row announcements. The built-in
+    /// <see cref="SurfaceAnnouncementCoordinator"/> publishes these groups immediately regardless of
+    /// <paramref name="terminal"/> and <paramref name="immediate"/>, ignoring repeats while the group exists.
+    /// Publication overlays the current status without changing other groups or their timers, and the underlying
+    /// owner keeps its precedence. Adopter-supplied coordinators retain their ordinary announcement behavior unless
+    /// they implement this reserved family.
     /// </remarks>
     void Announce(string surface, string group, string identity, string message, bool terminal = false, bool immediate = false);
 
     /// <summary>Cancels an unspoken intermediate message for a group.</summary>
     /// <remarks>
-    /// Cancelling a <c>fresh-row:</c> group withdraws only that overlay. When it is current, the status it covered is
-    /// restored without speech, or the status is cleared when nothing restorable remains.
+    /// The built-in <see cref="SurfaceAnnouncementCoordinator"/> withdraws and retires a <c>fresh-row:</c> group.
+    /// When it is current, a retained eligible status or another fresh-row overlay returns without speech. Otherwise,
+    /// the ordinary cancellation fallback may deliver a newly eligible candidate or clear the status when none remains.
+    /// Adopter-supplied coordinators retain their ordinary cancellation behavior unless they implement this reserved family.
     /// </remarks>
     void Cancel(string surface, string group);
 
