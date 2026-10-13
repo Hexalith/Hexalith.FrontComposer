@@ -155,7 +155,18 @@ public partial class FcNewItemIndicator : ComponentBase, IDisposable {
             StateHasChanged();
             return;
         }
-        if (_disposed || !_scopeResolved || !IsEligibleEntry(captured) || PanelVisibility?.IsVisible == false)
+        if (_disposed)
+        {
+            return;
+        }
+        if (!_scopeResolved || !IsEligibleEntry(captured))
+        {
+            _scopeResolved = false;
+            CancelAnnouncement();
+            StateHasChanged();
+            return;
+        }
+        if (PanelVisibility?.IsVisible == false)
         {
             return;
         }
@@ -165,6 +176,12 @@ public partial class FcNewItemIndicator : ComponentBase, IDisposable {
             _activeSurface = "projection:" + Entry.ViewKey;
             _activeGroup = "fresh-row:" + Guid.NewGuid().ToString("N");
             Announcements.Announce(_activeSurface, _activeGroup, Entry.MessageId, UpdatedRowText, immediate: true);
+        }
+        else if (!IsEligibleEntry(captured))
+        {
+            _scopeResolved = false;
+            CancelAnnouncement();
+            StateHasChanged();
         }
     }
 

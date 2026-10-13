@@ -151,7 +151,9 @@ max-item notices are rendered as grid-adjacent status surfaces rather than cells
   for assistive technology. `FcNewItemIndicator` renders its own status region when `Entry` is omitted.
 - An entry-aware `FcNewItemIndicator` cue is not itself a live region; its icon is hidden from
   assistive technology. The localized updated-row message is delivered through the single projection
-  status node once per tenant, user, entity, and message across views and remounts. Generated grids
+  status node once per tenant, user, entity, and message across views and remounts during the active
+  ten-second window. Expiry prevents the original direct entry from announcing afterward; the resolver
+  separately makes at most one publication decision per accepted `MessageId`. Generated grids
   share their grid's status node; direct entry-aware callers own one by default. Set `SharedStatusOwner=true`
   only when the page already renders a status node for that same projection surface, as generated grids do.
   Removal, expiry, and dismissal are silent.

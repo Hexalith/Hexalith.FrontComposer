@@ -176,6 +176,79 @@ public sealed class FcFreshRowIndicatorTests : LayoutComponentTestBase
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
+    public async Task DeferredScopeChangeRemovesTheCueWithoutSpeech(bool duringClaim)
+    {
+        using BunitContext context = new();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Services.AddLogging();
+        context.Services.AddLocalization();
+        context.Services.AddFluentUIComponents();
+        context.Services.AddSingleton<TimeProvider>(_time);
+        IUserContextAccessor scope = Substitute.For<IUserContextAccessor>();
+        int reads = 0;
+        scope.TenantId.Returns(_ => ++reads >= (duringClaim ? 3 : 2) ? "other-tenant" : "test-tenant");
+        scope.UserId.Returns("test-user");
+        context.Services.AddSingleton(scope);
+        context.Services.AddScoped<FreshRowAnnouncementLedger>();
+        context.Services.AddScoped<ISurfaceAnnouncementCoordinator, SurfaceAnnouncementCoordinator>();
+        List<string> messages = [];
+        using var subscription = context.Services.GetRequiredService<ISurfaceAnnouncementCoordinator>()
+            .Subscribe("projection:view-one", message => { if (!string.IsNullOrEmpty(message)) messages.Add(message); });
+
+        var cut = context.Render<FcNewItemIndicator>(p => p.Add(c => c.Entry, Entry()));
+        await cut.InvokeAsync(() => { });
+        cut.WaitForAssertion(() => cut.Markup.ShouldBeEmpty());
+        messages.ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task DirectEntrySuppressesCueAndSpeechWhenScopeAccessorThrowsAfterResolution(bool tenant)
+    {
+        using BunitContext context = new();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Services.AddLogging();
+        context.Services.AddLocalization();
+        context.Services.AddFluentUIComponents();
+        context.Services.AddSingleton<TimeProvider>(_time);
+        IUserContextAccessor scope = Substitute.For<IUserContextAccessor>();
+        bool unavailable = false;
+        scope.TenantId.Returns(_ => unavailable && tenant ? throw new InvalidOperationException("Unavailable scope.") : "test-tenant");
+        scope.UserId.Returns(_ => unavailable && !tenant ? throw new InvalidOperationException("Unavailable scope.") : "test-user");
+        context.Services.AddSingleton(scope);
+        context.Services.AddScoped<FreshRowAnnouncementLedger>();
+        context.Services.AddScoped<ISurfaceAnnouncementCoordinator, SurfaceAnnouncementCoordinator>();
+        List<string> messages = [];
+        using var subscription = context.Services.GetRequiredService<ISurfaceAnnouncementCoordinator>()
+            .Subscribe("projection:view-one", message => { if (!string.IsNullOrEmpty(message)) messages.Add(message); });
+        NewItemIndicatorEntry entry = Entry();
+        var cut = context.Render<FcNewItemIndicator>(p => p.Add(c => c.Entry, entry));
+        cut.WaitForAssertion(() => messages.ShouldBe(["Updated row: row-one."]));
+
+        unavailable = true;
+        cut.Render();
+        cut.Markup.ShouldBeEmpty();
+        NewItemIndicatorEntry blocked = entry with { EntityKey = "row-blocked", MessageId = "message-blocked" };
+        cut.Render(p => p.Add(c => c.Entry, blocked));
+        await cut.InvokeAsync(() => { });
+        cut.Markup.ShouldBeEmpty();
+        messages.ShouldBe(["Updated row: row-one."]);
+
+        unavailable = false;
+        cut.Render();
+        cut.Markup.ShouldBeEmpty();
+        var retained = context.Render<FcNewItemIndicator>(p => p.Add(c => c.Entry, entry));
+        await retained.InvokeAsync(() => { });
+        retained.Markup.ShouldBeEmpty();
+        messages.ShouldBe(["Updated row: row-one."]);
+        cut.Render(p => p.Add(c => c.Entry, entry with { EntityKey = "row-recovered", MessageId = "message-recovered" }));
+        cut.WaitForAssertion(() => messages.ShouldBe(["Updated row: row-one.", "Updated row: row-recovered."]));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
     public void UnresolvedScopeRendersNoCueOrSpeech(bool missingTenant)
     {
         if (missingTenant) _scope.TenantId = null;
@@ -293,6 +366,55 @@ public sealed class FcFreshRowIndicatorTests : LayoutComponentTestBase
         tabs.Render(p => p.Add(c => c.ActiveTabId, "cue"));
         await tabs.InvokeAsync(() => { });
         messages.ShouldBe(["Updated row: row-one."]);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task EntryExpiringWhileHiddenNeverClaimsSpeechOnActivation(bool stateOwned)
+    {
+        List<string> messages = [];
+        using var subscription = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>()
+            .Subscribe("projection:view-one", messages.Add);
+        NewItemIndicatorEntry entry = Entry();
+        if (stateOwned)
+        {
+            Services.GetRequiredService<INewItemIndicatorStateService>().Add(entry);
+        }
+        RenderFragment cue = builder => {
+            builder.OpenComponent<FcNewItemIndicator>(0);
+            builder.AddAttribute(1, nameof(FcNewItemIndicator.Entry), entry);
+            builder.CloseComponent();
+        };
+        var tabs = Render<FcPageTabs>(p => p.Add(c => c.ActiveTabId, "other").AddChildContent(Panels(cue)));
+        await tabs.InvokeAsync(() => { });
+        _time.Advance(TimeSpan.FromSeconds(10));
+        tabs.WaitForAssertion(() => tabs.FindAll("[data-testid=fc-new-item-indicator]").ShouldBeEmpty());
+        tabs.Render(p => p.Add(c => c.ActiveTabId, "cue"));
+        await tabs.InvokeAsync(() => { });
+        tabs.FindAll("[data-testid=fc-new-item-indicator]").ShouldBeEmpty();
+        messages.ShouldBeEmpty();
+        var claims = (System.Collections.IDictionary)typeof(FreshRowAnnouncementLedger)
+            .GetField("_claims", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(Services.GetRequiredService<FreshRowAnnouncementLedger>())!;
+        claims.Count.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task EntryExpiringBeforeItsDeferredClaimRemainsSilent()
+    {
+        List<string> messages = [];
+        using var subscription = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>()
+            .Subscribe("projection:view-one", messages.Add);
+        var cut = Render<FcNewItemIndicator>();
+        await cut.InvokeAsync(async () => {
+            await cut.Instance.SetParametersAsync(ParameterView.FromDictionary(
+                new Dictionary<string, object?> { [nameof(FcNewItemIndicator.Entry)] = Entry() })).ConfigureAwait(true);
+            _time.Advance(TimeSpan.FromSeconds(10));
+        });
+        await cut.InvokeAsync(() => { });
+        cut.WaitForAssertion(() => cut.Markup.ShouldBeEmpty());
+        messages.ShouldBeEmpty();
     }
 
     [Fact]

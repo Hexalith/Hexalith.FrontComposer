@@ -52,16 +52,18 @@ test.describe('Epic 9 composed and live acceptance', () => {
     const gridWasRenderedBeforeDispatch = await grid.isVisible();
     const exactKeyCountBeforeDispatch = await grid.getByText(exactKey, { exact: true }).count();
 
-    await page.evaluate((copy) => {
+    await page.evaluate(({ copy, viewKey }) => {
       const state = window as Window & { freshRowSpeech?: string[] };
       state.freshRowSpeech = [];
       const revisions = new WeakMap<Element, string>();
-      for (const node of document.querySelectorAll('[data-testid="fc-surface-status"]')) {
+      const statusNodes = () => document.querySelector(`[data-fc-datagrid="${viewKey}"]`)
+        ?.parentElement?.querySelectorAll('[data-testid="fc-surface-status"]') ?? [];
+      for (const node of statusNodes()) {
         const revision = node.querySelector('[data-message-revision]')?.getAttribute('data-message-revision');
         if (revision) revisions.set(node, revision);
       }
       new MutationObserver(() => {
-        for (const node of document.querySelectorAll('[data-testid="fc-surface-status"]')) {
+        for (const node of statusNodes()) {
           const revision = node.querySelector('[data-message-revision]')?.getAttribute('data-message-revision');
           const changed = revision && revisions.get(node) !== revision;
           if (revision) revisions.set(node, revision);
@@ -72,7 +74,7 @@ test.describe('Epic 9 composed and live acceptance', () => {
           if (node.textContent?.trim() === copy) state.freshRowSpeech!.push(copy);
         }
       }).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
-    }, indicatorCopy);
+    }, { copy: indicatorCopy, viewKey: VIEW_KEY });
     const speechCount = () => page.evaluate(() =>
       (window as Window & { freshRowSpeech?: string[] }).freshRowSpeech?.length ?? 0);
 
@@ -142,6 +144,7 @@ test.describe('Epic 9 composed and live acceptance', () => {
     const sharedStatus = grid.locator('..').locator('[data-testid="fc-surface-status"][aria-live="polite"]');
     await expect(sharedStatus).toHaveCount(1);
     await expect(sharedStatus).toBeVisible();
+    await expect(sharedStatus).toHaveText(indicatorCopy);
     const sharedPoliteNodeCount = await sharedStatus.count();
     await expect.poll(speechCount).toBe(1);
     const createAnnouncementCount = await speechCount();

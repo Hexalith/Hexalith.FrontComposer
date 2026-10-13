@@ -1,8 +1,10 @@
 using Bunit;
 
+using Hexalith.FrontComposer.Shell.Components.Layout;
 using Hexalith.FrontComposer.Shell.Components.Rendering;
 using Hexalith.FrontComposer.Shell.Services.Announcements;
 
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 
 using NSubstitute;
@@ -12,6 +14,36 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.Components.Rendering;
 
 public sealed class FcSurfaceStatusTests : BunitContext {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void BecomingVisibleOnAnotherSurfaceKeepsItsOrdinaryReplayPolite(bool exclusiveOwner)
+    {
+        SurfaceAnnouncementCoordinator coordinator = new(TimeProvider.System);
+        Services.AddSingleton<ISurfaceAnnouncementCoordinator>(coordinator);
+        coordinator.Announce("projection:old", "load:old", "ready", "Old surface ready.", terminal: true);
+        coordinator.Announce("projection:new", "load:new", "ready", "New surface ready.", terminal: true);
+        string surface = "projection:old";
+        RenderFragment status = builder => {
+            builder.OpenComponent<FcSurfaceStatus>(0);
+            builder.AddAttribute(1, nameof(FcSurfaceStatus.Surface), surface);
+            builder.AddAttribute(2, nameof(FcSurfaceStatus.ExclusiveOwner), exclusiveOwner);
+            builder.CloseComponent();
+        };
+        var cut = Render<CascadingValue<PagePanelVisibility>>(p => p
+            .Add(c => c.Value, new PagePanelVisibility(false)).Add(c => c.ChildContent, status));
+        FcSurfaceStatus retained = cut.FindComponent<FcSurfaceStatus>().Instance;
+
+        surface = "projection:new";
+        cut.Render(p => p.Add(c => c.Value, new PagePanelVisibility(true)).Add(c => c.ChildContent, status));
+        cut.FindComponent<FcSurfaceStatus>().Instance.ShouldBeSameAs(retained);
+        cut.WaitForAssertion(() => {
+            var node = cut.Find("[data-testid=fc-surface-status]");
+            node.TextContent.ShouldBe("New surface ready.");
+            node.GetAttribute("aria-live").ShouldBe("polite");
+        });
+    }
+
     [Fact]
     public void WithdrawingTerminalRestoresOwnedStaleCopySilently()
     {

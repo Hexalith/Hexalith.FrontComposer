@@ -152,6 +152,17 @@ Rejected (re-review):
 - RR-AA-5 (low): the reactivation guard is pinned through controlled selection, and `RouteBackedHiddenPanelDefersFirstDeliveryAndRouteReactivationIsSilent` already exercises route-driven visibility.
 - RR-AA-note (no action): the live proof that predates `Color.Primary` re-runs in CI on the pushed commit, and its check asserts only that the icon is visible.
 
+
+### Continuation review patches (2026-10-13)
+
+- [x] [Review][Patch] C-BH-2: remove a direct cue when the deferred eligibility check or claim rejects its originating scope; keep an eligible duplicate cue visible.
+- [x] [Review][Patch] C-BH-7: count fresh-row revisions only on the generated projection's status node, and assert its canonical text.
+- [x] [Review][Patch] C-BH-10: prove direct/state-owned expiry while hidden and expiry before the deferred first claim with deterministic time and no speech.
+- [x] [Review][Patch] C-BH-11: document the active ten-second claim window and the resolver's independent once-per-MessageId guard.
+- [x] [Review][Patch] C-VG-1: prove both scope getter failures suppress the direct cue and speech, reject retained entries after recovery, and permit a new recovered transition.
+
+C-BH-3 was disproved by retained-component regressions for exclusive and nonexclusive owners; both pass without changing `FcSurfaceStatus`. Existing manual-assistive-technology deferrals remain unchanged. All three required review layers completed; every finding has an individual verdict in the triage log below.
+
 ## Implementation Notes
 
 This is a step-03 implementation handoff inside an active bmad-build workflow. The parent owns orchestration and review; implement the spec directly without starting or rendering another build workflow.
@@ -224,6 +235,32 @@ Grouped shared roots: origin copies; exposed status leases; forwarding decorator
 | EC-2 Clear erases in-flight silence | medium | patch | Clear removes PendingFreshSilentRevisions before a concurrent withdrawal Deliver reads it, making a prior-scope restored message audible. Preserve pending markers until delivery finishes. |
 | EC-3 scope changes between checks | high | patch | IsEligibleEntry validates origin, but TryClaim rechecks only nonblank scope. A resolved switch between the calls can announce the old entry in the new scope. Recheck origin inside TryClaim. |
 | EC-4 maximum direct timestamp | low | reject | Carried R2-BH-4; this is the same unsupported malformed timestamp as BH-6. |
+
+
+### 2026-10-13 build continuation (workflow 41530feb5cde4fc47546)
+
+Blind Hunter (BH), Edge Case Hunter (EC), and Verification Gap (VG) all completed before classification. The review diff is `/tmp/frontcomposer-13-5-review-mcva18kt.diff`, against canonical baseline `985d3e70ac8e9d5492fa857bc3a31208a9543670`. Every filed finding is classified individually below; the finding-floor arithmetic is reviewer metadata, not a defect.
+
+| Finding | Verdict | Route | Evidence |
+|---|---|---|---|
+| C-BH-1 same-timestamp new-scope publication | low | reject | Reusing the same entity, MessageId and CreatedAt across scopes is indistinguishable from the equivalent copies that must retain origin. The built-in resolver retains its MessageId decision across scopes. Distinguishing an uncommon direct caller's reused transition needs a new provenance contract, beyond a direct correction. |
+| C-BH-2 invalid scope during deferred delivery retains cue | high | patch | The deferred continuation can reject eligibility or the claim while leaving `_scopeResolved` true. The already-rendered direct cue remains until another parameter update or expiry. Clear visibility and rerender on demonstrated ineligibility, while keeping a valid duplicate cue visible. |
+| C-BH-3 different surface treated as reactivation | false | reject | The retained-component regression passes for exclusive and nonexclusive owners before any production change. Blazor applies the exposure cascade and ordinary surface rebinding as separate parameter deliveries; the new surface keeps polite replay. The same component instance is retained. No failing supported rebinding sequence was demonstrated, so no extra guard is added. |
+| C-BH-4 scope switch after successful claim | low | reject | This hypothesizes an external mutation between synchronous renderer instructions after the final claim check. No normal producer yields in this interval; coordinating arbitrary concurrent accessor mutation and publication requires a new boundary contract rather than another effective check. |
+| C-BH-5 unobserved scope round trip | low | reject | Carried prior BH-10 and resumed BH-2: the ledger cannot observe a boundary without a read. Production ScopeBoundaryService clears generated indicator state and remounts the keyed shell subtree; adding eager ledger subscriptions would introduce a contract for an uncommon direct retained entry. |
+| C-BH-6 Add after direct render | low | reject | Generated publication always calls Add before rendering its entries. An adopter rendering a direct entry and later converting it to state ownership with an equal value is an uncommon unsupported ordering; dynamic ownership reconciliation adds branches and subscriptions for that ordering. |
+| C-BH-7 browser observer accepts another surface | medium | patch | The global observer can count the canonical row copy on another page status node while the generated grid's node remains empty. Restrict observation to this projection's existing parent/status node and assert that node's canonical text. |
+| C-BH-8 mutation batches versus speech | maybe-false (medium if true) | defer | Carried resumed BH-9: a DOM observer sees committed exposed revisions and cannot establish whether intermediate mutations in one browser batch become separate spoken utterances. Supported assistive-technology checks in Story 13.6 settle this existing deferred question; do not create a duplicate deferral. |
+| C-BH-9 generated focus comparison | low | reject | Carried prior AA-8d: the component test pins zero JS focus invocations and the cue/status rendering has no focus operation. Additional browser focus capture was already rejected as redundant; no focus movement was demonstrated. |
+| C-BH-10 hidden/deferred expiry coverage | low | patch | Existing tests cover expiry and hidden-first delivery separately. Add deterministic combinations for direct and state-owned hidden expiry, and expiry before the deferred first claim, requiring absent cue and speech. |
+| C-BH-11 direct-caller dedupe documentation | low | patch | The component docs state an unqualified once-per-transition guarantee, while the scoped claim ledger is intentionally pruned after ten seconds. Clarify the active window and the resolver's separate once-per-MessageId publication guard without changing behavior. |
+| C-EC-1 obsolete terminal cap barrier | false | reject | Carried RR-BH-2 and resumed EC-1: an older uncancelled terminal retains the required NonFreshOwner barrier while an overlay remains. Its suppression was explicitly preserved by prior review; the code still has that behavior. |
+| C-EC-2 delayed duplicate view publication | false | reject | Carried R2-BH-5: the sole built-in publisher fixes target ViewKey and records the MessageId decision before Add, for the circuit lifetime. The proposed second Add bypasses that contract; valid direct alternate-view entries expire from their original CreatedAt. |
+| C-EC-3 cap-barrier claim | false | reject | Carried the same recorded barrier decision as C-EC-1. This claim restates that finding's outcome, not a separate reachable regression. |
+| C-EC-4 delayed-view dedupe claim | false | reject | Carried the same sole-publisher decision as C-EC-2. The reviewer confirms that the built-in resolver cannot produce the required second publication. |
+| C-VG-1 throwing scope accessor | medium | patch | Pre-verified regression gap: existing throwing-accessor tests exercise other state/tenant services, not this ledger's exception path. Add direct-component tenant/user getter-failure cases proving cue and speech suppression, retained-origin rejection after recovery, and eligibility for a new recovered transition. |
+
+Surviving entries are five independent patches (deferred scope visibility, projection-local browser observation, hidden/deferred expiry tests, direct-caller docs, and throwing-accessor tests). The new surface-rebinding regression passes unchanged and is retained as verification evidence. Each smallest correction adds no public surface and guards the demonstrated state. Existing deferrals are carried without being appended again; no intent or spec loopback is required.
 
 ## Design Notes
 
@@ -441,3 +478,53 @@ The resumed review patched three findings: the fresh-row claim now rechecks its 
 - `FC_EPIC9_ARTIFACT_ROOT=/tmp/frontcomposer-story13-5-review-live-proof-20261013 ./eng/run-epic9-live-proof.sh` passed: one Chromium live test, artifact validation, and owned Aspire shutdown. The v2/story 13.5 packet records one shared polite node, zero hidden announcements, one first-exposure announcement, zero repeats on tab switches or duplicate outcomes, three eligible announcements, and a painted icon/system border with no image or motion. Evidence: `/tmp/frontcomposer-story13-5-review-live-proof-20261013/junit.xml` and `playwright-results/epic-9-fresh-row-acceptanc-b89a4-to-an-already-rendered-grid-chromium/epic-9-command-evidence.json` under that packet.
 - The full Shell command `DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -result-xml /tmp/frontcomposer-13-5-postpatch-full-shell.xml` exited 1: 3654 passed, 4 failed, 1 skipped. The pin gates expect Verify 33.2.0 but the selected Builds catalog has 33.3.3, and expect Aspire 13.6.0 but the selected CLI is 13.6.1. A fallback-refresh scheduler test observed one read instead of two, and a pending-command cancellation/fatal-propagation test timed out. Those two timing cases passed 3/3 when rerun in isolation (`/tmp/frontcomposer-13-5-postpatch-flaky-focused.xml`). The skipped live two-tenant EventStore case lacks configured endpoint, identities, and bearer tokens.
 - `git diff --check` passed. The frozen intent, resolver, state service, OI-16, G-4, FLUENT-APP-1, Product approval, and archived final evidence remain unchanged. The broad Shell gate is not green, so this spec remains `in-review` and sprint status remains `in-progress`; no local commit was created.
+
+
+### Build continuation verification (2026-10-13, workflow 41530feb5cde4fc47546)
+
+Review and implementation resumed from `in-review` on canonical HEAD `b3aafdc5b89f2ccc637c8e0845687b2e3b692a9d`. The only production change in this continuation clears and rerenders an ineligible direct cue after its deferred eligibility check or claim. Nine new regression cases cover both scope-check intervals, both throwing getters, direct/state-owned hidden expiry, expiry before first claim, and exclusive/nonexclusive surface rebinding. The surface-rebinding cases passed before the fix and prove the proposed production guard is unnecessary. The two deferred-scope regressions failed before the fix with retained prior-scope markup and pass afterward: `/tmp/frontcomposer-13-5-build-88mp16gj/regression-red.xml`.
+
+Final verification commands are preserved in `/tmp/frontcomposer-13-5-build-88mp16gj/verify.py`. Both test-project builds use `-c Debug -m:1 -p:NuGetAudit=false` and pass with zero warnings/errors. The 18-class Shell lane passes 478/478 with no skips (`shell-focused.xml`); SourceTools emitter/snapshot/identity lanes pass 41/41 (`source-focused.xml`). The full Shell run also passes the Shell Fluent governance lane, including `FluentConformanceTests.Shell_chrome_styles_never_use_accent_as_surface_background`, and the exact canonical/forced-Recommended Release analyzer build gate.
+
+Post-patch browser and documentation commands:
+
+```bash
+# From tests/e2e:
+node --test scripts/validate-epic9-artifacts.test.mjs
+npx tsc --noEmit
+FC_E2E_OUTPUT_DIR=/tmp/frontcomposer-13-5-build-88mp16gj/postpatch-specimen-results FC_E2E_HTML_REPORT_DIR=/tmp/frontcomposer-13-5-build-88mp16gj/postpatch-specimen-report FC_E2E_JUNIT_PATH=/tmp/frontcomposer-13-5-build-88mp16gj/postpatch-specimen-junit.xml npx playwright test specs/specimen-accessibility.spec.ts --project=chromium
+
+# From the repository root:
+FC_EPIC9_ARTIFACT_ROOT=/tmp/frontcomposer-13-5-build-88mp16gj/postpatch-live-proof ./eng/run-epic9-live-proof.sh
+pwsh ./eng/validate-docs.ps1 -SkipDocFx -SkipSnippetBuild
+git diff --check
+```
+
+Artifact validator: 108 passed, zero failed/skipped. TypeScript: exit 0. Chromium specimens: 22 passed, zero failed/skipped. Aspire live proof: one passed, artifact validation passed, source-graph build zero warnings/errors, owned AppHost stopped; final `aspire ps --format Json` returns `[]`. Docs and whitespace checks pass. Logs, xUnit/JUnit, and development packets are under `/tmp/frontcomposer-13-5-build-88mp16gj/`.
+
+The post-patch v2/story 13.5 live packet measures the projection's own status node: one shared polite node, zero hidden announcements, one first-activation announcement, zero tab-switch/duplicate repeats, and three eligible announcements. The actual cue's icon is painted and visible, its inline-start border uses system color, and background image/animation/transition are absent under the required modes. Existing specimen visual baselines were unchanged. This dirty-tree development packet does not replace archived final evidence or manual assistive-technology acceptance.
+
+The broad gate remains failed:
+
+```bash
+DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -result-xml /tmp/frontcomposer-13-5-build-88mp16gj/shell-full.xml
+```
+
+| Lane | Required command | Local result | Blocker timing | Fallback evidence | CI authority |
+|---|---|---|---|---|---|
+| Full Shell audit | Exact built-assembly command above | Exit 1: 3664 passed, 3 failed, 1 skipped, 0 errors | Inside test bodies | Story-focused Shell 478/478; isolated timing cases pass three consecutive runs | Required |
+
+Failures: `CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds` rejects the selected Builds catalog's Verify 33.3.3 against policy 33.2.0; `ToolchainPins_MatchApprovedDotnetAndAspireVersions` rejects Aspire 13.6.1 against its approved 13.6.0 pin; `HeldQueryPreservesCallerCancellationAndFatalPropagation(fatal: False)` times out. The live two-tenant EventStore test is skipped because endpoint, identities and bearer tokens are not configured. The before-patch audit also failed the same two pin gates and `ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget` (one read instead of two), with 3655 passed, 3 failed and 1 skipped; its results are preserved as `before-patch-shell-full.xml` and `.log`.
+
+Both existing timing cases pass three consecutive isolated runs, using:
+
+```bash
+# Run for i = 1, 2, 3, preserving a separate result file per run:
+DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -method '*ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget' -method '*HeldQueryPreservesCallerCancellationAndFatalPropagation' -result-xml /tmp/frontcomposer-13-5-build-88mp16gj/timing-isolated-{i}.xml
+```
+
+Each isolated run reports 3 passed, zero failed/skipped. These reruns do not make the failed broad gate green. No package pins, toolchain policy, resolver, indicator state service, or coordinator source were changed in this continuation.
+
+Parent matrix audit: Appear/Re-view retain canonical copy, one node and view/remount dedupe; Data change retains silent real filter/requery/page/materialization/dismissal behavior; Scope now also covers deferred invalidation and throwing accessors; Expiry includes direct and state-owned hidden/deferred boundaries; Modes passes compiled CSS and real live cue checks. All covering story assertions pass without skips. The frozen intent is byte-equivalent after EOL normalization. OI-16, G-4, FLUENT-APP-1, Product approval, archived final evidence, and existing deferrals remain unchanged.
+
+The required Hexalith baseline says, "All existing and new tests must pass before a story is complete." This prevents the workflow's Step 5 `done`/commit transition while the broad gate is failed. Spec status stays `in-review`; sprint status stays `in-progress`. No local commit or push was created.
