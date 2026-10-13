@@ -10265,3 +10265,12 @@ Reconfirmed existing open items without new ids: AA25-01 (Story 13.4 AM-14 hand-
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-4-announce-projection-and-command-state-without-noise.md`
   summary: The release workflow still executes an older Hexalith.Builds commit than the Builds submodule.
   evidence: BH47-12 (medium): `.github/workflows/release.yml` pins `360a2b9c4e96809365a7de785be9a68152d5ac28`, and `references/Hexalith.Builds` is `608c164c3637240fed2dd92dbfdaaf581ba9846d`. Changing either value is a release-policy decision this announcement story was required to preserve.
+
+## Deferred from: code review of spec-13-5-preserve-fresh-row-meaning-across-visual-and-data-changes.md (2026-10-12)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-5-preserve-fresh-row-meaning-across-visual-and-data-changes.md`
+  summary: A direct entry-aware `FcNewItemIndicator` (`SharedStatusOwner=false`) inserts its exclusive live region in the same render as the cue, so AM-21 may land in a just-inserted region.
+  evidence: BH-4 (maybe-false; medium if true): `FcNewItemIndicator.razor:16-21` renders `FcSurfaceStatus` only once `_scopeResolved` is true, and the claim publishes one `Task.Yield()` later. Blazor Server can apply both batches back to back, contradicting the AM-31 "the live region exists before its text arrives" rule (`FcPageTabs.razor:40-41`). Generated grids use the persistent shared node and are unaffected. An assistive-technology or accessibility-tree browser check of a direct cue would settle it.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-5-preserve-fresh-row-meaning-across-visual-and-data-changes.md`
+  summary: `ProjectionFallbackRefreshSchedulerTests.ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget` is intermittently flaky.
+  evidence: VG-O3 (pre-existing): it failed once in a full default-lane run (`readsB` was 1, expected 2, at `ProjectionFallbackRefreshSchedulerTests.cs:1036`) and passed 3/3 in isolation. The Story 13.5 diff does not touch the scheduler.

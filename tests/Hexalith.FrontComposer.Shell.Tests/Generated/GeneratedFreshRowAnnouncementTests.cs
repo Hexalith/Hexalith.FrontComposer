@@ -163,19 +163,20 @@ public sealed class GeneratedFreshRowAnnouncementTests : GeneratedComponentTestB
         var grid = Render<CounterProjectionView>();
         var indicators = Services.GetRequiredService<INewItemIndicatorStateService>();
         List<string> spoken = [];
-        using var subscription = ObserveFreshSpeech(Services.GetRequiredService<ISurfaceAnnouncementCoordinator>(), spoken);
+        List<string> audible = [];
+        using var subscription = ObserveFreshSpeech(Services.GetRequiredService<ISurfaceAnnouncementCoordinator>(), spoken, audible);
         foreach (string removal in new[] { "materialize", "filter-requery", "dismiss" })
         {
             indicators.Add(Entry(removal, removal));
             grid.WaitForAssertion(() => grid.FindAll(Cue).Count.ShouldBe(1));
-            int before = spoken.Count;
+            int before = audible.Count;
             if (removal == "materialize") await grid.InvokeAsync(() => Seed(removal));
             else if (removal == "filter-requery")
                 await grid.InvokeAsync(() => Services.GetRequiredService<IDispatcher>()
                     .Dispatch(new ColumnFilterChangedAction(ViewKey, "Id", "filtered-row")));
             else indicators.DismissMaterialized(ViewKey, removal);
             grid.WaitForAssertion(() => grid.FindAll(Cue).ShouldBeEmpty());
-            spoken.Count.ShouldBe(before);
+            audible.Count.ShouldBe(before);
         }
         spoken.ShouldBe(["Updated row: materialize.", "Updated row: filter-requery.", "Updated row: dismiss."]);
     }
@@ -197,16 +198,19 @@ public sealed class GeneratedFreshRowAnnouncementTests : GeneratedComponentTestB
         var grid = Render<CounterProjectionView>();
         var indicators = Services.GetRequiredService<INewItemIndicatorStateService>();
         List<string> spoken = [];
-        using var subscription = ObserveFreshSpeech(Services.GetRequiredService<ISurfaceAnnouncementCoordinator>(), spoken);
+        List<string> audible = [];
+        using var subscription = ObserveFreshSpeech(Services.GetRequiredService<ISurfaceAnnouncementCoordinator>(), spoken, audible);
         NewItemIndicatorEntry first = Entry("fresh-row", "message-one");
         indicators.Add(first);
         grid.WaitForAssertion(() => spoken.Count.ShouldBe(1));
         _time.Advance(TimeSpan.FromSeconds(5));
         indicators.Add(Entry("fresh-row", "later-message"));
         indicators.Snapshot(ViewKey).ShouldHaveSingleItem().ShouldBe(first);
+        int before = audible.Count;
         await grid.InvokeAsync(() => Services.GetRequiredService<IDispatcher>()
             .Dispatch(new ColumnFilterChangedAction(ViewKey, "Id", "filtered-row")));
         grid.WaitForAssertion(() => grid.FindAll(Cue).ShouldBeEmpty());
+        audible.Count.ShouldBe(before);
         ValueTask<Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<CounterProjection>> page = default;
         await grid.InvokeAsync(() => page = (ValueTask<Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<CounterProjection>>)
             typeof(CounterProjectionView).GetMethod("LoadPageAsync", BindingFlags.NonPublic | BindingFlags.Instance)!
@@ -231,17 +235,19 @@ public sealed class GeneratedFreshRowAnnouncementTests : GeneratedComponentTestB
         var grid = Render<CounterProjectionView>();
         var indicators = Services.GetRequiredService<INewItemIndicatorStateService>();
         List<string> spoken = [];
-        using var subscription = ObserveFreshSpeech(Services.GetRequiredService<ISurfaceAnnouncementCoordinator>(), spoken);
+        List<string> audible = [];
+        using var subscription = ObserveFreshSpeech(Services.GetRequiredService<ISurfaceAnnouncementCoordinator>(), spoken, audible);
         var entry = Entry("fresh-row", "message");
         indicators.Add(entry);
         grid.WaitForAssertion(() => spoken.Count.ShouldBe(1));
+        int before = audible.Count;
         if (change == "tenant") _scope.TenantId = "other-tenant";
         if (change == "user") _scope.UserId = "other-user";
         if (change == "missing-tenant") _scope.TenantId = null;
         if (change == "missing-user") _scope.UserId = " ";
         indicators.Snapshot(ViewKey).ShouldBeEmpty();
         grid.WaitForAssertion(() => grid.FindAll(Cue).ShouldBeEmpty());
-        spoken.Count.ShouldBe(1);
+        audible.Count.ShouldBe(before);
         _scope.TenantId = "test-tenant";
         _scope.UserId = "test-user";
         // Successful claiming again proves that the removed scope's claim was cleared.
@@ -286,10 +292,13 @@ public sealed class GeneratedFreshRowAnnouncementTests : GeneratedComponentTestB
         spoken.ShouldBeEmpty();
     }
 
-    private static IDisposable ObserveFreshSpeech(ISurfaceAnnouncementCoordinator speech, List<string> spoken) =>
+    private static IDisposable ObserveFreshSpeech(ISurfaceAnnouncementCoordinator speech, List<string> spoken, List<string>? audible = null) =>
         speech.SubscribeWithReplay("projection:" + ViewKey, (message, revision) => {
-            if (message.StartsWith("Updated row:", StringComparison.Ordinal)
-                && !(speech is SurfaceAnnouncementCoordinator coordinator && coordinator.IsSilentRevision("projection:" + ViewKey, revision)))
+            if (message.Length == 0
+                || speech is SurfaceAnnouncementCoordinator coordinator && coordinator.IsSilentRevision("projection:" + ViewKey, revision))
+                return;
+            audible?.Add(message);
+            if (message.StartsWith("Updated row:", StringComparison.Ordinal))
                 spoken.Add(message);
         });
 

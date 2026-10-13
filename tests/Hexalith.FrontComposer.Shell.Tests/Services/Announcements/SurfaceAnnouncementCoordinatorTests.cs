@@ -63,6 +63,36 @@ public sealed class SurfaceAnnouncementCoordinatorTests
         sut.Current(surface).ShouldBeEmpty();
     }
 
+    [Fact]
+    public void FreshOverlayKeepsARepeatedDeliveredUnderlyingIdentitySilent()
+    {
+        FakeTimeProvider time = new();
+        using SurfaceAnnouncementCoordinator sut = new(time);
+        const string surface = "projection:one";
+        sut.Announce(surface, "load:page", "loading", "Loading.");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        sut.Announce(surface, "fresh-row:A", "a", "Updated row: A.", immediate: true);
+        List<string> delivered = [];
+        using IDisposable subscription = sut.Subscribe(surface, delivered.Add);
+        sut.Announce(surface, "load:page", "loading", "Loading.");
+        time.Advance(TimeSpan.FromMilliseconds(250));
+        delivered.ShouldBeEmpty();
+        sut.Current(surface).ShouldBe("Updated row: A.");
+    }
+
+    [Fact]
+    public void FreshWithdrawalAfterItsUnderlyingOwnerIsCancelledRestoresOnlyWhatCancelWould()
+    {
+        using SurfaceAnnouncementCoordinator sut = new(new FakeTimeProvider());
+        const string surface = "projection:one";
+        sut.Announce(surface, "load:first", "data:first", "Loaded first page.", terminal: true);
+        sut.Announce(surface, "load:second", "data:second", "Loaded second page.", terminal: true);
+        sut.Announce(surface, "fresh-row:A", "a", "Updated row: A.", immediate: true);
+        sut.Cancel(surface, "load:second");
+        sut.Cancel(surface, "fresh-row:A");
+        sut.Current(surface).ShouldBeEmpty();
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

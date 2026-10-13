@@ -3,6 +3,7 @@ using AngleSharp.Dom;
 using Bunit;
 
 using Hexalith.FrontComposer.Shell.Components.Layout;
+using Hexalith.FrontComposer.Shell.Components.Rendering;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -59,6 +60,39 @@ public sealed class FcPageTabsTests : LayoutComponentTestBase
         await cut.InvokeAsync(() => cut.FindComponent<FluentTabs>().Instance.ActiveTabIdChanged.InvokeAsync("activity"));
 
         observed.ShouldBe("activity");
+    }
+
+    [Fact]
+    public async Task FcPageTabs_UncontrolledSelection_ExposesAndRendersTheSelectedDeferredPanel()
+    {
+        RenderFragment panels = builder =>
+        {
+            builder.OpenComponent<FcPageTab>(0);
+            builder.AddAttribute(1, nameof(FcPageTab.Id), "summary");
+            builder.AddAttribute(2, nameof(FcPageTab.Header), "Summary");
+            builder.AddAttribute(3, nameof(FcPageTab.ChildContent), Markup("summary-content", "Summary body"));
+            builder.CloseComponent();
+
+            builder.OpenComponent<FcPageTab>(4);
+            builder.AddAttribute(5, nameof(FcPageTab.Id), "activity");
+            builder.AddAttribute(6, nameof(FcPageTab.Header), "Activity");
+            builder.AddAttribute(7, nameof(FcPageTab.DeferredLoading), true);
+            builder.AddAttribute(8, nameof(FcPageTab.ChildContent), (RenderFragment)(content =>
+            {
+                content.OpenComponent<FcSurfaceStatus>(0);
+                content.AddAttribute(1, nameof(FcSurfaceStatus.Surface), "projection:activity");
+                content.AddAttribute(2, nameof(FcSurfaceStatus.ExclusiveOwner), true);
+                content.CloseComponent();
+            }));
+            builder.CloseComponent();
+        };
+        IRenderedComponent<FcPageTabs> cut = Render<FcPageTabs>(parameters => parameters.AddChildContent(panels));
+        cut.FindAll("#activity-panel [data-testid='fc-surface-status']").ShouldBeEmpty();
+
+        await cut.InvokeAsync(() => cut.FindComponent<FluentTabs>().Instance.ActiveTabIdChanged.InvokeAsync("activity"));
+
+        cut.FindComponent<FluentTabs>().Instance.ActiveTabId.ShouldBe("activity");
+        cut.WaitForAssertion(() => cut.FindAll("#activity-panel [data-testid='fc-surface-status']").ShouldHaveSingleItem());
     }
 
     [Fact]

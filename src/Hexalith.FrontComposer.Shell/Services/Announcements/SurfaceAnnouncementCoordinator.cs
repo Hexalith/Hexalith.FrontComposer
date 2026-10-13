@@ -206,7 +206,11 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
                 && (TryParsePageGroup(group, out _, out _)
                     || owner.CurrentGroup is null
                     || (string.Equals(owner.CurrentGroup, group, StringComparison.Ordinal)
-                        && string.Equals(owner.CurrentIdentity, identity, StringComparison.Ordinal))))
+                        && string.Equals(owner.CurrentIdentity, identity, StringComparison.Ordinal))
+                    || (owner.Groups.TryGetValue(owner.CurrentGroup, out Group? overlay) && overlay.FreshRow
+                        && precedence is { Key: var underlying, Value: var underlyingState }
+                        && string.Equals(underlying, group, StringComparison.Ordinal)
+                        && string.Equals(underlyingState.LastIdentity, identity, StringComparison.Ordinal))))
             {
                 ++state.Version;
                 state.Timer?.Dispose();
@@ -358,14 +362,17 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
             {
                 return;
             }
-            KeyValuePair<string, Group>? previous = state.PreviousGroup is { } prior
-                && owner.Groups.TryGetValue(prior, out Group? candidate)
-                && IsRestorable(new KeyValuePair<string, Group>(prior, candidate))
-                    ? new KeyValuePair<string, Group>(prior, candidate) : null;
+            KeyValuePair<string, Group>? previous = RestorableGroup(owner, state.PreviousGroup);
             previous ??= owner.Groups
-                .Where(IsRestorable)
+                .Where(static pair => pair.Value.FreshRow)
                 .OrderByDescending(static pair => pair.Value.DeliveryOrder)
                 .Select(static pair => (KeyValuePair<string, Group>?)pair).FirstOrDefault();
+            previous ??= RestorableGroup(owner, state.UnderlyingGroup);
+            if (previous is null)
+            {
+                var (lifecycle, stale, failure, cap, restoreLifecycle) = RestorationCandidates(owner);
+                previous = restoreLifecycle ? lifecycle : failure ?? stale ?? cap;
+            }
             owner.Message = message = previous?.Value.LastMessage ?? string.Empty;
             owner.CurrentGroup = previous?.Key;
             owner.CurrentIdentity = previous?.Value.LastIdentity ?? (previous?.Value.HasStaleCandidate == true ? "stale" : null);
@@ -410,37 +417,7 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
                 state.Restorable = false;
                 if (string.Equals(owner.CurrentGroup, group, StringComparison.Ordinal))
                 {
-                    KeyValuePair<string, Group>? lifecycle = owner.Groups
-                            .Where(static pair => pair.Key.StartsWith("lifecycle:", StringComparison.Ordinal)
-                                && !pair.Value.Cancelled && pair.Value.Restorable
-                                && !string.IsNullOrEmpty(pair.Value.LastMessage))
-                            .OrderByDescending(static pair => pair.Value.DeliveryOrder)
-                            .Select(static pair => (KeyValuePair<string, Group>?)pair)
-                            .FirstOrDefault();
-                    KeyValuePair<string, Group>? stale = owner.Groups
-                        .Where(static pair => pair.Key.StartsWith("stale:", StringComparison.Ordinal)
-                            && !pair.Value.Cancelled && pair.Value.HasStaleCandidate
-                            && !string.IsNullOrEmpty(pair.Value.LastMessage))
-                        .OrderByDescending(static pair => pair.Value.DeliveryOrder)
-                        .Select(static pair => (KeyValuePair<string, Group>?)pair)
-                        .FirstOrDefault();
-                    KeyValuePair<string, Group>? failure = owner.Groups
-                        .Where(static pair => !pair.Value.Cancelled && pair.Value.Closed
-                            && pair.Value.LastIdentity?.StartsWith("failure", StringComparison.Ordinal) == true
-                            && !string.IsNullOrEmpty(pair.Value.LastMessage))
-                        .OrderByDescending(static pair => pair.Value.DeliveryOrder)
-                        .Select(static pair => (KeyValuePair<string, Group>?)pair)
-                        .FirstOrDefault();
-                    KeyValuePair<string, Group>? cap = owner.Groups
-                            .Where(static pair => pair.Key.StartsWith("limit:", StringComparison.Ordinal)
-                                && !pair.Value.Cancelled && pair.Value.Restorable
-                                && !string.IsNullOrEmpty(pair.Value.LastMessage))
-                            .OrderByDescending(static pair => pair.Value.DeliveryOrder)
-                            .Select(static pair => (KeyValuePair<string, Group>?)pair)
-                            .FirstOrDefault();
-                    bool restoreLifecycle = lifecycle is not null && failure is null
-                        && (stale is null || lifecycle.Value.Value.DeliveryOrder >= stale.Value.Value.DeliveryOrder)
-                        && (cap is null || lifecycle.Value.Value.DeliveryOrder >= cap.Value.Value.DeliveryOrder);
+                    var (lifecycle, stale, failure, cap, restoreLifecycle) = RestorationCandidates(owner);
                     owner.Message = restoreLifecycle ? lifecycle!.Value.Value.LastMessage!
                         : failure?.Value.LastMessage ?? stale?.Value.LastMessage ?? cap?.Value.LastMessage ?? string.Empty;
                     message = owner.Message;
@@ -635,6 +612,48 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
         }
         return state.FreshRow || state.HasStaleCandidate
             || state.LastIdentity is { } identity && state.Delivered.Contains(identity);
+    }
+
+    private static KeyValuePair<string, Group>? RestorableGroup(Surface owner, string? group)
+        => group is not null && owner.Groups.TryGetValue(group, out Group? state)
+            && IsRestorable(new KeyValuePair<string, Group>(group, state))
+                ? new KeyValuePair<string, Group>(group, state) : null;
+
+    private static (KeyValuePair<string, Group>? Lifecycle, KeyValuePair<string, Group>? Stale,
+        KeyValuePair<string, Group>? Failure, KeyValuePair<string, Group>? Cap, bool RestoreLifecycle) RestorationCandidates(Surface owner)
+    {
+        KeyValuePair<string, Group>? lifecycle = owner.Groups
+                .Where(static pair => pair.Key.StartsWith("lifecycle:", StringComparison.Ordinal)
+                    && !pair.Value.Cancelled && pair.Value.Restorable
+                    && !string.IsNullOrEmpty(pair.Value.LastMessage))
+                .OrderByDescending(static pair => pair.Value.DeliveryOrder)
+                .Select(static pair => (KeyValuePair<string, Group>?)pair)
+                .FirstOrDefault();
+        KeyValuePair<string, Group>? stale = owner.Groups
+            .Where(static pair => pair.Key.StartsWith("stale:", StringComparison.Ordinal)
+                && !pair.Value.Cancelled && pair.Value.HasStaleCandidate
+                && !string.IsNullOrEmpty(pair.Value.LastMessage))
+            .OrderByDescending(static pair => pair.Value.DeliveryOrder)
+            .Select(static pair => (KeyValuePair<string, Group>?)pair)
+            .FirstOrDefault();
+        KeyValuePair<string, Group>? failure = owner.Groups
+            .Where(static pair => !pair.Value.Cancelled && pair.Value.Closed
+                && pair.Value.LastIdentity?.StartsWith("failure", StringComparison.Ordinal) == true
+                && !string.IsNullOrEmpty(pair.Value.LastMessage))
+            .OrderByDescending(static pair => pair.Value.DeliveryOrder)
+            .Select(static pair => (KeyValuePair<string, Group>?)pair)
+            .FirstOrDefault();
+        KeyValuePair<string, Group>? cap = owner.Groups
+                .Where(static pair => pair.Key.StartsWith("limit:", StringComparison.Ordinal)
+                    && !pair.Value.Cancelled && pair.Value.Restorable
+                    && !string.IsNullOrEmpty(pair.Value.LastMessage))
+                .OrderByDescending(static pair => pair.Value.DeliveryOrder)
+                .Select(static pair => (KeyValuePair<string, Group>?)pair)
+                .FirstOrDefault();
+        bool restoreLifecycle = lifecycle is not null && failure is null
+            && (stale is null || lifecycle.Value.Value.DeliveryOrder >= stale.Value.Value.DeliveryOrder)
+            && (cap is null || lifecycle.Value.Value.DeliveryOrder >= cap.Value.Value.DeliveryOrder);
+        return (lifecycle, stale, failure, cap, restoreLifecycle);
     }
 
     private static KeyValuePair<string, Group>? NonFreshOwner(Surface owner)

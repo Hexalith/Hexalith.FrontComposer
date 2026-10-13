@@ -113,7 +113,25 @@ public sealed class FcFreshRowIndicatorTests : LayoutComponentTestBase
         var otherView = Render<FcNewItemIndicator>(p => p.Add(c => c.Entry, Entry() with { ViewKey = "view-two" }));
         remount.Find("[data-testid=fc-new-item-indicator]").TextContent.Trim().ShouldBe("Updated row: row-one.");
         otherView.Find("[data-testid=fc-new-item-indicator]").ShouldNotBeNull();
+        await remount.InvokeAsync(() => { });
         delivered.Where(x => x.Length > 0).Count().ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task EntryReplacedBeforeItsDeferredClaimAnnouncesTheReplacement()
+    {
+        List<string> messages = [];
+        using var subscription = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>()
+            .Subscribe("projection:view-one", message => { if (message.Length > 0) messages.Add(message); });
+        var cut = Render<FcNewItemIndicator>();
+        NewItemIndicatorEntry replacement = Entry() with { EntityKey = "row-two", MessageId = "message-two" };
+        await cut.InvokeAsync(async () => {
+            await cut.Instance.SetParametersAsync(ParameterView.FromDictionary(
+                new Dictionary<string, object?> { [nameof(FcNewItemIndicator.Entry)] = Entry() })).ConfigureAwait(true);
+            await cut.Instance.SetParametersAsync(ParameterView.FromDictionary(
+                new Dictionary<string, object?> { [nameof(FcNewItemIndicator.Entry)] = replacement })).ConfigureAwait(true);
+        });
+        cut.WaitForAssertion(() => messages.ShouldBe(["Updated row: row-two."]));
     }
 
     [Fact]
@@ -229,7 +247,7 @@ public sealed class FcFreshRowIndicatorTests : LayoutComponentTestBase
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void HiddenPanelDefersFirstSpeechIncludingNestedInactiveAncestors(bool nested)
+    public async Task HiddenPanelDefersFirstSpeechIncludingNestedInactiveAncestors(bool nested)
     {
         List<string> messages = [];
         var speech = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
@@ -248,12 +266,37 @@ public sealed class FcFreshRowIndicatorTests : LayoutComponentTestBase
         } : cue;
         var tabs = Render<FcPageTabs>(p => p.Add(c => c.ActiveTabId, "other").AddChildContent(Panels(content)));
         tabs.FindAll("[data-testid=fc-new-item-indicator]").Count.ShouldBe(1);
+        await tabs.InvokeAsync(() => { });
         messages.ShouldBeEmpty();
         tabs.Render(p => p.Add(c => c.ActiveTabId, "cue"));
         tabs.WaitForAssertion(() => messages.ShouldBe(["Updated row: row-one."]));
         tabs.Render(p => p.Add(c => c.ActiveTabId, "other"));
         tabs.Render(p => p.Add(c => c.ActiveTabId, "cue"));
+        await tabs.InvokeAsync(() => { });
         messages.ShouldBe(["Updated row: row-one."]);
+    }
+
+    [Fact]
+    public void ReactivatedPanelReplaysRetainedNonFreshStatusWithoutSpeech()
+    {
+        var speech = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        RenderFragment status = builder => {
+            builder.OpenComponent<FcSurfaceStatus>(0);
+            builder.AddAttribute(1, nameof(FcSurfaceStatus.Surface), "projection:view-one");
+            builder.AddAttribute(2, nameof(FcSurfaceStatus.ExclusiveOwner), true);
+            builder.CloseComponent();
+        };
+        var tabs = Render<FcPageTabs>(p => p.Add(c => c.ActiveTabId, "cue").AddChildContent(Panels(status)));
+        speech.Announce("projection:view-one", "load:page", "data:1", "Loaded 3 items.", terminal: true);
+        tabs.WaitForAssertion(() => tabs.Find("[data-testid=fc-surface-status][aria-live=polite]").TextContent.ShouldBe("Loaded 3 items."));
+        tabs.Render(p => p.Add(c => c.ActiveTabId, "other"));
+        tabs.WaitForAssertion(() => tabs.FindAll("[data-testid=fc-surface-status]").ShouldBeEmpty());
+        tabs.Render(p => p.Add(c => c.ActiveTabId, "cue"));
+        tabs.WaitForAssertion(() => {
+            var node = tabs.Find("[data-testid=fc-surface-status]");
+            node.TextContent.ShouldBe("Loaded 3 items.");
+            node.GetAttribute("aria-live").ShouldBe("off");
+        });
     }
 
     [Fact]

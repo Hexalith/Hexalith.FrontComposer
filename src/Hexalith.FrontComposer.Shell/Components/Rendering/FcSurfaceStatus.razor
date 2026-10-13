@@ -91,8 +91,6 @@
                     if (!_disposed && _bindingGeneration == bindingGeneration)
                     {
                         _ownsStatus = owns;
-                        // An ownership transfer exposes retained text without delivering a new event.
-                        _suppressSpeech = true;
                         StateHasChanged();
                     }
                 }));
@@ -105,7 +103,8 @@
             // behind a newer revision. The coordinator need not retain retired fresh history.
             bool suppressSpeech = (replay && !string.IsNullOrEmpty(message)
                     && (panelReactivated || SurfaceAnnouncementDelivery.IsFreshRow(boundSurface, revision)))
-                || !panelVisible || (_ownerLease is not null && !_ownerLease.IsOwner)
+                || !panelVisible
+                || (_ownerLease is not null && !_ownerLease.IsOwner && SurfaceAnnouncementDelivery.IsFreshRow(boundSurface, revision))
                 || SurfaceAnnouncementDelivery.IsSilent(boundSurface, revision)
                 || Announcements is SurfaceAnnouncementCoordinator coordinator && coordinator.IsSilentRevision(boundSurface, revision);
             replay = false;

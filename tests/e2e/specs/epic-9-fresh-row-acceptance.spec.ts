@@ -7,6 +7,9 @@ const VIEW_KEY = 'Counter:Counter.Domain.CounterProjection';
 const INTERACTIVE_READY_TIMEOUT_MS = 30_000;
 
 test.describe('Epic 9 composed and live acceptance', () => {
+  test.skip(!process.env.PLAYWRIGHT_SKIP_WEBSERVER,
+    'Exact AM-21 counts need the Aspire live-proof timing; the stub server splits the overlapping updates.');
+
   test('generated create and update converge through the indicator into an already-rendered grid', async ({
     page,
     tenant,

@@ -149,8 +149,13 @@ public partial class FcNewItemIndicator : ComponentBase, IDisposable {
         // lets the shared status node render its mutation before the next cue publishes.
         await Task.Yield();
         _announcementScheduled = false;
-        if (_disposed || Entry != captured || !_scopeResolved
-            || !IsEligibleEntry(captured) || PanelVisibility?.IsVisible == false)
+        if (!_disposed && Entry != captured)
+        {
+            _pendingAnnouncement = _scopeResolved && !_delivered && PanelVisibility?.IsVisible != false;
+            StateHasChanged();
+            return;
+        }
+        if (_disposed || !_scopeResolved || !IsEligibleEntry(captured) || PanelVisibility?.IsVisible == false)
         {
             return;
         }
