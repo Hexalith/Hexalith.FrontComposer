@@ -57,8 +57,7 @@ internal sealed class FreshRowAnnouncementLedger(TimeProvider time, IUserContext
         ArgumentNullException.ThrowIfNull(entry);
         lock (_gate)
         {
-            if (!ReconcileScope() || string.IsNullOrWhiteSpace(entry.ViewKey)
-                || string.IsNullOrWhiteSpace(entry.EntityKey) || string.IsNullOrWhiteSpace(entry.MessageId))
+            if (!IsOriginatingScope(entry))
             {
                 return false;
             }

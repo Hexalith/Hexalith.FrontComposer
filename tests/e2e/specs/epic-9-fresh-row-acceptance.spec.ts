@@ -101,11 +101,29 @@ test.describe('Epic 9 composed and live acceptance', () => {
       const systemColor = getComputedStyle(systemProbe).color;
       systemProbe.remove();
       const icon = cue.querySelector('[aria-hidden="true"]');
+      const svg = icon?.matches('svg') ? icon : icon?.querySelector('svg');
+      const effectiveOpacity = (element: Element) => {
+        let opacity = 1;
+        for (let current: Element | null = element; current && cue.contains(current); current = current.parentElement) {
+          opacity *= Number(getComputedStyle(current).opacity);
+        }
+        return opacity;
+      };
+      const paintedColor = (color: string) => color !== 'none' && color !== 'transparent'
+        && !/^rgba\([^)]*,\s*0(?:\.0+)?\)$/.test(color);
+      const iconPainted = !!svg && Array.from(svg.querySelectorAll('path, circle, rect, ellipse, line, polyline, polygon'))
+        .some((shape) => {
+          const paint = getComputedStyle(shape);
+          return effectiveOpacity(shape) > 0
+            && ((paintedColor(paint.fill) && Number(paint.fillOpacity) > 0)
+              || (paintedColor(paint.stroke) && Number(paint.strokeOpacity) > 0));
+        });
       return {
         indicatorSystemBorder: style.borderInlineStartColor === systemColor
           && parseFloat(style.borderInlineStartWidth) > 0 && style.borderInlineStartStyle === 'solid',
         indicatorIconVisible: !!icon && icon.getBoundingClientRect().width > 0
-          && icon.getBoundingClientRect().height > 0 && getComputedStyle(icon).visibility === 'visible',
+          && icon.getBoundingClientRect().height > 0 && getComputedStyle(icon).visibility === 'visible'
+          && effectiveOpacity(icon) > 0 && iconPainted,
         indicatorBackgroundImage: style.backgroundImage,
         indicatorAnimationName: style.animationName,
         indicatorTransitionDuration: style.transitionDuration,

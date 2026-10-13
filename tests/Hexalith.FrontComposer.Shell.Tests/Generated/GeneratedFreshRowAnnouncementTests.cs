@@ -253,8 +253,10 @@ public sealed class GeneratedFreshRowAnnouncementTests : GeneratedComponentTestB
         audible.Count.ShouldBe(before);
         _scope.TenantId = "test-tenant";
         _scope.UserId = "test-user";
-        // Successful claiming again proves that the removed scope's claim was cleared.
-        Services.GetRequiredService<FreshRowAnnouncementLedger>().TryClaim(entry).ShouldBeTrue();
+        FreshRowAnnouncementLedger ledger = Services.GetRequiredService<FreshRowAnnouncementLedger>();
+        ledger.TryClaim(entry).ShouldBeFalse();
+        _time.Advance(TimeSpan.FromMilliseconds(1));
+        ledger.TryClaim(Entry("fresh-row", "message")).ShouldBeTrue();
         spoken.Count.ShouldBe(1);
     }
 

@@ -88,7 +88,8 @@ public sealed class FreshRowAnnouncementLedgerTests
         ledger.TryClaim(entry).ShouldBeFalse();
         scope.TenantId = "test-tenant";
         scope.UserId = "test-user";
-        ledger.TryClaim(entry).ShouldBeTrue();
+        time.Advance(TimeSpan.FromMilliseconds(1));
+        ledger.TryClaim(entry with { CreatedAt = time.GetUtcNow() }).ShouldBeTrue();
     }
 
     [Theory]
@@ -104,7 +105,30 @@ public sealed class FreshRowAnnouncementLedgerTests
         if (changeTenant) scope.TenantId = "other-tenant";
         else scope.UserId = "other-user";
         ledger.HasResolvedScope().ShouldBeTrue();
-        ledger.TryClaim(entry).ShouldBeTrue();
         ledger.TryClaim(entry).ShouldBeFalse();
+        time.Advance(TimeSpan.FromMilliseconds(1));
+        NewItemIndicatorEntry newScopeEntry = entry with { CreatedAt = time.GetUtcNow() };
+        ledger.TryClaim(newScopeEntry).ShouldBeTrue();
+        ledger.TryClaim(newScopeEntry).ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ScopeSwitchBetweenEligibilityAndClaimRejectsBoundEntry(bool changeTenant)
+    {
+        FakeTimeProvider time = new();
+        Epic9UserContextAccessor scope = new();
+        FreshRowAnnouncementLedger ledger = new(time, scope);
+        NewItemIndicatorEntry entry = new("view", "row", "message", time.GetUtcNow());
+        ledger.IsOriginatingScope(entry).ShouldBeTrue();
+
+        if (changeTenant) scope.TenantId = "other-tenant";
+        else scope.UserId = "other-user";
+
+        ledger.TryClaim(entry).ShouldBeFalse();
+        ledger.TryClaim(entry with { ViewKey = "other-view" }).ShouldBeFalse();
+        time.Advance(TimeSpan.FromMilliseconds(1));
+        ledger.TryClaim(entry with { CreatedAt = time.GetUtcNow() }).ShouldBeTrue();
     }
 }

@@ -216,6 +216,29 @@ public sealed class SurfaceAnnouncementCoordinatorTests
     }
 
     [Fact]
+    public void ClearPreservesInFlightFreshWithdrawalSilence()
+    {
+        using SurfaceAnnouncementCoordinator sut = new(new FakeTimeProvider());
+        const string surface = "projection:one";
+        sut.Announce(surface, "limit:prior", "cap", "Prior cap.", immediate: true);
+        sut.Announce(surface, "fresh-row:A", "a", "Updated row: A.", immediate: true);
+        using IDisposable clearOnRestore = sut.Subscribe(surface, message =>
+        {
+            if (message == "Prior cap.") sut.Clear(surface);
+        });
+        List<(string Message, bool Silent)> delivered = [];
+        using IDisposable observer = sut.SubscribeWithReplay(surface, (message, revision) =>
+        {
+            if (message == "Prior cap.") delivered.Add((message, sut.IsSilentRevision(surface, revision)));
+        });
+
+        sut.Cancel(surface, "fresh-row:A");
+
+        delivered.ShouldBe([("Prior cap.", true)]);
+        sut.Current(surface).ShouldBeEmpty();
+    }
+
+    [Fact]
     public void FreshOverlayAllowsDeliveredLoadingToReturnAfterDifferentPendingUnderlyingIdentity()
     {
         FakeTimeProvider time = new();

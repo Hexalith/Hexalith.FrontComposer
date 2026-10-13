@@ -467,7 +467,7 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
             owner.Groups.Clear();
             owner.SilentRevisions.Clear();
             owner.FreshSilentRevision = null;
-            owner.PendingFreshSilentRevisions.Clear();
+            // In-flight withdrawal deliveries still need their silence marker until Deliver completes.
             owner.Message = string.Empty;
             owner.CurrentGroup = null;
             owner.CurrentIdentity = null;

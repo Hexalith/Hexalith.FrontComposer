@@ -2,7 +2,7 @@
 title: 'Story 13.5: Preserve Fresh-Row Meaning Across Visual and Data Changes'
 type: 'feature'
 created: '2026-10-12'
-status: 'in-progress'
+status: 'in-review'
 route: 'dispatch'
 review_loop_iteration: 1
 baseline_commit: '985d3e70ac8e9d5492fa857bc3a31208a9543670'
@@ -204,6 +204,26 @@ Second review: every finding was individually classified after all layers return
 | R2-VG-2 | medium | patch | Pre-verified regression gap: no simultaneous A/B ownership case guards the noncurrent withdrawal return. Remove the older cue and assert the newer status remains with no extra speech. |
 
 Grouped shared roots: origin copies; exposed status leases; forwarding decorators; terminal precedence (BH-6/EC-3/EC-5); restoration eligibility; in-flight silence; browser revision tracking (BH-9/VG-1); overlapping generated entries (BH-10/VG-2). All surviving fixes add no public surface and guard the demonstrated state, so they route to patch. Unsupported timestamp guards are rejected as rare low-impact complexity, and the duplicate-publication probe is rejected on the sole-producer contract.
+
+### 2026-10-13 resumed build review triage
+
+| Finding | Verdict | Route | Evidence |
+|---|---|---|---|
+| BH-1 creation-scope provenance | false | reject | A direct entry has no creation-scope field; its documented origin is the first resolved component observation. Creation in another scope cannot be inferred from this input. |
+| BH-2 unobserved A-to-B-to-A | low | reject | Carried prior BH-10: no render in B means no observed boundary; the cue lasts under ten seconds and a scope subscription adds a new contract. |
+| BH-3 other hidden containers | low | reject | Carried prior BH-5: generated retained grids use FcPageTabs exposure; arbitrary hidden hosts need a new public visibility contract. |
+| BH-4 late raw Subscribe callback | low | reject | Callback delivery outside the lock predates this story for every family. Production FcSurfaceStatus uses versioned callbacks and ignores older revisions; a complete ordering change is disproportionate for a rare external raw listener race. |
+| BH-5 failed claim leaves delivered set | false | reject | After scope loss, origin generation makes the entry ineligible; retrying it on return would breach the boundary. Duplicate claims also must not reannounce. |
+| BH-6 maximum direct timestamp | low | reject | Carried R2-BH-4: MaxValue is unsupported provenance that the production clock cannot produce; defensive branches add complexity for malformed direct input. |
+| BH-7 direct live-region timing | maybe-false (medium if true) | defer | Carried earlier BH-4: an accessibility-tree or assistive-technology check of SharedStatusOwner=false would settle whether the empty node and first text are batched. |
+| BH-8 speech after live-region re-enable | maybe-false (medium if true) | defer | Carried earlier RR-BH-4b: the existing silent-revision design needs NVDA, JAWS, and VoiceOver verification after a silent restore. |
+| BH-9 DOM mutation versus actual speech | maybe-false (medium if true) | defer | The browser observer measures exposed DOM revisions. Manual assistive-technology sign-off is the open Story 13.6 gate; no manual result is claimed here. |
+| BH-10 v1 acceptance | false | reject | The frozen task retains v1/story 9.8 validation for archived packets; this story's live producer emits v2/story 13.5 and runs v2 assertions. |
+| VG-1 forced-colors icon paint | medium | patch | Pre-verified: the live check accepts an opacity-zero SVG because it inspects only geometry and visibility. Assert opacity and painted SVG color. |
+| EC-1 older terminal blocks cap | false | reject | Carried resumed review BH-2: an uncancelled terminal intentionally keeps its barrier in NonFreshOwner; the behavior predates this story. |
+| EC-2 Clear erases in-flight silence | medium | patch | Clear removes PendingFreshSilentRevisions before a concurrent withdrawal Deliver reads it, making a prior-scope restored message audible. Preserve pending markers until delivery finishes. |
+| EC-3 scope changes between checks | high | patch | IsEligibleEntry validates origin, but TryClaim rechecks only nonblank scope. A resolved switch between the calls can announce the old entry in the new scope. Recheck origin inside TryClaim. |
+| EC-4 maximum direct timestamp | low | reject | Carried R2-BH-4; this is the same unsupported malformed timestamp as BH-6. |
 
 ## Design Notes
 
@@ -411,3 +431,13 @@ New review triage (existing rejected lists above remain unchanged):
 | BH-6: direct disposal leaves old bUnit DOM | false, rejected | The test follows the requested `InvokeAsync` disposal and exercises the real lease-release/promotion callback, requiring the promoted cue node to remain silent. |
 
 Full triage evidence: `/tmp/frontcomposer-13-5-rr-13b4bbm7/review-triage.txt`. Review result: zero decisions, zero patches, zero new deferrals; six rejected. Story and sprint statuses remain `in-progress`; Product and owner acceptance gates remain open.
+
+### Resumed review fixes and verification (2026-10-13)
+
+The resumed review patched three findings: the fresh-row claim now rechecks its originating tenant/user at the claim point; scope clearing retains in-flight silent withdrawal markers until delivery finishes; and the live forced-colors check requires an opaque, painted SVG icon. New regressions cover a scope switch between eligibility and claim, clearing during withdrawal delivery, and a fresh entry after a scope round trip. The other findings are individually triaged above; BH-9 remains a Story 13.6 manual assistive-technology follow-up.
+
+- Debug Shell and SourceTools test-project builds each passed with zero warnings and zero errors. The 16-class Shell lane passed 467/467 with no skips (`/tmp/frontcomposer-13-5-postpatch-shell-final.xml`); SourceTools emitter/snapshot/identity lanes passed 41/41 (`/tmp/frontcomposer-13-5-postpatch-source.xml`).
+- The artifact validator passed 108/108; `npx tsc --noEmit` passed; Chromium accessibility/visual specimens passed 22/22 with no skips (`tests/e2e/test-results/junit.xml`).
+- `FC_EPIC9_ARTIFACT_ROOT=/tmp/frontcomposer-story13-5-review-live-proof-20261013 ./eng/run-epic9-live-proof.sh` passed: one Chromium live test, artifact validation, and owned Aspire shutdown. The v2/story 13.5 packet records one shared polite node, zero hidden announcements, one first-exposure announcement, zero repeats on tab switches or duplicate outcomes, three eligible announcements, and a painted icon/system border with no image or motion. Evidence: `/tmp/frontcomposer-story13-5-review-live-proof-20261013/junit.xml` and `playwright-results/epic-9-fresh-row-acceptanc-b89a4-to-an-already-rendered-grid-chromium/epic-9-command-evidence.json` under that packet.
+- The full Shell command `DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -result-xml /tmp/frontcomposer-13-5-postpatch-full-shell.xml` exited 1: 3654 passed, 4 failed, 1 skipped. The pin gates expect Verify 33.2.0 but the selected Builds catalog has 33.3.3, and expect Aspire 13.6.0 but the selected CLI is 13.6.1. A fallback-refresh scheduler test observed one read instead of two, and a pending-command cancellation/fatal-propagation test timed out. Those two timing cases passed 3/3 when rerun in isolation (`/tmp/frontcomposer-13-5-postpatch-flaky-focused.xml`). The skipped live two-tenant EventStore case lacks configured endpoint, identities, and bearer tokens.
+- `git diff --check` passed. The frozen intent, resolver, state service, OI-16, G-4, FLUENT-APP-1, Product approval, and archived final evidence remain unchanged. The broad Shell gate is not green, so this spec remains `in-review` and sprint status remains `in-progress`; no local commit was created.

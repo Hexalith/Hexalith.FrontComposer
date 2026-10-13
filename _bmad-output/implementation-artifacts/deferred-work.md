@@ -10283,3 +10283,6 @@ Reconfirmed existing open items without new ids: AA25-01 (Story 13.4 AM-14 hand-
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-5-preserve-fresh-row-meaning-across-visual-and-data-changes.md`
   summary: No migration note tells adopters that generated `FcNewItemIndicator` cues no longer render `role="status"`, `aria-live`, `aria-label` or the "New item" copy.
   evidence: RR-BH-12 (pre-existing, introduced by `99d31eda`): `docs/reference/components/datagrid.md` describes the change, but `docs/migrations/` has no entry. Host styles or tests that select those attributes break on upgrade. It needs the target release's migration file.
+- source_spec: `/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/spec-13-5-preserve-fresh-row-meaning-across-visual-and-data-changes.md`
+  summary: Confirm that exposed fresh-row status mutations are spoken once by supported assistive technologies.
+  evidence: BH-9 (maybe-false; medium if true): the browser observer counts exposed DOM revisions, not human-heard speech. Story 13.6 owns the still-open manual assistive-technology sign-off; dated NVDA, JAWS, and VoiceOver runs would settle the claim.
