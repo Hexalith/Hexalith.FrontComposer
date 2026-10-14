@@ -127,6 +127,11 @@ the resolved scope in which their entry was first observed. Direct entries expir
 `CreatedAt`; generated entries retain the state service's ten-second window from publication. Invalid
 or unresolved provenance suppresses the cue before speech is claimed.
 
+When an entry belongs to an `INewItemIndicatorStateService` snapshot, the cue uses that service's
+lifetime and mutation subscription. Custom state services must implement `Subscribe` and notify
+subscribers after removal, expiry, and scope clearing so mounted cues update automatically. The
+interface's compatibility default sends no notifications.
+
 Reserved filter keys remain framework-owned: `__status` for status filters, `__search` for in-grid
 search, and `__hidden` for hidden-column persistence. Column filter keys beginning with `__` are
 rejected.
@@ -158,8 +163,11 @@ max-item notices are rendered as grid-adjacent status surfaces rather than cells
   only when the page already renders a status node for that same projection surface, as generated grids do.
   With the built-in announcement coordinator, removal, expiry, and dismissal do not announce the removed
   row. Already delivered status text restores silently; a previously unspoken pending projection outcome
-  can still announce under its normal precedence rules. Custom `ISurfaceAnnouncementCoordinator`
-  implementations must support the reserved `fresh-row:` family to provide these cancellation guarantees.
+  can still announce under its normal precedence rules. These cancellation and replay guarantees use
+  delivery metadata supplied by the built-in coordinator. Wrappers preserve it when they forward its
+  subscription callbacks synchronously. An independent `ISurfaceAnnouncementCoordinator` implementation
+  needs matching status-rendering support; implementing the reserved `fresh-row:` family alone does not
+  provide that metadata to `FcSurfaceStatus`.
 - Inside `FcPageTabs`, a cue in an inactive panel waits until its panel and every containing panel
   are active before claiming its first announcement, and a reactivated panel shows its retained status
   without speaking it again. This deferral applies only to `FcPageTabs` panels; a cue hidden any other way

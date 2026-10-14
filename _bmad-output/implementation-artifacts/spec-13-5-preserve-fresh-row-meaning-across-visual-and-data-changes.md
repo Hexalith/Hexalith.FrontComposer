@@ -286,6 +286,32 @@ The resumed `bmad-build` review ran all three required layers against `/tmp/fron
 
 Only N-BH-6 survives as a patch. It is a direct documentation correction and was applied locally because this resumed workflow has no step-03 implementation agent to re-engage. Existing decisions and deferrals are carried; there is no intent/spec loopback or new deferred-work entry.
 
+### Review continuation (2026-10-14)
+
+The three required review layers completed on canonical HEAD `0e151a139d178c1f5d90df50ee3d066ce4d4f35a`, against baseline `985d3e70ac8e9d5492fa857bc3a31208a9543670`, before classification. Complete changes are preserved in `/tmp/frontcomposer-13-5-20261014-fxjmgs_8/all-changes.diff`; the reviewer diff excludes this claims/spec file so only the Edge Case Hunter reads it. Blind Hunter's floor is `min(floor(sqrt(232.356) + 1), 10) = 10`. All seventeen findings have individual verdicts below.
+
+| Finding | Verdict | Route | Evidence |
+|---|---|---|---|
+| D-BH-1 different surface treated as reactivation | false | reject | Carried C-BH-3 and N-EC-1/N-VG-1 surface-rebinding decision: the retained-component exclusive/nonexclusive regressions pass after rebuilding current source. Cascade and ordinary parameters are delivered separately; the supported sequence keeps the new surface polite. |
+| D-BH-2 ordinary outcome first delivered while hidden | false | reject | Carried original EC-6/EC-11: retained inactive panels were not exposed to assistive technology before this change either. The approved ordinary-panel reactivation regression deliberately retains text silently; it does not promise first-visible replay of hidden ordinary outcomes. Fresh-row first-visible delivery has separate passing coverage. |
+| D-BH-3 unsupported direct timestamp | low | reject | Carried R2-BH-4 and original EC-3/EC-10: maximum and future-dated direct provenance are malformed caller inputs. Production timestamps come from the clock; extra timestamp guards are beyond a direct correction for this uncommon case. |
+| D-BH-4 unobserved scope round trip | low | reject | Carried original BH-10 and C-BH-5: polling cannot observe an unrendered A-to-B-to-A boundary. The production scope service clears state and the keyed Shell body remounts; adding eager ledger subscriptions would add a contract for uncommon direct retained entries. |
+| D-BH-5 direct cue lacks its own scope subscription | low | reject | The direct component checks scope during parameter processing and deferred delivery; the Shell observes ScopeBoundary.Changed, gates rendering with IsCurrent, and keys the body by Generation. An adopter mutating raw context outside that render boundary can retain old markup until a render; another boundary subscription adds coordination beyond a direct correction for that integration. |
+| D-BH-6 malformed or synthetic raw scope | low | reject | The ledger and existing indicator state service follow IUserContextAccessor's nonblank resolved-context contract. Production FrontComposerShell additionally validates ScopeBoundary.IsCurrent before rendering its body, and publication is owned by the unchanged resolver. The proposed direct caller supplies context the production boundary rejects; adding a second tenant-routing validation dependency for the visual cue adds complexity for malformed adopter context. |
+| D-BH-7 identical transition tuple in another scope | low | reject | Carried C-BH-1: an identical entity/message/timestamp tuple is indistinguishable from the equivalent copies that must retain origin. The built-in resolver keeps its MessageId decision across scopes. Distinguishing a reused direct tuple needs new producer provenance. |
+| D-BH-8 independent coordinator cannot supply silence metadata | low | patch | The reserved prefix alone cannot supply internal delivery metadata to FcSurfaceStatus. The built-in coordinator and synchronous forwarding wrappers supply it; correct the component reference to require matching status-rendering support for independent implementations, without adding public surface or changing fallback behavior. |
+| D-BH-9 custom state service has inert subscription | low | patch | Entry-aware cues delegate lifecycle to a matching state-service entry. The interface's compatibility Subscribe default is inert, so a custom service must override it for automatic removal/expiry/scope invalidation. Make this integration requirement explicit in the component reference; do not shorten Add-anchored lifetimes with a component fallback timer. |
+| D-BH-10 multiple browser revisions versus speech | maybe-false (medium if true) | defer | Carried C-BH-8/N-BH-10: bUnit mutations and browser DOM revisions cannot settle delivery as distinct spoken utterances when Blazor batches merge. Existing Story 13.6 assistive-technology follow-up remains open; no duplicate deferred entry is created. |
+| D-BH-11 live-only browser lane | low | reject | Carried RR-BH-9/N-BH-8: the user's recorded 2026-10-12 decision places this timing-dependent composed proof in the Aspire live lane. That required CI lane runs the complete browser test; restoring the stub-server lane would reverse the accepted decision. |
+| D-BH-12 validator accepts archived v1 evidence | false | reject | Carried resumed BH-10: archived schema-1/story-9.8 validation is an explicit frozen task. The current producer emits schema-2/story-13.5 and runs all new assertions before validation; archive compatibility does not replace the current live proof. |
+| D-EC-1 simultaneous visibility/surface rebinding | false | reject | Carried C-BH-3/N-EC-1: both retained-component cases pass in the fresh current-source Shell run; no supported failure is demonstrated. |
+| D-EC-2 near-maximum timestamp | low | reject | Carried R2-BH-4/C-EC-4: unsupported direct provenance near DateTimeOffset.MaxValue requires additional validation branches for a previously rejected malformed input. |
+| D-EC-3 first pending cap/stale delivery on withdrawal | false | reject | Carried RR-BH-1/RR-EC-1 and N-EC-4: normal cancellation fallback must preserve first delivery of an independently pending projection outcome. It does not repeat the removed-row message. Both explicit cap/stale fallback regressions pass; the frozen intent is unchanged. |
+| D-VG-1 fatal scope-accessor propagation gap | medium | patch | Pre-verified regression gap: recoverable accessor tests and shared classifier/source governance do not execute a fatal getter through this ledger. Add both getter variants asserting that the same fatal exception escapes IsOriginatingScope. No production behavior change is needed. |
+| D-VG-2 inferred new-surface replay failure | false | reject | Carried C-BH-3/N-VG-1: current-source exclusive/nonexclusive BecomingVisibleOnAnotherSurfaceKeepsItsOrdinaryReplayPolite both pass in shell-focused.xml. The source-only prediction is not reproduced. |
+
+Surviving entries are one runtime regression-test gap and two direct documentation corrections. This resumed run has no step-03 implementation agent to re-engage, so the parent applies them. No new public surface, production-source patch, intent/spec loopback, or duplicate deferral is required.
+
 ## Design Notes
 
 Pruning claims after ten seconds cannot re-announce: a claim happens after `Add`, expiry counts from `Add`, and the resolver decides once per MessageId, so no active entry outlives its claim.
@@ -602,3 +628,69 @@ python3 eng/dependency_graph.py --root . validate --commit c3174dc917b094f3736b0
 Parent matrix audit: executed covering tests still prove Appear/Re-view copy, icon, one node, view/remount dedupe and hidden-first delivery; Data change preserves first provenance/TTL and silent removed-row behavior through actual filter, requery, paging, materialization and dismissal; Scope covers resolved/missing/throwing getters and deferred invalidation; Expiry covers direct/state-owned exact and hidden/deferred boundaries; Modes passes both compiled-CSS and real-cue browser checks. Existing standalone, coordinator precedence and public tab regressions pass. OI-16, G-4, FLUENT-APP-1, Product approval and existing review deferrals remain open.
 
 The required Hexalith baseline says, "All existing and new tests must pass before a story is complete." The full-suite failure prevents the workflow's `done`/commit transition. Status remains `in-review`, sprint status remains `in-progress`, and no files were staged, committed or pushed. The remaining catalog-policy reconciliation and existing timing failure are recorded exactly; no gate was relaxed to declare completion.
+
+### Final continuation verification (2026-10-14)
+
+Resumed `bmad-build 13.5` on canonical HEAD `0e151a139d178c1f5d90df50ee3d066ce4d4f35a`. All three review layers completed and seventeen findings were individually triaged before patches. Three patches are complete:
+
+- [x] `FreshRowAnnouncementLedgerTests.cs`: both tenant/user getter variants prove the same fatal exception escapes eligibility unchanged. The fixture uses the existing `RuntimeHelpers.GetUninitializedObject` technique, introducing no pragma, suppression, or taxonomy change.
+- [x] `docs/reference/components/datagrid.md`: distinguish the built-in coordinator's delivery metadata and synchronous forwarding wrappers from independent coordinators, which need matching status-rendering support.
+- [x] `docs/reference/components/datagrid.md`: state that custom indicator services must override the inert compatibility subscription to notify mounted cues of removal, expiry, and scope clearing.
+
+Runtime, generator, resolver, indicator-state-service, public API, dependency pins, and governance-policy sources are unchanged in this continuation. The frozen intent remains unchanged after EOL normalization. No new deferred-work entry was created. All three edited files retain CRLF.
+
+Execution scripts and complete results are preserved under `/tmp/frontcomposer-13-5-20261014-fxjmgs_8/`: `verify.py`, `final-verify.py`, `verification-results.json`, `final-results.json`, and `timing-verify.py`/`timing-results.json`.
+
+| Check | Result | Evidence under that directory |
+|---|---|---|
+| Debug Shell and SourceTools test-project builds | Zero warnings/errors | `final-shell-build.log`, `source-build.log` |
+| Final focused Shell regression/Fluent lane | 519 passed; zero failed/skipped | `final-shell-focused.xml` |
+| SourceTools emitter/snapshot/identity lane | 41 passed; zero failed/skipped | `source-focused.xml` |
+| Analyzer contract, identifier seal, and solution-argument checks | 3 passed; zero failed/skipped | `final-analyzer-contract.xml` |
+| Artifact validator | 108 passed; zero failed/skipped | `artifact-validator.log` |
+| TypeScript | Exit 0 | `typescript.log` |
+| Chromium accessibility/visual specimens | 22 passed; zero failed/skipped | `specimen-junit.xml` |
+| Aspire source graph/live proof | Zero build warnings/errors; 1 browser test passed; artifact validation passed; owned AppHost stopped | `live-proof/`, `live-proof.log` |
+| Final documentation and guarded identity checks | Docs exit 0; 7 contract tests passed | `final-docs.log`, `final-doc-contract.xml` |
+| Configured Shell fallback | Exit 1: 3658 passed, 3 failed, zero skipped/errors | `final-shell-configured-fallback.xml` |
+| Existing timing cases in isolation | Three runs, each 4 passed; zero failed/skipped | `timing-isolated-{1,2,3}.xml` |
+| Whitespace and frozen intent | Passed | `final-whitespace.log`, `frozen-before.txt` |
+
+The live packet emits schema 2/story 13.5 and measures the generated projection's own node: one shared polite node, zero hidden announcements, one first-activation announcement, zero tab-switch/duplicate repeats, and three eligible announcements. The actual cue has a painted visible icon and system border with no background image, animation, or transition under forced colors/reduced motion. Runtime/generated source did not change after this packet; subsequent patches change only tests/docs. Existing visual baselines and archived final evidence are preserved. Final `aspire ps --format Json --non-interactive --nologo` returns `[]`.
+
+The unfiltered audit command was:
+
+```bash
+DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -result-xml /tmp/frontcomposer-13-5-20261014-fxjmgs_8/shell-full.xml
+```
+
+It recorded the two policy failures and the unconfigured live two-tenant skip, then stalled without output or CPU-time progress. The owned runner was cancelled after 774.2 seconds (exit -2/SIGINT); it produced no complete XML summary. It is not passing evidence. Ownership/cancellation diagnostics are in `full-audit-cancellation.json` and `shell-full.log`. No unrelated process was stopped. The final fallback preserves the configured five trait exclusions and adds long-running diagnostics:
+
+```bash
+DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -trait- 'Category=GovernanceBuild' -trait- 'Category=Performance' -trait- 'Category=e2e-palette' -trait- 'Category=NightlyProperty' -trait- 'Category=Quarantined' -longRunning 30 -result-xml /tmp/frontcomposer-13-5-20261014-fxjmgs_8/final-shell-configured-fallback.xml
+```
+
+| Lane | Required command | Local result | Blocker timing | Fallback evidence | CI authority |
+|---|---|---|---|---|---|
+| Unfiltered Shell audit | Exact unfiltered command above | Cancelled after stall; no complete result | Inside test execution | Completed configured Shell fallback and final focused lane | Required |
+| Configured Shell fallback | Exact trait-filtered command above | Exit 1: 3658 passed, 3 failed, zero skipped | Inside test bodies | Story-focused Shell 519/519; three isolated timing runs each 4/4 | Required |
+
+The final configured failures are:
+
+- `CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds`: selected Builds catalog has Verify 33.3.3, while the approved semantic policy requires 33.2.0.
+- `ToolchainPins_MatchApprovedDotnetAndAspireVersions`: selected Aspire.Hosting package is 13.6.1, while its approved hosting pin is 13.6.0. This is not the CLI version; the installed CLI reports 13.6.0.
+- `ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget`: observed one read instead of two; this unchanged scheduler timing case is already deferred. It passes all three isolated reruns alongside both `HeldQueryPreservesCallerCancellationAndFatalPropagation` cases and `Resolve_IndicatorAdd_ReleasesResolverGateBeforePublication`.
+
+The direct semantic-policy command also exits 1 for the Verify mismatch:
+
+```bash
+python3 eng/dependency_graph.py --root . validate --commit 0e151a139d178c1f5d90df50ee3d066ce4d4f35a
+```
+
+Intermediate validation exposed two corrected/retained facts: the initial synthetic fixture's scoped CA2201 pragma tripped the sealed analyzer inventory, so the pragma was removed and all three contract/seal checks now pass without changing the ledger; one intermediate 519-test focused run timed out on the unchanged resolver-gate probe, while the final 519-test run and all three isolated timing runs pass. Intermediate failed logs/results remain preserved. Reruns do not make the failed configured lane green.
+
+The final configured audit passes the required `FluentConformanceTests.Shell_chrome_styles_never_use_accent_as_surface_background` and the analyzer contract/seal checks. Its exclusions omit the two GovernanceBuild whole-solution proofs; the cancelled unfiltered audit supplies no complete current-run result for those proofs. No fresh full-Release success is claimed here.
+
+Parent matrix audit: Appear/Re-view, Data change, Scope, Expiry, and Modes retain executed passing covering assertions with no story-test skips. Legacy standalone compatibility, public coordinator/tab behavior, scope failure/recovery, and direct/state-owned expiry regressions pass. OI-16, G-4, FLUENT-APP-1, Product approval, and existing assistive-technology/migration deferrals remain open.
+
+The required Hexalith baseline says, "All existing and new tests must pass before a story is complete." The rendered build review also requires halting when verification fails and cannot be fixed within the authorized scope. The failed configured lane prevents the `done`/commit transition. Spec status remains `in-review`, sprint status remains `in-progress`; no files were staged, committed, or pushed. Completion still requires dependency-policy reconciliation and a green configured verification lane.

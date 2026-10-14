@@ -1,9 +1,14 @@
+using System.Runtime.CompilerServices;
+
+using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Services.Announcements;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.Tests.Generated;
 
 using Microsoft.Extensions.Time.Testing;
 using System.Reflection;
+
+using NSubstitute;
 
 using Shouldly;
 
@@ -110,6 +115,30 @@ public sealed class FreshRowAnnouncementLedgerTests
         NewItemIndicatorEntry newScopeEntry = entry with { CreatedAt = time.GetUtcNow() };
         ledger.TryClaim(newScopeEntry).ShouldBeTrue();
         ledger.TryClaim(newScopeEntry).ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void FatalScopeAccessorFailurePropagatesUnchanged(bool tenant)
+    {
+        FakeTimeProvider time = new();
+        IUserContextAccessor scope = Substitute.For<IUserContextAccessor>();
+        scope.TenantId.Returns("test-tenant");
+        scope.UserId.Returns("test-user");
+        OutOfMemoryException failure = (OutOfMemoryException)RuntimeHelpers.GetUninitializedObject(typeof(OutOfMemoryException));
+        if (tenant)
+        {
+            scope.TenantId.Returns(_ => throw failure);
+        }
+        else
+        {
+            scope.UserId.Returns(_ => throw failure);
+        }
+        FreshRowAnnouncementLedger ledger = new(time, scope);
+        NewItemIndicatorEntry entry = new("view", "row", "message", time.GetUtcNow());
+
+        Should.Throw<OutOfMemoryException>(() => ledger.IsOriginatingScope(entry)).ShouldBeSameAs(failure);
     }
 
     [Theory]
