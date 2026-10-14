@@ -391,6 +391,10 @@ export const validateEpic9Artifacts = async (
     assertClaim(observed.sharedPoliteNodeCount === 1, 'Browser evidence v2 must have one shared polite node.');
     assertClaim(observed.hiddenBeforeActivationAnnouncementCount === 0, 'Hidden grid must not announce before activation.');
     assertClaim(observed.firstActivationAnnouncementCount === 1, 'First exposed activation must announce exactly once.');
+    assertClaim(observed.indicatorForcedColors === true && observed.indicatorReducedMotion === true,
+      'Actual fresh cue proof must observe active forced colors and reduced motion.');
+    assertClaim(observed.indicatorHiddenShapesRejected === true && observed.indicatorInvisibleShapesRejected === true,
+      'Actual fresh cue icon proof must reject hidden SVG shapes.');
     assertClaim(observed.indicatorSystemBorder === true && observed.indicatorIconVisible === true,
       'Actual fresh cue must retain its system border and visible icon under accessibility modes.');
     assertClaim(observed.indicatorBackgroundImage === 'none' && observed.indicatorAnimationName === 'none'

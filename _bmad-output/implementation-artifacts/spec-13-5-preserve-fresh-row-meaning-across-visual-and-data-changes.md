@@ -2,7 +2,7 @@
 title: 'Story 13.5: Preserve Fresh-Row Meaning Across Visual and Data Changes'
 type: 'feature'
 created: '2026-10-12'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 1
 baseline_commit: '985d3e70ac8e9d5492fa857bc3a31208a9543670'
@@ -311,6 +311,28 @@ The three required review layers completed on canonical HEAD `0e151a139d178c1f5d
 | D-VG-2 inferred new-surface replay failure | false | reject | Carried C-BH-3/N-VG-1: current-source exclusive/nonexclusive BecomingVisibleOnAnotherSurfaceKeepsItsOrdinaryReplayPolite both pass in shell-focused.xml. The source-only prediction is not reproduced. |
 
 Surviving entries are one runtime regression-test gap and two direct documentation corrections. This resumed run has no step-03 implementation agent to re-engage, so the parent applies them. No new public surface, production-source patch, intent/spec loopback, or duplicate deferral is required.
+
+### Current build review (2026-10-14, e0476b71)
+
+All three required layers completed before classification. The independent reviewer diff is `/tmp/bmad-13-5-review-a0b79k8_.diff` (238156 bytes), excluding this claims file; complete changes are retained in `/tmp/bmad-13-5-all-changes.diff`. Canonical baseline is `985d3e70ac8e9d5492fa857bc3a31208a9543670`, canonical HEAD is `e0476b71c7623840ba2ab0c276e43800a51fd44a`. Blind Hunter's floor is `min(floor(sqrt(238.156) + 1), 10) = 10`. Verification Gap found no grounded gaps and executed 163 relevant tests without failures or skips.
+
+| Finding | Verdict | Route | Evidence |
+|---|---|---|---|
+| E-BH-1 generated remount claim not drained | medium | patch | The generated remount checks speech synchronously before the indicator's Task.Yield continuation, then advances to expiry. Drain its dispatcher before the assertion so expiry cannot conceal a duplicate claim. |
+| E-BH-2 expiry observes only row speech | medium | patch | ObserveFreshSpeech filters non-row messages unless its audible list is supplied. Record every non-silent revision around the exact expiry boundary, after earlier pending work is drained. |
+| E-BH-3 absolute deferred source path | low | patch | One source_spec embeds this workstation's root, unlike adjacent repository-relative entries. A direct path correction preserves the deferral while allowing another checkout to resolve it. |
+| E-BH-4 Add after first direct render | low | patch | Membership is captured only when Entry changes. Clarify that Add must precede first rendering when state-service lifecycle ownership is wanted; retain the previously rejected runtime ownership expansion. |
+| E-BH-5 direct timestamp preconditions | low | reject | Carried R2-BH-4 and D-BH-3: future/near-maximum direct timestamps are unsupported handcrafted provenance. Documentation already states expiry from CreatedAt rather than mounting; production uses the publication clock. No new timestamp branches or contract change. |
+| E-BH-6 direct-entry registration | low | patch | Entry-aware rendering resolves the Shell's clock, ledger, and coordinator, whereas localization suffices for the legacy cue. Name AddHexalithFrontComposer as the supported registration in the direct-entry documentation. |
+| E-BH-7 hidden SVG shapes satisfy icon proof | low | patch | The live detector checks outer geometry and effective opacity but does not test a shape's display/visibility. Add direct effective-visibility checks and negative hidden-shape probes to the existing real-cue proof. |
+| E-BH-8 same-color SVG satisfies paint proof | low | patch | Nontransparent fill/stroke may equal the forced-colors Canvas background. Require a painted shape to differ from the system background in this mode proof. |
+| E-BH-9 active modes missing from packet | low | patch | The producer requests emulation but records only computed styles. Record and assert both matchMedia results; v2 validation requires them while preserving v1 archive compatibility. |
+| E-BH-10 long row identifier overflow | medium | patch | EntityKey allows unbroken strings, which the new visible row name inserts into a block with default overflow-wrap. Add wrapping and a bounded-width scoped-CSS browser assertion to preserve narrow-layout meaning. |
+| E-EC-1 cancelled underlying owner revives old load precedence | medium | patch | The reviewer's paired current-assembly probe shows plain cancellation permits New cap, while cancellation under a fresh overlay suppresses it and later clears the node. NonFreshOwner's arbitrary delivered fallback must use ordinary restoration eligibility. This differs from the carried uncancelled current-owner barrier: here the overlay's actual owner was cancelled. |
+| E-EC-2 timestamp addition overflow | low | reject | Carried R2-BH-4/C-EC-4/D-EC-2: unsupported near-maximum direct provenance; preserve the existing decision against extra timestamp guards. |
+| E-EC-3 unchanged-family claim | medium | patch | Same paired cancellation counterexample as E-EC-1, verified through the public Announce/Cancel path. Group with E-EC-1; retain the mounted underlying owner's existing precedence. |
+
+The parent applies the direct patches because this resumed workflow has no step-03 implementation agent to re-engage. No intent/spec loopback is required, and existing assistive-technology/migration deferrals remain open without new duplicates.
 
 ## Design Notes
 
@@ -694,3 +716,95 @@ The final configured audit passes the required `FluentConformanceTests.Shell_chr
 Parent matrix audit: Appear/Re-view, Data change, Scope, Expiry, and Modes retain executed passing covering assertions with no story-test skips. Legacy standalone compatibility, public coordinator/tab behavior, scope failure/recovery, and direct/state-owned expiry regressions pass. OI-16, G-4, FLUENT-APP-1, Product approval, and existing assistive-technology/migration deferrals remain open.
 
 The required Hexalith baseline says, "All existing and new tests must pass before a story is complete." The rendered build review also requires halting when verification fails and cannot be fixed within the authorized scope. The failed configured lane prevents the `done`/commit transition. Spec status remains `in-review`, sprint status remains `in-progress`; no files were staged, committed, or pushed. Completion still requires dependency-policy reconciliation and a green configured verification lane.
+
+### Current build patch verification (2026-10-14, e0476b71)
+
+All three review layers completed, and all thirteen findings have individual verdicts in the current-build triage table. The parent applied the surviving patches:
+
+- The coordinator uses ordinary cancellation candidates for precedence when a fresh overlay's underlying owner was cancelled. The paired public-operation regression passes without an overlay and failed with an overlay before the production correction (one pass, one failure in `cancellation-red.xml`); both cases now pass. A still-mounted underlying owner retains its existing precedence.
+- Generated remount checks drain deferred renderer work before testing dedupe; exact expiry observes every non-silent revision after earlier work is drained.
+- Long unbroken identifiers wrap within a bounded cue width. The real-cue mode proof rejects hidden/invisible SVG shapes, requires paint distinct from Canvas, records active forced-colors/reduced-motion media, and validates those v2 fields. Archived schema-1 acceptance remains covered and unchanged.
+- Direct-entry docs name Shell registration and the required Add-before-render ordering. One deferred source reference is now repository-relative; its meaning and open status are unchanged.
+
+Evidence is preserved under `/tmp/bmad-13-5-current-verification/`; postpatch command argv, exit codes, logs, and XML summaries are in `postpatch/verify.py`, `postpatch/results.json`, and the lane files listed below.
+
+| Check | Current result | Evidence |
+|---|---|---|
+| Serialized cached Debug Shell build | Zero warnings/errors | `patched-shell-build.log` |
+| Focused Shell behavior/Fluent lane | 521 passed; zero failed/skipped | `postpatch/shell-focused.xml` |
+| SourceTools build and emitter/snapshot/identity lane | Zero build warnings/errors; 41 passed | `postpatch/source-build.log`, `postpatch/source-focused.xml` |
+| Analyzer contract and identifier seal | 3 passed | `postpatch/analyzer-contract.xml` |
+| Artifact validator | 114 passed; zero failed/skipped | `patched-validator.log` |
+| TypeScript | Exit 0 | `patched-typescript.log` |
+| Chromium accessibility/visual specimens, including long unbroken identifier | 22 passed; zero failed/skipped | `postpatch/specimen-junit.xml` |
+| Aspire complete source-graph build and live proof | Zero build warnings/errors; 1 browser test and packet validation passed; owned AppHost stopped | `postpatch/live-proof/`, `postpatch/live-proof.log` |
+| Documentation validation | Exit 0 | `patched-docs.log` |
+| Configured Shell lane | Exit 1: 3661 passed, 2 failed, zero skipped/errors | `postpatch/shell-configured.xml` |
+| Candidate dependency policy, temporary override only | Exit 0; seven selectors validated | `candidate-policy-validation.json` |
+| Whitespace, frozen intent, CRLF | Passed | Parent checks; all eleven changed files retain CRLF |
+
+The current live packet is schema 2/story 13.5: one shared polite node, three eligible row announcements, zero duplicate/tab-switch repeats, and true active-media and hidden-shape rejection flags. The narrow-width scoped-CSS proof uses an unbroken identifier rather than hyphen-separated words. Existing visual baselines and archived final packets are unchanged. Final Aspire process discovery returns `[]`.
+
+The original verification build command `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Debug` stalled at `Determining projects to restore...` before compilation. The owned process was cancelled (the tool reported exit 0, but the log contains cancellation and no successful build summary). The narrower command completed successfully:
+
+```bash
+dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Debug --no-restore -m:1 -p:NuGetAudit=false
+```
+
+The exact configured lane command was:
+
+```bash
+DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -trait- 'Category=GovernanceBuild' -trait- 'Category=Performance' -trait- 'Category=e2e-palette' -trait- 'Category=NightlyProperty' -trait- 'Category=Quarantined' -longRunning 30 -result-xml /tmp/bmad-13-5-current-verification/postpatch/shell-configured.xml
+```
+
+Its only failures are `CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds` (Verify 33.3.3 selected versus approved 33.2.0) and `ToolchainPins_MatchApprovedDotnetAndAspireVersions` (Aspire.Hosting 13.6.1 selected versus approved 13.6.0). Previously intermittent scheduler/resolver cases pass in this current completed lane. No fresh unfiltered or full Release success is claimed; the configured exclusions retain their existing CI authority.
+
+| Lane | Required command | Local result | Blocker timing | Fallback evidence | CI authority |
+|---|---|---|---|---|---|
+| Shell default build | Exact default build above | Cancelled during stalled restore; no compilation signal | Before test execution | Cached serialized Debug build passed | Required |
+| Configured Shell | Exact configured command above | Exit 1: two approved-pin mismatches | Inside test bodies | 3661 other configured tests and 521 focused tests pass | Required |
+
+A concrete, unapplied candidate is `/tmp/bmad-13-5-current-verification/proposed-policy-reconciliation.patch`. It changes exactly three approved literals: Verify and Verify.XunitV3 33.2.0 to 33.3.3 in `eng/dependency-graph-policy.json`, and expected Aspire.Hosting 13.6.0 to 13.6.1 in `CiGovernanceTests.cs`. It does not update dependencies, gitlinks, SDK/CLI pins, release execution identity, or repository policy yet. The temporary JSON candidate validates the current exact graph with seven selectors:
+
+```bash
+python3 eng/dependency_graph.py --root . --policy /tmp/bmad-13-5-current-verification/candidate-dependency-policy.json validate --commit e0476b71c7623840ba2ab0c276e43800a51fd44a
+```
+
+That is candidate evidence, not a passing authoritative gate. Applying approved-policy changes requires the human's decision; the actual policy and both pin gates remain unchanged. The build review step requires `HALT and escalate to the human` when verification fails and cannot be resolved within the current story authorization. The Hexalith baseline requires all tests to pass before completion. Spec remains `in-review`, sprint remains `in-progress`; nothing is staged, committed, or pushed.
+
+Parent matrix audit: Appear/Re-view, Data change, Scope, Expiry, and Modes have current passing covering assertions, including the cancellation correction and deferred-remount check. Standalone behavior and unchanged resolver/state-service/tab/public contracts retain passing evidence. OI-16, G-4, FLUENT-APP-1, Product approval, and existing assistive-technology/migration deferrals remain open.
+
+### Approved policy reconciliation and completion (2026-10-14)
+
+The human approved the prepared three-literal policy patch in this conversation. Verify/Verify.XunitV3 now require 33.3.3, and the hosting test requires Aspire.Hosting 13.6.1. SDK, Aspire CLI, dependency gitlinks, release execution identity, and enforcement strength are unchanged.
+
+The catalog gate deliberately loads the policy from Git HEAD. Therefore the approved patch was recorded separately in local commit `43cdbb11b56fb62a6e499938abc5aca1199fdbac` before the authoritative gate could pass; only its two approved files were staged. The owning pinned commitlint CLI 21.2.2 accepted the exact full message with zero problems/warnings; evidence is `policy-commitlint.log` under `/tmp/bmad-13-5-current-verification/`.
+
+Current evidence after that commit is in `approved/` under the same directory:
+
+| Check | Result | Evidence |
+|---|---|---|
+| Debug Shell build with cached assets | Zero warnings/errors | `approved-policy-build.log` in the parent directory |
+| Dependency graph fixtures | 102 passed | `approved-policy-fixtures.log` in the parent directory |
+| Authoritative committed-policy validation | Exit 0; seven selectors validated | `approved/dependency-policy.json` |
+| Both former pin-gate failures | 2 passed; zero failed/skipped | `approved/policy-gates.xml`, `approved/policy-gates-retry.xml` |
+| Existing scheduler case in isolation | 1 passed; zero failed/skipped | `approved/scheduler-isolated.xml` |
+| Final configured Shell run | 3663 passed; zero failed/skipped/errors | `approved/shell-configured-retry.xml`, `approved/retry-results.json` |
+
+The initial approved-policy configured run hit the previously recorded scheduler race (`ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget`: readsB expected 2, observed 1), then stalled. The bounded runner stopped its owned process at 300 seconds and produced no complete XML; it is not passing evidence. `approved/shell-configured.log` and `approved/first-configured-timeout.json` preserve that failure. The isolated check passed, and one fresh run of the identical configured lane completed green. No test was excluded, quarantined, rewritten, or weakened to obtain that result. The existing scheduler deferral remains open; the successful final run does not establish that the timing defect is resolved.
+
+The authoritative graph command was:
+
+```bash
+python3 eng/dependency_graph.py --root . validate --commit 43cdbb11b56fb62a6e499938abc5aca1199fdbac
+```
+
+The final configured command was:
+
+```bash
+DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -trait- 'Category=GovernanceBuild' -trait- 'Category=Performance' -trait- 'Category=e2e-palette' -trait- 'Category=NightlyProperty' -trait- 'Category=Quarantined' -longRunning 30 -result-xml /tmp/bmad-13-5-current-verification/approved/shell-configured-retry.xml
+```
+
+The already executed postpatch generator (41), artifact validator (114), TypeScript, docs, Chromium specimens (22), and Aspire live-proof (1) results remain applicable: this approval changed policy and one governance expectation only. No runtime/browser/generator source changed after those passing proofs. The existing configured exclusions and full Release/unfiltered CI authority remain recorded above; no fresh full Release or unfiltered success is claimed.
+
+All story acceptance rows retain executed passing assertions. Frozen intent is unchanged, and OI-16, G-4, FLUENT-APP-1, Product approval, assistive-technology sign-off, migration notes, and the existing scheduler deferral remain open. The implementation spec is now `done`; the rendered workflow synchronizes its sprint entry to `review` and records the remaining story changes in a local commit. Nothing is pushed.

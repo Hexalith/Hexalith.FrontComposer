@@ -122,7 +122,8 @@ public sealed class GeneratedFreshRowAnnouncementTests : GeneratedComponentTestB
         var indicators = Services.GetRequiredService<INewItemIndicatorStateService>();
         var speech = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
         List<string> spoken = [];
-        using var subscription = ObserveFreshSpeech(speech, spoken);
+        List<string> audible = [];
+        using var subscription = ObserveFreshSpeech(speech, spoken, audible);
         NewItemIndicatorEntry first = Entry("fresh-row", "message-one");
         indicators.Add(first);
         grid.WaitForAssertion(() => {
@@ -147,12 +148,17 @@ public sealed class GeneratedFreshRowAnnouncementTests : GeneratedComponentTestB
         await DisposeComponentsAsync();
         var remount = Render<CounterProjectionView>();
         remount.Find(Cue).ShouldNotBeNull();
+        await remount.InvokeAsync(() => { });
         spoken.Count.ShouldBe(1);
         _time.Advance(TimeSpan.FromMilliseconds(4999));
+        await remount.InvokeAsync(() => { });
         remount.FindAll(Cue).Count.ShouldBe(1);
+        int beforeExpiry = audible.Count;
         _time.Advance(TimeSpan.FromMilliseconds(1));
         remount.WaitForAssertion(() => remount.FindAll(Cue).ShouldBeEmpty());
+        await remount.InvokeAsync(() => { });
         spoken.Count.ShouldBe(1);
+        audible.Count.ShouldBe(beforeExpiry);
     }
 
     [Fact]

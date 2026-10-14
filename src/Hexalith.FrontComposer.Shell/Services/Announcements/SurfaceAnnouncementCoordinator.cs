@@ -689,9 +689,10 @@ public sealed class SurfaceAnnouncementCoordinator(TimeProvider time) : ISurface
         {
             return null;
         }
-        return owner.Groups.Where(static pair => !pair.Value.FreshRow).Where(IsRestorable)
-            .OrderByDescending(static pair => pair.Value.DeliveryOrder)
-            .Select(static pair => (KeyValuePair<string, Group>?)pair).FirstOrDefault();
+        // A cancelled underlying owner leaves only ordinary cancellation candidates in charge;
+        // superseded load/page groups must not acquire precedence through the overlay.
+        var (lifecycle, stale, failure, cap, restoreLifecycle) = RestorationCandidates(owner);
+        return restoreLifecycle ? lifecycle : failure ?? stale ?? cap;
     }
 
     private static bool IsNewPageOperation(string currentGroup, string group)

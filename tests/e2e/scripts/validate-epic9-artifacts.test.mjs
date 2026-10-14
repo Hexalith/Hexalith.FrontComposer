@@ -429,6 +429,10 @@ function useFreshRowV2(fixture) {
   observed.firstActivationAnnouncementCount = 1;
   observed.indicatorSystemBorder = true;
   observed.indicatorIconVisible = true;
+  observed.indicatorHiddenShapesRejected = true;
+  observed.indicatorInvisibleShapesRejected = true;
+  observed.indicatorForcedColors = true;
+  observed.indicatorReducedMotion = true;
   observed.indicatorBackgroundImage = 'none';
   observed.indicatorAnimationName = 'none';
   observed.indicatorTransitionDuration = '0s';
@@ -447,7 +451,11 @@ test('Fresh-row v2 rejects incorrect cue, channel and repeat-speech evidence', a
     ['indicatorRole', 'status'], ['indicatorAriaLive', 'polite'], ['indicatorAriaLabel', 'New item'],
     ['createIndicatorCopy', 'Updated row: wrong-row.'], ['sharedPoliteNodeCount', 2],
     ['hiddenBeforeActivationAnnouncementCount', 1], ['firstActivationAnnouncementCount', 0],
-    ['indicatorSystemBorder', false], ['indicatorIconVisible', false], ['indicatorBackgroundImage', 'url(image.png)'],
+    ['indicatorSystemBorder', false], ['indicatorIconVisible', false],
+    ['indicatorHiddenShapesRejected', false], ['indicatorInvisibleShapesRejected', false],
+    ['indicatorForcedColors', false], ['indicatorReducedMotion', false],
+    ['indicatorForcedColors', undefined], ['indicatorReducedMotion', undefined],
+    ['indicatorBackgroundImage', 'url(image.png)'],
     ['indicatorAnimationName', 'pulse'], ['indicatorTransitionDuration', '0.2s'],
     ['createAnnouncementCount', 2], ['tabSwitchAnnouncementCount', 1],
     ['duplicateAnnouncementCount', 1], ['freshRowAnnouncementCount', 4],

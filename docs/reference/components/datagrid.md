@@ -127,8 +127,13 @@ the resolved scope in which their entry was first observed. Direct entries expir
 `CreatedAt`; generated entries retain the state service's ten-second window from publication. Invalid
 or unresolved provenance suppresses the cue before speech is claimed.
 
-When an entry belongs to an `INewItemIndicatorStateService` snapshot, the cue uses that service's
-lifetime and mutation subscription. Custom state services must implement `Subscribe` and notify
+Register the Shell with `AddHexalithFrontComposer` before rendering a direct entry-aware cue; this
+provides its clock, announcement coordinator, and scope ledger.
+
+When an entry belongs to an `INewItemIndicatorStateService` snapshot at its first render, the cue uses
+that service's lifetime and mutation subscription. Call `Add` before rendering the entry to select this
+lifecycle; adding an equal entry afterward does not transfer a direct cue to state-service ownership.
+Custom state services must implement `Subscribe` and notify
 subscribers after removal, expiry, and scope clearing so mounted cues update automatically. The
 interface's compatibility default sends no notifications.
 

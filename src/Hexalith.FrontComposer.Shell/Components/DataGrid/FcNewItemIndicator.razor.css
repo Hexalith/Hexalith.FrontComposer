@@ -1,5 +1,6 @@
 .fc-new-item-indicator {
     display: block;
+    overflow-wrap: anywhere;
     padding: 0.5rem 0.75rem;
     border-inline-start: 3px solid var(--colorBrandStroke1);
     background: color-mix(in srgb, var(--colorBrandBackground) 10%, transparent);

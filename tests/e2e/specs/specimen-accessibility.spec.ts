@@ -432,7 +432,8 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
       const cue = document.createElement('div');
       cue.className = 'fc-new-item-indicator';
       cue.setAttribute(scope, '');
-      cue.textContent = 'Updated row: forced-colors-proof.';
+      cue.style.width = '240px';
+      cue.textContent = `Updated row: ${'longidentifier'.repeat(32)}.`;
       document.body.append(cue);
       try {
         const styles = getComputedStyle(cue);
@@ -444,7 +445,8 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
         return { borderColor: styles.borderInlineStartColor, systemColor,
           borderStyle: styles.borderInlineStartStyle, borderWidth: styles.borderInlineStartWidth,
           backgroundImage: styles.backgroundImage, animationName: styles.animationName,
-          transitionDuration: styles.transitionDuration, forcedColorAdjust: styles.forcedColorAdjust };
+          transitionDuration: styles.transitionDuration, forcedColorAdjust: styles.forcedColorAdjust,
+          longIdentifierWraps: cue.scrollWidth <= cue.clientWidth && cue.getBoundingClientRect().height > 40 };
       } finally { cue.remove(); }
     });
     expect(freshRowProof.borderColor).toBe(freshRowProof.systemColor);
@@ -454,6 +456,7 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
     expect(freshRowProof.animationName).toBe('none');
     expect(freshRowProof.transitionDuration).toBe('0s');
     expect(freshRowProof.forcedColorAdjust).not.toBe('none');
+    expect(freshRowProof.longIdentifierWraps).toBe(true);
 
     await page.getByTestId('fc-command-submit').focus();
     const outlineColor = await page.getByTestId('fc-command-submit').evaluate((element) => getComputedStyle(element).outlineColor);

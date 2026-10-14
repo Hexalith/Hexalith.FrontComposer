@@ -93,6 +93,36 @@ public sealed class SurfaceAnnouncementCoordinatorTests
         sut.Current(surface).ShouldBeEmpty();
     }
 
+    /// <summary>Cancellation under a fresh overlay preserves ordinary delivery of a new result-limit outcome.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FreshOverlayAfterCancellingUnderlyingLoadRetainsOrdinaryCapDelivery(bool freshOverlay)
+    {
+        using SurfaceAnnouncementCoordinator sut = new(new FakeTimeProvider());
+        const string surface = "projection:one";
+        sut.Announce(surface, "load:first", "data:first", "Loaded first page.", terminal: true);
+        sut.Announce(surface, "load:second", "data:second", "Loaded second page.", terminal: true);
+        if (freshOverlay)
+        {
+            sut.Announce(surface, "fresh-row:A", "a", "Updated row: A.", immediate: true);
+        }
+        sut.Cancel(surface, "load:second");
+        List<string> delivered = [];
+        using IDisposable subscription = sut.Subscribe(surface, delivered.Add);
+
+        sut.Announce(surface, "limit:new", "cap:new", "New cap.", immediate: true);
+
+        sut.Current(surface).ShouldBe("New cap.");
+        delivered.ShouldBe(["New cap."]);
+        if (freshOverlay)
+        {
+            sut.Cancel(surface, "fresh-row:A");
+            sut.Current(surface).ShouldBe("New cap.");
+            delivered.ShouldBe(["New cap."]);
+        }
+    }
+
     [Fact]
     public void OldestFirstFreshWithdrawalRestoresBlockedOwnerAndKeepsLaterCapSilent()
     {

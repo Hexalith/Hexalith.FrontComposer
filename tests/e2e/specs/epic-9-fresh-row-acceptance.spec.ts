@@ -99,8 +99,10 @@ test.describe('Epic 9 composed and live acceptance', () => {
       const style = getComputedStyle(cue);
       const systemProbe = document.createElement('span');
       systemProbe.style.color = 'CanvasText';
+      systemProbe.style.backgroundColor = 'Canvas';
       document.body.append(systemProbe);
       const systemColor = getComputedStyle(systemProbe).color;
+      const systemBackground = getComputedStyle(systemProbe).backgroundColor;
       systemProbe.remove();
       const icon = cue.querySelector('[aria-hidden="true"]');
       const svg = icon?.matches('svg') ? icon : icon?.querySelector('svg');
@@ -112,26 +114,53 @@ test.describe('Epic 9 composed and live acceptance', () => {
         return opacity;
       };
       const paintedColor = (color: string) => color !== 'none' && color !== 'transparent'
-        && !/^rgba\([^)]*,\s*0(?:\.0+)?\)$/.test(color);
-      const iconPainted = !!svg && Array.from(svg.querySelectorAll('path, circle, rect, ellipse, line, polyline, polygon'))
-        .some((shape) => {
+        && color !== systemBackground && !/^rgba\([^)]*,\s*0(?:\.0+)?\)$/.test(color);
+      const displayed = (element: Element) => {
+        for (let current: Element | null = element; current && cue.contains(current); current = current.parentElement) {
+          const currentStyle = getComputedStyle(current);
+          if (currentStyle.display === 'none' || currentStyle.visibility !== 'visible') return false;
+        }
+        return true;
+      };
+      const shapes = svg ? Array.from(svg.querySelectorAll<SVGElement>('path, circle, rect, ellipse, line, polyline, polygon')) : [];
+      const iconVisible = () => !!icon && icon.getBoundingClientRect().width > 0
+        && icon.getBoundingClientRect().height > 0 && displayed(icon) && effectiveOpacity(icon) > 0
+        && shapes.some((shape) => {
           const paint = getComputedStyle(shape);
-          return effectiveOpacity(shape) > 0
+          return displayed(shape) && effectiveOpacity(shape) > 0
             && ((paintedColor(paint.fill) && Number(paint.fillOpacity) > 0)
               || (paintedColor(paint.stroke) && Number(paint.strokeOpacity) > 0));
         });
+      const indicatorIconVisible = iconVisible();
+      const rejectsHiddenShapes = (property: string, value: string) => {
+        const styles = shapes.map((shape) => shape.getAttribute('style'));
+        try {
+          for (const shape of shapes) shape.style.setProperty(property, value);
+          return !iconVisible();
+        } finally {
+          shapes.forEach((shape, index) => {
+            const original = styles[index];
+            if (original === null) shape.removeAttribute('style');
+            else shape.setAttribute('style', original!);
+          });
+        }
+      };
       return {
         indicatorSystemBorder: style.borderInlineStartColor === systemColor
           && parseFloat(style.borderInlineStartWidth) > 0 && style.borderInlineStartStyle === 'solid',
-        indicatorIconVisible: !!icon && icon.getBoundingClientRect().width > 0
-          && icon.getBoundingClientRect().height > 0 && getComputedStyle(icon).visibility === 'visible'
-          && effectiveOpacity(icon) > 0 && iconPainted,
+        indicatorIconVisible,
+        indicatorHiddenShapesRejected: rejectsHiddenShapes('display', 'none'),
+        indicatorInvisibleShapesRejected: rejectsHiddenShapes('visibility', 'hidden'),
+        indicatorForcedColors: matchMedia('(forced-colors: active)').matches,
+        indicatorReducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
         indicatorBackgroundImage: style.backgroundImage,
         indicatorAnimationName: style.animationName,
         indicatorTransitionDuration: style.transitionDuration,
       };
     });
     expect(cueModes).toEqual({ indicatorSystemBorder: true, indicatorIconVisible: true,
+      indicatorHiddenShapesRejected: true, indicatorInvisibleShapesRejected: true,
+      indicatorForcedColors: true, indicatorReducedMotion: true,
       indicatorBackgroundImage: 'none', indicatorAnimationName: 'none', indicatorTransitionDuration: '0s' });
     await page.emulateMedia({ forcedColors: 'none', reducedMotion: 'no-preference' });
     const createAnnouncement = (await indicator.textContent())?.trim() ?? '';
