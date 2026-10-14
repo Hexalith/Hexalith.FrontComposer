@@ -156,7 +156,10 @@ max-item notices are rendered as grid-adjacent status surfaces rather than cells
   separately makes at most one publication decision per accepted `MessageId`. Generated grids
   share their grid's status node; direct entry-aware callers own one by default. Set `SharedStatusOwner=true`
   only when the page already renders a status node for that same projection surface, as generated grids do.
-  Removal, expiry, and dismissal are silent.
+  With the built-in announcement coordinator, removal, expiry, and dismissal do not announce the removed
+  row. Already delivered status text restores silently; a previously unspoken pending projection outcome
+  can still announce under its normal precedence rules. Custom `ISurfaceAnnouncementCoordinator`
+  implementations must support the reserved `fresh-row:` family to provide these cancellation guarantees.
 - Inside `FcPageTabs`, a cue in an inactive panel waits until its panel and every containing panel
   are active before claiming its first announcement, and a reactivated panel shows its retained status
   without speaking it again. This deferral applies only to `FcPageTabs` panels; a cue hidden any other way

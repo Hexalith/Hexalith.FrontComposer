@@ -262,6 +262,30 @@ Blind Hunter (BH), Edge Case Hunter (EC), and Verification Gap (VG) all complete
 
 Surviving entries are five independent patches (deferred scope visibility, projection-local browser observation, hidden/deferred expiry tests, direct-caller docs, and throwing-accessor tests). The new surface-rebinding regression passes unchanged and is retained as verification evidence. Each smallest correction adds no public surface and guards the demonstrated state. Existing deferrals are carried without being appended again; no intent or spec loopback is required.
 
+### Current-checkout review (2026-10-13)
+
+The resumed `bmad-build` review ran all three required layers against `/tmp/frontcomposer-13-5-current-z0mbpsv7/review.diff`, from canonical baseline `985d3e70ac8e9d5492fa857bc3a31208a9543670` through canonical HEAD `c3174dc917b094f3736b098ac78a531f197dbe56`. All layers completed before classification. Blind Hunter's finding-floor calculation was `min(floor(sqrt(313.931) + 1), 10) = 10`; that arithmetic is metadata rather than a finding. New finding IDs below use `N-` to distinguish this continuation.
+
+| Finding | Verdict | Route | Evidence |
+|---|---|---|---|
+| N-BH-1 different overlay anchors restore an older load | false | reject | Carried RR fix-delta BH-1: a still-mounted overlay retains its own uncancelled previous owner. The probe restores that owner after restoring the remaining cue; it does not reproduce the separately fixed cancelled-common-anchor case. The existing decision preserves this restoration order. |
+| N-BH-2 staggered cross-view state publication | false | reject | Carried R2-BH-5 and C-EC-2: the sequence bypasses the sole built-in publisher's fixed ViewKey and once-per-MessageId decision. Direct entries expire from their original CreatedAt; the component reference explicitly bounds claims to the active ten-second window. No supported generated publication extends the same transition by a second Add. |
+| N-BH-3 unmounted entry first observed in another scope | false | reject | Carried resumed BH-1 creation-scope provenance: an entry has no creation-scope field and direct callers bind at the first resolved component observation, as documented. A caller retaining an unobserved record outside the scope-cleared state service cannot supply earlier scope provenance through this contract. |
+| N-BH-4 per-cue snapshot and subscription cost | low | reject | The extra snapshots and subscriptions exist, and Snapshot filters/sorts the collection. No everyday rendering failure or measured latency is demonstrated for the transient current-user cue lane; removing them requires shared membership/lifecycle plumbing rather than a direct correction. The proposed optimization adds complexity for an unmeasured large-burst case. |
+| N-BH-5 removal wording versus newly exposed pending outcomes | low | reject | The proposed fix edits this build's spec, which the workflow rejects. RR's approved cap/stale fallback regressions deliberately preserve first delivery of unrelated waiting outcomes. The component reference is clarified under N-BH-6 without modifying frozen intent or these tested semantics. |
+| N-BH-6 custom coordinator cancellation guarantees | low | patch | The component reference stated silence without the public interface's custom-coordinator qualification. Corrected docs/reference/components/datagrid.md to describe the built-in removed-row guarantee, normal pending-outcome precedence, and the reserved fresh-row family required of custom implementations. No public surface or runtime behavior changes. |
+| N-BH-7 missing release migration entry | low | defer | Carried RR migration-note deferral: the target release needs its migration entry; the existing deferred-work entry remains open. Do not append the same deferral again. |
+| N-BH-8 live-only browser coverage | low | reject | Carried RR-BH-9: the user's 2026-10-12 live-only decision expressly moves this timing-dependent proof to the Aspire lane. Chromium live acceptance and the accessibility/visual specimen suite pass; reversing that decision requires a different browser proof plan. |
+| N-BH-9 direct status-node establishment | maybe-false (medium if true) | defer | Carried original BH-4 and resumed BH-7: generated grids have the persistent node, while batching for a direct entry needs accessibility-tree or supported assistive-technology evidence. The existing direct-path deferral remains open without a duplicate entry. |
+| N-BH-10 browser mutation batching for distinct cues | maybe-false (medium if true) | defer | Carried C-BH-8 and resumed BH-9: exposed DOM revisions and bUnit render events do not establish separate spoken utterances when browser batches merge. Story 13.6 retains the required assistive-technology verification; this run claims automated DOM evidence only. |
+| N-EC-1 simultaneous surface and visibility rebinding | false | reject | Carried C-BH-3: freshly rebuilding current source and running both exclusive/nonexclusive retained-component cases still passes BecomingVisibleOnAnotherSurfaceKeepsItsOrdinaryReplayPolite. The hypothetical combined cascade/ordinary parameter delivery was not reproduced through supported rendering; no new guard is warranted by the current evidence. |
+| N-EC-2 near-maximum direct timestamp | low | reject | Carried R2-BH-4 and C-EC-4: the production clock does not produce this unsupported direct provenance. Timestamp-range branches add complexity for an already-rejected malformed-caller case. |
+| N-EC-3 dismissal during external accessor reads | low | reject | Same boundary rationale as C-BH-4: there is no renderer yield between the final eligibility check, claim and publication. Making an adopter getter mutate/dispose the indicator reentrantly, or pinning a concurrent sub-instruction expiry, requires a new lifecycle coordination contract; another check does not make that interval atomic. Hidden/deferred expiry and scope-check intervals pass their existing deterministic regressions. |
+| N-EC-4 first cap/stale delivery during withdrawal | false | reject | Carried RR-BH-1/RR-EC-1 resolution: fresh withdrawal must preserve the ordinary Cancel fallback's first-delivery bookkeeping and pending timer retirement. FreshWithdrawalFallbackDeliversCapFirstObservedBehindCancelledFailure and FreshWithdrawalFallbackCompletesPendingStaleIdentityAndCancelsItsOriginalTimer pass and pin this independent pending-outcome delivery; no removed-row message is repeated. |
+| N-VG-1 new-surface replay inferred to fail | false | reject | Carried C-BH-3, independently confirmed by the fresh current-source build and both passing surface-rebinding cases in shell-focused.xml. The reviewer's source-only prediction does not occur in the supported retained-component sequence. |
+
+Only N-BH-6 survives as a patch. It is a direct documentation correction and was applied locally because this resumed workflow has no step-03 implementation agent to re-engage. Existing decisions and deferrals are carried; there is no intent/spec loopback or new deferred-work entry.
+
 ## Design Notes
 
 Pruning claims after ten seconds cannot re-announce: a claim happens after `Add`, expiry counts from `Add`, and the resolver decides once per MessageId, so no active entry outlives its claim.
@@ -528,3 +552,53 @@ Each isolated run reports 3 passed, zero failed/skipped. These reruns do not mak
 Parent matrix audit: Appear/Re-view retain canonical copy, one node and view/remount dedupe; Data change retains silent real filter/requery/page/materialization/dismissal behavior; Scope now also covers deferred invalidation and throwing accessors; Expiry includes direct and state-owned hidden/deferred boundaries; Modes passes compiled CSS and real live cue checks. All covering story assertions pass without skips. The frozen intent is byte-equivalent after EOL normalization. OI-16, G-4, FLUENT-APP-1, Product approval, archived final evidence, and existing deferrals remain unchanged.
 
 The required Hexalith baseline says, "All existing and new tests must pass before a story is complete." This prevents the workflow's Step 5 `done`/commit transition while the broad gate is failed. Spec status stays `in-review`; sprint status stays `in-progress`. No local commit or push was created.
+
+### Current-checkout verification and documentation patch (2026-10-13)
+
+Resumed review on canonical HEAD `c3174dc917b094f3736b098ac78a531f197dbe56`. All three required review layers completed. The sole surviving patch clarifies cancellation guarantees for the built-in and custom announcement coordinators in `docs/reference/components/datagrid.md`; production source, dependency pins, governance policy, and the frozen intent are unchanged. The complete execution commands/results are preserved in `/tmp/frontcomposer-13-5-current-z0mbpsv7/verify.py` and `verification-results.json`.
+
+| Check | Result | Evidence under `/tmp/frontcomposer-13-5-current-z0mbpsv7/` |
+|---|---|---|
+| Debug Shell build | Zero warnings/errors | `shell-build.log` |
+| Shell focused regression and Fluent governance lane | 517 passed; zero failed/skipped | `shell-focused.xml` |
+| Debug SourceTools build | Zero warnings/errors | `source-build.log` |
+| SourceTools emitter/snapshot/identity lane | 41 passed; zero failed/skipped | `source-focused.xml` |
+| Serialized Release restore | Exit 0 | `release-restore.log` |
+| Full Shell audit | 3664 passed, 3 failed, 1 skipped, zero errors; exit 1 | `shell-full.xml` and `shell-full.log` |
+| Existing timing cases, isolated after the full-suite failure | Three consecutive runs, each 3 passed; zero failed/skipped | `timing-isolated-{1,2,3}.xml` and `timing-results.json` |
+| Artifact validator | 108 passed; zero failed/skipped | `artifact-validator.log` |
+| TypeScript | Exit 0 | `typescript.log` |
+| Chromium accessibility and visual specimens | 22 passed; zero failed/skipped; existing baselines retained | `specimen-junit.xml` and `specimen.log` |
+| Fresh Aspire source-graph and live browser proof | Source build zero warnings/errors; 1 passed; artifact validation passed; owned AppHost stopped | `live-proof/` and `live-proof.log` |
+| Documentation and guarded identity checks after the documentation patch | Docs exit 0; 7 identity-contract tests passed; zero failed/skipped | `postpatch-docs.log` and `postpatch-doc-contract.xml` |
+| Whitespace | `git diff --check` exit 0 | Final workspace check |
+
+The full audit passes `FluentConformanceTests.Shell_chrome_styles_never_use_accent_as_surface_background` and `AnalyzerPolicy_ActivatedReleaseBuild_MatchesForcedRecommendedCandidate`, including the canonical and forced-Recommended Release solution-build assertions. Both exclusive/nonexclusive `BecomingVisibleOnAnotherSurfaceKeepsItsOrdinaryReplayPolite` cases pass after a fresh current-source rebuild; the source-only review prediction is not reproduced.
+
+The required live command was:
+
+```bash
+FC_EPIC9_ARTIFACT_ROOT=/tmp/frontcomposer-13-5-current-z0mbpsv7/live-proof ./eng/run-epic9-live-proof.sh
+```
+
+Its schema-2/story-13.5 packet measures the generated projection's own node: one shared polite node, zero hidden announcements, one first-activation announcement, zero tab-switch/duplicate repeats, and three eligible transition announcements. The real cue has a painted visible icon and system border, with background image and animation absent and transition duration `0s` under forced colors/reduced motion. This remains development evidence; it does not replace archived final evidence or manual assistive-technology acceptance. Final `aspire ps --format Json --non-interactive --nologo` returns `[]`.
+
+The blocking broad command and result are:
+
+```bash
+DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -result-xml /tmp/frontcomposer-13-5-current-z0mbpsv7/shell-full.xml
+```
+
+| Lane | Required command | Local result | Blocker timing | Fallback evidence | CI authority |
+|---|---|---|---|---|---|
+| Full Shell audit | Exact built-assembly command above | Exit 1: 3664 passed, 3 failed, 1 skipped | Inside test bodies | Focused Shell 517/517; isolated timing cases 3/3 on each of three runs | Required |
+
+Failures are `CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds` (the committed catalog selects Verify 33.3.3 while semantic policy requires 33.2.0), `ToolchainPins_MatchApprovedDotnetAndAspireVersions` (the selected **Aspire.Hosting package**, not the CLI, is 13.6.1 while the approved hosting pin is 13.6.0), and `HeldQueryPreservesCallerCancellationAndFatalPropagation(fatal: False)` (timeout). The same timing cases pass all three isolated runs; this does not make the failed broad gate green. `LiveTwoTenantProductionAdapterTests.ProvisionedTenants_QueryCountAndSubscribe_StayIsolated` is skipped because its endpoint, identities and bearer tokens are not configured. The direct semantic-policy command also exits 1 for the committed Verify mismatch:
+
+```bash
+python3 eng/dependency_graph.py --root . validate --commit c3174dc917b094f3736b098ac78a531f197dbe56
+```
+
+Parent matrix audit: executed covering tests still prove Appear/Re-view copy, icon, one node, view/remount dedupe and hidden-first delivery; Data change preserves first provenance/TTL and silent removed-row behavior through actual filter, requery, paging, materialization and dismissal; Scope covers resolved/missing/throwing getters and deferred invalidation; Expiry covers direct/state-owned exact and hidden/deferred boundaries; Modes passes both compiled-CSS and real-cue browser checks. Existing standalone, coordinator precedence and public tab regressions pass. OI-16, G-4, FLUENT-APP-1, Product approval and existing review deferrals remain open.
+
+The required Hexalith baseline says, "All existing and new tests must pass before a story is complete." The full-suite failure prevents the workflow's `done`/commit transition. Status remains `in-review`, sprint status remains `in-progress`, and no files were staged, committed or pushed. The remaining catalog-policy reconciliation and existing timing failure are recorded exactly; no gate was relaxed to declare completion.
