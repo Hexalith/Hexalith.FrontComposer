@@ -2,7 +2,7 @@
 title: 'Story 13.5: Preserve Fresh-Row Meaning Across Visual and Data Changes'
 type: 'feature'
 created: '2026-10-12'
-status: 'done'
+status: 'in-progress'
 route: 'dispatch'
 review_loop_iteration: 1
 baseline_commit: '985d3e70ac8e9d5492fa857bc3a31208a9543670'
@@ -162,6 +162,28 @@ Rejected (re-review):
 - [x] [Review][Patch] C-VG-1: prove both scope getter failures suppress the direct cue and speech, reject retained entries after recovery, and permit a new recovered transition.
 
 C-BH-3 was disproved by retained-component regressions for exclusive and nonexclusive owners; both pass without changing `FcSurfaceStatus`. Existing manual-assistive-technology deferrals remain unchanged. All three required review layers completed; every finding has an individual verdict in the triage log below.
+
+### Review Findings (2026-10-15, production-source chunk 985d3e70..58e2432e)
+
+Chunk: `src/` only (1,237 lines). Tests, snapshots and e2e were not reviewed in this pass. Four layers completed.
+
+- [ ] [Review][Patch] Discarded `Ledger.HasResolvedScope()` call in `Dispose` is dead code — low [src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcNewItemIndicator.razor.cs:208]. Its only effect is a scope-reconcile side effect, which `IsOriginatingScope`/`TryClaim` already perform on every use; it adds a throw path ahead of `CancelAnnouncement()`. Delete it. (blind-hunter + edge-case-hunter + verification-gap + acceptance-auditor)
+
+#### Rejected
+
+- Hidden-panel / reactivation silencing applies to all families (AA, EC, BH) — false: already adjudicated as EC-6/EC-11 and D-BH-2; retained inactive panels were never exposed to AT before 13.5, so no spoken outcome is lost.
+- Exclusive ownership gated on panel visibility changes 13.4 (AA) — false: Review Triage R2-BH-2 required it, and `ExclusiveOwner` hand-off is covered by RR tests.
+- Stale `_localSelectedTabId` after parent resets `ActiveTabId`; selected id matching no tab (BH, EC) — low: the uncontrolled path is only used when `ActiveTabId` was never supplied, and `VisibilityFor` already falls back to the first enabled tab; guards would be extra complexity for a path no caller reaches.
+- Reserved `fresh-row:` prefix dispatch on public `Announce`/`Cancel` (AA) — false: R2-BH-3 required default fresh-family dispatch surviving forwarding decorators; the contract is documented in the interface remarks.
+- Claim key lacks surface / cross-view dedupe (EC) — false: spec defines a transition as tenant + user + EntityKey + MessageId, independent of ViewKey.
+- Group "retired" can be re-announced (EC) — false: each cue mints a fresh GUID group id, never reused.
+- Tenant A entry observed after switch to B (EC) — false: producer emits no scope on the entry; origin is bound at first observation by design (BH-1/EC-2 resolution), and claims are cleared on scope change.
+- `Clear` nulls `FreshSilentRevision` while a withdrawal is in flight (EC) — false: `PendingFreshSilentRevisions` is deliberately retained and checked at `SurfaceAnnouncementCoordinator.cs:76-77`.
+- Cue expiring while hidden is not announced on reveal (EC) — false: expired transitions must stay silent.
+- Claim consumed with no mounted owner / `SharedStatusOwner` without a status node (EC) — false: the coordinator retains the group per surface and delivers on bind; hidden panels return before claiming.
+- `DateTimeOffset` clock-skew / overflow (EC) — low: carried as R2-BH-4 rejection.
+- Public `Dispose()` in PublicAPI (BH, AA) — false: accepted as BH-8/AA-5.
+- Service-locator injection, magic `10`, allocation per `VisibilityFor`, markup/indent nits, forced-colors icon, AsyncLocal fragility (BH) — low/false: no demonstrated harm; forced-colors and silence are covered by live and component tests.
 
 ## Implementation Notes
 
