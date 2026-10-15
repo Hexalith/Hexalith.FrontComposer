@@ -872,3 +872,22 @@ The current exact-target `aspire start --non-interactive --apphost src/Hexalith.
 The three required review layers are complete, and all fifteen findings have individual verdicts. No new runtime fix survives; the sole source change documents the required disposal scope reconciliation. Two pre-existing tracking defects are recorded separately in deferred-work; existing assistive-technology, migration and scheduler follow-ups remain open. The final freshly rebuilt focused lane is 534 passed with zero failed/skipped/errors. Retained prior default-lane evidence is 3663 passed with zero failed/skipped/errors; the comment-only source change does not alter that code. No new full-suite, Release, live-browser or assistive-technology success is claimed.
 
 All implementation tasks and matrix assertions retain passing evidence; frozen intent, resolver and indicator-state-service source are unchanged. This workflow marks the implementation spec done and synchronizes only Story 13.5 to review. Product, OI-16, G-4, FLUENT-APP-1 and owner acceptance remain open. The resulting local commit contains only the source comment and this run's workflow records; nothing is pushed.
+
+### Review Findings (code review 2026-10-15, 985d3e70...63db6b5b)
+
+Layers: Blind Hunter (14), Edge Case Hunter (9), Acceptance Auditor (9), Verification Gap (0). No layer failed.
+
+- [x] [Review][Defer] `FcNewItemIndicator.Dispose` resolves `Ledger`/`Announcements` through `IServiceProvider.GetRequiredService`, which could throw `ObjectDisposedException` if a host disposes the scope provider before the renderer [src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcNewItemIndicator.razor.cs:Dispose] — deferred: unverified medium; settle by checking Blazor Server circuit, WASM and bUnit teardown order for scoped-provider vs renderer disposal.
+- [x] [Review][Defer] Five `references/Hexalith.*` gitlink moves are in the 985d3e70..HEAD range though outside the story Code Map — deferred: pre-existing workspace/auto-commit movement, not authored by 13.5 (the Verify 33.3.3 / Aspire 13.6.1 pin reconciliation was human-approved, see Approved policy reconciliation).
+
+#### Rejected
+
+- BH/AA sprint-status header glue and 13.8 key spelling — already recorded in deferred-work.md ("Deferred from: Story 13.5 resumed build review"); pre-existing human commit 9a64a112.
+- BH/AA/EC `Verify`/Aspire pin bump in diff — human-approved reconciliation, recorded in this spec.
+- EC claim purged at 10 s while state-owned cue still eligible — false: state timer starts at Add (>= CreatedAt) and claim at claim time, so the claim outlives the state entry.
+- EC/BH missing Shell DI throws at render — false: loud failure on a misconfigured host; ledger is registered by `AddFrontComposerShell`.
+- BH/EC `_localSelectedTabId` stale; AA hidden-panel silence and `fresh-row:` prefix dispatch; BH/AA Dispose `HasResolvedScope`, public `Dispose`, e2e skip — already triaged in the Review Triage Log (low-reject / accepted R2-BH-3, BH-8/AA-5, EC-6/11, VG-O2) with no new evidence.
+- BH/EC new `PagePanelVisibility` per render — low, perf-only; fix adds caching complexity.
+- BH 10 s literal in three places, `AsyncLocal` side channel, lock held over accessor, lazy pruning, unbounded `SilentRevisions`, coordinator refactor mixed in, `Text` override not announced, plain div without role, magic prefix — design preference or documented decisions with no demonstrated harm; `Text` override vs canonical speech is asserted by `FcFreshRowIndicatorTests`.
+- EC overlay clause / replay-flag — maybe-false at best and covered by coordinator tests for cancel/overlay precedence; adopter non-synchronous replay is a custom-coordinator contract.
+- EC claims 1–2 (once-per-transition scope, validation citation) — restate documented 10 s-window design and the recorded user decision on the live-lane spec.

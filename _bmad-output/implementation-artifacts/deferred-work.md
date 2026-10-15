@@ -10296,3 +10296,8 @@ Reconfirmed existing open items without new ids: AA25-01 (Story 13.4 AM-14 hand-
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-5-preserve-fresh-row-meaning-across-visual-and-data-changes.md`
   summary: Separate the sprint-status last_updated and project header comments and correct the malformed date.
   evidence: F-BH-2: the pre-run human commit `9a64a112980fd49441689fd0a3c41dd2ab88148d` introduced `# last_updated: 2026-10-124# project: frontcomposer`. The authoritative YAML fields remain readable; preserve the committed text here and handle this independent metadata cleanup separately.
+
+## Deferred from: code review of spec-13-5-preserve-fresh-row-meaning-across-visual-and-data-changes (2026-10-15)
+
+- `FcNewItemIndicator.Dispose` resolves `FreshRowAnnouncementLedger`/`ISurfaceAnnouncementCoordinator` via `IServiceProvider` at teardown; if a host disposes the scope provider before the renderer this throws `ObjectDisposedException` (unverified medium). Would settle: confirm Blazor Server/WASM/bUnit disposal order, or cache the services at first use.
+- Five `references/Hexalith.*` gitlinks (Builds, EventStore, Memories, Parties, Tenants) moved inside the 985d3e70..HEAD range outside the Story 13.5 Code Map; pre-existing workspace movement, owned by their own dependency stories.
