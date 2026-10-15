@@ -2,7 +2,7 @@
 title: 'Story 13.5: Preserve Fresh-Row Meaning Across Visual and Data Changes'
 type: 'feature'
 created: '2026-10-12'
-status: 'in-progress'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 1
 baseline_commit: '985d3e70ac8e9d5492fa857bc3a31208a9543670'
@@ -167,7 +167,7 @@ C-BH-3 was disproved by retained-component regressions for exclusive and nonexcl
 
 Chunk: `src/` only (1,237 lines). Tests, snapshots and e2e were not reviewed in this pass. Four layers completed.
 
-- [ ] [Review][Patch] Discarded `Ledger.HasResolvedScope()` call in `Dispose` is dead code — low [src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcNewItemIndicator.razor.cs:208]. Its only effect is a scope-reconcile side effect, which `IsOriginatingScope`/`TryClaim` already perform on every use; it adds a throw path ahead of `CancelAnnouncement()`. Delete it. (blind-hunter + edge-case-hunter + verification-gap + acceptance-auditor)
+- [x] [Review][Reject] The discarded `Ledger.HasResolvedScope()` result does not make the disposal call dead code. Removing the block fails all four `ScopeChangeClearsCueAndClaimsBeforeNewScopeRendersWithoutSpeech` cases (tenant, user, missing tenant, missing user); restoring it passes all four and the identical 534-test focused lane. Disposal observes the intervening scope boundary after the state service removes a generated cue, before any subsequent entry checks occur. Retain the call and document this required side effect. Paired evidence: `/tmp/frontcomposer-13-5-dispose-shell-focused.xml` (530 passed, 4 failed), `/tmp/frontcomposer-13-5-retained-scope-paired.xml` (4 passed), and `/tmp/frontcomposer-13-5-retained-scope-shell-focused.xml` (534 passed); no test expectations changed.
 
 #### Rejected
 
@@ -355,6 +355,30 @@ All three required layers completed before classification. The independent revie
 | E-EC-3 unchanged-family claim | medium | patch | Same paired cancellation counterexample as E-EC-1, verified through the public Announce/Cancel path. Group with E-EC-1; retain the mounted underlying owner's existing precedence. |
 
 The parent applies the direct patches because this resumed workflow has no step-03 implementation agent to re-engage. No intent/spec loopback is required, and existing assistive-technology/migration deferrals remain open without new duplicates.
+
+### Resumed build review (2026-10-15)
+
+All three required layers completed before classification against `/tmp/frontcomposer-13-5-resume-0hip2oik/review.diff` (240765 bytes), preserving baseline `985d3e70ac8e9d5492fa857bc3a31208a9543670` and canonical starting HEAD `9a64a112980fd49441689fd0a3c41dd2ab88148d`. Blind Hunter's floor was `min(floor(sqrt(240.765) + 1), 10) = 10`; its arithmetic is reviewer metadata. Verification Gap reported no pre-verified gaps and two Other findings. Every filed finding is recorded individually below.
+
+| Finding | Verdict | Route | Evidence |
+|---|---|---|---|
+| F-BH-1 Story 13.8 key corruption | low | defer | The unrelated Story 13.8 key is misspelled. Git blame places the edit in the human's pre-run commit `9a64a112980fd49441689fd0a3c41dd2ab88148d`; preserve that committed change and record the tracking defect separately from Story 13.5 completion. |
+| F-BH-2 concatenated metadata comment | low | defer | The header comment joins last_updated and project into one malformed line. Git blame attributes it to the same pre-run human commit; it is independent of this story's runtime and the authoritative YAML scalar remains readable. Preserve it and record the cleanup separately. |
+| F-BH-3 simultaneous visibility/surface update | false | reject | Carried C-BH-3, N-EC-1 and D-BH-1: both retained-component exclusive/nonexclusive regressions pass after the final source rebuild. The supported cascading/ordinary parameter sequence delivers them separately and preserves polite new-surface replay. On follow-up, the reviewer withdrew reachability: its reproduction used reflection and direct lifecycle invocation rather than framework parameter delivery; both real regressions pass. The code and prior verdict remain unchanged. |
+| F-BH-4 maximum/future timestamp | low | reject | Carried R2-BH-4, C-EC-4 and D-BH-3: production clock provenance cannot reach the unsupported direct MaxValue input. Additional timestamp/timer branches add complexity for the same previously rejected malformed input. |
+| F-BH-5 identical tuple in another scope | low | reject | Carried C-BH-1 and D-BH-7: an identical entity/message/timestamp tuple is indistinguishable from an equivalent copy that must retain origin; the sole built-in publisher retains its MessageId decision across scopes. A separate independent-origin contract would expand the direct-caller surface. |
+| F-BH-6 observer batches multiple revisions | maybe-false | defer | Carried C-BH-8 and N-BH-10: DOM observations do not prove separate spoken utterances when browser batches merge. If harmful this is medium; supported assistive-technology evidence settles it. Keep the existing Story 13.6 follow-up without another ledger entry. |
+| F-BH-7 Chromium-only composed proof | low | reject | Carried RR-BH-9 and D-BH-11: the recorded human decision places the exact-timing composed proof in the Aspire live lane. Changing the browser coverage contract would reverse that decision; the required lane and specimen proof remain intact. |
+| F-BH-8 browser observer records only row copy | low | reject | The browser array intentionally measures row-transition counts; generated removal/expiry/scope assertions record every non-silent revision and pass in the final lane, and the browser asserts the shared node's canonical copy. No missed invalid runtime behavior was demonstrated. Adding a broader browser event protocol duplicates existing passing removal assertions and adds complexity. |
+| F-BH-9 two-entry browser delivery proof | maybe-false | defer | Carried C-BH-8, N-BH-10 and D-BH-10: all overlapping/same-render and hidden-activation bUnit cases pass, but batching versus user-heard delivery remains unverified (medium if true). The existing supported-assistive-technology follow-up covers this boundary; do not duplicate it. |
+| F-BH-10 release migration entry | low | defer | Carried RR migration-note and N-BH-7: the existing deferred entry requires the target release's migration file. Keep that entry open without appending it again. |
+| F-EC-1 distinct overlay anchors restore earlier load | false | reject | Carried N-BH-1 and the RR fix-delta BH-1 decision: a still-mounted older overlay retains its own uncancelled previous owner. This differs from the fixed cancelled-common-anchor case. Preserve the recorded restoration order; no new patch. |
+| F-EC-2 Story 13.8 key deletion | low | defer | Same verified pre-run committed typo as F-BH-1. Group only this shared defect for one new deferred entry after individual classification. |
+| F-EC-3 unrelated pending outcome speaks on withdrawal | false | reject | Carried RR-BH-1, N-EC-4 and D-EC-3: normal cancellation fallback deliberately completes first delivery of an independently pending cap/stale outcome. It does not reannounce the removed row; both explicit fallback regressions pass. |
+| F-VG-O1 new-surface replay prediction | false | reject | Carried C-BH-3 and N-VG-1: the reviewer did not execute the test; both freshly rebuilt retained-component cases pass in `/tmp/frontcomposer-13-5-final-shell-focused.xml`. No new supported failing parameter sequence is shown by this finding. |
+| F-VG-O2 Story 13.8 key corruption | low | defer | Same verified pre-run committed typo as F-BH-1/F-EC-2. Group for the single tracking-key deferred entry. |
+
+No intent/spec loopback or implementation patch survives triage. Two newly recorded pre-existing tracking defects are deferred; existing manual-assistive-technology and migration deferrals remain open without duplicate entries. The disproved disposal-removal finding remains rejected on its paired failing/passing experiment.
 
 ## Design Notes
 
@@ -830,3 +854,21 @@ DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Deb
 The already executed postpatch generator (41), artifact validator (114), TypeScript, docs, Chromium specimens (22), and Aspire live-proof (1) results remain applicable: this approval changed policy and one governance expectation only. No runtime/browser/generator source changed after those passing proofs. The existing configured exclusions and full Release/unfiltered CI authority remain recorded above; no fresh full Release or unfiltered success is claimed.
 
 All story acceptance rows retain executed passing assertions. Frozen intent is unchanged, and OI-16, G-4, FLUENT-APP-1, Product approval, assistive-technology sign-off, migration notes, and the existing scheduler deferral remain open. The implementation spec is now `done`; the rendered workflow synchronizes its sprint entry to `review` and records the remaining story changes in a local commit. Nothing is pushed.
+
+
+### Resumed implementation and parent matrix audit (2026-10-15)
+
+Resumed on canonical HEAD `9a64a112980fd49441689fd0a3c41dd2ab88148d`, preserving baseline `985d3e70ac8e9d5492fa857bc3a31208a9543670`. The sole unchecked removal finding was disproved by a paired experiment: removal fails all four generated scope-boundary cases; restoration passes them and the same 534-test lane. The final production change is only an explanatory comment on the required disposal reconciliation. No test expectation, runtime behavior, dependency, or frozen requirement changed.
+
+Final command: `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Debug --no-restore -m:1 -p:NuGetAudit=false`. Result: zero warnings/errors (`/tmp/frontcomposer-13-5-final-shell-build.log`). The final 19-class Shell lane passes 534/534, zero failed/skipped/errors; the parent parsed `/tmp/frontcomposer-13-5-final-shell-focused.xml`. It includes standalone/lane, ledger, fresh-row, generated composition, resolver, coordinator, surface-status, page-tabs, slow/cap notice, localization/API, type/fatal-guard and Fluent conformance tests, including `Shell_chrome_styles_never_use_accent_as_surface_background`.
+
+Parent matrix audit: Appear/Re-view, Data change, Scope and Expiry are covered by those executed passing component/generated/ledger assertions. The unchanged Modes path retains the inspected passing specimen JUnit (22 tests) and live JUnit (one test) under `/tmp/bmad-13-5-current-verification/postpatch/`. The parent also parsed its schema-2/story-13.5 JSON: one shared polite node, zero hidden speech, one first-activation announcement, zero tab/duplicate repeats, three eligible announcements, visible icon/system border, active forced-colors/reduced-motion, hidden/invisible-shape rejection, and no image/animation/transition. These are retained prior browser results, not a new browser run. All twelve execution tasks remain satisfied; the former unchecked item is now rejected with paired evidence.
+
+The current exact-target `aspire start --non-interactive --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj` stalled before registration. Exact-target describe/stop found no running AppHost; only the owned startup command was cancelled. Final discovery returned `[]`. No new known-good runtime baseline is claimed. Product, OI-16, G-4, FLUENT-APP-1 and existing assistive-technology/migration/scheduler follow-ups remain open.
+
+
+### Completion (2026-10-15)
+
+The three required review layers are complete, and all fifteen findings have individual verdicts. No new runtime fix survives; the sole source change documents the required disposal scope reconciliation. Two pre-existing tracking defects are recorded separately in deferred-work; existing assistive-technology, migration and scheduler follow-ups remain open. The final freshly rebuilt focused lane is 534 passed with zero failed/skipped/errors. Retained prior default-lane evidence is 3663 passed with zero failed/skipped/errors; the comment-only source change does not alter that code. No new full-suite, Release, live-browser or assistive-technology success is claimed.
+
+All implementation tasks and matrix assertions retain passing evidence; frozen intent, resolver and indicator-state-service source are unchanged. This workflow marks the implementation spec done and synchronizes only Story 13.5 to review. Product, OI-16, G-4, FLUENT-APP-1 and owner acceptance remain open. The resulting local commit contains only the source comment and this run's workflow records; nothing is pushed.

@@ -205,6 +205,8 @@ public partial class FcNewItemIndicator : ComponentBase, IDisposable {
         _disposed = true;
         _expiryTimer?.Dispose();
         _stateSubscription?.Dispose();
+        // Observe scope clearing as removed cues leave the tree, even when the next
+        // render returns directly to the original scope.
         if (Entry is not null)
         {
             _ = Ledger.HasResolvedScope();

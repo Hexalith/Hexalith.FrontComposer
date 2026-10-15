@@ -10286,3 +10286,13 @@ Reconfirmed existing open items without new ids: AA25-01 (Story 13.4 AM-14 hand-
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-5-preserve-fresh-row-meaning-across-visual-and-data-changes.md`
   summary: Confirm that exposed fresh-row status mutations are spoken once by supported assistive technologies.
   evidence: BH-9 (maybe-false; medium if true): the browser observer counts exposed DOM revisions, not human-heard speech. Story 13.6 owns the still-open manual assistive-technology sign-off; dated NVDA, JAWS, and VoiceOver runs would settle the claim.
+
+
+## Deferred from: Story 13.5 resumed build review (2026-10-15)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-5-preserve-fresh-row-meaning-across-visual-and-data-changes.md`
+  summary: Restore Story 13.8's canonical sprint-tracking key after its pre-existing committed spelling change.
+  evidence: F-BH-1/F-EC-2/F-VG-O2: Git blame attributes `13-8-a-e9-app-1-accept-the-completed-fresh-row-live-prrevokwg` to the human's pre-run commit `9a64a112980fd49441689fd0a3c41dd2ab88148d`. It prevents lookup by the declared `13-8-a-e9-app-1-accept-the-completed-fresh-row-live-proof` identity; this run preserves the unrelated committed change.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-5-preserve-fresh-row-meaning-across-visual-and-data-changes.md`
+  summary: Separate the sprint-status last_updated and project header comments and correct the malformed date.
+  evidence: F-BH-2: the pre-run human commit `9a64a112980fd49441689fd0a3c41dd2ab88148d` introduced `# last_updated: 2026-10-124# project: frontcomposer`. The authoritative YAML fields remain readable; preserve the committed text here and handle this independent metadata cleanup separately.
