@@ -2,6 +2,8 @@
 @namespace Counter.Specimens
 @using Counter.Domain
 @using Counter.Specimens.Domain
+@using Hexalith.FrontComposer.Contracts.Rendering
+@inject Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.IFrontComposerTenantContextAccessor TenantContext
 @using Hexalith.FrontComposer.Contracts.Attributes
 @using Hexalith.FrontComposer.Shell.Components.Badges
 @using Hexalith.FrontComposer.Shell.Components.DataGrid
@@ -97,7 +99,18 @@
 
     <section aria-labelledby="fc-counter-grid-title" data-testid="fc-generated-counter-grid">
         <h2 id="fc-counter-grid-title">Generated Counter projection grid</h2>
-        <CounterProjectionView />
+        <CascadingValue Name="SpecimenGeneratedDefaultGrid" Value="@GeneratedGrid">
+            @if (GeneratedGrid && GeneratedGridContext is { } generatedContext)
+            {
+                <CascadingValue Value="@generatedContext">
+                    <CounterProjectionView />
+                </CascadingValue>
+            }
+            else
+            {
+                <CounterProjectionView />
+            }
+        </CascadingValue>
     </section>
 
     <section aria-labelledby="fc-specimen-command-title" data-testid="fc-command-lifecycle">
@@ -158,6 +171,14 @@
                 <FcScopeBlocked />
             }
         </section>
+        <div data-fc-datagrid="specimen-missing-detail" data-testid="fc-missing-detail-fixture">
+            <FcExpandedRowHiddenBanner ViewKey="specimen-missing-detail" IsHiddenByFilter="false" IsMissing="_focusMissing" ResultIdentity="@_focusResult.ToString(System.Globalization.CultureInfo.InvariantCulture)" />
+            @if (!_focusMissing) {
+                <div class="fc-expand-in-row-detail">
+                    <Microsoft.FluentUI.AspNetCore.Components.FluentButton OnClick="@(() => _focusMissing = true)" data-testid="fc-remove-focused-detail">Remove expanded item</Microsoft.FluentUI.AspNetCore.Components.FluentButton>
+                </div>
+            }
+        </div>
     }
 
     <nav aria-label="Specimen multi-level navigation" data-testid="fc-multi-level-nav">
@@ -191,7 +212,12 @@
     [SupplyParameterFromQuery(Name = "announcementFocus")]
     public bool AnnouncementFocus { get; set; }
 
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "generatedGrid")]
+    public bool GeneratedGrid { get; set; }
+
     private bool _focusHidden;
+    private bool _focusMissing;
     private bool _focusSettled = true;
     private bool _focusBlocked;
     private int _focusResult;
@@ -211,8 +237,15 @@
             ? value.ToLowerInvariant()
             : fallback;
 
-    private static string BuildHref(string theme, string density)
-        => $"{FrontComposerSpecimenRoutes.TypeSpecimen}?theme={theme}&density={density}";
+    private RenderContext? GeneratedGridContext
+        => GeneratedGrid && TenantContext.TryGetContext(operationKind: "specimen-generated-grid").Context is { } scope
+            ? new RenderContext(scope.TenantId, scope.UserId, FcRenderMode.Server,
+                Enum.Parse<DensityLevel>(ResolvedDensity, ignoreCase: true), IsReadOnly: false)
+            : null;
+
+    private string BuildHref(string theme, string density)
+        => $"{FrontComposerSpecimenRoutes.TypeSpecimen}?theme={theme}&density={density}"
+            + (GeneratedGrid ? "&generatedGrid=true" : string.Empty);
 
     private static readonly TypeRampSlot[] TypeRamp = [
         new("display", "Display", "FrontComposer Display", "fc-specimen__display"),

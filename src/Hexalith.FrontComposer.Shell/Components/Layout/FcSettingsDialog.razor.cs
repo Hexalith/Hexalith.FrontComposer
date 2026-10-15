@@ -53,6 +53,7 @@ public partial class FcSettingsDialog : Fluxor.Blazor.Web.Components.FluxorCompo
         try {
             _focusModule = await JS.InvokeAsync<IJSObjectReference>("import", FocusModulePath);
             await _focusModule.InvokeVoidAsync("focusOverlayEntry", "fc-settings-heading", true);
+            await _focusModule.InvokeVoidAsync("containDialogFocus", "fc-settings-dialog");
         }
         catch (Exception ex) when (ex is JSException or JSDisconnectedException or OperationCanceledException or InvalidOperationException) {
             // Fluent keeps its own modal focus containment if entry focus interop is unavailable.

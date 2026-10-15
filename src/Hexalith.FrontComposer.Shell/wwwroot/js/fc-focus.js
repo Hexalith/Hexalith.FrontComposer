@@ -237,7 +237,14 @@ export function labelDialog(testId, titleId, descriptionId) {
 }
 
 const dialogTabbableSelector = [
+    'fluent-accordion-item:not([disabled])',
     'fluent-button:not([disabled])',
+    'fluent-text-input:not([disabled])',
+    'fluent-number-input:not([disabled])',
+    'fluent-dropdown:not([disabled])',
+    'fluent-combobox:not([disabled])',
+    'fluent-switch:not([disabled])',
+    'fluent-radio:not([disabled])',
     'button:not([disabled])',
     'a[href]',
     'input:not([disabled])',
@@ -263,17 +270,19 @@ export function containDialogFocus(testId, retryOnce = true) {
         const tabbables = Array.from(host.querySelectorAll(dialogTabbableSelector))
             .filter((candidate) => candidate instanceof HTMLElement
                 && candidate.isConnected
-                && candidate.tabIndex >= 0
+                && (candidate.tabIndex >= 0 || candidate.shadowRoot?.querySelector('input:not([disabled]),button:not([disabled]),[tabindex="0"]'))
                 && candidate.getClientRects().length > 0);
         if (tabbables.length === 0) return;
         const first = tabbables[0];
         const last = tabbables[tabbables.length - 1];
         const active = document.activeElement;
         const inside = active instanceof Node && host.contains(active);
-        const atBoundary = !tabbables.includes(active) || (event.shiftKey ? active === first : active === last);
+        const ownsActiveControl = candidate => active === candidate || candidate.matches('fluent-dropdown,fluent-combobox') && candidate.contains(active);
+        const atBoundary = !tabbables.includes(active) || ownsActiveControl(event.shiftKey ? first : last);
         if (!inside || atBoundary) {
             event.preventDefault();
-            (event.shiftKey ? last : first).focus();
+            const target = event.shiftKey ? last : first;
+            (target.tabIndex < 0 ? target.shadowRoot?.querySelector('input:not([disabled]),button:not([disabled]),[tabindex="0"]') : target)?.focus();
         }
     }, true);
     containedDialogs.add(host);
@@ -474,6 +483,42 @@ export function focusElementById(id) {
 // focused before the replacement render is gone and focus fell back to the document. An initial
 // denial, or a refresh while focus sits elsewhere, renders silently and leaves focus alone.
 const focusBeforeReplacement = new Map();
+const detailFocusTrackers = new Map();
+
+// Capture the detail's focus while it still exists. A deliberate move, route change, or
+// released owner cancels recovery; after replacement, the existing helper consumes the capture.
+export function trackDetailFocus(key, viewKey) {
+    if (detailFocusTrackers.has(key)) return;
+    const controller = new AbortController();
+    const path = window.location.pathname;
+    const track = () => {
+        const active = document.activeElement;
+        const detail = active?.closest('.fc-expand-in-row-detail');
+        const root = detail?.closest('[data-fc-datagrid]');
+        if (path === window.location.pathname && root?.getAttribute('data-fc-datagrid') === viewKey) {
+            captureFocusBeforeReplacement(key);
+        } else if (active !== document.body) {
+            focusBeforeReplacement.delete(key);
+        }
+    };
+    document.addEventListener('focusin', track, { capture: true, signal: controller.signal });
+    const cancel = event => {
+        const detail = event.composedPath().find(node => node instanceof HTMLElement && node.matches('.fc-expand-in-row-detail'));
+        if (detail?.closest('[data-fc-datagrid]')?.getAttribute('data-fc-datagrid') === viewKey) track();
+        else focusBeforeReplacement.delete(key);
+    };
+    document.addEventListener('pointerdown', cancel, { capture: true, signal: controller.signal });
+    document.addEventListener('keydown', cancel, { capture: true, signal: controller.signal });
+    detailFocusTrackers.set(key, { controller, path });
+    track();
+    while (detailFocusTrackers.size > 32) cancelReplacementFocus(detailFocusTrackers.keys().next().value);
+}
+
+export function cancelReplacementFocus(key) {
+    detailFocusTrackers.get(key)?.controller.abort();
+    detailFocusTrackers.delete(key);
+    focusBeforeReplacement.delete(key);
+}
 
 export function captureFocusBeforeReplacement(key) {
     if (!key) return false;
@@ -490,6 +535,7 @@ export function captureFocusBeforeReplacement(key) {
 export function focusReplacementHeading(key, headingId) {
     const prior = focusBeforeReplacement.get(key);
     focusBeforeReplacement.delete(key);
+    if (detailFocusTrackers.has(key) && detailFocusTrackers.get(key).path !== window.location.pathname) return false;
     if (!(prior instanceof HTMLElement) || prior.isConnected) return false;
     const active = document.activeElement;
     if (active instanceof HTMLElement && active !== document.body && active.isConnected) return false;

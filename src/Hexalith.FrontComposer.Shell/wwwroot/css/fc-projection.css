@@ -161,3 +161,41 @@
         }
     }
 }
+
+/* The labelled grid alone owns horizontal scrolling; the surrounding page can shrink. */
+[data-fc-datagrid] {
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    overflow: auto;
+    padding: 8px;
+    scroll-padding: 8px;
+}
+.fc-projection-grid { max-inline-size: 100%; }
+.fc-projection-grid td, .fc-projection-grid th.column-header {
+    overflow: visible;
+    text-overflow: clip;
+}
+.fc-expand-in-row-detail { min-inline-size: 0; overflow-wrap: anywhere; }
+
+[data-fc-datagrid] .fc-projection-grid tbody tr.fluent-data-grid-row {
+    height: var(--fc-grid-row-height);
+}
+.fc-projection-grid td { white-space: nowrap; }
+
+[data-fc-datagrid] :is(a, button, fluent-button, [tabindex]) { scroll-margin: 8px; }
+
+[data-fc-datagrid] { scroll-margin: 8px; }
+/* Tab strips own bounded horizontal scrolling and enough inset for the focus indicator. */
+fluent-tablist { max-inline-size: 100%; overflow-x: auto; padding: 4px; scroll-padding: 8px; box-sizing: border-box; }
+
+/* Keep the complete unsupported-field explanation inline inside the bounded grid. */
+.fc-projection-grid td .fc-field-placeholder { padding: 0; margin: 0; }
+
+/* A focused diagnostic link must fit wholly inside its own bounded scrollport. */
+[data-fc-datagrid] { container-type: inline-size; }
+.fc-projection-grid td .fc-field-placeholder a {
+    max-inline-size: calc(100cqi - 16px);
+    white-space: normal;
+    overflow-wrap: anywhere;
+    margin-inline: 8px;
+}

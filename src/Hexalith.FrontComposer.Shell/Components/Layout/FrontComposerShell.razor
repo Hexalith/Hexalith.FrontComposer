@@ -50,12 +50,12 @@
        re-renders via the Changed subscription. *@
     <CascadingValue Value="_contentLabelCoordinator" IsFixed="true">
         <FluentLayout>
-            <FluentLayoutItem Area="@LayoutArea.Header" Height="48px" role="banner">
-                <FluentStack Horizontal="true" VerticalAlignment="VerticalAlignment.Center"
+            <FluentLayoutItem Area="@LayoutArea.Header" Height="auto" Padding="@Padding.All0" role="banner">
+                <FluentStack Horizontal="true" VerticalAlignment="VerticalAlignment.Center" Class="fc-shell-header"
                              HorizontalAlignment="HorizontalAlignment.SpaceBetween"
-                             Style="height: 48px; padding: 0 12px; background: var(--colorNeutralBackground2); color: var(--colorNeutralForeground1); border-block-end: 1px solid var(--colorNeutralStroke2);">
+                             VerticalGap="4px" Wrap="true" Style="min-height: 48px; min-width: 0; padding: 4px 12px; background: var(--colorNeutralBackground2); color: var(--colorNeutralForeground1); border-block-end: 1px solid var(--colorNeutralStroke2);">
                     <FluentStack Horizontal="true" VerticalAlignment="VerticalAlignment.Center"
-                                 HorizontalGap="@HeaderStartHorizontalGap">
+                                 Wrap="true" Width="fit-content" Class="fc-shell-header-start" VerticalGap="4px" Style="min-width: 0; flex: 1 1 auto;" HorizontalGap="@HeaderStartHorizontalGap">
                         <FcHamburgerToggle />
                         @HeaderStart
                         @if (ShouldRenderHeaderLogo)
@@ -85,7 +85,8 @@
                             </FluentStack>
                         }
                     </FluentStack>
-                    <FluentStack Horizontal="true" VerticalAlignment="VerticalAlignment.Center" Width="fit-content">
+                    <FluentStack Horizontal="true" VerticalAlignment="VerticalAlignment.Center" Wrap="true" Width="fit-content"
+                                 Class="fc-shell-header-actions" HorizontalGap="8px" Style="flex: 0 0 auto; max-inline-size: 100%; overflow-wrap: normal;">
                         <FcThemeToggle />
                         @if (IsDevModeBuild)
                         {
@@ -122,7 +123,7 @@
                 </FluentLayoutItem>
             }
 
-            <FluentLayoutItem Area="@LayoutArea.Content" Padding="@Padding.All3">
+            <FluentLayoutItem Area="@LayoutArea.Content" Padding="@Padding.All3" Class="fc-shell-content">
                 <FcLayoutBreakpointWatcher />
                 <FcSystemThemeWatcher />
                 <FcDensityApplier />

@@ -13,22 +13,16 @@ export interface A11yOptions {
   requiredSelectors?: string[];
 }
 
-const WCAG_21_AA_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] as const;
+export const WCAG_AA_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] as const;
 const BLOCKING_IMPACTS = new Set(['serious', 'critical']);
 const REPORT_ONLY_IMPACTS = new Set(['minor', 'moderate']);
 
 /**
  * Runs axe-core against the current page and asserts zero violations.
- * Architecture Row 5: WCAG 2.1 AA enforced at Playwright level (test-time).
+ * Architecture Row 5: WCAG 2.2 AA enforced at Playwright level (test-time).
  */
 export const expectNoAxeViolations = async (page: Page, options: A11yOptions = {}): Promise<void> => {
-  let builder = new AxeBuilder({ page }).withTags(options.tags ?? [...WCAG_21_AA_TAGS]);
-
-  if (options.disableRules?.length) builder = builder.disableRules(options.disableRules);
-  for (const selector of options.include ?? []) builder = builder.include(selector);
-  for (const selector of options.exclude ?? []) builder = builder.exclude(selector);
-
-  const result = await builder.analyze();
+  const result = await analyzeAccessibility(page, options);
   expect.soft(result.violations, formatViolations(result.violations)).toEqual([]);
 };
 
@@ -38,12 +32,7 @@ export const expectNoBlockingAxeViolations = async (page: Page, options: A11yOpt
     expect(count, `${options.route ?? page.url()} missing required selector ${selector}`).toBeGreaterThan(0);
   }
 
-  let builder = new AxeBuilder({ page }).withTags(options.tags ?? [...WCAG_21_AA_TAGS]);
-  if (options.disableRules?.length) builder = builder.disableRules(options.disableRules);
-  for (const selector of options.include ?? []) builder = builder.include(selector);
-  for (const selector of options.exclude ?? []) builder = builder.exclude(selector);
-
-  const result = await builder.analyze();
+  const result = await analyzeAccessibility(page, options);
   const scannedNodes = result.passes.reduce((count, pass) => count + pass.nodes.length, 0)
     + result.incomplete.reduce((count, incomplete) => count + incomplete.nodes.length, 0)
     + result.violations.reduce((count, violation) => count + violation.nodes.length, 0);
@@ -61,6 +50,15 @@ export const expectNoBlockingAxeViolations = async (page: Page, options: A11yOpt
 
   expect(partitioned.blocking, formatViolations(partitioned.blocking)).toEqual([]);
   expect(partitioned.unknown, `Unexpected axe impact values must be triaged explicitly:\n${formatViolations(partitioned.unknown)}`).toEqual([]);
+};
+
+/** Shared scanner: both assertion policies use the same complete WCAG AA default. */
+export const analyzeAccessibility = async (page: Page, options: A11yOptions = {}) => {
+  let builder = new AxeBuilder({ page }).withTags(options.tags ?? [...WCAG_AA_TAGS]);
+  if (options.disableRules?.length) builder = builder.disableRules(options.disableRules);
+  for (const selector of options.include ?? []) builder = builder.include(selector);
+  for (const selector of options.exclude ?? []) builder = builder.exclude(selector);
+  return builder.analyze();
 };
 
 export type AxeViolation = Awaited<ReturnType<AxeBuilder['analyze']>>['violations'][number];

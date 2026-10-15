@@ -1,0 +1,1732 @@
+[
+  {
+    "test": "Home directory: 320 CSS-pixel reflow",
+    "attachment": "AE-04-target-inventory",
+    "inventory": [
+      {
+        "target": "a[inventory-index=\"0\"]",
+        "width": 120.625,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "a[inventory-index=\"1\"]",
+        "width": 138.53125,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-button[inventory-index=\"2\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-menu-button[inventory-index=\"3\"]",
+        "width": 48,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-palette-trigger\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-settings-button\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-account-avatar",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "button[inventory-index=\"7\"]",
+        "width": 162.6875,
+        "height": 87.546875,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "button[inventory-index=\"8\"]",
+        "width": 117.390625,
+        "height": 72.546875,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "button[inventory-index=\"9\"]",
+        "width": 238.234375,
+        "height": 102.546875,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      }
+    ]
+  },
+  {
+    "test": "Home directory: 320 CSS-pixel reflow with all text-spacing overrides",
+    "attachment": "AE-04-target-inventory",
+    "inventory": [
+      {
+        "target": "a[inventory-index=\"0\"]",
+        "width": 150.296875,
+        "height": 41,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "a[inventory-index=\"1\"]",
+        "width": 173.25,
+        "height": 41,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-button[inventory-index=\"2\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-menu-button[inventory-index=\"3\"]",
+        "width": 48,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-palette-trigger\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-settings-button\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-account-avatar",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "button[inventory-index=\"7\"]",
+        "width": 189.890625,
+        "height": 100.53125,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "button[inventory-index=\"8\"]",
+        "width": 144.28125,
+        "height": 80.546875,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "button[inventory-index=\"9\"]",
+        "width": 280,
+        "height": 140.5,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      }
+    ]
+  },
+  {
+    "test": "module navigation and tabs: 320 CSS-pixel reflow",
+    "attachment": "AE-04-target-inventory",
+    "inventory": [
+      {
+        "target": "a[inventory-index=\"0\"]",
+        "width": 120.625,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "a[inventory-index=\"1\"]",
+        "width": 138.53125,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-button[inventory-index=\"2\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-menu-button[inventory-index=\"3\"]",
+        "width": 48,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-palette-trigger\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-settings-button\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-account-avatar",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#overview",
+        "width": 82.359375,
+        "height": 44,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#counter-projection",
+        "width": 92.46875,
+        "height": 44,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "div[inventory-index=\"9\"]",
+        "width": 280,
+        "height": 80,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "a[inventory-index=\"10\"]",
+        "width": 203.109375,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      }
+    ]
+  },
+  {
+    "test": "module navigation and tabs: 320 CSS-pixel reflow with all text-spacing overrides",
+    "attachment": "AE-04-target-inventory",
+    "inventory": [
+      {
+        "target": "a[inventory-index=\"0\"]",
+        "width": 150.296875,
+        "height": 41,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "a[inventory-index=\"1\"]",
+        "width": 173.25,
+        "height": 41,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-button[inventory-index=\"2\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-menu-button[inventory-index=\"3\"]",
+        "width": 48,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-palette-trigger\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-settings-button\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-account-avatar",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#overview",
+        "width": 95.796875,
+        "height": 45,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#counter-projection",
+        "width": 109.265625,
+        "height": 45,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "div[inventory-index=\"9\"]",
+        "width": 280,
+        "height": 99,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "a[inventory-index=\"10\"]",
+        "width": 248,
+        "height": 42,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      }
+    ]
+  },
+  {
+    "test": "type: 320 CSS-pixel reflow",
+    "attachment": "AE-04-target-inventory",
+    "inventory": [
+      {
+        "target": "a[inventory-index=\"0\"]",
+        "width": 120.625,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "a[inventory-index=\"1\"]",
+        "width": 138.53125,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-button[inventory-index=\"2\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-menu-button[inventory-index=\"3\"]",
+        "width": 48,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-palette-trigger\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-settings-button\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-account-avatar",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-specimen-skip\"]",
+        "width": 140.0625,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-theme-control-light\"]",
+        "width": 264,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-theme-control-dark\"]",
+        "width": 264,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-density-control-compact\"]",
+        "width": 264,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-density-control-comfortable\"]",
+        "width": 264,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-density-control-roomy\"]",
+        "width": 264,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "button[inventory-index=\"13\"]",
+        "width": 101.1875,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "input[inventory-index=\"14\"]",
+        "width": 183,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "button[inventory-index=\"15\"]",
+        "width": 101.1875,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "input[inventory-index=\"16\"]",
+        "width": 183,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "button[inventory-index=\"17\"]",
+        "width": 101.1875,
+        "height": 48,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "input[inventory-index=\"18\"]",
+        "width": 183,
+        "height": 48,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-button[inventory-index=\"19\"]",
+        "width": 96,
+        "height": 28,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-button[inventory-index=\"20\"]",
+        "width": 96,
+        "height": 28,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-button[inventory-index=\"21\"]",
+        "width": 96,
+        "height": 28,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-button[inventory-index=\"22\"]",
+        "width": 96,
+        "height": 28,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-button[inventory-index=\"23\"]",
+        "width": 96,
+        "height": 28,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-button[inventory-index=\"24\"]",
+        "width": 96,
+        "height": 28,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "div[inventory-index=\"25\"]",
+        "width": 264,
+        "height": 222,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-status-icon-439",
+        "width": 24,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-status-icon-440",
+        "width": 24,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-status-icon-441",
+        "width": 24,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-status-icon-442",
+        "width": 24,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-status-icon-443",
+        "width": 24,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-status-icon-444",
+        "width": 24,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "div[inventory-index=\"32\"]",
+        "width": 264,
+        "height": 80,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "a[inventory-index=\"33\"]",
+        "width": 203.109375,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-command-input\"]",
+        "width": 264,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-command-number\"]",
+        "width": 264,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-command-submit\"]",
+        "width": 264,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-command-cancel\"]",
+        "width": 264,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-74-RecordId",
+        "width": 209,
+        "height": 34,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-74-Reason",
+        "width": 209,
+        "height": 34,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-74-Retention",
+        "width": 238,
+        "height": 34,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-74-submit",
+        "width": 187.828125,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-74-RecordId",
+        "width": 209,
+        "height": 34,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-74-Reason",
+        "width": 209,
+        "height": 34,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-74-submit",
+        "width": 194.3125,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-expanded-detail-summary\"]",
+        "width": 221.796875,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-nav-foundation\"]",
+        "width": 70.0625,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-nav-group-generated\"]",
+        "width": 133.0625,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "a[inventory-index=\"48\"]",
+        "width": 89.5,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "a[inventory-index=\"49\"]",
+        "width": 118.265625,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      }
+    ]
+  },
+  {
+    "test": "type: 320 CSS-pixel reflow with all text-spacing overrides",
+    "attachment": "AE-04-target-inventory",
+    "inventory": [
+      {
+        "target": "a[inventory-index=\"0\"]",
+        "width": 150.296875,
+        "height": 41,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "a[inventory-index=\"1\"]",
+        "width": 173.25,
+        "height": 41,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-button[inventory-index=\"2\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-menu-button[inventory-index=\"3\"]",
+        "width": 48,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-palette-trigger\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-settings-button\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-account-avatar",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-specimen-skip\"]",
+        "width": 180.375,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-theme-control-light\"]",
+        "width": 264,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-theme-control-dark\"]",
+        "width": 264,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-density-control-compact\"]",
+        "width": 264,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-density-control-comfortable\"]",
+        "width": 264,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-density-control-roomy\"]",
+        "width": 264,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "button[inventory-index=\"13\"]",
+        "width": 125.71875,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "input[inventory-index=\"14\"]",
+        "width": 183,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "button[inventory-index=\"15\"]",
+        "width": 125.71875,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "input[inventory-index=\"16\"]",
+        "width": 183,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "button[inventory-index=\"17\"]",
+        "width": 125.71875,
+        "height": 48,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "input[inventory-index=\"18\"]",
+        "width": 183,
+        "height": 48,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-button[inventory-index=\"19\"]",
+        "width": 96,
+        "height": 28,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-button[inventory-index=\"20\"]",
+        "width": 96,
+        "height": 28,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-button[inventory-index=\"21\"]",
+        "width": 96,
+        "height": 28,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-button[inventory-index=\"22\"]",
+        "width": 96,
+        "height": 28,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-button[inventory-index=\"23\"]",
+        "width": 96,
+        "height": 28,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-button[inventory-index=\"24\"]",
+        "width": 96,
+        "height": 28,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "div[inventory-index=\"25\"]",
+        "width": 264,
+        "height": 228,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-status-icon-451",
+        "width": 24,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-status-icon-452",
+        "width": 24,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-status-icon-453",
+        "width": 24,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-status-icon-454",
+        "width": 24,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-status-icon-455",
+        "width": 24,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-status-icon-456",
+        "width": 24,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "div[inventory-index=\"32\"]",
+        "width": 264,
+        "height": 99,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "a[inventory-index=\"33\"]",
+        "width": 232,
+        "height": 42,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-command-input\"]",
+        "width": 264,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-command-number\"]",
+        "width": 264,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-command-submit\"]",
+        "width": 264,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-command-cancel\"]",
+        "width": 264,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-76-RecordId",
+        "width": 209,
+        "height": 34,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-76-Reason",
+        "width": 209,
+        "height": 34,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-76-Retention",
+        "width": 238,
+        "height": 34,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-76-submit",
+        "width": 227.59375,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-76-RecordId",
+        "width": 209,
+        "height": 34,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-76-Reason",
+        "width": 209,
+        "height": 34,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-76-submit",
+        "width": 237.4375,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-expanded-detail-summary\"]",
+        "width": 238,
+        "height": 42,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-nav-foundation\"]",
+        "width": 86.859375,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-nav-group-generated\"]",
+        "width": 164,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "a[inventory-index=\"48\"]",
+        "width": 116.9375,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "a[inventory-index=\"49\"]",
+        "width": 149.0625,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      }
+    ]
+  },
+  {
+    "test": "data-formatting: 320 CSS-pixel reflow",
+    "attachment": "AE-04-target-inventory",
+    "inventory": [
+      {
+        "target": "a[inventory-index=\"0\"]",
+        "width": 120.625,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "a[inventory-index=\"1\"]",
+        "width": 138.53125,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-button[inventory-index=\"2\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-menu-button[inventory-index=\"3\"]",
+        "width": 48,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-palette-trigger\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-settings-button\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-account-avatar",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "div[inventory-index=\"7\"]",
+        "width": 264,
+        "height": 128,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "a[inventory-index=\"8\"]",
+        "width": 203.109375,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "a[inventory-index=\"9\"]",
+        "width": 203.109375,
+        "height": 24,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      }
+    ]
+  },
+  {
+    "test": "data-formatting: 320 CSS-pixel reflow with all text-spacing overrides",
+    "attachment": "AE-04-target-inventory",
+    "inventory": [
+      {
+        "target": "a[inventory-index=\"0\"]",
+        "width": 150.296875,
+        "height": 41,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "a[inventory-index=\"1\"]",
+        "width": 173.25,
+        "height": 41,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-button[inventory-index=\"2\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-menu-button[inventory-index=\"3\"]",
+        "width": 48,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-palette-trigger\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-settings-button\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-account-avatar",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "div[inventory-index=\"7\"]",
+        "width": 264,
+        "height": 166,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "a[inventory-index=\"8\"]",
+        "width": 232,
+        "height": 42,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "a[inventory-index=\"9\"]",
+        "width": 232,
+        "height": 42,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      }
+    ]
+  },
+  {
+    "test": "page-toolbar: 320 CSS-pixel reflow",
+    "attachment": "AE-04-target-inventory",
+    "inventory": [
+      {
+        "target": "a[inventory-index=\"0\"]",
+        "width": 120.625,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "a[inventory-index=\"1\"]",
+        "width": 138.53125,
+        "height": 40,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-button[inventory-index=\"2\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-menu-button[inventory-index=\"3\"]",
+        "width": 48,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-palette-trigger\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-settings-button\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-account-avatar",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-page-toolbar-search-input",
+        "width": 296,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-page-toolbar-filter-trigger",
+        "width": 106.140625,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-page-toolbar-view-trigger\"]",
+        "width": 132.09375,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-page-toolbar-refresh\"]",
+        "width": 96,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#summary",
+        "width": 87.8125,
+        "height": 44,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#activity",
+        "width": 68.34375,
+        "height": 44,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#archived",
+        "width": 78.46875,
+        "height": 44,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#history",
+        "width": 67.5625,
+        "height": 44,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      }
+    ]
+  },
+  {
+    "test": "page-toolbar: 320 CSS-pixel reflow with all text-spacing overrides",
+    "attachment": "AE-04-target-inventory",
+    "inventory": [
+      {
+        "target": "a[inventory-index=\"0\"]",
+        "width": 150.296875,
+        "height": 41,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "a[inventory-index=\"1\"]",
+        "width": 173.25,
+        "height": 41,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-button[inventory-index=\"2\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "fluent-menu-button[inventory-index=\"3\"]",
+        "width": 48,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-palette-trigger\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-settings-button\"]",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-account-avatar",
+        "width": 32,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-page-toolbar-search-input",
+        "width": 296,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-page-toolbar-filter-trigger",
+        "width": 130.21875,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-page-toolbar-view-trigger\"]",
+        "width": 154.5,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-page-toolbar-refresh\"]",
+        "width": 96,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#summary",
+        "width": 99.578125,
+        "height": 45,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#activity",
+        "width": 81.78125,
+        "height": 45,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#archived",
+        "width": 91.921875,
+        "height": 45,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#history",
+        "width": 79.328125,
+        "height": 45,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      }
+    ]
+  },
+  {
+    "test": "palette and settings retain reflow, every target, and modal focus at 320px with spacing",
+    "attachment": "fc-palette-root-targets",
+    "inventory": [
+      {
+        "target": "#f4c68831",
+        "width": 200,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-palette-result-1",
+        "width": 184,
+        "height": 29,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-palette-result-2",
+        "width": 184,
+        "height": 50,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-palette-result-3",
+        "width": 184,
+        "height": 50,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#fc-palette-result-0",
+        "width": 184,
+        "height": 73,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      }
+    ]
+  },
+  {
+    "test": "palette and settings retain reflow, every target, and modal focus at 320px with spacing",
+    "attachment": "fc-settings-dialog-targets",
+    "inventory": [
+      {
+        "target": "#control",
+        "width": 142,
+        "height": 44,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#f283cfe5",
+        "width": 16,
+        "height": 16,
+        "conforming": false,
+        "exception": {
+          "selector": "fluent-radio[name=\"fc-density-select\"][value=\"Compact\"]",
+          "kind": "Spacing",
+          "rationale": "Fluent Compact density radio retains its Fluent visual size; neighboring distinct actions must clear its 24px circle.",
+          "keyboardPath": "Settings → Density → Compact (Tab/Arrow keys)",
+          "evidence": "fc-settings-dialog-targets attachment: measured 24px circle versus all active modal targets and undersized circles"
+        },
+        "failure": null
+      },
+      {
+        "target": "#f1d26da9",
+        "width": 16,
+        "height": 16,
+        "conforming": false,
+        "exception": {
+          "selector": "fluent-radio[name=\"fc-density-select\"][value=\"Comfortable\"]",
+          "kind": "Spacing",
+          "rationale": "Fluent Comfortable density radio retains its Fluent visual size; neighboring distinct actions must clear its 24px circle.",
+          "keyboardPath": "Settings → Density → Comfortable (Tab/Arrow keys)",
+          "evidence": "fc-settings-dialog-targets attachment: measured 24px circle versus all active modal targets and undersized circles"
+        },
+        "failure": null
+      },
+      {
+        "target": "#f7ec64e4",
+        "width": 16,
+        "height": 16,
+        "conforming": false,
+        "exception": {
+          "selector": "fluent-radio[name=\"fc-density-select\"][value=\"Roomy\"]",
+          "kind": "Spacing",
+          "rationale": "Fluent Roomy density radio retains its Fluent visual size; neighboring distinct actions must clear its 24px circle.",
+          "keyboardPath": "Settings → Density → Roomy (Tab/Arrow keys)",
+          "evidence": "fc-settings-dialog-targets attachment: measured 24px circle versus all active modal targets and undersized circles"
+        },
+        "failure": null
+      },
+      {
+        "target": "#control",
+        "width": 51.984375,
+        "height": 44,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "#control",
+        "width": 61.5625,
+        "height": 44,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-settings-reset\"]",
+        "width": 164.828125,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      },
+      {
+        "target": "[data-testid=\"fc-settings-done\"]",
+        "width": 224,
+        "height": 32,
+        "conforming": true,
+        "exception": null,
+        "failure": null
+      }
+    ]
+  }
+]

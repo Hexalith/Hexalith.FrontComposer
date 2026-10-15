@@ -1021,6 +1021,9 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    private long _pageRequestGeneration;");
             _ = sb.AppendLine("    private int _currentViewportSkip;");
             _ = sb.AppendLine("    private double _viewportScrollTop;");
+            _ = sb.AppendLine("    private float _measuredRowHeight;");
+            _ = sb.AppendLine("    private float _measuredRowBaseHeight;");
+            _ = sb.AppendLine("    private float GridRowHeight => System.Math.Max(_measuredRowBaseHeight == global::Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density) ? _measuredRowHeight : 0, global::Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density));");
             _ = sb.AppendLine("    private string? _viewportRequestIdentity;");
             _ = sb.AppendLine("    private System.Threading.CancellationTokenSource? _failedRetryCancellation;");
             if (model.Strategy == ProjectionRenderStrategy.StatusOverview && RoleBodyHelpers.ResolveStatusEnumColumn(model) is not null) {
@@ -1303,6 +1306,10 @@ public static class RazorEmitter {
             _ = sb.AppendLine("            catch (System.Threading.Tasks.TaskCanceledException) { /* circuit teardown */ }");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine();
+            _ = sb.AppendLine("        if (_dotNetRef is not null)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            await ScrollInterop.ObserveRowMetricsAsync(_viewKey, _gridInstanceId, _dotNetRef, global::Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density)).ConfigureAwait(true);");
+            _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        RegisterVisibleProjectionLane();");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
@@ -1325,6 +1332,14 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
 
+            _ = sb.AppendLine("    /// <summary>Reconciles the virtualizer with the uniform rendered row height after spacing changes.</summary>");
+            _ = sb.AppendLine("    [global::Microsoft.JSInterop.JSInvokable]");
+            _ = sb.AppendLine("    public Task HandleRowMetricsAsync(string instanceId, float height, float defaultHeight)");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        if (instanceId != _gridInstanceId || defaultHeight != global::Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density) || !float.IsFinite(height) || height < 24 || height > 4096 || System.Threading.Volatile.Read(ref _disposed) != 0) return Task.CompletedTask;");
+            _ = sb.AppendLine("        return InvokeAsync(() => { _measuredRowBaseHeight = defaultHeight; _measuredRowHeight = height; UpdateCurrentViewportSkip(); StateHasChanged(); });");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
             // Story 4-4 T2.5 — JSInvokable callback dispatched by the JS throttle's trailing-edge fire.
             _ = sb.AppendLine("    [global::Microsoft.JSInterop.JSInvokable]");
             _ = sb.AppendLine("    public void HandleScrollAsync(string viewKey, double scrollTop)");
@@ -1519,7 +1534,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        string request = PageRequestIdentity(snapshot);");
         _ = sb.AppendLine("        if (!string.Equals(_viewportRequestIdentity, request, StringComparison.Ordinal))");
         _ = sb.AppendLine("        { _viewportRequestIdentity = request; _viewportScrollTop = snapshot?.ScrollTop ?? 0d; }");
-        _ = sb.AppendLine("        double rowHeight = global::Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density);");
+        _ = sb.AppendLine("        double rowHeight = GridRowHeight;");
         _ = sb.AppendLine("        int visibleIndex = (int)System.Math.Min(int.MaxValue, System.Math.Floor(_viewportScrollTop / rowHeight));");
         _ = sb.AppendLine("        _currentViewportSkip = LoadedPageState.Value.ResultsByPage.Keys");
         _ = sb.AppendLine("            .Concat(LoadedPageState.Value.PendingCompletionsByKey.Keys)");
@@ -2231,6 +2246,9 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"class\", GridHostClass());");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"data-fc-datagrid\", _viewKey);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"data-fc-datagrid-instance\", _gridInstanceId);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"role\", \"region\");");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"aria-label\", \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\");");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"tabindex\", \"0\");");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"onscroll\", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, OnScrollAsync));");
         _ = sb.AppendLine();
 

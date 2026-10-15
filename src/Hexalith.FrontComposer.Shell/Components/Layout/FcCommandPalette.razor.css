@@ -4,7 +4,11 @@
    stays a <div> because it is the role="dialog" landmark (@ref + @onkeydown live here). */
 .fc-palette-root {
     padding: calc(var(--fc-spacing-unit, 4px) * 3);
-    min-height: 400px;
+    min-block-size: min(400px, 50dvh);
+    max-block-size: calc(100dvh - 6rem);
+    overflow-y: auto;
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
 }
 
 .fc-palette-root ::deep fluent-text-input {

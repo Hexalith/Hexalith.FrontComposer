@@ -467,7 +467,7 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
   });
 
   for (const scale of [1, 2, 4] as const) {
-    test(`zoom and reflow keep critical controls reachable at ${scale * 100}%`, async ({ page }) => {
+    test(`viewport reflow keeps critical controls reachable at ${Math.floor(1280 / scale)} CSS pixels (not browser zoom)`, async ({ page }) => {
       const route = getSpecimenRoute('type');
       await page.setViewportSize({ width: Math.floor(1280 / scale), height: 900 });
       await gotoSpecimen(page, route);
@@ -475,7 +475,7 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
       await scrollTestIdIntoView(page, 'fc-command-submit');
       await scrollTestIdIntoView(page, 'fc-multi-level-nav');
       const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-      expect(horizontalOverflow).toBeLessThanOrEqual(24);
+      expect(horizontalOverflow).toBeLessThanOrEqual(1);
     });
   }
 

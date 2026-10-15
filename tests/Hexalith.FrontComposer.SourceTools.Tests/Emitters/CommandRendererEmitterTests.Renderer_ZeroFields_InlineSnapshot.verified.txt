@@ -51,6 +51,7 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
     private readonly string _triggerButtonId = "fc-trigger-Demo-Domain-DemoCommand";
     private Action? _externalSubmit;
     private FcCommandBlockedOutcome? _blockedOutcome;
+    private string? _hiddenOutcome;
     private IJSObjectReference? _expandInRowModule;
     private Demo.Domain.DemoCommand _prefilledModel = new();
 
@@ -225,6 +226,12 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
         return Task.CompletedTask;
     }
 
+    private Task OnHiddenOutcomeAsync(string? message)
+    {
+        _hiddenOutcome = message;
+        return InvokeAsync(StateHasChanged);
+    }
+
     private Task OnFormBlockedSubmissionAsync(bool blocked)
     {
         if (_blockedOutcome is null) return Task.CompletedTask;
@@ -360,52 +367,73 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
         {
             case CommandRenderMode.Inline:
             {
-                builder.OpenComponent<FluentButton>(0);
-                builder.AddAttribute(1, "Id", _triggerButtonId);
-                builder.AddAttribute(2, "Type", ButtonType.Button);
-                builder.AddAttribute(3, "role", "button");
-                builder.AddAttribute(4, "aria-label", "Demo");
-                builder.AddAttribute(5, "Appearance", ButtonAppearance.Outline);
-                builder.AddAttribute(6, "Disabled", _externalSubmit is null);
-                builder.AddAttribute(7, "IconStart", ResolveIcon());
-                builder.AddAttribute(8, "Label", "Demo");
-                builder.AddAttribute(9, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, _ => OnZeroFieldClickAsync()));
+                builder.OpenComponent<FluentStack>(0);
+                builder.AddAttribute(1, "Orientation", Orientation.Horizontal);
+                builder.AddAttribute(2, "Wrap", true);
+                builder.AddAttribute(3, "HorizontalGap", "8px");
+                builder.AddAttribute(4, "ChildContent", (RenderFragment)(builder =>
+                {
+                builder.OpenComponent<FluentButton>(5);
+                builder.AddAttribute(6, "Id", _triggerButtonId);
+                builder.AddAttribute(7, "Type", ButtonType.Button);
+                builder.AddAttribute(8, "role", "button");
+                builder.AddAttribute(9, "aria-label", "Demo");
+                builder.AddAttribute(10, "Appearance", ButtonAppearance.Outline);
+                builder.AddAttribute(11, "Disabled", _externalSubmit is null);
+                builder.AddAttribute(12, "IconStart", ResolveIcon());
+                builder.AddAttribute(13, "Label", "Demo");
+                builder.AddAttribute(14, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, _ => OnZeroFieldClickAsync()));
                 builder.CloseComponent();
 
-                builder.OpenComponent<FcCommandBlockedOutcome>(10);
-                builder.AddAttribute(11, "AttemptedControlId", _triggerButtonId);
-                builder.AddAttribute(12, "Inline", true);
-                builder.AddAttribute(13, "AnnouncementSurface", "command-renderer:" + _triggerButtonId);
-                builder.AddAttribute(14, "OwnsSurfaceStatus", true);
-                builder.AddComponentReferenceCapture(15, instance => _blockedOutcome = (FcCommandBlockedOutcome)instance);
+                builder.OpenComponent<FcCommandBlockedOutcome>(15);
+                builder.AddAttribute(16, "AttemptedControlId", _triggerButtonId);
+                builder.AddAttribute(17, "Inline", true);
+                builder.AddAttribute(18, "AnnouncementSurface", "command-renderer:" + _triggerButtonId);
+                builder.AddAttribute(19, "OwnsSurfaceStatus", true);
+                builder.AddComponentReferenceCapture(20, instance => _blockedOutcome = (FcCommandBlockedOutcome)instance);
                 builder.CloseComponent();
 
-                builder.OpenElement(16, "div");
-                builder.AddAttribute(17, "style", "display:none");
-                builder.OpenComponent<Demo.Domain.DemoCommandForm>(18);
-                builder.AddAttribute(19, "InitialValue", _prefilledModel);
-                builder.AddAttribute(20, "RegisterExternalSubmit", (Action<Action>)OnFormRegisteredExternalSubmit);
-                builder.AddAttribute(21, "OnBlockedSubmission", EventCallback.Factory.Create<bool>(this, OnFormBlockedSubmissionAsync));
-                builder.AddAttribute(22, "ExternalStatusOwner", true);
-                builder.AddAttribute(23, "AnnouncementSurface", "command-renderer:" + _triggerButtonId);
-                builder.AddAttribute(24, "BeforeSubmit", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);
-                builder.AddAttribute(25, "OnConfirmed", EventCallback.Factory.Create(this, OnConfirmedAsync));
-                builder.AddAttribute(26, "OnEditContextReady", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));
+                builder.OpenElement(21, "div");
+                builder.AddAttribute(22, "style", "display:none");
+                builder.OpenComponent<Demo.Domain.DemoCommandForm>(23);
+                builder.AddAttribute(24, "InitialValue", _prefilledModel);
+                builder.AddAttribute(25, "RegisterExternalSubmit", (Action<Action>)OnFormRegisteredExternalSubmit);
+                builder.AddAttribute(26, "OnHiddenOutcome", EventCallback.Factory.Create<string?>(this, OnHiddenOutcomeAsync));
+                builder.AddAttribute(27, "OnBlockedSubmission", EventCallback.Factory.Create<bool>(this, OnFormBlockedSubmissionAsync));
+                builder.AddAttribute(28, "ExternalStatusOwner", true);
+                builder.AddAttribute(29, "AnnouncementSurface", "command-renderer:" + _triggerButtonId);
+                builder.AddAttribute(30, "BeforeSubmit", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);
+                builder.AddAttribute(31, "OnConfirmed", EventCallback.Factory.Create(this, OnConfirmedAsync));
+                builder.AddAttribute(32, "OnEditContextReady", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));
                 builder.CloseComponent();
                 builder.CloseElement();
+                if (!string.IsNullOrWhiteSpace(_hiddenOutcome))
+                {
+                    builder.OpenComponent<FluentMessageBar>(33);
+                    builder.AddAttribute(34, "Intent", MessageBarIntent.Warning);
+                    builder.AddAttribute(35, "AllowDismiss", false);
+                    builder.AddAttribute(36, "role", "note");
+                    builder.AddAttribute(37, "aria-live", "off");
+                    builder.AddAttribute(38, "data-testid", "fc-zero-field-outcome");
+                    builder.AddAttribute(39, "Style", "min-width: 0; max-width: 100%; overflow-wrap: anywhere;");
+                    builder.AddAttribute(40, "ChildContent", (RenderFragment)(feedback => feedback.AddContent(0, _hiddenOutcome)));
+                    builder.CloseComponent();
+                }
+                }));
+                builder.CloseComponent();
                 break;
             }
             case CommandRenderMode.CompactInline:
             {
-                builder.OpenElement(27, "div");
-                builder.AddAttribute(28, "class", "fc-expand-in-row");
-                builder.AddAttribute(29, "onkeydown", EventCallback.Factory.Create<KeyboardEventArgs>(this, HandleCompactEscapeAsync));
-                builder.AddAttribute(30, "tabindex", "-1");
-                builder.AddElementReferenceCapture(31, r => _compactCardRef = r);
-                builder.OpenComponent<FluentCard>(32);
-                builder.AddAttribute(33, "Appearance", CardAppearance.Outline);
-                builder.AddAttribute(34, "Shadow", CardShadow.Small);
-                builder.AddAttribute(35, "ChildContent", (RenderFragment)(__card =>
+                builder.OpenElement(41, "div");
+                builder.AddAttribute(42, "class", "fc-expand-in-row");
+                builder.AddAttribute(43, "onkeydown", EventCallback.Factory.Create<KeyboardEventArgs>(this, HandleCompactEscapeAsync));
+                builder.AddAttribute(44, "tabindex", "-1");
+                builder.AddElementReferenceCapture(45, r => _compactCardRef = r);
+                builder.OpenComponent<FluentCard>(46);
+                builder.AddAttribute(47, "Appearance", CardAppearance.Outline);
+                builder.AddAttribute(48, "Shadow", CardShadow.Small);
+                builder.AddAttribute(49, "ChildContent", (RenderFragment)(__card =>
                 {
                     __card.OpenComponent<Demo.Domain.DemoCommandForm>(0);
                     __card.AddAttribute(1, "InitialValue", _prefilledModel);
@@ -423,23 +451,23 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
             default:
             {
                 var opts = ShellOptions.Value;
-                builder.OpenElement(36, "div");
-                builder.AddAttribute(37, "style", $"max-width: {opts.FullPageFormMaxWidth}; margin: 0 auto;");
+                builder.OpenElement(50, "div");
+                builder.AddAttribute(51, "style", $"max-width: {opts.FullPageFormMaxWidth}; margin: 0 auto;");
                 if (opts.EmbeddedBreadcrumb)
                 {
-                    builder.OpenElement(38, "nav");
-                    builder.AddAttribute(39, "aria-label", "breadcrumb");
-                    builder.OpenElement(40, "a");
-                    builder.AddAttribute(41, "href", GetBreadcrumbReturnPath());
-                    builder.AddContent(42, GetBreadcrumbBoundedContext());
+                    builder.OpenElement(52, "nav");
+                    builder.AddAttribute(53, "aria-label", "breadcrumb");
+                    builder.OpenElement(54, "a");
+                    builder.AddAttribute(55, "href", GetBreadcrumbReturnPath());
+                    builder.AddContent(56, GetBreadcrumbBoundedContext());
                     builder.CloseElement();
-                    builder.AddContent(43, " > Demo");
+                    builder.AddContent(57, " > Demo");
                     builder.CloseElement();
                 }
-                builder.OpenComponent<FcFormAbandonmentGuard>(44);
-                builder.AddAttribute(45, "CorrelationId", _lifecycleState.Value.CorrelationId ?? string.Empty);
-                builder.AddAttribute(46, "EditContext", _formEditContext);
-                builder.AddAttribute(47, "ChildContent", (RenderFragment)(__guard =>
+                builder.OpenComponent<FcFormAbandonmentGuard>(58);
+                builder.AddAttribute(59, "CorrelationId", _lifecycleState.Value.CorrelationId ?? string.Empty);
+                builder.AddAttribute(60, "EditContext", _formEditContext);
+                builder.AddAttribute(61, "ChildContent", (RenderFragment)(__guard =>
                 {
                     __guard.OpenComponent<Demo.Domain.DemoCommandForm>(0);
                     __guard.AddAttribute(1, "InitialValue", _prefilledModel);

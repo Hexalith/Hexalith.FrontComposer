@@ -874,4 +874,8 @@
   <data name="ProjectionRetry" xml:space="preserve"><value>Retry</value></data>
   <data name="IdempotentInfoDefault" xml:space="preserve"><value>This was already confirmed — no action needed.</value></data>
   <data name="Am21UpdatedRow" xml:space="preserve"><value>Updated row: {0}.</value></data>
+  <data name="CommandWarningFallback" xml:space="preserve">
+    <value>Please review the warning and try again.</value>
+    <comment>Existing generic command warning fallback, including hidden zero-field feedback.</comment>
+  </data>
 </root>

@@ -103,6 +103,12 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
             _lastFailureVersion = PaletteState.Value.ActivationFailureVersion;
             await RegisterKeyboardInteropAsync();
             await FocusSearchAsync();
+            IJSObjectReference? focus = await EnsureFocusModuleAsync();
+            if (focus is not null)
+            {
+                try { await focus.InvokeVoidAsync("containDialogFocus", "fc-palette-root"); }
+                catch (Exception ex) when (ex is JSException or JSDisconnectedException or OperationCanceledException) { }
+            }
         }
 
         FrontComposerCommandPaletteState state = PaletteState.Value;

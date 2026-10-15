@@ -11,3 +11,5 @@
 ::deep .fc-monospace {
     font-family: Consolas, "Courier New", monospace;
 }
+
+.fc-field-placeholder a { display: inline-block; min-block-size: 24px; }

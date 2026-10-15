@@ -25,7 +25,7 @@
                          AriaLabel="@SearchAriaLabel"
                          Disabled="@SearchDisabled"
                          Class="fc-page-toolbar-search"
-                         Style="flex: 1 1 18rem; min-width: min(100%, 14rem); max-width: 32rem;"
+                         Style="flex: 1 1 18rem; min-width: 0; max-width: min(100%, 32rem); box-sizing: border-box;"
                          data-testid="fc-page-toolbar-search"
                          data-fc-page-search />
 
@@ -51,7 +51,7 @@
                 <FluentStack Orientation="Orientation.Vertical"
                              VerticalGap="8px"
                              Class="fc-page-toolbar-filter-panel"
-                             Style="min-width: 16rem;">
+                             Style="min-width: 0; max-width: calc(100vw - 2rem); overflow-wrap: anywhere;">
                     <FluentText Id="@FilterTitleId"
                                 As="TextTag.Paragraph"
                                 Size="TextSize.Size300"
@@ -86,7 +86,7 @@
                          VerticalGap="8px"
                          Wrap="true"
                          Class="fc-page-toolbar-actions"
-                         Style="margin-inline-start: auto;"
+                         Style="margin-inline-start: auto; min-width: 0; max-width: 100%;"
                          data-testid="fc-page-toolbar-actions">
                 @Actions
             </FluentStack>

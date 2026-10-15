@@ -7,7 +7,7 @@
 
 .fc-shell-root {
     --layout-header-height: 48px;
-    --fc-color-accent: var(--fc-accent-base-color);
+    --fc-color-accent: var(--colorBrandForeground1);
     --fc-color-neutral: var(--colorNeutralForeground1);
     --fc-color-success: var(--colorStatusSuccessForeground1);
     --fc-color-warning: var(--colorStatusWarningForeground1);
@@ -31,3 +31,18 @@
     max-inline-size: var(--fc-page-max-inline-size, 75rem);
     margin-inline: auto;
 }
+
+/* Content shrinkage belongs to the shell layout, including the 320 CSS-pixel tier. */
+.fc-shell-root { min-inline-size: 0; overflow-wrap: anywhere; }
+#fc-main-content { min-inline-size: 0; inline-size: 100%; }
+.fc-shell-root ::deep .fluent-layout-item { min-inline-size: 0; }
+
+/* Fluent's mobile layout removes the end padding; keep space for the complete focus outline. */
+.fc-shell-root ::deep .fluent-layout[mobile] .fc-shell-content {
+    min-block-size: 0;
+    padding-inline-end: 12px !important;
+}
+
+/* Native focus scrolling must leave room for the shell's complete focus outline. */
+.fc-shell-root ::deep .fc-shell-content { scroll-padding: 8px; }
+.fc-shell-root ::deep :focus { scroll-margin: 8px; }

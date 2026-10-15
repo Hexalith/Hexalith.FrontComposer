@@ -1,0 +1,269 @@
+{
+  "schema": "frontcomposer.story13.6.accessibility-verification.v1",
+  "candidate_id": "sha256:789ad2a214a1c2a213713f63d062e74fad16e7063cc9629345513fd2c8978d17",
+  "prepared_date": "2026-10-15",
+  "prepared_by": "AI implementation agent; no human tester asserted",
+  "final_classification": "blocked",
+  "runtime": {
+    "os": "Linux x64",
+    "dotnet_sdk": "10.0.401",
+    "configuration": "Debug project references",
+    "node": "v26.4.0",
+    "playwright": "1.63.0",
+    "chromium": "153.0.8010.12",
+    "axe_core": "4.13.0"
+  },
+  "checks": [
+    {
+      "command": "npm --prefix tests/e2e run typecheck",
+      "result": "passed"
+    },
+    {
+      "command": "dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Debug -m:1 --no-restore -v:q",
+      "result": "passed",
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "command": "dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -noLogo -class '*FcExpandedRowHiddenBannerTests' -class '*ZeroFieldFailureAccessibilityTests' -class '*CommandRendererInlineTests' -class '*DataGridDensityMetricsTests' -class '*ExpandInRowGeneratedGridTests' -class '*CounterStoryVerificationTests' -class '*FrontComposerShellTests' -class '*DensityNoPerComponentLogicLintTest' -class '*SlotMappingRegressionTests' -class '*GeneratedProjectionAnnouncementTests' -result-xml TestResults/story-13-6-shell-final.xml",
+      "result": "passed",
+      "passed": 201,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "command": "dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj -c Debug -m:1 --no-restore -v:q",
+      "result": "passed"
+    },
+    {
+      "command": "dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll -noLogo -parallelMode none -result-xml TestResults/story-13-6-source-final.xml",
+      "result": "passed",
+      "passed": 1313,
+      "failed": 0,
+      "cache_miss_median_ms": 29.653,
+      "cache_miss_p95_ms": 333.403
+    },
+    {
+      "command": "PLAYWRIGHT_SKIP_WEBSERVER=1 FC_E2E_OUTPUT_DIR=test-results/story-13-6-matrix FC_E2E_HTML_REPORT_DIR=playwright-report/story-13-6-matrix npm --prefix tests/e2e test -- specs/responsive-accessibility.spec.ts specs/a11y-helper.spec.ts --project=chromium --workers=1",
+      "result": "passed",
+      "passed": 28,
+      "failed": 0,
+      "report": "tests/e2e/playwright-report/story-13-6-matrix",
+      "artifacts": "tests/e2e/test-results/story-13-6-matrix"
+    },
+    {
+      "command": "PLAYWRIGHT_SKIP_WEBSERVER=1 FC_E2E_OUTPUT_DIR=test-results/story-13-6-final FC_E2E_HTML_REPORT_DIR=playwright-report/story-13-6-final npm --prefix tests/e2e test -- specs/specimen-accessibility.spec.ts --project=chromium --workers=1",
+      "result": "passed",
+      "passed": 22,
+      "failed": 0,
+      "breakdown": {
+        "existing_specimen_nonvisual": 15,
+        "existing_visual_comparisons": 6,
+        "existing_production_exposure": 1
+      },
+      "report": "tests/e2e/playwright-report/story-13-6-final",
+      "artifacts": "tests/e2e/test-results/story-13-6-final",
+      "limit": "Production exposure subcase starts the pre-existing Release binary; no current Release/package build or V5 posture approval is inferred."
+    },
+    {
+      "command": "PLAYWRIGHT_SKIP_WEBSERVER=1 FC_E2E_OUTPUT_DIR=test-results/story-13-6-visual FC_E2E_HTML_REPORT_DIR=playwright-report/story-13-6-visual npm --prefix tests/e2e test -- specs/specimen-accessibility.spec.ts --project=chromium --workers=1 --grep \"visual baseline\" --update-snapshots",
+      "result": "passed",
+      "passed": 6,
+      "purpose": "Intentional Linux Chromium baseline update; final combined lane subsequently compares these six without updating."
+    },
+    {
+      "command": "PLAYWRIGHT_SKIP_WEBSERVER=1 FC_E2E_OUTPUT_DIR=test-results/story-13-6-journeys FC_E2E_HTML_REPORT_DIR=playwright-report/story-13-6-journeys npm --prefix tests/e2e test -- specs/route-contract.spec.ts specs/page-toolbar.spec.ts specs/projection-command-announcements.spec.ts --project=chromium --workers=1",
+      "result": "passed",
+      "passed": 42,
+      "limit": "Relevant final route/toolbar/announcement journeys passed; this is not every repository browser test.",
+      "failed": 0
+    },
+    {
+      "command": "dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -noLogo",
+      "result": "earlier full run with three subsequently resolved pins",
+      "total": 3678,
+      "passed": 3674,
+      "failed": 3,
+      "skipped": 1,
+      "resolved_failures": [
+        "SlotMappingRegressionTests.Binding_table_matches_verified_baseline",
+        "CounterStoryVerificationTests.CounterProjectionView_LoadedState_RendersColumnsAndFormatting",
+        "CounterStoryVerificationTests.StatusProjectionView_NullAndBooleanValues_RenderSnapshot"
+      ],
+      "resolution": "Updated intended active-Fluent-brand alias and Fluent Small disclosure pins; all pass in the final 201-test run. No final full-Shell pass is asserted.",
+      "environmental_skip": "LiveTwoTenantProductionAdapterTests.ProvisionedTenants_QueryCountAndSubscribe_StayIsolated: provisioned endpoint, identities and bearer tokens absent."
+    },
+    {
+      "command": "env -u GITHUB_BASE_REF npm --prefix tests/e2e run validate:visual-governance",
+      "result": "passed",
+      "limit": "No base-ref fetch or other remote operation."
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed"
+    },
+    {
+      "command": "PLAYWRIGHT_SKIP_WEBSERVER=1 FC_E2E_OUTPUT_DIR=test-results/story-13-6-fixture-boundary FC_E2E_HTML_REPORT_DIR=playwright-report/story-13-6-fixture-boundary npm --prefix tests/e2e test -- specs/responsive-accessibility.spec.ts --project=chromium --workers=1 --grep 'real missing-detail component'",
+      "result": "passed",
+      "passed": 1,
+      "failed": 0,
+      "purpose": "Revalidated the real-banner case after the fixture-only sibling boundary correction; already included in the 92 distinct case names."
+    }
+  ],
+  "historical_failures": [
+    {
+      "finding": "Concurrent SourceTools cache-miss benchmark p95 1074.469ms exceeded 1000ms",
+      "disposition": "Serialized full suites passed: initial p95 384.551ms, final p95 333.403ms; no benchmark policy change."
+    },
+    {
+      "finding": "Missing detail/spacing diagnostic link wider than 264px scrollport and shell focused-link outline clipped",
+      "disposition": "Resolved by bounded wrapped link, inline margin and shell scroll padding/margins; complete final real-surface Tab cycles pass."
+    },
+    {
+      "finding": "Compact generated rows expanded above 32px and observer reset during Virtualize empty remount",
+      "disposition": "Resolved by grid-only unsupported-field spacing, 24px Fluent Small disclosure and preserving the last measured height during empty materialization. Actual generated row/ItemSize round trips pass."
+    },
+    {
+      "finding": "Intermediate wrapped header collapsed controls and moved desktop actions under title",
+      "disposition": "Resolved by content-sized start group, noncollapsing actions, explicit layout-item padding and outline inset. Both active themes assert desktop48px and normal right-aligned actions; final narrow cycles and visual comparisons pass."
+    },
+    {
+      "finding": "Stricter modal inventory exposed skipped Settings accordion headings and premature wrap",
+      "disposition": "Existing Fluent accordion host and its actual shadow focus control are included; forward/reverse modal inventory and final browser lanes pass."
+    },
+    {
+      "finding": "New missing-detail fixture nested in old announcement fixture caused a duplicate status locator (41/42 journeys passed)",
+      "disposition": "Moved to a sibling under the same query gate; final 42/42 journeys and real-banner removal case pass."
+    }
+  ],
+  "remaining_automated_findings_in_executed_cases": [],
+  "coverage_limits": [
+    "Zero-field renderer browser surface is absent; passing component regressions do not close browser focus/geometry or heard speech.",
+    "Real-banner/Fluent-action removal and focus-module recovery/cancellation pass; full generated-projection removal integration and heard speech remain open.",
+    "Full AE-06/state/theme/non-text/focus pairs beyond the changed sampled roles remain incomplete.",
+    "Firefox, WebKit and Windows visual runners not performed.",
+    "Separate live EventStore/fresh-row acceptance not performed; one broad-Shell live dependency test skipped.",
+    "Full broad Shell was not rerun after resolving its three pins and final header CSS; affected final component/integration and browser lanes pass.",
+    "Executed undersized-target exceptions use Spacing. User Agent Control CSS-origin ownership is not established by the helper and is not claimed by any inventory."
+  ],
+  "manual_gates": [
+    {
+      "id": "MAN-136-NVDA",
+      "status": "not performed",
+      "owner_role": "Accessibility/Stakeholder",
+      "individual_owner": "unassigned",
+      "release_impact": "Blocks story/release accessibility completion",
+      "reason": "No human NVDA/Firefox observation",
+      "next_action": "Assign tester and execute checklist",
+      "reopen_trigger": "Same candidate, exact versions, dated human observation and sanitized evidence/approval reference"
+    },
+    {
+      "id": "MAN-136-JAWS",
+      "status": "not performed",
+      "owner_role": "Accessibility/Stakeholder",
+      "individual_owner": "unassigned",
+      "release_impact": "Blocks story/release accessibility completion",
+      "reason": "No human JAWS/Chrome observation",
+      "next_action": "Assign tester and execute checklist",
+      "reopen_trigger": "Same candidate, exact versions, dated human observation and sanitized evidence/approval reference"
+    },
+    {
+      "id": "MAN-136-VO",
+      "status": "not performed",
+      "owner_role": "Accessibility/Stakeholder",
+      "individual_owner": "unassigned",
+      "release_impact": "Blocks story/release accessibility completion",
+      "reason": "No human VoiceOver/Safari observation",
+      "next_action": "Assign tester and execute checklist",
+      "reopen_trigger": "Same candidate, exact versions, dated human observation and sanitized evidence/approval reference"
+    },
+    {
+      "id": "MAN-136-ZOOM",
+      "status": "not performed",
+      "owner_role": "Quality/Test",
+      "individual_owner": "unassigned",
+      "release_impact": "Blocks story/release accessibility completion",
+      "reason": "No actual 400% browser zoom from measured1280px reference viewport",
+      "next_action": "Perform real browser zoom journey",
+      "reopen_trigger": "Same candidate, exact versions, dated human observation and sanitized evidence/approval reference"
+    },
+    {
+      "id": "MAN-136-TABLET",
+      "status": "not performed",
+      "owner_role": "Quality/Test",
+      "individual_owner": "unassigned",
+      "release_impact": "Blocks story/release accessibility completion",
+      "reason": "No physical tablet observation",
+      "next_action": "Run touch-adapted journey on real tablet",
+      "reopen_trigger": "Same candidate, exact versions, dated human observation and sanitized evidence/approval reference"
+    },
+    {
+      "id": "MAN-136-PHONE",
+      "status": "not performed",
+      "owner_role": "Quality/Test",
+      "individual_owner": "unassigned",
+      "release_impact": "Blocks story/release accessibility completion",
+      "reason": "No physical phone observation",
+      "next_action": "Run functional-fallback journey on real phone",
+      "reopen_trigger": "Same candidate, exact versions, dated human observation and sanitized evidence/approval reference"
+    },
+    {
+      "id": "MAN-136-ZERO-FIELD",
+      "status": "not performed",
+      "owner_role": "Quality/Test and Accessibility/Stakeholder",
+      "individual_owner": "unassigned",
+      "release_impact": "Blocks story/release accessibility completion",
+      "reason": "Existing host lacks generated inline zero-field browser surface",
+      "next_action": "Supply host and execute safe failure/focus/speech checklist",
+      "reopen_trigger": "Same candidate, exact versions, dated human observation and sanitized evidence/approval reference"
+    },
+    {
+      "id": "UX-136-REVIEW",
+      "status": "not performed",
+      "owner_role": "UX",
+      "individual_owner": "unassigned",
+      "release_impact": "Blocks story/release accessibility completion",
+      "reason": "No opt-in UX review or authorized skip",
+      "next_action": "Obtain explicit review or authorized skip reference",
+      "reopen_trigger": "Same candidate, exact versions, dated human observation and sanitized evidence/approval reference"
+    }
+  ],
+  "separate_unresolved_gates": [
+    "OI-16",
+    "G-4",
+    "FLUENT-APP-1",
+    "Product approval/re-approval",
+    "Fluent V5 posture",
+    "Live fresh-row acceptance"
+  ],
+  "user_decision": "Prepare the checklist; keep manual checks open.",
+  "cleanup": {
+    "user_work_preserved": [
+      "sprint-status.yaml",
+      "supplied untracked spec"
+    ],
+    "test_generated_provider_handoff": "Clean; only this known test-owned output was restored when encountered. No blanket cleanup.",
+    "owned_direct_host": "Stopped after evidence capture; unknown Aspire/DCP owner left untouched."
+  },
+  "sanitization": "Retained JSON contains static test names/selectors, classifications, numeric geometry/colors/ratios and file hashes. It excludes full DOM, transcripts, payloads, backend metadata and credentials.",
+  "previous_candidate_id": "sha256:efd462d6993fa961144193ae6680ef744374640202024f98be507a01915565bf",
+  "review": {
+    "individual_findings": 23,
+    "patch_groups_resolved": 18,
+    "rejected_low": [
+      "BH12"
+    ],
+    "new_deferred_work_entries": 0,
+    "triage_log": "_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md",
+    "unresolved_critical_or_high_in_executed_cases": []
+  },
+  "evidence_reuse": "The final fixture-boundary-only Razor move does not change the Shell/generator code or their test inputs. Their passing results and default specimen comparisons are reused; affected announcement journeys and the real-banner case were revalidated after the move.",
+  "commit_validation": {
+    "tool": "repository-pinned node_modules/.bin/commitlint",
+    "full_message_sha256": "9029f39c39c705bedfa585fcf263eac456a3a69aef3aab1ec9501ba952470aea",
+    "result": "passed",
+    "problems": 0,
+    "warnings": 0,
+    "evidence": "Successful validation preserved in the session and temporary commit evidence directory."
+  }
+}

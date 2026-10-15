@@ -26,6 +26,41 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.DataGrid;
 /// </summary>
 public sealed class FcExpandedRowHiddenBannerTests : BunitContext {
     [Fact]
+    public async Task DisposalDuringMissingFocusImportDoesNotRegisterDetailListeners()
+    {
+        DelayedHiddenDetailFocusRuntime runtime = new();
+        RecordingHiddenDetailFocusModule module = new();
+        Services.AddSingleton<IJSRuntime>(runtime);
+        IRenderedComponent<FcExpandedRowHiddenBanner> cut = Render<FcExpandedRowHiddenBanner>(p => p
+            .Add(c => c.ViewKey, "orders:Orders"));
+        runtime.ImportCalls.ShouldBe(1);
+
+        cut.Instance.Dispose();
+        runtime.Import.TrySetResult(module);
+        await module.Released.Task.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken);
+        module.TrackingCalls.ShouldBe(0);
+        module.FocusCalls.ShouldBe(0);
+    }
+
+    [Fact]
+    public void MissingDetailWithLostFocusUsesOnlyTheNonLiveExplanation()
+    {
+        BunitJSModuleInterop module = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
+        module.Setup<bool>("focusReplacementHeading", _ => true).SetResult(true);
+        ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
+        List<string> spoken = [];
+        using IDisposable subscription = announcements.Subscribe("projection:orders:Orders", spoken.Add);
+        IRenderedComponent<FcExpandedRowHiddenBanner> cut = Render<FcExpandedRowHiddenBanner>(p => p
+            .Add(c => c.ViewKey, "orders:Orders").Add(c => c.IsMissing, true).Add(c => c.ResultIdentity, "removed"));
+        module.VerifyInvoke("trackDetailFocus", 1).Single().Arguments[1].ShouldBe("orders:Orders");
+        cut.Find(".fc-expanded-row-hidden-banner-text").GetAttribute("tabindex").ShouldBe("-1");
+        cut.Find("[data-testid='fc-expanded-row-hidden-banner']").GetAttribute("aria-live").ShouldBe("off");
+        spoken.Where(static message => message.Length > 0).ShouldBeEmpty();
+        cut.Render(p => p.Add(c => c.ResultIdentity, "refresh"));
+        module.VerifyInvoke("focusReplacementHeading", 1);
+    }
+
+    [Fact]
     public void MissingWithoutFilterEvidenceShowsNeutralReasonAndDoesNotAnnounceAm22()
     {
         ISurfaceAnnouncementCoordinator announcements = Services.GetRequiredService<ISurfaceAnnouncementCoordinator>();
@@ -38,7 +73,9 @@ public sealed class FcExpandedRowHiddenBannerTests : BunitContext {
         cut.Find("[data-testid='fc-expanded-row-hidden-banner']").TextContent
             .ShouldContain("not in the current results");
         cut.FindAll("[data-testid='fc-expanded-row-hidden-banner-clear']").ShouldBeEmpty();
-        spoken.Where(static message => message.Length > 0).ShouldBeEmpty();
+        spoken.Where(static message => message.Length > 0).ShouldBe(["The expanded item is not in the current results."]);
+        cut.Render(p => p.Add(c => c.ResultIdentity, "refresh"));
+        spoken.Where(static message => message.Length > 0).Count().ShouldBe(1);
     }
 
     [Fact]

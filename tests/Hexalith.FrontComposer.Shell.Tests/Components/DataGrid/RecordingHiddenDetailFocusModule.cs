@@ -8,6 +8,9 @@ internal sealed class RecordingHiddenDetailFocusModule : IJSObjectReference
     /// <summary>Gets the number of focus requests.</summary>
     public int FocusCalls { get; private set; }
 
+    /// <summary>Gets the number of detail listener registrations.</summary>
+    public int TrackingCalls { get; private set; }
+
     /// <summary>Gets or sets how many focus calls should time out.</summary>
     public int TimeoutFocusCallsRemaining { get; set; }
 
@@ -25,12 +28,13 @@ internal sealed class RecordingHiddenDetailFocusModule : IJSObjectReference
     public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
     {
         if (identifier == "focusFirstButtonWithin") { FocusCalls++; }
+        if (identifier == "trackDetailFocus") { TrackingCalls++; }
         if (TimeoutFocusCallsRemaining > 0)
         {
             TimeoutFocusCallsRemaining--;
             return ValueTask.FromException<TValue>(new TaskCanceledException("focus timeout"));
         }
-        return ValueTask.FromResult((TValue)(object)true);
+        return ValueTask.FromResult(typeof(TValue) == typeof(bool) ? (TValue)(object)true : default!);
     }
 
     /// <inheritdoc />

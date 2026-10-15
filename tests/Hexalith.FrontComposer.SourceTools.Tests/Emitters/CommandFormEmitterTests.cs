@@ -1275,7 +1275,7 @@ public class CommandFormEmitterTests {
         Regex.Count(source, @"SetAuthorizationWarning\([^;]*operatorActivation: false\)").ShouldBe(1);
         // E4-18 — a background denial (operatorActivation: false) OR-keeps an operator submit's pending
         // heading focus rather than overwriting it with false before it renders.
-        source.ShouldContain("_authorizationFocusPending = _authorizationDenied && (_authorizationFocusPending || operatorActivation);");
+        source.ShouldContain("_authorizationFocusPending = !OnHiddenOutcome.HasDelegate && _authorizationDenied && (_authorizationFocusPending || operatorActivation);");
         source.ShouldNotContain("_authorizationFocusPending = operatorActivation && _authorizationDenied;");
         source.ShouldContain("if (!_authorizationDenied && sequence > 1)");
         source.ShouldContain("\"captureFocusBeforeReplacement\", _formDomId + \"-authorization-heading\"");

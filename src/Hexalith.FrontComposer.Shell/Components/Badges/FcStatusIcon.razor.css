@@ -1,0 +1,2 @@
+/* The tooltip invoker is a pointer target, including touch, and retains its 16px Fluent icon. */
+span { display: inline-flex; align-items: center; justify-content: center; min-inline-size: 24px; min-block-size: 24px; }

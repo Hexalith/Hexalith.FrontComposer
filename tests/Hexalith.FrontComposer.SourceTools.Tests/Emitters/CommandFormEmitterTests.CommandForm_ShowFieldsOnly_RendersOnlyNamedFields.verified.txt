@@ -52,6 +52,8 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
 
     /// <summary>Story 13.3 AM-20: when bound, the host renders the blocked-submit outcome because this form is not perceivable (zero-field inline). Invoked with true for each blocked attempt and false when a later attempt is admitted.</summary>
     [Parameter] public EventCallback<bool> OnBlockedSubmission { get; set; }
+    /// <summary>Visible feedback owner for a hidden zero-field form; null clears a prior attempt.</summary>
+    [Parameter] public EventCallback<string?> OnHiddenOutcome { get; set; }
     /// <summary>When true, a visible host provides the sole persistent status node for this hidden form.</summary>
     [Parameter] public bool ExternalStatusOwner { get; set; }
     /// <summary>Gets or sets the visible host's shared announcement surface for a hidden form.</summary>
@@ -63,6 +65,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     [Inject] private ILastUsedSubscriberRegistry LastUsedSubscriberRegistry { get; set; } = default!;
     [Inject] private global::Hexalith.FrontComposer.Contracts.Lifecycle.ILifecycleBridgeRegistry LifecycleBridgeRegistry { get; set; } = default!;
     [Inject] private ICommandService CommandService { get; set; } = default!;
+    [Inject] private global::Hexalith.FrontComposer.Shell.Services.Announcements.ISurfaceAnnouncementCoordinator Announcements { get; set; } = default!;
     [Inject] private IUlidFactory UlidFactory { get; set; } = default!;
     [Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.IPendingCommandOutcomeCoordinator PendingCommandOutcomeResolver { get; set; } = default!;
     [Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.ICommandExecutionAdmissionGate CommandExecutionAdmissionGate { get; set; } = default!;
@@ -81,6 +84,8 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     private ValidationMessageStore? _rejectionValidationMessages;
     private System.Collections.Generic.IReadOnlyList<string> _serverFormLevelErrors = System.Array.Empty<string>();
     private global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning? _serverWarning;
+    private long _hiddenOutcomeSequence;
+    private IDisposable? _hiddenOutcomeClaim;
     private CancellationTokenSource? _cts;
     private bool _disposed;
     private bool _externalSubmitRegistered;
@@ -144,6 +149,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     {
         _serverWarning = CreateCommandBlockedWarning(global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.ScopeUnavailable);
         CommandFeedbackPublisher.PublishWarning(_serverWarning);
+        await PresentHiddenOutcomeAsync(_serverWarning.Detail ?? _serverWarning.Title).ConfigureAwait(false);
         await InvokeAsync(StateHasChanged);
     }
 
@@ -215,8 +221,29 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         }
     }
 
+    private async Task PresentHiddenOutcomeAsync(string? message, bool announce = true)
+    {
+        if (!OnHiddenOutcome.HasDelegate || _disposed) return;
+        _hiddenOutcomeClaim?.Dispose();
+        _hiddenOutcomeClaim = null;
+        await InvokeAsync(() => OnHiddenOutcome.InvokeAsync(message));
+        if (_disposed) return;
+        if (announce && !string.IsNullOrWhiteSpace(message))
+        {
+            string group = "hidden-outcome:" + _formDomId + ":" + System.Threading.Interlocked.Increment(ref _hiddenOutcomeSequence);
+            _hiddenOutcomeClaim = global::Hexalith.FrontComposer.Shell.Services.Announcements.SurfaceAnnouncementGroupOwnership.For(Announcements).Claim(FormAnnouncementSurface, group);
+            Announcements.Announce(FormAnnouncementSurface, group, "failure", message, terminal: true);
+        }
+    }
+
     private async Task ShowValidationSummaryAsync(FcValidationSummaryKind kind)
     {
+        if (OnHiddenOutcome.HasDelegate)
+        {
+            var messages = (_editContext?.GetValidationMessages() ?? System.Array.Empty<string>()).Concat(_serverFormLevelErrors).Where(message => !string.IsNullOrWhiteSpace(message)).Distinct();
+            await PresentHiddenOutcomeAsync(string.Join(" ", messages.DefaultIfEmpty(ShellLocalizer["ValidationSummaryTitle"].Value))).ConfigureAwait(false);
+            return;
+        }
         // Render the form first so the summary is built from the current form-level errors before its
         // single focus move; a stale list must never be what the focused summary speaks.
         await InvokeAsync(StateHasChanged);
@@ -470,6 +497,8 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     private async Task SubmitAsync(bool validateBeforeDispatch)
     {
         // Story 2-2 code-review P35 — guard against invocation via RegisterExternalSubmit after form disposal.
+        if (_disposed) return;
+        await PresentHiddenOutcomeAsync(null).ConfigureAwait(false);
         if (_disposed) return;
         // State-guard against rapid double-click: only allow submit from terminal or idle state.
         // (See code-review 2026-04-15, patch P19.)
@@ -794,6 +823,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                 if (string.Equals(result.Status, "Rejected", StringComparison.OrdinalIgnoreCase))
                 {
                     Dispatcher.Dispatch(new IncrementCommandActions.RejectedAction(correlationId, "Command rejected.", "Review the command and retry.", null, null, null, null));
+                    await PresentHiddenOutcomeAsync(BuildFcLifecycleRejectionCopy(), announce: false).ConfigureAwait(false);
                 }
                 else
                 {
@@ -860,10 +890,17 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                     ex.Problem.EntityLabel,
                     ex.RetryAfter);
             CommandFeedbackPublisher.PublishWarning(_serverWarning);
+            string hiddenWarning = _serverWarning.Kind == CommandWarningKind.RetryableDispatchFailed
+                ? ShellLocalizer["RetryableDispatchFailedFallback"].Value
+                : new[] { _serverWarning.Detail, _serverWarning.Title, _serverWarning.EntityLabel }.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? ShellLocalizer["CommandWarningFallback"].Value;
+            if (_serverWarning.Kind != CommandWarningKind.RetryableDispatchFailed && _serverWarning.RetryAfter is { } retryAfter)
+                hiddenWarning += $" Retry after {retryAfter.TotalSeconds:0} seconds.";
+            await PresentHiddenOutcomeAsync(hiddenWarning).ConfigureAwait(false);
+            if (_disposed) return;
             if (ex.Kind == global::Hexalith.FrontComposer.Contracts.Communication.CommandWarningKind.Forbidden)
             {
                 _authorizationDenied = true;
-                _authorizationFocusPending = true;
+                _authorizationFocusPending = !OnHiddenOutcome.HasDelegate;
             }
             Dispatcher.Dispatch(new IncrementCommandActions.ResetToIdleAction(correlationId));
             await InvokeAsync(StateHasChanged);
@@ -899,6 +936,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                 _editContext.NotifyValidationStateChanged();
             }
             Dispatcher.Dispatch(new IncrementCommandActions.RejectedAction(correlationId, ex.Message, ex.Resolution, ex.ErrorCode, ex.ReasonCategory, ex.SuggestedAction, ex.DocsCode, hasMappedFieldErrors));
+            await PresentHiddenOutcomeAsync(BuildFcLifecycleRejectionCopy(), announce: false).ConfigureAwait(false);
             if (hasMappedFieldErrors)
             {
                 await ShowValidationSummaryAsync(FcValidationSummaryKind.MappedServerRejection).ConfigureAwait(false);
@@ -953,6 +991,8 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         // Idempotent dispose (patch P18). Blazor can invoke Dispose more than once on teardown.
         if (_disposed) return;
         _disposed = true;
+        _hiddenOutcomeClaim?.Dispose();
+        _hiddenOutcomeClaim = null;
         try
         {
             if (System.Threading.Volatile.Read(ref _acceptedAssociationSucceeded) == 0

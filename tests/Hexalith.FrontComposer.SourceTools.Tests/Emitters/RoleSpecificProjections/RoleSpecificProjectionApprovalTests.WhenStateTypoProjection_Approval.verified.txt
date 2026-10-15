@@ -489,6 +489,9 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
     private long _pageRequestGeneration;
     private int _currentViewportSkip;
     private double _viewportScrollTop;
+    private float _measuredRowHeight;
+    private float _measuredRowBaseHeight;
+    private float GridRowHeight => System.Math.Max(_measuredRowBaseHeight == global::Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density) ? _measuredRowHeight : 0, global::Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density));
     private string? _viewportRequestIdentity;
     private System.Threading.CancellationTokenSource? _failedRetryCancellation;
 
@@ -728,6 +731,10 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
             catch (System.Threading.Tasks.TaskCanceledException) { /* circuit teardown */ }
         }
 
+        if (_dotNetRef is not null)
+        {
+            await ScrollInterop.ObserveRowMetricsAsync(_viewKey, _gridInstanceId, _dotNetRef, global::Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density)).ConfigureAwait(true);
+        }
         RegisterVisibleProjectionLane();
     }
 
@@ -743,6 +750,14 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
         }
         catch (global::Microsoft.JSInterop.JSDisconnectedException) { /* circuit teardown */ }
         catch (System.Threading.Tasks.TaskCanceledException) { /* circuit teardown */ }
+    }
+
+    /// <summary>Reconciles the virtualizer with the uniform rendered row height after spacing changes.</summary>
+    [global::Microsoft.JSInterop.JSInvokable]
+    public Task HandleRowMetricsAsync(string instanceId, float height, float defaultHeight)
+    {
+        if (instanceId != _gridInstanceId || defaultHeight != global::Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density) || !float.IsFinite(height) || height < 24 || height > 4096 || System.Threading.Volatile.Read(ref _disposed) != 0) return Task.CompletedTask;
+        return InvokeAsync(() => { _measuredRowBaseHeight = defaultHeight; _measuredRowHeight = height; UpdateCurrentViewportSkip(); StateHasChanged(); });
     }
 
     [global::Microsoft.JSInterop.JSInvokable]
@@ -873,7 +888,7 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
         string request = PageRequestIdentity(snapshot);
         if (!string.Equals(_viewportRequestIdentity, request, StringComparison.Ordinal))
         { _viewportRequestIdentity = request; _viewportScrollTop = snapshot?.ScrollTop ?? 0d; }
-        double rowHeight = global::Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density);
+        double rowHeight = GridRowHeight;
         int visibleIndex = (int)System.Math.Min(int.MaxValue, System.Math.Floor(_viewportScrollTop / rowHeight));
         _currentViewportSkip = LoadedPageState.Value.ResultsByPage.Keys
             .Concat(LoadedPageState.Value.PendingCompletionsByKey.Keys)
@@ -1373,7 +1388,7 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
         builder.CloseComponent();
 
         builder.OpenComponent<FluentDataGrid<WhenStateTypoProjection>>(108);
-        builder.SetKey(_density);
+        builder.SetKey((_density, GridRowHeight));
         if (state.Items.Count >= ShellOptions.Value.VirtualizationServerSideThreshold)
         {
             builder.AddAttribute(109, "ItemsProvider", (global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProvider<WhenStateTypoProjection>)LoadPageAsync);
@@ -1386,13 +1401,14 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
         builder.AddAttribute(112, "DisplayMode", Microsoft.FluentUI.AspNetCore.Components.DataGridDisplayMode.Table);
         builder.AddAttribute(113, "Class", "fc-projection-grid");
         builder.AddAttribute(114, "GenerateHeader", Microsoft.FluentUI.AspNetCore.Components.DataGridGeneratedHeaderType.Sticky);
-        builder.AddAttribute(115, "ItemSize", Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density));
-        builder.AddAttribute(116, "OverscanCount", 3);
-        builder.AddAttribute(117, "ItemKey", (System.Func<WhenStateTypoProjection, object>)_itemKeyAccessor);
-        builder.AddAttribute(118, "RowClass", (System.Func<WhenStateTypoProjection, string?>)(row => _expandedItemKey is not null && _itemKeyAccessor(row).Equals(_expandedItemKey) ? "fc-row-expanded" : null));
-        builder.AddAttribute(119, "OnRowClick", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create<FluentDataGridRow<WhenStateTypoProjection>>(this, row => row?.Item is null ? System.Threading.Tasks.Task.CompletedTask : HandleRowClickAsync(row.Item)));
+        builder.AddAttribute(115, "ItemSize", GridRowHeight);
+        builder.AddAttribute(116, "data-fc-grid-item-size", GridRowHeight.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        builder.AddAttribute(117, "OverscanCount", 3);
+        builder.AddAttribute(118, "ItemKey", (System.Func<WhenStateTypoProjection, object>)_itemKeyAccessor);
+        builder.AddAttribute(119, "RowClass", (System.Func<WhenStateTypoProjection, string?>)(row => _expandedItemKey is not null && _itemKeyAccessor(row).Equals(_expandedItemKey) ? "fc-row-expanded" : null));
+        builder.AddAttribute(120, "OnRowClick", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create<FluentDataGridRow<WhenStateTypoProjection>>(this, row => row?.Item is null ? System.Threading.Tasks.Task.CompletedTask : HandleRowClickAsync(row.Item)));
 
-        builder.AddAttribute(120, "ChildContent", (RenderFragment)((RenderTreeBuilder b) =>
+        builder.AddAttribute(121, "ChildContent", (RenderFragment)((RenderTreeBuilder b) =>
         {
 
             // Text column: Id
@@ -1530,6 +1546,7 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
                 rb.AddAttribute(6, "aria-controls", _expandPanelId);
                 rb.AddAttribute(7, "OnClick", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create<global::Microsoft.AspNetCore.Components.Web.MouseEventArgs>(this, _ => HandleRowClickAsync(item)));
                 global::Microsoft.AspNetCore.Components.Web.WebRenderTreeBuilderExtensions.AddEventStopPropagationAttribute(rb, 8, "onclick", true);
+                rb.AddAttribute(9, "Size", global::Microsoft.FluentUI.AspNetCore.Components.ButtonSize.Small);
                 rb.CloseComponent();
             }));
             b.CloseComponent();
@@ -1538,14 +1555,14 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
         builder.CloseComponent();
 
         // Story 4-5 — detail panel host; ChildContent is the factored EmitDetailRecordBody output.
-        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail>(121);
-        builder.AddAttribute(122, "ViewKey", _ephemeralViewKey);
-        builder.AddAttribute(123, "PanelId", _expandPanelId);
-        builder.AddAttribute(124, "HasExpanded", _expandedItem is not null);
-        builder.AddAttribute(125, "DetailPanelAriaLabel", FcShellLocalizer["ExpandInRowDetailPanelAriaLabelTemplate", _expandedItemKey?.ToString() ?? string.Empty].Value);
-        builder.AddAttribute(126, "SuppressedAnnouncement", _expandedItemHiddenByFilter ? FcShellLocalizer["ExpandInRowDetailSuppressedByFilterAnnouncement"].Value : null);
-        builder.AddAttribute(127, "SuppressStandaloneAnnouncement", true);
-        builder.AddAttribute(128, "ChildContent", (RenderFragment)((RenderTreeBuilder builder) =>
+        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail>(122);
+        builder.AddAttribute(123, "ViewKey", _ephemeralViewKey);
+        builder.AddAttribute(124, "PanelId", _expandPanelId);
+        builder.AddAttribute(125, "HasExpanded", _expandedItem is not null);
+        builder.AddAttribute(126, "DetailPanelAriaLabel", FcShellLocalizer["ExpandInRowDetailPanelAriaLabelTemplate", _expandedItemKey?.ToString() ?? string.Empty].Value);
+        builder.AddAttribute(127, "SuppressedAnnouncement", _expandedItemHiddenByFilter ? FcShellLocalizer["ExpandInRowDetailSuppressedByFilterAnnouncement"].Value : null);
+        builder.AddAttribute(128, "SuppressStandaloneAnnouncement", true);
+        builder.AddAttribute(129, "ChildContent", (RenderFragment)((RenderTreeBuilder builder) =>
         {
             if (_expandedItem is null) { return; }
         var entity = _expandedItem;
@@ -1723,7 +1740,10 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
         builder.AddAttribute(120, "class", GridHostClass());
         builder.AddAttribute(121, "data-fc-datagrid", _viewKey);
         builder.AddAttribute(122, "data-fc-datagrid-instance", _gridInstanceId);
-        builder.AddAttribute(123, "onscroll", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, OnScrollAsync));
+        builder.AddAttribute(123, "role", "region");
+        builder.AddAttribute(124, "aria-label", "when state typos");
+        builder.AddAttribute(125, "tabindex", "0");
+        builder.AddAttribute(126, "onscroll", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, OnScrollAsync));
 
         var __viewOverrideDescriptor = ProjectionViewOverrideRegistry.Resolve(typeof(WhenStateTypoProjection), (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.ActionQueue);
         if (__viewOverrideDescriptor is not null)
@@ -1744,9 +1764,9 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
                 rowRenderer: RenderTemplateRow,
                 fieldRenderer: RenderTemplateField);
 
-            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionViewOverrideHost<WhenStateTypoProjection>>(124);
-            builder.AddAttribute(125, "Descriptor", __viewOverrideDescriptor);
-            builder.AddAttribute(126, "Context", __viewOverrideContext);
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionViewOverrideHost<WhenStateTypoProjection>>(127);
+            builder.AddAttribute(128, "Descriptor", __viewOverrideDescriptor);
+            builder.AddAttribute(129, "Context", __viewOverrideContext);
             builder.CloseComponent();
         }
         else
@@ -1767,9 +1787,9 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
                 rowRenderer: RenderTemplateRow,
                 fieldRenderer: RenderTemplateField);
 
-            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionTemplateHost<WhenStateTypoProjection>>(127);
-            builder.AddAttribute(128, "Descriptor", __templateDescriptor);
-            builder.AddAttribute(129, "Context", __templateContext);
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionTemplateHost<WhenStateTypoProjection>>(130);
+            builder.AddAttribute(131, "Descriptor", __templateDescriptor);
+            builder.AddAttribute(132, "Context", __templateContext);
             builder.CloseComponent();
         }
         else

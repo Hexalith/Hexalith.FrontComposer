@@ -1,0 +1,297 @@
+{
+  "schema": "frontcomposer.story13.6.accessibility-candidate.v1",
+  "baseline_commit": "3c8679628ebdb8995afc09f712a04fcde623695c",
+  "branch": "main",
+  "candidate_kind": "content-addressed implementation candidate",
+  "candidate_id": "sha256:789ad2a214a1c2a213713f63d062e74fad16e7063cc9629345513fd2c8978d17",
+  "digest_encoding": "SHA-256 of JSON files array with sort_keys=True and compact separators; each file SHA-256 uses exact working-tree bytes",
+  "files": [
+    {
+      "path": "samples/Counter/Counter.Specimens/CounterProjectionTemplate.razor",
+      "sha256": "f5da69ebdd23edfd8b0a805eb22aa32d75990a3393affe04b45f0d31fffaba38"
+    },
+    {
+      "path": "samples/Counter/Counter.Specimens/CounterProjectionTemplate.razor.cs",
+      "sha256": "1ece0238b6356f6c0b3df6e12158daccf8841ecfa944aa8925f8eb5eb85eac4a"
+    },
+    {
+      "path": "samples/Counter/Counter.Specimens/FrontComposerTypeSpecimen.razor",
+      "sha256": "d111ba9cfac7de854fa926ae6eba91159ea96a8a96031c422616eb52f8b3e0e2"
+    },
+    {
+      "path": "samples/Counter/Counter.Specimens/FrontComposerTypeSpecimen.razor.css",
+      "sha256": "8963cc13bc168123b7cd63bf194780fccb12146aea320b29c3ea355fa84ca62e"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.Shell/Components/Badges/FcStatusIcon.razor.css",
+      "sha256": "25191ec6c177ede83ae3a0105a947030281dd4778ae9344e945166dfb4e3a0b7"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcExpandedRowHiddenBanner.razor",
+      "sha256": "86fa6cbb0eaa6b8b65aa82894e207d23cd92a72b344742dde8841befb0f88619"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcExpandedRowHiddenBanner.razor.cs",
+      "sha256": "0271965027a4f3306fb420e2f41e85eaec49cd754835f9d095643f05a29fc1fb"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.Shell/Components/Layout/FcCommandPalette.razor.cs",
+      "sha256": "1612f9a920fb78b106a10a7c13b326f3858432070da5ab00a63f3716b1fedb49"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.Shell/Components/Layout/FcCommandPalette.razor.css",
+      "sha256": "409768003684767e55eb958a10883c3d5852bf0ce455f7051540e532b5392786"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.Shell/Components/Layout/FcPageToolbar.razor",
+      "sha256": "4487fa8cfea4af849de751feee0ceb200466159375e4d7a397579754acfb889f"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.Shell/Components/Layout/FcPaletteResultList.razor.css",
+      "sha256": "352c4a7ec8c97dde4e09d9416d78c6cfe94720f5229f70c7c9dde50a917a8cc2"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.Shell/Components/Layout/FcSettingsDialog.razor.cs",
+      "sha256": "6ca2ed5cda7cdc9d3d0038887c29edf7fe592ea17e11bb4c7f24fd32a2c9fd5c"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.Shell/Components/Layout/FcSettingsDialog.razor.css",
+      "sha256": "a0bef7ad6ff7d08330837322725f07fd94841e05952d785422d18afe3b45ebde"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor",
+      "sha256": "f4298b0e5cd0686766286b8df4d2209af4213c1da2d610e416153bc879d0f9f3"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor.css",
+      "sha256": "fe3b69a7223ac49e6eea5adbbe35fa423461c64831a510f6301e8cd0f62cb1df"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.Shell/Components/Pages/FcHomeRouteView.razor",
+      "sha256": "2f2a8ff8bf8b22d9a68219f2bf1d7dc2448460561e7fbb2fa7435a97feb205bb"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.Shell/Components/Rendering/FcFieldPlaceholder.razor.css",
+      "sha256": "840d92f13aecf72de5b3ebeff6a2f5b49cb4234ee68123ca8e5c968148b5e687"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx",
+      "sha256": "cb76af8d944b3425eeb26209bc801080dd9bf7620595960169e75912ecf832bf"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx",
+      "sha256": "eed5b8328bbfca4b100b431d7a12e065416fd302e75b40dfb7f2303377a709d5"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.Shell/Services/DataGridScrollInterop.cs",
+      "sha256": "45bc7e149e237e8ddc2f1705d23b876853cb25050f6f66f919d15e12d36dc0a1"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.Shell/wwwroot/css/fc-projection.css",
+      "sha256": "2e46a9df4737d140f4a30c5b3665a4484dba34dcaf54304f8c92dca4007a8629"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-datagrid.js",
+      "sha256": "09ee97a6d2a3da7d5fa842b4f8fe91a3e6e110b423190fbcd7894ee56871f92f"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js",
+      "sha256": "5843249b3f0fe2544577c5d97ceb49cb7d95adcd12591e9383b9a469c4884c35"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs",
+      "sha256": "4645d98143ded0213c5bc3d2835d61e3dc7b1af6556ff2900e905ec51e4a62bc"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.SourceTools/Emitters/CommandRendererEmitter.cs",
+      "sha256": "d9f5fd6a05c8554e0dd43c299bd51060418840be6066542986a42e44020942b9"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs",
+      "sha256": "a2756fb54e25a148a1dd828e6230de48c5dd85e4c1fc8833748d351f1e32ed0f"
+    },
+    {
+      "path": "src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs",
+      "sha256": "f1fccd356d3c763319b2ea32d00efaf75e9a4a6bf8059044278d769178c0b4a7"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcExpandedRowHiddenBannerTests.cs",
+      "sha256": "53256149944d549be5bfdc874320dadb24be9bdbfbb96f88261d836e107f5da8"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/RecordingHiddenDetailFocusModule.cs",
+      "sha256": "fcdadf6cd6d1cb2fe4ec664d151a9515695bf9ff7c235e466e20a49a10a4f49c"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FrontComposerShellTests.cs",
+      "sha256": "fd343eb3cd22b674a8230d319b5d4f2f169750afd1f38687addc68f7f4038b12"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.CounterProjectionView_LoadedState_RendersColumnsAndFormatting.verified.txt",
+      "sha256": "50413e4a36e2ed6e14519af15b4e823f9b85deb6d29839ca0b40c3b028cd834c"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.StatusProjectionView_NullAndBooleanValues_RenderSnapshot.verified.txt",
+      "sha256": "853a9134b958148ef3fcc8f21a350cef28f26eb259026368d1c8b4a2fde28d69"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/Generated/ExpandInRowGeneratedGridTests.cs",
+      "sha256": "a5be26ee08da85123fdd864a2fc186bdd169d117aa7886fb99fe5acd7a24f92c"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedProjectionAnnouncementTests.cs",
+      "sha256": "227cf0e333515407c10a09ab5968ca2f09b179c79e4b07a1c809ee4212ea3387"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/Generated/ProtectedZeroFieldInlineCommand.cs",
+      "sha256": "6b77b97000e4f43b90754456645707fb415eb365995f6879cf6e54ee5fd79e76"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/Generated/ZeroFieldFailureAccessibilityTests.cs",
+      "sha256": "1cbf46cfab040001ec8cae1f9b66c2c9015e2856b571f3226d0b125431828c61"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/SlotMappingRegressionTests.BindingTable.verified.txt",
+      "sha256": "cf029d1fdaa80ad21a1bfaa8de2629bfe772ae16a28e31ae407ba52bf5226624"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.Shell.Tests/SlotMappingRegressionTests.cs",
+      "sha256": "d68eba39a6b789bb9287cdd0715791f63c2e5f89214d70edb2b214b27b522b6f"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_DerivableFieldsHidden_OmitsHiddenFieldsOnly.verified.txt",
+      "sha256": "e2371f8cf9a2604371137608c36f8cbbf7941a6e73d8f86df4b3d81c8502bb36"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_ShowFieldsOnly_RendersOnlyNamedFields.verified.txt",
+      "sha256": "bb7503d233d30a1d8a5cca0d3beb3029b9543fbc4056f8bf6b97c21965dcbd8b"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs",
+      "sha256": "0af0368ed4a9f45e52df6b108aac3bcb916ab725393adf38c3b03fff074cc503"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandRendererEmitterTests.Renderer_ZeroFields_InlineSnapshot.verified.txt",
+      "sha256": "62b2b5620737fec8338a4e0734b3b33bae411fa409ab5c52a641d5b9ab09eda1"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.BasicProjection_Snapshot.verified.txt",
+      "sha256": "4a1d6b4b05641a8d9a63667c37d76f635b9eed871758cf712d060128027682d8"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.DescriptionWithEscapeEdgeCases_Snapshot.verified.txt",
+      "sha256": "3aa22d4b2c9da005bee90cb61f4aa7e65ec307c7b4672247a781731cd878a7bf"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.DisplayNameOverrides_Snapshot.verified.txt",
+      "sha256": "f54ca1fb2e70529e2470ae0d8f408221dee5a60bc8b30b887d47f8f09bcce672"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.EnumAndBadgeMappings_Snapshot.verified.txt",
+      "sha256": "530dd049613e65b149e5c987ce73c3e53fe7bea01de760047eaecbbc296ab906"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.GuidTruncation_Snapshot.verified.txt",
+      "sha256": "1cee2a43f7612673b1f56911226170c78ec71c89fd152dd8a6ce5bb23aa6d2bc"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.NullableProperties_Snapshot.verified.txt",
+      "sha256": "1d3070ea4219b1ccf3dd39d2ae8834e52d1bbb6aab70a4534ddc2c33b9e6d76e"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterVirtualizationTests.cs",
+      "sha256": "08be4e028bd480f72eb23f067b484740425ebefc77fcb32ced0a089bec24e0c2"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.ActionQueueNoEnumProjection_Approval.verified.txt",
+      "sha256": "f399e88d1dddf32e4aa357711764739851f597ddd814ad4225c6b4b9a83b41bf"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.ActionQueueProjection_Approval.verified.txt",
+      "sha256": "9e6272420c9b57e5c69c4c5271b566431def1bdfb97140effc7385ad3562f8f6"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.DashboardProjection_Approval.verified.txt",
+      "sha256": "69159cc94d67e9427cfa087100d580cf4db3fbc01a4370e62464548b506541c8"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.DashboardWrongShapeProjection_Approval.verified.txt",
+      "sha256": "88b2a8e1dacb1b52e8f184de229140f54e6191e975379e2659230058908ec1df"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.StatusOverviewProjection_Approval.verified.txt",
+      "sha256": "bdf5c20ea18cb9c7ce8fbaec383caeae754d8060b9e23e3928d70c19216c1c59"
+    },
+    {
+      "path": "tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.WhenStateTypoProjection_Approval.verified.txt",
+      "sha256": "50a0689f1b72e3047a6822b6b3f13ae10aa3db00fe97b917124b5bb802262e9d"
+    },
+    {
+      "path": "tests/e2e/helpers/a11y.ts",
+      "sha256": "769424c53d53b6b21c75cbbdb816a79a6bb809451090632986b065cdbc653728"
+    },
+    {
+      "path": "tests/e2e/helpers/responsive-accessibility.ts",
+      "sha256": "1bda72081d9bc85823fc4f2db01d43d4f8e11cf766d4476cca4ac43b129b32e0"
+    },
+    {
+      "path": "tests/e2e/specs/a11y-helper.spec.ts",
+      "sha256": "4aae888908bda42cc1a38ff8cc8d3e58ac8de037d3931217a437794c84159dbc"
+    },
+    {
+      "path": "tests/e2e/specs/responsive-accessibility.spec.ts",
+      "sha256": "65ff88af70bb036514f3a056f279ba8f01f83fb88abfa256a504ba09d343ce5c"
+    },
+    {
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts",
+      "sha256": "bf3c4ce1bddafa4322399eb1b69b7acc6e06afee98c4fec7523970c24358d31e"
+    },
+    {
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-comfortable-chromium-linux.png",
+      "sha256": "5e34d851acc153780abc1323b82e7d64d32c95cbcecad68ef342ba1669b3c207"
+    },
+    {
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-compact-chromium-linux.png",
+      "sha256": "4152852ef68b45db60be3d318dfad8fdf7153f12c948c6c6db4fd3110347b3ec"
+    },
+    {
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-dark-roomy-chromium-linux.png",
+      "sha256": "27728ede65f0e03850f12f2ab1b0c0b90d04ba098af640137a0930ea31780f44"
+    },
+    {
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-comfortable-chromium-linux.png",
+      "sha256": "c5ccc4239f021d7d3de8bf516ca0f33d83fb8cb8ca3260ade37b2eabe876d97b"
+    },
+    {
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-compact-chromium-linux.png",
+      "sha256": "36782f3bd33b3423e7f902f6c9b51f47dee19375de040d81a45971faff4a42d4"
+    },
+    {
+      "path": "tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-roomy-chromium-linux.png",
+      "sha256": "ea632436dad10daa54cf5d90745fefa911132d477d19bee3c5eb6c298fb0a693"
+    }
+  ],
+  "inputs": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "4c59ec61f9012466b778bc1ed0438387f621986a8678aca34eefca719ab1825d"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/epic-13-context.md",
+      "sha256": "56a41ecff6b24152b51e8b9397060534be468f4eb28052273e076726aff4c993"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md",
+      "sha256": "9097c801a9dd91a42528b6580ad017db968b09e8c6a98a3caa7482f014dd55ed"
+    }
+  ],
+  "excluded": "Sprint status and evidence/result files are excluded from the implementation digest. File hashes use exact working-tree bytes. Later affected implementation changes require revalidation.",
+  "input_note": "inputs preserves the documents supplied to the original implementation. Later changes below are workflow status, evidence notes and review triage; approved intent is unchanged.",
+  "post_implementation_input_updates": [
+    {
+      "path": "_bmad-output/implementation-artifacts/spec-13-6-verify-responsive-and-assistive-accessibility.md",
+      "sha256": "6fb79f68097ff82620034ad9a9fefe84564d145437e27fe4c194fe3396d6bc8b",
+      "frozen_intent_sha256_lf": "d175f671d64935cff6cfbfe3b46a60394806d09386a2ad61258227d70feff358"
+    }
+  ]
+}

@@ -122,7 +122,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
             liveRegion.GetAttribute("role").ShouldBe("status");
             liveRegion.GetAttribute("aria-live").ShouldBe("polite");
             liveRegion.GetAttribute("aria-atomic").ShouldBe("true");
-            liveRegion.TextContent.ShouldBeEmpty();
+            liveRegion.TextContent.ShouldBe("The expanded item is not in the current results.");
         });
         JSInterop.Invocations.Count(x => x.Identifier == "focusFirstButtonWithin").ShouldBe(0);
 

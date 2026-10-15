@@ -75,6 +75,22 @@ public sealed class DataGridScrollInterop : IAsyncDisposable {
         }
     }
 
+    /// <summary>Measures a mounted grid after layout or text spacing changes, keeping virtual rows uniform.</summary>
+    public async ValueTask ObserveRowMetricsAsync(string viewKey, string instanceId, DotNetObjectReference<object> dotnetRef,
+        float defaultHeight, CancellationToken cancellationToken = default)
+    {
+        IJSObjectReference? module = await TryGetModuleAsync(cancellationToken).ConfigureAwait(false);
+        if (module is null) return;
+        try
+        {
+            await module.InvokeVoidAsync("observeRowMetrics", cancellationToken, viewKey, instanceId, dotnetRef, defaultHeight).ConfigureAwait(false);
+        }
+        catch (JSDisconnectedException) { }
+        catch (JSException) { }
+        catch (InvalidOperationException) { }
+        catch (OperationCanceledException) { }
+    }
+
     /// <summary>
     /// Applies the hydrated <see cref="Contracts.Rendering.GridViewSnapshot.ScrollTop"/> value
     /// to the DataGrid's scroll container after the first render tick (within-session only;

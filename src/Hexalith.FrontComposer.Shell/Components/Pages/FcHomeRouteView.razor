@@ -1,7 +1,12 @@
 @namespace Hexalith.FrontComposer.Shell.Components.Pages
 @page "/home"
 @using Hexalith.FrontComposer.Shell.Components.Home
+@using Microsoft.AspNetCore.Components.Web
+@using Hexalith.FrontComposer.Shell.Resources
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<FcShellResources> Localizer
 
 @* Shared Home route. Hosts retain ownership of their root page. *@
 
+<PageTitle>@Localizer["HomeWelcomeAnonymous"].Value</PageTitle>
 <FcHomeDirectory />

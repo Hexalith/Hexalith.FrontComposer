@@ -158,13 +158,14 @@ public static class ProjectionRoleBodyEmitter {
 
         _ = sb.AppendLine("        builder.OpenComponent<FluentDataGrid<" + recordTypeName + ">>(seq++);");
         // Story 4-4 T2.1 / D1 / D20 — Virtualize even at low item count keeps emission shape uniform.
-        _ = sb.AppendLine("        builder.SetKey(_density);");
+        _ = sb.AppendLine("        builder.SetKey((_density, GridRowHeight));");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Items\", groupedItems.AsQueryable());");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Virtualize\", true);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"DisplayMode\", Microsoft.FluentUI.AspNetCore.Components.DataGridDisplayMode.Table);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Class\", \"fc-projection-grid\");");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"GenerateHeader\", Microsoft.FluentUI.AspNetCore.Components.DataGridGeneratedHeaderType.Sticky);");
-        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemSize\", Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density));");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemSize\", GridRowHeight);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"data-fc-grid-item-size\", GridRowHeight.ToString(System.Globalization.CultureInfo.InvariantCulture));");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"OverscanCount\", 3);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemKey\", (System.Func<" + recordTypeName + ", object>)(static r => (object)r.StatusLabel));");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"RowClass\", (System.Func<" + recordTypeName + ", string?>)(row => _expandedItemKey is not null && string.Equals(row.StatusLabel, _expandedItemKey.ToString(), StringComparison.Ordinal) ? \"fc-row-expanded\" : null));");
@@ -513,7 +514,7 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("        builder.OpenComponent<FluentDataGrid<" + model.TypeName + ">>(seq++);");
         // Story 4-4 T2.1 / D1 / D20 — Virtualize default ON. @key on density forces a Virtualize remount
         // when the user toggles density (Fluent v5 reads ItemSize at initialisation).
-        _ = sb.AppendLine("        builder.SetKey(_density);");
+        _ = sb.AppendLine("        builder.SetKey((_density, GridRowHeight));");
         _ = sb.AppendLine("        if (state.Items.Count >= ShellOptions.Value.VirtualizationServerSideThreshold)");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"ItemsProvider\", (global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProvider<" + model.TypeName + ">)LoadPageAsync);");
@@ -526,7 +527,8 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"DisplayMode\", Microsoft.FluentUI.AspNetCore.Components.DataGridDisplayMode.Table);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Class\", \"fc-projection-grid\");");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"GenerateHeader\", Microsoft.FluentUI.AspNetCore.Components.DataGridGeneratedHeaderType.Sticky);");
-        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemSize\", Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density));");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemSize\", GridRowHeight);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"data-fc-grid-item-size\", GridRowHeight.ToString(System.Globalization.CultureInfo.InvariantCulture));");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"OverscanCount\", 3);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemKey\", (System.Func<" + model.TypeName + ", object>)_itemKeyAccessor);");
 
@@ -617,6 +619,7 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("                rb.AddAttribute(6, \"aria-controls\", _expandPanelId);");
         _ = sb.AppendLine("                rb.AddAttribute(7, \"OnClick\", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create<global::Microsoft.AspNetCore.Components.Web.MouseEventArgs>(this, _ => HandleRowClickAsync(item)));");
         _ = sb.AppendLine("                global::Microsoft.AspNetCore.Components.Web.WebRenderTreeBuilderExtensions.AddEventStopPropagationAttribute(rb, 8, \"onclick\", true);");
+        _ = sb.AppendLine("                rb.AddAttribute(9, \"Size\", global::Microsoft.FluentUI.AspNetCore.Components.ButtonSize.Small);");
         _ = sb.AppendLine("                rb.CloseComponent();");
         _ = sb.AppendLine("            }));");
         _ = sb.AppendLine("            b.CloseComponent();");
@@ -643,6 +646,7 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("                rb.AddAttribute(6, \"aria-controls\", _expandPanelId);");
         _ = sb.AppendLine("                rb.AddAttribute(7, \"OnClick\", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create<global::Microsoft.AspNetCore.Components.Web.MouseEventArgs>(this, _ => HandleStatusOverviewRowClickAsync(item)));");
         _ = sb.AppendLine("                global::Microsoft.AspNetCore.Components.Web.WebRenderTreeBuilderExtensions.AddEventStopPropagationAttribute(rb, 8, \"onclick\", true);");
+        _ = sb.AppendLine("                rb.AddAttribute(9, \"Size\", global::Microsoft.FluentUI.AspNetCore.Components.ButtonSize.Small);");
         _ = sb.AppendLine("                rb.CloseComponent();");
         _ = sb.AppendLine("            }));");
         _ = sb.AppendLine("            b.CloseComponent();");

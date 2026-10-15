@@ -57,7 +57,7 @@ public sealed class RazorEmitterVirtualizationTests {
     public void EmitsItemSizeFromDensityMetricsAndSetKeyOnDensity() {
         string src = RazorEmitter.Emit(Model(Col("Id"), Col("Name")));
         src.ShouldContain("DataGridDensityMetrics.ResolveRowHeightPx(_density)");
-        src.ShouldContain("builder.SetKey(_density);");
+        src.ShouldContain("builder.SetKey((_density, GridRowHeight));");
         src.ShouldContain("_density = RenderContext?.DensityLevel");
     }
 
@@ -68,10 +68,10 @@ public sealed class RazorEmitterVirtualizationTests {
         gridIndex.ShouldBeGreaterThanOrEqualTo(0);
 
         string gridBlock = src[gridIndex..src.IndexOf("builder.CloseComponent();", gridIndex, StringComparison.Ordinal)];
-        gridBlock.ShouldContain("builder.SetKey(_density);");
+        gridBlock.ShouldContain("builder.SetKey((_density, GridRowHeight));");
         gridBlock.ShouldContain("\"Class\", \"fc-projection-grid\"");
         gridBlock.ShouldContain("\"GenerateHeader\", Microsoft.FluentUI.AspNetCore.Components.DataGridGeneratedHeaderType.Sticky");
-        gridBlock.ShouldContain("\"ItemSize\", Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density)");
+        gridBlock.ShouldContain("\"ItemSize\", GridRowHeight");
         src.ShouldContain("return \"fc-datagrid-host fc-projection-grid\";");
     }
 

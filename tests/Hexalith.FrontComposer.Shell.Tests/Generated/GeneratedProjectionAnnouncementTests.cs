@@ -1277,14 +1277,18 @@ public sealed class GeneratedProjectionAnnouncementTests : GeneratedComponentTes
         await cut.InvokeAsync(() => cut.Instance.HandleScrollAsync(ViewKey, 1_000d * 44d));
         cut.WaitForAssertion(() => cut.Find("[data-testid='fc-projection-failure']").TextContent
             .ShouldContain("This section is being updated"));
+        string instanceId = (string)typeof(CounterProjectionView).GetField("_gridInstanceId", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(cut.Instance)!;
+        await cut.InvokeAsync(() => cut.Instance.HandleRowMetricsAsync(instanceId, 88, 44));
+        await cut.InvokeAsync(() => cut.Instance.HandleScrollAsync(ViewKey, 44_000));
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-projection-failure']").TextContent.ShouldContain("Data could not be loaded."));
         LoadedPageState withFailures = Services.GetRequiredService<IState<LoadedPageState>>().Value;
         LoadedPageResult otherSuccess = new(4, request, 1, false, false, 1_500);
         await cut.InvokeAsync(() => pages.RestoreState(withFailures with {
             LastResultByKey = withFailures.LastResultByKey.SetItem(ViewKey, otherSuccess),
             ResultsByPage = withFailures.ResultsByPage.SetItem((ViewKey, 1_500), otherSuccess),
         }));
-        cut.Find("[data-testid='fc-projection-failure']").TextContent.ShouldContain("This section is being updated");
-        cut.Find(StatusSelector).TextContent.ShouldBe("This section is being updated");
+        cut.Find("[data-testid='fc-projection-failure']").TextContent.ShouldContain("Data could not be loaded.");
+        cut.Find(StatusSelector).TextContent.ShouldBe("Data could not be loaded.");
 
         LoadPageAction? retry = null;
         IActionSubscriber actions = Services.GetRequiredService<IActionSubscriber>();
@@ -1292,9 +1296,9 @@ public sealed class GeneratedProjectionAnnouncementTests : GeneratedComponentTes
         actions.SubscribeToAction<LoadPageAction>(owner, action => retry = action);
         try {
             cut.Find("[data-testid='fc-projection-failure'] fluent-button, [data-testid='fc-projection-failure'] button").Click();
-            retry.ShouldNotBeNull().Skip.ShouldBe(1_000);
-            retry.Take.ShouldBe(30);
-            Services.GetRequiredService<IState<LoadedPageState>>().Value.ResultsByPage[(ViewKey, 500)].Failed.ShouldBeTrue();
+            retry.ShouldNotBeNull().Skip.ShouldBe(500);
+            retry.Take.ShouldBe(25);
+            Services.GetRequiredService<IState<LoadedPageState>>().Value.ResultsByPage[(ViewKey, 1_000)].Failed.ShouldBeTrue();
         }
         finally {
             actions.UnsubscribeFromAllActions(owner);

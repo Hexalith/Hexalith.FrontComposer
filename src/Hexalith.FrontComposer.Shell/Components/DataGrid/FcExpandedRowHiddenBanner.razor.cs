@@ -27,6 +27,10 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
     private string _bannerMessage = string.Empty;
     private ElementReference _bannerRef;
     private bool _wasHidden;
+    private string _recoveryKey = string.Empty;
+    private bool _wasMissing;
+    private bool _missingPending;
+    private IJSObjectReference? _missingFocusModule;
     private bool _awaitingSettlement;
     private bool _focusPending;
     private bool _focusInFlight;
@@ -99,9 +103,16 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
         {
             ReleaseAnnouncement();
             ReleaseFocusClaim();
+            if (_missingFocusModule is not null && _recoveryKey.Length > 0)
+            {
+                _ = CancelTrackerAsync(_missingFocusModule, _recoveryKey);
+            }
+            _recoveryKey = _descriptionId + ":" + ScopeGeneration;
             _boundSurface = surface;
             _boundScopeGeneration = ScopeGeneration;
             _wasHidden = false;
+            _wasMissing = false;
+            _missingPending = false;
             _awaitingSettlement = false;
             _lastAnnouncedResult = null;
             _focusPending = false;
@@ -111,6 +122,33 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
         _bannerMessage = IsHiddenByFilter
             ? Localizer["ExpandedRowHiddenByFilterBanner", "1"].Value
             : IsMissing ? Localizer["ExpandedRowUnavailableBanner"].Value : string.Empty;
+        bool settledMissing = IsMissing && !IsHiddenByFilter && ResultSettled;
+        if (settledMissing && !_wasMissing)
+        {
+            ReleaseAnnouncement();
+            ReleaseFocusClaim();
+            _missingPending = true;
+            _activeClaim = SurfaceAnnouncementGroupOwnership.For(Announcements)
+                .ClaimTransitionEpisode(_boundSurface, "missing:" + ViewKey,
+                    "missing:" + ViewKey + ":scope:" + ScopeGeneration + ":result:" + ResultIdentity, out string group);
+            _activeGroup = group;
+            _focusOwnership = SurfaceHiddenFocusOwnership.For(Announcements);
+            _focusGroupKey = group;
+            _missingPending = _focusOwnership.Claim(group, this, OnFocusHandoff);
+        }
+        if (settledMissing)
+        {
+            _wasMissing = true;
+            _wasHidden = false;
+            _focusPending = false;
+            return;
+        }
+        if (IsMissing && !IsHiddenByFilter && _wasMissing) return;
+        if (!IsMissing)
+        {
+            _wasMissing = false;
+            _missingPending = false;
+        }
         bool settledHidden = IsHiddenByFilter && ResultSettled;
         string family = "filter:" + ViewKey;
         if (!settledHidden)
@@ -186,6 +224,43 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
 
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!_disposed)
+        {
+            try
+            {
+                _missingFocusModule ??= await JS.InvokeAsync<IJSObjectReference>(
+                    "import", "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js").ConfigureAwait(true);
+                if (_disposed)
+                {
+                    await CancelMissingFocusAsync(_missingFocusModule).ConfigureAwait(true);
+                    _missingFocusModule = null;
+                    return;
+                }
+                await _missingFocusModule.InvokeVoidAsync("trackDetailFocus", _recoveryKey, ViewKey).ConfigureAwait(true);
+                if (_missingPending && IsMissing && !IsHiddenByFilter && ResultSettled
+                    && _focusGroupKey is { } missingGroup && _focusOwnership?.TryOwn(missingGroup, this) == true)
+                {
+                    string surface = _boundSurface;
+                    long generation = ScopeGeneration;
+                    bool focused = await _missingFocusModule.InvokeAsync<bool>(
+                        "focusReplacementHeading", _recoveryKey, _descriptionId).ConfigureAwait(true);
+                    if (!_disposed && _missingPending && IsMissing && !IsHiddenByFilter
+                        && generation == ScopeGeneration && surface == _boundSurface)
+                    {
+                        _missingPending = false;
+                        _focusOwnership.Complete(missingGroup, this);
+                        if (!focused)
+                        {
+                            Announcements.Announce(surface, missingGroup, "missing-detail", _bannerMessage, terminal: true);
+                        }
+                    }
+                }
+            }
+            catch (JSDisconnectedException) { AnnounceMissingWithoutFocus(); }
+            catch (JSException) { AnnounceMissingWithoutFocus(); }
+            catch (InvalidOperationException) { AnnounceMissingWithoutFocus(); }
+            catch (OperationCanceledException) { AnnounceMissingWithoutFocus(); }
+        }
         if (_disposed || !_focusPending || _focusInFlight || !IsHiddenByFilter || !ResultSettled) {
             return;
         }
@@ -273,6 +348,16 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
         }
     }
 
+    private void AnnounceMissingWithoutFocus()
+    {
+        if (!_disposed && _missingPending && IsMissing && !IsHiddenByFilter && ResultSettled && _activeGroup is { } group)
+        {
+            _missingPending = false;
+            _focusOwnership?.Complete(group, this);
+            Announcements.Announce(_boundSurface, group, "missing-detail", _bannerMessage, terminal: true);
+        }
+    }
+
     private bool IsCurrentFocus(string boundSurface, string? boundResult, long boundEpisode)
         => !_disposed && _focusPending && IsHiddenByFilter && ResultSettled
             && boundEpisode == _hiddenEpisode
@@ -314,14 +399,14 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
 
     private void OnFocusHandoff(string group)
     {
-        if (_disposed || !_focusPending || _focusInFlight || !string.Equals(_focusGroupKey, group, StringComparison.Ordinal))
+        if (_disposed || (!_focusPending && !_missingPending) || _focusInFlight || !string.Equals(_focusGroupKey, group, StringComparison.Ordinal))
         {
             return;
         }
 
         _ = InvokeAsync(() =>
         {
-            if (!_disposed && _focusPending && !_focusInFlight && IsHiddenByFilter && ResultSettled
+            if (!_disposed && (_focusPending && IsHiddenByFilter || _missingPending && IsMissing) && !_focusInFlight && ResultSettled
                 && string.Equals(_focusGroupKey, group, StringComparison.Ordinal))
             {
                 StateHasChanged();
@@ -329,11 +414,37 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase, IDisposable {
         });
     }
 
+    private static async Task CancelTrackerAsync(IJSObjectReference module, string key)
+    {
+        try { await module.InvokeVoidAsync("cancelReplacementFocus", key).ConfigureAwait(false); }
+        catch (JSDisconnectedException) { }
+        catch (JSException) { }
+        catch (InvalidOperationException) { }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Task CancelMissingFocusAsync(IJSObjectReference module)
+    {
+        try
+        {
+            await module.InvokeVoidAsync("cancelReplacementFocus", _recoveryKey).ConfigureAwait(false);
+            await module.DisposeAsync().ConfigureAwait(false);
+        }
+        catch (JSDisconnectedException) { }
+        catch (JSException) { }
+        catch (InvalidOperationException) { }
+        catch (OperationCanceledException) { }
+    }
+
     /// <inheritdoc />
     public void Dispose() {
         _disposed = true;
         ReleaseAnnouncement();
         ReleaseFocusClaim();
+        if (_missingFocusModule is not null)
+        {
+            _ = CancelMissingFocusAsync(_missingFocusModule);
+        }
         GC.SuppressFinalize(this);
     }
 }

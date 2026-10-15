@@ -142,6 +142,7 @@ public static class CommandRendererEmitter {
         if (model.NonDerivablePropertyNames.Count == 0) {
             // Story 13.3 VG2-13 — the zero-field form is hidden, so the renderer owns its AM-20 node.
             _ = sb.AppendLine("    private FcCommandBlockedOutcome? _blockedOutcome;");
+            _ = sb.AppendLine("    private string? _hiddenOutcome;");
         }
 
         _ = sb.AppendLine("    private IJSObjectReference? _expandInRowModule;");
@@ -667,6 +668,12 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine();
 
         if (model.NonDerivablePropertyNames.Count == 0) {
+            _ = sb.AppendLine("    private Task OnHiddenOutcomeAsync(string? message)");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        _hiddenOutcome = message;");
+            _ = sb.AppendLine("        return InvokeAsync(StateHasChanged);");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
             _ = sb.AppendLine("    private Task OnFormBlockedSubmissionAsync(bool blocked)");
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        if (_blockedOutcome is null) return Task.CompletedTask;");
@@ -966,6 +973,12 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("            case CommandRenderMode.Inline:");
         _ = sb.AppendLine("            {");
         if (nonDerivableCount == 0) {
+            _ = sb.AppendLine("                builder.OpenComponent<FluentStack>(seq++);");
+            _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Orientation\", Orientation.Horizontal);");
+            _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Wrap\", true);");
+            _ = sb.AppendLine("                builder.AddAttribute(seq++, \"HorizontalGap\", \"8px\");");
+            _ = sb.AppendLine("                builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)(builder =>");
+            _ = sb.AppendLine("                {");
             _ = sb.AppendLine("                builder.OpenComponent<FluentButton>(seq++);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Id\", _triggerButtonId);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Type\", ButtonType.Button);");
@@ -993,6 +1006,7 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("                builder.OpenComponent<" + formFqn + ">(seq++);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"InitialValue\", _prefilledModel);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"RegisterExternalSubmit\", (Action<Action>)OnFormRegisteredExternalSubmit);");
+            _ = sb.AppendLine("                builder.AddAttribute(seq++, \"OnHiddenOutcome\", EventCallback.Factory.Create<string?>(this, OnHiddenOutcomeAsync));");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"OnBlockedSubmission\", EventCallback.Factory.Create<bool>(this, OnFormBlockedSubmissionAsync));");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"ExternalStatusOwner\", true);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"AnnouncementSurface\", \"command-renderer:\" + _triggerButtonId);");
@@ -1001,9 +1015,23 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"OnEditContextReady\", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));");
             _ = sb.AppendLine("                builder.CloseComponent();");
             _ = sb.AppendLine("                builder.CloseElement();");
+            _ = sb.AppendLine("                if (!string.IsNullOrWhiteSpace(_hiddenOutcome))");
+            _ = sb.AppendLine("                {");
+            _ = sb.AppendLine("                    builder.OpenComponent<FluentMessageBar>(seq++);");
+            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Intent\", MessageBarIntent.Warning);");
+            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"AllowDismiss\", false);");
+            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"role\", \"note\");");
+            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"aria-live\", \"off\");");
+            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"data-testid\", \"fc-zero-field-outcome\");");
+            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Style\", \"min-width: 0; max-width: 100%; overflow-wrap: anywhere;\");");
+            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)(feedback => feedback.AddContent(0, _hiddenOutcome)));");
+            _ = sb.AppendLine("                    builder.CloseComponent();");
+            _ = sb.AppendLine("                }");
             if (hasAuthorizationPolicy) {
                 EmitAuthorizationDenialCard(sb, "builder", "seq");
             }
+            _ = sb.AppendLine("                }));");
+            _ = sb.AppendLine("                builder.CloseComponent();");
         }
         else {
             _ = sb.AppendLine("                builder.OpenComponent<FluentButton>(seq++);");

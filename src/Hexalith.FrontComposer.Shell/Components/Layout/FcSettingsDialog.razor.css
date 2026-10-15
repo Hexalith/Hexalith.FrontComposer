@@ -43,3 +43,5 @@
         width: 100%;
     }
 }
+
+.fc-settings-body ::deep a { display: inline-block; min-block-size: 24px; }

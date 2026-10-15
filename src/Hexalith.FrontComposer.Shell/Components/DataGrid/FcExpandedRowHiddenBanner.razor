@@ -18,7 +18,7 @@
          @ref="_bannerRef"
          class="fc-expanded-row-hidden-banner"
          data-testid="fc-expanded-row-hidden-banner">
-        <span id="@_descriptionId" class="fc-expanded-row-hidden-banner-text">@_bannerMessage</span>
+        <span id="@_descriptionId" tabindex="-1" class="fc-expanded-row-hidden-banner-text">@_bannerMessage</span>
         @if (IsHiddenByFilter) {
             <FluentButton Appearance="ButtonAppearance.Subtle"
                           aria-describedby="@_descriptionId"
