@@ -1,0 +1,20 @@
+{
+  "sourceHead": "b9e13697cbcd98a0ad0e8003545b779a7a6ce8dc",
+  "candidateDigest": "sha256:16abc0fa7184b360f471da731c789306d43a8825bc104f04329c581fea288410",
+  "sourceFileCount": 38,
+  "frozenIntentHashesMatch": true,
+  "browserJUnitCounts": {
+    "total": 552,
+    "failed": 12,
+    "skipped": 8,
+    "passed": 532
+  },
+  "stateLedgerCounts": {
+    "chromium": 116,
+    "firefox": 116,
+    "webkit": 116
+  },
+  "errors": [],
+  "result": "passed",
+  "scope": "Parent independently verified current raw source digests, aggregate identity, both frozen intent blocks, final JUnit outcomes and all ledger artifact paths. Full source diff inspected; generated evidence parsed/validated rather than promoted to human observations."
+}

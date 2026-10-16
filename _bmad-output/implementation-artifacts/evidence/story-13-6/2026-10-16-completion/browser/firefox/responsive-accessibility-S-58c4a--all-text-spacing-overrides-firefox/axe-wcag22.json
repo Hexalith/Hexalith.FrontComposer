@@ -1,0 +1,6 @@
+{
+  "route": "/counter/counter-projection",
+  "blocking": [],
+  "reportOnly": [],
+  "unknown": []
+}

@@ -1,0 +1,285 @@
+{
+  "candidateDigest": "sha256:16abc0fa7184b360f471da731c789306d43a8825bc104f04329c581fea288410",
+  "sourceHead": "b9e13697cbcd98a0ad0e8003545b779a7a6ce8dc",
+  "baselineCommit": "c3708690f8e1dbebfb49682c67a8aba88fd4a092",
+  "readiness": "open: failed comparisons, configured Shell failures and manual/platform gates",
+  "environment": {
+    "os": "Linux",
+    "dotnet": "10.0.401",
+    "node": "26.4.0",
+    "playwright": "1.63.0",
+    "axe": "4.13.0",
+    "build": "Debug/project references"
+  },
+  "browser": {
+    "command": "PLAYWRIGHT_SKIP_WEBSERVER=1 FC_E2E_BUILD_CONFIGURATION=Debug FC_E2E_OUTPUT_DIR=/tmp/story13-6-final-required-browser FC_E2E_HTML_REPORT_DIR=/tmp/story13-6-final-required-browser-report npm test -- specs/specimen-accessibility.spec.ts specs/responsive-accessibility.spec.ts specs/accessibility-state-matrix.spec.ts specs/route-contract.spec.ts specs/page-toolbar.spec.ts specs/projection-command-announcements.spec.ts specs/command-form-generation.spec.ts specs/form-abandonment-guard.spec.ts specs/destructive-command-confirmation.spec.ts specs/policy-gated-command-authorization.spec.ts --project=chromium --project=firefox --project=webkit --workers=3",
+    "cwd": "tests/e2e",
+    "counts": {
+      "chromium": {
+        "passed": 184
+      },
+      "firefox": {
+        "passed": 174,
+        "skipped": 4,
+        "failed": 6
+      },
+      "webkit": {
+        "passed": 174,
+        "skipped": 4,
+        "failed": 6
+      }
+    },
+    "failures": [
+      {
+        "project": "firefox",
+        "name": "FrontComposer accessibility and visual specimens \u203a visual baseline light compact",
+        "class": "specimen-accessibility.spec.ts",
+        "message": "expect(page).toHaveScreenshot(expected) failed"
+      },
+      {
+        "project": "firefox",
+        "name": "FrontComposer accessibility and visual specimens \u203a visual baseline light comfortable",
+        "class": "specimen-accessibility.spec.ts",
+        "message": "expect(page).toHaveScreenshot(expected) failed"
+      },
+      {
+        "project": "firefox",
+        "name": "FrontComposer accessibility and visual specimens \u203a visual baseline light roomy",
+        "class": "specimen-accessibility.spec.ts",
+        "message": "expect(page).toHaveScreenshot(expected) failed"
+      },
+      {
+        "project": "firefox",
+        "name": "FrontComposer accessibility and visual specimens \u203a visual baseline dark compact",
+        "class": "specimen-accessibility.spec.ts",
+        "message": "expect(page).toHaveScreenshot(expected) failed"
+      },
+      {
+        "project": "firefox",
+        "name": "FrontComposer accessibility and visual specimens \u203a visual baseline dark comfortable",
+        "class": "specimen-accessibility.spec.ts",
+        "message": "expect(page).toHaveScreenshot(expected) failed"
+      },
+      {
+        "project": "firefox",
+        "name": "FrontComposer accessibility and visual specimens \u203a visual baseline dark roomy",
+        "class": "specimen-accessibility.spec.ts",
+        "message": "expect(page).toHaveScreenshot(expected) failed"
+      },
+      {
+        "project": "webkit",
+        "name": "FrontComposer accessibility and visual specimens \u203a visual baseline light compact",
+        "class": "specimen-accessibility.spec.ts",
+        "message": "expect(page).toHaveScreenshot(expected) failed"
+      },
+      {
+        "project": "webkit",
+        "name": "FrontComposer accessibility and visual specimens \u203a visual baseline light comfortable",
+        "class": "specimen-accessibility.spec.ts",
+        "message": "expect(page).toHaveScreenshot(expected) failed"
+      },
+      {
+        "project": "webkit",
+        "name": "FrontComposer accessibility and visual specimens \u203a visual baseline light roomy",
+        "class": "specimen-accessibility.spec.ts",
+        "message": "expect(page).toHaveScreenshot(expected) failed"
+      },
+      {
+        "project": "webkit",
+        "name": "FrontComposer accessibility and visual specimens \u203a visual baseline dark compact",
+        "class": "specimen-accessibility.spec.ts",
+        "message": "expect(page).toHaveScreenshot(expected) failed"
+      },
+      {
+        "project": "webkit",
+        "name": "FrontComposer accessibility and visual specimens \u203a visual baseline dark comfortable",
+        "class": "specimen-accessibility.spec.ts",
+        "message": "expect(page).toHaveScreenshot(expected) failed"
+      },
+      {
+        "project": "webkit",
+        "name": "FrontComposer accessibility and visual specimens \u203a visual baseline dark roomy",
+        "class": "specimen-accessibility.spec.ts",
+        "message": "expect(page).toHaveScreenshot(expected) failed"
+      }
+    ],
+    "skips": [
+      {
+        "project": "firefox",
+        "name": "Story 3.1: generated command forms \u203a invalid generated editors expose invalid state and their error on the focusable control",
+        "class": "command-form-generation.spec.ts",
+        "reason": "Chromium accessibility-tree evidence (Story 13.3 BH3-08)"
+      },
+      {
+        "project": "firefox",
+        "name": "Story 13.3: unmapped rejection recovery focus \u203a Edit and retry moves real browser focus to the first generated editor",
+        "class": "policy-gated-command-authorization.spec.ts",
+        "reason": "Dedicated rejection-host coverage runs once in Chromium"
+      },
+      {
+        "project": "firefox",
+        "name": "Story 13.3: unmapped rejection recovery focus \u203a unmapped rejection recovery actions work from the keyboard alone",
+        "class": "policy-gated-command-authorization.spec.ts",
+        "reason": "Dedicated rejection-host coverage runs once in Chromium"
+      },
+      {
+        "project": "firefox",
+        "name": "FrontComposer accessibility and visual specimens \u203a story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion",
+        "class": "specimen-accessibility.spec.ts",
+        "reason": "Story 11.5 computed-style/reduced-motion pins are Chromium-serialized"
+      },
+      {
+        "project": "webkit",
+        "name": "Story 3.1: generated command forms \u203a invalid generated editors expose invalid state and their error on the focusable control",
+        "class": "command-form-generation.spec.ts",
+        "reason": "Chromium accessibility-tree evidence (Story 13.3 BH3-08)"
+      },
+      {
+        "project": "webkit",
+        "name": "Story 13.3: unmapped rejection recovery focus \u203a Edit and retry moves real browser focus to the first generated editor",
+        "class": "policy-gated-command-authorization.spec.ts",
+        "reason": "Dedicated rejection-host coverage runs once in Chromium"
+      },
+      {
+        "project": "webkit",
+        "name": "Story 13.3: unmapped rejection recovery focus \u203a unmapped rejection recovery actions work from the keyboard alone",
+        "class": "policy-gated-command-authorization.spec.ts",
+        "reason": "Dedicated rejection-host coverage runs once in Chromium"
+      },
+      {
+        "project": "webkit",
+        "name": "FrontComposer accessibility and visual specimens \u203a story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion",
+        "class": "specimen-accessibility.spec.ts",
+        "reason": "Story 11.5 computed-style/reduced-motion pins are Chromium-serialized"
+      }
+    ],
+    "log": "checks/browser.log",
+    "junit": "checks/browser-junit.xml",
+    "durationSeconds": 480.767352,
+    "classification": "12 ordinary visual comparison failures; no nonvisual failures; 8 existing project skips remain explicit"
+  },
+  "stateCounts": {
+    "chromium": 116,
+    "firefox": 116,
+    "webkit": 116
+  },
+  "currentAffectedShell": {
+    "candidateDigest": "sha256:cc7bbd3254a4e1cae96289b3e3e4cfae24feff356f04e6dad8b4b18c82bb4bd2",
+    "reuse": "Final delta changes only Playwright helper/fixture files; affected .NET/CSS/JS inputs remain byte-identical",
+    "total": 163,
+    "passed": 163,
+    "failed": 0,
+    "skipped": 0,
+    "timeSeconds": 4.085,
+    "classFilters": [
+      "*FluentConformanceTests",
+      "*FrontComposerShellTests",
+      "*Story13AccessibilityPrimitivesTests",
+      "*SlotContrastTests",
+      "*FcPaletteResultListTests",
+      "*FcCommandPaletteTests",
+      "*FcSettingsDialogTests"
+    ],
+    "log": "checks/story13-6-final-css-focus.log"
+  },
+  "configuredShell": {
+    "candidateDigest": "sha256:c8b64492819e19a7e425d6f3fa0cb6aeea500ba9249c1cc1d304c346677b7c59",
+    "command": "dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -trait- 'Category=GovernanceBuild' -trait- 'Category=Performance' -trait- 'Category=e2e-palette' -trait- 'Category=NightlyProperty' -trait- 'Category=Quarantined' -result-xml /tmp/story13-6-final-shell.xml",
+    "total": 3681,
+    "passed": 3679,
+    "failed": 2,
+    "skipped": 0,
+    "timeSeconds": 54.854,
+    "failures": [
+      "ProjectionFallbackRefreshSchedulerTests.ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget",
+      "ProjectionSubscriptionServiceTests.Subscribe_CloseAfterJoinBeforePublication_RestartsAndRejoinsRetainedGroup"
+    ],
+    "log": "checks/story13-6-final-shell.log",
+    "limit": "This failed full run predates the final focus-session and message-bar system paint patches. No full configured pass is claimed for the final candidate."
+  },
+  "shellDiagnosticFollowup": {
+    "command": "dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -parallelMode none -class '*ProjectionFallbackRefreshSchedulerTests' -class '*ProjectionSubscriptionServiceTests' -result-xml /tmp/story13-6-final-shell-followup.xml",
+    "passed": 129,
+    "failed": 0,
+    "skipped": 0,
+    "timeSeconds": 1.954,
+    "limit": "Serial class diagnostic; does not turn the failing full lane into a pass."
+  },
+  "historicalReuse": {
+    "preUxCandidate": "sha256:c0500f85acc0a4dcff6e1b8baf55b1819ed768da0ec2764a5efe6e73538b5487",
+    "configuredShellPass": {
+      "passed": 3681,
+      "failed": 0,
+      "timeSeconds": 55.815,
+      "limit": "Earlier source candidate only; superseded for changed browser helpers/CSS/focus session."
+    },
+    "originalPacket": "../2026-10-16-coverage/historical-result.md"
+  },
+  "limits": [
+    "Linux WebKit does not replace authored colors; all 116 WebKit forced-palette cells remain uncovered, explicitly separated from media-only checks.",
+    "Closed shadow roots and complex/blur-only focus indicator geometry require supported platform/pixel evidence; helpers fail closed for unsupported measured cases.",
+    "Actual 400% browser zoom, NVDA, JAWS, VoiceOver, physical tablet/phone and heard speech not performed.",
+    "Windows existing CI lane not executed locally.",
+    "OI-16, G-4, FLUENT-APP-1, Product approval and live EventStore fresh-row acceptance remain open."
+  ],
+  "followup": [
+    {
+      "owner": "QA Engineer",
+      "platform": "Windows hosted accessibility-visual job",
+      "cwd": "tests/e2e",
+      "command": "npm run test:a11y && npm run validate:a11y-artifacts",
+      "status": "not performed; execute existing CI with its Release host build and retain all artifacts"
+    },
+    {
+      "owner": "QA Engineer and visual baseline owner",
+      "platform": "existing Linux three-engine CI",
+      "cwd": "tests/e2e",
+      "command": "npx playwright test specs/specimen-accessibility.spec.ts --project=firefox --project=webkit --grep \"visual baseline\" --workers 4",
+      "status": "reconcile each failing preserved comparison from hosted expected/actual/diff before any authorized baseline change"
+    }
+  ],
+  "checks": [
+    {
+      "command": "dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Debug --no-restore",
+      "result": "passed; 0 warnings/errors",
+      "log": "checks/story13-6-final-build.log",
+      "reuse": "Final delta only changes Playwright helper/fixture files"
+    },
+    {
+      "command": "npm --prefix tests/e2e run typecheck",
+      "result": "passed",
+      "log": "checks/story13-6-final-typecheck.log"
+    },
+    {
+      "command": "node --test tests/e2e/scripts/a11y-state-evidence.test.mjs",
+      "result": "1 passed; required-state, ownership and forced-cue negative assertions",
+      "log": "checks/story13-6-final-artifact-tests.log"
+    },
+    {
+      "command": "python3 -m unittest discover -s tests/eng -p test_ci_governance.py",
+      "result": "10 passed",
+      "log": "checks/story13-6-final-ci-governance.log"
+    },
+    {
+      "command": "env -u GITHUB_BASE_REF npm --prefix tests/e2e run validate:visual-governance",
+      "result": "passed; no committed visual baseline changes",
+      "log": "checks/story13-6-final-visual-governance.log"
+    },
+    {
+      "command": "dotnet tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll -class '*FluentConformanceTests' -class '*FrontComposerShellTests' -class '*Story13AccessibilityPrimitivesTests' -class '*SlotContrastTests' -class '*FcPaletteResultListTests' -class '*FcCommandPaletteTests' -class '*FcSettingsDialogTests' -result-xml /tmp/story13-6-final-css-focus.xml",
+      "result": "163 passed, 0 failed/skipped; 4.085s",
+      "log": "checks/story13-6-final-css-focus.log",
+      "candidateDigest": "sha256:cc7bbd3254a4e1cae96289b3e3e4cfae24feff356f04e6dad8b4b18c82bb4bd2"
+    },
+    {
+      "command": "PLAYWRIGHT_SKIP_WEBSERVER=1 FC_E2E_BUILD_CONFIGURATION=Debug FC_E2E_OUTPUT_DIR=/tmp/story13-6-sharp-focus-probe FC_E2E_HTML_REPORT_DIR=/tmp/story13-6-sharp-focus-probe-report npm --prefix tests/e2e test -- specs/responsive-accessibility.spec.ts specs/accessibility-state-matrix.spec.ts --grep 'includes outer box-shadow|home: composed|navigation-tabs: composed|toolbar: composed|generated-forms: composed' --project=chromium --project=firefox --project=webkit --workers=3",
+      "result": "27 passed, 24.2s; final required run supersedes this focused proof",
+      "log": "checks/story13-6-sharp-focus-probe.log"
+    }
+  ],
+  "visualInspection": {
+    "currentCandidate": "Firefox light-compact expected/actual/diff and WebKit dark-compact diff inspected: same specimen sections, broad type wrapping, control sizing and grid/layout shifts. Cause/reconciliation remains open.",
+    "parentPriorInspection": "Same classification on retained pre-UX images, preserved under failed-proof/pre-ux-visual-comparisons/",
+    "baselinePolicy": "No baseline files changed during completion."
+  }
+}

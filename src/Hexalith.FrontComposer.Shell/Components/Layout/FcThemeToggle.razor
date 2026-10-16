@@ -18,7 +18,7 @@
         <span class="fc-sr-only">@GetAccessibleLabel()</span>
         <span aria-hidden="true">@Localizer[GetCurrentLabelKey()].Value</span>
     </FluentMenuButton>
-    <FluentMenuList>
+    <FluentMenuList role="menu">
         @* Fluent UI v5: menu-item activation is surfaced via the FluentMenuItem OnClick
            EventCallback<MenuItemEventArgs>, NOT @onclick. Using @onclick faults at runtime when
            the menu is used (see Fluent UI v5 migration guide → Menu). *@

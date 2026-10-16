@@ -1,0 +1,578 @@
+{
+  "state": "palette-default-dark",
+  "engine": "firefox",
+  "viewport": {
+    "width": 320,
+    "height": 900
+  },
+  "theme": "Dark",
+  "themePaint": {
+    "background": "#292929",
+    "rgb": [
+      41,
+      41,
+      41
+    ]
+  },
+  "targets": [
+    {
+      "target": "#f551dcd3",
+      "width": 200,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-palette-result-1",
+      "width": 184,
+      "height": 29,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-palette-result-2",
+      "width": 184,
+      "height": 50,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-palette-result-3",
+      "width": 184,
+      "height": 50,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-palette-result-0",
+      "width": 184,
+      "height": 73,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    }
+  ],
+  "text": [
+    {
+      "owner": 0,
+      "node": "input#control",
+      "paint": "input placeholder",
+      "foreground": [
+        153,
+        153,
+        153,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 5.106373020935938,
+      "minimum": 4.5
+    },
+    {
+      "owner": 1,
+      "node": "h4#fc-palette-group-projection",
+      "paint": "Projections",
+      "foreground": [
+        173,
+        173,
+        173,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 6.482747494991505,
+      "minimum": 4.5
+    },
+    {
+      "owner": 2,
+      "node": "span",
+      "paint": "CounterProjection",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 14.5481984654954,
+      "minimum": 4.5
+    },
+    {
+      "owner": 3,
+      "node": "span",
+      "paint": "SpecimenFormattingProjection",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 14.5481984654954,
+      "minimum": 4.5
+    },
+    {
+      "owner": 4,
+      "node": "span",
+      "paint": "SpecimenStatusProjection",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 14.5481984654954,
+      "minimum": 4.5
+    },
+    {
+      "owner": 5,
+      "node": "h4#fc-palette-group-command",
+      "paint": "Commands",
+      "foreground": [
+        173,
+        173,
+        173,
+        1
+      ],
+      "background": [
+        41,
+        41,
+        41,
+        1
+      ],
+      "ratio": 6.482747494991505,
+      "minimum": 4.5
+    },
+    {
+      "owner": 6,
+      "node": "span",
+      "paint": "Keyboard Shortcuts",
+      "foreground": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "background": [
+        31,
+        31,
+        31,
+        1
+      ],
+      "ratio": 16.48297747532879,
+      "minimum": 4.5
+    },
+    {
+      "owner": 6,
+      "node": "span",
+      "paint": "View all keyboard shortcuts",
+      "foreground": [
+        214,
+        214,
+        214,
+        1
+      ],
+      "background": [
+        31,
+        31,
+        31,
+        1
+      ],
+      "ratio": 11.340965984132366,
+      "minimum": 4.5
+    }
+  ],
+  "icon": [],
+  "boundaries": [
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          102,
+          102,
+          102,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 2.533718700016165,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          102,
+          102,
+          102,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 2.533718700016165,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          102,
+          102,
+          102,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 2.533718700016165,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          102,
+          102,
+          102,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 2.533718700016165,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "::after border-bottom",
+        "foreground": [
+          5,
+          146,
+          161,
+          1
+        ],
+        "background": [
+          41,
+          41,
+          41,
+          1
+        ],
+        "ratio": 3.902137560412215,
+        "minimum": 3
+      }
+    ]
+  ],
+  "cues": [],
+  "decorativeIconExemptions": [
+    ".fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text",
+    ".fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name"
+  ],
+  "forcedColors": true,
+  "forcedColorsPaint": true,
+  "forcedColorsStatus": "painted system palette",
+  "systemText": [
+    {
+      "owner": 0,
+      "node": "input#control",
+      "paint": "input placeholder",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 1,
+      "node": "h4#fc-palette-group-projection",
+      "paint": "Projections",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 2,
+      "node": "span",
+      "paint": "CounterProjection",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 3,
+      "node": "span",
+      "paint": "SpecimenFormattingProjection",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 4,
+      "node": "span",
+      "paint": "SpecimenStatusProjection",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 5,
+      "node": "h4#fc-palette-group-command",
+      "paint": "Commands",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 6,
+      "node": "span",
+      "paint": "Keyboard Shortcuts",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 6,
+      "node": "span",
+      "paint": "View all keyboard shortcuts",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    }
+  ],
+  "systemIcon": [],
+  "systemBoundaries": [
+    [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "::after border-bottom",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      }
+    ]
+  ],
+  "systemCues": [],
+  "systemSnapshot": "system-state-palette-default-dark.png",
+  "reducedMotion": true
+}

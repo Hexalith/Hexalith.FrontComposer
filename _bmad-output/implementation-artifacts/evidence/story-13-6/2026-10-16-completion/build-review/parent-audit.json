@@ -1,0 +1,22 @@
+{
+  "evidenceTextAttribute": "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-completion/build-review/candidate.json: text: unset",
+  "candidateDigest": "sha256:f8d9a2b2a0608d5ed0bc461f433734e153b2836fa1237658539cc638bb2c03cf",
+  "sourceFileCount": 40,
+  "frozenIntentHashesMatch": true,
+  "browserJUnitCounts": {
+    "tests": 363,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 2,
+    "passed": 361
+  },
+  "stateLedgerCounts": {
+    "chromium": 116,
+    "firefox": 116,
+    "webkit": 116
+  },
+  "activeDocumentLinksChecked": 5,
+  "errors": [],
+  "result": "passed",
+  "scope": "Parent independently checked raw source/aggregate identities, frozen intent against HEAD, current JUnit, all state ownership/digests/snapshot paths and active report links. No manual observation or gate approval is inferred."
+}

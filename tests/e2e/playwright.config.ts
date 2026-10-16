@@ -1,4 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import { defineConfig, devices } from '@playwright/test';
+
+process.env.FC_A11Y_EVIDENCE_RUN_ID ??= randomUUID();
 
 const BASE_URL = process.env.BASE_URL ?? 'http://127.0.0.1:5070';
 const IS_CI = !!process.env.CI;

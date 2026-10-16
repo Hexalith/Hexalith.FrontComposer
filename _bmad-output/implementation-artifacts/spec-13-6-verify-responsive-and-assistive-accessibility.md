@@ -68,6 +68,12 @@ The user approved both recommendations and requested application.
 
 ## Implementation Notes
 
+### Completion follow-up, 2026-10-16
+
+The current completion candidate `sha256:f8d9a2b2a0608d5ed0bc461f433734e153b2836fa1237658539cc638bb2c03cf` executes real generated zero-field outcomes, real generated-detail removal and 116 themed state rows per engine. The final three-spec nonvisual run is 361 passed / 0 failed / 2 skipped; sixteen Build-review findings are patched. Latest configured Shell remains failed at3680 passed / 1 failed on its separately attributed source; the preceding `16abc` run retains 12 visual failures and8 existing skips. Unsupported WebKit actual palette paint, Windows and all manual/owner gates remain open. [Current result and human checklist](13-6-accessibility-result.md) gives candidate-bound proof; no completion or release approval is inferred. Frozen decisions are unchanged.
+
+### Historical implementation record, 2026-10-15
+
 The user requested both recommendations be applied and asked for a human checklist with manual checks open. Implementation and executed focused lanes pass; Story 13.6 remains incomplete. Automated matrix expansion and the candidate/checklist are available, with full remaining surface/state/theme coverage, missing browser integrations, manual observations and owner gates explicitly open in `13-6-accessibility-result.md`. The unchecked tasks retain those limitations. No completion or release approval is inferred.
 
 Evidence inspected: 201 focused Shell/integration tests, 1,313 serialized SourceTools tests, 28 new/helper Chromium cases and 22 existing specimen cases (six ordinary visual comparisons included). Earlier broad Shell ran 3,678 tests with three subsequently corrected pins and one environment skip; no settled full-suite pass is claimed. Candidate implementation hashes were checked independently and match. Isolated generator p95 is 333.403ms. Final real-grid spacing/ItemSize is 32→47; enlarged-user-text stress reaches 113, then Roomy plus override removal restores 56→Compact 32. The final 42 route/toolbar/announcement journeys and the real-banner fixture case also pass.

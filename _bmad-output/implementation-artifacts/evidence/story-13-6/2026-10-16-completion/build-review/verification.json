@@ -1,0 +1,396 @@
+{
+  "candidateDigest": "sha256:f8d9a2b2a0608d5ed0bc461f433734e153b2836fa1237658539cc638bb2c03cf",
+  "sourceHead": "b9e13697cbcd98a0ad0e8003545b779a7a6ce8dc",
+  "baselineCommit": "c3708690f8e1dbebfb49682c67a8aba88fd4a092",
+  "readiness": "open: configured Shell failure, preserved visual comparison failures, Windows/manual/platform/owner gates",
+  "browser": {
+    "candidateDigest": "sha256:f8d9a2b2a0608d5ed0bc461f433734e153b2836fa1237658539cc638bb2c03cf",
+    "cwd": "tests/e2e",
+    "command": [
+      "npm",
+      "test",
+      "--",
+      "specs/specimen-accessibility.spec.ts",
+      "specs/responsive-accessibility.spec.ts",
+      "specs/accessibility-state-matrix.spec.ts",
+      "--project=chromium",
+      "--project=firefox",
+      "--project=webkit",
+      "--workers=3",
+      "--grep-invert",
+      "visual baseline"
+    ],
+    "environment": {
+      "BASE_URL": "http://127.0.0.1:5070",
+      "PLAYWRIGHT_SKIP_WEBSERVER": "1",
+      "FC_E2E_BUILD_CONFIGURATION": "Debug",
+      "FC_E2E_OUTPUT_DIR": "/tmp/story13-6-parent-final-d74b284b59ab",
+      "FC_E2E_HTML_REPORT_DIR": "/tmp/story13-6-parent-final-report-d74b284b59ab",
+      "FC_A11Y_EVIDENCE_RUN_ID": "story-13-6-build-review-final-d74b284b59ab"
+    },
+    "runId": "story-13-6-build-review-final-d74b284b59ab",
+    "output": "/tmp/story13-6-parent-final-d74b284b59ab",
+    "html": "/tmp/story13-6-parent-final-report-d74b284b59ab",
+    "exitCode": 0,
+    "durationSeconds": 344.043,
+    "suites": [
+      {
+        "project": "chromium",
+        "spec": "accessibility-state-matrix.spec.ts",
+        "total": 58,
+        "passed": 58,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "project": "chromium",
+        "spec": "responsive-accessibility.spec.ts",
+        "total": 47,
+        "passed": 47,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "project": "chromium",
+        "spec": "specimen-accessibility.spec.ts",
+        "total": 16,
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "project": "firefox",
+        "spec": "accessibility-state-matrix.spec.ts",
+        "total": 58,
+        "passed": 58,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "project": "firefox",
+        "spec": "responsive-accessibility.spec.ts",
+        "total": 47,
+        "passed": 47,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "project": "firefox",
+        "spec": "specimen-accessibility.spec.ts",
+        "total": 16,
+        "passed": 15,
+        "failed": 0,
+        "skipped": 1
+      },
+      {
+        "project": "webkit",
+        "spec": "accessibility-state-matrix.spec.ts",
+        "total": 58,
+        "passed": 58,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "project": "webkit",
+        "spec": "responsive-accessibility.spec.ts",
+        "total": 47,
+        "passed": 47,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "project": "webkit",
+        "spec": "specimen-accessibility.spec.ts",
+        "total": 16,
+        "passed": 15,
+        "failed": 0,
+        "skipped": 1
+      }
+    ],
+    "failures": []
+  },
+  "currentVisualComparisons": {
+    "candidateDigest": "sha256:f8d9a2b2a0608d5ed0bc461f433734e153b2836fa1237658539cc638bb2c03cf",
+    "command": [
+      "npm",
+      "test",
+      "--",
+      "specs/specimen-accessibility.spec.ts",
+      "--project=chromium",
+      "--project=firefox",
+      "--project=webkit",
+      "--grep",
+      "visual baseline",
+      "--workers=3"
+    ],
+    "cwd": "tests/e2e",
+    "environment": {
+      "BASE_URL": "http://127.0.0.1:5070",
+      "PLAYWRIGHT_SKIP_WEBSERVER": "1",
+      "FC_E2E_BUILD_CONFIGURATION": "Debug",
+      "FC_E2E_OUTPUT_DIR": "/tmp/story13-6-visual-27a92493b767",
+      "FC_E2E_HTML_REPORT_DIR": "/tmp/story13-6-visual-report-27a92493b767"
+    },
+    "exitCode": 1,
+    "durationSeconds": 20.006,
+    "counts": {
+      "tests": 18,
+      "failures": 12,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 6
+    },
+    "retainedImages": 36,
+    "classification": "Actual ordinary visual comparisons; no baseline changes."
+  },
+  "currentAffectedShell": {
+    "total": "163",
+    "passed": "163",
+    "failed": "0",
+    "skipped": "0",
+    "errors": "0",
+    "time": "4.376",
+    "candidateDigest": "sha256:f8d9a2b2a0608d5ed0bc461f433734e153b2836fa1237658539cc638bb2c03cf",
+    "xml": "affected-shell.xml",
+    "log": "affected-shell.log",
+    "scope": "Current affected Shell/CSS/JS/governance classes; no full configured pass inferred."
+  },
+  "configuredShell": {
+    "total": "3681",
+    "passed": "3680",
+    "failed": "1",
+    "skipped": "0",
+    "errors": "0",
+    "time": "55.313",
+    "environment": "64-bit (x64) .NET 10.0.12 [collection-per-class, parallel (collections, 14 threads)]",
+    "log": "shell.log",
+    "xml": "shell.xml",
+    "candidateDigest": "sha256:a42bb176228cf40abd70106bf30b4bb499f6a2834ef292b5a2adb909cc282b23"
+  },
+  "configuredShellCommand": [
+    "dotnet",
+    "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+    "-trait-",
+    "Category=GovernanceBuild",
+    "-trait-",
+    "Category=Performance",
+    "-trait-",
+    "Category=e2e-palette",
+    "-trait-",
+    "Category=NightlyProperty",
+    "-trait-",
+    "Category=Quarantined",
+    "-result-xml",
+    "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-completion/build-review/shell.xml"
+  ],
+  "configuredFailure": "ProjectionFallbackRefreshSchedulerTests.ReadyReplayBehindNewlyStalledReplayStillStartsWithinBudget: readsB expected2, actual1",
+  "affectedSubsetOfConfiguredShell": {
+    "classFilters": [
+      "FluentConformanceTests",
+      "FrontComposerShellTests",
+      "Story13AccessibilityPrimitivesTests",
+      "SlotContrastTests",
+      "FcPaletteResultListTests",
+      "FcCommandPaletteTests",
+      "FcSettingsDialogTests"
+    ],
+    "total": 163,
+    "passed": 163,
+    "failed": 0,
+    "candidateDigest": "sha256:a42bb176228cf40abd70106bf30b4bb499f6a2834ef292b5a2adb909cc282b23"
+  },
+  "serialSchedulerDiagnostic": {
+    "total": "88",
+    "passed": "88",
+    "failed": "0",
+    "skipped": "0",
+    "errors": "0",
+    "time": "1.900",
+    "environment": "64-bit (x64) .NET 10.0.12 [collection-per-class, non-parallel]",
+    "log": "shell-diagnostic.log",
+    "xml": "shell-diagnostic.xml",
+    "candidateDigest": "sha256:a42bb176228cf40abd70106bf30b4bb499f6a2834ef292b5a2adb909cc282b23"
+  },
+  "serialDiagnosticCommand": [
+    "dotnet",
+    "tests/Hexalith.FrontComposer.Shell.Tests/bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.dll",
+    "-parallelMode",
+    "none",
+    "-class",
+    "*ProjectionFallbackRefreshSchedulerTests",
+    "-result-xml",
+    "_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-completion/build-review/shell-diagnostic.xml"
+  ],
+  "reuse": {
+    "candidateDigest": "sha256:f8d9a2b2a0608d5ed0bc461f433734e153b2836fa1237658539cc638bb2c03cf",
+    "configuredShellCandidate": "sha256:a42bb176228cf40abd70106bf30b4bb499f6a2834ef292b5a2adb909cc282b23",
+    "deltaFromConfiguredShell": [
+      ".gitattributes",
+      "samples/Counter/Counter.Specimens/FrontComposerTypeSpecimen.razor.css",
+      "src/Hexalith.FrontComposer.Shell/wwwroot/css/fc-projection.css",
+      "tests/e2e/helpers/responsive-accessibility.ts",
+      "tests/e2e/specs/responsive-accessibility.spec.ts"
+    ],
+    "shippedShellInputsByteIdentical": false,
+    "limit": "Latest configured full Shell failure is retained on a42 before shared grid/specimen focus CSS/helper/policy delta. Current affected163 checks are freshly executed; no current full-lane pass is inferred."
+  },
+  "stateValidationSummary": [
+    {
+      "engine": "chromium",
+      "rows": 116,
+      "strictErrors": 0,
+      "capabilityLimitedErrors": null,
+      "actualForcedPaletteCellsUncovered": 0
+    },
+    {
+      "engine": "firefox",
+      "rows": 116,
+      "strictErrors": 0,
+      "capabilityLimitedErrors": null,
+      "actualForcedPaletteCellsUncovered": 0
+    },
+    {
+      "engine": "webkit",
+      "rows": 116,
+      "strictErrors": 448,
+      "capabilityLimitedErrors": 0,
+      "actualForcedPaletteCellsUncovered": 116
+    }
+  ],
+  "artifactValidation": {
+    "candidateDigest": "sha256:f8d9a2b2a0608d5ed0bc461f433734e153b2836fa1237658539cc638bb2c03cf",
+    "command": [
+      "npm",
+      "run",
+      "validate:a11y-artifacts"
+    ],
+    "cwd": "tests/e2e",
+    "exitCode": 0,
+    "environment": {
+      "FC_E2E_OUTPUT_DIR": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-completion/build-review/browser/chromium",
+      "FC_E2E_HTML_REPORT_DIR": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-completion/build-review/playwright-report"
+    },
+    "copiedSpecimenArtifacts": [
+      "browser/chromium/specimen-captures/responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-chromium/axe-wcag22.json",
+      "browser/chromium/specimen-captures/accessibility-state-matrix-d7ccd-state-and-forced-color-cues-chromium/axe-state-home-light.json",
+      "browser/chromium/specimen-captures/responsive-accessibility-S-a58c4-oolbar-320-CSS-pixel-reflow-chromium/axe-wcag22.json",
+      "browser/chromium/specimen-captures/specimen-accessibility-Fro-ef0a3-nd-passes-blocking-axe-gate-chromium/axe-type.json",
+      "browser/chromium/specimen-captures/responsive-accessibility-S-91e28--all-text-spacing-overrides-chromium/axe-wcag22.json",
+      "browser/chromium/specimen-captures/specimen-accessibility-Fro-034a2-nd-passes-blocking-axe-gate-chromium/axe-data-formatting.json",
+      "browser/chromium/specimen-captures/responsive-accessibility-S-40b5b-ectory-320-CSS-pixel-reflow-chromium/axe-wcag22.json",
+      "browser/chromium/specimen-captures/responsive-accessibility-S-58c4a--all-text-spacing-overrides-chromium/axe-wcag22.json",
+      "browser/chromium/specimen-captures/accessibility-state-matrix-494dc-state-and-forced-color-cues-chromium/axe-state-home-dark.json",
+      "browser/chromium/specimen-captures/responsive-accessibility-S-303db--all-text-spacing-overrides-chromium/axe-wcag22.json",
+      "browser/chromium/specimen-captures/specimen-accessibility-Fro-a83e8-nd-passes-blocking-axe-gate-chromium/axe-page-toolbar.json",
+      "browser/chromium/specimen-captures/accessibility-state-matrix-ee4d5-state-and-forced-color-cues-chromium/axe-state-navigation-tabs-dark.json",
+      "browser/chromium/specimen-captures/accessibility-state-matrix-ec449-state-and-forced-color-cues-chromium/axe-state-toolbar-dark.json",
+      "browser/chromium/specimen-captures/responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-chromium/axe-wcag22.json",
+      "browser/chromium/specimen-captures/accessibility-state-matrix-baff0-state-and-forced-color-cues-chromium/axe-state-generated-forms-dark.json",
+      "browser/chromium/specimen-captures/accessibility-state-matrix-5a6a5-state-and-forced-color-cues-chromium/axe-state-generated-forms-light.json",
+      "browser/chromium/specimen-captures/accessibility-state-matrix-12490-state-and-forced-color-cues-chromium/axe-state-toolbar-light.json",
+      "browser/chromium/specimen-captures/accessibility-state-matrix-08167-op-navigation-rails-in-dark-chromium/axe-shell-menu-dark.json",
+      "browser/chromium/specimen-captures/responsive-accessibility-S-2dd61--all-text-spacing-overrides-chromium/axe-wcag22.json",
+      "browser/chromium/specimen-captures/accessibility-state-matrix-35d41-p-navigation-rails-in-light-chromium/axe-shell-menu-light.json",
+      "browser/chromium/specimen-captures/accessibility-state-matrix-274ba-state-and-forced-color-cues-chromium/axe-state-navigation-tabs-light.json",
+      "browser/chromium/specimen-captures/responsive-accessibility-S-510ea--all-text-spacing-overrides-chromium/axe-wcag22.json",
+      "browser/chromium/specimen-captures/specimen-accessibility-Fro-3b315-ible-over-lifecycle-visuals-chromium/focus-type-command-submit.png",
+      "browser/chromium/specimen-captures/responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-chromium/axe-wcag22.json"
+    ],
+    "curation": "Strict existing Windows inventory validator executed on Linux against current-run Chromium raw state/axe/focus artifacts and the actual shared three-engine JUnit/HTML report. Other-engine state rows are retained separately. This supplies no Windows execution claim."
+  },
+  "checks": [
+    {
+      "command": "dotnet build samples/Counter/Counter.Web/Counter.Web.csproj --configuration Debug --no-restore",
+      "result": "passed;0 warnings/errors; current narrow CSS rebuilt",
+      "log": "web-build-shared-final.log"
+    },
+    {
+      "command": "dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Debug --no-restore",
+      "result": "passed;0 warnings/errors; .NET inputs unchanged after build",
+      "log": "shell-build-shared.log"
+    },
+    {
+      "command": "npm --prefix tests/e2e run typecheck",
+      "result": "passed on current source",
+      "log": "typecheck.log"
+    },
+    {
+      "command": "node --test tests/e2e/scripts/a11y-state-evidence.test.mjs",
+      "result": "4 passed; validator inputs unchanged thereafter",
+      "log": "artifact-negative-tests.log"
+    },
+    {
+      "command": "python3 -m unittest discover -s tests/eng -p test_ci_governance.py",
+      "result": "10 passed; CI-governance inputs unchanged thereafter",
+      "log": "ci-governance.log"
+    },
+    {
+      "command": "env -u GITHUB_BASE_REF npm --prefix tests/e2e run validate:visual-governance",
+      "result": "passed; baseline files unchanged",
+      "log": "visual-governance.log"
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed; repeated after final documentation changes"
+    }
+  ],
+  "precedingCombinedBrowser": {
+    "candidateDigest": "sha256:16abc0fa7184b360f471da731c789306d43a8825bc104f04329c581fea288410",
+    "verification": "../verification.json",
+    "counts": {
+      "total": 552,
+      "passed": 532,
+      "failed": 12,
+      "skipped": 8
+    },
+    "retainedFailedComparisons": "../visual-comparisons/inventory.json",
+    "reuse": "Historical ten-spec results remain separately attributed. Current visual comparisons are freshly executed and recorded separately; no baseline files changed."
+  },
+  "incompleteParentAttempts": [
+    "failed-proof/parent-first-browser.log",
+    "failed-proof/parent-second/browser-verification.json"
+  ],
+  "completedFailedParentRun": "failed-proof/parent-third/browser-verification.json",
+  "diagnostics": [
+    {
+      "proof": "../failed-proof/palette-settings-order/handoff.md",
+      "finding": "Actual second Fluent25ms return stole focus after real Tab; fixed with per-dialog redundant return suppression and held actual callback regression."
+    },
+    {
+      "proof": "../failed-proof/dropdown-owned-indicator/handoff.md",
+      "finding": "Owned dropdown indicator false positive corrected; actual narrow nav/grid focus obstructions corrected and27 focused cases passed."
+    },
+    {
+      "proof": "../failed-proof/palette-settings-order/",
+      "finding": "One first instrumented pre-close selected-cue inventory failure remains unattributed; assertion preserved; canonical current lane did not reproduce. Failing diagnostic not promoted to pass."
+    }
+  ],
+  "limits": [
+    "Linux WebKit does not replace authored colors;116 actual forced-palette cells uncovered. Capability-limited media checks supply no system-palette pass.",
+    "Windows hosted accessibility job not executed on Linux.",
+    "Actual 400% zoom, NVDA/JAWS/VoiceOver, heard speech, physical tablet/phone not performed.",
+    "OI-16,G-4,FLUENT-APP-1,Product approval and separate live EventStore fresh-row acceptance remain open.",
+    "Sole blurred focus paint, unsupported pseudo geometry/transforms and closed-root interiors require additional pixel/platform evidence; helper scope supplies no exact blur-boundary or inaccessible-interior proof."
+  ],
+  "followup": [
+    {
+      "owner": "QA Engineer",
+      "platform": "existing Windows accessibility-visual job",
+      "cwd": "tests/e2e",
+      "command": "npm run test:a11y && npm run validate:a11y-artifacts",
+      "status": "not performed; use existing CI Release host build and retain artifacts"
+    },
+    {
+      "owner": "QA Engineer and visual baseline owner",
+      "platform": "existing hosted Linux browser job",
+      "cwd": "tests/e2e",
+      "command": "npx playwright test specs/specimen-accessibility.spec.ts --project=firefox --project=webkit --grep \"visual baseline\" --workers 4",
+      "status": "inspect all 12 retained expected/actual/diff sets and reconcile before any authorized baseline change"
+    },
+    {
+      "owner": "Shell test owner",
+      "command": "configuredShellCommand above; diagnostic command separately recorded",
+      "status": "reconcile broad replay-budget failure; serial 88 pass does not clear gate"
+    }
+  ]
+}

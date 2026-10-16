@@ -1,0 +1,2464 @@
+<testsuites id="" name="" tests="363" failures="8" skipped="2" errors="0" time="399.76267699999994">
+<testsuite name="accessibility-state-matrix.spec.ts" timestamp="2026-10-16T10:02:32.106Z" hostname="chromium" tests="58" failures="0" skipped="0" time="256.721" errors="0">
+<testcase name="AE complete state matrix light › generated zero-field validation: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.695">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-chromium/attachments/state-zero-validation-light-151068d290426f74752143438837ec06788f3b51.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-chromium/attachments/state-zero-accepted-light-8b74610a8a96e9e928de876a82f616b30afde720.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.867">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-603e0-ck-focus-owner-next-attempt-chromium/attachments/state-zero-returned-rejection-light-86ba682588ffb7dc9076a8baed81638b3739a4a0.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.819">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-a88b8-ck-focus-owner-next-attempt-chromium/attachments/state-zero-exception-rejection-light-49fc3e1ef575732435bce4f18ae3de7141253a59.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field forbidden: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.707">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-0d9e5-ck-focus-owner-next-attempt-chromium/attachments/state-zero-forbidden-light-e85841d9434b4ed3197e67904e4751a11d408d5d.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field unavailable: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.558">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-a3ffc-ck-focus-owner-next-attempt-chromium/attachments/state-zero-unavailable-light-411a2772b897320c107d87ba13796353a346db7d.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field blank-unavailable: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.437">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-5ad17-ck-focus-owner-next-attempt-chromium/attachments/state-zero-blank-unavailable-light-cad75937cac946f2ea9a134dd0e3b644439a6a9d.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field rate-limited: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.536">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-0ce94-ck-focus-owner-next-attempt-chromium/attachments/state-zero-rate-limited-light-b18a09b9505c5c366496b62552136a63df9836af.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field blank-rate-limited: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.447">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-19bfb-ck-focus-owner-next-attempt-chromium/attachments/state-zero-blank-rate-limited-light-c2825ffb01891719d2cc7e2bbd6d0b13ecef2a88.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field transport: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.343">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-d4248-ck-focus-owner-next-attempt-chromium/attachments/state-zero-transport-light-712e3ce4ae148225cb6fa9e6a6d79fe54848f3e1.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field admission: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.638">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-998f7-ck-focus-owner-next-attempt-chromium/attachments/state-zero-admission-light-1f056221a687428a03657c16ac5a087267a7f70c.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field policy: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.773">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-34827-ck-focus-owner-next-attempt-chromium/attachments/state-zero-policy-light-873246dc80891d27833ce197840b38f84fd37097.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › real generated detail removal preserves external focus and deduplicates completed results" classname="accessibility-state-matrix.spec.ts" time="3.118">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-fdd2b-uplicates-completed-results-chromium/attachments/state-generated-missing-external-light-4bf0d3945ac14dea6a876495178172a3963622d0.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › real generated detail loss focuses its neutral non-live explanation" classname="accessibility-state-matrix.spec.ts" time="3.665">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-70f6d-eutral-non-live-explanation-chromium/attachments/state-generated-missing-lost-focus-light-f6e8e1b044b158812d9821b3515a5e8088847d1c.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues" classname="accessibility-state-matrix.spec.ts" time="15.697">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-idle-light-faa3140d24725498ed9802bc746f70af879725a5.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-submitting-light-f054f1af62c62b9a7c61a88d2ba643005732ca7b.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-acknowledged-light-fc0697d9f72476243c84b0305c36c23a51c001b0.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-syncing-light-dbd64d81f988b5ef2dc8231f1bddc3b1cbf32b24.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-confirmed-light-b4e9cfcf144b7a60067f11279dc1e5f1361a06de.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-rejected-light-1ad0343b850513eb0d179030aa0fe06a63239ad8.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-idempotent-confirmed-light-29c33b78e12a205355b849e3310dfa15db7aa399.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-needs-review-light-a30f35e07eefdc153ebd76f250cc1efeb83fb00e.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-warning-light-5bd6a60fde03885363541d6c2add1aee9cf7e790.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-degraded-light-8d1b9c3352eb9fdea70d5a7c830b008f1a6d0216.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium/attachments/state-lifecycle-degraded-exhausted-light-81c24cc0a32abc56e1e8e423a18087008be016e6.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated projection loaded, detail, loading, empty and failure surfaces" classname="accessibility-state-matrix.spec.ts" time="6.099">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-3d97e--empty-and-failure-surfaces-chromium/attachments/state-projection-two-light-571a5d1f0bd2886b9e6dde2684170978c0d25369.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-3d97e--empty-and-failure-surfaces-chromium/attachments/state-projection-loading-light-bdcb967784bc3dcf2391f9628acac4ed29bd631b.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-3d97e--empty-and-failure-surfaces-chromium/attachments/state-projection-empty-light-665ff3b4877ad341a298900311962a7f04e886f1.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-3d97e--empty-and-failure-surfaces-chromium/attachments/state-projection-error-light-62d8860a045e24c4fb5c2b19ba1ef83e7a316081.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › home: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="2.292">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-d7ccd-state-and-forced-color-cues-chromium/attachments/state-home-light-797d4a09ee7e3ee4ceda980383e00d170c6e51a2.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › navigation-tabs: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="3.195">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-274ba-state-and-forced-color-cues-chromium/attachments/state-navigation-tabs-light-256830c8677a17d9df181af8091474f7b3ec4029.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › toolbar: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="2.743">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-12490-state-and-forced-color-cues-chromium/attachments/state-toolbar-light-2023b92acf1a4e659847f90c8a1167b4e608b420.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated-forms: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="4.283">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-5a6a5-state-and-forced-color-cues-chromium/attachments/state-generated-forms-light-be4e696235ccdf99ac3443418e3ba32cbd17e9ad.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field validation: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.372">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-7d4c5-ck-focus-owner-next-attempt-chromium/attachments/state-zero-validation-dark-f7b6ca6ade0b6dd3e4c817c1f45b9600361193ce.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-7d4c5-ck-focus-owner-next-attempt-chromium/attachments/state-zero-accepted-dark-8c4d2fae4efa674a2e09e4bd28335f162965ed03.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.868">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-f2531-ck-focus-owner-next-attempt-chromium/attachments/state-zero-returned-rejection-dark-133896274fe72a55e19b32a2c5a8ef198c2d3cdd.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.896">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-0396b-ck-focus-owner-next-attempt-chromium/attachments/state-zero-exception-rejection-dark-b817168c59c1db32acb9483e300cefd06a3ccf93.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field forbidden: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.686">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-05bf3-ck-focus-owner-next-attempt-chromium/attachments/state-zero-forbidden-dark-520d5a1d2275098b3a3424d074946b71130a9afe.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field unavailable: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.883">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-5142a-ck-focus-owner-next-attempt-chromium/attachments/state-zero-unavailable-dark-e74e8cc6f44e8b953ac962ad7f780b80f5973d8d.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field blank-unavailable: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.895">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-af2ed-ck-focus-owner-next-attempt-chromium/attachments/state-zero-blank-unavailable-dark-77944c2677717021302ec84550efec25e4825800.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field rate-limited: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.517">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-c152d-ck-focus-owner-next-attempt-chromium/attachments/state-zero-rate-limited-dark-ac1a8f79a6e8e62f161c06684213b4b411f76113.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field blank-rate-limited: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.297">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-3cb90-ck-focus-owner-next-attempt-chromium/attachments/state-zero-blank-rate-limited-dark-b88f59d48ef02540171c817e048c1640a44060c2.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field transport: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.21">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-9b713-ck-focus-owner-next-attempt-chromium/attachments/state-zero-transport-dark-443ffdd964cd5ba63b18076ba4cd48470fdf7b50.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field admission: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.287">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-db80d-ck-focus-owner-next-attempt-chromium/attachments/state-zero-admission-dark-a2154b2da2c20e949149d1ebbd9ad76e4737fc8b.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field policy: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.027">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-a64c2-ck-focus-owner-next-attempt-chromium/attachments/state-zero-policy-dark-d9fab6aff4926f3678c9f014c8f1426722f2df3c.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › real generated detail removal preserves external focus and deduplicates completed results" classname="accessibility-state-matrix.spec.ts" time="2.808">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-1ce32-uplicates-completed-results-chromium/attachments/state-generated-missing-external-dark-ec09b7c43d43784ff5873787e02a77948a12c53b.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › real generated detail loss focuses its neutral non-live explanation" classname="accessibility-state-matrix.spec.ts" time="2.758">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-538a1-eutral-non-live-explanation-chromium/attachments/state-generated-missing-lost-focus-dark-e0ef8426058756a2f9c76acc6158cde183194ff5.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues" classname="accessibility-state-matrix.spec.ts" time="16.097">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-idle-dark-b1693354dff874e0237a3d8e569e8f3026e82077.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-submitting-dark-33b1bc5acbcba1a7f528b21c91d1df8885710a5a.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-acknowledged-dark-a5e500e79087b10a3b51f4903297d988ddd2b9cb.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-syncing-dark-f63605a5f5c41d03cb757d152e9a393de791a201.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-confirmed-dark-5970693ee2fafdd3eb32151be653d091de236c30.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-rejected-dark-8b390536d4ecfcf059162571d85d82c5029541c3.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-idempotent-confirmed-dark-41c3052109d880c08a7798801a020e3fbcd2b4e0.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-needs-review-dark-8d804d7a94bf31c7d050ba5f9251dbed2fd0d03f.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-warning-dark-ce167ae1b678be6a871db09535555203f9a6680d.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-degraded-dark-3fdfaaf5d96b3d2ab4945dd2ee230ac1359e95c7.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium/attachments/state-lifecycle-degraded-exhausted-dark-02aab2cdb1c4f5bf501360481c2720460e4e027a.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated projection loaded, detail, loading, empty and failure surfaces" classname="accessibility-state-matrix.spec.ts" time="5.227">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-a997a--empty-and-failure-surfaces-chromium/attachments/state-projection-two-dark-c104fb85260c519d3b497a1038222f22b4a679bc.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a997a--empty-and-failure-surfaces-chromium/attachments/state-projection-loading-dark-50d95341f1bb38a2c88b9f43d14ddce652262f8c.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a997a--empty-and-failure-surfaces-chromium/attachments/state-projection-empty-dark-1230a216ccfd70714208f7d5b19ec7517866e39b.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a997a--empty-and-failure-surfaces-chromium/attachments/state-projection-error-dark-57644c2233192a3000e591352bd8a8ab62ac0c11.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › home: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="2.127">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-494dc-state-and-forced-color-cues-chromium/attachments/state-home-dark-fd8dfbb0e4c22532b2f26e4ff7c5458ac5b009ca.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › navigation-tabs: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="3.232">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-ee4d5-state-and-forced-color-cues-chromium/attachments/state-navigation-tabs-dark-39402af2808a8dc7e051e3e0c1cec40cc4720f12.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › toolbar: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="3.985">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-ec449-state-and-forced-color-cues-chromium/attachments/state-toolbar-dark-87bae5409d1caeb1234148cfdb0ee6f78093aa38.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated-forms: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="5.302">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-baff0-state-and-forced-color-cues-chromium/attachments/state-generated-forms-dark-267165a72312ccea4513a9ddb6fbd85bbafcd696.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="contrast measurement rejects empty, low-contrast, unpainted and unsupported samples" classname="accessibility-state-matrix.spec.ts" time="0.611">
+</testcase>
+<testcase name="unrelated controls cannot mask failed focus or boundary contrast" classname="accessibility-state-matrix.spec.ts" time="0.381">
+</testcase>
+<testcase name="forced-color state checks reject a removed cue while text and selected semantics survive" classname="accessibility-state-matrix.spec.ts" time="0.458">
+</testcase>
+<testcase name="shell chrome, theme menu and exact desktop navigation rails in light" classname="accessibility-state-matrix.spec.ts" time="8.571">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-35d41-p-navigation-rails-in-light-chromium/attachments/state-shell-chrome-light-2ac428ce86fc2c89253967353a3eedd4ea115519.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-35d41-p-navigation-rails-in-light-chromium/attachments/state-theme-menu-light-bae29ca2fa2b79ca73358125537d1ad10daf0303.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-35d41-p-navigation-rails-in-light-chromium/attachments/state-rail-labeled-light-8c7e8411873516d6425eb72f249ba88444959a1e.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-35d41-p-navigation-rails-in-light-chromium/attachments/state-rail-icons-light-680d58ea71cba8f3aec9a394e9b1180314c92a02.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="active toolbar, tabs, palette and settings states in light" classname="accessibility-state-matrix.spec.ts" time="6.887">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-filter-popover-light-05ac7ccc475691e00f8ad702d43234eafc4165b0.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-view-menu-light-516f6adb615dcdd98484447b84f318daa6edc185.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-tabs-active-light-a586472bf5cb140a3fa9a674ee64347ae2b9e392.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-palette-default-light-be037b0b82ddd8f4dd471593a7a53cab26f855af.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-palette-selected-light-c0d465ee74242ad514f49914ad57915c48fb6aed.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-palette-empty-light-3287a990b1091868f8581f38c1ccb29b8a156084.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium/attachments/state-settings-light-e5bf62716c09cf73fa4db0bb224906c41b1a2239.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="generated validation, policy, destructive and abandonment states in light" classname="accessibility-state-matrix.spec.ts" time="11.006">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/attachments/state-generated-validation-light-1a5f7d6943f280efbd061567b33fbc15920378dd.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/attachments/state-policy-denied-light-d09bd72cc39a5677b9d42dd7c3241e0827aa8a8a.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/attachments/state-destructive-dialog-light-6f5989dfceb4aa546a10870d97c41f92dfd011ec.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-5be77-abandonment-states-in-light-chromium/attachments/state-abandonment-light-7879e25589739c1c91dfff9e5353617b6b9848aa.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="shell chrome, theme menu and exact desktop navigation rails in dark" classname="accessibility-state-matrix.spec.ts" time="8.169">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-chromium/attachments/state-shell-chrome-dark-5a6bad068570d54ab57816f4032de43725e9fb2e.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-chromium/attachments/state-theme-menu-dark-d820f9b629ffa80d0439f3c598d72b9621acdd06.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-chromium/attachments/state-rail-labeled-dark-24c266a7e78ef74e800fd3286df93fa54eb1f4e4.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-chromium/attachments/state-rail-icons-dark-df3bfbe54898e4eeff7efe3c4bbcbc173dd4c483.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="active toolbar, tabs, palette and settings states in dark" classname="accessibility-state-matrix.spec.ts" time="6.944">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-filter-popover-dark-f5131118ebc9aa0ef40aa02ec518706ea8cf67b7.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-view-menu-dark-2515231fd1bc715fc0bd7766c0ae17eed604ac72.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-tabs-active-dark-30a43159576b2a72e53c7a7689e13b39ad617635.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-palette-default-dark-69269069ea2eba0ccc575d701d2ba0104d65998b.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-palette-selected-dark-524c5097fed6b190a5d9904576472445a3eff45a.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-palette-empty-dark-96dc6635da3f4fe4f56b66246f5286e7582c85b9.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium/attachments/state-settings-dark-b88353526f060cdafd405db426d6d1acf69df671.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="generated validation, policy, destructive and abandonment states in dark" classname="accessibility-state-matrix.spec.ts" time="11.139">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/attachments/state-generated-validation-dark-501ff8df0e41b6cb61a778a4f4f06d67475181c4.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/attachments/state-policy-denied-dark-9091036cbeefcc90fcec7825b1c71f4991b7271f.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/attachments/state-destructive-dialog-dark-a378557e9ba96077ed47a575991c24a28c07577d.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-11dab--abandonment-states-in-dark-chromium/attachments/state-abandonment-dark-aaecac8d36ecdc226bdeb73ce37bab9f0b4eb71e.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="projection reconnect fallback stale slow cap and filter cues in light" classname="accessibility-state-matrix.spec.ts" time="10.594">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/attachments/state-connection-reconnecting-light-f9bb0a1e8f6ff4f4aa04593b70d351a6dac7dffd.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/attachments/state-stale-reconnecting-light-2abd87a5494fa427131d726919a6c07deefa1c84.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/attachments/state-connection-disconnected-light-98e5ac02aa2f18b75488b331716a65dd36a46636.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/attachments/state-stale-disconnected-light-81538c5dd4fae669261f8a6133e3accd23cef027.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/attachments/state-connection-connected-light-d82fb6f31eb5031fbc2f3ec9ec4988fa078a8cf6.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/attachments/state-slow-query-light-c96be1c16bd15c5e168094c93097e5f8f2d64f6d.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/attachments/state-result-limit-light-5090fe7b65fc53ef64ef2aaeb23432faa67328d0.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium/attachments/state-filter-empty-light-0b86f5f63ef3a20a9cab3e84626e291628fe0477.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="projection reconnect fallback stale slow cap and filter cues in dark" classname="accessibility-state-matrix.spec.ts" time="10.285">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/attachments/state-connection-reconnecting-dark-2f589a5df02a48d94d43c2ee62ff4602f0da4e94.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/attachments/state-stale-reconnecting-dark-2d8e498ac8d832d29ece389929ec46f23393a136.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/attachments/state-connection-disconnected-dark-5ad15d82a433c9a388ca6e9f926c70fbd8fcfc92.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/attachments/state-stale-disconnected-dark-7c2764d018a24cc9faca1c9d0b76fcd726006a72.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/attachments/state-connection-connected-dark-c8813b760601e07a6400b0933a161403e288fba2.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/attachments/state-slow-query-dark-7e41a85dcdcf83e65ae9c7a0d1995c2d0a7417f7.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/attachments/state-result-limit-dark-c6fa727a733260e735468b1768cdddbdc414bf2c.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium/attachments/state-filter-empty-dark-f59ba8e3ba02c68be5acc47ae40763f16be19c5f.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="real generated filter-hidden detail stays distinct from missing-item results in light" classname="accessibility-state-matrix.spec.ts" time="2.118">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-1ea05-ssing-item-results-in-light-chromium/attachments/state-filter-hidden-detail-light-2e23188c6f5e0a4a27fb282e34d03a9f13e2d561.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="real generated filter-hidden detail stays distinct from missing-item results in dark" classname="accessibility-state-matrix.spec.ts" time="2.076">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-58461-issing-item-results-in-dark-chromium/attachments/state-filter-hidden-detail-dark-d25e7e657ec367a3fac44cc9990069419255f79b.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="delayed generated detail recovery cancels after operator focus and navigation in light" classname="accessibility-state-matrix.spec.ts" time="1.738">
+</testcase>
+<testcase name="delayed generated detail recovery cancels after operator focus and navigation in dark" classname="accessibility-state-matrix.spec.ts" time="1.894">
+</testcase>
+<testcase name="fresh-row presentation retains text boundary and system-color meaning in light" classname="accessibility-state-matrix.spec.ts" time="1.981">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-85ff9-stem-color-meaning-in-light-chromium/attachments/state-fresh-presentation-light-da58027319c97054911735dc7ebbd5842e4ed447.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="fresh-row presentation retains text boundary and system-color meaning in dark" classname="accessibility-state-matrix.spec.ts" time="1.951">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-2a676-ystem-color-meaning-in-dark-chromium/attachments/state-fresh-presentation-dark-c07f7eb57823b5c06e35763ca3a27c59b2c14df1.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="paint measurement follows slots, ignores unpainted pseudo borders and sees native modal text through inert ancestors" classname="accessibility-state-matrix.spec.ts" time="0.229">
+</testcase>
+<testcase name="validation links keep native same-page href activation when focus enhancement is unavailable" classname="accessibility-state-matrix.spec.ts" time="1.104">
+</testcase>
+<testcase name="G09 forced-color focus geometry rejects a mode-specific clipped ring" classname="accessibility-state-matrix.spec.ts" time="0.199">
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-16T10:02:32.106Z" hostname="chromium" tests="47" failures="0" skipped="0" time="57.256" errors="0">
+<testcase name="AE geometry regression fixtures › rejects a clipped ring even when the complete target is inside the viewport" classname="responsive-accessibility.spec.ts" time="0.151">
+</testcase>
+<testcase name="AE geometry regression fixtures › includes outer box-shadow rings and offsets in clipping geometry" classname="responsive-accessibility.spec.ts" time="0.508">
+</testcase>
+<testcase name="AE geometry regression fixtures › detects an opaque fixed occluder inside a zero-box open shadow host" classname="responsive-accessibility.spec.ts" time="0.21">
+</testcase>
+<testcase name="AE geometry regression fixtures › a real Fluent dropdown owns its passive sibling indicator, while an overlapping shadow sibling still occludes" classname="responsive-accessibility.spec.ts" time="0.778">
+</testcase>
+<testcase name="AE geometry regression fixtures › rejects an off-center occluder and ancestor clipping" classname="responsive-accessibility.spec.ts" time="0.2">
+</testcase>
+<testcase name="AE geometry regression fixtures › spacing exceptions reject neighboring circles and accept an isolated target" classname="responsive-accessibility.spec.ts" time="0.133">
+</testcase>
+<testcase name="AE geometry regression fixtures › rejects missing and invalid equivalent inventories" classname="responsive-accessibility.spec.ts" time="0.106">
+</testcase>
+<testcase name="AE geometry regression fixtures › spacing overrides reach Fluent-style shadow content and contrast composites alpha" classname="responsive-accessibility.spec.ts" time="0.16">
+</testcase>
+<testcase name="spacing reaches a delayed shadow root and cleanup stops later injection" classname="responsive-accessibility.spec.ts" time="0.177">
+</testcase>
+<testcase name="focus checks reject an absent indicator and a pointer-transparent opaque occluder" classname="responsive-accessibility.spec.ts" time="0.266">
+</testcase>
+<testcase name="modal decoration cannot substitute for the focused control indicator" classname="responsive-accessibility.spec.ts" time="0.161">
+</testcase>
+<testcase name="text clipping follows native top-layer popovers while retaining their own clipping checks" classname="responsive-accessibility.spec.ts" time="0.15">
+</testcase>
+<testcase name="a one-control keyboard trap cannot satisfy the expected cycle" classname="responsive-accessibility.spec.ts" time="0.179">
+</testcase>
+<testcase name="an application-prevented Tab at the final control cannot impersonate browser chrome" classname="responsive-accessibility.spec.ts" time="0.173">
+</testcase>
+<testcase name="shell focus scrolling protects the ring and cancels stale or disposed work" classname="responsive-accessibility.spec.ts" time="0.665">
+</testcase>
+<testcase name="delayed overlay disposal preserves an operator Tab after native origin return" classname="responsive-accessibility.spec.ts" time="1.051">
+</testcase>
+<testcase name="owned palette return cancels the actual Fluent delayed return after an operator Tab" classname="responsive-accessibility.spec.ts" time="1.066">
+</testcase>
+<testcase name="narrow specimen navigation and grid retain unobscured focus in light" classname="responsive-accessibility.spec.ts" time="1.021">
+</testcase>
+<testcase name="narrow specimen navigation and grid retain unobscured focus in dark" classname="responsive-accessibility.spec.ts" time="0.921">
+</testcase>
+<testcase name="the real missing-detail component registers recovery before a Fluent shadow action removes detail" classname="responsive-accessibility.spec.ts" time="0.774">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › Home directory: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="1.895">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › Home directory: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="1.862">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="2.382">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="2.442">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="7.264">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="7.846">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="2.036">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="2.163">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="2.466">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="2.504">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in light" classname="responsive-accessibility.spec.ts" time="3.287">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in dark" classname="responsive-accessibility.spec.ts" time="3.27">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › palette and settings retain reflow, every target, and modal focus at 320px with spacing" classname="responsive-accessibility.spec.ts" time="2.028">
+</testcase>
+<testcase name="missing-detail recovery consumes only lost detail focus and cancels stale captures" classname="responsive-accessibility.spec.ts" time="0.666">
+</testcase>
+<testcase name="row metrics preserve the compact minimum and report growth with the matching density floor" classname="responsive-accessibility.spec.ts" time="0.745">
+</testcase>
+<testcase name="real generated compact rows preserve 32px, match ItemSize through spacing, and restore after density changes" classname="responsive-accessibility.spec.ts" time="1.618">
+</testcase>
+<testcase name="review measurement regressions › G01 permanent shadows and inset decoration cannot establish or mask focus" classname="responsive-accessibility.spec.ts" time="0.449">
+</testcase>
+<testcase name="review measurement regressions › G02 same-level later paint and nested stacking contexts can occlude an outer ring" classname="responsive-accessibility.spec.ts" time="0.194">
+</testcase>
+<testcase name="review measurement regressions › G03 transparent supported CSS colors are absent focus paint" classname="responsive-accessibility.spec.ts" time="0.191">
+</testcase>
+<testcase name="review measurement regressions › G04 focus clipping and masks fail closed on the target and its ancestry" classname="responsive-accessibility.spec.ts" time="0.34">
+</testcase>
+<testcase name="review measurement regressions › G05 SVG fill and stroke opacity contribute to effective contrast" classname="responsive-accessibility.spec.ts" time="0.179">
+</testcase>
+<testcase name="review measurement regressions › G06 visible clipped low-contrast text cannot disappear from the inventory" classname="responsive-accessibility.spec.ts" time="0.203">
+</testcase>
+<testcase name="review measurement regressions › G12 inward outlines contrast with the control paint" classname="responsive-accessibility.spec.ts" time="0.152">
+</testcase>
+<testcase name="review measurement regressions › G13 zero and negative spread shadows without offset or blur draw no outer indicator" classname="responsive-accessibility.spec.ts" time="0.227">
+</testcase>
+<testcase name="supported clipped paint keeps a focus underline and excludes only fully hidden text" classname="responsive-accessibility.spec.ts" time="0.221">
+</testcase>
+<testcase name="diagnostic screenshots restore scroll without repairing an actually clipped focus ring" classname="responsive-accessibility.spec.ts" time="0.385">
+</testcase>
+<testcase name="real Fluent search and generated editors retain their focus contour with text spacing" classname="responsive-accessibility.spec.ts" time="1.391">
+</testcase>
+</testsuite>
+<testsuite name="specimen-accessibility.spec.ts" timestamp="2026-10-16T10:02:32.106Z" hostname="chromium" tests="16" failures="0" skipped="0" time="19.246" errors="0">
+<testcase name="FrontComposer accessibility and visual specimens › manifest names owned nonblank specimen routes and exactly six visual combinations" classname="specimen-accessibility.spec.ts" time="0.123">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › type specimen is nonblank and passes blocking axe gate" classname="specimen-accessibility.spec.ts" time="1.971">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › data-formatting specimen is nonblank and passes blocking axe gate" classname="specimen-accessibility.spec.ts" time="1.469">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › page-toolbar specimen is nonblank and passes blocking axe gate" classname="specimen-accessibility.spec.ts" time="1.434">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › type specimen renders required shell, density, badge, lifecycle, detail, and nav surfaces" classname="specimen-accessibility.spec.ts" time="1.233">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › dark generated command specimens keep readable foreground contrast" classname="specimen-accessibility.spec.ts" time="0.835">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › status icon touch interactions › status icons expose contextual labels and reveal tooltips on focus, hover, and touch" classname="specimen-accessibility.spec.ts" time="1.397">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › data-formatting specimen renders deterministic text and accessible names" classname="specimen-accessibility.spec.ts" time="0.788">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › keyboard flow reaches skip link, controls, grid, command form, detail, and nav without traps" classname="specimen-accessibility.spec.ts" time="1.865">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › focus-visible indicator remains visible over lifecycle visuals" classname="specimen-accessibility.spec.ts" time="1.018">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion" classname="specimen-accessibility.spec.ts" time="1.476">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › forced-colors and reduced-motion states are active and perceivable" classname="specimen-accessibility.spec.ts" time="1.15">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 1280 CSS pixels (not browser zoom)" classname="specimen-accessibility.spec.ts" time="0.993">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 640 CSS pixels (not browser zoom)" classname="specimen-accessibility.spec.ts" time="1.005">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 320 CSS pixels (not browser zoom)" classname="specimen-accessibility.spec.ts" time="0.969">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › production-style route exposure fails closed when specimen host configuration is absent" classname="specimen-accessibility.spec.ts" time="1.52">
+</testcase>
+</testsuite>
+<testsuite name="accessibility-state-matrix.spec.ts" timestamp="2026-10-16T10:02:32.106Z" hostname="firefox" tests="58" failures="0" skipped="0" time="266.486" errors="0">
+<testcase name="AE complete state matrix light › generated zero-field validation: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="5.305">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-firefox/attachments/state-zero-validation-light-a89c108e891e1585a67ee58b0611ff013ad15526.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-firefox/attachments/state-zero-accepted-light-c569f7de81592464498bfaa7cb91afeb9c84bed6.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.318">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-603e0-ck-focus-owner-next-attempt-firefox/attachments/state-zero-returned-rejection-light-8e21782df75ca75ec3f4858e07352152102af1e7.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.454">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-a88b8-ck-focus-owner-next-attempt-firefox/attachments/state-zero-exception-rejection-light-fcfe07a9c577d615e57fe6f005e1d74c96706b3e.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field forbidden: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.661">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-0d9e5-ck-focus-owner-next-attempt-firefox/attachments/state-zero-forbidden-light-77d12f18cafc112499e1a77b4000b445c37f015e.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field unavailable: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.709">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-a3ffc-ck-focus-owner-next-attempt-firefox/attachments/state-zero-unavailable-light-94f8ceb111615ff397decc3bd295fc05533d8443.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field blank-unavailable: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.668">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-5ad17-ck-focus-owner-next-attempt-firefox/attachments/state-zero-blank-unavailable-light-036eb8cf8f0d2e0e3f281b746090714b9327cfa4.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field rate-limited: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.645">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-0ce94-ck-focus-owner-next-attempt-firefox/attachments/state-zero-rate-limited-light-006b7d6b1719e73df938113a196a289d93e4dbe1.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field blank-rate-limited: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.596">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-19bfb-ck-focus-owner-next-attempt-firefox/attachments/state-zero-blank-rate-limited-light-54cb45e02495e34f58c52e3886b1c365c4dc0b0c.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field transport: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.566">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-d4248-ck-focus-owner-next-attempt-firefox/attachments/state-zero-transport-light-d496c7e9167da97a5a8a4954a690cfdf35040a50.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field admission: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.65">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-998f7-ck-focus-owner-next-attempt-firefox/attachments/state-zero-admission-light-e45bf149499530acfe0d14cd45d81ef0eb608744.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field policy: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.672">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-34827-ck-focus-owner-next-attempt-firefox/attachments/state-zero-policy-light-4867eb0fdc547bab33fcbba2f7fae18486b01803.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › real generated detail removal preserves external focus and deduplicates completed results" classname="accessibility-state-matrix.spec.ts" time="2.641">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-fdd2b-uplicates-completed-results-firefox/attachments/state-generated-missing-external-light-ced414c9af3d8e7b7c54a390c642a957c97bb2b5.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › real generated detail loss focuses its neutral non-live explanation" classname="accessibility-state-matrix.spec.ts" time="2.844">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-70f6d-eutral-non-live-explanation-firefox/attachments/state-generated-missing-lost-focus-light-b8ed715f0c45cf50c2074103ba72ee4988ac6d77.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues" classname="accessibility-state-matrix.spec.ts" time="14.789">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-idle-light-e4fb241ee8607afd8a5e2e983a55d0fb1deed317.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-submitting-light-582a11402f2e999fc7b0f05524d67e2c43403245.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-acknowledged-light-ebc6df83c257f61565b8eaae9eb438b5e28c41ed.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-syncing-light-0a6e274a3c372b2c6b04fdab8eed019979e57a12.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-confirmed-light-fb8a7c5d4d75fe7cbf2fac771254a138a79d17d6.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-rejected-light-3bde5dbb2178582c18e1629e9651e708b394faab.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-idempotent-confirmed-light-b713e9b061f3f7bd62c8edd050bae43af4c6c536.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-needs-review-light-3d1d7d362b1a74d9b4129d1b39db78ee207732fc.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-warning-light-53f03e72efdf82ab360813b4cab0fc180d7933e0.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-degraded-light-a62b70d9658e555c7a02640c995539d3a409854c.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox/attachments/state-lifecycle-degraded-exhausted-light-358318cf492885881669deba3eb5d582461b0a67.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated projection loaded, detail, loading, empty and failure surfaces" classname="accessibility-state-matrix.spec.ts" time="5.282">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-3d97e--empty-and-failure-surfaces-firefox/attachments/state-projection-two-light-4845f35d6ea62e83ba38d60c05e7990df48939fb.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-3d97e--empty-and-failure-surfaces-firefox/attachments/state-projection-loading-light-a881e6214f81891f3d981fa451a3a7c3dc6a34cf.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-3d97e--empty-and-failure-surfaces-firefox/attachments/state-projection-empty-light-8fb442a03ec459dfc45383242248e72f2dfedc18.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-3d97e--empty-and-failure-surfaces-firefox/attachments/state-projection-error-light-93f85f0df08e6a8d61aaf93e2ef9a673f495a0e5.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › home: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="2.421">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-d7ccd-state-and-forced-color-cues-firefox/attachments/state-home-light-578a78a2b3146c9c95f4b9fae5473aa97300ea22.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › navigation-tabs: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="3.297">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-274ba-state-and-forced-color-cues-firefox/attachments/state-navigation-tabs-light-174200e3f599525c79965e7e4e4722b001d4ba15.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › toolbar: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="2.841">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-12490-state-and-forced-color-cues-firefox/attachments/state-toolbar-light-aeb2fe3270508934316696cbc59a56c27c0c2882.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated-forms: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="4.686">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-5a6a5-state-and-forced-color-cues-firefox/attachments/state-generated-forms-light-36177857945c258ce2fa9dac041a4a8bac8ed830.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field validation: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.816">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-7d4c5-ck-focus-owner-next-attempt-firefox/attachments/state-zero-validation-dark-ef720597bacf3770f9cd01509b5013cd0393b79f.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-7d4c5-ck-focus-owner-next-attempt-firefox/attachments/state-zero-accepted-dark-e090dada1bae8941cb88795f30fe14be5b4f7e86.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.766">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-f2531-ck-focus-owner-next-attempt-firefox/attachments/state-zero-returned-rejection-dark-281c70cd8e52ef6038795eb0a4308f50cdb1b5de.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.658">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-0396b-ck-focus-owner-next-attempt-firefox/attachments/state-zero-exception-rejection-dark-7d7595fb9ab948806fae5bf9291ed7c97fff3077.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field forbidden: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.639">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-05bf3-ck-focus-owner-next-attempt-firefox/attachments/state-zero-forbidden-dark-7c16e41fe2dfc7935a012db459e77717ab8a312f.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field unavailable: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.442">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-5142a-ck-focus-owner-next-attempt-firefox/attachments/state-zero-unavailable-dark-6111337396e267ea211f3fb4ebfed184485f9833.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field blank-unavailable: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.645">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-af2ed-ck-focus-owner-next-attempt-firefox/attachments/state-zero-blank-unavailable-dark-704220b107e94225cb64869098238d5a31920fa9.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field rate-limited: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.595">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-c152d-ck-focus-owner-next-attempt-firefox/attachments/state-zero-rate-limited-dark-cdc93e438d72b7623871ca5e781ab40bbf150a61.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field blank-rate-limited: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.101">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-3cb90-ck-focus-owner-next-attempt-firefox/attachments/state-zero-blank-rate-limited-dark-a9da378a60a400435e43ba9d593d6bac07ec1cc7.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field transport: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.642">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-9b713-ck-focus-owner-next-attempt-firefox/attachments/state-zero-transport-dark-43f13b8d0dde91a0f796ffd8d93cd9b261ee17a9.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field admission: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.501">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-db80d-ck-focus-owner-next-attempt-firefox/attachments/state-zero-admission-dark-8d0e4c7fca4a8d48d40f2e7381eab2b7b75a6a0b.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field policy: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="3.57">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-a64c2-ck-focus-owner-next-attempt-firefox/attachments/state-zero-policy-dark-1026df8ea9487023074c289dd332cb39872f82c7.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › real generated detail removal preserves external focus and deduplicates completed results" classname="accessibility-state-matrix.spec.ts" time="2.718">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-1ce32-uplicates-completed-results-firefox/attachments/state-generated-missing-external-dark-5347f7c65ad1cd7b5d7dc2520a6e21d5e891def3.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › real generated detail loss focuses its neutral non-live explanation" classname="accessibility-state-matrix.spec.ts" time="2.879">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-538a1-eutral-non-live-explanation-firefox/attachments/state-generated-missing-lost-focus-dark-62e8aa05b2ce4207ebc1f80fb15b63fbf42ff4b4.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues" classname="accessibility-state-matrix.spec.ts" time="14.577">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-idle-dark-5f10b670cceb0e864af76c1e15ab03a02ea33319.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-submitting-dark-e11b3ae8222ce0f60471281903b0a5c318bd2e3a.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-acknowledged-dark-e62e8cb7bd6d3730acc620936897e313213ceac6.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-syncing-dark-768dad0296be975f85ba7e9d051955e580cb500c.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-confirmed-dark-bfa488e6b27572e304311fa0294e1d6f8b888170.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-rejected-dark-5579a2ed11fb86c439481ac82ae4cee7fa335a3b.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-idempotent-confirmed-dark-aa4b7c35a1c563e8445952141c47d09e27d81438.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-needs-review-dark-f57258ba05bcebf4938c3ac887b7c7ad391d4212.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-warning-dark-0b9ff769d79b6ffda46c59537b79caceb569ac0e.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-degraded-dark-9bd2cb869be2be9f11078a7f7b3210d6a2e2c8e5.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox/attachments/state-lifecycle-degraded-exhausted-dark-eebbbf00f15dd33e2a485ba14c6fd93d916c5c9a.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated projection loaded, detail, loading, empty and failure surfaces" classname="accessibility-state-matrix.spec.ts" time="5.813">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-a997a--empty-and-failure-surfaces-firefox/attachments/state-projection-two-dark-2dac448f8ca2792d19d66cb0aba830638640eee7.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a997a--empty-and-failure-surfaces-firefox/attachments/state-projection-loading-dark-4364ae46fa0e21bc1a435565c7ea60ee7369c451.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a997a--empty-and-failure-surfaces-firefox/attachments/state-projection-empty-dark-520206ad1b3772408028530dd7f6060576dd42a2.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a997a--empty-and-failure-surfaces-firefox/attachments/state-projection-error-dark-3063918072fa633d9281954eae7c5a6c3b5bb149.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › home: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="3.039">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-494dc-state-and-forced-color-cues-firefox/attachments/state-home-dark-450622acc28fb34a83479d186579cccf8d6b7257.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › navigation-tabs: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="3.339">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-ee4d5-state-and-forced-color-cues-firefox/attachments/state-navigation-tabs-dark-d9614736ca72f2e93e86d16e9fe75cc9c2347b6e.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › toolbar: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="2.903">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-ec449-state-and-forced-color-cues-firefox/attachments/state-toolbar-dark-d4e5b2b82fa01afb9f21033e45504a8e034485f6.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated-forms: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="4.584">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-baff0-state-and-forced-color-cues-firefox/attachments/state-generated-forms-dark-254e231822be1e98f9bc9644f61f30de556c1714.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="contrast measurement rejects empty, low-contrast, unpainted and unsupported samples" classname="accessibility-state-matrix.spec.ts" time="0.551">
+</testcase>
+<testcase name="unrelated controls cannot mask failed focus or boundary contrast" classname="accessibility-state-matrix.spec.ts" time="0.382">
+</testcase>
+<testcase name="forced-color state checks reject a removed cue while text and selected semantics survive" classname="accessibility-state-matrix.spec.ts" time="0.366">
+</testcase>
+<testcase name="shell chrome, theme menu and exact desktop navigation rails in light" classname="accessibility-state-matrix.spec.ts" time="10.138">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-35d41-p-navigation-rails-in-light-firefox/attachments/state-shell-chrome-light-79d9be179a60d874094b17bec4b4ac2a72ab50a8.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-35d41-p-navigation-rails-in-light-firefox/attachments/state-theme-menu-light-f29e07521eab7caf0d8fea3a020d5eb92d1823ad.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-35d41-p-navigation-rails-in-light-firefox/attachments/state-rail-labeled-light-4bcf4ad6ebf5a1ab4318770300c539506699e562.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-35d41-p-navigation-rails-in-light-firefox/attachments/state-rail-icons-light-4b01c8b6b626edc45ec75fad53528d57fb4eab5f.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="active toolbar, tabs, palette and settings states in light" classname="accessibility-state-matrix.spec.ts" time="7.657">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-firefox/attachments/state-filter-popover-light-f512814649b3ce95bee3f06c51ad8fe64de3603e.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-firefox/attachments/state-view-menu-light-c8266233c1a1a2b671b228476b2f8967d14cab54.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-firefox/attachments/state-tabs-active-light-83871e0db9d6083f95e1d4c7e1e851e5eced6fb8.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-firefox/attachments/state-palette-default-light-0ed1ea53e2831782cd948978913001a01679d197.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-firefox/attachments/state-palette-selected-light-1b29990e8e12da3ac54a2c3dc040e085078ce5e2.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-firefox/attachments/state-palette-empty-light-0c79df0b95d84d9c5938477fc2abca194c48c9d7.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-firefox/attachments/state-settings-light-1378b31b8952b246e81285eeea2b6a4a62ab8c75.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="generated validation, policy, destructive and abandonment states in light" classname="accessibility-state-matrix.spec.ts" time="12.088">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-5be77-abandonment-states-in-light-firefox/attachments/state-generated-validation-light-aa999fef09720ebefbf3fb62cfc1ffb185d988cd.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-5be77-abandonment-states-in-light-firefox/attachments/state-policy-denied-light-5c805913f21a10d061f2f0c9caedf8238707203c.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-5be77-abandonment-states-in-light-firefox/attachments/state-destructive-dialog-light-f3301fd9f24ef03410a8ebe7e88b401b0b54c945.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-5be77-abandonment-states-in-light-firefox/attachments/state-abandonment-light-a2bd7105024a08893326be4894ed364697352a25.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="shell chrome, theme menu and exact desktop navigation rails in dark" classname="accessibility-state-matrix.spec.ts" time="9.542">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/attachments/state-shell-chrome-dark-31ee00c476aead02568ed59c287037ec4e10a019.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/attachments/state-theme-menu-dark-f6de8de89cf4fdd9e118f4b2d632437bced6a9cd.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/attachments/state-rail-labeled-dark-fbceb037358ec926b9e1964adcec65860cebb0d2.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-firefox/attachments/state-rail-icons-dark-60c07026e51bc2fb664e3b79ecf579192a59efdf.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="active toolbar, tabs, palette and settings states in dark" classname="accessibility-state-matrix.spec.ts" time="7.314">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-firefox/attachments/state-filter-popover-dark-181d2964de7066574a0638b154578edea98d4a3e.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-firefox/attachments/state-view-menu-dark-cb873ab05563297ddd11c191701c6f44e3281236.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-firefox/attachments/state-tabs-active-dark-c1828226a35423295bc3058d69f0606db414039d.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-firefox/attachments/state-palette-default-dark-a697c56a42c8b4291caac7492ba1fc6e62dae4de.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-firefox/attachments/state-palette-selected-dark-f2309158b03a41788fe92b971ac01e73050f0d17.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-firefox/attachments/state-palette-empty-dark-639eb07e14f42eb1e3d744a7895c75a9e6393f74.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-firefox/attachments/state-settings-dark-2189ec368ebf3b58ea90f4aff2429adff9eca915.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="generated validation, policy, destructive and abandonment states in dark" classname="accessibility-state-matrix.spec.ts" time="12.322">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-11dab--abandonment-states-in-dark-firefox/attachments/state-generated-validation-dark-c46c1867cc006b6b15d314548129a5e2676a2323.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-11dab--abandonment-states-in-dark-firefox/attachments/state-policy-denied-dark-e3faf0562f6de00ca895e31792999e3975c4142f.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-11dab--abandonment-states-in-dark-firefox/attachments/state-destructive-dialog-dark-7777c002e0edb08c15d52be89627716d98ac95c9.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-11dab--abandonment-states-in-dark-firefox/attachments/state-abandonment-dark-39793fe78eb3072c6b3a761a97c7347e88f97f7e.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="projection reconnect fallback stale slow cap and filter cues in light" classname="accessibility-state-matrix.spec.ts" time="12.233">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/attachments/state-connection-reconnecting-light-0c1d9766ae26eb25e5724d844a50f544089953a5.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/attachments/state-stale-reconnecting-light-4cb780f5b4df83e875020c9f5601742df714b836.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/attachments/state-connection-disconnected-light-9d3bd6fd4a8a337589ea82e54560e130fdeff316.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/attachments/state-stale-disconnected-light-e8d4919d2f7c907254ef347b4407720a4340eb0f.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/attachments/state-connection-connected-light-4be412c072e16deaabab8449021dd7cd01fbd2d1.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/attachments/state-slow-query-light-974677d88d0b7ebed76f194b216caf4a9b6e396a.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/attachments/state-result-limit-light-e074db1bce1a5ebd888807e88f10d1e1526dad3a.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox/attachments/state-filter-empty-light-eb0a24e3d666171caa38f2599055a5e41aaed4fd.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="projection reconnect fallback stale slow cap and filter cues in dark" classname="accessibility-state-matrix.spec.ts" time="11.757">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/attachments/state-connection-reconnecting-dark-4c6a0bcc8fbc8616baa9a967125ef7b0f40240c5.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/attachments/state-stale-reconnecting-dark-11d4635850364d270080cdb5feac830ed913a51e.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/attachments/state-connection-disconnected-dark-9a1c5b32c6d9cbff361357d521eeff5525e18e54.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/attachments/state-stale-disconnected-dark-977ecd3c3b2ea2cc520f2a1e1287f297ea2d988a.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/attachments/state-connection-connected-dark-a3c415e5bcebfc7ce0b0afaab2a72f4f07e96177.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/attachments/state-slow-query-dark-491cdad2d61bec29a06811e8f4cba5e1d581bba8.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/attachments/state-result-limit-dark-0d1dd58b73c29c4ea1893925f38de5ab8c200aec.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-firefox/attachments/state-filter-empty-dark-97bce3db62aa5cfb70122ad123f136306685252e.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="real generated filter-hidden detail stays distinct from missing-item results in light" classname="accessibility-state-matrix.spec.ts" time="2.524">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-1ea05-ssing-item-results-in-light-firefox/attachments/state-filter-hidden-detail-light-7e8aea199269375ce52d27797fbe5e7c0c6e780b.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="real generated filter-hidden detail stays distinct from missing-item results in dark" classname="accessibility-state-matrix.spec.ts" time="2.614">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-58461-issing-item-results-in-dark-firefox/attachments/state-filter-hidden-detail-dark-74929a5eea45fb7ac69c47c49bfa73f0d2a5b8b2.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="delayed generated detail recovery cancels after operator focus and navigation in light" classname="accessibility-state-matrix.spec.ts" time="2.479">
+</testcase>
+<testcase name="delayed generated detail recovery cancels after operator focus and navigation in dark" classname="accessibility-state-matrix.spec.ts" time="2.595">
+</testcase>
+<testcase name="fresh-row presentation retains text boundary and system-color meaning in light" classname="accessibility-state-matrix.spec.ts" time="2.559">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-85ff9-stem-color-meaning-in-light-firefox/attachments/state-fresh-presentation-light-dafe6ddc32b8a16c30e1f032e0a37d98bc6bbb47.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="fresh-row presentation retains text boundary and system-color meaning in dark" classname="accessibility-state-matrix.spec.ts" time="2.664">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-2a676-ystem-color-meaning-in-dark-firefox/attachments/state-fresh-presentation-dark-f6334786b0c09a07252e6880482f4092f9712313.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="paint measurement follows slots, ignores unpainted pseudo borders and sees native modal text through inert ancestors" classname="accessibility-state-matrix.spec.ts" time="0.499">
+</testcase>
+<testcase name="validation links keep native same-page href activation when focus enhancement is unavailable" classname="accessibility-state-matrix.spec.ts" time="1.527">
+</testcase>
+<testcase name="G09 forced-color focus geometry rejects a mode-specific clipped ring" classname="accessibility-state-matrix.spec.ts" time="0.403">
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-16T10:02:32.106Z" hostname="firefox" tests="47" failures="4" skipped="0" time="120.868" errors="0">
+<testcase name="AE geometry regression fixtures › rejects a clipped ring even when the complete target is inside the viewport" classname="responsive-accessibility.spec.ts" time="0.386">
+</testcase>
+<testcase name="AE geometry regression fixtures › includes outer box-shadow rings and offsets in clipping geometry" classname="responsive-accessibility.spec.ts" time="0.904">
+</testcase>
+<testcase name="AE geometry regression fixtures › detects an opaque fixed occluder inside a zero-box open shadow host" classname="responsive-accessibility.spec.ts" time="0.419">
+</testcase>
+<testcase name="AE geometry regression fixtures › a real Fluent dropdown owns its passive sibling indicator, while an overlapping shadow sibling still occludes" classname="responsive-accessibility.spec.ts" time="1.017">
+</testcase>
+<testcase name="AE geometry regression fixtures › rejects an off-center occluder and ancestor clipping" classname="responsive-accessibility.spec.ts" time="1.289">
+</testcase>
+<testcase name="AE geometry regression fixtures › spacing exceptions reject neighboring circles and accept an isolated target" classname="responsive-accessibility.spec.ts" time="0.32">
+</testcase>
+<testcase name="AE geometry regression fixtures › rejects missing and invalid equivalent inventories" classname="responsive-accessibility.spec.ts" time="0.293">
+</testcase>
+<testcase name="AE geometry regression fixtures › spacing overrides reach Fluent-style shadow content and contrast composites alpha" classname="responsive-accessibility.spec.ts" time="1.181">
+</testcase>
+<testcase name="spacing reaches a delayed shadow root and cleanup stops later injection" classname="responsive-accessibility.spec.ts" time="0.382">
+</testcase>
+<testcase name="focus checks reject an absent indicator and a pointer-transparent opaque occluder" classname="responsive-accessibility.spec.ts" time="0.464">
+</testcase>
+<testcase name="modal decoration cannot substitute for the focused control indicator" classname="responsive-accessibility.spec.ts" time="0.409">
+</testcase>
+<testcase name="text clipping follows native top-layer popovers while retaining their own clipping checks" classname="responsive-accessibility.spec.ts" time="0.303">
+</testcase>
+<testcase name="a one-control keyboard trap cannot satisfy the expected cycle" classname="responsive-accessibility.spec.ts" time="0.349">
+</testcase>
+<testcase name="an application-prevented Tab at the final control cannot impersonate browser chrome" classname="responsive-accessibility.spec.ts" time="0.42">
+</testcase>
+<testcase name="shell focus scrolling protects the ring and cancels stale or disposed work" classname="responsive-accessibility.spec.ts" time="0.813">
+</testcase>
+<testcase name="delayed overlay disposal preserves an operator Tab after native origin return" classname="responsive-accessibility.spec.ts" time="3.032">
+</testcase>
+<testcase name="owned palette return cancels the actual Fluent delayed return after an operator Tab" classname="responsive-accessibility.spec.ts" time="1.322">
+</testcase>
+<testcase name="narrow specimen navigation and grid retain unobscured focus in light" classname="responsive-accessibility.spec.ts" time="1.435">
+</testcase>
+<testcase name="narrow specimen navigation and grid retain unobscured focus in dark" classname="responsive-accessibility.spec.ts" time="1.44">
+</testcase>
+<testcase name="the real missing-detail component registers recovery before a Fluent shadow action removes detail" classname="responsive-accessibility.spec.ts" time="0.876">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › Home directory: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="2.714">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › Home directory: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="2.748">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="11.646">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-firefox/test-failed-1.png]]
+
+[[ATTACHMENT|responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-firefox/video-1.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-firefox/video.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-firefox/error-context.md]]
+
+[[ATTACHMENT|responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-firefox/trace.zip]]
+]]>
+</system-out>
+<failure message="AE-05 focused visual geometry" type="expect.toEqual">
+<![CDATA[  [firefox] › responsive-accessibility.spec.ts:336:7 › Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow 
+
+    Error: AE-05 focused visual geometry
+
+    AE-05 focused visual geometry
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "app content obscures target or focus ring: {\"target\":\"DIV#\",\"requireIndicator\":true,\"box\":{\"left\":19,\"top\":370.79998779296875,\"right\":301,\"bottom\":452.79998779296875},\"ring\":1,\"failures\":[\"app content obscures target or focus ring\"],\"occluder\":\"DIV# by SPAN# at 54.775001525878906,371.29998779296875\"}",
+    + ]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at ../helpers/responsive-accessibility.ts:446
+
+      444 | export async function expectFocusVisible(target: Locator): Promise<void> {
+      445 |   await expect(target).toBeFocused();
+    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);
+          |                                                                                                                                                                                                                ^
+      447 | }
+      448 |
+      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)
+        at step (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:565:7)
+        at verifyKeyboardCycle (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:573:19)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:348:9
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-firefox/video-1.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-firefox/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="12.015">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-S-58c4a--all-text-spacing-overrides-firefox/test-failed-1.png]]
+
+[[ATTACHMENT|responsive-accessibility-S-58c4a--all-text-spacing-overrides-firefox/video-1.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-58c4a--all-text-spacing-overrides-firefox/video.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-58c4a--all-text-spacing-overrides-firefox/error-context.md]]
+
+[[ATTACHMENT|responsive-accessibility-S-58c4a--all-text-spacing-overrides-firefox/trace.zip]]
+]]>
+</system-out>
+<failure message="AE-05 focused visual geometry" type="expect.toEqual">
+<![CDATA[  [firefox] › responsive-accessibility.spec.ts:336:7 › Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow with all text-spacing overrides 
+
+    Error: AE-05 focused visual geometry
+
+    AE-05 focused visual geometry
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "app content obscures target or focus ring: {\"target\":\"DIV#\",\"requireIndicator\":true,\"box\":{\"left\":19,\"top\":407.79998779296875,\"right\":301,\"bottom\":508.79998779296875},\"ring\":1,\"failures\":[\"app content obscures target or focus ring\"],\"occluder\":\"DIV# by SPAN# at 64.30833435058594,408.04998779296875\"}",
+    + ]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at ../helpers/responsive-accessibility.ts:446
+
+      444 | export async function expectFocusVisible(target: Locator): Promise<void> {
+      445 |   await expect(target).toBeFocused();
+    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);
+          |                                                                                                                                                                                                                ^
+      447 | }
+      448 |
+      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)
+        at step (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:565:7)
+        at verifyKeyboardCycle (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:573:19)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:348:9
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-58c4a--all-text-spacing-overrides-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-58c4a--all-text-spacing-overrides-firefox/video-1.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-58c4a--all-text-spacing-overrides-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-58c4a--all-text-spacing-overrides-firefox/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-58c4a--all-text-spacing-overrides-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-58c4a--all-text-spacing-overrides-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="10.092">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="11.62">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="11.373">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-firefox/test-failed-1.png]]
+
+[[ATTACHMENT|responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-firefox/video-1.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-firefox/video.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-firefox/error-context.md]]
+
+[[ATTACHMENT|responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-firefox/trace.zip]]
+]]>
+</system-out>
+<failure message="AE-05 focused visual geometry" type="expect.toEqual">
+<![CDATA[  [firefox] › responsive-accessibility.spec.ts:336:7 › Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow 
+
+    Error: AE-05 focused visual geometry
+
+    AE-05 focused visual geometry
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "app content obscures target or focus ring: {\"target\":\"DIV#\",\"requireIndicator\":true,\"box\":{\"left\":27,\"top\":690.933349609375,\"right\":293,\"bottom\":820.933349609375},\"ring\":1,\"failures\":[\"app content obscures target or focus ring\"],\"occluder\":\"DIV# by SPAN# at 106.06666564941406,691.433349609375\"}",
+    + ]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at ../helpers/responsive-accessibility.ts:446
+
+      444 | export async function expectFocusVisible(target: Locator): Promise<void> {
+      445 |   await expect(target).toBeFocused();
+    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);
+          |                                                                                                                                                                                                                ^
+      447 | }
+      448 |
+      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)
+        at step (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:565:7)
+        at verifyKeyboardCycle (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:573:19)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:348:9
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-firefox/video-1.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-firefox/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="12.144">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-S-303db--all-text-spacing-overrides-firefox/test-failed-1.png]]
+
+[[ATTACHMENT|responsive-accessibility-S-303db--all-text-spacing-overrides-firefox/video-1.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-303db--all-text-spacing-overrides-firefox/video.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-303db--all-text-spacing-overrides-firefox/error-context.md]]
+
+[[ATTACHMENT|responsive-accessibility-S-303db--all-text-spacing-overrides-firefox/trace.zip]]
+]]>
+</system-out>
+<failure message="AE-05 focused visual geometry" type="expect.toEqual">
+<![CDATA[  [firefox] › responsive-accessibility.spec.ts:336:7 › Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow with all text-spacing overrides 
+
+    Error: AE-05 focused visual geometry
+
+    AE-05 focused visual geometry
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "app content obscures target or focus ring: {\"target\":\"DIV#\",\"requireIndicator\":true,\"box\":{\"left\":27,\"top\":652.933349609375,\"right\":293,\"bottom\":820.933349609375},\"ring\":1,\"failures\":[\"app content obscures target or focus ring\"],\"occluder\":\"DIV# by SPAN# at 126.81666564941406,653.183349609375\"}",
+    + ]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at ../helpers/responsive-accessibility.ts:446
+
+      444 | export async function expectFocusVisible(target: Locator): Promise<void> {
+      445 |   await expect(target).toBeFocused();
+    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);
+          |                                                                                                                                                                                                                ^
+      447 | }
+      448 |
+      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)
+        at step (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:565:7)
+        at verifyKeyboardCycle (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:573:19)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:348:9
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-303db--all-text-spacing-overrides-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-303db--all-text-spacing-overrides-firefox/video-1.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-303db--all-text-spacing-overrides-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-303db--all-text-spacing-overrides-firefox/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-303db--all-text-spacing-overrides-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-303db--all-text-spacing-overrides-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="3.57">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="4.61">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in light" classname="responsive-accessibility.spec.ts" time="2.915">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in dark" classname="responsive-accessibility.spec.ts" time="3.461">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › palette and settings retain reflow, every target, and modal focus at 320px with spacing" classname="responsive-accessibility.spec.ts" time="3.389">
+</testcase>
+<testcase name="missing-detail recovery consumes only lost detail focus and cancels stale captures" classname="responsive-accessibility.spec.ts" time="0.782">
+</testcase>
+<testcase name="row metrics preserve the compact minimum and report growth with the matching density floor" classname="responsive-accessibility.spec.ts" time="1.005">
+</testcase>
+<testcase name="real generated compact rows preserve 32px, match ItemSize through spacing, and restore after density changes" classname="responsive-accessibility.spec.ts" time="2.106">
+</testcase>
+<testcase name="review measurement regressions › G01 permanent shadows and inset decoration cannot establish or mask focus" classname="responsive-accessibility.spec.ts" time="0.736">
+</testcase>
+<testcase name="review measurement regressions › G02 same-level later paint and nested stacking contexts can occlude an outer ring" classname="responsive-accessibility.spec.ts" time="0.427">
+</testcase>
+<testcase name="review measurement regressions › G03 transparent supported CSS colors are absent focus paint" classname="responsive-accessibility.spec.ts" time="0.364">
+</testcase>
+<testcase name="review measurement regressions › G04 focus clipping and masks fail closed on the target and its ancestry" classname="responsive-accessibility.spec.ts" time="0.536">
+</testcase>
+<testcase name="review measurement regressions › G05 SVG fill and stroke opacity contribute to effective contrast" classname="responsive-accessibility.spec.ts" time="0.348">
+</testcase>
+<testcase name="review measurement regressions › G06 visible clipped low-contrast text cannot disappear from the inventory" classname="responsive-accessibility.spec.ts" time="0.333">
+</testcase>
+<testcase name="review measurement regressions › G12 inward outlines contrast with the control paint" classname="responsive-accessibility.spec.ts" time="0.327">
+</testcase>
+<testcase name="review measurement regressions › G13 zero and negative spread shadows without offset or blur draw no outer indicator" classname="responsive-accessibility.spec.ts" time="0.431">
+</testcase>
+<testcase name="supported clipped paint keeps a focus underline and excludes only fully hidden text" classname="responsive-accessibility.spec.ts" time="1.57">
+</testcase>
+<testcase name="diagnostic screenshots restore scroll without repairing an actually clipped focus ring" classname="responsive-accessibility.spec.ts" time="0.578">
+</testcase>
+<testcase name="real Fluent search and generated editors retain their focus contour with text spacing" classname="responsive-accessibility.spec.ts" time="1.974">
+</testcase>
+</testsuite>
+<testsuite name="specimen-accessibility.spec.ts" timestamp="2026-10-16T10:02:32.106Z" hostname="firefox" tests="16" failures="0" skipped="1" time="27.177" errors="0">
+<testcase name="FrontComposer accessibility and visual specimens › manifest names owned nonblank specimen routes and exactly six visual combinations" classname="specimen-accessibility.spec.ts" time="0.265">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › type specimen is nonblank and passes blocking axe gate" classname="specimen-accessibility.spec.ts" time="2.716">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › data-formatting specimen is nonblank and passes blocking axe gate" classname="specimen-accessibility.spec.ts" time="1.968">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › page-toolbar specimen is nonblank and passes blocking axe gate" classname="specimen-accessibility.spec.ts" time="2.024">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › type specimen renders required shell, density, badge, lifecycle, detail, and nav surfaces" classname="specimen-accessibility.spec.ts" time="1.821">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › dark generated command specimens keep readable foreground contrast" classname="specimen-accessibility.spec.ts" time="1.001">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › status icon touch interactions › status icons expose contextual labels and reveal tooltips on focus, hover, and touch" classname="specimen-accessibility.spec.ts" time="1.755">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › data-formatting specimen renders deterministic text and accessible names" classname="specimen-accessibility.spec.ts" time="1.061">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › keyboard flow reaches skip link, controls, grid, command form, detail, and nav without traps" classname="specimen-accessibility.spec.ts" time="2.56">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › focus-visible indicator remains visible over lifecycle visuals" classname="specimen-accessibility.spec.ts" time="1.328">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion" classname="specimen-accessibility.spec.ts">
+<properties>
+<property name="skip" value="Computed-style pins (0.7s / 24 / alternate) and emulateMedia reduced-motion are Chromium-serialized; the gated a11y lane runs chromium only.">
+</property>
+</properties>
+<skipped>
+</skipped>
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › forced-colors and reduced-motion states are active and perceivable" classname="specimen-accessibility.spec.ts" time="2.784">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 1280 CSS pixels (not browser zoom)" classname="specimen-accessibility.spec.ts" time="1.512">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 640 CSS pixels (not browser zoom)" classname="specimen-accessibility.spec.ts" time="1.418">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 320 CSS pixels (not browser zoom)" classname="specimen-accessibility.spec.ts" time="1.285">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › production-style route exposure fails closed when specimen host configuration is absent" classname="specimen-accessibility.spec.ts" time="2.269">
+</testcase>
+</testsuite>
+<testsuite name="accessibility-state-matrix.spec.ts" timestamp="2026-10-16T10:02:32.106Z" hostname="webkit" tests="58" failures="0" skipped="0" time="284.206" errors="0">
+<testcase name="AE complete state matrix light › generated zero-field validation: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="5.257">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-webkit/attachments/state-zero-validation-light-de49600bfc5ae38aa1ed8941b1e478b34bd42c8b.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-fa83b-ck-focus-owner-next-attempt-webkit/attachments/state-zero-accepted-light-c4cbc25485a9fb6784c8ffab1bcfdd9d098906aa.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.473">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-603e0-ck-focus-owner-next-attempt-webkit/attachments/state-zero-returned-rejection-light-605bde74cf2a318c19fd348ed774286e7b383ff2.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.369">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-a88b8-ck-focus-owner-next-attempt-webkit/attachments/state-zero-exception-rejection-light-100ff279f5f1f3ec940c11ddf185475564bec27e.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field forbidden: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.394">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-0d9e5-ck-focus-owner-next-attempt-webkit/attachments/state-zero-forbidden-light-19fd00dd0763049d24db37bfc0c16c1b034d73a2.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field unavailable: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.468">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-a3ffc-ck-focus-owner-next-attempt-webkit/attachments/state-zero-unavailable-light-fa25579c2f9ae44d5f4845e76f6d1e9bdf8b7643.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field blank-unavailable: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.305">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-5ad17-ck-focus-owner-next-attempt-webkit/attachments/state-zero-blank-unavailable-light-64afa762b1e763738a770f36c813c08745c6ccbe.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field rate-limited: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.392">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-0ce94-ck-focus-owner-next-attempt-webkit/attachments/state-zero-rate-limited-light-1abe8c7dc4c61276b2dbf430fe922879d1513ea9.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field blank-rate-limited: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.365">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-19bfb-ck-focus-owner-next-attempt-webkit/attachments/state-zero-blank-rate-limited-light-3e115b03a5ca1d742b955853ab9bc26ad63ce259.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field transport: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.314">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-d4248-ck-focus-owner-next-attempt-webkit/attachments/state-zero-transport-light-bbfd7b5b32328779167ed88030bf241bd53113c8.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field admission: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.443">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-998f7-ck-focus-owner-next-attempt-webkit/attachments/state-zero-admission-light-458d323bd5614c2c0163d69664e26ddb8986fe5b.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated zero-field policy: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.481">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-34827-ck-focus-owner-next-attempt-webkit/attachments/state-zero-policy-light-34cd5f9411ff862acea84e120092899c256e6bf1.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › real generated detail removal preserves external focus and deduplicates completed results" classname="accessibility-state-matrix.spec.ts" time="3.459">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-fdd2b-uplicates-completed-results-webkit/attachments/state-generated-missing-external-light-b7293430f231b3a240d2ef2e9e2c5cbf327a12c8.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › real generated detail loss focuses its neutral non-live explanation" classname="accessibility-state-matrix.spec.ts" time="3.679">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-70f6d-eutral-non-live-explanation-webkit/attachments/state-generated-missing-lost-focus-light-d1a4c6284d4a344cc25f8e781c90dd0cb3c7d8ed.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › all eleven actual lifecycle wrapper states retain immediate text and system-color cues" classname="accessibility-state-matrix.spec.ts" time="15.851">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-idle-light-72f81595aa9ba31041a9b6cd86039ec1a070b79f.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-submitting-light-312067da2353a5001c898ae2f4f169a7b1427b06.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-acknowledged-light-a55d7cf467ecef463362315af870667206c1a3f8.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-syncing-light-ad248ff690f8992e70692eee2f1359b2ce87e1cb.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-confirmed-light-c620bb831e434e5194bfa0be7a0208d23904ab4b.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-rejected-light-3796cd306dcfb5dd573613321f9ae908a146db4c.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-idempotent-confirmed-light-6f4fae03fe0fd68fe30d225778bbc38d32247469.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-needs-review-light-df5602d479b04c53d34e95aa1dfea558be13453f.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-warning-light-b52f8e6e7c03f5ac7b9aa9d08bc08c7c01c6b561.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-degraded-light-bb4a66ededb1a69d7af037123a36be74f72093ce.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-0a39d--text-and-system-color-cues-webkit/attachments/state-lifecycle-degraded-exhausted-light-0a5330bbad5a53f23272ab2c96b6eaccf66beb89.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated projection loaded, detail, loading, empty and failure surfaces" classname="accessibility-state-matrix.spec.ts" time="5.875">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-3d97e--empty-and-failure-surfaces-webkit/attachments/state-projection-two-light-ba2a6201d92fc4b785bb1865f68835bef0991116.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-3d97e--empty-and-failure-surfaces-webkit/attachments/state-projection-loading-light-c9ea60655e5568f77111cdce47731f465b7d17cd.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-3d97e--empty-and-failure-surfaces-webkit/attachments/state-projection-empty-light-b455e6a50fe4ea060eeb7d267080fecc839a20e7.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-3d97e--empty-and-failure-surfaces-webkit/attachments/state-projection-error-light-a30cadbcb260cb01aa6200b137ab1e1350b53c82.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › home: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="2.51">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-d7ccd-state-and-forced-color-cues-webkit/attachments/state-home-light-ab802587269b1a31bec2b53916f048bc533dd611.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › navigation-tabs: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="3.017">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-274ba-state-and-forced-color-cues-webkit/attachments/state-navigation-tabs-light-ea2dfa74056343ee14fe034cb8057de5614c7f55.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › toolbar: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="2.933">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-12490-state-and-forced-color-cues-webkit/attachments/state-toolbar-light-e16c06ec1124465309517d3d26cce7e88e1536dc.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix light › generated-forms: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="4.022">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-5a6a5-state-and-forced-color-cues-webkit/attachments/state-generated-forms-light-e81609c38a15b8531e33de16e1a45cbb3a3807de.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field validation: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="5.459">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-7d4c5-ck-focus-owner-next-attempt-webkit/attachments/state-zero-validation-dark-e38fcef5cc4497cd9474dbd6e2a66ecc7547c581.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-7d4c5-ck-focus-owner-next-attempt-webkit/attachments/state-zero-accepted-dark-9c79f166b7365f1fe71f693f8abec59454b09f85.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field returned-rejection: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.51">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-f2531-ck-focus-owner-next-attempt-webkit/attachments/state-zero-returned-rejection-dark-78122037b48955cd75f802e24228ab9fd12a91dc.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field exception-rejection: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.282">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-0396b-ck-focus-owner-next-attempt-webkit/attachments/state-zero-exception-rejection-dark-49b986abb2a8681a38362064cbbd2541ca112ad0.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field forbidden: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.484">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-05bf3-ck-focus-owner-next-attempt-webkit/attachments/state-zero-forbidden-dark-50f21acb5a67e5953e70f6dc238a597827eac412.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field unavailable: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.451">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-5142a-ck-focus-owner-next-attempt-webkit/attachments/state-zero-unavailable-dark-6a0eca0159274c8d81586e9d91a7993aa3748c52.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field blank-unavailable: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.491">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-af2ed-ck-focus-owner-next-attempt-webkit/attachments/state-zero-blank-unavailable-dark-9cf2170a7ee2b3842f9b7e9e73031390972731d7.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field rate-limited: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.451">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-c152d-ck-focus-owner-next-attempt-webkit/attachments/state-zero-rate-limited-dark-566d163657952858bdab83f75e70a55b07b20aef.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field blank-rate-limited: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.391">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-3cb90-ck-focus-owner-next-attempt-webkit/attachments/state-zero-blank-rate-limited-dark-17b4ebbff97af889306fa8f9fcd738d28fd04232.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field transport: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.355">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-9b713-ck-focus-owner-next-attempt-webkit/attachments/state-zero-transport-dark-1493b6d95f997e6500d8e86563298af501420208.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field admission: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.423">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-db80d-ck-focus-owner-next-attempt-webkit/attachments/state-zero-admission-dark-35517ce760ecdf652f9dd25df8182f5669f54aac.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated zero-field policy: safe feedback, focus, owner, next attempt" classname="accessibility-state-matrix.spec.ts" time="4.647">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-a64c2-ck-focus-owner-next-attempt-webkit/attachments/state-zero-policy-dark-b45bb64b861d5ab04d32c6e946fea00235b96f1f.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › real generated detail removal preserves external focus and deduplicates completed results" classname="accessibility-state-matrix.spec.ts" time="3.683">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-1ce32-uplicates-completed-results-webkit/attachments/state-generated-missing-external-dark-420da1b849c026ce419b44be8661e2b9e87efe35.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › real generated detail loss focuses its neutral non-live explanation" classname="accessibility-state-matrix.spec.ts" time="3.759">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-538a1-eutral-non-live-explanation-webkit/attachments/state-generated-missing-lost-focus-dark-4d5f97d3242dacbf5199a0a02527ab1a65272ce3.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › all eleven actual lifecycle wrapper states retain immediate text and system-color cues" classname="accessibility-state-matrix.spec.ts" time="16.143">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-idle-dark-cc19fd045f094f3761a8552afdb889053c76875b.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-submitting-dark-ede60e708b173cda8013334bba9e9b36e9e32d5d.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-acknowledged-dark-db29fb6470e786fd83c8ba7bd1bad4ff31b664d1.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-syncing-dark-795572d0ce4ea3bd9d1c342e11d40cfc35e13d6f.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-confirmed-dark-38ee3fa50b9dff067e17e7270fa576153c6d7189.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-rejected-dark-f418092e8bba3cfb16c1f0152eb3ab8aa853dcf8.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-idempotent-confirmed-dark-c986a091d13bc991fec4762b93e17f816aee72cb.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-needs-review-dark-5df3eaa064ab8ff885b56cc39fb474cef4b1874b.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-warning-dark-d887caa270dcf202044f75fe640c6eba60c7cca1.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-degraded-dark-3974225cac6bd0b0055e1b55da2962c4a56bb95b.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a35f1--text-and-system-color-cues-webkit/attachments/state-lifecycle-degraded-exhausted-dark-90b163d4c638cea981f4b8e55320fde3112212b2.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated projection loaded, detail, loading, empty and failure surfaces" classname="accessibility-state-matrix.spec.ts" time="6.118">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-a997a--empty-and-failure-surfaces-webkit/attachments/state-projection-two-dark-36e759012c7c9f750b5b77cd5532429740394612.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a997a--empty-and-failure-surfaces-webkit/attachments/state-projection-loading-dark-99933fb22cd5aed0b15294ce9be76281a6c1dbc6.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a997a--empty-and-failure-surfaces-webkit/attachments/state-projection-empty-dark-94da8db1d577ef2a690e3026c0aab44da5d0c4f2.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-a997a--empty-and-failure-surfaces-webkit/attachments/state-projection-error-dark-c7dde069593a717bacfd4b843ae7da05c2f582b9.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › home: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="2.717">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-494dc-state-and-forced-color-cues-webkit/attachments/state-home-dark-fc941390ae3403fd6f89c980dc99f7bef49c08aa.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › navigation-tabs: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="3.782">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-ee4d5-state-and-forced-color-cues-webkit/attachments/state-navigation-tabs-dark-e44a926f1e5d257dc098f1bd157dcace5c9e7ed8.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › toolbar: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="3.697">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-ec449-state-and-forced-color-cues-webkit/attachments/state-toolbar-dark-b5ace9568888b88182ef93c437bdfb51838cdb10.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="AE complete state matrix dark › generated-forms: composed text, targets, current-state and forced-color cues" classname="accessibility-state-matrix.spec.ts" time="3.964">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-baff0-state-and-forced-color-cues-webkit/attachments/state-generated-forms-dark-997c4c1ed8a4e849fd71d7dc058a54877410d76a.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="contrast measurement rejects empty, low-contrast, unpainted and unsupported samples" classname="accessibility-state-matrix.spec.ts" time="0.637">
+</testcase>
+<testcase name="unrelated controls cannot mask failed focus or boundary contrast" classname="accessibility-state-matrix.spec.ts" time="0.485">
+</testcase>
+<testcase name="forced-color state checks reject a removed cue while text and selected semantics survive" classname="accessibility-state-matrix.spec.ts" time="0.477">
+</testcase>
+<testcase name="shell chrome, theme menu and exact desktop navigation rails in light" classname="accessibility-state-matrix.spec.ts" time="6.914">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-35d41-p-navigation-rails-in-light-webkit/attachments/state-shell-chrome-light-fc52702fa23aa64b76d727a8dea9a32bca9f4ca0.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-35d41-p-navigation-rails-in-light-webkit/attachments/state-theme-menu-light-244a3c1205f33fafa3798ea04f0908e754b03b48.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-35d41-p-navigation-rails-in-light-webkit/attachments/state-rail-labeled-light-20a79e5b16cc5e5b0cda305eb70efef2b12b8942.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-35d41-p-navigation-rails-in-light-webkit/attachments/state-rail-icons-light-a5c99e89413d9fa680dd9c413a1b202bd15b23c5.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="active toolbar, tabs, palette and settings states in light" classname="accessibility-state-matrix.spec.ts" time="7.589">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-filter-popover-light-187976bbfa18dbd89eb2de5aa4284535065807f8.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-view-menu-light-bb86c6738488be447baa9e39422a421fad68755d.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-tabs-active-light-6c3ca87d39a16b974c48fb2c37931247e9b6109b.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-palette-default-light-080d3845830afcf8ba5572654472a47a1a9b326b.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-palette-selected-light-7931d3fd3e890fef99ae299046a41a36ac05b81e.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-palette-empty-light-3d53ae746d1724f71da2db534c24f5c984f5dfea.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-f652a-nd-settings-states-in-light-webkit/attachments/state-settings-light-09b9536b54d5def9b18a2aa4ceb6fbaa8bef5ed8.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="generated validation, policy, destructive and abandonment states in light" classname="accessibility-state-matrix.spec.ts" time="12.168">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-5be77-abandonment-states-in-light-webkit/attachments/state-generated-validation-light-75c1391830eb518b085127e4e62b91dcb0c31b3a.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-5be77-abandonment-states-in-light-webkit/attachments/state-policy-denied-light-31eca6cde44bf15afc3b41ffb176391d5da87c57.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-5be77-abandonment-states-in-light-webkit/attachments/state-destructive-dialog-light-2655624a1a176b39991db28f4fc91c86efdc236e.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-5be77-abandonment-states-in-light-webkit/attachments/state-abandonment-light-44996a10ac228e4fd81d60694fbd3fc8cc038a3d.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="shell chrome, theme menu and exact desktop navigation rails in dark" classname="accessibility-state-matrix.spec.ts" time="6.314">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-webkit/attachments/state-shell-chrome-dark-dcba663893ce551d47fda9cb8e28483127625724.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-webkit/attachments/state-theme-menu-dark-6e60267ebb5d7b3ed8e3b48543bfea47585b78ba.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-webkit/attachments/state-rail-labeled-dark-cf01b7cf892630648c121f577dee23dd9abac1a5.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-08167-op-navigation-rails-in-dark-webkit/attachments/state-rail-icons-dark-f2654efd883e5686a43dd56e97915cb6209a2e2d.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="active toolbar, tabs, palette and settings states in dark" classname="accessibility-state-matrix.spec.ts" time="6.911">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/attachments/state-filter-popover-dark-c7c6082365f484baea994040adb2e6d0954fc00e.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/attachments/state-view-menu-dark-3718c39407e3bb49b90b6c05787e6e3d0b65bcb6.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/attachments/state-tabs-active-dark-211eeff5d9d13e73457030566817f3e5f632dafd.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/attachments/state-palette-default-dark-497d4861dc36b50d4ce756a5c4c30189b3018abd.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/attachments/state-palette-selected-dark-a01e539f755556643974c85912542b41c9d451ee.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/attachments/state-palette-empty-dark-d7e6861dfc6f5be22f1725e10091c5370bd37f62.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-b4dcc-and-settings-states-in-dark-webkit/attachments/state-settings-dark-5ce2530226601471f8f3e36699f929b86e602de8.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="generated validation, policy, destructive and abandonment states in dark" classname="accessibility-state-matrix.spec.ts" time="12.406">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-11dab--abandonment-states-in-dark-webkit/attachments/state-generated-validation-dark-119362748f71766266653394a3a9c68e7eb2951a.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-11dab--abandonment-states-in-dark-webkit/attachments/state-policy-denied-dark-11a07100786f00d15e3ce1bdf3b569e59606bb08.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-11dab--abandonment-states-in-dark-webkit/attachments/state-destructive-dialog-dark-a7af17602f5a368b2cc0dff7bc35e9d52be79cd9.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-11dab--abandonment-states-in-dark-webkit/attachments/state-abandonment-dark-fbf7da1b2333c710fe607d1833fa1cf5e47a0c6b.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="projection reconnect fallback stale slow cap and filter cues in light" classname="accessibility-state-matrix.spec.ts" time="11.837">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-webkit/attachments/state-connection-reconnecting-light-faaa64c119abb227f10e4e5c247c1de4a2ceaecc.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-webkit/attachments/state-stale-reconnecting-light-02a5a7bfe17393560c573356133fdf456c4cc9e1.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-webkit/attachments/state-connection-disconnected-light-716b5d9d7f2bdbad92b6725c6895de99126431e7.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-webkit/attachments/state-stale-disconnected-light-a2e67f4e2bb49aa555bbe5576517ddff79723fdb.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-webkit/attachments/state-connection-connected-light-cd74b35bbc79e316e815d655cc83e0b2a8662c20.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-webkit/attachments/state-slow-query-light-622a93ae263c282c0c9b61e4a2027e351f59dac8.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-webkit/attachments/state-result-limit-light-3e35e70f7770bf953a98ba7857a254326b65eda7.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-webkit/attachments/state-filter-empty-light-1e3d3d04ddd616547f9312a9ffddaf08d640d728.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="projection reconnect fallback stale slow cap and filter cues in dark" classname="accessibility-state-matrix.spec.ts" time="12.19">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-webkit/attachments/state-connection-reconnecting-dark-5e9749593d1db74583a5c98b48951a4afadea70d.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-webkit/attachments/state-stale-reconnecting-dark-14358f37eff37a3bc3bc5f16efc16d64f01e5465.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-webkit/attachments/state-connection-disconnected-dark-56e28e0153a27ba1e7303ef006218449647fc331.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-webkit/attachments/state-stale-disconnected-dark-590b4b7da791f028eb34bf85ad84c0c67dd52524.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-webkit/attachments/state-connection-connected-dark-cf90728fd1150793d226e1b30e1e2d8d448873b7.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-webkit/attachments/state-slow-query-dark-97e94b1ef998856ed63e203fd57d224659124a0e.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-webkit/attachments/state-result-limit-dark-31ff82eec751982c6d5359da9a8512dc6595f1a2.json]]
+
+[[ATTACHMENT|accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-webkit/attachments/state-filter-empty-dark-9bd97b83626972799b7f39b10aa5e42b30099160.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="real generated filter-hidden detail stays distinct from missing-item results in light" classname="accessibility-state-matrix.spec.ts" time="3.304">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-1ea05-ssing-item-results-in-light-webkit/attachments/state-filter-hidden-detail-light-a1cfa00ee7b8b78d909da560268fea4f0547d07e.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="real generated filter-hidden detail stays distinct from missing-item results in dark" classname="accessibility-state-matrix.spec.ts" time="3.507">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-58461-issing-item-results-in-dark-webkit/attachments/state-filter-hidden-detail-dark-9a4fe289a6d8c0c7422300778a1fd0dd5ad37fc2.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="delayed generated detail recovery cancels after operator focus and navigation in light" classname="accessibility-state-matrix.spec.ts" time="2.927">
+</testcase>
+<testcase name="delayed generated detail recovery cancels after operator focus and navigation in dark" classname="accessibility-state-matrix.spec.ts" time="3.324">
+</testcase>
+<testcase name="fresh-row presentation retains text boundary and system-color meaning in light" classname="accessibility-state-matrix.spec.ts" time="2.995">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-85ff9-stem-color-meaning-in-light-webkit/attachments/state-fresh-presentation-light-093a8063b46b2d5455d4be32965f26ce9f732fe2.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="fresh-row presentation retains text boundary and system-color meaning in dark" classname="accessibility-state-matrix.spec.ts" time="2.987">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|accessibility-state-matrix-2a676-ystem-color-meaning-in-dark-webkit/attachments/state-fresh-presentation-dark-0f62775e0e840c4b6bd625b25ff831a24a26e1e1.json]]
+]]>
+</system-out>
+</testcase>
+<testcase name="paint measurement follows slots, ignores unpainted pseudo borders and sees native modal text through inert ancestors" classname="accessibility-state-matrix.spec.ts" time="0.569">
+</testcase>
+<testcase name="validation links keep native same-page href activation when focus enhancement is unavailable" classname="accessibility-state-matrix.spec.ts" time="1.834">
+</testcase>
+<testcase name="G09 forced-color focus geometry rejects a mode-specific clipped ring" classname="accessibility-state-matrix.spec.ts" time="0.417">
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-16T10:02:32.106Z" hostname="webkit" tests="47" failures="4" skipped="0" time="123.954" errors="0">
+<testcase name="AE geometry regression fixtures › rejects a clipped ring even when the complete target is inside the viewport" classname="responsive-accessibility.spec.ts" time="0.354">
+</testcase>
+<testcase name="AE geometry regression fixtures › includes outer box-shadow rings and offsets in clipping geometry" classname="responsive-accessibility.spec.ts" time="1.015">
+</testcase>
+<testcase name="AE geometry regression fixtures › detects an opaque fixed occluder inside a zero-box open shadow host" classname="responsive-accessibility.spec.ts" time="0.478">
+</testcase>
+<testcase name="AE geometry regression fixtures › a real Fluent dropdown owns its passive sibling indicator, while an overlapping shadow sibling still occludes" classname="responsive-accessibility.spec.ts" time="1.339">
+</testcase>
+<testcase name="AE geometry regression fixtures › rejects an off-center occluder and ancestor clipping" classname="responsive-accessibility.spec.ts" time="0.457">
+</testcase>
+<testcase name="AE geometry regression fixtures › spacing exceptions reject neighboring circles and accept an isolated target" classname="responsive-accessibility.spec.ts" time="0.461">
+</testcase>
+<testcase name="AE geometry regression fixtures › rejects missing and invalid equivalent inventories" classname="responsive-accessibility.spec.ts" time="0.43">
+</testcase>
+<testcase name="AE geometry regression fixtures › spacing overrides reach Fluent-style shadow content and contrast composites alpha" classname="responsive-accessibility.spec.ts" time="0.561">
+</testcase>
+<testcase name="spacing reaches a delayed shadow root and cleanup stops later injection" classname="responsive-accessibility.spec.ts" time="0.546">
+</testcase>
+<testcase name="focus checks reject an absent indicator and a pointer-transparent opaque occluder" classname="responsive-accessibility.spec.ts" time="0.635">
+</testcase>
+<testcase name="modal decoration cannot substitute for the focused control indicator" classname="responsive-accessibility.spec.ts" time="0.398">
+</testcase>
+<testcase name="text clipping follows native top-layer popovers while retaining their own clipping checks" classname="responsive-accessibility.spec.ts" time="0.356">
+</testcase>
+<testcase name="a one-control keyboard trap cannot satisfy the expected cycle" classname="responsive-accessibility.spec.ts" time="0.442">
+</testcase>
+<testcase name="an application-prevented Tab at the final control cannot impersonate browser chrome" classname="responsive-accessibility.spec.ts" time="0.46">
+</testcase>
+<testcase name="shell focus scrolling protects the ring and cancels stale or disposed work" classname="responsive-accessibility.spec.ts" time="1.101">
+</testcase>
+<testcase name="delayed overlay disposal preserves an operator Tab after native origin return" classname="responsive-accessibility.spec.ts" time="1.7">
+</testcase>
+<testcase name="owned palette return cancels the actual Fluent delayed return after an operator Tab" classname="responsive-accessibility.spec.ts" time="1.662">
+</testcase>
+<testcase name="narrow specimen navigation and grid retain unobscured focus in light" classname="responsive-accessibility.spec.ts" time="1.736">
+</testcase>
+<testcase name="narrow specimen navigation and grid retain unobscured focus in dark" classname="responsive-accessibility.spec.ts" time="1.703">
+</testcase>
+<testcase name="the real missing-detail component registers recovery before a Fluent shadow action removes detail" classname="responsive-accessibility.spec.ts" time="1.205">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › Home directory: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="2.914">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › Home directory: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="3.008">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="11.616">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-webkit/test-failed-1.png]]
+
+[[ATTACHMENT|responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-webkit/video-1.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-webkit/video.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-webkit/error-context.md]]
+
+[[ATTACHMENT|responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-webkit/trace.zip]]
+]]>
+</system-out>
+<failure message="AE-05 focused visual geometry" type="expect.toEqual">
+<![CDATA[  [webkit] › responsive-accessibility.spec.ts:336:7 › Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow 
+
+    Error: AE-05 focused visual geometry
+
+    AE-05 focused visual geometry
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "app content obscures target or focus ring: {\"target\":\"DIV#\",\"requireIndicator\":true,\"box\":{\"left\":17,\"top\":368.796875,\"right\":303,\"bottom\":454.796875},\"ring\":3,\"failures\":[\"app content obscures target or focus ring\"],\"occluder\":\"DIV# by SPAN# at 54.78986358642578,370.046875\"}",
+    + ]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at ../helpers/responsive-accessibility.ts:446
+
+      444 | export async function expectFocusVisible(target: Locator): Promise<void> {
+      445 |   await expect(target).toBeFocused();
+    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);
+          |                                                                                                                                                                                                                ^
+      447 | }
+      448 |
+      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)
+        at step (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:565:7)
+        at verifyKeyboardCycle (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:573:19)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:348:9
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-webkit/video-1.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-webkit/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-d0807-d-tabs-320-CSS-pixel-reflow-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="11.615">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-S-58c4a--all-text-spacing-overrides-webkit/test-failed-1.png]]
+
+[[ATTACHMENT|responsive-accessibility-S-58c4a--all-text-spacing-overrides-webkit/video-1.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-58c4a--all-text-spacing-overrides-webkit/video.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-58c4a--all-text-spacing-overrides-webkit/error-context.md]]
+
+[[ATTACHMENT|responsive-accessibility-S-58c4a--all-text-spacing-overrides-webkit/trace.zip]]
+]]>
+</system-out>
+<failure message="AE-05 focused visual geometry" type="expect.toEqual">
+<![CDATA[  [webkit] › responsive-accessibility.spec.ts:336:7 › Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow with all text-spacing overrides 
+
+    Error: AE-05 focused visual geometry
+
+    AE-05 focused visual geometry
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "app content obscures target or focus ring: {\"target\":\"DIV#\",\"requireIndicator\":true,\"box\":{\"left\":17,\"top\":405.796875,\"right\":303,\"bottom\":510.796875},\"ring\":3,\"failures\":[\"app content obscures target or focus ring\"],\"occluder\":\"DIV# by SPAN# at 64.30986404418945,406.796875\"}",
+    + ]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at ../helpers/responsive-accessibility.ts:446
+
+      444 | export async function expectFocusVisible(target: Locator): Promise<void> {
+      445 |   await expect(target).toBeFocused();
+    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);
+          |                                                                                                                                                                                                                ^
+      447 | }
+      448 |
+      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)
+        at step (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:565:7)
+        at verifyKeyboardCycle (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:573:19)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:348:9
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-58c4a--all-text-spacing-overrides-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-58c4a--all-text-spacing-overrides-webkit/video-1.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-58c4a--all-text-spacing-overrides-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-58c4a--all-text-spacing-overrides-webkit/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-58c4a--all-text-spacing-overrides-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-58c4a--all-text-spacing-overrides-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="10.348">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="11.639">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="11.216">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-webkit/test-failed-1.png]]
+
+[[ATTACHMENT|responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-webkit/video-1.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-webkit/video.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-webkit/error-context.md]]
+
+[[ATTACHMENT|responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-webkit/trace.zip]]
+]]>
+</system-out>
+<failure message="AE-05 focused visual geometry" type="expect.toEqual">
+<![CDATA[  [webkit] › responsive-accessibility.spec.ts:336:7 › Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow 
+
+    Error: AE-05 focused visual geometry
+
+    AE-05 focused visual geometry
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "app content obscures target or focus ring: {\"target\":\"DIV#\",\"requireIndicator\":true,\"box\":{\"left\":25,\"top\":555.890625,\"right\":295,\"bottom\":689.890625},\"ring\":3,\"failures\":[\"app content obscures target or focus ring\"],\"occluder\":\"DIV# by SPAN# at 106.08470153808594,557.140625\"}",
+    + ]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at ../helpers/responsive-accessibility.ts:446
+
+      444 | export async function expectFocusVisible(target: Locator): Promise<void> {
+      445 |   await expect(target).toBeFocused();
+    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);
+          |                                                                                                                                                                                                                ^
+      447 | }
+      448 |
+      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)
+        at step (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:565:7)
+        at verifyKeyboardCycle (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:573:19)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:348:9
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-webkit/video-1.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-webkit/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="11.453">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-S-303db--all-text-spacing-overrides-webkit/test-failed-1.png]]
+
+[[ATTACHMENT|responsive-accessibility-S-303db--all-text-spacing-overrides-webkit/video-1.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-303db--all-text-spacing-overrides-webkit/video.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-303db--all-text-spacing-overrides-webkit/error-context.md]]
+
+[[ATTACHMENT|responsive-accessibility-S-303db--all-text-spacing-overrides-webkit/trace.zip]]
+]]>
+</system-out>
+<failure message="AE-05 focused visual geometry" type="expect.toEqual">
+<![CDATA[  [webkit] › responsive-accessibility.spec.ts:336:7 › Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow with all text-spacing overrides 
+
+    Error: AE-05 focused visual geometry
+
+    AE-05 focused visual geometry
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "app content obscures target or focus ring: {\"target\":\"DIV#\",\"requireIndicator\":true,\"box\":{\"left\":25,\"top\":517.890625,\"right\":295,\"bottom\":689.890625},\"ring\":3,\"failures\":[\"app content obscures target or focus ring\"],\"occluder\":\"DIV# by SPAN# at 126.80470275878906,518.890625\"}",
+    + ]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at ../helpers/responsive-accessibility.ts:446
+
+      444 | export async function expectFocusVisible(target: Locator): Promise<void> {
+      445 |   await expect(target).toBeFocused();
+    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);
+          |                                                                                                                                                                                                                ^
+      447 | }
+      448 |
+      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)
+        at step (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:565:7)
+        at verifyKeyboardCycle (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:573:19)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:348:9
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-303db--all-text-spacing-overrides-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-303db--all-text-spacing-overrides-webkit/video-1.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-303db--all-text-spacing-overrides-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-303db--all-text-spacing-overrides-webkit/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-303db--all-text-spacing-overrides-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../../tmp/story13-6-parent-final-0b064e496fed/responsive-accessibility-S-303db--all-text-spacing-overrides-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="3.405">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › page-toolbar: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="3.922">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in light" classname="responsive-accessibility.spec.ts" time="4.495">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type states retain contrast, system colors and immediate reduced-motion cues in dark" classname="responsive-accessibility.spec.ts" time="4.539">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › palette and settings retain reflow, every target, and modal focus at 320px with spacing" classname="responsive-accessibility.spec.ts" time="3.631">
+</testcase>
+<testcase name="missing-detail recovery consumes only lost detail focus and cancels stale captures" classname="responsive-accessibility.spec.ts" time="0.98">
+</testcase>
+<testcase name="row metrics preserve the compact minimum and report growth with the matching density floor" classname="responsive-accessibility.spec.ts" time="1.361">
+</testcase>
+<testcase name="real generated compact rows preserve 32px, match ItemSize through spacing, and restore after density changes" classname="responsive-accessibility.spec.ts" time="2.908">
+</testcase>
+<testcase name="review measurement regressions › G01 permanent shadows and inset decoration cannot establish or mask focus" classname="responsive-accessibility.spec.ts" time="0.961">
+</testcase>
+<testcase name="review measurement regressions › G02 same-level later paint and nested stacking contexts can occlude an outer ring" classname="responsive-accessibility.spec.ts" time="0.459">
+</testcase>
+<testcase name="review measurement regressions › G03 transparent supported CSS colors are absent focus paint" classname="responsive-accessibility.spec.ts" time="0.441">
+</testcase>
+<testcase name="review measurement regressions › G04 focus clipping and masks fail closed on the target and its ancestry" classname="responsive-accessibility.spec.ts" time="0.725">
+</testcase>
+<testcase name="review measurement regressions › G05 SVG fill and stroke opacity contribute to effective contrast" classname="responsive-accessibility.spec.ts" time="0.451">
+</testcase>
+<testcase name="review measurement regressions › G06 visible clipped low-contrast text cannot disappear from the inventory" classname="responsive-accessibility.spec.ts" time="0.426">
+</testcase>
+<testcase name="review measurement regressions › G12 inward outlines contrast with the control paint" classname="responsive-accessibility.spec.ts" time="0.396">
+</testcase>
+<testcase name="review measurement regressions › G13 zero and negative spread shadows without offset or blur draw no outer indicator" classname="responsive-accessibility.spec.ts" time="0.495">
+</testcase>
+<testcase name="supported clipped paint keeps a focus underline and excludes only fully hidden text" classname="responsive-accessibility.spec.ts" time="0.492">
+</testcase>
+<testcase name="diagnostic screenshots restore scroll without repairing an actually clipped focus ring" classname="responsive-accessibility.spec.ts" time="0.672">
+</testcase>
+<testcase name="real Fluent search and generated editors retain their focus contour with text spacing" classname="responsive-accessibility.spec.ts" time="2.347">
+</testcase>
+</testsuite>
+<testsuite name="specimen-accessibility.spec.ts" timestamp="2026-10-16T10:02:32.106Z" hostname="webkit" tests="16" failures="0" skipped="1" time="24.305" errors="0">
+<testcase name="FrontComposer accessibility and visual specimens › manifest names owned nonblank specimen routes and exactly six visual combinations" classname="specimen-accessibility.spec.ts" time="0.263">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › type specimen is nonblank and passes blocking axe gate" classname="specimen-accessibility.spec.ts" time="2.425">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › data-formatting specimen is nonblank and passes blocking axe gate" classname="specimen-accessibility.spec.ts" time="1.824">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › page-toolbar specimen is nonblank and passes blocking axe gate" classname="specimen-accessibility.spec.ts" time="1.624">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › type specimen renders required shell, density, badge, lifecycle, detail, and nav surfaces" classname="specimen-accessibility.spec.ts" time="1.647">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › dark generated command specimens keep readable foreground contrast" classname="specimen-accessibility.spec.ts" time="1.151">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › status icon touch interactions › status icons expose contextual labels and reveal tooltips on focus, hover, and touch" classname="specimen-accessibility.spec.ts" time="2.239">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › data-formatting specimen renders deterministic text and accessible names" classname="specimen-accessibility.spec.ts" time="1.073">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › keyboard flow reaches skip link, controls, grid, command form, detail, and nav without traps" classname="specimen-accessibility.spec.ts" time="2.82">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › focus-visible indicator remains visible over lifecycle visuals" classname="specimen-accessibility.spec.ts" time="1.543">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion" classname="specimen-accessibility.spec.ts">
+<properties>
+<property name="skip" value="Computed-style pins (0.7s / 24 / alternate) and emulateMedia reduced-motion are Chromium-serialized; the gated a11y lane runs chromium only.">
+</property>
+</properties>
+<skipped>
+</skipped>
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › forced-colors and reduced-motion states are active and perceivable" classname="specimen-accessibility.spec.ts" time="1.696">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 1280 CSS pixels (not browser zoom)" classname="specimen-accessibility.spec.ts" time="1.537">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 640 CSS pixels (not browser zoom)" classname="specimen-accessibility.spec.ts" time="1.385">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › viewport reflow keeps critical controls reachable at 320 CSS pixels (not browser zoom)" classname="specimen-accessibility.spec.ts" time="1.296">
+</testcase>
+<testcase name="FrontComposer accessibility and visual specimens › production-style route exposure fails closed when specimen host configuration is absent" classname="specimen-accessibility.spec.ts" time="1.528">
+</testcase>
+</testsuite>
+</testsuites>

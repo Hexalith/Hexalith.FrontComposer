@@ -1,0 +1,147 @@
+{
+  "candidateDigest": "sha256:0579f7b3a97547960595fa6847e38bf50c0d4ef56d55b71d4e2ac194ebb0e01e",
+  "cwd": "tests/e2e",
+  "command": [
+    "npm",
+    "test",
+    "--",
+    "specs/specimen-accessibility.spec.ts",
+    "specs/responsive-accessibility.spec.ts",
+    "specs/accessibility-state-matrix.spec.ts",
+    "--project=chromium",
+    "--project=firefox",
+    "--project=webkit",
+    "--workers=3",
+    "--grep-invert",
+    "visual baseline"
+  ],
+  "environment": {
+    "BASE_URL": "http://127.0.0.1:5070",
+    "PLAYWRIGHT_SKIP_WEBSERVER": "1",
+    "FC_E2E_BUILD_CONFIGURATION": "Debug",
+    "FC_E2E_OUTPUT_DIR": "/tmp/story13-6-parent-final-0b064e496fed",
+    "FC_E2E_HTML_REPORT_DIR": "/tmp/story13-6-parent-final-report-0b064e496fed",
+    "FC_A11Y_EVIDENCE_RUN_ID": "story-13-6-build-review-final-0b064e496fed"
+  },
+  "runId": "story-13-6-build-review-final-0b064e496fed",
+  "output": "/tmp/story13-6-parent-final-0b064e496fed",
+  "html": "/tmp/story13-6-parent-final-report-0b064e496fed",
+  "exitCode": 1,
+  "durationSeconds": 400.715,
+  "suites": [
+    {
+      "project": "chromium",
+      "spec": "accessibility-state-matrix.spec.ts",
+      "total": 58,
+      "passed": 58,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "project": "chromium",
+      "spec": "responsive-accessibility.spec.ts",
+      "total": 47,
+      "passed": 47,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "project": "chromium",
+      "spec": "specimen-accessibility.spec.ts",
+      "total": 16,
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "project": "firefox",
+      "spec": "accessibility-state-matrix.spec.ts",
+      "total": 58,
+      "passed": 58,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "project": "firefox",
+      "spec": "responsive-accessibility.spec.ts",
+      "total": 47,
+      "passed": 43,
+      "failed": 4,
+      "skipped": 0
+    },
+    {
+      "project": "firefox",
+      "spec": "specimen-accessibility.spec.ts",
+      "total": 16,
+      "passed": 15,
+      "failed": 0,
+      "skipped": 1
+    },
+    {
+      "project": "webkit",
+      "spec": "accessibility-state-matrix.spec.ts",
+      "total": 58,
+      "passed": 58,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "project": "webkit",
+      "spec": "responsive-accessibility.spec.ts",
+      "total": 47,
+      "passed": 43,
+      "failed": 4,
+      "skipped": 0
+    },
+    {
+      "project": "webkit",
+      "spec": "specimen-accessibility.spec.ts",
+      "total": 16,
+      "passed": 15,
+      "failed": 0,
+      "skipped": 1
+    }
+  ],
+  "failures": [
+    {
+      "project": "firefox",
+      "name": "Story 13.6 responsive operator surfaces \u203a module navigation and tabs: 320 CSS-pixel reflow",
+      "message": "\n  [firefox] \u203a responsive-accessibility.spec.ts:336:7 \u203a Story 13.6 responsive operator surfaces \u203a module navigation and tabs: 320 CSS-pixel reflow \n\n    Error: AE-05 focused visual geometry\n\n    AE-05 focused visual geometry\n\n    expect(received).toEqual(expected) // deep equality\n\n    - Expected  - 1\n    + Received  + 3\n\n    - Array []\n    + Array [\n    +   \"app content obscures target or focus ring: {\\\"target\\\":\\\"DIV#\\\",\\\"requireIndicator\\\":true,\\\"box\\\":{\\\"left\\\":19,\\\"top\\\":370.79998779296875,\\\"right\\\":301,\\\"bottom\\\":452.79998779296875},\\\"ring\\\":1,\\\"failures\\\":[\\\"app content obscures target or focus ring\\\"],\\\"occluder\\\":\\\"DIV# by SPAN# at 54.775001525878906,371.29998779296875\\\"}\",\n    + ]\n\n    Call Log:\n    - Timeout 10000ms exceeded while waiting on the predicate\n\n       at ../helpers/responsive-accessibility.ts:446\n\n      444 | export async function expectFocusVisible(target: Locator): Promise<void> {\n      445 |   await expect(target).toBeFocused();\n    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);\n          |                                                                                                                                                                                                                ^\n      447 | }\n      448 |\n      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {\n        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)\n        at step (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:565:7)\n        at verifyKeyboardCycle (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:573:19)\n        at /home/administrator/pr"
+    },
+    {
+      "project": "firefox",
+      "name": "Story 13.6 responsive operator surfaces \u203a module navigation and tabs: 320 CSS-pixel reflow with all text-spacing overrides",
+      "message": "\n  [firefox] \u203a responsive-accessibility.spec.ts:336:7 \u203a Story 13.6 responsive operator surfaces \u203a module navigation and tabs: 320 CSS-pixel reflow with all text-spacing overrides \n\n    Error: AE-05 focused visual geometry\n\n    AE-05 focused visual geometry\n\n    expect(received).toEqual(expected) // deep equality\n\n    - Expected  - 1\n    + Received  + 3\n\n    - Array []\n    + Array [\n    +   \"app content obscures target or focus ring: {\\\"target\\\":\\\"DIV#\\\",\\\"requireIndicator\\\":true,\\\"box\\\":{\\\"left\\\":19,\\\"top\\\":407.79998779296875,\\\"right\\\":301,\\\"bottom\\\":508.79998779296875},\\\"ring\\\":1,\\\"failures\\\":[\\\"app content obscures target or focus ring\\\"],\\\"occluder\\\":\\\"DIV# by SPAN# at 64.30833435058594,408.04998779296875\\\"}\",\n    + ]\n\n    Call Log:\n    - Timeout 10000ms exceeded while waiting on the predicate\n\n       at ../helpers/responsive-accessibility.ts:446\n\n      444 | export async function expectFocusVisible(target: Locator): Promise<void> {\n      445 |   await expect(target).toBeFocused();\n    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);\n          |                                                                                                                                                                                                                ^\n      447 | }\n      448 |\n      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {\n        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)\n        at step (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:565:7)\n        at verifyKeyboardCycle (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:573:19)\n  "
+    },
+    {
+      "project": "firefox",
+      "name": "Story 13.6 responsive operator surfaces \u203a data-formatting: 320 CSS-pixel reflow",
+      "message": "\n  [firefox] \u203a responsive-accessibility.spec.ts:336:7 \u203a Story 13.6 responsive operator surfaces \u203a data-formatting: 320 CSS-pixel reflow \n\n    Error: AE-05 focused visual geometry\n\n    AE-05 focused visual geometry\n\n    expect(received).toEqual(expected) // deep equality\n\n    - Expected  - 1\n    + Received  + 3\n\n    - Array []\n    + Array [\n    +   \"app content obscures target or focus ring: {\\\"target\\\":\\\"DIV#\\\",\\\"requireIndicator\\\":true,\\\"box\\\":{\\\"left\\\":27,\\\"top\\\":690.933349609375,\\\"right\\\":293,\\\"bottom\\\":820.933349609375},\\\"ring\\\":1,\\\"failures\\\":[\\\"app content obscures target or focus ring\\\"],\\\"occluder\\\":\\\"DIV# by SPAN# at 106.06666564941406,691.433349609375\\\"}\",\n    + ]\n\n    Call Log:\n    - Timeout 10000ms exceeded while waiting on the predicate\n\n       at ../helpers/responsive-accessibility.ts:446\n\n      444 | export async function expectFocusVisible(target: Locator): Promise<void> {\n      445 |   await expect(target).toBeFocused();\n    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);\n          |                                                                                                                                                                                                                ^\n      447 | }\n      448 |\n      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {\n        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)\n        at step (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:565:7)\n        at verifyKeyboardCycle (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:573:19)\n        at /home/administrator/projects/hexalith/f"
+    },
+    {
+      "project": "firefox",
+      "name": "Story 13.6 responsive operator surfaces \u203a data-formatting: 320 CSS-pixel reflow with all text-spacing overrides",
+      "message": "\n  [firefox] \u203a responsive-accessibility.spec.ts:336:7 \u203a Story 13.6 responsive operator surfaces \u203a data-formatting: 320 CSS-pixel reflow with all text-spacing overrides \n\n    Error: AE-05 focused visual geometry\n\n    AE-05 focused visual geometry\n\n    expect(received).toEqual(expected) // deep equality\n\n    - Expected  - 1\n    + Received  + 3\n\n    - Array []\n    + Array [\n    +   \"app content obscures target or focus ring: {\\\"target\\\":\\\"DIV#\\\",\\\"requireIndicator\\\":true,\\\"box\\\":{\\\"left\\\":27,\\\"top\\\":652.933349609375,\\\"right\\\":293,\\\"bottom\\\":820.933349609375},\\\"ring\\\":1,\\\"failures\\\":[\\\"app content obscures target or focus ring\\\"],\\\"occluder\\\":\\\"DIV# by SPAN# at 126.81666564941406,653.183349609375\\\"}\",\n    + ]\n\n    Call Log:\n    - Timeout 10000ms exceeded while waiting on the predicate\n\n       at ../helpers/responsive-accessibility.ts:446\n\n      444 | export async function expectFocusVisible(target: Locator): Promise<void> {\n      445 |   await expect(target).toBeFocused();\n    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);\n          |                                                                                                                                                                                                                ^\n      447 | }\n      448 |\n      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {\n        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)\n        at step (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:565:7)\n        at verifyKeyboardCycle (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:573:19)\n        at /home/a"
+    },
+    {
+      "project": "webkit",
+      "name": "Story 13.6 responsive operator surfaces \u203a module navigation and tabs: 320 CSS-pixel reflow",
+      "message": "\n  [webkit] \u203a responsive-accessibility.spec.ts:336:7 \u203a Story 13.6 responsive operator surfaces \u203a module navigation and tabs: 320 CSS-pixel reflow \n\n    Error: AE-05 focused visual geometry\n\n    AE-05 focused visual geometry\n\n    expect(received).toEqual(expected) // deep equality\n\n    - Expected  - 1\n    + Received  + 3\n\n    - Array []\n    + Array [\n    +   \"app content obscures target or focus ring: {\\\"target\\\":\\\"DIV#\\\",\\\"requireIndicator\\\":true,\\\"box\\\":{\\\"left\\\":17,\\\"top\\\":368.796875,\\\"right\\\":303,\\\"bottom\\\":454.796875},\\\"ring\\\":3,\\\"failures\\\":[\\\"app content obscures target or focus ring\\\"],\\\"occluder\\\":\\\"DIV# by SPAN# at 54.78986358642578,370.046875\\\"}\",\n    + ]\n\n    Call Log:\n    - Timeout 10000ms exceeded while waiting on the predicate\n\n       at ../helpers/responsive-accessibility.ts:446\n\n      444 | export async function expectFocusVisible(target: Locator): Promise<void> {\n      445 |   await expect(target).toBeFocused();\n    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);\n          |                                                                                                                                                                                                                ^\n      447 | }\n      448 |\n      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {\n        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)\n        at step (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:565:7)\n        at verifyKeyboardCycle (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:573:19)\n        at /home/administrator/projects/hexalith/frontcompo"
+    },
+    {
+      "project": "webkit",
+      "name": "Story 13.6 responsive operator surfaces \u203a module navigation and tabs: 320 CSS-pixel reflow with all text-spacing overrides",
+      "message": "\n  [webkit] \u203a responsive-accessibility.spec.ts:336:7 \u203a Story 13.6 responsive operator surfaces \u203a module navigation and tabs: 320 CSS-pixel reflow with all text-spacing overrides \n\n    Error: AE-05 focused visual geometry\n\n    AE-05 focused visual geometry\n\n    expect(received).toEqual(expected) // deep equality\n\n    - Expected  - 1\n    + Received  + 3\n\n    - Array []\n    + Array [\n    +   \"app content obscures target or focus ring: {\\\"target\\\":\\\"DIV#\\\",\\\"requireIndicator\\\":true,\\\"box\\\":{\\\"left\\\":17,\\\"top\\\":405.796875,\\\"right\\\":303,\\\"bottom\\\":510.796875},\\\"ring\\\":3,\\\"failures\\\":[\\\"app content obscures target or focus ring\\\"],\\\"occluder\\\":\\\"DIV# by SPAN# at 64.30986404418945,406.796875\\\"}\",\n    + ]\n\n    Call Log:\n    - Timeout 10000ms exceeded while waiting on the predicate\n\n       at ../helpers/responsive-accessibility.ts:446\n\n      444 | export async function expectFocusVisible(target: Locator): Promise<void> {\n      445 |   await expect(target).toBeFocused();\n    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);\n          |                                                                                                                                                                                                                ^\n      447 | }\n      448 |\n      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {\n        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)\n        at step (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:565:7)\n        at verifyKeyboardCycle (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:573:19)\n        at /home/administra"
+    },
+    {
+      "project": "webkit",
+      "name": "Story 13.6 responsive operator surfaces \u203a data-formatting: 320 CSS-pixel reflow",
+      "message": "\n  [webkit] \u203a responsive-accessibility.spec.ts:336:7 \u203a Story 13.6 responsive operator surfaces \u203a data-formatting: 320 CSS-pixel reflow \n\n    Error: AE-05 focused visual geometry\n\n    AE-05 focused visual geometry\n\n    expect(received).toEqual(expected) // deep equality\n\n    - Expected  - 1\n    + Received  + 3\n\n    - Array []\n    + Array [\n    +   \"app content obscures target or focus ring: {\\\"target\\\":\\\"DIV#\\\",\\\"requireIndicator\\\":true,\\\"box\\\":{\\\"left\\\":25,\\\"top\\\":555.890625,\\\"right\\\":295,\\\"bottom\\\":689.890625},\\\"ring\\\":3,\\\"failures\\\":[\\\"app content obscures target or focus ring\\\"],\\\"occluder\\\":\\\"DIV# by SPAN# at 106.08470153808594,557.140625\\\"}\",\n    + ]\n\n    Call Log:\n    - Timeout 10000ms exceeded while waiting on the predicate\n\n       at ../helpers/responsive-accessibility.ts:446\n\n      444 | export async function expectFocusVisible(target: Locator): Promise<void> {\n      445 |   await expect(target).toBeFocused();\n    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);\n          |                                                                                                                                                                                                                ^\n      447 | }\n      448 |\n      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {\n        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)\n        at step (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:565:7)\n        at verifyKeyboardCycle (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:573:19)\n        at /home/administrator/projects/hexalith/frontcomposer/tests/"
+    },
+    {
+      "project": "webkit",
+      "name": "Story 13.6 responsive operator surfaces \u203a data-formatting: 320 CSS-pixel reflow with all text-spacing overrides",
+      "message": "\n  [webkit] \u203a responsive-accessibility.spec.ts:336:7 \u203a Story 13.6 responsive operator surfaces \u203a data-formatting: 320 CSS-pixel reflow with all text-spacing overrides \n\n    Error: AE-05 focused visual geometry\n\n    AE-05 focused visual geometry\n\n    expect(received).toEqual(expected) // deep equality\n\n    - Expected  - 1\n    + Received  + 3\n\n    - Array []\n    + Array [\n    +   \"app content obscures target or focus ring: {\\\"target\\\":\\\"DIV#\\\",\\\"requireIndicator\\\":true,\\\"box\\\":{\\\"left\\\":25,\\\"top\\\":517.890625,\\\"right\\\":295,\\\"bottom\\\":689.890625},\\\"ring\\\":3,\\\"failures\\\":[\\\"app content obscures target or focus ring\\\"],\\\"occluder\\\":\\\"DIV# by SPAN# at 126.80470275878906,518.890625\\\"}\",\n    + ]\n\n    Call Log:\n    - Timeout 10000ms exceeded while waiting on the predicate\n\n       at ../helpers/responsive-accessibility.ts:446\n\n      444 | export async function expectFocusVisible(target: Locator): Promise<void> {\n      445 |   await expect(target).toBeFocused();\n    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);\n          |                                                                                                                                                                                                                ^\n      447 | }\n      448 |\n      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {\n        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)\n        at step (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:565:7)\n        at verifyKeyboardCycle (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:573:19)\n        at /home/administrator/projec"
+    }
+  ]
+}

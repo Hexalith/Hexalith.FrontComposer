@@ -1,0 +1,155 @@
+[
+  {
+    "engine": "chromium",
+    "paint": {
+      "focused": true,
+      "focusVisible": true,
+      "outline": "rgb(247, 247, 242) solid 2px",
+      "offset": "-2px",
+      "fluentFocus2": "#000000",
+      "localForeground": "#f7f7f2",
+      "surface": "rgb(21, 23, 26)",
+      "narrow": false,
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      }
+    },
+    "geometry": {
+      "target": "DIV#",
+      "requireIndicator": true,
+      "box": {
+        "left": 76,
+        "top": 302.53125,
+        "right": 1252,
+        "bottom": 496.53125
+      },
+      "ring": 0,
+      "failures": [],
+      "occluder": null
+    },
+    "contrast": [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element outline",
+        "foreground": [
+          247,
+          247,
+          242,
+          1
+        ],
+        "background": [
+          21,
+          23,
+          26,
+          1
+        ],
+        "ratio": 16.71109645481964,
+        "minimum": 3
+      }
+    ]
+  },
+  {
+    "engine": "firefox",
+    "paint": {
+      "focused": true,
+      "focusVisible": true,
+      "outline": "rgb(247, 247, 242) solid 2px",
+      "offset": "-2px",
+      "fluentFocus2": "#000000",
+      "localForeground": "#f7f7f2",
+      "surface": "rgb(21, 23, 26)",
+      "narrow": false,
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      }
+    },
+    "geometry": {
+      "target": "DIV#",
+      "requireIndicator": true,
+      "box": {
+        "left": 76,
+        "top": 358.6333312988281,
+        "right": 1252,
+        "bottom": 552.6333312988281
+      },
+      "ring": 0,
+      "failures": [],
+      "occluder": null
+    },
+    "contrast": [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element outline",
+        "foreground": [
+          247,
+          247,
+          242,
+          1
+        ],
+        "background": [
+          21,
+          23,
+          26,
+          1
+        ],
+        "ratio": 16.71109645481964,
+        "minimum": 3
+      }
+    ]
+  },
+  {
+    "engine": "webkit",
+    "paint": {
+      "focused": true,
+      "focusVisible": true,
+      "outline": "2px solid rgb(247, 247, 242)",
+      "offset": "-2px",
+      "fluentFocus2": "#000000",
+      "localForeground": "#f7f7f2",
+      "surface": "rgb(21, 23, 26)",
+      "narrow": false,
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      }
+    },
+    "geometry": {
+      "target": "DIV#",
+      "requireIndicator": true,
+      "box": {
+        "left": 76,
+        "top": 600.53125,
+        "right": 1252,
+        "bottom": 791.53125
+      },
+      "ring": 0,
+      "failures": [],
+      "occluder": null
+    },
+    "contrast": [
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element outline",
+        "foreground": [
+          247,
+          247,
+          242,
+          1
+        ],
+        "background": [
+          21,
+          23,
+          26,
+          1
+        ],
+        "ratio": 16.71109645481964,
+        "minimum": 3
+      }
+    ]
+  }
+]

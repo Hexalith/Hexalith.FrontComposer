@@ -57,7 +57,7 @@ if (oversized.length > 0) {
   process.exit(1);
 }
 
-const stateErrors = validateStateEvidence(files);
+const stateErrors = validateStateEvidence(files, { expectedEngine: 'chromium' });
 if (stateErrors.length) {
   console.error(stateErrors.join('\n'));
   process.exit(1);

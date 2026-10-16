@@ -27,3 +27,5 @@ _bmad-output/implementation-artifacts/evidence/eventstore-runtime-identity-v4/**
 _bmad-output/contracts/frontcomposer-eventstore-approved-runtime-identity-v4.json -text
 # The active decision hash-binds this human-approved proposal's canonical LF bytes.
 _bmad-output/planning-artifacts/sprint-change-proposal-2026-09-11.md -text
+# Story 13.6 preserves candidate-bound browser and verification evidence bytes.
+_bmad-output/implementation-artifacts/evidence/story-13-6/2026-10-16-completion/** -text

@@ -1,0 +1,13 @@
+{
+  "candidateDigest": "sha256:16abc0fa7184b360f471da731c789306d43a8825bc104f04329c581fea288410",
+  "sourceHead": "b9e13697cbcd98a0ad0e8003545b779a7a6ce8dc",
+  "files": 38,
+  "rawFileHashes": "all match",
+  "frozenIntentSha256": {
+    "spec-13-6-complete-automated-accessibility-coverage.md": "86d004cd94342fc48c8bc299091ba8b58a8dd10bf3a7ff20f70beee65db82c7a",
+    "spec-13-6-verify-responsive-and-assistive-accessibility.md": "fb065a576c0091b5ef2aea6819ec640e3922af66121a3eb03e8eb1d303afcf20"
+  },
+  "gitDiffCheck": "passed",
+  "visualBaselineChangesSinceSourceHead": [],
+  "cleanup": "Owned Debug Test host on 127.0.0.1:5070 stopped after verification. Aspire had already been stopped."
+}

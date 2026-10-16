@@ -1,0 +1,626 @@
+<testsuites id="" name="" tests="21" failures="9" skipped="0" errors="0" time="36.352341">
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-16T09:53:49.561Z" hostname="chromium" tests="7" failures="3" skipped="0" time="28.549" errors="0">
+<testcase name="AE geometry regression fixtures › detects an opaque fixed occluder inside a zero-box open shadow host" classname="responsive-accessibility.spec.ts" time="0.313">
+</testcase>
+<testcase name="AE geometry regression fixtures › a real Fluent dropdown owns its passive sibling indicator, while an overlapping shadow sibling still occludes" classname="responsive-accessibility.spec.ts" time="0.91">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-A-4991b-adow-sibling-still-occludes-chromium/test-failed-1.png]]
+
+[[ATTACHMENT|responsive-accessibility-A-4991b-adow-sibling-still-occludes-chromium/video.webm]]
+
+[[ATTACHMENT|responsive-accessibility-A-4991b-adow-sibling-still-occludes-chromium/error-context.md]]
+
+[[ATTACHMENT|responsive-accessibility-A-4991b-adow-sibling-still-occludes-chromium/trace.zip]]
+]]>
+</system-out>
+<failure message="expect(received).toEqual(expected) // deep equality" type="expect.toEqual">
+<![CDATA[  [chromium] › responsive-accessibility.spec.ts:54:3 › AE geometry regression fixtures › a real Fluent dropdown owns its passive sibling indicator, while an overlapping shadow sibling still occludes 
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "app content obscures target or focus ring",
+    + ]
+
+      66 |     expect(ownership).toEqual({ controlSlot: 'control', indicatorSlot: 'indicator', sharedShadow: true, directDescendant: false });
+      67 |     await info.attach('dropdown-composed-ownership', { body: JSON.stringify(ownership), contentType: 'application/json' });
+    > 68 |     expect((await focusGeometry(control)).failures).toEqual([]);
+         |                                                     ^
+      69 |     await dropdown.evaluate(host => {
+      70 |       const overlay = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      71 |       overlay.setAttribute('aria-hidden', 'true');
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:68:53
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-A-4991b-adow-sibling-still-occludes-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-A-4991b-adow-sibling-still-occludes-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-A-4991b-adow-sibling-still-occludes-chromium/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-A-4991b-adow-sibling-still-occludes-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-A-4991b-adow-sibling-still-occludes-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+</testcase>
+<testcase name="AE geometry regression fixtures › rejects an off-center occluder and ancestor clipping" classname="responsive-accessibility.spec.ts" time="0.292">
+</testcase>
+<testcase name="focus checks reject an absent indicator and a pointer-transparent opaque occluder" classname="responsive-accessibility.spec.ts" time="0.272">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="13.135">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-chromium/test-failed-1.png]]
+
+[[ATTACHMENT|responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-chromium/video-1.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-chromium/video.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-chromium/error-context.md]]
+
+[[ATTACHMENT|responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-chromium/trace.zip]]
+]]>
+</system-out>
+<failure message="AE-05 focused visual geometry" type="expect.toEqual">
+<![CDATA[  [chromium] › responsive-accessibility.spec.ts:306:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow 
+
+    Error: AE-05 focused visual geometry
+
+    AE-05 focused visual geometry
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "app content obscures target or focus ring: {\"target\":\"BUTTON#input-29\",\"requireIndicator\":true,\"box\":{\"left\":39,\"top\":541.171875,\"right\":281,\"bottom\":579.171875},\"ring\":2,\"failures\":[\"app content obscures target or focus ring\"],\"occluder\":\"BUTTON#input-29 by svg# at 258,560.171875\"}",
+    + ]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at ../helpers/responsive-accessibility.ts:446
+
+      444 | export async function expectFocusVisible(target: Locator): Promise<void> {
+      445 |   await expect(target).toBeFocused();
+    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);
+          |                                                                                                                                                                                                                ^
+      447 | }
+      448 |
+      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)
+        at step (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:535:7)
+        at verifyKeyboardCycle (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:543:19)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:318:9
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-chromium/video-1.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-chromium/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="13.351">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-S-91e28--all-text-spacing-overrides-chromium/test-failed-1.png]]
+
+[[ATTACHMENT|responsive-accessibility-S-91e28--all-text-spacing-overrides-chromium/video-1.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-91e28--all-text-spacing-overrides-chromium/video.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-91e28--all-text-spacing-overrides-chromium/error-context.md]]
+
+[[ATTACHMENT|responsive-accessibility-S-91e28--all-text-spacing-overrides-chromium/trace.zip]]
+]]>
+</system-out>
+<failure message="AE-05 focused visual geometry" type="expect.toEqual">
+<![CDATA[  [chromium] › responsive-accessibility.spec.ts:306:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides 
+
+    Error: AE-05 focused visual geometry
+
+    AE-05 focused visual geometry
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "app content obscures target or focus ring: {\"target\":\"BUTTON#input-29\",\"requireIndicator\":true,\"box\":{\"left\":39,\"top\":541.171875,\"right\":281,\"bottom\":579.171875},\"ring\":2,\"failures\":[\"app content obscures target or focus ring\"],\"occluder\":\"BUTTON#input-29 by svg# at 258,560.171875\"}",
+    + ]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at ../helpers/responsive-accessibility.ts:446
+
+      444 | export async function expectFocusVisible(target: Locator): Promise<void> {
+      445 |   await expect(target).toBeFocused();
+    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);
+          |                                                                                                                                                                                                                ^
+      447 | }
+      448 |
+      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)
+        at step (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:535:7)
+        at verifyKeyboardCycle (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:543:19)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:318:9
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-91e28--all-text-spacing-overrides-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-91e28--all-text-spacing-overrides-chromium/video-1.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-91e28--all-text-spacing-overrides-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-91e28--all-text-spacing-overrides-chromium/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-91e28--all-text-spacing-overrides-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-91e28--all-text-spacing-overrides-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+</testcase>
+<testcase name="review measurement regressions › G02 same-level later paint and nested stacking contexts can occlude an outer ring" classname="responsive-accessibility.spec.ts" time="0.276">
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-16T09:53:49.561Z" hostname="firefox" tests="7" failures="3" skipped="0" time="32.811" errors="0">
+<testcase name="AE geometry regression fixtures › detects an opaque fixed occluder inside a zero-box open shadow host" classname="responsive-accessibility.spec.ts" time="1.346">
+</testcase>
+<testcase name="AE geometry regression fixtures › a real Fluent dropdown owns its passive sibling indicator, while an overlapping shadow sibling still occludes" classname="responsive-accessibility.spec.ts" time="1.066">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-A-4991b-adow-sibling-still-occludes-firefox/test-failed-1.png]]
+
+[[ATTACHMENT|responsive-accessibility-A-4991b-adow-sibling-still-occludes-firefox/video.webm]]
+
+[[ATTACHMENT|responsive-accessibility-A-4991b-adow-sibling-still-occludes-firefox/error-context.md]]
+
+[[ATTACHMENT|responsive-accessibility-A-4991b-adow-sibling-still-occludes-firefox/trace.zip]]
+]]>
+</system-out>
+<failure message="expect(received).toEqual(expected) // deep equality" type="expect.toEqual">
+<![CDATA[  [firefox] › responsive-accessibility.spec.ts:54:3 › AE geometry regression fixtures › a real Fluent dropdown owns its passive sibling indicator, while an overlapping shadow sibling still occludes 
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "app content obscures target or focus ring",
+    + ]
+
+      66 |     expect(ownership).toEqual({ controlSlot: 'control', indicatorSlot: 'indicator', sharedShadow: true, directDescendant: false });
+      67 |     await info.attach('dropdown-composed-ownership', { body: JSON.stringify(ownership), contentType: 'application/json' });
+    > 68 |     expect((await focusGeometry(control)).failures).toEqual([]);
+         |                                                     ^
+      69 |     await dropdown.evaluate(host => {
+      70 |       const overlay = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      71 |       overlay.setAttribute('aria-hidden', 'true');
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:68:53
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-A-4991b-adow-sibling-still-occludes-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-A-4991b-adow-sibling-still-occludes-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-A-4991b-adow-sibling-still-occludes-firefox/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-A-4991b-adow-sibling-still-occludes-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-A-4991b-adow-sibling-still-occludes-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+</testcase>
+<testcase name="AE geometry regression fixtures › rejects an off-center occluder and ancestor clipping" classname="responsive-accessibility.spec.ts" time="1.171">
+</testcase>
+<testcase name="focus checks reject an absent indicator and a pointer-transparent opaque occluder" classname="responsive-accessibility.spec.ts" time="0.45">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="13.082">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-firefox/test-failed-1.png]]
+
+[[ATTACHMENT|responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-firefox/video-1.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-firefox/video.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-firefox/error-context.md]]
+
+[[ATTACHMENT|responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-firefox/trace.zip]]
+]]>
+</system-out>
+<failure message="AE-05 focused visual geometry" type="expect.toEqual">
+<![CDATA[  [firefox] › responsive-accessibility.spec.ts:306:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow 
+
+    Error: AE-05 focused visual geometry
+
+    AE-05 focused visual geometry
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "app content obscures target or focus ring: {\"target\":\"DIV#\",\"requireIndicator\":true,\"box\":{\"left\":27,\"top\":621.63330078125,\"right\":293,\"bottom\":845.63330078125},\"ring\":1,\"failures\":[\"app content obscures target or focus ring\"],\"occluder\":\"DIV# by SPAN# at 87.2249984741211,622.13330078125\"}",
+    + ]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at ../helpers/responsive-accessibility.ts:446
+
+      444 | export async function expectFocusVisible(target: Locator): Promise<void> {
+      445 |   await expect(target).toBeFocused();
+    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);
+          |                                                                                                                                                                                                                ^
+      447 | }
+      448 |
+      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)
+        at step (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:535:7)
+        at verifyKeyboardCycle (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:543:19)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:318:9
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-firefox/video-1.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-firefox/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="14.453">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-S-91e28--all-text-spacing-overrides-firefox/test-failed-1.png]]
+
+[[ATTACHMENT|responsive-accessibility-S-91e28--all-text-spacing-overrides-firefox/video-1.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-91e28--all-text-spacing-overrides-firefox/video.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-91e28--all-text-spacing-overrides-firefox/error-context.md]]
+
+[[ATTACHMENT|responsive-accessibility-S-91e28--all-text-spacing-overrides-firefox/trace.zip]]
+]]>
+</system-out>
+<failure message="AE-05 focused visual geometry" type="expect.toEqual">
+<![CDATA[  [firefox] › responsive-accessibility.spec.ts:306:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides 
+
+    Error: AE-05 focused visual geometry
+
+    AE-05 focused visual geometry
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "app content obscures target or focus ring: {\"target\":\"DIV#\",\"requireIndicator\":true,\"box\":{\"left\":27,\"top\":621.63330078125,\"right\":293,\"bottom\":848.63330078125},\"ring\":1,\"failures\":[\"app content obscures target or focus ring\"],\"occluder\":\"DIV# by SPAN# at 103.76667022705078,621.88330078125\"}",
+    + ]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at ../helpers/responsive-accessibility.ts:446
+
+      444 | export async function expectFocusVisible(target: Locator): Promise<void> {
+      445 |   await expect(target).toBeFocused();
+    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);
+          |                                                                                                                                                                                                                ^
+      447 | }
+      448 |
+      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)
+        at step (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:535:7)
+        at verifyKeyboardCycle (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:543:19)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:318:9
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-91e28--all-text-spacing-overrides-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-91e28--all-text-spacing-overrides-firefox/video-1.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-91e28--all-text-spacing-overrides-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-91e28--all-text-spacing-overrides-firefox/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-91e28--all-text-spacing-overrides-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-91e28--all-text-spacing-overrides-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+</testcase>
+<testcase name="review measurement regressions › G02 same-level later paint and nested stacking contexts can occlude an outer ring" classname="responsive-accessibility.spec.ts" time="1.243">
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-16T09:53:49.561Z" hostname="webkit" tests="7" failures="3" skipped="0" time="30.297" errors="0">
+<testcase name="AE geometry regression fixtures › detects an opaque fixed occluder inside a zero-box open shadow host" classname="responsive-accessibility.spec.ts" time="0.548">
+</testcase>
+<testcase name="AE geometry regression fixtures › a real Fluent dropdown owns its passive sibling indicator, while an overlapping shadow sibling still occludes" classname="responsive-accessibility.spec.ts" time="1.164">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-A-4991b-adow-sibling-still-occludes-webkit/test-failed-1.png]]
+
+[[ATTACHMENT|responsive-accessibility-A-4991b-adow-sibling-still-occludes-webkit/video.webm]]
+
+[[ATTACHMENT|responsive-accessibility-A-4991b-adow-sibling-still-occludes-webkit/error-context.md]]
+
+[[ATTACHMENT|responsive-accessibility-A-4991b-adow-sibling-still-occludes-webkit/trace.zip]]
+]]>
+</system-out>
+<failure message="expect(received).toEqual(expected) // deep equality" type="expect.toEqual">
+<![CDATA[  [webkit] › responsive-accessibility.spec.ts:54:3 › AE geometry regression fixtures › a real Fluent dropdown owns its passive sibling indicator, while an overlapping shadow sibling still occludes 
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "app content obscures target or focus ring",
+    + ]
+
+      66 |     expect(ownership).toEqual({ controlSlot: 'control', indicatorSlot: 'indicator', sharedShadow: true, directDescendant: false });
+      67 |     await info.attach('dropdown-composed-ownership', { body: JSON.stringify(ownership), contentType: 'application/json' });
+    > 68 |     expect((await focusGeometry(control)).failures).toEqual([]);
+         |                                                     ^
+      69 |     await dropdown.evaluate(host => {
+      70 |       const overlay = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      71 |       overlay.setAttribute('aria-hidden', 'true');
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:68:53
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-A-4991b-adow-sibling-still-occludes-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-A-4991b-adow-sibling-still-occludes-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-A-4991b-adow-sibling-still-occludes-webkit/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-A-4991b-adow-sibling-still-occludes-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-A-4991b-adow-sibling-still-occludes-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+</testcase>
+<testcase name="AE geometry regression fixtures › rejects an off-center occluder and ancestor clipping" classname="responsive-accessibility.spec.ts" time="0.497">
+</testcase>
+<testcase name="focus checks reject an absent indicator and a pointer-transparent opaque occluder" classname="responsive-accessibility.spec.ts" time="0.519">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="13.297">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-webkit/test-failed-1.png]]
+
+[[ATTACHMENT|responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-webkit/video-1.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-webkit/video.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-webkit/error-context.md]]
+
+[[ATTACHMENT|responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-webkit/trace.zip]]
+]]>
+</system-out>
+<failure message="AE-05 focused visual geometry" type="expect.toEqual">
+<![CDATA[  [webkit] › responsive-accessibility.spec.ts:306:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow 
+
+    Error: AE-05 focused visual geometry
+
+    AE-05 focused visual geometry
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "app content obscures target or focus ring: {\"target\":\"DIV#\",\"requireIndicator\":true,\"box\":{\"left\":25,\"top\":457.53125,\"right\":295,\"bottom\":682.53125},\"ring\":3,\"failures\":[\"app content obscures target or focus ring\"],\"occluder\":\"DIV# by SPAN# at 87.24777221679688,458.78125\"}",
+    + ]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at ../helpers/responsive-accessibility.ts:446
+
+      444 | export async function expectFocusVisible(target: Locator): Promise<void> {
+      445 |   await expect(target).toBeFocused();
+    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);
+          |                                                                                                                                                                                                                ^
+      447 | }
+      448 |
+      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)
+        at step (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:535:7)
+        at verifyKeyboardCycle (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:543:19)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:318:9
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-webkit/video-1.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-webkit/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="13.785">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-S-91e28--all-text-spacing-overrides-webkit/test-failed-1.png]]
+
+[[ATTACHMENT|responsive-accessibility-S-91e28--all-text-spacing-overrides-webkit/video-1.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-91e28--all-text-spacing-overrides-webkit/video.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-91e28--all-text-spacing-overrides-webkit/error-context.md]]
+
+[[ATTACHMENT|responsive-accessibility-S-91e28--all-text-spacing-overrides-webkit/trace.zip]]
+]]>
+</system-out>
+<failure message="AE-05 focused visual geometry" type="expect.toEqual">
+<![CDATA[  [webkit] › responsive-accessibility.spec.ts:306:7 › Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides 
+
+    Error: AE-05 focused visual geometry
+
+    AE-05 focused visual geometry
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "app content obscures target or focus ring: {\"target\":\"DIV#\",\"requireIndicator\":true,\"box\":{\"left\":25,\"top\":417.53125,\"right\":295,\"bottom\":645.53125},\"ring\":3,\"failures\":[\"app content obscures target or focus ring\"],\"occluder\":\"DIV# by SPAN# at 103.76777648925781,418.53125\"}",
+    + ]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at ../helpers/responsive-accessibility.ts:446
+
+      444 | export async function expectFocusVisible(target: Locator): Promise<void> {
+      445 |   await expect(target).toBeFocused();
+    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);
+          |                                                                                                                                                                                                                ^
+      447 | }
+      448 |
+      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)
+        at step (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:535:7)
+        at verifyKeyboardCycle (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:543:19)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:318:9
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-91e28--all-text-spacing-overrides-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-91e28--all-text-spacing-overrides-webkit/video-1.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-91e28--all-text-spacing-overrides-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-91e28--all-text-spacing-overrides-webkit/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-91e28--all-text-spacing-overrides-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../../tmp/story13-6-dropdown-focused/responsive-accessibility-S-91e28--all-text-spacing-overrides-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+</testcase>
+<testcase name="review measurement regressions › G02 same-level later paint and nested stacking contexts can occlude an outer ring" classname="responsive-accessibility.spec.ts" time="0.487">
+</testcase>
+</testsuite>
+</testsuites>

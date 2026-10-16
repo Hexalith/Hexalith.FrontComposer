@@ -1,0 +1,62 @@
+<testsuites id="" name="" tests="27" failures="0" skipped="0" errors="0" time="34.269524999999994">
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-16T10:01:24.836Z" hostname="chromium" tests="9" failures="0" skipped="0" time="21.354" errors="0">
+<testcase name="AE geometry regression fixtures › detects an opaque fixed occluder inside a zero-box open shadow host" classname="responsive-accessibility.spec.ts" time="0.298">
+</testcase>
+<testcase name="AE geometry regression fixtures › a real Fluent dropdown owns its passive sibling indicator, while an overlapping shadow sibling still occludes" classname="responsive-accessibility.spec.ts" time="1.865">
+</testcase>
+<testcase name="AE geometry regression fixtures › rejects an off-center occluder and ancestor clipping" classname="responsive-accessibility.spec.ts" time="0.267">
+</testcase>
+<testcase name="focus checks reject an absent indicator and a pointer-transparent opaque occluder" classname="responsive-accessibility.spec.ts" time="0.287">
+</testcase>
+<testcase name="narrow specimen navigation and grid retain unobscured focus in light" classname="responsive-accessibility.spec.ts" time="1.269">
+</testcase>
+<testcase name="narrow specimen navigation and grid retain unobscured focus in dark" classname="responsive-accessibility.spec.ts" time="1.052">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="7.814">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="8.297">
+</testcase>
+<testcase name="review measurement regressions › G02 same-level later paint and nested stacking contexts can occlude an outer ring" classname="responsive-accessibility.spec.ts" time="0.205">
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-16T10:01:24.836Z" hostname="firefox" tests="9" failures="0" skipped="0" time="31.455" errors="0">
+<testcase name="AE geometry regression fixtures › detects an opaque fixed occluder inside a zero-box open shadow host" classname="responsive-accessibility.spec.ts" time="1.381">
+</testcase>
+<testcase name="AE geometry regression fixtures › a real Fluent dropdown owns its passive sibling indicator, while an overlapping shadow sibling still occludes" classname="responsive-accessibility.spec.ts" time="1.034">
+</testcase>
+<testcase name="AE geometry regression fixtures › rejects an off-center occluder and ancestor clipping" classname="responsive-accessibility.spec.ts" time="0.414">
+</testcase>
+<testcase name="focus checks reject an absent indicator and a pointer-transparent opaque occluder" classname="responsive-accessibility.spec.ts" time="0.463">
+</testcase>
+<testcase name="narrow specimen navigation and grid retain unobscured focus in light" classname="responsive-accessibility.spec.ts" time="1.721">
+</testcase>
+<testcase name="narrow specimen navigation and grid retain unobscured focus in dark" classname="responsive-accessibility.spec.ts" time="1.828">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="11.849">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="11.539">
+</testcase>
+<testcase name="review measurement regressions › G02 same-level later paint and nested stacking contexts can occlude an outer ring" classname="responsive-accessibility.spec.ts" time="1.226">
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-16T10:01:24.836Z" hostname="webkit" tests="9" failures="0" skipped="0" time="28.706" errors="0">
+<testcase name="AE geometry regression fixtures › detects an opaque fixed occluder inside a zero-box open shadow host" classname="responsive-accessibility.spec.ts" time="0.512">
+</testcase>
+<testcase name="AE geometry regression fixtures › a real Fluent dropdown owns its passive sibling indicator, while an overlapping shadow sibling still occludes" classname="responsive-accessibility.spec.ts" time="1.14">
+</testcase>
+<testcase name="AE geometry regression fixtures › rejects an off-center occluder and ancestor clipping" classname="responsive-accessibility.spec.ts" time="0.442">
+</testcase>
+<testcase name="focus checks reject an absent indicator and a pointer-transparent opaque occluder" classname="responsive-accessibility.spec.ts" time="0.536">
+</testcase>
+<testcase name="narrow specimen navigation and grid retain unobscured focus in light" classname="responsive-accessibility.spec.ts" time="1.594">
+</testcase>
+<testcase name="narrow specimen navigation and grid retain unobscured focus in dark" classname="responsive-accessibility.spec.ts" time="1.589">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="10.946">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="11.471">
+</testcase>
+<testcase name="review measurement regressions › G02 same-level later paint and nested stacking contexts can occlude an outer ring" classname="responsive-accessibility.spec.ts" time="0.476">
+</testcase>
+</testsuite>
+</testsuites>

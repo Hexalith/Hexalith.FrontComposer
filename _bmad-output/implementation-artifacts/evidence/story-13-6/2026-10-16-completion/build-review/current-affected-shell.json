@@ -1,0 +1,12 @@
+{
+  "total": "163",
+  "passed": "163",
+  "failed": "0",
+  "skipped": "0",
+  "errors": "0",
+  "time": "4.376",
+  "candidateDigest": "sha256:f8d9a2b2a0608d5ed0bc461f433734e153b2836fa1237658539cc638bb2c03cf",
+  "xml": "affected-shell.xml",
+  "log": "affected-shell.log",
+  "scope": "Current affected Shell/CSS/JS/governance classes; no full configured pass inferred."
+}

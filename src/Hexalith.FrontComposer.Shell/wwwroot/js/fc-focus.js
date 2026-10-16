@@ -263,6 +263,18 @@ export function containDialogFocus(testId, retryOnce = true) {
         if (retryOnce) runAfterDismiss(() => containDialogFocus(testId, false));
         return false;
     }
+    // These shell overlays restore their origin through restoreOverlayOrigin. Fluent also
+    // queues a 25ms return through this per-dialog slot; that later return can undo an
+    // operator's Tab after our guarded return. Clear only the redundant Fluent slot, leaving
+    // native dialog dismissal and other Fluent dialogs' return behavior intact.
+    if (testId === 'fc-palette-root' || testId === 'fc-settings-dialog') {
+        host.previousActiveElement = null;
+        if (!containedDialogs.has(host)) {
+            host.addEventListener('beforetoggle', (event) => {
+                if ((event.detail?.newState ?? event.newState) === 'closed') host.previousActiveElement = null;
+            }, true);
+        }
+    }
     if (containedDialogs.has(host)) return true;
 
     host.addEventListener('keydown', (event) => {
@@ -656,10 +668,15 @@ export function restoreOverlayOrigin(forceRouteHeading = false, owner = null) {
         return;
     }
     const origin = window.__fcOverlayOrigin;
+    // Native dialog dismissal may restore its invoker before Blazor disposal reaches this
+    // interop call. Preserve a subsequent operator move already recorded by the shared tracker,
+    // as well as moves made while the deferred return below is waiting.
+    let userMovedFocus = (window.__fcModalReservation?.moved === true || window.__fcOverlayOpenIntent?.moved === true)
+        && document.activeElement !== origin
+        && !document.activeElement?.closest(modalContainerSelector);
     window.__fcOverlayOrigin = null;
     window.__fcOverlayOpenIntent = null;
     window.__fcModalReservation = null;
-    let userMovedFocus = false;
     const markUserMove = () => { userMovedFocus = true; };
     document.addEventListener('pointerdown', markUserMove, true);
     document.addEventListener('keydown', markUserMove, true);

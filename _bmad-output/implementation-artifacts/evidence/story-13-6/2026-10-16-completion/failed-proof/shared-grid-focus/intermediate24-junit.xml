@@ -1,0 +1,374 @@
+<testsuites id="" name="" tests="24" failures="5" skipped="0" errors="0" time="57.037836999999996">
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-16T10:12:36.300Z" hostname="chromium" tests="8" failures="2" skipped="0" time="48.302" errors="0">
+<testcase name="narrow specimen navigation and grid retain unobscured focus in light" classname="responsive-accessibility.spec.ts" time="11.925">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-n-886e9-n-unobscured-focus-in-light-chromium/test-failed-1.png]]
+
+[[ATTACHMENT|responsive-accessibility-n-886e9-n-unobscured-focus-in-light-chromium/video.webm]]
+
+[[ATTACHMENT|responsive-accessibility-n-886e9-n-unobscured-focus-in-light-chromium/error-context.md]]
+
+[[ATTACHMENT|responsive-accessibility-n-886e9-n-unobscured-focus-in-light-chromium/trace.zip]]
+]]>
+</system-out>
+<failure message="AE-05 focused visual geometry" type="expect.toEqual">
+<![CDATA[  [chromium] › responsive-accessibility.spec.ts:280:3 › narrow specimen navigation and grid retain unobscured focus in light 
+
+    Error: AE-05 focused visual geometry
+
+    AE-05 focused visual geometry
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "focused target has no visible focus indicator: {\"target\":\"DIV#\",\"requireIndicator\":true,\"box\":{\"left\":20,\"top\":371.796875,\"right\":300,\"bottom\":451.796875},\"ring\":0,\"failures\":[\"focused target has no visible focus indicator\"],\"occluder\":null}",
+    + ]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at ../helpers/responsive-accessibility.ts:446
+
+      444 | export async function expectFocusVisible(target: Locator): Promise<void> {
+      445 |   await expect(target).toBeFocused();
+    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);
+          |                                                                                                                                                                                                                ^
+      447 | }
+      448 |
+      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:323:5
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-n-886e9-n-unobscured-focus-in-light-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-n-886e9-n-unobscured-focus-in-light-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-n-886e9-n-unobscured-focus-in-light-chromium/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-n-886e9-n-unobscured-focus-in-light-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-n-886e9-n-unobscured-focus-in-light-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+</testcase>
+<testcase name="narrow specimen navigation and grid retain unobscured focus in dark" classname="responsive-accessibility.spec.ts" time="11.91">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-n-91f45-in-unobscured-focus-in-dark-chromium/test-failed-1.png]]
+
+[[ATTACHMENT|responsive-accessibility-n-91f45-in-unobscured-focus-in-dark-chromium/video.webm]]
+
+[[ATTACHMENT|responsive-accessibility-n-91f45-in-unobscured-focus-in-dark-chromium/error-context.md]]
+
+[[ATTACHMENT|responsive-accessibility-n-91f45-in-unobscured-focus-in-dark-chromium/trace.zip]]
+]]>
+</system-out>
+<failure message="AE-05 focused visual geometry" type="expect.toEqual">
+<![CDATA[  [chromium] › responsive-accessibility.spec.ts:280:3 › narrow specimen navigation and grid retain unobscured focus in dark 
+
+    Error: AE-05 focused visual geometry
+
+    AE-05 focused visual geometry
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "focused target has no visible focus indicator: {\"target\":\"DIV#\",\"requireIndicator\":true,\"box\":{\"left\":20,\"top\":371.796875,\"right\":300,\"bottom\":451.796875},\"ring\":0,\"failures\":[\"focused target has no visible focus indicator\"],\"occluder\":null}",
+    + ]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at ../helpers/responsive-accessibility.ts:446
+
+      444 | export async function expectFocusVisible(target: Locator): Promise<void> {
+      445 |   await expect(target).toBeFocused();
+    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);
+          |                                                                                                                                                                                                                ^
+      447 | }
+      448 |
+      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:323:5
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-n-91f45-in-unobscured-focus-in-dark-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-n-91f45-in-unobscured-focus-in-dark-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-n-91f45-in-unobscured-focus-in-dark-chromium/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-n-91f45-in-unobscured-focus-in-dark-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-n-91f45-in-unobscured-focus-in-dark-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="3.381">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="2.326">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="6.735">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="7.822">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="2.149">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="2.054">
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-16T10:12:36.300Z" hostname="firefox" tests="8" failures="2" skipped="0" time="62.512" errors="0">
+<testcase name="narrow specimen navigation and grid retain unobscured focus in light" classname="responsive-accessibility.spec.ts" time="12.673">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-n-886e9-n-unobscured-focus-in-light-firefox/test-failed-1.png]]
+
+[[ATTACHMENT|responsive-accessibility-n-886e9-n-unobscured-focus-in-light-firefox/video.webm]]
+
+[[ATTACHMENT|responsive-accessibility-n-886e9-n-unobscured-focus-in-light-firefox/error-context.md]]
+
+[[ATTACHMENT|responsive-accessibility-n-886e9-n-unobscured-focus-in-light-firefox/trace.zip]]
+]]>
+</system-out>
+<failure message="AE-05 focused visual geometry" type="expect.toEqual">
+<![CDATA[  [firefox] › responsive-accessibility.spec.ts:280:3 › narrow specimen navigation and grid retain unobscured focus in light 
+
+    Error: AE-05 focused visual geometry
+
+    AE-05 focused visual geometry
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "focused target has no visible focus indicator: {\"target\":\"DIV#\",\"requireIndicator\":true,\"box\":{\"left\":20,\"top\":371.79998779296875,\"right\":300,\"bottom\":451.79998779296875},\"ring\":0,\"failures\":[\"focused target has no visible focus indicator\"],\"occluder\":null}",
+    + ]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at ../helpers/responsive-accessibility.ts:446
+
+      444 | export async function expectFocusVisible(target: Locator): Promise<void> {
+      445 |   await expect(target).toBeFocused();
+    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);
+          |                                                                                                                                                                                                                ^
+      447 | }
+      448 |
+      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:323:5
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-n-886e9-n-unobscured-focus-in-light-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-n-886e9-n-unobscured-focus-in-light-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-n-886e9-n-unobscured-focus-in-light-firefox/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-n-886e9-n-unobscured-focus-in-light-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-n-886e9-n-unobscured-focus-in-light-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+</testcase>
+<testcase name="narrow specimen navigation and grid retain unobscured focus in dark" classname="responsive-accessibility.spec.ts" time="12.896">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-n-91f45-in-unobscured-focus-in-dark-firefox/test-failed-1.png]]
+
+[[ATTACHMENT|responsive-accessibility-n-91f45-in-unobscured-focus-in-dark-firefox/video.webm]]
+
+[[ATTACHMENT|responsive-accessibility-n-91f45-in-unobscured-focus-in-dark-firefox/error-context.md]]
+
+[[ATTACHMENT|responsive-accessibility-n-91f45-in-unobscured-focus-in-dark-firefox/trace.zip]]
+]]>
+</system-out>
+<failure message="AE-05 focused visual geometry" type="expect.toEqual">
+<![CDATA[  [firefox] › responsive-accessibility.spec.ts:280:3 › narrow specimen navigation and grid retain unobscured focus in dark 
+
+    Error: AE-05 focused visual geometry
+
+    AE-05 focused visual geometry
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "focused target has no visible focus indicator: {\"target\":\"DIV#\",\"requireIndicator\":true,\"box\":{\"left\":20,\"top\":371.79998779296875,\"right\":300,\"bottom\":451.79998779296875},\"ring\":0,\"failures\":[\"focused target has no visible focus indicator\"],\"occluder\":null}",
+    + ]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at ../helpers/responsive-accessibility.ts:446
+
+      444 | export async function expectFocusVisible(target: Locator): Promise<void> {
+      445 |   await expect(target).toBeFocused();
+    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);
+          |                                                                                                                                                                                                                ^
+      447 | }
+      448 |
+      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:323:5
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-n-91f45-in-unobscured-focus-in-dark-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-n-91f45-in-unobscured-focus-in-dark-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-n-91f45-in-unobscured-focus-in-dark-firefox/error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-n-91f45-in-unobscured-focus-in-dark-firefox/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-n-91f45-in-unobscured-focus-in-dark-firefox/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="4.166">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="3.679">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="11.406">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="11.023">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="3.702">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="2.967">
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-16T10:12:36.300Z" hostname="webkit" tests="8" failures="1" skipped="0" time="48.982" errors="0">
+<testcase name="narrow specimen navigation and grid retain unobscured focus in light" classname="responsive-accessibility.spec.ts" time="2.617">
+</testcase>
+<testcase name="narrow specimen navigation and grid retain unobscured focus in dark" classname="responsive-accessibility.spec.ts" time="2.619">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="3.466">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="3.564">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="11.057">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="11.532">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="11.246">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-webkit/test-failed-1.png]]
+
+[[ATTACHMENT|responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-webkit/video-1.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-webkit/video.webm]]
+
+[[ATTACHMENT|responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-webkit/error-context.md]]
+
+[[ATTACHMENT|responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-webkit/trace.zip]]
+]]>
+</system-out>
+<failure message="AE-05 focused visual geometry" type="expect.toEqual">
+<![CDATA[  [webkit] › responsive-accessibility.spec.ts:361:7 › Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow 
+
+    Error: AE-05 focused visual geometry
+
+    AE-05 focused visual geometry
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "app content obscures target or focus ring: {\"target\":\"A#\",\"requireIndicator\":true,\"box\":{\"left\":56.3125,\"top\":589.890625,\"right\":278.765625,\"bottom\":619.890625},\"ring\":3,\"failures\":[\"app content obscures target or focus ring\"],\"occluder\":\"A# by SPAN# at 79.290283203125,619.640625\"}",
+    + ]
+
+    Call Log:
+    - Timeout 10000ms exceeded while waiting on the predicate
+
+       at ../helpers/responsive-accessibility.ts:446
+
+      444 | export async function expectFocusVisible(target: Locator): Promise<void> {
+      445 |   await expect(target).toBeFocused();
+    > 446 |   await expect.poll(async () => { const result = await focusGeometry(target); return result.failures.map(failure => `${failure}: ${JSON.stringify(result)}`); }, { message: 'AE-05 focused visual geometry' }).toEqual([]);
+          |                                                                                                                                                                                                                ^
+      447 | }
+      448 |
+      449 | export async function expectTextContrast(target: Locator, minimum?: number, colorProperty = 'color') {
+        at expectFocusVisible (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/helpers/responsive-accessibility.ts:446:208)
+        at step (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:590:7)
+        at verifyKeyboardCycle (/home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:598:19)
+        at /home/administrator/projects/hexalith/frontcomposer/tests/e2e/specs/responsive-accessibility.spec.ts:373:9
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-webkit/video-1.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-webkit/error-context.md
+
+    attachment #6: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../../../../../../../tmp/story13-6-shared-grid-focus/responsive-accessibility-S-2117e-atting-320-CSS-pixel-reflow-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="2.881">
+</testcase>
+</testsuite>
+</testsuites>

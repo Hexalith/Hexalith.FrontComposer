@@ -1,0 +1,46 @@
+{
+  "sourceHead": "b9e13697cbcd98a0ad0e8003545b779a7a6ce8dc",
+  "parentFrozenCandidate": "sha256:0579f7b3a97547960595fa6847e38bf50c0d4ef56d55b71d4e2ac194ebb0e01e",
+  "sourceScope": [
+    "tests/e2e/helpers/responsive-accessibility.ts",
+    "tests/e2e/specs/responsive-accessibility.spec.ts",
+    "samples/Counter/Counter.Specimens/FrontComposerTypeSpecimen.razor.css"
+  ],
+  "ownershipFinding": "The light-DOM button is assigned to shadow slot control; its aria-hidden fallback SVG belongs to sibling shadow slot indicator. Both meet at div.control then fluent-dropdown, with neither contained by the other.",
+  "qualification": "Only passive indicator SVG paint belonging to that actual slotted combobox and bounded by its Fluent control shell is treated as owned decoration. The injected sibling SVG rectangle is still rejected. SVGGraphicsElement hit paint remains an occluder in the existing outside-target paint check.",
+  "responsiveCorrections": "Below40rem only:8px between nav list items and before nested lists;2px inset grid region focus contour from the existing specimen foreground theme token; CanvasText on supported forced-color platforms.",
+  "forcedColorFinding": "Firefox Highlight #3399ff on white Canvas measured2.9406597621705757:1, so the inset contour uses CanvasText. WebKit lacking forced-color-adjust is explicitly attributed as unsupported actual palette replacement.",
+  "verification": [
+    {
+      "result": "1 failed (red representative dropdown positive)",
+      "log": "story13-6-dropdown-red.log"
+    },
+    {
+      "result": "12 passed/9 failed (first native-button-bound draft)",
+      "log": "story13-6-dropdown-focused.log"
+    },
+    {
+      "result": "12 passed/9 failed (owned dropdown positive passed; injected rectangle exposed missing SVG shape paint; six keyboard cycles exposed later obstructions)",
+      "log": "story13-6-dropdown-owned.log"
+    },
+    {
+      "result": "15 passed (9.6s; temporary painted-path sibling fixture, then restored to actual rectangle with SVGGraphicsElement correction)",
+      "log": "story13-6-dropdown-occlusion-final.log"
+    },
+    {
+      "result": "19 passed/8 failed (nested-list gap and Firefox Highlight contrast)",
+      "log": "story13-6-dropdown-responsive-intermediate.log"
+    },
+    {
+      "result": "27 passed,0 failed,0 skipped (34.3s), after all corrections and rebuilt parent host",
+      "log": "settled27.log",
+      "junit": "settled27-junit.xml",
+      "report": "settled27-report.html"
+    },
+    {
+      "result": "TypeScript and git diff --check passed after source settled"
+    }
+  ],
+  "cleanup": "No temporary executable spec or child host. Parent host5070/session6306 remains running.",
+  "gateLimit": "Focused correction verified. Parent owns the full affected nonvisual run, final candidate/result, unchanged visual comparisons, configured Shell failure and manual/platform gates."
+}

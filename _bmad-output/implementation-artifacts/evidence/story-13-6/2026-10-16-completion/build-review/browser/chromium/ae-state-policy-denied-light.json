@@ -1,0 +1,1384 @@
+{
+  "state": "policy-denied-light",
+  "engine": "chromium",
+  "runId": "story-13-6-build-review-final-d74b284b59ab",
+  "viewport": {
+    "width": 320,
+    "height": 900
+  },
+  "theme": "Light",
+  "themePaint": {
+    "background": "#ffffff",
+    "rgb": [
+      255,
+      255,
+      255
+    ]
+  },
+  "targets": [
+    {
+      "target": "a[inventory-index=\"0\"]",
+      "width": 150.296875,
+      "height": 41,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"1\"]",
+      "width": 173.25,
+      "height": 41,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"2\"]",
+      "width": 32,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-menu-button[inventory-index=\"3\"]",
+      "width": 48,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-palette-trigger\"]",
+      "width": 32,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-settings-button\"]",
+      "width": 32,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-account-avatar",
+      "width": 32,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-specimen-skip\"]",
+      "width": 180.375,
+      "height": 24,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-theme-control-light\"]",
+      "width": 264,
+      "height": 24,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-theme-control-dark\"]",
+      "width": 264,
+      "height": 24,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-density-control-compact\"]",
+      "width": 264,
+      "height": 24,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-density-control-comfortable\"]",
+      "width": 264,
+      "height": 24,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-density-control-roomy\"]",
+      "width": 264,
+      "height": 24,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "button[inventory-index=\"13\"]",
+      "width": 125.71875,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "input[inventory-index=\"14\"]",
+      "width": 183,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "button[inventory-index=\"15\"]",
+      "width": 125.71875,
+      "height": 40,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "input[inventory-index=\"16\"]",
+      "width": 183,
+      "height": 40,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "button[inventory-index=\"17\"]",
+      "width": 125.71875,
+      "height": 48,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "input[inventory-index=\"18\"]",
+      "width": 183,
+      "height": 48,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"19\"]",
+      "width": 96,
+      "height": 28,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"20\"]",
+      "width": 96,
+      "height": 28,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"21\"]",
+      "width": 96,
+      "height": 28,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"22\"]",
+      "width": 96,
+      "height": 28,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"23\"]",
+      "width": 96,
+      "height": 28,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "fluent-button[inventory-index=\"24\"]",
+      "width": 96,
+      "height": 28,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "div[inventory-index=\"25\"]",
+      "width": 264,
+      "height": 228,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-status-icon-331",
+      "width": 24,
+      "height": 24,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-status-icon-332",
+      "width": 24,
+      "height": 24,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-status-icon-333",
+      "width": 24,
+      "height": 24,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-status-icon-334",
+      "width": 24,
+      "height": 24,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-status-icon-335",
+      "width": 24,
+      "height": 24,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-status-icon-336",
+      "width": 24,
+      "height": 24,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "div[inventory-index=\"32\"]",
+      "width": 264,
+      "height": 99,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"33\"]",
+      "width": 232,
+      "height": 42,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-command-input\"]",
+      "width": 264,
+      "height": 40,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-command-number\"]",
+      "width": 264,
+      "height": 40,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-command-submit\"]",
+      "width": 264,
+      "height": 40,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-command-cancel\"]",
+      "width": 264,
+      "height": 40,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"38\"]",
+      "width": 172,
+      "height": 42,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-86-RecordId",
+      "width": 209,
+      "height": 34,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-86-Reason",
+      "width": 209,
+      "height": 34,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-86-Retention",
+      "width": 238,
+      "height": 34,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-86-submit",
+      "width": 227.59375,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-RecordId",
+      "width": 209,
+      "height": 34,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-Reason",
+      "width": 209,
+      "height": 34,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-submit",
+      "width": 237.4375,
+      "height": 32,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-expanded-detail-summary\"]",
+      "width": 238,
+      "height": 42,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-nav-foundation\"]",
+      "width": 86.859375,
+      "height": 24,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "[data-testid=\"fc-nav-group-generated\"]",
+      "width": 164,
+      "height": 40,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"49\"]",
+      "width": 116.9375,
+      "height": 24,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    },
+    {
+      "target": "a[inventory-index=\"50\"]",
+      "width": 149.0625,
+      "height": 24,
+      "conforming": true,
+      "exception": null,
+      "failure": null
+    }
+  ],
+  "text": [
+    {
+      "owner": 0,
+      "node": "h2#fc-policy-command-title",
+      "paint": "Policy-gated command authorization",
+      "foreground": [
+        20,
+        20,
+        20,
+        1
+      ],
+      "background": [
+        248,
+        248,
+        244,
+        1
+      ],
+      "ratio": 17.303659231750295,
+      "minimum": 3
+    },
+    {
+      "owner": 1,
+      "node": "label#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-RecordId-label",
+      "paint": "Record Id",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        248,
+        248,
+        244,
+        1
+      ],
+      "ratio": 14.580139842405517,
+      "minimum": 4.5
+    },
+    {
+      "owner": 2,
+      "node": "input#control",
+      "paint": "input value",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 3,
+      "node": "label#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-Reason-label",
+      "paint": "Reason",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        248,
+        248,
+        244,
+        1
+      ],
+      "ratio": 14.580139842405517,
+      "minimum": 4.5
+    },
+    {
+      "owner": 4,
+      "node": "input#control",
+      "paint": "input value",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 5,
+      "node": "slot",
+      "paint": "Policy Allowed Specimen",
+      "foreground": [
+        36,
+        36,
+        36,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 15.522910417680388,
+      "minimum": 4.5
+    },
+    {
+      "owner": 6,
+      "node": "h2#fc-command-authorization-Counter-Specimens-Domain-PolicyDeniedSpecimenCommand-d77bdccb57e24332a489ea931536735c",
+      "paint": "Permission required",
+      "foreground": [
+        59,
+        47,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        244,
+        206,
+        1
+      ],
+      "ratio": 11.982864620482118,
+      "minimum": 3
+    },
+    {
+      "owner": 7,
+      "node": "p#fc-command-authorization-description-2b92a37c98eb4812828d1c7f5ecdbddc",
+      "paint": "You do not have permission to Policy Denied Specimen.",
+      "foreground": [
+        59,
+        47,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        244,
+        206,
+        1
+      ],
+      "ratio": 11.982864620482118,
+      "minimum": 4.5
+    }
+  ],
+  "icon": [],
+  "boundaries": [
+    [
+      {
+        "owner": 0,
+        "node": "fluent-text-input#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-RecordId",
+        "paint": "element border-top",
+        "foreground": [
+          112,
+          112,
+          112,
+          1
+        ],
+        "background": [
+          248,
+          248,
+          244,
+          1
+        ],
+        "ratio": 4.651379803772574,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "fluent-text-input#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-RecordId",
+        "paint": "element border-right",
+        "foreground": [
+          112,
+          112,
+          112,
+          1
+        ],
+        "background": [
+          248,
+          248,
+          244,
+          1
+        ],
+        "ratio": 4.651379803772574,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "fluent-text-input#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-RecordId",
+        "paint": "element border-bottom",
+        "foreground": [
+          112,
+          112,
+          112,
+          1
+        ],
+        "background": [
+          248,
+          248,
+          244,
+          1
+        ],
+        "ratio": 4.651379803772574,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "fluent-text-input#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-RecordId",
+        "paint": "element border-left",
+        "foreground": [
+          112,
+          112,
+          112,
+          1
+        ],
+        "background": [
+          248,
+          248,
+          244,
+          1
+        ],
+        "ratio": 4.651379803772574,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          97,
+          97,
+          97,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 6.193286162073998,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      }
+    ],
+    [
+      {
+        "owner": 0,
+        "node": "fluent-text-input#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-Reason",
+        "paint": "element border-top",
+        "foreground": [
+          112,
+          112,
+          112,
+          1
+        ],
+        "background": [
+          248,
+          248,
+          244,
+          1
+        ],
+        "ratio": 4.651379803772574,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "fluent-text-input#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-Reason",
+        "paint": "element border-right",
+        "foreground": [
+          112,
+          112,
+          112,
+          1
+        ],
+        "background": [
+          248,
+          248,
+          244,
+          1
+        ],
+        "ratio": 4.651379803772574,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "fluent-text-input#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-Reason",
+        "paint": "element border-bottom",
+        "foreground": [
+          112,
+          112,
+          112,
+          1
+        ],
+        "background": [
+          248,
+          248,
+          244,
+          1
+        ],
+        "ratio": 4.651379803772574,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "fluent-text-input#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-Reason",
+        "paint": "element border-left",
+        "foreground": [
+          112,
+          112,
+          112,
+          1
+        ],
+        "background": [
+          248,
+          248,
+          244,
+          1
+        ],
+        "ratio": 4.651379803772574,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          97,
+          97,
+          97,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 6.193286162073998,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          209,
+          209,
+          209,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 1.527057553215567,
+        "minimum": 3
+      }
+    ]
+  ],
+  "cues": [],
+  "decorativeIconExemptions": [
+    ".fc-empty-state-body__icon: redundant illustration accompanying complete visible empty-state text",
+    ".fluent-skeleton: decorative loading skeleton accompanying aria-busy and its accessible name"
+  ],
+  "forcedColors": true,
+  "forcedColorsPaint": true,
+  "forcedColorsStatus": "painted system palette",
+  "systemText": [
+    {
+      "owner": 0,
+      "node": "h2#fc-policy-command-title",
+      "paint": "Policy-gated command authorization",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 3
+    },
+    {
+      "owner": 1,
+      "node": "label#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-RecordId-label",
+      "paint": "Record Id",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 2,
+      "node": "input#control",
+      "paint": "input value",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 3,
+      "node": "label#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-Reason-label",
+      "paint": "Reason",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 4,
+      "node": "input#control",
+      "paint": "input value",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 5,
+      "node": "slot",
+      "paint": "Policy Allowed Specimen",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    },
+    {
+      "owner": 6,
+      "node": "h2#fc-command-authorization-Counter-Specimens-Domain-PolicyDeniedSpecimenCommand-d77bdccb57e24332a489ea931536735c",
+      "paint": "Permission required",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 3
+    },
+    {
+      "owner": 7,
+      "node": "p#fc-command-authorization-description-2b92a37c98eb4812828d1c7f5ecdbddc",
+      "paint": "You do not have permission to Policy Denied Specimen.",
+      "foreground": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "background": [
+        255,
+        255,
+        255,
+        1
+      ],
+      "ratio": 21,
+      "minimum": 4.5
+    }
+  ],
+  "systemIcon": [],
+  "systemBoundaries": [
+    [
+      {
+        "owner": 0,
+        "node": "fluent-text-input#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-RecordId",
+        "paint": "element border-top",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "fluent-text-input#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-RecordId",
+        "paint": "element border-right",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "fluent-text-input#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-RecordId",
+        "paint": "element border-bottom",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "fluent-text-input#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-RecordId",
+        "paint": "element border-left",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      }
+    ],
+    [
+      {
+        "owner": 0,
+        "node": "fluent-text-input#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-Reason",
+        "paint": "element border-top",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "fluent-text-input#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-Reason",
+        "paint": "element border-right",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "fluent-text-input#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-Reason",
+        "paint": "element border-bottom",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "fluent-text-input#fc-command-form-Counter-Specimens-Domain-PolicyAllowedSpecimenCommand-86-Reason",
+        "paint": "element border-left",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-top",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-right",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-bottom",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      },
+      {
+        "owner": 0,
+        "node": "div",
+        "paint": "element border-left",
+        "foreground": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "background": [
+          255,
+          255,
+          255,
+          1
+        ],
+        "ratio": 21,
+        "minimum": 3
+      }
+    ]
+  ],
+  "systemCues": [],
+  "systemFocus": {
+    "mode": "forced-colors",
+    "status": "measured",
+    "target": "SECTION#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-86-validation-summary",
+    "requireIndicator": false,
+    "box": {
+      "left": 50,
+      "top": 177.171875,
+      "right": 270,
+      "bottom": 335.171875
+    },
+    "ring": 4,
+    "failures": [],
+    "occluder": null
+  },
+  "systemSnapshot": "system-state-policy-denied-light.png",
+  "reducedMotion": true
+}

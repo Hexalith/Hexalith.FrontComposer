@@ -1,0 +1,6 @@
+{
+  "sourceArtifacts": "/tmp/story13-6-parent-082c523d4166/accessibility-state-matrix-43c05-ocus-and-navigation-in-dark-chromium",
+  "observation": "Failure screenshot shows the generated grid below the viewport after Load two rows; its accessibility snapshot reports 2 counters but only an aria-hidden virtual spacer row. Test setup now scrolls the actual grid into view and waits for both generated rows before capture. Existing correlation reducer drops mismatched older result correlations.",
+  "classification": "Retained failed setup proof; not a passing cancellation observation",
+  "candidateAttribution": "Parent-owned failed run; original candidate attribution remains in the parent review records."
+}

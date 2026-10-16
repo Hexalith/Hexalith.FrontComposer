@@ -1,0 +1,2708 @@
+[
+  {
+    "engine": "chromium",
+    "selector": "[data-testid=\"fc-nav-foundation\"]",
+    "result": {
+      "target": {
+        "tag": "A",
+        "id": "",
+        "cls": null,
+        "test": "fc-nav-foundation",
+        "box": {
+          "x": 68,
+          "y": 547.359375,
+          "width": 70.0625,
+          "height": 24,
+          "top": 547.359375,
+          "right": 138.0625,
+          "bottom": 571.359375,
+          "left": 68
+        },
+        "outline": "rgb(0, 90, 158) solid 4px",
+        "offset": "3px",
+        "shadow": "none",
+        "pos": "static",
+        "z": "auto"
+      },
+      "parents": [
+        {
+          "tag": "LI",
+          "id": "",
+          "cls": null,
+          "test": null,
+          "box": {
+            "x": 68,
+            "y": 547.359375,
+            "width": 224,
+            "height": 24,
+            "top": 547.359375,
+            "right": 292,
+            "bottom": 571.359375,
+            "left": 68
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "UL",
+          "id": "",
+          "cls": null,
+          "test": null,
+          "box": {
+            "x": 28,
+            "y": 547.359375,
+            "width": 264,
+            "height": 112,
+            "top": 547.359375,
+            "right": 292,
+            "bottom": 659.359375,
+            "left": 28
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "NAV",
+          "id": "",
+          "cls": null,
+          "test": "fc-multi-level-nav",
+          "box": {
+            "x": 28,
+            "y": 440.8125,
+            "width": 264,
+            "height": 218.546875,
+            "top": 440.8125,
+            "right": 292,
+            "bottom": 659.359375,
+            "left": 28
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "MAIN",
+          "id": "",
+          "cls": "fc-specimen fc-specimen--light fc-specimen--comfortable",
+          "test": "fc-type-specimen",
+          "box": {
+            "x": 12,
+            "y": -5485,
+            "width": 296,
+            "height": 6176.359375,
+            "top": -5485,
+            "right": 308,
+            "bottom": 691.359375,
+            "left": 12
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        }
+      ],
+      "nearby": [
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "cls": null,
+          "test": "fc-nav-group-generated",
+          "box": {
+            "x": 68,
+            "y": 571.359375,
+            "width": 133.0625,
+            "height": 40,
+            "top": 571.359375,
+            "right": 201.0625,
+            "bottom": 611.359375,
+            "left": 68
+          },
+          "outline": "rgb(0, 0, 0) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        }
+      ]
+    }
+  },
+  {
+    "engine": "chromium",
+    "selector": "[aria-label=\"specimen status\"]",
+    "result": {
+      "target": {
+        "tag": "DIV",
+        "id": "",
+        "cls": "fc-datagrid-host fc-projection-grid",
+        "test": null,
+        "box": {
+          "x": 28,
+          "y": 236.53125,
+          "width": 264,
+          "height": 222,
+          "top": 236.53125,
+          "right": 292,
+          "bottom": 458.53125,
+          "left": 28
+        },
+        "outline": "rgb(16, 16, 16) auto 1px",
+        "offset": "0px",
+        "shadow": "none",
+        "pos": "static",
+        "z": "auto"
+      },
+      "parents": [
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": null,
+          "test": "fc-badge-grid",
+          "box": {
+            "x": 28,
+            "y": -112.015625,
+            "width": 264,
+            "height": 570.546875,
+            "top": -112.015625,
+            "right": 292,
+            "bottom": 458.53125,
+            "left": 28
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "MAIN",
+          "id": "",
+          "cls": "fc-specimen fc-specimen--light fc-specimen--comfortable",
+          "test": "fc-type-specimen",
+          "box": {
+            "x": 12,
+            "y": -2917,
+            "width": 296,
+            "height": 6176.359375,
+            "top": -2917,
+            "right": 308,
+            "bottom": 3259.359375,
+            "left": 12
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": null,
+          "test": null,
+          "box": {
+            "x": 12,
+            "y": -2917,
+            "width": 296,
+            "height": 6176.359375,
+            "top": -2917,
+            "right": 308,
+            "bottom": 3259.359375,
+            "left": 12
+          },
+          "outline": "rgb(36, 36, 36) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "DIV",
+          "id": "fc-main-content",
+          "cls": "fc-page-layout",
+          "test": null,
+          "box": {
+            "x": 12,
+            "y": -2917,
+            "width": 296,
+            "height": 6176.359375,
+            "top": -2917,
+            "right": 308,
+            "bottom": 3259.359375,
+            "left": 12
+          },
+          "outline": "rgb(36, 36, 36) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        }
+      ],
+      "nearby": [
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-row-count",
+          "test": null,
+          "box": {
+            "x": 28,
+            "y": 218.53125,
+            "width": 112.84375,
+            "height": 16,
+            "top": 218.53125,
+            "right": 140.84375,
+            "bottom": 234.53125,
+            "left": 28
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 44,
+            "y": 255.53125,
+            "width": 54.46875,
+            "height": 16,
+            "top": 255.53125,
+            "right": 98.46875,
+            "bottom": 271.53125,
+            "left": 44
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 98.46875,
+            "y": 255.53125,
+            "width": 109.734375,
+            "height": 16,
+            "top": 255.53125,
+            "right": 208.203125,
+            "bottom": 271.53125,
+            "left": 98.46875
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 208.203125,
+            "y": 255.53125,
+            "width": 27.890625,
+            "height": 16,
+            "top": 255.53125,
+            "right": 236.09375,
+            "bottom": 271.53125,
+            "left": 208.203125
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "fc-status-icon-843",
+          "cls": null,
+          "test": "fc-status-icon",
+          "box": {
+            "x": 208.203125,
+            "y": 248.53125,
+            "width": 24,
+            "height": 24,
+            "top": 248.53125,
+            "right": 232.203125,
+            "bottom": 272.53125,
+            "left": 208.203125
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 236.09375,
+            "y": 255.53125,
+            "width": 31.140625,
+            "height": 16,
+            "top": 255.53125,
+            "right": 267.234375,
+            "bottom": 271.53125,
+            "left": 236.09375
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 44,
+            "y": 288.53125,
+            "width": 54.46875,
+            "height": 16,
+            "top": 288.53125,
+            "right": 98.46875,
+            "bottom": 304.53125,
+            "left": 44
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 98.46875,
+            "y": 288.53125,
+            "width": 87.953125,
+            "height": 16,
+            "top": 288.53125,
+            "right": 186.421875,
+            "bottom": 304.53125,
+            "left": 98.46875
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 186.421875,
+            "y": 288.53125,
+            "width": 27.890625,
+            "height": 16,
+            "top": 288.53125,
+            "right": 214.3125,
+            "bottom": 304.53125,
+            "left": 186.421875
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "fc-status-icon-844",
+          "cls": null,
+          "test": "fc-status-icon",
+          "box": {
+            "x": 186.421875,
+            "y": 281.53125,
+            "width": 24,
+            "height": 24,
+            "top": 281.53125,
+            "right": 210.421875,
+            "bottom": 305.53125,
+            "left": 186.421875
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 214.3125,
+            "y": 288.53125,
+            "width": 77.046875,
+            "height": 16,
+            "top": 288.53125,
+            "right": 291.359375,
+            "bottom": 304.53125,
+            "left": 214.3125
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 44,
+            "y": 321.53125,
+            "width": 54.46875,
+            "height": 16,
+            "top": 321.53125,
+            "right": 98.46875,
+            "bottom": 337.53125,
+            "left": 44
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 98.46875,
+            "y": 321.53125,
+            "width": 117.515625,
+            "height": 16,
+            "top": 321.53125,
+            "right": 215.984375,
+            "bottom": 337.53125,
+            "left": 98.46875
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 215.984375,
+            "y": 321.53125,
+            "width": 27.890625,
+            "height": 16,
+            "top": 321.53125,
+            "right": 243.875,
+            "bottom": 337.53125,
+            "left": 215.984375
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "fc-status-icon-845",
+          "cls": null,
+          "test": "fc-status-icon",
+          "box": {
+            "x": 215.984375,
+            "y": 314.53125,
+            "width": 24,
+            "height": 24,
+            "top": 314.53125,
+            "right": 239.984375,
+            "bottom": 338.53125,
+            "left": 215.984375
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 243.875,
+            "y": 321.53125,
+            "width": 59.921875,
+            "height": 16,
+            "top": 321.53125,
+            "right": 303.796875,
+            "bottom": 337.53125,
+            "left": 243.875
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 44,
+            "y": 354.53125,
+            "width": 54.46875,
+            "height": 16,
+            "top": 354.53125,
+            "right": 98.46875,
+            "bottom": 370.53125,
+            "left": 44
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 98.46875,
+            "y": 354.53125,
+            "width": 116.21875,
+            "height": 16,
+            "top": 354.53125,
+            "right": 214.6875,
+            "bottom": 370.53125,
+            "left": 98.46875
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 214.6875,
+            "y": 354.53125,
+            "width": 27.640625,
+            "height": 16,
+            "top": 354.53125,
+            "right": 242.328125,
+            "bottom": 370.53125,
+            "left": 214.6875
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "fc-status-icon-846",
+          "cls": null,
+          "test": "fc-status-icon",
+          "box": {
+            "x": 214.6875,
+            "y": 347.53125,
+            "width": 24,
+            "height": 24,
+            "top": 347.53125,
+            "right": 238.6875,
+            "bottom": 371.53125,
+            "left": 214.6875
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 242.328125,
+            "y": 354.53125,
+            "width": 44.359375,
+            "height": 16,
+            "top": 354.53125,
+            "right": 286.6875,
+            "bottom": 370.53125,
+            "left": 242.328125
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 44,
+            "y": 387.53125,
+            "width": 54.46875,
+            "height": 16,
+            "top": 387.53125,
+            "right": 98.46875,
+            "bottom": 403.53125,
+            "left": 44
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 98.46875,
+            "y": 387.53125,
+            "width": 110.515625,
+            "height": 16,
+            "top": 387.53125,
+            "right": 208.984375,
+            "bottom": 403.53125,
+            "left": 98.46875
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 208.984375,
+            "y": 387.53125,
+            "width": 27.890625,
+            "height": 16,
+            "top": 387.53125,
+            "right": 236.875,
+            "bottom": 403.53125,
+            "left": 208.984375
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "fc-status-icon-847",
+          "cls": null,
+          "test": "fc-status-icon",
+          "box": {
+            "x": 208.984375,
+            "y": 380.53125,
+            "width": 24,
+            "height": 24,
+            "top": 380.53125,
+            "right": 232.984375,
+            "bottom": 404.53125,
+            "left": 208.984375
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 236.875,
+            "y": 387.53125,
+            "width": 14,
+            "height": 16,
+            "top": 387.53125,
+            "right": 250.875,
+            "bottom": 403.53125,
+            "left": 236.875
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 44,
+            "y": 420.53125,
+            "width": 54.46875,
+            "height": 16,
+            "top": 420.53125,
+            "right": 98.46875,
+            "bottom": 436.53125,
+            "left": 44
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 98.46875,
+            "y": 420.53125,
+            "width": 107.40625,
+            "height": 16,
+            "top": 420.53125,
+            "right": 205.875,
+            "bottom": 436.53125,
+            "left": 98.46875
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 205.875,
+            "y": 420.53125,
+            "width": 27.890625,
+            "height": 16,
+            "top": 420.53125,
+            "right": 233.765625,
+            "bottom": 436.53125,
+            "left": 205.875
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "fc-status-icon-848",
+          "cls": null,
+          "test": "fc-status-icon",
+          "box": {
+            "x": 205.875,
+            "y": 413.53125,
+            "width": 24,
+            "height": 24,
+            "top": 413.53125,
+            "right": 229.875,
+            "bottom": 437.53125,
+            "left": 205.875
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 233.765625,
+            "y": 420.53125,
+            "width": 31.90625,
+            "height": 16,
+            "top": 420.53125,
+            "right": 265.671875,
+            "bottom": 436.53125,
+            "left": 233.765625
+          },
+          "outline": "rgb(20, 20, 20) none 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        }
+      ]
+    }
+  },
+  {
+    "engine": "firefox",
+    "selector": "[data-testid=\"fc-nav-foundation\"]",
+    "result": {
+      "target": {
+        "tag": "A",
+        "id": "",
+        "cls": null,
+        "test": "fc-nav-foundation",
+        "box": {
+          "x": 68,
+          "y": 707.0999755859375,
+          "width": 75.28334045410156,
+          "height": 24,
+          "top": 707.0999755859375,
+          "right": 143.28334045410156,
+          "bottom": 731.0999755859375,
+          "left": 68
+        },
+        "outline": "rgb(0, 90, 158) solid 4px",
+        "offset": "3px",
+        "shadow": "none",
+        "pos": "static",
+        "z": "auto"
+      },
+      "parents": [
+        {
+          "tag": "LI",
+          "id": "",
+          "cls": null,
+          "test": null,
+          "box": {
+            "x": 68,
+            "y": 706.5999755859375,
+            "width": 224,
+            "height": 24.5,
+            "top": 706.5999755859375,
+            "right": 292,
+            "bottom": 731.0999755859375,
+            "left": 68
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "UL",
+          "id": "",
+          "cls": null,
+          "test": null,
+          "box": {
+            "x": 28,
+            "y": 706.5999755859375,
+            "width": 264,
+            "height": 113.5,
+            "top": 706.5999755859375,
+            "right": 292,
+            "bottom": 820.0999755859375,
+            "left": 28
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "NAV",
+          "id": "",
+          "cls": null,
+          "test": "fc-multi-level-nav",
+          "box": {
+            "x": 28,
+            "y": 600.0333251953125,
+            "width": 264,
+            "height": 220.06666564941406,
+            "top": 600.0333251953125,
+            "right": 292,
+            "bottom": 820.0999908447266,
+            "left": 28
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "MAIN",
+          "id": "",
+          "cls": "fc-specimen fc-specimen--light fc-specimen--comfortable",
+          "test": "fc-type-specimen",
+          "box": {
+            "x": 12,
+            "y": -5346,
+            "width": 296,
+            "height": 6198.10009765625,
+            "top": -5346,
+            "right": 308,
+            "bottom": 852.10009765625,
+            "left": 12
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        }
+      ],
+      "nearby": [
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "cls": null,
+          "test": "fc-nav-group-generated",
+          "box": {
+            "x": 68,
+            "y": 731.0999755859375,
+            "width": 134.1666717529297,
+            "height": 40,
+            "top": 731.0999755859375,
+            "right": 202.1666717529297,
+            "bottom": 771.0999755859375,
+            "left": 68
+          },
+          "outline": "rgb(0, 0, 0) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        }
+      ]
+    }
+  },
+  {
+    "engine": "firefox",
+    "selector": "[aria-label=\"specimen status\"]",
+    "result": {
+      "target": {
+        "tag": "DIV",
+        "id": "",
+        "cls": "fc-datagrid-host fc-projection-grid",
+        "test": null,
+        "box": {
+          "x": 28,
+          "y": 397.6333312988281,
+          "width": 264,
+          "height": 222,
+          "top": 397.6333312988281,
+          "right": 292,
+          "bottom": 619.6333312988281,
+          "left": 28
+        },
+        "outline": "rgb(20, 20, 20) auto 1px",
+        "offset": "0px",
+        "shadow": "none",
+        "pos": "static",
+        "z": "auto"
+      },
+      "parents": [
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": null,
+          "test": "fc-badge-grid",
+          "box": {
+            "x": 28,
+            "y": 49.06666564941406,
+            "width": 264,
+            "height": 570.566650390625,
+            "top": 49.06666564941406,
+            "right": 292,
+            "bottom": 619.6333160400391,
+            "left": 28
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "MAIN",
+          "id": "",
+          "cls": "fc-specimen fc-specimen--light fc-specimen--comfortable",
+          "test": "fc-type-specimen",
+          "box": {
+            "x": 12,
+            "y": -2756,
+            "width": 296,
+            "height": 6198.10009765625,
+            "top": -2756,
+            "right": 308,
+            "bottom": 3442.10009765625,
+            "left": 12
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": null,
+          "test": null,
+          "box": {
+            "x": 12,
+            "y": -2756,
+            "width": 296,
+            "height": 6198.10009765625,
+            "top": -2756,
+            "right": 308,
+            "bottom": 3442.10009765625,
+            "left": 12
+          },
+          "outline": "rgb(36, 36, 36) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "DIV",
+          "id": "fc-main-content",
+          "cls": "fc-page-layout",
+          "test": null,
+          "box": {
+            "x": 12,
+            "y": -2756,
+            "width": 296,
+            "height": 6198.10009765625,
+            "top": -2756,
+            "right": 308,
+            "bottom": 3442.10009765625,
+            "left": 12
+          },
+          "outline": "rgb(36, 36, 36) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        }
+      ],
+      "nearby": [
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-row-count",
+          "test": null,
+          "box": {
+            "x": 28,
+            "y": 377.6333312988281,
+            "width": 118.44999694824219,
+            "height": 20,
+            "top": 377.6333312988281,
+            "right": 146.4499969482422,
+            "bottom": 397.6333312988281,
+            "left": 28
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 44,
+            "y": 414.6333312988281,
+            "width": 52.616668701171875,
+            "height": 20,
+            "top": 414.6333312988281,
+            "right": 96.61666870117188,
+            "bottom": 434.6333312988281,
+            "left": 44
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 96.61666870117188,
+            "y": 414.6333312988281,
+            "width": 119.43333435058594,
+            "height": 20,
+            "top": 414.6333312988281,
+            "right": 216.0500030517578,
+            "bottom": 434.6333312988281,
+            "left": 96.61666870117188
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 216.0500030517578,
+            "y": 414.6333312988281,
+            "width": 27.633331298828125,
+            "height": 20,
+            "top": 414.6333312988281,
+            "right": 243.68333435058594,
+            "bottom": 434.6333312988281,
+            "left": 216.0500030517578
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "fc-status-icon-855",
+          "cls": null,
+          "test": "fc-status-icon",
+          "box": {
+            "x": 216.0500030517578,
+            "y": 409.6333312988281,
+            "width": 24,
+            "height": 24,
+            "top": 409.6333312988281,
+            "right": 240.0500030517578,
+            "bottom": 433.6333312988281,
+            "left": 216.0500030517578
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 243.68333435058594,
+            "y": 414.6333312988281,
+            "width": 31.466659545898438,
+            "height": 20,
+            "top": 414.6333312988281,
+            "right": 275.1499938964844,
+            "bottom": 434.6333312988281,
+            "left": 243.68333435058594
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 44,
+            "y": 447.6333312988281,
+            "width": 52.616668701171875,
+            "height": 20,
+            "top": 447.6333312988281,
+            "right": 96.61666870117188,
+            "bottom": 467.6333312988281,
+            "left": 44
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 96.61666870117188,
+            "y": 447.6333312988281,
+            "width": 96.91667175292969,
+            "height": 20,
+            "top": 447.6333312988281,
+            "right": 193.53334045410156,
+            "bottom": 467.6333312988281,
+            "left": 96.61666870117188
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 193.53334045410156,
+            "y": 447.6333312988281,
+            "width": 27.633331298828125,
+            "height": 20,
+            "top": 447.6333312988281,
+            "right": 221.1666717529297,
+            "bottom": 467.6333312988281,
+            "left": 193.53334045410156
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "fc-status-icon-856",
+          "cls": null,
+          "test": "fc-status-icon",
+          "box": {
+            "x": 193.53334045410156,
+            "y": 442.6333312988281,
+            "width": 24,
+            "height": 24,
+            "top": 442.6333312988281,
+            "right": 217.53334045410156,
+            "bottom": 466.6333312988281,
+            "left": 193.53334045410156
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 221.1666717529297,
+            "y": 447.6333312988281,
+            "width": 78.96665954589844,
+            "height": 20,
+            "top": 447.6333312988281,
+            "right": 300.1333312988281,
+            "bottom": 467.6333312988281,
+            "left": 221.1666717529297
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 44,
+            "y": 480.6333312988281,
+            "width": 52.616668701171875,
+            "height": 20,
+            "top": 480.6333312988281,
+            "right": 96.61666870117188,
+            "bottom": 500.6333312988281,
+            "left": 44
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 96.61666870117188,
+            "y": 480.6333312988281,
+            "width": 121.30000305175781,
+            "height": 20,
+            "top": 480.6333312988281,
+            "right": 217.9166717529297,
+            "bottom": 500.6333312988281,
+            "left": 96.61666870117188
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 217.9166717529297,
+            "y": 480.6333312988281,
+            "width": 27.633331298828125,
+            "height": 20,
+            "top": 480.6333312988281,
+            "right": 245.5500030517578,
+            "bottom": 500.6333312988281,
+            "left": 217.9166717529297
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "fc-status-icon-857",
+          "cls": null,
+          "test": "fc-status-icon",
+          "box": {
+            "x": 217.9166717529297,
+            "y": 475.6333312988281,
+            "width": 24,
+            "height": 24,
+            "top": 475.6333312988281,
+            "right": 241.9166717529297,
+            "bottom": 499.6333312988281,
+            "left": 217.9166717529297
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 245.5500030517578,
+            "y": 480.6333312988281,
+            "width": 62.83332824707031,
+            "height": 20,
+            "top": 480.6333312988281,
+            "right": 308.3833312988281,
+            "bottom": 500.6333312988281,
+            "left": 245.5500030517578
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 44,
+            "y": 513.63330078125,
+            "width": 52.616668701171875,
+            "height": 20,
+            "top": 513.63330078125,
+            "right": 96.61666870117188,
+            "bottom": 533.63330078125,
+            "left": 44
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 96.61666870117188,
+            "y": 513.63330078125,
+            "width": 126.13333129882812,
+            "height": 20,
+            "top": 513.63330078125,
+            "right": 222.75,
+            "bottom": 533.63330078125,
+            "left": 96.61666870117188
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 222.75,
+            "y": 513.63330078125,
+            "width": 27.633331298828125,
+            "height": 20,
+            "top": 513.63330078125,
+            "right": 250.38333129882812,
+            "bottom": 533.63330078125,
+            "left": 222.75
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "fc-status-icon-858",
+          "cls": null,
+          "test": "fc-status-icon",
+          "box": {
+            "x": 222.75,
+            "y": 508.6333312988281,
+            "width": 24,
+            "height": 24,
+            "top": 508.6333312988281,
+            "right": 246.75,
+            "bottom": 532.6333312988281,
+            "left": 222.75
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 250.38333129882812,
+            "y": 513.63330078125,
+            "width": 47.33332824707031,
+            "height": 20,
+            "top": 513.63330078125,
+            "right": 297.71665954589844,
+            "bottom": 533.63330078125,
+            "left": 250.38333129882812
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 44,
+            "y": 546.63330078125,
+            "width": 52.616668701171875,
+            "height": 20,
+            "top": 546.63330078125,
+            "right": 96.61666870117188,
+            "bottom": 566.63330078125,
+            "left": 44
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 96.61666870117188,
+            "y": 546.63330078125,
+            "width": 119.25,
+            "height": 20,
+            "top": 546.63330078125,
+            "right": 215.86666870117188,
+            "bottom": 566.63330078125,
+            "left": 96.61666870117188
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 215.86666870117188,
+            "y": 546.63330078125,
+            "width": 27.633331298828125,
+            "height": 20,
+            "top": 546.63330078125,
+            "right": 243.5,
+            "bottom": 566.63330078125,
+            "left": 215.86666870117188
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "fc-status-icon-859",
+          "cls": null,
+          "test": "fc-status-icon",
+          "box": {
+            "x": 215.86666870117188,
+            "y": 541.63330078125,
+            "width": 24,
+            "height": 24,
+            "top": 541.63330078125,
+            "right": 239.86666870117188,
+            "bottom": 565.63330078125,
+            "left": 215.86666870117188
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 243.5,
+            "y": 546.63330078125,
+            "width": 13.600006103515625,
+            "height": 20,
+            "top": 546.63330078125,
+            "right": 257.1000061035156,
+            "bottom": 566.63330078125,
+            "left": 243.5
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 44,
+            "y": 579.63330078125,
+            "width": 52.616668701171875,
+            "height": 20,
+            "top": 579.63330078125,
+            "right": 96.61666870117188,
+            "bottom": 599.63330078125,
+            "left": 44
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 96.61666870117188,
+            "y": 579.63330078125,
+            "width": 114.21665954589844,
+            "height": 20,
+            "top": 579.63330078125,
+            "right": 210.8333282470703,
+            "bottom": 599.63330078125,
+            "left": 96.61666870117188
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 210.8333282470703,
+            "y": 579.63330078125,
+            "width": 27.633331298828125,
+            "height": 20,
+            "top": 579.63330078125,
+            "right": 238.46665954589844,
+            "bottom": 599.63330078125,
+            "left": 210.8333282470703
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "fc-status-icon-860",
+          "cls": null,
+          "test": "fc-status-icon",
+          "box": {
+            "x": 210.8333282470703,
+            "y": 574.63330078125,
+            "width": 24,
+            "height": 24,
+            "top": 574.63330078125,
+            "right": 234.8333282470703,
+            "bottom": 598.63330078125,
+            "left": 210.8333282470703
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 238.46665954589844,
+            "y": 579.63330078125,
+            "width": 32.100006103515625,
+            "height": 20,
+            "top": 579.63330078125,
+            "right": 270.56666564941406,
+            "bottom": 599.63330078125,
+            "left": 238.46665954589844
+          },
+          "outline": "rgb(20, 20, 20) 3px",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        }
+      ]
+    }
+  },
+  {
+    "engine": "webkit",
+    "selector": "[data-testid=\"fc-nav-foundation\"]",
+    "result": {
+      "target": {
+        "tag": "A",
+        "id": "",
+        "cls": null,
+        "test": "fc-nav-foundation",
+        "box": {
+          "x": 68,
+          "y": 547.359375,
+          "width": 75.296875,
+          "height": 24,
+          "top": 547.359375,
+          "right": 143.296875,
+          "bottom": 571.359375,
+          "left": 68
+        },
+        "outline": "4px solid rgb(0, 90, 158)",
+        "offset": "3px",
+        "shadow": "none",
+        "pos": "static",
+        "z": "auto"
+      },
+      "parents": [
+        {
+          "tag": "LI",
+          "id": "",
+          "cls": null,
+          "test": null,
+          "box": {
+            "x": 68,
+            "y": 547.359375,
+            "width": 224,
+            "height": 24,
+            "top": 547.359375,
+            "right": 292,
+            "bottom": 571.359375,
+            "left": 68
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "UL",
+          "id": "",
+          "cls": null,
+          "test": null,
+          "box": {
+            "x": 28,
+            "y": 547.359375,
+            "width": 264,
+            "height": 112,
+            "top": 547.359375,
+            "right": 292,
+            "bottom": 659.359375,
+            "left": 28
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "NAV",
+          "id": "",
+          "cls": null,
+          "test": "fc-multi-level-nav",
+          "box": {
+            "x": 28,
+            "y": 440.8125,
+            "width": 264,
+            "height": 218.546875,
+            "top": 440.8125,
+            "right": 292,
+            "bottom": 659.359375,
+            "left": 28
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "MAIN",
+          "id": "",
+          "cls": "fc-specimen fc-specimen--light fc-specimen--comfortable",
+          "test": "fc-type-specimen",
+          "box": {
+            "x": 12,
+            "y": -5502,
+            "width": 296,
+            "height": 6193.359375,
+            "top": -5502,
+            "right": 308,
+            "bottom": 691.359375,
+            "left": 12
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        }
+      ],
+      "nearby": [
+        {
+          "tag": "BUTTON",
+          "id": "",
+          "cls": null,
+          "test": "fc-nav-group-generated",
+          "box": {
+            "x": 68,
+            "y": 571.359375,
+            "width": 162.671875,
+            "height": 40,
+            "top": 571.359375,
+            "right": 230.671875,
+            "bottom": 611.359375,
+            "left": 68
+          },
+          "outline": "3px none rgba(0, 0, 0, 0.8)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        }
+      ]
+    }
+  },
+  {
+    "engine": "webkit",
+    "selector": "[aria-label=\"specimen status\"]",
+    "result": {
+      "target": {
+        "tag": "DIV",
+        "id": "",
+        "cls": "fc-datagrid-host fc-projection-grid",
+        "test": null,
+        "box": {
+          "x": 28,
+          "y": 7.53125,
+          "width": 264,
+          "height": 219,
+          "top": 7.53125,
+          "right": 292,
+          "bottom": 226.53125,
+          "left": 28
+        },
+        "outline": "3px auto rgb(20, 20, 20)",
+        "offset": "0px",
+        "shadow": "none",
+        "pos": "static",
+        "z": "auto"
+      },
+      "parents": [
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": null,
+          "test": "fc-badge-grid",
+          "box": {
+            "x": 28,
+            "y": -341.015625,
+            "width": 264,
+            "height": 567.546875,
+            "top": -341.015625,
+            "right": 292,
+            "bottom": 226.53125,
+            "left": 28
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "MAIN",
+          "id": "",
+          "cls": "fc-specimen fc-specimen--light fc-specimen--comfortable",
+          "test": "fc-type-specimen",
+          "box": {
+            "x": 12,
+            "y": -3146,
+            "width": 296,
+            "height": 6193.359375,
+            "top": -3146,
+            "right": 308,
+            "bottom": 3047.359375,
+            "left": 12
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "cls": null,
+          "test": null,
+          "box": {
+            "x": 12,
+            "y": -3146,
+            "width": 296,
+            "height": 6193.359375,
+            "top": -3146,
+            "right": 308,
+            "bottom": 3047.359375,
+            "left": 12
+          },
+          "outline": "3px none rgb(36, 36, 36)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "DIV",
+          "id": "fc-main-content",
+          "cls": "fc-page-layout",
+          "test": null,
+          "box": {
+            "x": 12,
+            "y": -3146,
+            "width": 296,
+            "height": 6193.359375,
+            "top": -3146,
+            "right": 308,
+            "bottom": 3047.359375,
+            "left": 12
+          },
+          "outline": "3px none rgb(36, 36, 36)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        }
+      ],
+      "nearby": [
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-row-count",
+          "test": null,
+          "box": {
+            "x": 28,
+            "y": -11.96875,
+            "width": 118.49554443359375,
+            "height": 19,
+            "top": -11.96875,
+            "right": 146.49554443359375,
+            "bottom": 7.03125,
+            "left": 28
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 44,
+            "y": 24.53125,
+            "width": 52.653778076171875,
+            "height": 19,
+            "top": 24.53125,
+            "right": 96.65377807617188,
+            "bottom": 43.53125,
+            "left": 44
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 96.65377807617188,
+            "y": 24.53125,
+            "width": 119.44754028320312,
+            "height": 19,
+            "top": 24.53125,
+            "right": 216.101318359375,
+            "bottom": 43.53125,
+            "left": 96.65377807617188
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 216.101318359375,
+            "y": 24.53125,
+            "width": 27.639984130859375,
+            "height": 19,
+            "top": 24.53125,
+            "right": 243.74130249023438,
+            "bottom": 43.53125,
+            "left": 216.101318359375
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "fc-status-icon-867",
+          "cls": null,
+          "test": "fc-status-icon",
+          "box": {
+            "x": 216.09375,
+            "y": 19.53125,
+            "width": 24,
+            "height": 24,
+            "top": 19.53125,
+            "right": 240.09375,
+            "bottom": 43.53125,
+            "left": 216.09375
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 243.74130249023438,
+            "y": 24.53125,
+            "width": 31.457855224609375,
+            "height": 19,
+            "top": 24.53125,
+            "right": 275.19915771484375,
+            "bottom": 43.53125,
+            "left": 243.74130249023438
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 44,
+            "y": 57.03125,
+            "width": 52.653778076171875,
+            "height": 19,
+            "top": 57.03125,
+            "right": 96.65377807617188,
+            "bottom": 76.03125,
+            "left": 44
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 96.65377807617188,
+            "y": 57.03125,
+            "width": 96.921630859375,
+            "height": 19,
+            "top": 57.03125,
+            "right": 193.57540893554688,
+            "bottom": 76.03125,
+            "left": 96.65377807617188
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 193.57540893554688,
+            "y": 57.03125,
+            "width": 27.639984130859375,
+            "height": 19,
+            "top": 57.03125,
+            "right": 221.21539306640625,
+            "bottom": 76.03125,
+            "left": 193.57540893554688
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "fc-status-icon-868",
+          "cls": null,
+          "test": "fc-status-icon",
+          "box": {
+            "x": 193.5625,
+            "y": 52.03125,
+            "width": 24,
+            "height": 24,
+            "top": 52.03125,
+            "right": 217.5625,
+            "bottom": 76.03125,
+            "left": 193.5625
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 221.21539306640625,
+            "y": 57.03125,
+            "width": 78.98770141601562,
+            "height": 19,
+            "top": 57.03125,
+            "right": 300.2030944824219,
+            "bottom": 76.03125,
+            "left": 221.21539306640625
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 44,
+            "y": 89.53125,
+            "width": 52.653778076171875,
+            "height": 19,
+            "top": 89.53125,
+            "right": 96.65377807617188,
+            "bottom": 108.53125,
+            "left": 44
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 96.65377807617188,
+            "y": 89.53125,
+            "width": 121.32353210449219,
+            "height": 19,
+            "top": 89.53125,
+            "right": 217.97731018066406,
+            "bottom": 108.53125,
+            "left": 96.65377807617188
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 217.97731018066406,
+            "y": 89.53125,
+            "width": 27.639984130859375,
+            "height": 19,
+            "top": 89.53125,
+            "right": 245.61729431152344,
+            "bottom": 108.53125,
+            "left": 217.97731018066406
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "fc-status-icon-869",
+          "cls": null,
+          "test": "fc-status-icon",
+          "box": {
+            "x": 217.96875,
+            "y": 84.53125,
+            "width": 24,
+            "height": 24,
+            "top": 84.53125,
+            "right": 241.96875,
+            "bottom": 108.53125,
+            "left": 217.96875
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 245.61729431152344,
+            "y": 89.53125,
+            "width": 62.85975646972656,
+            "height": 19,
+            "top": 89.53125,
+            "right": 308.47705078125,
+            "bottom": 108.53125,
+            "left": 245.61729431152344
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 44,
+            "y": 122.03125,
+            "width": 52.653778076171875,
+            "height": 19,
+            "top": 122.03125,
+            "right": 96.65377807617188,
+            "bottom": 141.03125,
+            "left": 44
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 96.65377807617188,
+            "y": 122.03125,
+            "width": 126.13951110839844,
+            "height": 19,
+            "top": 122.03125,
+            "right": 222.7932891845703,
+            "bottom": 141.03125,
+            "left": 96.65377807617188
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 222.7932891845703,
+            "y": 122.03125,
+            "width": 27.639984130859375,
+            "height": 19,
+            "top": 122.03125,
+            "right": 250.4332733154297,
+            "bottom": 141.03125,
+            "left": 222.7932891845703
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "fc-status-icon-870",
+          "cls": null,
+          "test": "fc-status-icon",
+          "box": {
+            "x": 222.78125,
+            "y": 117.03125,
+            "width": 24,
+            "height": 24,
+            "top": 117.03125,
+            "right": 246.78125,
+            "bottom": 141.03125,
+            "left": 222.78125
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 250.4332733154297,
+            "y": 122.03125,
+            "width": 47.33381652832031,
+            "height": 19,
+            "top": 122.03125,
+            "right": 297.76708984375,
+            "bottom": 141.03125,
+            "left": 250.4332733154297
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 44,
+            "y": 154.53125,
+            "width": 52.653778076171875,
+            "height": 19,
+            "top": 154.53125,
+            "right": 96.65377807617188,
+            "bottom": 173.53125,
+            "left": 44
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 96.65377807617188,
+            "y": 154.53125,
+            "width": 119.25154113769531,
+            "height": 19,
+            "top": 154.53125,
+            "right": 215.9053192138672,
+            "bottom": 173.53125,
+            "left": 96.65377807617188
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 215.9053192138672,
+            "y": 154.53125,
+            "width": 27.639984130859375,
+            "height": 19,
+            "top": 154.53125,
+            "right": 243.54530334472656,
+            "bottom": 173.53125,
+            "left": 215.9053192138672
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "fc-status-icon-871",
+          "cls": null,
+          "test": "fc-status-icon",
+          "box": {
+            "x": 215.890625,
+            "y": 149.53125,
+            "width": 24,
+            "height": 24,
+            "top": 149.53125,
+            "right": 239.890625,
+            "bottom": 173.53125,
+            "left": 215.890625
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 243.54530334472656,
+            "y": 154.53125,
+            "width": 13.593948364257812,
+            "height": 19,
+            "top": 154.53125,
+            "right": 257.1392517089844,
+            "bottom": 173.53125,
+            "left": 243.54530334472656
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 44,
+            "y": 187.03125,
+            "width": 52.653778076171875,
+            "height": 19,
+            "top": 187.03125,
+            "right": 96.65377807617188,
+            "bottom": 206.03125,
+            "left": 44
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 96.65377807617188,
+            "y": 187.03125,
+            "width": 114.22555541992188,
+            "height": 19,
+            "top": 187.03125,
+            "right": 210.87933349609375,
+            "bottom": 206.03125,
+            "left": 96.65377807617188
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 210.87933349609375,
+            "y": 187.03125,
+            "width": 27.639984130859375,
+            "height": 19,
+            "top": 187.03125,
+            "right": 238.51931762695312,
+            "bottom": 206.03125,
+            "left": 210.87933349609375
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "fc-status-icon-872",
+          "cls": null,
+          "test": "fc-status-icon",
+          "box": {
+            "x": 210.875,
+            "y": 182.03125,
+            "width": 24,
+            "height": 24,
+            "top": 182.03125,
+            "right": 234.875,
+            "bottom": 206.03125,
+            "left": 210.875
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        },
+        {
+          "tag": "SPAN",
+          "id": "",
+          "cls": "fc-template-field",
+          "test": null,
+          "box": {
+            "x": 238.51931762695312,
+            "y": 187.03125,
+            "width": 32.115875244140625,
+            "height": 19,
+            "top": 187.03125,
+            "right": 270.63519287109375,
+            "bottom": 206.03125,
+            "left": 238.51931762695312
+          },
+          "outline": "3px none rgb(20, 20, 20)",
+          "offset": "0px",
+          "shadow": "none",
+          "pos": "static",
+          "z": "auto"
+        }
+      ]
+    }
+  }
+]

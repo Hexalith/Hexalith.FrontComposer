@@ -45,4 +45,11 @@
 
 /* Native focus scrolling must leave room for the shell's complete focus outline. */
 .fc-shell-root ::deep .fc-shell-content { scroll-padding: 8px; }
-.fc-shell-root ::deep :focus { scroll-margin: 8px; }
+.fc-shell-root ::deep :is(a[href], button, input, select, textarea, summary, [tabindex]) { scroll-margin: 8px; }
+
+/* Firefox makes an overflowing content scrollport a native Tab stop. Its own
+   indicator must remain inside the viewport and neighboring shell chrome. */
+.fc-shell-root ::deep .fc-shell-content:focus-visible {
+    outline: var(--strokeWidthThick) solid var(--colorStrokeFocus2);
+    outline-offset: calc(-1 * var(--strokeWidthThick));
+}

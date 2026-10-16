@@ -1,0 +1,28 @@
+[
+  {
+    "command": [
+      "dotnet",
+      "build",
+      "samples/Counter/Counter.Web/Counter.Web.csproj",
+      "--configuration",
+      "Debug",
+      "--no-restore"
+    ],
+    "exitCode": 0,
+    "durationSeconds": 3.303,
+    "log": "web-build.log"
+  },
+  {
+    "command": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj",
+      "--configuration",
+      "Debug",
+      "--no-restore"
+    ],
+    "exitCode": 0,
+    "durationSeconds": 2.657,
+    "log": "shell-build.log"
+  }
+]

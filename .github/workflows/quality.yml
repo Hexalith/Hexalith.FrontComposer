@@ -900,6 +900,10 @@ jobs:
         working-directory: tests/e2e
         run: npm run test:settings-persistence-storage-key
 
+      - name: Test accessibility evidence negative fixtures
+        working-directory: tests/e2e
+        run: node --test scripts/a11y-state-evidence.test.mjs
+
       - name: Run accessibility, keyboard, media, zoom, and visual specimen gate
         working-directory: tests/e2e
         env:

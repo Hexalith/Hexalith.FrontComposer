@@ -170,6 +170,21 @@
     padding: 8px;
     scroll-padding: 8px;
 }
+/* The generated region follows its row count, and diagnostic links sit in tight row
+   flow. Keep their keyboard contours inside their own bounds, clear of adjacent text. */
+.fc-datagrid-host:focus-visible,
+.fc-projection-grid td .fc-field-placeholder a:focus-visible {
+    outline: 2px solid var(--colorStrokeFocus2, #000);
+    outline-offset: -2px;
+}
+
+@media (forced-colors: active) {
+    @supports (forced-color-adjust: auto) {
+        .fc-datagrid-host:focus-visible,
+        .fc-projection-grid td .fc-field-placeholder a:focus-visible { outline-color: CanvasText; }
+    }
+}
+
 .fc-projection-grid { max-inline-size: 100%; min-inline-size: max-content; }
 .fc-projection-grid tr.fluent-data-grid-row > td, .fc-projection-grid th.column-header {
     overflow: visible;

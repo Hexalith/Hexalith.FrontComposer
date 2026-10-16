@@ -1,0 +1,92 @@
+[
+  {
+    "engine": "chromium",
+    "version": "153.0.8010.12",
+    "hostOS": "Linux",
+    "normal": {
+      "forcedColors": false,
+      "reducedMotion": false,
+      "foreground": "rgb(255, 0, 0)",
+      "background": "rgb(0, 255, 0)"
+    },
+    "forced": {
+      "forcedColors": true,
+      "reducedMotion": true,
+      "foreground": "rgb(0, 0, 0)",
+      "background": "rgb(255, 255, 255)"
+    },
+    "authoredColorReplacement": true,
+    "backgroundPixel30x30": {
+      "normal": [
+        0,
+        255,
+        0
+      ],
+      "forced": [
+        255,
+        255,
+        255
+      ]
+    }
+  },
+  {
+    "engine": "firefox",
+    "version": "155.0",
+    "hostOS": "Linux",
+    "normal": {
+      "forcedColors": false,
+      "reducedMotion": false,
+      "foreground": "rgb(255, 0, 0)",
+      "background": "rgb(0, 255, 0)"
+    },
+    "forced": {
+      "forcedColors": true,
+      "reducedMotion": true,
+      "foreground": "rgb(0, 0, 0)",
+      "background": "rgb(255, 255, 255)"
+    },
+    "authoredColorReplacement": true,
+    "backgroundPixel30x30": {
+      "normal": [
+        0,
+        255,
+        0
+      ],
+      "forced": [
+        255,
+        255,
+        255
+      ]
+    }
+  },
+  {
+    "engine": "webkit",
+    "version": "26.6",
+    "hostOS": "Linux",
+    "normal": {
+      "forcedColors": false,
+      "reducedMotion": false,
+      "foreground": "rgb(255, 0, 0)",
+      "background": "rgb(0, 255, 0)"
+    },
+    "forced": {
+      "forcedColors": true,
+      "reducedMotion": true,
+      "foreground": "rgb(255, 0, 0)",
+      "background": "rgb(0, 255, 0)"
+    },
+    "authoredColorReplacement": false,
+    "backgroundPixel30x30": {
+      "normal": [
+        0,
+        255,
+        0
+      ],
+      "forced": [
+        0,
+        255,
+        0
+      ]
+    }
+  }
+]

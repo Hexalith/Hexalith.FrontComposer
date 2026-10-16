@@ -178,6 +178,23 @@
 .fc-specimen__lifecycle { list-style-position: inside; margin-inline-start: 0; padding-inline-start: 0; }
 .fc-specimen :focus-visible { outline: 4px solid #005a9e; outline-offset: 3px; }
 
+/* This specimen's local theme can differ from the shell's Fluent theme. Adapt only
+   the shared grid contour's color to its local surface; geometry belongs to the grid. */
+.fc-specimen ::deep .fc-datagrid-host:focus-visible { outline-color: var(--fc-specimen-foreground); }
+
+@media (max-width: 40rem) {
+    /* Leave room for the specimen's 7px external ring between navigation actions. */
+    .fc-specimen nav li + li,
+    .fc-specimen nav li > ul { margin-block-start: .5rem; }
+
+}
+
+@media (forced-colors: active) {
+    @supports (forced-color-adjust: auto) {
+        .fc-specimen ::deep .fc-datagrid-host:focus-visible { outline-color: CanvasText; }
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .fc-specimen *,
     .fc-specimen *::before,

@@ -1,0 +1,86 @@
+{
+  "candidateDigest": "sha256:d425d5dac957990ab40c33bd33c5f0a97b6765e3f9409adb3b032f249d5c861e",
+  "classification": "interrupted failed verification; never a pass",
+  "observedCounts": {
+    "passed": 127,
+    "failed": 17,
+    "interrupted": 2,
+    "didNotRun": 148,
+    "planned": 294
+  },
+  "errorSummaries": [
+    {
+      "case": "responsive-accessibility-S-53ae0-focus-at-320px-with-spacing-chromium",
+      "detail": "```\nError: AE-05 focused visual geometry\n\nAE-05 focused visual geometry\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 3\n\n- Array []\n+ Array [\n+   \"focus clip-path/clip/mask needs pixel evidence: {\\\"target\\\":\\\"FLUENT-TEXT-INPUT#f349e7a0\\\",\\\"requireIndicator\\\":true,\\\"box\\\":{\\\"left\\\":60,\\\"top\\\":271,\\\"right\\\":260,\\\"bottom\\\":303},\\\"ring\\\":0,\\\"failures\\\":[\\\"focus clip-path/clip/mask needs pixel evidence\\\"],\\\"occluder\\\":null}\",\n+ ]\n\nCall Log:\n- Timeout 10000ms exceeded while waiting on the predicate\n```"
+    },
+    {
+      "case": "accessibility-state-matrix-b4dcc-and-settings-states-in-dark-chromium",
+      "detail": "```\nError: AE-05 focused visual geometry\n\nAE-05 focused visual geometry\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 3\n\n- Array []\n+ Array [\n+   \"focus clip-path/clip/mask needs pixel evidence: {\\\"target\\\":\\\"INPUT#control\\\",\\\"requireIndicator\\\":true,\\\"box\\\":{\\\"left\\\":12,\\\"top\\\":576.34375,\\\"right\\\":308,\\\"bottom\\\":606.34375},\\\"ring\\\":0,\\\"failures\\\":[\\\"focus clip-path/clip/mask needs pixel evidence\\\"],\\\"occluder\\\":null}\",\n+ ]\n\nCall Log:\n- Timeout 10000ms exceeded while waiting on the predicate\n```"
+    },
+    {
+      "case": "responsive-accessibility-S-a58c4-oolbar-320-CSS-pixel-reflow-chromium",
+      "detail": "```\nError: AE-05 focused visual geometry\n\nAE-05 focused visual geometry\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 3\n\n- Array []\n+ Array [\n+   \"focus clip-path/clip/mask needs pixel evidence: {\\\"target\\\":\\\"FLUENT-TEXT-INPUT#fc-page-toolbar-search-input\\\",\\\"requireIndicator\\\":true,\\\"box\\\":{\\\"left\\\":12,\\\"top\\\":449.34375,\\\"right\\\":308,\\\"bottom\\\":481.34375},\\\"ring\\\":0,\\\"failures\\\":[\\\"focus clip-path/clip/mask needs pixel evidence\\\"],\\\"occluder\\\":null}\",\n+ ]\n\nCall Log:\n- Timeout 10000ms exceeded while waiting on the predicate\n```"
+    },
+    {
+      "case": "accessibility-state-matrix-f652a-nd-settings-states-in-light-firefox",
+      "detail": "```\nError: AE-05 focused visual geometry\n\nAE-05 focused visual geometry\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 3\n\n- Array []\n+ Array [\n+   \"focus clip-path/clip/mask needs pixel evidence: {\\\"target\\\":\\\"INPUT#control\\\",\\\"requireIndicator\\\":true,\\\"box\\\":{\\\"left\\\":12,\\\"top\\\":636.36669921875,\\\"right\\\":308,\\\"bottom\\\":666.36669921875},\\\"ring\\\":0,\\\"failures\\\":[\\\"focus clip-path/clip/mask needs pixel evidence\\\"],\\\"occluder\\\":null}\",\n+ ]\n\nCall Log:\n- Timeout 10000ms exceeded while waiting on the predicate\n```"
+    },
+    {
+      "case": "responsive-accessibility-S-91e28--all-text-spacing-overrides-chromium",
+      "detail": "```\nError: AE-05 focused visual geometry\n\nAE-05 focused visual geometry\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 3\n\n- Array []\n+ Array [\n+   \"focus clip-path/clip/mask needs pixel evidence: {\\\"target\\\":\\\"FLUENT-TEXT-INPUT#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-87-RecordId\\\",\\\"requireIndicator\\\":true,\\\"box\\\":{\\\"left\\\":54,\\\"top\\\":324.171875,\\\"right\\\":263,\\\"bottom\\\":358.171875},\\\"ring\\\":0,\\\"failures\\\":[\\\"focus clip-path/clip/mask needs pixel evidence\\\"],\\\"occluder\\\":null}\",\n+ ]\n\nCall Log:\n- Timeout 10000ms exceeded while waiting on the predicate\n```"
+    },
+    {
+      "case": "accessibility-state-matrix-bc6bc-cap-and-filter-cues-in-dark-chromium",
+      "detail": "```\nError: Forced-color focused geometry: stale-reconnecting-dark\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 6\n\n- Array []\n+ Array [\n+   \"viewport clips target or focus ring\",\n+   \"vertical scrollport clips target or ring\",\n+   \"vertical scrollport clips target or ring\",\n+   \"vertical scrollport clips target or ring\",\n+ ]\n```"
+    },
+    {
+      "case": "accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-firefox",
+      "detail": "```\nError: Forced-color focused geometry: stale-reconnecting-light\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 6\n\n- Array []\n+ Array [\n+   \"viewport clips target or focus ring\",\n+   \"vertical scrollport clips target or ring\",\n+   \"vertical scrollport clips target or ring\",\n+   \"vertical scrollport clips target or ring\",\n+ ]\n```"
+    },
+    {
+      "case": "accessibility-state-matrix-ea43c-ap-and-filter-cues-in-light-chromium",
+      "detail": "```\nError: Forced-color focused geometry: stale-reconnecting-light\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 6\n\n- Array []\n+ Array [\n+   \"viewport clips target or focus ring\",\n+   \"vertical scrollport clips target or ring\",\n+   \"vertical scrollport clips target or ring\",\n+   \"vertical scrollport clips target or ring\",\n+ ]\n```"
+    },
+    {
+      "case": "accessibility-state-matrix-f652a-nd-settings-states-in-light-chromium",
+      "detail": "```\nError: AE-05 focused visual geometry\n\nAE-05 focused visual geometry\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 3\n\n- Array []\n+ Array [\n+   \"focus clip-path/clip/mask needs pixel evidence: {\\\"target\\\":\\\"INPUT#control\\\",\\\"requireIndicator\\\":true,\\\"box\\\":{\\\"left\\\":12,\\\"top\\\":576.34375,\\\"right\\\":308,\\\"bottom\\\":606.34375},\\\"ring\\\":0,\\\"failures\\\":[\\\"focus clip-path/clip/mask needs pixel evidence\\\"],\\\"occluder\\\":null}\",\n+ ]\n\nCall Log:\n- Timeout 10000ms exceeded while waiting on the predicate\n```"
+    },
+    {
+      "case": "accessibility-state-matrix-a35f1--text-and-system-color-cues-firefox",
+      "detail": "```\nError: locator.evaluate: Clipped contrast paint needs pixel evidence\nsample@debugger eval code line 311 > eval:47:112\nvisit@debugger eval code line 311 > eval:93:19\nvisit@debugger eval code line 311 > eval:143:16\nvisit@debugger eval code line 311 > eval:144:85\nvisit@debugger eval code line 311 > eval:145:95\nvisit@debugger eval code line 311 > eval:145:95\n@debugger eval code line 311 > eval:147:10\nevaluate@debugger eval code:313:16\n@debugger eval code:1:44\n@debugger eval code:1:62\n\n```"
+    },
+    {
+      "case": "responsive-accessibility-S-5ed2a-s-type-320-CSS-pixel-reflow-chromium",
+      "detail": "```\nError: AE-05 focused visual geometry\n\nAE-05 focused visual geometry\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 3\n\n- Array []\n+ Array [\n+   \"focus clip-path/clip/mask needs pixel evidence: {\\\"target\\\":\\\"FLUENT-TEXT-INPUT#fc-command-form-Counter-Specimens-Domain-PurgeSpecimenRecordCommand-88-RecordId\\\",\\\"requireIndicator\\\":true,\\\"box\\\":{\\\"left\\\":54,\\\"top\\\":330.171875,\\\"right\\\":263,\\\"bottom\\\":364.171875},\\\"ring\\\":0,\\\"failures\\\":[\\\"focus clip-path/clip/mask needs pixel evidence\\\"],\\\"occluder\\\":null}\",\n+ ]\n\nCall Log:\n- Timeout 10000ms exceeded while waiting on the predicate\n```"
+    },
+    {
+      "case": "accessibility-state-matrix-0a39d--text-and-system-color-cues-firefox",
+      "detail": "```\nError: locator.evaluate: Clipped contrast paint needs pixel evidence\nsample@debugger eval code line 311 > eval:47:112\nvisit@debugger eval code line 311 > eval:93:19\nvisit@debugger eval code line 311 > eval:143:16\nvisit@debugger eval code line 311 > eval:144:85\nvisit@debugger eval code line 311 > eval:145:95\nvisit@debugger eval code line 311 > eval:145:95\n@debugger eval code line 311 > eval:147:10\nevaluate@debugger eval code:313:16\n@debugger eval code:1:44\n@debugger eval code:1:62\n\n```"
+    },
+    {
+      "case": "accessibility-state-matrix-43c05-ocus-and-navigation-in-dark-chromium",
+      "detail": "```\nTimeoutError: locator.click: Timeout 15000ms exceeded.\nCall log:\n  - waiting for getByTestId('fc-generated-counter-grid').getByRole('gridcell', { name: 'FC-AE-1', exact: true })\n\n```"
+    },
+    {
+      "case": "responsive-accessibility-s-2bc5e-cels-stale-or-disposed-work-chromium",
+      "detail": "```\nError: AE-05 focused visual geometry\n\nAE-05 focused visual geometry\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 3\n\n- Array []\n+ Array [\n+   \"focused target has no visible focus indicator: {\\\"target\\\":\\\"BUTTON#\\\",\\\"requireIndicator\\\":true,\\\"box\\\":{\\\"left\\\":28,\\\"top\\\":283,\\\"right\\\":108.46875,\\\"bottom\\\":304},\\\"ring\\\":0,\\\"failures\\\":[\\\"focused target has no visible focus indicator\\\"],\\\"occluder\\\":null}\",\n+ ]\n\nCall Log:\n- Timeout 10000ms exceeded while waiting on the predicate\n```"
+    },
+    {
+      "case": "accessibility-state-matrix-0a39d--text-and-system-color-cues-chromium",
+      "detail": "```\nError: locator.evaluate: Error: Clipped contrast paint needs pixel evidence\n    at sample (eval at evaluate (:311:30), <anonymous>:47:112)\n    at visit (eval at evaluate (:311:30), <anonymous>:93:13)\n    at visit (eval at evaluate (:311:30), <anonymous>:143:11)\n    at visit (eval at evaluate (:311:30), <anonymous>:144:80)\n    at visit (eval at evaluate (:311:30), <anonymous>:145:90)\n    at visit (eval at evaluate (:311:30), <anonymous>:145:90)\n    at eval (eval at evaluate (:311:30), <anonymous>:147:5)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n```"
+    },
+    {
+      "case": "responsive-accessibility-S-510ea--all-text-spacing-overrides-chromium",
+      "detail": "```\nError: AE-05 focused visual geometry\n\nAE-05 focused visual geometry\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 3\n\n- Array []\n+ Array [\n+   \"focus clip-path/clip/mask needs pixel evidence: {\\\"target\\\":\\\"FLUENT-TEXT-INPUT#fc-page-toolbar-search-input\\\",\\\"requireIndicator\\\":true,\\\"box\\\":{\\\"left\\\":12,\\\"top\\\":558.34375,\\\"right\\\":308,\\\"bottom\\\":590.34375},\\\"ring\\\":0,\\\"failures\\\":[\\\"focus clip-path/clip/mask needs pixel evidence\\\"],\\\"occluder\\\":null}\",\n+ ]\n\nCall Log:\n- Timeout 10000ms exceeded while waiting on the predicate\n```"
+    },
+    {
+      "case": "accessibility-state-matrix-11dab--abandonment-states-in-dark-firefox",
+      "detail": "```\nError: page.waitForTimeout: Test ended.\n```\n\n# Test source\n\n```ts\n  310 |     const darkItem = themeMenu.getByRole('menuitem', { name: 'Dark', exact: true });\n  311 |     await expectFocusVisible(darkItem);\n  312 |     await evidence(page, themeMenu, `theme-menu-${theme}`, info);\n  313 |     await expectSurfaceContrast(darkItem, 'focus');\n  314 |     await expectNoBlockingAxeViolations(page, { route: '/counter#theme-menu', artifactPath: info.outputPath(`axe-shell-menu-${theme}.json`) });\n  315 |     await page.keyboard.press('Escape');\n  316 |     await page.setViewportSize({ width: 1600, height: 900 });\n  317 |     const rail = page.getByTestId('fc-shell-navigation').getByTestId('fc-navigation-rail');\n  318 |     await expect(rail).toHaveAttribute('data-rail-width', '72');\n  319 |     await expect.poll(async () => (await rail.boundingBox())?.width).toBe(72);\n  320 |     await evidence(page, shell, `rail-labeled-${theme}`, info, rail);\n  321 |     await page.getByTestId('fc-hamburger-toggle').click();\n  322 |     await expect(rail).toHaveAttribute('data-rail-width', '48');\n  323 |     await expect.poll(async () => (await rail.boundingBox())?.width).toBe(48);\n  324 |     await evidence(page, shell, `rail-icons-${theme}`, info, rail);\n  325 |   });\n  326 | \n  327 |   test(`active toolbar, tabs, palette and settings states in ${theme}`, async ({ page }, info) => {\n  328 |     await ready(page, '/__frontcomposer/specimens/page-toolbar', theme);\n  329 |     const toolbar = new PageToolbarSpecimenPage(page);\n  330 |     await toolbar.searchInput.focus();\n  331 |     await page.keyboard.press('Shift+Tab');\n  332 |     await page.keyboard.press('Tab');\n  333 |     await expectFocusVisible(toolbar.searchInput);\n  334 |     await expectSurfaceContrast(page.getByTestId('fc-page-toolbar-search'), 'focus');\n  335 |     await toolbar.filterTrigger.click();\n  336 |     await expect(toolbar.filterContent).toBeVisible();\n  337 |     await evidence(page, toolbar.filterContent, `filter-popover-${theme}`, info);\n  338 |     await toolbar.filterTrigger.click();\n  339 |     await toolbar.viewTrigger.click();\n  340 |     await evidence(page, toolbar.viewDensityItem, `view-menu-${theme}`, info);\n  341 |     await page.keyboard.press('Escape');\n  342 |     await toolbar.summaryTab.focus();\n  343 |     await toolbar.summaryTab.press('ArrowRight');\n  344 |     await expect(toolbar.activityTab).toHaveAttribute('aria-selected', 'true');\n  345 |     await expectFocusVisible(toolbar.activityTab);\n  346 |     await evidence(page, toolbar.tabs, `tabs-active-${theme}`, info);\n  347 |"
+    },
+    {
+      "case": "accessibility-state-matrix-a35f1--text-and-system-color-cues-chromium",
+      "detail": "```\nError: locator.evaluate: Error: Clipped contrast paint needs pixel evidence\n    at sample (eval at evaluate (:311:30), <anonymous>:47:112)\n    at visit (eval at evaluate (:311:30), <anonymous>:93:13)\n    at visit (eval at evaluate (:311:30), <anonymous>:143:11)\n    at visit (eval at evaluate (:311:30), <anonymous>:144:80)\n    at visit (eval at evaluate (:311:30), <anonymous>:145:90)\n    at visit (eval at evaluate (:311:30), <anonymous>:145:90)\n    at eval (eval at evaluate (:311:30), <anonymous>:147:5)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n```"
+    }
+  ],
+  "reason": "Repeated clipping classification and screenshot scroll side effects; one focus-only fixture correction and one rare setup timeout also require diagnosis."
+}

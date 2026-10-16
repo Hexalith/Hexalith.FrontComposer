@@ -1,0 +1,56 @@
+<testsuites id="" name="" tests="24" failures="0" skipped="0" errors="0" time="42.800965">
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-16T10:16:15.772Z" hostname="chromium" tests="8" failures="0" skipped="0" time="30.105" errors="0">
+<testcase name="narrow specimen navigation and grid retain unobscured focus in light" classname="responsive-accessibility.spec.ts" time="2.591">
+</testcase>
+<testcase name="narrow specimen navigation and grid retain unobscured focus in dark" classname="responsive-accessibility.spec.ts" time="2.657">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="3.445">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="2.541">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="7.084">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="7.564">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="2.065">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="2.158">
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-16T10:16:15.772Z" hostname="firefox" tests="8" failures="0" skipped="0" time="42.046" errors="0">
+<testcase name="narrow specimen navigation and grid retain unobscured focus in light" classname="responsive-accessibility.spec.ts" time="3.113">
+</testcase>
+<testcase name="narrow specimen navigation and grid retain unobscured focus in dark" classname="responsive-accessibility.spec.ts" time="3.038">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="4.427">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="3.673">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="10.418">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="11.304">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="3.091">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="2.982">
+</testcase>
+</testsuite>
+<testsuite name="responsive-accessibility.spec.ts" timestamp="2026-10-16T10:16:15.772Z" hostname="webkit" tests="8" failures="0" skipped="0" time="42.083" errors="0">
+<testcase name="narrow specimen navigation and grid retain unobscured focus in light" classname="responsive-accessibility.spec.ts" time="2.675">
+</testcase>
+<testcase name="narrow specimen navigation and grid retain unobscured focus in dark" classname="responsive-accessibility.spec.ts" time="2.609">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="3.506">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › module navigation and tabs: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="3.633">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="11.554">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › type: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="11.908">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow" classname="responsive-accessibility.spec.ts" time="3.039">
+</testcase>
+<testcase name="Story 13.6 responsive operator surfaces › data-formatting: 320 CSS-pixel reflow with all text-spacing overrides" classname="responsive-accessibility.spec.ts" time="3.159">
+</testcase>
+</testsuite>
+</testsuites>

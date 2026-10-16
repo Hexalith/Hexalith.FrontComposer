@@ -1,0 +1,26 @@
+{
+  "candidateDigest": "sha256:a42bb176228cf40abd70106bf30b4bb499f6a2834ef292b5a2adb909cc282b23",
+  "cwd": "tests/e2e",
+  "command": [
+    "npm",
+    "test",
+    "--",
+    "specs/responsive-accessibility.spec.ts",
+    "specs/accessibility-state-matrix.spec.ts",
+    "--project=chromium",
+    "--project=firefox",
+    "--project=webkit",
+    "--workers=3"
+  ],
+  "environment": {
+    "BASE_URL": "http://127.0.0.1:5070",
+    "PLAYWRIGHT_SKIP_WEBSERVER": "1",
+    "FC_E2E_BUILD_CONFIGURATION": "Debug",
+    "FC_E2E_OUTPUT_DIR": "/tmp/story13-6-parent-final-a34ed90374ed",
+    "FC_E2E_HTML_REPORT_DIR": "/tmp/story13-6-parent-final-report-a34ed90374ed",
+    "FC_A11Y_EVIDENCE_RUN_ID": "story-13-6-build-review-final-a34ed90374ed"
+  },
+  "runId": "story-13-6-build-review-final-a34ed90374ed",
+  "output": "/tmp/story13-6-parent-final-a34ed90374ed",
+  "html": "/tmp/story13-6-parent-final-report-a34ed90374ed"
+}

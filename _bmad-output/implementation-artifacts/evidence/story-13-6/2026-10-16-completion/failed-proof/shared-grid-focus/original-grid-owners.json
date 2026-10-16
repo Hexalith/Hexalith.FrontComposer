@@ -1,0 +1,64 @@
+[
+  {
+    "path": "/counter/counter-projection",
+    "html": "<div class=\"fc-datagrid-host fc-projection-grid\" data-fc-datagrid=\"Counter:Counter.Domain.CounterProjection\" data-fc-datagrid-instance=\"68c2f986cb634a35a70560344fb2efc5\" role=\"region\" aria-label=\"counters\" tabindex=\"0\"><!--!--><!--!--><!--!--><table class=\"fc-specimen-generated-template\"><tbody><tr><td><div class=\"fc-template-row\"><span class=\"fc-template-field\" data-fc-field=\"Id\">fc-correlation-0002</span><span class=\"fc-template-field\" data-fc-field=\"Count\">42</span><span class=\"fc-template-fi",
+    "outline": "rgb(36, 36, 36) auto 1px",
+    "offset": "0px",
+    "box": {
+      "x": 20,
+      "y": 371.79998779296875,
+      "width": 280,
+      "height": 80,
+      "top": 371.79998779296875,
+      "right": 300,
+      "bottom": 451.79998779296875,
+      "left": 20
+    },
+    "parent": "<section class=\"data-section\"><!--!--><!--!--><div role=\"status\" aria-live=\"polite\" aria-atomic=\"true\" class=\"fc-sr-only\" data-testid=\"fc-surface-status\"></div><!--!--><p class=\"fc-projection-subtitle\">1 counters</p><!--!--><p role=\"group\" aria-live=\"off\" hidden=\"\" data-fc-browser-stale=\"\" data-fc-stale-owner=\"ef894a3cb7a742f4b6cfc26cfdaacf19\" data-fc-stale-key=\"projection:Counter:Counter.Domain.CounterProjection\" data-fc-stale-scope=\"0\" data-fc-server-stale=\"false\" data-fc-cached-result=\"pages:0|\">Data may be out of date.</p><!--!--><!--!--><!-- Phone-viewport layout (UX-DR7 phone variant) deferred to Story 10-2 --><!--!--><span class=\"fc-row-count\">1 counters</span><div class=\"fc-datagrid-host fc-projection-grid\" data-fc-datagrid=\"Counter:Counter.Domain.CounterProjection\" data-fc-datagrid-instance=\"68c2f986cb634a35a70560344fb2efc5\" role=\"region\" aria-label=\"counters\" tabindex=\"0\"><!--!--><!--!--><!--!--><table class=\"fc-specimen-generated-template\"><tbody><tr><td><div class=\"fc-template-row\"><span class=\"fc-template-field\" data-fc-field=\"Id\">fc-correlation-0002</span><span class=\"f",
+    "previous": {
+      "tag": "SPAN",
+      "cls": "fc-row-count",
+      "rect": {
+        "x": 20,
+        "y": 351.79998779296875,
+        "width": 69.55000305175781,
+        "height": 20,
+        "top": 351.79998779296875,
+        "right": 89.55000305175781,
+        "bottom": 371.79998779296875,
+        "left": 20
+      }
+    }
+  },
+  {
+    "path": "/__frontcomposer/specimens/data-formatting",
+    "html": "<div class=\"fc-datagrid-host fc-projection-grid\" data-fc-datagrid=\"Specimens:Counter.Specimens.Domain.SpecimenFormattingProjection\" data-fc-datagrid-instance=\"f43b2ad6f77845de82297936e7f6b837\" role=\"region\" aria-label=\"specimen formattings\" tabindex=\"0\"><!--!--><!--!--><!--!--><table class=\"fc-specimen-generated-template\"><tbody><tr><td><div class=\"fc-template-row\"><span class=\"fc-template-field\" data-fc-field=\"Id\">11111111</span><span class=\"fc-template-field\" data-fc-field=\"TotalOrders\">12 345",
+    "outline": "rgb(20, 20, 20) auto 1px",
+    "offset": "0px",
+    "box": {
+      "x": 28,
+      "y": 691.933349609375,
+      "width": 264,
+      "height": 128,
+      "top": 691.933349609375,
+      "right": 292,
+      "bottom": 819.933349609375,
+      "left": 28
+    },
+    "parent": "<section aria-labelledby=\"fc-generated-data-grid-title\" data-testid=\"fc-generated-formatting-grid\" b-kvmg2rk15y=\"\"><!--!--><h2 id=\"fc-generated-data-grid-title\" b-kvmg2rk15y=\"\">Generated formatting DataGrid</h2>\n        <!--!--><!--!--><div role=\"status\" aria-live=\"polite\" aria-atomic=\"true\" class=\"fc-sr-only\" data-testid=\"fc-surface-status\"></div><!--!--><p class=\"fc-projection-subtitle\">1 specimen formattings</p><!--!--><p role=\"group\" aria-live=\"off\" hidden=\"\" data-fc-browser-stale=\"\" data-fc-stale-owner=\"fd3f5f2fc46a4b66b51cc6c16b1da5d5\" data-fc-stale-key=\"projection:Specimens:Counter.Specimens.Domain.SpecimenFormattingProjection\" data-fc-stale-scope=\"0\" data-fc-server-stale=\"false\" data-fc-cached-result=\"pages:0|\">Data may be out of date.</p><!--!--><!--!--><!-- Phone-viewport layout (UX-DR7 phone variant) deferred to Story 10-2 --><!--!--><span class=\"fc-row-count\">1 specimen formattings</span><div class=\"fc-datagrid-host fc-projection-grid\" data-fc-datagrid=\"Specimens:Counter.Specimens.Domain.SpecimenFormattingProjection\" data-fc-datagrid-instance=\"f43b2ad6f77845de82297936e7f6",
+    "previous": {
+      "tag": "SPAN",
+      "cls": "fc-row-count",
+      "rect": {
+        "x": 28,
+        "y": 671.933349609375,
+        "width": 156.13333129882812,
+        "height": 20,
+        "top": 671.933349609375,
+        "right": 184.13333129882812,
+        "bottom": 691.933349609375,
+        "left": 28
+      }
+    }
+  }
+]

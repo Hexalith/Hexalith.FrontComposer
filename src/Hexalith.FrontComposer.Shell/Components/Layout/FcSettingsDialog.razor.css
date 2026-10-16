@@ -45,3 +45,10 @@
 }
 
 .fc-settings-body ::deep a { display: inline-block; min-block-size: 24px; }
+
+/* Fluent radio focus paint is absent in WebKit. Use the same Fluent focus token
+   on the component host, within the density controls' reserved spacing circle. */
+.fc-settings-body ::deep fluent-radio:focus-visible {
+    outline: var(--strokeWidthThick) solid var(--colorStrokeFocus2);
+    outline-offset: var(--strokeWidthThick);
+}

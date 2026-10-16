@@ -9,6 +9,8 @@ if (!window.__fcFocusIntentTrackerInstalled) {
     const record = (event) => {
         const intent = window.__fcOverlayOpenIntent;
         if (intent) intent.watchFocus = true;
+        const reservation = window.__fcModalReservation;
+        if (reservation) reservation.watchFocus = true;
         const trigger = (typeof event.composedPath === 'function' ? event.composedPath() : [event.target])
             .filter((node) => node instanceof Element)
             .map((node) => node.closest('[data-testid="fc-settings-button"], [data-testid="fc-palette-trigger"]'))
@@ -24,6 +26,11 @@ if (!window.__fcFocusIntentTrackerInstalled) {
     document.addEventListener('pointerdown', record, true);
     document.addEventListener('keydown', record, true);
     document.addEventListener('focusin', (event) => {
+        // Entry focus consumes its short-lived intent. The modal session must keep tracking
+        // operator moves until delayed disposal releases the reservation.
+        const reservation = window.__fcModalReservation;
+        if (reservation?.watchFocus && event.target !== reservation.origin
+            && !event.target?.closest?.(modalContainerSelector)) reservation.moved = true;
         const intent = window.__fcOverlayOpenIntent;
         if (intent?.watchFocus && event.target !== intent.origin
             && !event.target?.closest?.(modalContainerSelector)
@@ -190,6 +197,23 @@ export function registerShellKeyFilter(element) {
         return;
     }
 
+    // Native Tab scrolling in WebKit can align the control border with an inner
+    // scrollport and clip its outer focus ring. Run after that native scroll so
+    // the authored scroll-margin/scroll-padding can protect the complete target.
+    // Keep this within the mounted shell and never move focus or follow a stale target.
+    const showFocusedTarget = (event) => {
+        const target = event.target;
+        cancelAnimationFrame(element.__fcShellFocusFrame);
+        element.__fcShellFocusFrame = requestAnimationFrame(() => {
+            if (element.isConnected && target instanceof HTMLElement && target.isConnected
+                && (document.activeElement === target || target.matches(':focus-within'))) {
+                target.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
+            }
+        });
+    };
+    element.addEventListener('focusin', showFocusedTarget);
+    element.__fcShellFocusVisibility = showFocusedTarget;
+
     const handler = (event) => {
         const key = (event.key ?? "").toLowerCase();
         const active = document.activeElement;
@@ -273,6 +297,9 @@ export function unregisterShellKeyFilter(element) {
     }
 
     element.removeEventListener("keydown", element.__fcShellKeyFilter);
+    element.removeEventListener('focusin', element.__fcShellFocusVisibility);
+    cancelAnimationFrame(element.__fcShellFocusFrame);
+    element.__fcShellFocusVisibility = null;
     element.__fcShellKeyFilter = null;
 }
 
