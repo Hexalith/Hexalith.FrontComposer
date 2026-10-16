@@ -9,6 +9,7 @@ using Hexalith.FrontComposer.Shell.Components.Pages;
 using Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -63,5 +64,18 @@ public sealed class FcHomeRouteViewTests : LayoutComponentTestBase {
             _ = cut.FindComponent<FcHomeDirectory>();
             cut.Markup.ShouldContain("data-testid=\"fc-home-directory\"");
         });
+    }
+
+    [Theory]
+    [InlineData("en", "Home")]
+    [InlineData("fr", "Accueil")]
+    public void RendersLocalizedDocumentTitleInsteadOfWelcomeSentence(string culture, string expectedTitle) {
+        // WCAG 2.4.2 — the tab title is the short route name, not the long anonymous welcome copy.
+        using CultureScope scope = new(culture);
+
+        IRenderedComponent<HeadOutlet> head = Render<HeadOutlet>();
+        _ = Render<FcHomeRouteView>();
+
+        head.WaitForAssertion(() => head.Markup.ShouldContain($"<title>{expectedTitle}</title>"));
     }
 }

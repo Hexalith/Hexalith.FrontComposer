@@ -144,3 +144,54 @@ Eighteen individual Medium findings / fifteen groups concern preceding unchanged
 
 
 Reproducers and every grouping/disposition are retained in [the continuation report](evidence/story-13-6/2026-10-16-completion/gate-reconciliation/review/triage.md) and the append-only deferred ledger.
+
+### Review Findings
+
+Code review 2026-10-16 of `c3708690..HEAD` (code only, `_bmad-output` excluded). Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor. Blind Hunter and Verification Gap read only about the first 1.4–1.5k of the 3,453 diff lines, so the e2e helpers, specs and evidence scripts got shallow coverage.
+
+- [x] [Review][Decision] Analyzer identifier-inventory reseal unverified — RESOLVED: ran `AnalyzerPolicy_IdentifierInventory_MatchesSeal` after the patches below; it passes, no reseal needed. Original note: — the diff adds new test identifiers (`AccessibilitySpecimenGateTests`) and a `GovernanceBuild` trait on `AnalyzerPolicy_Story1122HiddenControlNegativeProbes_RemainClean`. `AnalyzerPolicy_IdentifierInventory_MatchesSeal` counts identifiers repo-wide, so the story owns the reseal, and none appears in the diff. Run it; reseal if it fails. The trait and `quality.yml` Gate 2b `--expected-test` edit is unrelated to accessibility coverage but is consistent with `CiGovernanceTests`; confirm it is intended scope.
+- [x] [Review][Patch] No regression test for the blocked-parent-callback disposal path — `Task.Run(cancellation.Dispose)` was added without a test that holds a parent callback and asserts cleanup does not block the caller [src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs:418] — fixed: `AcceptedCleanupDisposalDoesNotBlockCallerWhileParentCallbackIsHeld` in `EventStoreClientTests.cs`; fails (timeout) with sync `Dispose()`, passes with the fix
+- [x] [Review][Patch] `HomePageTitle` has no asserting test — add a bUnit assertion (English "Home", French "Accueil") [src/Hexalith.FrontComposer.Shell/Components/Pages/FcHomeRouteView.razor:11] — fixed: `RendersLocalizedDocumentTitleInsteadOfWelcomeSentence` (en/fr) in `FcHomeRouteViewTests.cs`
+- [x] [Review][Defer] Evidence validator can report a false "Duplicate state evidence" when a CI retry passes after a first attempt wrote `ae-state-*.json` — deferred: unverified (maybe-false, medium if true); settle by checking whether Playwright keeps the failed attempt's output dir under `retries: 2` [tests/e2e/scripts/a11y-state-evidence.mjs:32]
+- [x] [Review][Defer] Firefox/WebKit are not run through `validate:a11y-artifacts` in CI (Linux job has no `FC_A11Y_EVIDENCE_RUN_ID` step); `test:a11y` is Chromium-only — deferred: already disclosed in the spec as open Windows/engine work
+- [x] [Review][Defer] WebKit forced-colors cells uncovered (probe fails; media-rule-only) — deferred: engine limitation, disclosed in spec
+- [x] [Review][Defer] Evidence-hardening Mediums R01–R15 (pseudo-element opacity, SVG shape types, `-webkit-text-fill-color`, filter/blend backgrounds) — deferred: already recorded in the spec's triage log
+- [x] [Review][Defer] 13 failing browser cases (12 Firefox/WebKit visual, 1 Chromium dark Settings focus return) and open Windows/manual evidence — deferred: spec stays `in-review` and says so
+
+#### Rejected
+
+- Edge Case Hunter / Blind Hunter "disposal still gates dispatch, so the hang only moves threads" — false: `await Task.Run` frees the dispatch thread, which is what the held-parent callback needs. Only the missing test is real (patch above).
+- `focusin` → `scrollIntoView` for every shell focus — false as a defect: it is guarded by `activeElement === target || :focus-within` and `block/inline: 'nearest'`, so already-visible targets do not scroll. Pointer focus on a partly clipped target is intended.
+- "1 seconds" / "1 secondes" in `RetryAfterSeconds` — low: the English wording is pre-existing, and plural handling adds complexity.
+- `ResolveHiddenWarningText` omits `EntityLabel` — low/unverified, no named consumer that diverges.
+- `AccessibilityScenarioControls` stuck reconciliation, unhandled `OperationCanceledException` or stale lifecycle ids — low: Test-host-only specimen, fixed scenarios.
+- `AccessibilitySpecimenPageLoader` stale held page — false: `BeginPage` replaces it and the state is test-scoped.
+- `validate-a11y-artifacts.mjs` ignores the run id when the env var is unset — low: `quality.yml` sets it in CI, and `playwright.config.ts` defaults it for local runs.
+- Seam gate checks only the `Test` environment, and the `Specimens.Accessibility` policy is `_ => true` — false: both are registered only inside the `specimensEnabled` block of `Program.cs`.
+- Hard-coded view-key and FQN strings, `10001` cap literal, duplicated lifecycle state list, broad forced-colors CSS and shallow seam tests — low: maintainability only, no named failure.
+- Renamed `...AnnouncesItOnce` test — not a defect: the body already asserted the announcement.
+
+### Review Findings — follow-up pass (bmad-code-review, 2026-10-16)
+
+Same target (`git diff c3708690`, evidence directory excluded; 57 files) and four layers. Most reports repeat the dispositions above; only items not already triaged are listed.
+
+- [x] [Review][Decision] Forced-colors rebinding of Fluent neutral tokens on `.fc-shell-root` (`--colorNeutralForeground1..4: CanvasText`) and `fill: CanvasText !important` on message-bar icon slots [src/Hexalith.FrontComposer.Shell/wwwroot/css/fc-shell.css:25-41] — scoped to `forced-colors: active` and system colors, but the project rule is "no Fluent theme redefinition" and the spec forbids independent palettes. Keep (document as a forced-colors-only exception), or replace with a Fluent-owned parameter or token path.
+- [x] [Review][Patch] `RendersLocalizedDocumentTitleInsteadOfWelcomeSentence` sets `CultureInfo.CurrentCulture`/`CurrentUICulture` and never restores them, so `fr` can leak into later tests on the same thread; wrap in the existing `CultureScope` [tests/Hexalith.FrontComposer.Shell.Tests/Components/Pages/FcHomeRouteViewTests.cs:72-75]
+- [x] [Review][Defer] In-form warning body renders `Detail ?? EntityLabel ?? fallback`, so a blank/whitespace `Detail` produces an empty message bar; the hidden path already uses `IsNullOrWhiteSpace` [src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs:2049] — deferred: pre-existing line (this change only added the hidden-path helper); fix needs a snapshot re-verify.
+- [x] [Review][Defer] No `fr` assertion for `RetryAfterSeconds` (key parity or rendered "Réessayez dans N secondes.") — deferred: already listed in the triage log; small bUnit test.
+- [x] [Review][Defer] Firefox/WebKit not run through CI `test:a11y` and `validateStateEvidence` is pinned to `chromium` — deferred: already disclosed as open above.
+
+#### Rejected
+
+- `SetConnection` awaits a stale or cancelled `_pageCompletion` / unsynchronized `_page` — low/false: Test-host specimen, Blazor sync context, tenant is always present in the Test host.
+- `Task.Run(cancellation.Dispose)` masks a dispose fault or starves the pool — low: `CancellationTokenSource.Dispose` does not throw in practice; regression test exists per the pass above.
+- `showFocusedTarget` scrolls on every focusin — false as a defect, already rejected above (`nearest`, guarded).
+- `admission` outcome nulls the pending scope for every command in the circuit — low: specimen-only, fixed scenario, no other command is exercised while it is selected.
+- Run id unbound when `FC_A11Y_EVIDENCE_RUN_ID` is unset — low, already rejected above.
+- `closeAfterJoin!` null dereference — low: the test fails either way, just with a less clear message.
+- `role="menu"` on `FluentMenuList` — false: same pattern already used in `FcAccountMenu` and `FrontComposerNavigation`.
+- Palette selected outline `Highlight` → `CanvasText` relies on outline presence — low: outline presence is the forced-colors cue.
+- Scenario names hand-copied in C#/mjs/spec; `"no-match-ae"` and 500 ms delay literals; `.gitattributes` `-text` pinned to one dated directory — low: maintainability only, no named failure.
+- Acceptance Auditor: unchecked task boxes versus failing cases, contradictory candidate hashes, production edits outside the Code Map, unrelated Gate 2b/`.gitattributes` edits — rejected: the fix is to edit the spec, and the spec's triage log already records each.
+
+Decision resolved (apply recommended): keep the override as a forced-colors-only system-color mapping (`CanvasText`, no theme palette defined) — a recorded exception to the no-Fluent-theme-redefinition rule, scoped to `@media (forced-colors: active)`; revisit if Fluent ships a native forced-colors path, and allow-list this one selector if the Shell Governance guard flags it. Patch fixed: the test now uses `CultureScope`.

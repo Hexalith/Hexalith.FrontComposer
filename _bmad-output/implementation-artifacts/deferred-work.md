@@ -10379,3 +10379,17 @@ Reconfirmed existing open items without new ids: AA25-01 (Story 13.4 AM-14 hand-
 - 320px reflow loop skips clipping check unless text spacing is on.
 - `Essential` target exception has no validation beyond non-empty strings; stale exceptions pass because `used.add` runs for conforming targets.
 - Scope-change cancellation/clearing untested (Decisions 1 and 2); no fr-culture `RetryAfterSeconds` assertion.
+
+## Deferred from: code review of spec-13-6-complete-automated-accessibility-coverage (2026-10-16)
+
+- Evidence validator may report a false "Duplicate state evidence" when a CI retry passes after a failed first attempt wrote `ae-state-*.json` (`tests/e2e/scripts/a11y-state-evidence.mjs:32`). Unverified, medium if true; check whether Playwright keeps the failed attempt's output dir under `retries: 2`.
+- Firefox/WebKit are not run through `validate:a11y-artifacts` in CI, and `test:a11y` is Chromium-only. Already disclosed in the spec.
+- WebKit forced-colors cells are uncovered (media-rule-only). Engine limitation, disclosed in the spec.
+- Evidence-hardening Mediums R01–R15 remain open, per the spec's triage log.
+- 13 failing browser cases (12 Firefox/WebKit visual, 1 Chromium dark Settings focus return) remain open.
+
+## Deferred from: code review of spec-13-6-complete-automated-accessibility-coverage (2026-10-16, follow-up pass)
+
+- In-form warning body renders `Detail ?? EntityLabel ?? fallback` so blank/whitespace Detail yields an empty message bar (`CommandFormEmitter.cs:2049`); hidden path already guards. Pre-existing; fix needs SourceTools snapshot re-verify.
+- No `fr` assertion for `RetryAfterSeconds` (key parity or rendered French text).
+- Firefox/WebKit not in CI `test:a11y`; `validateStateEvidence` pinned to chromium.

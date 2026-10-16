@@ -1386,4 +1386,43 @@ public sealed class EventStoreClientTests {
         }
     }
 
+    [Fact]
+    public async Task AcceptedCleanupDisposalDoesNotBlockCallerWhileParentCallbackIsHeld()
+    {
+        // Linked-source disposal waits for the parent's propagation callback; a provider callback
+        // held there must not block the thread that started cleanup.
+        using CancellationTokenSource parent = new();
+        using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(parent.Token);
+        using ManualResetEventSlim callbackHeld = new();
+        using ManualResetEventSlim release = new();
+        using CancellationTokenRegistration registration = linked.Token.Register(() =>
+        {
+            callbackHeld.Set();
+            _ = release.Wait(TimeSpan.FromSeconds(30));
+        });
+        Task cancelParent = Task.Factory.StartNew(parent.Cancel, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        Task? cleanup = null;
+        try
+        {
+            callbackHeld.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken).ShouldBeTrue();
+
+            Task<Task> start = Task.Factory.StartNew(
+                () => (Task)typeof(EventStoreCommandClient)
+                    .GetMethod("CompleteAcceptedCleanupAsync", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!
+                    .Invoke(null, [linked, Task.CompletedTask, TimeProvider.System])!,
+                CancellationToken.None,
+                TaskCreationOptions.LongRunning,
+                TaskScheduler.Default);
+            cleanup = await start.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            cleanup.IsCompleted.ShouldBeFalse();
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        await cancelParent.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await cleanup!.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+    }
+
 }
